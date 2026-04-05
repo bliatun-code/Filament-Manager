@@ -1495,13 +1495,15 @@ export default function SettingsPage() {
       }
     } catch (refreshError) {
       console.error(refreshError);
+      const fallbackMessage =
+        vendor === "Bambu"
+          ? t("wishlist.error.refreshBambu", "Catalog refresh failed.")
+          : t("wishlist.error.refreshEsun", "eSUN catalog refresh failed.");
+      const message = toErrorMessage(refreshError, fallbackMessage);
+      setCatalogRefreshLog(message);
+      setShowCatalogRefreshLog(true);
       setError(
-        toErrorMessage(
-          refreshError,
-          vendor === "Bambu"
-            ? t("wishlist.error.refreshBambu", "Catalog refresh failed.")
-            : t("wishlist.error.refreshEsun", "eSUN catalog refresh failed."),
-        ),
+        message,
       );
     } finally {
       setCatalogRefreshBusy(false);
