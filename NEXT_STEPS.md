@@ -13,6 +13,19 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - complete manual RC visual checks in:
     - `/Users/bliatun/Documents/Codex/bambu-filament-manager/UI_RELEASE_CANDIDATE_CHECKLIST.md`
 
+## v0.1.1 Fast-Follow Hardening (2026-04-05)
+- Baseline now landed:
+  - `Settings` bundle hot path split with lazy-loaded QR/PDF helper imports
+  - former `settings` >500 kB warning removed from production build baseline
+  - dependency lockfiles refreshed (`root` + `ui`) within current semver ranges
+  - `npm audit` currently reports zero vulnerabilities in both package roots
+- Follow-up checklist:
+  - verify GitHub Dependabot alerts directly in repo Security tab (token scope needed for API access)
+  - if alerts remain open, patch and release `v0.1.1` with focused notes only
+  - keep scope limited to hardening and regression fixes (no workflow redesign)
+- Plan doc:
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/V0_1_1_HARDENING_PLAN.md`
+
 ## Current Direction
 - Trusted-LAN is now the only supported browser-companion path.
 - The desktop app plus SQLite remain the only source of truth.

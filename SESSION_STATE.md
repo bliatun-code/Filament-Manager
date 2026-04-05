@@ -1089,3 +1089,17 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - `/Users/bliatun/Documents/Codex/bambu-filament-manager/RELEASE_NOTES_v0.1.0.md`
   - `/Users/bliatun/Documents/Codex/bambu-filament-manager/UI_RELEASE_CANDIDATE_CHECKLIST.md`
   - `/Users/bliatun/Documents/Codex/bambu-filament-manager/NEXT_STEPS.md`
+
+## v0.1.1 Hardening Start (2026-04-05)
+- Performed a focused fast-follow hardening pass after `v0.1.0`.
+- Bundle/perf hardening:
+  - moved heavy QR/PDF helpers in `ui/src/pages/settings.tsx` to dynamic imports at point-of-use
+  - build output now shows `settings` chunk reduced from previous warning range to a smaller baseline, with heavy print logic isolated in its own async chunk
+- Dependency hygiene:
+  - ran `npm update` in both repo root and `ui` to refresh lockfiles within existing semver ranges
+  - verified `npm audit` reports zero vulnerabilities in both package roots
+- Validation:
+  - `cd /Users/bliatun/Documents/Codex/bambu-filament-manager && npm run smoke` passed
+- Follow-up:
+  - Dependabot alerts API could not be queried with current token permissions (`security_events` missing), so repository Security-tab confirmation remains a manual owner check
+  - added `/Users/bliatun/Documents/Codex/bambu-filament-manager/V0_1_1_HARDENING_PLAN.md` as the fast-follow release checklist

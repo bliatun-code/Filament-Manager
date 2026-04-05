@@ -49,10 +49,6 @@ import { FeedbackBanner } from "../components/feedback_banner";
 import { useI18n, type Locale } from "../lib/i18n";
 import { neutralChipClass } from "../lib/chip_styles";
 import { copyTextToClipboard } from "../lib/clipboard";
-import { buildCompanionSpoolQrPayload } from "../lib/filament_qr_payload";
-import { buildFilamentLabelQrDataUrl } from "../lib/filament_label_print";
-import { buildInventoryOverviewPrintPdfBase64 } from "../lib/inventory_overview_print";
-import { buildTrustedLanPairingQrDataUrl } from "../lib/trusted_lan_pairing_qr";
 import { PrinterModelPreview } from "../components/printer_model_preview";
 import {
   describePrinterCapability,
@@ -795,7 +791,10 @@ export default function SettingsPage() {
     setTrustedLanPairingQrBusy(true);
     setTrustedLanPairingQrUnavailable(false);
 
-    void buildTrustedLanPairingQrDataUrl(trustedLanPairingLink)
+    void import("../lib/trusted_lan_pairing_qr")
+      .then(({ buildTrustedLanPairingQrDataUrl }) =>
+        buildTrustedLanPairingQrDataUrl(trustedLanPairingLink),
+      )
       .then((dataUrl) => {
         if (cancelled) {
           return;
@@ -1271,6 +1270,16 @@ export default function SettingsPage() {
           }
           return left.master.color_name.localeCompare(right.master.color_name, locale);
         });
+
+      const [
+        { buildCompanionSpoolQrPayload },
+        { buildFilamentLabelQrDataUrl },
+        { buildInventoryOverviewPrintPdfBase64 },
+      ] = await Promise.all([
+        import("../lib/filament_qr_payload"),
+        import("../lib/filament_label_print"),
+        import("../lib/inventory_overview_print"),
+      ]);
 
       const printRows = await Promise.all(
         inStockRows.map(async (row) => {
