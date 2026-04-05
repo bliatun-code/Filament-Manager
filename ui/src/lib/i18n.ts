@@ -807,9 +807,10 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       resetCatalogsList3: "Reactivates remaining discontinued catalog entries.",
       resetApp: "Reset app data",
       resetHint:
-        "App reset clears inventory, statistics history, printer assignments and wishlist.",
+        "App reset clears inventory, statistics history, printer assignments, wishlist, and trusted-LAN paired browsers.",
       resetAppList1: "Clears inventory rolls and roll lifecycle history.",
-      resetAppList2: "Clears printer mappings, print statistics and wishlist.",
+      resetAppList2:
+        "Clears printer mappings, print statistics, wishlist, and trusted-LAN paired browser sessions.",
       resetAppList3: "Keeps master catalog entries and swatch data.",
       addedPrinter: "Added printer",
       updatedPrinter: "Updated printer",
@@ -895,7 +896,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       confirmResetAppTapAgain: "Click Reset app data again to confirm.",
       confirmResetCatalogsTapAgain: "Click Reset catalogs again to confirm.",
       confirmResetApp:
-        "Reset app data?\n\nThis clears inventory, printer mappings, print history and wishlist. Catalog entries are kept.",
+        "Reset app data?\n\nThis clears inventory, printer mappings, print history, wishlist, and trusted-LAN paired browsers. Catalog entries are kept.",
       confirmResetCatalogs:
         "Reset all catalogs?\n\nUnlinked catalog entries are removed. Entries tied to inventory/wishlist are preserved.",
       confirmImportBackup:
@@ -1726,9 +1727,10 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       resetCatalogsList3: "Reaktiverer gjenværende utgåtte katalogoppføringer.",
       resetApp: "Nullstill appdata",
       resetHint:
-        "App-nullstilling sletter lager, statistikk, printerkoblinger og ønskeliste.",
+        "App-nullstilling sletter lager, statistikk, printerkoblinger, ønskeliste og parede trusted-LAN-nettlesere.",
       resetAppList1: "Sletter filamenter i lageret og livssyklushistorikk for dem.",
-      resetAppList2: "Sletter printerkoblinger, printstatistikk og ønskeliste.",
+      resetAppList2:
+        "Sletter printerkoblinger, printstatistikk, ønskeliste og parede trusted-LAN-nettleserøkter.",
       resetAppList3: "Beholder hovedkatalogoppføringer og swatch-data.",
       addedPrinter: "La til printer",
       updatedPrinter: "Oppdaterte printer",
@@ -1814,7 +1816,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       confirmResetAppTapAgain: "Trykk Nullstill appdata igjen for å bekrefte.",
       confirmResetCatalogsTapAgain: "Trykk Nullstill kataloger igjen for å bekrefte.",
       confirmResetApp:
-        "Nullstill appdata?\n\nDette sletter lager, printerkoblinger, print-historikk og ønskeliste. Katalogdata beholdes.",
+        "Nullstill appdata?\n\nDette sletter lager, printerkoblinger, print-historikk, ønskeliste og parede trusted-LAN-nettlesere. Katalogdata beholdes.",
       confirmResetCatalogs:
         "Nullstill alle kataloger?\n\nUkoblede katalogelementer fjernes. Elementer knyttet til lager/ønskeliste beholdes.",
       confirmImportBackup:
