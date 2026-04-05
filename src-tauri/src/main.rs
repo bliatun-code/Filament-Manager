@@ -1354,18 +1354,20 @@ fn detect_bambu_skip_discontinued_reason(output: &str, imported: i64) -> Option<
     }
 
     let lowered = output.to_lowercase();
-    let anti_bot_signals = [
-        "429 too many requests",
-        "anti-bot",
-        "access denied",
-        "captcha",
-        "cloudflare",
-    ];
+    let anti_bot_signals = ["429 too many requests", "access denied", "captcha", "cloudflare"];
     if anti_bot_signals
         .iter()
         .any(|signal| lowered.contains(signal))
     {
         return Some("anti-bot/rate-limit responses detected".to_string());
+    }
+
+    if let Some(blocks) = extract_prefixed_line(output, "Anti-bot blocks:")
+        .and_then(|value| value.parse::<i64>().ok())
+    {
+        if blocks > 0 {
+            return Some("anti-bot/rate-limit responses detected".to_string());
+        }
     }
 
     if lowered.contains("refresh quality: partial") {
@@ -1380,6 +1382,19 @@ fn detect_bambu_skip_discontinued_reason(output: &str, imported: i64) -> Option<
         return Some("source returned no products".to_string());
     }
 
+    None
+}
+
+fn extract_prefixed_line(stdout: &str, prefix: &str) -> Option<String> {
+    for line in stdout.lines() {
+        let trimmed = line.trim();
+        if let Some(value) = trimmed.strip_prefix(prefix) {
+            let value = value.trim();
+            if !value.is_empty() {
+                return Some(value.to_string());
+            }
+        }
+    }
     None
 }
 
@@ -1480,6 +1495,22 @@ Imported 278 entries.\n";
         assert_eq!(
             reason,
             Some("anti-bot/rate-limit responses detected".to_string())
+        );
+    }
+
+    #[test]
+    fn bambu_discontinued_partial_without_antibot_uses_source_warning_reason() {
+        let output = "\
+Detected store: https://eu.store.bambulab.com\n\
+Anti-bot blocks: 0\n\
+Refresh quality: partial\n\
+Imported 296 entries.\n\
+Warnings:\n\
+Some product detail pages could not be fetched.\n";
+        let reason = detect_bambu_skip_discontinued_reason(output, 296);
+        assert_eq!(
+            reason,
+            Some("refresh had warnings/errors from source".to_string())
         );
     }
 
