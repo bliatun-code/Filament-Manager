@@ -101,7 +101,7 @@ pub fn refresh_esun_catalog_snapshot(
         }
         Err(error) => {
             warnings.push(format!(
-                "Primary source ({ESUN_STORE_BASE_URL}) failed: {error}"
+                "Primary source ({ESUN_STORE_BASE_URL}) unavailable for this run; using fallback source. ({error})"
             ));
         }
     }
