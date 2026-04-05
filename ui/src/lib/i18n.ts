@@ -958,7 +958,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       generic: "Generisk",
     },
     nav: {
-      dashboard: "Dashboard",
+      dashboard: "Oversikt",
       inventory: "Lager",
       wishlist: "Ønskeliste",
       loans: "Utlån",
@@ -1574,7 +1574,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       trustedLanStatusStarting: "Starter...",
       trustedLanStateChecking: "Sjekker",
       trustedLanStateOff: "Av",
-      trustedLanStateLive: "Live",
+      trustedLanStateLive: "Aktiv",
       trustedLanStateNeedsAttention: "Sjekk",
       trustedLanStatusHintDisabled:
         "Webappen holdes av til du slår den på her.",
