@@ -1,0 +1,8 @@
+#[path = "../../../src/backend/filament_database.rs"]
+pub mod filament_database;
+#[path = "../../../src/backend/inventory_engine.rs"]
+pub mod inventory_engine;
+#[path = "../../../src/backend/statistics.rs"]
+pub mod statistics;
+#[path = "../../../src/backend/vendor_lookup.rs"]
+pub mod vendor_lookup;

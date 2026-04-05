@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "build": {
+    "beforeBuildCommand": "npm --prefix ./ui run build",
+    "beforeDevCommand": "npm --prefix ./ui run dev",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../ui/dist"
+  },
+  "productName": "Filament Manager",
+  "version": "0.1.0",
+  "identifier": "com.bambu.filament.manager",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Filament Manager",
+        "width": 1200,
+        "height": 800
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

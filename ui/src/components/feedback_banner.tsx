@@ -1,0 +1,46 @@
+import type { ReactNode } from "react";
+
+type FeedbackTone = "warning" | "danger" | "success";
+
+const toneClassName: Record<FeedbackTone, string> = {
+  warning:
+    "border-amber-200/85 bg-amber-50/92 text-amber-950 dark:border-amber-400/40 dark:bg-amber-500/14 dark:text-amber-100",
+  danger:
+    "border-rose-200/85 bg-rose-50/92 text-rose-900 dark:border-rose-400/40 dark:bg-rose-500/14 dark:text-rose-100",
+  success:
+    "border-emerald-200/85 bg-emerald-50/92 text-emerald-900 dark:border-emerald-400/40 dark:bg-emerald-500/14 dark:text-emerald-100",
+};
+
+type FeedbackBannerProps = {
+  tone: FeedbackTone;
+  children: ReactNode;
+  className?: string;
+  compact?: boolean;
+};
+
+export function FeedbackBanner({
+  tone,
+  children,
+  className,
+  compact = false,
+}: FeedbackBannerProps) {
+  const densityClassName = compact
+    ? "rounded-xl px-3.5 py-3 text-xs leading-5"
+    : "rounded-2xl px-4 py-3.5 text-sm leading-6";
+
+  return (
+    <div
+      role={tone === "danger" ? "alert" : "status"}
+      className={[
+        "border",
+        densityClassName,
+        toneClassName[tone],
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {children}
+    </div>
+  );
+}

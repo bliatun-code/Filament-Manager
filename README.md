@@ -1,0 +1,100 @@
+# Filament Manager
+
+Desktop-first filament inventory project with:
+- Tauri backend (`src-tauri`)
+- TypeScript scraper (`src/scraper`)
+- React UI (`ui`)
+
+## Stability Goals
+
+The project is configured to keep working when upstream dependencies change:
+- `better-sqlite3` is optional; scraper falls back to `sqlite3` CLI.
+- Auto-scrape detects working Bambu store/collection dynamically.
+- Scraper network calls use retries + timeout controls.
+- Local Tauri CLI is used via npm script (`npm run tauri`), avoiding `cargo tauri` install issues.
+- Tauri configuration is on v2 schema with explicit capabilities.
+
+## Requirements
+
+- Node.js `>=20 <26`
+- npm `>=10`
+- Rust toolchain (for Tauri build)
+- Xcode app + Command Line Tools (macOS build)
+- `sqlite3` CLI recommended (required if `better-sqlite3` is unavailable)
+
+## Install
+
+```bash
+npm install
+cd ui && npm install
+```
+
+## Health Check
+
+```bash
+npm run doctor
+```
+
+## Scraping
+
+Safe run (recommended):
+
+```bash
+BAMBU_DB_PATH=./data/bambu.db npm run scrape:auto:safe
+```
+
+Manual run:
+
+```bash
+BAMBU_BASE_URL=https://eu.store.bambulab.com \
+BAMBU_COLLECTION=bambu-lab-3d-printer-filament \
+BAMBU_DB_PATH=./data/bambu.db \
+npm run scrape
+```
+
+Optional tuning:
+- `BAMBU_VERBOSE=1`
+- `BAMBU_FETCH_RETRIES=2`
+- `BAMBU_TIMEOUT_MS=20000`
+- `BAMBU_PRODUCT_DELAY_MS=200`
+
+## Catalog storage and lifecycle
+
+- Catalog data is stored locally in SQLite (`filament_master_list`) in your configured `BAMBU_DB_PATH`.
+- The app now supports **Import / Refresh Bambu Catalog** directly from the Inventory page.
+- On refresh, Bambu items seen in the latest import are reactivated; older Bambu items are marked discontinued (kept in DB for historical inventory rules).
+
+## Roll lifecycle and history
+
+- Roll edits, weight updates, used-up transitions, and deletions are tracked in local history (`spool_history_events`).
+- Deleting a roll removes it from active inventory view (soft delete) but preserves history.
+- Permanent purge is available for a roll and removes the roll plus related weight, scan, print, and lifecycle history records.
+- Selected roll view includes a small usage diagram based on stored weight readings.
+- Inventory list groups identical filament/color entries into one card and summarizes total weight with per-roll lines.
+
+## Add + wishlist workflow
+
+- Inventory now separates **Manage inventory** and **Add to inventory** in one page.
+- Add mode includes a local DB-backed wishlist/order tracker (`wishlist_items`).
+- Wishlist entries can be moved to **On order**, then converted to stocked rolls with **Stock roll now**.
+
+## Printer slot profiles
+
+- Every printer always gets one `EXT` slot, so single-roll usage works even with no multi-material system configured.
+- Bambu models use AMS profiles (`4` slots per AMS; configurable AMS unit count).
+- Prusa MMU3-compatible models use optional MMU3 profiles (`5` channels when enabled).
+- Prusa XL profiles use toolhead counts (`1`, `2`, or `5` toolheads).
+- Prusa MINI+ defaults to single-material (`EXT` only).
+
+## UI modal standards
+
+- Modal UX checklist: `docs/MODAL_UX_CHECKLIST.md`
+
+## Tauri CLI
+
+Use local CLI from dependencies:
+
+```bash
+npm run tauri -- --version
+npm run tauri -- info
+```

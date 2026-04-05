@@ -1,0 +1,31 @@
+# OS
+.DS_Store
+
+# Node / frontend build
+node_modules/
+ui/node_modules/
+dist/
+ui/dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Rust / Tauri build
+target/
+src-tauri/target/
+
+# Local runtime data (SQLite)
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Local temp
+tmp/
+
+# Local env files
+.env
+.env.*
+
+# Historical lockfile artifacts
+package-lock [0-9].json

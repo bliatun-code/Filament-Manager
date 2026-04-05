@@ -1,0 +1,185 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { createInitialCompanionState } from "./session_state.js";
+import {
+  formatPrinterSlotLabel,
+  renderPrinterBoard,
+  renderPrinterPickerTaskSheetBody,
+} from "./printer_workspace.js";
+
+function createPrinterRow(overrides = {}) {
+  return {
+    printer: {
+      id: "printer-1",
+      name: "X1C",
+      model: "Bambu X1 Carbon",
+      ...overrides.printer,
+    },
+    slots: overrides.slots ?? [
+      {
+        slot_id: "slot-1",
+        ams_id: "ams_1",
+        slot_index: 1,
+        spool_id: null,
+        spool_remaining_g: null,
+      },
+      {
+        slot_id: "slot-2",
+        ams_id: "ams_1",
+        slot_index: 2,
+        spool_id: "spool-1",
+        spool_material: "PLA",
+        spool_filament_name: "Basic",
+        spool_color_name: "White",
+        spool_remaining_g: 720,
+      },
+    ],
+    usage: {
+      total_jobs: 42,
+      successful_jobs: 39,
+      failed_jobs: 3,
+      total_used_g: 1280,
+      ...overrides.usage,
+    },
+  };
+}
+
+function createSelectedSpool() {
+  return {
+    spool: {
+      id: "spool-1",
+      remaining_g: 720,
+      status: "IN_STOCK",
+    },
+    master: {
+      material: "PLA",
+      filament_name: "Basic",
+      color_name: "White",
+      vendor: "Bambu",
+      hex_color: "#ffffff",
+    },
+  };
+}
+
+function renderBoard(overrides = {}) {
+  const state = {
+    ...createInitialCompanionState(),
+    activeRootFlow: "printers",
+    activePrinterId: "printer-1",
+    printers: [createPrinterRow()],
+    ...overrides.state,
+  };
+
+  return renderPrinterBoard({
+    state,
+    activePrinter: overrides.activePrinter ?? state.printers[0],
+    printerSpoolOptions: overrides.printerSpoolOptions ?? [createSelectedSpool()],
+    selectedSpool:
+      Object.prototype.hasOwnProperty.call(overrides, "selectedSpool")
+        ? overrides.selectedSpool
+        : createSelectedSpool(),
+    selectedAssignment: overrides.selectedAssignment ?? null,
+    selectedSpoolCanLoad: overrides.selectedSpoolCanLoad ?? true,
+    escapeHtml: (value) => String(value ?? ""),
+    formatGrams: (value) => `${value ?? 0} g`,
+  });
+}
+
+test("printer workspace uses human slot labels when ams ids are raw internal values", () => {
+  assert.equal(
+    formatPrinterSlotLabel({
+      ams_id: "ams_1773326181381",
+      slot_index: 1,
+    }),
+    "Slot 1",
+  );
+});
+
+test("printer workspace keeps the board focused on slots instead of readiness banners", () => {
+  const html = renderBoard();
+
+  assert.doesNotMatch(html, /Ready on X1C/);
+  assert.doesNotMatch(html, /Change slot filament/);
+  assert.match(html, /Load filament/);
+  assert.match(html, /Open spool/);
+  assert.match(html, /Clear slot/);
+  assert.match(html, /slot-card-loaded/);
+  assert.match(html, /slot-card-empty/);
+});
+
+test("printer workspace gives loaded slot cards a filament tint even without explicit hex colors", () => {
+  const html = renderBoard({
+    activePrinter: createPrinterRow({
+      slots: [
+        {
+          slot_id: "slot-2",
+          ams_id: "ams_1",
+          slot_index: 2,
+          spool_id: "spool-1",
+          spool_material: "ABS",
+          spool_filament_name: "Basic",
+          spool_color_name: "Green",
+          spool_hex_color: "",
+          spool_remaining_g: 720,
+        },
+      ],
+    }),
+  });
+
+  assert.match(html, /slot-card-loaded swatch-surface/);
+  assert.match(html, /--swatch-rgb:/);
+});
+
+test("printer workspace highlights the targeted empty slot without rendering an inline picker", () => {
+  const html = renderBoard({
+    state: {
+      pendingPrinterSlotTarget: {
+        printerId: "printer-1",
+        printerName: "X1C",
+        slotId: "slot-1",
+        slotIndex: "1",
+      },
+    },
+  });
+
+  assert.doesNotMatch(html, /Change slot filament/);
+  assert.match(html, /data-slot-targeted="true"/);
+  assert.match(html, /Choose filament below\./);
+});
+
+test("printer workspace renders a direct load picker body for the targeted slot", () => {
+  const html = renderPrinterPickerTaskSheetBody({
+    state: {
+      pendingPrinterSlotTarget: {
+        printerId: "printer-1",
+        printerName: "X1C",
+        slotId: "slot-1",
+        slotIndex: "1",
+      },
+      printerSpoolSearch: "",
+    },
+    printerSpoolOptions: [createSelectedSpool()],
+    escapeHtml: (value) => String(value ?? ""),
+    formatGrams: (value) => `${value ?? 0} g`,
+  });
+
+  assert.match(html, /1 ready to load/);
+  assert.match(html, /data-action="assign-selected-spool"/);
+  assert.match(html, /printer-picker-row/);
+  assert.match(html, /Bambu · #1/);
+  assert.doesNotMatch(html, /Tap to load/);
+});
+
+test("printer workspace localizes slot labels in norwegian", () => {
+  assert.equal(
+    formatPrinterSlotLabel(
+      {
+        ams_id: "ams_1",
+        slot_index: 3,
+      },
+      "nb",
+    ),
+    "AMS 1 · Spor 3",
+  );
+});

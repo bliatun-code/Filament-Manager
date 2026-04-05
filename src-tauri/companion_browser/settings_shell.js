@@ -1,0 +1,141 @@
+import { t } from "./companion_i18n.js";
+
+export function renderSettingsShell(options) {
+  const { state, escapeHtml, connectionSummary: connectionSummaryOption = "" } = options;
+  const busy = state.busy || state.detailBusy;
+  const locale = state.locale || "en";
+  const themeMode = String(state.themeMode || "auto").trim().toLowerCase();
+  const resolvedTheme = String(state.resolvedTheme || "light").trim().toLowerCase();
+  const themeSummary =
+    themeMode === "auto"
+      ? `${t(locale, "settings.followDevice", "Following device")} · ${t(locale, `settings.${resolvedTheme}`, resolvedTheme)}`
+      : t(locale, "settings.modeSummary", "{mode} mode · {resolved}", {
+          mode: t(locale, `settings.${themeMode}`, themeMode),
+          resolved: t(locale, `settings.${resolvedTheme}`, resolvedTheme),
+        });
+  const countLabel = (count, singular, plural) =>
+    `${count} ${count === 1 ? singular : plural}`;
+  const connectionSummary =
+    connectionSummaryOption ||
+    [
+      state.apiReady
+        ? t(locale, "settings.trustedLanConnected", "Trusted-LAN connected")
+        : t(locale, "settings.disconnected", "Disconnected"),
+      countLabel(state.spools.length, locale === "nb" ? "spole" : "spool", locale === "nb" ? "spoler" : "spools"),
+      countLabel(state.printers.length, locale === "nb" ? "printer" : "printer", locale === "nb" ? "printere" : "printers"),
+      countLabel(
+        state.activeLoans.length,
+        locale === "nb" ? "aktivt utlån" : "active loan",
+        locale === "nb" ? "aktive utlån" : "active loans",
+      ),
+    ].join(" · ");
+  const companionNote =
+    state.accessMode === "trusted-lan"
+      ? t(
+          locale,
+          "settings.trustedLanDesktopInCharge",
+          "Desktop app and SQLite stay in charge. Trusted-LAN access is still desktop-controlled and not encrypted on the network.",
+        )
+      : t(locale, "settings.desktopInCharge", "Desktop app and SQLite stay in charge.");
+
+  return `
+    <section class="workflow-shell settings-shell">
+      <div class="workflow-header">
+        <div class="workflow-header-copy">
+          <h2>${escapeHtml(t(locale, "settings.title", "Settings"))}</h2>
+          <p class="section-copy">${escapeHtml(t(locale, "settings.subtitle", "Appearance, language, and session status."))}</p>
+        </div>
+      </div>
+
+      <div class="settings-shell-grid">
+        <section class="surface-panel settings-card">
+          <div class="section-header">
+            <div>
+              <h3>${escapeHtml(t(locale, "settings.appearance", "Appearance"))}</h3>
+              <p class="section-copy">${escapeHtml(t(locale, "settings.appearanceHelp", "Choose theme and language."))}</p>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="segmented-control" data-columns="3" role="group" aria-label="${escapeHtml(t(locale, "settings.themeMode", "Theme mode"))}">
+              <button
+                class="segment-button"
+                type="button"
+                data-action="set-theme-mode"
+                data-theme-mode="auto"
+                data-active="${themeMode === "auto" ? "true" : "false"}"
+              >
+                <span>${escapeHtml(t(locale, "settings.auto", "Auto"))}</span>
+                <span class="segment-meta">${escapeHtml(t(locale, "settings.autoHelp", "Follow device"))}</span>
+              </button>
+              <button
+                class="segment-button"
+                type="button"
+                data-action="set-theme-mode"
+                data-theme-mode="light"
+                data-active="${themeMode === "light" ? "true" : "false"}"
+              >
+                <span>${escapeHtml(t(locale, "settings.light", "Light"))}</span>
+                <span class="segment-meta">${escapeHtml(t(locale, "settings.lightHelp", "Bright surfaces"))}</span>
+              </button>
+              <button
+                class="segment-button"
+                type="button"
+                data-action="set-theme-mode"
+                data-theme-mode="dark"
+                data-active="${themeMode === "dark" ? "true" : "false"}"
+              >
+                <span>${escapeHtml(t(locale, "settings.dark", "Dark"))}</span>
+                <span class="segment-meta">${escapeHtml(t(locale, "settings.darkHelp", "Low-light friendly"))}</span>
+              </button>
+            </div>
+            <div class="meta-line">${escapeHtml(themeSummary)}</div>
+            <div class="stack settings-language-block">
+              <div>
+                <div class="list-title">${escapeHtml(t(locale, "settings.language", "Language"))}</div>
+                <div class="section-copy">${escapeHtml(t(locale, "settings.languageHelp", "Set the webapp language."))}</div>
+              </div>
+              <div class="segmented-control" data-columns="2" role="group" aria-label="${escapeHtml(t(locale, "settings.language", "Language"))}">
+                <button
+                  class="segment-button"
+                  type="button"
+                  data-action="set-locale"
+                  data-locale="nb"
+                  data-active="${locale === "nb" ? "true" : "false"}"
+                >
+                  <span>${escapeHtml(t(locale, "settings.norwegian", "Norwegian"))}</span>
+                </button>
+                <button
+                  class="segment-button"
+                  type="button"
+                  data-action="set-locale"
+                  data-locale="en"
+                  data-active="${locale === "en" ? "true" : "false"}"
+                >
+                  <span>${escapeHtml(t(locale, "settings.english", "English"))}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="surface-panel settings-card">
+          <div class="section-header">
+            <div>
+              <h3>${escapeHtml(t(locale, "settings.connection", "Connection"))}</h3>
+              <p class="section-copy">${escapeHtml(t(locale, "settings.connectionHelp", "Connection and data refresh."))}</p>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="meta-line">${escapeHtml(connectionSummary)}</div>
+            <div class="detail-actions">
+              <button class="primary-button" type="button" data-action="refresh" ${busy ? "disabled" : ""}>
+                ${escapeHtml(t(locale, "shell.refreshCompanionData", "Refresh data"))}
+              </button>
+            </div>
+            <div class="info-card settings-note-card">${escapeHtml(companionNote)}</div>
+          </div>
+        </section>
+      </div>
+    </section>
+  `;
+}

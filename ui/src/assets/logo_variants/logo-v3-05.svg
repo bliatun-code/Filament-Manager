@@ -1,0 +1,20 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    svg { --bg:#EFF6FF; --panel:#DBEAFE; --ring:#EFF6FF; --core:#1E3A8A; --fil:#1D4ED8; }
+    @media (prefers-color-scheme: dark) {
+      svg { --bg:#061530; --panel:#102447; --ring:#1E3A8A; --core:#E0F2FE; --fil:#93C5FD; }
+    }
+  </style>
+  <rect width="1024" height="1024" rx="220" fill="var(--bg)"/>
+  <rect x="120" y="120" width="784" height="784" rx="190" fill="var(--panel)"/>
+  <circle cx="300" cy="600" r="140" fill="#22C55E"/>
+  <circle cx="300" cy="600" r="92" fill="var(--ring)"/>
+  <circle cx="300" cy="600" r="28" fill="var(--core)"/>
+  <circle cx="512" cy="500" r="190" fill="#F59E0B"/>
+  <circle cx="512" cy="500" r="130" fill="var(--ring)"/>
+  <circle cx="512" cy="500" r="42" fill="var(--core)"/>
+  <circle cx="724" cy="600" r="140" fill="#EF4444"/>
+  <circle cx="724" cy="600" r="92" fill="var(--ring)"/>
+  <circle cx="724" cy="600" r="28" fill="var(--core)"/>
+  <path d="M780 748C844 768 886 812 896 860" stroke="var(--fil)" stroke-width="16" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,85 @@
+export function routeCompanionSubmitAction(action, data, handlers) {
+  if (action === "update-weight-form") {
+    handlers.submitWeightUpdate(String(data.get("spool-id") || ""), String(data.get("grams") || ""));
+    return true;
+  }
+
+  if (action === "loan-spool-form") {
+    handlers.submitSpoolLoan(
+      String(data.get("spool-id") || ""),
+      String(data.get("borrower-name") || ""),
+      String(data.get("grams-out") || ""),
+      String(data.get("loan-note") || ""),
+    );
+    return true;
+  }
+
+  if (action === "return-loan-form" || action === "return-loan-history-form") {
+    handlers.submitSpoolLoanReturn(
+      String(data.get("loan-id") || ""),
+      String(data.get("spool-id") || ""),
+      String(data.get("returned-grams") || ""),
+      String(data.get("return-note") || ""),
+    );
+    return true;
+  }
+
+  if (action === "register-manual-spool-form" || action === "add-spool-form") {
+    handlers.submitManualSpoolRegistration({
+      source: String(data.get("filament-source") || "bambu"),
+      masterId: String(data.get("filament-master-id") || ""),
+      ownershipType: String(data.get("filament-ownership-type") || "OWNED"),
+      ownerName: String(data.get("filament-owner-name") || ""),
+      ownerContact: String(data.get("filament-owner-contact") || ""),
+      material: String(data.get("filament-material") || ""),
+      filamentName: String(data.get("filament-name") || ""),
+      colorName: String(data.get("filament-color-name") || ""),
+      vendor: String(data.get("filament-vendor") || data.get("filament-manual-vendor") || ""),
+      hexColor: String(data.get("filament-hex-color") || ""),
+      initialWeight: String(data.get("filament-initial-weight") || ""),
+      location: String(data.get("filament-location") || ""),
+      note: String(data.get("filament-note") || ""),
+    });
+    return true;
+  }
+
+  if (action === "wishlist-item-form") {
+    handlers.submitWishlistCreate({
+      source: String(data.get("filament-source") || "bambu"),
+      masterId: String(data.get("filament-master-id") || ""),
+      material: String(data.get("filament-material") || ""),
+      filamentName: String(data.get("filament-name") || ""),
+      colorName: String(data.get("filament-color-name") || ""),
+      vendor: String(data.get("filament-vendor") || data.get("filament-manual-vendor") || ""),
+      quantity: String(data.get("wishlist-quantity") || "1"),
+      note: String(data.get("wishlist-note") || ""),
+    });
+    return true;
+  }
+
+  if (action === "qr-lookup-form") {
+    handlers.submitQrLookup(String(data.get("qr-lookup") || ""));
+    return true;
+  }
+
+  if (action === "update-borrowed-in-form") {
+    handlers.submitBorrowedInUpdate(
+      String(data.get("spool-id") || ""),
+      String(data.get("borrowed-edit-owner-name") || ""),
+      String(data.get("borrowed-edit-owner-contact") || ""),
+      String(data.get("borrowed-edit-note") || ""),
+    );
+    return true;
+  }
+
+  if (action === "hand-back-loan-form") {
+    handlers.submitBorrowedInHandBack(
+      String(data.get("loan-id") || ""),
+      String(data.get("returned-grams") || ""),
+      String(data.get("return-note") || ""),
+    );
+    return true;
+  }
+
+  return false;
+}

@@ -1,0 +1,17 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    svg { --bg:#F5F3FF; --panel:#EDE9FE; --ring:#F5F3FF; --core:#1E1B4B; --fil:#4338CA; }
+    @media (prefers-color-scheme: dark) {
+      svg { --bg:#0F0925; --panel:#1E1B4B; --ring:#312E81; --core:#EDE9FE; --fil:#A5B4FC; }
+    }
+  </style>
+  <rect width="1024" height="1024" rx="220" fill="var(--bg)"/>
+  <rect x="120" y="120" width="784" height="784" rx="190" fill="var(--panel)"/>
+  <circle cx="430" cy="560" r="220" fill="#F97316"/>
+  <circle cx="430" cy="560" r="152" fill="var(--ring)"/>
+  <circle cx="430" cy="560" r="50" fill="var(--core)"/>
+  <circle cx="644" cy="470" r="220" fill="#EC4899"/>
+  <circle cx="644" cy="470" r="152" fill="var(--ring)"/>
+  <circle cx="644" cy="470" r="50" fill="var(--core)"/>
+  <path d="M760 644C828 668 872 724 882 792" stroke="var(--fil)" stroke-width="26" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,193 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { renderSelectedSpoolDetailBody } from "./detail_content.js";
+
+function createSelectedSpool(overrides = {}) {
+  return {
+    spool: {
+      id: "spool-1",
+      status: "IN_STOCK",
+      ownership_type: "OWNED",
+      owner_name: "",
+      owner_contact: "",
+      ownership_note: "",
+      qr_code: "qr-1",
+      location_id: "Shelf A",
+      initial_weight_g: 1000,
+      current_weight_g: 920,
+      remaining_g: 900,
+      ...overrides.spool,
+    },
+    master: {
+      material: "PLA",
+      filament_name: "Basic",
+      color_name: "White",
+      vendor: "Bambu",
+      ...overrides.master,
+    },
+  };
+}
+
+function createSelectedDetail(overrides = {}) {
+  return {
+    active_loan: overrides.active_loan ?? null,
+    usage: overrides.usage ?? [],
+    history: overrides.history ?? [],
+  };
+}
+
+function renderBody(overrides = {}) {
+  const selectedSpool = overrides.selectedSpool ?? createSelectedSpool();
+  return renderSelectedSpoolDetailBody({
+    selectedSpool,
+    selectedDetail: overrides.selectedDetail ?? createSelectedDetail(),
+    detailFeedback: overrides.detailFeedback ?? "",
+    busy: overrides.busy ?? false,
+    compactDetail: overrides.compactDetail ?? false,
+    findAssignedSlotForSpool: overrides.findAssignedSlotForSpool ?? (() => null),
+    loanActionState:
+      overrides.loanActionState ??
+      (() => ({
+        allowed: true,
+        reason: "",
+      })),
+    escapeHtml: (value) => String(value ?? ""),
+    formatDate: (value) => (value ? `date:${value}` : "Unknown"),
+    formatGrams: (value) => `${value ?? 0} g`,
+    formatPlacementLabel: (value) => value || "Unplaced",
+    ownershipLabel: (spool) =>
+      spool.ownership_type === "BORROWED_IN" ? "Borrowed in" : "Owned",
+    locale: overrides.locale ?? "en",
+  });
+}
+
+test("detail content renders borrowed-in detail and hand-back actions for inbound spools", () => {
+  const html = renderBody({
+    selectedSpool: createSelectedSpool({
+      spool: {
+        ownership_type: "BORROWED_IN",
+        owner_name: "Riley",
+        owner_contact: "riley@example.test",
+        ownership_note: "Return next week",
+      },
+    }),
+    selectedDetail: createSelectedDetail({
+      active_loan: {
+        loan: {
+          id: "loan-1",
+          loan_direction: "INBOUND",
+          counterparty_name: "Riley",
+          counterparty_contact: "riley@example.test",
+          counterparty_note: "Desk pickup",
+          borrower_name: "",
+          lent_at: "2026-03-22T10:00:00Z",
+          grams_out: 650,
+        },
+      },
+    }),
+  });
+
+  assert.match(html, /Borrowed in/);
+  assert.match(html, /Save owner details/);
+  assert.match(html, /Hand back spool/);
+  assert.match(html, /Riley/);
+});
+
+test("detail content renders outbound loan return flow when an outbound loan is active", () => {
+  const html = renderBody({
+    selectedDetail: createSelectedDetail({
+      active_loan: {
+        loan: {
+          id: "loan-2",
+          loan_direction: "OUTBOUND",
+          borrower_name: "Alex",
+          counterparty_name: "",
+          lent_at: "2026-03-21T08:00:00Z",
+          lent_note: "Prototype loan",
+          grams_out: 720,
+        },
+      },
+    }),
+  });
+
+  assert.match(html, /Loan/);
+  assert.match(html, /Return loan/);
+  assert.match(html, /Prototype loan/);
+  assert.match(html, /Alex/);
+});
+
+test("detail content renders create-loan warning when the selected spool is still loaded in a slot", () => {
+  const html = renderBody({
+    findAssignedSlotForSpool: () => ({
+      printerName: "X1C",
+      slotIndex: 3,
+    }),
+  });
+
+  assert.match(html, /Lend spool/);
+  assert.match(html, /Loaded in slot 3 on X1C/);
+  assert.match(html, /Creating the loan will clear that slot\./);
+});
+
+test("detail content falls back invalid status values to IN_STOCK and shows matching feedback", () => {
+  const html = renderBody({
+    selectedSpool: createSelectedSpool({
+      spool: {
+        status: "UNKNOWN_STATUS",
+      },
+    }),
+    detailFeedback: "Weight updated just now.",
+  });
+
+  assert.match(html, /Weight updated just now\./);
+  assert.match(html, /In stock/);
+  assert.doesNotMatch(html, /data-action="update-spool-details-form"/);
+});
+
+test("compact detail keeps history collapsed behind a short summary", () => {
+  const html = renderBody({
+    compactDetail: true,
+    selectedDetail: createSelectedDetail({
+      usage: [{ grams: 840, source: "Manual", captured_at: "2026-03-20T10:00:00Z" }],
+      history: [{ event_type: "weight_update", created_at: "2026-03-21T10:00:00Z" }],
+    }),
+  });
+
+  assert.match(html, /detail-history-collapsible/);
+  assert.match(html, /1 weight check · 1 activity item/);
+  assert.match(html, /Started/);
+  assert.match(html, /Now/);
+});
+
+test("detail content localizes core labels in norwegian", () => {
+  const html = renderBody({
+    locale: "nb",
+    selectedDetail: createSelectedDetail({
+      usage: [{ grams: 840, source: "", captured_at: "2026-03-20T10:00:00Z" }],
+      history: [{ event_type: "weight_update", created_at: "2026-03-21T10:00:00Z" }],
+    }),
+  });
+
+  assert.match(html, /Detaljer/);
+  assert.match(html, /Vekt \(g\)/);
+  assert.match(html, /Lagre vekt/);
+  assert.match(html, /Historikk/);
+  assert.match(html, /Vekt oppdatert/);
+});
+
+test("detail content renders a generated QR image tied to the selected spool id", () => {
+  const html = renderBody({
+    selectedSpool: createSelectedSpool({
+      spool: {
+        id: "spool-qr-42",
+      },
+    }),
+  });
+
+  assert.match(
+    html,
+    /src="\/api\/v1\/spools\/spool-qr-42\/qr-image\.svg"/
+  );
+  assert.match(html, /class="detail-qr-preview"/);
+});

@@ -1,0 +1,1072 @@
+# Session State
+
+Last updated: 2026-04-05
+
+Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
+
+## Current Status
+- Step closeout notes (2026-04-05):
+  - QR flow is now canonicalized end-to-end for generated/printed QR: payload reference uses `spool.id` so scans consistently resolve to the correct companion detail popup.
+  - Inventory A4 overview printing now uses generated landscape PDF (not browser HTML print), with explicit pagination and 2-column layout control.
+  - Remaining technical debt:
+    - UI build warns that `settings` bundle is >500 kB minified (`ui` code-splitting/manual chunking still pending).
+    - Workspace Git root is currently one level above project (`/Users/bliatun/Documents/Codex`), so this project appears as `?? bambu-filament-manager/` instead of normal per-file tracked changes.
+- Inventory A4 overview printing now generates a real landscape PDF instead of HTML:
+  - Settings `Print A4 inventory overview` now builds a paginated A4 landscape PDF with 2-column card layout, material grouping, swatch, QR, and filament details
+  - desktop print handoff now writes/opens `label_*.pdf` from the app `labels` directory (`print_label_pdf`) instead of opening `label_*.html`
+  - this gives stable pagination/layout control across printers and browsers
+- Final pre-finish webapp cleanup pass is landed:
+  - companion fallback/recovery/detail shell copy is now fully locale-backed (`en` + `nb`) instead of falling back to hardcoded English in key paths
+  - detail modal fallback strings (`Spool`, `Spool details`, no-selection states) now follow the active language
+  - companion success status banners now auto-clear faster (8s default) to reduce stale status noise during navigation
+  - stale manual-detail QR label keys were removed from the companion dictionary after the manual QR edit UI was retired
+  - companion recovery section labels now sync to active locale (`Storage`/`Lager`, `Printers`/`Printere`, `Loans`/`Utlån`, `Detail`/`Detaljer`)
+- The QR companion + label-printing implementation pass is now landed:
+  - companion QR lookup now accepts legacy references, versioned payloads (`v1:<ref>`), and deep-link payloads (`.../companion?spool_qr=v1:<ref>`), then opens the matched spool detail modal directly
+  - companion startup now auto-consumes `spool_qr` / `qr_code` URL params and opens spool detail after authenticated load, so scan-driven browser deep links can open directly into the selected spool
+  - companion QR UI exposure is now narrowed:
+    - removed Storage QR lookup sheet entry-point
+    - removed QR visibility from Storage list meta and search copy
+    - removed QR input from the Add spool task sheet
+    - kept QR editing in spool detail
+    - spool detail now also renders a generated QR preview image (`/api/v1/spools/:spool_id/qr-image.svg`) so every filament has a scannable companion-link QR visible in the popup
+  - desktop Inventory label printing now renders an actual QR image and required filament text (`vendor`, `material`, `filament name`, `color when available`)
+  - label QR payload now prefers trusted-LAN companion deep links when `shell_url` is available, with fallback to versioned references for compatibility
+  - validation baseline after this pass: `npm run test:companion`, `npm run test:settings-ui`, and `npm run smoke` all pass
+- Step 3 trusted-LAN access is now the live browser baseline:
+  - the old localhost browser-companion surface has been retired from the desktop app
+  - LAN mode remains default-off, desktop-controlled, and bound only to an explicitly selected private interface/address and port
+  - the desktop app plus SQLite remain the only source of truth, including LAN settings, pairing records, and paired-browser revocation state
+  - trusted-LAN browsers now use single-use pairing links, per-browser records, longer-lived device-cookie renewal, exact `Host` / `Origin` validation, `HttpOnly` cookies, and CSRF protection
+  - the browser shell now has a dedicated trusted-LAN pairing gate and LAN session-recovery path
+  - the Settings companion tab is now trusted-LAN-only, covering enable/disable, interface/port configuration, pairing-link creation, QR handoff, paired-browser listing, and revoke / revoke-all actions
+  - Step 3 still means trusted-LAN access control, not encrypted transport: the product/docs now keep the blunt `traffic is not encrypted` wording
+- Current validation state after the trusted-LAN batches:
+  - focused Rust trusted-LAN route/state tests are green
+  - `npm run smoke` exits cleanly
+  - the old `qa:companion-local` harness has been retired together with the localhost product path
+  - pairing, renewal, revoke, and revoke-all are behaving as intended in current manual use
+  - the desktop Settings paired-browser list now auto-refreshes after a successful new pairing while the Browser access tab stays open
+- The desktop Mac UI has now landed a shared support-surface consistency batch:
+  - page-level feedback banners across `Inventory`, `Loans`, `Printers`, `Statistics`, and `Settings` now use the same calmer success/warning/error treatment, including dark-mode-safe contrast instead of mixed older light-only panels
+  - secondary operational dialogs like loan return, add printer, statistics drill-downs, and the shared loan-out flow now use more consistent header chrome, close affordances, panel radius, and shorter copy
+  - `npm run smoke` still exits cleanly after this batch, but an actual native Mac-app pass is still recommended for titlebar spacing, backdrop blur, and live system theme switching
+- The desktop Settings shell has now landed a calmer hierarchy pass on top of that:
+  - the page header, tab row, and general settings cards now sit closer to the shared desktop page rhythm instead of reading like a utility-only sheet
+  - the trusted-LAN / Browser access hero now stays much lighter in light mode while keeping a stronger dark-mode operational panel, which makes light/dark/auto transitions feel less like separate products
+  - the Browser access server/pairing surface is now calmer in dark mode too, with less repeated chrome, denser setup summary, shorter copy, and a more compact control card instead of several equally loud mini-surfaces
+  - `npm run smoke` still exits cleanly after this pass, but true native review is still needed for real macOS titlebar, blur, and live system-theme switching behavior
+- The desktop Dashboard has now landed a live-goals cleanup batch on top of that:
+  - the old decorative achievement cards are replaced by live progress goals driven by current desktop data for active-spool location coverage, logged printer jobs, and slot readiness
+  - the goal cards now spell out the underlying counts, which makes the percentages legible and trustworthy in light mode, dark mode, and auto instead of feeling like isolated promo widgets
+  - effective slot counting now respects the product rule that `EXT` and `AMS` are mutually exclusive paths, so dashboard, printer summary, and statistics no longer count them as simultaneously loadable capacity
+  - the dark-mode dashboard baseline now treats the lower progress cards as part of the same calmer system language as the rest of the app rather than a separate glossy surface
+  - the usage chart now stretches correctly in wide/fullscreen desktop windows instead of keeping a narrow fixed-aspect plot in the middle, and the lower progress-goal cards now reflow more fluidly as the window width changes
+  - the dashboard now also refreshes its snapshot while it stays open, and the refresh path is hardened for native macOS fullscreen by listening to native Tauri focus/resize signals instead of relying only on browser-style visibility hints
+  - the lower progress-goal cards now keep the last known good slot metrics across dashboard remounts and retry refreshes after transient failures instead of dropping back to `0%`
+- The desktop Loans flow has now landed a clarity pass on top of that:
+  - the loan-out popup now humanizes raw `Printer:...` placement strings into user-facing printer/slot labels, which removes one of the loudest remaining desktop admin leaks
+  - loan history cards and the return dialog now use denser summary slabs with compact references instead of multiple equally weighted micro-panels, so the screen reads faster in both light and dark mode
+  - the selected-loan and selected-roll preview areas now give location more room, which makes printer placement feel like normal product language instead of machine-state debug text
+  - the loan-out popup now also keeps a whiter light-mode modal baseline closer to `Add filament`, with filament tinting concentrated in the selected-roll preview instead of washing the full dialog shell
+- The desktop smaller-modal family has now tightened one step further:
+  - shared modal chrome now stays visibly whiter in light mode, so smaller operational dialogs do not drift into gray/translucent shells beside the `Add filament` flow
+  - the add-printer popup now uses the same calmer modal structure with labeled capacity fields instead of relying on bare number inputs inside a loose light-mode slab
+- The desktop `Add filament` flow has now landed a calmer filter/control pass on top of that:
+  - vendor source, catalogue status, and wishlist/order filtering now share the same segmented-control baseline instead of reading like separate loose chip rows
+  - the right-side queue summary now reads as one clearer `Wishlist & orders` section with integrated counts instead of several equally loud mini-groups
+  - ownership selection and each wishlist row now follow that same control language, so queue stage changes and follow-up actions no longer read like a separate chip system inside the modal
+  - this was a UI-only hierarchy cleanup; the stock, wishlist, and on-order workflow logic is unchanged
+- The desktop `Inventory` surface has now dropped one duplicated panel:
+  - the right-side `Loaned out rolls` panel was removed because the same information and return actions already live in the dedicated `Loans` tab
+  - this simplifies the `Inventory` hierarchy and gives the spool grid full width without changing loan workflow logic
+- The desktop `Settings` maintenance surface has now removed one misplaced passive affordance:
+  - the top-right `Validate backup file` pill in the backup header is gone, so validation is anchored only to the actionable `Import and validation` section where users actually run it
+  - this reduces false-action noise and keeps the maintenance hierarchy calmer in dark mode
+- The desktop `Loans` surface has now dropped one duplicated analytics panel:
+  - the right-side `Usage by person` block was removed because equivalent per-person consumption insight already lives in `Statistics`
+  - this keeps `Loans` focused on operational loan tracking/returns and gives loan history full width
+  - the top summary now omits the redundant `Returned records` tile, and loan references now use the same short `#xxxxxx` style as `Inventory`
+  - the remaining top summary strip was then removed too, so `Loans` now transitions directly from filters to actionable loan history without duplicate headline metrics
+- The desktop `Statistics` borrower-usage list now has direct inline filters:
+  - `Loan usage by person` now supports `All`, `Active`, and `Completed` list filters, with `Active` as the default view
+  - this keeps first render focused on currently relevant borrowers while still allowing complete/history views in-place
+- The desktop UI review now has an explicit release-candidate gate document:
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/UI_RELEASE_CANDIDATE_CHECKLIST.md` tracks `PASS` vs `NEEDS CHECK` across `Dashboard`, `Inventory`, `Loans`, `Printers`, `Statistics`, and `Settings`
+  - use that checklist as the final manual visual sign-off baseline before closing this UI review thread
+- The next likely work is follow-through, not a new browser-scope jump:
+  - validate trusted-LAN on real devices and real networks
+  - keep the Step 3 contract anchored in `docs/STEP3_TRUSTED_LAN_PLAN.md`
+  - use QA findings to drive any further polish instead of widening browser workflow scope by default
+  - keep the next implementation thread UI-only and centered on iPhone/small-screen browser-shell polish unless QA exposes a real backend blocker
+- The browser shell has now landed a thirtieth add-spool restoration batch on top of that:
+  - browser `Storage` is the companion-facing label for the same stock surface the desktop app still calls `Inventory` / `Lager`, so follow-up docs and UI notes should treat them as the same root instead of separate features
+  - `src-tauri/src/app_services.rs` and `src-tauri/src/companion_api.rs` now expose trusted-LAN catalog and wishlist reads plus owned-stock, borrowed-in, and wishlist write routes that match the desktop app’s intake model more closely
+  - `src-tauri/companion_browser/storage_shell.js`, `src-tauri/companion_browser/companion_app_shell.js`, `src-tauri/companion_browser/companion_shell_state.js`, `src-tauri/companion_browser/companion_submit_router.js`, `src-tauri/companion_browser/companion_mutations.js`, `src-tauri/companion_browser/companion_data_controller.js`, and `src-tauri/companion_browser/companion_i18n.js` now restore a real browser `Add spool` flow with Bambu/eSUN/manual source selection, vendor-backed or manual owned-stock entry, borrowed-in stock entry, wishlist add, wishlist status changes, and `Stock now` from the queue
+  - the current validation baseline for that restored flow is `cargo check --no-default-features`, `cargo test --no-default-features companion_api_ -- --nocapture`, `npm run test:companion`, and `npm run smoke`
+- The browser shell has now landed a twenty-fifth light-mode parity and locale-foundation batch on top of the rewrite:
+  - `src-tauri/companion_browser/loans_shell.js`, `src-tauri/companion_browser/printer_workspace.js`, and `src-tauri/companion_browser/app.css` now keep loan cards and loaded printer-slot cards on the same filament-swatch surface language as Storage, including color-name fallback when explicit hex swatches are missing
+  - `src-tauri/companion_browser/companion_runtime_state.js` now auto-clears success feedback like `Printer slot assigned.` after roughly 20 seconds, which keeps the shell from accumulating stale status text during operational use
+  - `src-tauri/companion_browser/settings_shell.js`, `src-tauri/companion_browser/companion_i18n.js`, `src-tauri/companion_browser/app.js`, and the shared shell/data/mutation modules now expose the first real `English / Norwegian` browser-shell language switch with localized root chrome, status feedback, task-sheet copy, and detail/task labels
+  - the current automated browser-shell suite plus `npm run smoke` still exit cleanly after this batch, so the next likely work is broader locale completion plus live-device QA rather than another structural rewrite
+- The browser shell has now landed a twenty-sixth phone chrome calmness batch on top of that:
+  - `src-tauri/companion_browser/app.css` now treats the root-flow header as secondary helper copy on phone instead of repeating a second large title block under the shared topbar, which gets `Storage`, `Loans`, `Printers`, and `Settings` to actual controls faster in the first viewport
+  - the phone detail modal now keeps status pills full-width while the close affordance stays compact and quieter, so the header reads more like utility chrome and less like a competing primary action row
+  - `src-tauri/companion_browser/app_css.test.mjs`, `npm run test:companion`, and `npm run smoke` all still exit cleanly after this batch, so the next likely work can stay focused on the remaining small-screen sheet/action noise instead of root-header duplication
+- The browser shell has now landed a twenty-seventh first-viewport cleanup batch on top of that:
+  - `src-tauri/companion_browser/shell_chrome.js` no longer renders a shared root-level refresh action, so `Refresh companion data` now lives only under `Settings` → `Connection` instead of reappearing in `Storage`, `Loans`, `Printers`, and `Settings`
+  - `src-tauri/companion_browser/app.css` now fully suppresses the extra root header on phone, so the shared topbar hands directly into search, filters, roster, and settings cards without another subtitle block in between
+  - `src-tauri/companion_browser/shell_chrome.test.mjs`, `src-tauri/companion_browser/app_css.test.mjs`, `npm run test:companion`, and `npm run smoke` all still exit cleanly after this batch, so the next likely work can keep chasing remaining sheet/action hierarchy instead of more top-of-screen duplication
+- The browser shell has now landed a twenty-eighth task-sheet recovery batch on top of that:
+  - `src-tauri/companion_browser/app.css` now gives task sheets their own internal scroll area and a bounded height, which keeps longer phone popups like `Add filament` reachable instead of letting the header/body slide off-screen
+  - phone task sheets now anchor from the top of the viewport instead of opening as low bottom sheets, so flows like `Load filament` start closer to the user’s eye line and feel less detached from the active screen
+  - the old Rust dev warnings are also cleaned up by making the outbound-loan convenience helpers and QA runtime toggle test-only (`src/backend/filament_database.rs`, `src/backend/inventory_engine.rs`, `src-tauri/src/state.rs`), and `cargo check --no-default-features`, `npm run test:companion`, and `npm run smoke` all exit cleanly after this batch
+- The desktop Browser access surface has now landed a calmer trusted-LAN management baseline on top of that:
+  - the Browser access tab now uses a simpler one-step server control, live status light, hidden-by-default network editor, calmer pairing section, and active-first paired-browser list
+  - paired browsers now render with compact human-readable activity/origin chips instead of raw timestamp-heavy rows
+  - the desktop Settings paired-browser list now auto-refreshes in the background while Browser access stays open, so successful new pairings appear without leaving the page
+  - pairing, renewal, revoke, and revoke-all are therefore behaving like a stable desktop-managed trusted-LAN surface, which shifts the next likely implementation work back to browser-shell UI polish instead of more service-layer churn
+- The browser companion shell has now been restructured around a mobile-first app shell instead of peer `Inventory / Printers / Loans / Detail` sections:
+  - `Storage`, `Loans`, `Printers`, and `Settings` now act as the primary root flows
+  - spool detail now opens in a built-in modal instead of staying as phone-only full-screen detail or an iPad/desktop side inspector
+  - the real same-machine QA harness still exits cleanly after this restructure, including the updated root navigation, Settings tab, and modal detail behavior
+- The browser-shell write/action surface is now split one step further:
+  - `src-tauri/companion_browser/companion_mutations.js` now owns browser write and lookup helpers for weight, slot assignment, outbound loans, borrowed-in registration/edit/hand-back, QR lookup, and spool detail edits
+  - `src-tauri/companion_browser/companion_submit_router.js` now owns form-submit dispatch for those browser write paths
+  - node-level browser tests now cover the mutation helpers and submit router directly, which gives Step 2 a cleaner base for future write-path fixes without re-growing `app.js`
+- The browser-shell click/state surface is now split one step further:
+  - `src-tauri/companion_browser/companion_click_router.js` now owns click-action dispatch for root-flow changes, slot actions, detail opens, and session controls
+  - `src-tauri/companion_browser/companion_shell_state.js` now owns shell-state and layout helpers for root-flow transitions, detail return context, storage utilities, printer selection, and breakpoint normalization
+  - `src-tauri/companion_browser/app.js` is down to about 669 lines after this split, and node-level browser tests now cover the click router and shell-state helpers directly
+- The browser-shell input/data surface is now split one step further:
+  - `src-tauri/companion_browser/companion_input_router.js` now owns input/change dispatch for search, QR lookup, loan search, and borrowed-in draft updates
+  - `src-tauri/companion_browser/companion_data_controller.js` now owns pairing/session handoff, overview refresh, spool-detail loading, and stale detail-request guarding
+  - `src-tauri/companion_browser/app.js` is now down to about 525 lines after this split, and node-level browser tests now cover the input router plus the data-controller refresh/bootstrap/detail-race paths directly
+- The browser-shell render/composition surface is now split one step further:
+  - `src-tauri/companion_browser/companion_app_shell.js` now owns trusted-LAN pairing fallback, top-level root-flow composition, and detail-modal rendering
+  - `src-tauri/companion_browser/app.js` is now down to about 305 lines at that intermediate step before the later DOM/runtime split
+  - node-level browser tests now cover the app-shell renderer directly, which gives Step 2 a safer base for future layout/detail cleanup without re-growing the main file
+- The browser-shell runtime/event surface is now split one step further:
+  - `src-tauri/companion_browser/companion_dom_events.js` now owns document/root event registration and event-to-action wiring for click, input, submit, and Escape-close behavior
+  - `src-tauri/companion_browser/companion_runtime_state.js` now owns status, busy, detail-feedback, and stored bootstrap-token helpers
+  - `src-tauri/companion_browser/app.js` is now down to about 199 lines and is mostly startup/bootstrap/layout wiring
+  - node-level browser tests now cover the runtime-state helpers and DOM-event wiring directly, which leaves Step 2 with a much smaller final shell hotspot
+- The browser-shell render surface is now split one step further:
+  - `src-tauri/companion_browser/shell_chrome.js` now owns shared bootstrap/topbar/root-nav/selected-context/detail-modal shell rendering
+  - `src-tauri/companion_browser/storage_shell.js` now owns the Storage root rendering
+  - `src-tauri/companion_browser/loans_shell.js` now owns the Loans root rendering
+  - `src-tauri/companion_browser/printers_shell.js` now owns the Printers root rendering
+  - `src-tauri/companion_browser/settings_shell.js` now owns the Settings root rendering
+  - `src-tauri/companion_browser/detail_content.js` still owns selected-spool detail rendering
+  - node-level browser tests now also cover the shared shell-chrome module plus the Storage, Loans, Printers, and Settings shell modules directly
+- The desktop UI shell has now paid down its main bundle debt:
+  - `ui/src/App.tsx` now lazy-loads the page shells instead of pulling every page into the entry chunk up front
+  - `npm run smoke` no longer emits the old Vite chunk-size warning, so later UI cleanup can start from a smaller entry bundle instead of an oversized one
+- The browser-shell UI cleanup pass has now started on the stable four-tab shell:
+  - the shared topbar now leads with the active root flow instead of spending prime space on a generic heading
+  - the selected-spool strip is denser across tablet and desktop, with shorter cross-flow actions and better width use
+  - the detail modal now keeps its header sticky while scrolling, and the phone shell uses tighter nav/panel spacing to waste less vertical space
+- The browser-shell UI cleanup pass has now landed its first density/polish batch on top of the stable shell:
+  - `src-tauri/companion_browser/storage_shell.js` now renders Storage list rows with clearer hierarchy, a dedicated weight column, and less duplicated pill noise
+  - `src-tauri/companion_browser/detail_content.js` now gives the spool-detail modal a denser summary header, fewer primary metric cards, and clearer main-column vs side-column structure
+  - `src-tauri/companion_browser/app.css` now keeps the detail side column sticky on tablet/desktop, tightens desktop padding rhythm, and improves phone alignment for weight/pill rows
+  - the current same-machine QA run still exits cleanly after this density pass, so Step 2 can keep moving into deliberate UI cleanup instead of another shell rewrite
+- The browser-shell UI cleanup pass has now landed its second density/polish batch on top of that stable shell:
+  - `src-tauri/companion_browser/shell_chrome.js` now gives the shared topbar and selected-spool strip clearer hierarchy, denser context cues, and better cross-flow action grouping
+  - `src-tauri/companion_browser/printers_shell.js` now gives the roster and active slot board clearer summaries, denser roster cards, and shorter slot-action copy
+  - `src-tauri/companion_browser/settings_shell.js` now uses a tighter local-session summary plus compact scope chips instead of looser explanatory cards
+  - the current same-machine QA run still exits cleanly after this shared-shell/Printers/Settings pass, so the active debt is now mostly visual polish and modal/list rhythm rather than structure
+- The browser-shell UI cleanup pass has now landed its third continuity/polish batch on top of that shell:
+  - `src-tauri/companion_browser/shell_chrome.js` now gives the detail modal header a cleaner close/status rhythm on phone and desktop
+  - `src-tauri/companion_browser/storage_shell.js` and `src-tauri/companion_browser/loans_shell.js` now surface better hidden-selection continuity, so users can jump between Storage, Loans, and detail without losing context when filters hide the active spool
+  - the current same-machine QA run still exits cleanly after this modal/cross-flow pass, so the remaining debt is now mostly final breakpoint balance and visual rhythm
+- The browser-shell UI cleanup pass has now landed its fourth breakpoint/consistency batch on top of that shell:
+  - all four root flows now use a more consistent header structure, so Storage, Loans, Printers, and Settings read like one system instead of four slightly different pages
+  - the tablet breakpoint no longer forces so many action rows and loan filters into phone-style full-width stacks, which gives iPad-sized layouts better density and rhythm
+  - the current same-machine QA run still exits cleanly after this breakpoint pass, so the remaining debt is now mostly final visual consistency and targeted polish rather than responsive structure
+- The browser-shell UI cleanup pass has now landed its fifth broad consistency batch on top of that shell:
+  - shared content cards now use a more consistent radius/padding/gap rhythm across banners, utility sheets, loan cards, settings blocks, printer cards, slot cards, info cards, and detail sections
+  - the browser shell now feels more like one cohesive operational product across the four roots instead of a stack of near-matching surfaces
+  - the current same-machine QA run still exits cleanly after this consistency pass, so the remaining debt is now mostly smaller visual polish and any design-led cleanup we intentionally reserve for the later UI thread
+- The browser-shell UI cleanup pass has now landed its sixth compactness batch on top of that shell:
+  - shared header, banner, and detail-modal microcopy is now shorter, which reduces top-of-screen chrome on iPhone without changing workflow scope
+  - `src-tauri/companion_browser/app.css` now also tightens section-copy/header spacing and keeps explanatory copy from consuming as much of the first viewport
+  - the current same-machine QA run still exits cleanly after this copy/spacing pass, so the remaining debt is now mostly smaller QA-exposed polish instead of shell-wide cleanup
+- The browser shell has now landed a larger design-language and usability batch on top of that shell:
+  - Storage now has a proper borrowed-in registration sheet instead of only the older borrowed-in helper
+  - Settings now exposes browser `Auto / Light / Dark` theme controls instead of relying only on passive system-theme CSS
+  - Storage, Loans, selected-context chrome, detail summary, and Printers roster/board now use stronger swatch/printer tint language closer to the main desktop app
+  - the current same-machine QA run still exits cleanly after this batch, so the remaining debt is back to QA-exposed polish rather than missing basic workflow or theme controls
+- The browser shell has now landed a guided-flow usability batch on top of that shell:
+  - `src-tauri/companion_browser/printers_shell.js` now keeps slot loading inside the Printers tab with a richer in-tab spool chooser, clearer open-slot CTAs, and a more guided “choose spool, then load here” flow
+  - `src-tauri/companion_browser/storage_shell.js`, `src-tauri/companion_browser/loans_shell.js`, and `src-tauri/companion_browser/detail_content.js` now use more human-friendly references/titles/status copy instead of leaking as many raw internal ids into the shell
+  - `src-tauri/companion_browser/companion_shell_state.js` now auto-opens the printer spool chooser when users enter Printers without an active selected spool, which makes the flow less dead-ended on phone and desktop
+  - `npm run qa:companion-local` now exercises the in-tab printer spool-picker path in both wide and compact layouts, so the smoother slot-loading flow is covered by the same-machine localhost harness rather than only by visual intent
+- The browser shell has now landed a shared-chrome compactness batch on top of that shell:
+  - `src-tauri/companion_browser/shell_chrome.js` now uses shorter topbar labels on phone, a lower-noise desktop rail, a shorter selected-spool detail CTA on phone, and a tighter detail-modal header
+  - `src-tauri/companion_browser/app.css` now gives the phone bottom nav less wasted meta space, tightens topbar/button rhythm, reduces desktop-rail root-button height, and makes the detail-modal header/actions feel more like a compact task bar on touch devices
+  - the current same-machine QA run still exits cleanly after this shared-shell pass, so the next likely work is touch-feel polish and real-device spacing checks rather than another shell rewrite
+- The browser shell has now landed a tenth touch/usability batch on top of that shell:
+  - `src-tauri/companion_browser/app.css` now gives list rows, printer roster cards, root switches, phone nav, and loan filters clearer touch feedback so the shell feels less hover-first on phones and tablets
+  - phone action rows now only stretch real buttons, which keeps helper chips and inline guidance compact inside detail forms instead of turning them into full-width blocks
+  - the phone loans filter now uses a denser two-column rhythm, and iPad-sized Printers/detail layouts now use width more deliberately through tighter dense-list, slot-grid, and modal-column balance
+  - the current same-machine QA run still exits cleanly after this touch/usability pass, so the next likely work is screenshot-assisted real-device polish instead of another broad shared-shell cleanup
+- The browser shell has now landed an eleventh usability/QA batch on top of that shell:
+  - `src-tauri/companion_browser/storage_shell.js` now uses slightly lighter add-filament copy, and `src-tauri/companion_browser/app.css` now makes the add-filament preview card and close action behave more cleanly on phone
+  - `src-tauri/companion_browser/detail_content.js` plus `src-tauri/companion_browser/app.css` now make detail timeline sections read more humanly and behave more clearly as collapsible mobile sections, with a stronger sticky-header separation inside the modal
+  - `scripts/companion_local_qa.mjs` now uses the current add-filament selectors and runs a tablet-sized pass in addition to the existing wide + phone localhost checks
+  - the current same-machine QA run still exits cleanly after this batch, so the next likely work is screenshot-assisted device review and only the smaller root-specific polish that real QA exposes
+- The browser shell has now landed a twelfth root-flow usability batch on top of that shell:
+  - `src-tauri/companion_browser/printers_shell.js` now keeps the selected-spool guidance inside Printers lighter and less repetitive, with a clearer `Ready on <printer>` loading banner plus shorter chooser copy
+  - `src-tauri/companion_browser/loans_shell.js` now uses shorter hidden-selection and filter-reset language, which makes the Loans root feel more human and less diagnostic when filters hide the active spool
+  - the current same-machine QA run still exits cleanly after this batch too, so the next likely work is still real-device spacing/touch polish rather than more cross-root copy churn
+- The browser shell has now landed a thirteenth printer-board cleanup batch on top of that shell:
+  - `src-tauri/companion_browser/printers_shell.js` now gives slot cards a simpler subtitle/meta structure, which removes repeated `ready / selected / choose` text from the same card while keeping the slot actions intact
+  - `src-tauri/companion_browser/app.css` now truncates long slot references inside the card instead of letting them bleed across the board, which makes real printer data read more cleanly on tablet and desktop
+  - the current same-machine QA run still exits cleanly after this batch too, so the next likely work is still real-device spacing/touch polish rather than more printer-board copy churn
+- The browser shell has now landed a fourteenth modal/sheet usability batch on top of that shell:
+  - `src-tauri/companion_browser/detail_content.js` now gives weight, QR, status, loan, and borrowed-in forms cleaner action blocks with one short support line instead of chip-heavy footers
+  - `src-tauri/companion_browser/storage_shell.js` now gives the add-filament sheet the same clearer footer pattern, and `src-tauri/companion_browser/app.css` now styles that pattern consistently for touch use
+  - the current same-machine QA run still exits cleanly after this batch too, so the next likely work is still real-device spacing/touch polish rather than more modal/footer copy churn
+- The browser shell has now landed a fifteenth shell-chrome compactness batch on top of that shell:
+  - `src-tauri/companion_browser/shell_chrome.js` now uses shorter same-machine/Desktop summary labels on phone and keeps the selected-spool strip focused on reference plus grams while placement/load state stays in shorter pills
+  - `src-tauri/companion_browser/app.css` now lets the selected-spool title truncate cleanly, packs the phone topbar/selected-strip actions into tighter two-column grids, and reduces chrome spacing slightly on smaller screens
+  - `src-tauri/companion_browser/shell_chrome.test.mjs` now covers the compact phone variant directly, and the current same-machine QA run still exits cleanly after this batch too
+- The browser shell has now landed a sixteenth printers-fix batch on top of that shell:
+  - `src-tauri/companion_browser/printers_shell.js` now lets open slots start a direct `Choose filament` flow, highlights the targeted slot, and turns the storage spool list into a real slot-targeted picker instead of a disconnected side chooser
+  - `src-tauri/companion_browser/session_state.js`, `src-tauri/companion_browser/companion_shell_state.js`, `src-tauri/companion_browser/companion_click_router.js`, and `src-tauri/companion_browser/companion_mutations.js` now track and clear an explicit pending printer-slot target so choosing a spool can assign directly into the chosen slot
+  - `src-tauri/companion_browser/app.css` now also fixes shared primary-button contrast in dark mode and improves disabled-button readability, and `scripts/companion_local_qa.mjs` now follows the repaired slot-first assignment path in wide/tablet/phone QA
+- The browser shell has now landed a seventeenth printers-layout cleanup batch on top of that shell:
+  - `src-tauri/companion_browser/printers_shell.js` now renders the filament chooser inside the active printer board only when it is actually needed, instead of keeping a giant full-width “slot actions” panel above the whole printers workspace
+  - `src-tauri/companion_browser/printers_shell.js` now also falls back to human `Slot <n>` labels when printer data only exposes long internal AMS ids, which keeps the board from leaking unreadable machine identifiers into the main workflow
+  - `src-tauri/companion_browser/app.css` now caps desktop slot-grid density more deliberately, lets slot meta wrap like card content, and keeps phone slot actions single-column, which fixes the squeezed unreadable real-data board layout that still showed up after the earlier flow repair
+  - `src-tauri/companion_browser/printers_shell.test.mjs` now covers the hidden-id slot-label fallback directly, and the same-machine localhost QA harness still exits cleanly on wide, tablet, and phone layouts after this board cleanup
+- The browser shell has now landed an eighteenth printers-density cleanup batch on top of that shell:
+  - `src-tauri/companion_browser/printers_shell.js` now replaces the old per-printer Jobs/Success/Failed metric-card row with compact board stat chips, which gives the slot board more vertical room on tablet and desktop
+  - `src-tauri/companion_browser/printers_shell.js` now also tightens roster summary chips and makes the load banner report `is full` when a selected filament cannot actually be loaded into the current printer
+  - `src-tauri/companion_browser/app.css` no longer carries the stale compact printer-metric row behavior for phone layouts, and the same-machine localhost QA harness still exits cleanly on wide, tablet, and phone layouts after this density pass
+- The browser shell has now landed a nineteenth detail-density cleanup batch on top of that shell:
+  - `src-tauri/companion_browser/shell_chrome.js` now keeps selected-spool reference, grams, and placement/load state together in one tighter meta line, which reduces duplicated chrome in the shared selected-context strip
+  - `src-tauri/companion_browser/detail_content.js` now uses vendor-only subtitle text, a shorter summary-meta line, and just the two primary weight metrics in the detail summary card instead of spending top-of-modal space on a duplicated reference metric
+  - `src-tauri/companion_browser/app.css` now tightens selected-context spacing, selected-context action sizing, detail-summary meta density, and helper-line width, and the same-machine localhost QA harness still exits cleanly on wide, tablet, and phone layouts after this pass
+- The browser shell has now landed a twentieth storage-density cleanup batch on top of that shell:
+  - `src-tauri/companion_browser/storage_shell.js` now uses shorter Storage header, QR-sheet, add-filament-sheet, and hidden-selection copy so the utility surfaces read more like compact tools than mini pages
+  - `src-tauri/companion_browser/app.css` now tightens workflow-toolbar spacing, Storage toolbar button sizing, utility-sheet gaps, add-filament preview/form spacing, and the hidden-selection banner rhythm, while phone layouts now keep the Storage toolbar actions in a clean two-column row
+  - `src-tauri/companion_browser/storage_shell.test.mjs` still exits cleanly after this pass, and the same-machine localhost QA harness still exits cleanly on wide, tablet, and phone layouts after the denser Storage-sheet treatment
+- The browser shell has now landed a twenty-first loans-density cleanup batch on top of that shell:
+  - `src-tauri/companion_browser/loans_shell.js` now uses shorter Loans header/recovery copy, a denser four-field metadata grid per row, and simpler action labels so the tab reads faster on phone and tablet
+  - the old reference-chip footer row is now removed from loan cards, and `src-tauri/companion_browser/app.css` now tightens loan-card spacing, note blocks, filter buttons, and return-sheet rhythm without changing the loan behavior itself
+  - `src-tauri/companion_browser/loans_shell.test.mjs` still exits cleanly after this pass, and the same-machine localhost QA harness still exits cleanly on wide, tablet, and phone layouts after the denser Loans treatment
+- The browser shell has now landed a twenty-second printers-workspace cleanup batch on top of that shell:
+  - `src-tauri/companion_browser/printer_workspace.js` now owns the Printers roster/chooser/slot-card helper surface, which pays down the largest remaining root render hotspot instead of letting `printers_shell.js` keep growing
+  - the active Printers board now hides the slot-action banner while the filament picker is already open, and `src-tauri/companion_browser/app.css` now tightens the chooser/roster/board rhythm so that stacked Printers chrome wastes less viewport height
+  - `src-tauri/companion_browser/printers_shell.test.mjs` plus `src-tauri/companion_browser/printer_workspace.test.mjs` still exit cleanly after this pass, and the same-machine localhost QA harness still exits cleanly on wide, tablet, and phone layouts after the leaner Printers workspace treatment
+- The browser shell has now landed a twenty-third shared chrome/detail compaction batch on top of that shell:
+  - `src-tauri/companion_browser/shell_chrome.js` now drops extra phone topbar/selected-strip kicker chrome, keeps the phone topbar free of the old desktop-summary row, and uses a lighter `Done`-style detail header instead of another copy-heavy phone modal header
+  - `src-tauri/companion_browser/detail_content.js` now shortens summary-meta, QR/status/loan helper lines, and timeline copy so the modal reaches real controls faster, while `src-tauri/companion_browser/storage_shell.js` plus `src-tauri/companion_browser/loans_shell.js` now use shorter hidden-selection recovery wording
+  - `src-tauri/companion_browser/app.css` now compacts topbar/selected-context/detail spacing further, gives the phone selected-context actions a cleaner two-column layout, and lets the phone detail modal use a bit more working height; `shell_chrome.test.mjs`, `storage_shell.test.mjs`, `loans_shell.test.mjs`, `npm run smoke`, and `npm run qa:companion-local` all still exit cleanly after this pass
+- The browser shell has now landed a twenty-fourth root-specific device polish batch on top of that shell:
+  - `src-tauri/companion_browser/printers_shell.js` plus `src-tauri/companion_browser/printer_workspace.js` now use shorter root-header, chooser, and board-callout copy, which gets the Printers root to slot work faster without reopening the workflow model
+  - `src-tauri/companion_browser/app.css` now gives hidden-selection banners a denser phone action pattern, lets phone utility-sheet close actions stay compact, and adds snap-friendly phone roster scrolling plus lighter printer-selection spacing
+  - `src-tauri/companion_browser/printers_shell.test.mjs`, `npm run smoke`, and `npm run qa:companion-local` still exit cleanly after this batch on wide, tablet, and phone, but recent same-machine screenshots still show the shell as visually busy in places, so the next likely work is now a specialist-led simplification/rewrite pass driven by live-device QA rather than more shared-shell compaction
+- The browser-shell detail surface has now had its first larger render extraction after the launch-path hardening:
+  - selected spool detail rendering now lives in `src-tauri/companion_browser/detail_content.js`
+  - that module now owns the QR/status/location/weight cards plus borrowed-in, outbound-loan, usage, and history detail markup for a selected spool
+  - node-level tests now cover borrowed-in detail rendering, outbound-loan return rendering, loaded-slot loan warnings, and invalid-status fallback behavior
+  - the current scripted localhost QA pass still exits cleanly after this extraction, so the desktop-served asset path and real shell import graph remain healthy
+- The old manual-only Settings companion blocker has effectively been retired into automated coverage:
+  - the Settings companion launch surface now derives status labels, hints, and action-disabled state through `ui/src/pages/settings_companion_model.ts`
+  - clipboard handoff now lives in `ui/src/lib/clipboard.ts`
+  - `npm run smoke` now includes focused tests for the Settings companion launch model and clipboard fallback behavior, which closes the largest remaining blind spot in the launch surface without widening the product scope
+  - `open_companion_browser` launch gating now has direct Rust coverage in addition to the health-probe status coverage
+  - a live manual desktop Settings sanity pass is still worthwhile before release, but it is now follow-up confidence work rather than the main Phase-1 blocker
+- The desktop Settings companion launch surface now has a real reachability signal instead of only trusting runtime state:
+  - `get_companion_server_status` now probes the local `/api/v1/health` endpoint before reporting the companion as healthy to the Settings tab
+  - companion status snapshots now include `shell_reachable` and `health_error`, so the Settings companion tile can distinguish `Running` from `Not responding`
+  - `open_companion_browser` now refuses to hand off a launch URL if the local companion health probe fails, which makes stale runtime state less likely to open a dead browser session
+  - the current scripted localhost QA pass still exits cleanly after this launch-path hardening, so the broader browser shell remains stable
+- The desktop launch/bootstrap path is now more canonical and testable:
+  - `src-tauri/src/state.rs` now publishes `shell_url` and `launch_url` in the companion runtime snapshot, so the Settings companion tab and QA tooling can consume runtime-owned URLs instead of reconstructing them independently
+  - `src-tauri/companion_browser/companion_api_client.js` now owns browser bootstrap/session restore/retry transport, which pulls the reauth + CSRF refresh path out of `app.js` and gives it direct node-level regression coverage
+  - the current scripted same-machine run still completes cleanly after this launch/bootstrap refactor, so the new canonical URL path is now exercised end to end against the real localhost shell
+- A scripted same-machine companion QA harness now exists:
+  - `npm run qa:companion-local` copies the chosen SQLite DB to a temp snapshot, starts the real localhost companion shell via a QA-only CLI mode in the existing Tauri binary, and drives wide + compact browser flows through headless local Chrome
+  - the harness currently exercises bootstrap/session handoff, forced session expiry/recovery, root-flow navigation across `Storage`, `Loans`, `Printers`, and `Settings`, inventory selection, a forced stale detail-load race, QR update, weight update, eligible status/location edits, eligible slot assign/clear, eligible outbound loan create/return, borrowed-in register/edit/hand-back, modal detail open/close, and post-hand-back reselection from the new shell
+  - the current scripted run against `/Users/bliatun/Documents/Codex/bambu-filament-manager/data/bambu.db` completed without reproduced blockers in those exercised flows
+  - this removes the old “no same-machine QA signal at all” risk; a shorter manual desktop Settings pass is still worthwhile as release confidence work, but it is no longer the main blocker
+- Step-2 acceleration groundwork is now in place for the local-first browser companion:
+  - `src-tauri/companion_browser/app.js` now drives the browser app shell and imports browser-only modules so rendering/event wiring stays separate from the recovery/filter/session helpers that were becoming hard to reason about
+  - shared shell chrome now lives in `src-tauri/companion_browser/shell_chrome.js`
+  - root-flow rendering now lives in `src-tauri/companion_browser/storage_shell.js`, `src-tauri/companion_browser/loans_shell.js`, `src-tauri/companion_browser/printers_shell.js`, and `src-tauri/companion_browser/settings_shell.js`
+  - selected spool detail rendering now lives in `src-tauri/companion_browser/detail_content.js`
+  - shared bootstrap/session/retry transport now lives in `src-tauri/companion_browser/companion_api_client.js`
+  - shared click-action dispatch now lives in `src-tauri/companion_browser/companion_click_router.js`
+  - shared input/change dispatch now lives in `src-tauri/companion_browser/companion_input_router.js`
+  - shared overview/detail/bootstrap orchestration now lives in `src-tauri/companion_browser/companion_data_controller.js`
+  - shared shell-state and layout helpers now live in `src-tauri/companion_browser/companion_shell_state.js`
+  - shared recovery/filter/selection guard logic now lives in `src-tauri/companion_browser/companion_logic.js`
+  - session/bootstrap reset state now lives in `src-tauri/companion_browser/session_state.js`
+  - shared browser formatting helpers now live in `src-tauri/companion_browser/formatters.js`
+  - companion runtime snapshots now include canonical `shell_url` and `launch_url`, so desktop Settings and QA do not have to rebuild companion links on their own
+  - the desktop companion host now serves committed browser assets through `/companion/:asset` instead of only special-casing one JS and one CSS file
+  - `npm run smoke` now also runs node-level companion regression tests that cover recovery anchoring, fallback selection, write guardrails, hero loading labels, disconnect/session reset behavior, session reauth retry/CSRF refresh behavior, selected-spool detail rendering, Settings companion launch-model logic, and clipboard fallback behavior
+- Phase-1 stability blockers are now clearer:
+  - no reproduced same-machine blocker remains in the current scripted localhost pass or the focused Settings launch-path automation
+  - the highest launch-path debt is no longer “status says running but the shell is dead”; that risk is now covered by the health-gated status/open path plus focused Settings automation
+  - the next likely work batch, if QA stays clean, should be the broader UI cleanup pass across iPhone/iPad/desktop layouts, not another launch/bootstrap rewrite or more recovery-only micro-tweaks
+  - follow-up browser-shell work should now start from the modular shell/test harness above, not from another thread of recovery-only micro-tweaks unless QA reproduces a specific issue
+- Browser-shell compact `Detail` recovery state now stays anchored to the snapped owning section while a borrowed-in hand-back recovery spool is still opening:
+  - the compact `Detail` tab meta and the empty detail panel no longer fall back to `detailReturnSection()` mid-load if the recovery target was snapped from another section
+  - compact `Detail` recovery labels, badges, and recovery action rows now all resolve through the snapped recovery owner section, which keeps the in-flight target and source context stable while the detail request finishes
+- Browser-shell compact borrowed-in hand-back banner now uses the owning recovery section for its progress/action row too:
+  - when a recovery spool is opening from another section, the compact banner no longer mixes that opening summary with action/progress controls derived from the currently visible panel
+  - the compact banner tint, summary, and recovery action row now all stay anchored to the same snapped recovery target, which keeps cross-panel recovery guidance coherent while detail is loading
+- Browser-shell compact recovery navigation now stays anchored to the snapped owning section during in-flight recovery opening:
+  - the compact section switcher no longer infers the recovery-owning section from whichever panel happens to be visible while a recovery spool is loading
+  - compact tab cues and the compact borrowed-in hand-back banner now keep pointing at the actual owning section from the snapped recovery target, even if the user switches panels before the detail request finishes
+- Browser-shell detail loading is now guarded against stale response races:
+  - overlapping `loadSpoolDetail(...)` calls from recovery selection, inventory rows, printer-slot inspection, loan-history jumps, or background refresh can no longer let an older response overwrite the latest selected spool/detail state
+  - recovery-opening state now stays paired with the newest detail request instead of being vulnerable to a slower earlier request clearing or replacing it after the user has already moved on
+- Browser-shell recovery opening now survives top-level overview refreshes and the hero controls respect in-flight detail loads:
+  - `refreshOverview()` now preserves borrowed-in hand-back recovery-opening state instead of clearing `detailBusy` and detail selection state just because no selected spool id exists yet during a deferred recovery open
+  - the top-level hero refresh/disconnect controls now disable during detail loads too, and the refresh button surfaces the in-progress opening label so users do not accidentally stomp recovery-opening state from the global chrome
+- Browser-shell borrowed-in hand-back recovery opening now stays scoped to the owning section all the way down to copy and controls:
+  - shared recovery action rows, compact recovery banners, passive/wide section chrome, and the empty `Detail` hint now all use section-specific recovery-opening checks instead of a global `detailBusy` shortcut
+  - this keeps non-owning sections in passive suggestion mode while the owning section alone shows `Opening ...` copy, progress badges, and recovery-open highlighting
+- Browser-shell borrowed-in hand-back recovery opening is now section-specific instead of leaking across wide-layout panels:
+  - once a suggested recovery spool starts opening, only the section that actually owns that snapped recovery target keeps the `recovery opening` banners, badges, and row/card highlights
+  - the other wide sections now stay in passive suggestion mode, which keeps `Inventory`, `Printers`, `Loans`, and `Detail` from all pretending to be opening different spools at the same time
+- Browser-shell borrowed-in hand-back recovery now keeps an explicit recovery-opening target while the suggested spool detail is loading:
+  - recovery selection no longer clears the borrowed-in hand-back recovery state before the detail fetch finishes, so the recovery-opening banners, badges, and highlights now stay visible during the actual load instead of collapsing immediately into a normal selected-spool state
+  - the recovery target is snapshotted from the clicked section and cleared only after successful detail load, disconnect, or failed fetch, which means recovery progress now stays stable across section highlights and falls back cleanly to passive recovery if opening fails
+- Browser-shell borrowed-in hand-back recovery now uses shared recovery-opening badges across the wide companion surfaces:
+  - inventory, printer, loan, and empty-detail recovery headers now render one shared progress-plus-source badge set instead of separately mixing a generic `Opening spool` pill, a source chip, and a loose spool-id chip
+  - the wide empty `Detail` header now drops the stale `Select a spool` chip while recovery opening is active, so its chrome only shows the real in-progress recovery state
+- Browser-shell suggested recovery highlights now distinguish passive suggestions from in-progress recovery more clearly:
+  - suggested inventory rows, printer cards, slot cards, and loan cards now switch from the passive `Suggested recovery` pill to a lighter `Opening now` badge when the shared recovery target is already loading
+  - the new item-level recovery-opening badge gets its own success-tinted styling, so suggested targets stay visually aligned with the shared recovery progress state without bloating each card with duplicate spool/source chips
+- Browser-shell wide `Detail` recovery header now uses the same spool-specific progress chip as the other recovery-opening surfaces:
+  - once borrowed-in hand-back recovery is actively opening a spool, the header pill row swaps the generic `Opening spool` pill for the existing `Opening <spool id> now` progress chip
+  - this keeps the detail header aligned with the shared recovery action rows and makes the in-progress state more specific at a glance
+- Browser-shell wide `Detail` recovery header now carries the same source chip as the other recovery-opening surfaces:
+  - when borrowed-in hand-back recovery is actively opening a spool, the empty detail header pill row now includes the dedicated recovery source chip in addition to the spool id and opening-state labels
+  - this keeps the wide detail header aligned with the newer source-aware section headers and the empty detail loading card
+- Browser-shell borrowed-in hand-back recovery is now more source-aware while opening:
+  - compact recovery-owning tabs now switch their note line from a generic opening label to source-aware copy like `From Printer slot` or `From Loan history`
+  - recovery-opening summaries and the detail recovery status chip now prefer the actual source tag over the broader owning section label
+  - wide inventory/printer/loan headers plus the empty detail loading card now show a dedicated recovery source chip, so the opening source stays visible alongside the opening spool id
+- Browser-shell borrowed-in hand-back recovery now surfaces the opening spool id more explicitly:
+  - the compact owning-section tab now swaps its count meta for `Opening <spool id>` while recovery detail loading is in progress
+  - the wide inventory/printer/loan section headers now add the opening spool id beside the existing recovery-state pill, so the target stays visible without scanning the highlighted row/card
+- Browser-shell borrowed-in hand-back recovery actions now switch into progress feedback during recovery opening:
+  - shared recovery action rows now replace the disabled `Select suggested spool` button with a quiet `Opening ... now` progress chip once recovery detail loading has started
+  - compact recovery banners and the wide detail recovery header now hide redundant `Open ...` / `Select suggested spool` buttons while that opening is already underway
+  - the empty detail loading card now shows the same richer recovery-opening summary plus target preview metadata instead of only a generic opening line
+- Browser-shell borrowed-in hand-back banner copy now reflects in-progress recovery opening:
+  - compact, inventory, printer, and loan recovery banners stop saying to choose another spool once recovery detail loading has already started
+  - those banners now explicitly say the suggested spool is opening from the owning section, which keeps the explanatory copy aligned with the newer recovery-opening labels and tinting
+- Browser-shell borrowed-in hand-back recovery now treats in-progress recovery opening as its own visual state:
+  - compact tabs, recovery banners, detail recovery chrome, and the suggested inventory/printer/loan targets now get dedicated `recovery opening` state attributes instead of only reusing the same suggested-state styling
+  - a small success-tinted styling pass now makes `Opening spool` visually different from passive `Suggested recovery` cues across tabs, panels, banners, rows, printer cards, slot cards, and loan cards
+  - compact `Detail` tab metadata now switches from `Handed back` to `Opening <spool id>` while the suggested recovery spool is loading
+- Browser-shell borrowed-in hand-back recovery cues now stay in sync with in-progress detail opening:
+  - remaining compact tab notes plus inventory/printer/loan section and card/header `Suggested recovery` pills now switch to `Opening spool` while a recovery-driven detail load is already underway
+  - this keeps the broader recovery highlights aligned with the newer button/header/body loading-state wording instead of leaving stale suggestion cues on screen
+- Project structure and priorities are documented and now easier to resume from a new thread
+- Borrowed-in filament planning now has concrete phase-1 backend groundwork in place:
+  - spool ownership metadata exists in the DB/model
+  - loan direction/status/counterparty metadata exists in the DB/model
+  - current UI loan queries still intentionally stay outbound-only
+- Borrowed-in filament now has a first user-facing implementation slice:
+  - the add-filament flow can register a spool as borrowed in
+  - inventory cards/list and the selected-spool popup label borrowed-in ownership
+  - borrowed-in spools are excluded from outbound loan-out candidates
+- Borrowed-in filament now also has a first hand-back slice:
+  - the `Utlan` page can show inbound rows with direction-aware labels
+  - active borrowed-in spools can be handed back from the existing return modal shell
+  - handed-back borrowed-in spools are removed from active inventory via soft delete while loan/history records remain available
+- Inventory filtering is now ownership-aware:
+  - `Lager` can filter `ALL / OWNED / BORROWED_IN`
+  - this is currently a UI filter only; inventory/dashboard/statistics totals are still unchanged while the ownership rules stay open
+- Dashboard and statistics now have additive ownership-aware summary metrics:
+  - owned vs borrowed-in counts on hand
+  - owned vs borrowed-in low-stock counts
+  - owned vs borrowed-in in-use counts
+  - owned vs borrowed-in 30-day print usage
+  - existing headline totals remain combined on purpose
+- Statistics drill-downs are now ownership-aware where borrowed-in stock is operationally relevant:
+  - filament-consumption breakdowns keep owned and borrowed-in usage rows separate
+  - borrowed-in consumption rows show the owner/counterparty name
+  - active loaded-slot details can filter `ALL / OWNED / BORROWED_IN`
+- Direction-aware loan usage summaries are now available in `Statistikk`:
+  - outbound borrower usage remains separate
+  - borrowed-in owner/counterparty usage now has its own summary panel
+  - the filament breakdown modal now works for both outbound borrowers and inbound owners
+- Grouped inventory filament cards have been simplified and visually verified in both light and dark mode
+- Selected filament popup has been cleaned up and visually verified in both light and dark mode
+- Add filament popup has been cleaned up and visually verified in both light and dark mode
+- Printer slot cards and selected-slot panels have been polished and visually verified in both light and dark mode
+- Printer page header actions and compact usage summaries have been polished and visually verified in both light and dark mode
+- Dashboard supporting panels have been polished and visually verified in both light and dark mode
+- Statistics supporting panels and breakdown modals have been polished and visually verified in both light and dark mode
+- Settings catalog and maintenance support cards have been polished and visually verified in both light and dark mode
+- Secondary inventory panels and top action responsiveness on `Lager` have been polished and visually verified in both light and dark mode
+- `Utlån` top actions, history cards, usage panel, and return dialog have been polished and visually verified in both light and dark mode
+- Shared loan-out and save-only dialogs have been polished and visually verified in both light and dark mode
+- Settings swatch bulk-fill action now uses an in-app confirmation/error path instead of a silent `window.confirm` gate, and this has been verified in the live app
+- Inventory popups have had a smaller-width hardening pass, with the selected-filament reference summary and add-filament preview/forms made more resilient at the app's practical minimum window size
+- Selected-filament popup history has been cleaned up so repetitive printer-slot assignment rows no longer crowd the visible history feed, and this has been visually verified in both light and dark mode
+- Light mode is in a strong place visually
+- Dark mode is much more consistent now, with the main remaining UI work focused on smaller-window follow-up checks and final consistency cleanup
+- The biggest active UX focus is responsive behavior in tighter widths and the final hierarchy/consistency pass on smaller panels and page actions
+- A larger planned expansion is now identified:
+  - support borrowed-in filament from others
+  - plan a browser/web companion for inventory and printer workflows
+- Browser/mobile companion planning now has a recommended local-first architecture:
+  - desktop app remains the only source of truth and direct SQLite owner
+  - browser access should go through a shared Rust service layer and authenticated local HTTP API
+  - the first browser phase should be `localhost` only, not LAN-first
+  - optional LAN pairing should stay for a later explicit phase
+  - the smallest safe implementation slice is:
+    - service-layer extraction
+    - loopback-only authenticated companion server
+    - same-machine browser alpha for inventory overview, manual borrowed-in registration, printer overview, outbound loan review/history with direct return, spool detail with active-loan visibility, narrow status/location updates, manual weight update, basic printer-slot assignment/clear, and selected-spool outbound loan creation
+- The first local browser-companion groundwork is now implemented:
+  - a narrow shared `CompanionService` now owns the first browser-facing operations
+  - the desktop app now starts a loopback-only companion API on `127.0.0.1:4278`
+  - the first routes cover inventory spool listing, printer overview, active outbound-loan listing, outbound loan history reads, manual borrowed-in registration, spool detail with active-loan visibility, narrow status/location editing, manual weight update, browser-safe printer-slot assignment/clear, selected-spool outbound loan creation, and outbound loan return
+  - desktop commands for spool listing, printer overview, spool history/usage, manual spool creation, manual detail edits, weight update, outbound loan creation, outbound loan history reads, active-loan listing, and outbound loan return now share that same service boundary
+  - the local companion API now uses desktop-mediated session bootstrap, issuing an HttpOnly session cookie and CSRF token for mutating requests
+  - a first same-machine browser shell is now served by the desktop app at `/companion`
+  - Settings now has a dedicated companion tab that shows companion status and can open/copy the browser launch flow from the desktop app
+  - the `/companion` shell now has a first narrow-width/touch-friendly mode with explicit Inventory / Printers / Loans / Detail section switching
+  - manual borrowed-in registration is now available from the browser inventory section
+  - QR lookup is now available from the browser inventory section and can jump directly into spool detail
+  - QR save/edit is now available from browser spool detail without loosening the slot or loan guardrails
+  - borrowed-in owner/contact/note editing is now available from browser spool detail
+  - borrowed-in hand-back is now available from browser spool detail via the existing inbound-return logic
+  - narrow status/location editing is now available from browser spool detail for selected unassigned, non-loaned spools
+  - browser-safe printer-slot assignment/clear is now available for the selected spool, while replacing a different occupied spool still stays desktop-first
+  - outbound loan history is now available from a dedicated browser section with direct return for active loans, while selected-spool outbound loan creation remains in spool detail and broader loan management still stay intentionally narrow
+
+## Most Recent Changes
+- Landed a broader browser UX batch in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/storage_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/printers_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/loans_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/settings_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/shell_chrome.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/detail_content.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_theme.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_mutations.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Added a proper owned `Add filament` path to the browser companion on top of the existing borrowed-in path
+  - Added browser `Auto / Light / Dark` theme controls in the Settings tab
+  - Pulled swatch/printer tint helpers into `companion_theme.js` and applied that language across Storage, Loans, Printers, selected-context chrome, and the detail popup
+  - Validation passed through `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` syntax check, `cargo test`, `npm run smoke`, and `npm run qa:companion-local`
+- Tightened the sixth focused UI cleanup batch in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/storage_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/printers_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/loans_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/settings_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/shell_chrome.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/detail_content.js`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Shortened header, banner, and detail-modal explanatory copy so the first mobile viewport gives more room to actual workflow UI
+  - Tightened related section-copy and header spacing without changing workflow breadth, and validation still passed through `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` syntax check, `cargo test`, `npm run smoke`, and `npm run qa:companion-local`
+- Tightened the fifth focused UI cleanup batch in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Standardized the shared content-card rhythm with a clearer radius/padding scale across banners, utility sheets, loan cards, printer cards, slot cards, info cards, and detail sections
+  - This was intentionally a consistency pass, not a workflow change, and validation still passed through `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` syntax check, `cargo test`, `npm run smoke`, and `npm run qa:companion-local`
+- Tightened the fourth focused UI cleanup batch in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/storage_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/loans_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/printers_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/settings_shell.js`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - The four primary roots now share a more consistent header structure and tighter, shorter operational copy
+  - Tablet-sized layouts no longer inherit so many phone-only stacked action/button rules, so iPad density is materially better without sacrificing the phone layout
+  - Validation still passed through `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` syntax check, `cargo test`, `npm run smoke`, and `npm run qa:companion-local`
+- Tightened the third focused UI cleanup batch in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/shell_chrome.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/storage_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/loans_shell.js`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - The detail modal header now treats status pills and the close affordance more coherently, especially on phone where the pills now break cleanly above the button instead of competing with it
+  - Storage and Loans now give better hidden-selection recovery actions when search or loan filters hide the active spool, including direct jumps back to the matching root flow or detail modal
+  - Loan rows now separate primary actions from spool-id context more cleanly, which makes inline return actions feel less cramped
+  - Added a new browser regression case for hidden selected-spool loan history, and validation still passed through `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` syntax check, `cargo test`, `npm run smoke`, and `npm run qa:companion-local`
+- Tightened the second focused UI cleanup batch in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/shell_chrome.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/printers_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/settings_shell.js`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - The shared topbar now leads more clearly with the active flow and local-desktop context, while the selected-spool strip groups context pills and actions more tightly
+  - The Printers root now uses a denser roster header, clearer per-printer summaries, more readable slot-state labels, and a tighter active-board summary
+  - The Settings root now uses a compact status strip and tighter scope blocks so the tab reads more like an operational control surface than a loose explainer
+  - Updated shell, Printers, and Settings node tests stayed green, and validation still passed through `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` syntax check, `cargo test`, `npm run smoke`, and `npm run qa:companion-local`
+- Tightened the first focused UI cleanup batch in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/storage_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/detail_content.js`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Storage spool rows now use a clearer title/meta/weight hierarchy, which makes iPhone and iPad lists denser without collapsing touch targets
+  - The in-app spool-detail modal now uses a denser summary block, fewer top metrics, stronger section-card rhythm, and a sticky side column on tablet/desktop
+  - Phone spacing and alignment now waste less vertical space while keeping modal actions, pills, and weight cues readable
+  - Validation stayed green through `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` syntax check, `cargo test`, `npm run smoke`, and `npm run qa:companion-local`
+- Extracted browser runtime-state helpers and DOM event wiring out of `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` into `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_runtime_state.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_dom_events.js`
+  - Status/busy/detail-feedback updates and stored bootstrap-token reads now run through a focused runtime-state helper module instead of staying inline in the startup file
+  - Document/root event registration for click, input, submit, and Escape-close behavior now runs through a focused DOM-event module instead of staying inline in the startup file
+  - Added direct node-level regression coverage in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_runtime_state.test.mjs` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_dom_events.test.mjs`
+  - Updated `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs` so the desktop host serves those new browser assets under `/companion/:asset`
+  - Validation stayed green through `node --check`, `cargo test`, `npm run smoke`, and `npm run qa:companion-local`
+- Extracted browser app-shell composition and detail-modal rendering out of `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` into `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_app_shell.js`
+  - Bootstrap fallback, top-level root-flow composition, and modal detail rendering now run through a focused renderer module instead of staying inline in the event file
+  - Added direct node-level regression coverage in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_app_shell.test.mjs`
+  - Tightened the shell cleanup in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css` with denser wide list rows, a roomier but better-contained detail modal, and removal of stale pre-modal inspector-layout CSS
+  - Updated `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs` so the desktop host serves the new renderer asset under `/companion/:asset`
+  - Validation stayed green through `node --check`, `cargo test`, `npm run smoke`, and `npm run qa:companion-local`
+- Extracted browser input routing and overview/detail/bootstrap orchestration out of `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` into `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_input_router.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_data_controller.js`
+  - Browser search/bootstrap/draft input handling plus overview refresh, spool-detail loading, and stale-request protection now run through focused modules instead of staying inline in the render shell
+  - Added direct node-level regression coverage in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_input_router.test.mjs` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_data_controller.test.mjs`
+  - Updated `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs` so the desktop host serves those committed browser assets under `/companion/:asset`
+  - Validation stayed green through `node --check`, `cargo test`, `npm run smoke`, and `npm run qa:companion-local`
+- Extracted browser click routing and shell-state helpers out of `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` into `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_click_router.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_shell_state.js`
+  - Browser click dispatch and root-flow/layout helper mutations now run through focused modules instead of staying inline in the render shell
+  - Added direct node-level regression coverage in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_click_router.test.mjs` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_shell_state.test.mjs`
+  - Updated `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs` so the desktop host serves those committed browser assets under `/companion/:asset`
+  - Validation stayed green through `node --check`, `cargo test`, `npm run smoke`, and `npm run qa:companion-local`
+- Started the first focused browser-shell UI cleanup pass in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/shell_chrome.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - The shared topbar now leads with the active root flow, the selected-spool strip is denser across larger breakpoints, the detail modal header now stays sticky while scrolling, and the phone shell uses tighter panel/nav spacing
+  - This was a shell-chrome density/pacing pass only; it did not widen the browser workflow surface
+- Extracted browser write helpers and submit routing out of `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` into `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_mutations.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_submit_router.js`
+  - Browser write/lookup flows now run through focused helper modules instead of staying inline in the render shell
+  - Added direct node-level regression coverage in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_mutations.test.mjs` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/companion_submit_router.test.mjs`
+  - Updated `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs` so the desktop host serves those committed browser assets under `/companion/:asset`
+  - Validation stayed green through `node --check`, `cargo test`, `npm run smoke`, and `npm run qa:companion-local`
+- Reworked the same-machine browser companion into a mobile-first app shell in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/storage_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/printers_shell.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/detail_content.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/session_state.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/scripts/companion_local_qa.mjs`
+  - Replaced the old peer-section compact shell with a real `Storage` / `Printers` root-flow model, contextual detail, phone bottom nav, tablet top root switch, and desktop left rail plus inspector
+  - Moved Storage and Printers root rendering into dedicated browser modules, added focused node tests for those renderers, and updated the localhost QA harness to drive the new root-flow navigation
+  - Validation stayed green through `node --check`, `cargo test`, `npm run smoke`, and `npm run qa:companion-local`
+- Extended browser-shell recovery-banner hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The shared recovery preview row now switches from `Suggested next spool` to `Opening spool` while a recovery-driven detail load is in progress, so the non-detail recovery banners stay aligned with the opening-state labels already used in the detail panel
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell detail-opening hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - Batched ten small same-machine browser hardening steps around borrowed-in hand-back recovery and detail opening labels, including shared opening-label helpers, spool-specific opening text on recovery/select buttons, aligned `Open detail` button states across compact/inventory/printers/loans, and more consistent opening-vs-refreshing status text in the detail header/body
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty detail recovery section chip now switches from `Recovery in ...` to `Opening from ...` while the suggested target is loading, so the header no longer mixes static recovery wording with in-progress opening state
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty detail recovery pill now switches from `Suggested recovery` to `Opening spool` while the suggested target is actively loading, so the header no longer mixes a stale suggestion label with in-progress recovery state
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty detail recovery header status chip now names the spool id when the suggested target is opening, so the header status stays aligned with the more specific loading copy in the body
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty detail recovery loading copy now uses `Opening spool ...` wording instead of `Opening suggested spool ...`, so it matches the loading label already shown in the header preview row
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty detail recovery preview row now switches from `Suggested next spool` to `Opening spool` while the suggested target is actively loading, so the header preview stays aligned with the loading-state copy in the body
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty detail recovery header now shows an `Opening...` status chip while the suggested spool is loading, bringing its transient status feedback closer to the normal selected-spool detail header
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty detail recovery loading copy now has a clean fallback when the suggested spool id is unavailable, so the preserved hand-back context still reads naturally instead of leaving awkward empty wording
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty detail recovery loading state now names the suggested spool id while it is opening, so the preserved borrowed-in hand-back context stays specific instead of reverting to a generic loading phrase
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty detail loading state now preserves the borrowed-in hand-back recovery context and shows `Opening suggested spool...` instead of falling back to a generic loading card after recovery selection starts
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty wide-layout detail header now switches its `Select suggested spool` button to `Opening...` while detail loading is already in progress, matching the shared recovery-action behavior used elsewhere
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The wide-layout empty-detail recovery hint now uses the same `open ...` wording as the header recovery button, so the suggested next step reads consistently across the empty-state copy and the actual action controls
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The wide-layout empty-detail recovery hint now names only the suggested spool id instead of the full preview label, so the sentence stays short while the richer suggested-target context remains in the header preview line
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - The wide-layout empty-detail recovery hint now uses its own margin-reset class, so the post-deduped follow-up copy sits with the same tighter spacing as the rest of the recovery block
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - The dedicated empty-detail recovery copy block now resets the nested `.section-copy` top margin, so the tighter recovery spacing there actually matches the other recovery surfaces
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - The empty detail recovery headline/body block now uses a tighter dedicated layout instead of the generic `stack` spacing, so it reads more like the other recovery banners
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty detail body now uses the same clear `Borrowed-in spool handed back` state headline as the other recovery surfaces, so the recovery state reads more consistently even after wide-layout controls moved into the header
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty wide-layout detail body now names the actual suggested recovery target in its explanatory copy, so the next step stays explicit even after the duplicate body buttons were removed
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty wide-layout detail body now points users toward the recovery controls in the header after those controls were deduplicated out of the body, so the empty-state copy still explains the next step without reintroducing duplicate buttons
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty detail body now skips rendering an empty action row after wide-layout recovery controls move into the header, so the remaining body copy stays visually clean when no fallback body actions are needed
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty wide-layout detail body no longer repeats recovery controls that already live in the detail header; compact layout still keeps its in-body recovery actions, while wide layout now leaves the body focused on explanatory copy unless it needs fallback recovery actions
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - The empty detail header now gets its own recovery-specific layout treatment, so the suggested-spool preview and recovery pills sit as full-width metadata rows under the top-level recovery buttons instead of competing with them on the same flex line
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty wide-layout detail header now reuses the existing suggested-spool preview line, so the recovery actions there also show which spool they point to and where that suggestion came from
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty detail header now carries an explicit `Suggested recovery` cue in addition to its `Handed back` context, which brings it into closer alignment with the recovery-owning headers in `Inventory`, `Printers`, and `Loans`
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The detail panel now participates in the same section-level recovery highlight system as `Inventory`, `Printers`, and `Loans` when borrowed-in hand-back leaves it empty
+  - Wide-layout detail recovery controls now use consistent `Open ...` wording and disable while the companion is already busy opening or refreshing
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty wide-layout detail header now includes both top-level recovery actions: direct suggested-spool selection and a jump into the section that owns that target
+  - This means the detail panel header no longer relies on the empty-state body for the most important recovery controls after borrowed-in hand-back
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty wide-layout detail header now includes a direct recovery jump to the section that owns the suggested next target, not just the body-level empty-state action
+  - This makes the detail panel’s top-level controls self-sufficient during borrowed-in hand-back recovery and keeps the header aligned with the newer section-level recovery cues
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty detail header now reflects the borrowed-in hand-back recovery state, showing `Handed back` plus `Recovery in ...` instead of the generic `Select a spool` chip
+  - This keeps the detail header aligned with the new recovery jumps and suggested-section cues across compact and wide layouts
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - Recovery-driven section jumps now update the shared active-section state on wide layout too, instead of only scrolling the page
+  - This keeps the internal companion navigation state aligned with the user’s chosen recovery path, which matters for later compact switches and detail return behavior
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The empty detail recovery state on wide layout now adds a direct `Jump to ...` action for the section that owns the suggested recovery target
+  - The existing recovery-section action now scrolls to the owning panel on wide layout instead of only behaving like a compact tab switch
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - `Inventory`, `Printers`, and `Loans` section headers now show a `Suggested recovery` cue and the owning panel gets a matching subtle highlight on wider layouts
+  - This gives desktop-width recovery the same kind of section-level direction that compact mode already gets from the suggested tab cue
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The compact recovery banner now explains when the best next match lives in another section and adds a one-tap `Open ...` action for that suggested section
+  - This keeps compact recovery copy aligned with the new tab-level `Suggested recovery` cue, especially when borrowed-in hand-back leaves the user in `Detail` but the best next target is in `Inventory`, `Printers`, or `Loans`
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Compact section tabs now mark the section that currently owns the suggested recovery target with a `Suggested recovery` note and matching tab highlight
+  - This gives compact users a clearer navigation cue after borrowed-in hand-back, especially when recovery is happening from `Detail` and the best next section is not already open
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Printer overview now also marks the containing printer card when it holds the suggested recovery slot, not just the slot card itself
+  - This makes the recovery target easier to spot in larger printer grids where the slot-level highlight alone can still be easy to miss
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The shared recovery target now carries section-specific ids, so `Inventory`, `Printers`, and especially `Loans` can mark the exact suggested item rather than every row/card that happens to share the same spool id
+  - This keeps the new suggested-recovery highlight aligned with the banner recommendation even when a spool appears multiple times in loan history
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - `Inventory`, `Printers`, and `Loans` now visually mark the same spool the recovery banner suggests, using a subtle section highlight plus a `Suggested recovery` pill
+  - This makes the banner recommendation easier to verify against the visible list/card content before the user commits to the recovery action
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - The suggested-spool preview row now includes a small source tag such as `Inventory`, `Printer slot`, or `Loan history`
+  - This makes it easier to understand why that spool is being suggested before taking the recovery action, especially in compact and cross-section recovery states
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Recovery banners now render the suggested-spool preview as a dedicated labeled metadata row instead of inline text beside the button
+  - This keeps the richer printer-slot, borrower, and inventory context readable on both wide and compact layouts without letting the preview crowd the action area
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Recovery banners now separate the suggested next spool preview from the action itself, showing a small `Suggested next spool` line with printer-slot, borrower, or inventory context while keeping the button label short
+  - This keeps the richer section-aware recovery context readable in compact layouts instead of pushing overly long action labels into awkward wrapped buttons
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - Recovery actions now include the source context for the suggested spool, such as the printer slot or borrower, instead of only naming the spool id
+  - This makes the section-aware recovery choice easier to trust in `Printers`, `Loans`, compact navigation, and detail-return recovery states without changing the selection rules
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - Recovery actions now name the actual next spool they will select, such as `Select loaded spool ...` or `Select loan spool ...`, instead of using a generic label
+  - This keeps the new section-aware recovery flow more predictable in `Printers`, `Loans`, compact navigation, and detail-return recovery states without changing the underlying selection rules
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - Recovery actions are now section-aware instead of always picking the first visible inventory spool, so `Printers` prefers a loaded printer spool and `Loans` prefers a spool from the current loan view before falling back to inventory
+  - Reworded the one-tap recovery action to `Select first matching spool`, which better reflects the new context-aware selection behavior across compact and section-local recovery banners
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - The borrowed-in hand-back recovery state now lives in explicit companion state instead of being inferred from the top-level success message, so later refreshes no longer quietly drop the intentional empty-selection context
+  - Auto-select now stays suppressed until the user explicitly picks another spool or disconnects, which keeps the recovery banners and compact `Handed back` state stable across repeated refreshes
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - Compact mode now exposes the same post-hand-back recovery path directly under the sticky section switcher, so users can reselect a spool without first navigating into a specific section’s empty state
+  - Reused the same `Select first visible spool` / `Clear search` recovery actions there so the post-hand-back flow is now consistent across section-local and switcher-level recovery surfaces
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - Loans now also explains the post-hand-back empty-selection state instead of dropping straight into a generic selected-spool-free history view when the previously selected borrowed-in spool was intentionally removed
+  - Reused the same recovery actions there so users can immediately select another visible spool or clear search before returning to detail-driven flows
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - Printer overview now explains the post-hand-back empty-selection state instead of falling back to the generic `Select a spool` copy when the previously selected borrowed-in spool was intentionally removed
+  - The compact section switcher now labels the empty detail tab as `Handed back` in that same recovery state, which makes the empty-selection context clearer without auto-selecting a different spool
+  - Reused the same one-tap recovery actions so users can either pick the first visible spool or clear search if filters hide all candidates
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Added browser-shell post-hand-back recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - After borrowed-in hand-back clears selection, inventory and detail now explain why no spool is selected instead of dropping straight to a generic empty state
+  - Added a one-tap `Select first visible spool` recovery path, plus `Clear search` when filtering hides all visible candidates, so users can continue working without the companion auto-jumping to another spool for them
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Added browser-shell borrowed-in hand-back selection hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - When the selected borrowed-in spool is handed back and disappears from active inventory, the next overview refresh now leaves selection empty instead of auto-jumping to the first remaining spool
+  - This keeps hand-back from feeling like the companion silently switched the user onto a different spool after a destructive action
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell spool-scoped confirmation hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - Borrowed-in registration now lands in detail with a matching spool-scoped confirmation banner instead of relying only on the top-level success line
+  - Printer-slot assign/clear now also records spool-scoped confirmation text, so jumping back into detail after slot work preserves a clear `just happened` note for the selected spool
+  - Added printer-name/slot-index handoff on slot action buttons so those confirmations can include the human-readable slot target
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Added browser-shell compact cross-section status hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Compact `/companion` now mirrors meaningful busy/success/error status feedback under the sticky section switcher so printer-slot and borrowed-in hand-back confirmations remain visible even when the hero status line has scrolled away
+  - The compact banner intentionally hides low-signal steady-state messages like `Companion session ready.` and `Local data refreshed.`, and it stays out of the way when the more specific spool-scoped detail confirmation banner is already visible
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Extended browser-shell detail confirmation hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - Borrowed-in detail saves plus outbound loan create/return now reuse the same spool-scoped detail confirmation banner as weight/QR/status-location saves
+  - Fresh detail writes now clear any older confirmation for that spool before starting so stale success banners do not linger after a later failed attempt
+  - Added hidden spool-id handoff on outbound return forms so detail feedback can stay associated with the correct spool even when the return is triggered from the loans history surface
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Added browser-shell detail-save confirmation hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Spool detail now keeps a spool-scoped success banner for weight, QR/reference, and status/location saves so the useful action-specific feedback does not get buried by the generic refresh status
+  - The confirmation stays with the currently selected spool and clears naturally when selection changes or the companion disconnects
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Added browser-shell printer-slot selection-context hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Printer overview now gives the selected-spool banner a direct `Open detail` shortcut so slot actions do not strand compact users away from the current spool context
+  - Selected slot cards now carry an explicit `Selected spool` pill so move/clear flows are easier to visually confirm after refresh
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Added browser-shell loans-filter selection-persistence hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - Loans now shows a recovery banner when the selected spool still has loan-history rows but the active loan filter/search hides them, which smooths out inline return flows where the row disappears immediately from `ACTIVE`
+  - Added quick `Show all loans` and `Open detail` actions so users can recover current spool context without manually resetting the loans view
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Added browser-shell inventory-search selection-persistence hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Inventory now shows a recovery banner when the currently selected spool is hidden by the active search filter instead of making that selection feel lost
+  - Added quick `Clear search` and `Open detail` actions so compact users can recover current spool context without manually backing out of their filter state
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Added browser-shell compact selected-spool quick-return hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Compact `/companion` now shows a sticky selected-spool banner under the section switcher when a spool is selected outside `Detail`
+  - Added a one-tap `Open detail` shortcut so users can jump back into the current spool context from inventory/printer/loan work without manually switching tabs first
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Added browser-shell compact detail-navigation hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Compact `/companion` detail now remembers whether it was opened from Inventory, Printers, or Loans and exposes a matching `Back to ...` action instead of always dumping the user back into inventory
+  - Borrowed-in registration now also sets that compact return path explicitly when it opens the newly created spool in detail
+  - This was a browser-shell hardening pass only; no backend/API surface or roadmap changed
+- Added browser-shell spool-detail refresh hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - Background overview refreshes now preserve the currently loaded spool detail instead of replacing it with a loading card when the same selected spool is being refreshed
+  - Added a small `Refreshing...` indicator in the detail header so same-machine QA can still see that local data is updating
+  - This was a browser-shell hardening pass only; no backend/API surface changed
+- Added browser-shell action-feedback hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - `busy` and status updates now re-render immediately so companion buttons disable promptly and progress/error text appears without waiting for the request to finish
+  - This was a browser-shell hardening pass only; no backend/API surface changed
+- Added browser-shell session recovery hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`
+  - Added automatic local rebootstrap/retry for expired companion session or stale CSRF failures when a stored desktop bootstrap token is still available
+  - Keeps the same loopback-only auth model but reduces manual reconnect friction during real same-machine QA
+  - This was a browser-shell hardening pass only; no backend/API surface changed
+- Added browser-shell QR/placement readability hardening in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Expanded inventory search to include QR/reference codes and placement strings
+  - Added clearer QR, placement, and slot readouts in spool detail plus safer wrapping for longer reference/location values
+  - This was a QA/hardening pass only; no backend/API surface changed
+- Added browser-safe QR save/edit in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/app_services.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/settings.tsx`
+  - Exposed a dedicated companion QR-update write path through the shared service boundary so the browser shell can save/clear QR codes without widening the status/location route
+  - Added a spool-detail QR/reference-code form to the browser shell that still works for loaded spools while leaving slot and loan flows untouched
+  - Re-ran `cargo fmt`, `node --check`, `cargo test`, and `npm run smoke`
+- Added browser-safe status/location editing in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/app_services.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/main.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/settings.tsx`
+  - Exposed the existing spool detail update logic through the shared companion service boundary and a narrow local companion write route
+  - Rewired desktop `update_spool_details` through that same service boundary so desktop and browser now share the same detail-edit path
+  - Added a spool-detail status/location form to the browser shell, while keeping loaned-out and printer-loaded spools on their existing dedicated flows
+  - Re-ran `cargo fmt`, `node --check`, `cargo test`, and `npm run smoke`
+- Added browser-safe QR lookup in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/app_services.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/main.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/settings.tsx`
+  - Exposed QR lookup through the shared companion service boundary and a narrow local companion read route
+  - Rewired desktop `find_spool_by_qr` through that same service boundary so browser and desktop now share the lookup path
+  - Added a compact QR lookup form to the browser inventory section that jumps directly into the existing spool detail flow
+  - Re-ran `cargo fmt`, `node --check`, `cargo test`, and `npm run smoke`
+- Added browser-safe borrowed-in hand-back in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/app_services.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/main.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/settings.tsx`
+  - Exposed the existing inbound hand-back logic through the shared companion service boundary and a narrow local companion write route
+  - Added a borrowed-in hand-back form to companion spool detail so the selected borrowed-in spool can be returned from active inventory without opening the desktop `Utlån` view
+  - Rewired desktop `return_inbound_spool_loan` through the same service boundary and updated companion scope/boundary docs to reflect the expanded browser slice
+  - Re-ran `cargo fmt`, `node --check`, `cargo test`, and `npm run smoke`
+- Added browser-safe borrowed-in metadata editing in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/app_services.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/inventory.tsx`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/settings.tsx`
+  - Exposed the existing borrowed-in owner/contact/note update logic through the shared companion service boundary and a new local companion write route
+  - Added a borrowed-in details form to companion spool detail so the browser shell can edit owner/contact/note while keeping borrowed-in hand-back desktop-first
+  - Updated desktop history formatting plus companion scope/boundary copy so borrowed-in edits read clearly in existing inventory/history surfaces
+  - Re-ran `cargo fmt`, `node --check`, `cargo test`, and `npm run smoke`
+- Added browser-safe borrowed-in spool registration in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/app_services.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/main.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/settings.tsx`
+  - Added a narrow companion write route for manual borrowed-in spool registration and reused the existing manual spool creation logic through the shared companion service boundary
+  - Rewired desktop `create_manual_spool` through that same service boundary so desktop and browser now share the borrowed-in/manual creation path
+  - Added a compact borrowed-in registration form to the browser inventory section while keeping catalog-backed add/edit and borrowed-in hand-back desktop-first
+  - Re-ran `cargo fmt`, `node --check`, `cargo test`, and `npm run smoke`
+- Added direct outbound-loan return from the companion history surface in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Added an inline return form to active outbound-loan cards in the browser history view so the narrow companion no longer needs to bounce users into spool detail for every return
+  - Reused the existing companion return route and kept borrowed-in hand-back plus broader loan-management flows desktop-first
+  - Re-ran `cargo fmt`, `node --check`, `cargo test`, and `npm run smoke`
+- Expanded the companion loans section into outbound loan history in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/app_services.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/main.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/settings.tsx`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`
+  - Added a shared companion-service read path plus `GET /api/v1/loans` for outbound loan history without widening the write surface
+  - Expanded the browser loans section from active-only review into search/filterable outbound loan history with active/returned toggles
+  - Rewired desktop `list_spool_loans` through the same shared companion service boundary
+  - Kept return writes on the existing selected-spool/detail flow so the browser slice stays narrow and desktop-owned
+  - Re-ran `cargo fmt`, `node --check`, `cargo test`, and `npm run smoke`
+- Added the first companion-wide active-loan overview in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/settings.tsx`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`
+  - Added `GET /api/v1/loans/active` so the browser shell can read active outbound loans without depending on a selected spool detail call
+  - Added a dedicated active-loans section in the browser shell, including compact-mode navigation and jump-to-detail actions for return handling
+  - Updated the Settings companion scope copy so the desktop launch surface reflects the new browser-visible loan overview
+  - Re-ran `cargo fmt`, `node --check`, `cargo test`, and `npm run smoke`
+- Expanded the browser-safe loan workflow in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/app_services.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/main.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`
+  - Added active-loan visibility to companion spool detail so the browser shell can show the currently open loan for the selected spool
+  - Added a narrow companion route for returning an active outbound loan with returned grams and optional note
+  - Rewired desktop active-loan listing and outbound return through the same shared companion service boundary
+  - Kept borrowed-in hand-back and broader loan management desktop-first so the browser alpha stays narrow
+  - Re-ran `cargo fmt`, `node --check`, `cargo test`, and `npm run smoke`
+- Expanded the dedicated Settings companion tab in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/settings.tsx` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`
+  - Added copy-shell-URL support so the local shell address and launch link now both live in the same control surface
+  - Added explicit local-only/source-of-truth status tiles and a desktop-first boundaries note so the tab now acts as the single desktop home for companion behavior and limits
+  - Re-ran `npm run smoke`
+- Moved the desktop companion surface out of `Dashboard` and into its own dedicated Settings tab in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/settings.tsx`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/dashboard.tsx`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`
+  - Removed the dashboard quick-open/status card so the feature has one clear desktop home
+  - Added a dedicated Settings tab for the local browser companion and kept the existing status/open/copy controls there
+  - Re-ran `npm run smoke`
+- Added the first browser-safe outbound-loan workflow in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/app_services.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/main.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`, and companion scope docs/copy
+  - Added a narrow companion route for lending the selected spool out with borrower name, outgoing grams, and optional note
+  - Rewired the desktop `lend_spool` command through the same shared companion service boundary
+  - Kept returns and broader loan management desktop-first so the browser alpha stays operational rather than full-surface
+  - Re-ran `cargo fmt`, `cargo test`, and `npm run smoke`
+- Added the first browser-safe printer-slot workflow in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/app_services.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/main.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`, and companion scope docs/copy
+  - Added a narrow companion route for assigning the selected spool to an empty printer slot or clearing its current slot from the browser shell
+  - Rewired the desktop `assign_printer_slot` command through the same shared companion service boundary
+  - Kept occupied-slot replacement desktop-first so swap-heavy flows and weight prompts do not widen the browser alpha too early
+  - Re-ran `cargo test` and `npm run smoke`
+- Added a dashboard-level operational shortcut for the browser companion in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/dashboard.tsx` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`
+  - Added a quick-open companion card to `Dashboard` so the same-machine browser shell is reachable from the main operational overview
+  - Reused the existing Tauri companion status/open commands instead of introducing any new backend/API surface
+  - Kept Settings as the detailed status + launch-link surface while Dashboard now handles the lighter operational shortcut
+  - Re-ran `cargo test` and `npm run smoke`
+- Polished the same-machine browser shell for narrow widths in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`
+  - Added a compact/touch-friendly section switcher so Inventory, Printers, and Spool detail can be used one work area at a time on smaller screens
+  - Added a clearer detail-loading state and prevented background refreshes from unexpectedly forcing compact users back into detail view
+  - Kept the browser workflow surface unchanged: inventory overview, printer overview, spool detail, and manual weight update only
+  - Re-ran lightweight validation plus the project smoke/test checks after the UI/doc updates
+- Added the first desktop launch/bootstrap surface for the browser companion in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/settings.tsx`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/tauri_client.ts`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/main.rs`
+  - Added a `Settings → General` companion card that shows local status, shell URL, and auth mode
+  - Added desktop actions to open the companion browser shell directly and copy a launch link with local bootstrap handoff
+  - Kept the launch flow same-machine only and reused the existing `/companion` shell plus session bootstrap transport
+  - Re-ran `cargo fmt`, `cargo test`, and `npm run smoke`
+- Added the first same-machine browser shell in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/index.html`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.js`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser/app.css`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`
+  - Added a desktop-served `/companion` browser shell that bootstraps a local session and consumes the existing companion API
+  - Kept the workflow surface intentionally narrow: inventory overview, printer overview, spool detail, and manual weight update
+  - Added a Rust test confirming that the `/companion` route is served successfully
+  - Re-ran `cargo fmt`, `cargo test`, and `npm run smoke`
+- Hardened the local companion API auth flow in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/state.rs`, and the webapp handoff docs
+  - Replaced token-on-every-request auth with a bootstrap exchange that creates a local browser session
+  - Added HttpOnly session-cookie auth for companion reads and CSRF protection for companion writes
+  - Added host/origin checks for the local bootstrap and mutating session-backed routes
+  - Added a Rust test covering bootstrap, authenticated reads, rejected writes without CSRF, and successful writes with CSRF
+  - Re-ran `cargo fmt`, `cargo test`, and `npm run smoke`
+- Implemented the first local browser-companion groundwork in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/app_services.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/companion_api.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/state.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/main.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src/backend/filament_database.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src/backend/inventory_engine.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/Cargo.toml`, and the webapp handoff docs
+  - Added a narrow shared `CompanionService` for spool listing, printer overview, spool detail aggregation, and manual weight update
+  - Replaced the permissive `mobile_api` transport with a loopback-only `/api/v1` companion API on `127.0.0.1:4278`
+  - Added companion runtime status tracking so the desktop shell can expose connection/bootstrap info later without moving SQLite ownership away from Tauri
+  - Rewired existing desktop commands for spool listing, printer overview, spool history/usage, and weight update through the same service boundary so browser and desktop adapters stop duplicating direct DB-open logic
+  - Added Rust tests for the companion service and the first companion API gate, then re-ran `cargo fmt`, `cargo test`, and `npm run smoke`
+- Updated browser-companion planning docs in `/Users/bliatun/Documents/Codex/bambu-filament-manager/WEBAPP_BRIEF.md`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/DEVELOPER_BRIEF.md`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/SESSION_STATE.md`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/OPEN_QUESTIONS.md`
+  - Confirmed the product should start with a local-first browser companion instead of a dedicated remote backend
+  - Confirmed the first browser target should be `localhost` only with authenticated sessions
+  - Captured the service/API direction and the smallest safe implementation phase for the next thread
+- Added direction-aware loan usage summaries in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src/backend/filament_database.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src/backend/inventory_engine.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/src/main.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/tauri_client.ts`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/statistics.tsx`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`
+  - Made loan-usage summaries direction-aware so outbound and inbound usage can be queried separately
+  - Added a borrowed-in owner/counterparty usage panel to `Statistikk`
+  - Reused the existing filament breakdown modal for both outbound borrowers and inbound owners with direction-specific wording
+  - Added a Rust test covering outbound vs inbound loan-usage aggregation
+  - Re-ran `cargo fmt`, `cargo test`, and `npm run smoke`
+- Added ownership-aware detailed statistics drill-downs in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src/backend/statistics.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src/backend/filament_database.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/tauri_client.ts`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/statistics.tsx`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`
+  - Extended filament-consumption rows with ownership metadata so owned and borrowed-in usage no longer collapse into a single grouped row
+  - Extended printer-slot overview rows with spool ownership metadata for statistics use
+  - Added ownership filtering/labels to the consumption breakdown modal and the active loaded-slots detail modal in `Statistikk`
+  - Added a Rust test covering owned vs borrowed-in filament-consumption grouping
+  - Re-ran `cargo fmt`, `cargo test`, and `npm run smoke`
+- Added additive ownership-aware summary metrics in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src/backend/statistics.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/tauri_client.ts`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/dashboard.tsx`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/statistics.tsx`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`
+  - Extended `InventoryOverview` with owned vs borrowed-in spool counts, low-stock counts, in-use counts, and 30-day print-consumption splits
+  - Added an ownership snapshot panel to `Dashboard` and `Statistikk`
+  - Kept the existing headline totals unchanged so the new ownership split is additive rather than a silent semantics change
+  - Added a Rust test covering the owned vs borrowed-in overview split
+  - Re-ran `cargo test` and `npm run smoke`
+- Added ownership-aware inventory filtering in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/inventory.tsx` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`
+  - Added an `Ownership` filter row to `Lager` with `All / Owned / Borrowed in`
+  - Threaded the new filter through the existing grouped-card and list pipelines without changing current side panels or totals
+  - Updated the search placeholder/copy so owner-based matching is surfaced more clearly
+  - Re-ran `npm run smoke`
+- Implemented the borrowed-in hand-back flow in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/loans.tsx`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/tauri_client.ts`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src/backend/inventory_engine.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src/backend/filament_database.rs`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`
+  - Extended the loans query/export path so the `Utlan` page can explicitly request `INBOUND`, `OUTBOUND`, or `ALL` loan directions without changing older outbound-only defaults elsewhere
+  - Added a dedicated inbound hand-back backend flow that marks the inbound loan as returned, clears any printer slot assignment, and soft-deletes the borrowed-in spool from active inventory
+  - Made the `Utlan` page direction-aware so inbound rows can be filtered, searched, and handed back with dedicated wording while the outbound usage sidebar stays outbound-only for now
+  - Added a new Rust test covering borrowed-in hand-back, slot cleanup, preserved history, and inventory hiding
+  - Re-ran `cargo test` and `npm run smoke`
+- Implemented the first borrowed-in registration flow in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/inventory.tsx`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src/backend/inventory_engine.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src/backend/filament_database.rs`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/tauri_client.ts`
+  - Extended the existing add-filament flow so a spool can be registered as `borrowed in` with owner/counterparty details
+  - Automatically create an inbound loan record when a borrowed-in spool is registered
+  - Keep current loan pages and outbound-loan statistics outbound-only for safety
+  - Prevent borrowed-in spools from appearing as outbound loan candidates
+  - Added ownership labeling in grouped inventory cards, list rows, selected-spool popup, and print-label output
+  - Renamed legacy outward-facing `BORROWED` status copy to “loaned out” in the UI where appropriate
+  - Added a Rust test covering borrowed-in manual creation + inbound loan registration
+  - Re-ran `cargo test` and `npm run smoke`
+- Added phase-1 borrowed-in groundwork in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src/database/schema.sql`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src/backend/filament_database.rs`, `/Users/bliatun/Documents/Codex/bambu-filament-manager/src/backend/inventory_engine.rs`, and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/tauri_client.ts`
+  - Added spool ownership fields for future borrowed-in inventory support
+  - Added loan direction/status/counterparty fields while preserving the current outbound-only UI semantics
+  - Kept existing outward-facing flows compatible by treating current spool status `BORROWED` as a legacy “loaned out” state
+  - Added a migration-focused Rust test to verify old databases backfill the new fields safely and that current loan queries remain outbound-only
+  - Re-ran `cargo test` and `npm run smoke`
+- Fixed the swatch bulk-fill action in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/settings.tsx`
+  - Replaced the `window.confirm` gate on bulk swatch autofill with an in-app tap-again confirmation so the button no longer appears dead in Tauri
+  - Added local inline confirmation guidance in the swatch panel and clearer result reporting when zero entries were updated
+  - Visually checked the real Tauri settings swatch panel to confirm the first click now produces visible confirmation feedback
+- Refined shared dialogs in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/components/loan_out_modal.tsx` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/components/save_only_modal.tsx`
+  - Reworked the loan-out modal so the available-roll list and selected-roll form now read as two balanced companion panels instead of a loose list plus a large open slab
+  - Simplified list-row metadata, grouped the loan form into a clearer inset card, and kept long references readable inside the selected-roll summary
+  - Reworked the save-only modal shell used by printer weight prompts so it now matches the stronger popup header/body/footer language used elsewhere in the app
+  - Visually checked the real Tauri loan-out modal and printer weight prompt in both light and dark mode
+- Refined `Statistikk` supporting panels and breakdown modals in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/statistics.tsx`
+  - Reworked the per-printer and borrower-usage sections into clearer companion cards with helper copy, count pills, and compact metric tiles
+  - Reworked the consumption and borrower breakdown modals so their filter blocks, empty states, and result rows match the rest of the app
+  - Visually checked the real Tauri statistics page and a breakdown modal in both light and dark mode
+- Refined `Innstillinger` support surfaces in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/settings.tsx`
+  - Reworked `Filamentkatalog` into clearer vendor-refresh and swatch-quality companion cards with compact metric summaries, stronger action grouping, and cleaner list rows
+  - Reworked `Programvedlikehold` so backup/export and import/validation read as structured companion panels while keeping the reset area warning-oriented
+  - Visually checked the real Tauri settings page in both light and dark mode for `Filamentkatalog` and `Programvedlikehold`
+- Refined dashboard supporting panels in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/dashboard.tsx` and `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/components/dashboard_widgets.tsx`
+  - Reworked `Nylig aktivitet` into clearer structured activity cards with a count pill and helper copy
+  - Reworked `Lagerhelse` into a clearer score + compact metric-tile companion panel
+  - Reworked the achievements strip into stronger individual progress cards
+  - Visually checked the real Tauri dashboard in both light and dark mode
+- Refined `Printere` page-top hierarchy and compact usage presentation in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/printers.tsx`
+  - Added a compact header overview surface so the add-printer action no longer sits alone
+  - Replaced loose usage badges inside each printer card with compact summary tiles that better match the rest of the app
+  - Visually checked the real Tauri printer screen in both light and dark mode
+- Refined selected-filament popup history in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/inventory.tsx`
+  - Filtered repetitive `ASSIGNED_TO_AMS` rows out of the visible history feed while keeping the underlying history data intact
+  - Added a short hint so the popup explains that printer-slot placement is shown elsewhere above
+  - Added a better empty state for rolls that only have hidden printer-slot assignment events so far
+  - Visually checked the real Tauri selected-filament popup in both light and dark mode
+- Hardened inventory popup responsiveness in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/inventory.tsx`
+  - Gave the selected-filament reference card more room so full spool IDs are less likely to be cut off
+  - Relaxed a few popup grid/layout constraints so summary and form sections stack more safely at the app's practical minimum width
+  - Visually checked the selected-filament popup in both light and dark mode and the add-filament popup in light mode at the minimum practical app width
+- Refined `Utlån` in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/loans.tsx`
+  - Reworked the page header actions and filter area so they align more closely with `Lager` and `Printere`
+  - Rebuilt the loan-history cards with stronger swatch-tinted metric tiles and improved spacing
+  - Reworked the usage-by-person side panel into a clearer companion panel with compact stat tiles
+  - Refined the return dialog summary card and widened filament-ID presentation so long IDs wrap cleanly
+  - Visually checked the real Tauri loans screen and return dialog in both light and dark mode
+- Refined `Lager` secondary panels and header actions in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/inventory.tsx`
+  - Moved the main/side layout split earlier so the borrowed-rolls panel sits beside the card grid at the normal app width
+  - Reworked the borrowed-rolls side panel into a stronger surface-card treatment with clearer helper copy, count badge, better empty state, and cleaner active-loan rows
+  - Made the top header actions respond better at narrower widths
+  - Visually checked the real Tauri inventory screen in both light and dark mode
+- Refined printer slot styling in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/printers.tsx`
+  - Strengthened the tinted inset styling on slot panels and update-weight actions
+  - Replaced raw internal spool status values with readable status chips
+  - Visually checked the real Tauri printer screen in both light and dark mode
+- Refined add filament popup in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/inventory.tsx`
+  - Added a sticky modal header with a shared selection preview so stock and wishlist flows reference the same context
+  - Reworked stock-entry and wishlist sections to use the same surface hierarchy and swatch-tinted action styling as the rest of the app
+  - Reduced redundant headings/helper text and eased nested-scroll pressure on narrower layouts
+  - Visually checked the real Tauri popup in both light and dark mode, including the lower direct-stock and wishlist action panels
+- Refined selected filament popup in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/inventory.tsx`
+  - Removed duplicated status and remaining summary cards from the popup body
+  - Added a cleaner sticky header and compact reference/location/initial-weight overview
+  - Reduced repeated metadata inside the catalog section while keeping QR, metadata editing, weight update, chart, history, and danger-zone actions
+  - Visually checked the real Tauri popup in both light and dark mode
+- Refined grouped inventory filament cards in `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/inventory.tsx`
+  - Removed duplicated material/status presentation in the card header
+  - Simplified spool rows to focus on placement, status, reference, and remaining weight
+  - Reused swatch-tinted inset surfaces for selected/recent rows
+  - Visually checked the real Tauri app in both light and dark mode
+- Added project handoff files:
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/DEVELOPER_BRIEF.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/NEXT_STEPS.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/UI_POLISH_TODO.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/THREAD_BOOTSTRAP.md`
+- Consolidated current architecture, module boundaries, UI direction, and active work
+- Established a cleaner resume path for future threads
+
+## Active Focus
+- Continue webapp phase 1 on top of the now-implemented companion service/API groundwork
+- Keep the same-machine browser shell narrow while validating the current launch surfaces, QR lookup/edit, borrowed-in manual-registration/edit/hand-back, narrow status/location update, outbound-loan history/direct-return, slot workflow, selected-spool outbound-loan creation workflow, and touch-friendly layout
+- Keep the session/bootstrap UX desktop-mediated while deciding whether the current alpha should move into hardening before any further detail writes
+
+## Upcoming Planning Focus
+- Keep the browser alpha intentionally narrow while validating the local-first transport
+- Decide whether Phase 1 should pause on QA/hardening before any more browser-safe write expansion
+- Decide when, if ever, to reintroduce separate device-ingestion routes and optional LAN pairing
+
+## Known Pain Points
+- Some action/filter areas and popup sticky regions may still wrap earlier than desired if the app's minimum window size changes or if especially long values are present
+- A few secondary lists, dialogs, empty states, and page-action areas may still have labels or metadata blocks that can be tightened further after more real-world usage, but the recent dead-button issue in settings swatch autofill is now resolved
+
+## Key Decisions To Preserve
+- Project name: `Filament Manager`
+- Norwegian terminology:
+  - `Printer/Printere`
+  - `Filament/Filamenter`
+- Catalog refresh belongs in `Innstillinger` → `Filamentkatalog`
+- Printer-slot assignment belongs on `Printere`, not in the selected filament popup
+- Filament cards use swatch-derived tinting
+- Printer cards use vendor/brand tinting:
+  - `Bambu` → bamboo green
+  - `Prusa` → orange
+  - `Generic` → light gray
+
+## New Planning Documents
+- `/Users/bliatun/Documents/Codex/bambu-filament-manager/WEBAPP_BRIEF.md`
+- `/Users/bliatun/Documents/Codex/bambu-filament-manager/DOMAIN_MODEL_EXPANSION.md`
+
+## Best Next Step
+- Validate the dedicated Settings companion tab plus the browser QR lookup/edit, borrowed-in manual-registration/edit/hand-back, narrow status/location update, outbound-loan history/direct-return, slot, and selected-spool outbound-loan creation workflows in live same-machine use, then decide whether Phase 1 should stay in QA/hardening mode or whether another focused workflow is still justified before broadening the browser API surface further
+
+## Best Next Planning Thread
+- Start the next implementation thread for:
+  - the first browser shell
+  - desktop/browser bootstrap UX on top of the now-hardened local companion API
+- In that thread, read:
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/README_DEV.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/DEVELOPER_BRIEF.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/SESSION_STATE.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/WEBAPP_BRIEF.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/DOMAIN_MODEL_EXPANSION.md`
+- Goal for that thread:
+  - validate and refine the existing browser UI shell for inventory overview, QR lookup/edit, manual borrowed-in registration/editing/hand-back, printer overview, outbound loan review/history with direct return, basic printer-slot assignment/clear, spool detail with active-loan visibility, narrow status/location updates, manual weight update, and selected-spool outbound loan creation
+  - keep SQLite desktop-owned and avoid LAN/remote sync expansion
+
+## Resume Checklist
+- Read:
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/DEVELOPER_BRIEF.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/NEXT_STEPS.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/UI_POLISH_TODO.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/THREAD_BOOTSTRAP.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/SESSION_STATE.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/WEBAPP_BRIEF.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/DOMAIN_MODEL_EXPANSION.md`
+
+## Useful Commands
+- Dev app:
+  - `cd /Users/bliatun/Documents/Codex/bambu-filament-manager && npm run tauri -- dev`
+- Smoke:
+  - `cd /Users/bliatun/Documents/Codex/bambu-filament-manager && npm run smoke`
+
+## Latest Webapp UI Pass (2026-04-04)
+- Completed a full trusted-LAN browser-shell UI audit across `Storage`, `Loans`, `Printers`, `Settings`, and detail/task overlays in `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/companion_browser`
+- Implemented two high-value, cross-surface batches:
+  - Batch 1: theme-correct overlay contrast + reduced list-card visual noise
+    - Modal/task-sheet backdrops now follow the app theme mode variables (including explicit dark mode), not only OS `prefers-color-scheme`
+    - Dense operational cards (`loan`, `slot`, `metric`) now use calmer surfaces with less depth stacking
+  - Batch 2: clearer primary actions + shorter copy on key webapp screens
+    - `Loans`: `Return loan` promoted to primary CTA when active, `Open spool` kept secondary, hidden-selection action text tightened to `Open details`
+    - `Settings`: shorter, more human subtitle/help/connection copy; `Refresh companion data` tightened to `Refresh data`
+    - `Printers`: heading copy shortened (`Printer roster` → `Printers`), subtitle tightened
+    - `Storage`: add-sheet helper copy shortened in both task sheet body and shell subtitle
+- Validation:
+  - `cd /Users/bliatun/Documents/Codex/bambu-filament-manager && npm run smoke` passed
+  - Result: build ok, `test:companion` 101/101 pass, `test:settings-ui` 18/18 pass, `doctor` ok
+
+## Webapp UI Review Closeout (2026-04-04)
+- Completed a final browser-shell closeout pass focused on visual hierarchy consistency and technical debt trim before ending UI review:
+  - removed duplicated/low-value detail chrome (header reference chip and duplicate weight chip)
+  - removed the detail status/location edit panel from spool detail modal to keep one clear edit path
+  - removed the loan-lock info block in detail edit area (no longer needed after panel removal)
+  - aligned detail action placement and tightened section rhythm
+  - ensured dark `Auto` uses the same background/glow palette as explicit dark mode
+  - fixed modal alignment consistency (centered detail modal) and return-sheet layout stretch
+  - removed redundant “Stock entry/Lagerføring” intro block in add-spool sheet
+- Technical debt reduction in this pass:
+  - trimmed obsolete prop plumbing in detail render path (`companionDetailStatuses` / `spoolDetailsEditState` no longer passed through app-shell detail modal rendering)
+  - updated companion tests to match current UI intent
+- Validation (post-closeout):
+  - `cd /Users/bliatun/Documents/Codex/bambu-filament-manager && npm run smoke` passed
+  - `test:companion` 101/101, `test:settings-ui` 18/18, doctor ok
+
+## Settings A4 Inventory Print (2026-04-05)
+- Added a new `Settings -> General` action to print an A4 in-stock filament overview
+  - Output is list-based (not dense table), sorted by material
+  - Each row includes:
+    - color swatch
+    - scannable QR image (companion deep-link payload)
+    - vendor, material, filament, and color details
+- Implementation files:
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/pages/settings.tsx`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/inventory_overview_print.ts`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/inventory_overview_print.test.ts`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/ui/src/lib/i18n.ts`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/package.json`
+- Validation:
+  - `cd /Users/bliatun/Documents/Codex/bambu-filament-manager && npm run smoke` passed

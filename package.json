@@ -1,0 +1,38 @@
+{
+  "name": "bambu-filament-manager",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20 <26",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "doctor": "node ./scripts/doctor.mjs",
+    "test:companion": "node --test ./src-tauri/companion_browser/*.test.mjs",
+    "test:settings-ui": "node ./node_modules/tsx/dist/cli.mjs --test ./ui/src/lib/clipboard.test.ts ./ui/src/lib/trusted_lan_pairing_qr.test.ts ./ui/src/lib/filament_qr_payload.test.ts ./ui/src/lib/filament_label_print.test.ts ./ui/src/lib/inventory_overview_print.test.ts ./ui/src/pages/settings_companion_model.test.ts",
+    "smoke": "npm --prefix ./ui run build && npm run test:companion && npm run test:settings-ui && npm run doctor",
+    "scrape": "node ./node_modules/tsx/dist/cli.mjs src/scraper/bambu_filament_scraper.ts",
+    "scrape:auto": "node ./node_modules/tsx/dist/cli.mjs src/scraper/bambu_auto_scrape.ts",
+    "scrape:safe": "npm run doctor && npm run scrape",
+    "scrape:auto:safe": "npm run doctor && npm run scrape:auto",
+    "tauri": "node ./scripts/run-tauri.mjs"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.8.0",
+    "jsqr": "^1.4.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "three": "^0.161.0"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^12.6.2"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1",
+    "playwright-core": "^1.58.2",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}
