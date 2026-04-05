@@ -365,6 +365,10 @@ fn run_refresh_attempts(
     ))
 }
 
+fn command_is_available(binary: &str) -> bool {
+    Command::new(binary).arg("--version").output().is_ok()
+}
+
 fn refresh_bambu_catalog_blocking(
     db_path: &str,
     material_types: Option<Vec<String>>,
@@ -397,16 +401,39 @@ fn refresh_bambu_catalog_blocking(
     let tsx_cli = project_root.join("node_modules/tsx/dist/cli.mjs");
     let scraper_script = project_root.join("src/scraper/bambu_auto_scrape.ts");
     let mut attempts: Vec<(String, Command)> = Vec::new();
+    let has_node = command_is_available("node");
+    let has_npm = command_is_available("npm");
+    let can_run_direct = has_node && tsx_cli.exists() && scraper_script.exists();
+    let can_run_npm = has_npm;
 
-    if tsx_cli.exists() && scraper_script.exists() {
+    if !can_run_direct && !can_run_npm {
+        emit_catalog_refresh_progress(
+            app,
+            "Bambu",
+            "SKIPPED",
+            "Bambu refresh skipped: runtime scraper dependencies were not found.",
+        );
+        return Ok(CatalogRefreshResult {
+            imported: 0,
+            detected_store: None,
+            detected_collection: None,
+            reactivated_count: 0,
+            discontinued_count: 0,
+            output: "Bambu refresh was skipped because this runtime does not include Node/npm scraper dependencies.\nLocal Bambu catalog was left unchanged.\n\nTip: refresh from a development environment with Node/npm installed, or migrate Bambu refresh to an in-app Rust source for fully self-contained desktop refresh.\n\nCatalog lifecycle update:\nVendor: Bambu\nDiscontinued handling: skipped (runtime dependencies unavailable)\nReactivated: 0\nMarked discontinued: 0\n".to_string(),
+        });
+    }
+
+    if can_run_direct {
         let mut direct = Command::new("node");
         direct.arg(&tsx_cli).arg(&scraper_script);
         attempts.push(("node tsx".to_string(), direct));
     }
 
-    let mut npm_script = Command::new("npm");
-    npm_script.arg("run").arg("scrape:auto");
-    attempts.push(("npm run scrape:auto".to_string(), npm_script));
+    if can_run_npm {
+        let mut npm_script = Command::new("npm");
+        npm_script.arg("run").arg("scrape:auto");
+        attempts.push(("npm run scrape:auto".to_string(), npm_script));
+    }
 
     let output = run_refresh_attempts(attempts, &project_root, db_path, &material_types)?;
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
