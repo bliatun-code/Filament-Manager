@@ -258,10 +258,26 @@ async fn refresh_bambu_catalog(
     let db_path = state.db_path.clone();
     let app_for_worker = app.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
-        refresh_bambu_catalog_blocking(&db_path, material_types, Some(&app_for_worker))
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            refresh_bambu_catalog_blocking(&db_path, material_types, Some(&app_for_worker))
+        }))
     })
     .await
     .map_err(|error| format!("Catalog refresh task failed: {error}"))?;
+
+    let result: Result<CatalogRefreshResult, String> = match result {
+        Ok(inner) => inner,
+        Err(panic_payload) => {
+            let panic_message = if let Some(message) = panic_payload.downcast_ref::<&str>() {
+                (*message).to_string()
+            } else if let Some(message) = panic_payload.downcast_ref::<String>() {
+                message.clone()
+            } else {
+                "unknown panic payload".to_string()
+            };
+            Err(format!("Bambu refresh panicked: {panic_message}"))
+        }
+    };
 
     match &result {
         Ok(_) => emit_catalog_refresh_progress(
@@ -278,7 +294,19 @@ async fn refresh_bambu_catalog(
         ),
     }
 
-    result
+    match result {
+        Ok(summary) => Ok(summary),
+        Err(message) => Ok(CatalogRefreshResult {
+            imported: 0,
+            detected_store: None,
+            detected_collection: None,
+            reactivated_count: 0,
+            discontinued_count: 0,
+            output: format!(
+                "Bambu refresh failed before completion.\n{message}\n\nCatalog lifecycle update:\nVendor: Bambu\nDiscontinued handling: skipped (refresh failed)\nReactivated: 0\nMarked discontinued: 0\n"
+            ),
+        }),
+    }
 }
 
 #[tauri::command]
@@ -297,10 +325,26 @@ async fn refresh_esun_catalog(
     let db_path = state.db_path.clone();
     let app_for_worker = app.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
-        refresh_esun_catalog_blocking(&db_path, material_types, Some(&app_for_worker))
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            refresh_esun_catalog_blocking(&db_path, material_types, Some(&app_for_worker))
+        }))
     })
     .await
     .map_err(|error| format!("Catalog refresh task failed: {error}"))?;
+
+    let result: Result<CatalogRefreshResult, String> = match result {
+        Ok(inner) => inner,
+        Err(panic_payload) => {
+            let panic_message = if let Some(message) = panic_payload.downcast_ref::<&str>() {
+                (*message).to_string()
+            } else if let Some(message) = panic_payload.downcast_ref::<String>() {
+                message.clone()
+            } else {
+                "unknown panic payload".to_string()
+            };
+            Err(format!("eSUN refresh panicked: {panic_message}"))
+        }
+    };
 
     match &result {
         Ok(_) => emit_catalog_refresh_progress(
@@ -317,7 +361,19 @@ async fn refresh_esun_catalog(
         ),
     }
 
-    result
+    match result {
+        Ok(summary) => Ok(summary),
+        Err(message) => Ok(CatalogRefreshResult {
+            imported: 0,
+            detected_store: None,
+            detected_collection: None,
+            reactivated_count: 0,
+            discontinued_count: 0,
+            output: format!(
+                "eSUN refresh failed before completion.\n{message}\n\nCatalog lifecycle update:\nVendor: eSUN\nDiscontinued handling: skipped (refresh failed)\nReactivated: 0\nMarked discontinued: 0\n"
+            ),
+        }),
+    }
 }
 
 fn refresh_bambu_catalog_blocking(
