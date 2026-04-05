@@ -3000,6 +3000,8 @@ impl FilamentDatabase {
 
     pub fn reset_app_state_data(&self) -> InventoryResult<()> {
         let tx = self.conn.unchecked_transaction()?;
+        tx.execute("DELETE FROM trusted_lan_pairings", [])?;
+        tx.execute("DELETE FROM trusted_lan_paired_browsers", [])?;
         tx.execute("DELETE FROM label_print_jobs", [])?;
         tx.execute("DELETE FROM weight_readings", [])?;
         tx.execute("DELETE FROM scan_events", [])?;
@@ -3988,7 +3990,7 @@ fn parse_inventory_spools_csv(content: &str) -> InventoryResult<Vec<InventoryImp
 
 #[cfg(test)]
 mod tests {
-    use super::{FilamentDatabase, SpoolRow};
+    use super::{FilamentDatabase, SpoolRow, TrustedLanSettingsRow};
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -4399,6 +4401,75 @@ mod tests {
         let _ = std::fs::remove_file(&db_path);
         if let Err(message) = result {
             panic!("list_loan_usage_by_person_can_scope_to_inbound_and_outbound test failed: {message}");
+        }
+    }
+
+    #[test]
+    fn reset_app_state_clears_trusted_lan_pairings_and_paired_browsers() {
+        let db_path = temp_db_path("reset-clears-trusted-lan");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            db.save_trusted_lan_settings(&TrustedLanSettingsRow {
+                enabled: true,
+                selected_interface_name: Some("Wi-Fi".to_string()),
+                selected_interface_address: Some("192.168.1.50".to_string()),
+                listen_port: 4278,
+            })
+            .map_err(|error| error.to_string())?;
+
+            db.create_trusted_lan_pairing(Some("Phone"), "pairing_hash_1", 600)
+                .map_err(|error| error.to_string())?;
+            db.create_trusted_lan_paired_browser(
+                Some("Phone Safari"),
+                "device_hash_1",
+                Some("https://192.168.1.50:4278"),
+            )
+            .map_err(|error| error.to_string())?;
+
+            let pairings_before: i64 = db
+                .conn
+                .query_row("SELECT COUNT(*) FROM trusted_lan_pairings", [], |row| row.get(0))
+                .map_err(|error| error.to_string())?;
+            let browsers_before: i64 = db
+                .conn
+                .query_row(
+                    "SELECT COUNT(*) FROM trusted_lan_paired_browsers",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            assert!(pairings_before > 0);
+            assert!(browsers_before > 0);
+
+            db.reset_app_state_data()
+                .map_err(|error| error.to_string())?;
+
+            let pairings_after: i64 = db
+                .conn
+                .query_row("SELECT COUNT(*) FROM trusted_lan_pairings", [], |row| row.get(0))
+                .map_err(|error| error.to_string())?;
+            let browsers_after: i64 = db
+                .conn
+                .query_row(
+                    "SELECT COUNT(*) FROM trusted_lan_paired_browsers",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            assert_eq!(pairings_after, 0);
+            assert_eq!(browsers_after, 0);
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "reset_app_state_clears_trusted_lan_pairings_and_paired_browsers failed: {message}"
+            );
         }
     }
 }
