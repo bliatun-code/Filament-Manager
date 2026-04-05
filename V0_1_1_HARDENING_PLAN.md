@@ -14,6 +14,7 @@ Ship a fast-follow stability/security patch after `v0.1.0` without changing prod
 - Keep `Settings` page action-only heavy modules lazy-loaded (QR/PDF helpers).
 - Keep production build free from the previous `settings` chunk-size warning regression.
 - Keep root and `ui` lockfiles refreshed to latest allowed ranges.
+- Keep Tauri release-version source-of-truth in `src-tauri/tauri.conf.json` only (avoid duplicate root config drift).
 - Run and record:
   - `npm audit` (root)
   - `npm audit` (`ui`)
@@ -26,4 +27,3 @@ Ship a fast-follow stability/security patch after `v0.1.0` without changing prod
 - `npm run smoke` passes.
 - No bundle warning regression for the `settings` page baseline.
 - Release notes mention any remaining known risks explicitly.
-

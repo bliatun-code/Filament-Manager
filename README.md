@@ -98,3 +98,8 @@ Use local CLI from dependencies:
 npm run tauri -- --version
 npm run tauri -- info
 ```
+
+## Tauri Config Source of Truth
+
+- Use `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/tauri.conf.json` as the only Tauri app config.
+- The root-level `tauri.conf.json` is intentionally not used.
