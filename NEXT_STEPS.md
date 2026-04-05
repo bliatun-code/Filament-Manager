@@ -11,6 +11,7 @@ Historical notes below still mention the old localhost browser companion, `qa:co
 - Pairing, renewal, revoke, revoke-all, and paired-browser list refresh are behaving as intended in the current desktop + trusted-LAN baseline.
 - The next active implementation track is webapp UI-only polish, starting with iPhone/small-screen simplification and calmer browser-shell hierarchy.
 - Latest cleanup delta (2026-04-05):
+  - Bambu catalog refresh now runs from in-app Rust lookup (no runtime `node/npm` subprocess dependency in packaged desktop path)
   - webapp recovery/detail fallback copy now follows active locale (`en`/`nb`) instead of hardcoded English
   - companion success status banners now auto-clear after `8s` by default to reduce stale UI noise
   - generated/printed QR flow is now canonicalized to spool-id references so scans resolve directly to companion detail popup

@@ -28,6 +28,7 @@ Current browser terminology note:
     - keep English/Norwegian browser copy short, human, and consistent while polishing the same surface
 - Latest cleanup pass done (2026-04-05):
   - closeout/tech-debt note:
+    - Bambu catalog refresh is now runtime-self-contained in Rust (no Node/npm dependency in packaged desktop refresh path)
     - QR/reference UI now favors canonical spool-id based flow (legacy/manual QR-reference exposure is reduced in UI surfaces)
     - remaining frontend technical debt is bundle splitting: `settings` chunk currently exceeds the 500 kB warning threshold in production build
   - inventory overview print pipeline hardening:

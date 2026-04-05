@@ -4,5 +4,7 @@ pub mod filament_database;
 pub mod inventory_engine;
 #[path = "../../../src/backend/statistics.rs"]
 pub mod statistics;
+#[path = "../../../src/backend/bambu_lookup.rs"]
+pub mod bambu_lookup;
 #[path = "../../../src/backend/vendor_lookup.rs"]
 pub mod vendor_lookup;

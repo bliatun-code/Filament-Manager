@@ -6,6 +6,9 @@ Historical notes below still mention the old localhost browser companion, `qa:co
 
 ## Current Status
 - Step closeout notes (2026-04-05):
+  - Bambu catalog refresh no longer depends on runtime `node/npm` subprocess scraping.
+  - Desktop refresh now uses in-app Rust lookup (`src/backend/bambu_lookup.rs`) and imports directly via Tauri refresh flow, so packaged macOS builds can refresh Bambu catalog without external JS runtime dependencies.
+  - `npm run smoke` passes after this Rust migration.
   - QR flow is now canonicalized end-to-end for generated/printed QR: payload reference uses `spool.id` so scans consistently resolve to the correct companion detail popup.
   - Inventory A4 overview printing now uses generated landscape PDF (not browser HTML print), with explicit pagination and 2-column layout control.
   - Remaining technical debt:

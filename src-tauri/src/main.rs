@@ -36,7 +36,6 @@ use std::ffi::c_void;
 use base64::Engine;
 use std::net::IpAddr;
 use std::path::PathBuf;
-use std::process::Command;
 use std::time::Duration;
 use tauri::{Emitter, Manager};
 
@@ -321,54 +320,6 @@ async fn refresh_esun_catalog(
     result
 }
 
-fn run_refresh_attempts(
-    attempts: Vec<(String, Command)>,
-    project_root: &PathBuf,
-    db_path: &str,
-    material_types: &[String],
-) -> Result<std::process::Output, String> {
-    let mut errors = Vec::new();
-    for (name, mut command) in attempts {
-        let prepared = command.current_dir(project_root);
-        prepared
-            .env("BAMBU_DB_PATH", db_path)
-            .env("BAMBU_VERBOSE", "1")
-            .env("BAMBU_FORCE_SQLITE_CLI", "1")
-            .env("BAMBU_PRODUCT_FETCH_RETRIES", "1")
-            .env("BAMBU_PRODUCT_DELAY_MS", "850")
-            .env("BAMBU_PRODUCT_DELAY_JITTER_MS", "450")
-            .env("BAMBU_MAX_CONSECUTIVE_ANTIBOT", "4");
-        if !material_types.is_empty() {
-            prepared.env("BAMBU_MATERIAL_TYPES", material_types.join(","));
-        }
-        match prepared.output() {
-            Ok(output) if output.status.success() => return Ok(output),
-            Ok(output) => {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                errors.push(format!(
-                    "[{name}] exit {}:\n{}\n{}",
-                    output.status,
-                    stdout.trim(),
-                    stderr.trim()
-                ));
-            }
-            Err(error) => {
-                errors.push(format!("[{name}] failed to start: {error}"));
-            }
-        }
-    }
-
-    Err(format!(
-        "Catalog refresh dependencies missing or failed.\n{}",
-        errors.join("\n\n")
-    ))
-}
-
-fn command_is_available(binary: &str) -> bool {
-    Command::new(binary).arg("--version").output().is_ok()
-}
-
 fn refresh_bambu_catalog_blocking(
     db_path: &str,
     material_types: Option<Vec<String>>,
@@ -385,69 +336,93 @@ fn refresh_bambu_catalog_blocking(
     emit_catalog_refresh_progress(
         app,
         "Bambu",
-        "SCRAPE",
+        "FETCH",
         if material_types.is_empty() {
-            "Running Bambu scraper process (this can take a few minutes)..."
+            "Fetching Bambu product catalog..."
         } else {
-            "Running filtered Bambu scraper process (selected material types only)..."
+            "Fetching filtered Bambu product catalog..."
         },
     );
 
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let project_root = manifest_dir
-        .parent()
-        .ok_or_else(|| "Could not resolve project root".to_string())?
-        .to_path_buf();
-    let tsx_cli = project_root.join("node_modules/tsx/dist/cli.mjs");
-    let scraper_script = project_root.join("src/scraper/bambu_auto_scrape.ts");
-    let mut attempts: Vec<(String, Command)> = Vec::new();
-    let has_node = command_is_available("node");
-    let has_npm = command_is_available("npm");
-    let can_run_direct = has_node && tsx_cli.exists() && scraper_script.exists();
-    let can_run_npm = has_npm;
+    let snapshot = match backend::bambu_lookup::refresh_bambu_catalog_snapshot(
+        if material_types.is_empty() {
+            None
+        } else {
+            Some(material_types.clone())
+        },
+    ) {
+        Ok(snapshot) => snapshot,
+        Err(error) => {
+            return Ok(CatalogRefreshResult {
+                imported: 0,
+                detected_store: None,
+                detected_collection: None,
+                reactivated_count: 0,
+                discontinued_count: 0,
+                output: format!(
+                    "Remote Bambu refresh source was unavailable.\n{error}\nLocal Bambu catalog was left unchanged.\n\nCatalog lifecycle update:\nVendor: Bambu\nDiscontinued handling: skipped (source unavailable)\nReactivated: 0\nMarked discontinued: 0\n"
+                ),
+            });
+        }
+    };
 
-    if !can_run_direct && !can_run_npm {
-        emit_catalog_refresh_progress(
-            app,
-            "Bambu",
-            "SKIPPED",
-            "Bambu refresh skipped: runtime scraper dependencies were not found.",
-        );
-        return Ok(CatalogRefreshResult {
-            imported: 0,
-            detected_store: None,
-            detected_collection: None,
-            reactivated_count: 0,
-            discontinued_count: 0,
-            output: "Bambu refresh was skipped because this runtime does not include Node/npm scraper dependencies.\nLocal Bambu catalog was left unchanged.\n\nTip: refresh from a development environment with Node/npm installed, or migrate Bambu refresh to an in-app Rust source for fully self-contained desktop refresh.\n\nCatalog lifecycle update:\nVendor: Bambu\nDiscontinued handling: skipped (runtime dependencies unavailable)\nReactivated: 0\nMarked discontinued: 0\n".to_string(),
-        });
+    emit_catalog_refresh_progress(
+        app,
+        "Bambu",
+        "IMPORT",
+        "Importing Bambu catalog into local database...",
+    );
+    let imported = {
+        let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
+        let mut processed = 0i64;
+        for entry in &snapshot.entries {
+            db.upsert_manual_master(
+                &entry.material,
+                &entry.filament_name,
+                &entry.color_name,
+                entry.hex_color.as_deref(),
+                Some(&entry.product_url),
+                Some("Bambu"),
+                Some(entry.default_weight_g),
+            )
+            .map_err(|error| format!("{:?}", error))?;
+            processed += 1;
+            if processed % 25 == 0 {
+                emit_catalog_refresh_progress(
+                    app,
+                    "Bambu",
+                    "IMPORT",
+                    &format!(
+                        "Importing Bambu catalog into local database... {processed}/{}",
+                        snapshot.entries.len()
+                    ),
+                );
+            }
+        }
+        processed
+    };
+
+    let mut output = format!(
+        "Detected store: {}\nDetected collection: {}\nProducts discovered: {}\nProducts detailed: {}\nAnti-bot blocks: {}\nImported {} entries.\n",
+        snapshot.detected_store,
+        snapshot.detected_collection,
+        snapshot.products_discovered,
+        snapshot.products_detailed,
+        snapshot.anti_bot_blocks,
+        imported
+    );
+    if !material_types.is_empty() {
+        output.push_str(&format!("Material filter: {}\n", material_types.join(", ")));
+    }
+    if snapshot.partial {
+        output.push_str("Refresh quality: partial\n");
+    }
+    if !snapshot.warnings.is_empty() {
+        output.push_str("\nWarnings:\n");
+        output.push_str(&snapshot.warnings.join("\n"));
+        output.push('\n');
     }
 
-    if can_run_direct {
-        let mut direct = Command::new("node");
-        direct.arg(&tsx_cli).arg(&scraper_script);
-        attempts.push(("node tsx".to_string(), direct));
-    }
-
-    if can_run_npm {
-        let mut npm_script = Command::new("npm");
-        npm_script.arg("run").arg("scrape:auto");
-        attempts.push(("npm run scrape:auto".to_string(), npm_script));
-    }
-
-    let output = run_refresh_attempts(attempts, &project_root, db_path, &material_types)?;
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-    if !output.status.success() {
-        return Err(format!(
-            "Catalog refresh failed.\n{}\n{}",
-            stdout.trim(),
-            stderr.trim()
-        ));
-    }
-
-    let imported = parse_imported_count(&stdout).unwrap_or(0);
-    let mut output = format!("{}{}", stdout, stderr);
     let skip_discontinued_reason = if material_types.is_empty() {
         detect_bambu_skip_discontinued_reason(&output, imported)
     } else {
@@ -498,8 +473,8 @@ fn refresh_bambu_catalog_blocking(
 
     Ok(CatalogRefreshResult {
         imported,
-        detected_store: extract_prefixed_line(&stdout, "Detected store:"),
-        detected_collection: extract_prefixed_line(&stdout, "Detected collection:"),
+        detected_store: Some(snapshot.detected_store),
+        detected_collection: Some(snapshot.detected_collection),
         reactivated_count,
         discontinued_count,
         output,
@@ -1293,19 +1268,6 @@ fn main() {
         .expect("error while running tauri application");
 }
 
-fn parse_imported_count(stdout: &str) -> Option<i64> {
-    for line in stdout.lines() {
-        let trimmed = line.trim();
-        if let Some(rest) = trimmed.strip_prefix("Imported ") {
-            let first = rest.split_whitespace().next()?;
-            if let Ok(value) = first.parse::<i64>() {
-                return Some(value);
-            }
-        }
-    }
-    None
-}
-
 fn detect_bambu_skip_discontinued_reason(output: &str, imported: i64) -> Option<String> {
     if imported <= 0 {
         return Some("no rows imported".to_string());
@@ -1335,19 +1297,6 @@ fn detect_bambu_skip_discontinued_reason(output: &str, imported: i64) -> Option<
         return Some("source returned no products".to_string());
     }
 
-    None
-}
-
-fn extract_prefixed_line(stdout: &str, prefix: &str) -> Option<String> {
-    for line in stdout.lines() {
-        let trimmed = line.trim();
-        if let Some(value) = trimmed.strip_prefix(prefix) {
-            let value = value.trim();
-            if !value.is_empty() {
-                return Some(value.to_string());
-            }
-        }
-    }
     None
 }
 
