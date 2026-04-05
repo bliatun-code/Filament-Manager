@@ -428,14 +428,29 @@ fn refresh_bambu_catalog_blocking(
         "IMPORT",
         "Importing Bambu catalog into local database...",
     );
-    let imported = {
+    let (imported, skipped_invalid_entries, skipped_invalid_samples) = {
         let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
         let mut processed = 0i64;
+        let mut skipped_invalid = 0i64;
+        let mut skipped_samples: Vec<String> = Vec::new();
         for entry in &snapshot.entries {
+            let material = entry.material.trim();
+            let filament_name = entry.filament_name.trim();
+            let color_name = entry.color_name.trim();
+            if material.is_empty() || filament_name.is_empty() || color_name.is_empty() {
+                skipped_invalid += 1;
+                if skipped_samples.len() < 8 {
+                    skipped_samples.push(format!(
+                        "material='{}' filament='{}' color='{}' url='{}'",
+                        material, filament_name, color_name, entry.product_url
+                    ));
+                }
+                continue;
+            }
             db.upsert_manual_master(
-                &entry.material,
-                &entry.filament_name,
-                &entry.color_name,
+                material,
+                filament_name,
+                color_name,
                 entry.hex_color.as_deref(),
                 Some(&entry.product_url),
                 Some("Bambu"),
@@ -455,17 +470,18 @@ fn refresh_bambu_catalog_blocking(
                 );
             }
         }
-        processed
+        (processed, skipped_invalid, skipped_samples)
     };
 
     let mut output = format!(
-        "Detected store: {}\nDetected collection: {}\nProducts discovered: {}\nProducts detailed: {}\nAnti-bot blocks: {}\nImported {} entries.\n",
+        "Detected store: {}\nDetected collection: {}\nProducts discovered: {}\nProducts detailed: {}\nAnti-bot blocks: {}\nImported {} entries.\nSkipped invalid entries: {}\n",
         snapshot.detected_store,
         snapshot.detected_collection,
         snapshot.products_discovered,
         snapshot.products_detailed,
         snapshot.anti_bot_blocks,
-        imported
+        imported,
+        skipped_invalid_entries
     );
     if !material_types.is_empty() {
         output.push_str(&format!("Material filter: {}\n", material_types.join(", ")));
@@ -477,6 +493,14 @@ fn refresh_bambu_catalog_blocking(
         output.push_str("\nWarnings:\n");
         output.push_str(&snapshot.warnings.join("\n"));
         output.push('\n');
+    }
+    if !skipped_invalid_samples.is_empty() {
+        output.push_str("\nInvalid rows (sample):\n");
+        for sample in &skipped_invalid_samples {
+            output.push_str("- ");
+            output.push_str(sample);
+            output.push('\n');
+        }
     }
 
     let skip_discontinued_reason = if material_types.is_empty() {
