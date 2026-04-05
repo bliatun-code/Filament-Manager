@@ -574,12 +574,6 @@ export default function DashboardPage({ onNavigate, onOpenLowStock }: DashboardP
             <div className="section-eyebrow">
               {t("dashboard.ownershipSnapshot", "Ownership snapshot")}
             </div>
-            <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-              {t(
-                "dashboard.ownershipSnapshotHint",
-                "Track owned and borrowed-in stock separately without changing the headline totals above.",
-              )}
-            </div>
           </div>
           <span className="rounded-full border border-slate-300 bg-white/85 px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200 dark:shadow-none">
             {overviewSnapshot?.total_borrowed_in_spools ?? 0}{" "}
@@ -619,12 +613,6 @@ export default function DashboardPage({ onNavigate, onOpenLowStock }: DashboardP
               {t("dashboard.borrowedInLowStock", "Borrowed-in low stock")}
             </div>
           </div>
-        </div>
-        <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-          {t(
-            "dashboard.ownershipSplitNote",
-            "Headline totals above still combine all physical spools while ownership-specific summary rules continue to evolve.",
-          )}
         </div>
       </div>
 
