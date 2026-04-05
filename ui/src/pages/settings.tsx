@@ -3098,12 +3098,6 @@ export default function SettingsPage() {
                   <div className="section-eyebrow">
                     {t("settings.backupExportGroup", "Backup and export")}
                   </div>
-                  <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                    {t(
-                      "settings.backupDescription",
-                      "Export a full JSON backup with inventory, history and configured printers.",
-                    )}
-                  </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
                     <button
                       type="button"
@@ -3260,12 +3254,6 @@ export default function SettingsPage() {
                     <span aria-hidden="true">⚠️</span>
                     {t("settings.resetCatalogs", "Reset catalogs")}
                   </div>
-                  <div className="mt-1 text-xs leading-6 text-amber-900 dark:text-amber-200/85">
-                    {t(
-                      "settings.resetCatalogsHint",
-                      "Removes catalog entries not linked to inventory or wishlist, and reactivates remaining discontinued catalog items.",
-                    )}
-                  </div>
                   <button
                     type="button"
                     className="mt-3 w-full rounded-xl border border-amber-400 bg-amber-200 px-4 py-2 text-sm font-semibold text-amber-950 shadow-sm shadow-amber-200/30 disabled:opacity-50 dark:border-amber-400/50 dark:bg-amber-500/20 dark:text-amber-100 dark:shadow-none"
@@ -3302,12 +3290,6 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-2 text-sm font-semibold text-rose-950 dark:text-rose-200">
                     <span aria-hidden="true">🧹</span>
                     {t("settings.resetApp", "Reset app data")}
-                  </div>
-                  <div className="mt-1 text-xs leading-6 text-rose-900 dark:text-rose-200/85">
-                    {t(
-                      "settings.resetHint",
-                      "App reset clears inventory, statistics history, printer assignments and wishlist.",
-                    )}
                   </div>
                   <button
                     type="button"
