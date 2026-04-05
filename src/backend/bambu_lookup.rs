@@ -872,14 +872,14 @@ fn decode_next_payload(html: &str) -> String {
     combined
 }
 
-fn find_matching_bracket(
+fn find_matching_bracket_bytes(
     text: &str,
     start: usize,
-    open_char: char,
-    close_char: char,
+    open_char: u8,
+    close_char: u8,
 ) -> Option<usize> {
-    let chars: Vec<char> = text.chars().collect();
-    if start >= chars.len() {
+    let bytes = text.as_bytes();
+    if start >= bytes.len() {
         return None;
     }
 
@@ -887,16 +887,16 @@ fn find_matching_bracket(
     let mut in_string = false;
     let mut escaped = false;
 
-    for (i, ch) in chars.iter().enumerate().skip(start) {
+    for (i, ch) in bytes.iter().enumerate().skip(start) {
         if escaped {
             escaped = false;
             continue;
         }
-        if *ch == '\\' {
+        if *ch == b'\\' {
             escaped = true;
             continue;
         }
-        if *ch == '"' {
+        if *ch == b'"' {
             in_string = !in_string;
             continue;
         }
@@ -924,14 +924,13 @@ fn extract_product_list(decoded: &str) -> Vec<ProductSummary> {
         return Vec::new();
     };
     let list_start = index + list_start_rel;
-    let Some(list_end) = find_matching_bracket(decoded, list_start, '[', ']') else {
+    let Some(list_end) = find_matching_bracket_bytes(decoded, list_start, b'[', b']') else {
         return Vec::new();
     };
 
-    let chars: Vec<char> = decoded.chars().collect();
-    let list_json: String = chars[list_start..=list_end].iter().collect();
+    let list_json = &decoded[list_start..=list_end];
 
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(&list_json) else {
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(list_json) else {
         return Vec::new();
     };
 
@@ -968,16 +967,14 @@ fn extract_color_options(decoded: &str) -> Vec<ColorOption> {
     let mut index = 0usize;
     let mut options: HashMap<String, Option<String>> = HashMap::new();
 
-    let chars: Vec<char> = decoded.chars().collect();
-
     while let Some(start_rel) = decoded[index..].find(needle) {
         let start = index + start_rel;
-        let Some(end) = find_matching_bracket(decoded, start, '{', '}') else {
+        let Some(end) = find_matching_bracket_bytes(decoded, start, b'{', b'}') else {
             break;
         };
-        let obj_text: String = chars[start..=end].iter().collect();
+        let obj_text = &decoded[start..=end];
 
-        if let Ok(value) = serde_json::from_str::<serde_json::Value>(&obj_text) {
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(obj_text) {
             if let Some(color_name) = value.get("propertyValue").and_then(|entry| entry.as_str()) {
                 let image_url = value
                     .get("colorUrl")
@@ -1193,5 +1190,13 @@ mod tests {
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].name, "PLA Basic - Red");
         assert_eq!(entries[0].seo_code, "pla-basic-red");
+    }
+
+    #[test]
+    fn extract_product_list_handles_utf8_prefix_content() {
+        let decoded = r#"🎉 header {"productList":[{"name":"ABS - Orange","seoCode":"abs-orange","mediaFiles":["https://example.com/b.png"]}]}"#;
+        let entries = extract_product_list(decoded);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].name, "ABS - Orange");
     }
 }
