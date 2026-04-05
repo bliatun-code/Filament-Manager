@@ -1720,17 +1720,17 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       resetSectionTitle: "Nullstilling og opprydding",
       resetCatalogs: "Nullstill kataloger",
       resetCatalogsHint:
-        "Fjerner katalogoppføringer som ikke er koblet til lager eller ønskeliste, og reaktiverer gjenværende utgåtte katalogoppføringer.",
+        "Rydder katalogen ved å fjerne ubrukte oppføringer og reaktivere relevante utgåtte oppføringer.",
       resetCatalogsList1:
-        "Beholder katalogoppføringer som er koblet til filamenter i lager eller ønskeliste.",
-      resetCatalogsList2: "Fjerner kun ubrukte katalogoppføringer.",
-      resetCatalogsList3: "Reaktiverer gjenværende utgåtte katalogoppføringer.",
+        "Beholder oppføringer som er koblet til lager eller ønskeliste.",
+      resetCatalogsList2: "Fjerner kun oppføringer uten koblinger.",
+      resetCatalogsList3: "Reaktiverer relevante utgåtte oppføringer.",
       resetApp: "Nullstill appdata",
       resetHint:
-        "App-nullstilling sletter lager, statistikk, printerkoblinger, ønskeliste og parede trusted-LAN-nettlesere.",
-      resetAppList1: "Sletter filamenter i lageret og livssyklushistorikk for dem.",
+        "Nullstiller appens driftsdata, mens katalog og swatch-data beholdes.",
+      resetAppList1: "Sletter filamenter i lageret og livssyklushistorikk.",
       resetAppList2:
-        "Sletter printerkoblinger, printstatistikk, ønskeliste og parede trusted-LAN-nettleserøkter.",
+        "Sletter printerkoblinger, printstatistikk, ønskeliste og trusted-LAN-paringer.",
       resetAppList3: "Beholder hovedkatalogoppføringer og swatch-data.",
       addedPrinter: "La til printer",
       updatedPrinter: "Oppdaterte printer",
