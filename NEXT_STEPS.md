@@ -2,6 +2,17 @@
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current browser baseline is trusted-LAN-only, with `Storage` as the browser label for desktop `Inventory` / `Lager` and `Add spool` as the browser intake action.
 
+## v0.1.0 Release Readiness (2026-04-05)
+- Release baseline:
+  - `npm run smoke` passes on current `main`
+  - trusted-LAN reset now clears paired browsers/pairings
+  - QR detail + label + A4 print flows are in place
+- Remaining pre/post-release debt:
+  - split oversized frontend `settings` chunk (>500 kB warning)
+  - resolve 2 moderate GitHub Dependabot vulnerabilities
+  - complete manual RC visual checks in:
+    - `/Users/bliatun/Documents/Codex/bambu-filament-manager/UI_RELEASE_CANDIDATE_CHECKLIST.md`
+
 ## Current Direction
 - Trusted-LAN is now the only supported browser-companion path.
 - The desktop app plus SQLite remain the only source of truth.

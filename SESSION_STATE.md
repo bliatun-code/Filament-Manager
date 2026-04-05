@@ -1073,3 +1073,19 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - `/Users/bliatun/Documents/Codex/bambu-filament-manager/package.json`
 - Validation:
   - `cd /Users/bliatun/Documents/Codex/bambu-filament-manager && npm run smoke` passed
+
+## v0.1.0 Release Prep Pass (2026-04-05)
+- Performed a release-readiness audit and smoke validation on `main`.
+- Latest polish/fixes now included in the release baseline:
+  - reset flow now clears trusted-LAN pairings and paired browsers
+  - reset-copy/settings maintenance text and card ordering were cleaned up for consistency
+- Validation:
+  - `cd /Users/bliatun/Documents/Codex/bambu-filament-manager && npm run smoke` passed
+- Current known technical debt carried into/after `v0.1.0`:
+  - frontend bundle warning: `settings` chunk remains above 500 kB minified warning threshold
+  - repository security hygiene: GitHub reports 2 moderate Dependabot vulnerabilities
+  - manual visual RC checks still required for specific real-device/macOS behaviors (see `UI_RELEASE_CANDIDATE_CHECKLIST.md`)
+- Release docs updated:
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/RELEASE_NOTES_v0.1.0.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/UI_RELEASE_CANDIDATE_CHECKLIST.md`
+  - `/Users/bliatun/Documents/Codex/bambu-filament-manager/NEXT_STEPS.md`

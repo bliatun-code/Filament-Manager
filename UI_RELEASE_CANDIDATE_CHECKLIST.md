@@ -1,6 +1,6 @@
 # UI Release Candidate Checklist (Desktop/Mac)
 
-Last updated: 2026-04-04
+Last updated: 2026-04-05
 Scope: Desktop app UI only (not browser/trusted-LAN shell)
 
 Status legend:
@@ -60,3 +60,9 @@ Status legend:
 3. Switch to `Auto` and verify live transitions while at least one modal is open.
 4. Test one fullscreen pass on `Dashboard`, `Inventory`, `Loans`, `Statistics`.
 5. Confirm no visual regressions in `Add filament`, `Loan out`, `Update weight`, `Add printer` dialogs.
+
+## v0.1.0 Gate Snapshot (2026-04-05)
+- Automated baseline:
+  - `npm run smoke` PASS
+- Still manual:
+  - every `NEEDS CHECK` item above remains a real-device/manual gate before broad release rollout
