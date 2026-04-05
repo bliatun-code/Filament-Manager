@@ -230,12 +230,6 @@ export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
           <div className="section-eyebrow">
             {t("dashboard.recentActivity", "Recent Activity")}
           </div>
-          <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            {t(
-              "dashboard.activityHint",
-              "Open loans and recent printer usage appear here first.",
-            )}
-          </div>
         </div>
         <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200 dark:shadow-none">
           {itemCount}
@@ -311,12 +305,6 @@ export function BadgePanel({ badges }: { badges: Badge[] }) {
         <div>
           <div className="section-eyebrow">
             {t("dashboard.achievements", "Achievements")}
-          </div>
-          <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            {t(
-              "dashboard.achievementsHint",
-              "Small progress goals help keep tracking and printer usage consistent.",
-            )}
           </div>
         </div>
         <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200 dark:shadow-none">
