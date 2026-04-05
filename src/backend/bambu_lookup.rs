@@ -975,7 +975,12 @@ fn extract_color_options(decoded: &str) -> Vec<ColorOption> {
         let obj_text = &decoded[start..=end];
 
         if let Ok(value) = serde_json::from_str::<serde_json::Value>(obj_text) {
-            if let Some(color_name) = value.get("propertyValue").and_then(|entry| entry.as_str()) {
+            if let Some(color_name_raw) = value.get("propertyValue").and_then(|entry| entry.as_str()) {
+                let color_name = color_name_raw.trim();
+                if color_name.is_empty() {
+                    index = end.saturating_add(1);
+                    continue;
+                }
                 let image_url = value
                     .get("colorUrl")
                     .and_then(|entry| entry.as_str())

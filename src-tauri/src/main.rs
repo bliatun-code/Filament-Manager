@@ -1360,13 +1360,16 @@ fn detect_bambu_skip_discontinued_reason(output: &str, imported: i64) -> Option<
         "access denied",
         "captcha",
         "cloudflare",
-        "refresh quality: partial",
     ];
     if anti_bot_signals
         .iter()
         .any(|signal| lowered.contains(signal))
     {
         return Some("anti-bot/rate-limit responses detected".to_string());
+    }
+
+    if lowered.contains("refresh quality: partial") {
+        return Some("refresh had warnings/errors from source".to_string());
     }
 
     if lowered.contains("scraper warning:") {
