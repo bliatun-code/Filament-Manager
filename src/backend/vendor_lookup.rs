@@ -119,6 +119,7 @@ pub fn refresh_esun_catalog_snapshot(
     if !warnings.is_empty() {
         fallback.warnings.splice(0..0, warnings);
     }
+    fallback.warnings = summarize_esun_warnings(fallback.warnings);
 
     Ok(fallback)
 }
@@ -504,6 +505,9 @@ fn refresh_esun_catalog_snapshot_from_site(
                 if page == 1 {
                     return Err(format!("Could not load fallback listing page: {error}"));
                 }
+                if is_not_found_lookup_error(&error) {
+                    break;
+                }
                 warnings.push(format!("Stopped pagination at page {page}: {error}"));
                 break;
             }
@@ -569,10 +573,42 @@ fn refresh_esun_catalog_snapshot_from_site(
         handles_found: product_urls.len() as i64,
         products_processed,
         skipped_non_filament,
-        warnings,
+        warnings: summarize_esun_warnings(warnings),
         detected_store: ESUN_SITE_BASE_URL.to_string(),
         detected_collection: "/filaments/page/{n}/".to_string(),
     })
+}
+
+fn summarize_esun_warnings(warnings: Vec<String>) -> Vec<String> {
+    if warnings.is_empty() {
+        return warnings;
+    }
+
+    let mut deduped = Vec::new();
+    let mut seen = HashSet::new();
+    let mut anti_bot_detail_count = 0usize;
+
+    for warning in warnings {
+        let trimmed = warning.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if trimmed.contains("Lookup blocked by anti-bot protection") {
+            anti_bot_detail_count += 1;
+            continue;
+        }
+        if seen.insert(trimmed.to_string()) {
+            deduped.push(trimmed.to_string());
+        }
+    }
+
+    if anti_bot_detail_count > 0 {
+        deduped.push(format!(
+            "Suppressed {anti_bot_detail_count} anti-bot detail warnings."
+        ));
+    }
+
+    deduped
 }
 
 fn append_entries_from_product_detail(
@@ -999,6 +1035,10 @@ fn is_anti_bot_warning(value: &str) -> bool {
         || lower.contains("429 too many requests")
         || lower.contains("just a moment")
         || lower.contains("cf-mitigated")
+}
+
+fn is_not_found_lookup_error(value: &str) -> bool {
+    value.to_lowercase().contains("404 not found")
 }
 
 fn find_matching_bracket(text: &str, start: usize, open: char, close: char) -> Option<usize> {
