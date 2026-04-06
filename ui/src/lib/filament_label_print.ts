@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { formatSpoolReference } from "./display_format";
 
 type QrEncoder = {
   toDataURL(text: string, options?: Record<string, unknown>): Promise<string>;
@@ -52,6 +53,7 @@ export async function buildFilamentLabelQrDataUrl(
 
 export function buildFilamentLabelHtml(input: FilamentLabelHtmlInput): string {
   const filamentTitle = [input.colorName, input.filamentName].filter(Boolean)[0] || input.filamentName;
+  const referenceLabel = formatSpoolReference(input.reference);
   return `
 <html>
   <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 20px; color: #0f172a;">
@@ -67,7 +69,7 @@ export function buildFilamentLabelHtml(input: FilamentLabelHtmlInput): string {
               ? `<div><strong>${escapeHtml(input.labels.color)}:</strong> ${escapeHtml(input.colorName)}</div>`
               : ""
           }
-          <div><strong>${escapeHtml(input.labels.reference)}:</strong> ${escapeHtml(input.reference)}</div>
+          <div><strong>${escapeHtml(input.labels.reference)}:</strong> ${escapeHtml(referenceLabel)}</div>
         </div>
       </div>
     </div>

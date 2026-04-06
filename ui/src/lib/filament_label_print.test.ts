@@ -49,7 +49,29 @@ test("buildFilamentLabelHtml includes QR image and required filament details", (
   assert.match(html, /Vendor:\<\/strong\> Bambu/);
   assert.match(html, /Filament:\<\/strong\> Basic/);
   assert.match(html, /Color:\<\/strong\> White/);
-  assert.match(html, /Reference:\<\/strong\> QR-22/);
+  assert.match(html, /Reference:\<\/strong\> #QR-22/);
   assert.doesNotMatch(html, /Material:\<\/strong\>/);
   assert.doesNotMatch(html, /QR payload:\<\/strong\>/);
+});
+
+test("buildFilamentLabelHtml formats spool id reference in human-friendly style", () => {
+  const html = buildFilamentLabelHtml({
+    vendor: "Bambu",
+    material: "PLA",
+    filamentName: "Basic",
+    colorName: "White",
+    reference: "spool_177531758936",
+    qrPayload: "v1:spool_177531758936",
+    qrDataUrl: "data:image/png;base64,abc123",
+    labels: {
+      vendor: "Vendor",
+      material: "Material",
+      filament: "Filament",
+      color: "Color",
+      reference: "Reference",
+      qrPayload: "QR payload",
+    },
+  });
+
+  assert.match(html, /Reference:\<\/strong\> #758936/);
 });

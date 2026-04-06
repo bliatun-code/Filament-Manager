@@ -23,6 +23,18 @@ export function compactReferenceLabel(
   return `${prefix}${normalized.slice(0, 12)}…${normalized.slice(-6)}`;
 }
 
+export function formatSpoolReference(valueRaw?: string | null): string {
+  const value = normalizeDisplayToken(valueRaw);
+  if (!value) {
+    return "—";
+  }
+  const normalized = value.replace(/^spool_/, "");
+  if (normalized.length <= 6) {
+    return `#${normalized}`;
+  }
+  return `#${normalized.slice(-6)}`;
+}
+
 export function formatPlacementLabel(
   t: TranslateFn,
   locationRaw?: string | null,

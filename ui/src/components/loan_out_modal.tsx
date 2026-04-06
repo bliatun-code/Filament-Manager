@@ -3,7 +3,7 @@ import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
 import { ModalHeader, modalPanelClassName } from "./modal_chrome";
 import { VendorBadge } from "./vendor_badge";
-import { compactReferenceLabel, formatPlacementLabel } from "../lib/display_format";
+import { formatPlacementLabel, formatSpoolReference } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import {
@@ -279,7 +279,7 @@ export function LoanOutModal({
     ? formatPlacementLabel(t, selectedSpool.location)
     : null;
   const selectedReferenceLabel = selectedSpool
-    ? compactReferenceLabel(selectedSpool.id)
+    ? formatSpoolReference(selectedSpool.id)
     : null;
 
   async function handleSubmit() {
@@ -386,7 +386,7 @@ export function LoanOutModal({
                   {spools.map((spool) => {
                     const isActive = selectedSpool?.id === spool.id;
                     const placementLabel = formatPlacementLabel(t, spool.location);
-                    const referenceLabel = compactReferenceLabel(spool.id);
+                    const referenceLabel = formatSpoolReference(spool.id);
                     return (
                       <button
                         key={spool.id}

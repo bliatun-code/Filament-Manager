@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+import { formatSpoolReference } from "./display_format";
 
 export type InventoryOverviewPrintRow = {
   reference: string;
@@ -366,7 +367,7 @@ export async function buildInventoryOverviewPrintPdfBase64(
             fontBold,
             fontRegular,
             labels.reference,
-            safeText(row.reference),
+            formatSpoolReference(safeText(row.reference)),
             textX,
             titleY - 62,
             detailWidth,
