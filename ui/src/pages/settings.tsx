@@ -7,6 +7,7 @@ import {
   exportFullBackupJson,
   exportInventoryCsv,
   exportInventoryJson,
+  getAppVersion,
   getPrinterSettings,
   getTrustedLanCompanionStatus,
   importDataFile,
@@ -346,6 +347,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => getThemeMode());
+  const [appVersion, setAppVersion] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [trustedLanStatus, setTrustedLanStatus] = useState<TrustedLanCompanionStatus | null>(
     null,
@@ -421,6 +423,32 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!tauri) {
+      setAppVersion("dev-web");
+      return () => {
+        cancelled = true;
+      };
+    }
+    (async () => {
+      try {
+        const version = await getAppVersion();
+        if (!cancelled) {
+          setAppVersion(version);
+        }
+      } catch (versionError) {
+        console.error(versionError);
+        if (!cancelled) {
+          setAppVersion(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tauri]);
 
   const sortedPrinters = useMemo(() => {
     const collator = new Intl.Collator(locale, {
@@ -2115,6 +2143,18 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
         {activeTab === "GENERAL" ? (
           <>
+            <section className="surface-card space-y-3">
+              <div className="section-eyebrow">
+                {t("settings.program", "Program")}
+              </div>
+              <div className="text-sm text-slate-700 dark:text-slate-300">
+                {t("settings.version", "Version")}:{" "}
+                <span className="font-semibold text-slate-900 dark:text-slate-100">
+                  {appVersion?.trim() || t("common.unknown", "Unknown")}
+                </span>
+              </div>
+            </section>
+
             <section className="surface-card space-y-4">
               <div className="section-eyebrow">
                 {t("settings.appearance", "Appearance")}

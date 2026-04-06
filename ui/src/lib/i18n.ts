@@ -614,6 +614,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       tabCatalog: "Filament catalogue",
       tabSwatch: "Swatch quality",
       tabMaintenance: "Program maintenance",
+      program: "Program",
+      version: "Version",
       language: "Language",
       languageHint: "Choose app language for all main views.",
       appearance: "Appearance",
@@ -1538,6 +1540,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       tabCatalog: "Filamentkatalog",
       tabSwatch: "Swatch-kvalitet",
       tabMaintenance: "Programvedlikehold",
+      program: "Program",
+      version: "Versjon",
       language: "Språk",
       languageHint:
         "Velg appspråk for alle hovedvisninger.",

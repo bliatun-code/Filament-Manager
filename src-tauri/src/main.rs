@@ -196,6 +196,11 @@ fn set_dock_icon_theme(app: tauri::AppHandle, theme: String) -> Result<(), Strin
 }
 
 #[tauri::command]
+fn get_app_version(app: tauri::AppHandle) -> Result<String, String> {
+    Ok(app.package_info().version.to_string())
+}
+
+#[tauri::command]
 fn assign_printer_slot(
     state: tauri::State<'_, AppState>,
     input: AssignPrinterSlotInput,
@@ -1305,6 +1310,7 @@ fn main() {
             delete_printer,
             set_active_printer,
             set_dock_icon_theme,
+            get_app_version,
             assign_printer_slot,
             record_print_usage,
             update_spool_weight,

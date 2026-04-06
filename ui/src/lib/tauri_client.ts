@@ -599,6 +599,10 @@ export async function setActivePrinter(printerId?: string | null) {
   return invoke<void>("set_active_printer", { printerId: printerId ?? null });
 }
 
+export async function getAppVersion() {
+  return invoke<string>("get_app_version");
+}
+
 export async function assignPrinterSlot(input: AssignPrinterSlotInput) {
   return invoke<void>("assign_printer_slot", { input });
 }
