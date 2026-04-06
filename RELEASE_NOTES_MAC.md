@@ -1,9 +1,19 @@
 Filament Manager - Installasjon og data (macOS)
 
+Nedlasting
+- Siste release: https://github.com/bliatun-code/Filament-Manager/releases/latest
+- Gjeldende release: v0.6.0
+
 Installering
 1. Apne .dmg-filen.
 2. Dra "Filament Manager.app" til Applications.
 3. Start appen fra Applications.
+
+Hvis macOS sier at appen er "skadet" eller blokkerer apning
+1. Prove hoyreklikk pa appen i Applications -> Open.
+2. Hvis den fortsatt blokkeres, kjør:
+   xattr -dr com.apple.quarantine "/Applications/Filament Manager.app"
+3. Start appen pa nytt.
 
 Forste oppstart
 - Appen oppretter automatisk lokal database ved forste start.

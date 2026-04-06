@@ -29,6 +29,21 @@ npm install
 cd ui && npm install
 ```
 
+## macOS App Download
+
+- Latest release (DMG): https://github.com/bliatun-code/Filament-Manager/releases/latest
+- Current stable: `v0.6.0`
+
+If macOS blocks first launch of an unsigned build downloaded from GitHub:
+
+1. Move app to `Applications` from the DMG.
+2. Try `Right click -> Open` once.
+3. If still blocked, run:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Filament Manager.app"
+```
+
 ## Health Check
 
 ```bash
