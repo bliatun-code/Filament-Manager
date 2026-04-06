@@ -2200,7 +2200,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
             <section className="surface-card xl:col-span-2">
               <div className="relative overflow-hidden rounded-[28px] border border-slate-200/85 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(241,246,252,0.96)_58%,_rgba(232,239,247,0.92))] p-5 text-slate-950 shadow-[0_28px_80px_rgba(148,163,184,0.14)] dark:border-slate-700/70 dark:bg-[linear-gradient(180deg,_rgba(15,23,42,0.98),_rgba(15,23,42,0.94)_52%,_rgba(30,41,59,0.9))] dark:text-white dark:shadow-none">
                 <div className="relative space-y-4">
-                  <div className="grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_320px]">
+                  <div className="space-y-3">
                     <div className="min-w-0 flex-1 space-y-3">
                       <div className="max-w-2xl">
                         <div className="section-eyebrow text-slate-600 dark:text-slate-300">
@@ -2232,6 +2232,51 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                       </div>
                       <div className="max-w-2xl text-sm leading-6 text-slate-700 dark:text-slate-300">
                         {trustedLanCompanionModel.statusHint}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_320px]">
+                    <div className="space-y-3">
+                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
+                        <SettingsMetricTile
+                          label={t("settings.trustedLanInterface", "Selected interface")}
+                          value={trustedLanCompanionModel.interfaceValue}
+                          className="border-slate-200/80 bg-white/82 dark:border-white/12 dark:bg-white/[0.07]"
+                        />
+                        <SettingsMetricTile
+                          label={t("settings.trustedLanPort", "Port")}
+                          value={`:${trustedLanCompanionModel.portValue}`}
+                          className="border-slate-200/80 bg-white/82 dark:border-white/12 dark:bg-white/[0.07]"
+                        />
+                      </div>
+
+                      {trustedLanStatus?.shell_url ? (
+                        <div className="rounded-2xl border border-slate-200/80 bg-white/82 px-4 py-3 shadow-sm shadow-slate-200/20 dark:border-white/12 dark:bg-white/[0.07] dark:shadow-none">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                            {t("settings.trustedLanShellUrl", "LAN URL")}
+                          </div>
+                          <div className="mt-2 break-all text-sm font-medium text-slate-800 dark:text-slate-100">
+                            {trustedLanCompanionModel.shellUrlValue}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      <div className="flex items-start gap-3 rounded-2xl border border-rose-200/80 bg-rose-50/80 px-4 py-3 text-sm text-rose-900 shadow-sm shadow-rose-200/25 dark:border-rose-300/20 dark:bg-rose-500/10 dark:text-rose-50 dark:shadow-none">
+                        <span className="mt-1 h-2.5 w-2.5 rounded-full bg-rose-500 shadow-[0_0_16px_rgba(251,113,133,0.35)] dark:bg-rose-300 dark:shadow-[0_0_16px_rgba(253,164,175,0.7)]" />
+                        <div className="leading-6">
+                          <span className="font-semibold">
+                            {t(
+                              "settings.trustedLanWarningTitle",
+                              "Trusted-LAN traffic is not encrypted",
+                            )}
+                            .
+                          </span>{" "}
+                          {t(
+                            "settings.trustedLanWarningBody",
+                            "Use it only on a network you trust. Pairing secures access, but anyone on that network can still read the traffic.",
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -2287,114 +2332,73 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                             : t("settings.trustedLanEditNetwork", "Edit network")}
                         </button>
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
-                    <SettingsMetricTile
-                      label={t("settings.trustedLanInterface", "Selected interface")}
-                      value={trustedLanCompanionModel.interfaceValue}
-                      className="border-slate-200/80 bg-white/82 dark:border-white/12 dark:bg-white/[0.07]"
-                    />
-                    <SettingsMetricTile
-                      label={t("settings.trustedLanPort", "Port")}
-                      value={`:${trustedLanCompanionModel.portValue}`}
-                      className="border-slate-200/80 bg-white/82 dark:border-white/12 dark:bg-white/[0.07]"
-                    />
-                  </div>
+                      {showTrustedLanNetworkEditor ? (
+                        <div className="mt-3 rounded-2xl border border-slate-200/80 bg-white/78 px-4 py-4 shadow-sm shadow-slate-200/20 dark:border-white/12 dark:bg-slate-950/35 dark:shadow-none">
+                          <div className="grid gap-4">
+                            <label className="block">
+                              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
+                                {t("settings.trustedLanInterfaceSelect", "Private interface")}
+                              </div>
+                              <select
+                                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
+                                value={trustedLanInterfaceAddressDraft}
+                                disabled={trustedLanCompanionModel.configActionDisabled}
+                                onChange={(event) => setTrustedLanInterfaceAddressDraft(event.target.value)}
+                              >
+                                {trustedLanInterfaces.length === 0 ? (
+                                  <option value="">
+                                    {t(
+                                      "settings.trustedLanNoInterfaces",
+                                      "No private IPv4 interfaces detected",
+                                    )}
+                                  </option>
+                                ) : null}
+                                {trustedLanInterfaces.map((option) => (
+                                  <option key={`${option.name}-${option.address}`} value={option.address}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
 
-                  {trustedLanStatus?.shell_url ? (
-                    <div className="rounded-2xl border border-slate-200/80 bg-white/82 px-4 py-3 shadow-sm shadow-slate-200/20 dark:border-white/12 dark:bg-white/[0.07] dark:shadow-none">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                        {t("settings.trustedLanShellUrl", "LAN URL")}
-                      </div>
-                      <div className="mt-2 break-all text-sm font-medium text-slate-800 dark:text-slate-100">
-                        {trustedLanCompanionModel.shellUrlValue}
-                      </div>
-                    </div>
-                  ) : null}
+                            <div className="grid gap-3 sm:grid-cols-[140px_auto] sm:items-end">
+                              <label className="block">
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
+                                  {t("settings.trustedLanPortInput", "Listener port")}
+                                </div>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={65535}
+                                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
+                                  value={trustedLanPortDraft}
+                                  disabled={trustedLanCompanionModel.configActionDisabled}
+                                  onChange={(event) => setTrustedLanPortDraft(event.target.value)}
+                                />
+                              </label>
 
-                  {showTrustedLanNetworkEditor ? (
-                    <div className="rounded-2xl border border-slate-200/80 bg-white/78 px-4 py-4 shadow-sm shadow-slate-200/20 dark:border-white/12 dark:bg-slate-950/35 dark:shadow-none">
-                      <div className="grid gap-4">
-                        <label className="block">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
-                            {t("settings.trustedLanInterfaceSelect", "Private interface")}
-                          </div>
-                          <select
-                            className="mt-2 w-full rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
-                            value={trustedLanInterfaceAddressDraft}
-                            disabled={trustedLanCompanionModel.configActionDisabled}
-                            onChange={(event) => setTrustedLanInterfaceAddressDraft(event.target.value)}
-                          >
-                            {trustedLanInterfaces.length === 0 ? (
-                              <option value="">
-                                {t(
-                                  "settings.trustedLanNoInterfaces",
-                                  "No private IPv4 interfaces detected",
-                                )}
-                              </option>
-                            ) : null}
-                            {trustedLanInterfaces.map((option) => (
-                              <option key={`${option.name}-${option.address}`} value={option.address}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-
-                        <div className="grid gap-3 sm:grid-cols-[140px_auto] sm:items-end">
-                          <label className="block">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
-                              {t("settings.trustedLanPortInput", "Listener port")}
+                              <button
+                                type="button"
+                                className={settingsActionButtonClass("accent")}
+                                disabled={
+                                  trustedLanCompanionModel.configActionDisabled || !trustedLanNetworkDirty
+                                }
+                                onClick={() => void handleSaveTrustedLanConfig()}
+                              >
+                                {t("settings.trustedLanSave", "Save network")}
+                              </button>
                             </div>
-                            <input
-                              type="number"
-                              min={1}
-                              max={65535}
-                              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
-                              value={trustedLanPortDraft}
-                              disabled={trustedLanCompanionModel.configActionDisabled}
-                              onChange={(event) => setTrustedLanPortDraft(event.target.value)}
-                            />
-                          </label>
 
-                          <button
-                            type="button"
-                            className={settingsActionButtonClass("accent")}
-                            disabled={
-                              trustedLanCompanionModel.configActionDisabled || !trustedLanNetworkDirty
-                            }
-                            onClick={() => void handleSaveTrustedLanConfig()}
-                          >
-                            {t("settings.trustedLanSave", "Save network")}
-                          </button>
+                            <div className="text-xs leading-5 text-slate-600 dark:text-slate-300">
+                              {t(
+                                "settings.trustedLanBindBody",
+                                "Binds to one explicit private interface. Never 0.0.0.0.",
+                              )}
+                            </div>
+                          </div>
                         </div>
-
-                        <div className="text-xs leading-5 text-slate-600 dark:text-slate-300">
-                          {t(
-                            "settings.trustedLanBindBody",
-                            "Binds to one explicit private interface. Never 0.0.0.0.",
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <div className="flex items-start gap-3 rounded-2xl border border-rose-200/80 bg-rose-50/80 px-4 py-3 text-sm text-rose-900 shadow-sm shadow-rose-200/25 dark:border-rose-300/20 dark:bg-rose-500/10 dark:text-rose-50 dark:shadow-none">
-                    <span className="mt-1 h-2.5 w-2.5 rounded-full bg-rose-500 shadow-[0_0_16px_rgba(251,113,133,0.35)] dark:bg-rose-300 dark:shadow-[0_0_16px_rgba(253,164,175,0.7)]" />
-                    <div className="leading-6">
-                      <span className="font-semibold">
-                        {t(
-                          "settings.trustedLanWarningTitle",
-                          "Trusted-LAN traffic is not encrypted",
-                        )}
-                        .
-                      </span>{" "}
-                      {t(
-                        "settings.trustedLanWarningBody",
-                        "Use it only on a network you trust. Pairing secures access, but anyone on that network can still read the traffic.",
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </div>
