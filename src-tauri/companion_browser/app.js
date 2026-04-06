@@ -329,6 +329,7 @@ const companionMutations = createCompanionMutations({
 });
 const {
   submitWeightUpdate,
+  submitTareWeightUpdate,
   submitPrinterSlotAssignment,
   submitSpoolLoan,
   submitSpoolLoanReturn,
@@ -437,6 +438,7 @@ installCompanionDomEvents({
   render,
   setBorrowedInDraftField,
   submitWeightUpdate,
+  submitTareWeightUpdate,
   submitSpoolLoan,
   submitSpoolLoanReturn,
   submitManualSpoolRegistration,

@@ -157,6 +157,10 @@ impl CompanionService {
         self.with_inventory(|engine| engine.update_spool_weight(spool_id, grams, scale_id, source))
     }
 
+    pub fn update_spool_tare_weight(&self, spool_id: &str, grams: i64) -> InventoryResult<()> {
+        self.with_inventory(|engine| engine.update_spool_tare_weight(spool_id, grams))
+    }
+
     pub fn create_manual_spool(&self, input: CreateManualSpoolInput) -> InventoryResult<()> {
         self.with_inventory(|engine| engine.create_manual_spool(input))
     }

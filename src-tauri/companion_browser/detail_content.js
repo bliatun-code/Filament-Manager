@@ -2,6 +2,25 @@ import { t } from "./companion_i18n.js";
 import { formatInventoryDisplayTitle, formatRollReference, formatStatusLabel } from "./formatters.js";
 import { styleObjectToString, swatchCssVars } from "./companion_theme.js";
 
+function defaultSpoolTareWeightForVendor(vendor) {
+  const normalized = String(vendor || "").trim().toLowerCase();
+  if (normalized.includes("bambu")) {
+    return 250;
+  }
+  if (normalized.includes("esun")) {
+    return 224;
+  }
+  return 0;
+}
+
+function resolveSpoolTareWeight(spool, master) {
+  const explicit = spool?.spool_tare_weight_g;
+  if (Number.isFinite(explicit)) {
+    return Math.max(0, Math.round(explicit));
+  }
+  return defaultSpoolTareWeightForVendor(master?.vendor);
+}
+
 export function renderSelectedSpoolDetailBody(options) {
   const {
     selectedSpool,
@@ -56,6 +75,10 @@ export function renderSelectedSpoolDetailBody(options) {
     selectedSpool.master.color_name,
   );
   const detailReference = formatRollReference(selectedSpool.spool);
+  const detailTareWeight = resolveSpoolTareWeight(selectedSpool.spool, selectedSpool.master);
+  const defaultMeasuredWeight =
+    (selectedSpool?.spool?.remaining_g ?? selectedSpool?.spool?.current_weight_g ?? 0) +
+    detailTareWeight;
   const detailQrImageSrc = `/api/v1/spools/${encodeURIComponent(selectedSpool.spool.id)}/qr-image.svg`;
   const detailAssignmentLabel = selectedAssignment
     ? `${selectedAssignment.printerName} · ${t(locale, "printers.slot", "Slot")} ${selectedAssignment.slotIndex}`
@@ -126,11 +149,24 @@ export function renderSelectedSpoolDetailBody(options) {
           >
             <input type="hidden" name="spool-id" value="${escapeHtml(selectedSpool.spool.id)}" />
             <label class="stack detail-field">
-              <span class="muted">${escapeHtml(t(locale, "detail.weightGrams", "Weight (g)"))}</span>
-              <input class="weight-input" name="grams" type="number" min="0" step="1" value="${escapeHtml(selectedSpool.spool.remaining_g ?? selectedSpool.spool.current_weight_g ?? "")}" />
+              <span class="muted">${escapeHtml(t(locale, "detail.measuredWeightGrams", "Measured total weight (g)"))}</span>
+              <input class="weight-input" name="grams" type="number" min="0" step="1" value="${escapeHtml(defaultMeasuredWeight)}" />
             </label>
             <div class="detail-actions form-action-block">
               <button class="primary-button" type="submit" ${busy ? "disabled" : ""}>${escapeHtml(t(locale, "detail.saveWeight", "Save weight"))}</button>
+            </div>
+          </form>
+          <form
+            class="stack detail-form detail-quick-form ${compactDetail ? "detail-quick-form-compact" : "detail-quick-form-inline"}"
+            data-action="update-tare-weight-form"
+          >
+            <input type="hidden" name="spool-id" value="${escapeHtml(selectedSpool.spool.id)}" />
+            <label class="stack detail-field">
+              <span class="muted">${escapeHtml(t(locale, "detail.emptySpoolWeight", "Empty spool weight (g)"))}</span>
+              <input class="weight-input" name="tare-grams" type="number" min="0" step="1" value="${escapeHtml(detailTareWeight)}" />
+            </label>
+            <div class="detail-actions form-action-block">
+              <button class="primary-button" type="submit" ${busy ? "disabled" : ""}>${escapeHtml(t(locale, "detail.saveEmptySpoolWeight", "Save empty spool weight"))}</button>
             </div>
           </form>
         </div>

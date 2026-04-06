@@ -4,6 +4,14 @@ export function routeCompanionSubmitAction(action, data, handlers) {
     return true;
   }
 
+  if (action === "update-tare-weight-form") {
+    handlers.submitTareWeightUpdate(
+      String(data.get("spool-id") || ""),
+      String(data.get("tare-grams") || ""),
+    );
+    return true;
+  }
+
   if (action === "loan-spool-form") {
     handlers.submitSpoolLoan(
       String(data.get("spool-id") || ""),

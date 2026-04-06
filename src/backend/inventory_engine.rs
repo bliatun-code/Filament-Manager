@@ -261,6 +261,7 @@ impl InventoryEngine {
             initial_weight_g: input.initial_weight_g,
             current_weight_g: input.current_weight_g,
             remaining_g,
+            spool_tare_weight_g: None,
             location_id: input.location_id,
             purchase_date: input.purchase_date,
             purchase_price: input.purchase_price,
@@ -344,6 +345,7 @@ impl InventoryEngine {
             initial_weight_g: initial_weight,
             current_weight_g: initial_weight,
             remaining_g: initial_weight,
+            spool_tare_weight_g: default_spool_tare_for_vendor(Some(vendor_label.as_str())),
             location_id: None,
             purchase_date: None,
             purchase_price: None,
@@ -435,19 +437,53 @@ impl InventoryEngine {
         scale_id: Option<&str>,
         source: WeightSource,
     ) -> InventoryResult<()> {
-        let remaining_g = Some(grams);
+        let spool_with_master = self
+            .db
+            .get_spool_with_master_by_id(spool_id)?
+            .ok_or(InventoryError::NotFound)?;
+        let tare_g = resolve_spool_tare_weight_g(
+            spool_with_master.spool.spool_tare_weight_g,
+            Some(spool_with_master.master.vendor.as_str()),
+        );
+        let filament_grams = (grams - tare_g).max(0);
+        let remaining_g = Some(filament_grams);
         let effective_scale_id = scale_id.unwrap_or("manual-entry");
         self.db
             .ensure_scale(effective_scale_id, "Manual Entry", "MANUAL")?;
         self.db
-            .update_spool_weight(spool_id, Some(grams), remaining_g)?;
+            .update_spool_weight(spool_id, Some(filament_grams), remaining_g)?;
         self.db
-            .insert_weight_reading(effective_scale_id, spool_id, grams, source.as_str())?;
+            .insert_weight_reading(
+                effective_scale_id,
+                spool_id,
+                filament_grams,
+                source.as_str(),
+            )?;
         self.log_spool_event(
             spool_id,
             "WEIGHT_UPDATED",
-            json!({ "grams": grams, "source": source.as_str() }),
+            json!({
+                "measured_grams": grams,
+                "tare_weight_g": tare_g,
+                "grams": filament_grams,
+                "source": source.as_str()
+            }),
         )
+    }
+
+    pub fn update_spool_tare_weight(&self, spool_id: &str, grams: i64) -> InventoryResult<()> {
+        if grams < 0 {
+            return Err(InventoryError::Db(
+                "spool tare weight must be zero or greater".to_string(),
+            ));
+        }
+        self.db.update_spool_tare_weight(spool_id, Some(grams))?;
+        self.log_spool_event(
+            spool_id,
+            "TARE_WEIGHT_UPDATED",
+            json!({ "tare_weight_g": grams }),
+        )?;
+        Ok(())
     }
 
     pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {
@@ -945,6 +981,24 @@ fn compute_remaining(initial_weight_g: Option<i64>, current_weight_g: Option<i64
     } else {
         initial_weight_g
     }
+}
+
+fn default_spool_tare_for_vendor(vendor: Option<&str>) -> Option<i64> {
+    let normalized = vendor.unwrap_or("").trim().to_ascii_lowercase();
+    if normalized.contains("bambu") {
+        return Some(250);
+    }
+    if normalized.contains("esun") {
+        return Some(224);
+    }
+    None
+}
+
+fn resolve_spool_tare_weight_g(explicit_tare: Option<i64>, vendor: Option<&str>) -> i64 {
+    explicit_tare
+        .or_else(|| default_spool_tare_for_vendor(vendor))
+        .unwrap_or(0)
+        .max(0)
 }
 
 fn normalize_optional_input_text(value: Option<&str>) -> Option<String> {

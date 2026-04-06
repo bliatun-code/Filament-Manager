@@ -10,6 +10,7 @@ export type SpoolRow = {
   initial_weight_g?: number | null;
   current_weight_g?: number | null;
   remaining_g?: number | null;
+  spool_tare_weight_g?: number | null;
   location_id?: string | null;
 };
 
@@ -632,6 +633,13 @@ export async function updateSpoolWeight(spoolId: string, grams: number) {
     spoolId,
     grams,
     source: "MANUAL",
+  });
+}
+
+export async function updateSpoolTareWeight(spoolId: string, grams: number) {
+  return invoke<void>("update_spool_tare_weight", {
+    spoolId,
+    grams,
   });
 }
 

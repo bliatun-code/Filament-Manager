@@ -49,6 +49,28 @@ function parseNonNegativeInt(raw: string, fallback: number): number {
   return parsed;
 }
 
+function defaultSpoolTareWeightForVendor(vendor?: string | null): number {
+  const normalized = (vendor ?? "").trim().toLowerCase();
+  if (normalized.includes("bambu")) {
+    return 250;
+  }
+  if (normalized.includes("esun")) {
+    return 224;
+  }
+  return 0;
+}
+
+function resolveSpoolTareWeightForRow(row?: SpoolWithMasterRow | null): number {
+  if (!row) {
+    return 0;
+  }
+  const explicit = row.spool.spool_tare_weight_g;
+  if (explicit != null && Number.isFinite(explicit)) {
+    return Math.max(0, Math.round(explicit));
+  }
+  return defaultSpoolTareWeightForVendor(row.master.vendor);
+}
+
 function clampInt(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
@@ -350,6 +372,18 @@ export default function PrintersPage() {
     return ids;
   }, [printers]);
 
+  const resolveSpoolTareWeightById = useCallback(
+    (spoolId: string | null | undefined) => {
+      const id = (spoolId ?? "").trim();
+      if (!id) {
+        return 0;
+      }
+      const row = spools.find((candidate) => candidate.spool.id === id) ?? null;
+      return resolveSpoolTareWeightForRow(row);
+    },
+    [spools],
+  );
+
   const printerPageSummary = useMemo(() => {
     let loadedSlots = 0;
     let totalSlots = 0;
@@ -532,7 +566,14 @@ export default function PrintersPage() {
       targetSpoolId: slot.spool_id ?? "",
       search: "",
       outgoingWeight:
-        slot.spool_remaining_g != null ? String(Math.max(0, slot.spool_remaining_g)) : "",
+        slot.spool_remaining_g != null
+          ? String(
+              Math.max(
+                0,
+                slot.spool_remaining_g + resolveSpoolTareWeightById(slot.spool_id ?? null),
+              ),
+            )
+          : "",
       incomingWeight: "",
     };
   }
@@ -565,11 +606,18 @@ export default function PrintersPage() {
       currentColorName: slot.spool_color_name,
     });
     setIncomingWeightValue(
-      row.spool.remaining_g != null ? String(Math.max(0, row.spool.remaining_g)) : "",
+      row.spool.remaining_g != null
+        ? String(Math.max(0, row.spool.remaining_g + resolveSpoolTareWeightForRow(row)))
+        : "",
     );
     setOutgoingWeightValue(
       requiresOutgoingWeight && slot.spool_remaining_g != null
-        ? String(Math.max(0, slot.spool_remaining_g))
+        ? String(
+            Math.max(
+              0,
+              slot.spool_remaining_g + resolveSpoolTareWeightById(slot.spool_id ?? null),
+            ),
+          )
         : "",
     );
   }
@@ -594,7 +642,14 @@ export default function PrintersPage() {
     });
     setIncomingWeightValue("");
     setOutgoingWeightValue(
-      slot.spool_remaining_g != null ? String(Math.max(0, slot.spool_remaining_g)) : "",
+      slot.spool_remaining_g != null
+        ? String(
+            Math.max(
+              0,
+              slot.spool_remaining_g + resolveSpoolTareWeightById(slot.spool_id ?? null),
+            ),
+          )
+        : "",
     );
   }
 
@@ -674,12 +729,15 @@ export default function PrintersPage() {
     printerId: string,
     spoolId: string,
     previousRemaining: number | null | undefined,
-    measuredRemaining: number,
+    measuredTotalWeight: number,
+    tareWeight: number,
   ) {
-    const safeMeasured = Math.max(0, Math.round(measuredRemaining));
+    const safeMeasuredTotal = Math.max(0, Math.round(measuredTotalWeight));
+    const safeTareWeight = Math.max(0, Math.round(tareWeight));
+    const measuredFilament = Math.max(0, safeMeasuredTotal - safeTareWeight);
     if (previousRemaining != null && Number.isFinite(previousRemaining)) {
       const baseline = Math.max(0, Math.round(previousRemaining));
-      const usedGrams = Math.max(0, baseline - safeMeasured);
+      const usedGrams = Math.max(0, baseline - measuredFilament);
       if (usedGrams > 0) {
         await recordPrintUsage({
           printer_id: printerId,
@@ -690,12 +748,12 @@ export default function PrintersPage() {
         });
         return;
       }
-      if (safeMeasured !== baseline) {
-        await updateSpoolWeight(spoolId, safeMeasured);
+      if (measuredFilament !== baseline) {
+        await updateSpoolWeight(spoolId, safeMeasuredTotal);
       }
       return;
     }
-    await updateSpoolWeight(spoolId, safeMeasured);
+    await updateSpoolWeight(spoolId, safeMeasuredTotal);
   }
 
   async function applySlotChange(
@@ -751,6 +809,7 @@ export default function PrintersPage() {
           currentSpoolId,
           slot.spool_remaining_g,
           outgoingWeight,
+          resolveSpoolTareWeightById(currentSpoolId),
         );
       } else if (currentSpoolId && !hasChange && (incomingWeight != null || outgoingWeight != null)) {
         const sameRollMeasuredWeight = incomingWeight ?? outgoingWeight;
@@ -760,6 +819,7 @@ export default function PrintersPage() {
             currentSpoolId,
             slot.spool_remaining_g,
             sameRollMeasuredWeight,
+            resolveSpoolTareWeightById(currentSpoolId),
           );
         }
       }

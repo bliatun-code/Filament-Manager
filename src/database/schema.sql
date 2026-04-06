@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS filament_spools (
   initial_weight_g INTEGER,
   current_weight_g INTEGER,
   remaining_g INTEGER,
+  spool_tare_weight_g INTEGER,
   location_id TEXT REFERENCES inventory_locations(id),
   purchase_date TEXT,
   purchase_price REAL,

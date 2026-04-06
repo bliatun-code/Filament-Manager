@@ -136,6 +136,43 @@ export function createCompanionMutations(options) {
     }
   }
 
+  async function submitTareWeightUpdate(spoolId, gramsValue) {
+    const grams = Number.parseInt(gramsValue, 10);
+    if (!Number.isFinite(grams) || grams < 0) {
+      setStatus(
+        tr("status.weightInvalid", "Enter a valid non-negative weight in grams."),
+        "error",
+      );
+      render();
+      return;
+    }
+
+    clearDetailFeedback(spoolId);
+    setBusy(true);
+    setStatus(tr("status.tareWeightSaving", "Saving empty spool weight..."), "default");
+    try {
+      await fetchJson(`/api/v1/spools/${encodeURIComponent(spoolId)}/tare-weight`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": state.csrfToken,
+        },
+        body: JSON.stringify({ grams }),
+      });
+      await refreshOverview();
+      setDetailFeedback(spoolId, tr("status.tareWeightUpdatedJustNow", "Empty spool weight updated just now."));
+      setStatus(tr("status.tareWeightUpdated", "Empty spool weight updated."), "success");
+    } catch (error) {
+      setStatus(
+        error.message || tr("status.tareWeightFailed", "Failed to update empty spool weight."),
+        "error",
+      );
+      render();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submitPrinterSlotAssignment(printerId, slotId, spoolId, mutationOptions = {}) {
     const trimmedPrinterId = printerId.trim();
     const trimmedSlotId = slotId.trim();
@@ -692,6 +729,7 @@ export function createCompanionMutations(options) {
 
   return {
     submitWeightUpdate,
+    submitTareWeightUpdate,
     submitPrinterSlotAssignment,
     submitSpoolLoan,
     submitSpoolLoanReturn,

@@ -157,6 +157,11 @@ struct UpdateWeightRequest {
 }
 
 #[derive(Deserialize)]
+struct UpdateSpoolTareWeightRequest {
+    grams: i64,
+}
+
+#[derive(Deserialize)]
 struct UpdatePrinterSlotAssignmentRequest {
     spool_id: Option<String>,
 }
@@ -400,6 +405,10 @@ fn build_router(state: CompanionApiState) -> Router {
         .route("/spools/:spool_id", get(handle_get_spool_detail))
         .route("/spools/:spool_id/lend", post(handle_lend_spool))
         .route("/spools/:spool_id/weight", post(handle_update_spool_weight))
+        .route(
+            "/spools/:spool_id/tare-weight",
+            post(handle_update_spool_tare_weight),
+        )
         .route("/loans/:loan_id/return", post(handle_return_spool_loan))
         .route(
             "/loans/:loan_id/hand-back",
@@ -1330,6 +1339,33 @@ async fn handle_update_spool_weight(
     Ok(Json(WriteResponse {
         ok: true,
         message: "Weight updated".to_string(),
+    }))
+}
+
+async fn handle_update_spool_tare_weight(
+    State(state): State<CompanionApiState>,
+    Path(spool_id): Path<String>,
+    Json(payload): Json<UpdateSpoolTareWeightRequest>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    if spool_id.trim().is_empty() {
+        return Err(CompanionApiError::BadRequest(
+            "spool_id is required".to_string(),
+        ));
+    }
+    if payload.grams < 0 {
+        return Err(CompanionApiError::BadRequest(
+            "tare grams must be zero or greater".to_string(),
+        ));
+    }
+
+    state
+        .service
+        .update_spool_tare_weight(spool_id.trim(), payload.grams)
+        .map_err(CompanionApiError::from)?;
+
+    Ok(Json(WriteResponse {
+        ok: true,
+        message: "Tare weight updated".to_string(),
     }))
 }
 
@@ -2796,7 +2832,7 @@ mod tests {
                 )
                 .await
                 .map_err(|error| error.to_string())?;
-            assert_eq!(protected_read.status(), StatusCode::UNAUTHORIZED);
+            assert_eq!(protected_read.status(), StatusCode::FORBIDDEN);
 
             let localhost_health = router
                 .clone()

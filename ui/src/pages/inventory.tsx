@@ -46,6 +46,7 @@ import {
   updateMasterCatalogEntry,
   updateSpoolDetails,
   updateSpoolStatus,
+  updateSpoolTareWeight,
   updateSpoolWeight,
   updateWishlistItemStatus,
 } from "../lib/tauri_client";
@@ -83,6 +84,7 @@ type InventorySpool = {
   ownerContact?: string | null;
   ownershipNote?: string | null;
   remainingGrams?: number | null;
+  spoolTareWeightGrams?: number | null;
   location?: string | null;
   qrCode?: string | null;
 };
@@ -513,6 +515,27 @@ function parseWeight(raw: string, fallback: number): number {
   return parsed;
 }
 
+function defaultSpoolTareWeightForVendor(vendor?: string | null): number {
+  const normalized = (vendor ?? "").trim().toLowerCase();
+  if (normalized.includes("bambu")) {
+    return 250;
+  }
+  if (normalized.includes("esun")) {
+    return 224;
+  }
+  return 0;
+}
+
+function resolveSpoolTareWeight(
+  explicitTareWeightGrams?: number | null,
+  vendor?: string | null,
+): number {
+  if (explicitTareWeightGrams != null && Number.isFinite(explicitTareWeightGrams)) {
+    return Math.max(0, Math.round(explicitTareWeightGrams));
+  }
+  return defaultSpoolTareWeightForVendor(vendor);
+}
+
 function formatGrams(value?: number | null): string {
   if (value == null) {
     return "—";
@@ -734,6 +757,7 @@ export default function InventoryPage({
   const [editMasterHexColor, setEditMasterHexColor] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmPurge, setConfirmPurge] = useState(false);
+  const [selectedSpoolTareDraft, setSelectedSpoolTareDraft] = useState("");
   const [selectedSpoolQrDataUrl, setSelectedSpoolQrDataUrl] = useState<string | null>(
     null,
   );
@@ -769,13 +793,16 @@ export default function InventoryPage({
       printerId: string,
       spoolId: string,
       previousRemaining: number | null | undefined,
-      measuredRemaining: number,
+      measuredTotalWeight: number,
+      tareWeight: number,
       jobName?: string | null,
     ) => {
-      const safeMeasured = Math.max(0, Math.round(measuredRemaining));
+      const safeMeasuredTotal = Math.max(0, Math.round(measuredTotalWeight));
+      const safeTareWeight = Math.max(0, Math.round(tareWeight));
+      const measuredFilament = Math.max(0, safeMeasuredTotal - safeTareWeight);
       if (previousRemaining != null && Number.isFinite(previousRemaining)) {
         const baseline = Math.max(0, Math.round(previousRemaining));
-        const usedGrams = Math.max(0, baseline - safeMeasured);
+        const usedGrams = Math.max(0, baseline - measuredFilament);
         if (usedGrams > 0) {
           await recordPrintUsage({
             printer_id: printerId,
@@ -786,12 +813,12 @@ export default function InventoryPage({
           });
           return;
         }
-        if (safeMeasured !== baseline) {
-          await updateSpoolWeight(spoolId, safeMeasured);
+        if (measuredFilament !== baseline) {
+          await updateSpoolWeight(spoolId, safeMeasuredTotal);
         }
         return;
       }
-      await updateSpoolWeight(spoolId, safeMeasured);
+      await updateSpoolWeight(spoolId, safeMeasuredTotal);
     },
     [],
   );
@@ -827,6 +854,7 @@ export default function InventoryPage({
             ownerContact: row.spool.owner_contact ?? null,
             ownershipNote: row.spool.ownership_note ?? null,
             remainingGrams: row.spool.remaining_g ?? null,
+            spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
             location: row.spool.location_id ?? null,
             qrCode: row.spool.qr_code ?? null,
           };
@@ -1075,6 +1103,21 @@ export default function InventoryPage({
     () => spools.find((spool) => spool.id === selectedSpoolId) ?? null,
     [selectedSpoolId, spools],
   );
+
+  const selectedSpoolResolvedTare = useMemo(
+    () =>
+      selectedSpool
+        ? resolveSpoolTareWeight(selectedSpool.spoolTareWeightGrams, selectedSpool.vendor)
+        : 0,
+    [selectedSpool],
+  );
+
+  const selectedSpoolMeasuredTotal = useMemo(() => {
+    if (!selectedSpool) {
+      return 0;
+    }
+    return Math.max(0, (selectedSpool.remainingGrams ?? 0) + selectedSpoolResolvedTare);
+  }, [selectedSpool, selectedSpoolResolvedTare]);
 
   const activeLoanSpoolIds = useMemo(
     () => new Set(activeLoans.map((loan) => loan.loan.spool_id)),
@@ -1555,6 +1598,7 @@ export default function InventoryPage({
       setUsagePoints([]);
       setConfirmDelete(false);
       setConfirmPurge(false);
+      setSelectedSpoolTareDraft("");
       setShowRollModal(false);
       return;
     }
@@ -1564,6 +1608,9 @@ export default function InventoryPage({
     setEditMasterFilamentName(selectedSpool.filamentName);
     setEditMasterColorName(selectedSpool.colorName);
     setEditMasterHexColor(selectedSpool.hexColor ?? "");
+    setSelectedSpoolTareDraft(
+      String(resolveSpoolTareWeight(selectedSpool.spoolTareWeightGrams, selectedSpool.vendor)),
+    );
     setConfirmDelete(false);
     setConfirmPurge(false);
     void reloadHistory(selectedSpool.id);
@@ -2367,6 +2414,7 @@ export default function InventoryPage({
           selectedSpool.id,
           selectedSpool.remainingGrams,
           safeGrams,
+          selectedSpoolResolvedTare,
           null,
         );
       } else {
@@ -2380,6 +2428,36 @@ export default function InventoryPage({
       console.error(updateError);
       setError(
         commandErrorText(updateError, t("inventory.error.updateWeight", "Failed to update weight.")),
+      );
+    } finally {
+      setManageBusy(false);
+    }
+  }
+
+  async function handleSaveSpoolTareWeight() {
+    if (!selectedSpool || !tauri || manageBusy) {
+      return;
+    }
+    const parsed = Number.parseInt(selectedSpoolTareDraft, 10);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      setError(t("inventory.error.invalidWeight", "Weight value is invalid."));
+      return;
+    }
+    const safeGrams = Math.max(0, Math.round(parsed));
+    setManageBusy(true);
+    setError(null);
+    try {
+      await updateSpoolTareWeight(selectedSpool.id, safeGrams);
+      await reloadSpools();
+      await reloadHistory(selectedSpool.id);
+      setInfoMessage(t("inventory.tareWeightUpdated", "Empty spool weight updated."));
+    } catch (updateError) {
+      console.error(updateError);
+      setError(
+        commandErrorText(
+          updateError,
+          t("inventory.error.updateTareWeight", "Failed to update empty spool weight."),
+        ),
       );
     } finally {
       setManageBusy(false);
@@ -2772,11 +2850,45 @@ export default function InventoryPage({
 
                 <div className="space-y-4">
                   <WeightInput
-                    label={t("inventory.remainingWeight", "Remaining weight (g)")}
-                    value={selectedSpool.remainingGrams ?? 0}
+                    label={t("inventory.measuredTotalWeight", "Measured total weight (g)")}
+                    value={selectedSpoolMeasuredTotal}
                     onSubmit={handleWeightSubmit}
                     style={inventorySwatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
                   />
+
+                  <div
+                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                    style={inventorySwatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
+                  >
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                      {t("inventory.emptySpoolWeight", "Empty spool weight (g)")}
+                    </div>
+                    <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      {t(
+                        "inventory.emptySpoolWeightHelp",
+                        "Used to subtract spool tare from measured total so remaining filament stays accurate.",
+                      )}
+                    </div>
+                    <div className="mt-3 flex items-center gap-3">
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={selectedSpoolTareDraft}
+                        onChange={(event) => setSelectedSpoolTareDraft(event.target.value)}
+                        className="w-28 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100"
+                        disabled={!tauri || manageBusy}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveSpoolTareWeight}
+                        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-slate-300/30 transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white"
+                        disabled={!tauri || manageBusy}
+                      >
+                        {t("common.save", "Save")}
+                      </button>
+                    </div>
+                  </div>
 
                   <div
                     className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"

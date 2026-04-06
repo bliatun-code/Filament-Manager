@@ -810,6 +810,17 @@ fn update_spool_weight(
 }
 
 #[tauri::command]
+fn update_spool_tare_weight(
+    state: tauri::State<'_, AppState>,
+    spool_id: String,
+    grams: i64,
+) -> Result<(), String> {
+    companion_service(&state)
+        .update_spool_tare_weight(&spool_id, grams)
+        .map_err(inventory_error_to_string)
+}
+
+#[tauri::command]
 fn update_spool_status(
     state: tauri::State<'_, AppState>,
     spool_id: String,
@@ -1314,6 +1325,7 @@ fn main() {
             assign_printer_slot,
             record_print_usage,
             update_spool_weight,
+            update_spool_tare_weight,
             update_spool_status,
             update_spool_details,
             update_master_catalog_entry,
@@ -1462,9 +1474,7 @@ fn ensure_db(app: &tauri::App) -> Result<PathBuf, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        detect_bambu_skip_discontinued_reason, enforce_trusted_lan_disabled_on_desktop_startup,
-    };
+    use super::{detect_bambu_skip_discontinued_reason, load_trusted_lan_runtime};
     use crate::backend::filament_database::{FilamentDatabase, TrustedLanSettingsRow};
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
