@@ -7,6 +7,7 @@ import {
   type ActivityItem,
 } from "../components/dashboard_widgets";
 import {
+  getTrustedLanCompanionStatus,
   inventoryOverview,
   isTauri,
   listActiveSpoolLoans,
@@ -15,6 +16,7 @@ import {
   listSpools,
   topMaterials,
   type InventoryOverview,
+  type TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
 import { useI18n } from "../lib/i18n";
 import { LOW_STOCK_GRAMS } from "../lib/inventory_constants";
@@ -74,13 +76,18 @@ function progressRatio(current: number, target: number): number {
 type DashboardPageProps = {
   onNavigate?: (page: PageKey) => void;
   onOpenLowStock?: () => void;
+  onOpenCompanionSettings?: () => void;
 };
 
 const DASHBOARD_REFRESH_INTERVAL_MS = 4_000;
 const DASHBOARD_RETRY_DELAY_MS = 1_000;
 let cachedGoalMetrics: DashboardGoalMetrics | null = null;
 
-export default function DashboardPage({ onNavigate, onOpenLowStock }: DashboardPageProps) {
+export default function DashboardPage({
+  onNavigate,
+  onOpenLowStock,
+  onOpenCompanionSettings,
+}: DashboardPageProps) {
   const { t } = useI18n();
   const tauri = isTauri();
   const [overviewSnapshot, setOverviewSnapshot] = useState<InventoryOverview | null>(null);
@@ -221,13 +228,14 @@ export default function DashboardPage({ onNavigate, onOpenLowStock }: DashboardP
   const [lastSyncLabel, setLastSyncLabel] = useState(
     t("dashboard.syncedFromDb", "Synced from local DB"),
   );
+  const [companionStatus, setCompanionStatus] = useState<TrustedLanCompanionStatus | null>(null);
 
   const refreshDashboard = useCallback(
     async (cancelledRef?: { current: boolean }) => {
       if (!tauri) {
         return;
       }
-      const [overview, printers, spoolRows, loans, wishlist, materialRows] =
+      const [overview, printers, spoolRows, loans, wishlist, materialRows, trustedLan] =
         await Promise.all([
           inventoryOverview(),
           listPrinterOverview(),
@@ -235,12 +243,14 @@ export default function DashboardPage({ onNavigate, onOpenLowStock }: DashboardP
           listActiveSpoolLoans(),
           listWishlistItems(500),
           topMaterials(12),
+          getTrustedLanCompanionStatus().catch(() => null),
         ]);
       if (cancelledRef?.current) {
         return;
       }
 
       setOverviewSnapshot(overview);
+      setCompanionStatus(trustedLan);
       const printerCount = printers.length;
       const effectiveSlotTotals = printers.reduce(
         (sum, printer) => {
@@ -527,6 +537,24 @@ export default function DashboardPage({ onNavigate, onOpenLowStock }: DashboardP
     };
   }, [refreshDashboard, tauri]);
 
+  const companionTone = !companionStatus?.enabled
+    ? "off"
+    : companionStatus.running && companionStatus.shell_reachable
+      ? "live"
+      : "warn";
+  const companionLabel =
+    companionTone === "off"
+      ? t("dashboard.companionOff", "Web app off")
+      : companionTone === "live"
+        ? t("dashboard.companionLive", "Web app running")
+        : t("dashboard.companionCheck", "Web app check");
+  const companionDotClass =
+    companionTone === "live"
+      ? "bg-emerald-400 shadow-[0_0_0_5px_rgba(52,211,153,0.14)]"
+      : companionTone === "warn"
+        ? "bg-amber-400 shadow-[0_0_0_5px_rgba(251,191,36,0.14)]"
+        : "bg-slate-400 shadow-[0_0_0_5px_rgba(148,163,184,0.12)]";
+
   return (
     <div className="page-shell">
       <div className="page-header">
@@ -542,6 +570,15 @@ export default function DashboardPage({ onNavigate, onOpenLowStock }: DashboardP
           </div>
         </div>
         <div className="flex items-center gap-3 xl:pt-1">
+          <button
+            type="button"
+            onClick={() => onOpenCompanionSettings?.()}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-300/70 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm shadow-slate-300/35 backdrop-blur transition hover:bg-slate-50 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-200 dark:shadow-none dark:hover:bg-slate-900"
+            title={t("dashboard.openCompanionSettings", "Open companion settings")}
+          >
+            <span className={`h-2.5 w-2.5 rounded-full ${companionDotClass}`} />
+            {companionLabel}
+          </button>
           <div className="rounded-full border border-slate-300/70 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm shadow-slate-300/35 backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-300 dark:shadow-none">
             {lastSyncLabel}
           </div>

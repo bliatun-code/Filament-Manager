@@ -27,6 +27,8 @@ export type InventoryNavigationIntent =
     }
   | null;
 
+export type SettingsTabKey = "GENERAL" | "COMPANION" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
+
 const pageOrder: ReadonlyArray<PageKey> = [
   "dashboard",
   "inventory",
@@ -46,6 +48,7 @@ export default function App() {
   );
   const [inventoryNavigationIntent, setInventoryNavigationIntent] =
     useState<InventoryNavigationIntent>(null);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTabKey>("GENERAL");
 
   useEffect(() => {
     if (!isTauri()) {
@@ -94,6 +97,9 @@ export default function App() {
   const navigateToPage = (page: PageKey, nextInventoryIntent: InventoryNavigationIntent = null) => {
     startTransition(() => {
       setInventoryNavigationIntent(nextInventoryIntent);
+      if (page !== "settings") {
+        setSettingsInitialTab("GENERAL");
+      }
       setActivePage(page);
     });
   };
@@ -104,6 +110,13 @@ export default function App() {
         return (
           <DashboardPage
             onNavigate={(page) => navigateToPage(page)}
+            onOpenCompanionSettings={() => {
+              startTransition(() => {
+                setInventoryNavigationIntent(null);
+                setSettingsInitialTab("COMPANION");
+                setActivePage("settings");
+              });
+            }}
             onOpenLowStock={() => {
               navigateToPage("inventory", {
                 kind: "LOW_STOCK",
@@ -126,7 +139,7 @@ export default function App() {
       case "statistics":
         return <StatisticsPage />;
       case "settings":
-        return <SettingsPage />;
+        return <SettingsPage initialTab={settingsInitialTab} />;
       default:
         return (
           <InventoryPage

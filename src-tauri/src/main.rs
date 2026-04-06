@@ -1264,7 +1264,6 @@ fn main() {
     tauri::Builder::default()
         .setup(|app| {
             let db_path = ensure_db(app)?;
-            enforce_trusted_lan_disabled_on_desktop_startup(db_path.to_string_lossy().as_ref())?;
             let trusted_lan_runtime = load_trusted_lan_runtime(db_path.to_string_lossy().as_ref())?;
             let companion = state::CompanionRuntimeState::new(trusted_lan_runtime);
             let state = AppState {
@@ -1522,7 +1521,7 @@ Some product detail pages could not be fetched.\n";
     }
 
     #[test]
-    fn trusted_lan_is_forced_dark_on_desktop_startup() {
+    fn trusted_lan_runtime_keeps_enabled_state_from_settings() {
         let db_path = temp_db_path("trusted-lan-dark-startup");
         let result = (|| -> Result<(), String> {
             {
@@ -1537,20 +1536,15 @@ Some product detail pages could not be fetched.\n";
                 .map_err(|error| error.to_string())?;
             }
 
-            enforce_trusted_lan_disabled_on_desktop_startup(db_path.to_string_lossy().as_ref())?;
-
-            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
-            db.apply_schema().map_err(|error| error.to_string())?;
-            let settings = db
-                .get_trusted_lan_settings()
-                .map_err(|error| error.to_string())?;
-            assert!(!settings.enabled);
-            assert_eq!(settings.selected_interface_name.as_deref(), Some("Wi-Fi"));
+            let runtime = load_trusted_lan_runtime(db_path.to_string_lossy().as_ref())?;
+            let snapshot = runtime.snapshot();
+            assert!(snapshot.enabled);
+            assert_eq!(snapshot.selected_interface_name.as_deref(), Some("Wi-Fi"));
             assert_eq!(
-                settings.selected_interface_address.as_deref(),
+                snapshot.selected_interface_address.as_deref(),
                 Some("192.168.1.50")
             );
-            assert_eq!(settings.listen_port, 4278);
+            assert_eq!(snapshot.listen_port, 4278);
             Ok(())
         })();
 
@@ -1626,22 +1620,6 @@ fn trusted_lan_server_status_snapshot(
     }
 
     snapshot
-}
-
-fn enforce_trusted_lan_disabled_on_desktop_startup(db_path: &str) -> Result<(), String> {
-    let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
-    let settings = db
-        .get_trusted_lan_settings()
-        .map_err(|error| error.to_string())?;
-    if !settings.enabled {
-        return Ok(());
-    }
-
-    db.save_trusted_lan_settings(&TrustedLanSettingsRow {
-        enabled: false,
-        ..settings
-    })
-    .map_err(|error| error.to_string())
 }
 
 fn verify_companion_health_url(

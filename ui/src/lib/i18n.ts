@@ -99,6 +99,10 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       addRollsForHealth: "Add rolls to start health tracking.",
       syncedFromDb: "Synced from local DB",
       synced: "Synced",
+      companionOff: "Web app off",
+      companionLive: "Web app running",
+      companionCheck: "Web app check",
+      openCompanionSettings: "Open companion settings",
       inventoryHealth: "Inventory Health",
       badgeLocationCoverage: "Location coverage",
       badgeLocationCoverageDesc:
@@ -1018,6 +1022,10 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       addRollsForHealth: "Legg til filamenter for å starte lagerhelse-sporing.",
       syncedFromDb: "Synkronisert fra lokal database",
       synced: "Synkronisert",
+      companionOff: "Webapp av",
+      companionLive: "Webapp kjører",
+      companionCheck: "Sjekk webapp",
+      openCompanionSettings: "Åpne webapp-innstillinger",
       inventoryHealth: "Lagerhelse",
       badgeLocationCoverage: "Lokasjonsdekning",
       badgeLocationCoverageDesc:

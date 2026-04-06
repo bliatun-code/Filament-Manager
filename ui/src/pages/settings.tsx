@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import type { SettingsTabKey } from "../App";
 import {
   createTrustedLanPairing,
   createPrinter,
@@ -215,6 +216,10 @@ type SettingsTab = "GENERAL" | "COMPANION" | "PRINTERS" | "CATALOG" | "MAINTENAN
 type ResetConfirmAction = "APP" | "CATALOG";
 type CatalogVendor = "Bambu" | "eSUN";
 
+type SettingsPageProps = {
+  initialTab?: SettingsTabKey;
+};
+
 function tabButtonClass(active: boolean): string {
   if (active) {
     return "rounded-2xl border border-slate-900 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-slate-300/30 transition dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none";
@@ -332,7 +337,7 @@ function SettingsMetricTile({
   );
 }
 
-export default function SettingsPage() {
+export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPageProps) {
   const tauri = isTauri();
   const { locale, setLocale, t } = useI18n();
   const resolvedTheme = useResolvedTheme();
@@ -341,7 +346,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => getThemeMode());
-  const [activeTab, setActiveTab] = useState<SettingsTab>("GENERAL");
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [trustedLanStatus, setTrustedLanStatus] = useState<TrustedLanCompanionStatus | null>(
     null,
   );
@@ -412,6 +417,10 @@ export default function SettingsPage() {
   const [confirmResetAction, setConfirmResetAction] = useState<ResetConfirmAction | null>(null);
   const [lastBackupValidation, setLastBackupValidation] =
     useState<BackupValidationStats | null>(null);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   const sortedPrinters = useMemo(() => {
     const collator = new Intl.Collator(locale, {
