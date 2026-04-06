@@ -18,6 +18,7 @@ import { ModalHeader, modalPanelClassName } from "../components/modal_chrome";
 import { PrinterModelPreview } from "../components/printer_model_preview";
 import { SaveOnlyModal } from "../components/save_only_modal";
 import { semanticChipClass } from "../lib/chip_styles";
+import { formatSpoolReference } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
 import { printerBrandSurfaceStyle } from "../lib/printer_branding";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
@@ -1012,7 +1013,7 @@ export default function PrintersPage() {
                   if (!searchTerm) {
                     return true;
                   }
-                  return `${row.master.vendor} ${row.master.material} ${row.master.filament_name} ${row.master.color_name}`
+                  return `${row.master.vendor} ${row.master.material} ${row.master.filament_name} ${row.master.color_name} ${row.spool.id}`
                     .toLowerCase()
                     .includes(searchTerm);
                 });
@@ -1087,7 +1088,7 @@ export default function PrintersPage() {
                             </span>
                             <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
                               {selectedTargetSpool
-                                ? `${selectedTargetSpool.master.color_name} · ${selectedTargetSpool.master.vendor} · ${formatGrams(selectedTargetSpool.spool.remaining_g)}`
+                                ? `${selectedTargetSpool.master.color_name} · ${selectedTargetSpool.master.vendor} · ${formatSpoolReference(selectedTargetSpool.spool.id)} · ${formatGrams(selectedTargetSpool.spool.remaining_g)}`
                                 : t("printers.targetEmpty", "Target: Empty slot")}
                             </span>
                           </span>
@@ -1202,6 +1203,7 @@ export default function PrintersPage() {
                                     </span>
                                     <span className="block truncate text-[11px] text-slate-600 dark:text-slate-400">
                                       {row.master.color_name} · {row.master.vendor} ·{" "}
+                                      {formatSpoolReference(row.spool.id)} ·{" "}
                                       {formatGrams(row.spool.remaining_g)}
                                     </span>
                                   </span>
@@ -1232,6 +1234,10 @@ export default function PrintersPage() {
                               {slot.spool_material} · {slot.spool_filament_name}
                             </div>
                             <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300">
+                              <span>
+                                {t("inventory.reference", "Reference")}{" "}
+                                {formatSpoolReference(slot.spool_id)}
+                              </span>
                               <span>{slot.spool_color_name}</span>
                               <span>{formatGrams(slot.spool_remaining_g)}</span>
                               <span
