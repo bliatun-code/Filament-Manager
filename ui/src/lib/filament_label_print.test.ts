@@ -49,7 +49,7 @@ test("buildFilamentLabelHtml includes QR image and required filament details", (
   assert.match(html, /Vendor:\<\/strong\> Bambu/);
   assert.match(html, /Filament:\<\/strong\> Basic/);
   assert.match(html, /Color:\<\/strong\> White/);
+  assert.match(html, /Reference:\<\/strong\> QR-22/);
   assert.doesNotMatch(html, /Material:\<\/strong\>/);
-  assert.doesNotMatch(html, /Reference:\<\/strong\>/);
   assert.doesNotMatch(html, /QR payload:\<\/strong\>/);
 });

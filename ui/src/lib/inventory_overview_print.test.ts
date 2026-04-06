@@ -17,6 +17,7 @@ test("buildInventoryOverviewPrintPdfBase64 renders a valid landscape A4 PDF with
   const pdfBase64 = await buildInventoryOverviewPrintPdfBase64(
     [
       {
+        reference: "spool_1",
         vendor: "Bambu",
         material: "ABS",
         filamentName: "Basic",
@@ -25,6 +26,7 @@ test("buildInventoryOverviewPrintPdfBase64 renders a valid landscape A4 PDF with
         qrDataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7aSykAAAAASUVORK5CYII=",
       },
       {
+        reference: "spool_2",
         vendor: "eSUN",
         material: "PETG",
         filamentName: "PETG+",
@@ -42,6 +44,7 @@ test("buildInventoryOverviewPrintPdfBase64 renders a valid landscape A4 PDF with
       material: "Material",
       filament: "Filament",
       color: "Color",
+      reference: "Reference",
     },
   );
 
@@ -69,6 +72,7 @@ test("buildInventoryOverviewPrintPdfBase64 renders an empty-state PDF when no ro
     material: "Material",
     filament: "Filament",
     color: "Color",
+    reference: "Reference",
   });
 
   const bytes = fromBase64(pdfBase64);

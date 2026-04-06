@@ -386,6 +386,7 @@ export function LoanOutModal({
                   {spools.map((spool) => {
                     const isActive = selectedSpool?.id === spool.id;
                     const placementLabel = formatPlacementLabel(t, spool.location);
+                    const referenceLabel = compactReferenceLabel(spool.id);
                     return (
                       <button
                         key={spool.id}
@@ -428,6 +429,12 @@ export function LoanOutModal({
                               <VendorBadge vendor={spool.vendor} compact />
                             </div>
                             <div className="mt-2 flex flex-wrap gap-1.5">
+                              <span
+                                className={`${listMetaChipClassName} font-mono`}
+                                title={`#${spool.id}`}
+                              >
+                                {referenceLabel}
+                              </span>
                               <span className={listMetaChipClassName}>
                                 {spool.material}
                               </span>

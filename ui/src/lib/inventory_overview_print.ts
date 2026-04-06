@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 
 export type InventoryOverviewPrintRow = {
+  reference: string;
   vendor: string;
   material: string;
   filamentName: string;
@@ -18,6 +19,7 @@ export type InventoryOverviewPrintLabels = {
   material: string;
   filament: string;
   color: string;
+  reference: string;
 };
 
 const A4_LANDSCAPE_WIDTH = 841.89;
@@ -32,7 +34,7 @@ const GROUP_GAP = 8;
 const ROW_GAP = 8;
 const GROUP_SECTION_GAP = 12;
 
-const CARD_HEIGHT = 92;
+const CARD_HEIGHT = 104;
 const QR_SIZE = 68;
 const SWATCH_SIZE = 14;
 
@@ -357,6 +359,16 @@ export async function buildInventoryOverviewPrintPdfBase64(
             safeText(row.colorName),
             textX,
             titleY - 48,
+            detailWidth,
+          );
+          drawLabelValue(
+            page,
+            fontBold,
+            fontRegular,
+            labels.reference,
+            safeText(row.reference),
+            textX,
+            titleY - 62,
             detailWidth,
           );
         }

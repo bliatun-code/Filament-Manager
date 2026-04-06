@@ -67,6 +67,7 @@ export function buildFilamentLabelHtml(input: FilamentLabelHtmlInput): string {
               ? `<div><strong>${escapeHtml(input.labels.color)}:</strong> ${escapeHtml(input.colorName)}</div>`
               : ""
           }
+          <div><strong>${escapeHtml(input.labels.reference)}:</strong> ${escapeHtml(input.reference)}</div>
         </div>
       </div>
     </div>

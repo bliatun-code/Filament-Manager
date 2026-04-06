@@ -1327,6 +1327,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           );
           const qrDataUrl = await buildFilamentLabelQrDataUrl(qrPayload);
           return {
+            reference: row.spool.id || t("common.unknown", "Unknown"),
             vendor: row.master.vendor || t("common.unknown", "Unknown"),
             material: row.master.material || t("common.unknown", "Unknown"),
             filamentName: row.master.filament_name || t("common.unknown", "Unknown"),
@@ -1346,6 +1347,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         material: t("settings.inventoryOverviewPrintMaterial", "Material"),
         filament: t("settings.inventoryOverviewPrintFilament", "Filament"),
         color: t("settings.inventoryOverviewPrintColor", "Color"),
+        reference: t("settings.inventoryOverviewPrintReference", "Reference"),
       });
       await printLabelPdf(pdfBase64, null, 1);
       setInfo(
