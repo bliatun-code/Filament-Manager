@@ -2424,14 +2424,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                         )}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      className={settingsActionButtonClass("accent")}
-                      disabled={trustedLanCompanionModel.pairActionDisabled}
-                      onClick={() => void handleCreateTrustedLanPairingLink()}
-                    >
-                      {t("settings.trustedLanCreatePairing", "Create pairing link")}
-                    </button>
                   </div>
 
                   <div className={`mt-4 grid gap-4 ${trustedLanPairingLink ? "lg:grid-cols-[1fr_220px]" : ""}`}>
@@ -2452,6 +2444,16 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                           )}
                         />
                       </label>
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          className={settingsActionButtonClass("accent")}
+                          disabled={trustedLanCompanionModel.pairActionDisabled}
+                          onClick={() => void handleCreateTrustedLanPairingLink()}
+                        >
+                          {t("settings.trustedLanCreatePairing", "Create pairing link")}
+                        </button>
+                      </div>
 
                       {trustedLanPairingLink ? (
                         <>
@@ -2489,14 +2491,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                             </button>
                           </div>
                         </>
-                      ) : (
-                        <div className="mt-4 rounded-2xl border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                          {t(
-                            "settings.trustedLanPairingEmptyState",
-                            "Create a pairing link when you want to open the web app on another device.",
-                          )}
-                        </div>
-                      )}
+                      ) : null}
                     </div>
 
                     {trustedLanPairingLink ? (
