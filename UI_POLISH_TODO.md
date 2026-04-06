@@ -26,11 +26,19 @@ Current browser terminology note:
     - prefer fewer louder surfaces, shorter copy, calmer empty states, and clearer section order over more decorative wrappers
   - locale follow-through where it helps the same UI pass:
     - keep English/Norwegian browser copy short, human, and consistent while polishing the same surface
+- Latest cleanup pass done (2026-04-06):
+  - Settings trusted-LAN control flow:
+    - aligned server status/network summary and server controls into one cohesive side-by-side section
+    - moved `Lag parringslenke` to sit directly under browser label input and removed redundant helper line
+  - Settings general clarity:
+    - app version is now visible in General settings for quick support/release verification
+  - Dashboard copy cleanup:
+    - removed redundant ownership helper copy to reduce visual noise
 - Latest cleanup pass done (2026-04-05):
   - closeout/tech-debt note:
     - Bambu catalog refresh is now runtime-self-contained in Rust (no Node/npm dependency in packaged desktop refresh path)
     - QR/reference UI now favors canonical spool-id based flow (legacy/manual QR-reference exposure is reduced in UI surfaces)
-    - remaining frontend technical debt is bundle splitting: `settings` chunk currently exceeds the 500 kB warning threshold in production build
+    - previous frontend `settings` chunk warning is resolved in current production baseline
   - inventory overview print pipeline hardening:
     - switched from HTML print surface to generated A4 landscape PDF output for predictable page layout
     - print layout now uses explicit PDF pagination, 2-column row distribution, and material-group sections

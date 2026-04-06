@@ -1,10 +1,16 @@
 # Session State
 
-Last updated: 2026-04-05
+Last updated: 2026-04-06
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
+- Step closeout notes (2026-04-06):
+  - Desktop `Settings -> General` now shows app version to make release verification easier in support/debug flows.
+  - Trusted-LAN settings layout is compacted and aligned for better control flow (`server status/network summary` + `server controls` grouped side-by-side, pairing CTA moved below browser label input).
+  - Companion toggle state now persists and dashboard shows a direct companion status indicator shortcut.
+  - Known “remove wishlist row” regression in add-flow is fixed.
+  - `main` is clean and release-ready for `v0.1.2` packaging.
 - Step closeout notes (2026-04-05):
   - Bambu catalog refresh no longer depends on runtime `node/npm` subprocess scraping.
   - Desktop refresh now uses in-app Rust lookup (`src/backend/bambu_lookup.rs`) and imports directly via Tauri refresh flow, so packaged macOS builds can refresh Bambu catalog without external JS runtime dependencies.
@@ -12,8 +18,7 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - QR flow is now canonicalized end-to-end for generated/printed QR: payload reference uses `spool.id` so scans consistently resolve to the correct companion detail popup.
   - Inventory A4 overview printing now uses generated landscape PDF (not browser HTML print), with explicit pagination and 2-column layout control.
   - Remaining technical debt:
-    - UI build warns that `settings` bundle is >500 kB minified (`ui` code-splitting/manual chunking still pending).
-    - Workspace Git root is currently one level above project (`/Users/bliatun/Documents/Codex`), so this project appears as `?? bambu-filament-manager/` instead of normal per-file tracked changes.
+    - no blocking release debt found in current `v0.1.2` preflight; keep manual device QA as the primary remaining risk area.
 - Inventory A4 overview printing now generates a real landscape PDF instead of HTML:
   - Settings `Print A4 inventory overview` now builds a paginated A4 landscape PDF with 2-column card layout, material grouping, swatch, QR, and filament details
   - desktop print handoff now writes/opens `label_*.pdf` from the app `labels` directory (`print_label_pdf`) instead of opening `label_*.html`
