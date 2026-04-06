@@ -32,7 +32,7 @@ cd ui && npm install
 ## macOS App Download
 
 - Latest release (DMG): https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current stable: `v0.6.0`
+- Current stable: `v0.6.1`
 
 If macOS blocks first launch of an unsigned build downloaded from GitHub:
 
