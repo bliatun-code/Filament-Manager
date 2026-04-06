@@ -393,6 +393,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       refreshPreparingEsun: "Preparing eSUN catalog refresh...",
       confirmRemove: "Remove this entry from wishlist/order tracking?",
       confirmRemoveAction: "Confirm remove",
+      confirmRemoveTapAgain: "Click Remove again to confirm deleting this wishlist entry.",
       error: {
         loadCatalog: "Could not load master catalog.",
         zeroBambu:
@@ -1312,6 +1313,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       refreshPreparingEsun: "Forbereder eSUN-katalogoppdatering...",
       confirmRemove: "Fjerne dette elementet fra ønskeliste/bestillingsflyt?",
       confirmRemoveAction: "Bekreft fjerning",
+      confirmRemoveTapAgain: "Trykk Fjern igjen for å bekrefte sletting av dette elementet.",
       error: {
         loadCatalog: "Kunne ikke laste masterkatalog.",
         zeroBambu:

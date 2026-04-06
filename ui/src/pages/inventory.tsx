@@ -719,6 +719,7 @@ export default function InventoryPage({
   const [wishlistNote, setWishlistNote] = useState("");
   const [wishlistQueueFilter, setWishlistQueueFilter] =
     useState<WishlistQueueFilter>("WISHLIST");
+  const [confirmWishlistRemoveId, setConfirmWishlistRemoveId] = useState<string | null>(null);
 
   const [esunCatalogQuery, setEsunCatalogQuery] = useState("");
   const [esunCatalogFilter, setEsunCatalogFilter] =
@@ -2034,6 +2035,7 @@ export default function InventoryPage({
     if (!tauri || busy) {
       return;
     }
+    setConfirmWishlistRemoveId(null);
     setBusy(true);
     setError(null);
     try {
@@ -2054,15 +2056,17 @@ export default function InventoryPage({
     if (!tauri || busy) {
       return;
     }
-    const confirmed = window.confirm(
-      t(
-        "wishlist.confirmRemove",
-        "Remove this entry from wishlist/order tracking?",
-      ),
-    );
-    if (!confirmed) {
+    if (confirmWishlistRemoveId !== itemId) {
+      setConfirmWishlistRemoveId(itemId);
+      setInfoMessage(
+        t(
+          "wishlist.confirmRemoveTapAgain",
+          "Click Remove again to confirm deleting this wishlist entry.",
+        ),
+      );
       return;
     }
+    setConfirmWishlistRemoveId(null);
     setBusy(true);
     setError(null);
     try {
@@ -2080,6 +2084,7 @@ export default function InventoryPage({
     if (!tauri || busy) {
       return;
     }
+    setConfirmWishlistRemoveId(null);
     setBusy(true);
     setError(null);
     const id = `spool_${Date.now()}`;
@@ -4026,7 +4031,9 @@ export default function InventoryPage({
                                     onClick={() => handleDeleteWishlistItem(item.id)}
                                     disabled={!tauri || busy}
                                   >
-                                    {t("common.remove", "Remove")}
+                                    {confirmWishlistRemoveId === item.id
+                                      ? t("wishlist.confirmRemoveAction", "Confirm remove")
+                                      : t("common.remove", "Remove")}
                                   </button>
                                 </div>
                               </div>
