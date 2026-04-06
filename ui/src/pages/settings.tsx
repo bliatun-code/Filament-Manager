@@ -2200,7 +2200,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
             <section className="surface-card xl:col-span-2">
               <div className="relative overflow-hidden rounded-[28px] border border-slate-200/85 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(241,246,252,0.96)_58%,_rgba(232,239,247,0.92))] p-5 text-slate-950 shadow-[0_28px_80px_rgba(148,163,184,0.14)] dark:border-slate-700/70 dark:bg-[linear-gradient(180deg,_rgba(15,23,42,0.98),_rgba(15,23,42,0.94)_52%,_rgba(30,41,59,0.9))] dark:text-white dark:shadow-none">
                 <div className="relative space-y-4">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_320px]">
                     <div className="min-w-0 flex-1 space-y-3">
                       <div className="max-w-2xl">
                         <div className="section-eyebrow text-slate-600 dark:text-slate-300">
@@ -2235,7 +2235,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                       </div>
                     </div>
 
-                    <div className="w-full rounded-2xl border border-slate-200/80 bg-white/68 p-4 shadow-sm shadow-slate-200/20 backdrop-blur dark:border-white/12 dark:bg-white/[0.08] dark:shadow-none lg:w-auto lg:min-w-[360px]">
+                    <div className="md:border-l md:border-slate-200/80 md:pl-5 dark:md:border-white/12">
                       <div className="text-sm font-semibold text-slate-950 dark:text-white">
                         {t("settings.trustedLanServerControl", "1-step control")}
                       </div>
@@ -2265,7 +2265,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                           busyLabel={t("settings.trustedLanToggleBusy", "Saving...")}
                         />
                       </div>
-                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <div className="mt-3 grid gap-2">
                         <button
                           type="button"
                           onClick={() => void handleRefreshTrustedLanStatus()}
