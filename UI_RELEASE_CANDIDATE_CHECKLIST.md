@@ -1,6 +1,6 @@
 # UI Release Candidate Checklist (Desktop/Mac)
 
-Last updated: 2026-04-05
+Last updated: 2026-04-07
 Scope: Desktop app UI only (not browser/trusted-LAN shell)
 
 Status legend:
@@ -60,6 +60,15 @@ Status legend:
 3. Switch to `Auto` and verify live transitions while at least one modal is open.
 4. Test one fullscreen pass on `Dashboard`, `Inventory`, `Loans`, `Statistics`.
 5. Confirm no visual regressions in `Add filament`, `Loan out`, `Update weight`, `Add printer` dialogs.
+
+## v0.8.0 QC Snapshot (2026-04-07)
+- `PASS` Oversikt (Dashboard)
+- `PASS` Lager (Inventory)
+- `PASS` Legg til filament popup
+- `PASS` Utlån (Loans)
+- `PASS` Lån ut filament popup
+- `PASS` Utskrift lageroversikt
+- `PASS` QR etikett-utskrift
 
 ## v0.1.0 Gate Snapshot (2026-04-05)
 - Automated baseline:

@@ -61,7 +61,7 @@ export function buildFilamentLabelHtml(input: FilamentLabelHtmlInput): string {
       <img src="${escapeHtml(input.qrDataUrl)}" alt="Filament QR" style="width: 196px; height: 196px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; image-rendering: pixelated; object-fit: contain;" />
       <div>
         <div style="font-size: 24px; font-weight: 700; margin-bottom: 6px;">${escapeHtml(filamentTitle || input.filamentName)}</div>
-        <div style="font-size: 12px; line-height: 1.35;">
+        <div style="font-size: 16px; line-height: 1.4;">
           <div><strong>${escapeHtml(input.labels.vendor)}:</strong> ${escapeHtml(input.vendor)}</div>
           <div><strong>${escapeHtml(input.labels.filament)}:</strong> ${escapeHtml(input.filamentName)}</div>
           ${

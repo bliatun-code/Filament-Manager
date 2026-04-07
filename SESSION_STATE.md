@@ -1,10 +1,24 @@
 # Session State
 
-Last updated: 2026-04-06
+Last updated: 2026-04-07
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
+- Step closeout notes (2026-04-07):
+  - QC-verified surfaces: `Oversikt (Dashboard)`, `Lager (Inventory)`, `Legg til filament` popup, `Utlån (Loans)`, `Lån ut filament` popup, `Utskrift lageroversikt`, and `QR label print`.
+  - Inventory detail now supports:
+    - `Edit location` after spool creation
+    - `Lost status` toggle (`LOST <-> IN_STOCK`)
+    - `Refill / Reactivate roll` for empty spools
+    - automatic reactivation to `IN_STOCK` when an `EMPTY` spool gets measured weight above tare.
+  - Stock filtering rules are hardened:
+    - `All` excludes empty spools
+    - low-stock only shows `1-200 g`
+    - low-stock excludes `EMPTY` and `LOST`
+    - dashboard low-stock counters exclude empty/lost as well.
+  - Printers and loan-out candidate lists now exclude non-usable statuses (`EMPTY`, `LOST`, `MISSING`, `BORROWED`) and exclude borrowed-in/assigned rolls where applicable.
+  - `npm run smoke` passes on current baseline and release prep is aligned to `v0.8.0`.
 - Step closeout notes (2026-04-06):
   - Desktop `Settings -> General` now shows app version to make release verification easier in support/debug flows.
   - Trusted-LAN settings layout is compacted and aligned for better control flow (`server status/network summary` + `server controls` grouped side-by-side, pairing CTA moved below browser label input).

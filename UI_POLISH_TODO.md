@@ -27,6 +27,7 @@ Current browser terminology note:
   - locale follow-through where it helps the same UI pass:
     - keep English/Norwegian browser copy short, human, and consistent while polishing the same surface
 - Latest cleanup pass done (2026-04-06):
+  - QC coverage marked as checked for: `Oversikt`, `Lager`, `Legg til filament` popup, `Utlån`, `Lån ut filament` popup, `Utskrift lageroversikt`, and `QR label print`.
   - Settings trusted-LAN control flow:
     - aligned server status/network summary and server controls into one cohesive side-by-side section
     - moved `Lag parringslenke` to sit directly under browser label input and removed redundant helper line

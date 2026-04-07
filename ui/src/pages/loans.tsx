@@ -554,7 +554,7 @@ export default function LoansPage() {
             </div>
           ) : null}
 
-          <div className="grid grid-cols-1 gap-3 min-[720px]:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 min-[720px]:grid-cols-2 xl:grid-cols-4">
             {filteredLoans.map((loan) => {
               const isActive = !loan.loan.returned_at;
               const loanDirection = normalizeLoanDirection(loan.loan.loan_direction);
@@ -567,11 +567,11 @@ export default function LoansPage() {
               return (
                 <div
                   key={loan.loan.id}
-                  className="rounded-2xl border border-slate-300/80 p-4 shadow-sm shadow-slate-300/25 dark:border-slate-700/80 dark:shadow-none"
+                  className="rounded-2xl border border-slate-300/80 p-3 shadow-sm shadow-slate-300/25 dark:border-slate-700/80 dark:shadow-none"
                   style={loanSwatchSurfaceStyle(loan.hex_color, "card", resolvedTheme)}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/60 p-2 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/70 bg-white/60 p-1.5 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
                       <span
                         className="h-full w-full rounded-xl border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
                         style={loanSwatchPreviewStyle(loan.hex_color)}
@@ -580,7 +580,7 @@ export default function LoansPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="truncate text-[1.02rem] font-semibold leading-tight text-slate-950 dark:text-slate-50">
+                          <div className="truncate text-[15px] font-semibold leading-tight text-slate-950 dark:text-slate-50">
                             {loanTitle}
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
@@ -623,7 +623,7 @@ export default function LoansPage() {
                   </div>
 
                   <div
-                    className="mt-3 rounded-[1.15rem] border px-3.5 py-3"
+                    className="mt-2 rounded-[1.05rem] border px-2.5 py-2"
                     style={loanSwatchSurfaceStyle(
                       loan.hex_color,
                       "inset",
@@ -698,12 +698,12 @@ export default function LoansPage() {
                   </div>
 
                   {isActive ? (
-                    <div className="mt-3 flex justify-start">
+                    <div className="mt-2 flex justify-start">
                       <button
                         type="button"
                         onClick={() => openReturnModal(loan)}
                         disabled={busy}
-                        className="w-full rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-sm font-semibold text-emerald-800 shadow-sm shadow-emerald-200/25 disabled:opacity-50 min-[420px]:w-auto dark:border-emerald-400/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:shadow-none"
+                        className="w-full rounded-xl border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm shadow-emerald-200/25 disabled:opacity-50 min-[420px]:w-auto dark:border-emerald-400/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:shadow-none"
                       >
                         {isInbound
                           ? t("loans.handBackAction", "Hand back")

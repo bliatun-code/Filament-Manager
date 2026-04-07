@@ -35,7 +35,7 @@ const GROUP_GAP = 8;
 const ROW_GAP = 8;
 const GROUP_SECTION_GAP = 12;
 
-const CARD_HEIGHT = 104;
+const CARD_HEIGHT = 96;
 const QR_SIZE = 68;
 const SWATCH_SIZE = 14;
 
@@ -339,7 +339,7 @@ export async function buildInventoryOverviewPrintPdfBase64(
             labels.vendor,
             safeText(row.vendor),
             textX,
-            titleY - 20,
+            titleY - 18,
             detailWidth,
           );
           drawLabelValue(
@@ -349,7 +349,7 @@ export async function buildInventoryOverviewPrintPdfBase64(
             labels.filament,
             safeText(row.filamentName),
             textX,
-            titleY - 34,
+            titleY - 30,
             detailWidth,
           );
           drawLabelValue(
@@ -359,7 +359,7 @@ export async function buildInventoryOverviewPrintPdfBase64(
             labels.color,
             safeText(row.colorName),
             textX,
-            titleY - 48,
+            titleY - 42,
             detailWidth,
           );
           drawLabelValue(
@@ -369,7 +369,7 @@ export async function buildInventoryOverviewPrintPdfBase64(
             labels.reference,
             formatSpoolReference(safeText(row.reference)),
             textX,
-            titleY - 62,
+            titleY - 54,
             detailWidth,
           );
         }

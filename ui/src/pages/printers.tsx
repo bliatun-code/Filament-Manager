@@ -536,7 +536,13 @@ export default function PrintersPage() {
 
   function allowedSpoolsForSlot(slotSpoolId?: string | null) {
     return spools.filter((row) => {
-      if (row.spool.status === "EMPTY" || row.spool.status === "LOST") {
+      const status = (row.spool.status ?? "").trim().toUpperCase();
+      if (
+        status === "EMPTY" ||
+        status === "LOST" ||
+        status === "MISSING" ||
+        status === "BORROWED"
+      ) {
         return false;
       }
       if (slotSpoolId && row.spool.id === slotSpoolId) {

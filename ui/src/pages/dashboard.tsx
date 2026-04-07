@@ -194,6 +194,10 @@ export default function DashboardPage({
     },
   ]);
   const [usagePoints, setUsagePoints] = useState<number[]>([0, 0]);
+  const [ownershipLowStock, setOwnershipLowStock] = useState({
+    owned: 0,
+    borrowedIn: 0,
+  });
   const [health, setHealth] = useState({
     score: 100,
     headline: t("dashboard.noInventoryData", "No inventory data"),
@@ -266,7 +270,16 @@ export default function DashboardPage({
         .filter((item) => item.status === "ON_ORDER")
         .reduce((sum, item) => sum + Math.max(1, item.quantity || 1), 0);
       const lowStockRows = spoolRows
-        .filter((row) => (row.spool.remaining_g ?? 9_999_999) < LOW_STOCK_GRAMS)
+        .filter((row) => {
+          const status = (row.spool.status ?? "").trim().toUpperCase();
+          const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
+          return (
+            status !== "EMPTY" &&
+            status !== "LOST" &&
+            remaining > 0 &&
+            remaining <= LOW_STOCK_GRAMS
+          );
+        })
         .sort((left, right) => (left.spool.remaining_g ?? 0) - (right.spool.remaining_g ?? 0))
         .slice(0, 5)
         .map((row) => ({
@@ -275,6 +288,35 @@ export default function DashboardPage({
           color: row.master.color_name,
           remaining: `${row.spool.remaining_g ?? 0} g`,
         }));
+      const lowStockCount = lowStockRows.length;
+      const ownedLowStockCount = spoolRows.filter((row) => {
+        const status = (row.spool.status ?? "").trim().toUpperCase();
+        const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
+        const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
+        return (
+          status !== "EMPTY" &&
+          status !== "LOST" &&
+          ownershipType !== "BORROWED_IN" &&
+          remaining > 0 &&
+          remaining <= LOW_STOCK_GRAMS
+        );
+      }).length;
+      const borrowedInLowStockCount = spoolRows.filter((row) => {
+        const status = (row.spool.status ?? "").trim().toUpperCase();
+        const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
+        const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
+        return (
+          status !== "EMPTY" &&
+          status !== "LOST" &&
+          ownershipType === "BORROWED_IN" &&
+          remaining > 0 &&
+          remaining <= LOW_STOCK_GRAMS
+        );
+      }).length;
+      setOwnershipLowStock({
+        owned: ownedLowStockCount,
+        borrowedIn: borrowedInLowStockCount,
+      });
       const liveActivity: ActivityItem[] = [
         ...loans.slice(0, 3).map((loan) => ({
           id: `loan-${loan.loan.id}`,
@@ -313,7 +355,7 @@ export default function DashboardPage({
         {
           id: "lowStock",
           title: t("dashboard.lowStock", "Low Stock"),
-          value: overview.low_stock.toString(),
+          value: lowStockCount.toString(),
           subtitle: t("dashboard.below200", "Below 200g"),
           trend:
             lowStockRows.length > 0
@@ -409,7 +451,7 @@ export default function DashboardPage({
           {
             id: "lowStock",
             label: t("dashboard.lowStockShort", "low stock"),
-            value: overview.low_stock.toString(),
+            value: lowStockCount.toString(),
             tone: "rose" as const,
           },
           {
@@ -636,7 +678,7 @@ export default function DashboardPage({
           </div>
           <div className="rounded-2xl border border-rose-200/85 bg-rose-50/80 px-3 py-3 dark:border-rose-400/25 dark:bg-rose-500/10">
             <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-              {overviewSnapshot?.owned_low_stock ?? 0}
+              {ownershipLowStock.owned}
             </div>
             <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               {t("dashboard.ownedLowStock", "Owned low stock")}
@@ -644,7 +686,7 @@ export default function DashboardPage({
           </div>
           <div className="rounded-2xl border border-orange-200/85 bg-orange-50/80 px-3 py-3 dark:border-orange-400/25 dark:bg-orange-500/10">
             <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-              {overviewSnapshot?.borrowed_in_low_stock ?? 0}
+              {ownershipLowStock.borrowedIn}
             </div>
             <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               {t("dashboard.borrowedInLowStock", "Borrowed-in low stock")}

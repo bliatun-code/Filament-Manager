@@ -20,6 +20,7 @@ import {
   sortPrinterSlotsExtLast,
 } from "../lib/printer_profiles";
 import {
+  assignPrinterSlot,
   createManualSpool,
   createSpool,
   createWishlistItem,
@@ -56,7 +57,6 @@ type StatusFilter = "ALL" | SpoolStatus;
 type OwnershipType = "OWNED" | "BORROWED_IN";
 type OwnershipFilter = "ALL" | OwnershipType;
 type CreateMode = "bambu" | "esun" | "manual";
-type BambuCatalogFilter = "ALL" | "ACTIVE" | "DISCONTINUED";
 type SidePanelMode = "MANAGE" | "ADD";
 type WishlistStatus = "WISHLIST" | "ON_ORDER" | "RECEIVED";
 type WishlistQueueFilter = "ALL" | WishlistStatus;
@@ -135,11 +135,6 @@ const ownershipFilters: ReadonlyArray<OwnershipFilter> = [
   "ALL",
   "OWNED",
   "BORROWED_IN",
-];
-const bambuCatalogFilters: ReadonlyArray<BambuCatalogFilter> = [
-  "ALL",
-  "ACTIVE",
-  "DISCONTINUED",
 ];
 
 function segmentedChoiceGroupClass(className = ""): string {
@@ -723,8 +718,6 @@ export default function InventoryPage({
   const [loanTrackingSpoolId, setLoanTrackingSpoolId] = useState<string | null>(null);
   const [createMode, setCreateMode] = useState<CreateMode>("bambu");
   const [bambuCatalogQuery, setBambuCatalogQuery] = useState("");
-  const [bambuCatalogFilter, setBambuCatalogFilter] =
-    useState<BambuCatalogFilter>("ALL");
   const [newBambuMasterId, setNewBambuMasterId] = useState("");
   const [newInitialWeight, setNewInitialWeight] = useState("");
   const [newLocation, setNewLocation] = useState("");
@@ -738,15 +731,11 @@ export default function InventoryPage({
   const [manualFilamentName, setManualFilamentName] = useState("");
   const [manualColorName, setManualColorName] = useState("");
   const [manualHexColor, setManualHexColor] = useState("");
-  const [wishlistQuantity, setWishlistQuantity] = useState("1");
-  const [wishlistNote, setWishlistNote] = useState("");
   const [wishlistQueueFilter, setWishlistQueueFilter] =
     useState<WishlistQueueFilter>("WISHLIST");
   const [confirmWishlistRemoveId, setConfirmWishlistRemoveId] = useState<string | null>(null);
 
   const [esunCatalogQuery, setEsunCatalogQuery] = useState("");
-  const [esunCatalogFilter, setEsunCatalogFilter] =
-    useState<BambuCatalogFilter>("ALL");
   const [newEsunMasterId, setNewEsunMasterId] = useState("");
 
   const [masterEditUnlocked, setMasterEditUnlocked] = useState(false);
@@ -758,6 +747,7 @@ export default function InventoryPage({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmPurge, setConfirmPurge] = useState(false);
   const [selectedSpoolTareDraft, setSelectedSpoolTareDraft] = useState("");
+  const [selectedSpoolLocationDraft, setSelectedSpoolLocationDraft] = useState("");
   const [selectedSpoolQrDataUrl, setSelectedSpoolQrDataUrl] = useState<string | null>(
     null,
   );
@@ -1021,8 +1011,15 @@ export default function InventoryPage({
   const filteredSpools = useMemo(() => {
     const term = search.trim().toLowerCase();
     return spools.filter((spool) => {
+      const normalizedStatus = normalizeStatus(spool.status);
+      const remaining = Math.max(
+        0,
+        spool.remainingGrams ?? spool.initialWeightGrams ?? 0,
+      );
       const statusMatch =
-        statusFilter === "ALL" ? true : spool.status === statusFilter;
+        statusFilter === "ALL"
+          ? normalizedStatus !== "EMPTY"
+          : normalizedStatus === statusFilter;
       const ownershipMatch =
         ownershipFilter === "ALL" ? true : spool.ownershipType === ownershipFilter;
       const materialMatch =
@@ -1030,7 +1027,10 @@ export default function InventoryPage({
       const vendorMatch =
         vendorFilter === "ALL" ? true : spool.vendor === vendorFilter;
       const lowStockMatch = lowStockOnly
-        ? (spool.remainingGrams ?? 9_999_999) < LOW_STOCK_GRAMS
+        ? normalizedStatus !== "EMPTY" &&
+          normalizedStatus !== "LOST" &&
+          remaining > 0 &&
+          remaining <= LOW_STOCK_GRAMS
         : true;
       const searchMatch =
         term.length === 0
@@ -1598,6 +1598,7 @@ export default function InventoryPage({
       setUsagePoints([]);
       setConfirmDelete(false);
       setConfirmPurge(false);
+      setSelectedSpoolLocationDraft("");
       setSelectedSpoolTareDraft("");
       setShowRollModal(false);
       return;
@@ -1608,6 +1609,7 @@ export default function InventoryPage({
     setEditMasterFilamentName(selectedSpool.filamentName);
     setEditMasterColorName(selectedSpool.colorName);
     setEditMasterHexColor(selectedSpool.hexColor ?? "");
+    setSelectedSpoolLocationDraft(selectedSpool.location ?? "");
     setSelectedSpoolTareDraft(
       String(resolveSpoolTareWeight(selectedSpool.spoolTareWeightGrams, selectedSpool.vendor)),
     );
@@ -1695,21 +1697,15 @@ export default function InventoryPage({
   const filteredBambuMasters = useMemo(() => {
     const term = bambuCatalogQuery.trim().toLowerCase();
     return bambuMasters.filter((master) => {
-      const stateMatch =
-        bambuCatalogFilter === "ALL"
-          ? true
-          : bambuCatalogFilter === "ACTIVE"
-            ? !master.is_discontinued
-            : master.is_discontinued;
       const textMatch =
         term.length === 0
           ? true
           : `${master.material} ${master.filament_name} ${master.color_name}`
               .toLowerCase()
               .includes(term);
-      return stateMatch && textMatch;
+      return textMatch;
     });
-  }, [bambuCatalogFilter, bambuCatalogQuery, bambuMasters]);
+  }, [bambuCatalogQuery, bambuMasters]);
 
   const selectedBambuMaster = useMemo(() => {
     const fromId = masters.find((master) => master.id === newBambuMasterId) ?? null;
@@ -1760,21 +1756,15 @@ export default function InventoryPage({
   const filteredEsunMasters = useMemo(() => {
     const term = esunCatalogQuery.trim().toLowerCase();
     return esunMasters.filter((master) => {
-      const stateMatch =
-        esunCatalogFilter === "ALL"
-          ? true
-          : esunCatalogFilter === "ACTIVE"
-            ? !master.is_discontinued
-            : master.is_discontinued;
       const textMatch =
         term.length === 0
           ? true
           : `${master.material} ${master.filament_name} ${master.color_name}`
               .toLowerCase()
               .includes(term);
-      return stateMatch && textMatch;
+      return textMatch;
     });
-  }, [esunCatalogFilter, esunCatalogQuery, esunMasters]);
+  }, [esunCatalogQuery, esunMasters]);
 
   const selectedEsunMaster = useMemo(() => {
     const fromId = masters.find((master) => master.id === newEsunMasterId) ?? null;
@@ -1969,8 +1959,6 @@ export default function InventoryPage({
             : t("inventory.addedToInventory", "Added to inventory")
         }: ${addedLabel}`,
       );
-      setSidePanelMode("MANAGE");
-      setShowAddModal(false);
       setNewLocation("");
       setNewOwnershipType("OWNED");
       setBorrowedFromName("");
@@ -2053,8 +2041,6 @@ export default function InventoryPage({
       );
       return;
     }
-    const quantity = Number.parseInt(wishlistQuantity, 10);
-
     setBusy(true);
     setError(null);
     try {
@@ -2065,11 +2051,10 @@ export default function InventoryPage({
         material: draft.material,
         filament_name: draft.filament_name,
         color_name: draft.color_name,
-        quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
-        note: wishlistNote.trim() || null,
+        quantity: 1,
+        note: null,
       });
       await reloadWishlist();
-      setWishlistNote("");
     } catch (wishlistError) {
       console.error(wishlistError);
       setError(t("wishlist.error.add", "Failed to add wishlist item."));
@@ -2184,8 +2169,6 @@ export default function InventoryPage({
           item.color_name,
         )}`,
       );
-      setSidePanelMode("MANAGE");
-      setShowAddModal(false);
     } catch (stockError) {
       console.error(stockError);
       setError(t("inventory.error.stockFromWishlist", "Failed to stock roll from wishlist item."));
@@ -2307,6 +2290,13 @@ export default function InventoryPage({
     setManageBusy(true);
     setError(null);
     try {
+      if (selectedSpoolAssignedSlot) {
+        await assignPrinterSlot({
+          printer_id: selectedSpoolAssignedSlot.printerId,
+          slot_id: selectedSpoolAssignedSlot.slotId,
+          spool_id: null,
+        });
+      }
       await updateSpoolStatus(selectedSpool.id, "EMPTY");
       await updateSpoolWeight(selectedSpool.id, 0);
       await reloadSpools();
@@ -2320,6 +2310,116 @@ export default function InventoryPage({
         commandErrorText(
           statusError,
           t("inventory.error.markEmpty", "Failed to mark roll as empty."),
+        ),
+      );
+    } finally {
+      setManageBusy(false);
+    }
+  }
+
+  async function handleSaveSpoolLocation() {
+    if (!tauri || !selectedSpool || manageBusy) {
+      return;
+    }
+    const location = selectedSpoolLocationDraft.trim();
+    setManageBusy(true);
+    setError(null);
+    try {
+      await updateSpoolDetails({
+        spool_id: selectedSpool.id,
+        qr_code: selectedSpool.qrCode ?? null,
+        status: selectedSpool.status,
+        location: location || null,
+      });
+      await reloadSpools();
+      await reloadPrinterOverview();
+      await reloadHistory(selectedSpool.id);
+      await reloadUsage(selectedSpool.id);
+      setInfoMessage(t("inventory.locationSaved", "Location updated."));
+    } catch (updateError) {
+      console.error(updateError);
+      setError(
+        commandErrorText(
+          updateError,
+          t("inventory.error.updateLocation", "Failed to update location."),
+        ),
+      );
+    } finally {
+      setManageBusy(false);
+    }
+  }
+
+  async function handleRefillSpool() {
+    if (!tauri || !selectedSpool || manageBusy) {
+      return;
+    }
+    if (selectedSpool.status !== "EMPTY") {
+      return;
+    }
+    if ((selectedSpool.remainingGrams ?? 0) <= 0) {
+      setError(
+        t(
+          "inventory.error.refillRequiresWeight",
+          "Set measured total weight above empty spool weight before reactivating.",
+        ),
+      );
+      return;
+    }
+    setManageBusy(true);
+    setError(null);
+    try {
+      await updateSpoolStatus(selectedSpool.id, "IN_STOCK");
+      await reloadSpools();
+      await reloadPrinterOverview();
+      await reloadActiveLoans();
+      await reloadHistory(selectedSpool.id);
+      await reloadUsage(selectedSpool.id);
+      setInfoMessage(t("inventory.refilled", "Roll reactivated and ready for use."));
+    } catch (statusError) {
+      console.error(statusError);
+      setError(
+        commandErrorText(
+          statusError,
+          t("inventory.error.refill", "Failed to reactivate roll."),
+        ),
+      );
+    } finally {
+      setManageBusy(false);
+    }
+  }
+
+  async function handleToggleLostStatus() {
+    if (!tauri || !selectedSpool || manageBusy) {
+      return;
+    }
+    const nextStatus: SpoolStatus = selectedSpool.status === "LOST" ? "IN_STOCK" : "LOST";
+    setManageBusy(true);
+    setError(null);
+    try {
+      if (nextStatus === "LOST" && selectedSpoolAssignedSlot) {
+        await assignPrinterSlot({
+          printer_id: selectedSpoolAssignedSlot.printerId,
+          slot_id: selectedSpoolAssignedSlot.slotId,
+          spool_id: null,
+        });
+      }
+      await updateSpoolStatus(selectedSpool.id, nextStatus);
+      await reloadSpools();
+      await reloadPrinterOverview();
+      await reloadActiveLoans();
+      await reloadHistory(selectedSpool.id);
+      await reloadUsage(selectedSpool.id);
+      setInfoMessage(
+        nextStatus === "LOST"
+          ? t("inventory.markedLost", "Roll marked as lost.")
+          : t("inventory.markedFound", "Roll restored to in stock."),
+      );
+    } catch (statusError) {
+      console.error(statusError);
+      setError(
+        commandErrorText(
+          statusError,
+          t("inventory.error.toggleLost", "Failed to update lost status."),
         ),
       );
     } finally {
@@ -2420,6 +2520,11 @@ export default function InventoryPage({
       } else {
         await updateSpoolWeight(selectedSpool.id, safeGrams);
       }
+      const calculatedRemaining = Math.max(0, safeGrams - selectedSpoolResolvedTare);
+      if (selectedSpool.status === "EMPTY" && calculatedRemaining > 0) {
+        await updateSpoolStatus(selectedSpool.id, "IN_STOCK");
+        setInfoMessage(t("inventory.refilledAuto", "Roll reactivated from new measured weight."));
+      }
       await reloadSpools();
       await reloadPrinterOverview();
       await reloadHistory(selectedSpool.id);
@@ -2499,20 +2604,6 @@ export default function InventoryPage({
         : null
       : selectedCatalogMaster?.hex_color ?? null;
   const currentCreateDraft = buildWishlistDraft();
-  const currentCreateDisplayTitle = currentCreateDraft
-    ? formatInventoryDisplayTitle(
-        currentCreateDraft.material,
-        currentCreateDraft.filament_name,
-        currentCreateDraft.color_name,
-      )
-    : "";
-  const currentCreateInitialWeight =
-    newInitialWeight.trim() ||
-    (createMode === "manual"
-      ? ""
-      : selectedCatalogMaster
-        ? String(selectedCatalogMaster.default_weight)
-        : "");
   const currentCreatePanelStyle = currentCreateSwatchHex
     ? {
         ...inventorySwatchPanelStyle(currentCreateSwatchHex, resolvedTheme),
@@ -2535,9 +2626,6 @@ export default function InventoryPage({
   const currentCreateActionStyle = currentCreateSwatchHex
     ? inventorySwatchActionButtonStyle(currentCreateSwatchHex, resolvedTheme)
     : undefined;
-  const currentCreateOwnershipLabel = formatOwnershipLabel(newOwnershipType);
-  const activeCatalogFilter =
-    createMode === "bambu" ? bambuCatalogFilter : esunCatalogFilter;
   const disableWishlistCreate = !tauri || busy || !currentCreateDraft;
 
   return (
@@ -2895,6 +2983,60 @@ export default function InventoryPage({
                     style={inventorySwatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
                   >
                     <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                      {t("inventory.editLocation", "Edit location")}
+                    </div>
+                    <div className="mt-3 flex items-center gap-3">
+                      <input
+                        type="text"
+                        value={selectedSpoolLocationDraft}
+                        onChange={(event) => setSelectedSpoolLocationDraft(event.target.value)}
+                        placeholder={t("inventory.locationOptional", "Location (optional)")}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100"
+                        disabled={!tauri || manageBusy || Boolean(selectedSpoolAssignedSlot)}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveSpoolLocation}
+                        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-slate-300/30 transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white"
+                        disabled={!tauri || manageBusy || Boolean(selectedSpoolAssignedSlot)}
+                      >
+                        {t("common.save", "Save")}
+                      </button>
+                    </div>
+                    {selectedSpoolAssignedSlot ? (
+                      <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                        {t(
+                          "inventory.assignmentManagedOnPrinters",
+                          "Filament placement and slot assignment is managed on the Printers page.",
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div
+                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                    style={inventorySwatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
+                  >
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                      {t("inventory.lostStatus", "Lost status")}
+                    </div>
+                    <button
+                      type="button"
+                      className="mt-3 w-full rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 disabled:opacity-50 dark:border-rose-400/40 dark:bg-rose-500/15 dark:text-rose-200"
+                      onClick={handleToggleLostStatus}
+                      disabled={!tauri || manageBusy}
+                    >
+                      {selectedSpool.status === "LOST"
+                        ? t("inventory.markFound", "Mark as found (in stock)")
+                        : t("inventory.markLost", "Mark as lost")}
+                    </button>
+                  </div>
+
+                  <div
+                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                    style={inventorySwatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
+                  >
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                       {t("inventory.usageDiagram", "Usage diagram")}
                     </div>
                     <RollUsageChart
@@ -2957,6 +3099,16 @@ export default function InventoryPage({
                       {t("inventory.dangerZone", "Danger zone")}
                     </div>
                     <div className="mt-3 grid grid-cols-1 gap-2">
+                      {selectedSpool.status === "EMPTY" ? (
+                        <button
+                          type="button"
+                          className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 disabled:opacity-50 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200"
+                          onClick={handleRefillSpool}
+                          disabled={!tauri || manageBusy}
+                        >
+                          {t("inventory.refill", "Refill / Reactivate roll")}
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         className="rounded-lg border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-600 disabled:opacity-50 dark:border-rose-400/35 dark:bg-slate-950/55 dark:text-rose-200"
@@ -3174,13 +3326,13 @@ export default function InventoryPage({
         </div>
       </div>
 
-      {error ? (
+      {error && !(showAddModal && sidePanelMode === "ADD") ? (
         <FeedbackBanner tone="danger" className="mt-4">
           {error}
         </FeedbackBanner>
       ) : null}
 
-      {infoMessage ? (
+      {infoMessage && !(showAddModal && sidePanelMode === "ADD") ? (
         <FeedbackBanner tone="success" className="mt-4">
           {infoMessage}
         </FeedbackBanner>
@@ -3473,43 +3625,51 @@ export default function InventoryPage({
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+                  {error ? (
+                    <FeedbackBanner tone="danger" className="mb-4">
+                      {error}
+                    </FeedbackBanner>
+                  ) : null}
+
+                  {infoMessage ? (
+                    <FeedbackBanner tone="success" className="mb-4">
+                      {infoMessage}
+                    </FeedbackBanner>
+                  ) : null}
+
                   <div className="grid gap-4 lg:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)] xl:gap-5">
                     <div className="space-y-4">
                       <div className="surface-card space-y-4">
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                            {t("inventory.stockEntry", "Stock entry")}
-                          </div>
-                          <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                            {t(
-                              "inventory.stockEntryHelp",
-                              "Choose a vendor flow, pick a filament, then confirm stock details below.",
-                            )}
-                          </p>
-                        </div>
-
                         <div className="surface-subtle px-4 py-4">
                           <div className="flex flex-col gap-3.5">
-                            <SegmentedChoiceRow
-                              label={t("inventory.vendorSource", "Vendor source")}
-                              labelWidthClassName="min-[920px]:w-32"
-                              value={createMode}
-                              onChange={setCreateMode}
-                              options={[
-                                {
-                                  value: "bambu",
-                                  label: t("vendor.bambu", "Bambu"),
-                                },
-                                {
-                                  value: "esun",
-                                  label: t("vendor.esun", "eSUN"),
-                                },
-                                {
-                                  value: "manual",
-                                  label: t("vendor.generic", "Generic"),
-                                },
-                              ]}
-                            />
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <SegmentedChoiceRow
+                                className="min-w-0 flex-1"
+                                label={t("inventory.vendorSource", "Vendor source")}
+                                labelWidthClassName="min-[920px]:w-32"
+                                value={createMode}
+                                onChange={setCreateMode}
+                                options={[
+                                  {
+                                    value: "bambu",
+                                    label: t("vendor.bambu", "Bambu"),
+                                  },
+                                  {
+                                    value: "esun",
+                                    label: t("vendor.esun", "eSUN"),
+                                  },
+                                  {
+                                    value: "manual",
+                                    label: t("vendor.generic", "Generic"),
+                                  },
+                                ]}
+                              />
+                              {isCatalogCreateMode ? (
+                                <span className="shrink-0 rounded-full border border-slate-300 bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200">
+                                  {activeCatalogMasters.length}
+                                </span>
+                              ) : null}
+                            </div>
 
                             {isCatalogCreateMode ? (
                               <>
@@ -3533,24 +3693,6 @@ export default function InventoryPage({
                                   disabled={!tauri}
                                 />
 
-                                <SegmentedChoiceRow
-                                  label={t("inventory.status", "Status")}
-                                  value={activeCatalogFilter}
-                                  onChange={(filter) =>
-                                    createMode === "bambu"
-                                      ? setBambuCatalogFilter(filter)
-                                      : setEsunCatalogFilter(filter)
-                                  }
-                                  options={bambuCatalogFilters.map((filter) => ({
-                                    value: filter,
-                                    label:
-                                      filter === "ALL"
-                                        ? t("common.all", "All")
-                                        : filter === "ACTIVE"
-                                          ? t("common.active", "Active")
-                                          : t("common.discontinued", "Discontinued"),
-                                  }))}
-                                />
                               </>
                             ) : null}
                           </div>
@@ -3558,23 +3700,6 @@ export default function InventoryPage({
 
                         {isCatalogCreateMode ? (
                           <div className="space-y-3">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                              <div>
-                                <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                                  {t("inventory.catalogSelection", "Catalog selection")}
-                                </div>
-                                <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                                  {t(
-                                    "inventory.catalogManagedInSettingsHelp",
-                                    "Use the local catalogue below to add rolls directly to stock, wishlist, or on-order queues.",
-                                  )}
-                                </div>
-                              </div>
-                              <span className="self-start rounded-full border border-slate-300 bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200">
-                                {activeCatalogMasters.length}
-                              </span>
-                            </div>
-
                             <div className="space-y-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 dark:border-slate-700 dark:bg-slate-950/70 lg:max-h-[26rem] lg:overflow-y-auto">
                               {activeCatalogMasters.map((master) => {
                                 const selected =
@@ -3665,25 +3790,23 @@ export default function InventoryPage({
                                 </div>
                               ) : null}
                             </div>
-
-                            {createMode === "bambu" ? (
-                              <button
-                                type="button"
-                                className="w-full rounded-xl border border-slate-200 bg-white/85 px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80"
-                                onClick={() => {
-                                  setCreateMode("manual");
-                                  setManualVendor("Bambu");
-                                  if (selectedBambuMaster) {
-                                    setManualMaterial(selectedBambuMaster.material);
-                                  }
-                                }}
-                              >
-                                {t(
-                                  "wishlist.addMissingBambuManual",
-                                  "Bambu filament missing? Add it manually",
-                                )}
-                              </button>
-                            ) : null}
+                            <button
+                              type="button"
+                              className="w-full rounded-xl border border-slate-200 bg-white/85 px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80"
+                              onClick={() => {
+                                setCreateMode("manual");
+                                const selectedCatalogMaster =
+                                  createMode === "bambu" ? selectedBambuMaster : selectedEsunMaster;
+                                const manualVendorPreset =
+                                  createMode === "bambu" ? "Bambu" : "eSUN";
+                                setManualVendor(manualVendorPreset);
+                                if (selectedCatalogMaster) {
+                                  setManualMaterial(selectedCatalogMaster.material);
+                                }
+                              }}
+                            >
+                              {t("inventory.addMissingFilamentManual", "Missing filament? Add it manually")}
+                            </button>
                           </div>
                         ) : null}
 
@@ -3777,222 +3900,128 @@ export default function InventoryPage({
                           </div>
                         ) : null}
 
-                        <div
-                          className="rounded-2xl border border-slate-200 bg-white/85 p-4 transition dark:border-slate-700 dark:bg-slate-950/70"
-                          style={currentCreatePanelStyle}
-                        >
-                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                            {t("inventory.addDirectlyToStock", "Add directly to stock")}
-                          </div>
-                          <div className="mt-3 rounded-xl border border-slate-200/80 bg-white/65 p-3 dark:border-slate-700/80 dark:bg-slate-950/40">
-                            <SegmentedChoiceRow
-                              label={t("inventory.ownership", "Ownership")}
-                              value={newOwnershipType}
-                              onChange={setNewOwnershipType}
-                              options={[
-                                {
-                                  value: "OWNED",
-                                  label: t("inventory.ownedByUs", "Owned"),
-                                },
-                                {
-                                  value: "BORROWED_IN",
-                                  label: t("inventory.borrowedIn", "Borrowed in"),
-                                },
-                              ]}
-                            />
-                            <div className="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
-                              {newOwnershipType === "BORROWED_IN"
-                                ? t(
-                                    "inventory.borrowedInHelp",
-                                    "Register this spool as borrowed from someone else. It can still be used in printers, but it will not appear in loan-out candidates.",
-                                  )
-                                : t("inventory.ownedByUsDetail", "Owned by us")}
-                            </div>
-                            {newOwnershipType === "BORROWED_IN" ? (
-                              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                                <input
-                                  type="text"
-                                  value={borrowedFromName}
-                                  onChange={(event) => setBorrowedFromName(event.target.value)}
-                                  placeholder={t("inventory.borrowedFrom", "Borrowed from")}
-                                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
-                                  disabled={!tauri}
-                                />
-                                <input
-                                  type="text"
-                                  value={borrowedFromContact}
-                                  onChange={(event) => setBorrowedFromContact(event.target.value)}
-                                  placeholder={t(
-                                    "inventory.ownerContactOptional",
-                                    "Owner contact (optional)",
-                                  )}
-                                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
-                                  disabled={!tauri}
-                                />
-                                <input
-                                  type="text"
-                                  value={borrowedInNote}
-                                  onChange={(event) => setBorrowedInNote(event.target.value)}
-                                  placeholder={t(
-                                    "inventory.borrowedInNoteOptional",
-                                    "Borrowed-in note (optional)",
-                                  )}
-                                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 md:col-span-2"
-                                  disabled={!tauri}
-                                />
-                              </div>
-                            ) : null}
-                          </div>
-                          <div className="mt-3 grid grid-cols-1 gap-3">
-                            <input
-                              type="number"
-                              value={newInitialWeight}
-                              onChange={(event) => setNewInitialWeight(event.target.value)}
-                              placeholder={t("inventory.initialWeight", "Initial weight (g)")}
-                              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
-                              disabled={!tauri}
-                            />
-                            <input
-                              type="text"
-                              value={newLocation}
-                              onChange={(event) => setNewLocation(event.target.value)}
-                              placeholder={t("inventory.locationOptional", "Location (optional)")}
-                              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
-                              disabled={!tauri}
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            className={`mt-4 w-full rounded-xl border px-4 py-3 text-sm font-semibold transition disabled:opacity-50 ${
-                              currentCreateActionStyle
-                                ? "shadow-sm"
-                                : "border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900"
-                            }`}
-                            style={currentCreateActionStyle}
-                            onClick={handleCreateSpool}
-                            disabled={disableCreate}
-                          >
-                            {newOwnershipType === "BORROWED_IN"
-                              ? t("inventory.registerBorrowedIn", "Register borrowed-in spool")
-                              : t("inventory.addSpool", "Add spool to inventory")}
-                          </button>
-                        </div>
                       </div>
                     </div>
 
                     <div className="space-y-4 self-start lg:sticky lg:top-0">
-                      <div className="surface-card space-y-4">
-                        <div
-                          className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 transition dark:border-slate-700 dark:bg-slate-950/70"
-                          style={currentCreatePanelStyle}
-                        >
-                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                            {t("inventory.addToWishlist", "Add to wishlist / order")}
+                      <div
+                        className="rounded-2xl border border-slate-200 bg-white/85 p-4 transition dark:border-slate-700 dark:bg-slate-950/70"
+                        style={currentCreatePanelStyle}
+                      >
+                        <div className="rounded-xl border border-slate-200/80 bg-white/65 p-3 dark:border-slate-700/80 dark:bg-slate-950/40">
+                          <SegmentedChoiceRow
+                            label={t("inventory.ownership", "Ownership")}
+                            value={newOwnershipType}
+                            onChange={setNewOwnershipType}
+                            options={[
+                              {
+                                value: "OWNED",
+                                label: t("inventory.ownedByUs", "Owned"),
+                              },
+                              {
+                                value: "BORROWED_IN",
+                                label: t("inventory.borrowedIn", "Borrowed in"),
+                              },
+                            ]}
+                          />
+                          <div className="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                            {newOwnershipType === "BORROWED_IN"
+                              ? t(
+                                  "inventory.borrowedInHelp",
+                                  "Register this spool as borrowed from someone else. It can still be used in printers, but it will not appear in loan-out candidates.",
+                                )
+                              : t("inventory.ownedByUsDetail", "Owned by us")}
                           </div>
-                          <div className="mt-3 flex min-w-0 items-start gap-3">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/70 bg-white/60 p-1.5 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
-                              {currentCreateSwatchHex ? (
-                                <span
-                                  className="h-full w-full rounded-lg border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
-                                  style={{
-                                    background: `linear-gradient(145deg, ${toSwatchColor(
-                                      currentCreateSwatchHex,
-                                    )} 0%, ${toSwatchColor(currentCreateSwatchHex)}CC 58%, #0f172a33 100%)`,
-                                  }}
-                                />
-                              ) : (
-                                <span className="flex h-full w-full items-center justify-center rounded-lg border border-white/70 bg-white/65 text-lg font-semibold text-slate-500 dark:border-white/10 dark:bg-slate-950/45 dark:text-slate-300">
-                                  +
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="min-w-0">
-                              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                                {t("inventory.selectionPreview", "Selection preview")}
-                              </div>
-                              <div className="mt-1 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-50">
-                                {currentCreateDraft
-                                  ? currentCreateDisplayTitle
-                                  : isCatalogCreateMode
-                                    ? t("inventory.catalogSelection", "Catalog selection")
-                                    : t("inventory.manualDetails", "Manual details")}
-                              </div>
-                              <div className="mt-2 flex flex-wrap items-center gap-2">
-                                <VendorBadge
-                                  vendor={currentCreateDraft?.vendor ?? activeVendorLabel}
-                                  compact
-                                />
-                                <span
-                                  className={semanticChipClass(
-                                    formatOwnershipTone(newOwnershipType),
-                                    "px-2 py-0.5 text-[10px]",
-                                  )}
-                                >
-                                  {currentCreateOwnershipLabel}
-                                </span>
-                                {currentCreateInitialWeight ? (
-                                  <span className="rounded-full border border-slate-300 bg-white/85 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200">
-                                    {currentCreateInitialWeight} g
-                                  </span>
-                                ) : null}
-                              </div>
-                              <div className="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
-                                {currentCreateDraft
-                                  ? t(
-                                      "inventory.addToWishlistHelp",
-                                      "Use the current selection to keep the wishlist → on order → stock workflow.",
-                                    )
-                                  : createMode === "manual"
-                                    ? t(
-                                        "inventory.manualDetailsHelp",
-                                        "Use this when a filament is missing from the vendor catalog or you want a fully manual entry.",
-                                      )
-                                    : t(
-                                        "inventory.stockEntryHelp",
-                                        "Choose a vendor flow, pick a filament, then confirm stock details below.",
-                                      )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 border-t border-slate-200/80 pt-4 dark:border-slate-700/80">
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[88px_1fr]">
+                          {newOwnershipType === "BORROWED_IN" ? (
+                            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                               <input
-                                type="number"
-                                min={1}
-                                value={wishlistQuantity}
-                                onChange={(event) => setWishlistQuantity(event.target.value)}
-                                placeholder={t("wishlist.qty", "Qty")}
-                                className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-100"
+                                type="text"
+                                value={borrowedFromName}
+                                onChange={(event) => setBorrowedFromName(event.target.value)}
+                                placeholder={t("inventory.borrowedFrom", "Borrowed from")}
+                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
+                                disabled={!tauri}
                               />
                               <input
                                 type="text"
-                                value={wishlistNote}
-                                onChange={(event) => setWishlistNote(event.target.value)}
-                                placeholder={t("wishlist.noteOptional", "Note (optional)")}
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-100"
+                                value={borrowedFromContact}
+                                onChange={(event) => setBorrowedFromContact(event.target.value)}
+                                placeholder={t(
+                                  "inventory.ownerContactOptional",
+                                  "Owner contact (optional)",
+                                )}
+                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
+                                disabled={!tauri}
+                              />
+                              <input
+                                type="text"
+                                value={borrowedInNote}
+                                onChange={(event) => setBorrowedInNote(event.target.value)}
+                                placeholder={t(
+                                  "inventory.borrowedInNoteOptional",
+                                  "Borrowed-in note (optional)",
+                                )}
+                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 md:col-span-2"
+                                disabled={!tauri}
                               />
                             </div>
-                            <button
-                              type="button"
-                              className={`mt-3 w-full rounded-xl border px-3 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${
-                                currentCreateActionStyle
-                                  ? "shadow-sm"
-                                  : "border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-100"
-                              }`}
-                              style={currentCreateActionStyle}
-                              onClick={handleAddCurrentToWishlist}
-                              disabled={disableWishlistCreate}
-                            >
-                              {t(
-                                "inventory.addCurrentSelectionToWishlist",
-                                "Add current selection to wishlist",
-                              )}
-                            </button>
-                          </div>
+                          ) : null}
                         </div>
+                        <div className="mt-3 grid grid-cols-1 gap-3">
+                          <input
+                            type="number"
+                            value={newInitialWeight}
+                            onChange={(event) => setNewInitialWeight(event.target.value)}
+                            placeholder={t("inventory.initialWeight", "Initial weight (g)")}
+                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
+                            disabled={!tauri}
+                          />
+                          <input
+                            type="text"
+                            value={newLocation}
+                            onChange={(event) => setNewLocation(event.target.value)}
+                            placeholder={t("inventory.locationOptional", "Location (optional)")}
+                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
+                            disabled={!tauri}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          className={`mt-4 w-full rounded-xl border px-4 py-3 text-sm font-semibold transition disabled:opacity-50 ${
+                            currentCreateActionStyle
+                              ? "shadow-sm"
+                              : "border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900"
+                          }`}
+                          style={currentCreateActionStyle}
+                          onClick={handleCreateSpool}
+                          disabled={disableCreate}
+                        >
+                          {newOwnershipType === "BORROWED_IN"
+                            ? t("inventory.registerBorrowedIn", "Register borrowed-in spool")
+                            : t("inventory.addSpool", "Add spool to inventory")}
+                        </button>
 
+                        <div className="mt-4 border-t border-slate-200/80 pt-4 dark:border-slate-700/80">
+                          <button
+                            type="button"
+                            className={`w-full rounded-xl border px-3 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${
+                              currentCreateActionStyle
+                                ? "shadow-sm"
+                                : "border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-100"
+                            }`}
+                            style={currentCreateActionStyle}
+                            onClick={handleAddCurrentToWishlist}
+                            disabled={disableWishlistCreate}
+                          >
+                            {t(
+                              "inventory.addCurrentSelectionToWishlist",
+                              "Add current selection to wishlist",
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="surface-card space-y-4">
                         <div className="surface-subtle p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div>
@@ -4005,9 +4034,6 @@ export default function InventoryPage({
                                   "Keep planned purchases here, move them to on order, then stock them when they arrive.",
                                 )}
                               </div>
-                            </div>
-                            <div className="rounded-full border border-slate-200 bg-white/85 px-3 py-1 text-sm font-semibold text-slate-600 shadow-sm shadow-slate-900/5 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-200 dark:shadow-none">
-                              {visibleWishlistItems.length} / {wishlistItems.length}
                             </div>
                           </div>
                           <SegmentedChoiceRow

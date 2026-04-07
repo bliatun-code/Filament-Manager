@@ -9,7 +9,7 @@ import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import {
   isTauri,
   lendSpool,
-  listActiveSpoolLoans,
+  listPrinterOverview,
   listSpools,
 } from "../lib/tauri_client";
 
@@ -221,12 +221,32 @@ export function LoanOutModal({
     setLoading(true);
     setError(null);
     try {
-      const [spoolRows, activeLoans] = await Promise.all([
+      const [spoolRows, printerOverview] = await Promise.all([
         listSpools(1200, 0),
-        listActiveSpoolLoans(),
+        listPrinterOverview(),
       ]);
-      const activeLoanSpoolIds = new Set(activeLoans.map((row) => row.loan.spool_id));
+      const assignedSpoolIds = new Set(
+        printerOverview.flatMap((printer) =>
+          printer.slots
+            .map((slot) => slot.spool_id)
+            .filter((spoolId): spoolId is string => typeof spoolId === "string" && spoolId.length > 0),
+        ),
+      );
       const candidates = spoolRows
+        .filter((row) => {
+          const status = (row.spool.status ?? "").trim().toUpperCase();
+          const ownershipType = (row.spool.ownership_type ?? "").trim().toUpperCase();
+          if (assignedSpoolIds.has(row.spool.id)) {
+            return false;
+          }
+          if (ownershipType === "BORROWED_IN") {
+            return false;
+          }
+          if (status !== "IN_STOCK") {
+            return false;
+          }
+          return true;
+        })
         .map((row) => ({
           id: row.spool.id,
           vendor: row.master.vendor,
@@ -237,13 +257,7 @@ export function LoanOutModal({
           status: row.spool.status,
           remainingGrams: row.spool.remaining_g ?? row.spool.current_weight_g ?? null,
           location: row.spool.location_id ?? null,
-        }))
-        .filter(
-          (spool) =>
-            spool.status !== "EMPTY" &&
-            spool.status !== "LOST" &&
-            !activeLoanSpoolIds.has(spool.id),
-        );
+        }));
       setSpools(candidates);
       const preferred =
         (preferredSpoolId
@@ -329,16 +343,12 @@ export function LoanOutModal({
       closeOnBackdrop
       onBackdropClose={busy ? undefined : onClose}
       overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-md dark:bg-black/55"
-      panelClassName={modalPanelClassName("wide", "p-0")}
+      panelClassName={modalPanelClassName("wide", "flex max-h-[92vh] min-h-0 flex-col p-0")}
     >
-      <div>
+      <div className="flex min-h-0 flex-1 flex-col">
         <ModalHeader
           eyebrow={t("inventory.loanTracking", "Loan tracking")}
           title={t("inventory.loanOutRoll", "Loan out roll")}
-          subtitle={t(
-            "inventory.loanTrackingSubtitle",
-            "Loan out a roll from inventory. Returns are handled from the Loans page.",
-          )}
           onClose={onClose}
           closeLabel={t("common.close", "Close")}
           disabled={busy}
@@ -346,7 +356,8 @@ export function LoanOutModal({
           titleClassName="text-2xl"
         />
 
-        <div className="space-y-4 px-6 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+          <div className="space-y-4">
           {error ? (
             <FeedbackBanner tone="danger">
               {error}
@@ -366,23 +377,15 @@ export function LoanOutModal({
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.96fr)_minmax(22rem,0.9fr)]">
-              <div className={panelCardClassName}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className={panelTitleClassName}>
-                      {t("inventory.availableToLoan", "Available to loan")}
-                    </div>
-                    <div className={panelSubtitleClassName}>
-                      {t(
-                        "inventory.loanSelectionHelp",
-                        "Choose an in-stock roll, then confirm who is taking it and how much is going out.",
-                      )}
-                    </div>
+              <div className={`${panelCardClassName} flex min-h-0 flex-col`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className={panelTitleClassName}>
+                    {t("inventory.availableToLoan", "Available to loan")}
                   </div>
                   <span className={countPillClassName}>{spools.length}</span>
                 </div>
 
-                <div className="mt-4 grid max-h-[58vh] grid-cols-1 gap-2 overflow-y-auto pr-1">
+                <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto pr-1 max-h-[min(58vh,40rem)]">
                   {spools.map((spool) => {
                     const isActive = selectedSpool?.id === spool.id;
                     const placementLabel = formatPlacementLabel(t, spool.location);
@@ -561,12 +564,9 @@ export function LoanOutModal({
                         </div>
 
                         <div>
-                          <label className="flex items-center justify-between gap-3 text-xs font-medium text-slate-600 dark:text-slate-300">
-                            <span>{t("inventory.outG", "Out g")}</span>
-                            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                              {t("inventory.maxAvailable", "Max available")}:{" "}
-                              {formatGrams(selectedSpool.remainingGrams)}
-                            </span>
+                          <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                            {t("inventory.maxAvailable", "Max available")}:{" "}
+                            {formatGrams(selectedSpool.remainingGrams)}
                           </label>
                           <input
                             type="number"
@@ -593,16 +593,6 @@ export function LoanOutModal({
                         />
                       </div>
 
-                      <div
-                        className="mt-3 rounded-2xl border px-4 py-3 text-sm text-slate-600 dark:text-slate-300"
-                        style={swatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
-                      >
-                        {t(
-                          "inventory.loanTrackingHint",
-                          "Returns and weigh-in on return are handled from the Loans page.",
-                        )}
-                      </div>
-
                       <button
                         type="button"
                         onClick={() => void handleSubmit()}
@@ -621,6 +611,7 @@ export function LoanOutModal({
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
     </AppModal>

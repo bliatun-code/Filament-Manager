@@ -11,6 +11,18 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - publish `v0.6.1` tag + GitHub release with DMG asset
   - keep post-release scope focused on regression fixes and remaining manual QA findings
 
+## v0.8.0 Release Readiness (2026-04-07)
+- Release baseline:
+  - inventory/detail lifecycle updates are in place (`location edit`, `lost toggle`, `refill/reactivate`)
+  - low-stock and inventory-all filters now match product rules (`1-200 g`, no empty/lost in low-stock, no empty in all)
+  - loan/printer candidate restrictions are aligned with operational status constraints
+  - requested QC scope is verified: `Dashboard`, `Inventory`, `Add filament popup`, `Loans`, `Loan out popup`, `inventory print`, `QR label print`
+  - `npm run smoke` passes.
+- Release actions:
+  - build and validate fresh macOS DMG for `0.8.0`
+  - publish `v0.8.0` tag + GitHub release with DMG asset
+  - keep next scope focused on regression fixes and post-release UI fine-tuning only
+
 ## v0.1.0 Release Readiness (2026-04-05)
 - Release baseline:
   - `npm run smoke` passes on current `main`

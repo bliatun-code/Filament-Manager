@@ -2,7 +2,7 @@ Filament Manager - Installasjon og data (macOS)
 
 Nedlasting
 - Siste release: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Gjeldende release: v0.6.1
+- Gjeldende release: v0.8.0
 
 Installering
 1. Apne .dmg-filen.
