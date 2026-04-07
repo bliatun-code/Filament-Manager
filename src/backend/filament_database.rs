@@ -1592,7 +1592,9 @@ impl FilamentDatabase {
              FROM filament_spools
              WHERE deleted_at IS NULL
                AND remaining_g IS NOT NULL
-               AND remaining_g < ?1",
+               AND remaining_g > 0
+               AND remaining_g <= ?1
+               AND status NOT IN ('EMPTY', 'LOST')",
         )?;
         let rows = stmt.query_map(params![threshold], |row| map_spool_row(row))?;
         let mut results = Vec::new();

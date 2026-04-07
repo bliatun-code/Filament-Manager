@@ -85,18 +85,25 @@ impl StatisticsEngine {
                     THEN 1 ELSE 0
                 END), 0) AS borrowed_in_in_use,
                 COALESCE(SUM(CASE
-                    WHEN remaining_g IS NOT NULL AND remaining_g < 200
+                    WHEN remaining_g IS NOT NULL
+                     AND remaining_g > 0
+                     AND remaining_g <= 200
+                     AND status NOT IN ('EMPTY', 'LOST')
                     THEN 1 ELSE 0
                 END), 0) AS low_stock,
                 COALESCE(SUM(CASE
                     WHEN remaining_g IS NOT NULL
-                     AND remaining_g < 200
+                     AND remaining_g > 0
+                     AND remaining_g <= 200
+                     AND status NOT IN ('EMPTY', 'LOST')
                      AND COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'OWNED'
                     THEN 1 ELSE 0
                 END), 0) AS owned_low_stock,
                 COALESCE(SUM(CASE
                     WHEN remaining_g IS NOT NULL
-                     AND remaining_g < 200
+                     AND remaining_g > 0
+                     AND remaining_g <= 200
+                     AND status NOT IN ('EMPTY', 'LOST')
                      AND COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'BORROWED_IN'
                     THEN 1 ELSE 0
                 END), 0) AS borrowed_in_low_stock
@@ -330,7 +337,7 @@ mod tests {
 
             db.insert_spool(&SpoolRow {
                 id: "borrowed_1".to_string(),
-                master_id,
+                master_id: master_id.clone(),
                 qr_code: None,
                 status: "IN_USE".to_string(),
                 ownership_type: "BORROWED_IN".to_string(),
@@ -340,6 +347,48 @@ mod tests {
                 initial_weight_g: Some(900),
                 current_weight_g: Some(140),
                 remaining_g: Some(140),
+                spool_tare_weight_g: None,
+                location_id: None,
+                purchase_date: None,
+                purchase_price: None,
+                batch_code: None,
+                last_used_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+            db.insert_spool(&SpoolRow {
+                id: "empty_1".to_string(),
+                master_id: master_id.clone(),
+                qr_code: None,
+                status: "EMPTY".to_string(),
+                ownership_type: "OWNED".to_string(),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                current_weight_g: Some(0),
+                remaining_g: Some(0),
+                spool_tare_weight_g: None,
+                location_id: None,
+                purchase_date: None,
+                purchase_price: None,
+                batch_code: None,
+                last_used_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+            db.insert_spool(&SpoolRow {
+                id: "lost_1".to_string(),
+                master_id: master_id.clone(),
+                qr_code: None,
+                status: "LOST".to_string(),
+                ownership_type: "OWNED".to_string(),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                current_weight_g: Some(120),
+                remaining_g: Some(120),
                 spool_tare_weight_g: None,
                 location_id: None,
                 purchase_date: None,
@@ -361,8 +410,8 @@ mod tests {
                 .inventory_overview()
                 .map_err(|error| error.to_string())?;
 
-            assert_eq!(overview.total_spools, 3);
-            assert_eq!(overview.total_owned_spools, 2);
+            assert_eq!(overview.total_spools, 5);
+            assert_eq!(overview.total_owned_spools, 4);
             assert_eq!(overview.total_borrowed_in_spools, 1);
             assert_eq!(overview.in_use, 2);
             assert_eq!(overview.owned_in_use, 1);
