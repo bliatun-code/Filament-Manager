@@ -1,10 +1,19 @@
 # Session State
 
-Last updated: 2026-04-08
+Last updated: 2026-04-09
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
+- Step closeout notes (2026-04-09, v0.8.4 release complete):
+  - `v0.8.4` is now the current public release.
+  - App/package/Tauri bundle versioning is aligned to `0.8.4`.
+  - GitHub Release `v0.8.4` is published with uploaded assets:
+    - Windows MSI: `Filament.Manager_0.8.4_x64_en-US.msi`
+    - macOS DMG: `Filament.Manager_0.8.4_aarch64.dmg`
+  - Release Build Artifacts for `v0.8.4` completed successfully on GitHub Actions.
+  - Downloaded release MSI asset was sanity-checked after publish and hashed locally.
+  - Older `v0.8.3` release is now marked as superseded by `v0.8.4`.
 - Step closeout notes (2026-04-08, Windows RC):
   - Windows preflight is now landed on `main`.
   - `npm run doctor`, `npm run smoke`, and repeated Windows MSI builds pass on the Windows baseline.

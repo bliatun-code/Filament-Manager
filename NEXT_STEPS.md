@@ -2,6 +2,19 @@
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current browser baseline is trusted-LAN-only, with `Storage` as the browser label for desktop `Inventory` / `Lager` and `Add spool` as the browser intake action.
 
+## v0.8.4 Release Closeout (2026-04-09)
+- Release baseline:
+  - `v0.8.4` is published and now serves as the clean, version-consistent public release.
+  - GitHub Release assets are uploaded and version-aligned:
+    - `Filament.Manager_0.8.4_x64_en-US.msi`
+    - `Filament.Manager_0.8.4_aarch64.dmg`
+  - Windows preflight, Windows MSI packaging, Node 24 CI/runtime readiness, and release-pipeline validation are all landed.
+  - Older `v0.8.3` has been marked as superseded.
+- Next actions:
+  - treat release work as complete unless a real release regression is reported
+  - keep the next implementation batch scoped to new product work or targeted bug fixes only
+  - if any post-release issue appears, fix forward from `v0.8.4` instead of rewriting older release tags
+
 ## v0.8.1 Release Readiness (2026-04-08)
 - Release baseline:
   - inventory filter count now stays aligned between card/list views and is rendered in the material-filter row for better scan flow
