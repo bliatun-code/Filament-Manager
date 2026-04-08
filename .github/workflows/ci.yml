@@ -66,8 +66,5 @@ jobs:
           npm ci
           npm --prefix ./ui ci
 
-      - name: Run smoke core checks
-        run: |
-          npm --prefix ./ui run build
-          npm run test:companion
-          npm run test:settings-ui
+      - name: Run smoke
+        run: npm run smoke
