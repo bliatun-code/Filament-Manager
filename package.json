@@ -9,7 +9,7 @@
   },
   "scripts": {
     "doctor": "node ./scripts/doctor.mjs",
-    "test:companion": "node --test ./src-tauri/companion_browser/*.test.mjs",
+    "test:companion": "node --test ./src-tauri/companion_browser",
     "test:settings-ui": "node ./node_modules/tsx/dist/cli.mjs --test ./ui/src/lib/clipboard.test.ts ./ui/src/lib/trusted_lan_pairing_qr.test.ts ./ui/src/lib/filament_qr_payload.test.ts ./ui/src/lib/filament_label_print.test.ts ./ui/src/lib/inventory_overview_print.test.ts ./ui/src/pages/settings_companion_model.test.ts",
     "smoke": "npm --prefix ./ui run build && npm run test:companion && npm run test:settings-ui && npm run doctor",
     "scrape": "node ./node_modules/tsx/dist/cli.mjs src/scraper/bambu_filament_scraper.ts",

@@ -10,11 +10,13 @@ const rootDir = path.resolve(path.dirname(__filename), "..");
 
 const warnings = [];
 const errors = [];
+const isWindows = process.platform === "win32";
 
 function run(cmd, args, cwd = rootDir) {
   const result = spawnSync(cmd, args, {
     cwd,
     encoding: "utf8",
+    shell: isWindows,
   });
   const stdout = (result.stdout ?? "").trim();
   const stderr = (result.stderr ?? "").trim();

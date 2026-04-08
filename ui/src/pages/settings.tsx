@@ -2166,7 +2166,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 {t("settings.appearance", "Appearance")}
               </div>
               <div className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {t("settings.autoHint", "Auto follows macOS light/dark preference.")}
+                {t("settings.autoHint", "Auto follows your system light/dark preference.")}
               </div>
               <div className="surface-subtle p-3">
                 <div className="flex flex-wrap gap-2">

@@ -1,0 +1,10 @@
+{
+  "bundle": {
+    "windows": {
+      "wix": {
+        "template": "./wix/per-user.wxs",
+        "upgradeCode": "b771fede-3ddb-51db-89fe-90b617dff72a"
+      }
+    }
+  }
+}

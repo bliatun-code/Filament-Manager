@@ -69,6 +69,14 @@ How to download artifacts:
    - `filament-manager-macos-dmg-<tag>`
    - `filament-manager-windows-msi-<tag>`
 
+### Windows RC notes
+
+- Windows MSI is now packaged as a per-user install and does not require Administrator privileges for the default install path.
+- Installer path: `C:\Users\<user>\AppData\Local\Filament Manager`
+- App data path: `C:\Users\<user>\AppData\Local\com.bambu.filament.manager`
+- First-run on Windows creates the local SQLite database automatically.
+- Uninstall removes the installed app files but keeps local app data unless you remove it manually.
+
 ## Health Check
 
 ```bash
