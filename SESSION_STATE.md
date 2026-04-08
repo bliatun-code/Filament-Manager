@@ -5,6 +5,13 @@ Last updated: 2026-04-08
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
+- Step closeout notes (2026-04-08, Windows RC):
+  - Windows preflight is now landed on `main`.
+  - `npm run doctor`, `npm run smoke`, and repeated Windows MSI builds pass on the Windows baseline.
+  - Windows runtime is hardened for local app-data storage, generated-file writes, and lower SQLite locking risk.
+  - Windows MSI is now packaged as a per-user install under `LocalAppData` and no longer requires Administrator privileges for the default install path.
+  - First-run Windows database creation was validated at `C:\Users\<user>\AppData\Local\com.bambu.filament.manager\bambu.db`.
+  - Windows Settings theme copy now refers to the system theme instead of macOS-specific wording.
 - Step closeout notes (2026-04-08):
   - Inventory material-row counter is now right-aligned in the same row as material chips and uses identical filtered-count logic for both card/list modes.
   - Dashboard top/ownership counters now use on-hand status logic (`IN_STOCK`, `IN_USE`) so totals align with operational stock semantics.

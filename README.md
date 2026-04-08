@@ -29,6 +29,29 @@ npm install
 cd ui && npm install
 ```
 
+## Windows Install
+
+- Supported build path: Windows 11 + Tauri MSI
+- Recommended Node/npm baseline for development:
+  - Node `20.x`
+  - npm `>=10`
+- Recommended Rust target:
+  - `x86_64-pc-windows-msvc`
+- Build/install flow:
+
+```powershell
+npm ci
+npm --prefix ui ci
+npm run doctor
+npm run smoke
+npm run tauri -- build --bundles msi
+```
+
+- MSI default install path:
+  - `C:\Users\<user>\AppData\Local\Filament Manager`
+- App data path:
+  - `C:\Users\<user>\AppData\Local\com.bambu.filament.manager`
+
 ## macOS App Download
 
 - Latest release (DMG): https://github.com/bliatun-code/Filament-Manager/releases/latest
@@ -76,6 +99,22 @@ How to download artifacts:
 - App data path: `C:\Users\<user>\AppData\Local\com.bambu.filament.manager`
 - First-run on Windows creates the local SQLite database automatically.
 - Uninstall removes the installed app files but keeps local app data unless you remove it manually.
+
+### Windows troubleshooting
+
+- `npm run doctor` fails because `npm` or `npx` is not found:
+  - verify Node 20 is installed and reopen the terminal
+- `npm run smoke` fails in companion tests:
+  - run `npm ci`
+  - run `npm --prefix ui ci`
+- MSI install fails with permission errors:
+  - use the current per-user MSI from `target/release/bundle/msi`
+  - do not force install into `Program Files`
+- App starts but data appears empty:
+  - verify the app data directory exists at `C:\Users\<user>\AppData\Local\com.bambu.filament.manager`
+  - check whether `bambu.db` was created on first run
+- `sqlite3` CLI warning in `doctor`:
+  - this is not a blocker if `better-sqlite3` is available and `doctor` still reports `ok`
 
 ## Health Check
 

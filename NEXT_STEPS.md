@@ -7,10 +7,15 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - inventory filter count now stays aligned between card/list views and is rendered in the material-filter row for better scan flow
   - dashboard ownership/on-hand counters are now based on real on-hand statuses (`IN_STOCK`, `IN_USE`) instead of mixed total snapshots
   - A4 inventory print now includes borrowed-in entries while keeping ownership context compact in the vendor line
+  - Windows preflight/runtime/package hardening is now merged to `main`
+  - Windows MSI now installs per-user without Administrator privileges for the default path
+  - Windows CI now runs full `npm run smoke`
+  - Windows Settings auto-theme copy is now platform-neutral
   - no new blocker-level cleanup debt found in this pre-release scan
   - `npm run smoke` passes.
 - Release actions:
   - build and validate fresh macOS DMG for `0.8.1` locally
+  - build and validate fresh Windows MSI from merged `main` before tagging
   - publish `v0.8.1` tag + GitHub release notes (without DMG upload)
   - keep next scope focused on targeted regression fixes only
 
