@@ -20,10 +20,10 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm
@@ -43,7 +43,7 @@ jobs:
         run: npm run tauri -- build --bundles dmg
 
       - name: Upload DMG artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: filament-manager-macos-dmg-${{ github.ref_name }}
           path: target/release/bundle/dmg/*.dmg
@@ -56,10 +56,10 @@ jobs:
     timeout-minutes: 50
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm
@@ -79,7 +79,7 @@ jobs:
         run: npm run tauri -- build --bundles msi
 
       - name: Upload MSI artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: filament-manager-windows-msi-${{ github.ref_name }}
           path: target/release/bundle/msi/*.msi
