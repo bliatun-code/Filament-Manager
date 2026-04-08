@@ -1098,6 +1098,7 @@ export default function InventoryPage({
       return left.colorName.localeCompare(right.colorName);
     });
   }, [filteredSpools]);
+  const visibleInventoryCount = filteredSpools.length;
 
   const selectedSpool = useMemo(
     () => spools.find((spool) => spool.id === selectedSpoolId) ?? null,
@@ -3300,27 +3301,32 @@ export default function InventoryPage({
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-24">
               {t("inventory.materialGroup", "Material")}
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {materialOptions.map((material) => (
-                <button
-                  key={material}
-                  type="button"
-                  onClick={() => setMaterialFilter(material)}
-                  className={
-                    material === "ALL"
-                      ? neutralChipClass(materialFilter === material, "px-3.5 py-2 text-xs")
-                      : `rounded-full border px-3.5 py-2 text-xs font-semibold ${
-                          materialFilter === material
-                            ? materialTone(material).filterActive
-                            : materialTone(material).filterInactive
-                        }`
-                  }
-                >
-                  {material === "ALL"
-                    ? t("inventory.typeAll", "All")
-                    : material}
-                </button>
-              ))}
+            <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {materialOptions.map((material) => (
+                  <button
+                    key={material}
+                    type="button"
+                    onClick={() => setMaterialFilter(material)}
+                    className={
+                      material === "ALL"
+                        ? neutralChipClass(materialFilter === material, "px-3.5 py-2 text-xs")
+                        : `rounded-full border px-3.5 py-2 text-xs font-semibold ${
+                            materialFilter === material
+                              ? materialTone(material).filterActive
+                              : materialTone(material).filterInactive
+                          }`
+                    }
+                  >
+                    {material === "ALL"
+                      ? t("inventory.typeAll", "All")
+                      : material}
+                  </button>
+                ))}
+              </div>
+              <span className="shrink-0 rounded-full border border-slate-300 bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200 dark:shadow-none">
+                {visibleInventoryCount}
+              </span>
             </div>
           </div>
         </div>

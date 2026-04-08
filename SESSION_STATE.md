@@ -1,10 +1,15 @@
 # Session State
 
-Last updated: 2026-04-07
+Last updated: 2026-04-08
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
+- Step closeout notes (2026-04-08):
+  - Inventory material-row counter is now right-aligned in the same row as material chips and uses identical filtered-count logic for both card/list modes.
+  - Dashboard top/ownership counters now use on-hand status logic (`IN_STOCK`, `IN_USE`) so totals align with operational stock semantics.
+  - A4 inventory print keeps all non-empty spools and marks borrowed-in rows compactly in the vendor line instead of adding extra ownership chips.
+  - `npm run smoke` passes on current baseline and release prep is aligned to `v0.8.1`.
 - Step closeout notes (2026-04-07):
   - QC-verified surfaces: `Oversikt (Dashboard)`, `Lager (Inventory)`, `Legg til filament` popup, `Utlån (Loans)`, `Lån ut filament` popup, `Utskrift lageroversikt`, and `QR label print`.
   - Inventory detail now supports:

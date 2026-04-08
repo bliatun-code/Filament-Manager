@@ -2,6 +2,18 @@
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current browser baseline is trusted-LAN-only, with `Storage` as the browser label for desktop `Inventory` / `Lager` and `Add spool` as the browser intake action.
 
+## v0.8.1 Release Readiness (2026-04-08)
+- Release baseline:
+  - inventory filter count now stays aligned between card/list views and is rendered in the material-filter row for better scan flow
+  - dashboard ownership/on-hand counters are now based on real on-hand statuses (`IN_STOCK`, `IN_USE`) instead of mixed total snapshots
+  - A4 inventory print now includes borrowed-in entries while keeping ownership context compact in the vendor line
+  - no new blocker-level cleanup debt found in this pre-release scan
+  - `npm run smoke` passes.
+- Release actions:
+  - build and validate fresh macOS DMG for `0.8.1` locally
+  - publish `v0.8.1` tag + GitHub release notes (without DMG upload)
+  - keep next scope focused on targeted regression fixes only
+
 ## v0.6.1 Release Readiness (2026-04-06)
 - Release baseline:
   - `main` is clean and currently includes trusted-LAN settings flow compactness, persisted companion toggle state, dashboard companion status indicator, and app version visibility in Settings.

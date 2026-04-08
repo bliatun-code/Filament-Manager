@@ -4,6 +4,7 @@ import { formatSpoolReference } from "./display_format";
 export type InventoryOverviewPrintRow = {
   reference: string;
   vendor: string;
+  ownershipMarker?: string | null;
   material: string;
   filamentName: string;
   colorName: string;
@@ -337,7 +338,9 @@ export async function buildInventoryOverviewPrintPdfBase64(
             fontBold,
             fontRegular,
             labels.vendor,
-            safeText(row.vendor),
+            row.ownershipMarker
+              ? `${safeText(row.vendor)} (${safeText(row.ownershipMarker)})`
+              : safeText(row.vendor),
             textX,
             titleY - 18,
             detailWidth,

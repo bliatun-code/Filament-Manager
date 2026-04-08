@@ -1291,7 +1291,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       const inStockRows = allRows
         .filter((row) => {
           const status = row.spool.status.trim().toUpperCase();
-          return status === "IN_STOCK" || status === "IN_USE";
+          return status !== "EMPTY";
         })
         .sort((left, right) => {
           const materialOrder = left.master.material.localeCompare(right.master.material, locale);
@@ -1329,6 +1329,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           return {
             reference: row.spool.id || t("common.unknown", "Unknown"),
             vendor: row.master.vendor || t("common.unknown", "Unknown"),
+            ownershipMarker:
+              (row.spool.ownership_type ?? "OWNED").trim().toUpperCase() === "BORROWED_IN"
+                ? t("inventory.borrowedIn", "Borrowed in")
+                : null,
             material: row.master.material || t("common.unknown", "Unknown"),
             filamentName: row.master.filament_name || t("common.unknown", "Unknown"),
             colorName: row.master.color_name || t("common.unknown", "Unknown"),

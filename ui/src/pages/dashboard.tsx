@@ -15,7 +15,6 @@ import {
   listWishlistItems,
   listSpools,
   topMaterials,
-  type InventoryOverview,
   type TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
 import { useI18n } from "../lib/i18n";
@@ -90,7 +89,6 @@ export default function DashboardPage({
 }: DashboardPageProps) {
   const { t } = useI18n();
   const tauri = isTauri();
-  const [overviewSnapshot, setOverviewSnapshot] = useState<InventoryOverview | null>(null);
   const [goalMetrics, setGoalMetrics] = useState<DashboardGoalMetrics>(
     () =>
       cachedGoalMetrics ?? {
@@ -198,6 +196,12 @@ export default function DashboardPage({
     owned: 0,
     borrowedIn: 0,
   });
+  const [ownershipOnHand, setOwnershipOnHand] = useState({
+    total: 0,
+    owned: 0,
+    borrowedIn: 0,
+    inUse: 0,
+  });
   const [health, setHealth] = useState({
     score: 100,
     headline: t("dashboard.noInventoryData", "No inventory data"),
@@ -253,7 +257,6 @@ export default function DashboardPage({
         return;
       }
 
-      setOverviewSnapshot(overview);
       setCompanionStatus(trustedLan);
       const printerCount = printers.length;
       const effectiveSlotTotals = printers.reduce(
@@ -269,6 +272,29 @@ export default function DashboardPage({
       const onOrderCount = wishlist
         .filter((item) => item.status === "ON_ORDER")
         .reduce((sum, item) => sum + Math.max(1, item.quantity || 1), 0);
+      const onHandRows = spoolRows.filter((row) => {
+        const status = (row.spool.status ?? "").trim().toUpperCase();
+        return status === "IN_STOCK" || status === "IN_USE";
+      });
+      const onHandTotal = onHandRows.length;
+      const onHandOwned = onHandRows.filter((row) => {
+        const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
+        return ownershipType !== "BORROWED_IN";
+      }).length;
+      const onHandBorrowedIn = onHandRows.filter((row) => {
+        const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
+        return ownershipType === "BORROWED_IN";
+      }).length;
+      const onHandInUse = onHandRows.filter((row) => {
+        const status = (row.spool.status ?? "").trim().toUpperCase();
+        return status === "IN_USE";
+      }).length;
+      setOwnershipOnHand({
+        total: onHandTotal,
+        owned: onHandOwned,
+        borrowedIn: onHandBorrowedIn,
+        inUse: onHandInUse,
+      });
       const lowStockRows = spoolRows
         .filter((row) => {
           const status = (row.spool.status ?? "").trim().toUpperCase();
@@ -336,9 +362,9 @@ export default function DashboardPage({
         {
           id: "total",
           title: t("dashboard.totalSpools", "Total Spools"),
-          value: overview.total_spools.toString(),
+          value: onHandTotal.toString(),
           subtitle: t("dashboard.totalSpoolsSubtitle", "Across all locations"),
-          trend: `${overview.in_use} ${t("dashboard.inUse", "in use")}`,
+          trend: `${onHandInUse} ${t("dashboard.inUse", "in use")}`,
           accent: "sky" as const,
         },
         {
@@ -431,9 +457,9 @@ export default function DashboardPage({
         return row.spool.status !== "EMPTY" && row.spool.status !== "LOST" && remaining >= 200;
       }).length;
       const healthScore =
-        overview.total_spools === 0
+        onHandTotal === 0
           ? 100
-          : Math.round((healthySpools / overview.total_spools) * 100);
+          : Math.round((healthySpools / onHandTotal) * 100);
       const headline =
         healthScore >= 90
           ? t("dashboard.healthStable", "Stable supply")
@@ -655,14 +681,14 @@ export default function DashboardPage({
             </div>
           </div>
           <span className="rounded-full border border-slate-300 bg-white/85 px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200 dark:shadow-none">
-            {overviewSnapshot?.total_borrowed_in_spools ?? 0}{" "}
+            {ownershipOnHand.borrowedIn}{" "}
             {t("dashboard.borrowedInOnHand", "borrowed in")}
           </span>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-sky-200/85 bg-sky-50/80 px-3 py-3 dark:border-sky-400/25 dark:bg-sky-500/10">
             <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-              {overviewSnapshot?.total_owned_spools ?? 0}
+              {ownershipOnHand.owned}
             </div>
             <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               {t("dashboard.ownedOnHand", "Owned on hand")}
@@ -670,7 +696,7 @@ export default function DashboardPage({
           </div>
           <div className="rounded-2xl border border-amber-200/85 bg-amber-50/80 px-3 py-3 dark:border-amber-400/25 dark:bg-amber-500/10">
             <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-              {overviewSnapshot?.total_borrowed_in_spools ?? 0}
+              {ownershipOnHand.borrowedIn}
             </div>
             <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               {t("dashboard.borrowedInOnHand", "Borrowed in on hand")}

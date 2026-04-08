@@ -7,7 +7,7 @@
     "frontendDist": "../ui/dist"
   },
   "productName": "Filament Manager",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "identifier": "com.bambu.filament.manager",
   "app": {
     "windows": [
