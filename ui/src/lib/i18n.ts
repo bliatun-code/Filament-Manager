@@ -645,7 +645,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       light: "Light",
       dark: "Dark",
       auto: "Auto (system)",
-      autoHint: "Auto follows macOS light/dark preference.",
+      autoHint: "Auto follows your system light/dark preference.",
       companionTitle: "Local browser companion",
       companionHelp:
         "Open the same-machine browser shell served by the desktop app. This stays limited to inventory overview, QR lookup/edit, manual borrowed-in registration/editing/hand-back, printer overview, outbound loan review/history with direct return, spool detail, narrow status/location updates, manual weight update, basic printer-slot assignment/clear, and selected-spool outbound loan creation while desktop remains the source of truth.",
@@ -1596,7 +1596,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       light: "Lys",
       dark: "Mørk",
       auto: "Auto (system)",
-      autoHint: "Auto følger macOS lys/mørk-preferanse.",
+      autoHint: "Auto følger systemets lys/mørk-preferanse.",
       companionTitle: "Lokal nettleserkompanjong",
       companionHelp:
         "Åpne samme-maskin-nettleserskallet som serveres av desktop-appen. Dette holder seg foreløpig til lageroversikt, QR-oppslag/redigering, manuell registrering/redigering/tilbakelevering av innlånte filamenter, printeroversikt, utlånsoversikt og historikk med direkte retur, filamentdetaljer, smale status-/lokasjonsoppdateringer, manuell vektoppdatering, grunnleggende printer-spor-tildeling/rydding og valgt-filament-utlån mens desktop fortsatt er kilden til sannhet.",
