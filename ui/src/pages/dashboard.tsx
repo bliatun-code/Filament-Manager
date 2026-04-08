@@ -674,16 +674,12 @@ export default function DashboardPage({
       </div>
 
       <div className="mt-6 surface-card">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start gap-3">
           <div>
             <div className="section-eyebrow">
               {t("dashboard.ownershipSnapshot", "Ownership snapshot")}
             </div>
           </div>
-          <span className="rounded-full border border-slate-300 bg-white/85 px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200 dark:shadow-none">
-            {ownershipOnHand.borrowedIn}{" "}
-            {t("dashboard.borrowedInOnHand", "borrowed in")}
-          </span>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-sky-200/85 bg-sky-50/80 px-3 py-3 dark:border-sky-400/25 dark:bg-sky-500/10">
