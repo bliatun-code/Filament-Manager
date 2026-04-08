@@ -33,7 +33,8 @@ cd ui && npm install
 
 - Supported build path: Windows 11 + Tauri MSI
 - Recommended Node/npm baseline for development:
-  - Node `20.x`
+  - Node `24.x` recommended
+  - Node `20.x` still supported
   - npm `>=10`
 - Recommended Rust target:
   - `x86_64-pc-windows-msvc`
@@ -103,7 +104,7 @@ How to download artifacts:
 ### Windows troubleshooting
 
 - `npm run doctor` fails because `npm` or `npx` is not found:
-  - verify Node 20 is installed and reopen the terminal
+  - verify Node 24 or Node 20 is installed and reopen the terminal
 - `npm run smoke` fails in companion tests:
   - run `npm ci`
   - run `npm --prefix ui ci`
