@@ -300,7 +300,12 @@ pub struct FilamentDatabase {
 impl FilamentDatabase {
     pub fn open(path: impl AsRef<Path>) -> InventoryResult<Self> {
         let conn = Connection::open(path)?;
+        conn.busy_timeout(std::time::Duration::from_secs(5))?;
         conn.execute_batch("PRAGMA foreign_keys = ON;")?;
+        #[cfg(target_os = "windows")]
+        conn.execute_batch(
+            "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA temp_store = MEMORY;",
+        )?;
         Ok(Self { conn })
     }
 

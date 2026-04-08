@@ -34,7 +34,10 @@ use state::{AppState, TrustedLanCompanionRuntime, TrustedLanCompanionRuntimeSnap
 #[cfg(target_os = "macos")]
 use std::ffi::c_void;
 use base64::Engine;
+use std::fs::File;
+use std::io::Write;
 use std::net::IpAddr;
+use std::path::Path;
 use std::path::PathBuf;
 use std::time::Duration;
 use tauri::{Emitter, Manager};
@@ -1228,7 +1231,7 @@ fn print_label_html(
     let _ = printer_name;
     let _ = copies;
 
-    open::that(path).map_err(|error| error.to_string())?;
+    open_generated_document(&path)?;
     Ok(())
 }
 
@@ -1246,7 +1249,7 @@ fn print_label_pdf(
     let _ = printer_name;
     let _ = copies;
 
-    open::that(path).map_err(|error| error.to_string())?;
+    open_generated_document(&path)?;
     Ok(())
 }
 
@@ -1460,10 +1463,7 @@ fn ensure_db(app: &tauri::App) -> Result<PathBuf, String> {
         return Ok(path);
     }
 
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| error.to_string())?;
+    let app_dir = resolve_app_storage_dir_for_app(app)?;
     std::fs::create_dir_all(&app_dir).map_err(|error| error.to_string())?;
     let db_path = app_dir.join("bambu.db");
     let db = FilamentDatabase::open(&db_path).map_err(|error| format!("DB open: {error:?}"))?;
@@ -1474,7 +1474,10 @@ fn ensure_db(app: &tauri::App) -> Result<PathBuf, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{detect_bambu_skip_discontinued_reason, load_trusted_lan_runtime};
+    use super::{
+        chrono_id, detect_bambu_skip_discontinued_reason, load_trusted_lan_runtime,
+        write_generated_file,
+    };
     use crate::backend::filament_database::{FilamentDatabase, TrustedLanSettingsRow};
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -1569,32 +1572,154 @@ Some product detail pages could not be fetched.\n";
             panic!("{error}");
         }
     }
+
+    #[test]
+    fn generated_file_write_persists_contents() {
+        let path = std::env::temp_dir().join(format!("filament-manager-write-{}.txt", chrono_id()));
+        let result = (|| -> Result<(), String> {
+            write_generated_file(&path, b"hello windows rc")?;
+            let contents = std::fs::read_to_string(&path).map_err(|error| error.to_string())?;
+            assert_eq!(contents, "hello windows rc");
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&path);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_storage_prefers_existing_db_location() {
+        use super::resolve_windows_storage_dir;
+
+        let base = std::env::temp_dir().join(format!("filament-manager-windows-storage-{}", chrono_id()));
+        let roaming_dir = base.join("roaming");
+        let local_dir = base.join("local");
+        let result = (|| -> Result<(), String> {
+            std::fs::create_dir_all(&roaming_dir).map_err(|error| error.to_string())?;
+            std::fs::create_dir_all(&local_dir).map_err(|error| error.to_string())?;
+
+            let selected_without_db =
+                resolve_windows_storage_dir(roaming_dir.clone(), local_dir.clone());
+            assert_eq!(selected_without_db, local_dir);
+
+            std::fs::write(roaming_dir.join("bambu.db"), b"roaming-db")
+                .map_err(|error| error.to_string())?;
+            let selected_with_roaming =
+                resolve_windows_storage_dir(roaming_dir.clone(), local_dir.clone());
+            assert_eq!(selected_with_roaming, roaming_dir);
+
+            std::fs::write(local_dir.join("bambu.db"), b"local-db")
+                .map_err(|error| error.to_string())?;
+            let selected_with_local =
+                resolve_windows_storage_dir(roaming_dir.clone(), local_dir.clone());
+            assert_eq!(selected_with_local, local_dir);
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_dir_all(&base);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
 }
 
 fn write_label_to_disk(app: &tauri::AppHandle, html: &str) -> Result<PathBuf, String> {
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| error.to_string())?;
+    let app_dir = resolve_app_storage_dir_for_handle(app)?;
     let label_dir = app_dir.join("labels");
     std::fs::create_dir_all(&label_dir).map_err(|error| error.to_string())?;
     let filename = format!("label_{}.html", chrono_id());
     let path = label_dir.join(filename);
-    std::fs::write(&path, html).map_err(|error| error.to_string())?;
+    write_generated_file(&path, html.as_bytes())?;
     Ok(path)
 }
 
 fn write_pdf_to_disk(app: &tauri::AppHandle, bytes: &[u8]) -> Result<PathBuf, String> {
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| error.to_string())?;
+    let app_dir = resolve_app_storage_dir_for_handle(app)?;
     let label_dir = app_dir.join("labels");
     std::fs::create_dir_all(&label_dir).map_err(|error| error.to_string())?;
     let filename = format!("label_{}.pdf", chrono_id());
     let path = label_dir.join(filename);
-    std::fs::write(&path, bytes).map_err(|error| error.to_string())?;
+    write_generated_file(&path, bytes)?;
     Ok(path)
+}
+
+fn resolve_app_storage_dir_for_app(app: &tauri::App) -> Result<PathBuf, String> {
+    let app_data_dir = app.path().app_data_dir().map_err(|error| error.to_string())?;
+    #[cfg(target_os = "windows")]
+    {
+        let app_local_data_dir = app
+            .path()
+            .app_local_data_dir()
+            .map_err(|error| error.to_string())?;
+        Ok(resolve_windows_storage_dir(app_data_dir, app_local_data_dir))
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(app_data_dir)
+    }
+}
+
+fn resolve_app_storage_dir_for_handle(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let app_data_dir = app.path().app_data_dir().map_err(|error| error.to_string())?;
+    #[cfg(target_os = "windows")]
+    {
+        let app_local_data_dir = app
+            .path()
+            .app_local_data_dir()
+            .map_err(|error| error.to_string())?;
+        Ok(resolve_windows_storage_dir(app_data_dir, app_local_data_dir))
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(app_data_dir)
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn resolve_windows_storage_dir(roaming_dir: PathBuf, local_dir: PathBuf) -> PathBuf {
+    let roaming_db_path = roaming_dir.join("bambu.db");
+    let local_db_path = local_dir.join("bambu.db");
+    if local_db_path.exists() {
+        return local_dir;
+    }
+    if roaming_db_path.exists() {
+        return roaming_dir;
+    }
+    local_dir
+}
+
+fn write_generated_file(path: &Path, contents: &[u8]) -> Result<(), String> {
+    let temp_path = path.with_extension(format!("{}.tmp", chrono_id()));
+    let mut file = File::create(&temp_path).map_err(|error| error.to_string())?;
+    file.write_all(contents).map_err(|error| error.to_string())?;
+    file.sync_all().map_err(|error| error.to_string())?;
+    drop(file);
+    std::fs::rename(&temp_path, path).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+fn open_generated_document(path: &Path) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        open::that(path).map_err(|error| {
+            format!(
+                "Failed to open generated file in the default Windows handler: {error}"
+            )
+        })?;
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        open::that(path).map_err(|error| error.to_string())?;
+        Ok(())
+    }
 }
 
 fn chrono_id() -> String {
