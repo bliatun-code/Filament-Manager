@@ -44,6 +44,31 @@ If macOS blocks first launch of an unsigned build downloaded from GitHub:
 xattr -dr com.apple.quarantine "/Applications/Filament Manager.app"
 ```
 
+## GitHub Actions Release Artifacts
+
+The repository includes a tag-triggered build workflow:
+- Workflow: `.github/workflows/release-build.yml`
+- Triggers:
+  - push tag matching `v*` (example: `v0.8.2`)
+  - manual run via `workflow_dispatch`
+- Outputs:
+  - macOS DMG artifact
+  - Windows MSI artifact
+
+How to trigger from git:
+
+```bash
+git tag -a v0.8.2 -m "v0.8.2"
+git push origin v0.8.2
+```
+
+How to download artifacts:
+1. Open GitHub repo -> `Actions` tab.
+2. Open the run named `Release Build Artifacts` for the tag.
+3. Download artifacts from the `Artifacts` section:
+   - `filament-manager-macos-dmg-<tag>`
+   - `filament-manager-windows-msi-<tag>`
+
 ## Health Check
 
 ```bash
