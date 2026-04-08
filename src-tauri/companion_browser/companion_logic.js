@@ -114,11 +114,15 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
   }
 
   function filteredSpools() {
+    const visibleRows = state.spools.filter((row) => {
+      const status = String(row?.spool?.status || "").trim().toUpperCase();
+      return status !== "EMPTY";
+    });
     const query = state.search.trim().toLowerCase();
     if (!query) {
-      return state.spools;
+      return visibleRows;
     }
-    return state.spools.filter((row) => {
+    return visibleRows.filter((row) => {
       const values = [
         row.spool.id,
         row.master.material,

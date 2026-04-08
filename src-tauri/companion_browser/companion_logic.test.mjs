@@ -122,6 +122,22 @@ test("printer recovery falls back to active inventory spools even when the curre
   assert.match(target?.previewLabel ?? "", /X1C slot 1/);
 });
 
+test("filteredSpools excludes EMPTY rows from storage visibility", () => {
+  const { logic } = createLogic({
+    spools: [
+      createSpoolRow("spool-in-stock", {
+        spool: { status: "IN_STOCK" },
+      }),
+      createSpoolRow("spool-empty", {
+        spool: { status: "EMPTY" },
+      }),
+    ],
+  });
+
+  const visibleIds = logic.filteredSpools().map((row) => row.spool.id);
+  assert.deepEqual(visibleIds, ["spool-in-stock"]);
+});
+
 test("loan guard helper preserves browser-safe write constraints", () => {
   const { logic } = createLogic();
 
