@@ -1,0 +1,181 @@
+<?if $(sys.BUILDARCH)="x86"?>
+    <?define Win64 = "no" ?>
+<?elseif $(sys.BUILDARCH)="x64"?>
+    <?define Win64 = "yes" ?>
+<?elseif $(sys.BUILDARCH)="arm64"?>
+    <?define Win64 = "yes" ?>
+<?else?>
+    <?error Unsupported value of sys.BUILDARCH=$(sys.BUILDARCH)?>
+<?endif?>
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Product
+            Id="*"
+            Name="{{product_name}}"
+            UpgradeCode="{{upgrade_code}}"
+            Language="!(loc.TauriLanguage)"
+            Manufacturer="{{manufacturer}}"
+            Version="{{version}}">
+
+        <Package Id="*"
+                 Keywords="Installer"
+                 InstallerVersion="450"
+                 Languages="0"
+                 Compressed="yes"
+                 InstallScope="perUser"
+                 InstallPrivileges="limited"
+                 SummaryCodepage="!(loc.TauriCodepage)"/>
+
+        <Property Id="REINSTALLMODE" Value="amus" />
+        <Property Id="AUTOLAUNCHAPP" Secure="yes" />
+        <Property Id="LAUNCHAPPARGS" Secure="yes" />
+
+        <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
+
+        <InstallExecuteSequence>
+            <RemoveShortcuts>Installed AND NOT UPGRADINGPRODUCTCODE</RemoveShortcuts>
+        </InstallExecuteSequence>
+
+        <Media Id="1" Cabinet="app.cab" EmbedCab="yes" />
+
+        <Icon Id="ProductIcon" SourceFile="{{icon_path}}"/>
+        <Property Id="ARPPRODUCTICON" Value="ProductIcon" />
+        <Property Id="ARPNOREPAIR" Value="yes" Secure="yes" />
+        <SetProperty Id="ARPNOMODIFY" Value="1" After="InstallValidate" Sequence="execute"/>
+
+        <Property Id="INSTALLDIR">
+          <RegistrySearch Id="PrevInstallDirNoName" Root="HKCU" Key="Software\\{{manufacturer}}\\{{product_name}}" Type="raw" />
+          <RegistrySearch Id="PrevInstallDirWithName" Root="HKCU" Key="Software\\{{manufacturer}}\\{{product_name}}" Name="InstallDir" Type="raw" />
+        </Property>
+
+        <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="!(loc.LaunchApp)" />
+        <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1"/>
+        <CustomAction Id="LaunchApplication" Impersonate="yes" FileKey="Path" ExeCommand="[LAUNCHAPPARGS]" Return="asyncNoWait" />
+
+        <UI>
+            <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
+            <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
+            <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Order="2">1</Publish>
+            <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="2">1</Publish>
+        </UI>
+
+        <UIRef Id="WixUI_InstallDir" />
+
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="DesktopFolder" Name="Desktop">
+                <Component Id="ApplicationShortcutDesktop" Guid="*">
+                    <Shortcut Id="ApplicationDesktopShortcut" Name="{{product_name}}" Description="Runs {{product_name}}" Target="[!Path]" WorkingDirectory="INSTALLDIR" />
+                    <RemoveFolder Id="DesktopFolder" On="uninstall" />
+                    <RegistryValue Root="HKCU" Key="Software\\{{manufacturer}}\\{{product_name}}" Name="Desktop Shortcut" Type="integer" Value="1" KeyPath="yes" />
+                </Component>
+            </Directory>
+            <Directory Id="LocalAppDataFolder">
+                <Directory Id="INSTALLDIR" Name="{{product_name}}"/>
+            </Directory>
+            <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="{{product_name}}"/>
+            </Directory>
+        </Directory>
+
+        <DirectoryRef Id="INSTALLDIR">
+            <Component Id="RegistryEntries" Guid="*">
+                <RegistryKey Root="HKCU" Key="Software\\{{manufacturer}}\\{{product_name}}">
+                    <RegistryValue Name="InstallDir" Type="string" Value="[INSTALLDIR]" KeyPath="yes" />
+                </RegistryKey>
+            </Component>
+            <Component Id="Path" Guid="{{path_component_guid}}" Win64="$(var.Win64)">
+                <File Id="Path" Source="{{main_binary_path}}" KeyPath="no" Checksum="yes"/>
+                <RegistryValue Root="HKCU"
+                               Key="Software\\{{manufacturer}}\\{{product_name}}"
+                               Name="Binary Installed"
+                               Type="integer"
+                               Value="1"
+                               KeyPath="yes" />
+            </Component>
+
+            <Component Id="CMP_UninstallShortcut" Guid="*">
+                <Shortcut Id="UninstallShortcut"
+                          Name="Uninstall {{product_name}}"
+                          Description="Uninstalls {{product_name}}"
+                          Target="[System64Folder]msiexec.exe"
+                          Arguments="/x [ProductCode]" />
+
+                <RemoveFolder Id="INSTALLDIR" On="uninstall" />
+
+                <RegistryValue Root="HKCU"
+                               Key="Software\\{{manufacturer}}\\{{product_name}}"
+                               Name="Uninstaller Shortcut"
+                               Type="integer"
+                               Value="1"
+                               KeyPath="yes" />
+            </Component>
+        </DirectoryRef>
+
+        <DirectoryRef Id="ApplicationProgramsFolder">
+            <Component Id="ApplicationShortcut" Guid="*">
+                <Shortcut Id="ApplicationStartMenuShortcut"
+                    Name="{{product_name}}"
+                    Description="Runs {{product_name}}"
+                    Target="[!Path]"
+                    Icon="ProductIcon"
+                    WorkingDirectory="INSTALLDIR">
+                    <ShortcutProperty Key="System.AppUserModel.ID" Value="{{bundle_id}}"/>
+                </Shortcut>
+                <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
+                <RegistryValue Root="HKCU" Key="Software\\{{manufacturer}}\\{{product_name}}" Name="Start Menu Shortcut" Type="integer" Value="1" KeyPath="yes"/>
+           </Component>
+        </DirectoryRef>
+
+        <Feature
+                Id="MainProgram"
+                Title="Application"
+                Description="!(loc.InstallAppFeature)"
+                Level="1"
+                ConfigurableDirectory="INSTALLDIR"
+                AllowAdvertise="no"
+                Display="expand"
+                Absent="disallow">
+
+            <ComponentRef Id="RegistryEntries"/>
+
+            <Feature Id="ShortcutsFeature"
+                Title="Shortcuts"
+                Level="1">
+                <ComponentRef Id="Path"/>
+                <ComponentRef Id="CMP_UninstallShortcut" />
+                <ComponentRef Id="ApplicationShortcut" />
+                <ComponentRef Id="ApplicationShortcutDesktop" />
+            </Feature>
+
+            <Feature
+                Id="Environment"
+                Title="PATH Environment Variable"
+                Description="!(loc.PathEnvVarFeature)"
+                Level="1"
+                Absent="allow">
+                <ComponentRef Id="Path"/>
+            </Feature>
+        </Feature>
+
+        <Feature Id="External" AllowAdvertise="no" Absent="disallow">
+        </Feature>
+
+        <Property Id="WVRTINSTALLED">
+            <RegistrySearch Id="WVRTInstalledSystem" Root="HKLM" Key="SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" Name="pv" Type="raw" Win64="no" />
+            <RegistrySearch Id="WVRTInstalledUser" Root="HKCU" Key="SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" Name="pv" Type="raw"/>
+        </Property>
+
+        <CustomAction Id='DownloadAndInvokeBootstrapper' Directory="INSTALLDIR" Execute="deferred" ExeCommand='powershell.exe -NoProfile -windowstyle hidden try [\{] [\[]Net.ServicePointManager[\]]::SecurityProtocol = [\[]Net.SecurityProtocolType[\]]::Tls12 [\}] catch [\{][\}]; Invoke-WebRequest -Uri "https://go.microsoft.com/fwlink/p/?LinkId=2124703" -OutFile "$env:TEMP\MicrosoftEdgeWebview2Setup.exe" ; Start-Process -FilePath "$env:TEMP\MicrosoftEdgeWebview2Setup.exe" -ArgumentList (&apos;/silent&apos;, &apos;/install&apos;) -Wait' Return='check'/>
+        <InstallExecuteSequence>
+            <Custom Action='DownloadAndInvokeBootstrapper' Before='InstallFinalize'>
+                <![CDATA[NOT(REMOVE OR WVRTINSTALLED)]]>
+            </Custom>
+        </InstallExecuteSequence>
+
+        <InstallExecuteSequence>
+          <Custom Action="LaunchApplication" After="InstallFinalize">AUTOLAUNCHAPP AND NOT Installed</Custom>
+        </InstallExecuteSequence>
+
+        <SetProperty Id="ARPINSTALLLOCATION" Value="[INSTALLDIR]" After="CostFinalize"/>
+    </Product>
+</Wix>
