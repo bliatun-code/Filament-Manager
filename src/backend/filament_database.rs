@@ -3326,7 +3326,15 @@ impl FilamentDatabase {
         if row.is_empty() {
             return Ok(());
         }
-        let columns: Vec<String> = row.keys().cloned().collect();
+        let allowed_columns = self.table_columns(table)?;
+        let columns: Vec<String> = row
+            .keys()
+            .filter(|column| allowed_columns.contains(*column))
+            .cloned()
+            .collect();
+        if columns.is_empty() {
+            return Ok(());
+        }
         let placeholders = vec!["?"; columns.len()].join(", ");
         let sql = format!(
             "INSERT INTO {table} ({}) VALUES ({})",
@@ -3379,18 +3387,21 @@ impl FilamentDatabase {
 }
 
 impl FilamentDatabase {
-    fn table_has_column(&self, table: &str, column: &str) -> InventoryResult<bool> {
+    fn table_columns(&self, table: &str) -> InventoryResult<HashSet<String>> {
         let mut stmt = self
             .conn
             .prepare(&format!("PRAGMA table_info({})", table))?;
         let mut rows = stmt.query([])?;
+        let mut columns = HashSet::new();
         while let Some(row) = rows.next()? {
             let name: String = row.get(1)?;
-            if name == column {
-                return Ok(true);
-            }
+            columns.insert(name);
         }
-        Ok(false)
+        Ok(columns)
+    }
+
+    fn table_has_column(&self, table: &str, column: &str) -> InventoryResult<bool> {
+        Ok(self.table_columns(table)?.contains(column))
     }
 }
 
@@ -4512,6 +4523,83 @@ mod tests {
             panic!(
                 "reset_app_state_clears_trusted_lan_pairings_and_paired_browsers failed: {message}"
             );
+        }
+    }
+
+    #[test]
+    fn import_full_backup_ignores_unknown_legacy_columns() {
+        let db_path = temp_db_path("backup-import-legacy-columns");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            let backup = serde_json::json!({
+                "exported_at": "2026-04-09T00:00:00Z",
+                "format": "filament-manager-backup-v1",
+                "tables": {
+                    "filament_master_list": [{
+                        "id": "master_legacy_1",
+                        "material": "PLA",
+                        "filament_name": "Basic",
+                        "color_name": "Blue",
+                        "hex_color": "#3366ff",
+                        "image_url": "https://example.invalid/legacy.png",
+                        "product_url": "https://example.invalid/product",
+                        "default_weight": 1000,
+                        "vendor": "Generic",
+                        "is_discontinued": 0,
+                        "discontinued_at": null,
+                        "last_seen_at": null,
+                        "created_at": "2026-04-09 00:00:00",
+                        "updated_at": "2026-04-09 00:00:00"
+                    }],
+                    "filament_spools": [],
+                    "spool_history_events": [],
+                    "spool_loans": [],
+                    "inventory_locations": [],
+                    "printers": [],
+                    "ams_units": [],
+                    "ams_slots": [],
+                    "print_jobs": [],
+                    "scales": [],
+                    "weight_readings": [],
+                    "scan_events": [],
+                    "label_templates": [],
+                    "label_print_jobs": [],
+                    "purchase_recommendations": [],
+                    "wishlist_items": [],
+                    "alerts": [],
+                    "settings": [],
+                    "trusted_lan_pairings": [],
+                    "trusted_lan_paired_browsers": [],
+                    "sync_queue": []
+                }
+            });
+
+            db.import_full_backup_json(&backup.to_string())
+                .map_err(|error| error.to_string())?;
+
+            let imported: (String, Option<String>) = db
+                .conn
+                .query_row(
+                    "SELECT id, product_url FROM filament_master_list WHERE id = ?1",
+                    ["master_legacy_1"],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .map_err(|error| error.to_string())?;
+            assert_eq!(imported.0, "master_legacy_1");
+            assert_eq!(
+                imported.1.as_deref(),
+                Some("https://example.invalid/product")
+            );
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("import_full_backup_ignores_unknown_legacy_columns failed: {message}");
         }
     }
 }
