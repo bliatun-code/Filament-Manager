@@ -85,9 +85,9 @@ jobs:
           fi
           msi_version="$raw_version"
           if [[ "$raw_version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)-[A-Za-z0-9.-]*\.([0-9]+)$ ]]; then
-            msi_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.${BASH_REMATCH[4]}"
+            msi_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}-${BASH_REMATCH[4]}"
           elif [[ "$raw_version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)-[A-Za-z0-9.-]+$ ]]; then
-            msi_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.1"
+            msi_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}-1"
           fi
           echo "Using MSI bundle version: $msi_version"
           node - "$msi_version" <<'NODE'
