@@ -284,6 +284,56 @@ pub struct TrustedLanSettingsRow {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LibrarySyncSettingsRow {
+    pub mode: String,
+    pub device_name: String,
+    pub library_id: String,
+    pub host_base_url: Option<String>,
+    pub host_device_name: Option<String>,
+    pub client_auth_paired: bool,
+    pub client_auth_paired_at: Option<String>,
+    pub client_auth_expires_at: Option<String>,
+    pub last_checked_at: Option<String>,
+    pub last_reachable_at: Option<String>,
+    pub last_validation_message: Option<String>,
+    pub cached_snapshot: Option<LibrarySyncCachedSnapshotRow>,
+    pub cached_spools: Option<LibrarySyncCachedSpoolListRow>,
+    pub cached_printers: Option<LibrarySyncCachedPrinterOverviewRow>,
+    pub cached_loans: Option<LibrarySyncCachedLoanListRow>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LibrarySyncCachedSnapshotRow {
+    pub captured_at: String,
+    pub library_id: String,
+    pub device_name: String,
+    pub sync_mode: String,
+    pub total_spools: i64,
+    pub in_use: i64,
+    pub low_stock: i64,
+    pub active_loans: i64,
+    pub printers: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LibrarySyncCachedSpoolListRow {
+    pub captured_at: String,
+    pub rows: Vec<SpoolWithMasterRow>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LibrarySyncCachedPrinterOverviewRow {
+    pub captured_at: String,
+    pub rows: Vec<PrinterOverviewRow>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LibrarySyncCachedLoanListRow {
+    pub captured_at: String,
+    pub rows: Vec<SpoolLoanDetailsRow>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TrustedLanPairedBrowserRow {
     pub id: String,
     pub display_name: Option<String>,
@@ -2645,6 +2695,323 @@ impl FilamentDatabase {
         Ok(())
     }
 
+    pub fn get_library_sync_settings(&self) -> InventoryResult<LibrarySyncSettingsRow> {
+        let mode = normalize_library_sync_mode(self.get_setting("library_sync_mode")?.as_deref());
+        let device_name = self
+            .get_setting("library_sync_device_name")?
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(default_library_sync_device_name);
+
+        let library_id = self
+            .get_setting("library_sync_library_id")?
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| {
+                let next = new_id();
+                let _ = self.set_setting("library_sync_library_id", &next);
+                next
+            });
+
+        let host_base_url = self
+            .get_setting("library_sync_host_base_url")?
+            .map(|value| value.trim().trim_end_matches('/').to_string())
+            .filter(|value| !value.is_empty());
+        let host_device_name = self
+            .get_setting("library_sync_host_device_name")?
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let client_session_id = self
+            .get_setting("library_sync_client_session_id")?
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let client_auth_paired = client_session_id.is_some();
+        let client_auth_paired_at = self
+            .get_setting("library_sync_client_auth_paired_at")?
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let client_auth_expires_at = self
+            .get_setting("library_sync_client_auth_expires_at")?
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let last_checked_at = self
+            .get_setting("library_sync_last_checked_at")?
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let last_reachable_at = self
+            .get_setting("library_sync_last_reachable_at")?
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let last_validation_message = self
+            .get_setting("library_sync_last_validation_message")?
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let cached_snapshot = self
+            .get_setting("library_sync_cached_snapshot_json")?
+            .and_then(|value| serde_json::from_str::<LibrarySyncCachedSnapshotRow>(&value).ok());
+        let cached_spools = self
+            .get_setting("library_sync_cached_spools_json")?
+            .and_then(|value| serde_json::from_str::<LibrarySyncCachedSpoolListRow>(&value).ok());
+        let cached_printers = self
+            .get_setting("library_sync_cached_printers_json")?
+            .and_then(|value| {
+                serde_json::from_str::<LibrarySyncCachedPrinterOverviewRow>(&value).ok()
+            });
+        let cached_loans = self
+            .get_setting("library_sync_cached_loans_json")?
+            .and_then(|value| serde_json::from_str::<LibrarySyncCachedLoanListRow>(&value).ok());
+
+        Ok(LibrarySyncSettingsRow {
+            mode,
+            device_name,
+            library_id,
+            host_base_url,
+            host_device_name,
+            client_auth_paired,
+            client_auth_paired_at,
+            client_auth_expires_at,
+            last_checked_at,
+            last_reachable_at,
+            last_validation_message,
+            cached_snapshot,
+            cached_spools,
+            cached_printers,
+            cached_loans,
+        })
+    }
+
+    pub fn save_library_sync_settings(
+        &self,
+        settings: &LibrarySyncSettingsRow,
+    ) -> InventoryResult<LibrarySyncSettingsRow> {
+        let mode = normalize_library_sync_mode(Some(settings.mode.as_str()));
+        let device_name = settings
+            .device_name
+            .trim()
+            .to_string()
+            .chars()
+            .take(120)
+            .collect::<String>();
+        let safe_device_name = if device_name.is_empty() {
+            default_library_sync_device_name()
+        } else {
+            device_name
+        };
+        let library_id = settings
+            .library_id
+            .trim()
+            .to_string()
+            .chars()
+            .take(160)
+            .collect::<String>();
+        let safe_library_id = if library_id.is_empty() {
+            new_id()
+        } else {
+            library_id
+        };
+        let host_base_url = settings
+            .host_base_url
+            .as_deref()
+            .map(str::trim)
+            .map(|value| value.trim_end_matches('/'))
+            .filter(|value| !value.is_empty())
+            .map(|value| value.to_string());
+        let host_device_name = settings
+            .host_device_name
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(|value| value.chars().take(120).collect::<String>());
+        let previous_host_base_url = self
+            .get_setting("library_sync_host_base_url")?
+            .map(|value| value.trim().trim_end_matches('/').to_string())
+            .filter(|value| !value.is_empty());
+
+        self.set_setting("library_sync_mode", &mode)?;
+        self.set_setting("library_sync_device_name", &safe_device_name)?;
+        self.set_setting("library_sync_library_id", &safe_library_id)?;
+
+        if mode == "CLIENT" {
+            let host_changed = previous_host_base_url != host_base_url;
+            match host_base_url.as_deref() {
+                Some(value) => self.set_setting("library_sync_host_base_url", value)?,
+                None => self.delete_setting("library_sync_host_base_url")?,
+            }
+            match host_device_name.as_deref() {
+                Some(value) => self.set_setting("library_sync_host_device_name", value)?,
+                None => self.delete_setting("library_sync_host_device_name")?,
+            }
+            if host_changed {
+                self.clear_library_sync_client_auth_state()?;
+            }
+        } else {
+            self.delete_setting("library_sync_host_base_url")?;
+            self.delete_setting("library_sync_host_device_name")?;
+            self.delete_setting("library_sync_last_checked_at")?;
+            self.delete_setting("library_sync_last_reachable_at")?;
+            self.delete_setting("library_sync_last_validation_message")?;
+            self.delete_setting("library_sync_cached_snapshot_json")?;
+            self.delete_setting("library_sync_cached_spools_json")?;
+            self.delete_setting("library_sync_cached_printers_json")?;
+            self.delete_setting("library_sync_cached_loans_json")?;
+            self.clear_library_sync_client_auth_state()?;
+        }
+
+        self.get_library_sync_settings()
+    }
+
+    pub fn save_library_sync_validation_state(
+        &self,
+        reachable: bool,
+        message: Option<&str>,
+        host_device_name: Option<&str>,
+    ) -> InventoryResult<()> {
+        let now = self
+            .conn
+            .query_row("SELECT datetime('now')", [], |row| row.get::<_, String>(0))?;
+        self.set_setting("library_sync_last_checked_at", &now)?;
+        if reachable {
+            self.set_setting("library_sync_last_reachable_at", &now)?;
+        }
+        match message.map(str::trim).filter(|value| !value.is_empty()) {
+            Some(value) => self.set_setting("library_sync_last_validation_message", value)?,
+            None => self.delete_setting("library_sync_last_validation_message")?,
+        }
+        match host_device_name
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            Some(value) => self.set_setting("library_sync_host_device_name", value)?,
+            None => self.delete_setting("library_sync_host_device_name")?,
+        }
+        Ok(())
+    }
+
+    pub fn save_library_sync_client_auth_state(
+        &self,
+        session_id: &str,
+        device_token: &str,
+        csrf_token: &str,
+        expires_at: Option<&str>,
+    ) -> InventoryResult<()> {
+        let paired_at = self.current_timestamp()?;
+        self.set_setting("library_sync_client_session_id", session_id.trim())?;
+        self.set_setting("library_sync_client_device_token", device_token.trim())?;
+        self.set_setting("library_sync_client_csrf_token", csrf_token.trim())?;
+        self.set_setting("library_sync_client_auth_paired_at", &paired_at)?;
+        match expires_at.map(str::trim).filter(|value| !value.is_empty()) {
+            Some(value) => self.set_setting("library_sync_client_auth_expires_at", value)?,
+            None => self.delete_setting("library_sync_client_auth_expires_at")?,
+        }
+        Ok(())
+    }
+
+    pub fn clear_library_sync_client_auth_state(&self) -> InventoryResult<()> {
+        self.delete_setting("library_sync_client_session_id")?;
+        self.delete_setting("library_sync_client_device_token")?;
+        self.delete_setting("library_sync_client_csrf_token")?;
+        self.delete_setting("library_sync_client_auth_paired_at")?;
+        self.delete_setting("library_sync_client_auth_expires_at")?;
+        Ok(())
+    }
+
+    pub fn get_library_sync_client_auth_state(
+        &self,
+    ) -> InventoryResult<Option<(String, String, String, Option<String>)>> {
+        let session_id = self
+            .get_setting("library_sync_client_session_id")?
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let device_token = self
+            .get_setting("library_sync_client_device_token")?
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let csrf_token = self
+            .get_setting("library_sync_client_csrf_token")?
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let expires_at = self
+            .get_setting("library_sync_client_auth_expires_at")?
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+
+        match (session_id, device_token, csrf_token) {
+            (Some(session_id), Some(device_token), Some(csrf_token)) => {
+                Ok(Some((session_id, device_token, csrf_token, expires_at)))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    pub fn save_library_sync_cached_snapshot(
+        &self,
+        snapshot: &LibrarySyncCachedSnapshotRow,
+    ) -> InventoryResult<()> {
+        let serialized = serde_json::to_string(snapshot)
+            .map_err(|error| InventoryError::Db(error.to_string()))?;
+        self.set_setting("library_sync_cached_snapshot_json", &serialized)?;
+        Ok(())
+    }
+
+    pub fn save_library_sync_cached_spools(
+        &self,
+        rows: &[SpoolWithMasterRow],
+    ) -> InventoryResult<()> {
+        let payload = LibrarySyncCachedSpoolListRow {
+            captured_at: self.current_timestamp()?,
+            rows: rows.to_vec(),
+        };
+        let serialized = serde_json::to_string(&payload)
+            .map_err(|error| InventoryError::Db(error.to_string()))?;
+        self.set_setting("library_sync_cached_spools_json", &serialized)?;
+        Ok(())
+    }
+
+    pub fn save_library_sync_cached_printers(
+        &self,
+        rows: &[PrinterOverviewRow],
+    ) -> InventoryResult<()> {
+        let payload = LibrarySyncCachedPrinterOverviewRow {
+            captured_at: self.current_timestamp()?,
+            rows: rows.to_vec(),
+        };
+        let serialized = serde_json::to_string(&payload)
+            .map_err(|error| InventoryError::Db(error.to_string()))?;
+        self.set_setting("library_sync_cached_printers_json", &serialized)?;
+        Ok(())
+    }
+
+    pub fn save_library_sync_cached_loans(
+        &self,
+        rows: &[SpoolLoanDetailsRow],
+    ) -> InventoryResult<()> {
+        let payload = LibrarySyncCachedLoanListRow {
+            captured_at: self.current_timestamp()?,
+            rows: rows.to_vec(),
+        };
+        let serialized = serde_json::to_string(&payload)
+            .map_err(|error| InventoryError::Db(error.to_string()))?;
+        self.set_setting("library_sync_cached_loans_json", &serialized)?;
+        Ok(())
+    }
+
+    pub fn current_timestamp(&self) -> InventoryResult<String> {
+        self.conn
+            .query_row("SELECT datetime('now')", [], |row| row.get::<_, String>(0))
+            .map_err(InventoryError::from)
+    }
+
+    pub fn current_timestamp_plus_seconds(&self, seconds: u64) -> InventoryResult<String> {
+        let expiry_modifier = format!("+{} seconds", seconds.max(1));
+        self.conn
+            .query_row(
+                "SELECT datetime('now', ?1)",
+                params![expiry_modifier],
+                |row| row.get::<_, String>(0),
+            )
+            .map_err(InventoryError::from)
+    }
+
     pub fn create_trusted_lan_pairing(
         &self,
         display_name: Option<&str>,
@@ -3256,6 +3623,9 @@ impl FilamentDatabase {
                 };
 
                 for row in rows {
+                    if !should_import_backup_row(table, row) {
+                        continue;
+                    }
                     self.insert_backup_row(table, row)?;
                 }
             }
@@ -3456,6 +3826,28 @@ fn parse_full_backup_content(content: &str) -> InventoryResult<ParsedFullBackup>
         format: format.to_string(),
         tables,
     })
+}
+
+fn should_import_backup_row(table: &str, row: &Map<String, Value>) -> bool {
+    match table {
+        "trusted_lan_pairings" | "trusted_lan_paired_browsers" | "sync_queue" => false,
+        "settings" => {
+            let Some(key) = row.get("key").and_then(Value::as_str).map(str::trim) else {
+                return false;
+            };
+            if key.starts_with("trusted_lan_") {
+                return false;
+            }
+            if key == "library_sync_library_id" {
+                return true;
+            }
+            if key.starts_with("library_sync_") {
+                return false;
+            }
+            true
+        }
+        _ => true,
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -3736,6 +4128,28 @@ fn new_id() -> String {
         .unwrap_or_default()
         .as_nanos();
     format!("id_{}", nanos)
+}
+
+fn normalize_library_sync_mode(raw: Option<&str>) -> String {
+    match raw
+        .unwrap_or("STANDALONE")
+        .trim()
+        .to_ascii_uppercase()
+        .as_str()
+    {
+        "HOST" => "HOST".to_string(),
+        "CLIENT" => "CLIENT".to_string(),
+        _ => "STANDALONE".to_string(),
+    }
+}
+
+fn default_library_sync_device_name() -> String {
+    std::env::var("COMPUTERNAME")
+        .ok()
+        .or_else(|| std::env::var("HOSTNAME").ok())
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "This device".to_string())
 }
 
 fn escape_csv(value: &str) -> String {
@@ -4039,7 +4453,10 @@ fn parse_inventory_spools_csv(content: &str) -> InventoryResult<Vec<InventoryImp
 
 #[cfg(test)]
 mod tests {
-    use super::{FilamentDatabase, SpoolRow, TrustedLanSettingsRow};
+    use super::{
+        FilamentDatabase, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, SpoolRow,
+        TrustedLanSettingsRow,
+    };
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -4484,7 +4901,9 @@ mod tests {
 
             let pairings_before: i64 = db
                 .conn
-                .query_row("SELECT COUNT(*) FROM trusted_lan_pairings", [], |row| row.get(0))
+                .query_row("SELECT COUNT(*) FROM trusted_lan_pairings", [], |row| {
+                    row.get(0)
+                })
                 .map_err(|error| error.to_string())?;
             let browsers_before: i64 = db
                 .conn
@@ -4502,7 +4921,9 @@ mod tests {
 
             let pairings_after: i64 = db
                 .conn
-                .query_row("SELECT COUNT(*) FROM trusted_lan_pairings", [], |row| row.get(0))
+                .query_row("SELECT COUNT(*) FROM trusted_lan_pairings", [], |row| {
+                    row.get(0)
+                })
                 .map_err(|error| error.to_string())?;
             let browsers_after: i64 = db
                 .conn
@@ -4523,6 +4944,184 @@ mod tests {
             panic!(
                 "reset_app_state_clears_trusted_lan_pairings_and_paired_browsers failed: {message}"
             );
+        }
+    }
+
+    #[test]
+    fn library_sync_settings_default_and_persist_cleanly() {
+        let db_path = temp_db_path("library-sync-settings");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            let defaults = db
+                .get_library_sync_settings()
+                .map_err(|error| error.to_string())?;
+            assert_eq!(defaults.mode, "STANDALONE");
+            assert!(!defaults.device_name.trim().is_empty());
+            assert!(!defaults.library_id.trim().is_empty());
+            assert_eq!(defaults.host_base_url, None);
+
+            let saved = db
+                .save_library_sync_settings(&LibrarySyncSettingsRow {
+                    mode: "CLIENT".to_string(),
+                    device_name: "Workshop Windows".to_string(),
+                    library_id: defaults.library_id.clone(),
+                    host_base_url: Some("http://192.168.86.25:4278/".to_string()),
+                    host_device_name: Some("Main Host".to_string()),
+                    client_auth_paired: false,
+                    client_auth_paired_at: None,
+                    client_auth_expires_at: None,
+                    last_checked_at: None,
+                    last_reachable_at: None,
+                    last_validation_message: None,
+                    cached_snapshot: None,
+                    cached_spools: None,
+                    cached_printers: None,
+                    cached_loans: None,
+                })
+                .map_err(|error| error.to_string())?;
+
+            assert_eq!(saved.mode, "CLIENT");
+            assert_eq!(saved.device_name, "Workshop Windows");
+            assert_eq!(
+                saved.host_base_url.as_deref(),
+                Some("http://192.168.86.25:4278")
+            );
+            assert_eq!(saved.host_device_name.as_deref(), Some("Main Host"));
+
+            let host_saved = db
+                .save_library_sync_settings(&LibrarySyncSettingsRow {
+                    mode: "HOST".to_string(),
+                    device_name: "Always-on PC".to_string(),
+                    library_id: saved.library_id.clone(),
+                    host_base_url: Some("http://should-clear".to_string()),
+                    host_device_name: Some("Should clear".to_string()),
+                    client_auth_paired: false,
+                    client_auth_paired_at: None,
+                    client_auth_expires_at: None,
+                    last_checked_at: Some("should clear".to_string()),
+                    last_reachable_at: Some("should clear".to_string()),
+                    last_validation_message: Some("should clear".to_string()),
+                    cached_snapshot: Some(LibrarySyncCachedSnapshotRow {
+                        captured_at: "2026-04-09 10:00:00".to_string(),
+                        library_id: saved.library_id.clone(),
+                        device_name: "Main Host".to_string(),
+                        sync_mode: "HOST".to_string(),
+                        total_spools: 42,
+                        in_use: 4,
+                        low_stock: 3,
+                        active_loans: 1,
+                        printers: 2,
+                    }),
+                    cached_spools: None,
+                    cached_printers: None,
+                    cached_loans: None,
+                })
+                .map_err(|error| error.to_string())?;
+
+            assert_eq!(host_saved.mode, "HOST");
+            assert_eq!(host_saved.host_base_url, None);
+            assert_eq!(host_saved.host_device_name, None);
+            assert_eq!(host_saved.last_checked_at, None);
+            assert_eq!(host_saved.last_reachable_at, None);
+            assert_eq!(host_saved.last_validation_message, None);
+            assert_eq!(host_saved.cached_snapshot, None);
+            assert!(host_saved.cached_spools.is_none());
+            assert!(host_saved.cached_printers.is_none());
+            assert!(host_saved.cached_loans.is_none());
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("library_sync_settings_default_and_persist_cleanly failed: {message}");
+        }
+    }
+
+    #[test]
+    fn library_sync_client_auth_clears_when_client_host_changes() {
+        let db_path = temp_db_path("library-sync-auth-host-change");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            let defaults = db
+                .get_library_sync_settings()
+                .map_err(|error| error.to_string())?;
+
+            db.save_library_sync_settings(&LibrarySyncSettingsRow {
+                mode: "CLIENT".to_string(),
+                device_name: "Workshop Windows".to_string(),
+                library_id: defaults.library_id.clone(),
+                host_base_url: Some("http://192.168.86.25:4278".to_string()),
+                host_device_name: Some("Main Host".to_string()),
+                client_auth_paired: false,
+                client_auth_paired_at: None,
+                client_auth_expires_at: None,
+                last_checked_at: None,
+                last_reachable_at: None,
+                last_validation_message: None,
+                cached_snapshot: None,
+                cached_spools: None,
+                cached_printers: None,
+                cached_loans: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+            db.save_library_sync_client_auth_state(
+                "session-1",
+                "device-1",
+                "csrf-1",
+                Some("2026-04-09 10:30:00"),
+            )
+            .map_err(|error| error.to_string())?;
+            assert!(db
+                .get_library_sync_client_auth_state()
+                .map_err(|error| error.to_string())?
+                .is_some());
+
+            let changed = db
+                .save_library_sync_settings(&LibrarySyncSettingsRow {
+                    mode: "CLIENT".to_string(),
+                    device_name: "Workshop Windows".to_string(),
+                    library_id: defaults.library_id,
+                    host_base_url: Some("http://192.168.86.99:4278".to_string()),
+                    host_device_name: Some("Backup Host".to_string()),
+                    client_auth_paired: false,
+                    client_auth_paired_at: None,
+                    client_auth_expires_at: None,
+                    last_checked_at: None,
+                    last_reachable_at: None,
+                    last_validation_message: None,
+                    cached_snapshot: None,
+                    cached_spools: None,
+                    cached_printers: None,
+                    cached_loans: None,
+                })
+                .map_err(|error| error.to_string())?;
+
+            assert_eq!(
+                changed.host_base_url.as_deref(),
+                Some("http://192.168.86.99:4278")
+            );
+            assert!(!changed.client_auth_paired);
+            assert!(changed.client_auth_paired_at.is_none());
+            assert!(changed.client_auth_expires_at.is_none());
+            assert!(db
+                .get_library_sync_client_auth_state()
+                .map_err(|error| error.to_string())?
+                .is_none());
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("library_sync_client_auth_clears_when_client_host_changes failed: {message}");
         }
     }
 
@@ -4600,6 +5199,128 @@ mod tests {
         let _ = std::fs::remove_file(&db_path);
         if let Err(message) = result {
             panic!("import_full_backup_ignores_unknown_legacy_columns failed: {message}");
+        }
+    }
+
+    #[test]
+    fn import_full_backup_skips_machine_local_sync_and_trusted_lan_state() {
+        let db_path = temp_db_path("backup-import-sanitizes-machine-local-state");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            let backup = serde_json::json!({
+                "exported_at": "2026-04-09T00:00:00Z",
+                "format": "filament-manager-backup-v1",
+                "tables": {
+                    "filament_master_list": [],
+                    "filament_spools": [],
+                    "spool_history_events": [],
+                    "spool_loans": [],
+                    "inventory_locations": [],
+                    "printers": [],
+                    "ams_units": [],
+                    "ams_slots": [],
+                    "print_jobs": [],
+                    "scales": [],
+                    "weight_readings": [],
+                    "scan_events": [],
+                    "label_templates": [],
+                    "label_print_jobs": [],
+                    "purchase_recommendations": [],
+                    "wishlist_items": [],
+                    "alerts": [],
+                    "settings": [
+                        { "key": "library_sync_mode", "value": "HOST" },
+                        { "key": "library_sync_host_base_url", "value": "http://192.168.1.10:4278" },
+                        { "key": "library_sync_library_id", "value": "library_shared_123" },
+                        { "key": "trusted_lan_enabled", "value": "1" },
+                        { "key": "theme_mode", "value": "dark" }
+                    ],
+                    "trusted_lan_pairings": [
+                        {
+                            "id": "pairing_1",
+                            "browser_label": "iPad",
+                            "token_hash": "hash_1",
+                            "expires_at": "2026-04-10 00:00:00",
+                            "used_at": null,
+                            "created_at": "2026-04-09 00:00:00"
+                        }
+                    ],
+                    "trusted_lan_paired_browsers": [
+                        {
+                            "id": "browser_1",
+                            "browser_label": "iPhone",
+                            "device_token_hash": "device_hash_1",
+                            "created_from_pairing_id": null,
+                            "last_seen_ip": "192.168.1.20",
+                            "paired_at": "2026-04-09 00:00:00",
+                            "last_seen_at": "2026-04-09 00:00:00",
+                            "revoked_at": null
+                        }
+                    ],
+                    "sync_queue": [
+                        {
+                            "id": "sync_1",
+                            "action_type": "UPDATE",
+                            "payload_json": "{}",
+                            "created_at": "2026-04-09 00:00:00"
+                        }
+                    ]
+                }
+            });
+
+            db.import_full_backup_json(&backup.to_string())
+                .map_err(|error| error.to_string())?;
+
+            let sync_settings = db
+                .get_library_sync_settings()
+                .map_err(|error| error.to_string())?;
+            assert_eq!(sync_settings.mode, "STANDALONE");
+            assert_eq!(sync_settings.library_id, "library_shared_123");
+            assert!(sync_settings.host_base_url.is_none());
+
+            let trusted_lan = db
+                .get_trusted_lan_settings()
+                .map_err(|error| error.to_string())?;
+            assert!(!trusted_lan.enabled);
+
+            let paired_count: i64 = db
+                .conn
+                .query_row(
+                    "SELECT COUNT(*) FROM trusted_lan_paired_browsers",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            assert_eq!(paired_count, 0);
+
+            let pairing_count: i64 = db
+                .conn
+                .query_row("SELECT COUNT(*) FROM trusted_lan_pairings", [], |row| {
+                    row.get(0)
+                })
+                .map_err(|error| error.to_string())?;
+            assert_eq!(pairing_count, 0);
+
+            let sync_queue_count: i64 = db
+                .conn
+                .query_row("SELECT COUNT(*) FROM sync_queue", [], |row| row.get(0))
+                .map_err(|error| error.to_string())?;
+            assert_eq!(sync_queue_count, 0);
+
+            let theme_mode = db
+                .get_setting("theme_mode")
+                .map_err(|error| error.to_string())?;
+            assert_eq!(theme_mode.as_deref(), Some("dark"));
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("import_full_backup_skips_machine_local_sync_and_trusted_lan_state failed: {message}");
         }
     }
 }

@@ -139,7 +139,9 @@ pub fn refresh_bambu_catalog_snapshot(
     let filters = normalize_material_filters(material_filters);
     let detected = detect_store(&client)?;
 
-    if let Some(result) = fetch_all_products(&client, &detected.base_url, &detected.handle, &filters)? {
+    if let Some(result) =
+        fetch_all_products(&client, &detected.base_url, &detected.handle, &filters)?
+    {
         let mut entries = Vec::new();
         for product in &result.products {
             entries.extend(extract_colors(product, &result.base_url));
@@ -156,7 +158,9 @@ pub fn refresh_bambu_catalog_snapshot(
         });
     }
 
-    if let Some(next_result) = fetch_next_store_entries(&client, &detected.base_url, &detected.handle, &filters)? {
+    if let Some(next_result) =
+        fetch_next_store_entries(&client, &detected.base_url, &detected.handle, &filters)?
+    {
         return Ok(BambuCatalogRefreshSnapshot {
             entries: next_result.entries,
             detected_store: next_result.base_url,
@@ -236,8 +240,8 @@ fn fetch_text_with_status(
             }
             Err(_) => {
                 if attempt < retries {
-                    let wait_ms = (backoff_base_ms.saturating_mul((attempt + 1) as u64))
-                        .min(backoff_cap_ms);
+                    let wait_ms =
+                        (backoff_base_ms.saturating_mul((attempt + 1) as u64)).min(backoff_cap_ms);
                     sleep_with_jitter(wait_ms, jitter_ms.max(DETECT_RETRY_JITTER_MS));
                     continue;
                 }
@@ -343,7 +347,10 @@ fn detect_store(client: &Client) -> Result<DetectStoreResult, String> {
     if let Some(base) = explicit_base.clone() {
         base_urls.push(base);
     }
-    for candidate in DEFAULT_BASE_URLS.iter().map(|value| normalize_base_url(value)) {
+    for candidate in DEFAULT_BASE_URLS
+        .iter()
+        .map(|value| normalize_base_url(value))
+    {
         if !base_urls.iter().any(|existing| existing == &candidate) {
             base_urls.push(candidate);
         }
@@ -375,7 +382,8 @@ fn detect_store(client: &Client) -> Result<DetectStoreResult, String> {
                 .collect();
             scored.sort_by(|a, b| b.1.cmp(&a.1));
 
-            let mut candidate_handles: Vec<String> = scored.into_iter().map(|entry| entry.0).collect();
+            let mut candidate_handles: Vec<String> =
+                scored.into_iter().map(|entry| entry.0).collect();
             candidate_handles.push(DEFAULT_COLLECTION_HANDLE.to_string());
             candidate_handles.dedup();
 
@@ -425,7 +433,10 @@ fn normalize_material_filters(material_filters: Option<Vec<String>>) -> Vec<Stri
 }
 
 fn matches_material_filter(material: &str, filters: &[String]) -> bool {
-    filters.is_empty() || filters.iter().any(|value| value == material.trim().to_uppercase().as_str())
+    filters.is_empty()
+        || filters
+            .iter()
+            .any(|value| value == material.trim().to_uppercase().as_str())
 }
 
 fn infer_material(filament_name: &str) -> String {
@@ -501,16 +512,29 @@ fn normalize_maybe_url(url: Option<&str>, base_url: &str) -> Option<String> {
         return None;
     }
     Url::parse(raw)
-        .or_else(|_| Url::parse(&format!("{}/{}", base_url.trim_end_matches('/'), raw.trim_start_matches('/'))))
+        .or_else(|_| {
+            Url::parse(&format!(
+                "{}/{}",
+                base_url.trim_end_matches('/'),
+                raw.trim_start_matches('/')
+            ))
+        })
         .map(|url| url.to_string())
         .ok()
 }
 
 fn select_image(product: &ShopifyProduct, variant: Option<&ShopifyVariant>) -> Option<String> {
-    if let Some(src) = variant.and_then(|value| value.featured_image.as_ref()).and_then(|image| image.src.as_deref()) {
+    if let Some(src) = variant
+        .and_then(|value| value.featured_image.as_ref())
+        .and_then(|image| image.src.as_deref())
+    {
         return Some(src.to_string());
     }
-    if let Some(src) = product.image.as_ref().and_then(|image| image.src.as_deref()) {
+    if let Some(src) = product
+        .image
+        .as_ref()
+        .and_then(|image| image.src.as_deref())
+    {
         return Some(src.to_string());
     }
     product
@@ -545,9 +569,10 @@ fn extract_colors(product: &ShopifyProduct, base_url: &str) -> Vec<BambuCatalogE
         .options
         .as_ref()
         .map(|options| {
-            options
-                .iter()
-                .any(|option| option.name.to_lowercase().contains("color") || option.name.to_lowercase().contains("colour"))
+            options.iter().any(|option| {
+                option.name.to_lowercase().contains("color")
+                    || option.name.to_lowercase().contains("colour")
+            })
         })
         .unwrap_or(false);
     if !has_color_option {
@@ -573,7 +598,10 @@ fn extract_colors(product: &ShopifyProduct, base_url: &str) -> Vec<BambuCatalogE
                 filament_name: filament_name.clone(),
                 color_name: color_name.to_string(),
                 hex_color: estimate_hex(color_name),
-                image_url: normalize_maybe_url(select_image(product, Some(variant)).as_deref(), base_url),
+                image_url: normalize_maybe_url(
+                    select_image(product, Some(variant)).as_deref(),
+                    base_url,
+                ),
                 product_url: build_product_url(base_url, &product.handle, variant.id),
                 default_weight_g: DEFAULT_WEIGHT_G,
             })
@@ -600,9 +628,7 @@ fn fetch_products_page(
     page: usize,
 ) -> ProductsPageResult {
     let endpoints = [
-        format!(
-            "{base_url}/collections/{collection_handle}/products.json?limit=250&page={page}"
-        ),
+        format!("{base_url}/collections/{collection_handle}/products.json?limit=250&page={page}"),
         format!("{base_url}/collections/{collection_handle}/products.json?limit=250"),
     ];
 
@@ -739,7 +765,11 @@ fn decode_js_string_literal(value: &str) -> String {
                 i += 2;
             }
             '\r' => {
-                i += if i + 2 < chars.len() && chars[i + 2] == '\n' { 3 } else { 2 };
+                i += if i + 2 < chars.len() && chars[i + 2] == '\n' {
+                    3
+                } else {
+                    2
+                };
             }
             'n' => {
                 out.push('\n');
@@ -975,7 +1005,9 @@ fn extract_color_options(decoded: &str) -> Vec<ColorOption> {
         let obj_text = &decoded[start..=end];
 
         if let Ok(value) = serde_json::from_str::<serde_json::Value>(obj_text) {
-            if let Some(color_name_raw) = value.get("propertyValue").and_then(|entry| entry.as_str()) {
+            if let Some(color_name_raw) =
+                value.get("propertyValue").and_then(|entry| entry.as_str())
+            {
                 let color_name = color_name_raw.trim();
                 if color_name.is_empty() {
                     index = end.saturating_add(1);
@@ -1007,7 +1039,10 @@ fn build_fallback_entry(product: &ProductSummary, base_url: &str) -> BambuCatalo
         filament_name: product.name.clone(),
         color_name: "Standard".to_string(),
         hex_color: estimate_hex("Standard"),
-        image_url: normalize_maybe_url(product.media_files.first().map(|value| value.as_str()), base_url),
+        image_url: normalize_maybe_url(
+            product.media_files.first().map(|value| value.as_str()),
+            base_url,
+        ),
         product_url: format!("{base_url}/products/{}", product.seo_code),
         default_weight_g: DEFAULT_WEIGHT_G,
     }
@@ -1088,10 +1123,7 @@ fn fetch_next_store_entries(
                 warnings.insert(
                     "Product detail lookups hit anti-bot/rate-limit responses.".to_string(),
                 );
-                sleep_with_jitter(
-                    PRODUCT_ANTIBOT_COOLDOWN_MS,
-                    PRODUCT_REQUEST_DELAY_JITTER_MS,
-                );
+                sleep_with_jitter(PRODUCT_ANTIBOT_COOLDOWN_MS, PRODUCT_REQUEST_DELAY_JITTER_MS);
                 if consecutive_anti_bot_blocks >= MAX_CONSECUTIVE_ANTIBOT {
                     stop_detailed_fetch = true;
                     warnings.insert(format!(
@@ -1163,7 +1195,9 @@ fn fetch_next_store_entries(
 
 #[cfg(test)]
 mod tests {
-    use super::{decode_js_string_literal, extract_product_list, infer_material, normalize_material_filters};
+    use super::{
+        decode_js_string_literal, extract_product_list, infer_material, normalize_material_filters,
+    };
 
     #[test]
     fn infer_material_uses_prefixes() {

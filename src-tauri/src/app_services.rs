@@ -4,9 +4,9 @@ use crate::backend::filament_database::{
     SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::backend::inventory_engine::{
-    AssignPrinterSlotInput, CreateManualSpoolInput, CreateSpoolInput, CreateWishlistItemInput,
-    InventoryEngine, LendSpoolInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
-    UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
+    AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
+    CreateWishlistItemInput, InventoryEngine, LendSpoolInput, ReturnSpoolLoanInput,
+    UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
 };
 use serde::{Deserialize, Serialize};
 
@@ -180,6 +180,10 @@ impl CompanionService {
         self.with_inventory(|engine| engine.update_wishlist_item_status(input))
     }
 
+    pub fn delete_wishlist_item(&self, item_id: &str) -> InventoryResult<()> {
+        self.with_inventory(|engine| engine.delete_wishlist_item(item_id))
+    }
+
     pub fn update_borrowed_in_spool(
         &self,
         input: UpdateBorrowedInSpoolInput,
@@ -204,6 +208,18 @@ impl CompanionService {
                 spool_id: spool_id.map(str::to_string),
             })
         })
+    }
+
+    pub fn create_printer(&self, input: CreatePrinterInput) -> InventoryResult<()> {
+        self.with_inventory(|engine| engine.create_printer(input))
+    }
+
+    pub fn delete_printer(&self, printer_id: &str) -> InventoryResult<()> {
+        self.with_inventory(|engine| engine.delete_printer(printer_id))
+    }
+
+    pub fn set_active_printer(&self, printer_id: Option<&str>) -> InventoryResult<()> {
+        self.with_inventory(|engine| engine.set_active_printer(printer_id))
     }
 
     pub fn lend_spool(&self, input: LendSpoolInput) -> InventoryResult<SpoolLoanRow> {

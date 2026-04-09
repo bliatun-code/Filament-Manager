@@ -5,6 +5,42 @@ Last updated: 2026-04-09
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
+- Sync RC prep notes (2026-04-09, local WIP moving to pre-release):
+  - version target is now `v0.9.0-rc.1` as a GitHub pre-release for real host/client QA
+  - sync write scope now includes add-spool, wishlist admin, and printer create/update/delete from client mode
+  - dedicated two-machine RC checklist added at `docs/MULTI_DEVICE_SYNC_QA_CHECKLIST.md`
+- Multi-device sync MVP work-in-progress notes (2026-04-09, not yet committed/pushed):
+  - New desktop library-role foundation is in local progress:
+    - `Standalone`, `Host`, `Client`
+    - persistent `library_id`
+    - host URL/device-name storage for client mode
+  - Desktop client read path is locally wired through host API for:
+    - `Dashboard`
+    - `Inventory`
+    - `Printers`
+    - `Loans`
+  - Client mode now falls back to cached host snapshots/lists when the host is unavailable and surfaces `live / cached / offline` state in UI.
+  - Desktop client pairing is locally wired for protected host writes.
+  - Initial client-to-host writes are locally wired for:
+    - spool weight
+    - spool tare weight
+    - spool location/status detail updates
+    - printer slot assignment
+    - outbound loan creation
+    - outbound return / inbound hand-back
+    - add spool on the host (`owned`, `manual`, `borrowed-in`)
+    - wishlist create / status update / delete / stock-now on the host
+    - printer create / update / delete on the host
+  - Early host handoff/migration UX is locally modeled through backup export/import + role switch, with machine-local trusted-LAN/sync state excluded from imported backups.
+  - Local validation baseline for the in-progress sync branch:
+    - `npm run smoke` ✅
+    - focused Rust sync/trusted-LAN tests ✅
+  - Still intentionally not implemented in this local sync MVP:
+    - multi-master sync
+    - direct SQLite replication
+    - offline write queue / conflict merge
+    - broad maintenance/reset flows from client mode
+    - two-machine manual QA signoff for the sync path
 - Step closeout notes (2026-04-09, v0.8.4 release complete):
   - `v0.8.4` is now the current public release.
   - App/package/Tauri bundle versioning is aligned to `0.8.4`.

@@ -2,12 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } f
 import type { SettingsTabKey } from "../App";
 import {
   createTrustedLanPairing,
+  clearLibrarySyncClientAuth,
   createPrinter,
+  createLibrarySyncHostPrinter,
   deletePrinter,
+  deleteLibrarySyncHostPrinter,
   exportFullBackupJson,
   exportInventoryCsv,
   exportInventoryJson,
+  fetchLibrarySyncSnapshot,
+  fetchLibrarySyncPrinterOverview,
   getAppVersion,
+  getLibrarySyncSettings,
+  pairLibrarySyncHost,
   getPrinterSettings,
   getTrustedLanCompanionStatus,
   importDataFile,
@@ -24,14 +31,19 @@ import {
   revokeTrustedLanPairedBrowser,
   resetAppData,
   resetCatalogData,
+  saveLibrarySyncSettings,
   subscribeCatalogRefreshProgress,
   updateTrustedLanCompanionConfig,
   updateMasterCatalogEntry,
+  validateLibrarySyncHost,
   validateFullBackupJson,
   type BackupValidationStats,
   type CatalogRefreshProgressPayload,
   type CatalogRefreshResult,
   type CatalogResetStats,
+  type LibrarySyncHostValidationResult,
+  type LibrarySyncRemoteSnapshot,
+  type LibrarySyncSettings,
   type MasterCatalogRow,
   type PrinterOverviewRow,
   type PrinterRow,
@@ -69,6 +81,10 @@ import {
   resolveTrustedLanInterfaceAddressDraft,
   type TrustedLanCompanionStatusTone,
 } from "./settings_companion_model";
+import {
+  buildLibrarySyncMigrationModel,
+  type LibrarySyncMode,
+} from "./settings_library_sync_model";
 
 function parsePositiveInt(raw: string, fallback: number): number {
   const parsed = Number.parseInt(raw, 10);
@@ -125,6 +141,20 @@ function formatTrustedLanPairingExpiry(expiresAtMs: number, locale: Locale): str
     hour: "2-digit",
     minute: "2-digit",
   }).format(expiresAtMs);
+}
+
+function formatSettingsDateTime(raw: string, locale: Locale): string {
+  const parsed = new Date(raw.replace(" ", "T"));
+  if (Number.isNaN(parsed.getTime())) {
+    return raw;
+  }
+  return new Intl.DateTimeFormat(locale === "nb" ? "nb-NO" : "en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
 }
 
 function toErrorMessage(error: unknown, fallback: string): string {
@@ -216,7 +246,6 @@ function suggestHexFromColor(master: MasterCatalogRow): string {
 type SettingsTab = "GENERAL" | "COMPANION" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
 type ResetConfirmAction = "APP" | "CATALOG";
 type CatalogVendor = "Bambu" | "eSUN";
-
 type SettingsPageProps = {
   initialTab?: SettingsTabKey;
 };
@@ -338,6 +367,40 @@ function SettingsMetricTile({
   );
 }
 
+function MigrationStepRow({
+  label,
+  done,
+  hint,
+  doneLabel,
+  pendingLabel,
+}: {
+  label: string;
+  done: boolean;
+  hint?: string;
+  doneLabel: string;
+  pendingLabel: string;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 dark:border-slate-700/70 dark:bg-slate-900/40">
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{label}</div>
+        {hint ? (
+          <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{hint}</div>
+        ) : null}
+      </div>
+      <span
+        className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+          done
+            ? "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200"
+            : "border-slate-300 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
+        }`}
+      >
+        {done ? doneLabel : pendingLabel}
+      </span>
+    </div>
+  );
+}
+
 export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPageProps) {
   const tauri = isTauri();
   const { locale, setLocale, t } = useI18n();
@@ -349,6 +412,21 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => getThemeMode());
   const [appVersion, setAppVersion] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+  const [librarySyncSettings, setLibrarySyncSettings] = useState<LibrarySyncSettings | null>(null);
+  const [librarySyncModeDraft, setLibrarySyncModeDraft] = useState<LibrarySyncMode>("STANDALONE");
+  const [librarySyncDeviceNameDraft, setLibrarySyncDeviceNameDraft] = useState("");
+  const [librarySyncHostBaseUrlDraft, setLibrarySyncHostBaseUrlDraft] = useState("");
+  const [librarySyncPairingDraft, setLibrarySyncPairingDraft] = useState("");
+  const [librarySyncBusy, setLibrarySyncBusy] = useState(false);
+  const [librarySyncValidationBusy, setLibrarySyncValidationBusy] = useState(false);
+  const [librarySyncValidation, setLibrarySyncValidation] =
+    useState<LibrarySyncHostValidationResult | null>(null);
+  const [librarySyncSnapshotBusy, setLibrarySyncSnapshotBusy] = useState(false);
+  const [librarySyncSnapshot, setLibrarySyncSnapshot] = useState<LibrarySyncRemoteSnapshot | null>(
+    null,
+  );
+  const [lastFullBackupExportedAt, setLastFullBackupExportedAt] = useState<string | null>(null);
+  const [lastFullBackupImportedAt, setLastFullBackupImportedAt] = useState<string | null>(null);
   const [trustedLanStatus, setTrustedLanStatus] = useState<TrustedLanCompanionStatus | null>(
     null,
   );
@@ -485,6 +563,38 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     () => (lastBackupValidation?.extra_tables.length ?? 0) > 0,
     [lastBackupValidation],
   );
+  const hasValidatedFullBackup = useMemo(
+    () => (lastBackupValidation?.format ?? "").trim().toUpperCase() === "FULL_BACKUP",
+    [lastBackupValidation],
+  );
+  const hostReadyForClients = useMemo(
+    () => Boolean(trustedLanStatus?.enabled && trustedLanStatus.base_url),
+    [trustedLanStatus?.base_url, trustedLanStatus?.enabled],
+  );
+  const librarySyncSavedMode = (librarySyncSettings?.mode as LibrarySyncMode | undefined) ?? "STANDALONE";
+  const settingsClientReadOnly = librarySyncSavedMode === "CLIENT";
+  const settingsClientHostBaseUrl = librarySyncSettings?.host_base_url ?? null;
+  const settingsClientLibraryId = librarySyncSettings?.library_id ?? null;
+  const settingsClientHostWritePaired = librarySyncSettings?.client_auth_paired ?? false;
+  const librarySyncMigrationModel = useMemo(
+    () =>
+      buildLibrarySyncMigrationModel({
+        draftMode: librarySyncModeDraft,
+        savedMode: librarySyncSavedMode,
+        hostReadyForClients,
+        hasValidatedFullBackup,
+        hasExportedFullBackup: Boolean(lastFullBackupExportedAt),
+        hasImportedFullBackup: Boolean(lastFullBackupImportedAt),
+      }),
+    [
+      hasValidatedFullBackup,
+      hostReadyForClients,
+      lastFullBackupExportedAt,
+      lastFullBackupImportedAt,
+      librarySyncModeDraft,
+      librarySyncSavedMode,
+    ],
+  );
 
   const missingSwatchMasters = useMemo(
     () => catalogMasters.filter((master) => !isValidHex(master.hex_color)),
@@ -618,12 +728,26 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     }
     setLoading(true);
     try {
-      const snapshot = await getPrinterSettings();
-      const overviewRows = await listPrinterOverview();
-      const catalogRows = await listMasterCatalog(5000);
-      setPrinters(snapshot.printers);
+      const [snapshot, catalogRows, syncSettings] = await Promise.all([
+        getPrinterSettings(),
+        listMasterCatalog(5000),
+        getLibrarySyncSettings(),
+      ]);
+      const overviewRows =
+        syncSettings.mode === "CLIENT" && syncSettings.host_base_url && syncSettings.library_id
+          ? await fetchLibrarySyncPrinterOverview(syncSettings.host_base_url, syncSettings.library_id)
+          : await listPrinterOverview();
+      setPrinters(
+        syncSettings.mode === "CLIENT" ? overviewRows.map((row) => row.printer) : snapshot.printers,
+      );
       setPrinterOverview(overviewRows);
       setCatalogMasters(catalogRows);
+      setLibrarySyncSettings(syncSettings);
+      setLibrarySyncModeDraft((syncSettings.mode as LibrarySyncMode) ?? "STANDALONE");
+      setLibrarySyncDeviceNameDraft(syncSettings.device_name ?? "");
+      setLibrarySyncHostBaseUrlDraft(syncSettings.host_base_url ?? "");
+      setLibrarySyncValidation(null);
+      setLibrarySyncSnapshot(syncSettings.cached_snapshot ?? null);
       const nextDrafts: Record<string, string> = {};
       for (const master of catalogRows) {
         const normalized = normalizeHex(master.hex_color);
@@ -773,6 +897,265 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     void reloadSettings();
     void loadTrustedLanCompanionStatus();
   }, [loadTrustedLanCompanionStatus, reloadSettings, tauri]);
+
+  const handleSaveLibrarySyncSettings = useCallback(async () => {
+    if (!tauri || !librarySyncSettings) {
+      return;
+    }
+    setLibrarySyncBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const saved = await saveLibrarySyncSettings({
+        mode: librarySyncModeDraft,
+        device_name: librarySyncDeviceNameDraft,
+        library_id: librarySyncSettings.library_id,
+        host_base_url:
+          librarySyncModeDraft === "CLIENT" ? librarySyncHostBaseUrlDraft : null,
+        host_device_name: librarySyncSettings.host_device_name ?? null,
+        client_auth_paired: librarySyncSettings.client_auth_paired ?? false,
+        client_auth_paired_at: librarySyncSettings.client_auth_paired_at ?? null,
+        client_auth_expires_at: librarySyncSettings.client_auth_expires_at ?? null,
+      });
+      setLibrarySyncSettings(saved);
+      setLibrarySyncModeDraft((saved.mode as LibrarySyncMode) ?? "STANDALONE");
+      setLibrarySyncDeviceNameDraft(saved.device_name ?? "");
+      setLibrarySyncHostBaseUrlDraft(saved.host_base_url ?? "");
+      if (saved.mode !== "CLIENT") {
+        setLibrarySyncValidation(null);
+        setLibrarySyncSnapshot(null);
+      }
+      setInfo(
+        t(
+          "settings.librarySyncSaved",
+          "Library role settings saved.",
+        ),
+      );
+    } catch (saveError) {
+      console.error(saveError);
+      setError(
+        toErrorMessage(
+          saveError,
+          t("settings.error.librarySyncSave", "Failed to save library role settings."),
+        ),
+      );
+    } finally {
+      setLibrarySyncBusy(false);
+    }
+  }, [
+    librarySyncDeviceNameDraft,
+    librarySyncHostBaseUrlDraft,
+    librarySyncModeDraft,
+    librarySyncSettings,
+    t,
+    tauri,
+  ]);
+
+  const handlePrepareLibrarySyncMode = useCallback(
+    (nextMode: LibrarySyncMode) => {
+      setLibrarySyncModeDraft(nextMode);
+      if (nextMode !== "CLIENT") {
+        setLibrarySyncHostBaseUrlDraft("");
+        setLibrarySyncValidation(null);
+        setLibrarySyncSnapshot(null);
+      }
+      setError(null);
+      setInfo(
+        nextMode === "HOST"
+          ? t(
+              "settings.librarySyncPreparedHost",
+              "This device is now prepared to become the host when you save.",
+            )
+          : nextMode === "STANDALONE"
+            ? t(
+                "settings.librarySyncPreparedStandalone",
+                "This device is now prepared to disconnect from the shared library when you save.",
+              )
+            : t(
+                "settings.librarySyncPreparedClient",
+                "This device is now prepared to connect as a client when you save.",
+              ),
+      );
+    },
+    [t],
+  );
+
+  const handleValidateLibrarySyncHost = useCallback(async () => {
+    if (!tauri || !librarySyncSettings) {
+      return;
+    }
+    setLibrarySyncValidationBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const result = await validateLibrarySyncHost(
+        librarySyncHostBaseUrlDraft,
+        librarySyncSettings.library_id,
+      );
+      setLibrarySyncValidation(result);
+      const refreshed = await getLibrarySyncSettings();
+      setLibrarySyncSettings(refreshed);
+      setLibrarySyncSnapshot(refreshed.cached_snapshot ?? null);
+      if (result.ok && result.matches_library_id) {
+        setInfo(
+          t("settings.librarySyncHostCheckOk", "Host check passed."),
+        );
+      }
+    } catch (validationError) {
+      console.error(validationError);
+      setError(
+        toErrorMessage(
+          validationError,
+          t("settings.error.librarySyncHostCheck", "Failed to check the configured host."),
+        ),
+      );
+    } finally {
+      setLibrarySyncValidationBusy(false);
+    }
+  }, [librarySyncHostBaseUrlDraft, librarySyncSettings, t, tauri]);
+
+  const handleLinkLibrarySyncHost = useCallback(async () => {
+    if (!tauri || !librarySyncValidation?.ok || !librarySyncValidation.library_id) {
+      return;
+    }
+    setLibrarySyncBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const saved = await saveLibrarySyncSettings({
+        mode: "CLIENT",
+        device_name: librarySyncDeviceNameDraft,
+        library_id: librarySyncValidation.library_id,
+        host_base_url: librarySyncValidation.base_url,
+        host_device_name: librarySyncValidation.device_name ?? null,
+        client_auth_paired: false,
+        client_auth_paired_at: null,
+        client_auth_expires_at: null,
+      });
+      setLibrarySyncSettings(saved);
+      setLibrarySyncModeDraft("CLIENT");
+      setLibrarySyncDeviceNameDraft(saved.device_name ?? "");
+      setLibrarySyncHostBaseUrlDraft(saved.host_base_url ?? "");
+      setInfo(
+        t(
+          "settings.librarySyncLinkedHost",
+          "This device is now linked to the selected host library.",
+        ),
+      );
+    } catch (linkError) {
+      console.error(linkError);
+      setError(
+        toErrorMessage(
+          linkError,
+          t("settings.error.librarySyncLinkHost", "Failed to link this device to the host library."),
+        ),
+      );
+    } finally {
+      setLibrarySyncBusy(false);
+    }
+  }, [librarySyncDeviceNameDraft, librarySyncValidation, t, tauri]);
+
+  const handlePairLibrarySyncHost = useCallback(async () => {
+    if (!tauri || !librarySyncHostBaseUrlDraft.trim() || !librarySyncPairingDraft.trim()) {
+      return;
+    }
+    setLibrarySyncBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const saved = await pairLibrarySyncHost(
+        librarySyncHostBaseUrlDraft,
+        librarySyncPairingDraft,
+      );
+      setLibrarySyncSettings(saved);
+      setLibrarySyncHostBaseUrlDraft(saved.host_base_url ?? librarySyncHostBaseUrlDraft);
+      setLibrarySyncPairingDraft("");
+      setInfo(
+        t(
+          "settings.librarySyncClientPaired",
+          "Desktop client paired with the host. Protected sync actions can now be enabled.",
+        ),
+      );
+    } catch (pairError) {
+      console.error(pairError);
+      setError(
+        toErrorMessage(
+          pairError,
+          t(
+            "settings.error.librarySyncPairHost",
+            "Failed to pair this desktop client with the host.",
+          ),
+        ),
+      );
+    } finally {
+      setLibrarySyncBusy(false);
+    }
+  }, [librarySyncHostBaseUrlDraft, librarySyncPairingDraft, t, tauri]);
+
+  const handleClearLibrarySyncClientAuth = useCallback(async () => {
+    if (!tauri || librarySyncBusy) {
+      return;
+    }
+    setLibrarySyncBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const cleared = await clearLibrarySyncClientAuth();
+      setLibrarySyncSettings(cleared);
+      setLibrarySyncPairingDraft("");
+      setInfo(
+        t(
+          "settings.librarySyncClientAuthCleared",
+          "Desktop client pairing was removed from this device.",
+        ),
+      );
+    } catch (clearError) {
+      console.error(clearError);
+      setError(
+        toErrorMessage(
+          clearError,
+          t(
+            "settings.error.librarySyncClearClientAuth",
+            "Failed to remove the saved desktop client pairing.",
+          ),
+        ),
+      );
+    } finally {
+      setLibrarySyncBusy(false);
+    }
+  }, [librarySyncBusy, t, tauri]);
+
+  const handleFetchLibrarySyncSnapshot = useCallback(async () => {
+    if (!tauri || !librarySyncSettings) {
+      return;
+    }
+    setLibrarySyncSnapshotBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const snapshot = await fetchLibrarySyncSnapshot(
+        librarySyncHostBaseUrlDraft,
+        librarySyncSettings.library_id,
+      );
+      setLibrarySyncSnapshot(snapshot);
+      const refreshed = await getLibrarySyncSettings();
+      setLibrarySyncSettings(refreshed);
+      setLibrarySyncSnapshot(refreshed.cached_snapshot ?? snapshot);
+      setInfo(
+        t("settings.librarySyncSnapshotRefreshed", "Host snapshot refreshed."),
+      );
+    } catch (snapshotError) {
+      console.error(snapshotError);
+      setError(
+        toErrorMessage(
+          snapshotError,
+          t("settings.error.librarySyncSnapshot", "Failed to fetch host snapshot."),
+        ),
+      );
+    } finally {
+      setLibrarySyncSnapshotBusy(false);
+    }
+  }, [librarySyncHostBaseUrlDraft, librarySyncSettings, t, tauri]);
 
   useEffect(() => {
     if (
@@ -1029,13 +1412,33 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setError(null);
     setInfo(null);
     try {
-      await createPrinter({
-        id: editPrinterId,
-        model,
-        name,
-        ams_units: units,
-        slots_per_ams: slots,
-      });
+      if (settingsClientReadOnly) {
+        if (!settingsClientHostBaseUrl || !settingsClientLibraryId || !settingsClientHostWritePaired) {
+          setError(
+            t(
+              "settings.error.librarySyncPrinterWriteRequiresPairing",
+              "Pair this desktop client with the host before changing printers.",
+            ),
+          );
+          setBusy(false);
+          return;
+        }
+        await createLibrarySyncHostPrinter(settingsClientHostBaseUrl, settingsClientLibraryId, {
+          id: editPrinterId,
+          model,
+          name,
+          ams_units: units,
+          slots_per_ams: slots,
+        });
+      } else {
+        await createPrinter({
+          id: editPrinterId,
+          model,
+          name,
+          ams_units: units,
+          slots_per_ams: slots,
+        });
+      }
       await reloadSettings();
       setInfo(
         `${t("settings.updatedPrinter", "Updated printer")} "${name}".`,
@@ -1075,7 +1478,25 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setError(null);
     setInfo(null);
     try {
-      await deletePrinter(printer.id);
+      if (settingsClientReadOnly) {
+        if (!settingsClientHostBaseUrl || !settingsClientLibraryId || !settingsClientHostWritePaired) {
+          setError(
+            t(
+              "settings.error.librarySyncPrinterWriteRequiresPairing",
+              "Pair this desktop client with the host before changing printers.",
+            ),
+          );
+          setBusy(false);
+          return;
+        }
+        await deleteLibrarySyncHostPrinter(
+          settingsClientHostBaseUrl,
+          settingsClientLibraryId,
+          printer.id,
+        );
+      } else {
+        await deletePrinter(printer.id);
+      }
       await reloadSettings();
       setInfo(`${t("settings.removedPrinter", "Removed printer")} "${printer.name}".`);
     } catch (deleteError) {
@@ -1193,6 +1614,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         `filament-manager-backup-${Date.now()}.json`,
         "application/json;charset=utf-8",
       );
+      setLastFullBackupExportedAt(new Date().toISOString());
       setInfo(
         t(
           "settings.backupExported",
@@ -1409,6 +1831,25 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setLastBackupValidation(null);
       await reloadSettings();
       if (result.detected_format === "FULL_BACKUP") {
+        const importedAt = new Date().toISOString();
+        setLastFullBackupImportedAt(importedAt);
+        if (librarySyncModeDraft === "CLIENT") {
+          setLibrarySyncModeDraft("HOST");
+          setLibrarySyncHostBaseUrlDraft("");
+          setLibrarySyncValidation(null);
+          setLibrarySyncSnapshot(null);
+          setActiveTab("GENERAL");
+          setInfo(
+            `${t("settings.backupImported", "Full backup imported successfully.")} ${t(
+              "settings.validationRows",
+              "Rows",
+            )}: ${result.imported_count}. ${t(
+              "settings.librarySyncImportedOnClientHint",
+              "This device is now prepared as the next host. Review Library roles and save when ready to take over.",
+            )}`,
+          );
+          return;
+        }
         setInfo(
           `${t("settings.backupImported", "Full backup imported successfully.")} ${t(
             "settings.validationRows",
@@ -2158,6 +2599,675 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 <span className="font-semibold text-slate-900 dark:text-slate-100">
                   {appVersion?.trim() || t("common.unknown", "Unknown")}
                 </span>
+              </div>
+            </section>
+
+            <section className="surface-card space-y-4">
+              <div className="section-eyebrow">
+                {t("settings.librarySyncTitle", "Library roles")}
+              </div>
+              <div className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {t(
+                  "settings.librarySyncHint",
+                  "Choose whether this device stays local-only, hosts the shared library, or connects to another host.",
+                )}
+              </div>
+              <div className="surface-subtle space-y-4 p-3">
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    {
+                      mode: "STANDALONE" as const,
+                      label: t("settings.librarySyncStandalone", "Standalone"),
+                    },
+                    {
+                      mode: "HOST" as const,
+                      label: t("settings.librarySyncHost", "Host"),
+                    },
+                    {
+                      mode: "CLIENT" as const,
+                      label: t("settings.librarySyncClient", "Client"),
+                    },
+                  ]).map((option) => (
+                    <button
+                      key={option.mode}
+                      type="button"
+                      onClick={() => setLibrarySyncModeDraft(option.mode)}
+                      className={chipButtonClass(librarySyncModeDraft === option.mode)}
+                      disabled={!tauri || librarySyncBusy}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="space-y-2">
+                    <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+                      {t("settings.librarySyncDeviceName", "Device name")}
+                    </div>
+                    <input
+                      type="text"
+                      value={librarySyncDeviceNameDraft}
+                      onChange={(event) => setLibrarySyncDeviceNameDraft(event.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400/50 dark:focus:ring-indigo-500/20"
+                      placeholder={t("settings.librarySyncDeviceNamePlaceholder", "Workshop PC")}
+                      disabled={!tauri || librarySyncBusy}
+                    />
+                  </label>
+
+                  <label className="space-y-2">
+                    <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+                      {t("settings.librarySyncLibraryId", "Library ID")}
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200">
+                      {librarySyncSettings?.library_id || t("common.loading", "Loading...")}
+                    </div>
+                  </label>
+                </div>
+
+                {librarySyncModeDraft === "CLIENT" ? (
+                  <div className="space-y-3">
+                    <label className="space-y-2">
+                      <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+                        {t("settings.librarySyncHostUrl", "Host URL")}
+                      </div>
+                      <input
+                        type="url"
+                        value={librarySyncHostBaseUrlDraft}
+                        onChange={(event) => {
+                          setLibrarySyncHostBaseUrlDraft(event.target.value);
+                          setLibrarySyncValidation(null);
+                        }}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400/50 dark:focus:ring-indigo-500/20"
+                        placeholder="http://192.168.86.25:4278"
+                        disabled={!tauri || librarySyncBusy || librarySyncValidationBusy}
+                      />
+                    </label>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void handleValidateLibrarySyncHost()}
+                        className={settingsActionButtonClass("neutral")}
+                        disabled={
+                          !tauri ||
+                          librarySyncBusy ||
+                          librarySyncValidationBusy ||
+                          !librarySyncHostBaseUrlDraft.trim()
+                        }
+                      >
+                        {librarySyncValidationBusy
+                          ? t("settings.librarySyncChecking", "Checking...")
+                          : t("settings.librarySyncCheckHost", "Check host")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleFetchLibrarySyncSnapshot()}
+                        className={settingsActionButtonClass("neutral")}
+                        disabled={
+                          !tauri ||
+                          librarySyncBusy ||
+                          librarySyncValidationBusy ||
+                          librarySyncSnapshotBusy ||
+                          !librarySyncHostBaseUrlDraft.trim()
+                        }
+                      >
+                        {librarySyncSnapshotBusy
+                          ? t("settings.librarySyncRefreshingSnapshot", "Refreshing snapshot...")
+                          : t("settings.librarySyncFetchSnapshot", "Fetch snapshot")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handlePrepareLibrarySyncMode("HOST")}
+                        className={settingsActionButtonClass("neutral")}
+                        disabled={!tauri || librarySyncBusy || librarySyncValidationBusy}
+                      >
+                        {t("settings.librarySyncPromoteToHost", "Prepare this device as host")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handlePrepareLibrarySyncMode("STANDALONE")}
+                        className={settingsActionButtonClass("neutral")}
+                        disabled={!tauri || librarySyncBusy || librarySyncValidationBusy}
+                      >
+                        {t("settings.librarySyncDisconnectHost", "Disconnect from host")}
+                      </button>
+                    </div>
+
+                    {librarySyncValidation ? (
+                      <div
+                        className={`rounded-2xl border px-4 py-3 text-sm leading-6 ${
+                          librarySyncValidation.ok && librarySyncValidation.matches_library_id
+                            ? "border-emerald-200 bg-emerald-50/80 text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-100"
+                            : "border-amber-200 bg-amber-50/80 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-100"
+                        }`}
+                      >
+                        <div className="font-semibold">{librarySyncValidation.message}</div>
+                        <div className="mt-2 grid gap-2 md:grid-cols-2">
+                          <div>
+                            {t("settings.librarySyncRemoteDevice", "Remote device")}:{" "}
+                            <span className="font-semibold">
+                              {librarySyncValidation.device_name ||
+                                t("common.unknown", "Unknown")}
+                            </span>
+                          </div>
+                          <div>
+                            {t("settings.librarySyncRemoteLibraryId", "Remote library ID")}:{" "}
+                            <span className="font-semibold">
+                              {librarySyncValidation.library_id ||
+                                t("common.unknown", "Unknown")}
+                            </span>
+                          </div>
+                          <div>
+                            {t("settings.librarySyncRemoteMode", "Remote role")}:{" "}
+                            <span className="font-semibold">
+                              {librarySyncValidation.sync_mode ||
+                                t("common.unknown", "Unknown")}
+                            </span>
+                          </div>
+                          <div>
+                            {t("settings.librarySyncRemoteAuth", "Auth mode")}:{" "}
+                            <span className="font-semibold">
+                              {librarySyncValidation.auth_mode ||
+                                t("common.unknown", "Unknown")}
+                            </span>
+                          </div>
+                        </div>
+                        {librarySyncValidation.ok && librarySyncValidation.library_id ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void handleLinkLibrarySyncHost()}
+                              className={settingsActionButtonClass("accent")}
+                              disabled={!tauri || librarySyncBusy}
+                            >
+                              {librarySyncValidation.matches_library_id
+                                ? t(
+                                    "settings.librarySyncUseCheckedHost",
+                                    "Use this checked host",
+                                  )
+                                : t(
+                                    "settings.librarySyncLinkHost",
+                                    "Link this device to the checked host",
+                                  )}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+                      <div className="font-semibold">
+                        {t("settings.librarySyncClientAuthTitle", "Desktop client pairing")}
+                      </div>
+                      <div className="mt-1 text-slate-600 dark:text-slate-300">
+                        {t(
+                          "settings.librarySyncClientAuthHint",
+                          "Paste a short-lived pairing link or token from the host to unlock protected desktop sync actions.",
+                        )}
+                      </div>
+                      <label className="mt-3 block space-y-2">
+                        <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+                          {t(
+                            "settings.librarySyncClientAuthInput",
+                            "Pairing link or token",
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={librarySyncPairingDraft}
+                          onChange={(event) => setLibrarySyncPairingDraft(event.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400/50 dark:focus:ring-indigo-500/20"
+                          placeholder="http://192.168.86.25:4278/companion?pairing=..."
+                          disabled={!tauri || librarySyncBusy}
+                        />
+                      </label>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handlePairLibrarySyncHost()}
+                          className={settingsActionButtonClass("accent")}
+                          disabled={
+                            !tauri ||
+                            librarySyncBusy ||
+                            !librarySyncHostBaseUrlDraft.trim() ||
+                            !librarySyncPairingDraft.trim()
+                          }
+                        >
+                          {t("settings.librarySyncPairHost", "Pair desktop client")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleClearLibrarySyncClientAuth()}
+                          className={settingsActionButtonClass("neutral")}
+                          disabled={!tauri || librarySyncBusy || !librarySyncSettings?.client_auth_paired}
+                        >
+                          {t("settings.librarySyncClearClientAuth", "Remove pairing")}
+                        </button>
+                        <span
+                          className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                            librarySyncSettings?.client_auth_paired
+                              ? "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200"
+                              : "border-slate-300 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
+                          }`}
+                        >
+                          {librarySyncSettings?.client_auth_paired
+                            ? t("settings.librarySyncClientAuthPaired", "Paired")
+                            : t("settings.librarySyncClientAuthUnpaired", "Not paired")}
+                        </span>
+                      </div>
+                      {librarySyncSettings?.client_auth_paired_at ? (
+                        <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                          {t("settings.librarySyncClientAuthPairedAt", "Paired")}:{" "}
+                          {formatSettingsDateTime(
+                            librarySyncSettings.client_auth_paired_at,
+                            locale,
+                          )}
+                        </div>
+                      ) : null}
+                      {librarySyncSettings?.client_auth_expires_at ? (
+                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          {t("settings.librarySyncClientAuthExpiresAt", "Session expires")}:{" "}
+                          {formatSettingsDateTime(
+                            librarySyncSettings.client_auth_expires_at,
+                            locale,
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {librarySyncSettings?.last_checked_at ||
+                    librarySyncSettings?.last_reachable_at ||
+                    librarySyncSettings?.last_validation_message ? (
+                      <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+                        <div className="font-semibold">
+                          {t("settings.librarySyncLastStatus", "Last host status")}
+                        </div>
+                        <div className="mt-2 grid gap-2 md:grid-cols-2">
+                          <div>
+                            {t("settings.librarySyncLastChecked", "Last checked")}:{" "}
+                            <span className="font-semibold">
+                              {librarySyncSettings?.last_checked_at
+                                ? formatSettingsDateTime(
+                                    librarySyncSettings.last_checked_at,
+                                    locale,
+                                  )
+                                : t("common.unknown", "Unknown")}
+                            </span>
+                          </div>
+                          <div>
+                            {t("settings.librarySyncLastReachable", "Last reachable")}:{" "}
+                            <span className="font-semibold">
+                              {librarySyncSettings?.last_reachable_at
+                                ? formatSettingsDateTime(
+                                    librarySyncSettings.last_reachable_at,
+                                    locale,
+                                  )
+                                : t("common.unknown", "Unknown")}
+                            </span>
+                          </div>
+                        </div>
+                        {librarySyncSettings?.last_validation_message ? (
+                          <div className="mt-2 text-slate-600 dark:text-slate-300">
+                            {librarySyncSettings.last_validation_message}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="font-semibold">
+                          {librarySyncSnapshot
+                            ? t("settings.librarySyncCachedSnapshot", "Cached host snapshot")
+                            : t("settings.librarySyncNoSnapshotYet", "No snapshot cached yet")}
+                        </div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+                          {librarySyncValidation?.ok && librarySyncValidation.matches_library_id
+                            ? t("settings.librarySyncStatusLive", "Live")
+                            : librarySyncSnapshot
+                              ? t("settings.librarySyncStatusCached", "Cached")
+                              : t("settings.librarySyncStatusOffline", "Offline")}
+                        </div>
+                      </div>
+                      {librarySyncSnapshot ? (
+                        <>
+                          <div className="mt-2 text-slate-600 dark:text-slate-300">
+                            {t("settings.librarySyncSnapshotCapturedAt", "Captured")}:{" "}
+                            <span className="font-semibold">
+                              {formatSettingsDateTime(librarySyncSnapshot.captured_at, locale)}
+                            </span>
+                          </div>
+                          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                            <SettingsMetricTile
+                              label={t("settings.librarySyncSnapshotTotalSpools", "Total spools")}
+                              value={librarySyncSnapshot.total_spools}
+                            />
+                            <SettingsMetricTile
+                              label={t("settings.librarySyncSnapshotInUse", "In use")}
+                              value={librarySyncSnapshot.in_use}
+                            />
+                            <SettingsMetricTile
+                              label={t("settings.librarySyncSnapshotLowStock", "Low stock")}
+                              value={librarySyncSnapshot.low_stock}
+                            />
+                            <SettingsMetricTile
+                              label={t("settings.librarySyncSnapshotLoans", "Active loans")}
+                              value={librarySyncSnapshot.active_loans}
+                            />
+                            <SettingsMetricTile
+                              label={t("settings.librarySyncSnapshotPrinters", "Printers")}
+                              value={librarySyncSnapshot.printers}
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="mt-2 text-slate-600 dark:text-slate-300">
+                          {t(
+                            "settings.librarySyncNoSnapshotHint",
+                            "Fetch a host snapshot to keep a small read-only view available here.",
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+
+                {librarySyncModeDraft === "HOST" ? (
+                  <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+                    <div className="font-semibold">
+                      {t("settings.librarySyncHostReady", "Host readiness")}
+                    </div>
+                    <div>
+                      {trustedLanStatus?.enabled && trustedLanStatus.base_url
+                        ? t(
+                            "settings.librarySyncHostReadyLive",
+                            "Trusted-LAN web app is already reachable on this device.",
+                          )
+                        : t(
+                            "settings.librarySyncHostReadyHint",
+                            "Turn on Browser access to expose this host to other devices on your trusted network.",
+                          )}
+                    </div>
+                    {trustedLanStatus?.enabled && trustedLanStatus.base_url ? (
+                      <div className="font-mono text-xs text-slate-600 dark:text-slate-300">
+                        {trustedLanStatus.base_url}
+                      </div>
+                    ) : null}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handlePrepareLibrarySyncMode("STANDALONE")}
+                        className={settingsActionButtonClass("neutral")}
+                        disabled={!tauri || librarySyncBusy}
+                      >
+                        {t("settings.librarySyncUseStandalone", "Use this device standalone")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("COMPANION")}
+                        className={settingsActionButtonClass("neutral")}
+                        disabled={!tauri || librarySyncBusy}
+                      >
+                        {t("settings.librarySyncOpenBrowserAccess", "Open Browser access")}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {librarySyncModeDraft === "HOST" || librarySyncModeDraft === "CLIENT" ? (
+                  <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+                    <div className="font-semibold">
+                      {t("settings.librarySyncMigrationTitle", "Host handoff path")}
+                    </div>
+                    <div>
+                      {librarySyncModeDraft === "HOST"
+                        ? t(
+                            "settings.librarySyncMigrationHostHint",
+                            "Use a full backup export to move this library to another machine in a controlled way.",
+                          )
+                        : t(
+                            "settings.librarySyncMigrationClientHint",
+                            "If you want this device to take over as host later, import a full backup from the current host first, then save Host role here.",
+                          )}
+                    </div>
+                    <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-xs leading-5 text-slate-600 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-300">
+                      {t(
+                        "settings.librarySyncMigrationSafetyNote",
+                        "Machine-local browser pairings and current host connection details are not imported. Pair the new host again after handoff.",
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      {librarySyncMigrationModel.kind === "takeover" ? (
+                        <>
+                          <MigrationStepRow
+                            label={t(
+                              "settings.librarySyncMigrationStepValidate",
+                              "Validate the host backup on this device",
+                            )}
+                            done={hasValidatedFullBackup}
+                            doneLabel={t("settings.librarySyncStepDone", "Done")}
+                            pendingLabel={t("settings.librarySyncStepPending", "Pending")}
+                            hint={
+                              hasValidatedFullBackup
+                                ? t(
+                                    "settings.librarySyncMigrationStepValidateOk",
+                                    "A full-backup file has been checked in this session.",
+                                  )
+                                : t(
+                                    "settings.librarySyncMigrationStepValidateHint",
+                                    "Optional, but helpful before you import and take over.",
+                                  )
+                            }
+                          />
+                          <MigrationStepRow
+                            label={t(
+                              "settings.librarySyncMigrationStepImport",
+                              "Import the full backup on this device",
+                            )}
+                            done={Boolean(lastFullBackupImportedAt)}
+                            doneLabel={t("settings.librarySyncStepDone", "Done")}
+                            pendingLabel={t("settings.librarySyncStepPending", "Pending")}
+                            hint={
+                              lastFullBackupImportedAt
+                                ? formatSettingsDateTime(lastFullBackupImportedAt, locale)
+                                : t(
+                                    "settings.librarySyncMigrationStepImportHint",
+                                    "Import the host backup here before this device takes over.",
+                                  )
+                            }
+                          />
+                          <MigrationStepRow
+                            label={t(
+                              "settings.librarySyncMigrationStepSave",
+                              "Save the role change to complete takeover",
+                            )}
+                            done={librarySyncSavedMode === "HOST"}
+                            doneLabel={t("settings.librarySyncStepDone", "Done")}
+                            pendingLabel={t("settings.librarySyncStepPending", "Pending")}
+                            hint={
+                              librarySyncSavedMode === "HOST"
+                                ? t(
+                                    "settings.librarySyncMigrationStepSaveOk",
+                                    "This device is already saved as the active host.",
+                                  )
+                                : t(
+                                    "settings.librarySyncMigrationStepSaveHint",
+                                    "The final Save button below is the last deliberate handoff step.",
+                                  )
+                            }
+                          />
+                        </>
+                      ) : librarySyncMigrationModel.kind === "host" ? (
+                        <>
+                          <MigrationStepRow
+                            label={t(
+                              "settings.librarySyncMigrationStepHostAccess",
+                              "Browser access is enabled on this host",
+                            )}
+                            done={hostReadyForClients}
+                            doneLabel={t("settings.librarySyncStepDone", "Done")}
+                            pendingLabel={t("settings.librarySyncStepPending", "Pending")}
+                            hint={
+                              hostReadyForClients && trustedLanStatus?.base_url
+                                ? trustedLanStatus.base_url
+                                : t(
+                                    "settings.librarySyncMigrationStepHostAccessHint",
+                                    "Turn on Browser access before other devices try to connect.",
+                                  )
+                            }
+                          />
+                          <MigrationStepRow
+                            label={t(
+                              "settings.librarySyncMigrationStepExport",
+                              "Export a full backup from the current host",
+                            )}
+                            done={Boolean(lastFullBackupExportedAt)}
+                            doneLabel={t("settings.librarySyncStepDone", "Done")}
+                            pendingLabel={t("settings.librarySyncStepPending", "Pending")}
+                            hint={
+                              lastFullBackupExportedAt
+                                ? formatSettingsDateTime(lastFullBackupExportedAt, locale)
+                                : t(
+                                    "settings.librarySyncMigrationStepExportHint",
+                                    "Use the export button below before importing on the next machine.",
+                                  )
+                            }
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <MigrationStepRow
+                            label={t(
+                              "settings.librarySyncMigrationStepValidate",
+                              "Validate the host backup on this device",
+                            )}
+                            done={hasValidatedFullBackup}
+                            doneLabel={t("settings.librarySyncStepDone", "Done")}
+                            pendingLabel={t("settings.librarySyncStepPending", "Pending")}
+                            hint={
+                              hasValidatedFullBackup
+                                ? t(
+                                    "settings.librarySyncMigrationStepValidateOk",
+                                    "A full-backup file has been checked in this session.",
+                                  )
+                                : t(
+                                    "settings.librarySyncMigrationStepValidateHint",
+                                    "Optional, but helpful before you import and take over.",
+                                  )
+                            }
+                          />
+                          <MigrationStepRow
+                            label={t(
+                              "settings.librarySyncMigrationStepImport",
+                              "Import the full backup on this device",
+                            )}
+                            done={Boolean(lastFullBackupImportedAt)}
+                            doneLabel={t("settings.librarySyncStepDone", "Done")}
+                            pendingLabel={t("settings.librarySyncStepPending", "Pending")}
+                            hint={
+                              lastFullBackupImportedAt
+                                ? formatSettingsDateTime(lastFullBackupImportedAt, locale)
+                                : t(
+                                    "settings.librarySyncMigrationStepImportHint",
+                                    "Import the host backup here before this device takes over.",
+                                  )
+                            }
+                          />
+                        </>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {librarySyncModeDraft === "HOST" ? (
+                        <>
+                          {librarySyncMigrationModel.showSaveAction ? (
+                            <button
+                              type="button"
+                              onClick={() => void handleSaveLibrarySyncSettings()}
+                              className={settingsActionButtonClass("accent")}
+                              disabled={!tauri || librarySyncBusy || !librarySyncSettings}
+                            >
+                              {librarySyncBusy
+                                ? t("settings.librarySyncSaving", "Saving...")
+                                : t("settings.librarySyncSave", "Save library role")}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => void handleExportFullBackup()}
+                              className={settingsActionButtonClass("neutral")}
+                              disabled={!tauri || busy}
+                            >
+                              {t("settings.exportFullBackup", "Export full backup (JSON)")}
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenBackupValidate()}
+                            className={settingsActionButtonClass("neutral")}
+                            disabled={!tauri || busy}
+                          >
+                            {t("settings.validateBackup", "Validate backup file")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDataImport()}
+                            className={settingsActionButtonClass("neutral")}
+                            disabled={!tauri || busy}
+                          >
+                            {t("settings.importDataFile", "Import backup/data file")}
+                          </button>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("MAINTENANCE")}
+                        className={settingsActionButtonClass("neutral")}
+                        disabled={!tauri || busy}
+                      >
+                        {t("settings.librarySyncOpenMaintenance", "Open maintenance tools")}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+                  {librarySyncModeDraft === "STANDALONE"
+                    ? t(
+                        "settings.librarySyncStandaloneHint",
+                        "This device keeps using its own local library only.",
+                      )
+                    : librarySyncModeDraft === "HOST"
+                      ? t(
+                          "settings.librarySyncHostHint",
+                          "This device is prepared to host the library for other desktop or browser clients.",
+                        )
+                      : t(
+                          "settings.librarySyncClientHint",
+                          "This device connects to another host and keeps a read-only fallback cache when that host is unavailable.",
+                        )}
+                </div>
+
+                <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  {t(
+                    "settings.librarySyncSaveHint",
+                    "Role changes take effect when you save the library role below.",
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void handleSaveLibrarySyncSettings()}
+                  className={settingsActionButtonClass("accent")}
+                  disabled={!tauri || librarySyncBusy || !librarySyncSettings}
+                >
+                  {librarySyncBusy
+                    ? t("settings.librarySyncSaving", "Saving...")
+                    : t("settings.librarySyncSave", "Save library role")}
+                </button>
               </div>
             </section>
 

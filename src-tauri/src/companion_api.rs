@@ -1,14 +1,15 @@
 use crate::app_services::{CompanionService, CompanionSpoolDetail};
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, FilamentDatabase, FilamentMasterCatalogRow, InventoryError,
-    PrinterAmsSlotRow, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolWithMasterRow,
-    TrustedLanPairedBrowserRow, WishlistItemRow,
+    LibrarySyncSettingsRow, PrinterAmsSlotRow, PrinterOverviewRow, SpoolLoanDetailsRow,
+    SpoolLoanRow, SpoolWithMasterRow, TrustedLanPairedBrowserRow, WishlistItemRow,
 };
 use crate::backend::inventory_engine::{
-    CreateManualSpoolInput, CreateSpoolInput, CreateWishlistItemInput, LendSpoolInput,
-    ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput,
+    CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput,
+    LendSpoolInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput,
     UpdateWishlistStatusInput, WeightSource,
 };
+use crate::backend::statistics::{InventoryOverview, StatisticsEngine};
 use crate::state::{AppState, TrustedLanCompanionRuntime};
 use axum::body::Body;
 use axum::extract::{Path, Query, State};
@@ -47,8 +48,7 @@ const COMPANION_BROWSER_INPUT_ROUTER_JS: &str =
     include_str!("../companion_browser/companion_input_router.js");
 const COMPANION_BROWSER_MUTATIONS_JS: &str =
     include_str!("../companion_browser/companion_mutations.js");
-const COMPANION_BROWSER_QR_PAYLOAD_JS: &str =
-    include_str!("../companion_browser/qr_payload.js");
+const COMPANION_BROWSER_QR_PAYLOAD_JS: &str = include_str!("../companion_browser/qr_payload.js");
 const COMPANION_BROWSER_RENDER_FOCUS_JS: &str =
     include_str!("../companion_browser/companion_render_focus.js");
 const COMPANION_BROWSER_RUNTIME_STATE_JS: &str =
@@ -143,6 +143,7 @@ struct QrLookupQuery {
 struct LoanListQuery {
     limit: Option<i64>,
     include_returned: Option<bool>,
+    direction: Option<String>,
 }
 
 #[derive(Deserialize, Default)]
@@ -219,6 +220,11 @@ struct UpdateWishlistItemStatusRequest {
 }
 
 #[derive(Deserialize)]
+struct SetActivePrinterRequest {
+    printer_id: Option<String>,
+}
+
+#[derive(Deserialize)]
 struct UpdateBorrowedInSpoolRequest {
     owner_name: String,
     owner_contact: Option<String>,
@@ -247,6 +253,22 @@ struct CompanionHealthResponse {
     ok: bool,
     api_version: &'static str,
     auth_mode: String,
+    access_mode: &'static str,
+    library_id: String,
+    device_name: String,
+    sync_mode: String,
+}
+
+#[derive(Serialize)]
+struct CompanionLibrarySnapshotResponse {
+    ok: bool,
+    captured_at: String,
+    library_id: String,
+    device_name: String,
+    sync_mode: String,
+    inventory: InventoryOverview,
+    active_loans: i64,
+    printers: i64,
 }
 
 #[derive(Serialize)]
@@ -375,12 +397,19 @@ fn build_router(state: CompanionApiState) -> Router {
         .route("/catalog/masters", get(handle_list_catalog_masters))
         .route("/loans", get(handle_list_spool_loans))
         .route("/printers/overview", get(handle_list_printer_overview))
+        .route("/printers", post(handle_create_printer))
+        .route("/printers/:printer_id/delete", post(handle_delete_printer))
+        .route("/printers/active", post(handle_set_active_printer))
         .route("/loans/active", get(handle_list_active_spool_loans))
         .route("/wishlist", get(handle_list_wishlist_items))
         .route("/wishlist", post(handle_create_wishlist_item))
         .route(
             "/wishlist/:item_id/status",
             post(handle_update_wishlist_item_status),
+        )
+        .route(
+            "/wishlist/:item_id/delete",
+            post(handle_delete_wishlist_item),
         )
         .route("/spools/by-qr", get(handle_find_spool_by_qr))
         .route("/spools/owned", post(handle_create_owned_spool))
@@ -425,6 +454,10 @@ fn build_router(state: CompanionApiState) -> Router {
         .route("/companion/", get(handle_companion_shell))
         .route("/companion/:asset", get(handle_companion_asset))
         .route("/api/v1/health", get(handle_health))
+        .route("/api/v1/library/snapshot", get(handle_library_snapshot))
+        .route("/api/v1/library/spools", get(handle_library_spools))
+        .route("/api/v1/library/printers", get(handle_library_printers))
+        .route("/api/v1/library/loans", get(handle_library_loans))
         .route("/api/v1/auth/session", get(handle_session_status))
         .route("/api/v1/auth/pair", post(handle_pair_session))
         .route("/api/v1/auth/renew", post(handle_renew_session))
@@ -455,11 +488,110 @@ async fn handle_health(
     headers: HeaderMap,
 ) -> Result<Json<CompanionHealthResponse>, CompanionApiError> {
     require_allowed_host(&headers, &state.runtime)?;
+    let sync_settings = read_library_sync_settings(&state)?;
     Ok(Json(CompanionHealthResponse {
         ok: true,
         api_version: "v1",
         auth_mode: state.runtime.auth_mode().to_string(),
+        access_mode: "trusted-lan",
+        library_id: sync_settings.library_id,
+        device_name: sync_settings.device_name,
+        sync_mode: sync_settings.mode,
     }))
+}
+
+async fn handle_library_snapshot(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+) -> Result<Json<CompanionLibrarySnapshotResponse>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    let sync_settings = read_library_sync_settings(&state)?;
+    let stats = StatisticsEngine::open(&state.db_path)
+        .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
+    let inventory = stats
+        .inventory_overview()
+        .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
+    let active_loans = state
+        .service
+        .list_active_spool_loans()
+        .map_err(CompanionApiError::from)?
+        .len() as i64;
+    let printers = state
+        .service
+        .list_printer_overview()
+        .map_err(CompanionApiError::from)?
+        .len() as i64;
+    let captured_at = FilamentDatabase::open(&state.db_path)
+        .map_err(CompanionApiError::from)?
+        .current_timestamp()
+        .map_err(CompanionApiError::from)?;
+
+    Ok(Json(CompanionLibrarySnapshotResponse {
+        ok: true,
+        captured_at,
+        library_id: sync_settings.library_id,
+        device_name: sync_settings.device_name,
+        sync_mode: sync_settings.mode,
+        inventory,
+        active_loans,
+        printers,
+    }))
+}
+
+async fn handle_library_spools(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+    Query(query): Query<PaginationQuery>,
+) -> Result<Json<Vec<SpoolWithMasterRow>>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    let limit = query.limit.unwrap_or(250).clamp(1, 2_500);
+    let offset = query.offset.unwrap_or(0).max(0);
+    let rows = state
+        .service
+        .list_spools(limit, offset)
+        .map_err(CompanionApiError::from)?;
+    Ok(Json(rows))
+}
+
+async fn handle_library_printers(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<PrinterOverviewRow>>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    let rows = state
+        .service
+        .list_printer_overview()
+        .map_err(CompanionApiError::from)?;
+    Ok(Json(rows))
+}
+
+async fn handle_library_loans(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+    Query(query): Query<LoanListQuery>,
+) -> Result<Json<Vec<SpoolLoanDetailsRow>>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    let limit = query.limit.unwrap_or(250).clamp(1, 2_500);
+    let include_returned = query.include_returned.unwrap_or(true);
+    let direction = query
+        .direction
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("ALL");
+    let rows = state
+        .service
+        .list_spool_loans(limit, include_returned, Some(direction))
+        .map_err(CompanionApiError::from)?;
+    Ok(Json(rows))
+}
+
+fn read_library_sync_settings(
+    state: &CompanionApiState,
+) -> Result<LibrarySyncSettingsRow, CompanionApiError> {
+    let db = FilamentDatabase::open(&state.db_path).map_err(CompanionApiError::from)?;
+    db.get_library_sync_settings()
+        .map_err(CompanionApiError::from)
 }
 
 async fn handle_session_status(
@@ -605,6 +737,78 @@ async fn handle_list_printer_overview(
         .list_printer_overview()
         .map_err(CompanionApiError::from)?;
     Ok(Json(rows))
+}
+
+async fn handle_create_printer(
+    State(state): State<CompanionApiState>,
+    Json(payload): Json<CreatePrinterInput>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    let model = payload.model.trim();
+    let name = payload.name.trim();
+    if model.is_empty() || name.is_empty() {
+        return Err(CompanionApiError::BadRequest(
+            "printer model and name are required".to_string(),
+        ));
+    }
+
+    state
+        .service
+        .create_printer(CreatePrinterInput {
+            id: payload.id.trim().to_string(),
+            model: model.to_string(),
+            name: name.to_string(),
+            ams_units: payload.ams_units,
+            slots_per_ams: payload.slots_per_ams,
+        })
+        .map_err(CompanionApiError::from)?;
+
+    Ok(Json(WriteResponse {
+        ok: true,
+        message: "Printer saved".to_string(),
+    }))
+}
+
+async fn handle_delete_printer(
+    State(state): State<CompanionApiState>,
+    Path(printer_id): Path<String>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    let printer_id = printer_id.trim();
+    if printer_id.is_empty() {
+        return Err(CompanionApiError::BadRequest(
+            "printer_id is required".to_string(),
+        ));
+    }
+
+    state
+        .service
+        .delete_printer(printer_id)
+        .map_err(CompanionApiError::from)?;
+
+    Ok(Json(WriteResponse {
+        ok: true,
+        message: "Printer deleted".to_string(),
+    }))
+}
+
+async fn handle_set_active_printer(
+    State(state): State<CompanionApiState>,
+    Json(payload): Json<SetActivePrinterRequest>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    let printer_id = payload
+        .printer_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+
+    state
+        .service
+        .set_active_printer(printer_id)
+        .map_err(CompanionApiError::from)?;
+
+    Ok(Json(WriteResponse {
+        ok: true,
+        message: "Active printer updated".to_string(),
+    }))
 }
 
 async fn handle_list_spool_loans(
@@ -945,6 +1149,28 @@ async fn handle_update_wishlist_item_status(
     Ok(Json(WriteResponse {
         ok: true,
         message: "Wishlist status updated".to_string(),
+    }))
+}
+
+async fn handle_delete_wishlist_item(
+    State(state): State<CompanionApiState>,
+    Path(item_id): Path<String>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    let item_id = item_id.trim();
+    if item_id.is_empty() {
+        return Err(CompanionApiError::BadRequest(
+            "item_id is required".to_string(),
+        ));
+    }
+
+    state
+        .service
+        .delete_wishlist_item(item_id)
+        .map_err(CompanionApiError::from)?;
+
+    Ok(Json(WriteResponse {
+        ok: true,
+        message: "Wishlist item deleted".to_string(),
     }))
 }
 
@@ -2863,6 +3089,40 @@ mod tests {
                 .map_err(|error| error.to_string())?;
             assert_eq!(localhost_pair.status(), StatusCode::FORBIDDEN);
 
+            let host_health = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/v1/health")
+                        .header("host", "127.0.0.1:4278")
+                        .body(Body::empty())
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            assert_eq!(host_health.status(), StatusCode::OK);
+            let host_health_body = to_bytes(host_health.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?;
+            let host_health_text =
+                String::from_utf8(host_health_body.to_vec()).map_err(|error| error.to_string())?;
+            let host_health_json: serde_json::Value =
+                serde_json::from_str(&host_health_text).map_err(|error| error.to_string())?;
+            assert_eq!(
+                host_health_json
+                    .get("access_mode")
+                    .and_then(|value| value.as_str()),
+                Some("trusted-lan")
+            );
+            assert!(host_health_json
+                .get("library_id")
+                .and_then(|value| value.as_str())
+                .is_some());
+            assert!(host_health_json
+                .get("device_name")
+                .and_then(|value| value.as_str())
+                .is_some());
+
             let removed_bootstrap_route = router
                 .oneshot(
                     Request::builder()
@@ -2885,6 +3145,92 @@ mod tests {
         let _ = std::fs::remove_file(&db_path);
         if let Err(message) = result {
             panic!("companion_api_trusted_lan_requires_exact_host_and_pairing failed: {message}");
+        }
+    }
+
+    #[tokio::test]
+    async fn companion_api_library_snapshot_exposes_host_summary() {
+        let db_path = temp_db_path("trusted-lan-library-snapshot");
+        let result = async {
+            seed_db(&db_path)?;
+            let router = build_router(test_state(&db_path));
+
+            let snapshot_response = router
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/v1/library/snapshot")
+                        .header("host", "127.0.0.1:4278")
+                        .body(Body::empty())
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            assert_eq!(snapshot_response.status(), StatusCode::OK);
+
+            let snapshot_body = to_bytes(snapshot_response.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?;
+            let snapshot_text =
+                String::from_utf8(snapshot_body.to_vec()).map_err(|error| error.to_string())?;
+            let snapshot_json: serde_json::Value =
+                serde_json::from_str(&snapshot_text).map_err(|error| error.to_string())?;
+
+            assert_eq!(
+                snapshot_json.get("ok").and_then(|value| value.as_bool()),
+                Some(true)
+            );
+            assert!(snapshot_json
+                .get("captured_at")
+                .and_then(|value| value.as_str())
+                .is_some());
+            assert!(snapshot_json
+                .get("library_id")
+                .and_then(|value| value.as_str())
+                .is_some());
+            assert!(snapshot_json
+                .get("device_name")
+                .and_then(|value| value.as_str())
+                .is_some());
+            assert_eq!(
+                snapshot_json
+                    .get("sync_mode")
+                    .and_then(|value| value.as_str()),
+                Some("STANDALONE")
+            );
+            assert_eq!(
+                snapshot_json
+                    .get("active_loans")
+                    .and_then(|value| value.as_i64()),
+                Some(0)
+            );
+            assert_eq!(
+                snapshot_json
+                    .get("printers")
+                    .and_then(|value| value.as_i64()),
+                Some(1)
+            );
+            assert_eq!(
+                snapshot_json
+                    .get("inventory")
+                    .and_then(|value| value.get("total_spools"))
+                    .and_then(|value| value.as_i64()),
+                Some(2)
+            );
+            assert_eq!(
+                snapshot_json
+                    .get("inventory")
+                    .and_then(|value| value.get("low_stock"))
+                    .and_then(|value| value.as_i64()),
+                Some(0)
+            );
+
+            Ok::<(), String>(())
+        }
+        .await;
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("companion_api_library_snapshot_exposes_host_summary failed: {message}");
         }
     }
 
@@ -3648,6 +3994,43 @@ mod tests {
             assert!(wishlist_text.contains(format!("\"id\":\"{item_id}\"").as_str()));
             assert!(wishlist_text.contains("\"status\":\"ON_ORDER\""));
 
+            let delete_item = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri(format!("/api/v1/wishlist/{item_id}/delete"))
+                        .header("content-type", "application/json")
+                        .header("host", "127.0.0.1:4278")
+                        .header("origin", "http://127.0.0.1:4278")
+                        .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                        .header(COMPANION_CSRF_HEADER, &csrf_token)
+                        .body(Body::from("{}"))
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            assert_eq!(delete_item.status(), StatusCode::OK);
+
+            let wishlist = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/v1/wishlist?limit=10")
+                        .header("host", "127.0.0.1:4278")
+                        .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                        .body(Body::empty())
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            let wishlist_body = to_bytes(wishlist.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?;
+            let wishlist_text =
+                String::from_utf8(wishlist_body.to_vec()).map_err(|error| error.to_string())?;
+            assert!(!wishlist_text.contains(format!("\"id\":\"{item_id}\"").as_str()));
+
             Ok::<(), String>(())
         }
         .await;
@@ -3655,6 +4038,107 @@ mod tests {
         let _ = std::fs::remove_file(&db_path);
         if let Err(error) = result {
             panic!("companion_api_creates_and_updates_wishlist_item failed: {error}");
+        }
+    }
+
+    #[tokio::test]
+    async fn companion_api_creates_and_deletes_printer() {
+        let db_path = temp_db_path("printer-create-delete");
+        let result = async {
+            seed_db(&db_path)?;
+            let router = build_router(test_state(&db_path));
+
+            let AuthenticatedTestSession {
+                session_cookie,
+                csrf_token,
+                ..
+            } = pair_test_session(&router, &db_path).await?;
+
+            let create_printer = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/api/v1/printers")
+                        .header("content-type", "application/json")
+                        .header("host", "127.0.0.1:4278")
+                        .header("origin", "http://127.0.0.1:4278")
+                        .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                        .header(COMPANION_CSRF_HEADER, &csrf_token)
+                        .body(Body::from(
+                            r#"{"id":"printer_sync_test","model":"Bambu Lab P1S","name":"Sync Test Printer","ams_units":1,"slots_per_ams":4}"#,
+                        ))
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            assert_eq!(create_printer.status(), StatusCode::OK);
+
+            let overview = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/v1/printers/overview")
+                        .header("host", "127.0.0.1:4278")
+                        .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                        .body(Body::empty())
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            assert_eq!(overview.status(), StatusCode::OK);
+            let overview_body = to_bytes(overview.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?;
+            let overview_text =
+                String::from_utf8(overview_body.to_vec()).map_err(|error| error.to_string())?;
+            assert!(overview_text.contains("\"id\":\"printer_sync_test\""));
+            assert!(overview_text.contains("\"name\":\"Sync Test Printer\""));
+
+            let delete_printer = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/api/v1/printers/printer_sync_test/delete")
+                        .header("content-type", "application/json")
+                        .header("host", "127.0.0.1:4278")
+                        .header("origin", "http://127.0.0.1:4278")
+                        .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                        .header(COMPANION_CSRF_HEADER, &csrf_token)
+                        .body(Body::from("{}"))
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            assert_eq!(delete_printer.status(), StatusCode::OK);
+
+            let overview = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/v1/printers/overview")
+                        .header("host", "127.0.0.1:4278")
+                        .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                        .body(Body::empty())
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            let overview_body = to_bytes(overview.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?;
+            let overview_text =
+                String::from_utf8(overview_body.to_vec()).map_err(|error| error.to_string())?;
+            assert!(!overview_text.contains("\"id\":\"printer_sync_test\""));
+
+            Ok::<(), String>(())
+        }
+        .await;
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(error) = result {
+            panic!("companion_api_creates_and_deletes_printer failed: {error}");
         }
     }
 

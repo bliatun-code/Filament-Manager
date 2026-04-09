@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   exportLoansCsv,
+  fetchCachedLibrarySyncLoans,
+  fetchLibrarySyncLoans,
+  getLibrarySyncSettings,
   isTauri,
   listSpoolLoans,
+  returnLibrarySyncHostLoan,
   returnInboundSpoolLoan,
   returnSpoolLoan,
   type SpoolLoanDetailsRow,
@@ -220,6 +224,14 @@ function compactLoanTimestamp(raw?: string | null): string {
   return `${day}.${month} ${hour}:${minute}`;
 }
 
+function formatDateTime(raw: string): string {
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return raw;
+  }
+  return parsed.toLocaleString();
+}
+
 const loanFactLabelClassName =
   "text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400";
 const loanFactValueClassName =
@@ -242,6 +254,16 @@ export default function LoansPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [clientReadOnly, setClientReadOnly] = useState(false);
+  const [clientHostWritePaired, setClientHostWritePaired] = useState(false);
+  const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
+  const [clientHostBaseUrl, setClientHostBaseUrl] = useState<string | null>(null);
+  const [clientLibraryId, setClientLibraryId] = useState<string | null>(null);
+  const [librarySyncReady, setLibrarySyncReady] = useState(!tauri);
+  const [clientLoanSource, setClientLoanSource] = useState<"LIVE" | "CACHED" | "OFFLINE">(
+    "LIVE",
+  );
+  const [clientLoanUpdatedAt, setClientLoanUpdatedAt] = useState<string | null>(null);
   const [filter, setFilter] = useState<LoanFilter>("ACTIVE");
   const [directionFilter, setDirectionFilter] = useState<LoanDirectionFilter>("ALL");
   const [search, setSearch] = useState("");
@@ -251,28 +273,119 @@ export default function LoansPage() {
   const [returnModalGrams, setReturnModalGrams] = useState("");
   const [returnModalNote, setReturnModalNote] = useState("");
 
+  useEffect(() => {
+    if (!tauri) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const syncSettings = await getLibrarySyncSettings();
+        if (cancelled) {
+          return;
+        }
+        setClientReadOnly(syncSettings.mode === "CLIENT");
+        setClientHostWritePaired(syncSettings.client_auth_paired ?? false);
+        setClientHostDeviceName(syncSettings.host_device_name ?? null);
+        setClientHostBaseUrl(syncSettings.host_base_url ?? null);
+        setClientLibraryId(syncSettings.library_id ?? null);
+      } catch (syncError) {
+        console.error(syncError);
+      } finally {
+        if (!cancelled) {
+          setLibrarySyncReady(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tauri]);
+
   const reload = useCallback(async () => {
     if (!tauri) {
       return;
     }
     setLoading(true);
     try {
-      const loanRows = await listSpoolLoans(2000, true, "ALL");
+      const loanRows =
+        clientReadOnly && clientHostBaseUrl && clientLibraryId
+          ? await fetchLibrarySyncLoans(clientHostBaseUrl, clientLibraryId, 2000)
+          : await listSpoolLoans(2000, true, "ALL");
+      if (clientReadOnly) {
+        setClientLoanSource("LIVE");
+        const cached = await fetchCachedLibrarySyncLoans().catch(() => null);
+        setClientLoanUpdatedAt(cached?.captured_at ?? null);
+      }
       setLoans(loanRows);
     } catch (loadError) {
       console.error(loadError);
+      if (clientReadOnly) {
+        try {
+          const cached = await fetchCachedLibrarySyncLoans();
+          if (cached) {
+            setClientLoanSource("CACHED");
+            setClientLoanUpdatedAt(cached.captured_at ?? null);
+            setLoans(cached.rows);
+            return;
+          }
+        } catch (cacheError) {
+          console.error(cacheError);
+        }
+        setClientLoanSource("OFFLINE");
+        setClientLoanUpdatedAt(null);
+        setLoans([]);
+      }
       setError(t("loans.error.load", "Failed to load loan data."));
     } finally {
       setLoading(false);
     }
-  }, [t, tauri]);
+  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, t, tauri]);
 
   useEffect(() => {
-    if (!tauri) {
+    if (!tauri || !librarySyncReady) {
       return;
     }
     void reload();
-  }, [reload, tauri]);
+  }, [librarySyncReady, reload, tauri]);
+
+  const ensureLocalWriteAllowed = useCallback(() => {
+    if (!clientReadOnly) {
+      return true;
+    }
+    setInfo(
+      t(
+        "loans.clientReadOnlyAction",
+        "This device is connected as a client. Use the host for loan changes.",
+      ),
+    );
+    return false;
+  }, [clientReadOnly, t]);
+
+  const canUseClientHostWrite = useCallback(() => {
+    if (!clientReadOnly) {
+      return false;
+    }
+    if (!clientHostBaseUrl || !clientLibraryId) {
+      setError(
+        t(
+          "loans.clientHostUnavailable",
+          "Host connection details are missing for this client device.",
+        ),
+      );
+      return false;
+    }
+    if (!clientHostWritePaired) {
+      setError(
+        t(
+          "loans.clientWriteRequiresPairing",
+          "Pair this desktop client with the host before running protected loan actions.",
+        ),
+      );
+      return false;
+    }
+    return true;
+  }, [clientHostBaseUrl, clientHostWritePaired, clientLibraryId, clientReadOnly, t]);
 
   const directionScopedLoans = useMemo(
     () =>
@@ -306,7 +419,7 @@ export default function LoansPage() {
   }, [directionScopedLoans, filter, search]);
 
   async function handleExportCsv() {
-    if (!tauri || busy) {
+    if (!tauri || busy || clientReadOnly) {
       return;
     }
     setBusy(true);
@@ -334,6 +447,12 @@ export default function LoansPage() {
   }
 
   function openReturnModal(loan: SpoolLoanDetailsRow) {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
     if (!tauri || busy || loan.loan.returned_at) {
       return;
     }
@@ -380,12 +499,28 @@ export default function LoansPage() {
     setInfo(null);
     try {
       const loanDirection = normalizeLoanDirection(returnModalLoan.loan.loan_direction);
-      const action = loanDirection === "INBOUND" ? returnInboundSpoolLoan : returnSpoolLoan;
-      await action({
-        loan_id: returnModalLoan.loan.id,
-        returned_grams: grams,
-        note: returnModalNote.trim() || null,
-      });
+      if (clientReadOnly) {
+        if (!canUseClientHostWrite()) {
+          return;
+        }
+        await returnLibrarySyncHostLoan(
+          clientHostBaseUrl!,
+          clientLibraryId,
+          {
+            loan_id: returnModalLoan.loan.id,
+            returned_grams: grams,
+            note: returnModalNote.trim() || null,
+            inbound: loanDirection === "INBOUND",
+          },
+        );
+      } else {
+        const action = loanDirection === "INBOUND" ? returnInboundSpoolLoan : returnSpoolLoan;
+        await action({
+          loan_id: returnModalLoan.loan.id,
+          returned_grams: grams,
+          note: returnModalNote.trim() || null,
+        });
+      }
       await reload();
       setInfo(
         loanDirection === "INBOUND"
@@ -426,8 +561,16 @@ export default function LoansPage() {
           <div className="page-header-tools">
             <button
               type="button"
-              onClick={() => setShowLoanOutModal(true)}
-              disabled={!tauri || busy}
+              onClick={() => {
+                if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+                  return;
+                }
+                if (clientReadOnly && !canUseClientHostWrite()) {
+                  return;
+                }
+                setShowLoanOutModal(true);
+              }}
+              disabled={!tauri || busy || (clientReadOnly && !clientHostWritePaired)}
               className="header-button-primary w-full min-[920px]:w-auto"
             >
               {t("inventory.loanOutRoll", "Loan out roll")}
@@ -435,7 +578,7 @@ export default function LoansPage() {
             <button
               type="button"
               onClick={() => void handleExportCsv()}
-              disabled={!tauri || busy}
+              disabled={!tauri || busy || clientReadOnly}
               className="header-button-secondary w-full min-[920px]:w-auto"
             >
               {t("loans.exportCsv", "Export loans CSV")}
@@ -516,6 +659,36 @@ export default function LoansPage() {
       {error ? (
         <FeedbackBanner tone="danger" className="mt-4">
           {error}
+        </FeedbackBanner>
+      ) : null}
+      {clientReadOnly ? (
+        <FeedbackBanner tone="warning" className="mt-4">
+          {clientHostWritePaired
+            ? t(
+                "loans.clientReadOnlyBannerPaired",
+                "This device is connected as a client. Returns and hand-backs can be sent to the host, while new loan creation still stays there.",
+              )
+            : t(
+                "loans.clientReadOnlyBanner",
+                "This device is linked as a client. Loan changes stay on the host for now.",
+              )}{" "}
+          {clientHostDeviceName
+            ? `${t("loans.clientReadOnlyHost", "Host")}: ${clientHostDeviceName}. `
+            : null}
+          {clientLoanSource === "LIVE"
+            ? t("loans.clientReadOnlyLive", "Showing live host loans.")
+            : clientLoanSource === "CACHED"
+              ? t(
+                  "loans.clientReadOnlyCached",
+                  "Host is unavailable. Showing the last cached loan snapshot.",
+                )
+              : t(
+                  "loans.clientReadOnlyOffline",
+                  "Host is unavailable and no cached loan snapshot is available yet.",
+                )}
+          {clientLoanUpdatedAt
+            ? ` ${t("loans.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientLoanUpdatedAt)}.`
+            : null}
         </FeedbackBanner>
       ) : null}
       {info ? (
@@ -721,6 +894,10 @@ export default function LoansPage() {
       <LoanOutModal
         open={showLoanOutModal}
         onClose={() => setShowLoanOutModal(false)}
+        clientReadOnly={clientReadOnly}
+        clientHostWritePaired={clientHostWritePaired}
+        clientHostBaseUrl={clientHostBaseUrl}
+        clientLibraryId={clientLibraryId}
         onLoanCreated={async () => {
           await reload();
           setInfo(t("inventory.loanCreated", "Loan created."));

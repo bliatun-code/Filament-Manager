@@ -114,6 +114,65 @@ export type UpdateTrustedLanCompanionConfigInput = {
   listen_port?: number | null;
 };
 
+export type LibrarySyncSettings = {
+  mode: string;
+  device_name: string;
+  library_id: string;
+  host_base_url?: string | null;
+  host_device_name?: string | null;
+  client_auth_paired: boolean;
+  client_auth_paired_at?: string | null;
+  client_auth_expires_at?: string | null;
+  last_checked_at?: string | null;
+  last_reachable_at?: string | null;
+  last_validation_message?: string | null;
+  cached_snapshot?: LibrarySyncRemoteSnapshot | null;
+  cached_spools?: LibrarySyncCachedSpoolList | null;
+  cached_printers?: LibrarySyncCachedPrinterOverview | null;
+  cached_loans?: LibrarySyncCachedLoanList | null;
+};
+
+export type LibrarySyncHostValidationResult = {
+  base_url: string;
+  reachable: boolean;
+  ok: boolean;
+  matches_library_id: boolean;
+  api_version?: string | null;
+  auth_mode?: string | null;
+  access_mode?: string | null;
+  library_id?: string | null;
+  device_name?: string | null;
+  sync_mode?: string | null;
+  message: string;
+};
+
+export type LibrarySyncRemoteSnapshot = {
+  captured_at: string;
+  library_id: string;
+  device_name: string;
+  sync_mode: string;
+  total_spools: number;
+  in_use: number;
+  low_stock: number;
+  active_loans: number;
+  printers: number;
+};
+
+export type LibrarySyncCachedSpoolList = {
+  captured_at: string;
+  rows: SpoolWithMasterRow[];
+};
+
+export type LibrarySyncCachedPrinterOverview = {
+  captured_at: string;
+  rows: PrinterOverviewRow[];
+};
+
+export type LibrarySyncCachedLoanList = {
+  captured_at: string;
+  rows: SpoolLoanDetailsRow[];
+};
+
 export type TrustedLanPairingLink = {
   pairing_url: string;
   expires_in_seconds: number;
@@ -482,6 +541,108 @@ export async function getTrustedLanCompanionStatus() {
   return invoke<TrustedLanCompanionStatus>("get_trusted_lan_companion_status");
 }
 
+export async function getLibrarySyncSettings() {
+  return invoke<LibrarySyncSettings>("get_library_sync_settings");
+}
+
+export async function saveLibrarySyncSettings(input: LibrarySyncSettings) {
+  return invoke<LibrarySyncSettings>("save_library_sync_settings", { input });
+}
+
+export async function validateLibrarySyncHost(
+  baseUrl: string,
+  expectedLibraryId?: string | null,
+) {
+  return invoke<LibrarySyncHostValidationResult>("validate_library_sync_host", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+    },
+  });
+}
+
+export async function fetchLibrarySyncSnapshot(
+  baseUrl: string,
+  expectedLibraryId?: string | null,
+) {
+  return invoke<LibrarySyncRemoteSnapshot>("fetch_library_sync_snapshot", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+    },
+  });
+}
+
+export async function fetchLibrarySyncSpools(
+  baseUrl: string,
+  expectedLibraryId?: string | null,
+  limit = 1200,
+  offset = 0,
+) {
+  return invoke<SpoolWithMasterRow[]>("fetch_library_sync_spools", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      limit,
+      offset,
+    },
+  });
+}
+
+export async function fetchLibrarySyncPrinterOverview(
+  baseUrl: string,
+  expectedLibraryId?: string | null,
+) {
+  return invoke<PrinterOverviewRow[]>("fetch_library_sync_printer_overview", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+    },
+  });
+}
+
+export async function fetchCachedLibrarySyncSpools() {
+  return invoke<LibrarySyncCachedSpoolList | null>("fetch_cached_library_sync_spools");
+}
+
+export async function fetchCachedLibrarySyncPrinterOverview() {
+  return invoke<LibrarySyncCachedPrinterOverview | null>(
+    "fetch_cached_library_sync_printer_overview",
+  );
+}
+
+export async function fetchLibrarySyncLoans(
+  baseUrl: string,
+  expectedLibraryId?: string | null,
+  limit = 2000,
+) {
+  return invoke<SpoolLoanDetailsRow[]>("fetch_library_sync_loans", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      limit,
+      offset: 0,
+    },
+  });
+}
+
+export async function fetchCachedLibrarySyncLoans() {
+  return invoke<LibrarySyncCachedLoanList | null>("fetch_cached_library_sync_loans");
+}
+
+export async function pairLibrarySyncHost(baseUrl: string, pairingTokenOrUrl: string) {
+  return invoke<LibrarySyncSettings>("pair_library_sync_host", {
+    input: {
+      baseUrl,
+      pairingTokenOrUrl,
+    },
+  });
+}
+
+export async function clearLibrarySyncClientAuth() {
+  return invoke<LibrarySyncSettings>("clear_library_sync_client_auth");
+}
+
 export async function listTrustedLanInterfaces() {
   return invoke<TrustedLanInterfaceOption[]>("list_trusted_lan_interfaces");
 }
@@ -581,18 +742,94 @@ export async function createSpool(input: CreateSpoolInput) {
   return invoke<void>("create_spool", { input });
 }
 
+export async function createLibrarySyncHostSpool(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: CreateSpoolInput | CreateManualSpoolInput,
+) {
+  return invoke<string>("create_library_sync_host_spool", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      master_id: "master_id" in input ? input.master_id ?? null : null,
+      material: "material" in input ? input.material : null,
+      filament_name: "filament_name" in input ? input.filament_name : null,
+      color_name: "color_name" in input ? input.color_name : null,
+      vendor: "vendor" in input ? input.vendor ?? null : null,
+      initial_weight_g: input.initial_weight_g ?? null,
+      location: "location" in input ? input.location ?? null : null,
+      hex_color: "hex_color" in input ? input.hex_color ?? null : null,
+      owner_name: input.owner_name ?? null,
+      owner_contact: input.owner_contact ?? null,
+      ownership_note: input.ownership_note ?? null,
+    },
+  });
+}
+
 export async function createWishlistItem(input: CreateWishlistItemInput) {
   return invoke<void>("create_wishlist_item", { input });
+}
+
+export async function createLibrarySyncHostWishlistItem(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: CreateWishlistItemInput,
+) {
+  return invoke<void>("create_library_sync_host_wishlist_item", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      master_id: input.master_id ?? null,
+      vendor: input.vendor,
+      material: input.material,
+      filament_name: input.filament_name,
+      color_name: input.color_name,
+      quantity: input.quantity ?? null,
+      note: input.note ?? null,
+    },
+  });
 }
 
 export async function createPrinter(input: CreatePrinterInput) {
   return invoke<void>("create_printer", { input });
 }
 
+export async function createLibrarySyncHostPrinter(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: CreatePrinterInput,
+) {
+  return invoke<void>("create_library_sync_host_printer", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      id: input.id,
+      model: input.model,
+      name: input.name,
+      ams_units: input.ams_units ?? null,
+      slots_per_ams: input.slots_per_ams ?? null,
+    },
+  });
+}
+
 export async function deletePrinter(printerId: string) {
   return invoke<void>("delete_printer", {
     printerId,
     printer_id: printerId,
+  });
+}
+
+export async function deleteLibrarySyncHostPrinter(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  printerId: string,
+) {
+  return invoke<void>("delete_library_sync_host_printer", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      printer_id: printerId,
+    },
   });
 }
 
@@ -608,6 +845,22 @@ export async function assignPrinterSlot(input: AssignPrinterSlotInput) {
   return invoke<void>("assign_printer_slot", { input });
 }
 
+export async function assignLibrarySyncHostPrinterSlot(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: AssignPrinterSlotInput,
+) {
+  return invoke<void>("assign_library_sync_host_printer_slot", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      printer_id: input.printer_id,
+      slot_id: input.slot_id,
+      spool_id: input.spool_id ?? null,
+    },
+  });
+}
+
 export async function recordPrintUsage(input: RecordPrintUsageInput) {
   return invoke<void>("record_print_usage", { input });
 }
@@ -616,12 +869,46 @@ export async function lendSpool(input: LendSpoolInput) {
   return invoke<SpoolLoanRow>("lend_spool", { input });
 }
 
+export async function lendLibrarySyncHostSpool(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: LendSpoolInput,
+) {
+  return invoke<void>("lend_library_sync_host_spool", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      spool_id: input.spool_id,
+      borrower_name: input.borrower_name,
+      grams_out: input.grams_out,
+      note: input.note ?? null,
+    },
+  });
+}
+
 export async function returnSpoolLoan(input: ReturnSpoolLoanInput) {
   return invoke<SpoolLoanRow>("return_spool_loan", { input });
 }
 
 export async function returnInboundSpoolLoan(input: ReturnSpoolLoanInput) {
   return invoke<SpoolLoanRow>("return_inbound_spool_loan", { input });
+}
+
+export async function returnLibrarySyncHostLoan(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: ReturnSpoolLoanInput & { inbound?: boolean },
+) {
+  return invoke<void>("return_library_sync_host_loan", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      loan_id: input.loan_id,
+      returned_grams: input.returned_grams,
+      note: input.note ?? null,
+      inbound: input.inbound ?? false,
+    },
+  });
 }
 
 export async function createManualSpool(input: CreateManualSpoolInput) {
@@ -640,6 +927,55 @@ export async function updateSpoolTareWeight(spoolId: string, grams: number) {
   return invoke<void>("update_spool_tare_weight", {
     spoolId,
     grams,
+  });
+}
+
+export async function updateLibrarySyncHostSpoolWeight(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  spoolId: string,
+  grams: number,
+) {
+  return invoke<void>("update_library_sync_host_spool_weight", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      spool_id: spoolId,
+      grams,
+    },
+  });
+}
+
+export async function updateLibrarySyncHostSpoolTareWeight(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  spoolId: string,
+  grams: number,
+) {
+  return invoke<void>("update_library_sync_host_spool_tare_weight", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      spool_id: spoolId,
+      grams,
+    },
+  });
+}
+
+export async function updateLibrarySyncHostSpoolDetails(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: UpdateSpoolDetailsInput,
+) {
+  return invoke<void>("update_library_sync_host_spool_details", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      spool_id: input.spool_id,
+      qr_code: input.qr_code ?? null,
+      status: input.status,
+      location: input.location ?? null,
+    },
   });
 }
 
@@ -684,8 +1020,67 @@ export async function updateWishlistItemStatus(input: UpdateWishlistStatusInput)
   return invoke<void>("update_wishlist_item_status", { input });
 }
 
+export async function updateLibrarySyncHostWishlistItemStatus(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: UpdateWishlistStatusInput,
+) {
+  return invoke<void>("update_library_sync_host_wishlist_item_status", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      item_id: input.item_id,
+      status: input.status,
+    },
+  });
+}
+
 export async function deleteWishlistItem(itemId: string) {
   return invoke<void>("delete_wishlist_item", { itemId });
+}
+
+export async function deleteLibrarySyncHostWishlistItem(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  itemId: string,
+) {
+  return invoke<void>("delete_library_sync_host_wishlist_item", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      item_id: itemId,
+    },
+  });
+}
+
+export async function fetchLibrarySyncCatalogMasters(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  limit = 1000,
+  search?: string | null,
+) {
+  return invoke<MasterCatalogRow[]>("fetch_library_sync_catalog_masters", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      limit,
+      search: search ?? null,
+    },
+  });
+}
+
+export async function fetchLibrarySyncWishlistItems(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  limit = 500,
+) {
+  return invoke<WishlistItemRow[]>("fetch_library_sync_wishlist_items", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      limit,
+    },
+  });
 }
 
 export async function assignSpoolLocation(spoolId: string, locationName: string | null) {

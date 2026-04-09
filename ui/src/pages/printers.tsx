@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   assignPrinterSlot,
+  assignLibrarySyncHostPrinterSlot,
   createPrinter,
+  createLibrarySyncHostPrinter,
+  fetchCachedLibrarySyncPrinterOverview,
+  fetchCachedLibrarySyncSpools,
+  fetchLibrarySyncPrinterOverview,
+  fetchLibrarySyncSpools,
+  getLibrarySyncSettings,
   getPrinterSettings,
   isTauri,
   listPrinterOverview,
   listSpools,
   recordPrintUsage,
+  updateLibrarySyncHostSpoolWeight,
   updateSpoolWeight,
   type PrinterOverviewRow,
   type PrinterAmsSlotRow,
@@ -81,6 +89,14 @@ function formatGrams(value?: number | null): string {
     return "—";
   }
   return `${Math.max(0, value)} g`;
+}
+
+function formatDateTime(raw: string): string {
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return raw;
+  }
+  return parsed.toLocaleString();
 }
 
 function toSwatchColor(raw?: string | null): string {
@@ -306,6 +322,16 @@ export default function PrintersPage() {
   const [info, setInfo] = useState<string | null>(null);
   const [printers, setPrinters] = useState<PrinterOverviewRow[]>([]);
   const [spools, setSpools] = useState<SpoolWithMasterRow[]>([]);
+  const [clientReadOnly, setClientReadOnly] = useState(false);
+  const [clientHostWritePaired, setClientHostWritePaired] = useState(false);
+  const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
+  const [clientHostBaseUrl, setClientHostBaseUrl] = useState<string | null>(null);
+  const [clientLibraryId, setClientLibraryId] = useState<string | null>(null);
+  const [librarySyncReady, setLibrarySyncReady] = useState(!tauri);
+  const [clientPrinterSource, setClientPrinterSource] = useState<"LIVE" | "CACHED" | "OFFLINE">(
+    "LIVE",
+  );
+  const [clientPrinterUpdatedAt, setClientPrinterUpdatedAt] = useState<string | null>(null);
   const [printerModels, setPrinterModels] = useState<string[]>([]);
   const [showAddPrinterModal, setShowAddPrinterModal] = useState(false);
   const [newPrinterModel, setNewPrinterModel] = useState("");
@@ -323,6 +349,73 @@ export default function PrintersPage() {
     () => resolvePrinterModelProfile(newPrinterModel || ""),
     [newPrinterModel],
   );
+
+  useEffect(() => {
+    if (!tauri) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const syncSettings = await getLibrarySyncSettings();
+        if (cancelled) {
+          return;
+        }
+        setClientReadOnly(syncSettings.mode === "CLIENT");
+        setClientHostWritePaired(syncSettings.client_auth_paired ?? false);
+        setClientHostDeviceName(syncSettings.host_device_name ?? null);
+        setClientHostBaseUrl(syncSettings.host_base_url ?? null);
+        setClientLibraryId(syncSettings.library_id ?? null);
+      } catch (syncError) {
+        console.error(syncError);
+      } finally {
+        if (!cancelled) {
+          setLibrarySyncReady(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tauri]);
+
+  const ensureLocalWriteAllowed = useCallback(() => {
+    if (!clientReadOnly) {
+      return true;
+    }
+    setInfo(
+      t(
+        "printers.clientReadOnlyAction",
+        "This device is connected as a client. Use the host for printer changes.",
+      ),
+    );
+    return false;
+  }, [clientReadOnly, t]);
+
+  const canUseClientHostWrite = useCallback(() => {
+    if (!clientReadOnly) {
+      return false;
+    }
+    if (!clientHostBaseUrl || !clientLibraryId) {
+      setError(
+        t(
+          "printers.clientHostUnavailable",
+          "Host connection details are missing for this client device.",
+        ),
+      );
+      return false;
+    }
+    if (!clientHostWritePaired) {
+      setError(
+        t(
+          "printers.clientWriteRequiresPairing",
+          "Pair this desktop client with the host before running protected printer actions.",
+        ),
+      );
+      return false;
+    }
+    return true;
+  }, [clientHostBaseUrl, clientHostWritePaired, clientLibraryId, clientReadOnly, t]);
 
   const formatPrinterSpoolStatusLabel = useCallback(
     (status?: string | null) => {
@@ -406,11 +499,22 @@ export default function PrintersPage() {
     }
     setLoading(true);
     try {
-      const [overview, spoolRows, settings] = await Promise.all([
-        listPrinterOverview(),
-        listSpools(1200, 0),
-        getPrinterSettings(),
-      ]);
+      const [overview, spoolRows, settings] = await Promise.all(
+        clientReadOnly && clientHostBaseUrl && clientLibraryId
+          ? [
+              fetchLibrarySyncPrinterOverview(clientHostBaseUrl, clientLibraryId),
+              fetchLibrarySyncSpools(clientHostBaseUrl, clientLibraryId, 1200, 0),
+              Promise.resolve({ printer_models: [] }),
+            ]
+          : [listPrinterOverview(), listSpools(1200, 0), getPrinterSettings()],
+      );
+      if (clientReadOnly) {
+        setClientPrinterSource("LIVE");
+        const [cachedPrinters] = await Promise.all([
+          fetchCachedLibrarySyncPrinterOverview().catch(() => null),
+        ]);
+        setClientPrinterUpdatedAt(cachedPrinters?.captured_at ?? null);
+      }
       setPrinters(
         overview.map((printer) => ({
           ...printer,
@@ -426,18 +530,50 @@ export default function PrintersPage() {
       setOutgoingWeightValue("");
     } catch (loadError) {
       console.error(loadError);
+      if (clientReadOnly) {
+        try {
+          const [cachedPrinters, cachedSpools] = await Promise.all([
+            fetchCachedLibrarySyncPrinterOverview(),
+            fetchCachedLibrarySyncSpools(),
+          ]);
+          if (cachedPrinters?.rows || cachedSpools?.rows) {
+            setClientPrinterSource("CACHED");
+            setClientPrinterUpdatedAt(cachedPrinters?.captured_at ?? null);
+            setPrinters(
+              (cachedPrinters?.rows ?? []).map((printer) => ({
+                ...printer,
+                slots: sortPrinterSlotsExtLast(printer.slots),
+              })),
+            );
+            setSpools(cachedSpools?.rows ?? []);
+            setPrinterModels([]);
+            setSlotDrafts({});
+            setOpenDropdownSlotId(null);
+            setIncomingWeightPrompt(null);
+            setIncomingWeightValue("");
+            setOutgoingWeightValue("");
+            return;
+          }
+        } catch (cacheError) {
+          console.error(cacheError);
+        }
+        setClientPrinterSource("OFFLINE");
+        setClientPrinterUpdatedAt(null);
+        setPrinters([]);
+        setSpools([]);
+      }
       setError(t("printers.error.load", "Failed to load printer overview."));
     } finally {
       setLoading(false);
     }
-  }, [t, tauri]);
+  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, t, tauri]);
 
   useEffect(() => {
-    if (!tauri) {
+    if (!tauri || !librarySyncReady) {
       return;
     }
     void reloadData();
-  }, [reloadData, tauri]);
+  }, [librarySyncReady, reloadData, tauri]);
 
   useEffect(() => {
     if (!openDropdownSlotId) {
@@ -475,6 +611,12 @@ export default function PrintersPage() {
   }
 
   function openAddPrinterModal() {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
     setNewPrinterModel("");
     setNewPrinterName("");
     setNewAmsUnits("0");
@@ -485,6 +627,9 @@ export default function PrintersPage() {
   }
 
   async function handleAddPrinter() {
+    if (!ensureLocalWriteAllowed()) {
+      return;
+    }
     if (!tauri || busy) {
       return;
     }
@@ -511,13 +656,24 @@ export default function PrintersPage() {
     setError(null);
     setInfo(null);
     try {
-      await createPrinter({
-        id: `printer_${Date.now()}`,
-        model,
-        name,
-        ams_units: units,
-        slots_per_ams: slotsPerUnit,
-      });
+      const printerId = `printer_${Date.now()}`;
+      if (clientReadOnly) {
+        await createLibrarySyncHostPrinter(clientHostBaseUrl!, clientLibraryId, {
+          id: printerId,
+          model,
+          name,
+          ams_units: units,
+          slots_per_ams: slotsPerUnit,
+        });
+      } else {
+        await createPrinter({
+          id: printerId,
+          model,
+          name,
+          ams_units: units,
+          slots_per_ams: slotsPerUnit,
+        });
+      }
       setShowAddPrinterModal(false);
       await reloadData();
       setInfo(`${t("settings.addedPrinter", "Added printer")} "${name}".`);
@@ -709,6 +865,12 @@ export default function PrintersPage() {
     slot: PrinterAmsSlotRow,
     draft: SlotSwapDraft,
   ) {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
     if (!draft.targetSpoolId) {
       setError(
         t(
@@ -742,6 +904,23 @@ export default function PrintersPage() {
     const safeMeasuredTotal = Math.max(0, Math.round(measuredTotalWeight));
     const safeTareWeight = Math.max(0, Math.round(tareWeight));
     const measuredFilament = Math.max(0, safeMeasuredTotal - safeTareWeight);
+    if (clientReadOnly) {
+      if (!canUseClientHostWrite()) {
+        throw new Error(
+          t(
+            "printers.clientWriteRequiresPairing",
+            "Pair this desktop client with the host before running protected printer actions.",
+          ),
+        );
+      }
+      await updateLibrarySyncHostSpoolWeight(
+        clientHostBaseUrl!,
+        clientLibraryId,
+        spoolId,
+        safeMeasuredTotal,
+      );
+      return;
+    }
     if (previousRemaining != null && Number.isFinite(previousRemaining)) {
       const baseline = Math.max(0, Math.round(previousRemaining));
       const usedGrams = Math.max(0, baseline - measuredFilament);
@@ -772,6 +951,12 @@ export default function PrintersPage() {
       incomingWeight: number | null;
     },
   ) {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return false;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return false;
+    }
     if (!tauri || busy) {
       return false;
     }
@@ -832,15 +1017,36 @@ export default function PrintersPage() {
       }
 
       if (hasChange) {
-        await assignPrinterSlot({
-          printer_id: printerId,
-          slot_id: slot.slot_id,
-          spool_id: targetSpoolId,
-        });
+        if (clientReadOnly) {
+          await assignLibrarySyncHostPrinterSlot(
+            clientHostBaseUrl!,
+            clientLibraryId,
+            {
+              printer_id: printerId,
+              slot_id: slot.slot_id,
+              spool_id: targetSpoolId,
+            },
+          );
+        } else {
+          await assignPrinterSlot({
+            printer_id: printerId,
+            slot_id: slot.slot_id,
+            spool_id: targetSpoolId,
+          });
+        }
       }
 
       if (hasChange && targetSpoolId && incomingWeight != null) {
-        await updateSpoolWeight(targetSpoolId, incomingWeight);
+        if (clientReadOnly) {
+          await updateLibrarySyncHostSpoolWeight(
+            clientHostBaseUrl!,
+            clientLibraryId,
+            targetSpoolId,
+            incomingWeight,
+          );
+        } else {
+          await updateSpoolWeight(targetSpoolId, incomingWeight);
+        }
       }
       await reloadData();
       setInfo(t("printers.slotUpdated", "Printer slot updated."));
@@ -898,7 +1104,7 @@ export default function PrintersPage() {
               type="button"
               className="header-button-primary w-full min-[920px]:w-auto"
               onClick={openAddPrinterModal}
-              disabled={!tauri || busy}
+              disabled={!tauri || busy || (clientReadOnly ? !clientHostWritePaired : false)}
             >
               {t("settings.addPrinter", "Add printer")}
             </button>
@@ -919,6 +1125,37 @@ export default function PrintersPage() {
       {info ? (
         <FeedbackBanner tone="success" className="mt-4">
           {info}
+        </FeedbackBanner>
+      ) : null}
+
+      {clientReadOnly ? (
+        <FeedbackBanner tone="warning" className="mt-4">
+          {clientHostWritePaired
+            ? t(
+                "printers.clientReadOnlyBannerPaired",
+                "This device is connected as a client. Printer setup and slot assignment changes are sent to the paired host, while the host still remains the library authority.",
+              )
+            : t(
+                "printers.clientReadOnlyBanner",
+                "This device is linked as a client. Printer assignment changes stay on the host for now.",
+              )}{" "}
+          {clientHostDeviceName
+            ? `${t("printers.clientReadOnlyHost", "Host")}: ${clientHostDeviceName}. `
+            : null}
+          {clientPrinterSource === "LIVE"
+            ? t("printers.clientReadOnlyLive", "Showing live host printers.")
+            : clientPrinterSource === "CACHED"
+              ? t(
+                  "printers.clientReadOnlyCached",
+                  "Host is unavailable. Showing the last cached printer snapshot.",
+                )
+              : t(
+                  "printers.clientReadOnlyOffline",
+                  "Host is unavailable and no cached printer snapshot is available yet.",
+                )}
+          {clientPrinterUpdatedAt
+            ? ` ${t("printers.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientPrinterUpdatedAt)}.`
+            : null}
         </FeedbackBanner>
       ) : null}
 

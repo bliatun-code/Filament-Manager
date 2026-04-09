@@ -1,8 +1,8 @@
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, CatalogResetStats, FilamentDatabase, InventoryError, InventoryResult,
-    LoanUsageByPersonRow, PrinterOverviewRow, PrinterRow, SpoolHistoryEventRow,
-    SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow,
-    WishlistItemRow,
+    LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, LoanUsageByPersonRow, PrinterOverviewRow,
+    PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow,
+    SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -203,6 +203,84 @@ impl InventoryEngine {
 
     pub fn list_printer_overview(&self) -> InventoryResult<Vec<PrinterOverviewRow>> {
         self.db.list_printer_overview()
+    }
+
+    pub fn get_library_sync_settings(&self) -> InventoryResult<LibrarySyncSettingsRow> {
+        self.db.get_library_sync_settings()
+    }
+
+    pub fn save_library_sync_settings(
+        &self,
+        settings: &LibrarySyncSettingsRow,
+    ) -> InventoryResult<LibrarySyncSettingsRow> {
+        self.db.save_library_sync_settings(settings)
+    }
+
+    pub fn save_library_sync_validation_state(
+        &self,
+        reachable: bool,
+        message: Option<&str>,
+        host_device_name: Option<&str>,
+    ) -> InventoryResult<()> {
+        self.db
+            .save_library_sync_validation_state(reachable, message, host_device_name)
+    }
+
+    pub fn save_library_sync_cached_snapshot(
+        &self,
+        snapshot: &LibrarySyncCachedSnapshotRow,
+    ) -> InventoryResult<()> {
+        self.db.save_library_sync_cached_snapshot(snapshot)
+    }
+
+    pub fn save_library_sync_cached_spools(
+        &self,
+        rows: &[SpoolWithMasterRow],
+    ) -> InventoryResult<()> {
+        self.db.save_library_sync_cached_spools(rows)
+    }
+
+    pub fn save_library_sync_cached_printers(
+        &self,
+        rows: &[PrinterOverviewRow],
+    ) -> InventoryResult<()> {
+        self.db.save_library_sync_cached_printers(rows)
+    }
+
+    pub fn save_library_sync_cached_loans(
+        &self,
+        rows: &[SpoolLoanDetailsRow],
+    ) -> InventoryResult<()> {
+        self.db.save_library_sync_cached_loans(rows)
+    }
+
+    pub fn save_library_sync_client_auth_state(
+        &self,
+        session_id: &str,
+        device_token: &str,
+        csrf_token: &str,
+        expires_at: Option<&str>,
+    ) -> InventoryResult<()> {
+        self.db.save_library_sync_client_auth_state(
+            session_id,
+            device_token,
+            csrf_token,
+            expires_at,
+        )
+    }
+
+    pub fn clear_library_sync_client_auth_state(&self) -> InventoryResult<()> {
+        self.db.clear_library_sync_client_auth_state()
+    }
+
+    pub fn current_timestamp_plus_seconds(&self, seconds: u64) -> InventoryResult<String> {
+        self.db.current_timestamp_plus_seconds(seconds)
+    }
+
+    pub fn get_library_sync_client_auth_state(
+        &self,
+    ) -> InventoryResult<Option<(String, String, String, Option<String>)>> {
+        self.db.get_library_sync_client_auth_state()
     }
 
     pub fn list_active_spool_loans(&self) -> InventoryResult<Vec<ActiveSpoolLoanRow>> {
@@ -452,13 +530,12 @@ impl InventoryEngine {
             .ensure_scale(effective_scale_id, "Manual Entry", "MANUAL")?;
         self.db
             .update_spool_weight(spool_id, Some(filament_grams), remaining_g)?;
-        self.db
-            .insert_weight_reading(
-                effective_scale_id,
-                spool_id,
-                filament_grams,
-                source.as_str(),
-            )?;
+        self.db.insert_weight_reading(
+            effective_scale_id,
+            spool_id,
+            filament_grams,
+            source.as_str(),
+        )?;
         self.log_spool_event(
             spool_id,
             "WEIGHT_UPDATED",

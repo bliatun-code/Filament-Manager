@@ -7,7 +7,10 @@ import { formatPlacementLabel, formatSpoolReference } from "../lib/display_forma
 import { useI18n } from "../lib/i18n";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import {
+  fetchLibrarySyncPrinterOverview,
+  fetchLibrarySyncSpools,
   isTauri,
+  lendLibrarySyncHostSpool,
   lendSpool,
   listPrinterOverview,
   listSpools,
@@ -17,6 +20,10 @@ type LoanOutModalProps = {
   open: boolean;
   onClose: () => void;
   preferredSpoolId?: string | null;
+  clientReadOnly?: boolean;
+  clientHostWritePaired?: boolean;
+  clientHostBaseUrl?: string | null;
+  clientLibraryId?: string | null;
   onLoanCreated?: (details: {
     spoolId: string;
     borrowerName: string;
@@ -200,6 +207,10 @@ export function LoanOutModal({
   open,
   onClose,
   preferredSpoolId = null,
+  clientReadOnly = false,
+  clientHostWritePaired = false,
+  clientHostBaseUrl = null,
+  clientLibraryId = null,
   onLoanCreated,
 }: LoanOutModalProps) {
   const { t } = useI18n();
@@ -222,8 +233,12 @@ export function LoanOutModal({
     setError(null);
     try {
       const [spoolRows, printerOverview] = await Promise.all([
-        listSpools(1200, 0),
-        listPrinterOverview(),
+        clientReadOnly && clientHostBaseUrl && clientLibraryId
+          ? fetchLibrarySyncSpools(clientHostBaseUrl, clientLibraryId, 1200, 0)
+          : listSpools(1200, 0),
+        clientReadOnly && clientHostBaseUrl && clientLibraryId
+          ? fetchLibrarySyncPrinterOverview(clientHostBaseUrl, clientLibraryId)
+          : listPrinterOverview(),
       ]);
       const assignedSpoolIds = new Set(
         printerOverview.flatMap((printer) =>
@@ -273,7 +288,7 @@ export function LoanOutModal({
     } finally {
       setLoading(false);
     }
-  }, [preferredSpoolId, t, tauri]);
+  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, preferredSpoolId, t, tauri]);
 
   useEffect(() => {
     if (!open || !tauri) {
@@ -300,6 +315,24 @@ export function LoanOutModal({
     if (!tauri || !selectedSpool || busy) {
       return;
     }
+    if (clientReadOnly && (!clientHostBaseUrl || !clientLibraryId)) {
+      setError(
+        t(
+          "inventory.clientHostUnavailable",
+          "Host connection details are missing for this client device.",
+        ),
+      );
+      return;
+    }
+    if (clientReadOnly && !clientHostWritePaired) {
+      setError(
+        t(
+          "inventory.clientWriteRequiresPairing",
+          "Pair this desktop client with the host before running protected sync actions.",
+        ),
+      );
+      return;
+    }
     const borrower = borrowerName.trim();
     if (!borrower) {
       setError(t("inventory.error.borrowerRequired", "Borrower name is required."));
@@ -314,12 +347,21 @@ export function LoanOutModal({
     setBusy(true);
     setError(null);
     try {
-      await lendSpool({
-        spool_id: selectedSpool.id,
-        borrower_name: borrower,
-        grams_out: grams,
-        note: note.trim() || null,
-      });
+      if (clientReadOnly) {
+        await lendLibrarySyncHostSpool(clientHostBaseUrl!, clientLibraryId, {
+          spool_id: selectedSpool.id,
+          borrower_name: borrower,
+          grams_out: grams,
+          note: note.trim() || null,
+        });
+      } else {
+        await lendSpool({
+          spool_id: selectedSpool.id,
+          borrower_name: borrower,
+          grams_out: grams,
+          note: note.trim() || null,
+        });
+      }
       await onLoanCreated?.({
         spoolId: selectedSpool.id,
         borrowerName: borrower,
@@ -606,6 +648,19 @@ export function LoanOutModal({
                 ) : (
                   <div className="surface-subtle border-dashed px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
                     {t("inventory.chooseRollToLoan", "Choose a roll to loan out.")}
+                    {clientReadOnly ? (
+                      <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                        {clientHostWritePaired
+                          ? t(
+                              "inventory.clientLoanOutPairedHint",
+                              "Available rolls are loaded from the host and the loan is created there.",
+                            )
+                          : t(
+                              "inventory.clientLoanOutUnpairedHint",
+                              "Pair this desktop client with the host before creating a loan from this device.",
+                            )}
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </div>

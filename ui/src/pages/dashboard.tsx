@@ -7,7 +7,9 @@ import {
   type ActivityItem,
 } from "../components/dashboard_widgets";
 import {
+  fetchLibrarySyncSnapshot,
   getTrustedLanCompanionStatus,
+  getLibrarySyncSettings,
   inventoryOverview,
   isTauri,
   listActiveSpoolLoans,
@@ -15,6 +17,7 @@ import {
   listWishlistItems,
   listSpools,
   topMaterials,
+  type LibrarySyncRemoteSnapshot,
   type TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
 import { useI18n } from "../lib/i18n";
@@ -89,6 +92,8 @@ export default function DashboardPage({
 }: DashboardPageProps) {
   const { t } = useI18n();
   const tauri = isTauri();
+  const [clientSnapshot, setClientSnapshot] = useState<LibrarySyncRemoteSnapshot | null>(null);
+  const [clientModeActive, setClientModeActive] = useState(false);
   const [goalMetrics, setGoalMetrics] = useState<DashboardGoalMetrics>(
     () =>
       cachedGoalMetrics ?? {
@@ -243,14 +248,9 @@ export default function DashboardPage({
       if (!tauri) {
         return;
       }
-      const [overview, printers, spoolRows, loans, wishlist, materialRows, trustedLan] =
+      const [syncSettings, trustedLan] =
         await Promise.all([
-          inventoryOverview(),
-          listPrinterOverview(),
-          listSpools(2500, 0),
-          listActiveSpoolLoans(),
-          listWishlistItems(500),
-          topMaterials(12),
+          getLibrarySyncSettings().catch(() => null),
           getTrustedLanCompanionStatus().catch(() => null),
         ]);
       if (cancelledRef?.current) {
@@ -258,6 +258,164 @@ export default function DashboardPage({
       }
 
       setCompanionStatus(trustedLan);
+      const cachedSnapshot = syncSettings?.cached_snapshot ?? null;
+      const clientMode = syncSettings?.mode === "CLIENT";
+      let activeClientSnapshot = cachedSnapshot;
+      let clientSnapshotSource: "live" | "cached" = "cached";
+      if (clientMode && syncSettings?.host_base_url) {
+        try {
+          activeClientSnapshot = await fetchLibrarySyncSnapshot(
+            syncSettings.host_base_url,
+            syncSettings.library_id,
+          );
+          clientSnapshotSource = "live";
+        } catch (error) {
+          console.error(error);
+        }
+      }
+      setClientModeActive(clientMode);
+      setClientSnapshot(activeClientSnapshot);
+
+      if (clientMode && activeClientSnapshot) {
+        setStats([
+          {
+            id: "total",
+            title: t("dashboard.totalSpools", "Total Spools"),
+            value: activeClientSnapshot.total_spools.toString(),
+            subtitle: t("dashboard.clientSnapshotSubtitle", "Read-only host snapshot"),
+            trend: `${activeClientSnapshot.in_use} ${t("dashboard.inUse", "in use")}`,
+            accent: "sky" as const,
+          },
+          {
+            id: "activePrinters",
+            title: t("dashboard.activePrinters", "Active Printers"),
+            value: activeClientSnapshot.printers.toString(),
+            subtitle: t("dashboard.clientSnapshotHostPrinters", "On the host"),
+            trend:
+              activeClientSnapshot.printers > 0
+                ? t("dashboard.clientSnapshotHostOnline", "Host reported printer activity")
+                : t("dashboard.noPrintersConfigured", "No printers configured"),
+            accent: "emerald" as const,
+          },
+          {
+            id: "lowStock",
+            title: t("dashboard.lowStock", "Low Stock"),
+            value: activeClientSnapshot.low_stock.toString(),
+            subtitle: t("dashboard.below200", "Below 200g"),
+            trend:
+              activeClientSnapshot.low_stock > 0
+                ? t("dashboard.clientSnapshotNeedsAttention", "Host library needs attention")
+                : t("dashboard.noAlerts", "No alerts"),
+            accent: "rose" as const,
+          },
+          {
+            id: "activeLoans",
+            title: t("dashboard.clientSnapshotActiveLoans", "Active Loans"),
+            value: activeClientSnapshot.active_loans.toString(),
+            subtitle: t("dashboard.clientSnapshotSubtitle", "Read-only host snapshot"),
+            trend: activeClientSnapshot.device_name,
+            accent: "amber" as const,
+          },
+        ]);
+        setLastSyncLabel(
+          `${t(
+            clientSnapshotSource === "live"
+              ? "dashboard.clientSnapshotSyncedLive"
+              : "dashboard.clientSnapshotSyncedCached",
+            clientSnapshotSource === "live" ? "Live host snapshot" : "Cached host snapshot",
+          )} ${new Date(
+            activeClientSnapshot.captured_at.replace(" ", "T"),
+          ).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}`,
+        );
+        setActivity([
+          {
+            id: "client-snapshot",
+            title: t("dashboard.clientSnapshotCardTitle", "Read-only host preview"),
+            detail: `${activeClientSnapshot.device_name} · ${activeClientSnapshot.library_id}`,
+            tone: "sky",
+          },
+        ]);
+        setUsagePoints([0, 0]);
+        setOwnershipOnHand({
+          total: activeClientSnapshot.total_spools,
+          owned: 0,
+          borrowedIn: 0,
+          inUse: activeClientSnapshot.in_use,
+        });
+        setOwnershipLowStock({
+          owned: activeClientSnapshot.low_stock,
+          borrowedIn: 0,
+        });
+        cachedGoalMetrics = {
+          activeSpools: activeClientSnapshot.total_spools,
+          placedActiveSpools: 0,
+          totalJobs: 0,
+          totalSlots: activeClientSnapshot.printers,
+          loadedSlots: activeClientSnapshot.in_use,
+        };
+        setGoalMetrics(cachedGoalMetrics);
+        setHealth({
+          score:
+            activeClientSnapshot.total_spools === 0
+              ? 100
+              : Math.max(
+                  0,
+                  Math.round(
+                    ((activeClientSnapshot.total_spools - activeClientSnapshot.low_stock) /
+                      activeClientSnapshot.total_spools) *
+                      100,
+                  ),
+                ),
+          headline: t("dashboard.clientSnapshotCardTitle", "Read-only host preview"),
+          detail: t(
+            "dashboard.clientSnapshotHealthHint",
+            "This client is showing the host summary only. Detailed inventory health stays on the host for now.",
+          ),
+          metrics: [
+            {
+              id: "lowStock",
+              label: t("dashboard.lowStockShort", "low stock"),
+              value: activeClientSnapshot.low_stock.toString(),
+              tone: "rose" as const,
+            },
+            {
+              id: "loaned",
+              label: t("dashboard.loaned", "loaned"),
+              value: activeClientSnapshot.active_loans.toString(),
+              tone: "amber" as const,
+            },
+            {
+              id: "loaded",
+              label: t("dashboard.activePrinters", "Active Printers"),
+              value: activeClientSnapshot.printers.toString(),
+              tone: "emerald" as const,
+            },
+            {
+              id: "inUse",
+              label: t("dashboard.inUse", "in use"),
+              value: activeClientSnapshot.in_use.toString(),
+              tone: "sky" as const,
+            },
+          ],
+        });
+        return;
+      }
+
+      const [overview, printers, spoolRows, loans, wishlist, materialRows] = await Promise.all([
+        inventoryOverview(),
+        listPrinterOverview(),
+        listSpools(2500, 0),
+        listActiveSpoolLoans(),
+        listWishlistItems(500),
+        topMaterials(12),
+      ]);
+      if (cancelledRef?.current) {
+        return;
+      }
+
       const printerCount = printers.length;
       const effectiveSlotTotals = printers.reduce(
         (sum, printer) => {
@@ -673,112 +831,181 @@ export default function DashboardPage({
         ))}
       </div>
 
-      <div className="mt-6 surface-card">
-        <div className="flex flex-wrap items-start gap-3">
-          <div>
-            <div className="section-eyebrow">
-              {t("dashboard.ownershipSnapshot", "Ownership snapshot")}
-            </div>
-          </div>
-        </div>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-sky-200/85 bg-sky-50/80 px-3 py-3 dark:border-sky-400/25 dark:bg-sky-500/10">
-            <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-              {ownershipOnHand.owned}
-            </div>
-            <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              {t("dashboard.ownedOnHand", "Owned on hand")}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-amber-200/85 bg-amber-50/80 px-3 py-3 dark:border-amber-400/25 dark:bg-amber-500/10">
-            <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-              {ownershipOnHand.borrowedIn}
-            </div>
-            <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              {t("dashboard.borrowedInOnHand", "Borrowed in on hand")}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-rose-200/85 bg-rose-50/80 px-3 py-3 dark:border-rose-400/25 dark:bg-rose-500/10">
-            <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-              {ownershipLowStock.owned}
-            </div>
-            <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              {t("dashboard.ownedLowStock", "Owned low stock")}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-orange-200/85 bg-orange-50/80 px-3 py-3 dark:border-orange-400/25 dark:bg-orange-500/10">
-            <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-              {ownershipLowStock.borrowedIn}
-            </div>
-            <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              {t("dashboard.borrowedInLowStock", "Borrowed-in low stock")}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-8">
-        <UsageChart
-          title={t("dashboard.consumption", "Filament Consumption")}
-          value={stats[3]?.value ?? "0 g"}
-          caption={t(
-            "dashboard.consumptionCaption",
-            "Usage is aggregated from printer-linked print jobs.",
-          )}
-          points={usagePoints}
-          onClick={() => onNavigate?.("statistics")}
-        />
-      </div>
-
-      <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
-        <ActivityTimeline items={activity} />
-        <div className="surface-card">
+      {clientModeActive && clientSnapshot ? (
+        <div className="mt-6 surface-card">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="section-eyebrow">
-                {t("dashboard.inventoryHealth", "Inventory Health")}
+                {t("dashboard.clientSnapshotCardTitle", "Read-only host preview")}
               </div>
               <div className="mt-2 text-sm font-semibold text-slate-950 dark:text-slate-50">
-                {health.headline}
+                {clientSnapshot.device_name}
               </div>
-            <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              {health.detail}
+              <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                {t(
+                  "dashboard.clientSnapshotCardHint",
+                  "This device is connected as a client. For now it shows the host summary and keeps write-heavy workflows on the host.",
+                )}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+                {t("dashboard.clientSnapshotLibraryId", "Library ID")}
+              </div>
+              <div className="mt-1 font-semibold">{clientSnapshot.library_id}</div>
+              <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+                {t("dashboard.clientSnapshotCapturedAt", "Snapshot captured")}
+              </div>
+              <div className="mt-1 font-semibold">
+                {new Date(clientSnapshot.captured_at.replace(" ", "T")).toLocaleString()}
+              </div>
             </div>
           </div>
-          <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border border-emerald-200/85 bg-[radial-gradient(circle_at_30%_28%,rgba(255,255,255,0.96),rgba(220,252,231,0.98)_52%,rgba(167,243,208,0.94))] text-2xl font-semibold text-emerald-800 shadow-inner shadow-white/70 dark:border-emerald-400/28 dark:bg-[radial-gradient(circle_at_30%_28%,rgba(52,211,153,0.26),rgba(15,23,42,0.96)_62%,rgba(2,6,23,1))] dark:text-emerald-200 dark:shadow-none">
-            <span className="absolute inset-[8px] rounded-full border border-emerald-200/80 dark:border-emerald-300/10" />
-            <span className="relative">{health.score}%</span>
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-sky-200/85 bg-sky-50/80 px-3 py-3 dark:border-sky-400/25 dark:bg-sky-500/10">
+              <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+                {clientSnapshot.total_spools}
+              </div>
+              <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                {t("dashboard.totalSpools", "Total Spools")}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-emerald-200/85 bg-emerald-50/80 px-3 py-3 dark:border-emerald-400/25 dark:bg-emerald-500/10">
+              <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+                {clientSnapshot.in_use}
+              </div>
+              <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                {t("dashboard.inUse", "in use")}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-rose-200/85 bg-rose-50/80 px-3 py-3 dark:border-rose-400/25 dark:bg-rose-500/10">
+              <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+                {clientSnapshot.low_stock}
+              </div>
+              <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                {t("dashboard.lowStock", "Low Stock")}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-amber-200/85 bg-amber-50/80 px-3 py-3 dark:border-amber-400/25 dark:bg-amber-500/10">
+              <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+                {clientSnapshot.active_loans}
+              </div>
+              <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                {t("dashboard.clientSnapshotActiveLoans", "Active Loans")}
+              </div>
+            </div>
           </div>
         </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {health.metrics.map((metric) => (
-              <div
-                key={metric.id}
-                className={`rounded-2xl border px-3 py-3 ${
-                  metric.tone === "rose"
-                    ? "border-rose-200/85 bg-rose-50/80 dark:border-rose-400/25 dark:bg-rose-500/10"
-                    : metric.tone === "amber"
-                      ? "border-amber-200/85 bg-amber-50/80 dark:border-amber-400/25 dark:bg-amber-500/10"
-                      : metric.tone === "sky"
-                        ? "border-sky-200/85 bg-sky-50/80 dark:border-sky-400/25 dark:bg-sky-500/10"
-                        : "border-emerald-200/85 bg-emerald-50/80 dark:border-emerald-400/25 dark:bg-emerald-500/10"
-                }`}
-              >
-                <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-                  {metric.value}
-                </div>
-                <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                  {metric.label}
+      ) : (
+        <>
+          <div className="mt-6 surface-card">
+            <div className="flex flex-wrap items-start gap-3">
+              <div>
+                <div className="section-eyebrow">
+                  {t("dashboard.ownershipSnapshot", "Ownership snapshot")}
                 </div>
               </div>
-            ))}
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-sky-200/85 bg-sky-50/80 px-3 py-3 dark:border-sky-400/25 dark:bg-sky-500/10">
+                <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+                  {ownershipOnHand.owned}
+                </div>
+                <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {t("dashboard.ownedOnHand", "Owned on hand")}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-amber-200/85 bg-amber-50/80 px-3 py-3 dark:border-amber-400/25 dark:bg-amber-500/10">
+                <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+                  {ownershipOnHand.borrowedIn}
+                </div>
+                <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {t("dashboard.borrowedInOnHand", "Borrowed in on hand")}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-rose-200/85 bg-rose-50/80 px-3 py-3 dark:border-rose-400/25 dark:bg-rose-500/10">
+                <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+                  {ownershipLowStock.owned}
+                </div>
+                <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {t("dashboard.ownedLowStock", "Owned low stock")}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-orange-200/85 bg-orange-50/80 px-3 py-3 dark:border-orange-400/25 dark:bg-orange-500/10">
+                <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+                  {ownershipLowStock.borrowedIn}
+                </div>
+                <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {t("dashboard.borrowedInLowStock", "Borrowed-in low stock")}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="mt-8">
-        <BadgePanel badges={badges} />
-      </div>
+          <div className="mt-8">
+            <UsageChart
+              title={t("dashboard.consumption", "Filament Consumption")}
+              value={stats[3]?.value ?? "0 g"}
+              caption={t(
+                "dashboard.consumptionCaption",
+                "Usage is aggregated from printer-linked print jobs.",
+              )}
+              points={usagePoints}
+              onClick={() => onNavigate?.("statistics")}
+            />
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
+            <ActivityTimeline items={activity} />
+            <div className="surface-card">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="section-eyebrow">
+                    {t("dashboard.inventoryHealth", "Inventory Health")}
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-slate-950 dark:text-slate-50">
+                    {health.headline}
+                  </div>
+                  <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                    {health.detail}
+                  </div>
+                </div>
+                <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border border-emerald-200/85 bg-[radial-gradient(circle_at_30%_28%,rgba(255,255,255,0.96),rgba(220,252,231,0.98)_52%,rgba(167,243,208,0.94))] text-2xl font-semibold text-emerald-800 shadow-inner shadow-white/70 dark:border-emerald-400/28 dark:bg-[radial-gradient(circle_at_30%_28%,rgba(52,211,153,0.26),rgba(15,23,42,0.96)_62%,rgba(2,6,23,1))] dark:text-emerald-200 dark:shadow-none">
+                  <span className="absolute inset-[8px] rounded-full border border-emerald-200/80 dark:border-emerald-300/10" />
+                  <span className="relative">{health.score}%</span>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                {health.metrics.map((metric) => (
+                  <div
+                    key={metric.id}
+                    className={`rounded-2xl border px-3 py-3 ${
+                      metric.tone === "rose"
+                        ? "border-rose-200/85 bg-rose-50/80 dark:border-rose-400/25 dark:bg-rose-500/10"
+                        : metric.tone === "amber"
+                          ? "border-amber-200/85 bg-amber-50/80 dark:border-amber-400/25 dark:bg-amber-500/10"
+                          : metric.tone === "sky"
+                            ? "border-sky-200/85 bg-sky-50/80 dark:border-sky-400/25 dark:bg-sky-500/10"
+                            : "border-emerald-200/85 bg-emerald-50/80 dark:border-emerald-400/25 dark:bg-emerald-500/10"
+                    }`}
+                  >
+                    <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+                      {metric.value}
+                    </div>
+                    <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                      {metric.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8">
+            <BadgePanel badges={badges} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

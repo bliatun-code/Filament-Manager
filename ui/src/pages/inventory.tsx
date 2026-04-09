@@ -22,10 +22,20 @@ import {
 import {
   assignPrinterSlot,
   createManualSpool,
+  createLibrarySyncHostSpool,
   createSpool,
+  createLibrarySyncHostWishlistItem,
   createWishlistItem,
+  deleteLibrarySyncHostWishlistItem,
   deleteSpool,
   deleteWishlistItem,
+  fetchLibrarySyncCatalogMasters,
+  fetchCachedLibrarySyncPrinterOverview,
+  fetchCachedLibrarySyncSpools,
+  fetchLibrarySyncPrinterOverview,
+  fetchLibrarySyncSpools,
+  fetchLibrarySyncWishlistItems,
+  getLibrarySyncSettings,
   getTrustedLanCompanionStatus,
   isTauri,
   listActiveSpoolLoans,
@@ -45,10 +55,14 @@ import {
   type SpoolUsagePointRow,
   type WishlistItemRow,
   updateMasterCatalogEntry,
+  updateLibrarySyncHostSpoolDetails,
   updateSpoolDetails,
   updateSpoolStatus,
+  updateLibrarySyncHostSpoolTareWeight,
+  updateLibrarySyncHostSpoolWeight,
   updateSpoolTareWeight,
   updateSpoolWeight,
+  updateLibrarySyncHostWishlistItemStatus,
   updateWishlistItemStatus,
 } from "../lib/tauri_client";
 
@@ -700,6 +714,16 @@ export default function InventoryPage({
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [recentlyAddedSpoolId, setRecentlyAddedSpoolId] = useState<string | null>(null);
+  const [clientReadOnly, setClientReadOnly] = useState(false);
+  const [clientHostWritePaired, setClientHostWritePaired] = useState(false);
+  const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
+  const [clientHostBaseUrl, setClientHostBaseUrl] = useState<string | null>(null);
+  const [clientLibraryId, setClientLibraryId] = useState<string | null>(null);
+  const [librarySyncReady, setLibrarySyncReady] = useState(!tauri);
+  const [clientInventorySource, setClientInventorySource] = useState<
+    "LIVE" | "CACHED" | "OFFLINE"
+  >("LIVE");
+  const [clientInventoryUpdatedAt, setClientInventoryUpdatedAt] = useState<string | null>(null);
 
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyRows, setHistoryRows] = useState<SpoolHistoryEventRow[]>([]);
@@ -752,6 +776,35 @@ export default function InventoryPage({
     null,
   );
   const [selectedSpoolQrLoading, setSelectedSpoolQrLoading] = useState(false);
+
+  useEffect(() => {
+    if (!tauri) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const syncSettings = await getLibrarySyncSettings();
+        if (cancelled) {
+          return;
+        }
+        setClientReadOnly(syncSettings.mode === "CLIENT");
+        setClientHostWritePaired(syncSettings.client_auth_paired ?? false);
+        setClientHostDeviceName(syncSettings.host_device_name ?? null);
+        setClientHostBaseUrl(syncSettings.host_base_url ?? null);
+        setClientLibraryId(syncSettings.library_id ?? null);
+      } catch (syncError) {
+        console.error(syncError);
+      } finally {
+        if (!cancelled) {
+          setLibrarySyncReady(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tauri]);
 
   useEffect(() => {
     if (navigationIntent?.kind !== "LOW_STOCK") {
@@ -819,7 +872,15 @@ export default function InventoryPage({
     }
     setLoading(true);
     try {
-      const rows = await listSpools(1200, 0);
+      const rows =
+        clientReadOnly && clientHostBaseUrl && clientLibraryId
+          ? await fetchLibrarySyncSpools(clientHostBaseUrl, clientLibraryId, 1200, 0)
+          : await listSpools(1200, 0);
+      if (clientReadOnly) {
+        setClientInventorySource("LIVE");
+        const cached = await fetchCachedLibrarySyncSpools().catch(() => null);
+        setClientInventoryUpdatedAt(cached?.captured_at ?? null);
+      }
       setSpools(
         rows.map((row) => {
           const fallbackInitial =
@@ -852,18 +913,66 @@ export default function InventoryPage({
       );
     } catch (loadError) {
       console.error(loadError);
+      if (clientReadOnly) {
+        try {
+          const cached = await fetchCachedLibrarySyncSpools();
+          if (cached) {
+            setClientInventorySource("CACHED");
+            setClientInventoryUpdatedAt(cached.captured_at ?? null);
+            setSpools(
+              cached.rows.map((row) => {
+                const fallbackInitial =
+                  Number.isFinite(row.master.default_weight) && row.master.default_weight > 0
+                    ? row.master.default_weight
+                    : 1000;
+                return {
+                  id: row.spool.id,
+                  masterId: row.spool.master_id,
+                  vendor: row.master.vendor,
+                  material: row.master.material,
+                  filamentName: row.master.filament_name,
+                  colorName: row.master.color_name,
+                  hexColor: row.master.hex_color,
+                  initialWeightGrams:
+                    row.spool.initial_weight_g && row.spool.initial_weight_g > 0
+                      ? row.spool.initial_weight_g
+                      : fallbackInitial,
+                  status: normalizeStatus(row.spool.status),
+                  ownershipType: normalizeOwnershipType(row.spool.ownership_type),
+                  ownerName: row.spool.owner_name ?? null,
+                  ownerContact: row.spool.owner_contact ?? null,
+                  ownershipNote: row.spool.ownership_note ?? null,
+                  remainingGrams: row.spool.remaining_g ?? null,
+                  spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
+                  location: row.spool.location_id ?? null,
+                  qrCode: row.spool.qr_code ?? null,
+                };
+              }),
+            );
+            return;
+          }
+        } catch (cacheError) {
+          console.error(cacheError);
+        }
+        setClientInventorySource("OFFLINE");
+        setClientInventoryUpdatedAt(null);
+        setSpools([]);
+      }
       setError(t("inventory.error.loadSpools", "Could not load inventory spools."));
     } finally {
       setLoading(false);
     }
-  }, [t, tauri]);
+  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, t, tauri]);
 
   const reloadCatalog = useCallback(async () => {
     if (!tauri) {
       return;
     }
     try {
-      const rows = await listMasterCatalog(1000);
+      const rows =
+        clientReadOnly && clientHostBaseUrl && clientLibraryId
+          ? await fetchLibrarySyncCatalogMasters(clientHostBaseUrl, clientLibraryId, 1000)
+          : await listMasterCatalog(1000);
       setMasters(rows);
       if (!newBambuMasterId && rows.length > 0) {
         const firstBambu = rows.find((row) =>
@@ -879,9 +988,12 @@ export default function InventoryPage({
       }
     } catch (catalogError) {
       console.error(catalogError);
+      if (clientReadOnly) {
+        setMasters([]);
+      }
       setError(t("wishlist.error.loadCatalog", "Could not load master catalog."));
     }
-  }, [newBambuMasterId, newEsunMasterId, t, tauri]);
+  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, newBambuMasterId, newEsunMasterId, t, tauri]);
 
   const reloadWishlist = useCallback(async () => {
     if (!tauri) {
@@ -889,7 +1001,10 @@ export default function InventoryPage({
     }
     setWishlistLoading(true);
     try {
-      const rows = await listWishlistItems(500);
+      const rows =
+        clientReadOnly && clientHostBaseUrl && clientLibraryId
+          ? await fetchLibrarySyncWishlistItems(clientHostBaseUrl, clientLibraryId, 500)
+          : await listWishlistItems(500);
       setWishlistItems(rows);
     } catch (wishlistError) {
       console.error(wishlistError);
@@ -897,10 +1012,14 @@ export default function InventoryPage({
     } finally {
       setWishlistLoading(false);
     }
-  }, [tauri]);
+  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauri]);
 
   const reloadActiveLoans = useCallback(async () => {
     if (!tauri) {
+      return;
+    }
+    if (clientReadOnly) {
+      setActiveLoans([]);
       return;
     }
     try {
@@ -910,14 +1029,17 @@ export default function InventoryPage({
       console.error(loanError);
       setActiveLoans([]);
     }
-  }, [tauri]);
+  }, [clientReadOnly, tauri]);
 
   const reloadPrinterOverview = useCallback(async () => {
     if (!tauri) {
       return;
     }
     try {
-      const rows = await listPrinterOverview();
+      const rows =
+        clientReadOnly && clientHostBaseUrl && clientLibraryId
+          ? await fetchLibrarySyncPrinterOverview(clientHostBaseUrl, clientLibraryId)
+          : await listPrinterOverview();
       setPrinterOverview(
         rows.map((printer) => ({
           ...printer,
@@ -926,13 +1048,33 @@ export default function InventoryPage({
       );
     } catch (overviewError) {
       console.error(overviewError);
+      if (clientReadOnly) {
+        try {
+          const cached = await fetchCachedLibrarySyncPrinterOverview();
+          if (cached?.rows) {
+            setPrinterOverview(
+              cached.rows.map((printer) => ({
+                ...printer,
+                slots: sortPrinterSlotsExtLast(printer.slots),
+              })),
+            );
+            return;
+          }
+        } catch (cacheError) {
+          console.error(cacheError);
+        }
+      }
       setPrinterOverview([]);
     }
-  }, [tauri]);
+  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauri]);
 
   const reloadHistory = useCallback(
     async (spoolId: string) => {
       if (!tauri) {
+        return;
+      }
+      if (clientReadOnly) {
+        setHistoryRows([]);
         return;
       }
       setHistoryLoading(true);
@@ -946,12 +1088,16 @@ export default function InventoryPage({
         setHistoryLoading(false);
       }
     },
-    [tauri],
+    [clientReadOnly, tauri],
   );
 
   const reloadUsage = useCallback(
     async (spoolId: string) => {
       if (!tauri) {
+        return;
+      }
+      if (clientReadOnly) {
+        setUsagePoints([]);
         return;
       }
       setUsageLoading(true);
@@ -965,11 +1111,11 @@ export default function InventoryPage({
         setUsageLoading(false);
       }
     },
-    [tauri],
+    [clientReadOnly, tauri],
   );
 
   useEffect(() => {
-    if (!tauri) {
+    if (!tauri || !librarySyncReady) {
       return;
     }
     reloadSpools();
@@ -983,6 +1129,7 @@ export default function InventoryPage({
     reloadPrinterOverview,
     reloadSpools,
     reloadWishlist,
+    librarySyncReady,
     tauri,
   ]);
 
@@ -1549,12 +1696,65 @@ export default function InventoryPage({
   }, [formatInventoryPlacementLabel, selectedSpool, selectedSpoolAssignedSlot]);
 
   const selectRollForManage = useCallback((spoolId: string) => {
+    if (clientReadOnly) {
+      setInfoMessage(
+        t(
+          "inventory.clientReadOnlyManage",
+          "This device is connected as a client. You can review the roll here, and paired host actions will stay limited and explicit.",
+        ),
+      );
+    }
     setSelectedSpoolId(spoolId);
     setSidePanelMode("MANAGE");
     setShowRollModal(true);
-  }, []);
+  }, [clientReadOnly, t]);
+
+  const ensureLocalWriteAllowed = useCallback(() => {
+    if (!clientReadOnly) {
+      return true;
+    }
+    setInfoMessage(
+      t(
+        "inventory.clientReadOnlyAction",
+        "This device is connected as a client. Use the host for inventory changes.",
+      ),
+    );
+    return false;
+  }, [clientReadOnly, t]);
+
+  const canUseClientHostWrite = useCallback(() => {
+    if (!clientReadOnly) {
+      return false;
+    }
+    if (!clientHostBaseUrl || !clientLibraryId) {
+      setError(
+        t(
+          "inventory.clientHostUnavailable",
+          "Host connection details are missing for this client device.",
+        ),
+      );
+      return false;
+    }
+    if (!clientHostWritePaired) {
+      setError(
+        t(
+          "inventory.clientWriteRequiresPairing",
+          "Pair this desktop client with the host before running protected sync actions.",
+        ),
+      );
+      return false;
+    }
+    return true;
+  }, [clientHostBaseUrl, clientHostWritePaired, clientLibraryId, clientReadOnly, t]);
 
   const openAddModal = useCallback(() => {
+    if (clientReadOnly) {
+      if (!canUseClientHostWrite()) {
+        return;
+      }
+    } else if (!ensureLocalWriteAllowed()) {
+      return;
+    }
     setSidePanelMode("ADD");
     setWishlistQueueFilter("WISHLIST");
     setNewOwnershipType("OWNED");
@@ -1562,7 +1762,7 @@ export default function InventoryPage({
     setBorrowedFromContact("");
     setBorrowedInNote("");
     setShowAddModal(true);
-  }, []);
+  }, [canUseClientHostWrite, clientReadOnly, ensureLocalWriteAllowed]);
 
   const closeAddModal = useCallback(() => {
     setShowAddModal(false);
@@ -1579,13 +1779,25 @@ export default function InventoryPage({
   }, []);
 
   const openLoanTrackingModal = useCallback(() => {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
     const preferredSpool =
       selectedSpool && loanTrackingCandidates.some((spool) => spool.id === selectedSpool.id)
         ? selectedSpool
         : loanTrackingCandidates[0] ?? null;
     setLoanTrackingSpoolId(preferredSpool?.id ?? null);
     setShowLoanTrackingModal(true);
-  }, [loanTrackingCandidates, selectedSpool]);
+  }, [
+    canUseClientHostWrite,
+    clientReadOnly,
+    ensureLocalWriteAllowed,
+    loanTrackingCandidates,
+    selectedSpool,
+  ]);
 
   useEffect(() => {
     if (!selectedSpool) {
@@ -1820,6 +2032,12 @@ export default function InventoryPage({
   );
 
   async function handleCreateSpool() {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
     if (!tauri || busy) {
       return;
     }
@@ -1831,6 +2049,7 @@ export default function InventoryPage({
     const ownershipNote = borrowedInNote.trim();
     const createOwnershipType = newOwnershipType;
     try {
+      let createdSpoolId = id;
       if (createOwnershipType === "BORROWED_IN" && !ownerName) {
         setError(
           t(
@@ -1851,29 +2070,48 @@ export default function InventoryPage({
           newInitialWeight,
           selectedBambuMaster.default_weight,
         );
-        await createSpool({
-          id,
-          master_id: selectedBambuMaster.id,
-          qr_code: null,
-          status: "IN_STOCK",
-          ownership_type: createOwnershipType,
-          owner_name: ownerName || null,
-          owner_contact: ownerContact || null,
-          ownership_note: ownershipNote || null,
-          initial_weight_g: initialWeight,
-          current_weight_g: initialWeight,
-          location_id: null,
-          purchase_date: null,
-          purchase_price: null,
-          batch_code: null,
-        });
-        if (newLocation.trim()) {
-          await updateSpoolDetails({
-            spool_id: id,
+        if (clientReadOnly) {
+          createdSpoolId = await createLibrarySyncHostSpool(clientHostBaseUrl!, clientLibraryId, {
+            id,
+            master_id: selectedBambuMaster.id,
             qr_code: null,
             status: "IN_STOCK",
-            location: newLocation.trim(),
+            ownership_type: createOwnershipType,
+            owner_name: ownerName || null,
+            owner_contact: ownerContact || null,
+            ownership_note: ownershipNote || null,
+            initial_weight_g: initialWeight,
+            current_weight_g: initialWeight,
+            location_id: null,
+            purchase_date: null,
+            purchase_price: null,
+            batch_code: null,
           });
+        } else {
+          await createSpool({
+            id,
+            master_id: selectedBambuMaster.id,
+            qr_code: null,
+            status: "IN_STOCK",
+            ownership_type: createOwnershipType,
+            owner_name: ownerName || null,
+            owner_contact: ownerContact || null,
+            ownership_note: ownershipNote || null,
+            initial_weight_g: initialWeight,
+            current_weight_g: initialWeight,
+            location_id: null,
+            purchase_date: null,
+            purchase_price: null,
+            batch_code: null,
+          });
+          if (newLocation.trim()) {
+            await updateSpoolDetails({
+              spool_id: id,
+              qr_code: null,
+              status: "IN_STOCK",
+              location: newLocation.trim(),
+            });
+          }
         }
       } else if (createMode === "esun") {
         if (!selectedEsunMaster) {
@@ -1887,29 +2125,48 @@ export default function InventoryPage({
           newInitialWeight,
           selectedEsunMaster.default_weight,
         );
-        await createSpool({
-          id,
-          master_id: selectedEsunMaster.id,
-          qr_code: null,
-          status: "IN_STOCK",
-          ownership_type: createOwnershipType,
-          owner_name: ownerName || null,
-          owner_contact: ownerContact || null,
-          ownership_note: ownershipNote || null,
-          initial_weight_g: initialWeight,
-          current_weight_g: initialWeight,
-          location_id: null,
-          purchase_date: null,
-          purchase_price: null,
-          batch_code: null,
-        });
-        if (newLocation.trim()) {
-          await updateSpoolDetails({
-            spool_id: id,
+        if (clientReadOnly) {
+          createdSpoolId = await createLibrarySyncHostSpool(clientHostBaseUrl!, clientLibraryId, {
+            id,
+            master_id: selectedEsunMaster.id,
             qr_code: null,
             status: "IN_STOCK",
-            location: newLocation.trim(),
+            ownership_type: createOwnershipType,
+            owner_name: ownerName || null,
+            owner_contact: ownerContact || null,
+            ownership_note: ownershipNote || null,
+            initial_weight_g: initialWeight,
+            current_weight_g: initialWeight,
+            location_id: null,
+            purchase_date: null,
+            purchase_price: null,
+            batch_code: null,
           });
+        } else {
+          await createSpool({
+            id,
+            master_id: selectedEsunMaster.id,
+            qr_code: null,
+            status: "IN_STOCK",
+            ownership_type: createOwnershipType,
+            owner_name: ownerName || null,
+            owner_contact: ownerContact || null,
+            ownership_note: ownershipNote || null,
+            initial_weight_g: initialWeight,
+            current_weight_g: initialWeight,
+            location_id: null,
+            purchase_date: null,
+            purchase_price: null,
+            batch_code: null,
+          });
+          if (newLocation.trim()) {
+            await updateSpoolDetails({
+              spool_id: id,
+              qr_code: null,
+              status: "IN_STOCK",
+              location: newLocation.trim(),
+            });
+          }
         }
       } else {
         if (!manualFilamentName.trim() || !manualColorName.trim()) {
@@ -1923,30 +2180,51 @@ export default function InventoryPage({
           return;
         }
         const initialWeight = parseWeight(newInitialWeight, 1000);
-        await createManualSpool({
-          id,
-          vendor: manualVendor.trim() || "Generic",
-          material: manualMaterial.trim() || "PLA",
-          filament_name: manualFilamentName.trim(),
-          color_name: manualColorName.trim(),
-          hex_color: isValidHex(manualHexColor) ? toSwatchColor(manualHexColor) : null,
-          product_url: null,
-          default_weight_g: initialWeight,
-          qr_code: null,
-          status: "IN_STOCK",
-          ownership_type: createOwnershipType,
-          owner_name: ownerName || null,
-          owner_contact: ownerContact || null,
-          ownership_note: ownershipNote || null,
-          initial_weight_g: initialWeight,
-          location: newLocation.trim() || null,
-        });
+        if (clientReadOnly) {
+          createdSpoolId = await createLibrarySyncHostSpool(clientHostBaseUrl!, clientLibraryId, {
+            id,
+            vendor: manualVendor.trim() || "Generic",
+            material: manualMaterial.trim() || "PLA",
+            filament_name: manualFilamentName.trim(),
+            color_name: manualColorName.trim(),
+            hex_color: isValidHex(manualHexColor) ? toSwatchColor(manualHexColor) : null,
+            product_url: null,
+            default_weight_g: initialWeight,
+            qr_code: null,
+            status: "IN_STOCK",
+            ownership_type: createOwnershipType,
+            owner_name: ownerName || null,
+            owner_contact: ownerContact || null,
+            ownership_note: ownershipNote || null,
+            initial_weight_g: initialWeight,
+            location: newLocation.trim() || null,
+          });
+        } else {
+          await createManualSpool({
+            id,
+            vendor: manualVendor.trim() || "Generic",
+            material: manualMaterial.trim() || "PLA",
+            filament_name: manualFilamentName.trim(),
+            color_name: manualColorName.trim(),
+            hex_color: isValidHex(manualHexColor) ? toSwatchColor(manualHexColor) : null,
+            product_url: null,
+            default_weight_g: initialWeight,
+            qr_code: null,
+            status: "IN_STOCK",
+            ownership_type: createOwnershipType,
+            owner_name: ownerName || null,
+            owner_contact: ownerContact || null,
+            ownership_note: ownershipNote || null,
+            initial_weight_g: initialWeight,
+            location: newLocation.trim() || null,
+          });
+        }
       }
 
       await reloadSpools();
       await reloadCatalog();
-      setSelectedSpoolId(id);
-      setRecentlyAddedSpoolId(id);
+      setSelectedSpoolId(createdSpoolId);
+      setRecentlyAddedSpoolId(createdSpoolId);
       const addedLabel =
         createMode === "bambu" && selectedBambuMaster
           ? `${selectedBambuMaster.filament_name} · ${selectedBambuMaster.color_name}`
@@ -2029,6 +2307,12 @@ export default function InventoryPage({
   }
 
   async function handleAddCurrentToWishlist() {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
     if (!tauri || busy) {
       return;
     }
@@ -2045,7 +2329,7 @@ export default function InventoryPage({
     setBusy(true);
     setError(null);
     try {
-      await createWishlistItem({
+      const input = {
         id: `wish_${Date.now()}`,
         master_id: draft.master_id ?? null,
         vendor: draft.vendor,
@@ -2054,7 +2338,12 @@ export default function InventoryPage({
         color_name: draft.color_name,
         quantity: 1,
         note: null,
-      });
+      };
+      if (clientReadOnly) {
+        await createLibrarySyncHostWishlistItem(clientHostBaseUrl!, clientLibraryId, input);
+      } else {
+        await createWishlistItem(input);
+      }
       await reloadWishlist();
     } catch (wishlistError) {
       console.error(wishlistError);
@@ -2065,6 +2354,12 @@ export default function InventoryPage({
   }
 
   async function handleWishlistStatus(itemId: string, status: WishlistStatus) {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
     if (!tauri || busy) {
       return;
     }
@@ -2072,10 +2367,15 @@ export default function InventoryPage({
     setBusy(true);
     setError(null);
     try {
-      await updateWishlistItemStatus({
+      const input = {
         item_id: itemId,
         status,
-      });
+      };
+      if (clientReadOnly) {
+        await updateLibrarySyncHostWishlistItemStatus(clientHostBaseUrl!, clientLibraryId, input);
+      } else {
+        await updateWishlistItemStatus(input);
+      }
       await reloadWishlist();
     } catch (statusError) {
       console.error(statusError);
@@ -2086,6 +2386,12 @@ export default function InventoryPage({
   }
 
   async function handleDeleteWishlistItem(itemId: string) {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
     if (!tauri || busy) {
       return;
     }
@@ -2103,7 +2409,11 @@ export default function InventoryPage({
     setBusy(true);
     setError(null);
     try {
-      await deleteWishlistItem(itemId);
+      if (clientReadOnly) {
+        await deleteLibrarySyncHostWishlistItem(clientHostBaseUrl!, clientLibraryId, itemId);
+      } else {
+        await deleteWishlistItem(itemId);
+      }
       await reloadWishlist();
     } catch (deleteError) {
       console.error(deleteError);
@@ -2114,6 +2424,12 @@ export default function InventoryPage({
   }
 
   async function handleStockFromWishlist(item: WishlistItemRow) {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
     if (!tauri || busy) {
       return;
     }
@@ -2122,47 +2438,87 @@ export default function InventoryPage({
     setError(null);
     const id = `spool_${Date.now()}`;
     try {
+      let createdSpoolId = id;
       const linkedMaster = item.master_id
         ? masters.find((master) => master.id === item.master_id) ?? null
         : null;
       if (linkedMaster) {
-        await createSpool({
-          id,
-          master_id: linkedMaster.id,
-          qr_code: null,
-          status: "IN_STOCK",
-          initial_weight_g: linkedMaster.default_weight,
-          current_weight_g: linkedMaster.default_weight,
-          location_id: null,
-          purchase_date: null,
-          purchase_price: null,
-          batch_code: null,
-        });
+        if (clientReadOnly) {
+          createdSpoolId = await createLibrarySyncHostSpool(clientHostBaseUrl!, clientLibraryId, {
+            id,
+            master_id: linkedMaster.id,
+            qr_code: null,
+            status: "IN_STOCK",
+            initial_weight_g: linkedMaster.default_weight,
+            current_weight_g: linkedMaster.default_weight,
+            location_id: null,
+            purchase_date: null,
+            purchase_price: null,
+            batch_code: null,
+          });
+        } else {
+          await createSpool({
+            id,
+            master_id: linkedMaster.id,
+            qr_code: null,
+            status: "IN_STOCK",
+            initial_weight_g: linkedMaster.default_weight,
+            current_weight_g: linkedMaster.default_weight,
+            location_id: null,
+            purchase_date: null,
+            purchase_price: null,
+            batch_code: null,
+          });
+        }
       } else {
-        await createManualSpool({
-          id,
-          vendor: item.vendor,
-          material: item.material,
-          filament_name: item.filament_name,
-          color_name: item.color_name,
-          hex_color: null,
-          product_url: null,
-          default_weight_g: 1000,
-          qr_code: null,
-          status: "IN_STOCK",
-          initial_weight_g: 1000,
-          location: null,
-        });
+        if (clientReadOnly) {
+          createdSpoolId = await createLibrarySyncHostSpool(clientHostBaseUrl!, clientLibraryId, {
+            id,
+            vendor: item.vendor,
+            material: item.material,
+            filament_name: item.filament_name,
+            color_name: item.color_name,
+            hex_color: null,
+            product_url: null,
+            default_weight_g: 1000,
+            qr_code: null,
+            status: "IN_STOCK",
+            initial_weight_g: 1000,
+            location: null,
+          });
+        } else {
+          await createManualSpool({
+            id,
+            vendor: item.vendor,
+            material: item.material,
+            filament_name: item.filament_name,
+            color_name: item.color_name,
+            hex_color: null,
+            product_url: null,
+            default_weight_g: 1000,
+            qr_code: null,
+            status: "IN_STOCK",
+            initial_weight_g: 1000,
+            location: null,
+          });
+        }
       }
 
-      await updateWishlistItemStatus({
-        item_id: item.id,
-        status: "RECEIVED",
-      });
+      if (clientReadOnly) {
+        await updateLibrarySyncHostWishlistItemStatus(clientHostBaseUrl!, clientLibraryId, {
+          item_id: item.id,
+          status: "RECEIVED",
+        });
+      } else {
+        await updateWishlistItemStatus({
+          item_id: item.id,
+          status: "RECEIVED",
+        });
+      }
       await reloadSpools();
       await reloadWishlist();
-      setSelectedSpoolId(id);
-      setRecentlyAddedSpoolId(id);
+      setSelectedSpoolId(createdSpoolId);
+      setRecentlyAddedSpoolId(createdSpoolId);
       setInfoMessage(
         `${t("inventory.addedFromWishlist", "Added from wishlist")}: ${formatInventoryDisplayTitle(
           item.material,
@@ -2179,6 +2535,9 @@ export default function InventoryPage({
   }
 
   async function handleSaveMasterMetadata() {
+    if (!ensureLocalWriteAllowed()) {
+      return;
+    }
     if (!tauri || !selectedSpool || manageBusy) {
       return;
     }
@@ -2250,6 +2609,9 @@ export default function InventoryPage({
   }
 
   async function handleDeleteSelected() {
+    if (!ensureLocalWriteAllowed()) {
+      return;
+    }
     if (!tauri || !selectedSpool || manageBusy) {
       return;
     }
@@ -2283,6 +2645,9 @@ export default function InventoryPage({
   }
 
   async function handleMarkEmpty() {
+    if (!ensureLocalWriteAllowed()) {
+      return;
+    }
     if (!tauri || !selectedSpool || manageBusy) {
       return;
     }
@@ -2326,6 +2691,25 @@ export default function InventoryPage({
     setManageBusy(true);
     setError(null);
     try {
+      if (clientReadOnly) {
+        if (!canUseClientHostWrite()) {
+          return;
+        }
+        await updateLibrarySyncHostSpoolDetails(
+          clientHostBaseUrl!,
+          clientLibraryId,
+          {
+            spool_id: selectedSpool.id,
+            qr_code: selectedSpool.qrCode ?? null,
+            status: selectedSpool.status,
+            location: location || null,
+          },
+        );
+        await reloadSpools();
+        await reloadPrinterOverview();
+        setInfoMessage(t("inventory.locationSaved", "Location updated."));
+        return;
+      }
       await updateSpoolDetails({
         spool_id: selectedSpool.id,
         qr_code: selectedSpool.qrCode ?? null,
@@ -2351,6 +2735,9 @@ export default function InventoryPage({
   }
 
   async function handleRefillSpool() {
+    if (!ensureLocalWriteAllowed()) {
+      return;
+    }
     if (!tauri || !selectedSpool || manageBusy) {
       return;
     }
@@ -2397,6 +2784,39 @@ export default function InventoryPage({
     setManageBusy(true);
     setError(null);
     try {
+      if (clientReadOnly) {
+        if (!canUseClientHostWrite()) {
+          return;
+        }
+        if (nextStatus === "LOST" && selectedSpoolAssignedSlot) {
+          setError(
+            t(
+              "inventory.clientAssignedStatusUnsupported",
+              "Paired desktop status changes are not available while the roll is still loaded in a printer.",
+            ),
+          );
+          return;
+        }
+        await updateLibrarySyncHostSpoolDetails(
+          clientHostBaseUrl!,
+          clientLibraryId,
+          {
+            spool_id: selectedSpool.id,
+            qr_code: selectedSpool.qrCode ?? null,
+            status: nextStatus,
+            location: selectedSpool.location ?? null,
+          },
+        );
+        await reloadSpools();
+        await reloadPrinterOverview();
+        await reloadActiveLoans();
+        setInfoMessage(
+          nextStatus === "LOST"
+            ? t("inventory.markedLost", "Roll marked as lost.")
+            : t("inventory.markedFound", "Roll restored to in stock."),
+        );
+        return;
+      }
       if (nextStatus === "LOST" && selectedSpoolAssignedSlot) {
         await assignPrinterSlot({
           printer_id: selectedSpoolAssignedSlot.printerId,
@@ -2429,6 +2849,9 @@ export default function InventoryPage({
   }
 
   async function handlePurgeSelected() {
+    if (!ensureLocalWriteAllowed()) {
+      return;
+    }
     if (!tauri || !selectedSpool || manageBusy) {
       return;
     }
@@ -2509,6 +2932,35 @@ export default function InventoryPage({
     setManageBusy(true);
     setError(null);
     try {
+      if (clientReadOnly) {
+        if (!canUseClientHostWrite()) {
+          return;
+        }
+        if (selectedSpoolAssignedSlot) {
+          setError(
+            t(
+              "inventory.clientAssignedWeightUnsupported",
+              "Paired desktop weight updates are only available for rolls that are not currently loaded in a printer.",
+            ),
+          );
+          return;
+        }
+        await updateLibrarySyncHostSpoolWeight(
+          clientHostBaseUrl!,
+          clientLibraryId,
+          selectedSpool.id,
+          safeGrams,
+        );
+        await reloadSpools();
+        await reloadPrinterOverview();
+        setInfoMessage(
+          t(
+            "inventory.clientWeightUpdated",
+            "Weight updated on the host library.",
+          ),
+        );
+        return;
+      }
       if (selectedSpoolAssignedSlot) {
         await applyMeasuredWeightWithUsage(
           selectedSpoolAssignedSlot.printerId,
@@ -2553,6 +3005,26 @@ export default function InventoryPage({
     setManageBusy(true);
     setError(null);
     try {
+      if (clientReadOnly) {
+        if (!canUseClientHostWrite()) {
+          return;
+        }
+        await updateLibrarySyncHostSpoolTareWeight(
+          clientHostBaseUrl!,
+          clientLibraryId,
+          selectedSpool.id,
+          safeGrams,
+        );
+        await reloadSpools();
+        setSelectedSpoolTareDraft(String(safeGrams));
+        setInfoMessage(
+          t(
+            "inventory.clientTareWeightUpdated",
+            "Empty spool weight updated on the host library.",
+          ),
+        );
+        return;
+      }
       await updateSpoolTareWeight(selectedSpool.id, safeGrams);
       await reloadSpools();
       await reloadHistory(selectedSpool.id);
@@ -2635,6 +3107,10 @@ export default function InventoryPage({
         open={showLoanTrackingModal}
         onClose={closeLoanTrackingModal}
         preferredSpoolId={loanTrackingSpoolId}
+        clientReadOnly={clientReadOnly}
+        clientHostWritePaired={clientHostWritePaired}
+        clientHostBaseUrl={clientHostBaseUrl}
+        clientLibraryId={clientLibraryId}
         onLoanCreated={async ({ spoolId }) => {
           await reloadSpools();
           await reloadPrinterOverview();
@@ -3169,6 +3645,7 @@ export default function InventoryPage({
               type="button"
               onClick={openAddModal}
               className="header-button-primary w-full min-[920px]:w-auto"
+              disabled={clientReadOnly ? !clientHostWritePaired : false}
             >
               {t("inventory.addSpoolAction", "Add spool")}
             </button>
@@ -3176,6 +3653,7 @@ export default function InventoryPage({
               type="button"
               onClick={openLoanTrackingModal}
               className="header-button-secondary w-full min-[920px]:w-auto"
+              disabled={clientReadOnly ? !clientHostWritePaired : false}
             >
               {t("inventory.loanOutRoll", "Loan out roll")}
             </button>
@@ -3341,6 +3819,37 @@ export default function InventoryPage({
       {infoMessage && !(showAddModal && sidePanelMode === "ADD") ? (
         <FeedbackBanner tone="success" className="mt-4">
           {infoMessage}
+        </FeedbackBanner>
+      ) : null}
+
+      {clientReadOnly ? (
+        <FeedbackBanner tone="warning" className="mt-4">
+          {clientHostWritePaired
+            ? t(
+                "inventory.clientReadOnlyBannerPaired",
+                "This device is connected as a client. Inventory changes are sent to the paired host, while the host still remains the library authority.",
+              )
+            : t(
+                "inventory.clientReadOnlyBanner",
+                "This device is linked as a client. Inventory edits stay on the host for now.",
+              )}{" "}
+          {clientHostDeviceName
+            ? `${t("inventory.clientReadOnlyHost", "Host")}: ${clientHostDeviceName}. `
+            : null}
+          {clientInventorySource === "LIVE"
+            ? t("inventory.clientReadOnlyLive", "Showing live host inventory.")
+            : clientInventorySource === "CACHED"
+              ? t(
+                  "inventory.clientReadOnlyCached",
+                  "Host is unavailable. Showing the last cached inventory snapshot.",
+                )
+              : t(
+                  "inventory.clientReadOnlyOffline",
+                  "Host is unavailable and no cached inventory snapshot is available yet.",
+                )}
+          {clientInventoryUpdatedAt
+            ? ` ${t("inventory.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientInventoryUpdatedAt)}.`
+            : null}
         </FeedbackBanner>
       ) : null}
 

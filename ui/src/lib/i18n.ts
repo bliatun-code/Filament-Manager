@@ -75,6 +75,21 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       lowest: "lowest",
       noAlerts: "No alerts",
       monthlyUsage: "Monthly Usage",
+      clientSnapshotSubtitle: "Read-only host snapshot",
+      clientSnapshotHostPrinters: "On the host",
+      clientSnapshotHostOnline: "Host reported printer activity",
+      clientSnapshotNeedsAttention: "Host library needs attention",
+      clientSnapshotActiveLoans: "Active Loans",
+      clientSnapshotSynced: "Host snapshot",
+      clientSnapshotSyncedLive: "Live host snapshot",
+      clientSnapshotSyncedCached: "Cached host snapshot",
+      clientSnapshotCardTitle: "Read-only host preview",
+      clientSnapshotCardHint:
+        "This device is connected as a client. For now it shows the host summary and keeps write-heavy workflows on the host.",
+      clientSnapshotLibraryId: "Library ID",
+      clientSnapshotCapturedAt: "Snapshot captured",
+      clientSnapshotHealthHint:
+        "This client is showing the host summary only. Detailed inventory health stays on the host for now.",
       last30: "Last 30 days",
       consumption: "Filament Consumption",
       consumptionCaption: "Usage is aggregated from printer-linked print jobs.",
@@ -123,6 +138,34 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       title: "Spools",
       subtitle: "Manage stock, loans and spool weight in one place.",
       addSpoolAction: "Add spool",
+      clientReadOnlyBanner:
+        "This device is linked as a client. Inventory edits stay on the host for now.",
+      clientReadOnlyAction:
+        "This device is connected as a client. Use the host for inventory changes.",
+      clientReadOnlyManage:
+        "This device is connected as a client. You can review the roll here, and paired host actions will stay limited and explicit.",
+      clientReadOnlyBannerPaired:
+        "This device is connected as a client. Inventory updates are sent to the paired host, while the host still remains the library authority.",
+      clientHostUnavailable:
+        "Host connection details are missing for this client device.",
+      clientWriteRequiresPairing:
+        "Pair this desktop client with the host before running protected sync actions.",
+      clientAssignedWeightUnsupported:
+        "Paired desktop weight updates are only available for rolls that are not currently loaded in a printer.",
+      clientAssignedStatusUnsupported:
+        "Paired desktop status changes are not available while the roll is still loaded in a printer.",
+      clientWeightUpdated: "Weight updated on the host library.",
+      clientTareWeightUpdated:
+        "Empty spool weight updated on the host library.",
+      clientLoanOutPairedHint:
+        "Available rolls are loaded from the host and the loan is created there.",
+      clientLoanOutUnpairedHint:
+        "Pair this desktop client with the host before creating a loan from this device.",
+      clientReadOnlyHost: "Host",
+      clientReadOnlyLive: "Showing live host inventory.",
+      clientReadOnlyCached: "Host is unavailable. Showing the last cached inventory snapshot.",
+      clientReadOnlyOffline: "Host is unavailable and no cached inventory snapshot is available yet.",
+      clientReadOnlyUpdated: "Updated",
       searchPlaceholder: "Search by material, color, owner, location or QR",
       viewGroup: "View",
       viewCards: "Card view",
@@ -437,6 +480,22 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       },
     },
     loans: {
+      clientReadOnlyBanner:
+        "This device is linked as a client. Loan changes stay on the host for now.",
+      clientReadOnlyAction:
+        "This device is connected as a client. Use the host for loan changes.",
+      clientReadOnlyBannerPaired:
+        "This device is connected as a client. Returns and hand-backs can be sent to the host, while new loan creation still stays there.",
+      clientHostUnavailable:
+        "Host connection details are missing for this client device.",
+      clientWriteRequiresPairing:
+        "Pair this desktop client with the host before running protected loan actions.",
+      clientReadOnlyHost: "Host",
+      clientReadOnlyLive: "Showing live host loans.",
+      clientReadOnlyCached: "Host is unavailable. Showing the last cached loan snapshot.",
+      clientReadOnlyOffline:
+        "Host is unavailable and no cached loan snapshot is available yet.",
+      clientReadOnlyUpdated: "Updated",
       subtitle: "Track active loans, borrowed-in spools and returns in one place.",
       exportCsv: "Export loans CSV",
       desktopOnly: "Loan tracking is available in the desktop app build.",
@@ -502,6 +561,21 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
     printers: {
       subtitle: "Manage slots and printer-linked material use.",
       desktopOnly: "Printer overview is available in the desktop app build.",
+      clientReadOnlyBanner:
+        "This device is linked as a client. Printer assignment changes stay on the host for now.",
+      clientReadOnlyAction:
+        "This device is connected as a client. Use the host for printer changes.",
+      clientReadOnlyBannerPaired:
+        "This device is connected as a client. Slot assignment changes can be sent to the host, while printer setup still stays there.",
+      clientHostUnavailable:
+        "Host connection details are missing for this client device.",
+      clientWriteRequiresPairing:
+        "Pair this desktop client with the host before running protected printer actions.",
+      clientReadOnlyHost: "Host",
+      clientReadOnlyLive: "Showing live host printers.",
+      clientReadOnlyCached: "Host is unavailable. Showing the last cached printer snapshot.",
+      clientReadOnlyOffline: "Host is unavailable and no cached printer snapshot is available yet.",
+      clientReadOnlyUpdated: "Updated",
       noPrinters: "No printers configured yet. Use Add printer to create one.",
       configuredPrinters: "Configured printers",
       loadedSlots: "Loaded slots",
@@ -639,6 +713,115 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       tabMaintenance: "Program maintenance",
       program: "Program",
       version: "Version",
+      librarySyncTitle: "Library roles",
+      librarySyncHint:
+        "Choose whether this device stays local-only, hosts the shared library, or connects to another host.",
+      librarySyncStandalone: "Standalone",
+      librarySyncHost: "Host",
+      librarySyncClient: "Client",
+      librarySyncDeviceName: "Device name",
+      librarySyncDeviceNamePlaceholder: "Workshop PC",
+      librarySyncLibraryId: "Library ID",
+      librarySyncHostUrl: "Host URL",
+      librarySyncCheckHost: "Check host",
+      librarySyncChecking: "Checking...",
+      librarySyncHostCheckOk: "Host check passed.",
+      librarySyncLinkHost: "Link this device to the checked host",
+      librarySyncUseCheckedHost: "Use this checked host",
+      librarySyncLinkedHost: "This device is now linked to the selected host library.",
+      librarySyncPairHost: "Pair desktop client",
+      librarySyncClientAuthTitle: "Desktop client pairing",
+      librarySyncClientAuthHint:
+        "Paste a short-lived pairing link or token from the host to unlock protected desktop sync actions.",
+      librarySyncClientAuthInput: "Pairing link or token",
+      librarySyncClientAuthPaired: "Paired",
+      librarySyncClientAuthUnpaired: "Not paired",
+      librarySyncClientAuthPairedAt: "Paired",
+      librarySyncClientAuthExpiresAt: "Session expires",
+      librarySyncClearClientAuth: "Remove pairing",
+      librarySyncClientAuthCleared: "Desktop client pairing was removed from this device.",
+      librarySyncClientPaired:
+        "Desktop client paired with the host. Protected sync actions can now be enabled.",
+      librarySyncFetchSnapshot: "Fetch snapshot",
+      librarySyncRefreshingSnapshot: "Refreshing snapshot...",
+      librarySyncSnapshotRefreshed: "Host snapshot refreshed.",
+      librarySyncRemoteDevice: "Remote device",
+      librarySyncRemoteLibraryId: "Remote library ID",
+      librarySyncRemoteMode: "Remote role",
+      librarySyncRemoteAuth: "Auth mode",
+      librarySyncLastStatus: "Last host status",
+      librarySyncLastChecked: "Last checked",
+      librarySyncLastReachable: "Last reachable",
+      librarySyncCachedSnapshot: "Cached host snapshot",
+      librarySyncNoSnapshotYet: "No snapshot cached yet",
+      librarySyncNoSnapshotHint:
+        "Fetch a host snapshot to keep a small read-only view available here.",
+      librarySyncStatusLive: "Live",
+      librarySyncStatusCached: "Cached",
+      librarySyncStatusOffline: "Offline",
+      librarySyncSnapshotCapturedAt: "Captured",
+      librarySyncSnapshotTotalSpools: "Total spools",
+      librarySyncSnapshotInUse: "In use",
+      librarySyncSnapshotLowStock: "Low stock",
+      librarySyncSnapshotLoans: "Active loans",
+      librarySyncSnapshotPrinters: "Printers",
+      librarySyncHostReady: "Host readiness",
+      librarySyncHostReadyLive: "Trusted-LAN web app is already reachable on this device.",
+      librarySyncHostReadyHint:
+        "Turn on Browser access to expose this host to other devices on your trusted network.",
+      librarySyncStandaloneHint: "This device keeps using its own local library only.",
+      librarySyncHostHint:
+        "This device is prepared to host the library for other desktop or browser clients.",
+      librarySyncClientHint:
+        "This device connects to another host and keeps a read-only fallback cache when that host is unavailable.",
+      librarySyncPreparedHost:
+        "This device is now prepared to become the host when you save.",
+      librarySyncPreparedStandalone:
+        "This device is now prepared to disconnect from the shared library when you save.",
+      librarySyncPreparedClient:
+        "This device is now prepared to connect as a client when you save.",
+      librarySyncPromoteToHost: "Prepare this device as host",
+      librarySyncDisconnectHost: "Disconnect from host",
+      librarySyncUseStandalone: "Use this device standalone",
+      librarySyncOpenBrowserAccess: "Open Browser access",
+      librarySyncMigrationTitle: "Host handoff path",
+      librarySyncMigrationHostHint:
+        "Use a full backup export to move this library to another machine in a controlled way.",
+      librarySyncMigrationClientHint:
+        "If you want this device to take over as host later, import a full backup from the current host first, then save Host role here.",
+      librarySyncMigrationSafetyNote:
+        "Machine-local browser pairings and current host connection details are not imported. Pair the new host again after handoff.",
+      librarySyncMigrationStepHostAccess: "Browser access is enabled on this host",
+      librarySyncMigrationStepHostAccessHint:
+        "Turn on Browser access before other devices try to connect.",
+      librarySyncMigrationStepExport: "Export a full backup from the current host",
+      librarySyncMigrationStepExportHint:
+        "Use the export button below before importing on the next machine.",
+      librarySyncMigrationStepValidate: "Validate the host backup on this device",
+      librarySyncMigrationStepValidateHint:
+        "Optional, but helpful before you import and take over.",
+      librarySyncMigrationStepValidateOk:
+        "A full-backup file has been checked in this session.",
+      librarySyncMigrationStepImport: "Import the full backup on this device",
+      librarySyncMigrationStepImportHint:
+        "Import the host backup here before this device takes over.",
+      librarySyncMigrationStepPrepare: "Prepare this device as the next host",
+      librarySyncMigrationStepPrepareHint:
+        "Use the Host role so this machine becomes the new source of truth.",
+      librarySyncMigrationStepPrepareOk:
+        "The role draft is already set to Host.",
+      librarySyncMigrationStepSave: "Save the role change to complete takeover",
+      librarySyncMigrationStepSaveHint:
+        "The final Save button below is the last deliberate handoff step.",
+      librarySyncMigrationStepSaveOk:
+        "This device is already saved as the active host.",
+      librarySyncStepDone: "Done",
+      librarySyncStepPending: "Pending",
+      librarySyncOpenMaintenance: "Open maintenance tools",
+      librarySyncSaveHint: "Role changes take effect when you save the library role below.",
+      librarySyncSave: "Save library role",
+      librarySyncSaving: "Saving...",
+      librarySyncSaved: "Library role settings saved.",
       language: "Language",
       languageHint: "Choose app language for all main views.",
       appearance: "Appearance",
@@ -851,6 +1034,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       catalogResetDone: "Catalog reset done",
       backupExported: "Full backup exported (inventory, history and printers).",
       backupImported: "Full backup imported successfully.",
+      librarySyncImportedOnClientHint:
+        "This device is now prepared as the next host. Review Library roles and save when ready to take over.",
       inventoryImportDone: "Inventory import completed.",
       importSource: "Source",
       importDetectedInventoryCsv: "Inventory CSV",
@@ -959,6 +1144,13 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         loadTrustedLanPairedBrowsers: "Failed to refresh paired browsers.",
         revokeTrustedLanBrowser: "Failed to revoke the trusted-LAN browser.",
         revokeAllTrustedLanBrowsers: "Failed to revoke trusted-LAN browsers.",
+        librarySyncSave: "Failed to save library role settings.",
+        librarySyncHostCheck: "Failed to check the configured host.",
+        librarySyncLinkHost: "Failed to link this device to the host library.",
+        librarySyncPairHost: "Failed to pair this desktop client with the host.",
+        librarySyncClearClientAuth: "Failed to remove the saved desktop client pairing.",
+        librarySyncPrinterWriteRequiresPairing:
+          "Pair this desktop client with the host before changing printers.",
       },
     },
   },
@@ -1024,6 +1216,21 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       lowest: "lavest",
       noAlerts: "Ingen varsler",
       monthlyUsage: "Månedlig forbruk",
+      clientSnapshotSubtitle: "Skrivebeskyttet vertssnapshot",
+      clientSnapshotHostPrinters: "På verten",
+      clientSnapshotHostOnline: "Verten rapporterte printeraktivitet",
+      clientSnapshotNeedsAttention: "Vertsbiblioteket trenger oppfølging",
+      clientSnapshotActiveLoans: "Aktive utlån",
+      clientSnapshotSynced: "Vertsnapshot",
+      clientSnapshotSyncedLive: "Live vertsnapshot",
+      clientSnapshotSyncedCached: "Bufret vertsnapshot",
+      clientSnapshotCardTitle: "Skrivebeskyttet vertsvisning",
+      clientSnapshotCardHint:
+        "Denne enheten er koblet til som klient. Foreløpig vises vertsoppsummeringen her, mens skriveflyter fortsatt håndteres på verten.",
+      clientSnapshotLibraryId: "Bibliotek-ID",
+      clientSnapshotCapturedAt: "Snapshot tatt",
+      clientSnapshotHealthHint:
+        "Denne klienten viser foreløpig bare vertsoppsummeringen. Detaljert lagerhelse blir fortsatt håndtert på verten.",
       last30: "Siste 30 dager",
       consumption: "Filamentforbruk",
       consumptionCaption: "Forbruket summeres fra printerknyttede printjobber.",
@@ -1072,6 +1279,34 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       title: "Filamenter",
       subtitle: "Administrer lager, utlån og filamentvekt på ett sted.",
       addSpoolAction: "Legg til filament",
+      clientReadOnlyBanner:
+        "Denne enheten er koblet til som klient. Lagerendringer håndteres foreløpig på verten.",
+      clientReadOnlyAction:
+        "Denne enheten er koblet til som klient. Bruk verten for lagerendringer.",
+      clientReadOnlyManage:
+        "Denne enheten er koblet til som klient. Du kan se rullen her, og parede vertshandlinger holdes begrenset og tydelige.",
+      clientReadOnlyBannerPaired:
+        "Denne enheten er koblet til som klient. Lagerendringer sendes til den parede verten, mens verten fortsatt er bibliotekets sannhetskilde.",
+      clientHostUnavailable:
+        "Vertsdetaljer mangler for denne klientenheten.",
+      clientWriteRequiresPairing:
+        "Par denne desktop-klienten med verten før beskyttede sync-handlinger brukes.",
+      clientAssignedWeightUnsupported:
+        "Parede desktop-vektoppdateringer er foreløpig bare tilgjengelige for ruller som ikke er lastet i en printer.",
+      clientAssignedStatusUnsupported:
+        "Parede desktop-statusendringer er ikke tilgjengelige mens rullen fortsatt er lastet i en printer.",
+      clientWeightUpdated: "Vekten er oppdatert på vertsbiblioteket.",
+      clientTareWeightUpdated:
+        "Tom rull-vekt er oppdatert på vertsbiblioteket.",
+      clientLoanOutPairedHint:
+        "Tilgjengelige ruller lastes fra verten, og utlånet opprettes der.",
+      clientLoanOutUnpairedHint:
+        "Par denne desktop-klienten med verten før du oppretter utlån fra denne enheten.",
+      clientReadOnlyHost: "Vert",
+      clientReadOnlyLive: "Viser live lagerdata fra verten.",
+      clientReadOnlyCached: "Verten er utilgjengelig. Viser sist bufrede lagerdata.",
+      clientReadOnlyOffline: "Verten er utilgjengelig, og ingen bufrede lagerdata er tilgjengelige ennå.",
+      clientReadOnlyUpdated: "Oppdatert",
       searchPlaceholder: "Søk på materiale, farge, eier, lokasjon eller QR",
       viewGroup: "Visning",
       viewCards: "Kortvisning",
@@ -1387,6 +1622,22 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       },
     },
     loans: {
+      clientReadOnlyBanner:
+        "Denne enheten er koblet til som klient. Utlånsendringer håndteres foreløpig på verten.",
+      clientReadOnlyAction:
+        "Denne enheten er koblet til som klient. Bruk verten for utlånsendringer.",
+      clientReadOnlyBannerPaired:
+        "Denne enheten er koblet til som klient. Returer og tilbakeleveringer kan sendes til verten, mens nye utlån fortsatt opprettes der.",
+      clientHostUnavailable:
+        "Vertsdetaljer mangler for denne klientenheten.",
+      clientWriteRequiresPairing:
+        "Par denne desktop-klienten med verten før beskyttede utlånshandlinger brukes.",
+      clientReadOnlyHost: "Vert",
+      clientReadOnlyLive: "Viser live utlånsdata fra verten.",
+      clientReadOnlyCached: "Verten er utilgjengelig. Viser sist bufrede utlånsdata.",
+      clientReadOnlyOffline:
+        "Verten er utilgjengelig, og ingen bufrede utlånsdata er tilgjengelige ennå.",
+      clientReadOnlyUpdated: "Oppdatert",
       subtitle: "Følg utlån, innlånte filamenter og returer på ett sted.",
       exportCsv: "Eksporter utlån CSV",
       desktopOnly: "Utlånssporing er kun tilgjengelig i desktop-appen.",
@@ -1452,6 +1703,22 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
     printers: {
       subtitle: "Administrer spor og printerkoblet materialforbruk.",
       desktopOnly: "Printeroversikt er kun tilgjengelig i desktop-appen.",
+      clientReadOnlyBanner:
+        "Denne enheten er koblet til som klient. Endringer i printertildelinger håndteres foreløpig på verten.",
+      clientReadOnlyAction:
+        "Denne enheten er koblet til som klient. Bruk verten for printerendringer.",
+      clientReadOnlyBannerPaired:
+        "Denne enheten er koblet til som klient. Sporetildeling kan sendes til verten, mens printeroppsett fortsatt gjøres der.",
+      clientHostUnavailable:
+        "Vertsdetaljer mangler for denne klientenheten.",
+      clientWriteRequiresPairing:
+        "Par denne desktop-klienten med verten før beskyttede printerhandlinger brukes.",
+      clientReadOnlyHost: "Vert",
+      clientReadOnlyLive: "Viser live printerdata fra verten.",
+      clientReadOnlyCached: "Verten er utilgjengelig. Viser sist bufrede printerdata.",
+      clientReadOnlyOffline:
+        "Verten er utilgjengelig, og ingen bufrede printerdata er tilgjengelige ennå.",
+      clientReadOnlyUpdated: "Oppdatert",
       noPrinters: "Ingen printere konfigurert ennå. Bruk Legg til printer for å opprette en.",
       configuredPrinters: "Konfigurerte printere",
       loadedSlots: "Lastede spor",
@@ -1589,6 +1856,121 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       tabMaintenance: "Programvedlikehold",
       program: "Program",
       version: "Versjon",
+      librarySyncTitle: "Bibliotekroller",
+      librarySyncHint:
+        "Velg om denne enheten skal være lokal-only, være vert for et delt bibliotek, eller koble seg til en annen vert.",
+      librarySyncStandalone: "Kun lokal",
+      librarySyncHost: "Vert",
+      librarySyncClient: "Klient",
+      librarySyncDeviceName: "Enhetsnavn",
+      librarySyncDeviceNamePlaceholder: "Verksted-PC",
+      librarySyncLibraryId: "Bibliotek-ID",
+      librarySyncHostUrl: "Verts-URL",
+      librarySyncCheckHost: "Sjekk vert",
+      librarySyncChecking: "Sjekker...",
+      librarySyncHostCheckOk: "Vertsjekk bestått.",
+      librarySyncLinkHost: "Koble denne enheten til den sjekkede verten",
+      librarySyncUseCheckedHost: "Bruk denne sjekkede verten",
+      librarySyncLinkedHost: "Denne enheten er nå koblet til valgt vertsbibliotek.",
+      librarySyncPairHost: "Par desktop-klient",
+      librarySyncClientAuthTitle: "Desktop-klientparing",
+      librarySyncClientAuthHint:
+        "Lim inn en kortvarig parringslenke eller token fra verten for å låse opp beskyttede desktop-sync-handlinger.",
+      librarySyncClientAuthInput: "Parringslenke eller token",
+      librarySyncClientAuthPaired: "Paret",
+      librarySyncClientAuthUnpaired: "Ikke paret",
+      librarySyncClientAuthPairedAt: "Paret",
+      librarySyncClientAuthExpiresAt: "Økten utløper",
+      librarySyncClearClientAuth: "Fjern paring",
+      librarySyncClientAuthCleared: "Desktop-klientparingen ble fjernet fra denne enheten.",
+      librarySyncClientPaired:
+        "Desktop-klienten er paret med verten. Beskyttede sync-handlinger kan nå aktiveres.",
+      librarySyncFetchSnapshot: "Hent snapshot",
+      librarySyncRefreshingSnapshot: "Oppdaterer snapshot...",
+      librarySyncSnapshotRefreshed: "Vertsnapshot oppdatert.",
+      librarySyncRemoteDevice: "Fjern-enhet",
+      librarySyncRemoteLibraryId: "Fjern bibliotek-ID",
+      librarySyncRemoteMode: "Fjern rolle",
+      librarySyncRemoteAuth: "Auth-modus",
+      librarySyncLastStatus: "Siste vertsstatus",
+      librarySyncLastChecked: "Sist sjekket",
+      librarySyncLastReachable: "Sist nåbar",
+      librarySyncCachedSnapshot: "Bufret vertsnapshot",
+      librarySyncNoSnapshotYet: "Ingen snapshot bufret ennå",
+      librarySyncNoSnapshotHint:
+        "Hent et vertsnapshot for å ha en liten skrivebeskyttet visning tilgjengelig her.",
+      librarySyncStatusLive: "Live",
+      librarySyncStatusCached: "Bufret",
+      librarySyncStatusOffline: "Offline",
+      librarySyncSnapshotCapturedAt: "Tatt",
+      librarySyncSnapshotTotalSpools: "Totale filamenter",
+      librarySyncSnapshotInUse: "I bruk",
+      librarySyncSnapshotLowStock: "Lav beholdning",
+      librarySyncSnapshotLoans: "Aktive utlån",
+      librarySyncSnapshotPrinters: "Printere",
+      librarySyncHostReady: "Vertsberedskap",
+      librarySyncHostReadyLive: "Trusted-LAN-webappen er allerede tilgjengelig på denne enheten.",
+      librarySyncHostReadyHint:
+        "Slå på Nettlesertilgang for å eksponere denne verten til andre enheter på det betrodde nettverket.",
+      librarySyncStandaloneHint: "Denne enheten fortsetter å bruke bare sitt eget lokale bibliotek.",
+      librarySyncHostHint:
+        "Denne enheten klargjøres til å være vert for biblioteket for andre desktop- eller nettleserklienter.",
+      librarySyncClientHint:
+        "Denne enheten kobler seg til en annen vert og beholder en skrivebeskyttet reserve-cache når verten er utilgjengelig.",
+      librarySyncPreparedHost:
+        "Denne enheten er nå klargjort til å bli vert når du lagrer.",
+      librarySyncPreparedStandalone:
+        "Denne enheten er nå klargjort til å kobles fra delt bibliotek når du lagrer.",
+      librarySyncPreparedClient:
+        "Denne enheten er nå klargjort til å koble seg til som klient når du lagrer.",
+      librarySyncPromoteToHost: "Klargjør denne enheten som vert",
+      librarySyncDisconnectHost: "Koble fra vert",
+      librarySyncUseStandalone: "Bruk denne enheten lokalt",
+      librarySyncOpenBrowserAccess: "Åpne Nettlesertilgang",
+      librarySyncMigrationTitle: "Vertsbytte",
+      librarySyncMigrationHostHint:
+        "Bruk full sikkerhetskopi-eksport for å flytte dette biblioteket til en annen maskin på en kontrollert måte.",
+      librarySyncMigrationClientHint:
+        "Hvis denne enheten senere skal overta som vert, importer først en full sikkerhetskopi fra dagens vert, og lagre deretter Vert-rollen her.",
+      librarySyncMigrationSafetyNote:
+        "Maskinlokale nettleserparringer og gjeldende vertsforbindelse blir ikke importert. Koble opp den nye verten på nytt etter overtakelsen.",
+      librarySyncMigrationStepHostAccess:
+        "Nettlesertilgang er aktiv på denne verten",
+      librarySyncMigrationStepHostAccessHint:
+        "Slå på Nettlesertilgang før andre enheter prøver å koble seg til.",
+      librarySyncMigrationStepExport:
+        "Eksporter en full sikkerhetskopi fra gjeldende vert",
+      librarySyncMigrationStepExportHint:
+        "Bruk eksportknappen under før du importerer på neste maskin.",
+      librarySyncMigrationStepValidate:
+        "Valider vertsbackupen på denne enheten",
+      librarySyncMigrationStepValidateHint:
+        "Valgfritt, men nyttig før du importerer og overtar.",
+      librarySyncMigrationStepValidateOk:
+        "En full backup-fil er kontrollert i denne økten.",
+      librarySyncMigrationStepImport:
+        "Importer full sikkerhetskopi på denne enheten",
+      librarySyncMigrationStepImportHint:
+        "Importer vertsbackupen her før denne enheten overtar.",
+      librarySyncMigrationStepPrepare:
+        "Klargjør denne enheten som neste vert",
+      librarySyncMigrationStepPrepareHint:
+        "Bruk Vert-rollen slik at denne maskinen blir ny sannhetskilde.",
+      librarySyncMigrationStepPrepareOk:
+        "Rolleutkastet er allerede satt til Vert.",
+      librarySyncMigrationStepSave:
+        "Lagre rolleendringen for å fullføre overtakelsen",
+      librarySyncMigrationStepSaveHint:
+        "Den endelige Lagre-knappen under er siste bevisste overtakelsessteg.",
+      librarySyncMigrationStepSaveOk:
+        "Denne enheten er allerede lagret som aktiv vert.",
+      librarySyncStepDone: "Ferdig",
+      librarySyncStepPending: "Venter",
+      librarySyncOpenMaintenance: "Åpne vedlikeholdsverktøy",
+      librarySyncSaveHint: "Rolleendringer trer i kraft når du lagrer bibliotekrollen under.",
+      librarySyncSave: "Lagre bibliotekrolle",
+      librarySyncSaving: "Lagrer...",
+      librarySyncSaved: "Bibliotekrolle lagret.",
       language: "Språk",
       languageHint:
         "Velg appspråk for alle hovedvisninger.",
@@ -1802,6 +2184,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       catalogResetDone: "Katalognullstilling fullført",
       backupExported: "Full sikkerhetskopi eksportert (lager, historikk og printere).",
       backupImported: "Full sikkerhetskopi importert.",
+      librarySyncImportedOnClientHint:
+        "Denne enheten er nå klargjort som neste vert. Gå gjennom Bibliotekroller og lagre når den skal overta.",
       inventoryImportDone: "Lagerimport fullført.",
       importSource: "Kilde",
       importDetectedInventoryCsv: "Lager CSV",
@@ -1910,6 +2294,13 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         loadTrustedLanPairedBrowsers: "Kunne ikke oppdatere parede nettlesere.",
         revokeTrustedLanBrowser: "Kunne ikke tilbakekalle trusted-LAN-nettleseren.",
         revokeAllTrustedLanBrowsers: "Kunne ikke tilbakekalle trusted-LAN-nettlesere.",
+        librarySyncSave: "Kunne ikke lagre bibliotekrolle.",
+        librarySyncHostCheck: "Kunne ikke sjekke konfigurert vert.",
+        librarySyncLinkHost: "Kunne ikke koble denne enheten til vertsbiblioteket.",
+        librarySyncPairHost: "Kunne ikke pare denne desktop-klienten med verten.",
+        librarySyncClearClientAuth: "Kunne ikke fjerne lagret desktop-klientparing.",
+        librarySyncPrinterWriteRequiresPairing:
+          "Par denne desktop-klienten med verten før du endrer printere.",
       },
     },
   },
