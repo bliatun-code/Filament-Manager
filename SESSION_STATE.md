@@ -6,7 +6,7 @@ Historical notes below still mention the old localhost browser companion, `qa:co
 
 ## Current Status
 - Sync RC prep notes (2026-04-09, local WIP moving to pre-release):
-  - version target is now `v0.9.0-rc.1` as a GitHub pre-release for real host/client QA
+  - version target is now `v0.9.0-rc.2` as a GitHub pre-release for real host/client QA
   - sync write scope now includes add-spool, wishlist admin, and printer create/update/delete from client mode
   - dedicated two-machine RC checklist added at `docs/MULTI_DEVICE_SYNC_QA_CHECKLIST.md`
 - Multi-device sync MVP work-in-progress notes (2026-04-09, not yet committed/pushed):
