@@ -39,15 +39,13 @@ function printLine(line) {
 
 const nodeVersion = process.versions.node;
 const nodeMajor = Number.parseInt(nodeVersion.split(".")[0] ?? "0", 10);
+const supportedNodeMajor = 24;
 
 printHeader("Runtime");
 printLine(`- node: ${nodeVersion}`);
-if (Number.isNaN(nodeMajor) || nodeMajor < 20) {
-  errors.push(`Node ${nodeVersion} is unsupported. Use Node 20+.`);
-}
-if (nodeMajor >= 23) {
-  warnings.push(
-    `Node ${nodeVersion} is newer than current LTS; native modules may rely on fallbacks.`,
+if (Number.isNaN(nodeMajor) || nodeMajor !== supportedNodeMajor) {
+  errors.push(
+    `Node ${nodeVersion} is unsupported. Use Node ${supportedNodeMajor}.x.`,
   );
 }
 

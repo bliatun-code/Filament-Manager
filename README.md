@@ -16,7 +16,7 @@ The project is configured to keep working when upstream dependencies change:
 
 ## Requirements
 
-- Node.js `>=20 <26`
+- Node.js `24.x`
 - npm `>=10`
 - Rust toolchain (for Tauri build)
 - Xcode app + Command Line Tools (macOS build)
@@ -25,6 +25,7 @@ The project is configured to keep working when upstream dependencies change:
 ## Install
 
 ```bash
+nvm use || nvm install
 npm install
 cd ui && npm install
 ```
@@ -34,7 +35,6 @@ cd ui && npm install
 - Supported build path: Windows 11 + Tauri MSI
 - Recommended Node/npm baseline for development:
   - Node `24.x` recommended
-  - Node `20.x` still supported
   - npm `>=10`
 - Recommended Rust target:
   - `x86_64-pc-windows-msvc`
