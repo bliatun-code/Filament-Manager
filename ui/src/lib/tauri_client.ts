@@ -151,6 +151,7 @@ export type LibrarySyncRemoteSnapshot = {
   library_id: string;
   device_name: string;
   sync_mode: string;
+  inventory: InventoryOverview;
   total_spools: number;
   in_use: number;
   low_stock: number;

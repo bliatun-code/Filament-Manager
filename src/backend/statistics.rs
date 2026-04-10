@@ -3,7 +3,7 @@ use std::path::Path;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct InventoryOverview {
     pub total_spools: i64,
     pub total_owned_spools: i64,
@@ -67,10 +67,12 @@ impl StatisticsEngine {
                 COUNT(*) AS total_spools,
                 COALESCE(SUM(CASE
                     WHEN COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'OWNED'
+                     AND status IN ('IN_STOCK', 'IN_USE')
                     THEN 1 ELSE 0
                 END), 0) AS total_owned_spools,
                 COALESCE(SUM(CASE
                     WHEN COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'BORROWED_IN'
+                     AND status IN ('IN_STOCK', 'IN_USE')
                     THEN 1 ELSE 0
                 END), 0) AS total_borrowed_in_spools,
                 COALESCE(SUM(CASE WHEN status = 'IN_USE' THEN 1 ELSE 0 END), 0) AS in_use,
@@ -88,14 +90,14 @@ impl StatisticsEngine {
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
                      AND remaining_g <= 200
-                     AND status NOT IN ('EMPTY', 'LOST')
+                     AND status IN ('IN_STOCK', 'IN_USE')
                     THEN 1 ELSE 0
                 END), 0) AS low_stock,
                 COALESCE(SUM(CASE
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
                      AND remaining_g <= 200
-                     AND status NOT IN ('EMPTY', 'LOST')
+                     AND status IN ('IN_STOCK', 'IN_USE')
                      AND COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'OWNED'
                     THEN 1 ELSE 0
                 END), 0) AS owned_low_stock,
@@ -103,7 +105,7 @@ impl StatisticsEngine {
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
                      AND remaining_g <= 200
-                     AND status NOT IN ('EMPTY', 'LOST')
+                     AND status IN ('IN_STOCK', 'IN_USE')
                      AND COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'BORROWED_IN'
                     THEN 1 ELSE 0
                 END), 0) AS borrowed_in_low_stock
@@ -398,6 +400,27 @@ mod tests {
             })
             .map_err(|error| error.to_string())?;
 
+            db.insert_spool(&SpoolRow {
+                id: "loaned_out_1".to_string(),
+                master_id: master_id.clone(),
+                qr_code: None,
+                status: "BORROWED".to_string(),
+                ownership_type: "OWNED".to_string(),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                current_weight_g: Some(190),
+                remaining_g: Some(190),
+                spool_tare_weight_g: None,
+                location_id: None,
+                purchase_date: None,
+                purchase_price: None,
+                batch_code: None,
+                last_used_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+
             db.upsert_printer_with_ams("printer_1", "P1S", "P1S", 1, 4)
                 .map_err(|error| error.to_string())?;
             db.insert_print_job("printer_1", "owned_2", Some("Owned job"), 125, true)
@@ -410,8 +433,8 @@ mod tests {
                 .inventory_overview()
                 .map_err(|error| error.to_string())?;
 
-            assert_eq!(overview.total_spools, 5);
-            assert_eq!(overview.total_owned_spools, 4);
+            assert_eq!(overview.total_spools, 6);
+            assert_eq!(overview.total_owned_spools, 2);
             assert_eq!(overview.total_borrowed_in_spools, 1);
             assert_eq!(overview.in_use, 2);
             assert_eq!(overview.owned_in_use, 1);

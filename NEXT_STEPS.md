@@ -2,7 +2,7 @@
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current browser baseline is trusted-LAN-only, with `Storage` as the browser label for desktop `Inventory` / `Lager` and `Add spool` as the browser intake action.
 
-## v0.9.0-rc.2 Sync RC (2026-04-09)
+## v0.9.0-rc.2 Sync RC (2026-04-10)
 - Release target:
   - first pre-release candidate for cross-device sync testing
   - intended for manual host/client QA before the final `v0.9.0`
@@ -13,6 +13,12 @@ Historical notes below still mention the old localhost browser companion, `qa:co
 - RC validation focus:
   - two-machine host/client QA using `docs/MULTI_DEVICE_SYNC_QA_CHECKLIST.md`
   - confirm live/cached/offline behavior plus protected writes
+  - completed for current core surfaces:
+    - `Oversikt / Dashboard`
+    - `Lager / Inventory`
+    - `Printere / Printers`
+    - `Utlån / Loans`
+    - `Statistikk / Statistics`
 
 ## v0.8.4 Release Closeout (2026-04-09)
 - Release baseline:
@@ -27,7 +33,7 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - keep the next implementation batch scoped to new product work or targeted bug fixes only
   - if any post-release issue appears, fix forward from `v0.8.4` instead of rewriting older release tags
 
-## Multi-Device Sync MVP Checkpoint (local WIP, 2026-04-09)
+## Multi-Device Sync MVP Checkpoint (local WIP, 2026-04-10)
 - Current local baseline:
   - role model per install: `Standalone / Host / Client`
   - persistent `library_id`
@@ -42,12 +48,23 @@ Historical notes below still mention the old localhost browser companion, `qa:co
     - `wishlist create/status/delete/stock-now`
     - `printer create/update/delete`
   - controlled host handoff via backup/import + role switch
-- Remaining work before checkpoint commit/push:
-  - manual end-to-end QA on two machines (`Host` + `Client`) for read/live/cached transitions
-  - manual end-to-end QA on two machines for paired protected writes (`add spool`, wishlist, printer admin, slot assignment, loan out, return)
-  - write down MVP boundary explicitly after two-machine QA confirms the intended remote-admin scope
-  - decide whether one more migration/polish batch is needed, or whether current write scope is the intended RC boundary
-  - document known non-goals explicitly in release-facing notes before publishing the sync series
+- Current MVP boundary after QA:
+  - paired client supports full remote daily administration for:
+    - dashboard/inventory/printers/loans/statistics reads
+    - weight/tare/location/status updates
+    - printer slot assignment
+    - loan out / return / hand-back
+    - add spool
+    - wishlist admin
+    - printer admin
+  - still host-only:
+    - broader maintenance/reset flows
+    - catalog refresh/repair
+    - backup/validation flows as routine client actions
+    - multi-master/offline-write replication
+- Next recommended work after checkpoint commit/push:
+  - review `Settings` end-to-end for library roles + host webapp/trusted-LAN clarity
+  - decide whether to cut a new RC after Settings polish or keep sync fixes in the current RC line
 
 ## v0.8.1 Release Readiness (2026-04-08)
 - Release baseline:

@@ -764,7 +764,7 @@ export default function LoansPage() {
                             <span
                               className={semanticChipClass(
                                 isInbound ? "warning" : "info",
-                                "px-2 py-0.5 text-[10px]",
+                                "px-2.5 py-0.5 text-[10px] whitespace-nowrap",
                               )}
                             >
                               {isInbound
@@ -782,7 +782,7 @@ export default function LoansPage() {
                         <span
                           className={semanticChipClass(
                             isActive ? "warning" : "success",
-                            "px-2 py-0.5 text-[10px]",
+                            "px-2.5 py-0.5 text-[10px] whitespace-nowrap",
                           )}
                         >
                           {isActive

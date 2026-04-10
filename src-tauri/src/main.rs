@@ -320,6 +320,7 @@ struct LibrarySyncRemoteSnapshot {
     library_id: String,
     device_name: String,
     sync_mode: String,
+    inventory: InventoryOverview,
     total_spools: i64,
     in_use: i64,
     low_stock: i64,
@@ -956,6 +957,7 @@ fn fetch_library_sync_snapshot(
         library_id: parsed.library_id,
         device_name: parsed.device_name,
         sync_mode: parsed.sync_mode,
+        inventory: parsed.inventory.clone(),
         total_spools: parsed.inventory.total_spools,
         in_use: parsed.inventory.in_use,
         low_stock: parsed.inventory.low_stock,
@@ -970,6 +972,7 @@ fn fetch_library_sync_snapshot(
                 library_id: snapshot.library_id.clone(),
                 device_name: snapshot.device_name.clone(),
                 sync_mode: snapshot.sync_mode.clone(),
+                inventory: snapshot.inventory.clone(),
                 total_spools: snapshot.total_spools,
                 in_use: snapshot.in_use,
                 low_stock: snapshot.low_stock,
@@ -1113,7 +1116,7 @@ fn fetch_library_sync_catalog_masters(
     let _search = input.search;
     fetch_library_sync_host_json(
         &normalized_base_url,
-        &format!("/api/v1/catalog/masters?limit={limit}"),
+        &format!("/api/v1/library/catalog/masters?limit={limit}"),
     )
 }
 
@@ -1133,7 +1136,7 @@ fn fetch_library_sync_wishlist_items(
     let limit = input.limit.unwrap_or(500).clamp(1, 2_500);
     fetch_library_sync_host_json(
         &normalized_base_url,
-        &format!("/api/v1/wishlist?limit={limit}"),
+        &format!("/api/v1/library/wishlist?limit={limit}"),
     )
 }
 

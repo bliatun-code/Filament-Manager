@@ -458,6 +458,8 @@ fn build_router(state: CompanionApiState) -> Router {
         .route("/api/v1/library/spools", get(handle_library_spools))
         .route("/api/v1/library/printers", get(handle_library_printers))
         .route("/api/v1/library/loans", get(handle_library_loans))
+        .route("/api/v1/library/catalog/masters", get(handle_library_catalog_masters))
+        .route("/api/v1/library/wishlist", get(handle_library_wishlist_items))
         .route("/api/v1/auth/session", get(handle_session_status))
         .route("/api/v1/auth/pair", post(handle_pair_session))
         .route("/api/v1/auth/renew", post(handle_renew_session))
@@ -582,6 +584,34 @@ async fn handle_library_loans(
     let rows = state
         .service
         .list_spool_loans(limit, include_returned, Some(direction))
+        .map_err(CompanionApiError::from)?;
+    Ok(Json(rows))
+}
+
+async fn handle_library_catalog_masters(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+    Query(query): Query<CatalogListQuery>,
+) -> Result<Json<Vec<FilamentMasterCatalogRow>>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    let limit = query.limit.unwrap_or(1_000).clamp(1, 5_000);
+    let rows = state
+        .service
+        .list_master_catalog(limit, query.search.as_deref())
+        .map_err(CompanionApiError::from)?;
+    Ok(Json(rows))
+}
+
+async fn handle_library_wishlist_items(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+    Query(query): Query<PaginationQuery>,
+) -> Result<Json<Vec<WishlistItemRow>>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    let limit = query.limit.unwrap_or(500).clamp(1, 2_000);
+    let rows = state
+        .service
+        .list_wishlist_items(limit)
         .map_err(CompanionApiError::from)?;
     Ok(Json(rows))
 }

@@ -1,10 +1,22 @@
 # Session State
 
-Last updated: 2026-04-09
+Last updated: 2026-04-10
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
+- Sync RC local QA checkpoint (2026-04-10, ready for commit/push without release):
+  - core host/client QA is now green for:
+    - `Oversikt / Dashboard`
+    - `Lager / Inventory`
+    - `Printere / Printers`
+    - `Utlån / Loans`
+    - `Statistikk / Statistics`
+  - client dashboard now uses host-oriented status language and no longer exposes redundant library chrome
+  - client role now hides local browser-access controls; trusted-LAN/webapp remains a host-owned concern
+  - statistics client mode is now wired through host snapshot/printer/loan data with tolerant live/cache fallback
+  - backend statistics `on hand` totals now exclude loaned-out and empty rolls and align better with operational stock semantics
+  - the current intended sync MVP boundary is now “full remote daily administration” from a paired client, while broader maintenance/reset/catalog flows remain host-only
 - Sync RC prep notes (2026-04-09, local WIP moving to pre-release):
   - version target is now `v0.9.0-rc.2` as a GitHub pre-release for real host/client QA
   - sync write scope now includes add-spool, wishlist admin, and printer create/update/delete from client mode

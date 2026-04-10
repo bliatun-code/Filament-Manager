@@ -454,18 +454,6 @@ export default function PrintersPage() {
     }
   }, []);
 
-  const assignedSpoolIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const printer of printers) {
-      for (const slot of printer.slots) {
-        if (slot.spool_id) {
-          ids.add(slot.spool_id);
-        }
-      }
-    }
-    return ids;
-  }, [printers]);
-
   const resolveSpoolTareWeightById = useCallback(
     (spoolId: string | null | undefined) => {
       const id = (spoolId ?? "").trim();
@@ -693,18 +681,22 @@ export default function PrintersPage() {
   function allowedSpoolsForSlot(slotSpoolId?: string | null) {
     return spools.filter((row) => {
       const status = (row.spool.status ?? "").trim().toUpperCase();
+      const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
       if (
         status === "EMPTY" ||
         status === "LOST" ||
         status === "MISSING" ||
-        status === "BORROWED"
+        (status === "BORROWED" && ownershipType !== "BORROWED_IN")
       ) {
         return false;
       }
       if (slotSpoolId && row.spool.id === slotSpoolId) {
         return true;
       }
-      return !assignedSpoolIds.has(row.spool.id);
+      if (status === "IN_USE") {
+        return false;
+      }
+      return true;
     });
   }
 

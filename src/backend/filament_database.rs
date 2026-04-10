@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use super::statistics::InventoryOverview;
 use super::vendor_lookup::normalize_esun_color_name_for_catalog;
 use rusqlite::types::ValueRef;
 use rusqlite::{params, Connection, OptionalExtension, Row};
@@ -308,6 +309,7 @@ pub struct LibrarySyncCachedSnapshotRow {
     pub library_id: String,
     pub device_name: String,
     pub sync_mode: String,
+    pub inventory: InventoryOverview,
     pub total_spools: i64,
     pub in_use: i64,
     pub low_stock: i64,
@@ -4457,6 +4459,7 @@ mod tests {
         FilamentDatabase, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, SpoolRow,
         TrustedLanSettingsRow,
     };
+    use crate::InventoryOverview;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -5009,6 +5012,20 @@ mod tests {
                         library_id: saved.library_id.clone(),
                         device_name: "Main Host".to_string(),
                         sync_mode: "HOST".to_string(),
+                        inventory: InventoryOverview {
+                            total_spools: 42,
+                            total_owned_spools: 40,
+                            total_borrowed_in_spools: 2,
+                            in_use: 4,
+                            owned_in_use: 3,
+                            borrowed_in_in_use: 1,
+                            low_stock: 3,
+                            owned_low_stock: 2,
+                            borrowed_in_low_stock: 1,
+                            total_consumption_30d: 1200,
+                            owned_consumption_30d: 900,
+                            borrowed_in_consumption_30d: 300,
+                        },
                         total_spools: 42,
                         in_use: 4,
                         low_stock: 3,

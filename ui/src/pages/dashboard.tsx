@@ -7,7 +7,11 @@ import {
   type ActivityItem,
 } from "../components/dashboard_widgets";
 import {
+  fetchLibrarySyncLoans,
+  fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncSnapshot,
+  fetchLibrarySyncSpools,
+  fetchLibrarySyncWishlistItems,
   getTrustedLanCompanionStatus,
   getLibrarySyncSettings,
   inventoryOverview,
@@ -17,7 +21,7 @@ import {
   listWishlistItems,
   listSpools,
   topMaterials,
-  type LibrarySyncRemoteSnapshot,
+  type WishlistItemRow,
   type TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
 import { useI18n } from "../lib/i18n";
@@ -68,6 +72,18 @@ type DashboardGoalMetrics = {
   loadedSlots: number;
 };
 
+function parseUtcTimestamp(raw: string): Date | null {
+  const normalized = raw.trim();
+  if (!normalized) {
+    return null;
+  }
+  const parsed = new Date(normalized.replace(" ", "T") + "Z");
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  return parsed;
+}
+
 function progressRatio(current: number, target: number): number {
   if (target <= 0) {
     return 0;
@@ -92,8 +108,6 @@ export default function DashboardPage({
 }: DashboardPageProps) {
   const { t } = useI18n();
   const tauri = isTauri();
-  const [clientSnapshot, setClientSnapshot] = useState<LibrarySyncRemoteSnapshot | null>(null);
-  const [clientModeActive, setClientModeActive] = useState(false);
   const [goalMetrics, setGoalMetrics] = useState<DashboardGoalMetrics>(
     () =>
       cachedGoalMetrics ?? {
@@ -242,6 +256,11 @@ export default function DashboardPage({
     t("dashboard.syncedFromDb", "Synced from local DB"),
   );
   const [companionStatus, setCompanionStatus] = useState<TrustedLanCompanionStatus | null>(null);
+  const [dashboardSyncMode, setDashboardSyncMode] = useState<string>("STANDALONE");
+  const [clientHostCompanionTone, setClientHostCompanionTone] = useState<"off" | "live" | "warn">(
+    "off",
+  );
+  const [clientHostDisplayName, setClientHostDisplayName] = useState<string | null>(null);
 
   const refreshDashboard = useCallback(
     async (cancelledRef?: { current: boolean }) => {
@@ -257,147 +276,304 @@ export default function DashboardPage({
         return;
       }
 
+      setDashboardSyncMode((syncSettings?.mode ?? "STANDALONE").trim().toUpperCase());
       setCompanionStatus(trustedLan);
       const cachedSnapshot = syncSettings?.cached_snapshot ?? null;
       const clientMode = syncSettings?.mode === "CLIENT";
+      setClientHostDisplayName(
+        syncSettings?.host_device_name ?? cachedSnapshot?.device_name ?? null,
+      );
+      if (clientMode) {
+        if (!syncSettings?.host_base_url) {
+          setClientHostCompanionTone("off");
+        }
+      } else {
+        setClientHostCompanionTone(
+          !trustedLan?.enabled
+            ? "off"
+            : trustedLan.running && trustedLan.shell_reachable
+              ? "live"
+              : "warn",
+        );
+      }
       let activeClientSnapshot = cachedSnapshot;
       let clientSnapshotSource: "live" | "cached" = "cached";
+      let clientSpoolRows = syncSettings?.cached_spools?.rows ?? null;
+      let clientPrinterRows = syncSettings?.cached_printers?.rows ?? null;
+      let clientLoanRows = syncSettings?.cached_loans?.rows ?? null;
+      let clientWishlistRows = [] as WishlistItemRow[];
       if (clientMode && syncSettings?.host_base_url) {
-        try {
-          activeClientSnapshot = await fetchLibrarySyncSnapshot(
-            syncSettings.host_base_url,
-            syncSettings.library_id,
-          );
+        const [snapshotResult, spoolsResult, printersResult, loansResult, wishlistResult] =
+          await Promise.allSettled([
+            fetchLibrarySyncSnapshot(syncSettings.host_base_url, syncSettings.library_id),
+            fetchLibrarySyncSpools(syncSettings.host_base_url, syncSettings.library_id, 2500, 0),
+            fetchLibrarySyncPrinterOverview(syncSettings.host_base_url, syncSettings.library_id),
+            fetchLibrarySyncLoans(syncSettings.host_base_url, syncSettings.library_id, 2000),
+            fetchLibrarySyncWishlistItems(syncSettings.host_base_url, syncSettings.library_id, 500),
+          ]);
+        if (snapshotResult.status === "fulfilled") {
+          activeClientSnapshot = snapshotResult.value;
           clientSnapshotSource = "live";
-        } catch (error) {
-          console.error(error);
+          setClientHostCompanionTone("live");
+          setClientHostDisplayName(snapshotResult.value.device_name ?? syncSettings?.host_device_name ?? null);
+        } else {
+          console.error(snapshotResult.reason);
+          setClientHostCompanionTone(syncSettings?.host_base_url ? "warn" : "off");
+        }
+        if (spoolsResult.status === "fulfilled") {
+          clientSpoolRows = spoolsResult.value;
+        } else {
+          console.error(spoolsResult.reason);
+        }
+        if (printersResult.status === "fulfilled") {
+          clientPrinterRows = printersResult.value;
+        } else {
+          console.error(printersResult.reason);
+        }
+        if (loansResult.status === "fulfilled") {
+          clientLoanRows = loansResult.value;
+        } else {
+          console.error(loansResult.reason);
+        }
+        if (wishlistResult.status === "fulfilled") {
+          clientWishlistRows = wishlistResult.value;
+        } else {
+          console.error(wishlistResult.reason);
         }
       }
-      setClientModeActive(clientMode);
-      setClientSnapshot(activeClientSnapshot);
-
       if (clientMode && activeClientSnapshot) {
+        const spoolRows = clientSpoolRows ?? [];
+        const printers = clientPrinterRows ?? [];
+        const loans = clientLoanRows ?? [];
+        const overview = activeClientSnapshot.inventory;
+        const printerCount = printers.length;
+        const effectiveSlotTotals = printers.reduce(
+          (sum, printer) => {
+            const summary = summarizeEffectivePrinterSlots(printer.slots);
+            return {
+              loadedSlots: sum.loadedSlots + summary.loadedSlots,
+              totalSlots: sum.totalSlots + summary.totalSlots,
+            };
+          },
+          { loadedSlots: 0, totalSlots: 0 },
+        );
+        const onOrderCount = clientWishlistRows
+          .filter((item) => item.status === "ON_ORDER")
+          .reduce((sum, item) => sum + Math.max(1, item.quantity || 1), 0);
+        const onHandRows = spoolRows.filter((row) => {
+          const status = (row.spool.status ?? "").trim().toUpperCase();
+          return status === "IN_STOCK" || status === "IN_USE";
+        });
+        const onHandTotal = onHandRows.length;
+        const onHandOwned = onHandRows.filter((row) => {
+          const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
+          return ownershipType !== "BORROWED_IN";
+        }).length;
+        const onHandBorrowedIn = onHandRows.filter((row) => {
+          const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
+          return ownershipType === "BORROWED_IN";
+        }).length;
+        const onHandInUse = onHandRows.filter((row) => {
+          const status = (row.spool.status ?? "").trim().toUpperCase();
+          return status === "IN_USE";
+        }).length;
+        const lowStockRows = spoolRows
+          .filter((row) => {
+            const status = (row.spool.status ?? "").trim().toUpperCase();
+            const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
+            return (
+              status !== "EMPTY" &&
+              status !== "LOST" &&
+              remaining > 0 &&
+              remaining <= LOW_STOCK_GRAMS
+            );
+          })
+          .sort((left, right) => (left.spool.remaining_g ?? 0) - (right.spool.remaining_g ?? 0))
+          .slice(0, 5)
+          .map((row) => ({
+            id: row.spool.id,
+            name: row.master.filament_name,
+            color: row.master.color_name,
+            remaining: `${row.spool.remaining_g ?? 0} g`,
+          }));
+        const lowStockCount = lowStockRows.length;
+        const ownedLowStockCount = spoolRows.filter((row) => {
+          const status = (row.spool.status ?? "").trim().toUpperCase();
+          const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
+          const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
+          return (
+            status !== "EMPTY" &&
+            status !== "LOST" &&
+            ownershipType !== "BORROWED_IN" &&
+            remaining > 0 &&
+            remaining <= LOW_STOCK_GRAMS
+          );
+        }).length;
+        const borrowedInLowStockCount = spoolRows.filter((row) => {
+          const status = (row.spool.status ?? "").trim().toUpperCase();
+          const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
+          const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
+          return (
+            status !== "EMPTY" &&
+            status !== "LOST" &&
+            ownershipType === "BORROWED_IN" &&
+            remaining > 0 &&
+            remaining <= LOW_STOCK_GRAMS
+          );
+        }).length;
+        const liveActivity: ActivityItem[] = [
+          ...loans.slice(0, 3).map((loan) => ({
+            id: `loan-${loan.loan.id}`,
+            title: `${t("dashboard.loanedTo", "Loaned to")} ${loan.loan.borrower_name}`,
+            detail: `${loan.material} ${loan.filament_name} · ${loan.loan.grams_out} g`,
+            tone: "amber" as const,
+          })),
+          ...printers.slice(0, 3).map((printer) => ({
+            id: `printer-${printer.printer.id}`,
+            title: printer.printer.name,
+            detail: `${printer.usage.total_jobs} ${t("printers.jobs", "jobs")} · ${printer.usage.total_used_g} g ${t("printers.used", "used")}`,
+            tone: "sky" as const,
+          })),
+        ];
+
         setStats([
           {
             id: "total",
             title: t("dashboard.totalSpools", "Total Spools"),
-            value: activeClientSnapshot.total_spools.toString(),
-            subtitle: t("dashboard.clientSnapshotSubtitle", "Read-only host snapshot"),
-            trend: `${activeClientSnapshot.in_use} ${t("dashboard.inUse", "in use")}`,
+            value: onHandTotal.toString(),
+            subtitle: t("dashboard.totalSpoolsSubtitle", "Across all locations"),
+            trend: `${onHandInUse} ${t("dashboard.inUse", "in use")}`,
             accent: "sky" as const,
           },
           {
             id: "activePrinters",
             title: t("dashboard.activePrinters", "Active Printers"),
-            value: activeClientSnapshot.printers.toString(),
-            subtitle: t("dashboard.clientSnapshotHostPrinters", "On the host"),
+            value: printerCount.toString(),
+            subtitle: `${printerCount} ${t("dashboard.configured", "configured")}`,
             trend:
-              activeClientSnapshot.printers > 0
-                ? t("dashboard.clientSnapshotHostOnline", "Host reported printer activity")
+              printerCount > 0
+                ? t("dashboard.allConfiguredActive", "All configured printers are active")
                 : t("dashboard.noPrintersConfigured", "No printers configured"),
             accent: "emerald" as const,
           },
           {
             id: "lowStock",
             title: t("dashboard.lowStock", "Low Stock"),
-            value: activeClientSnapshot.low_stock.toString(),
+            value: lowStockCount.toString(),
             subtitle: t("dashboard.below200", "Below 200g"),
             trend:
-              activeClientSnapshot.low_stock > 0
-                ? t("dashboard.clientSnapshotNeedsAttention", "Host library needs attention")
+              lowStockRows.length > 0
+                ? `${lowStockRows[0].remaining} ${t("dashboard.lowest", "lowest")}`
                 : t("dashboard.noAlerts", "No alerts"),
             accent: "rose" as const,
           },
           {
-            id: "activeLoans",
-            title: t("dashboard.clientSnapshotActiveLoans", "Active Loans"),
-            value: activeClientSnapshot.active_loans.toString(),
-            subtitle: t("dashboard.clientSnapshotSubtitle", "Read-only host snapshot"),
-            trend: activeClientSnapshot.device_name,
+            id: "monthlyUsage",
+            title: t("dashboard.monthlyUsage", "Monthly Usage"),
+            value: `${overview.total_consumption_30d} g`,
+            subtitle: t("dashboard.last30", "Last 30 days"),
+            trend: `${Math.round(overview.total_consumption_30d / 30)} g/day`,
             accent: "amber" as const,
           },
         ]);
+        const capturedAt = parseUtcTimestamp(activeClientSnapshot.captured_at);
         setLastSyncLabel(
           `${t(
             clientSnapshotSource === "live"
               ? "dashboard.clientSnapshotSyncedLive"
               : "dashboard.clientSnapshotSyncedCached",
             clientSnapshotSource === "live" ? "Live host snapshot" : "Cached host snapshot",
-          )} ${new Date(
-            activeClientSnapshot.captured_at.replace(" ", "T"),
-          ).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}`,
+          )} ${
+            capturedAt
+              ? capturedAt.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : activeClientSnapshot.captured_at
+          }`,
         );
-        setActivity([
-          {
-            id: "client-snapshot",
-            title: t("dashboard.clientSnapshotCardTitle", "Read-only host preview"),
-            detail: `${activeClientSnapshot.device_name} · ${activeClientSnapshot.library_id}`,
-            tone: "sky",
-          },
-        ]);
-        setUsagePoints([0, 0]);
+        setActivity(
+          liveActivity.length > 0
+            ? liveActivity
+            : [
+                {
+                  id: "empty",
+                  title: t("dashboard.noRecentActivity", "No recent activity yet."),
+                  detail: t(
+                    "dashboard.activityEmptyHint",
+                    "Loans, printer jobs, and other tracked activity will appear here.",
+                  ),
+                  tone: "slate",
+                },
+              ],
+        );
+        setUsagePoints([0, overview.total_consumption_30d]);
         setOwnershipOnHand({
-          total: activeClientSnapshot.total_spools,
-          owned: 0,
-          borrowedIn: 0,
-          inUse: activeClientSnapshot.in_use,
+          total: onHandTotal || overview.total_spools,
+          owned: onHandOwned || overview.total_owned_spools,
+          borrowedIn: onHandBorrowedIn || overview.total_borrowed_in_spools,
+          inUse: onHandInUse,
         });
         setOwnershipLowStock({
-          owned: activeClientSnapshot.low_stock,
-          borrowedIn: 0,
+          owned: ownedLowStockCount || overview.owned_low_stock,
+          borrowedIn: borrowedInLowStockCount || overview.borrowed_in_low_stock,
         });
         cachedGoalMetrics = {
-          activeSpools: activeClientSnapshot.total_spools,
-          placedActiveSpools: 0,
-          totalJobs: 0,
-          totalSlots: activeClientSnapshot.printers,
-          loadedSlots: activeClientSnapshot.in_use,
+          activeSpools: onHandTotal,
+          placedActiveSpools: onHandRows.filter((row) =>
+            Boolean((row.spool.location_id ?? "").trim()),
+          ).length,
+          totalJobs: printers.reduce((sum, printer) => sum + Math.max(0, printer.usage.total_jobs), 0),
+          totalSlots: effectiveSlotTotals.totalSlots,
+          loadedSlots: effectiveSlotTotals.loadedSlots,
         };
         setGoalMetrics(cachedGoalMetrics);
+        const healthySpools = spoolRows.filter((row) => {
+          const remaining =
+            row.spool.remaining_g ??
+            row.spool.current_weight_g ??
+            row.spool.initial_weight_g ??
+            0;
+          return row.spool.status !== "EMPTY" && row.spool.status !== "LOST" && remaining >= 200;
+        }).length;
+        const healthScore =
+          onHandTotal === 0 ? 100 : Math.round((healthySpools / onHandTotal) * 100);
         setHealth({
-          score:
-            activeClientSnapshot.total_spools === 0
-              ? 100
-              : Math.max(
-                  0,
-                  Math.round(
-                    ((activeClientSnapshot.total_spools - activeClientSnapshot.low_stock) /
-                      activeClientSnapshot.total_spools) *
-                      100,
-                  ),
-                ),
-          headline: t("dashboard.clientSnapshotCardTitle", "Read-only host preview"),
+          score: healthScore,
+          headline:
+            healthScore >= 90
+              ? t("dashboard.healthStable", "Stable supply")
+              : healthScore >= 70
+                ? t("dashboard.healthMonitor", "Monitor restock")
+                : t("dashboard.healthRestock", "Restock recommended"),
           detail: t(
-            "dashboard.clientSnapshotHealthHint",
-            "This client is showing the host summary only. Detailed inventory health stays on the host for now.",
+            "dashboard.healthBalanceHint",
+            "Watch low stock, loans, orders, and loaded slots together.",
           ),
           metrics: [
             {
               id: "lowStock",
               label: t("dashboard.lowStockShort", "low stock"),
-              value: activeClientSnapshot.low_stock.toString(),
+              value: lowStockCount.toString(),
               tone: "rose" as const,
             },
             {
               id: "loaned",
               label: t("dashboard.loaned", "loaned"),
-              value: activeClientSnapshot.active_loans.toString(),
+              value: loans.length.toString(),
               tone: "amber" as const,
             },
             {
-              id: "loaded",
-              label: t("dashboard.activePrinters", "Active Printers"),
-              value: activeClientSnapshot.printers.toString(),
-              tone: "emerald" as const,
+              id: "onOrder",
+              label: t("dashboard.onOrder", "on order"),
+              value: onOrderCount.toString(),
+              tone: "sky" as const,
             },
             {
-              id: "inUse",
-              label: t("dashboard.inUse", "in use"),
-              value: activeClientSnapshot.in_use.toString(),
-              tone: "sky" as const,
+              id: "loaded",
+              label: t("dashboard.amsLoaded", "slots loaded"),
+              value: effectiveSlotTotals.loadedSlots.toString(),
+              tone: "emerald" as const,
             },
           ],
         });
@@ -768,16 +944,24 @@ export default function DashboardPage({
     : companionStatus.running && companionStatus.shell_reachable
       ? "live"
       : "warn";
+  const effectiveCompanionTone =
+    dashboardSyncMode === "CLIENT" ? clientHostCompanionTone : companionTone;
   const companionLabel =
-    companionTone === "off"
-      ? t("dashboard.companionOff", "Web app off")
-      : companionTone === "live"
-        ? t("dashboard.companionLive", "Web app running")
-        : t("dashboard.companionCheck", "Web app check");
+    dashboardSyncMode === "CLIENT"
+      ? effectiveCompanionTone === "off"
+        ? t("dashboard.hostCompanionOff", "Host disconnected")
+        : effectiveCompanionTone === "live"
+          ? `${t("dashboard.connectedToHost", "Connected to")} ${clientHostDisplayName ?? t("dashboard.hostFallbackName", "host")}`
+          : `${t("dashboard.checkHostConnection", "Check connection to")} ${clientHostDisplayName ?? t("dashboard.hostFallbackName", "host")}`
+      : effectiveCompanionTone === "off"
+        ? t("dashboard.companionOff", "Web app off")
+        : effectiveCompanionTone === "live"
+          ? t("dashboard.companionLive", "Web app running")
+          : t("dashboard.companionCheck", "Web app check");
   const companionDotClass =
-    companionTone === "live"
+    effectiveCompanionTone === "live"
       ? "bg-emerald-400 shadow-[0_0_0_5px_rgba(52,211,153,0.14)]"
-      : companionTone === "warn"
+      : effectiveCompanionTone === "warn"
         ? "bg-amber-400 shadow-[0_0_0_5px_rgba(251,191,36,0.14)]"
         : "bg-slate-400 shadow-[0_0_0_5px_rgba(148,163,184,0.12)]";
 
@@ -785,9 +969,7 @@ export default function DashboardPage({
     <div className="page-shell">
       <div className="page-header">
         <div className="page-header-copy">
-          <h1 className="page-title">
-            {t("nav.dashboard", "Dashboard")}
-          </h1>
+          <h1 className="page-title">{t("nav.dashboard", "Dashboard")}</h1>
           <div className="page-subtitle">
             {t(
               "dashboard.subtitle",
@@ -831,181 +1013,112 @@ export default function DashboardPage({
         ))}
       </div>
 
-      {clientModeActive && clientSnapshot ? (
-        <div className="mt-6 surface-card">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="section-eyebrow">
-                {t("dashboard.clientSnapshotCardTitle", "Read-only host preview")}
-              </div>
-              <div className="mt-2 text-sm font-semibold text-slate-950 dark:text-slate-50">
-                {clientSnapshot.device_name}
-              </div>
-              <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                {t(
-                  "dashboard.clientSnapshotCardHint",
-                  "This device is connected as a client. For now it shows the host summary and keeps write-heavy workflows on the host.",
-                )}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-                {t("dashboard.clientSnapshotLibraryId", "Library ID")}
-              </div>
-              <div className="mt-1 font-semibold">{clientSnapshot.library_id}</div>
-              <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-                {t("dashboard.clientSnapshotCapturedAt", "Snapshot captured")}
-              </div>
-              <div className="mt-1 font-semibold">
-                {new Date(clientSnapshot.captured_at.replace(" ", "T")).toLocaleString()}
-              </div>
-            </div>
-          </div>
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-sky-200/85 bg-sky-50/80 px-3 py-3 dark:border-sky-400/25 dark:bg-sky-500/10">
-              <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-                {clientSnapshot.total_spools}
-              </div>
-              <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                {t("dashboard.totalSpools", "Total Spools")}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-emerald-200/85 bg-emerald-50/80 px-3 py-3 dark:border-emerald-400/25 dark:bg-emerald-500/10">
-              <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-                {clientSnapshot.in_use}
-              </div>
-              <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                {t("dashboard.inUse", "in use")}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-rose-200/85 bg-rose-50/80 px-3 py-3 dark:border-rose-400/25 dark:bg-rose-500/10">
-              <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-                {clientSnapshot.low_stock}
-              </div>
-              <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                {t("dashboard.lowStock", "Low Stock")}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-amber-200/85 bg-amber-50/80 px-3 py-3 dark:border-amber-400/25 dark:bg-amber-500/10">
-              <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-                {clientSnapshot.active_loans}
-              </div>
-              <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                {t("dashboard.clientSnapshotActiveLoans", "Active Loans")}
-              </div>
+      <div className="mt-6 surface-card">
+        <div className="flex flex-wrap items-start gap-3">
+          <div>
+            <div className="section-eyebrow">
+              {t("dashboard.ownershipSnapshot", "Ownership snapshot")}
             </div>
           </div>
         </div>
-      ) : (
-        <>
-          <div className="mt-6 surface-card">
-            <div className="flex flex-wrap items-start gap-3">
-              <div>
-                <div className="section-eyebrow">
-                  {t("dashboard.ownershipSnapshot", "Ownership snapshot")}
-                </div>
-              </div>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-sky-200/85 bg-sky-50/80 px-3 py-3 dark:border-sky-400/25 dark:bg-sky-500/10">
+            <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+              {ownershipOnHand.owned}
             </div>
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-sky-200/85 bg-sky-50/80 px-3 py-3 dark:border-sky-400/25 dark:bg-sky-500/10">
-                <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-                  {ownershipOnHand.owned}
-                </div>
-                <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                  {t("dashboard.ownedOnHand", "Owned on hand")}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-amber-200/85 bg-amber-50/80 px-3 py-3 dark:border-amber-400/25 dark:bg-amber-500/10">
-                <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-                  {ownershipOnHand.borrowedIn}
-                </div>
-                <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                  {t("dashboard.borrowedInOnHand", "Borrowed in on hand")}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-rose-200/85 bg-rose-50/80 px-3 py-3 dark:border-rose-400/25 dark:bg-rose-500/10">
-                <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-                  {ownershipLowStock.owned}
-                </div>
-                <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                  {t("dashboard.ownedLowStock", "Owned low stock")}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-orange-200/85 bg-orange-50/80 px-3 py-3 dark:border-orange-400/25 dark:bg-orange-500/10">
-                <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-                  {ownershipLowStock.borrowedIn}
-                </div>
-                <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                  {t("dashboard.borrowedInLowStock", "Borrowed-in low stock")}
-                </div>
-              </div>
+            <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              {t("dashboard.ownedOnHand", "Owned on hand")}
             </div>
           </div>
-
-          <div className="mt-8">
-            <UsageChart
-              title={t("dashboard.consumption", "Filament Consumption")}
-              value={stats[3]?.value ?? "0 g"}
-              caption={t(
-                "dashboard.consumptionCaption",
-                "Usage is aggregated from printer-linked print jobs.",
-              )}
-              points={usagePoints}
-              onClick={() => onNavigate?.("statistics")}
-            />
-          </div>
-
-          <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
-            <ActivityTimeline items={activity} />
-            <div className="surface-card">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="section-eyebrow">
-                    {t("dashboard.inventoryHealth", "Inventory Health")}
-                  </div>
-                  <div className="mt-2 text-sm font-semibold text-slate-950 dark:text-slate-50">
-                    {health.headline}
-                  </div>
-                  <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                    {health.detail}
-                  </div>
-                </div>
-                <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border border-emerald-200/85 bg-[radial-gradient(circle_at_30%_28%,rgba(255,255,255,0.96),rgba(220,252,231,0.98)_52%,rgba(167,243,208,0.94))] text-2xl font-semibold text-emerald-800 shadow-inner shadow-white/70 dark:border-emerald-400/28 dark:bg-[radial-gradient(circle_at_30%_28%,rgba(52,211,153,0.26),rgba(15,23,42,0.96)_62%,rgba(2,6,23,1))] dark:text-emerald-200 dark:shadow-none">
-                  <span className="absolute inset-[8px] rounded-full border border-emerald-200/80 dark:border-emerald-300/10" />
-                  <span className="relative">{health.score}%</span>
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                {health.metrics.map((metric) => (
-                  <div
-                    key={metric.id}
-                    className={`rounded-2xl border px-3 py-3 ${
-                      metric.tone === "rose"
-                        ? "border-rose-200/85 bg-rose-50/80 dark:border-rose-400/25 dark:bg-rose-500/10"
-                        : metric.tone === "amber"
-                          ? "border-amber-200/85 bg-amber-50/80 dark:border-amber-400/25 dark:bg-amber-500/10"
-                          : metric.tone === "sky"
-                            ? "border-sky-200/85 bg-sky-50/80 dark:border-sky-400/25 dark:bg-sky-500/10"
-                            : "border-emerald-200/85 bg-emerald-50/80 dark:border-emerald-400/25 dark:bg-emerald-500/10"
-                    }`}
-                  >
-                    <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-                      {metric.value}
-                    </div>
-                    <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                      {metric.label}
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div className="rounded-2xl border border-amber-200/85 bg-amber-50/80 px-3 py-3 dark:border-amber-400/25 dark:bg-amber-500/10">
+            <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+              {ownershipOnHand.borrowedIn}
+            </div>
+            <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              {t("dashboard.borrowedInOnHand", "Borrowed in on hand")}
             </div>
           </div>
-
-          <div className="mt-8">
-            <BadgePanel badges={badges} />
+          <div className="rounded-2xl border border-rose-200/85 bg-rose-50/80 px-3 py-3 dark:border-rose-400/25 dark:bg-rose-500/10">
+            <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+              {ownershipLowStock.owned}
+            </div>
+            <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              {t("dashboard.ownedLowStock", "Owned low stock")}
+            </div>
           </div>
-        </>
-      )}
+          <div className="rounded-2xl border border-orange-200/85 bg-orange-50/80 px-3 py-3 dark:border-orange-400/25 dark:bg-orange-500/10">
+            <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+              {ownershipLowStock.borrowedIn}
+            </div>
+            <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              {t("dashboard.borrowedInLowStock", "Borrowed-in low stock")}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <UsageChart
+          title={t("dashboard.consumption", "Filament Consumption")}
+          value={stats[3]?.value ?? "0 g"}
+          caption={t(
+            "dashboard.consumptionCaption",
+            "Usage is aggregated from printer-linked print jobs.",
+          )}
+          points={usagePoints}
+          onClick={() => onNavigate?.("statistics")}
+        />
+      </div>
+
+      <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
+        <ActivityTimeline items={activity} />
+        <div className="surface-card">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="section-eyebrow">
+                {t("dashboard.inventoryHealth", "Inventory Health")}
+              </div>
+              <div className="mt-2 text-sm font-semibold text-slate-950 dark:text-slate-50">
+                {health.headline}
+              </div>
+              <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                {health.detail}
+              </div>
+            </div>
+            <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border border-emerald-200/85 bg-[radial-gradient(circle_at_30%_28%,rgba(255,255,255,0.96),rgba(220,252,231,0.98)_52%,rgba(167,243,208,0.94))] text-2xl font-semibold text-emerald-800 shadow-inner shadow-white/70 dark:border-emerald-400/28 dark:bg-[radial-gradient(circle_at_30%_28%,rgba(52,211,153,0.26),rgba(15,23,42,0.96)_62%,rgba(2,6,23,1))] dark:text-emerald-200 dark:shadow-none">
+              <span className="absolute inset-[8px] rounded-full border border-emerald-200/80 dark:border-emerald-300/10" />
+              <span className="relative">{health.score}%</span>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {health.metrics.map((metric) => (
+              <div
+                key={metric.id}
+                className={`rounded-2xl border px-3 py-3 ${
+                  metric.tone === "rose"
+                    ? "border-rose-200/85 bg-rose-50/80 dark:border-rose-400/25 dark:bg-rose-500/10"
+                    : metric.tone === "amber"
+                      ? "border-amber-200/85 bg-amber-50/80 dark:border-amber-400/25 dark:bg-amber-500/10"
+                      : metric.tone === "sky"
+                        ? "border-sky-200/85 bg-sky-50/80 dark:border-sky-400/25 dark:bg-sky-500/10"
+                        : "border-emerald-200/85 bg-emerald-50/80 dark:border-emerald-400/25 dark:bg-emerald-500/10"
+                }`}
+              >
+                <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+                  {metric.value}
+                </div>
+                <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {metric.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <BadgePanel badges={badges} />
+      </div>
     </div>
   );
 }

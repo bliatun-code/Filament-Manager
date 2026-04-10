@@ -610,6 +610,43 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     );
   }, [missingSwatchMasters, swatchVendorFilter]);
 
+  const settingsTabs = useMemo(
+    () =>
+      [
+        {
+          id: "GENERAL" as const,
+          label: t("settings.tabGeneral", "General"),
+        },
+        ...(!settingsClientReadOnly
+          ? [
+              {
+                id: "COMPANION" as const,
+                label: t("settings.tabCompanion", "Browser access"),
+              },
+            ]
+          : []),
+        {
+          id: "PRINTERS" as const,
+          label: t("settings.tabPrinters", "3D printers"),
+        },
+        {
+          id: "CATALOG" as const,
+          label: t("settings.tabCatalog", "Filament catalogue"),
+        },
+        {
+          id: "MAINTENANCE" as const,
+          label: t("settings.tabMaintenance", "Program maintenance"),
+        },
+      ] satisfies Array<{ id: SettingsTab; label: string }>,
+    [settingsClientReadOnly, t],
+  );
+
+  useEffect(() => {
+    if (settingsClientReadOnly && activeTab === "COMPANION") {
+      setActiveTab("GENERAL");
+    }
+  }, [activeTab, settingsClientReadOnly]);
+
   const swatchVendorOptions = useMemo(() => {
     const vendors = Array.from(
       new Set(missingSwatchMasters.map((master) => master.vendor).filter(Boolean)),
@@ -2407,28 +2444,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
       <div className="surface-subtle mt-6 p-2">
         <div className="flex flex-wrap gap-2">
-        {([
-          {
-            id: "GENERAL" as const,
-            label: t("settings.tabGeneral", "General"),
-          },
-            {
-            id: "COMPANION" as const,
-            label: t("settings.tabCompanion", "Browser access"),
-            },
-          {
-            id: "PRINTERS" as const,
-            label: t("settings.tabPrinters", "3D printers"),
-          },
-          {
-            id: "CATALOG" as const,
-            label: t("settings.tabCatalog", "Filament catalogue"),
-          },
-          {
-            id: "MAINTENANCE" as const,
-            label: t("settings.tabMaintenance", "Program maintenance"),
-          },
-        ]).map((tab) => (
+        {settingsTabs.map((tab) => (
           <button
             key={tab.id}
             type="button"

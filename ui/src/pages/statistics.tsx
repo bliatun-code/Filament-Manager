@@ -8,6 +8,12 @@ import { useI18n } from "../lib/i18n";
 import { printerBrandSurfaceStyle } from "../lib/printer_branding";
 import { useResolvedTheme } from "../lib/theme_mode";
 import {
+  fetchCachedLibrarySyncLoans,
+  fetchCachedLibrarySyncPrinterOverview,
+  fetchLibrarySyncLoans,
+  fetchLibrarySyncPrinterOverview,
+  fetchLibrarySyncSnapshot,
+  getLibrarySyncSettings,
   inventoryOverview,
   listFilamentConsumption,
   isTauri,
@@ -47,6 +53,10 @@ type BorrowerPopupPrefs = {
   search: string;
 };
 type TranslateFn = (key: string, fallback: string) => string;
+
+function normalizeLoanDirection(value?: string | null): LoanDirection {
+  return (value ?? "").trim().toUpperCase() === "INBOUND" ? "INBOUND" : "OUTBOUND";
+}
 
 type BorrowerFilamentUsageRow = {
   material: string;
@@ -95,6 +105,44 @@ function groupedLoanUsage(rows: SpoolLoanDetailsRow[]): BorrowerFilamentUsageRow
 
 function loanPartyName(row: SpoolLoanDetailsRow): string {
   return (row.loan.counterparty_name ?? "").trim() || row.loan.borrower_name;
+}
+
+function groupLoanUsageByPerson(
+  rows: SpoolLoanDetailsRow[],
+  direction: LoanDirection,
+): LoanUsageByPersonRow[] {
+  const grouped = new Map<string, LoanUsageByPersonRow>();
+  for (const row of rows) {
+    if (normalizeLoanDirection(row.loan.loan_direction) !== direction) {
+      continue;
+    }
+    const partyName = loanPartyName(row).trim();
+    if (!partyName) {
+      continue;
+    }
+    const current = grouped.get(partyName) ?? {
+      loan_direction: direction,
+      borrower_name: partyName,
+      total_consumed_g: 0,
+      completed_loans: 0,
+      active_loans: 0,
+    };
+    grouped.set(partyName, {
+      ...current,
+      total_consumed_g: current.total_consumed_g + Math.max(0, row.loan.consumed_grams ?? 0),
+      completed_loans: current.completed_loans + (row.loan.returned_at ? 1 : 0),
+      active_loans: current.active_loans + (row.loan.returned_at ? 0 : 1),
+    });
+  }
+  return Array.from(grouped.values()).sort((left, right) => {
+    if (right.active_loans !== left.active_loans) {
+      return right.active_loans - left.active_loans;
+    }
+    if (right.total_consumed_g !== left.total_consumed_g) {
+      return right.total_consumed_g - left.total_consumed_g;
+    }
+    return left.borrower_name.localeCompare(right.borrower_name);
+  });
 }
 
 function toSwatchColor(raw?: string | null): string {
@@ -206,6 +254,14 @@ function ownershipLabel(
   return t("inventory.ownedByUs", "Owned");
 }
 
+function formatDateTime(raw: string): string {
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return raw;
+  }
+  return parsed.toLocaleString();
+}
+
 function readConsumptionPopupPrefs(): ConsumptionPopupPrefs {
   if (typeof window === "undefined" || !window.localStorage) {
     return DEFAULT_CONSUMPTION_PREFS;
@@ -255,8 +311,15 @@ export default function StatisticsPage() {
   const [printers, setPrinters] = useState<PrinterOverviewRow[]>([]);
   const [loanUsage, setLoanUsage] = useState<LoanUsageByPersonRow[]>([]);
   const [inboundLoanUsage, setInboundLoanUsage] = useState<LoanUsageByPersonRow[]>([]);
+  const [loanDetails, setLoanDetails] = useState<SpoolLoanDetailsRow[]>([]);
   const [loading, setLoading] = useState(tauri);
   const [error, setError] = useState<string | null>(null);
+  const [clientReadOnly, setClientReadOnly] = useState(false);
+  const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
+  const [clientStatsSource, setClientStatsSource] = useState<"LIVE" | "CACHED" | "OFFLINE">(
+    "OFFLINE",
+  );
+  const [clientStatisticsUpdatedAt, setClientStatisticsUpdatedAt] = useState<string | null>(null);
   const [showConsumptionModal, setShowConsumptionModal] = useState(false);
   const [consumptionModalTitle, setConsumptionModalTitle] = useState("");
   const [consumptionRows, setConsumptionRows] = useState<FilamentConsumptionRow[]>([]);
@@ -309,23 +372,132 @@ export default function StatisticsPage() {
     if (!tauri) {
       return;
     }
-    Promise.all([
-      inventoryOverview(),
-      listPrinterOverview(),
-      listLoanUsageByPerson(30, "OUTBOUND"),
-      listLoanUsageByPerson(30, "INBOUND"),
-    ])
-      .then(([overviewRows, printerRows, loanRows, inboundLoanRows]) => {
+    let cancelled = false;
+    async function loadStatistics() {
+      setLoading(true);
+      setError(null);
+      try {
+        const syncSettings = await getLibrarySyncSettings();
+        const isClientMode =
+          syncSettings.mode === "CLIENT" &&
+          Boolean(syncSettings.host_base_url) &&
+          Boolean(syncSettings.library_id);
+
+        if (cancelled) {
+          return;
+        }
+
+        setClientReadOnly(isClientMode);
+        setClientHostDeviceName(syncSettings.host_device_name ?? null);
+
+        if (isClientMode) {
+          const [snapshotResult, printersResult, loansResult, cachedPrinters, cachedLoans] =
+            await Promise.all([
+              fetchLibrarySyncSnapshot(syncSettings.host_base_url!, syncSettings.library_id).then(
+                (value) => ({ ok: true as const, value }),
+                (error) => ({ ok: false as const, error }),
+              ),
+              fetchLibrarySyncPrinterOverview(
+                syncSettings.host_base_url!,
+                syncSettings.library_id,
+              ).then(
+                (value) => ({ ok: true as const, value }),
+                (error) => ({ ok: false as const, error }),
+              ),
+              fetchLibrarySyncLoans(syncSettings.host_base_url!, syncSettings.library_id).then(
+                (value) => ({ ok: true as const, value }),
+                (error) => ({ ok: false as const, error }),
+              ),
+              fetchCachedLibrarySyncPrinterOverview().catch(() => null),
+              fetchCachedLibrarySyncLoans().catch(() => null),
+            ]);
+
+          if (cancelled) {
+            return;
+          }
+
+          if (!snapshotResult.ok) {
+            console.error(snapshotResult.error);
+          }
+
+          if (!printersResult.ok) {
+            console.error(printersResult.error);
+          }
+
+          if (!loansResult.ok) {
+            console.error(loansResult.error);
+          }
+
+          const resolvedSnapshot = snapshotResult.ok
+            ? snapshotResult.value
+            : syncSettings.cached_snapshot ?? null;
+          const resolvedPrinters = printersResult.ok
+            ? printersResult.value
+            : cachedPrinters?.rows ?? syncSettings.cached_printers?.rows ?? [];
+          const resolvedLoans = loansResult.ok
+            ? loansResult.value
+            : cachedLoans?.rows ?? syncSettings.cached_loans?.rows ?? [];
+
+          if (resolvedSnapshot || resolvedPrinters.length > 0 || resolvedLoans.length > 0) {
+            setOverview(resolvedSnapshot?.inventory ?? null);
+            setPrinters(resolvedPrinters);
+            setLoanDetails(resolvedLoans);
+            setLoanUsage(groupLoanUsageByPerson(resolvedLoans, "OUTBOUND"));
+            setInboundLoanUsage(groupLoanUsageByPerson(resolvedLoans, "INBOUND"));
+            setClientStatisticsUpdatedAt(
+              resolvedSnapshot?.captured_at ??
+                cachedPrinters?.captured_at ??
+                syncSettings.cached_printers?.captured_at ??
+                cachedLoans?.captured_at ??
+                syncSettings.cached_loans?.captured_at ??
+                null,
+            );
+            setClientStatsSource(
+              snapshotResult.ok && printersResult.ok && loansResult.ok ? "LIVE" : "CACHED",
+            );
+          } else {
+            setOverview(null);
+            setPrinters([]);
+            setLoanDetails([]);
+            setLoanUsage([]);
+            setInboundLoanUsage([]);
+            setClientStatisticsUpdatedAt(null);
+            setClientStatsSource("OFFLINE");
+          }
+          return;
+        }
+
+        const [overviewRows, printerRows, loanRows, inboundLoanRows] = await Promise.all([
+          inventoryOverview(),
+          listPrinterOverview(),
+          listLoanUsageByPerson(30, "OUTBOUND"),
+          listLoanUsageByPerson(30, "INBOUND"),
+        ]);
+        if (cancelled) {
+          return;
+        }
         setOverview(overviewRows);
         setPrinters(printerRows);
         setLoanUsage(loanRows);
         setInboundLoanUsage(inboundLoanRows);
-      })
-      .catch((loadError) => {
+        setLoanDetails([]);
+        setClientStatisticsUpdatedAt(null);
+        setClientStatsSource("OFFLINE");
+      } catch (loadError) {
         console.error(loadError);
-        setError(t("statistics.error.load", "Failed to load statistics."));
-      })
-      .finally(() => setLoading(false));
+        if (!cancelled) {
+          setError(t("statistics.error.load", "Failed to load statistics."));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+    void loadStatistics();
+    return () => {
+      cancelled = true;
+    };
   }, [t, tauri]);
 
   const totals = useMemo(() => {
@@ -358,6 +530,22 @@ export default function StatisticsPage() {
       if (!tauri) {
         return;
       }
+      if (clientReadOnly) {
+        const title = printer
+          ? `${t("statistics.consumptionByFilament", "Consumption by filament")} · ${printer.printer.name}`
+          : t("statistics.consumptionByFilament", "Consumption by filament");
+        setConsumptionModalTitle(title);
+        setShowConsumptionModal(true);
+        setConsumptionLoading(false);
+        setConsumptionRows([]);
+        setConsumptionError(
+          t(
+            "statistics.clientHostBreakdownOnly",
+            "Detailed filament breakdown is currently available on the host device.",
+          ),
+        );
+        return;
+      }
       const printerId = printer?.printer.id ?? null;
       const title = printer
         ? `${t("statistics.consumptionByFilament", "Consumption by filament")} · ${printer.printer.name}`
@@ -379,7 +567,7 @@ export default function StatisticsPage() {
         setConsumptionLoading(false);
       }
     },
-    [t, tauri],
+    [clientReadOnly, t, tauri],
   );
 
   const consumptionVendorOptions = useMemo(() => {
@@ -479,9 +667,11 @@ export default function StatisticsPage() {
       setBorrowerError(null);
       setBorrowerRows([]);
       try {
-        const loanRows = await listSpoolLoans(2000, true, direction);
+        const loanRows = clientReadOnly ? loanDetails : await listSpoolLoans(2000, true, direction);
         const borrowerLoanRows = loanRows.filter(
-          (row) => loanPartyName(row) === borrowerName,
+          (row) =>
+            normalizeLoanDirection(row.loan.loan_direction) === direction &&
+            loanPartyName(row) === borrowerName,
         );
         setBorrowerRows(groupedLoanUsage(borrowerLoanRows));
       } catch (loadError) {
@@ -495,7 +685,7 @@ export default function StatisticsPage() {
         setBorrowerLoading(false);
       }
     },
-    [t, tauri],
+    [clientReadOnly, loanDetails, t, tauri],
   );
 
   const activeSlotRows = useMemo(() => {
@@ -589,6 +779,29 @@ export default function StatisticsPage() {
       {error ? (
         <FeedbackBanner tone="danger" className="mt-4">
           {error}
+        </FeedbackBanner>
+      ) : null}
+      {clientReadOnly ? (
+        <FeedbackBanner tone="warning" className="mt-4">
+          {[
+            clientHostDeviceName
+              ? `${t("statistics.clientReadOnlyHost", "Host")}: ${clientHostDeviceName}. `
+              : "",
+            clientStatsSource === "LIVE"
+              ? t("statistics.clientReadOnlyLive", "Showing live host statistics.")
+              : clientStatsSource === "CACHED"
+                ? t(
+                    "statistics.clientReadOnlyCached",
+                    "Host is unavailable. Showing the last cached statistics snapshot.",
+                  )
+                : t(
+                    "statistics.clientReadOnlyOffline",
+                    "Host is unavailable and no cached statistics snapshot is available yet.",
+                  ),
+            clientStatisticsUpdatedAt
+              ? ` ${t("statistics.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientStatisticsUpdatedAt)}.`
+              : "",
+          ].join("")}
         </FeedbackBanner>
       ) : null}
 

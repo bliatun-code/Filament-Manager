@@ -231,6 +231,44 @@ The current sync MVP direction now includes:
 - client-side add-spool and wishlist administration routed to the host
 - client-side printer creation/update/delete routed to the host
 
-The main remaining product step before a first sync checkpoint is to decide whether this milestone is
-already complete enough as a “steady read/write client MVP”, or whether one more guided migration
-polish pass should land before commit/push.
+## MVP Boundary (post-QA)
+
+After the current host/client QA pass, the intended boundary for the first desktop sync MVP is:
+
+### Supported from a paired desktop client
+
+- Read host-backed data for:
+  - `Oversikt / Dashboard`
+  - `Lager / Inventory`
+  - `Printere / Printers`
+  - `Utlån / Loans`
+  - `Statistikk / Statistics`
+- Fall back to cached host data on those pages when the host is temporarily unavailable.
+- Run protected daily operations against the host:
+  - update spool weight
+  - update spool tare
+  - update spool location
+  - toggle spool lost/restore status
+  - assign printer slots
+  - create outbound loans
+  - return outbound loans
+  - hand back borrowed-in spools
+  - add owned/manual/borrowed-in spools
+  - create/update/delete wishlist items
+  - stock wishlist items on the host
+  - create/update/delete printers
+
+### Still intentionally host-only
+
+- broad maintenance/reset flows
+- backup validation/import/export as routine client operations
+- catalog refresh/repair and swatch maintenance
+- direct SQLite movement or replication
+- offline write queueing or conflict resolution
+- multi-master editing
+
+### Product meaning of the boundary
+
+This milestone is meant to feel like **full remote daily administration** from a secondary desktop,
+while still keeping the host as the only source of truth and keeping higher-risk maintenance flows
+anchored to the host device.

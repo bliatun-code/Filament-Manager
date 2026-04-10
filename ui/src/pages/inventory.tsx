@@ -990,6 +990,7 @@ export default function InventoryPage({
       console.error(catalogError);
       if (clientReadOnly) {
         setMasters([]);
+        return;
       }
       setError(t("wishlist.error.loadCatalog", "Could not load master catalog."));
     }
