@@ -1,62 +1,63 @@
 # Open Questions
 
 ## UI / UX
-- How minimal should the selected filament popup be?
-  - Keep only information and quick actions
-  - Or allow limited editing beyond QR and weight
-- Should assignment-related history events stay visible in filament history?
-  - Keep everything for traceability
-  - Or hide noisy system events like printer-slot assignments
-- How strong should dark-mode tinting be?
-  - Subtle and conservative
-  - Or more vivid so filament/printer colors pop harder
+- Current phase decision:
+  - the selected filament popup stays information-first with quick actions, not broader editing scope
+- Current phase decision:
+  - assignment-related history events can stay hidden when they are mostly noisy system events like printer-slot assignments
+- Current phase decision:
+  - dark-mode tinting stays subtle and conservative rather than more vivid by default
 
 ## Selected Filament Popup
-- Should the header show both status and remaining weight chips, or should those values appear only once in the body?
-- Should location be shown at all in the popup, or only on the printer page and card/list surfaces?
-- Should the weight update section be simplified further into a single compact action row?
+- Current phase decision:
+  - this popup remains a read/manage surface rather than an operational assignment surface
+  - duplicated status/remaining presentation should stay reduced rather than grow back
 
 ## Add Spool / Intake Flow
-- Should the browser add-spool sheet stay split into:
-  - left: catalog and stock entry
-  - right: wishlist/order flow
-  - or become more step-based on narrower windows
-- Should `Add current selection to wishlist` remain visible even when no item is selected, or only appear once an item is selected?
-- Should we add a more explicit visual highlight for the currently selected vendor source beyond the active pill style?
+- Current phase decision:
+  - the browser add-spool sheet stays split into left `catalog/stock entry` and right `wishlist/order flow`
+  - it should not become more step-based in this phase
+- Current phase decision:
+  - `Add current selection to wishlist` should only appear once an item is selected
+- Current phase decision:
+  - the active pill treatment is enough for the selected vendor source in this phase
 
 ## Inventory
-- How much metadata should be shown on filament cards?
-  - minimal human-friendly summary
-  - or slightly more operational detail
-- Should borrowed items in the side panel remain compact summaries, or become richer mini-cards matching inventory styling?
+- Current phase decision:
+  - filament cards stay at a minimal human-friendly summary level rather than adding more operational metadata
+- Current phase decision:
+  - borrowed items in the side panel remain compact summaries rather than richer inventory-style mini-cards
 
 ## Loans
-- Should loan cards eventually support more compact “dense mode” layouts for large loan counts?
-- Should the return flow remain a popup-first interaction everywhere, or should some quick-return inline action survive on desktop?
+- Current phase decision:
+  - `Loans` does not need a dedicated dense mode in this phase
+- Current phase decision:
+  - the return flow remains popup-first rather than restoring inline quick-return actions
 
 ## Printers
-- How much vendor branding should printer cards carry?
-  - soft brand tint only
-  - or stronger visual identity per vendor
-- Should printer cards in dark mode use a different tint algorithm than filament cards?
+- Current phase decision:
+  - printer cards keep a soft brand tint rather than a stronger per-vendor visual identity
+- Current phase decision:
+  - printer cards do not need a separate dark-mode tint algorithm from filament cards in this phase
 
 ## Catalog / Data
-- Should catalog refresh logs remain purely in settings, or should the browser add-spool sheet offer a lightweight “last refreshed” hint only?
-- Should material-type refresh defaults stay broad, or should we guide users toward smaller, safer partial refreshes to avoid anti-bot issues?
+- Current phase decision:
+  - catalog refresh logs remain in `Settings`
+  - the browser add-spool sheet does not need a lightweight `last refreshed` hint in this phase
+- Current phase decision:
+  - material refresh defaults stay broad rather than steering harder toward partial refreshes in this phase
 
 ## Internationalization
-- Norwegian copy is being normalized, but some wording may still need decisions:
-  - `Printer` vs `3D-printer`
-  - when to say `Filament` vs material family name directly
-- Do we want to prioritize full Norwegian polish first, or keep English/Norwegian parity moving together?
+- Current phase decision:
+  - current wording normalization is sufficient for this phase
+  - we are not opening a separate terminology pass for `Printer` vs `3D-printer` or `Filament` vs material-family wording now
+- Current phase decision:
+  - English and Norwegian should continue to move in parity rather than running a Norwegian-first polish pass
 
 ## Product Direction
-- Is the selected filament popup mainly a read-and-manage surface, while all operational assignment belongs elsewhere?
-- Should future UI work prioritize:
-  - popup cleanup
-  - catalog/import flow
-  - dark mode polish
-  - mobile/narrow window responsiveness
+- Current phase decision:
+  - we are not locking a single next UI priority in this file for this phase
+  - follow-up work can continue to be chosen case-by-case from active QC, release, and product needs
 
 ## Borrowed-In Filament
 - Current phase decision:
@@ -72,17 +73,20 @@
 - Current phase decision:
   - `Statistikk` now exposes separate outbound borrower usage and inbound owner/counterparty usage panels
   - the shared filament breakdown modal now supports both directions with direction-specific wording
-- Should borrowed-in filament count in future primary/top-line inventory metrics:
-  - total filament count
-  - low-stock warnings
-  - dashboard summaries
-- Should borrowed-in filament show a softer warning before printer assignment, even though the default domain decision is to allow assignment?
+- Current phase decision:
+  - primary/top-line inventory metrics stay combined
+  - ownership-aware additive panels remain the place where owned vs borrowed-in splits are shown
+- Current phase decision:
+  - borrowed-in filament does not need a softer warning before printer assignment in this phase
 - Current phase decision:
   - handed-back borrowed-in spools are soft-deleted from active inventory
   - loan rows and spool history are preserved
   - the existing loans modal shell is shared, but inbound/outbound now use direction-specific wording and backend handling
-- Should handed-back borrowed-in spools later get a dedicated historical surface beyond the loans/history records?
-- Should the `Utlån` page later make its side-panel usage summary direction-aware too, given that `Statistikk` now exposes the inbound/outbound split already?
+- Current phase decision:
+  - handed-back borrowed-in spools do not need a dedicated historical surface beyond loans/history records in this phase
+- Current phase decision:
+  - direction-aware inbound/outbound summaries belong in `Statistikk`
+  - `Utlån` does not need a matching side summary in this phase
 
 ## Web App / Browser Companion
 - Current phase decision:
@@ -99,12 +103,9 @@
   - Step 3 trusted-LAN access is now the live browser baseline without widening browser workflow scope
   - Step 3 secures access, not traffic: plain HTTP remains acceptable only with blunt trusted-LAN-only wording and an explicit `traffic is not encrypted` warning
   - the first trusted-LAN release binds only to an explicitly selected private interface/address instead of opening all interfaces by default
-- Which workflows are desktop-first vs browser-first?
-  - catalog maintenance
-  - inventory updates
-  - slot assignment
-  - loans
-  - QR lookup/edit
+- Current phase decision:
+  - the current desktop-first vs browser-first workflow split is sufficiently defined by the implemented product boundaries in this phase
+  - desktop remains the broader operational surface, while the browser companion keeps its intentionally narrower workflow scope
 - Current phase decision:
   - QR lookup is now browser-available from the inventory section
   - QR save/edit is now browser-available from spool detail
@@ -121,37 +122,29 @@
   - the first browser shell now serves that slice at `/companion`: Storage inventory overview, QR lookup/edit, `Add spool` intake for owned/borrowed-in/wishlist flows, borrowed-in editing/hand-back, printer overview, outbound loan review/history with direct return for active loans, spool detail with active-loan visibility, narrow status/location updates, manual weight update, basic selected-spool printer-slot assignment/clear, and selected-spool outbound loan creation
   - the first browser shell now also has a compact/touch-friendly narrow-width mode, but that does not change the intentionally narrow workflow scope
   - replacing a different occupied spool in a printer slot still stays desktop-first for now
-- Should the browser companion eventually ship as:
-  - a same-codebase responsive shell
-  - or a more explicitly mobile-optimized browser shell layered on the same backend services
-- For trusted-LAN follow-up, should pairing stay:
-  - per-device approval only
-  - or should there ever be a simpler revocable shared-token mode for trusted home-lab devices
-- For trusted-LAN follow-up, should desktop Settings continue to allow:
-  - explicit interface/IP selection only
-  - or later add an advanced all-interfaces mode
-- For trusted-LAN handoff, should desktop Settings later add:
-  - QR display next to the existing one-time pairing link
-  - or a short manual code fallback
-- For trusted-LAN discovery, should the product eventually add:
-  - manual URL + one-time pairing link only
-  - or mDNS/Bonjour discovery in a later release
-- For trusted-LAN QA/operations, should the next automation investment be:
-  - real trusted-LAN browser/device automation
-  - or a lighter manual verification matrix until the LAN product shape settles
+- Current phase decision:
+  - the browser companion stays a narrow operational companion on the same product base in this phase
+- Current phase decision:
+  - trusted-LAN pairing remains per-device approval only in this phase
+- Current phase decision:
+  - desktop `Settings` continues to use explicit interface/IP selection only rather than adding all-interfaces mode
+- Current phase decision:
+  - trusted-LAN handoff does not need QR display beside the pairing link or a manual code fallback in this phase
+- Current phase decision:
+  - trusted-LAN discovery stays manual URL + pairing-link based in this phase
+- Current phase decision:
+  - we are not locking a dedicated trusted-LAN automation direction in this phase
+  - a lighter manual verification approach remains acceptable until the LAN product shape changes
 
 ## Data / Domain Semantics
-- The source-of-truth entity is now expected to remain the physical filament unit with ownership metadata, but some questions remain:
-  - how much owner metadata belongs directly on the spool
-  - when, if ever, a separate reusable contacts table should be introduced
-- Should loan records always remain separate from the physical filament unit history, even when they are tightly coupled in UI?
-- How should we represent counterparties beyond phase 1:
-  - simple free-text names first
-  - or a reusable contacts/people table
-- Should statistics distinguish between:
-  - owned-filament consumption
-  - borrowed-in consumption
-  - loaned-out loss/consumption
+- Current phase decision:
+  - the physical filament unit remains the source-of-truth entity with ownership metadata on the spool in this phase
+- Current phase decision:
+  - loan records remain separate from the physical filament unit history even when the UI presents them closely together
+- Current phase decision:
+  - counterparties remain simple free-text names in this phase
+- Current phase decision:
+  - we are not opening a larger statistics-semantics split beyond the current owned / borrowed-in / loaned-out handling in this phase
 
 ## How To Use This File
 - Put unresolved design or product choices here
