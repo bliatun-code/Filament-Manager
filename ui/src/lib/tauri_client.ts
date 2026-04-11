@@ -891,6 +891,24 @@ export async function recordPrintUsage(input: RecordPrintUsageInput) {
   return invoke<void>("record_print_usage", { input });
 }
 
+export async function recordLibrarySyncHostPrintUsage(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: RecordPrintUsageInput,
+) {
+  return invoke<void>("record_library_sync_host_print_usage", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      printer_id: input.printer_id,
+      spool_id: input.spool_id,
+      grams: input.grams,
+      job_name: input.job_name ?? null,
+      success: input.success,
+    },
+  });
+}
+
 export async function lendSpool(input: LendSpoolInput) {
   return invoke<SpoolLoanRow>("lend_spool", { input });
 }

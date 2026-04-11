@@ -345,6 +345,10 @@ export default function DashboardPage({
         const spoolRows = clientSpoolRows ?? [];
         const printers = clientPrinterRows ?? [];
         const loans = clientLoanRows ?? [];
+        const activeLoans = loans.filter((loan) => {
+          const loanStatus = (loan.loan.loan_status ?? "").trim().toUpperCase();
+          return loanStatus === "ACTIVE" || !loan.loan.returned_at;
+        });
         const overview = activeClientSnapshot.inventory;
         const printerCount = printers.length;
         const effectiveSlotTotals = printers.reduce(
@@ -422,7 +426,7 @@ export default function DashboardPage({
           );
         }).length;
         const liveActivity: ActivityItem[] = [
-          ...loans.slice(0, 3).map((loan) => ({
+          ...activeLoans.slice(0, 3).map((loan) => ({
             id: `loan-${loan.loan.id}`,
             title: `${t("dashboard.loanedTo", "Loaned to")} ${loan.loan.borrower_name}`,
             detail: `${loan.material} ${loan.filament_name} · ${loan.loan.grams_out} g`,
@@ -560,7 +564,7 @@ export default function DashboardPage({
             {
               id: "loaned",
               label: t("dashboard.loaned", "loaned"),
-              value: loans.length.toString(),
+              value: activeLoans.length.toString(),
               tone: "amber" as const,
             },
             {

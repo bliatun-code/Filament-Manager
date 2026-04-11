@@ -6,7 +6,7 @@ Historical notes below still mention the old localhost browser companion, `qa:co
 
 ## Current Status
 - Sync RC local QA checkpoint (2026-04-11, ready for commit/push + new prerelease):
-  - version target is now `v0.9.0-rc.3`
+  - version target is now `v0.9.0-rc.4`
   - desktop host/client QA is green for:
     - `Oversikt / Dashboard`
     - `Lager / Inventory`

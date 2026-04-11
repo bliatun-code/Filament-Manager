@@ -4,7 +4,7 @@ import { StatCard } from "../components/dashboard_widgets";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { ModalHeader, modalPanelClassName } from "../components/modal_chrome";
 import { neutralChipClass } from "../lib/chip_styles";
-import { useI18n } from "../lib/i18n";
+import { useI18n, type Locale } from "../lib/i18n";
 import { printerBrandSurfaceStyle } from "../lib/printer_branding";
 import { useResolvedTheme } from "../lib/theme_mode";
 import {
@@ -254,12 +254,21 @@ function ownershipLabel(
   return t("inventory.ownedByUs", "Owned");
 }
 
-function formatDateTime(raw: string): string {
-  const parsed = new Date(raw);
+function formatDateTime(raw: string, locale: Locale): string {
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const withTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized) ? normalized : `${normalized}Z`;
+  const parsed = new Date(withTimezone);
   if (Number.isNaN(parsed.getTime())) {
     return raw;
   }
-  return parsed.toLocaleString();
+  return new Intl.DateTimeFormat(locale === "nb" ? "nb-NO" : "en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(parsed);
 }
 
 function readConsumptionPopupPrefs(): ConsumptionPopupPrefs {
@@ -304,7 +313,7 @@ function readBorrowerPopupPrefs(): BorrowerPopupPrefs {
 }
 
 export default function StatisticsPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
   const [overview, setOverview] = useState<InventoryOverview | null>(null);
@@ -781,25 +790,23 @@ export default function StatisticsPage() {
           {error}
         </FeedbackBanner>
       ) : null}
-      {clientReadOnly ? (
+      {clientReadOnly && clientStatsSource !== "LIVE" ? (
         <FeedbackBanner tone="warning" className="mt-4">
           {[
             clientHostDeviceName
-              ? `${t("statistics.clientReadOnlyHost", "Host")}: ${clientHostDeviceName}. `
+              ? `${clientHostDeviceName}. `
               : "",
-            clientStatsSource === "LIVE"
-              ? t("statistics.clientReadOnlyLive", "Showing live host statistics.")
-              : clientStatsSource === "CACHED"
-                ? t(
-                    "statistics.clientReadOnlyCached",
-                    "Host is unavailable. Showing the last cached statistics snapshot.",
-                  )
-                : t(
-                    "statistics.clientReadOnlyOffline",
-                    "Host is unavailable and no cached statistics snapshot is available yet.",
-                  ),
+            clientStatsSource === "CACHED"
+              ? t(
+                  "statistics.clientReadOnlyCached",
+                  "Host unavailable. Showing the last cached statistics snapshot.",
+                )
+              : t(
+                  "statistics.clientReadOnlyOffline",
+                  "Host unavailable and no cached statistics snapshot is available yet.",
+                ),
             clientStatisticsUpdatedAt
-              ? ` ${t("statistics.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientStatisticsUpdatedAt)}.`
+              ? ` ${t("statistics.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientStatisticsUpdatedAt, locale)}.`
               : "",
           ].join("")}
         </FeedbackBanner>

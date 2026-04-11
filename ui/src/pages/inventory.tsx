@@ -11,7 +11,7 @@ import {
   buildFilamentLabelQrDataUrl,
 } from "../lib/filament_label_print";
 import { buildCompanionSpoolQrPayload } from "../lib/filament_qr_payload";
-import { useI18n } from "../lib/i18n";
+import { useI18n, type Locale } from "../lib/i18n";
 import { LOW_STOCK_GRAMS } from "../lib/inventory_constants";
 import { materialTone } from "../lib/material_theme";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
@@ -559,12 +559,21 @@ function formatGrams(value?: number | null): string {
   return `${value} g`;
 }
 
-function formatDateTime(raw: string): string {
-  const parsed = new Date(raw);
+function formatDateTime(raw: string, locale: Locale): string {
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const withTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized) ? normalized : `${normalized}Z`;
+  const parsed = new Date(withTimezone);
   if (Number.isNaN(parsed.getTime())) {
     return raw;
   }
-  return parsed.toLocaleString();
+  return new Intl.DateTimeFormat(locale === "nb" ? "nb-NO" : "en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(parsed);
 }
 
 function formatMasterDisplayTitle(master: MasterCatalogRow): string {
@@ -700,7 +709,7 @@ export default function InventoryPage({
   navigationIntent = null,
   onConsumeNavigationIntent,
 }: InventoryPageProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
   const [search, setSearch] = useState("");
@@ -3687,7 +3696,7 @@ export default function InventoryPage({
                         >
                           <div className="font-semibold text-slate-900 dark:text-slate-50">
                             {formatHistoryEventType(event.event_type)} ·{" "}
-                            {formatDateTime(event.created_at)}
+                            {formatDateTime(event.created_at, locale)}
                           </div>
                           <div className="mt-1 break-words text-slate-600 dark:text-slate-300">
                             {formatHistoryEventDetails(event)}
@@ -3948,33 +3957,22 @@ export default function InventoryPage({
         </FeedbackBanner>
       ) : null}
 
-      {clientReadOnly ? (
+      {clientReadOnly && clientInventorySource !== "LIVE" ? (
         <FeedbackBanner tone="warning" className="mt-4">
-          {clientHostWritePaired
+          {clientHostDeviceName
+            ? `${clientHostDeviceName}. `
+            : null}
+          {clientInventorySource === "CACHED"
             ? t(
-                "inventory.clientReadOnlyBannerPaired",
-                "This device is connected as a client. Inventory changes are sent to the paired host, while the host still remains the library authority.",
+                "inventory.clientReadOnlyCached",
+                "Host unavailable. Showing the last cached inventory snapshot.",
               )
             : t(
-                "inventory.clientReadOnlyBanner",
-                "This device is linked as a client. Inventory edits stay on the host for now.",
-              )}{" "}
-          {clientHostDeviceName
-            ? `${t("inventory.clientReadOnlyHost", "Host")}: ${clientHostDeviceName}. `
-            : null}
-          {clientInventorySource === "LIVE"
-            ? t("inventory.clientReadOnlyLive", "Showing live host inventory.")
-            : clientInventorySource === "CACHED"
-              ? t(
-                  "inventory.clientReadOnlyCached",
-                  "Host is unavailable. Showing the last cached inventory snapshot.",
-                )
-              : t(
-                  "inventory.clientReadOnlyOffline",
-                  "Host is unavailable and no cached inventory snapshot is available yet.",
-                )}
+                "inventory.clientReadOnlyOffline",
+                "Host unavailable and no cached inventory snapshot is available yet.",
+              )}
           {clientInventoryUpdatedAt
-            ? ` ${t("inventory.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientInventoryUpdatedAt)}.`
+            ? ` ${t("inventory.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientInventoryUpdatedAt, locale)}.`
             : null}
         </FeedbackBanner>
       ) : null}

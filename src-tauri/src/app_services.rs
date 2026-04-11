@@ -6,6 +6,7 @@ use crate::backend::filament_database::{
 use crate::backend::inventory_engine::{
     AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
     CreateWishlistItemInput, DeleteSpoolInput, InventoryEngine, LendSpoolInput,
+    RecordPrintUsageInput,
     PurgeSpoolInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
     UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
 };
@@ -217,6 +218,10 @@ impl CompanionService {
                 spool_id: spool_id.map(str::to_string),
             })
         })
+    }
+
+    pub fn record_print_usage(&self, input: RecordPrintUsageInput) -> InventoryResult<()> {
+        self.with_inventory(|engine| engine.record_print_usage(input))
     }
 
     pub fn create_printer(&self, input: CreatePrinterInput) -> InventoryResult<()> {

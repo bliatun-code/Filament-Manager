@@ -690,10 +690,25 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         listMasterCatalog(5000),
         getLibrarySyncSettings(),
       ]);
-      const overviewRows =
-        syncSettings.mode === "CLIENT" && syncSettings.host_base_url && syncSettings.library_id
-          ? await fetchLibrarySyncPrinterOverview(syncSettings.host_base_url, syncSettings.library_id)
-          : await listPrinterOverview();
+      let overviewRows: PrinterOverviewRow[] = [];
+      if (syncSettings.mode === "CLIENT") {
+        const cachedPrinterRows = syncSettings.cached_printers?.rows ?? [];
+        if (syncSettings.host_base_url && syncSettings.library_id) {
+          try {
+            overviewRows = await fetchLibrarySyncPrinterOverview(
+              syncSettings.host_base_url,
+              syncSettings.library_id,
+            );
+          } catch (loadError) {
+            console.warn("Settings host printer overview unavailable, using cached snapshot.", loadError);
+            overviewRows = cachedPrinterRows;
+          }
+        } else {
+          overviewRows = cachedPrinterRows;
+        }
+      } else {
+        overviewRows = await listPrinterOverview();
+      }
       setPrinters(
         syncSettings.mode === "CLIENT" ? overviewRows.map((row) => row.printer) : snapshot.printers,
       );

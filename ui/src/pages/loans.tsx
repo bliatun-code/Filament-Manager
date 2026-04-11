@@ -18,7 +18,7 @@ import { ModalHeader, modalPanelClassName } from "../components/modal_chrome";
 import { VendorBadge } from "../components/vendor_badge";
 import { neutralChipClass, semanticChipClass } from "../lib/chip_styles";
 import { normalizeDisplayToken } from "../lib/display_format";
-import { useI18n } from "../lib/i18n";
+import { useI18n, type Locale } from "../lib/i18n";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 
 type LoanFilter = "ALL" | "ACTIVE" | "RETURNED";
@@ -224,12 +224,21 @@ function compactLoanTimestamp(raw?: string | null): string {
   return `${day}.${month} ${hour}:${minute}`;
 }
 
-function formatDateTime(raw: string): string {
-  const parsed = new Date(raw);
+function formatDateTime(raw: string, locale: Locale): string {
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const withTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized) ? normalized : `${normalized}Z`;
+  const parsed = new Date(withTimezone);
   if (Number.isNaN(parsed.getTime())) {
     return raw;
   }
-  return parsed.toLocaleString();
+  return new Intl.DateTimeFormat(locale === "nb" ? "nb-NO" : "en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(parsed);
 }
 
 const loanFactLabelClassName =
@@ -247,7 +256,7 @@ function formatLoanReference(spoolIdRaw?: string | null): string {
 }
 
 export default function LoansPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
   const [loading, setLoading] = useState(tauri);
@@ -661,33 +670,22 @@ export default function LoansPage() {
           {error}
         </FeedbackBanner>
       ) : null}
-      {clientReadOnly ? (
+      {clientReadOnly && clientLoanSource !== "LIVE" ? (
         <FeedbackBanner tone="warning" className="mt-4">
-          {clientHostWritePaired
+          {clientHostDeviceName
+            ? `${clientHostDeviceName}. `
+            : null}
+          {clientLoanSource === "CACHED"
             ? t(
-                "loans.clientReadOnlyBannerPaired",
-                "This device is connected as a client. Returns and hand-backs can be sent to the host, while new loan creation still stays there.",
+                "loans.clientReadOnlyCached",
+                "Host unavailable. Showing the last cached loan snapshot.",
               )
             : t(
-                "loans.clientReadOnlyBanner",
-                "This device is linked as a client. Loan changes stay on the host for now.",
-              )}{" "}
-          {clientHostDeviceName
-            ? `${t("loans.clientReadOnlyHost", "Host")}: ${clientHostDeviceName}. `
-            : null}
-          {clientLoanSource === "LIVE"
-            ? t("loans.clientReadOnlyLive", "Showing live host loans.")
-            : clientLoanSource === "CACHED"
-              ? t(
-                  "loans.clientReadOnlyCached",
-                  "Host is unavailable. Showing the last cached loan snapshot.",
-                )
-              : t(
-                  "loans.clientReadOnlyOffline",
-                  "Host is unavailable and no cached loan snapshot is available yet.",
-                )}
+                "loans.clientReadOnlyOffline",
+                "Host unavailable and no cached loan snapshot is available yet.",
+              )}
           {clientLoanUpdatedAt
-            ? ` ${t("loans.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientLoanUpdatedAt)}.`
+            ? ` ${t("loans.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientLoanUpdatedAt, locale)}.`
             : null}
         </FeedbackBanner>
       ) : null}

@@ -636,6 +636,10 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
     },
     statistics: {
       desktopOnly: "Statistics are available in the desktop app build.",
+      clientReadOnlyCached: "Host is unavailable. Showing the last cached statistics snapshot.",
+      clientReadOnlyOffline:
+        "Host is unavailable and no cached statistics snapshot is available yet.",
+      clientReadOnlyUpdated: "Updated",
       subtitle: "See printer activity, material use and loan consumption in one overview.",
       ownershipSnapshot: "Ownership snapshot",
       ownershipSnapshotHint:
@@ -1791,6 +1795,10 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
     },
     statistics: {
       desktopOnly: "Statistikk er kun tilgjengelig i desktop-appen.",
+      clientReadOnlyCached: "Verten er utilgjengelig. Viser sist bufrede statistikkdata.",
+      clientReadOnlyOffline:
+        "Verten er utilgjengelig, og ingen bufrede statistikkdata er tilgjengelige ennå.",
+      clientReadOnlyUpdated: "Oppdatert",
       subtitle: "Se printeraktivitet, materialforbruk og utlån i én samlet oversikt.",
       ownershipSnapshot: "Eierskapsoversikt",
       ownershipSnapshotHint:

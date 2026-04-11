@@ -178,6 +178,17 @@ struct LibrarySyncAssignPrinterSlotInput {
 }
 
 #[derive(Deserialize)]
+struct LibrarySyncRecordPrintUsageInput {
+    base_url: String,
+    expected_library_id: Option<String>,
+    printer_id: String,
+    spool_id: String,
+    grams: i64,
+    job_name: Option<String>,
+    success: Option<bool>,
+}
+
+#[derive(Deserialize)]
 struct LibrarySyncReturnLoanInput {
     base_url: String,
     expected_library_id: Option<String>,
@@ -665,7 +676,7 @@ fn fetch_library_sync_host_json<T: DeserializeOwned>(
     path: &str,
 ) -> Result<T, String> {
     let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_millis(1500))
+        .timeout(Duration::from_millis(800))
         .build()
         .map_err(|error| format!("Failed to prepare host request client: {error}"))?;
 
@@ -811,7 +822,7 @@ fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
     path: &str,
 ) -> Result<T, String> {
     let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_millis(2500))
+        .timeout(Duration::from_millis(900))
         .build()
         .map_err(|error| format!("Failed to prepare host read client: {error}"))?;
     let initial_auth_state =
@@ -1463,6 +1474,45 @@ fn assign_library_sync_host_printer_slot(
 
     with_inventory(&state, |engine| {
         engine.save_library_sync_validation_state(true, Some("Host printer slot updated."), None)
+    })?;
+    Ok(())
+}
+
+#[tauri::command]
+fn record_library_sync_host_print_usage(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncRecordPrintUsageInput,
+) -> Result<(), String> {
+    let validation_input = ValidateLibrarySyncHostInput {
+        base_url: input.base_url.clone(),
+        expected_library_id: input.expected_library_id.clone(),
+    };
+    let (normalized_base_url, expected_library_id) =
+        normalize_library_sync_host_input(&validation_input)?;
+    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+
+    let printer_id = input.printer_id.trim();
+    let spool_id = input.spool_id.trim();
+    if printer_id.is_empty() || spool_id.is_empty() {
+        return Err("Printer id and spool id are required.".to_string());
+    }
+    if input.grams <= 0 {
+        return Err("Used grams must be greater than zero.".to_string());
+    }
+
+    perform_library_sync_host_write(
+        &state,
+        &normalized_base_url,
+        &format!("/api/v1/printers/{printer_id}/spools/{spool_id}/usage"),
+        &serde_json::json!({
+            "grams": input.grams,
+            "job_name": input.job_name.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+            "success": input.success.unwrap_or(true),
+        }),
+    )?;
+
+    with_inventory(&state, |engine| {
+        engine.save_library_sync_validation_state(true, Some("Host print usage recorded."), None)
     })?;
     Ok(())
 }
@@ -2993,6 +3043,7 @@ fn main() {
             update_library_sync_host_spool_tare_weight,
             update_library_sync_host_spool_details,
             assign_library_sync_host_printer_slot,
+            record_library_sync_host_print_usage,
             return_library_sync_host_loan,
             lend_library_sync_host_spool,
             assign_printer_slot,

@@ -6,7 +6,8 @@ use crate::backend::filament_database::{
 };
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput,
-    DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, ReturnSpoolLoanInput,
+    DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, RecordPrintUsageInput,
+    ReturnSpoolLoanInput,
     UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::statistics::{InventoryOverview, StatisticsEngine};
@@ -170,6 +171,13 @@ struct DeleteSpoolRequest {
 #[derive(Deserialize)]
 struct UpdatePrinterSlotAssignmentRequest {
     spool_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct RecordPrintUsageRequest {
+    grams: i64,
+    job_name: Option<String>,
+    success: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -435,6 +443,10 @@ fn build_router(state: CompanionApiState) -> Router {
         .route(
             "/printers/:printer_id/slots/:slot_id/assignment",
             post(handle_update_printer_slot_assignment),
+        )
+        .route(
+            "/printers/:printer_id/spools/:spool_id/usage",
+            post(handle_record_print_usage),
         )
         .route("/spools/:spool_id", get(handle_get_spool_detail))
         .route("/spools/:spool_id/lend", post(handle_lend_spool))
@@ -1236,17 +1248,6 @@ async fn handle_update_printer_slot_assignment(
             "Slot is already empty".to_string(),
         ));
     }
-    if let (Some(current_spool_id), Some(next_spool_id)) =
-        (slot.spool_id.as_deref(), target_spool_id)
-    {
-        if current_spool_id != next_spool_id {
-            return Err(CompanionApiError::BadRequest(
-                "Replacing an occupied slot with a different spool stays desktop-first for now"
-                    .to_string(),
-            ));
-        }
-    }
-
     if let Some(next_spool_id) = target_spool_id {
         let spool = state
             .service
@@ -1274,6 +1275,41 @@ async fn handle_update_printer_slot_assignment(
         } else {
             "Printer slot cleared".to_string()
         },
+    }))
+}
+
+async fn handle_record_print_usage(
+    State(state): State<CompanionApiState>,
+    Path((printer_id, spool_id)): Path<(String, String)>,
+    Json(payload): Json<RecordPrintUsageRequest>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    let printer_id = printer_id.trim();
+    let spool_id = spool_id.trim();
+    if printer_id.is_empty() || spool_id.is_empty() {
+        return Err(CompanionApiError::BadRequest(
+            "printer_id and spool_id are required".to_string(),
+        ));
+    }
+    if payload.grams <= 0 {
+        return Err(CompanionApiError::BadRequest(
+            "grams must be greater than zero".to_string(),
+        ));
+    }
+
+    state
+        .service
+        .record_print_usage(RecordPrintUsageInput {
+            printer_id: printer_id.to_string(),
+            spool_id: spool_id.to_string(),
+            grams: payload.grams,
+            job_name: normalize_optional_text(payload.job_name.as_deref()),
+            success: Some(payload.success.unwrap_or(true)),
+        })
+        .map_err(CompanionApiError::from)?;
+
+    Ok(Json(WriteResponse {
+        ok: true,
+        message: "Print usage recorded".to_string(),
     }))
 }
 

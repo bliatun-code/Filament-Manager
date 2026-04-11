@@ -66,7 +66,9 @@ function parseTimestampMs(value?: string | null): number | null {
   if (!value) {
     return null;
   }
-  const parsed = Date.parse(value);
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const withTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized) ? normalized : `${normalized}Z`;
+  const parsed = Date.parse(withTimezone);
   return Number.isFinite(parsed) ? parsed : null;
 }
 

@@ -14,6 +14,7 @@ import {
   listPrinterOverview,
   listSpools,
   recordPrintUsage,
+  recordLibrarySyncHostPrintUsage,
   updateLibrarySyncHostSpoolWeight,
   updateSpoolWeight,
   type PrinterOverviewRow,
@@ -27,7 +28,7 @@ import { PrinterModelPreview } from "../components/printer_model_preview";
 import { SaveOnlyModal } from "../components/save_only_modal";
 import { semanticChipClass } from "../lib/chip_styles";
 import { formatSpoolReference } from "../lib/display_format";
-import { useI18n } from "../lib/i18n";
+import { useI18n, type Locale } from "../lib/i18n";
 import { printerBrandSurfaceStyle } from "../lib/printer_branding";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import {
@@ -91,12 +92,21 @@ function formatGrams(value?: number | null): string {
   return `${Math.max(0, value)} g`;
 }
 
-function formatDateTime(raw: string): string {
-  const parsed = new Date(raw);
+function formatDateTime(raw: string, locale: Locale): string {
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const withTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized) ? normalized : `${normalized}Z`;
+  const parsed = new Date(withTimezone);
   if (Number.isNaN(parsed.getTime())) {
     return raw;
   }
-  return parsed.toLocaleString();
+  return new Intl.DateTimeFormat(locale === "nb" ? "nb-NO" : "en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(parsed);
 }
 
 function toSwatchColor(raw?: string | null): string {
@@ -313,7 +323,7 @@ type IncomingWeightPrompt = {
 };
 
 export default function PrintersPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
   const [loading, setLoading] = useState(tauri);
@@ -896,6 +906,11 @@ export default function PrintersPage() {
     const safeMeasuredTotal = Math.max(0, Math.round(measuredTotalWeight));
     const safeTareWeight = Math.max(0, Math.round(tareWeight));
     const measuredFilament = Math.max(0, safeMeasuredTotal - safeTareWeight);
+    const baseline =
+      previousRemaining != null && Number.isFinite(previousRemaining)
+        ? Math.max(0, Math.round(previousRemaining))
+        : null;
+    const usedGrams = baseline != null ? Math.max(0, baseline - measuredFilament) : 0;
     if (clientReadOnly) {
       if (!canUseClientHostWrite()) {
         throw new Error(
@@ -905,17 +920,25 @@ export default function PrintersPage() {
           ),
         );
       }
-      await updateLibrarySyncHostSpoolWeight(
-        clientHostBaseUrl!,
-        clientLibraryId,
-        spoolId,
-        safeMeasuredTotal,
-      );
+      if (baseline != null && usedGrams > 0) {
+        await recordLibrarySyncHostPrintUsage(clientHostBaseUrl!, clientLibraryId, {
+          printer_id: printerId,
+          spool_id: spoolId,
+          grams: usedGrams,
+          job_name: null,
+          success: true,
+        });
+      } else {
+        await updateLibrarySyncHostSpoolWeight(
+          clientHostBaseUrl!,
+          clientLibraryId,
+          spoolId,
+          safeMeasuredTotal,
+        );
+      }
       return;
     }
-    if (previousRemaining != null && Number.isFinite(previousRemaining)) {
-      const baseline = Math.max(0, Math.round(previousRemaining));
-      const usedGrams = Math.max(0, baseline - measuredFilament);
+    if (baseline != null) {
       if (usedGrams > 0) {
         await recordPrintUsage({
           printer_id: printerId,
@@ -1120,33 +1143,22 @@ export default function PrintersPage() {
         </FeedbackBanner>
       ) : null}
 
-      {clientReadOnly ? (
+      {clientReadOnly && clientPrinterSource !== "LIVE" ? (
         <FeedbackBanner tone="warning" className="mt-4">
-          {clientHostWritePaired
+          {clientHostDeviceName
+            ? `${clientHostDeviceName}. `
+            : null}
+          {clientPrinterSource === "CACHED"
             ? t(
-                "printers.clientReadOnlyBannerPaired",
-                "This device is connected as a client. Printer setup and slot assignment changes are sent to the paired host, while the host still remains the library authority.",
+                "printers.clientReadOnlyCached",
+                "Host unavailable. Showing the last cached printer snapshot.",
               )
             : t(
-                "printers.clientReadOnlyBanner",
-                "This device is linked as a client. Printer assignment changes stay on the host for now.",
-              )}{" "}
-          {clientHostDeviceName
-            ? `${t("printers.clientReadOnlyHost", "Host")}: ${clientHostDeviceName}. `
-            : null}
-          {clientPrinterSource === "LIVE"
-            ? t("printers.clientReadOnlyLive", "Showing live host printers.")
-            : clientPrinterSource === "CACHED"
-              ? t(
-                  "printers.clientReadOnlyCached",
-                  "Host is unavailable. Showing the last cached printer snapshot.",
-                )
-              : t(
-                  "printers.clientReadOnlyOffline",
-                  "Host is unavailable and no cached printer snapshot is available yet.",
-                )}
+                "printers.clientReadOnlyOffline",
+                "Host unavailable and no cached printer snapshot is available yet.",
+              )}
           {clientPrinterUpdatedAt
-            ? ` ${t("printers.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientPrinterUpdatedAt)}.`
+            ? ` ${t("printers.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientPrinterUpdatedAt, locale)}.`
             : null}
         </FeedbackBanner>
       ) : null}
