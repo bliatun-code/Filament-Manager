@@ -30,7 +30,7 @@ Historical notes below still mention the old localhost browser companion, `qa:co
     - advanced host details are reduced to diagnostics/cached snapshot details only
   - stale sync migration chrome in the settings surface has been removed and the remaining text/copy is aligned with the current role-popup model
   - remaining known release risk from older notes:
-    - `UI_RELEASE_CANDIDATE_CHECKLIST.md` still contains manual macOS visual `NEEDS CHECK` items that should be treated as broad-rollout confidence work, not reproduced automated blockers
+    - previous manual macOS visual `NEEDS CHECK` items in `UI_RELEASE_CANDIDATE_CHECKLIST.md` are now marked `PASS`
 - Sync RC local QA checkpoint (2026-04-10, ready for commit/push without release):
   - core host/client QA is now green for:
     - `Oversikt / Dashboard`
