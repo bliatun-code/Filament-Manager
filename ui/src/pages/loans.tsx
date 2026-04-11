@@ -751,7 +751,10 @@ export default function LoansPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="truncate text-[15px] font-semibold leading-tight text-slate-950 dark:text-slate-50">
+                          <div
+                            className="overflow-hidden break-words text-[15px] font-semibold leading-tight text-slate-950 [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] dark:text-slate-50"
+                            title={loanTitle}
+                          >
                             {loanTitle}
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
@@ -769,7 +772,7 @@ export default function LoansPage() {
                                 ? t("loans.directionInbound", "Borrowed in")
                                 : t("loans.directionOutbound", "Loaned out")}
                             </span>
-                            <span>
+                            <span className="break-words">
                               {isInbound
                                 ? t("inventory.borrowedFrom", "Borrowed from")
                                 : t("loans.borrower", "Borrower")}
@@ -807,7 +810,7 @@ export default function LoansPage() {
                           {t("inventory.reference", "Reference")}
                         </div>
                         <div
-                          className={`${loanFactValueClassName} truncate font-mono`}
+                          className={`${loanFactValueClassName} break-all font-mono`}
                           title={`#${loan.loan.spool_id}`}
                         >
                           {referenceLabel}
@@ -973,7 +976,7 @@ export default function LoansPage() {
                           {t("inventory.reference", "Reference")}
                         </div>
                         <div
-                          className={`${loanFactValueClassName} truncate font-mono`}
+                          className={`${loanFactValueClassName} break-all font-mono`}
                           title={`#${returnModalLoan.loan.spool_id}`}
                         >
                           {formatLoanReference(returnModalLoan.loan.spool_id)}

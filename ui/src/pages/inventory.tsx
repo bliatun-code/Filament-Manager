@@ -4029,7 +4029,14 @@ export default function InventoryPage({
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[1.02rem] font-semibold leading-tight text-slate-950 dark:text-slate-50">
+                      <div
+                        className="overflow-hidden break-words text-[1.02rem] font-semibold leading-tight text-slate-950 [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] dark:text-slate-50"
+                        title={formatInventoryDisplayTitle(
+                          group.material,
+                          group.filamentName,
+                          group.colorName,
+                        )}
+                      >
                         {formatInventoryDisplayTitle(
                           group.material,
                           group.filamentName,
@@ -4396,7 +4403,10 @@ export default function InventoryPage({
                                         }}
                                       />
                                       <span className="min-w-0">
-                                        <span className="block truncate font-semibold leading-tight text-slate-900 dark:text-slate-50">
+                                        <span
+                                          className="block overflow-hidden break-words font-semibold leading-tight text-slate-900 [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] dark:text-slate-50"
+                                          title={formatMasterDisplayTitle(master)}
+                                        >
                                           {formatMasterDisplayTitle(master)}
                                         </span>
                                         <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
