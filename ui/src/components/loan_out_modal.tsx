@@ -5,6 +5,7 @@ import { ModalHeader, modalPanelClassName } from "./modal_chrome";
 import { VendorBadge } from "./vendor_badge";
 import { formatPlacementLabel, formatSpoolReference } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
+import { sortSpoolsAlphabetically } from "../lib/spool_sort";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import {
   fetchLibrarySyncPrinterOverview,
@@ -247,7 +248,7 @@ export function LoanOutModal({
             .filter((spoolId): spoolId is string => typeof spoolId === "string" && spoolId.length > 0),
         ),
       );
-      const candidates = spoolRows
+      const candidates = sortSpoolsAlphabetically(spoolRows)
         .filter((row) => {
           const status = (row.spool.status ?? "").trim().toUpperCase();
           const ownershipType = (row.spool.ownership_type ?? "").trim().toUpperCase();

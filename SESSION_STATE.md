@@ -6,7 +6,7 @@ Historical notes below still mention the old localhost browser companion, `qa:co
 
 ## Current Status
 - Sync RC local QA checkpoint (2026-04-11, ready for commit/push + new prerelease):
-  - version target is now `v0.9.0-rc.4`
+  - version target is now `v0.9.0-rc.5`
   - desktop host/client QA is green for:
     - `Oversikt / Dashboard`
     - `Lager / Inventory`
@@ -14,6 +14,14 @@ Historical notes below still mention the old localhost browser companion, `qa:co
     - `Utlån / Loans`
     - `Statistikk / Statistics`
     - `Legg til filament / Add spool` popup in client mode
+    - `Filament popup` in client mode
+  - focused QC fixes now landed and marked PASS:
+    - printer-slot filament dropdown sort is now alphabetical in `local-only`, `host`, and `client`
+    - `Lån ut / Loan out` popup filament picker now uses the same alphabetical sort in `local-only`, `host`, and `client`
+    - dashboard `Utlånt / Loaned` health tile now excludes borrowed-in (`INBOUND`) loans and only counts active outbound loans
+  - paired client printer creation no longer stalls on save because the submit flow now follows host-write gating instead of local-write gating
+  - technical release preflight is green on the current baseline:
+    - `npm run smoke` ✅
   - client filament-detail popup now reads history/usage from host and supports the host-backed danger-zone actions (`mark empty`, `delete from active stock`, `purge`)
   - `Bibliotek og webapp` has been reworked into a calmer role-driven flow:
     - `Kun lokal`, `Vert`, and `Klient` now use guided role-switch popups with the correct backup/verification rules per transition
@@ -21,6 +29,8 @@ Historical notes below still mention the old localhost browser companion, `qa:co
     - host mode now treats webapp as host-owned and always-on once the device is set to `Vert`
     - advanced host details are reduced to diagnostics/cached snapshot details only
   - stale sync migration chrome in the settings surface has been removed and the remaining text/copy is aligned with the current role-popup model
+  - remaining known release risk from older notes:
+    - `UI_RELEASE_CANDIDATE_CHECKLIST.md` still contains manual macOS visual `NEEDS CHECK` items that should be treated as broad-rollout confidence work, not reproduced automated blockers
 - Sync RC local QA checkpoint (2026-04-10, ready for commit/push without release):
   - core host/client QA is now green for:
     - `Oversikt / Dashboard`

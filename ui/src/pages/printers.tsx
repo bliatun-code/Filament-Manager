@@ -30,6 +30,7 @@ import { semanticChipClass } from "../lib/chip_styles";
 import { formatSpoolReference } from "../lib/display_format";
 import { useI18n, type Locale } from "../lib/i18n";
 import { printerBrandSurfaceStyle } from "../lib/printer_branding";
+import { sortSpoolsAlphabetically } from "../lib/spool_sort";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import {
   describePrinterCapability,
@@ -491,6 +492,8 @@ export default function PrintersPage() {
     };
   }, [printers]);
 
+  const sortedSpools = useMemo(() => sortSpoolsAlphabetically(spools, locale), [locale, spools]);
+
   const reloadData = useCallback(async () => {
     if (!tauri) {
       return;
@@ -625,7 +628,10 @@ export default function PrintersPage() {
   }
 
   async function handleAddPrinter() {
-    if (!ensureLocalWriteAllowed()) {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
     if (!tauri || busy) {
@@ -689,7 +695,7 @@ export default function PrintersPage() {
   }
 
   function allowedSpoolsForSlot(slotSpoolId?: string | null) {
-    return spools.filter((row) => {
+    return sortedSpools.filter((row) => {
       const status = (row.spool.status ?? "").trim().toUpperCase();
       const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
       if (

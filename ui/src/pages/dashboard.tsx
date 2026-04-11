@@ -21,6 +21,7 @@ import {
   listWishlistItems,
   listSpools,
   topMaterials,
+  type SpoolLoanDetailsRow,
   type WishlistItemRow,
   type TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
@@ -89,6 +90,14 @@ function progressRatio(current: number, target: number): number {
     return 0;
   }
   return Math.min(1, Math.max(0, current / target));
+}
+
+function isActiveOutboundLoan(
+  row: Pick<SpoolLoanDetailsRow, "loan">,
+): boolean {
+  const loanStatus = (row.loan.loan_status ?? "").trim().toUpperCase();
+  const loanDirection = (row.loan.loan_direction ?? "OUTBOUND").trim().toUpperCase();
+  return loanDirection === "OUTBOUND" && (loanStatus === "ACTIVE" || !row.loan.returned_at);
 }
 
 type DashboardPageProps = {
@@ -345,10 +354,7 @@ export default function DashboardPage({
         const spoolRows = clientSpoolRows ?? [];
         const printers = clientPrinterRows ?? [];
         const loans = clientLoanRows ?? [];
-        const activeLoans = loans.filter((loan) => {
-          const loanStatus = (loan.loan.loan_status ?? "").trim().toUpperCase();
-          return loanStatus === "ACTIVE" || !loan.loan.returned_at;
-        });
+        const activeLoans = loans.filter(isActiveOutboundLoan);
         const overview = activeClientSnapshot.inventory;
         const printerCount = printers.length;
         const effectiveSlotTotals = printers.reduce(
@@ -596,6 +602,8 @@ export default function DashboardPage({
         return;
       }
 
+      const activeLoans = loans.filter(isActiveOutboundLoan);
+
       const printerCount = printers.length;
       const effectiveSlotTotals = printers.reduce(
         (sum, printer) => {
@@ -682,7 +690,7 @@ export default function DashboardPage({
         borrowedIn: borrowedInLowStockCount,
       });
       const liveActivity: ActivityItem[] = [
-        ...loans.slice(0, 3).map((loan) => ({
+        ...activeLoans.slice(0, 3).map((loan) => ({
           id: `loan-${loan.loan.id}`,
           title: `${t("dashboard.loanedTo", "Loaned to")} ${loan.loan.borrower_name}`,
           detail: `${loan.material} ${loan.filament_name} · ${loan.loan.grams_out} g`,
@@ -821,7 +829,7 @@ export default function DashboardPage({
           {
             id: "loaned",
             label: t("dashboard.loaned", "loaned"),
-            value: loans.length.toString(),
+            value: activeLoans.length.toString(),
             tone: "amber" as const,
           },
           {
