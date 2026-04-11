@@ -455,6 +455,13 @@ export type ActiveSpoolLoanRow = {
   hex_color?: string | null;
 };
 
+export type CompanionSpoolDetail = {
+  spool: SpoolWithMasterRow;
+  history: SpoolHistoryEventRow[];
+  usage: SpoolUsagePointRow[];
+  active_loan?: ActiveSpoolLoanRow | null;
+};
+
 export type LoanUsageByPersonRow = {
   loan_direction: string;
   borrower_name: string;
@@ -590,6 +597,24 @@ export async function fetchLibrarySyncSpools(
   });
 }
 
+export async function fetchLibrarySyncSpoolDetail(
+  baseUrl: string,
+  expectedLibraryId?: string | null,
+  spoolId?: string,
+  historyLimit = 80,
+  usageLimit = 500,
+) {
+  return invoke<CompanionSpoolDetail>("fetch_library_sync_spool_detail", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      spool_id: spoolId,
+      history_limit: historyLimit,
+      usage_limit: usageLimit,
+    },
+  });
+}
+
 export async function fetchLibrarySyncPrinterOverview(
   baseUrl: string,
   expectedLibraryId?: string | null,
@@ -634,8 +659,8 @@ export async function fetchCachedLibrarySyncLoans() {
 export async function pairLibrarySyncHost(baseUrl: string, pairingTokenOrUrl: string) {
   return invoke<LibrarySyncSettings>("pair_library_sync_host", {
     input: {
-      baseUrl,
-      pairingTokenOrUrl,
+      base_url: baseUrl,
+      pairing_token_or_url: pairingTokenOrUrl,
     },
   });
 }
@@ -999,8 +1024,38 @@ export async function deleteSpool(input: DeleteSpoolInput) {
   return invoke<void>("delete_spool", { input });
 }
 
+export async function deleteLibrarySyncHostSpool(
+  baseUrl: string,
+  expectedLibraryId?: string | null,
+  input?: DeleteSpoolInput,
+) {
+  return invoke<void>("delete_library_sync_host_spool", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      spool_id: input?.spool_id,
+      reason: input?.reason ?? null,
+    },
+  });
+}
+
 export async function purgeSpool(input: PurgeSpoolInput) {
   return invoke<void>("purge_spool", { input });
+}
+
+export async function purgeLibrarySyncHostSpool(
+  baseUrl: string,
+  expectedLibraryId?: string | null,
+  input?: PurgeSpoolInput,
+) {
+  return invoke<void>("purge_library_sync_host_spool", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      spool_id: input?.spool_id,
+      reason: input?.reason ?? null,
+    },
+  });
 }
 
 export async function listSpoolHistory(spoolId: string, limit = 50) {

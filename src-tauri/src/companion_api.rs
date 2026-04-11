@@ -6,8 +6,8 @@ use crate::backend::filament_database::{
 };
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput,
-    LendSpoolInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput,
-    UpdateWishlistStatusInput, WeightSource,
+    DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, ReturnSpoolLoanInput,
+    UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::statistics::{InventoryOverview, StatisticsEngine};
 use crate::state::{AppState, TrustedLanCompanionRuntime};
@@ -160,6 +160,11 @@ struct UpdateWeightRequest {
 #[derive(Deserialize)]
 struct UpdateSpoolTareWeightRequest {
     grams: i64,
+}
+
+#[derive(Deserialize, Default)]
+struct DeleteSpoolRequest {
+    reason: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -438,6 +443,8 @@ fn build_router(state: CompanionApiState) -> Router {
             "/spools/:spool_id/tare-weight",
             post(handle_update_spool_tare_weight),
         )
+        .route("/spools/:spool_id/delete", post(handle_delete_spool))
+        .route("/spools/:spool_id/purge", post(handle_purge_spool))
         .route("/loans/:loan_id/return", post(handle_return_spool_loan))
         .route(
             "/loans/:loan_id/hand-back",
@@ -1622,6 +1629,58 @@ async fn handle_update_spool_tare_weight(
     Ok(Json(WriteResponse {
         ok: true,
         message: "Tare weight updated".to_string(),
+    }))
+}
+
+async fn handle_delete_spool(
+    State(state): State<CompanionApiState>,
+    Path(spool_id): Path<String>,
+    payload: Option<Json<DeleteSpoolRequest>>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    let spool_id = spool_id.trim();
+    if spool_id.is_empty() {
+        return Err(CompanionApiError::BadRequest(
+            "spool_id is required".to_string(),
+        ));
+    }
+
+    state
+        .service
+        .delete_spool(DeleteSpoolInput {
+            spool_id: spool_id.to_string(),
+            reason: payload.and_then(|Json(body)| body.reason),
+        })
+        .map_err(CompanionApiError::from)?;
+
+    Ok(Json(WriteResponse {
+        ok: true,
+        message: "Spool removed from active inventory".to_string(),
+    }))
+}
+
+async fn handle_purge_spool(
+    State(state): State<CompanionApiState>,
+    Path(spool_id): Path<String>,
+    payload: Option<Json<DeleteSpoolRequest>>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    let spool_id = spool_id.trim();
+    if spool_id.is_empty() {
+        return Err(CompanionApiError::BadRequest(
+            "spool_id is required".to_string(),
+        ));
+    }
+
+    state
+        .service
+        .purge_spool(PurgeSpoolInput {
+            spool_id: spool_id.to_string(),
+            reason: payload.and_then(|Json(body)| body.reason),
+        })
+        .map_err(CompanionApiError::from)?;
+
+    Ok(Json(WriteResponse {
+        ok: true,
+        message: "Spool and history purged".to_string(),
     }))
 }
 

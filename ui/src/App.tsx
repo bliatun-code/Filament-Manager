@@ -27,7 +27,7 @@ export type InventoryNavigationIntent =
     }
   | null;
 
-export type SettingsTabKey = "GENERAL" | "COMPANION" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
+export type SettingsTabKey = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
 
 const pageOrder: ReadonlyArray<PageKey> = [
   "dashboard",
@@ -113,7 +113,7 @@ export default function App() {
             onOpenCompanionSettings={() => {
               startTransition(() => {
                 setInventoryNavigationIntent(null);
-                setSettingsInitialTab("COMPANION");
+                setSettingsInitialTab("LIBRARY");
                 setActivePage("settings");
               });
             }}

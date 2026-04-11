@@ -1,10 +1,26 @@
 # Session State
 
-Last updated: 2026-04-10
+Last updated: 2026-04-11
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
+- Sync RC local QA checkpoint (2026-04-11, ready for commit/push + new prerelease):
+  - version target is now `v0.9.0-rc.3`
+  - desktop host/client QA is green for:
+    - `Oversikt / Dashboard`
+    - `Lager / Inventory`
+    - `Printere / Printers`
+    - `Utlån / Loans`
+    - `Statistikk / Statistics`
+    - `Legg til filament / Add spool` popup in client mode
+  - client filament-detail popup now reads history/usage from host and supports the host-backed danger-zone actions (`mark empty`, `delete from active stock`, `purge`)
+  - `Bibliotek og webapp` has been reworked into a calmer role-driven flow:
+    - `Kun lokal`, `Vert`, and `Klient` now use guided role-switch popups with the correct backup/verification rules per transition
+    - client pairing is pairing-link-first and no longer mixes host URL + token concepts in the main flow
+    - host mode now treats webapp as host-owned and always-on once the device is set to `Vert`
+    - advanced host details are reduced to diagnostics/cached snapshot details only
+  - stale sync migration chrome in the settings surface has been removed and the remaining text/copy is aligned with the current role-popup model
 - Sync RC local QA checkpoint (2026-04-10, ready for commit/push without release):
   - core host/client QA is now green for:
     - `Oversikt / Dashboard`

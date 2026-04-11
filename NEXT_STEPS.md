@@ -2,12 +2,12 @@
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current browser baseline is trusted-LAN-only, with `Storage` as the browser label for desktop `Inventory` / `Lager` and `Add spool` as the browser intake action.
 
-## v0.9.0-rc.2 Sync RC (2026-04-10)
+## v0.9.0-rc.3 Sync RC (2026-04-11)
 - Release target:
-  - first pre-release candidate for cross-device sync testing
+  - next pre-release candidate for cross-device sync testing with updated Windows host coverage
   - intended for manual host/client QA before the final `v0.9.0`
 - Planned release actions:
-  - bump app/package/Tauri versions to `0.9.0-rc.2`
+  - bump app/package/Tauri versions to `0.9.0-rc.3`
   - publish GitHub pre-release with sync RC notes
   - attach macOS DMG and Windows MSI assets for manual testing
 - RC validation focus:
@@ -19,6 +19,9 @@ Historical notes below still mention the old localhost browser companion, `qa:co
     - `Printere / Printers`
     - `Utlån / Loans`
     - `Statistikk / Statistics`
+    - `Legg til filament / Add spool` popup in client mode
+  - verify with the refreshed Windows host build after `v0.9.0-rc.3`
+  - continue client work testing with the updated host baseline and fix any remaining operational regressions before `v0.9.0`
 
 ## v0.8.4 Release Closeout (2026-04-09)
 - Release baseline:

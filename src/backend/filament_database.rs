@@ -3003,17 +3003,6 @@ impl FilamentDatabase {
             .map_err(InventoryError::from)
     }
 
-    pub fn current_timestamp_plus_seconds(&self, seconds: u64) -> InventoryResult<String> {
-        let expiry_modifier = format!("+{} seconds", seconds.max(1));
-        self.conn
-            .query_row(
-                "SELECT datetime('now', ?1)",
-                params![expiry_modifier],
-                |row| row.get::<_, String>(0),
-            )
-            .map_err(InventoryError::from)
-    }
-
     pub fn create_trusted_lan_pairing(
         &self,
         display_name: Option<&str>,

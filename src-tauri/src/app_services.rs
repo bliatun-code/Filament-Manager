@@ -5,8 +5,9 @@ use crate::backend::filament_database::{
 };
 use crate::backend::inventory_engine::{
     AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
-    CreateWishlistItemInput, InventoryEngine, LendSpoolInput, ReturnSpoolLoanInput,
-    UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
+    CreateWishlistItemInput, DeleteSpoolInput, InventoryEngine, LendSpoolInput,
+    PurgeSpoolInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
+    UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
 };
 use serde::{Deserialize, Serialize};
 
@@ -159,6 +160,14 @@ impl CompanionService {
 
     pub fn update_spool_tare_weight(&self, spool_id: &str, grams: i64) -> InventoryResult<()> {
         self.with_inventory(|engine| engine.update_spool_tare_weight(spool_id, grams))
+    }
+
+    pub fn delete_spool(&self, input: DeleteSpoolInput) -> InventoryResult<()> {
+        self.with_inventory(|engine| engine.delete_spool(input))
+    }
+
+    pub fn purge_spool(&self, input: PurgeSpoolInput) -> InventoryResult<()> {
+        self.with_inventory(|engine| engine.purge_spool(input))
     }
 
     pub fn create_manual_spool(&self, input: CreateManualSpoolInput) -> InventoryResult<()> {

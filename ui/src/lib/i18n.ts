@@ -21,6 +21,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       add: "Add",
       all: "All",
       active: "Active",
+      on: "On",
+      off: "Off",
       discontinued: "Discontinued",
       loading: "Loading...",
       refresh: "Refresh",
@@ -710,6 +712,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
     },
     settings: {
       tabGeneral: "General",
+      tabLibrary: "Library & web app",
       tabCompanion: "Browser access",
       tabPrinters: "3D printers",
       tabCatalog: "Filament catalogue",
@@ -717,12 +720,21 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       tabMaintenance: "Program maintenance",
       program: "Program",
       version: "Version",
+      libraryTabTitle: "Library and web app",
+      libraryTabHint: "",
+      libraryRoleLabel: "Library role",
+      libraryWebappLabel: "Web app",
+      libraryWebappRunsOnHost: "Runs on host",
+      libraryWebappRunning: "Running",
       librarySyncTitle: "Library roles",
       librarySyncHint:
         "Choose whether this device stays local-only, hosts the shared library, or connects to another host.",
       librarySyncStandalone: "Standalone",
       librarySyncHost: "Host",
       librarySyncClient: "Client",
+      librarySyncConnectTitle: "Connect to host",
+      librarySyncConnectHint:
+        "Enter the host address first. Then check it before linking this device.",
       librarySyncDeviceName: "Device name",
       librarySyncDeviceNamePlaceholder: "Workshop PC",
       librarySyncLibraryId: "Library ID",
@@ -735,17 +747,24 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       librarySyncLinkedHost: "This device is now linked to the selected host library.",
       librarySyncPairHost: "Pair desktop client",
       librarySyncClientAuthTitle: "Desktop client pairing",
+      librarySyncClientPairingFlowHint:
+        "Start with a short-lived pairing link from the host. The client uses that link to detect, verify and connect to the correct host automatically.",
       librarySyncClientAuthHint:
-        "Paste a short-lived pairing link or token from the host to unlock protected desktop sync actions.",
-      librarySyncClientAuthInput: "Pairing link or token",
+        "Paste a short-lived pairing link from the host to unlock protected desktop sync actions.",
+      librarySyncClientAuthInput: "Pairing link",
       librarySyncClientAuthPaired: "Paired",
       librarySyncClientAuthUnpaired: "Not paired",
       librarySyncClientAuthPairedAt: "Paired",
       librarySyncClientAuthExpiresAt: "Session expires",
+      librarySyncClientAuthPersistentHint:
+        "This client stays paired until you remove the pairing here or on the host.",
       librarySyncClearClientAuth: "Remove pairing",
       librarySyncClientAuthCleared: "Desktop client pairing was removed from this device.",
       librarySyncClientPaired:
         "Desktop client paired with the host. Protected sync actions can now be enabled.",
+      librarySyncPairingInvalid:
+        "Invalid pairing link. Create a new pairing link on the host and try again.",
+      librarySyncCurrentHost: "Current host",
       librarySyncFetchSnapshot: "Fetch snapshot",
       librarySyncRefreshingSnapshot: "Refreshing snapshot...",
       librarySyncSnapshotRefreshed: "Host snapshot refreshed.",
@@ -769,60 +788,41 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       librarySyncSnapshotLowStock: "Low stock",
       librarySyncSnapshotLoans: "Active loans",
       librarySyncSnapshotPrinters: "Printers",
-      librarySyncHostReady: "Host readiness",
-      librarySyncHostReadyLive: "Trusted-LAN web app is already reachable on this device.",
-      librarySyncHostReadyHint:
-        "Turn on Browser access to expose this host to other devices on your trusted network.",
+      librarySyncAdvancedTitle: "Advanced host details",
+      librarySyncAdvancedHint:
+        "Open this only when you need diagnostics or cached snapshot details.",
+      librarySyncShowAdvanced: "Show details",
+      librarySyncHideAdvanced: "Hide details",
       librarySyncStandaloneHint: "This device keeps using its own local library only.",
+      librarySyncStandaloneWebappHint:
+        "This device keeps its own local library and is also serving the web app from here.",
       librarySyncHostHint:
         "This device is prepared to host the library for other desktop or browser clients.",
       librarySyncClientHint:
         "This device connects to another host and keeps a read-only fallback cache when that host is unavailable.",
-      librarySyncPreparedHost:
-        "This device is now prepared to become the host when you save.",
-      librarySyncPreparedStandalone:
-        "This device is now prepared to disconnect from the shared library when you save.",
-      librarySyncPreparedClient:
-        "This device is now prepared to connect as a client when you save.",
-      librarySyncPromoteToHost: "Prepare this device as host",
-      librarySyncDisconnectHost: "Disconnect from host",
-      librarySyncUseStandalone: "Use this device standalone",
-      librarySyncOpenBrowserAccess: "Open Browser access",
-      librarySyncMigrationTitle: "Host handoff path",
-      librarySyncMigrationHostHint:
-        "Use a full backup export to move this library to another machine in a controlled way.",
-      librarySyncMigrationClientHint:
-        "If you want this device to take over as host later, import a full backup from the current host first, then save Host role here.",
-      librarySyncMigrationSafetyNote:
-        "Machine-local browser pairings and current host connection details are not imported. Pair the new host again after handoff.",
-      librarySyncMigrationStepHostAccess: "Browser access is enabled on this host",
-      librarySyncMigrationStepHostAccessHint:
-        "Turn on Browser access before other devices try to connect.",
+      librarySyncRoleChangeValidateImportHint:
+        "Validate the same backup here. That backup can be imported later under Program maintenance on the device that should continue with the library.",
+      librarySyncRoleChangeAutoValidatedHint:
+        "The latest exported backup was validated automatically in this guided flow.",
+      librarySyncRoleChangeClientLocalHint:
+        "This client normally expects a host library. You can export a full backup on the current host and import it later under Program maintenance if you want to continue locally.",
+      librarySyncRoleChangeClientHint:
+        "Client mode expects a host connection. After switching, use Desktop client pairing to connect this device to the host you want to use.",
+      librarySyncConfirmSwitchToStandalone: "Switch to Standalone",
+      librarySyncConfirmSwitchToClient: "Switch to Client",
+      librarySyncConfirmSwitchToHost: "Switch to Host",
+      librarySyncConfirmAgain: "Click again to confirm",
+      librarySyncConfirmArmedHint: "One more click confirms this role change.",
       librarySyncMigrationStepExport: "Export a full backup from the current host",
       librarySyncMigrationStepExportHint:
         "Use the export button below before importing on the next machine.",
-      librarySyncMigrationStepValidate: "Validate the host backup on this device",
-      librarySyncMigrationStepValidateHint:
-        "Optional, but helpful before you import and take over.",
-      librarySyncMigrationStepValidateOk:
-        "A full-backup file has been checked in this session.",
       librarySyncMigrationStepImport: "Import the full backup on this device",
       librarySyncMigrationStepImportHint:
         "Import the host backup here before this device takes over.",
-      librarySyncMigrationStepPrepare: "Prepare this device as the next host",
-      librarySyncMigrationStepPrepareHint:
-        "Use the Host role so this machine becomes the new source of truth.",
-      librarySyncMigrationStepPrepareOk:
-        "The role draft is already set to Host.",
-      librarySyncMigrationStepSave: "Save the role change to complete takeover",
-      librarySyncMigrationStepSaveHint:
-        "The final Save button below is the last deliberate handoff step.",
-      librarySyncMigrationStepSaveOk:
-        "This device is already saved as the active host.",
       librarySyncStepDone: "Done",
       librarySyncStepPending: "Pending",
       librarySyncOpenMaintenance: "Open maintenance tools",
-      librarySyncSaveHint: "Role changes take effect when you save the library role below.",
+      librarySyncSaveHint: "Role changes open a guided flow. Nothing is saved until you confirm.",
       librarySyncSave: "Save library role",
       librarySyncSaving: "Saving...",
       librarySyncSaved: "Library role settings saved.",
@@ -886,8 +886,12 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       trustedLanToggleOn: "Turn on",
       trustedLanToggleOff: "Turn off",
       trustedLanToggleBusy: "Saving...",
+      trustedLanShowNetwork: "Show network",
+      trustedLanHideNetworkSummary: "Hide network",
       trustedLanEditNetwork: "Edit network",
       trustedLanHideNetwork: "Hide network",
+      trustedLanCompactNetworkHint:
+        "The web app runs on one selected private LAN interface. Open the network details only when you need them.",
       trustedLanInterface: "Selected interface",
       trustedLanInterfaceNotSelected: "Not selected",
       trustedLanInterfaceHintEnabled:
@@ -916,11 +920,11 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       trustedLanInterfaceSelect: "Private interface",
       trustedLanNoInterfaces: "No private IPv4 interfaces detected",
       trustedLanPortInput: "Listener port",
-      trustedLanPairingTitle: "Browser pairing",
+      trustedLanPairingTitle: "Browser access pairing",
       trustedLanPairingBody:
         "Create a short-lived link or QR for one browser at a time.",
       trustedLanCreatePairing: "Create pairing link",
-      trustedLanPairingLabelInput: "Browser label",
+      trustedLanPairingLabelInput: "Browser name",
       trustedLanPairingLabelPlaceholder:
         "iPad Safari, kitchen phone, workshop MacBook...",
       trustedLanPairingLabelHint:
@@ -928,7 +932,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       trustedLanLatestPairing: "Latest pairing link",
       trustedLanPairingEmptyState:
         "Create a pairing link when you want to open the web app on another device.",
-      trustedLanPairingLabelMeta: "Browser label",
+      trustedLanPairingLabelMeta: "Browser",
       trustedLanPairingLabelEmpty: "No label",
       trustedLanPairingExpiresAt: "Expires at",
       trustedLanPairingEmpty: "Create a pairing link to show it here.",
@@ -945,7 +949,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       trustedLanPairingNoteTitle: "Human browser auth only",
       trustedLanPairingNoteBody:
         "Browser-only access. No device-ingestion route.",
-      trustedLanBrowsersTitle: "Paired browsers",
+      trustedLanBrowsersTitle: "Connected browsers",
       trustedLanBrowsersBody:
         "Revoke a browser to stop renewals and close its current sessions.",
       trustedLanRevokeAll: "Revoke all",
@@ -1037,6 +1041,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       resetDone: "App data reset completed.",
       catalogResetDone: "Catalog reset done",
       backupExported: "Full backup exported (inventory, history and printers).",
+      librarySyncBackupAutoValidated:
+        "The exported backup was validated automatically and is ready to use in the guided role-change flow.",
       backupImported: "Full backup imported successfully.",
       librarySyncImportedOnClientHint:
         "This device is now prepared as the next host. Review Library roles and save when ready to take over.",
@@ -1150,6 +1156,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         revokeAllTrustedLanBrowsers: "Failed to revoke trusted-LAN browsers.",
         librarySyncSave: "Failed to save library role settings.",
         librarySyncHostCheck: "Failed to check the configured host.",
+        librarySyncPairingLinkRequired:
+          "Paste the full pairing link from the host so the client can detect the host automatically.",
         librarySyncLinkHost: "Failed to link this device to the host library.",
         librarySyncPairHost: "Failed to pair this desktop client with the host.",
         librarySyncClearClientAuth: "Failed to remove the saved desktop client pairing.",
@@ -1166,6 +1174,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       add: "Legg til",
       all: "Alle",
       active: "Aktiv",
+      on: "På",
+      off: "Av",
       discontinued: "Utgått",
       loading: "Laster...",
       refresh: "Oppdater",
@@ -1857,6 +1867,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
     },
     settings: {
       tabGeneral: "Generelt",
+      tabLibrary: "Bibliotek og webapp",
       tabCompanion: "Nettlesertilgang",
       tabPrinters: "3D-printere",
       tabCatalog: "Filamentkatalog",
@@ -1864,12 +1875,21 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       tabMaintenance: "Programvedlikehold",
       program: "Program",
       version: "Versjon",
+      libraryTabTitle: "Bibliotek og webapp",
+      libraryTabHint: "",
+      libraryRoleLabel: "Bibliotekrolle",
+      libraryWebappLabel: "Webapp",
+      libraryWebappRunsOnHost: "Kjører på vert",
+      libraryWebappRunning: "Kjører",
       librarySyncTitle: "Bibliotekroller",
       librarySyncHint:
         "Velg om denne enheten skal være lokal-only, være vert for et delt bibliotek, eller koble seg til en annen vert.",
       librarySyncStandalone: "Kun lokal",
       librarySyncHost: "Vert",
       librarySyncClient: "Klient",
+      librarySyncConnectTitle: "Koble til vert",
+      librarySyncConnectHint:
+        "Legg inn vertsadressen først. Sjekk den deretter før du kobler denne enheten til.",
       librarySyncDeviceName: "Enhetsnavn",
       librarySyncDeviceNamePlaceholder: "Verksted-PC",
       librarySyncLibraryId: "Bibliotek-ID",
@@ -1882,17 +1902,24 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       librarySyncLinkedHost: "Denne enheten er nå koblet til valgt vertsbibliotek.",
       librarySyncPairHost: "Par desktop-klient",
       librarySyncClientAuthTitle: "Desktop-klientparing",
+      librarySyncClientPairingFlowHint:
+        "Start med en kortvarig parringslenke fra verten. Klienten bruker lenken til å finne, verifisere og koble til riktig vert automatisk.",
       librarySyncClientAuthHint:
-        "Lim inn en kortvarig parringslenke eller token fra verten for å låse opp beskyttede desktop-sync-handlinger.",
-      librarySyncClientAuthInput: "Parringslenke eller token",
+        "Lim inn en kortvarig parringslenke fra verten for å låse opp beskyttede desktop-sync-handlinger.",
+      librarySyncClientAuthInput: "Parringslenke",
       librarySyncClientAuthPaired: "Paret",
       librarySyncClientAuthUnpaired: "Ikke paret",
       librarySyncClientAuthPairedAt: "Paret",
       librarySyncClientAuthExpiresAt: "Økten utløper",
+      librarySyncClientAuthPersistentHint:
+        "Denne klienten forblir paret til du fjerner parringen her eller på verten.",
       librarySyncClearClientAuth: "Fjern paring",
       librarySyncClientAuthCleared: "Desktop-klientparingen ble fjernet fra denne enheten.",
       librarySyncClientPaired:
         "Desktop-klienten er paret med verten. Beskyttede sync-handlinger kan nå aktiveres.",
+      librarySyncPairingInvalid:
+        "Ugyldig parringslenke. Lag en ny parringslenke på verten og prøv igjen.",
+      librarySyncCurrentHost: "Gjeldende vert",
       librarySyncFetchSnapshot: "Hent snapshot",
       librarySyncRefreshingSnapshot: "Oppdaterer snapshot...",
       librarySyncSnapshotRefreshed: "Vertsnapshot oppdatert.",
@@ -1916,66 +1943,43 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       librarySyncSnapshotLowStock: "Lav beholdning",
       librarySyncSnapshotLoans: "Aktive utlån",
       librarySyncSnapshotPrinters: "Printere",
-      librarySyncHostReady: "Vertsberedskap",
-      librarySyncHostReadyLive: "Trusted-LAN-webappen er allerede tilgjengelig på denne enheten.",
-      librarySyncHostReadyHint:
-        "Slå på Nettlesertilgang for å eksponere denne verten til andre enheter på det betrodde nettverket.",
+      librarySyncAdvancedTitle: "Avanserte vertsdetaljer",
+      librarySyncAdvancedHint:
+        "Åpne dette bare når du trenger diagnostikk eller bufrede snapshot-detaljer.",
+      librarySyncShowAdvanced: "Vis detaljer",
+      librarySyncHideAdvanced: "Skjul detaljer",
       librarySyncStandaloneHint: "Denne enheten fortsetter å bruke bare sitt eget lokale bibliotek.",
+      librarySyncStandaloneWebappHint:
+        "Denne enheten bruker sitt eget lokale bibliotek og serverer samtidig webappen herfra.",
       librarySyncHostHint:
         "Denne enheten klargjøres til å være vert for biblioteket for andre desktop- eller nettleserklienter.",
       librarySyncClientHint:
         "Denne enheten kobler seg til en annen vert og beholder en skrivebeskyttet reserve-cache når verten er utilgjengelig.",
-      librarySyncPreparedHost:
-        "Denne enheten er nå klargjort til å bli vert når du lagrer.",
-      librarySyncPreparedStandalone:
-        "Denne enheten er nå klargjort til å kobles fra delt bibliotek når du lagrer.",
-      librarySyncPreparedClient:
-        "Denne enheten er nå klargjort til å koble seg til som klient når du lagrer.",
-      librarySyncPromoteToHost: "Klargjør denne enheten som vert",
-      librarySyncDisconnectHost: "Koble fra vert",
-      librarySyncUseStandalone: "Bruk denne enheten lokalt",
-      librarySyncOpenBrowserAccess: "Åpne Nettlesertilgang",
-      librarySyncMigrationTitle: "Vertsbytte",
-      librarySyncMigrationHostHint:
-        "Bruk full sikkerhetskopi-eksport for å flytte dette biblioteket til en annen maskin på en kontrollert måte.",
-      librarySyncMigrationClientHint:
-        "Hvis denne enheten senere skal overta som vert, importer først en full sikkerhetskopi fra dagens vert, og lagre deretter Vert-rollen her.",
-      librarySyncMigrationSafetyNote:
-        "Maskinlokale nettleserparringer og gjeldende vertsforbindelse blir ikke importert. Koble opp den nye verten på nytt etter overtakelsen.",
-      librarySyncMigrationStepHostAccess:
-        "Nettlesertilgang er aktiv på denne verten",
-      librarySyncMigrationStepHostAccessHint:
-        "Slå på Nettlesertilgang før andre enheter prøver å koble seg til.",
+      librarySyncRoleChangeValidateImportHint:
+        "Valider den samme sikkerhetskopien her. Den kan importeres senere under Programvedlikehold på enheten som skal bruke biblioteket videre.",
+      librarySyncRoleChangeAutoValidatedHint:
+        "Den sist eksporterte sikkerhetskopien ble validert automatisk i denne veiledede flyten.",
+      librarySyncRoleChangeClientLocalHint:
+        "Denne klienten forventer vanligvis at et vertsbibliotek er tilgjengelig. Du kan eksportere en full sikkerhetskopi på dagens vert og importere den senere under Programvedlikehold hvis du vil fortsette lokalt.",
+      librarySyncRoleChangeClientHint:
+        "Klientmodus forventer en vertstilkobling. Etter byttet bruker du Desktop-klientparing for å koble denne enheten til verten du vil bruke.",
+      librarySyncConfirmSwitchToStandalone: "Bytt til kun lokal",
+      librarySyncConfirmSwitchToClient: "Bytt til klient",
+      librarySyncConfirmSwitchToHost: "Bytt til vert",
+      librarySyncConfirmAgain: "Trykk igjen for å bekrefte",
+      librarySyncConfirmArmedHint: "Ett trykk til bekrefter dette rollebyttet.",
       librarySyncMigrationStepExport:
         "Eksporter en full sikkerhetskopi fra gjeldende vert",
       librarySyncMigrationStepExportHint:
         "Bruk eksportknappen under før du importerer på neste maskin.",
-      librarySyncMigrationStepValidate:
-        "Valider vertsbackupen på denne enheten",
-      librarySyncMigrationStepValidateHint:
-        "Valgfritt, men nyttig før du importerer og overtar.",
-      librarySyncMigrationStepValidateOk:
-        "En full backup-fil er kontrollert i denne økten.",
       librarySyncMigrationStepImport:
         "Importer full sikkerhetskopi på denne enheten",
       librarySyncMigrationStepImportHint:
         "Importer vertsbackupen her før denne enheten overtar.",
-      librarySyncMigrationStepPrepare:
-        "Klargjør denne enheten som neste vert",
-      librarySyncMigrationStepPrepareHint:
-        "Bruk Vert-rollen slik at denne maskinen blir ny sannhetskilde.",
-      librarySyncMigrationStepPrepareOk:
-        "Rolleutkastet er allerede satt til Vert.",
-      librarySyncMigrationStepSave:
-        "Lagre rolleendringen for å fullføre overtakelsen",
-      librarySyncMigrationStepSaveHint:
-        "Den endelige Lagre-knappen under er siste bevisste overtakelsessteg.",
-      librarySyncMigrationStepSaveOk:
-        "Denne enheten er allerede lagret som aktiv vert.",
       librarySyncStepDone: "Ferdig",
       librarySyncStepPending: "Venter",
       librarySyncOpenMaintenance: "Åpne vedlikeholdsverktøy",
-      librarySyncSaveHint: "Rolleendringer trer i kraft når du lagrer bibliotekrollen under.",
+      librarySyncSaveHint: "Rolleendringer åpner en veiledet flyt. Ingenting lagres før du bekrefter.",
       librarySyncSave: "Lagre bibliotekrolle",
       librarySyncSaving: "Lagrer...",
       librarySyncSaved: "Bibliotekrolle lagret.",
@@ -2040,8 +2044,12 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       trustedLanToggleOn: "Slå på",
       trustedLanToggleOff: "Slå av",
       trustedLanToggleBusy: "Lagrer...",
+      trustedLanShowNetwork: "Vis nettverk",
+      trustedLanHideNetworkSummary: "Skjul nettverk",
       trustedLanEditNetwork: "Rediger nettverk",
       trustedLanHideNetwork: "Skjul nettverk",
+      trustedLanCompactNetworkHint:
+        "Webappen kjører på ett valgt privat LAN-grensesnitt. Åpne nettverksdetaljene bare når du trenger dem.",
       trustedLanInterface: "Valgt grensesnitt",
       trustedLanInterfaceNotSelected: "Ikke valgt",
       trustedLanInterfaceHintEnabled:
@@ -2070,11 +2078,11 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       trustedLanInterfaceSelect: "Privat grensesnitt",
       trustedLanNoInterfaces: "Ingen private IPv4-grensesnitt oppdaget",
       trustedLanPortInput: "Lytterport",
-      trustedLanPairingTitle: "Nettleserparring",
+      trustedLanPairingTitle: "Parring for nettleser",
       trustedLanPairingBody:
-        "Lag en kortvarig lenke eller QR for én nettleser om gangen.",
+        "Lag en kortvarig lenke eller QR for én nettleser om gangen. Desktop-klienter pares fra Klient-rollen.",
       trustedLanCreatePairing: "Lag parringlenke",
-      trustedLanPairingLabelInput: "Nettleseretikett",
+      trustedLanPairingLabelInput: "Nettlesernavn",
       trustedLanPairingLabelPlaceholder:
         "iPad Safari, kjøkkentelefon, verksted-MacBook...",
       trustedLanPairingLabelHint:
@@ -2082,7 +2090,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       trustedLanLatestPairing: "Siste parringlenke",
       trustedLanPairingEmptyState:
         "Lag en parringlenke når du vil åpne webappen på en annen enhet.",
-      trustedLanPairingLabelMeta: "Nettleseretikett",
+      trustedLanPairingLabelMeta: "Nettleser",
       trustedLanPairingLabelEmpty: "Ingen etikett",
       trustedLanPairingExpiresAt: "Utløper",
       trustedLanPairingEmpty: "Lag en parringlenke for å vise den her.",
@@ -2098,8 +2106,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Skann med nettleseren du vil pare. Lenken er fortsatt kortvarig og kan bare brukes én gang.",
       trustedLanPairingNoteTitle: "Kun menneskelig nettleserautentisering",
       trustedLanPairingNoteBody:
-        "Kun nettlesertilgang. Ingen device-ingestion-rute.",
-      trustedLanBrowsersTitle: "Parede nettlesere",
+        "Kun nettlesertilgang her. Desktop-klienter pares fra Klient-rollen.",
+      trustedLanBrowsersTitle: "Tilkoblede nettlesere",
       trustedLanBrowsersBody:
         "Tilbakekall en nettleser for å stoppe fornyelser og lukke nåværende sesjoner.",
       trustedLanRevokeAll: "Tilbakekall alle",
@@ -2191,6 +2199,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       resetDone: "Nullstilling av appdata fullført.",
       catalogResetDone: "Katalognullstilling fullført",
       backupExported: "Full sikkerhetskopi eksportert (lager, historikk og printere).",
+      librarySyncBackupAutoValidated:
+        "Den eksporterte sikkerhetskopien ble validert automatisk og er klar til bruk i den veiledede rollebytteflyten.",
       backupImported: "Full sikkerhetskopi importert.",
       librarySyncImportedOnClientHint:
         "Denne enheten er nå klargjort som neste vert. Gå gjennom Bibliotekroller og lagre når den skal overta.",
@@ -2304,6 +2314,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         revokeAllTrustedLanBrowsers: "Kunne ikke tilbakekalle trusted-LAN-nettlesere.",
         librarySyncSave: "Kunne ikke lagre bibliotekrolle.",
         librarySyncHostCheck: "Kunne ikke sjekke konfigurert vert.",
+        librarySyncPairingLinkRequired:
+          "Lim inn hele parringslenken fra verten slik at klienten kan finne riktig vert automatisk.",
         librarySyncLinkHost: "Kunne ikke koble denne enheten til vertsbiblioteket.",
         librarySyncPairHost: "Kunne ikke pare denne desktop-klienten med verten.",
         librarySyncClearClientAuth: "Kunne ikke fjerne lagret desktop-klientparing.",

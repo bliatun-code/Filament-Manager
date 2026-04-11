@@ -21,15 +21,18 @@ import {
 } from "../lib/printer_profiles";
 import {
   assignPrinterSlot,
+  assignLibrarySyncHostPrinterSlot,
   createManualSpool,
   createLibrarySyncHostSpool,
   createSpool,
   createLibrarySyncHostWishlistItem,
   createWishlistItem,
+  deleteLibrarySyncHostSpool,
   deleteLibrarySyncHostWishlistItem,
   deleteSpool,
   deleteWishlistItem,
   fetchLibrarySyncCatalogMasters,
+  fetchLibrarySyncSpoolDetail,
   fetchCachedLibrarySyncPrinterOverview,
   fetchCachedLibrarySyncSpools,
   fetchLibrarySyncPrinterOverview,
@@ -46,6 +49,7 @@ import {
   listSpoolUsage,
   listSpools,
   printLabelHtml,
+  purgeLibrarySyncHostSpool,
   purgeSpool,
   recordPrintUsage,
   type ActiveSpoolLoanRow,
@@ -1075,7 +1079,26 @@ export default function InventoryPage({
         return;
       }
       if (clientReadOnly) {
-        setHistoryRows([]);
+        if (!clientHostBaseUrl || !clientLibraryId) {
+          setHistoryRows([]);
+          return;
+        }
+        setHistoryLoading(true);
+        try {
+          const detail = await fetchLibrarySyncSpoolDetail(
+            clientHostBaseUrl,
+            clientLibraryId,
+            spoolId,
+            80,
+            500,
+          );
+          setHistoryRows(detail.history ?? []);
+        } catch (historyError) {
+          console.error(historyError);
+          setHistoryRows([]);
+        } finally {
+          setHistoryLoading(false);
+        }
         return;
       }
       setHistoryLoading(true);
@@ -1089,7 +1112,7 @@ export default function InventoryPage({
         setHistoryLoading(false);
       }
     },
-    [clientReadOnly, tauri],
+    [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauri],
   );
 
   const reloadUsage = useCallback(
@@ -1098,7 +1121,26 @@ export default function InventoryPage({
         return;
       }
       if (clientReadOnly) {
-        setUsagePoints([]);
+        if (!clientHostBaseUrl || !clientLibraryId) {
+          setUsagePoints([]);
+          return;
+        }
+        setUsageLoading(true);
+        try {
+          const detail = await fetchLibrarySyncSpoolDetail(
+            clientHostBaseUrl,
+            clientLibraryId,
+            spoolId,
+            80,
+            500,
+          );
+          setUsagePoints(detail.usage ?? []);
+        } catch (usageError) {
+          console.error(usageError);
+          setUsagePoints([]);
+        } finally {
+          setUsageLoading(false);
+        }
         return;
       }
       setUsageLoading(true);
@@ -1112,7 +1154,7 @@ export default function InventoryPage({
         setUsageLoading(false);
       }
     },
-    [clientReadOnly, tauri],
+    [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauri],
   );
 
   useEffect(() => {
@@ -1131,6 +1173,27 @@ export default function InventoryPage({
     reloadSpools,
     reloadWishlist,
     librarySyncReady,
+    tauri,
+  ]);
+
+  useEffect(() => {
+    if (
+      !tauri ||
+      !librarySyncReady ||
+      !showAddModal ||
+      sidePanelMode !== "ADD"
+    ) {
+      return;
+    }
+
+    void reloadCatalog();
+    void reloadWishlist();
+  }, [
+    librarySyncReady,
+    reloadCatalog,
+    reloadWishlist,
+    showAddModal,
+    sidePanelMode,
     tauri,
   ]);
 
@@ -2610,10 +2673,13 @@ export default function InventoryPage({
   }
 
   async function handleDeleteSelected() {
-    if (!ensureLocalWriteAllowed()) {
+    if (!tauri || !selectedSpool || manageBusy) {
       return;
     }
-    if (!tauri || !selectedSpool || manageBusy) {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
     if (!confirmDelete) {
@@ -2624,10 +2690,21 @@ export default function InventoryPage({
     setManageBusy(true);
     setError(null);
     try {
-      await deleteSpool({
-        spool_id: selectedSpool.id,
-        reason: "manual removal",
-      });
+      if (clientReadOnly) {
+        await deleteLibrarySyncHostSpool(
+          clientHostBaseUrl!,
+          clientLibraryId,
+          {
+            spool_id: selectedSpool.id,
+            reason: "manual removal",
+          },
+        );
+      } else {
+        await deleteSpool({
+          spool_id: selectedSpool.id,
+          reason: "manual removal",
+        });
+      }
       setSelectedSpoolId(null);
       setHistoryRows([]);
       setUsagePoints([]);
@@ -2646,10 +2723,13 @@ export default function InventoryPage({
   }
 
   async function handleMarkEmpty() {
-    if (!ensureLocalWriteAllowed()) {
+    if (!tauri || !selectedSpool || manageBusy) {
       return;
     }
-    if (!tauri || !selectedSpool || manageBusy) {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
     setConfirmDelete(false);
@@ -2658,14 +2738,45 @@ export default function InventoryPage({
     setError(null);
     try {
       if (selectedSpoolAssignedSlot) {
-        await assignPrinterSlot({
-          printer_id: selectedSpoolAssignedSlot.printerId,
-          slot_id: selectedSpoolAssignedSlot.slotId,
-          spool_id: null,
-        });
+        if (clientReadOnly) {
+          await assignLibrarySyncHostPrinterSlot(
+            clientHostBaseUrl!,
+            clientLibraryId,
+            {
+              printer_id: selectedSpoolAssignedSlot.printerId,
+              slot_id: selectedSpoolAssignedSlot.slotId,
+              spool_id: null,
+            },
+          );
+        } else {
+          await assignPrinterSlot({
+            printer_id: selectedSpoolAssignedSlot.printerId,
+            slot_id: selectedSpoolAssignedSlot.slotId,
+            spool_id: null,
+          });
+        }
       }
-      await updateSpoolStatus(selectedSpool.id, "EMPTY");
-      await updateSpoolWeight(selectedSpool.id, 0);
+      if (clientReadOnly) {
+        await updateLibrarySyncHostSpoolDetails(
+          clientHostBaseUrl!,
+          clientLibraryId,
+          {
+            spool_id: selectedSpool.id,
+            qr_code: selectedSpool.qrCode ?? null,
+            status: "EMPTY",
+            location: selectedSpool.location ?? null,
+          },
+        );
+        await updateLibrarySyncHostSpoolWeight(
+          clientHostBaseUrl!,
+          clientLibraryId,
+          selectedSpool.id,
+          0,
+        );
+      } else {
+        await updateSpoolStatus(selectedSpool.id, "EMPTY");
+        await updateSpoolWeight(selectedSpool.id, 0);
+      }
       await reloadSpools();
       await reloadPrinterOverview();
       await reloadActiveLoans();
@@ -2850,10 +2961,13 @@ export default function InventoryPage({
   }
 
   async function handlePurgeSelected() {
-    if (!ensureLocalWriteAllowed()) {
+    if (!tauri || !selectedSpool || manageBusy) {
       return;
     }
-    if (!tauri || !selectedSpool || manageBusy) {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
     if (!confirmPurge) {
@@ -2864,10 +2978,21 @@ export default function InventoryPage({
     setManageBusy(true);
     setError(null);
     try {
-      await purgeSpool({
-        spool_id: selectedSpool.id,
-        reason: "manual purge",
-      });
+      if (clientReadOnly) {
+        await purgeLibrarySyncHostSpool(
+          clientHostBaseUrl!,
+          clientLibraryId,
+          {
+            spool_id: selectedSpool.id,
+            reason: "manual purge",
+          },
+        );
+      } else {
+        await purgeSpool({
+          spool_id: selectedSpool.id,
+          reason: "manual purge",
+        });
+      }
       setSelectedSpoolId(null);
       setHistoryRows([]);
       setUsagePoints([]);

@@ -273,10 +273,6 @@ impl InventoryEngine {
         self.db.clear_library_sync_client_auth_state()
     }
 
-    pub fn current_timestamp_plus_seconds(&self, seconds: u64) -> InventoryResult<String> {
-        self.db.current_timestamp_plus_seconds(seconds)
-    }
-
     pub fn get_library_sync_client_auth_state(
         &self,
     ) -> InventoryResult<Option<(String, String, String, Option<String>)>> {

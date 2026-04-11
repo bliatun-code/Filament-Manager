@@ -5,7 +5,7 @@ mod backend;
 mod companion_api;
 mod state;
 
-use app_services::CompanionService;
+use app_services::{CompanionService, CompanionSpoolDetail};
 use backend::filament_database::{
     ActiveSpoolLoanRow, BackupValidationStats, CatalogResetStats, FilamentDatabase,
     FilamentMasterCatalogRow, ImportDataStats, LibrarySyncSettingsRow, LoanUsageByPersonRow,
@@ -133,6 +133,15 @@ struct LibrarySyncSpoolListInput {
     expected_library_id: Option<String>,
     limit: Option<i64>,
     offset: Option<i64>,
+}
+
+#[derive(Deserialize)]
+struct LibrarySyncSpoolDetailInput {
+    base_url: String,
+    expected_library_id: Option<String>,
+    spool_id: String,
+    history_limit: Option<i64>,
+    usage_limit: Option<i64>,
 }
 
 #[derive(Deserialize)]
@@ -266,6 +275,14 @@ struct LibrarySyncDeletePrinterInput {
     printer_id: String,
 }
 
+#[derive(Deserialize)]
+struct LibrarySyncDeleteSpoolInput {
+    base_url: String,
+    expected_library_id: Option<String>,
+    spool_id: String,
+    reason: Option<String>,
+}
+
 #[derive(Serialize)]
 struct LibrarySyncHostValidationResult {
     base_url: String,
@@ -297,14 +314,12 @@ struct LibrarySyncSnapshotResponse {
 struct LibrarySyncAuthenticatedSessionResponse {
     ok: bool,
     csrf_token: String,
-    expires_in_seconds: u64,
 }
 
 struct LibrarySyncAuthenticatedSessionState {
     csrf_token: String,
     session_id: String,
     device_token: String,
-    expires_in_seconds: u64,
 }
 
 #[derive(Deserialize)]
@@ -731,7 +746,6 @@ fn pair_library_sync_host_session(
         csrf_token: parsed.csrf_token,
         session_id,
         device_token,
-        expires_in_seconds: parsed.expires_in_seconds,
     })
 }
 
@@ -788,8 +802,76 @@ fn renew_library_sync_host_session(
         csrf_token: parsed.csrf_token,
         session_id,
         device_token: device_token.to_string(),
-        expires_in_seconds: parsed.expires_in_seconds,
     })
+}
+
+fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
+    state: &tauri::State<'_, AppState>,
+    base_url: &str,
+    path: &str,
+) -> Result<T, String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_millis(2500))
+        .build()
+        .map_err(|error| format!("Failed to prepare host read client: {error}"))?;
+    let initial_auth_state =
+        with_inventory(state, |engine| engine.get_library_sync_client_auth_state())?.ok_or_else(
+            || {
+                "Desktop client must be paired with the host before protected sync reads can run."
+                    .to_string()
+            },
+        )?;
+
+    let execute =
+        |session_id: &str,
+         device_token: &str|
+         -> Result<reqwest::blocking::Response, String> {
+            let host_header = library_sync_host_header_value(base_url)?;
+            let cookie_header =
+                build_library_sync_cookie_header(Some(session_id), Some(device_token))
+                    .ok_or_else(|| "Desktop sync read is missing session cookies.".to_string())?;
+            client
+                .get(format!("{base_url}{path}"))
+                .header(HOST, host_header)
+                .header(ORIGIN, base_url)
+                .header(reqwest::header::COOKIE, cookie_header)
+                .send()
+                .map_err(|error| format!("Desktop sync read request failed: {error}"))
+        };
+
+    let mut response = execute(&initial_auth_state.0, &initial_auth_state.1)?;
+
+    if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+        let renewed = renew_library_sync_host_session(base_url, &initial_auth_state.1)?;
+        with_inventory(state, |engine| {
+            engine.save_library_sync_client_auth_state(
+                &renewed.session_id,
+                &renewed.device_token,
+                &renewed.csrf_token,
+                None,
+            )
+        })?;
+        response = execute(&renewed.session_id, &renewed.device_token)?;
+    }
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body_text = response.text().unwrap_or_default();
+        return Err(if body_text.trim().is_empty() {
+            format!("Desktop sync read request returned {status}.")
+        } else {
+            format!(
+                "Desktop sync read request returned {status}: {}",
+                body_text.trim()
+            )
+        });
+    }
+
+    let body_text = response
+        .text()
+        .map_err(|error| format!("Desktop sync read response could not be read: {error}"))?;
+    serde_json::from_str(&body_text)
+        .map_err(|error| format!("Desktop sync read returned invalid JSON: {error}"))
 }
 
 fn post_library_sync_host_write_json<T: serde::Serialize>(
@@ -862,12 +944,11 @@ fn perform_library_sync_host_write_and_parse<T: serde::Serialize, R: Deserialize
     if response.status() == reqwest::StatusCode::UNAUTHORIZED {
         let renewed = renew_library_sync_host_session(base_url, &initial_auth_state.1)?;
         with_inventory(state, |engine| {
-            let expires_at = engine.current_timestamp_plus_seconds(renewed.expires_in_seconds)?;
             engine.save_library_sync_client_auth_state(
                 &renewed.session_id,
                 &renewed.device_token,
                 &renewed.csrf_token,
-                Some(&expires_at),
+                None,
             )
         })?;
         response = post_library_sync_host_write_json(
@@ -991,6 +1072,46 @@ fn fetch_library_sync_snapshot(
 }
 
 #[tauri::command]
+fn fetch_library_sync_spool_detail(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncSpoolDetailInput,
+) -> Result<CompanionSpoolDetail, String> {
+    let validation_input = ValidateLibrarySyncHostInput {
+        base_url: input.base_url.clone(),
+        expected_library_id: input.expected_library_id.clone(),
+    };
+    let (normalized_base_url, expected_library_id) =
+        normalize_library_sync_host_input(&validation_input)?;
+    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+
+    let spool_id = input.spool_id.trim();
+    if spool_id.is_empty() {
+        return Err("Spool id is required.".to_string());
+    }
+
+    let history_limit = input.history_limit.unwrap_or(80).clamp(1, 250);
+    let usage_limit = input.usage_limit.unwrap_or(500).clamp(1, 1_000);
+
+    let detail: CompanionSpoolDetail = get_library_sync_host_json_authenticated(
+        &state,
+        &normalized_base_url,
+        &format!(
+            "/api/v1/spools/{spool_id}?history_limit={history_limit}&usage_limit={usage_limit}"
+        ),
+    )?;
+
+    with_inventory(&state, |engine| {
+        engine.save_library_sync_validation_state(
+            true,
+            Some("Host spool detail refreshed."),
+            None,
+        )
+    })?;
+
+    Ok(detail)
+}
+
+#[tauri::command]
 fn fetch_library_sync_spools(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncSpoolListInput,
@@ -1101,7 +1222,7 @@ fn fetch_library_sync_loans(
 
 #[tauri::command]
 fn fetch_library_sync_catalog_masters(
-    _state: tauri::State<'_, AppState>,
+    state: tauri::State<'_, AppState>,
     input: LibrarySyncCatalogListInput,
 ) -> Result<Vec<FilamentMasterCatalogRow>, String> {
     let validation_input = ValidateLibrarySyncHostInput {
@@ -1114,15 +1235,23 @@ fn fetch_library_sync_catalog_masters(
 
     let limit = input.limit.unwrap_or(1_000).clamp(1, 5_000);
     let _search = input.search;
-    fetch_library_sync_host_json(
+    match fetch_library_sync_host_json(
         &normalized_base_url,
         &format!("/api/v1/library/catalog/masters?limit={limit}"),
-    )
+    ) {
+        Ok(rows) => Ok(rows),
+        Err(error) if error.contains("404") => get_library_sync_host_json_authenticated(
+            &state,
+            &normalized_base_url,
+            &format!("/api/v1/catalog/masters?limit={limit}"),
+        ),
+        Err(error) => Err(error),
+    }
 }
 
 #[tauri::command]
 fn fetch_library_sync_wishlist_items(
-    _state: tauri::State<'_, AppState>,
+    state: tauri::State<'_, AppState>,
     input: LibrarySyncWishlistListInput,
 ) -> Result<Vec<WishlistItemRow>, String> {
     let validation_input = ValidateLibrarySyncHostInput {
@@ -1134,10 +1263,18 @@ fn fetch_library_sync_wishlist_items(
     ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
 
     let limit = input.limit.unwrap_or(500).clamp(1, 2_500);
-    fetch_library_sync_host_json(
+    match fetch_library_sync_host_json(
         &normalized_base_url,
         &format!("/api/v1/library/wishlist?limit={limit}"),
-    )
+    ) {
+        Ok(rows) => Ok(rows),
+        Err(error) if error.contains("404") => get_library_sync_host_json_authenticated(
+            &state,
+            &normalized_base_url,
+            &format!("/api/v1/wishlist?limit={limit}"),
+        ),
+        Err(error) => Err(error),
+    }
 }
 
 #[tauri::command]
@@ -1170,12 +1307,11 @@ fn pair_library_sync_host(
     let health = ensure_library_sync_host_matches(&normalized_base_url, None)?;
 
     with_inventory(&state, |engine| {
-        let expires_at = engine.current_timestamp_plus_seconds(auth_state.expires_in_seconds)?;
         engine.save_library_sync_client_auth_state(
             &auth_state.session_id,
             &auth_state.device_token,
             &auth_state.csrf_token,
-            Some(&expires_at),
+            None,
         )?;
         engine.save_library_sync_validation_state(
             true,
@@ -1615,6 +1751,72 @@ fn delete_library_sync_host_wishlist_item(
 
     with_inventory(&state, |engine| {
         engine.save_library_sync_validation_state(true, Some("Host wishlist item deleted."), None)
+    })?;
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_library_sync_host_spool(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncDeleteSpoolInput,
+) -> Result<(), String> {
+    let validation_input = ValidateLibrarySyncHostInput {
+        base_url: input.base_url.clone(),
+        expected_library_id: input.expected_library_id.clone(),
+    };
+    let (normalized_base_url, expected_library_id) =
+        normalize_library_sync_host_input(&validation_input)?;
+    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+
+    let spool_id = input.spool_id.trim();
+    if spool_id.is_empty() {
+        return Err("Spool id is required.".to_string());
+    }
+
+    perform_library_sync_host_write(
+        &state,
+        &normalized_base_url,
+        &format!("/api/v1/spools/{spool_id}/delete"),
+        &serde_json::json!({
+            "reason": input.reason.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+        }),
+    )?;
+
+    with_inventory(&state, |engine| {
+        engine.save_library_sync_validation_state(true, Some("Host spool removed."), None)
+    })?;
+    Ok(())
+}
+
+#[tauri::command]
+fn purge_library_sync_host_spool(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncDeleteSpoolInput,
+) -> Result<(), String> {
+    let validation_input = ValidateLibrarySyncHostInput {
+        base_url: input.base_url.clone(),
+        expected_library_id: input.expected_library_id.clone(),
+    };
+    let (normalized_base_url, expected_library_id) =
+        normalize_library_sync_host_input(&validation_input)?;
+    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+
+    let spool_id = input.spool_id.trim();
+    if spool_id.is_empty() {
+        return Err("Spool id is required.".to_string());
+    }
+
+    perform_library_sync_host_write(
+        &state,
+        &normalized_base_url,
+        &format!("/api/v1/spools/{spool_id}/purge"),
+        &serde_json::json!({
+            "reason": input.reason.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+        }),
+    )?;
+
+    with_inventory(&state, |engine| {
+        engine.save_library_sync_validation_state(true, Some("Host spool purged."), None)
     })?;
     Ok(())
 }
@@ -2768,6 +2970,7 @@ fn main() {
             save_library_sync_settings,
             validate_library_sync_host,
             fetch_library_sync_snapshot,
+            fetch_library_sync_spool_detail,
             fetch_library_sync_spools,
             fetch_library_sync_catalog_masters,
             fetch_library_sync_wishlist_items,
@@ -2783,7 +2986,9 @@ fn main() {
             create_library_sync_host_printer,
             update_library_sync_host_wishlist_item_status,
             delete_library_sync_host_wishlist_item,
+            delete_library_sync_host_spool,
             delete_library_sync_host_printer,
+            purge_library_sync_host_spool,
             update_library_sync_host_spool_weight,
             update_library_sync_host_spool_tare_weight,
             update_library_sync_host_spool_details,
