@@ -269,6 +269,7 @@ pub struct SpoolLoanDetailsRow {
     pub loan: SpoolLoanRow,
     pub spool_status: Option<String>,
     pub spool_remaining_g: Option<i64>,
+    pub spool_tare_weight_g: Option<i64>,
     pub material: Option<String>,
     pub filament_name: Option<String>,
     pub color_name: Option<String>,
@@ -2172,7 +2173,7 @@ impl FilamentDatabase {
                 COALESCE(NULLIF(l.counterparty_name, ''), l.borrower_name) AS counterparty_name,
                 l.counterparty_contact, l.counterparty_note, l.grams_out, l.lent_note, l.lent_at,
                 l.expected_return_at, l.returned_at, l.returned_grams, l.consumed_grams, l.return_note,
-                s.status, s.remaining_g,
+                s.status, s.remaining_g, s.spool_tare_weight_g,
                 m.material, m.filament_name, m.color_name, m.vendor, m.hex_color
              FROM spool_loans l
              JOIN filament_spools s ON s.id = l.spool_id
@@ -2299,7 +2300,7 @@ impl FilamentDatabase {
                 COALESCE(NULLIF(l.counterparty_name, ''), l.borrower_name) AS counterparty_name,
                 l.counterparty_contact, l.counterparty_note, l.grams_out, l.lent_note, l.lent_at,
                 l.expected_return_at, l.returned_at, l.returned_grams, l.consumed_grams, l.return_note,
-                s.status, s.remaining_g,
+                s.status, s.remaining_g, s.spool_tare_weight_g,
                 m.material, m.filament_name, m.color_name, m.vendor, m.hex_color
              FROM spool_loans l
              LEFT JOIN filament_spools s ON s.id = l.spool_id
@@ -2333,11 +2334,12 @@ impl FilamentDatabase {
                 },
                 spool_status: row.get(16)?,
                 spool_remaining_g: row.get(17)?,
-                material: row.get(18)?,
-                filament_name: row.get(19)?,
-                color_name: row.get(20)?,
-                vendor: row.get(21)?,
-                hex_color: row.get(22)?,
+                spool_tare_weight_g: row.get(18)?,
+                material: row.get(19)?,
+                filament_name: row.get(20)?,
+                color_name: row.get(21)?,
+                vendor: row.get(22)?,
+                hex_color: row.get(23)?,
             })
         })?;
 

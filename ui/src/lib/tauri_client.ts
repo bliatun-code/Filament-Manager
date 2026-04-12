@@ -474,6 +474,7 @@ export type SpoolLoanDetailsRow = {
   loan: SpoolLoanRow;
   spool_status?: string | null;
   spool_remaining_g?: number | null;
+  spool_tare_weight_g?: number | null;
   material?: string | null;
   filament_name?: string | null;
   color_name?: string | null;
@@ -648,6 +649,22 @@ export async function fetchLibrarySyncLoans(
       expected_library_id: expectedLibraryId ?? null,
       limit,
       offset: 0,
+    },
+  });
+}
+
+export async function fetchLibrarySyncFilamentConsumption(
+  baseUrl: string,
+  expectedLibraryId?: string | null,
+  limit = 500,
+  printerId?: string | null,
+) {
+  return invoke<FilamentConsumptionRow[]>("fetch_library_sync_filament_consumption", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      limit,
+      printer_id: printerId ?? null,
     },
   });
 }

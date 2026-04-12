@@ -107,6 +107,34 @@ const GenericProfile: PrinterModelProfile = {
   maxSlotsPerUnit: 8,
 };
 
+const supportedPrinterModels = [
+  "Bambu Lab X1 Carbon",
+  "Bambu Lab X1E",
+  "Bambu Lab P1S",
+  "Bambu Lab P1P",
+  "Bambu Lab A1",
+  "Bambu Lab A1 mini",
+  "Bambu Lab H2D",
+  "Prusa CORE One",
+  "Prusa CORE One+",
+  "Prusa XL",
+  "Prusa XL (Single Toolhead)",
+  "Prusa XL (Dual Toolhead)",
+  "Prusa XL (Five Toolhead)",
+  "Prusa MK4S",
+  "Prusa MK4",
+  "Prusa MK3.9S",
+  "Prusa MK3.9",
+  "Prusa MK3.5S",
+  "Prusa MK3.5",
+  "Prusa MINI+",
+  "Prusa i3 MK3S+",
+  "Creality K1",
+  "Creality K1 Max",
+  "Anycubic Kobra 2",
+  "Custom model",
+] as const;
+
 const exactProfiles: Record<string, PrinterModelProfile> = {
   "bambu lab x1 carbon": BambuMultiProfile,
   "bambu lab x1e": BambuMultiProfile,
@@ -129,7 +157,15 @@ const exactProfiles: Record<string, PrinterModelProfile> = {
   "prusa mk3.5": PrusaMmuProfile,
   "prusa i3 mk3s+": PrusaMmuProfile,
   "prusa mini+": PrusaMiniProfile,
+  "creality k1": GenericProfile,
+  "creality k1 max": GenericProfile,
+  "anycubic kobra 2": GenericProfile,
+  "custom model": GenericProfile,
 };
+
+export function listSupportedPrinterModels(): string[] {
+  return [...supportedPrinterModels];
+}
 
 export function findPrinterModelProfileExact(model: string): PrinterModelProfile | null {
   const key = normalizeModelKey(model);
@@ -305,6 +341,44 @@ export function describePrinterCapability(
   return hasMultiMaterial
     ? t("printers.withMultiMaterial", "Multi-material enabled")
     : t("printers.noMultiMaterial", "No multi-material");
+}
+
+export function describeConfiguredPrinterSetup(
+  t: TranslateFn,
+  model: string,
+  slots: ReadonlyArray<{ ams_id: string; slot_index: number }>,
+): string {
+  const profile = resolvePrinterModelProfile(model);
+  const multiSlots = slots.filter((slot) => !isExternalSlotId(slot.ams_id));
+  if (multiSlots.length === 0) {
+    if (profile.systemKind === "NONE") {
+      return t("printers.singleMaterialOnly", "Single-material only");
+    }
+    if (profile.systemKind === "TOOLHEADS") {
+      return t("printers.singleToolhead", "Single toolhead");
+    }
+    if (profile.systemKind === "AMS") {
+      return t("printers.noAms", "No AMS");
+    }
+    if (profile.systemKind === "MMU3") {
+      return t("printers.noMmu", "No MMU3");
+    }
+    return t("printers.noMultiMaterial", "No multi-material");
+  }
+
+  const units = new Set(multiSlots.map((slot) => slot.ams_id)).size;
+  const slotsPerUnit = Math.max(...multiSlots.map((slot) => slot.slot_index));
+
+  if (profile.systemKind === "TOOLHEADS") {
+    return `${slotsPerUnit} ${t("settings.toolheads", "Toolheads").toLowerCase()}`;
+  }
+  if (profile.systemKind === "AMS") {
+    return `${units} AMS x ${slotsPerUnit}`;
+  }
+  if (profile.systemKind === "MMU3") {
+    return `${units} MMU3 x ${slotsPerUnit}`;
+  }
+  return `${units} x ${slotsPerUnit}`;
 }
 
 export function multiMaterialUnitsInputLabel(

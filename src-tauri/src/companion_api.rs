@@ -10,7 +10,7 @@ use crate::backend::inventory_engine::{
     ReturnSpoolLoanInput,
     UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
 };
-use crate::backend::statistics::{InventoryOverview, StatisticsEngine};
+use crate::backend::statistics::{FilamentConsumptionRow, InventoryOverview, StatisticsEngine};
 use crate::state::{AppState, TrustedLanCompanionRuntime};
 use axum::body::Body;
 use axum::extract::{Path, Query, State};
@@ -145,6 +145,12 @@ struct LoanListQuery {
     limit: Option<i64>,
     include_returned: Option<bool>,
     direction: Option<String>,
+}
+
+#[derive(Deserialize, Default)]
+struct FilamentConsumptionQuery {
+    limit: Option<i64>,
+    printer_id: Option<String>,
 }
 
 #[derive(Deserialize, Default)]
@@ -477,6 +483,10 @@ fn build_router(state: CompanionApiState) -> Router {
         .route("/api/v1/library/spools", get(handle_library_spools))
         .route("/api/v1/library/printers", get(handle_library_printers))
         .route("/api/v1/library/loans", get(handle_library_loans))
+        .route(
+            "/api/v1/library/statistics/filament-consumption",
+            get(handle_library_filament_consumption),
+        )
         .route("/api/v1/library/catalog/masters", get(handle_library_catalog_masters))
         .route("/api/v1/library/wishlist", get(handle_library_wishlist_items))
         .route("/api/v1/auth/session", get(handle_session_status))
@@ -604,6 +614,26 @@ async fn handle_library_loans(
         .service
         .list_spool_loans(limit, include_returned, Some(direction))
         .map_err(CompanionApiError::from)?;
+    Ok(Json(rows))
+}
+
+async fn handle_library_filament_consumption(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+    Query(query): Query<FilamentConsumptionQuery>,
+) -> Result<Json<Vec<FilamentConsumptionRow>>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    let limit = query.limit.unwrap_or(500).clamp(1, 2_000);
+    let printer_id = query
+        .printer_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let stats = StatisticsEngine::open(&state.db_path)
+        .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
+    let rows = stats
+        .filament_consumption(limit, printer_id)
+        .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
     Ok(Json(rows))
 }
 

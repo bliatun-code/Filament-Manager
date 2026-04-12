@@ -3,7 +3,11 @@ import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
 import { ModalHeader, modalPanelClassName } from "./modal_chrome";
 import { VendorBadge } from "./vendor_badge";
-import { formatPlacementLabel, formatSpoolReference } from "../lib/display_format";
+import {
+  formatFilamentDisplayTitle,
+  formatPlacementLabel,
+  formatSpoolReference,
+} from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
 import { sortSpoolsAlphabetically } from "../lib/spool_sort";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
@@ -41,6 +45,7 @@ type LoanableSpool = {
   hexColor?: string | null;
   status: string;
   remainingGrams?: number | null;
+  spoolTareWeightGrams?: number | null;
   location?: string | null;
 };
 
@@ -190,6 +195,33 @@ function formatGrams(value?: number | null): string {
   return `${Math.max(0, value)} g`;
 }
 
+function defaultSpoolTareWeightForVendor(vendor?: string | null): number {
+  const normalized = (vendor ?? "").trim().toLowerCase();
+  if (normalized.includes("bambu")) {
+    return 250;
+  }
+  if (normalized.includes("esun")) {
+    return 224;
+  }
+  return 0;
+}
+
+function resolveLoanableSpoolTareWeight(spool: LoanableSpool): number {
+  const explicit = spool.spoolTareWeightGrams;
+  if (explicit != null && Number.isFinite(explicit)) {
+    return Math.max(0, Math.round(explicit));
+  }
+  return defaultSpoolTareWeightForVendor(spool.vendor);
+}
+
+function toMeasuredTotalWeight(spool: LoanableSpool, filamentGrams?: number | null): number {
+  return Math.max(0, filamentGrams ?? 0) + resolveLoanableSpoolTareWeight(spool);
+}
+
+function toLoanedFilamentWeight(spool: LoanableSpool, measuredTotalGrams: number): number {
+  return Math.max(0, measuredTotalGrams - resolveLoanableSpoolTareWeight(spool));
+}
+
 const formInputClassName =
   "mt-1.5 w-full rounded-2xl border border-slate-200/90 bg-white/90 px-3.5 py-2.5 text-sm text-slate-800 shadow-sm shadow-slate-200/20 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200/70 dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-100 dark:shadow-none dark:placeholder:text-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-700/70";
 const panelCardClassName =
@@ -198,8 +230,6 @@ const panelTitleClassName = "text-xl font-semibold tracking-tight text-slate-900
 const panelSubtitleClassName = "mt-1 max-w-xl text-sm leading-relaxed text-slate-600 dark:text-slate-300";
 const countPillClassName =
   "inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-full border border-slate-200/85 bg-white/85 px-3 text-sm font-semibold text-slate-700 shadow-sm shadow-slate-200/20 dark:border-slate-700/75 dark:bg-slate-900/75 dark:text-slate-100 dark:shadow-none";
-const listMetaChipClassName =
-  "rounded-full border border-slate-200/80 bg-white/80 px-2.5 py-1 text-[11px] text-slate-600 dark:border-slate-700/70 dark:bg-slate-950/35 dark:text-slate-300";
 const detailLabelClassName =
   "text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400";
 const detailValueClassName = "mt-1 text-sm font-semibold text-slate-900 dark:text-slate-50";
@@ -272,6 +302,7 @@ export function LoanOutModal({
           hexColor: row.master.hex_color ?? null,
           status: row.spool.status,
           remainingGrams: row.spool.remaining_g ?? row.spool.current_weight_g ?? null,
+          spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
           location: row.spool.location_id ?? null,
         }));
       setSpools(candidates);
@@ -282,7 +313,11 @@ export function LoanOutModal({
         candidates[0] ??
         null;
       setSelectedSpoolId(preferred?.id ?? null);
-      setGramsOut(preferred?.remainingGrams != null ? String(preferred.remainingGrams) : "");
+      setGramsOut(
+        preferred?.remainingGrams != null
+          ? String(toMeasuredTotalWeight(preferred, preferred.remainingGrams))
+          : "",
+      );
     } catch (loadError) {
       console.error(loadError);
       setError(t("inventory.error.loadInventory", "Failed to load inventory."));
@@ -339,11 +374,12 @@ export function LoanOutModal({
       setError(t("inventory.error.borrowerRequired", "Borrower name is required."));
       return;
     }
-    const grams = Number.parseInt(gramsOut, 10);
-    if (!Number.isFinite(grams) || grams < 0) {
+    const measuredTotalGrams = Number.parseInt(gramsOut, 10);
+    if (!Number.isFinite(measuredTotalGrams) || measuredTotalGrams < 0) {
       setError(t("inventory.error.loanGrams", "Loan grams must be zero or greater."));
       return;
     }
+    const grams = toLoanedFilamentWeight(selectedSpool, measuredTotalGrams);
 
     setBusy(true);
     setError(null);
@@ -440,10 +476,12 @@ export function LoanOutModal({
                         onClick={() => {
                           setSelectedSpoolId(spool.id);
                           setGramsOut(
-                            spool.remainingGrams != null ? String(spool.remainingGrams) : "",
+                            spool.remainingGrams != null
+                              ? String(toMeasuredTotalWeight(spool, spool.remainingGrams))
+                              : "",
                           );
                         }}
-                        className={`rounded-[1.4rem] border px-4 py-3.5 text-left transition ${
+                        className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-[13px] transition ${
                           isActive
                             ? "border-slate-300 shadow-sm dark:border-slate-500"
                             : "border-slate-200/90 bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-950/40 dark:hover:border-slate-500"
@@ -454,48 +492,47 @@ export function LoanOutModal({
                             : undefined
                         }
                       >
-                        <div className="flex items-start gap-3">
-                          <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/75 bg-white/65 p-2 shadow-sm shadow-slate-200/25 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <span
+                            className="h-8 w-8 shrink-0 rounded-md border border-slate-200 dark:border-slate-600"
+                            style={{
+                              background: `linear-gradient(145deg, ${toSwatchColor(
+                                spool.hexColor,
+                              )} 0%, ${toSwatchColor(spool.hexColor)}CC 60%, #0f172a26 100%)`,
+                            }}
+                          />
+                          <span className="min-w-0 flex-1">
                             <span
-                              className="h-full w-full rounded-xl border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
-                              style={{
-                                background: `linear-gradient(145deg, ${toSwatchColor(
-                                  spool.hexColor,
-                                )} 0%, ${toSwatchColor(
-                                  spool.hexColor,
-                                )}CC 58%, #0f172a33 100%)`,
-                              }}
-                            />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <div className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-                                {spool.filamentName} · {spool.colorName}
-                              </div>
+                              className="block overflow-hidden break-words font-semibold leading-tight text-slate-900 [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] dark:text-slate-50"
+                              title={formatFilamentDisplayTitle(
+                                spool.material,
+                                spool.filamentName,
+                                spool.colorName,
+                              )}
+                            >
+                              {formatFilamentDisplayTitle(
+                                spool.material,
+                                spool.filamentName,
+                                spool.colorName,
+                              )}
+                            </span>
+                            <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                               <VendorBadge vendor={spool.vendor} compact />
-                            </div>
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              <span
-                                className={`${listMetaChipClassName} font-mono`}
-                                title={`#${spool.id}`}
-                              >
+                              <span className="font-mono" title={`#${spool.id}`}>
                                 {referenceLabel}
                               </span>
-                              <span className={listMetaChipClassName}>
-                                {spool.material}
-                              </span>
-                              <span className={`${listMetaChipClassName} font-medium text-slate-700 dark:text-slate-200`}>
-                                {formatGrams(spool.remainingGrams)}
-                              </span>
-                              <span
-                                className={`${listMetaChipClassName} max-w-full truncate`}
-                                title={placementLabel}
-                              >
+                              <span>{formatGrams(spool.remainingGrams)}</span>
+                              <span className="truncate max-w-[11rem]" title={placementLabel}>
                                 {placementLabel}
                               </span>
-                            </div>
-                          </div>
-                        </div>
+                            </span>
+                          </span>
+                        </span>
+                        {isActive ? (
+                          <span className="shrink-0 rounded-full border border-slate-300 bg-white/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-700 shadow-sm dark:border-slate-500 dark:bg-slate-900/80 dark:text-slate-100 dark:shadow-none">
+                            ✓ {t("common.selected", "Selected")}
+                          </span>
+                        ) : null}
                       </button>
                     );
                   })}
@@ -528,14 +565,13 @@ export function LoanOutModal({
                           </div>
                           <div className="mt-1 flex flex-wrap items-center gap-2">
                             <div className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-                              {selectedSpool.filamentName} · {selectedSpool.colorName}
+                              {formatFilamentDisplayTitle(
+                                selectedSpool.material,
+                                selectedSpool.filamentName,
+                                selectedSpool.colorName,
+                              )}
                             </div>
                             <VendorBadge vendor={selectedSpool.vendor} compact />
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            <span className={listMetaChipClassName}>
-                              {selectedSpool.material}
-                            </span>
                           </div>
                         </div>
                       </div>
@@ -587,7 +623,7 @@ export function LoanOutModal({
                       <div className={panelSubtitleClassName}>
                         {t(
                           "inventory.loanDetailsHelp",
-                          "Confirm the borrower and outgoing weight before saving the loan.",
+                          "Confirm the borrower and measured outgoing total weight including spool before saving the loan.",
                         )}
                       </div>
 
@@ -609,7 +645,9 @@ export function LoanOutModal({
                         <div>
                           <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
                             {t("inventory.maxAvailable", "Max available")}:{" "}
-                            {formatGrams(selectedSpool.remainingGrams)}
+                            {formatGrams(
+                              toMeasuredTotalWeight(selectedSpool, selectedSpool.remainingGrams),
+                            )}
                           </label>
                           <input
                             type="number"

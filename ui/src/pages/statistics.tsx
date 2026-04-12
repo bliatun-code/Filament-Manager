@@ -4,11 +4,13 @@ import { StatCard } from "../components/dashboard_widgets";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { ModalHeader, modalPanelClassName } from "../components/modal_chrome";
 import { neutralChipClass } from "../lib/chip_styles";
+import { formatFilamentDisplayTitle } from "../lib/display_format";
 import { useI18n, type Locale } from "../lib/i18n";
 import { printerBrandSurfaceStyle } from "../lib/printer_branding";
 import { useResolvedTheme } from "../lib/theme_mode";
 import {
   fetchCachedLibrarySyncLoans,
+  fetchLibrarySyncFilamentConsumption,
   fetchCachedLibrarySyncPrinterOverview,
   fetchLibrarySyncLoans,
   fetchLibrarySyncPrinterOverview,
@@ -325,6 +327,8 @@ export default function StatisticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [clientReadOnly, setClientReadOnly] = useState(false);
   const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
+  const [clientHostBaseUrl, setClientHostBaseUrl] = useState<string | null>(null);
+  const [clientLibraryId, setClientLibraryId] = useState<string | null>(null);
   const [clientStatsSource, setClientStatsSource] = useState<"LIVE" | "CACHED" | "OFFLINE">(
     "OFFLINE",
   );
@@ -398,6 +402,8 @@ export default function StatisticsPage() {
 
         setClientReadOnly(isClientMode);
         setClientHostDeviceName(syncSettings.host_device_name ?? null);
+        setClientHostBaseUrl(syncSettings.host_base_url ?? null);
+        setClientLibraryId(syncSettings.library_id ?? null);
 
         if (isClientMode) {
           const [snapshotResult, printersResult, loansResult, cachedPrinters, cachedLoans] =
@@ -539,32 +545,38 @@ export default function StatisticsPage() {
       if (!tauri) {
         return;
       }
-      if (clientReadOnly) {
-        const title = printer
-          ? `${t("statistics.consumptionByFilament", "Consumption by filament")} · ${printer.printer.name}`
-          : t("statistics.consumptionByFilament", "Consumption by filament");
-        setConsumptionModalTitle(title);
-        setShowConsumptionModal(true);
-        setConsumptionLoading(false);
-        setConsumptionRows([]);
-        setConsumptionError(
-          t(
-            "statistics.clientHostBreakdownOnly",
-            "Detailed filament breakdown is currently available on the host device.",
-          ),
-        );
-        return;
-      }
-      const printerId = printer?.printer.id ?? null;
       const title = printer
         ? `${t("statistics.consumptionByFilament", "Consumption by filament")} · ${printer.printer.name}`
         : t("statistics.consumptionByFilament", "Consumption by filament");
+      if (clientReadOnly) {
+        if (!clientHostBaseUrl || !clientLibraryId) {
+          setConsumptionModalTitle(title);
+          setShowConsumptionModal(true);
+          setConsumptionLoading(false);
+          setConsumptionRows([]);
+          setConsumptionError(
+            t(
+              "statistics.clientHostBreakdownOnly",
+              "Detailed filament breakdown is currently available on the host device.",
+            ),
+          );
+          return;
+        }
+      }
+      const printerId = printer?.printer.id ?? null;
       setConsumptionModalTitle(title);
       setShowConsumptionModal(true);
       setConsumptionLoading(true);
       setConsumptionError(null);
       try {
-        const rows = await listFilamentConsumption(500, printerId);
+        const rows = clientReadOnly
+          ? await fetchLibrarySyncFilamentConsumption(
+              clientHostBaseUrl!,
+              clientLibraryId,
+              500,
+              printerId,
+            )
+          : await listFilamentConsumption(500, printerId);
         setConsumptionRows(rows);
       } catch (loadError) {
         console.error(loadError);
@@ -576,7 +588,7 @@ export default function StatisticsPage() {
         setConsumptionLoading(false);
       }
     },
-    [clientReadOnly, t, tauri],
+    [clientHostBaseUrl, clientLibraryId, clientReadOnly, t, tauri],
   );
 
   const consumptionVendorOptions = useMemo(() => {
@@ -1146,10 +1158,14 @@ export default function StatisticsPage() {
                       />
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
-                          {row.material} · {row.filament_name}
+                          {formatFilamentDisplayTitle(
+                            row.material,
+                            row.filament_name,
+                            row.color_name,
+                          )}
                         </div>
                         <div className="truncate text-xs text-slate-500 dark:text-slate-400">
-                          {row.color_name} · {row.vendor}
+                          {row.vendor}
                         </div>
                         <div className="mt-2">
                           <span
@@ -1448,10 +1464,14 @@ export default function StatisticsPage() {
                       />
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
-                          {row.material} · {row.filamentName}
+                          {formatFilamentDisplayTitle(
+                            row.material,
+                            row.filamentName,
+                            row.colorName,
+                          )}
                         </div>
                         <div className="truncate text-xs text-slate-500 dark:text-slate-400">
-                          {row.colorName} · {row.vendor}
+                          {row.vendor}
                         </div>
                       </div>
                     </div>
@@ -1642,9 +1662,11 @@ export default function StatisticsPage() {
                                 {formatPrinterSlotLabelForModel(t, row.printerModel, row.slot)}
                               </div>
                               <div className="truncate text-xs text-slate-500 dark:text-slate-400">
-                                {row.slot.spool_material ?? t("common.unknown", "Unknown")} ·{" "}
-                                {row.slot.spool_filament_name ?? t("common.unknown", "Unknown")} ·{" "}
-                                {row.slot.spool_color_name ?? t("common.unknown", "Unknown")}
+                                {formatFilamentDisplayTitle(
+                                  row.slot.spool_material ?? t("common.unknown", "Unknown"),
+                                  row.slot.spool_filament_name ?? t("common.unknown", "Unknown"),
+                                  row.slot.spool_color_name ?? t("common.unknown", "Unknown"),
+                                )}
                               </div>
                               <div className="mt-2">
                                 <span

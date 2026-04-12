@@ -136,6 +136,14 @@ struct LibrarySyncSpoolListInput {
 }
 
 #[derive(Deserialize)]
+struct LibrarySyncFilamentConsumptionInput {
+    base_url: String,
+    expected_library_id: Option<String>,
+    limit: Option<i64>,
+    printer_id: Option<String>,
+}
+
+#[derive(Deserialize)]
 struct LibrarySyncSpoolDetailInput {
     base_url: String,
     expected_library_id: Option<String>,
@@ -1224,6 +1232,46 @@ fn fetch_library_sync_loans(
         engine.save_library_sync_validation_state(
             true,
             Some("Host loan list refreshed."),
+            health.device_name.as_deref(),
+        )
+    })?;
+
+    Ok(rows)
+}
+
+#[tauri::command]
+fn fetch_library_sync_filament_consumption(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncFilamentConsumptionInput,
+) -> Result<Vec<FilamentConsumptionRow>, String> {
+    let validation_input = ValidateLibrarySyncHostInput {
+        base_url: input.base_url.clone(),
+        expected_library_id: input.expected_library_id.clone(),
+    };
+    let (normalized_base_url, expected_library_id) =
+        normalize_library_sync_host_input(&validation_input)?;
+    let health = ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    let limit = input.limit.unwrap_or(500).clamp(1, 2_000);
+    let printer_id = input
+        .printer_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let printer_query = printer_id
+        .map(|value| format!("&printer_id={value}"))
+        .unwrap_or_default();
+    let rows: Vec<FilamentConsumptionRow> = fetch_library_sync_host_json(
+        &normalized_base_url,
+        format!(
+            "/api/v1/library/statistics/filament-consumption?limit={limit}{printer_query}"
+        )
+        .as_str(),
+    )?;
+
+    with_inventory(&state, |engine| {
+        engine.save_library_sync_validation_state(
+            true,
+            Some("Host filament consumption refreshed."),
             health.device_name.as_deref(),
         )
     })?;
@@ -3028,6 +3076,7 @@ fn main() {
             fetch_library_sync_printer_overview,
             fetch_cached_library_sync_printer_overview,
             fetch_library_sync_loans,
+            fetch_library_sync_filament_consumption,
             fetch_cached_library_sync_loans,
             pair_library_sync_host,
             clear_library_sync_client_auth,

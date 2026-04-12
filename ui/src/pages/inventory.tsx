@@ -2856,10 +2856,13 @@ export default function InventoryPage({
   }
 
   async function handleRefillSpool() {
-    if (!ensureLocalWriteAllowed()) {
+    if (!tauri || !selectedSpool || manageBusy) {
       return;
     }
-    if (!tauri || !selectedSpool || manageBusy) {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
     if (selectedSpool.status !== "EMPTY") {
@@ -2877,7 +2880,20 @@ export default function InventoryPage({
     setManageBusy(true);
     setError(null);
     try {
-      await updateSpoolStatus(selectedSpool.id, "IN_STOCK");
+      if (clientReadOnly) {
+        await updateLibrarySyncHostSpoolDetails(
+          clientHostBaseUrl!,
+          clientLibraryId,
+          {
+            spool_id: selectedSpool.id,
+            qr_code: selectedSpool.qrCode ?? null,
+            status: "IN_STOCK",
+            location: selectedSpool.location ?? null,
+          },
+        );
+      } else {
+        await updateSpoolStatus(selectedSpool.id, "IN_STOCK");
+      }
       await reloadSpools();
       await reloadPrinterOverview();
       await reloadActiveLoans();

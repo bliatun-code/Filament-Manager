@@ -2,12 +2,12 @@
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current browser baseline is trusted-LAN-only, with `Storage` as the browser label for desktop `Inventory` / `Lager` and `Add spool` as the browser intake action.
 
-## v0.9.0-rc.5 Sync RC (2026-04-11)
+## v0.9.0-rc.6 Sync RC (2026-04-12)
 - Release target:
   - next pre-release candidate for cross-device sync testing with updated Windows host coverage
   - intended for manual host/client QA before the final `v0.9.0`
 - Planned release actions:
-  - bump app/package/Tauri versions to `0.9.0-rc.5`
+  - bump app/package/Tauri versions to `0.9.0-rc.6`
   - publish GitHub pre-release with sync RC notes
   - attach macOS DMG and Windows MSI assets for manual testing
 - RC validation focus:
@@ -22,10 +22,14 @@ Historical notes below still mention the old localhost browser companion, `qa:co
     - `Legg til filament / Add spool` popup in client mode
     - `Filament popup` in client mode
   - specific fixes now marked PASS in local QA:
-    - printer-slot filament dropdown is alphabetically sorted across `local-only`, `host`, and `client`
-    - `Lån ut / Loan out` popup filament picker is alphabetically sorted across `local-only`, `host`, and `client`
-    - dashboard `Utlånt / Loaned` health tile now counts only active outbound loans and no longer includes borrowed-in rolls
-  - verify with the refreshed Windows host build after `v0.9.0-rc.5`
+    - paired client `Add printer` model selection
+    - paired client `Refill / Reactivate roll`
+    - printer reconfigure visibility (`1 AMS x 4`, `2 AMS x 8`, etc.)
+    - loan-out weight semantics and calmer list styling
+    - statistics popup naming/metadata cleanup
+    - printer-slot dropdown spacing/metadata cleanup
+  - verify with the refreshed Windows host build after `v0.9.0-rc.6`
+  - re-test the new statistics per-printer filament breakdown API from paired client against the refreshed host
   - continue client work testing with the updated host baseline and fix any remaining operational regressions before `v0.9.0`
   - remaining non-code release risk from older notes:
     - manual macOS visual `NEEDS CHECK` items in `UI_RELEASE_CANDIDATE_CHECKLIST.md` still apply before broad rollout, but no blocker-level automated regression was reproduced in current preflight

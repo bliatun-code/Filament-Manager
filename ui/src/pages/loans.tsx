@@ -35,6 +35,33 @@ function formatGrams(value?: number | null): string {
   return `${Math.max(0, value)} g`;
 }
 
+function defaultSpoolTareWeightForVendor(vendor?: string | null): number {
+  const normalized = (vendor ?? "").trim().toLowerCase();
+  if (normalized.includes("bambu")) {
+    return 250;
+  }
+  if (normalized.includes("esun")) {
+    return 224;
+  }
+  return 0;
+}
+
+function resolveLoanTareWeight(loan: SpoolLoanDetailsRow): number {
+  const explicit = loan.spool_tare_weight_g;
+  if (explicit != null && Number.isFinite(explicit)) {
+    return Math.max(0, Math.round(explicit));
+  }
+  return defaultSpoolTareWeightForVendor(loan.vendor);
+}
+
+function toMeasuredTotalWeight(loan: SpoolLoanDetailsRow, filamentGrams?: number | null): number {
+  return Math.max(0, filamentGrams ?? 0) + resolveLoanTareWeight(loan);
+}
+
+function toReturnedFilamentWeight(loan: SpoolLoanDetailsRow, measuredTotalGrams: number): number {
+  return Math.max(0, measuredTotalGrams - resolveLoanTareWeight(loan));
+}
+
 function toSwatchColor(raw?: string | null): string {
   const value = (raw ?? "").trim();
   if (!value) {
@@ -469,11 +496,9 @@ export default function LoansPage() {
     setReturnModalLoan(loan);
     setReturnModalGrams(
       String(
-        Math.max(
-          0,
-          loanDirection === "INBOUND"
-            ? loan.spool_remaining_g ?? loan.loan.grams_out
-            : loan.loan.grams_out,
+        toMeasuredTotalWeight(
+          loan,
+          loanDirection === "INBOUND" ? loan.spool_remaining_g ?? loan.loan.grams_out : loan.loan.grams_out,
         ),
       ),
     );
@@ -495,8 +520,8 @@ export default function LoansPage() {
     if (!tauri || busy || !returnModalLoan || returnModalLoan.loan.returned_at) {
       return;
     }
-    const grams = Number.parseInt(returnModalGrams, 10);
-    if (!Number.isFinite(grams) || grams < 0) {
+    const measuredTotalGrams = Number.parseInt(returnModalGrams, 10);
+    if (!Number.isFinite(measuredTotalGrams) || measuredTotalGrams < 0) {
       setError(
         t("loans.error.invalidReturned", "Returned grams must be zero or greater."),
       );
@@ -508,6 +533,7 @@ export default function LoansPage() {
     setInfo(null);
     try {
       const loanDirection = normalizeLoanDirection(returnModalLoan.loan.loan_direction);
+      const returnedFilamentGrams = toReturnedFilamentWeight(returnModalLoan, measuredTotalGrams);
       if (clientReadOnly) {
         if (!canUseClientHostWrite()) {
           return;
@@ -517,7 +543,7 @@ export default function LoansPage() {
           clientLibraryId,
           {
             loan_id: returnModalLoan.loan.id,
-            returned_grams: grams,
+            returned_grams: returnedFilamentGrams,
             note: returnModalNote.trim() || null,
             inbound: loanDirection === "INBOUND",
           },
@@ -526,7 +552,7 @@ export default function LoansPage() {
         const action = loanDirection === "INBOUND" ? returnInboundSpoolLoan : returnSpoolLoan;
         await action({
           loan_id: returnModalLoan.loan.id,
-          returned_grams: grams,
+          returned_grams: returnedFilamentGrams,
           note: returnModalNote.trim() || null,
         });
       }
@@ -989,7 +1015,9 @@ export default function LoansPage() {
                             : t("loans.out", "Out")}
                         </div>
                         <div className={loanFactValueClassName}>
-                          {formatGrams(returnModalLoan.loan.grams_out)}
+                          {formatGrams(
+                            toMeasuredTotalWeight(returnModalLoan, returnModalLoan.loan.grams_out),
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1010,8 +1038,14 @@ export default function LoansPage() {
             <div>
               <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
                 {returnModalInbound
-                  ? t("loans.handBackDialogWeightLabel", "Weigh-in handed-back grams (g)")
-                  : t("loans.returnDialogWeightLabel", "Weigh-in returned grams (g)")}
+                  ? t(
+                      "loans.handBackDialogWeightLabel",
+                      "Weigh-in handed-back total weight incl. spool (g)",
+                    )
+                  : t(
+                      "loans.returnDialogWeightLabel",
+                      "Weigh-in returned total weight incl. spool (g)",
+                    )}
               </label>
               <input
                 type="number"

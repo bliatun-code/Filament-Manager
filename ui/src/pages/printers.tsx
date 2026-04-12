@@ -27,16 +27,22 @@ import { ModalHeader, modalPanelClassName } from "../components/modal_chrome";
 import { PrinterModelPreview } from "../components/printer_model_preview";
 import { SaveOnlyModal } from "../components/save_only_modal";
 import { semanticChipClass } from "../lib/chip_styles";
-import { formatSpoolReference } from "../lib/display_format";
+import {
+  formatFilamentDisplayTitle,
+  formatPlacementLabel,
+  formatSpoolReference,
+} from "../lib/display_format";
 import { useI18n, type Locale } from "../lib/i18n";
 import { printerBrandSurfaceStyle } from "../lib/printer_branding";
 import { sortSpoolsAlphabetically } from "../lib/spool_sort";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import {
   describePrinterCapability,
+  describeConfiguredPrinterSetup,
   findPrinterModelProfileExact,
   formatPrinterSlotLabelForModel,
   hasConfiguredMultiMaterial,
+  listSupportedPrinterModels,
   multiMaterialSlotsInputLabel,
   multiMaterialUnitsInputLabel,
   resolvePrinterModelProfile,
@@ -360,6 +366,7 @@ export default function PrintersPage() {
     () => resolvePrinterModelProfile(newPrinterModel || ""),
     [newPrinterModel],
   );
+  const supportedPrinterModels = useMemo(() => listSupportedPrinterModels(), []);
 
   useEffect(() => {
     if (!tauri) {
@@ -505,7 +512,7 @@ export default function PrintersPage() {
           ? [
               fetchLibrarySyncPrinterOverview(clientHostBaseUrl, clientLibraryId),
               fetchLibrarySyncSpools(clientHostBaseUrl, clientLibraryId, 1200, 0),
-              Promise.resolve({ printer_models: [] }),
+              Promise.resolve({ printer_models: supportedPrinterModels }),
             ]
           : [listPrinterOverview(), listSpools(1200, 0), getPrinterSettings()],
       );
@@ -523,7 +530,9 @@ export default function PrintersPage() {
         })),
       );
       setSpools(spoolRows);
-      setPrinterModels(settings.printer_models);
+      setPrinterModels(
+        settings.printer_models.length > 0 ? settings.printer_models : supportedPrinterModels,
+      );
       setSlotDrafts({});
       setOpenDropdownSlotId(null);
       setIncomingWeightPrompt(null);
@@ -547,7 +556,7 @@ export default function PrintersPage() {
               })),
             );
             setSpools(cachedSpools?.rows ?? []);
-            setPrinterModels([]);
+            setPrinterModels(supportedPrinterModels);
             setSlotDrafts({});
             setOpenDropdownSlotId(null);
             setIncomingWeightPrompt(null);
@@ -567,7 +576,7 @@ export default function PrintersPage() {
     } finally {
       setLoading(false);
     }
-  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, t, tauri]);
+  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, supportedPrinterModels, t, tauri]);
 
   useEffect(() => {
     if (!tauri || !librarySyncReady) {
@@ -1184,6 +1193,11 @@ export default function PrintersPage() {
       <div className="mt-6 space-y-5">
         {printers.map((printer) => {
           const hasMultiMaterial = hasConfiguredMultiMaterial(printer.slots);
+          const configuredSetup = describeConfiguredPrinterSetup(
+            t,
+            printer.printer.model,
+            printer.slots,
+          );
           const usageMetrics = [
             {
               key: "jobs",
@@ -1232,7 +1246,8 @@ export default function PrintersPage() {
                         t,
                         printer.printer.model,
                         hasMultiMaterial,
-                      )}
+                      )}{" "}
+                      · {configuredSetup}
                     </div>
                   </div>
                 </div>
@@ -1266,7 +1281,7 @@ export default function PrintersPage() {
                   if (!searchTerm) {
                     return true;
                   }
-                  return `${row.master.vendor} ${row.master.material} ${row.master.filament_name} ${row.master.color_name} ${row.spool.id}`
+                  return `${row.master.vendor} ${row.master.material} ${row.master.filament_name} ${row.master.color_name} ${row.spool.id} ${row.spool.location_id ?? ""}`
                     .toLowerCase()
                     .includes(searchTerm);
                 });
@@ -1333,18 +1348,22 @@ export default function PrintersPage() {
                               backgroundColor: toSwatchColor(slotSwatchHex),
                             }}
                           />
-                          <span className="min-w-0">
-                            <span className="block truncate font-semibold">
-                              {selectedTargetSpool
-                                ? `${selectedTargetSpool.master.material} · ${selectedTargetSpool.master.filament_name}`
-                                : t("printers.emptySlot", "Empty slot")}
-                            </span>
-                            <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
-                              {selectedTargetSpool
-                                ? `${selectedTargetSpool.master.color_name} · ${selectedTargetSpool.master.vendor} · ${formatSpoolReference(selectedTargetSpool.spool.id)} · ${formatGrams(selectedTargetSpool.spool.remaining_g)}`
+                            <span className="min-w-0">
+                              <span className="block truncate font-semibold">
+                                {selectedTargetSpool
+                                  ? formatFilamentDisplayTitle(
+                                      selectedTargetSpool.master.material,
+                                      selectedTargetSpool.master.filament_name,
+                                      selectedTargetSpool.master.color_name,
+                                    )
+                                  : t("printers.emptySlot", "Empty slot")}
+                              </span>
+                              <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                                {selectedTargetSpool
+                                  ? `${selectedTargetSpool.master.vendor} · ${formatSpoolReference(selectedTargetSpool.spool.id)} · ${formatGrams(selectedTargetSpool.spool.remaining_g)}`
                                 : t("printers.targetEmpty", "Target: Empty slot")}
+                              </span>
                             </span>
-                          </span>
                         </span>
                         <span className="text-xs text-slate-500 dark:text-slate-400">▾</span>
                       </button>
@@ -1368,13 +1387,13 @@ export default function PrintersPage() {
                               })
                             }
                             placeholder={t("printers.searchRolls", "Search rolls by name/vendor")}
-                            className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
                             disabled={!tauri || busy}
                           />
-                          <div className="mt-2 max-h-56 space-y-1 overflow-y-auto rounded-xl border border-slate-200 p-2 dark:border-slate-600">
+                          <div className="mt-2.5 max-h-64 space-y-1.5 overflow-y-auto rounded-xl border border-slate-200 p-2.5 dark:border-slate-600">
                             <button
                               type="button"
-                              className={`flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-xs ${
+                              className={`flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2 text-left text-sm ${
                                 draft.targetSpoolId === ""
                                   ? "border border-slate-300 bg-slate-100 font-semibold text-slate-900 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-50"
                                   : "border border-transparent text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/70"
@@ -1401,16 +1420,16 @@ export default function PrintersPage() {
                                   : undefined
                               }
                             >
-                              <span className="flex min-w-0 items-center gap-2">
+                              <span className="flex min-w-0 items-center gap-2.5">
                                 <span
-                                  className="h-4 w-4 shrink-0 rounded border border-slate-200 dark:border-slate-600"
+                                  className="h-4.5 w-4.5 shrink-0 rounded border border-slate-200 dark:border-slate-600"
                                   style={{ backgroundColor: "#CBD5E1" }}
                                 />
                                 <span className="min-w-0">
                                   <span className="block truncate font-semibold">
                                     {t("printers.emptySlot", "Empty slot")}
                                   </span>
-                                  <span className="block truncate text-[11px] text-slate-600 dark:text-slate-400">
+                                  <span className="mt-0.5 block truncate text-xs text-slate-600 dark:text-slate-400">
                                     {t(
                                       "printers.clearSlotOptionHint",
                                       "Remove current roll from this slot",
@@ -1419,50 +1438,59 @@ export default function PrintersPage() {
                                 </span>
                               </span>
                             </button>
-                            {filteredSlotOptions.map((row) => (
-                              <button
-                                key={row.spool.id}
-                                type="button"
-                                className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-xs ${
-                                  draft.targetSpoolId === row.spool.id
-                                    ? "border border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-50"
-                                    : "border border-transparent text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/70"
-                                }`}
-                                style={printerSwatchInteractiveInsetStyle(
-                                  row.master.hex_color,
-                                  resolvedTheme,
-                                  draft.targetSpoolId === row.spool.id ? "selected" : "default",
-                                )}
-                                onClick={() => {
-                                  setSlotDraft(slot.slot_id, {
-                                    ...draft,
-                                    targetSpoolId: row.spool.id,
-                                  });
-                                  setOpenDropdownSlotId(null);
-                                  openIncomingWeightDialog(printer.printer.id, slot, row);
-                                }}
-                                disabled={!tauri || busy}
-                              >
-                                <span className="flex min-w-0 items-center gap-2">
-                                  <span
-                                    className="h-4 w-4 shrink-0 rounded border border-slate-200 dark:border-slate-600"
-                                    style={{
-                                      backgroundColor: toSwatchColor(row.master.hex_color),
-                                    }}
-                                  />
-                                  <span className="min-w-0">
-                                    <span className="block truncate font-semibold">
-                                      {row.master.material} · {row.master.filament_name}
-                                    </span>
-                                    <span className="block truncate text-[11px] text-slate-600 dark:text-slate-400">
-                                      {row.master.color_name} · {row.master.vendor} ·{" "}
-                                      {formatSpoolReference(row.spool.id)} ·{" "}
-                                      {formatGrams(row.spool.remaining_g)}
+                            {filteredSlotOptions.map((row) => {
+                              const placementLabel = formatPlacementLabel(t, row.spool.location_id);
+                              return (
+                                <button
+                                  key={row.spool.id}
+                                  type="button"
+                                  className={`flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-1.5 text-left text-sm ${
+                                    draft.targetSpoolId === row.spool.id
+                                      ? "border border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-50"
+                                      : "border border-transparent text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/70"
+                                  }`}
+                                  style={printerSwatchInteractiveInsetStyle(
+                                    row.master.hex_color,
+                                    resolvedTheme,
+                                    draft.targetSpoolId === row.spool.id ? "selected" : "default",
+                                  )}
+                                  onClick={() => {
+                                    setSlotDraft(slot.slot_id, {
+                                      ...draft,
+                                      targetSpoolId: row.spool.id,
+                                    });
+                                    setOpenDropdownSlotId(null);
+                                    openIncomingWeightDialog(printer.printer.id, slot, row);
+                                  }}
+                                  disabled={!tauri || busy}
+                                >
+                                  <span className="flex min-w-0 items-center gap-2.5">
+                                    <span
+                                      className="h-4.5 w-4.5 shrink-0 rounded border border-slate-200 dark:border-slate-600"
+                                      style={{
+                                        backgroundColor: toSwatchColor(row.master.hex_color),
+                                      }}
+                                    />
+                                    <span className="min-w-0">
+                                      <span className="block truncate font-semibold leading-tight">
+                                        {formatFilamentDisplayTitle(
+                                          row.master.material,
+                                          row.master.filament_name,
+                                          row.master.color_name,
+                                        )}
+                                      </span>
+                                      <span className="mt-0.5 block truncate text-xs text-slate-600 dark:text-slate-400">
+                                        {row.master.vendor} · {formatSpoolReference(row.spool.id)}{" "}
+                                        · {formatGrams(row.spool.remaining_g)}
+                                      </span>
+                                      <span className="mt-px block truncate text-[11px] leading-tight text-slate-500 dark:text-slate-400">
+                                        {placementLabel}
+                                      </span>
                                     </span>
                                   </span>
-                                </span>
-                              </button>
-                            ))}
+                                </button>
+                              );
+                            })}
                             {filteredSlotOptions.length === 0 ? (
                               <div className="px-1 py-2 text-xs text-slate-500 dark:text-slate-400">
                                 {t("inventory.noMatch", "No spools match current filters.")}
@@ -1483,16 +1511,11 @@ export default function PrintersPage() {
                             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                               {t("printers.currentRoll", "Current roll")}
                             </div>
-                            <div className="mt-1 truncate font-semibold text-slate-900 dark:text-slate-50">
-                              {slot.spool_material} · {slot.spool_filament_name}
-                            </div>
                             <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300">
                               <span>
                                 {t("inventory.reference", "Reference")}{" "}
                                 {formatSpoolReference(slot.spool_id)}
                               </span>
-                              <span>{slot.spool_color_name}</span>
-                              <span>{formatGrams(slot.spool_remaining_g)}</span>
                               <span
                                 className={semanticChipClass(
                                   formatPrinterSpoolStatusTone(slot.spool_status),
@@ -1544,7 +1567,11 @@ export default function PrintersPage() {
               ? t("printers.incomingWeightPromptTitle", "Set incoming roll weight")
               : t("printers.outgoingWeightPromptTitle", "Set outgoing roll weight")
           }
-          subtitle={`${incomingWeightPrompt.targetMaterial} · ${incomingWeightPrompt.targetFilamentName} · ${incomingWeightPrompt.targetColorName}`}
+          subtitle={formatFilamentDisplayTitle(
+            incomingWeightPrompt.targetMaterial,
+            incomingWeightPrompt.targetFilamentName,
+            incomingWeightPrompt.targetColorName,
+          )}
           swatchColor={toSwatchColor(incomingWeightPrompt.targetHexColor)}
           saveDisabled={busy}
           onSave={() => void confirmIncomingWeightDialog()}
@@ -1556,9 +1583,11 @@ export default function PrintersPage() {
                   {t("printers.outgoingWeight", "Outgoing weight (g)")}
                 </label>
                 <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                  {incomingWeightPrompt.currentMaterial ?? "—"} ·{" "}
-                  {incomingWeightPrompt.currentFilamentName ?? "—"} ·{" "}
-                  {incomingWeightPrompt.currentColorName ?? "—"}
+                  {formatFilamentDisplayTitle(
+                    incomingWeightPrompt.currentMaterial,
+                    incomingWeightPrompt.currentFilamentName,
+                    incomingWeightPrompt.currentColorName,
+                  )}
                 </div>
                 <input
                   type="number"

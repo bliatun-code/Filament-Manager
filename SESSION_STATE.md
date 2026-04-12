@@ -1,12 +1,12 @@
 # Session State
 
-Last updated: 2026-04-11
+Last updated: 2026-04-12
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
-- Sync RC local QA checkpoint (2026-04-11, ready for commit/push + new prerelease):
-  - version target is now `v0.9.0-rc.5`
+- Sync RC local QA checkpoint (2026-04-12, ready for commit/push + new prerelease):
+  - version target is now `v0.9.0-rc.6`
   - desktop host/client QA is green for:
     - `Oversikt / Dashboard`
     - `Lager / Inventory`
@@ -16,21 +16,20 @@ Historical notes below still mention the old localhost browser companion, `qa:co
     - `Legg til filament / Add spool` popup in client mode
     - `Filament popup` in client mode
   - focused QC fixes now landed and marked PASS:
-    - printer-slot filament dropdown sort is now alphabetical in `local-only`, `host`, and `client`
-    - `Lån ut / Loan out` popup filament picker now uses the same alphabetical sort in `local-only`, `host`, and `client`
-    - dashboard `Utlånt / Loaned` health tile now excludes borrowed-in (`INBOUND`) loans and only counts active outbound loans
-  - paired client printer creation no longer stalls on save because the submit flow now follows host-write gating instead of local-write gating
+    - paired client `Add printer` now loads the shared supported model list
+    - paired client `Refill / Reactivate roll` now writes back through host
+    - printer `Reconfigure` results are visible immediately through explicit configured-setup labels
+    - loan return / hand-back dialogs now use measured total roll weight including spool while saving net filament grams correctly
+    - loan-out dialog now separates filament-only remaining display from total-weight measurement input
+    - statistics borrower/printer breakdown popups now use the same deduplicated filament naming and calmer secondary metadata
+    - printer slot dropdown and loan-out filament list now use tighter, calmer list styling with cleaner location placement
+  - new host/client parity now landed but still needs real two-machine verification against the refreshed host:
+    - `Statistikk / Statistics` `Forbruk per printer -> Forbruk per filament` now has a host API path for paired client mode
   - technical release preflight is green on the current baseline:
     - `npm run smoke` ✅
+    - `cargo check --manifest-path src-tauri/Cargo.toml` ✅
   - client filament-detail popup now reads history/usage from host and supports the host-backed danger-zone actions (`mark empty`, `delete from active stock`, `purge`)
-  - `Bibliotek og webapp` has been reworked into a calmer role-driven flow:
-    - `Kun lokal`, `Vert`, and `Klient` now use guided role-switch popups with the correct backup/verification rules per transition
-    - client pairing is pairing-link-first and no longer mixes host URL + token concepts in the main flow
-    - host mode now treats webapp as host-owned and always-on once the device is set to `Vert`
-    - advanced host details are reduced to diagnostics/cached snapshot details only
-  - stale sync migration chrome in the settings surface has been removed and the remaining text/copy is aligned with the current role-popup model
-  - remaining known release risk from older notes:
-    - previous manual macOS visual `NEEDS CHECK` items in `UI_RELEASE_CANDIDATE_CHECKLIST.md` are now marked `PASS`
+  - previous manual macOS visual `NEEDS CHECK` items in `UI_RELEASE_CANDIDATE_CHECKLIST.md` are now marked `PASS`
 - Sync RC local QA checkpoint (2026-04-10, ready for commit/push without release):
   - core host/client QA is now green for:
     - `Oversikt / Dashboard`

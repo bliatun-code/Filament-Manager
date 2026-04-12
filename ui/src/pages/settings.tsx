@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import type { SettingsTabKey } from "../App";
+import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
   createTrustedLanPairing,
   clearLibrarySyncClientAuth,
@@ -67,6 +68,7 @@ import { copyTextToClipboard } from "../lib/clipboard";
 import { PrinterModelPreview } from "../components/printer_model_preview";
 import {
   describePrinterCapability,
+  describeConfiguredPrinterSetup,
   findPrinterModelProfileExact,
   hasConfiguredMultiMaterial,
   isExternalSlotId,
@@ -2107,7 +2109,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         default_weight: master.default_weight,
       });
       setInfo(
-        `${t("settings.swatchSaved", "Saved swatch")}: ${master.material} · ${master.filament_name} · ${master.color_name}`,
+        `${t("settings.swatchSaved", "Saved swatch")}: ${formatFilamentDisplayTitle(
+          master.material,
+          master.filament_name,
+          master.color_name,
+        )}`,
       );
       await reloadSettings();
     } catch (saveError) {
@@ -2559,6 +2565,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 const printerSlots =
                   printerOverview.find((item) => item.printer.id === printer.id)?.slots ?? [];
                 const hasMultiMaterial = hasConfiguredMultiMaterial(printerSlots);
+                const configuredSetup = describeConfiguredPrinterSetup(
+                  t,
+                  printer.model,
+                  printerSlots,
+                );
                 const isEditing = editPrinterId === printer.id;
                 return (
                   <div
@@ -2578,7 +2589,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                             {printer.name}
                           </span>{" "}
                           · {printer.model} ·{" "}
-                          {describePrinterCapability(t, printer.model, hasMultiMaterial)}
+                          {describePrinterCapability(t, printer.model, hasMultiMaterial)} ·{" "}
+                          {configuredSetup}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -3924,7 +3936,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                               />
                               <div className="min-w-0">
                                 <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                  {master.material} · {master.filament_name} · {master.color_name}
+                                  {formatFilamentDisplayTitle(
+                                    master.material,
+                                    master.filament_name,
+                                    master.color_name,
+                                  )}
                                 </div>
                                 <div className="mt-1 truncate text-xs text-slate-600 dark:text-slate-300">
                                   {master.vendor} · ID: {master.id}
