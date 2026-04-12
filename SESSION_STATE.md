@@ -5,6 +5,14 @@ Last updated: 2026-04-12
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
+- Sync RC hotfix checkpoint (2026-04-12, ready for commit/push + new prerelease):
+  - version target is now `v0.9.0-rc.7`
+  - `v0.9.0-rc.6` exposed a host-side snapshot regression after `spool_tare_weight_g` was added to active-loan queries
+  - the hotfix in `rc.7` realigns the active-loan row mapping so paired client snapshot reads and protected writes stop crashing on `NULL` tare values
+  - immediate QA focus after the host refresh:
+    - verify `Sjekk vert / Check host` snapshot refresh from paired client
+    - verify paired-client location update/write path again
+    - re-test the new statistics per-printer filament breakdown API from paired client against the refreshed host
 - Sync RC local QA checkpoint (2026-04-12, ready for commit/push + new prerelease):
   - version target is now `v0.9.0-rc.6`
   - desktop host/client QA is green for:

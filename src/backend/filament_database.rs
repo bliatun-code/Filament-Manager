@@ -2205,11 +2205,11 @@ impl FilamentDatabase {
                 },
                 spool_status: row.get(16)?,
                 spool_remaining_g: row.get(17)?,
-                material: row.get(18)?,
-                filament_name: row.get(19)?,
-                color_name: row.get(20)?,
-                vendor: row.get(21)?,
-                hex_color: row.get(22)?,
+                material: row.get(19)?,
+                filament_name: row.get(20)?,
+                color_name: row.get(21)?,
+                vendor: row.get(22)?,
+                hex_color: row.get(23)?,
             })
         })?;
         let mut output = Vec::new();

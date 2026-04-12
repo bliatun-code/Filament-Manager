@@ -2,6 +2,23 @@
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current browser baseline is trusted-LAN-only, with `Storage` as the browser label for desktop `Inventory` / `Lager` and `Add spool` as the browser intake action.
 
+## v0.9.0-rc.7 Snapshot Hotfix RC (2026-04-12)
+- Release target:
+  - fast-follow pre-release candidate to repair the host snapshot regression found immediately after `rc.6`
+  - intended to refresh the Windows host before continued client QA
+- Planned release actions:
+  - bump app/package/Tauri versions to `0.9.0-rc.7`
+  - publish GitHub pre-release with a short host-hotfix note
+  - attach refreshed macOS DMG and Windows MSI assets for manual testing
+- RC validation focus:
+  - confirm paired-client `Sjekk vert / Check host` snapshot fetch succeeds again
+  - confirm paired-client protected writes such as spool location update no longer fail through the host snapshot path
+  - re-test the new statistics per-printer filament breakdown API from paired client against the refreshed host
+  - continue two-machine QC from the updated host baseline and fix forward toward `v0.9.0`
+  - technical preflight required before tagging:
+    - `npm run smoke`
+    - `cargo check --manifest-path src-tauri/Cargo.toml`
+
 ## v0.9.0-rc.6 Sync RC (2026-04-12)
 - Release target:
   - next pre-release candidate for cross-device sync testing with updated Windows host coverage
