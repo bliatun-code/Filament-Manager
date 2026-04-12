@@ -746,6 +746,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       librarySyncCheckHost: "Check host",
       librarySyncChecking: "Checking...",
       librarySyncHostCheckOk: "Host check passed.",
+      librarySyncHostCheckPairingInvalid:
+        "Host is reachable, but desktop client pairing must be refreshed.",
       librarySyncLinkHost: "Link this device to the checked host",
       librarySyncUseCheckedHost: "Use this checked host",
       librarySyncLinkedHost: "This device is now linked to the selected host library.",
@@ -757,12 +759,18 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Paste a short-lived pairing link from the host to unlock protected desktop sync actions.",
       librarySyncClientAuthInput: "Pairing link",
       librarySyncClientAuthPaired: "Paired",
+      librarySyncClientAuthNeedsRepair: "Re-pair required",
       librarySyncClientAuthUnpaired: "Not paired",
       librarySyncClientAuthPairedAt: "Paired",
       librarySyncClientAuthExpiresAt: "Session expires",
       librarySyncClientAuthPersistentHint:
         "This client stays paired until you remove the pairing here or on the host.",
+      librarySyncClientAuthRepairHint:
+        "Host is still reachable, but this desktop client must be paired again before protected sync actions can continue.",
       librarySyncClearClientAuth: "Remove pairing",
+      librarySyncRenewPairing: "Renew pairing",
+      librarySyncRenewPairingInfo:
+        "Saved pairing was cleared. Paste a fresh pairing link from the host to continue.",
       librarySyncClientAuthCleared: "Desktop client pairing was removed from this device.",
       librarySyncClientPaired:
         "Desktop client paired with the host. Protected sync actions can now be enabled.",
@@ -810,6 +818,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "The latest exported backup was validated automatically in this guided flow.",
       librarySyncRoleChangeClientLocalHint:
         "This client normally expects a host library. You can export a full backup on the current host and import it later under Program maintenance if you want to continue locally.",
+      librarySyncRoleChangeClientToHostHint:
+        "This client becomes its own host after the switch. If you later want to move library data from the current host, create a full backup there and import it later under Program maintenance on this device.",
       librarySyncRoleChangeClientHint:
         "Client mode expects a host connection. After switching, use Desktop client pairing to connect this device to the host you want to use.",
       librarySyncConfirmSwitchToStandalone: "Switch to Standalone",
@@ -1905,6 +1915,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       librarySyncCheckHost: "Sjekk vert",
       librarySyncChecking: "Sjekker...",
       librarySyncHostCheckOk: "Vertsjekk bestått.",
+      librarySyncHostCheckPairingInvalid:
+        "Verten svarer, men desktop-klientparingen må fornyes.",
       librarySyncLinkHost: "Koble denne enheten til den sjekkede verten",
       librarySyncUseCheckedHost: "Bruk denne sjekkede verten",
       librarySyncLinkedHost: "Denne enheten er nå koblet til valgt vertsbibliotek.",
@@ -1916,12 +1928,18 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Lim inn en kortvarig parringslenke fra verten for å låse opp beskyttede desktop-sync-handlinger.",
       librarySyncClientAuthInput: "Parringslenke",
       librarySyncClientAuthPaired: "Paret",
+      librarySyncClientAuthNeedsRepair: "Må pares på nytt",
       librarySyncClientAuthUnpaired: "Ikke paret",
       librarySyncClientAuthPairedAt: "Paret",
       librarySyncClientAuthExpiresAt: "Økten utløper",
       librarySyncClientAuthPersistentHint:
         "Denne klienten forblir paret til du fjerner parringen her eller på verten.",
+      librarySyncClientAuthRepairHint:
+        "Verten svarer fortsatt, men denne desktop-klienten må pares på nytt før beskyttede sync-handlinger kan fortsette.",
       librarySyncClearClientAuth: "Fjern paring",
+      librarySyncRenewPairing: "Forny paring",
+      librarySyncRenewPairingInfo:
+        "Lagret paring ble fjernet. Lim inn en ny parringslenke fra verten for å fortsette.",
       librarySyncClientAuthCleared: "Desktop-klientparingen ble fjernet fra denne enheten.",
       librarySyncClientPaired:
         "Desktop-klienten er paret med verten. Beskyttede sync-handlinger kan nå aktiveres.",
@@ -1969,6 +1987,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Den sist eksporterte sikkerhetskopien ble validert automatisk i denne veiledede flyten.",
       librarySyncRoleChangeClientLocalHint:
         "Denne klienten forventer vanligvis at et vertsbibliotek er tilgjengelig. Du kan eksportere en full sikkerhetskopi på dagens vert og importere den senere under Programvedlikehold hvis du vil fortsette lokalt.",
+      librarySyncRoleChangeClientToHostHint:
+        "Denne klienten blir stående som egen vert etter byttet. Hvis du senere vil overta bibliotekdataene fra dagens vert, tar du full sikkerhetskopi på verten og importerer den senere under Programvedlikehold på denne maskinen.",
       librarySyncRoleChangeClientHint:
         "Klientmodus forventer en vertstilkobling. Etter byttet bruker du Desktop-klientparing for å koble denne enheten til verten du vil bruke.",
       librarySyncConfirmSwitchToStandalone: "Bytt til kun lokal",

@@ -4,6 +4,29 @@ Historical notes below still mention the old localhost browser companion, `qa:co
 
 ## v0.9.0-rc.7 Snapshot Hotfix RC (2026-04-12)
 - Release target:
+  - completed as the host hotfix RC that repaired the active-loan snapshot regression
+  - superseded by `v0.9.0-rc.8` for continued paired desktop/client QA
+
+## v0.9.0-rc.8 Sync Polish RC (2026-04-12)
+- Release target:
+  - next pre-release candidate after `rc.7`, focused on paired desktop/client status polish and dashboard behavior
+  - intended to keep two-machine QC moving from the repaired host baseline without carrying misleading pairing state in the UI
+- Planned release actions:
+  - bump app/package/Tauri versions to `0.9.0-rc.8`
+  - publish GitHub pre-release with short pairing/dashboard polish notes
+  - attach refreshed macOS DMG and Windows MSI assets for manual host/client testing
+- RC validation focus:
+  - confirm dashboard pairing-warning pill stays yellow and localized when host is reachable but pairing is invalid
+  - confirm `Settings` auto-refreshes paired status without manual `Sjekk vert / Check host`
+  - confirm `Forny paring / Renew pairing` flow works cleanly from the invalid-pairing state
+  - confirm inventory side/page banners prioritize active auth errors over generic client-info banners
+  - confirm `Oversikt` resize remains smooth in paired-client mode after removing resize-triggered refreshes
+  - technical preflight required before tagging:
+    - `npm run smoke`
+    - `cargo check --manifest-path src-tauri/Cargo.toml`
+
+## v0.9.0-rc.7 Snapshot Hotfix RC (2026-04-12)
+- Release target:
   - fast-follow pre-release candidate to repair the host snapshot regression found immediately after `rc.6`
   - intended to refresh the Windows host before continued client QA
 - Planned release actions:

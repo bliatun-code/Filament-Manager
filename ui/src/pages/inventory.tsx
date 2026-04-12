@@ -3967,7 +3967,7 @@ export default function InventoryPage({
         </FeedbackBanner>
       ) : null}
 
-      {infoMessage && !(showAddModal && sidePanelMode === "ADD") ? (
+      {!error && infoMessage && !(showAddModal && sidePanelMode === "ADD") ? (
         <FeedbackBanner tone="success" className="mt-4">
           {infoMessage}
         </FeedbackBanner>
@@ -4293,7 +4293,7 @@ export default function InventoryPage({
                     </FeedbackBanner>
                   ) : null}
 
-                  {infoMessage ? (
+                  {!error && infoMessage ? (
                     <FeedbackBanner tone="success" className="mb-4">
                       {infoMessage}
                     </FeedbackBanner>

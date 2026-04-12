@@ -5,6 +5,24 @@ Last updated: 2026-04-12
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
+- Sync RC polish checkpoint (2026-04-12, ready for commit/push + new prerelease):
+  - version target is now `v0.9.0-rc.8`
+  - paired desktop/client QA is green for the latest repair/status round:
+    - `Oversikt / Dashboard` now shows `Må pares på nytt / Re-pair required` consistently when host is reachable but desktop pairing is invalid
+    - dashboard no longer flickers between repair/live client-status states during refresh
+    - `Oversikt` no longer refreshes host-backed data on every native window resize, which removes the resize lugging reproduced only in paired-client mode
+    - `Innstillinger / Settings` now auto-refreshes pairing status when opening the library/webapp section, without waiting for manual host-check actions
+    - paired desktop invalid-pairing messaging now follows the active UI language
+    - `Lager / Inventory` no longer mixes the generic green client-info banner with active auth/renewal errors
+    - client role-change popups are visually harmonized and no longer mix Norwegian + English in the same `client -> host` dialog
+  - latest two-machine client/host smoke is green for:
+    - `Oversikt / Dashboard`
+    - `Lager / Inventory`
+    - `Printere / Printers`
+    - `Utlån / Loans`
+    - `Statistikk / Statistics`
+    - pairing valid / pairing invalid / renew-pairing loops
+    - live / cached / offline transitions plus protected-write blocking
 - Sync RC hotfix checkpoint (2026-04-12, ready for commit/push + new prerelease):
   - version target is now `v0.9.0-rc.7`
   - `v0.9.0-rc.6` exposed a host-side snapshot regression after `spool_tare_weight_g` was added to active-loan queries

@@ -137,6 +137,8 @@ export type LibrarySyncHostValidationResult = {
   reachable: boolean;
   ok: boolean;
   matches_library_id: boolean;
+  pairing_checked: boolean;
+  pairing_valid: boolean;
   api_version?: string | null;
   auth_mode?: string | null;
   access_mode?: string | null;

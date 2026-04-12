@@ -21,6 +21,7 @@ import {
   listWishlistItems,
   listSpools,
   topMaterials,
+  validateLibrarySyncHost,
   type SpoolLoanDetailsRow,
   type WishlistItemRow,
   type TrustedLanCompanionStatus,
@@ -83,6 +84,11 @@ function parseUtcTimestamp(raw: string): Date | null {
     return null;
   }
   return parsed;
+}
+
+function hasInvalidClientPairingMessage(message?: string | null): boolean {
+  const normalized = (message ?? "").trim().toLowerCase();
+  return normalized.includes("desktop client pairing is no longer valid");
 }
 
 function progressRatio(current: number, target: number): number {
@@ -270,6 +276,7 @@ export default function DashboardPage({
     "off",
   );
   const [clientHostDisplayName, setClientHostDisplayName] = useState<string | null>(null);
+  const [clientHostNeedsRepair, setClientHostNeedsRepair] = useState(false);
 
   const refreshDashboard = useCallback(
     async (cancelledRef?: { current: boolean }) => {
@@ -289,14 +296,23 @@ export default function DashboardPage({
       setCompanionStatus(trustedLan);
       const cachedSnapshot = syncSettings?.cached_snapshot ?? null;
       const clientMode = syncSettings?.mode === "CLIENT";
+      const persistedPairingNeedsRepair =
+        clientMode &&
+        !!syncSettings?.client_auth_paired &&
+        hasInvalidClientPairingMessage(syncSettings?.last_validation_message);
+      let pairingNeedsRepair = clientMode && (clientHostNeedsRepair || persistedPairingNeedsRepair);
       setClientHostDisplayName(
         syncSettings?.host_device_name ?? cachedSnapshot?.device_name ?? null,
       );
+      setClientHostNeedsRepair(pairingNeedsRepair);
       if (clientMode) {
         if (!syncSettings?.host_base_url) {
           setClientHostCompanionTone("off");
+        } else if (pairingNeedsRepair) {
+          setClientHostCompanionTone("warn");
         }
       } else {
+        setClientHostNeedsRepair(false);
         setClientHostCompanionTone(
           !trustedLan?.enabled
             ? "off"
@@ -312,18 +328,35 @@ export default function DashboardPage({
       let clientLoanRows = syncSettings?.cached_loans?.rows ?? null;
       let clientWishlistRows = [] as WishlistItemRow[];
       if (clientMode && syncSettings?.host_base_url) {
-        const [snapshotResult, spoolsResult, printersResult, loansResult, wishlistResult] =
+        const [validationResult, snapshotResult, spoolsResult, printersResult, loansResult, wishlistResult] =
           await Promise.allSettled([
+            validateLibrarySyncHost(syncSettings.host_base_url, syncSettings.library_id),
             fetchLibrarySyncSnapshot(syncSettings.host_base_url, syncSettings.library_id),
             fetchLibrarySyncSpools(syncSettings.host_base_url, syncSettings.library_id, 2500, 0),
             fetchLibrarySyncPrinterOverview(syncSettings.host_base_url, syncSettings.library_id),
             fetchLibrarySyncLoans(syncSettings.host_base_url, syncSettings.library_id, 2000),
             fetchLibrarySyncWishlistItems(syncSettings.host_base_url, syncSettings.library_id, 500),
           ]);
+        if (validationResult.status === "fulfilled") {
+          const validation = validationResult.value;
+          pairingNeedsRepair =
+            validation.pairing_checked && !validation.pairing_valid;
+          setClientHostNeedsRepair(pairingNeedsRepair);
+          if (validation.device_name) {
+            setClientHostDisplayName(validation.device_name);
+          }
+          if (!validation.reachable) {
+            setClientHostCompanionTone("off");
+          } else if (!validation.ok || !validation.matches_library_id || pairingNeedsRepair) {
+            setClientHostCompanionTone("warn");
+          }
+        } else {
+          console.error(validationResult.reason);
+        }
         if (snapshotResult.status === "fulfilled") {
           activeClientSnapshot = snapshotResult.value;
           clientSnapshotSource = "live";
-          setClientHostCompanionTone("live");
+          setClientHostCompanionTone(pairingNeedsRepair ? "warn" : "live");
           setClientHostDisplayName(snapshotResult.value.device_name ?? syncSettings?.host_device_name ?? null);
         } else {
           console.error(snapshotResult.reason);
@@ -853,7 +886,7 @@ export default function DashboardPage({
         })}`,
       );
     },
-    [tauri, t],
+    [clientHostNeedsRepair, tauri, t],
   );
 
   useEffect(() => {
@@ -917,14 +950,6 @@ export default function DashboardPage({
         }
         nativeUnlisteners.push(unlistenFocusChanged);
 
-        const unlistenResized = await appWindow.onResized(() => {
-          void runRefresh();
-        });
-        if (cancelledRef.current) {
-          unlistenResized();
-          return;
-        }
-        nativeUnlisteners.push(unlistenResized);
       } catch (error) {
         console.error(error);
       }
@@ -962,7 +987,9 @@ export default function DashboardPage({
     dashboardSyncMode === "CLIENT"
       ? effectiveCompanionTone === "off"
         ? t("dashboard.hostCompanionOff", "Host disconnected")
-        : effectiveCompanionTone === "live"
+        : clientHostNeedsRepair
+          ? t("settings.librarySyncClientAuthNeedsRepair", "Re-pair required")
+          : effectiveCompanionTone === "live"
           ? `${t("dashboard.connectedToHost", "Connected to")} ${clientHostDisplayName ?? t("dashboard.hostFallbackName", "host")}`
           : `${t("dashboard.checkHostConnection", "Check connection to")} ${clientHostDisplayName ?? t("dashboard.hostFallbackName", "host")}`
       : effectiveCompanionTone === "off"

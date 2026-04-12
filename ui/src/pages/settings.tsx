@@ -394,6 +394,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [trustedLanPairingQrUnavailable, setTrustedLanPairingQrUnavailable] = useState(false);
   const [showTrustedLanRevokedBrowsers, setShowTrustedLanRevokedBrowsers] = useState(false);
   const trustedLanPairedBrowsersRef = useRef<TrustedLanPairedBrowser[]>([]);
+  const librarySyncAutoValidationRef = useRef<string | null>(null);
 
   const [printers, setPrinters] = useState<PrinterRow[]>([]);
   const [printerOverview, setPrinterOverview] = useState<PrinterOverviewRow[]>([]);
@@ -528,6 +529,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const settingsClientHostBaseUrl = librarySyncSettings?.host_base_url ?? null;
   const settingsClientLibraryId = librarySyncSettings?.library_id ?? null;
   const settingsClientHostWritePaired = librarySyncSettings?.client_auth_paired ?? false;
+  const settingsClientHostNeedsRepair =
+    settingsClientHostWritePaired &&
+    Boolean(librarySyncValidation?.pairing_checked) &&
+    !librarySyncValidation?.pairing_valid;
+  const settingsClientHostPairingValid =
+    !settingsClientHostWritePaired ||
+    !librarySyncValidation?.pairing_checked ||
+    librarySyncValidation.pairing_valid;
   const missingSwatchMasters = useMemo(
     () => catalogMasters.filter((master) => !isValidHex(master.hex_color)),
     [catalogMasters],
@@ -1060,6 +1069,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setLibrarySyncSettings(refreshed);
       setLibrarySyncSnapshot(refreshed.cached_snapshot ?? null);
       if (result.ok && result.matches_library_id) {
+        if (result.pairing_checked && !result.pairing_valid) {
+          return;
+        }
         setInfo(
           t("settings.librarySyncHostCheckOk", "Host check passed."),
         );
@@ -1187,6 +1199,83 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setLibrarySyncBusy(false);
     }
   }, [librarySyncBusy, t, tauri]);
+
+  const handleRenewLibrarySyncClientAuth = useCallback(async () => {
+    if (!tauri || librarySyncBusy) {
+      return;
+    }
+    setLibrarySyncBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const cleared = await clearLibrarySyncClientAuth();
+      setLibrarySyncSettings(cleared);
+      setLibrarySyncValidation(null);
+      setLibrarySyncPairingDraft("");
+      setInfo(
+        t(
+          "settings.librarySyncRenewPairingInfo",
+          "Saved pairing was cleared. Paste a fresh pairing link from the host to continue.",
+        ),
+      );
+    } catch (clearError) {
+      console.error(clearError);
+      setError(
+        toErrorMessage(
+          clearError,
+          t(
+            "settings.error.librarySyncClearClientAuth",
+            "Failed to remove the saved desktop client pairing.",
+          ),
+        ),
+      );
+    } finally {
+      setLibrarySyncBusy(false);
+    }
+  }, [librarySyncBusy, t, tauri]);
+
+  useEffect(() => {
+    if (activeTab !== "LIBRARY") {
+      librarySyncAutoValidationRef.current = null;
+      return;
+    }
+    if (
+      !tauri ||
+      loading ||
+      librarySyncBusy ||
+      librarySyncValidationBusy ||
+      librarySyncModeDraft !== "CLIENT" ||
+      !settingsClientHostWritePaired ||
+      !(settingsClientHostBaseUrl || librarySyncHostBaseUrlDraft.trim())
+    ) {
+      return;
+    }
+    const autoValidationKey = [
+      activeTab,
+      librarySyncModeDraft,
+      settingsClientHostBaseUrl ?? librarySyncHostBaseUrlDraft.trim(),
+      librarySyncSettings?.client_auth_paired_at ?? "",
+      librarySyncSettings?.client_auth_expires_at ?? "",
+    ].join("|");
+    if (librarySyncAutoValidationRef.current === autoValidationKey) {
+      return;
+    }
+    librarySyncAutoValidationRef.current = autoValidationKey;
+    void handleValidateLibrarySyncHost();
+  }, [
+    activeTab,
+    handleValidateLibrarySyncHost,
+    librarySyncBusy,
+    librarySyncHostBaseUrlDraft,
+    librarySyncModeDraft,
+    librarySyncSettings?.client_auth_expires_at,
+    librarySyncSettings?.client_auth_paired_at,
+    librarySyncValidationBusy,
+    loading,
+    settingsClientHostBaseUrl,
+    settingsClientHostWritePaired,
+    tauri,
+  ]);
 
   const handleFetchLibrarySyncSnapshot = useCallback(async () => {
     if (!tauri || !librarySyncSettings) {
@@ -2470,7 +2559,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     Boolean(trustedLanPairingLink) ||
     trustedLanPairedBrowsers.length > 0;
   const standaloneWebappEnabled = librarySyncModeDraft === "STANDALONE" && trustedLanEnabledDraft;
-  const clientHasLinkedHost = Boolean(settingsClientHostBaseUrl || librarySyncHostBaseUrlDraft.trim());
   const clientHasStatusDetails = Boolean(
     librarySyncSettings?.last_checked_at ||
       librarySyncSettings?.last_reachable_at ||
@@ -3134,16 +3222,16 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                             </div>
                           </div>
                           <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => void handleValidateLibrarySyncHost()}
-                              className={settingsActionButtonClass("neutral")}
-                              disabled={!tauri || librarySyncBusy || librarySyncValidationBusy || !clientHasLinkedHost}
-                            >
-                              {librarySyncValidationBusy
-                                ? t("settings.librarySyncChecking", "Checking...")
-                                : t("settings.librarySyncCheckHost", "Check host")}
-                            </button>
+                            {settingsClientHostNeedsRepair ? (
+                              <button
+                                type="button"
+                                onClick={() => void handleRenewLibrarySyncClientAuth()}
+                                className={settingsActionButtonClass("accent")}
+                                disabled={!tauri || librarySyncBusy}
+                              >
+                                {t("settings.librarySyncRenewPairing", "Renew pairing")}
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               onClick={() => void handleClearLibrarySyncClientAuth()}
@@ -3152,15 +3240,28 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                             >
                               {t("settings.librarySyncClearClientAuth", "Remove pairing")}
                             </button>
-                            <span className="rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200">
-                              {t("settings.librarySyncClientAuthPaired", "Paired")}
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                settingsClientHostPairingValid
+                                  ? "border border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200"
+                                  : "border border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-100"
+                              }`}
+                            >
+                              {settingsClientHostPairingValid
+                                ? t("settings.librarySyncClientAuthPaired", "Paired")
+                                : t("settings.librarySyncClientAuthNeedsRepair", "Re-pair required")}
                             </span>
                           </div>
                           <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                            {t(
-                              "settings.librarySyncClientAuthPersistentHint",
-                              "This client stays paired until you remove the pairing here or on the host.",
-                            )}
+                            {settingsClientHostNeedsRepair
+                              ? t(
+                                  "settings.librarySyncClientAuthRepairHint",
+                                  "Host is still reachable, but this desktop client must be paired again before protected sync actions can continue.",
+                                )
+                              : t(
+                                  "settings.librarySyncClientAuthPersistentHint",
+                                  "This client stays paired until you remove the pairing here or on the host.",
+                                )}
                           </div>
                         </>
                       )}
@@ -3168,14 +3269,25 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                       {librarySyncValidation ? (
                         <div
                           className={`mt-3 rounded-2xl border px-4 py-3 text-sm leading-6 ${
-                            librarySyncValidation.ok && librarySyncValidation.matches_library_id
+                            librarySyncValidation.ok &&
+                            librarySyncValidation.matches_library_id &&
+                            (!librarySyncValidation.pairing_checked ||
+                              librarySyncValidation.pairing_valid)
                               ? "border-emerald-200 bg-emerald-50/80 text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-100"
-                              : librarySyncValidation.ok
+                              : librarySyncValidation.ok || librarySyncValidation.reachable
                                 ? "border-amber-200 bg-amber-50/80 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-100"
                                 : "border-rose-200 bg-rose-50/80 text-rose-900 dark:border-rose-400/30 dark:bg-rose-500/10 dark:text-rose-100"
                           }`}
                         >
-                          <div className="font-semibold">{librarySyncValidation.message}</div>
+                          <div className="font-semibold">
+                            {librarySyncValidation.pairing_checked &&
+                            !librarySyncValidation.pairing_valid
+                              ? t(
+                                  "settings.librarySyncHostCheckPairingInvalid",
+                                  "Host is reachable, but desktop client pairing must be refreshed.",
+                                )
+                              : librarySyncValidation.message}
+                          </div>
                         </div>
                       ) : null}
                     </div>
@@ -4278,9 +4390,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 <div className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                   {roleChangeFromClient && roleChangeToHost
                     ? t(
-                        "settings.librarySyncRoleChangeClientToHostHint",
-                        "This device becomes its own host after the switch. If you later want to move library data from the current host, create a full backup there and import it later under Program maintenance on this device.",
+                        "settings.librarySyncHostHint",
+                        "This device is prepared to host the library for other desktop or browser clients.",
                       )
+                    : roleChangeFromClient && roleChangeToStandalone
+                      ? t(
+                          "settings.librarySyncStandaloneHint",
+                          "This device keeps using its own local library only.",
+                        )
                     : roleChangeTarget === "HOST"
                       ? t(
                           "settings.librarySyncHostHint",
@@ -4300,11 +4417,20 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               <button
                 type="button"
                 onClick={closeLibraryRoleChangeModal}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white/85 text-base leading-none text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-800/60"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white/85 text-[1.35rem] leading-none text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-800/60"
               >
                 ×
               </button>
             </div>
+
+            {roleChangeFromClient && roleChangeToHost ? (
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-200">
+                {t(
+                  "settings.librarySyncRoleChangeClientToHostHint",
+                  "This client becomes its own host after the switch. If you later want to move library data from the current host, create a full backup there and import it later under Program maintenance on this device.",
+                )}
+              </div>
+            ) : null}
 
             {roleChangeFromClient && roleChangeToStandalone ? (
               <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-200">
@@ -4315,18 +4441,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                   : `This client normally expects a host library. You can export a full backup on ${
                       librarySyncSettings?.host_device_name || t("common.unknown", "Unknown")
                     } and import it later under Program maintenance if you want to continue locally.`}
-              </div>
-            ) : null}
-
-            {roleChangeFromClient && roleChangeToHost ? (
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-200">
-                {locale === "nb"
-                  ? `Denne klienten blir stående som egen vert etter byttet. Hvis du senere vil overta bibliotekdataene fra ${
-                      librarySyncSettings?.host_device_name || t("common.unknown", "Ukjent")
-                    }, tar du full sikkerhetskopi på verten og importerer den senere under Programvedlikehold på denne maskinen.`
-                  : `This client becomes its own host after the switch. If you later want to move library data from ${
-                      librarySyncSettings?.host_device_name || t("common.unknown", "Unknown")
-                    }, create a full backup on that host and import it later under Program maintenance on this device.`}
               </div>
             ) : null}
 

@@ -308,6 +308,8 @@ struct LibrarySyncHostValidationResult {
     reachable: bool,
     ok: bool,
     matches_library_id: bool,
+    pairing_checked: bool,
+    pairing_valid: bool,
     api_version: Option<String>,
     auth_mode: Option<String>,
     access_mode: Option<String>,
@@ -534,6 +536,8 @@ fn validate_library_sync_host(
                 reachable: false,
                 ok: false,
                 matches_library_id: false,
+                pairing_checked: false,
+                pairing_valid: false,
                 api_version: None,
                 auth_mode: None,
                 access_mode: None,
@@ -555,6 +559,8 @@ fn validate_library_sync_host(
             reachable: true,
             ok: false,
             matches_library_id: false,
+            pairing_checked: false,
+            pairing_valid: false,
             api_version: None,
             auth_mode: None,
             access_mode: None,
@@ -583,7 +589,7 @@ fn validate_library_sync_host(
         .map(|expected| remote_library_id.as_deref() == Some(expected))
         .unwrap_or(true);
 
-    let message = if !parsed.ok {
+    let mut message = if !parsed.ok {
         "Host reported not ready.".to_string()
     } else if !matches_library_id {
         format!(
@@ -604,11 +610,57 @@ fn validate_library_sync_host(
         )
     };
 
+    let saved_auth_state = with_inventory(&state, |engine| engine.get_library_sync_client_auth_state())?;
+    let mut pairing_checked = false;
+    let mut pairing_valid = false;
+
+    if parsed.ok && matches_library_id {
+        if let Some((_, device_token, _, _)) = saved_auth_state {
+            pairing_checked = true;
+            match renew_library_sync_host_session(&normalized_base_url, &device_token) {
+                Ok(renewed) => {
+                    pairing_valid = true;
+                    with_inventory(&state, |engine| {
+                        engine.save_library_sync_client_auth_state(
+                            &renewed.session_id,
+                            &renewed.device_token,
+                            &renewed.csrf_token,
+                            None,
+                        )
+                    })?;
+                }
+                Err(error) => {
+                    message = if error.contains("401") {
+                        format!(
+                            "Host is reachable{}, but desktop client pairing is no longer valid.",
+                            parsed
+                                .device_name
+                                .as_deref()
+                                .map(|value| format!(" on {value}"))
+                                .unwrap_or_default()
+                        )
+                    } else {
+                        format!(
+                            "Host is reachable{}, but desktop client pairing could not be verified ({error}).",
+                            parsed
+                                .device_name
+                                .as_deref()
+                                .map(|value| format!(" on {value}"))
+                                .unwrap_or_default()
+                        )
+                    };
+                }
+            }
+        }
+    }
+
     let result = LibrarySyncHostValidationResult {
         base_url: normalized_base_url,
         reachable: true,
         ok: parsed.ok,
         matches_library_id,
+        pairing_checked,
+        pairing_valid,
         api_version: Some(parsed.api_version),
         auth_mode: Some(parsed.auth_mode),
         access_mode: parsed.access_mode,
