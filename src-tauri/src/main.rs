@@ -69,6 +69,8 @@ struct CatalogRefreshResult {
     detected_collection: Option<String>,
     reactivated_count: i64,
     discontinued_count: i64,
+    reused_cached_products: Option<i64>,
+    detail_fetches: Option<i64>,
     output: String,
 }
 
@@ -2101,6 +2103,8 @@ async fn refresh_bambu_catalog(
             detected_collection: None,
             reactivated_count: 0,
             discontinued_count: 0,
+            reused_cached_products: None,
+            detail_fetches: None,
             output: format!(
                 "Bambu refresh failed before completion.\n{message}\n\nCatalog lifecycle update:\nVendor: Bambu\nDiscontinued handling: skipped (refresh failed)\nReactivated: 0\nMarked discontinued: 0\n"
             ),
@@ -2168,6 +2172,8 @@ async fn refresh_esun_catalog(
             detected_collection: None,
             reactivated_count: 0,
             discontinued_count: 0,
+            reused_cached_products: None,
+            detail_fetches: None,
             output: format!(
                 "eSUN refresh failed before completion.\n{message}\n\nCatalog lifecycle update:\nVendor: eSUN\nDiscontinued handling: skipped (refresh failed)\nReactivated: 0\nMarked discontinued: 0\n"
             ),
@@ -2187,6 +2193,42 @@ fn refresh_bambu_catalog_blocking(
             .map_err(|error| format!("{:?}", error))?;
         db.sqlite_now().map_err(|error| format!("{:?}", error))?
     };
+    let (known_bambu_entries, stale_before) = if material_types.is_empty() {
+        (None, None)
+    } else {
+        let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
+        let rows = db
+            .list_master_catalog(100_000, None)
+            .map_err(|error| format!("{:?}", error))?;
+        let stale_before = db
+            .sqlite_datetime_shift(&refresh_started_at, "-14 days")
+            .map_err(|error| format!("{:?}", error))?;
+        let entries: Vec<backend::bambu_lookup::BambuKnownCatalogEntry> = rows
+            .into_iter()
+            .filter(|row| row.vendor.eq_ignore_ascii_case("Bambu"))
+            .filter(|row| {
+                material_types
+                    .iter()
+                    .any(|material| material == &row.material.to_uppercase())
+            })
+            .filter_map(|row| {
+                let product_url = row.product_url?;
+                Some(backend::bambu_lookup::BambuKnownCatalogEntry {
+                    entry: backend::bambu_lookup::BambuCatalogEntry {
+                        material: row.material,
+                        filament_name: row.filament_name,
+                        color_name: row.color_name,
+                        hex_color: row.hex_color,
+                        image_url: None,
+                        product_url,
+                        default_weight_g: row.default_weight,
+                    },
+                    last_seen_at: row.last_seen_at,
+                })
+            })
+            .collect();
+        (Some(entries), Some(stale_before))
+    };
 
     emit_catalog_refresh_progress(
         app,
@@ -2205,6 +2247,8 @@ fn refresh_bambu_catalog_blocking(
         } else {
             Some(material_types.clone())
         },
+        known_bambu_entries,
+        stale_before.as_deref(),
     ) {
         Ok(snapshot) => snapshot,
         Err(error) => {
@@ -2214,6 +2258,8 @@ fn refresh_bambu_catalog_blocking(
                 detected_collection: None,
                 reactivated_count: 0,
                 discontinued_count: 0,
+                reused_cached_products: None,
+                detail_fetches: None,
                 output: format!(
                     "Remote Bambu refresh source was unavailable.\n{error}\nLocal Bambu catalog was left unchanged.\n\nCatalog lifecycle update:\nVendor: Bambu\nDiscontinued handling: skipped (source unavailable)\nReactivated: 0\nMarked discontinued: 0\n"
                 ),
@@ -2273,11 +2319,13 @@ fn refresh_bambu_catalog_blocking(
     };
 
     let mut output = format!(
-        "Detected store: {}\nDetected collection: {}\nProducts discovered: {}\nProducts detailed: {}\nAnti-bot blocks: {}\nImported {} entries.\nSkipped invalid entries: {}\n",
+        "Detected store: {}\nDetected collection: {}\nProducts discovered: {}\nProducts detailed: {}\nReused cached products: {}\nDetail fetches: {}\nAnti-bot blocks: {}\nImported {} entries.\nSkipped invalid entries: {}\n",
         snapshot.detected_store,
         snapshot.detected_collection,
         snapshot.products_discovered,
         snapshot.products_detailed,
+        snapshot.reused_cached_products,
+        snapshot.detail_fetches,
         snapshot.anti_bot_blocks,
         imported,
         skipped_invalid_entries
@@ -2356,6 +2404,8 @@ fn refresh_bambu_catalog_blocking(
         detected_collection: Some(snapshot.detected_collection),
         reactivated_count,
         discontinued_count,
+        reused_cached_products: Some(snapshot.reused_cached_products),
+        detail_fetches: Some(snapshot.detail_fetches),
         output,
     })
 }
@@ -2374,12 +2424,46 @@ fn refresh_esun_catalog_blocking(
     };
 
     emit_catalog_refresh_progress(app, "eSUN", "FETCH", "Fetching eSUN product catalog...");
+    let (known_esun_entries, stale_before) = if material_types.is_empty() {
+        (None, None)
+    } else {
+        let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
+        let rows = db
+            .list_master_catalog(100_000, None)
+            .map_err(|error| format!("{:?}", error))?;
+        let stale_before = db
+            .sqlite_datetime_shift(&refresh_started_at, "-14 days")
+            .map_err(|error| format!("{:?}", error))?;
+        let entries: Vec<backend::vendor_lookup::EsunKnownCatalogEntry> = rows
+            .into_iter()
+            .filter(|row| row.vendor.eq_ignore_ascii_case("eSUN"))
+            .filter(|row| material_types.iter().any(|material| material == &row.material.to_uppercase()))
+            .filter_map(|row| {
+                let product_url = row.product_url?;
+                Some(backend::vendor_lookup::EsunKnownCatalogEntry {
+                    entry: backend::vendor_lookup::EsunCatalogEntry {
+                        material: row.material,
+                        filament_name: row.filament_name,
+                        color_name: row.color_name,
+                        hex_color: row.hex_color,
+                        image_url: None,
+                        product_url,
+                        default_weight_g: row.default_weight,
+                    },
+                    last_seen_at: row.last_seen_at,
+                })
+            })
+            .collect();
+        (Some(entries), Some(stale_before))
+    };
     let snapshot = match backend::vendor_lookup::refresh_esun_catalog_snapshot(
         if material_types.is_empty() {
             None
         } else {
             Some(material_types.clone())
         },
+        known_esun_entries,
+        stale_before.as_deref(),
     ) {
         Ok(snapshot) => snapshot,
         Err(error) => {
@@ -2389,6 +2473,8 @@ fn refresh_esun_catalog_blocking(
                 detected_collection: None,
                 reactivated_count: 0,
                 discontinued_count: 0,
+                reused_cached_products: None,
+                detail_fetches: None,
                 output: format!(
                     "Remote eSUN refresh source was unavailable.\n{error}\nLocal eSUN catalog was left unchanged.\n\nCatalog lifecycle update:\nVendor: eSUN\nDiscontinued handling: skipped (source unavailable)\nReactivated: 0\nMarked discontinued: 0\n"
                 ),
@@ -2475,12 +2561,14 @@ fn refresh_esun_catalog_blocking(
     };
 
     let mut output = format!(
-        "Detected store: {}\nDetected collection: {}\nHandles discovered: {}\nProducts processed: {}\nSkipped non-filament: {}\nImported {} entries.\n",
+        "Detected store: {}\nDetected collection: {}\nHandles discovered: {}\nProducts processed: {}\nSkipped non-filament: {}\nReused cached products: {}\nDetail fetches: {}\nImported {} entries.\n",
         snapshot.detected_store,
         snapshot.detected_collection,
         snapshot.handles_found,
         snapshot.products_processed,
         snapshot.skipped_non_filament,
+        snapshot.reused_cached_products,
+        snapshot.detail_fetches,
         imported
     );
     if !material_types.is_empty() {
@@ -2517,6 +2605,8 @@ fn refresh_esun_catalog_blocking(
         detected_collection: Some(snapshot.detected_collection),
         reactivated_count,
         discontinued_count,
+        reused_cached_products: Some(snapshot.reused_cached_products),
+        detail_fetches: Some(snapshot.detail_fetches),
         output,
     })
 }

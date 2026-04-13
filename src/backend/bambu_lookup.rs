@@ -36,6 +36,12 @@ pub struct BambuCatalogEntry {
     pub default_weight_g: i64,
 }
 
+#[derive(Clone, Debug)]
+pub struct BambuKnownCatalogEntry {
+    pub entry: BambuCatalogEntry,
+    pub last_seen_at: Option<String>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BambuCatalogRefreshSnapshot {
     pub entries: Vec<BambuCatalogEntry>,
@@ -45,6 +51,8 @@ pub struct BambuCatalogRefreshSnapshot {
     pub anti_bot_blocks: i64,
     pub products_discovered: i64,
     pub products_detailed: i64,
+    pub reused_cached_products: i64,
+    pub detail_fetches: i64,
     pub partial: bool,
 }
 
@@ -129,14 +137,19 @@ struct NextStoreResult {
     anti_bot_blocks: i64,
     products_discovered: i64,
     products_detailed: i64,
+    reused_cached_products: i64,
+    detail_fetches: i64,
     partial: bool,
 }
 
 pub fn refresh_bambu_catalog_snapshot(
     material_filters: Option<Vec<String>>,
+    known_entries: Option<Vec<BambuKnownCatalogEntry>>,
+    stale_before: Option<&str>,
 ) -> Result<BambuCatalogRefreshSnapshot, String> {
     let client = build_client()?;
     let filters = normalize_material_filters(material_filters);
+    let known_entries_by_product_url = build_known_entry_lookup(known_entries.unwrap_or_default());
     let detected = detect_store(&client)?;
 
     if let Some(result) =
@@ -154,12 +167,21 @@ pub fn refresh_bambu_catalog_snapshot(
             anti_bot_blocks: 0,
             products_discovered: 0,
             products_detailed: 0,
+            reused_cached_products: 0,
+            detail_fetches: 0,
             partial: false,
         });
     }
 
     if let Some(next_result) =
-        fetch_next_store_entries(&client, &detected.base_url, &detected.handle, &filters)?
+        fetch_next_store_entries(
+            &client,
+            &detected.base_url,
+            &detected.handle,
+            &filters,
+            &known_entries_by_product_url,
+            stale_before,
+        )?
     {
         return Ok(BambuCatalogRefreshSnapshot {
             entries: next_result.entries,
@@ -169,6 +191,8 @@ pub fn refresh_bambu_catalog_snapshot(
             anti_bot_blocks: next_result.anti_bot_blocks,
             products_discovered: next_result.products_discovered,
             products_detailed: next_result.products_detailed,
+            reused_cached_products: next_result.reused_cached_products,
+            detail_fetches: next_result.detail_fetches,
             partial: next_result.partial,
         });
     }
@@ -181,6 +205,8 @@ pub fn refresh_bambu_catalog_snapshot(
         anti_bot_blocks: 0,
         products_discovered: 0,
         products_detailed: 0,
+        reused_cached_products: 0,
+        detail_fetches: 0,
         partial: true,
     })
 }
@@ -621,6 +647,63 @@ fn dedupe_entries(entries: Vec<BambuCatalogEntry>) -> Vec<BambuCatalogEntry> {
     unique.into_values().collect()
 }
 
+fn build_known_entry_lookup(
+    entries: Vec<BambuKnownCatalogEntry>,
+) -> HashMap<String, Vec<BambuKnownCatalogEntry>> {
+    let mut lookup = HashMap::new();
+    for entry in entries {
+        let key = normalize_catalog_product_url(&entry.entry.product_url);
+        if key.is_empty() {
+            continue;
+        }
+        lookup.entry(key).or_insert_with(Vec::new).push(entry);
+    }
+    lookup
+}
+
+fn append_known_entries_for_product_url(
+    product_url: &str,
+    known_entries_by_product_url: &HashMap<String, Vec<BambuKnownCatalogEntry>>,
+    stale_before: Option<&str>,
+    entries: &mut Vec<BambuCatalogEntry>,
+) -> bool {
+    let normalized = normalize_catalog_product_url(product_url);
+    let Some(known_entries) = known_entries_by_product_url.get(&normalized) else {
+        return false;
+    };
+    if known_entries
+        .iter()
+        .any(|known| is_known_entry_stale(known, stale_before))
+    {
+        return false;
+    }
+    let before = entries.len();
+    entries.extend(known_entries.iter().map(|known| known.entry.clone()));
+    entries.len() > before
+}
+
+fn is_known_entry_stale(entry: &BambuKnownCatalogEntry, stale_before: Option<&str>) -> bool {
+    match (entry.last_seen_at.as_deref(), stale_before) {
+        (Some(last_seen_at), Some(cutoff)) => last_seen_at < cutoff,
+        (None, Some(_)) => true,
+        _ => false,
+    }
+}
+
+fn normalize_catalog_product_url(url: &str) -> String {
+    let trimmed = url.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    match Url::parse(trimmed) {
+        Ok(mut parsed) => {
+            parsed.set_fragment(None);
+            parsed.to_string()
+        }
+        Err(_) => trimmed.to_string(),
+    }
+}
+
 fn fetch_products_page(
     client: &Client,
     base_url: &str,
@@ -1053,6 +1136,8 @@ fn fetch_next_store_entries(
     base_url: &str,
     collection_handle: &str,
     filters: &[String],
+    known_entries_by_product_url: &HashMap<String, Vec<BambuKnownCatalogEntry>>,
+    stale_before: Option<&str>,
 ) -> Result<Option<NextStoreResult>, String> {
     let collection_url = format!("{base_url}/collections/{collection_handle}");
     let Some((status, html)) = fetch_text_with_status(
@@ -1080,6 +1165,8 @@ fn fetch_next_store_entries(
     let mut warnings: HashSet<String> = HashSet::new();
     let mut anti_bot_blocks = 0i64;
     let mut products_detailed = 0i64;
+    let mut reused_cached_products = 0i64;
+    let mut detail_fetches = 0i64;
     let mut stop_detailed_fetch = false;
     let mut consecutive_anti_bot_blocks = 0usize;
 
@@ -1099,6 +1186,15 @@ fn fetch_next_store_entries(
         }
 
         let product_url = format!("{base_url}/products/{}", product.seo_code);
+        if append_known_entries_for_product_url(
+            &product_url,
+            known_entries_by_product_url,
+            stale_before,
+            &mut entries,
+        ) {
+            reused_cached_products += 1;
+            continue;
+        }
         let product_response = fetch_text_with_status(
             client,
             &product_url,
@@ -1140,6 +1236,7 @@ fn fetch_next_store_entries(
         }
 
         products_detailed += 1;
+        detail_fetches += 1;
         consecutive_anti_bot_blocks = 0;
         let product_decoded = decode_next_payload(&product_html);
         let colors = extract_color_options(&product_decoded);
@@ -1189,6 +1286,8 @@ fn fetch_next_store_entries(
         anti_bot_blocks,
         products_discovered: products.len() as i64,
         products_detailed,
+        reused_cached_products,
+        detail_fetches,
         partial,
     }))
 }
@@ -1196,7 +1295,9 @@ fn fetch_next_store_entries(
 #[cfg(test)]
 mod tests {
     use super::{
-        decode_js_string_literal, extract_product_list, infer_material, normalize_material_filters,
+        append_known_entries_for_product_url, build_known_entry_lookup, decode_js_string_literal,
+        extract_product_list, infer_material, normalize_material_filters, BambuCatalogEntry,
+        BambuKnownCatalogEntry,
     };
 
     #[test]
@@ -1237,5 +1338,55 @@ mod tests {
         let entries = extract_product_list(decoded);
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].name, "ABS - Orange");
+    }
+
+    #[test]
+    fn append_known_entries_for_product_url_reuses_cached_bambu_rows() {
+        let lookup = build_known_entry_lookup(vec![BambuKnownCatalogEntry {
+            entry: BambuCatalogEntry {
+                material: "PLA".to_string(),
+                filament_name: "PLA Basic".to_string(),
+                color_name: "Red".to_string(),
+                hex_color: Some("#ff0000".to_string()),
+                image_url: None,
+                product_url: "https://store.bambulab.com/products/pla-basic-red?variant=1"
+                    .to_string(),
+                default_weight_g: 1000,
+            },
+            last_seen_at: Some("2026-04-12 10:00:00".to_string()),
+        }]);
+        let mut entries = Vec::new();
+        assert!(append_known_entries_for_product_url(
+            "https://store.bambulab.com/products/pla-basic-red?variant=1",
+            &lookup,
+            None,
+            &mut entries,
+        ));
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].filament_name, "PLA Basic");
+    }
+
+    #[test]
+    fn append_known_entries_for_product_url_skips_stale_bambu_rows() {
+        let lookup = build_known_entry_lookup(vec![BambuKnownCatalogEntry {
+            entry: BambuCatalogEntry {
+                material: "PLA".to_string(),
+                filament_name: "PLA Basic".to_string(),
+                color_name: "Red".to_string(),
+                hex_color: Some("#ff0000".to_string()),
+                image_url: None,
+                product_url: "https://store.bambulab.com/products/pla-basic-red".to_string(),
+                default_weight_g: 1000,
+            },
+            last_seen_at: Some("2026-03-01 10:00:00".to_string()),
+        }]);
+        let mut entries = Vec::new();
+        assert!(!append_known_entries_for_product_url(
+            "https://store.bambulab.com/products/pla-basic-red",
+            &lookup,
+            Some("2026-04-01 00:00:00"),
+            &mut entries,
+        ));
+        assert!(entries.is_empty());
     }
 }

@@ -29,15 +29,6 @@ export function renderSettingsShell(options) {
         locale === "nb" ? "aktive utlån" : "active loans",
       ),
     ].join(" · ");
-  const companionNote =
-    state.accessMode === "trusted-lan"
-      ? t(
-          locale,
-          "settings.trustedLanDesktopInCharge",
-          "Desktop app and SQLite stay in charge. Trusted-LAN access is still desktop-controlled and not encrypted on the network.",
-        )
-      : t(locale, "settings.desktopInCharge", "Desktop app and SQLite stay in charge.");
-
   return `
     <section class="workflow-shell settings-shell">
       <div class="workflow-header">
@@ -92,7 +83,6 @@ export function renderSettingsShell(options) {
             <div class="stack settings-language-block">
               <div>
                 <div class="list-title">${escapeHtml(t(locale, "settings.language", "Language"))}</div>
-                <div class="section-copy">${escapeHtml(t(locale, "settings.languageHelp", "Set the webapp language."))}</div>
               </div>
               <div class="segmented-control" data-columns="2" role="group" aria-label="${escapeHtml(t(locale, "settings.language", "Language"))}">
                 <button
@@ -132,7 +122,6 @@ export function renderSettingsShell(options) {
                 ${escapeHtml(t(locale, "shell.refreshCompanionData", "Refresh data"))}
               </button>
             </div>
-            <div class="info-card settings-note-card">${escapeHtml(companionNote)}</div>
           </div>
         </section>
       </div>

@@ -49,7 +49,6 @@ export function renderDesktopRail(options) {
       <div class="desktop-rail-top">
         <p class="eyebrow">${escapeHtml(t(locale, "rail.eyebrow", "Browser Companion"))}</p>
         <div class="desktop-rail-title">${escapeHtml(t(locale, "rail.title", "Filament Manager"))}</div>
-        <p class="desktop-rail-copy">${escapeHtml(t(locale, "rail.copy", "Local browser access to the desktop-owned library."))}</p>
       </div>
       <nav class="desktop-rail-nav" aria-label="Primary flows">
         ${rootFlowItems.map((item) => renderRootFlowButton(activeRootFlow, item, escapeHtml)).join("")}

@@ -402,6 +402,8 @@ export type CatalogRefreshResult = {
   detected_collection?: string | null;
   reactivated_count: number;
   discontinued_count: number;
+  reused_cached_products?: number | null;
+  detail_fetches?: number | null;
   output: string;
 };
 

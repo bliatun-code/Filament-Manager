@@ -81,6 +81,7 @@ pub struct FilamentMasterCatalogRow {
     pub product_url: Option<String>,
     pub default_weight: i64,
     pub vendor: String,
+    pub last_seen_at: Option<String>,
     pub is_discontinued: bool,
     pub discontinued_at: Option<String>,
 }
@@ -385,7 +386,7 @@ impl FilamentDatabase {
                 let term = format!("%{}%", trimmed.to_lowercase());
                 let mut stmt = self.conn.prepare(
                     "SELECT id, material, filament_name, color_name, hex_color, product_url,
-                            default_weight, vendor, is_discontinued, discontinued_at
+                            default_weight, vendor, last_seen_at, is_discontinued, discontinued_at
                      FROM filament_master_list
                      WHERE lower(material) LIKE ?1
                         OR lower(filament_name) LIKE ?1
@@ -404,8 +405,9 @@ impl FilamentDatabase {
                         product_url: row.get(5)?,
                         default_weight: row.get(6)?,
                         vendor: row.get(7)?,
-                        is_discontinued: row.get::<_, i64>(8)? != 0,
-                        discontinued_at: row.get(9)?,
+                        last_seen_at: row.get(8)?,
+                        is_discontinued: row.get::<_, i64>(9)? != 0,
+                        discontinued_at: row.get(10)?,
                     })
                 })?;
                 for row in rows {
@@ -417,7 +419,7 @@ impl FilamentDatabase {
 
         let mut stmt = self.conn.prepare(
             "SELECT id, material, filament_name, color_name, hex_color, product_url,
-                    default_weight, vendor, is_discontinued, discontinued_at
+                    default_weight, vendor, last_seen_at, is_discontinued, discontinued_at
              FROM filament_master_list
              ORDER BY material, filament_name, color_name
              LIMIT ?1",
@@ -432,8 +434,9 @@ impl FilamentDatabase {
                 product_url: row.get(5)?,
                 default_weight: row.get(6)?,
                 vendor: row.get(7)?,
-                is_discontinued: row.get::<_, i64>(8)? != 0,
-                discontinued_at: row.get(9)?,
+                last_seen_at: row.get(8)?,
+                is_discontinued: row.get::<_, i64>(9)? != 0,
+                discontinued_at: row.get(10)?,
             })
         })?;
         for row in rows {
@@ -1187,6 +1190,15 @@ impl FilamentDatabase {
         let value = self
             .conn
             .query_row("SELECT datetime('now')", [], |row| row.get(0))?;
+        Ok(value)
+    }
+
+    pub fn sqlite_datetime_shift(&self, base: &str, modifier: &str) -> InventoryResult<String> {
+        let value = self.conn.query_row(
+            "SELECT datetime(?1, ?2)",
+            params![base, modifier],
+            |row| row.get(0),
+        )?;
         Ok(value)
     }
 

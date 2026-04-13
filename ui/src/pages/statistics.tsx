@@ -862,7 +862,7 @@ export default function StatisticsPage() {
       </div>
 
       <div className="mt-6 surface-card">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start gap-3">
           <div>
             <div className="section-eyebrow">
               {t("statistics.ownershipSnapshot", "Ownership snapshot")}
@@ -874,9 +874,6 @@ export default function StatisticsPage() {
               )}
             </div>
           </div>
-          <span className="rounded-full border border-slate-300 bg-white/85 px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200 dark:shadow-none">
-            {(overview?.borrowed_in_consumption_30d ?? 0)} g
-          </span>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           <SummaryMetricTile

@@ -1,27 +1,34 @@
 # Session State
 
-Last updated: 2026-04-13
+Last updated: 2026-04-14
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
-- Stable browser parity release checkpoint (2026-04-13, ready for commit/push + release):
-  - version target is now `v0.9.1`
-  - trusted-LAN browser QA is green for the latest parity pass:
-    - browser `Printers` now follows the same operational weigh-in / weigh-out model as desktop for loading, clearing, and printer-linked usage
-    - browser printer slot lists and browser loan spool lists now sort alphabetically like the desktop app
-    - browser `Printers` large-screen roster is more compact and hides the selector entirely when only one printer exists
-    - browser Prusa slot labels are model-aware (`MMU3` channels vs `XL` toolheads)
-    - browser `Utlån / Loans` now owns loan creation, with filtered eligible-spool picking and required outgoing weighing
-    - browser return and hand-back flows now use measured total weight including the spool, while backend/statistics still receive net filament grams
-    - browser spool detail no longer exposes loan-create controls, and `Details` + `History` now stay stable through rerenders
-    - browser spool detail once again supports saving `status` and `location`
-    - browser detail/task-sheet tops are deduplicated and tighter, reducing repeated copy and wasted vertical space
-    - narrowest mobile `Storage` view now keeps weight/status aligned to the right for calmer, more even card heights
-  - validation baseline after the browser pass:
+- Stable follow-up release checkpoint (2026-04-14, ready for commit/push + release):
+  - version target is now `v0.9.2`
+  - trusted-LAN browser and desktop polish are green for the latest patch pass:
+    - browser `Settings` is calmer, with redundant helper copy and side-rail explanatory text removed
+    - browser `Add filament` is visually much closer to the desktop intake modal:
+      - broader large-screen sheet
+      - tighter, less repetitive header/body copy
+      - selected filament clearly drives the action card styling
+      - calmer catalog list with less duplicated metadata
+      - desktop-height balance improved without letting the left catalog list grow unbounded
+    - browser `Storage` narrow-mobile cards keep right-aligned weight/status for steadier heights
+    - desktop `Statistics` ownership header no longer duplicates the borrowed-in consumption figure
+    - eSUN catalog import now uses material-scoped sources, listing-first filtering, stale-aware cache reuse, and filtered detail budgets
+    - Bambu catalog import now follows the same cache-aware, less invasive filtered refresh model and reports reuse/detail counts like eSUN
+  - validation baseline after the import + browser polish pass:
+    - `npm run smoke` ✅
+    - `cargo check --manifest-path src-tauri/Cargo.toml` ✅
     - `node scripts/run-companion-tests.mjs` ✅
-    - companion browser QA PASS on iPhone-oriented narrow mobile, iPad/tablet widths, and desktop-browser widths
-  - browser companion now feels close enough to the desktop product for normal daily use across:
+    - manual QA PASS for:
+      - eSUN catalog import
+      - Bambu catalog import
+      - latest browser `Add filament` layout/polish
+      - browser `Settings` cleanup
+  - browser companion remains ready for normal daily use across:
     - `Storage`
     - `Printers`
     - `Loans`

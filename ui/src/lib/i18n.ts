@@ -462,6 +462,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       viewFullLog: "View full refresh log",
       imported: "Imported",
       reactivated: "Reactivated",
+      cachedReused: "Cached reused",
+      detailFetches: "Detail fetches",
       vendor: "Vendor",
       unknownCollection: "unknown collection",
       refreshPreparing: "Preparing catalog refresh...",
@@ -767,6 +769,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "This client stays paired until you remove the pairing here or on the host.",
       librarySyncClientAuthRepairHint:
         "Host is still reachable, but this desktop client must be paired again before protected sync actions can continue.",
+      cachedReused: "Cached reused",
+      detailFetches: "Detail fetches",
       librarySyncClearClientAuth: "Remove pairing",
       librarySyncRenewPairing: "Renew pairing",
       librarySyncRenewPairingInfo:
@@ -1630,6 +1634,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       viewFullLog: "Vis full oppdateringslogg",
       imported: "Importert",
       reactivated: "Reaktivert",
+      cachedReused: "Gjenbrukt fra cache",
+      detailFetches: "Detaljkall",
       vendor: "Leverandør",
       unknownCollection: "ukjent kolleksjon",
       refreshPreparing: "Forbereder katalogoppdatering...",
@@ -1936,6 +1942,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Denne klienten forblir paret til du fjerner parringen her eller på verten.",
       librarySyncClientAuthRepairHint:
         "Verten svarer fortsatt, men denne desktop-klienten må pares på nytt før beskyttede sync-handlinger kan fortsette.",
+      cachedReused: "Gjenbrukt fra cache",
+      detailFetches: "Detaljkall",
       librarySyncClearClientAuth: "Fjern paring",
       librarySyncRenewPairing: "Forny paring",
       librarySyncRenewPairingInfo:

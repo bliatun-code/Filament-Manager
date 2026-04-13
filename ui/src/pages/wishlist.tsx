@@ -970,7 +970,14 @@ export default function WishlistPage() {
               {t("wishlist.viewFullLog", "View full refresh log")}
             </button>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div
+            className={`mt-4 grid gap-3 ${
+              refreshSummary.reused_cached_products != null ||
+              refreshSummary.detail_fetches != null
+                ? "sm:grid-cols-2 xl:grid-cols-5"
+                : "sm:grid-cols-3"
+            }`}
+          >
             <WishlistMetricTile
               label={t("wishlist.imported", "Imported")}
               value={refreshSummary.imported}
@@ -986,6 +993,20 @@ export default function WishlistPage() {
               value={refreshSummary.discontinued_count}
               className="border-emerald-200/80 bg-white/75 dark:border-emerald-400/30 dark:bg-emerald-950/20"
             />
+            {refreshSummary.reused_cached_products != null ? (
+              <WishlistMetricTile
+                label={t("wishlist.cachedReused", "Cached reused")}
+                value={refreshSummary.reused_cached_products}
+                className="border-emerald-200/80 bg-white/75 dark:border-emerald-400/30 dark:bg-emerald-950/20"
+              />
+            ) : null}
+            {refreshSummary.detail_fetches != null ? (
+              <WishlistMetricTile
+                label={t("wishlist.detailFetches", "Detail fetches")}
+                value={refreshSummary.detail_fetches}
+                className="border-emerald-200/80 bg-white/75 dark:border-emerald-400/30 dark:bg-emerald-950/20"
+              />
+            ) : null}
           </div>
           {refreshSummary.detected_store ? (
             <div className="mt-3 text-xs text-emerald-800 dark:text-emerald-200">

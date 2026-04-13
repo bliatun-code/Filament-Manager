@@ -2,7 +2,7 @@ use reqwest::blocking::Client;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::thread;
 use std::time::Duration;
 
@@ -16,6 +16,12 @@ const ESUN_REQUEST_DELAY_MS: u64 = 550;
 const ESUN_REQUEST_JITTER_MS: u64 = 220;
 const ESUN_ANTI_BOT_BREAK_THRESHOLD: usize = 3;
 const ESUN_EMPTY_PAGE_BREAK_THRESHOLD: usize = 2;
+const ESUN_FILTERED_DETAIL_FETCH_BUDGET: usize = 18;
+const ESUN_GENERAL_MATERIALS_PATH: &str = "/general-materials/";
+const ESUN_AESTHETIC_MATERIALS_PATH: &str = "/aesthetic-materials/";
+const ESUN_ENGINEERING_MATERIALS_PATH: &str = "/engineering-materials/";
+const ESUN_FUNCTIONAL_MATERIALS_PATH: &str = "/functional-materials/";
+const ESUN_FLEXIBLE_MATERIALS_PATH: &str = "/flexibility-elasticity/";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EsunSearchResult {
@@ -59,23 +65,60 @@ pub struct EsunCatalogEntry {
     pub default_weight_g: i64,
 }
 
+#[derive(Clone, Debug)]
+pub struct EsunKnownCatalogEntry {
+    pub entry: EsunCatalogEntry,
+    pub last_seen_at: Option<String>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EsunCatalogRefreshSnapshot {
     pub entries: Vec<EsunCatalogEntry>,
     pub handles_found: i64,
     pub products_processed: i64,
     pub skipped_non_filament: i64,
+    pub reused_cached_products: i64,
+    pub detail_fetches: i64,
     pub warnings: Vec<String>,
     pub detected_store: String,
     pub detected_collection: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct EsunSiteListingCandidate {
+    product_url: String,
+    title_hint: Option<String>,
+}
+
 pub fn refresh_esun_catalog_snapshot(
     material_filters: Option<Vec<String>>,
+    known_entries: Option<Vec<EsunKnownCatalogEntry>>,
+    stale_before: Option<&str>,
 ) -> Result<EsunCatalogRefreshSnapshot, String> {
     let client = build_client()?;
     let material_filters = normalize_material_filters(material_filters);
+    let known_entries_by_product_url = build_known_entry_lookup(known_entries.unwrap_or_default());
     let mut warnings = Vec::new();
+
+    if !material_filters.is_empty() {
+        let mut scoped = refresh_esun_catalog_snapshot_from_material_sources(
+            &client,
+            &material_filters,
+            &known_entries_by_product_url,
+            stale_before,
+        )
+        .map_err(|error| {
+                format!(
+                    "Material-scoped eSUN refresh failed for filters [{}]. The refresh was stopped instead of widening scope, so local catalog data stays unchanged.\n{error}",
+                    material_filters.join(", ")
+                )
+            })?;
+        if !warnings.is_empty() {
+            scoped.warnings.splice(0..0, warnings);
+        }
+        scoped.warnings = summarize_esun_warnings(scoped.warnings);
+        return Ok(scoped);
+    }
 
     match refresh_esun_catalog_snapshot_from_store(&client, &material_filters) {
         Ok(snapshot) => {
@@ -107,7 +150,13 @@ pub fn refresh_esun_catalog_snapshot(
     }
 
     let mut fallback =
-        refresh_esun_catalog_snapshot_from_site(&client, &material_filters).map_err(
+        refresh_esun_catalog_snapshot_from_site(
+            &client,
+            &material_filters,
+            &known_entries_by_product_url,
+            stale_before,
+        )
+        .map_err(
             |fallback_error| {
         format!(
             "Could not refresh eSUN catalog from any source.\n{}\nFallback source ({ESUN_SITE_BASE_URL}) failed: {fallback_error}",
@@ -400,9 +449,135 @@ fn refresh_esun_catalog_snapshot_from_store(
         handles_found: handles.len() as i64,
         products_processed,
         skipped_non_filament,
+        reused_cached_products: 0,
+        detail_fetches: products_processed,
         warnings,
         detected_store: ESUN_STORE_BASE_URL.to_string(),
         detected_collection: "search?type=product&q=".to_string(),
+    })
+}
+
+fn refresh_esun_catalog_snapshot_from_material_sources(
+    client: &Client,
+    material_filters: &[String],
+    known_entries_by_product_url: &HashMap<String, Vec<EsunKnownCatalogEntry>>,
+    stale_before: Option<&str>,
+) -> Result<EsunCatalogRefreshSnapshot, String> {
+    let source_urls = esun_material_source_urls(material_filters);
+    if source_urls.is_empty() {
+        return Err("No material-scoped eSUN source URLs resolved from the requested filters.".to_string());
+    }
+
+    let mut warnings = Vec::new();
+    let mut listing_candidates = Vec::new();
+
+    for (index, source_url) in source_urls.iter().enumerate() {
+        if index > 0 {
+            pause_between_requests(index + 1);
+        }
+        let url = Url::parse(source_url).map_err(|error| error.to_string())?;
+        match fetch_text_with_client(client, &url) {
+            Ok(html) => listing_candidates.extend(extract_site_listing_candidates(&html)),
+            Err(error) => warnings.push(format!("material source '{source_url}': {error}")),
+        }
+    }
+
+    let mut listing_candidates = dedupe_site_listing_candidates(listing_candidates);
+    listing_candidates.retain(|candidate| {
+        matches_listing_candidate_material(candidate, material_filters)
+    });
+
+    if listing_candidates.is_empty() {
+        return Err(format!(
+            "Material-scoped eSUN sources yielded no candidate product URLs for filters: {}",
+            material_filters.join(", ")
+        ));
+    }
+
+    let mut entries = Vec::new();
+    let mut entry_keys = HashSet::new();
+    let mut products_processed = 0i64;
+    let mut skipped_non_filament = 0i64;
+    let mut consecutive_anti_bot_errors = 0usize;
+    let mut reused_cached_products = 0i64;
+    let mut detail_fetches = 0usize;
+
+    for (index, candidate) in listing_candidates.iter().enumerate() {
+        if append_known_entries_for_product_url(
+            &candidate.product_url,
+            known_entries_by_product_url,
+            stale_before,
+            &mut entries,
+            &mut entry_keys,
+        ) {
+            reused_cached_products += 1;
+            continue;
+        }
+        if detail_fetches >= ESUN_FILTERED_DETAIL_FETCH_BUDGET {
+            warnings.push(format!(
+                "Stopped material-scoped detail lookup after {} unknown products to keep eSUN refresh low-traffic.",
+                ESUN_FILTERED_DETAIL_FETCH_BUDGET
+            ));
+            break;
+        }
+        pause_between_requests(index + 1);
+        let detail = match fetch_esun_site_product_detail_with_client(client, &candidate.product_url) {
+            Ok(detail) => {
+                consecutive_anti_bot_errors = 0;
+                detail_fetches += 1;
+                detail
+            }
+            Err(error) => {
+                warnings.push(format!("{}: {error}", candidate.product_url));
+                if is_anti_bot_warning(&error) {
+                    consecutive_anti_bot_errors += 1;
+                    if consecutive_anti_bot_errors >= ESUN_ANTI_BOT_BREAK_THRESHOLD {
+                        warnings.push(
+                            "Stopped material-scoped detail lookup early after repeated anti-bot responses."
+                                .to_string(),
+                        );
+                        break;
+                    }
+                } else {
+                    consecutive_anti_bot_errors = 0;
+                }
+                continue;
+            }
+        };
+
+        products_processed += 1;
+        if !looks_like_filament(&detail.title.to_lowercase()) {
+            skipped_non_filament += 1;
+            continue;
+        }
+        if !matches_material_filter(&detail.material, material_filters) {
+            continue;
+        }
+        append_entries_from_product_detail(&mut entries, &mut entry_keys, &detail);
+    }
+
+    if entries.is_empty() {
+        return Err(format!(
+            "Material-scoped eSUN refresh produced zero filament entries for filters: {}",
+            material_filters.join(", ")
+        ));
+    }
+    if reused_cached_products > 0 {
+        warnings.push(format!(
+            "Reused cached metadata for {reused_cached_products} known eSUN products before detail lookup."
+        ));
+    }
+
+    Ok(EsunCatalogRefreshSnapshot {
+        entries,
+        handles_found: listing_candidates.len() as i64,
+        products_processed,
+        skipped_non_filament,
+        reused_cached_products,
+        detail_fetches: detail_fetches as i64,
+        warnings: summarize_esun_warnings(warnings),
+        detected_store: ESUN_SITE_BASE_URL.to_string(),
+        detected_collection: format!("material-scoped: {}", source_urls.join(", ")),
     })
 }
 
@@ -462,9 +637,11 @@ fn build_entries_from_store_handles(
 fn refresh_esun_catalog_snapshot_from_site(
     client: &Client,
     material_filters: &[String],
+    known_entries_by_product_url: &HashMap<String, Vec<EsunKnownCatalogEntry>>,
+    stale_before: Option<&str>,
 ) -> Result<EsunCatalogRefreshSnapshot, String> {
     let mut warnings = Vec::new();
-    let mut product_urls = Vec::new();
+    let mut listing_candidates = Vec::new();
     let mut consecutive_empty_pages = 0usize;
 
     for page in 1..=12 {
@@ -479,7 +656,7 @@ fn refresh_esun_catalog_snapshot_from_site(
         let url = Url::parse(&page_url).map_err(|error| error.to_string())?;
         match fetch_text_with_client(client, &url) {
             Ok(html) => {
-                let discovered = extract_site_product_urls(&html);
+                let discovered = extract_site_listing_candidates(&html);
                 if discovered.is_empty() {
                     consecutive_empty_pages += 1;
                     if page == 1 {
@@ -492,7 +669,7 @@ fn refresh_esun_catalog_snapshot_from_site(
                     }
                 } else {
                     consecutive_empty_pages = 0;
-                    product_urls.extend(discovered);
+                    listing_candidates.extend(discovered);
                 }
             }
             Err(error) => {
@@ -514,9 +691,11 @@ fn refresh_esun_catalog_snapshot_from_site(
         }
     }
 
-    let mut seen_urls = HashSet::new();
-    product_urls.retain(|url| seen_urls.insert(url.clone()));
-    if product_urls.is_empty() {
+    let mut listing_candidates = dedupe_site_listing_candidates(listing_candidates);
+    listing_candidates.retain(|candidate| {
+        matches_listing_candidate_material(candidate, material_filters)
+    });
+    if listing_candidates.is_empty() {
         return Err("Fallback listing returned no product URLs.".to_string());
     }
 
@@ -525,16 +704,37 @@ fn refresh_esun_catalog_snapshot_from_site(
     let mut products_processed = 0i64;
     let mut skipped_non_filament = 0i64;
     let mut consecutive_anti_bot_errors = 0usize;
+    let mut reused_cached_products = 0i64;
+    let mut detail_fetches = 0usize;
 
-    for (index, product_url) in product_urls.iter().enumerate() {
+    for (index, candidate) in listing_candidates.iter().enumerate() {
+        if append_known_entries_for_product_url(
+            &candidate.product_url,
+            known_entries_by_product_url,
+            stale_before,
+            &mut entries,
+            &mut entry_keys,
+        ) {
+            reused_cached_products += 1;
+            continue;
+        }
+        if !material_filters.is_empty() && detail_fetches >= ESUN_FILTERED_DETAIL_FETCH_BUDGET {
+            warnings.push(format!(
+                "Stopped filtered site detail lookup after {} unknown products to keep eSUN refresh low-traffic.",
+                ESUN_FILTERED_DETAIL_FETCH_BUDGET
+            ));
+            break;
+        }
         pause_between_requests(index + 1);
-        let detail = match fetch_esun_site_product_detail_with_client(client, product_url) {
+        let detail =
+            match fetch_esun_site_product_detail_with_client(client, &candidate.product_url) {
             Ok(detail) => {
                 consecutive_anti_bot_errors = 0;
+                detail_fetches += 1;
                 detail
             }
             Err(error) => {
-                warnings.push(format!("{product_url}: {error}"));
+                warnings.push(format!("{}: {error}", candidate.product_url));
                 if is_anti_bot_warning(&error) {
                     consecutive_anti_bot_errors += 1;
                     if consecutive_anti_bot_errors >= ESUN_ANTI_BOT_BREAK_THRESHOLD {
@@ -567,12 +767,19 @@ fn refresh_esun_catalog_snapshot_from_site(
     if entries.is_empty() {
         return Err("Fallback source produced zero filament entries.".to_string());
     }
+    if reused_cached_products > 0 {
+        warnings.push(format!(
+            "Reused cached metadata for {reused_cached_products} known eSUN products before detail lookup."
+        ));
+    }
 
     Ok(EsunCatalogRefreshSnapshot {
         entries,
-        handles_found: product_urls.len() as i64,
+        handles_found: listing_candidates.len() as i64,
         products_processed,
         skipped_non_filament,
+        reused_cached_products,
+        detail_fetches: detail_fetches as i64,
         warnings: summarize_esun_warnings(warnings),
         detected_store: ESUN_SITE_BASE_URL.to_string(),
         detected_collection: "/filaments/page/{n}/".to_string(),
@@ -677,27 +884,394 @@ fn matches_material_filter(material: &str, material_filters: &[String]) -> bool 
     material_filters.iter().any(|value| value == &normalized)
 }
 
-fn extract_site_product_urls(html: &str) -> Vec<String> {
+fn esun_material_source_urls(material_filters: &[String]) -> Vec<String> {
+    let mut urls = Vec::new();
+    let mut seen = HashSet::new();
+
+    for material in material_filters {
+        for path in esun_material_source_paths(material) {
+            let url = format!("{ESUN_SITE_BASE_URL}{path}");
+            if seen.insert(url.clone()) {
+                urls.push(url);
+            }
+        }
+    }
+
+    urls
+}
+
+fn esun_material_source_paths(material: &str) -> &'static [&'static str] {
+    match material {
+        "PLA" => &[ESUN_GENERAL_MATERIALS_PATH, ESUN_AESTHETIC_MATERIALS_PATH],
+        "PETG" | "PET" => &[ESUN_GENERAL_MATERIALS_PATH, ESUN_AESTHETIC_MATERIALS_PATH],
+        "ABS" | "ASA" | "PA" | "PA12" | "PAHT" | "PC" => &[ESUN_ENGINEERING_MATERIALS_PATH],
+        "TPU" => &[ESUN_FLEXIBLE_MATERIALS_PATH],
+        "PVA" | "HIPS" => &[ESUN_FUNCTIONAL_MATERIALS_PATH],
+        _ => &[ESUN_GENERAL_MATERIALS_PATH, ESUN_ENGINEERING_MATERIALS_PATH],
+    }
+}
+
+fn filter_product_urls_by_material_hints(
+    product_urls: Vec<String>,
+    material_filters: &[String],
+) -> Vec<String> {
+    if material_filters.is_empty() {
+        return product_urls;
+    }
+
+    product_urls
+        .into_iter()
+        .filter(|url| {
+            let normalized = url.to_lowercase();
+            material_filters.iter().any(|material| {
+                let keywords = esun_material_url_keywords(material);
+                if keywords.is_empty() {
+                    normalized.contains(&material.to_lowercase())
+                } else {
+                    keywords.iter().any(|keyword| normalized.contains(keyword))
+                }
+            })
+        })
+        .collect()
+}
+
+fn dedupe_site_listing_candidates(
+    candidates: Vec<EsunSiteListingCandidate>,
+) -> Vec<EsunSiteListingCandidate> {
+    let mut deduped = Vec::new();
+    let mut seen = HashSet::new();
+    for candidate in candidates {
+        if seen.insert(candidate.product_url.clone()) {
+            deduped.push(candidate);
+            continue;
+        }
+        if let Some(existing) = deduped
+            .iter_mut()
+            .find(|existing| existing.product_url == candidate.product_url)
+        {
+            let existing_len = existing
+                .title_hint
+                .as_ref()
+                .map(|value| value.len())
+                .unwrap_or_default();
+            let candidate_len = candidate
+                .title_hint
+                .as_ref()
+                .map(|value| value.len())
+                .unwrap_or_default();
+            if candidate_len > existing_len {
+                existing.title_hint = candidate.title_hint;
+            }
+        }
+    }
+    deduped
+}
+
+fn matches_listing_candidate_material(
+    candidate: &EsunSiteListingCandidate,
+    material_filters: &[String],
+) -> bool {
+    if material_filters.is_empty() {
+        return true;
+    }
+    if let Some(title_hint) = candidate.title_hint.as_ref() {
+        let inferred = infer_material(title_hint);
+        if matches_material_filter(&inferred, material_filters) {
+            return true;
+        }
+    }
+    filter_product_urls_by_material_hints(vec![candidate.product_url.clone()], material_filters)
+        .len()
+        == 1
+}
+
+fn build_known_entry_lookup(
+    entries: Vec<EsunKnownCatalogEntry>,
+) -> HashMap<String, Vec<EsunKnownCatalogEntry>> {
+    let mut lookup = HashMap::new();
+    for entry in entries {
+        let key = normalize_catalog_product_url(&entry.entry.product_url);
+        if key.is_empty() {
+            continue;
+        }
+        lookup.entry(key).or_insert_with(Vec::new).push(entry);
+    }
+    lookup
+}
+
+fn append_known_entries_for_product_url(
+    product_url: &str,
+    known_entries_by_product_url: &HashMap<String, Vec<EsunKnownCatalogEntry>>,
+    stale_before: Option<&str>,
+    entries: &mut Vec<EsunCatalogEntry>,
+    entry_keys: &mut HashSet<String>,
+) -> bool {
+    let normalized = normalize_catalog_product_url(product_url);
+    let Some(known_entries) = known_entries_by_product_url.get(&normalized) else {
+        return false;
+    };
+    if known_entries
+        .iter()
+        .any(|known| is_known_entry_stale(known, stale_before))
+    {
+        return false;
+    }
+    let before = entries.len();
+    for entry in known_entries {
+        let key = format!(
+            "{}|{}|{}",
+            entry.entry.material.to_lowercase(),
+            entry.entry.filament_name.to_lowercase(),
+            entry.entry.color_name.to_lowercase()
+        );
+        if !entry_keys.insert(key) {
+            continue;
+        }
+        entries.push(entry.entry.clone());
+    }
+    entries.len() > before
+}
+
+fn is_known_entry_stale(entry: &EsunKnownCatalogEntry, stale_before: Option<&str>) -> bool {
+    match (entry.last_seen_at.as_deref(), stale_before) {
+        (Some(last_seen_at), Some(cutoff)) => last_seen_at < cutoff,
+        (None, Some(_)) => true,
+        _ => false,
+    }
+}
+
+fn normalize_catalog_product_url(url: &str) -> String {
+    let trimmed = url.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    match Url::parse(trimmed) {
+        Ok(mut parsed) => {
+            parsed.set_query(None);
+            parsed.set_fragment(None);
+            parsed.to_string()
+        }
+        Err(_) => trimmed.to_string(),
+    }
+}
+
+fn esun_material_url_keywords(material: &str) -> &'static [&'static str] {
+    match material {
+        "PLA" => &["pla"],
+        "PETG" => &["petg", "epetg"],
+        "ABS" => &["abs", "eabs"],
+        "TPU" => &["tpu", "etpu", "tpe", "peba"],
+        "ASA" => &["asa", "easa"],
+        "PA" => &["pa-", "epa-", "/epa", "nylon"],
+        "PA12" => &["pa12", "epa12"],
+        "PAHT" => &["paht"],
+        "PC" => &["pc"],
+        "PET" => &["pet-"],
+        "PVA" => &["pva"],
+        "HIPS" => &["hips"],
+        _ => &[],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use super::{
+        append_known_entries_for_product_url, build_known_entry_lookup,
+        dedupe_site_listing_candidates, esun_material_source_paths, esun_material_source_urls,
+        extract_site_listing_candidates, filter_product_urls_by_material_hints,
+        matches_listing_candidate_material, ESUN_FILTERED_DETAIL_FETCH_BUDGET, EsunCatalogEntry,
+        EsunKnownCatalogEntry, EsunSiteListingCandidate,
+    };
+
+    #[test]
+    fn esun_material_source_paths_map_core_materials_to_scoped_pages() {
+        assert_eq!(
+            esun_material_source_paths("PLA"),
+            &["/general-materials/", "/aesthetic-materials/"]
+        );
+        assert_eq!(esun_material_source_paths("TPU"), &["/flexibility-elasticity/"]);
+        assert_eq!(esun_material_source_paths("ABS"), &["/engineering-materials/"]);
+    }
+
+    #[test]
+    fn esun_material_source_urls_dedupes_shared_pages() {
+        let urls = esun_material_source_urls(&["PLA".to_string(), "PETG".to_string()]);
+        assert_eq!(
+            urls,
+            vec![
+                "https://www.esun3d.com/general-materials/".to_string(),
+                "https://www.esun3d.com/aesthetic-materials/".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn filter_product_urls_by_material_hints_keeps_only_matching_material_candidates() {
+        let urls = vec![
+            "https://www.esun3d.com/pla-pro-product/".to_string(),
+            "https://www.esun3d.com/petg-product/".to_string(),
+            "https://www.esun3d.com/eabs-cf-product/".to_string(),
+            "https://www.esun3d.com/etpu-95a-product/".to_string(),
+        ];
+
+        let filtered = filter_product_urls_by_material_hints(urls, &["ABS".to_string()]);
+        assert_eq!(
+            filtered,
+            vec!["https://www.esun3d.com/eabs-cf-product/".to_string()]
+        );
+    }
+
+    #[test]
+    fn extract_site_listing_candidates_preserves_title_hints() {
+        let html = r#"
+            <a href="/pla-pro-product/"><span>PLA+</span></a>
+            <a href="/petg-product/" title="PETG">ignored</a>
+        "#;
+        let candidates = extract_site_listing_candidates(html);
+        assert_eq!(
+            candidates,
+            vec![
+                EsunSiteListingCandidate {
+                    product_url: "https://www.esun3d.com/pla-pro-product/".to_string(),
+                    title_hint: Some("PLA+".to_string()),
+                },
+                EsunSiteListingCandidate {
+                    product_url: "https://www.esun3d.com/petg-product/".to_string(),
+                    title_hint: Some("PETG".to_string()),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn dedupe_site_listing_candidates_keeps_best_title_hint() {
+        let deduped = dedupe_site_listing_candidates(vec![
+            EsunSiteListingCandidate {
+                product_url: "https://www.esun3d.com/pla-pro-product/".to_string(),
+                title_hint: Some("PLA".to_string()),
+            },
+            EsunSiteListingCandidate {
+                product_url: "https://www.esun3d.com/pla-pro-product/".to_string(),
+                title_hint: Some("PLA Pro Filament".to_string()),
+            },
+        ]);
+        assert_eq!(
+            deduped,
+            vec![EsunSiteListingCandidate {
+                product_url: "https://www.esun3d.com/pla-pro-product/".to_string(),
+                title_hint: Some("PLA Pro Filament".to_string()),
+            }]
+        );
+    }
+
+    #[test]
+    fn matches_listing_candidate_material_uses_title_hint_before_detail() {
+        let candidate = EsunSiteListingCandidate {
+            product_url: "https://www.esun3d.com/pla-pro-product/".to_string(),
+            title_hint: Some("PLA+".to_string()),
+        };
+        assert!(matches_listing_candidate_material(
+            &candidate,
+            &["PLA".to_string()]
+        ));
+        assert!(!matches_listing_candidate_material(
+            &candidate,
+            &["ABS".to_string()]
+        ));
+    }
+
+    #[test]
+    fn append_known_entries_for_product_url_reuses_cached_catalog_rows() {
+        let lookup = build_known_entry_lookup(vec![EsunKnownCatalogEntry {
+            entry: EsunCatalogEntry {
+                material: "PLA".to_string(),
+                filament_name: "PLA+".to_string(),
+                color_name: "White".to_string(),
+                hex_color: Some("#ffffff".to_string()),
+                image_url: None,
+                product_url: "https://www.esun3d.com/pla-pro-product/?utm=1".to_string(),
+                default_weight_g: 1000,
+            },
+            last_seen_at: Some("2026-04-12 10:00:00".to_string()),
+        }]);
+        let mut entries = Vec::new();
+        let mut keys = HashSet::new();
+        assert!(append_known_entries_for_product_url(
+            "https://www.esun3d.com/pla-pro-product/",
+            &lookup,
+            None,
+            &mut entries,
+            &mut keys,
+        ));
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].filament_name, "PLA+");
+    }
+
+    #[test]
+    fn append_known_entries_for_product_url_skips_stale_cache_rows() {
+        let lookup = build_known_entry_lookup(vec![EsunKnownCatalogEntry {
+            entry: EsunCatalogEntry {
+                material: "PLA".to_string(),
+                filament_name: "PLA+".to_string(),
+                color_name: "White".to_string(),
+                hex_color: Some("#ffffff".to_string()),
+                image_url: None,
+                product_url: "https://www.esun3d.com/pla-pro-product/".to_string(),
+                default_weight_g: 1000,
+            },
+            last_seen_at: Some("2026-03-01 10:00:00".to_string()),
+        }]);
+        let mut entries = Vec::new();
+        let mut keys = HashSet::new();
+        assert!(!append_known_entries_for_product_url(
+            "https://www.esun3d.com/pla-pro-product/",
+            &lookup,
+            Some("2026-04-01 00:00:00"),
+            &mut entries,
+            &mut keys,
+        ));
+        assert!(entries.is_empty());
+    }
+
+    #[test]
+    fn filtered_detail_fetch_budget_is_small_and_explicit() {
+        assert_eq!(ESUN_FILTERED_DETAIL_FETCH_BUDGET, 18);
+    }
+}
+
+fn extract_site_listing_candidates(html: &str) -> Vec<EsunSiteListingCandidate> {
     if html.is_empty() {
         return Vec::new();
     }
 
     let mut cursor = 0usize;
-    let mut urls = Vec::new();
-    let mut seen = HashSet::new();
+    let mut candidates = Vec::new();
 
     while cursor < html.len() {
-        let Some(href_rel) = html[cursor..].find("href=\"") else {
+        let Some(anchor_rel) = html[cursor..].find("<a ") else {
             break;
         };
-        let href_start = cursor + href_rel + "href=\"".len();
-        let Some(href_end_rel) = html[href_start..].find('\"') else {
+        let anchor_start = cursor + anchor_rel;
+        let Some(tag_end_rel) = html[anchor_start..].find('>') else {
             break;
         };
-        let href_end = href_start + href_end_rel;
-        cursor = href_end;
+        let tag_end = anchor_start + tag_end_rel;
+        let tag = &html[anchor_start..=tag_end.min(html.len() - 1)];
+        let href_raw = match extract_attr_value(tag, "href") {
+            Some(value) => value.trim().to_string(),
+            None => {
+                cursor = tag_end + 1;
+                continue;
+            }
+        };
+        let close_anchor = html[tag_end + 1..]
+            .find("</a>")
+            .map(|relative| tag_end + 1 + relative)
+            .unwrap_or(tag_end + 1);
+        cursor = close_anchor.saturating_add(4).min(html.len());
 
-        let href_raw = html[href_start..href_end].trim();
         if !href_raw.contains("-product/") {
             continue;
         }
@@ -724,12 +1298,27 @@ fn extract_site_product_urls(html: &str) -> Vec<String> {
         cleaned.set_query(None);
         cleaned.set_fragment(None);
         let clean_url = cleaned.to_string();
-        if seen.insert(clean_url.clone()) {
-            urls.push(clean_url);
-        }
+        let inner = if tag_end + 1 <= close_anchor && close_anchor <= html.len() {
+            normalize_whitespace(&decode_html_entities(&strip_tags(&html[tag_end + 1..close_anchor])))
+        } else {
+            String::new()
+        };
+        let title_hint = extract_attr_value(tag, "title")
+            .map(|value| normalize_whitespace(&decode_html_entities(&value)))
+            .or_else(|| {
+                if inner.trim().is_empty() {
+                    None
+                } else {
+                    Some(inner)
+                }
+            });
+        candidates.push(EsunSiteListingCandidate {
+            product_url: clean_url,
+            title_hint,
+        });
     }
 
-    urls
+    dedupe_site_listing_candidates(candidates)
 }
 
 fn fetch_esun_site_product_detail_with_client(

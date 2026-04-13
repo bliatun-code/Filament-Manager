@@ -2,17 +2,19 @@
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current browser baseline is trusted-LAN-only, with `Storage` as the browser label for desktop `Inventory` / `Lager` and `Add spool` as the browser intake action.
 
-## v0.9.1 Stable Browser + Desktop Baseline (2026-04-13)
+## v0.9.2 Stable Import + Browser Polish (2026-04-14)
 - Release target:
-  - first stable release after the `v0.9.0-rc.*` browser/device parity line
-  - intended to serve as the new shared baseline for desktop host/client use plus trusted-LAN browser use
+  - stable follow-up patch after `v0.9.1`
+  - intended to lock in the quieter browser polish pass plus safer vendor-import behavior
 - Planned release actions:
-  - bump app/package/Tauri versions to `0.9.1`
-  - publish GitHub release with desktop + browser parity notes
+  - bump app/package/Tauri versions to `0.9.2`
+  - publish GitHub release with browser polish + catalog import notes
   - attach refreshed macOS DMG and Windows MSI assets
 - Validation baseline:
-  - desktop host/client QA PASS
-  - trusted-LAN browser QA PASS on iPhone, iPad, and desktop browsers
+  - desktop host/client baseline still PASS from `0.9.1`
+  - trusted-LAN browser polish PASS
+  - eSUN catalog import PASS
+  - Bambu catalog import PASS
   - technical preflight before tagging:
     - `npm run smoke`
     - `cargo check --manifest-path src-tauri/Cargo.toml`

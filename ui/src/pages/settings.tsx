@@ -3893,7 +3893,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
                 {catalogRefreshSummary ? (
                   <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 text-emerald-950 shadow-sm shadow-emerald-200/30 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-100 dark:shadow-none">
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div
+                      className={`grid gap-3 ${
+                        catalogRefreshSummary.reused_cached_products != null ||
+                        catalogRefreshSummary.detail_fetches != null
+                          ? "sm:grid-cols-2 xl:grid-cols-5"
+                          : "sm:grid-cols-3"
+                      }`}
+                    >
                       <SettingsMetricTile
                         label={t("inventory.imported", "Imported")}
                         value={catalogRefreshSummary.imported}
@@ -3909,6 +3916,20 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                         value={catalogRefreshSummary.discontinued_count}
                         className="border-emerald-200/80 bg-white/75 text-inherit dark:border-emerald-400/30 dark:bg-emerald-950/20"
                       />
+                      {catalogRefreshSummary.reused_cached_products != null ? (
+                        <SettingsMetricTile
+                          label={t("settings.cachedReused", "Cached reused")}
+                          value={catalogRefreshSummary.reused_cached_products}
+                          className="border-emerald-200/80 bg-white/75 text-inherit dark:border-emerald-400/30 dark:bg-emerald-950/20"
+                        />
+                      ) : null}
+                      {catalogRefreshSummary.detail_fetches != null ? (
+                        <SettingsMetricTile
+                          label={t("settings.detailFetches", "Detail fetches")}
+                          value={catalogRefreshSummary.detail_fetches}
+                          className="border-emerald-200/80 bg-white/75 text-inherit dark:border-emerald-400/30 dark:bg-emerald-950/20"
+                        />
+                      ) : null}
                     </div>
                     {catalogRefreshSummary.detected_store ? (
                       <div className="mt-3 text-xs text-emerald-800 dark:text-emerald-200">
