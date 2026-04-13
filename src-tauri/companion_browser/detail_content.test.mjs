@@ -62,7 +62,7 @@ function renderBody(overrides = {}) {
   });
 }
 
-test("detail content renders borrowed-in detail and hand-back actions for inbound spools", () => {
+test("detail content keeps borrowed-in spools out of loan actions inside detail", () => {
   const html = renderBody({
     selectedSpool: createSelectedSpool({
       spool: {
@@ -89,12 +89,15 @@ test("detail content renders borrowed-in detail and hand-back actions for inboun
   });
 
   assert.match(html, /Borrowed in/);
-  assert.match(html, /Save owner details/);
-  assert.match(html, /Hand back spool/);
-  assert.match(html, /Riley/);
+  assert.doesNotMatch(html, /Riley/);
+  assert.doesNotMatch(html, /Hand back spool/);
+  assert.doesNotMatch(html, /loan-spool-form/);
+  assert.doesNotMatch(html, /return-loan-form/);
+  assert.match(html, /data-action="update-spool-details-form"/);
+  assert.match(html, /Shelf A/);
 });
 
-test("detail content renders outbound loan return flow when an outbound loan is active", () => {
+test("detail content does not render outbound loan return flow inside detail", () => {
   const html = renderBody({
     selectedDetail: createSelectedDetail({
       active_loan: {
@@ -111,13 +114,12 @@ test("detail content renders outbound loan return flow when an outbound loan is 
     }),
   });
 
-  assert.match(html, /Loan/);
-  assert.match(html, /Return loan/);
-  assert.match(html, /Prototype loan/);
-  assert.match(html, /Alex/);
+  assert.doesNotMatch(html, /Return loan/);
+  assert.doesNotMatch(html, /Returned total weight incl\. spool \(g\)/);
+  assert.doesNotMatch(html, /loan-spool-form/);
 });
 
-test("detail content renders create-loan warning when the selected spool is still loaded in a slot", () => {
+test("detail content no longer exposes create-loan controls in detail", () => {
   const html = renderBody({
     findAssignedSlotForSpool: () => ({
       printerName: "X1C",
@@ -125,9 +127,8 @@ test("detail content renders create-loan warning when the selected spool is stil
     }),
   });
 
-  assert.match(html, /Lend spool/);
-  assert.match(html, /Loaded in slot 3 on X1C/);
-  assert.match(html, /Creating the loan will clear that slot\./);
+  assert.doesNotMatch(html, /Lend spool/);
+  assert.doesNotMatch(html, /Outgoing total weight incl\. spool \(g\)/);
 });
 
 test("detail content falls back invalid status values to IN_STOCK and shows matching feedback", () => {
@@ -142,7 +143,7 @@ test("detail content falls back invalid status values to IN_STOCK and shows matc
 
   assert.match(html, /Weight updated just now\./);
   assert.match(html, /In stock/);
-  assert.doesNotMatch(html, /data-action="update-spool-details-form"/);
+  assert.match(html, /data-action="update-spool-details-form"/);
 });
 
 test("compact detail keeps history collapsed behind a short summary", () => {
@@ -158,6 +159,8 @@ test("compact detail keeps history collapsed behind a short summary", () => {
   assert.match(html, /1 weight check · 1 activity item/);
   assert.match(html, /Started/);
   assert.match(html, /Now/);
+  assert.doesNotMatch(html, /detail-history-collapsible" open/);
+  assert.doesNotMatch(html, /data-collapsible="details" open/);
 });
 
 test("detail content localizes core labels in norwegian", () => {

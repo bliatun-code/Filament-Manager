@@ -150,6 +150,7 @@ export function renderDetailModalShell(options) {
     layoutMode === "phone"
       ? t(options.locale || "en", "shell.done", "Done")
       : t(options.locale || "en", "shell.close", "Close");
+  const showSelectedTitleInHeader = layoutMode === "phone";
 
   return `
     <div class="detail-modal-backdrop" data-layout="${escapeHtml(layoutMode)}">
@@ -157,12 +158,8 @@ export function renderDetailModalShell(options) {
         <section class="detail-panel detail-modal surface-panel">
           <div class="detail-panel-header">
             <div class="detail-modal-copy">
-              ${
-                layoutMode === "phone"
-                  ? ""
-                  : `<p class="workflow-kicker">${escapeHtml(t(locale, "detail.spoolHeading", "Spool"))}</p>`
-              }
-              <h2>${escapeHtml(selectedTitle)}</h2>
+              <p class="workflow-kicker">${escapeHtml(t(locale, "detail.spoolHeading", "Spool"))}</p>
+              ${showSelectedTitleInHeader ? `<h2>${escapeHtml(selectedTitle)}</h2>` : ""}
             </div>
             <div class="detail-modal-actions">
               ${statusChips.length > 0 ? `<div class="pill-row detail-modal-status">${statusChips.join("")}</div>` : ""}

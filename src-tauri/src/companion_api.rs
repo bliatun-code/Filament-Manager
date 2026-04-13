@@ -65,6 +65,8 @@ const COMPANION_BROWSER_COMPANION_LOGIC_JS: &str =
     include_str!("../companion_browser/companion_logic.js");
 const COMPANION_BROWSER_FORMATTERS_JS: &str = include_str!("../companion_browser/formatters.js");
 const COMPANION_BROWSER_LOANS_SHELL_JS: &str = include_str!("../companion_browser/loans_shell.js");
+const COMPANION_BROWSER_PRINTER_SLOT_LABELS_JS: &str =
+    include_str!("../companion_browser/printer_slot_labels.js");
 const COMPANION_BROWSER_PRINTER_WORKSPACE_JS: &str =
     include_str!("../companion_browser/printer_workspace.js");
 const COMPANION_BROWSER_PRINTERS_SHELL_JS: &str =
@@ -2313,6 +2315,10 @@ fn companion_browser_asset(path: &str) -> Option<CompanionBrowserAsset> {
         "loans_shell.js" => Some(CompanionBrowserAsset {
             content_type: "application/javascript; charset=utf-8",
             content: COMPANION_BROWSER_LOANS_SHELL_JS,
+        }),
+        "printer_slot_labels.js" => Some(CompanionBrowserAsset {
+            content_type: "application/javascript; charset=utf-8",
+            content: COMPANION_BROWSER_PRINTER_SLOT_LABELS_JS,
         }),
         "printer_workspace.js" => Some(CompanionBrowserAsset {
             content_type: "application/javascript; charset=utf-8",

@@ -84,10 +84,21 @@ function renderShell(overrides = {}) {
 }
 
 test("printers shell renders a focused printer roster plus active board", () => {
+  const secondPrinter = createPrinterRow({
+    printer: {
+      id: "printer-2",
+      name: "Brutus",
+      model: "Bambu Lab P1S",
+    },
+  });
   const html = renderShell();
+  const multiHtml = renderShell({
+    state: {
+      printers: [createPrinterRow(), secondPrinter],
+    },
+  });
 
   assert.match(html, /Printers/);
-  assert.match(html, /data-action="select-printer"/);
   assert.match(html, /X1C/);
   assert.match(html, /Slot 1/);
   assert.match(html, /Slot 2/);
@@ -95,6 +106,37 @@ test("printers shell renders a focused printer roster plus active board", () => 
   assert.match(html, /printer-brand-surface/);
   assert.match(html, /--brand-rgb:0 177 64/);
   assert.match(html, /slot-card-loaded swatch-surface/);
+  assert.doesNotMatch(html, /data-action="select-printer"/);
+  assert.match(multiHtml, /data-action="select-printer"/);
+  assert.match(multiHtml, /printer-roster/);
+});
+
+test("printers shell hides the roster when only one printer is configured", () => {
+  const html = renderShell();
+
+  assert.match(html, /printers-workspace--single/);
+  assert.doesNotMatch(html, /class="surface-panel printer-roster"/);
+});
+
+test("printers shell keeps a compact top roster when multiple printers are configured", () => {
+  const html = renderShell({
+    state: {
+      printers: [
+        createPrinterRow(),
+        createPrinterRow({
+          printer: {
+            id: "printer-2",
+            name: "Brutus",
+            model: "Bambu Lab P1S",
+          },
+        }),
+      ],
+    },
+  });
+
+  assert.match(html, /printers-workspace--with-roster/);
+  assert.match(html, /class="surface-panel printer-roster"/);
+  assert.match(html, /Brutus/);
 });
 
 test("printers shell keeps empty slots and loaded slots on different action paths", () => {
@@ -103,7 +145,7 @@ test("printers shell keeps empty slots and loaded slots on different action path
   assert.doesNotMatch(html, /Ready on X1C/);
   assert.doesNotMatch(html, /Change filament/);
   assert.match(html, /Load filament/);
-  assert.match(html, /Open spool/);
+  assert.match(html, /Update weight/);
   assert.match(html, /Clear slot/);
 });
 

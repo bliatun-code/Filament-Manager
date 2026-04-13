@@ -12,40 +12,10 @@ import {
   swatchCssVars,
   toSwatchColor,
 } from "./companion_theme.js";
+import { formatPrinterSlotLabelForModel } from "./printer_slot_labels.js";
 
-function parsePrinterUnitIndex(amsId) {
-  const normalized = String(amsId ?? "").trim();
-  if (!normalized) {
-    return null;
-  }
-  if (/^ext(?:ernal)?$/i.test(normalized) || /(?:^|[_-])ext(?:ernal)?(?:$|[_-])/i.test(normalized)) {
-    return "EXT";
-  }
-  if (/^\d{1,2}$/.test(normalized)) {
-    const value = Number.parseInt(normalized, 10);
-    return value >= 1 && value <= 8 ? value : null;
-  }
-  const edgeMatch = normalized.match(/(?:^|[_-])(\d{1,2})(?:$|[_-])/);
-  if (!edgeMatch) {
-    return null;
-  }
-  const value = Number.parseInt(edgeMatch[1], 10);
-  return value >= 1 && value <= 8 ? value : null;
-}
-
-export function formatPrinterSlotLabel(slot, locale = "en") {
-  const slotIndex = String(slot?.slot_index ?? slot?.slotIndex ?? "").trim();
-  const unitIndex = parsePrinterUnitIndex(slot?.ams_id ?? slot?.amsId ?? "");
-  if (unitIndex === "EXT") {
-    return t(locale, "printers.extSlot", "EXT Slot");
-  }
-  if (unitIndex && slotIndex) {
-    return `AMS ${unitIndex} · ${t(locale, "printers.slot", "Slot")} ${slotIndex}`;
-  }
-  if (slotIndex) {
-    return `${t(locale, "printers.slot", "Slot")} ${slotIndex}`;
-  }
-  return t(locale, "printers.printerSlot", "Printer slot");
+export function formatPrinterSlotLabel(slot, locale = "en", printerModel = "") {
+  return formatPrinterSlotLabelForModel(slot, locale, printerModel);
 }
 
 export function renderPrinterPickerTaskSheetBody(options) {
@@ -144,6 +114,153 @@ export function renderPrinterPickerTaskSheetBody(options) {
   `;
 }
 
+export function renderPrinterWeightTaskSheetBody(options) {
+  const { state, activeTaskSheet, escapeHtml, formatGrams } = options;
+  const locale = state.locale || "en";
+  const task = activeTaskSheet || null;
+
+  if (!task || task.type !== "printer-weight") {
+    return `
+      <div class="info-card">
+        ${escapeHtml(t(locale, "printers.chooseSlotFirst", "Choose a slot first."))}
+      </div>
+    `;
+  }
+
+  const printerLabel = [task.printerName, task.slotLabel].filter(Boolean).join(" · ");
+  const currentSpoolMeta = [task.currentVendor, task.currentReference, formatGrams(task.currentRemainingWeight)]
+    .filter(Boolean)
+    .join(" · ");
+  const currentPlacementLabel = formatPlacementLabel(task.currentLocationId, locale);
+  const targetSpoolMeta = [task.targetVendor, task.targetReference, formatGrams(task.targetRemainingWeight)]
+    .filter(Boolean)
+    .join(" · ");
+  const targetPlacementLabel = formatPlacementLabel(task.targetLocationId, locale);
+  const mode = String(task.mode || "update").trim();
+  const requiresOutgoing =
+    Boolean(task.currentSpoolId) && (mode === "clear" || (mode === "assign" && task.currentSpoolId !== task.targetSpoolId));
+  const requiresIncoming = mode === "assign" && Boolean(task.targetSpoolId);
+  const defaultCurrentMeasuredWeight =
+    task.currentMeasuredWeight != null && task.currentMeasuredWeight !== ""
+      ? task.currentMeasuredWeight
+      : task.currentRemainingWeight != null && task.currentRemainingWeight !== ""
+        ? task.currentRemainingWeight
+        : "";
+  const defaultIncomingMeasuredWeight =
+    task.targetMeasuredWeight != null && task.targetMeasuredWeight !== ""
+      ? task.targetMeasuredWeight
+      : task.targetRemainingWeight != null && task.targetRemainingWeight !== ""
+        ? task.targetRemainingWeight
+        : "";
+  const submitLabel =
+    mode === "clear"
+      ? t(locale, "printers.clearSlot", "Clear slot")
+      : mode === "assign"
+        ? t(locale, "printers.loadFilament", "Load filament")
+        : t(locale, "detail.saveWeight", "Save weight");
+
+  return `
+    <div class="stack printer-weight-sheet">
+      ${
+        task.currentSpoolId
+          ? `
+            <div class="surface-card detail-section-card printer-weight-summary">
+              <div class="detail-header printer-weight-summary-header">
+                <div class="swatch-line spool-row-title">
+                  <span class="swatch-dot" style="background:${escapeHtml(toSwatchColor(task.currentSwatchColor))};"></span>
+                  <span class="list-title">${escapeHtml(task.currentSpoolTitle || t(locale, "detail.spoolDetailsFallback", "Spool details"))}</span>
+                </div>
+                <span class="pill">${escapeHtml(t(locale, "format.inUse", "In use"))}</span>
+              </div>
+              <div class="meta-line">${escapeHtml(printerLabel)}</div>
+              <div class="meta-line">${escapeHtml(currentSpoolMeta)}</div>
+              <div class="meta-line">${escapeHtml(currentPlacementLabel)}</div>
+            </div>
+          `
+          : ""
+      }
+      ${
+        requiresIncoming
+          ? `
+            <div class="surface-card detail-section-card printer-weight-summary">
+              <div class="detail-header printer-weight-summary-header">
+                <div class="swatch-line spool-row-title">
+                  <span class="swatch-dot" style="background:${escapeHtml(toSwatchColor(task.targetSwatchColor))};"></span>
+                  <span class="list-title">${escapeHtml(task.targetSpoolTitle || t(locale, "detail.spoolDetailsFallback", "Spool details"))}</span>
+                </div>
+                <span class="pill">${escapeHtml(t(locale, "printers.loadTarget", "Load target"))}</span>
+              </div>
+              <div class="meta-line">${escapeHtml(printerLabel)}</div>
+              <div class="meta-line">${escapeHtml(targetSpoolMeta)}</div>
+              <div class="meta-line">${escapeHtml(targetPlacementLabel)}</div>
+            </div>
+          `
+          : ""
+      }
+
+      <form class="stack detail-form" data-action="printer-slot-operation-form">
+        ${
+          mode === "update"
+            ? `
+              <label class="stack detail-field">
+                <span class="muted">${escapeHtml(t(locale, "detail.measuredWeightGrams", "Measured total weight (g)"))}</span>
+                <input
+                  class="weight-input"
+                  name="current-grams"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="${escapeHtml(defaultCurrentMeasuredWeight)}"
+                  ${state.busy ? "disabled" : ""}
+                />
+              </label>
+            `
+            : ""
+        }
+        ${
+          requiresOutgoing
+            ? `
+              <label class="stack detail-field">
+                <span class="muted">${escapeHtml(t(locale, "printers.outgoingWeight", "Outgoing weight (g)"))}</span>
+                <input
+                  class="weight-input"
+                  name="outgoing-grams"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="${escapeHtml(defaultCurrentMeasuredWeight)}"
+                  ${state.busy ? "disabled" : ""}
+                />
+              </label>
+            `
+            : ""
+        }
+        ${
+          requiresIncoming
+            ? `
+              <label class="stack detail-field">
+                <span class="muted">${escapeHtml(t(locale, "detail.measuredWeightGrams", "Measured total weight (g)"))}</span>
+                <input
+                  class="weight-input"
+                  name="incoming-grams"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="${escapeHtml(defaultIncomingMeasuredWeight)}"
+                  ${state.busy ? "disabled" : ""}
+                />
+              </label>
+            `
+            : ""
+        }
+        <div class="detail-actions form-action-block">
+          <button class="primary-button" type="submit" ${state.busy ? "disabled" : ""}>${escapeHtml(submitLabel)}</button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
 export function renderPrinterRoster(printers, activePrinterId, escapeHtml, locale = "en") {
   if (printers.length <= 0) {
     return `<div class="empty-card">${escapeHtml(t(locale, "printers.noPrinters", "No printers configured yet."))}</div>`;
@@ -186,7 +303,7 @@ function renderSlotCards(options) {
 
   return slots
     .map((slot) => {
-      const slotLabel = formatPrinterSlotLabel(slot, locale);
+      const slotLabel = formatPrinterSlotLabel(slot, locale, activePrinter?.printer?.model || "");
       const materialBits = formatInventoryDisplayTitle(
         slot.spool_material,
         slot.spool_filament_name,
@@ -249,15 +366,22 @@ function renderSlotCards(options) {
                   <button
                     class="primary-button slot-button slot-button-primary"
                     type="button"
-                    data-action="inspect-slot-spool"
+                    data-action="start-printer-weight-update"
+                    data-printer-task-mode="update"
+                    data-printer-id="${escapeHtml(activePrinter.printer.id)}"
+                    data-printer-name="${escapeHtml(activePrinter.printer.name)}"
+                    data-slot-id="${escapeHtml(slot.slot_id)}"
+                    data-slot-index="${escapeHtml(slot.slot_index)}"
+                    data-slot-label="${escapeHtml(slotLabel)}"
                     data-spool-id="${escapeHtml(slot.spool_id)}"
                   >
-                    ${escapeHtml(t(locale, "printers.openSpool", "Open spool"))}
+                    ${escapeHtml(t(locale, "printers.updateWeight", "Update weight"))}
                   </button>
                   <button
                     class="ghost-button slot-button"
                     type="button"
-                    data-action="clear-slot"
+                    data-action="start-printer-weight-update"
+                    data-printer-task-mode="clear"
                     data-printer-id="${escapeHtml(activePrinter.printer.id)}"
                     data-printer-name="${escapeHtml(activePrinter.printer.name)}"
                     data-slot-id="${escapeHtml(slot.slot_id)}"

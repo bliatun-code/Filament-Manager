@@ -6,6 +6,7 @@ import {
   formatPrinterSlotLabel,
   renderPrinterBoard,
   renderPrinterPickerTaskSheetBody,
+  renderPrinterWeightTaskSheetBody,
 } from "./printer_workspace.js";
 
 function createPrinterRow(overrides = {}) {
@@ -96,13 +97,41 @@ test("printer workspace uses human slot labels when ams ids are raw internal val
   );
 });
 
+test("printer workspace labels prusa mmu printers as MMU3 channels", () => {
+  assert.equal(
+    formatPrinterSlotLabel(
+      {
+        ams_id: "printer_1_ams_1",
+        slot_index: 2,
+      },
+      "en",
+      "Prusa MK4S",
+    ),
+    "MMU3 · Channel 2",
+  );
+});
+
+test("printer workspace labels prusa xl slots as toolheads", () => {
+  assert.equal(
+    formatPrinterSlotLabel(
+      {
+        ams_id: "printer_1_ams_1",
+        slot_index: 3,
+      },
+      "nb",
+      "Prusa XL (Dual Toolhead)",
+    ),
+    "Verktøyhode 3",
+  );
+});
+
 test("printer workspace keeps the board focused on slots instead of readiness banners", () => {
   const html = renderBoard();
 
   assert.doesNotMatch(html, /Ready on X1C/);
   assert.doesNotMatch(html, /Change slot filament/);
   assert.match(html, /Load filament/);
-  assert.match(html, /Open spool/);
+  assert.match(html, /Update weight/);
   assert.match(html, /Clear slot/);
   assert.match(html, /slot-card-loaded/);
   assert.match(html, /slot-card-empty/);
@@ -169,6 +198,36 @@ test("printer workspace renders a direct load picker body for the targeted slot"
   assert.match(html, /printer-picker-row/);
   assert.match(html, /Bambu · #1/);
   assert.doesNotMatch(html, /Tap to load/);
+});
+
+test("printer workspace renders a dedicated weight task sheet body for loaded slots", () => {
+  const html = renderPrinterWeightTaskSheetBody({
+    state: {
+      locale: "nb",
+      busy: false,
+    },
+    activeTaskSheet: {
+      type: "printer-weight",
+      mode: "clear",
+      printerName: "Brutus",
+      slotLabel: "AMS 1 · Spor 2",
+      currentSpoolId: "spool-1",
+      currentSpoolTitle: "ABS Azure (40601)",
+      currentVendor: "Bambu",
+      currentReference: "#ebcb0",
+      currentLocationId: "Hylle 3",
+      currentRemainingWeight: "825",
+      currentMeasuredWeight: "1075",
+      currentSwatchColor: "#3B82F6",
+    },
+    escapeHtml: (value) => String(value ?? ""),
+    formatGrams: (value) => `${value ?? 0} g`,
+  });
+
+  assert.match(html, /Utgående vekt \(g\)/);
+  assert.match(html, /data-action="printer-slot-operation-form"/);
+  assert.match(html, /Brutus · AMS 1 · Spor 2/);
+  assert.match(html, /1075/);
 });
 
 test("printer workspace localizes slot labels in norwegian", () => {

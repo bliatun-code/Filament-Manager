@@ -153,6 +153,43 @@ test("app shell renderer opens add-spool task sheets above the root flow when re
   assert.match(html, /Add spool to inventory/);
 });
 
+test("app shell renderer uses the shared task-sheet shell for loan picking", () => {
+  const renderer = createRenderer({
+    state: {
+      activeRootFlow: "loans",
+      activeTaskSheet: {
+        type: "loan-picker",
+      },
+    },
+  });
+
+  const html = renderer.renderRoot();
+
+  assert.match(html, /task-sheet-backdrop/);
+  assert.match(html, /Lend spool/);
+  assert.match(html, /Choose a spool to lend out/);
+  assert.match(html, /data-action="select-loan-spool"/);
+});
+
+test("app shell renderer uses the shared task-sheet shell for loan creation", () => {
+  const renderer = createRenderer({
+    state: {
+      activeRootFlow: "loans",
+      activeTaskSheet: {
+        type: "loan-create",
+        spoolId: "spool-1",
+      },
+    },
+  });
+
+  const html = renderer.renderRoot();
+
+  assert.match(html, /task-sheet-backdrop/);
+  assert.match(html, /Lend spool/);
+  assert.match(html, /Outgoing total weight incl\. spool \(g\)/);
+  assert.match(html, /data-action="loan-spool-form"/);
+});
+
 test("app shell renderer uses the shared task-sheet shell for slot-targeted printer loading", () => {
   const renderer = createRenderer({
     state: {
@@ -198,6 +235,38 @@ test("app shell renderer uses the shared task-sheet shell for slot-targeted prin
   assert.match(html, /Load filament/);
   assert.match(html, /X1C · AMS 1 · Slot 1/);
   assert.match(html, /data-action="assign-selected-spool"/);
+});
+
+test("app shell renderer uses the shared task-sheet shell for printer slot weight updates", () => {
+  const renderer = createRenderer({
+    state: {
+      activeRootFlow: "printers",
+      activeTaskSheet: {
+        type: "printer-weight",
+        printerId: "printer-1",
+        printerName: "Brutus",
+        slotId: "slot-2",
+        slotIndex: "2",
+        slotLabel: "AMS 1 · Slot 2",
+        spoolId: "spool-1",
+        spoolTitle: "ABS Azure (40601)",
+        vendor: "Bambu",
+        reference: "#a1d37b",
+        locationId: "Shelf B",
+        remainingWeight: "825",
+        currentWeight: "1075",
+        swatchColor: "#3B82F6",
+      },
+      printers: [createPrinterRow()],
+    },
+  });
+
+  const html = renderer.renderRoot();
+
+  assert.match(html, /task-sheet-backdrop/);
+  assert.match(html, /Update weight/);
+  assert.match(html, /Brutus · AMS 1 · Slot 2/);
+  assert.match(html, /data-action="printer-slot-operation-form"/);
 });
 
 test("app shell renderer includes the selected spool detail modal when opened", () => {

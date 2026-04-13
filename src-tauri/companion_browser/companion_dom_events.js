@@ -43,6 +43,7 @@ export function handleCompanionClickEvent(event, options) {
     refresh: () => void options.refreshOverview(),
     setRootFlow: options.setRootFlow,
     startPrinterSlotAssignment: options.startPrinterSlotAssignment,
+    startPrinterWeightUpdate: options.startPrinterWeightUpdate,
     toggleStorageQrSheet: options.toggleStorageQrSheet,
     toggleBorrowedInForm: options.toggleBorrowedInForm,
     setAddSpoolSource: options.setAddSpoolSource,
@@ -51,7 +52,9 @@ export function handleCompanionClickEvent(event, options) {
     selectCatalogMaster: options.selectCatalogMaster,
     setThemeMode: options.setThemeMode,
     setLocale: options.setLocale,
+    startLoanPicker: options.startLoanPicker,
     toggleLoanReturn: options.toggleLoanReturn,
+    startLoanCreate: options.startLoanCreate,
     selectPrinter: options.selectPrinter,
     closeDetailModal: options.closeDetailModal,
     closeActiveTaskSheet: options.closeActiveTaskSheet,
@@ -121,6 +124,8 @@ export function handleCompanionSubmitEvent(event, options) {
   const data = (options.createFormData ?? ((target) => new FormData(target)))(form);
   return routeCompanionSubmitAction(action, data, {
     submitWeightUpdate: (...args) => void options.submitWeightUpdate(...args),
+    submitPrinterSlotOperation: (...args) => void options.submitPrinterSlotOperation(...args),
+    submitSpoolDetailsUpdate: (...args) => void options.submitSpoolDetailsUpdate(...args),
     submitSpoolLoan: (...args) => void options.submitSpoolLoan(...args),
     submitSpoolLoanReturn: (...args) => void options.submitSpoolLoanReturn(...args),
     submitManualSpoolRegistration: (...args) => void options.submitManualSpoolRegistration(...args),

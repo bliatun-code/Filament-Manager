@@ -1,4 +1,9 @@
-import { formatInventoryDisplayTitle, formatRollReference, formatStatusLabel } from "./formatters.js";
+import {
+  formatInventoryDisplayTitle,
+  formatRollReference,
+  formatStatusLabel,
+  sortCatalogMastersAlphabetically,
+} from "./formatters.js";
 import { styleObjectToString, suggestSwatchHex, swatchCssVars, toSwatchColor } from "./companion_theme.js";
 import { t } from "./companion_i18n.js";
 
@@ -19,23 +24,25 @@ function resolveAddSheetState(state) {
   const catalogSearch = String(draft.catalogSearch || "").trim().toLowerCase();
   const catalogStatusFilter = String(draft.catalogStatusFilter || "ACTIVE").trim().toUpperCase();
   const catalogMasters = Array.isArray(state.catalogMasters) ? state.catalogMasters : [];
-  const visibleCatalogMasters = catalogMasters.filter((master) => {
-    if (!catalogMatchesSource(master, source)) {
-      return false;
-    }
-    if (catalogStatusFilter === "ACTIVE" && master.is_discontinued) {
-      return false;
-    }
-    if (catalogStatusFilter === "DISCONTINUED" && !master.is_discontinued) {
-      return false;
-    }
-    if (!catalogSearch) {
-      return true;
-    }
-    return `${master.material} ${master.filament_name} ${master.color_name} ${master.vendor}`
-      .toLowerCase()
-      .includes(catalogSearch);
-  });
+  const visibleCatalogMasters = sortCatalogMastersAlphabetically(
+    catalogMasters.filter((master) => {
+      if (!catalogMatchesSource(master, source)) {
+        return false;
+      }
+      if (catalogStatusFilter === "ACTIVE" && master.is_discontinued) {
+        return false;
+      }
+      if (catalogStatusFilter === "DISCONTINUED" && !master.is_discontinued) {
+        return false;
+      }
+      if (!catalogSearch) {
+        return true;
+      }
+      return `${master.material} ${master.filament_name} ${master.color_name} ${master.vendor}`
+        .toLowerCase()
+        .includes(catalogSearch);
+    }),
+  );
   const selectedMasterId = String(draft.selectedMasterId || "").trim();
   const selectedMaster =
     (source === "manual"

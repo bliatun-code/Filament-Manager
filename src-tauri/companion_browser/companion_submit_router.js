@@ -4,10 +4,28 @@ export function routeCompanionSubmitAction(action, data, handlers) {
     return true;
   }
 
+  if (action === "printer-slot-operation-form") {
+    handlers.submitPrinterSlotOperation(
+      String(data.get("current-grams") || ""),
+      String(data.get("incoming-grams") || ""),
+      String(data.get("outgoing-grams") || ""),
+    );
+    return true;
+  }
+
   if (action === "update-tare-weight-form") {
     handlers.submitTareWeightUpdate(
       String(data.get("spool-id") || ""),
       String(data.get("tare-grams") || ""),
+    );
+    return true;
+  }
+
+  if (action === "update-spool-details-form") {
+    handlers.submitSpoolDetailsUpdate(
+      String(data.get("spool-id") || ""),
+      String(data.get("status") || ""),
+      String(data.get("location") || ""),
     );
     return true;
   }
@@ -83,6 +101,7 @@ export function routeCompanionSubmitAction(action, data, handlers) {
   if (action === "hand-back-loan-form") {
     handlers.submitBorrowedInHandBack(
       String(data.get("loan-id") || ""),
+      String(data.get("spool-id") || ""),
       String(data.get("returned-grams") || ""),
       String(data.get("return-note") || ""),
     );

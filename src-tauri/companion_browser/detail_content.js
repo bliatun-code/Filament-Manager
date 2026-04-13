@@ -29,7 +29,6 @@ export function renderSelectedSpoolDetailBody(options) {
     busy,
     compactDetail,
     findAssignedSlotForSpool,
-    loanActionState,
     escapeHtml,
     formatDate,
     formatGrams,
@@ -38,44 +37,21 @@ export function renderSelectedSpoolDetailBody(options) {
     locale = "en",
   } = options;
 
-  const activeLoan = selectedDetail?.active_loan || null;
-  const activeLoanRow = activeLoan?.loan || null;
-  const activeLoanDirection = activeLoanRow?.loan_direction?.trim().toUpperCase() || "";
-  const activeLoanIsOutbound = Boolean(activeLoanRow) && activeLoanDirection !== "INBOUND";
-  const selectedSpoolIsBorrowedIn =
-    (selectedSpool?.spool?.ownership_type || "").trim().toUpperCase() === "BORROWED_IN";
-  const borrowedInOwner =
-    selectedSpool.spool.owner_name ||
-    activeLoanRow?.counterparty_name ||
-    activeLoanRow?.borrower_name ||
-    "";
-  const borrowedInContact =
-    selectedSpool.spool.owner_contact || activeLoanRow?.counterparty_contact || "";
-  const borrowedInNote =
-    selectedSpool.spool.ownership_note ||
-    activeLoanRow?.counterparty_note ||
-    activeLoanRow?.lent_note ||
-    "";
   const selectedAssignment = findAssignedSlotForSpool(selectedSpool.spool.id);
-  const loanState = loanActionState(selectedSpool);
-  const defaultLoanGrams =
-    selectedSpool?.spool?.remaining_g ?? selectedSpool?.spool?.current_weight_g ?? "";
-  const defaultReturnedGrams =
-    selectedSpool?.spool?.remaining_g ?? activeLoanRow?.grams_out ?? "";
+  const detailTareWeight = resolveSpoolTareWeight(selectedSpool.spool, selectedSpool.master);
   const normalizedDetailStatus = (selectedSpool.spool.status || "").trim().toUpperCase();
   const detailStatus = ["IN_STOCK", "EMPTY", "LOST"].includes(normalizedDetailStatus)
     ? normalizedDetailStatus
     : "IN_STOCK";
   const detailStatusLabel = formatStatusLabel(detailStatus, locale);
   const detailLocation = selectedSpool.spool.location_id || "";
-  const detailPlacementLabel = formatPlacementLabel(detailLocation);
+  const detailPlacementLabel = formatPlacementLabel(detailLocation, locale);
   const detailTitle = formatInventoryDisplayTitle(
     selectedSpool.master.material,
     selectedSpool.master.filament_name,
     selectedSpool.master.color_name,
   );
   const detailReference = formatRollReference(selectedSpool.spool);
-  const detailTareWeight = resolveSpoolTareWeight(selectedSpool.spool, selectedSpool.master);
   const defaultMeasuredWeight =
     (selectedSpool?.spool?.remaining_g ?? selectedSpool?.spool?.current_weight_g ?? 0) +
     detailTareWeight;
@@ -83,7 +59,11 @@ export function renderSelectedSpoolDetailBody(options) {
   const detailAssignmentLabel = selectedAssignment
     ? `${selectedAssignment.printerName} · ${t(locale, "printers.slot", "Slot")} ${selectedAssignment.slotIndex}`
     : t(locale, "detail.notLoaded", "Not loaded");
-  const detailSummaryBits = [detailReference];
+  const detailSummaryBits = [];
+  if (selectedSpool.master.vendor) {
+    detailSummaryBits.push(selectedSpool.master.vendor);
+  }
+  detailSummaryBits.push(detailReference);
   if (selectedAssignment) {
     detailSummaryBits.push(detailAssignmentLabel);
   } else if (detailLocation) {
@@ -95,19 +75,6 @@ export function renderSelectedSpoolDetailBody(options) {
   const historyCount = selectedDetail?.history?.length || 0;
   const usageTimeline = renderUsageTimeline(selectedDetail?.usage || [], { escapeHtml, formatDate, formatGrams, locale });
   const historyTimeline = renderHistoryTimeline(selectedDetail?.history || [], { escapeHtml, formatDate, locale });
-  const loanSectionTitle = selectedSpoolIsBorrowedIn
-    ? t(locale, "format.borrowedIn", "Borrowed in")
-    : activeLoanRow
-      ? t(locale, "detail.loan", "Loan")
-      : t(locale, "detail.lendSpool", "Lend spool");
-  const loanSectionCopy = selectedSpoolIsBorrowedIn
-    ? t(locale, "detail.borrowedInHelp", "Owner details and hand-back.")
-    : activeLoanIsOutbound
-      ? t(locale, "detail.currentlyOnLoan", "Currently on loan.")
-      : activeLoanRow
-        ? t(locale, "detail.activeInbound", "Active inbound record.")
-        : t(locale, "detail.createOutboundLoan", "Create an outbound loan.");
-
   return `
     <div class="detail-stack">
       <div
@@ -118,7 +85,6 @@ export function renderSelectedSpoolDetailBody(options) {
           <div class="detail-summary-head">
             <div class="detail-summary-copy">
               <div class="detail-title">${escapeHtml(detailTitle)}</div>
-              <div class="detail-subtitle">${escapeHtml(selectedSpool.master.vendor)}</div>
             </div>
             <div class="pill-row detail-summary-pills">
               <span class="pill">${escapeHtml(detailStatusLabel)}</span>
@@ -172,14 +138,47 @@ export function renderSelectedSpoolDetailBody(options) {
         </div>
       </div>
 
-      <div class="surface-card detail-section-card">
-        <div class="section-header">
-          <div>
-            <h3>${escapeHtml(t(locale, "detail.details", "Details"))}</h3>
-            <p class="section-copy">${escapeHtml(t(locale, "detail.detailsHelp", "Code, status, and placement."))}</p>
-          </div>
-        </div>
-        <div class="stack">
+      <details class="surface-card detail-section-card detail-collapsible" data-collapsible="details">
+        <summary class="detail-collapsible-summary">
+          <span>${escapeHtml(t(locale, "detail.details", "Details"))}</span>
+          <span class="detail-history-summary">${escapeHtml(t(locale, "detail.detailsHelp", "Code, status, and placement."))}</span>
+        </summary>
+        <div class="detail-collapsible-body">
+          <form class="stack detail-form detail-edit-pane" data-action="update-spool-details-form">
+            <input type="hidden" name="spool-id" value="${escapeHtml(selectedSpool.spool.id)}" />
+            <div class="meta-line">${escapeHtml(`${detailReference} · ${detailPlacementLabel}`)}</div>
+            <label class="stack detail-field">
+              <span class="muted">${escapeHtml(t(locale, "detail.status", "Status"))}</span>
+              <select class="text-input" name="status" ${busy ? "disabled" : ""}>
+                ${[
+                  ["IN_STOCK", t(locale, "format.inStock", "In stock")],
+                  ["EMPTY", t(locale, "format.empty", "Empty")],
+                  ["LOST", t(locale, "format.lost", "Lost")],
+                ]
+                  .map(
+                    ([value, label]) =>
+                      `<option value="${escapeHtml(value)}" ${detailStatus === value ? "selected" : ""}>${escapeHtml(label)}</option>`,
+                  )
+                  .join("")}
+              </select>
+            </label>
+            <label class="stack detail-field">
+              <span class="muted">${escapeHtml(t(locale, "detail.locationOptional", "Location (optional)"))}</span>
+              <input
+                class="text-input"
+                name="location"
+                type="text"
+                value="${escapeHtml(detailLocation)}"
+                placeholder="${escapeHtml(t(locale, "detail.locationPlaceholder", "Shelf, drawer, or cart"))}"
+                ${busy ? "disabled" : ""}
+              />
+            </label>
+            <div class="detail-actions form-action-block">
+              <button class="primary-button" type="submit" ${busy ? "disabled" : ""}>
+                ${escapeHtml(t(locale, "detail.saveDetails", "Save details"))}
+              </button>
+            </div>
+          </form>
           <div class="stack detail-form detail-edit-pane">
             <span class="muted">${escapeHtml(t(locale, "detail.qrPreview", "QR code"))}</span>
             <img
@@ -189,55 +188,9 @@ export function renderSelectedSpoolDetailBody(options) {
             />
           </div>
         </div>
-      </div>
-
-      <div class="surface-card detail-section-card">
-        <div class="section-header">
-          <div>
-            <h3>${escapeHtml(loanSectionTitle)}</h3>
-            <p class="section-copy">${escapeHtml(loanSectionCopy)}</p>
-          </div>
-        </div>
-        ${
-          selectedSpoolIsBorrowedIn
-            ? renderBorrowedInLoanPanel({
-                activeLoanRow,
-                borrowedInContact,
-                borrowedInNote,
-              borrowedInOwner,
-              busy,
-              defaultReturnedGrams,
-              escapeHtml,
-              formatDate,
-              selectedSpool,
-              locale,
-            })
-            : activeLoanRow
-              ? renderActiveLoanPanel({
-                  activeLoanIsOutbound,
-                  activeLoanRow,
-                  busy,
-                  defaultReturnedGrams,
-                  escapeHtml,
-                  formatDate,
-                  formatGrams,
-                  selectedSpool,
-                  locale,
-                })
-              : renderCreateLoanPanel({
-                  busy,
-                  defaultLoanGrams,
-                  escapeHtml,
-                  loanState,
-                  selectedAssignment,
-                  selectedSpool,
-                  locale,
-                })
-        }
-      </div>
+      </details>
 
       ${renderHistorySection({
-        compactDetail,
         usageCount,
         historyCount,
         usageTimeline,
@@ -246,208 +199,6 @@ export function renderSelectedSpoolDetailBody(options) {
         locale,
       })}
     </div>
-  `;
-}
-
-function renderBorrowedInLoanPanel(options) {
-  const {
-    activeLoanRow,
-    borrowedInContact,
-    borrowedInNote,
-    borrowedInOwner,
-    busy,
-    defaultReturnedGrams,
-    escapeHtml,
-    formatDate,
-    selectedSpool,
-    locale = "en",
-  } = options;
-
-  return `
-    <div class="stack">
-      <div class="metric-grid">
-        <div class="metric-card">
-          <div class="metric-label">${escapeHtml(t(locale, "detail.borrowedFrom", "Borrowed from"))}</div>
-          <div class="metric-value">${escapeHtml(borrowedInOwner || t(locale, "format.unknown", "Unknown"))}</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">${escapeHtml(t(locale, "detail.contact", "Contact"))}</div>
-          <div class="metric-value">${escapeHtml(borrowedInContact || t(locale, "detail.notSet", "Not set"))}</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">${escapeHtml(t(locale, "detail.borrowedInDate", "Borrowed in"))}</div>
-          <div class="metric-value">${escapeHtml(formatDate(activeLoanRow?.lent_at))}</div>
-        </div>
-      </div>
-      <form class="stack detail-form" data-action="update-borrowed-in-form">
-        <input type="hidden" name="spool-id" value="${escapeHtml(selectedSpool.spool.id)}" />
-        <div class="borrowed-in-grid">
-          <label class="stack detail-field">
-            <span class="muted">${escapeHtml(t(locale, "detail.borrowedFrom", "Borrowed from"))}</span>
-            <input
-              class="text-input"
-              name="borrowed-edit-owner-name"
-              type="text"
-              autocomplete="name"
-              value="${escapeHtml(borrowedInOwner)}"
-              placeholder="${escapeHtml(t(locale, "detail.borrowedFromPlaceholder", "Owner or counterparty name"))}"
-            />
-          </label>
-          <label class="stack detail-field">
-            <span class="muted">${escapeHtml(t(locale, "detail.ownerContactOptional", "Owner contact (optional)"))}</span>
-            <input
-              class="text-input"
-              name="borrowed-edit-owner-contact"
-              type="text"
-              autocomplete="email"
-              value="${escapeHtml(borrowedInContact)}"
-              placeholder="${escapeHtml(t(locale, "detail.ownerContactPlaceholder", "Phone, email, or handle"))}"
-            />
-          </label>
-          <label class="stack detail-field borrowed-in-field-wide">
-            <span class="muted">${escapeHtml(t(locale, "detail.noteOptional", "Note (optional)"))}</span>
-            <textarea
-              class="detail-textarea borrowed-note-textarea"
-              name="borrowed-edit-note"
-              rows="3"
-              placeholder="${escapeHtml(t(locale, "detail.notePlaceholder", "Return timing or other context"))}"
-            >${escapeHtml(borrowedInNote)}</textarea>
-          </label>
-        </div>
-        <div class="detail-actions form-action-block">
-          <button class="primary-button" type="submit" ${busy ? "disabled" : ""}>${escapeHtml(t(locale, "detail.saveOwnerDetails", "Save owner details"))}</button>
-        </div>
-      </form>
-      ${
-        activeLoanRow
-          ? `
-            <form class="stack detail-form" data-action="hand-back-loan-form">
-              <input type="hidden" name="loan-id" value="${escapeHtml(activeLoanRow.id)}" />
-              <label class="stack detail-field">
-                <span class="muted">${escapeHtml(t(locale, "detail.handBackWeight", "Hand-back weight (g)"))}</span>
-                <input class="weight-input" name="returned-grams" type="number" min="0" step="1" value="${escapeHtml(defaultReturnedGrams)}" />
-              </label>
-              <label class="stack detail-field">
-                <span class="muted">${escapeHtml(t(locale, "detail.handBackNoteOptional", "Hand-back note (optional)"))}</span>
-                <textarea class="detail-textarea" name="return-note" rows="3" placeholder="${escapeHtml(t(locale, "detail.handBackPlaceholder", "Condition or hand-back note"))}"></textarea>
-              </label>
-              <div class="detail-actions form-action-block">
-                <button class="primary-button" type="submit" ${busy ? "disabled" : ""}>${escapeHtml(t(locale, "detail.handBackSpool", "Hand back spool"))}</button>
-              </div>
-            </form>
-          `
-          : `
-            <div class="info-card">
-              ${escapeHtml(t(locale, "detail.noBorrowedRecord", "No active borrowed-in record was found for this spool."))}
-            </div>
-          `
-      }
-    </div>
-  `;
-}
-
-function renderActiveLoanPanel(options) {
-  const {
-    activeLoanIsOutbound,
-    activeLoanRow,
-    busy,
-    defaultReturnedGrams,
-    escapeHtml,
-    formatDate,
-    formatGrams,
-    selectedSpool,
-    locale = "en",
-  } = options;
-
-  return `
-    <div class="stack">
-      <div class="metric-grid">
-        <div class="metric-card">
-          <div class="metric-label">${escapeHtml(t(locale, "detail.counterparty", "Counterparty"))}</div>
-          <div class="metric-value">${escapeHtml(activeLoanRow.borrower_name || activeLoanRow.counterparty_name || t(locale, "format.unknown", "Unknown"))}</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">${escapeHtml(t(locale, "detail.lentOut", "Lent out"))}</div>
-          <div class="metric-value">${escapeHtml(formatGrams(activeLoanRow.grams_out))}</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">${escapeHtml(t(locale, "detail.lentAt", "Lent at"))}</div>
-          <div class="metric-value">${escapeHtml(formatDate(activeLoanRow.lent_at))}</div>
-        </div>
-      </div>
-      ${activeLoanRow.lent_note ? `<div class="info-card">${escapeHtml(activeLoanRow.lent_note)}</div>` : ""}
-      ${
-        activeLoanIsOutbound
-          ? `
-            <form class="stack detail-form" data-action="return-loan-form">
-              <input type="hidden" name="loan-id" value="${escapeHtml(activeLoanRow.id)}" />
-              <input type="hidden" name="spool-id" value="${escapeHtml(selectedSpool.spool.id)}" />
-              <label class="stack detail-field">
-                <span class="muted">${escapeHtml(t(locale, "detail.returnedWeight", "Returned weight (g)"))}</span>
-                <input class="weight-input" name="returned-grams" type="number" min="0" step="1" value="${escapeHtml(defaultReturnedGrams)}" />
-              </label>
-              <label class="stack detail-field">
-                <span class="muted">${escapeHtml(t(locale, "detail.returnNoteOptional", "Return note (optional)"))}</span>
-                <textarea class="detail-textarea" name="return-note" rows="3" placeholder="${escapeHtml(t(locale, "detail.returnPlaceholder", "Condition or return note"))}"></textarea>
-              </label>
-              <div class="detail-actions form-action-block">
-                <button class="primary-button" type="submit" ${busy ? "disabled" : ""}>${escapeHtml(t(locale, "loans.returnLoan", "Return loan"))}</button>
-              </div>
-            </form>
-          `
-          : `
-            <div class="info-card">
-              ${escapeHtml(t(locale, "detail.useBorrowedInSection", "Hand back this borrowed-in spool from the borrowed-in section above."))}
-            </div>
-          `
-      }
-    </div>
-  `;
-}
-
-function renderCreateLoanPanel(options) {
-  const {
-    busy,
-    defaultLoanGrams,
-    escapeHtml,
-    loanState,
-    selectedAssignment,
-    selectedSpool,
-    locale = "en",
-  } = options;
-
-  if (!loanState.allowed) {
-    return `
-      <div class="info-card">
-        ${escapeHtml(loanState.reason)}
-      </div>
-    `;
-  }
-
-  return `
-    <form class="stack detail-form" data-action="loan-spool-form">
-      <input type="hidden" name="spool-id" value="${escapeHtml(selectedSpool.spool.id)}" />
-      <label class="stack detail-field">
-        <span class="muted">${escapeHtml(t(locale, "detail.borrowerName", "Borrower name"))}</span>
-        <input class="text-input" name="borrower-name" type="text" autocomplete="name" placeholder="${escapeHtml(t(locale, "detail.borrowerPlaceholder", "Who is taking this spool?"))}" />
-      </label>
-      <label class="stack detail-field">
-        <span class="muted">${escapeHtml(t(locale, "detail.outgoingWeight", "Outgoing weight (g)"))}</span>
-        <input class="weight-input" name="grams-out" type="number" min="0" step="1" value="${escapeHtml(defaultLoanGrams)}" />
-      </label>
-      <label class="stack detail-field">
-        <span class="muted">${escapeHtml(t(locale, "detail.loanNoteOptional", "Loan note (optional)"))}</span>
-        <textarea class="detail-textarea" name="loan-note" rows="3" placeholder="${escapeHtml(t(locale, "detail.loanNotePlaceholder", "Project or return timing"))}"></textarea>
-      </label>
-      ${
-        selectedAssignment
-          ? `<div class="info-card">${escapeHtml(t(locale, "detail.loadedInSlot", "Loaded in slot {slot} on {printer}. Creating the loan will clear that slot.", { slot: selectedAssignment.slotIndex, printer: selectedAssignment.printerName }))}</div>`
-          : ""
-      }
-      <div class="detail-actions form-action-block">
-        <button class="primary-button" type="submit" ${busy ? "disabled" : ""}>${escapeHtml(t(locale, "detail.lendSpool", "Lend spool"))}</button>
-      </div>
-    </form>
   `;
 }
 
@@ -492,7 +243,6 @@ function renderHistoryTimeline(historyRows, helpers) {
 
 function renderHistorySection(options) {
   const {
-    compactDetail,
     usageCount,
     historyCount,
     usageTimeline,
@@ -516,10 +266,9 @@ function renderHistorySection(options) {
     );
   }
   const historySummary = historySummaryBits.join(" · ") || t(locale, "detail.noRecentHistory", "No recent history");
-  const historyOpen = !compactDetail || historySummaryBits.length <= 0;
 
   return `
-    <details class="surface-card detail-section-card detail-history-card detail-collapsible detail-history-collapsible" ${historyOpen ? "open" : ""}>
+    <details class="surface-card detail-section-card detail-history-card detail-collapsible detail-history-collapsible">
       <summary class="detail-collapsible-summary">
         <span>${escapeHtml(t(locale, "detail.history", "History"))}</span>
         <span class="detail-history-summary">${escapeHtml(historySummary)}</span>

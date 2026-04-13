@@ -24,6 +24,26 @@ export function routeCompanionClickAction(action, target, handlers) {
     return true;
   }
 
+  if (action === "start-printer-weight-update") {
+    handlers.startPrinterWeightUpdate({
+      mode: readAttr(target, "data-printer-task-mode") || "update",
+      printerId: readAttr(target, "data-printer-id"),
+      printerName: readAttr(target, "data-printer-name"),
+      slotId: readAttr(target, "data-slot-id"),
+      slotIndex: readAttr(target, "data-slot-index"),
+      slotLabel: readAttr(target, "data-slot-label"),
+      spoolId: readAttr(target, "data-spool-id"),
+      spoolTitle: readAttr(target, "data-spool-title"),
+      vendor: readAttr(target, "data-spool-vendor"),
+      reference: readAttr(target, "data-spool-reference"),
+      locationId: readAttr(target, "data-spool-location"),
+      remainingWeight: readAttr(target, "data-spool-remaining-g"),
+      currentWeight: readAttr(target, "data-spool-current-weight-g"),
+      swatchColor: readAttr(target, "data-spool-swatch"),
+    });
+    return true;
+  }
+
   if (action === "toggle-qr-sheet") {
     handlers.toggleStorageQrSheet();
     return true;
@@ -87,6 +107,21 @@ export function routeCompanionClickAction(action, target, handlers) {
     return true;
   }
 
+  if (action === "start-loan-create") {
+    handlers.startLoanCreate(readAttr(target, "data-spool-id"));
+    return true;
+  }
+
+  if (action === "start-loan-picker") {
+    handlers.startLoanPicker();
+    return true;
+  }
+
+  if (action === "select-loan-spool") {
+    handlers.startLoanCreate(readAttr(target, "data-spool-id"));
+    return true;
+  }
+
   if (action === "select-printer") {
     handlers.selectPrinter(readAttr(target, "data-printer-id"));
     return true;
@@ -137,21 +172,15 @@ export function routeCompanionClickAction(action, target, handlers) {
     return true;
   }
 
-  if (action === "assign-selected-spool" || action === "clear-slot") {
-    const printerId = readAttr(target, "data-printer-id");
-    const printerName = readAttr(target, "data-printer-name");
-    const slotId = readAttr(target, "data-slot-id");
-    const slotIndex = readAttr(target, "data-slot-index");
-    const slotLabel = readAttr(target, "data-slot-label");
-    const spoolId = readAttr(target, "data-spool-id");
-    const fallbackSlotLabel = slotIndex ? `Slot ${slotIndex}` : "";
-    const feedbackLabel =
-      printerName && (slotLabel || fallbackSlotLabel)
-        ? `${printerName} · ${slotLabel || fallbackSlotLabel}`
-        : "";
-    handlers.submitPrinterSlotAssignment(printerId, slotId, action === "clear-slot" ? "" : spoolId, {
-      feedbackSpoolId: spoolId,
-      feedbackLabel,
+  if (action === "assign-selected-spool") {
+    handlers.startPrinterWeightUpdate({
+      mode: "assign",
+      printerId: readAttr(target, "data-printer-id"),
+      printerName: readAttr(target, "data-printer-name"),
+      slotId: readAttr(target, "data-slot-id"),
+      slotIndex: readAttr(target, "data-slot-index"),
+      slotLabel: readAttr(target, "data-slot-label"),
+      targetSpoolId: readAttr(target, "data-spool-id"),
     });
     return true;
   }

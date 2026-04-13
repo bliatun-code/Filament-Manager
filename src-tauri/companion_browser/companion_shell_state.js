@@ -1,3 +1,5 @@
+import { formatPrinterSlotLabelForModel } from "./printer_slot_labels.js";
+
 const ROOT_FLOW_STORAGE = "storage";
 const ROOT_FLOW_PRINTERS = "printers";
 const ROOT_FLOW_LOANS = "loans";
@@ -51,6 +53,17 @@ function catalogMatchesSource(master, source) {
     return false;
   }
   return vendor.includes("bambu");
+}
+
+function defaultSpoolTareWeightForVendor(vendor) {
+  const normalized = String(vendor || "").trim().toLowerCase();
+  if (normalized.includes("bambu")) {
+    return 250;
+  }
+  if (normalized.includes("esun")) {
+    return 224;
+  }
+  return 0;
 }
 
 export function detectCompanionLayoutMode(viewportWidth) {
@@ -255,6 +268,32 @@ export function createCompanionShellState(options) {
     setActiveTaskSheet(nextTaskSheet);
   }
 
+  function startLoanPicker() {
+    state.activeRootFlow = ROOT_FLOW_LOANS;
+    state.detailOpen = false;
+    state.activeTaskSheet = { type: "loan-picker" };
+    syncTaskSheetState();
+    syncLegacySectionState();
+    render();
+  }
+
+  function startLoanCreate(spoolId) {
+    const normalizedSpoolId = String(spoolId || "").trim();
+    if (!normalizedSpoolId) {
+      return;
+    }
+    state.activeRootFlow = ROOT_FLOW_LOANS;
+    state.selectedSpoolId = normalizedSpoolId;
+    state.detailOpen = false;
+    state.activeTaskSheet = {
+      type: "loan-create",
+      spoolId: normalizedSpoolId,
+    };
+    syncTaskSheetState();
+    syncLegacySectionState();
+    render();
+  }
+
   function selectPrinter(printerId) {
     state.activeRootFlow = ROOT_FLOW_PRINTERS;
     state.activePrinterId = String(printerId || "").trim();
@@ -294,6 +333,95 @@ export function createCompanionShellState(options) {
       slotLabel: normalizedSlotLabel,
     };
     state.detailOpen = false;
+    syncTaskSheetState();
+    ensureActivePrinterSelection();
+    syncLegacySectionState();
+    render();
+  }
+
+  function startPrinterWeightUpdate(taskOptions = {}) {
+    const normalizedMode = String(taskOptions.mode || "update").trim().toLowerCase();
+    const normalizedPrinterId = String(taskOptions.printerId || "").trim();
+    const normalizedSlotId = String(taskOptions.slotId || "").trim();
+    const printers = Array.isArray(state.printers) ? state.printers : [];
+    const printerRow =
+      printers.find((row) => String(row?.printer?.id || "").trim() === normalizedPrinterId) || null;
+    const slotRow =
+      printerRow?.slots?.find((slot) => String(slot?.slot_id || "").trim() === normalizedSlotId) || null;
+    const currentSpoolId = String(slotRow?.spool_id || taskOptions.spoolId || "").trim();
+    const targetSpoolId = String(taskOptions.targetSpoolId || "").trim();
+    if (!normalizedPrinterId || !normalizedSlotId) {
+      return;
+    }
+    if (normalizedMode === "update" && !currentSpoolId) {
+      return;
+    }
+    if (normalizedMode === "assign" && !targetSpoolId) {
+      return;
+    }
+    if (normalizedMode === "clear" && !currentSpoolId) {
+      return;
+    }
+
+    const spoolRows = Array.isArray(state.spools) ? state.spools : [];
+    const currentSpoolRow =
+      spoolRows.find((row) => String(row?.spool?.id || "").trim() === currentSpoolId) || null;
+    const targetSpoolRow =
+      spoolRows.find((row) => String(row?.spool?.id || "").trim() === targetSpoolId) || null;
+    const resolveTare = (row) => {
+      const explicit = row?.spool?.spool_tare_weight_g;
+      if (Number.isFinite(explicit)) {
+        return Math.max(0, Math.round(explicit));
+      }
+      return defaultSpoolTareWeightForVendor(row?.master?.vendor);
+    };
+
+    state.activeRootFlow = ROOT_FLOW_PRINTERS;
+    state.activePrinterId = normalizedPrinterId;
+    state.detailOpen = false;
+    state.activeTaskSheet = {
+      type: "printer-weight",
+      mode: normalizedMode,
+      printerId: normalizedPrinterId,
+      printerName: String(taskOptions.printerName || printerRow?.printer?.name || "").trim(),
+      slotId: normalizedSlotId,
+      slotIndex: String(taskOptions.slotIndex || slotRow?.slot_index || "").trim(),
+      slotLabel: String(
+        taskOptions.slotLabel ||
+          (slotRow
+            ? formatPrinterSlotLabelForModel(slotRow, state.locale || "en", printerRow?.printer?.model || "")
+            : ""),
+      ).trim(),
+      currentSpoolId,
+      currentSpoolTitle: currentSpoolRow
+        ? `${String(currentSpoolRow.master?.filament_name || "").trim()}${currentSpoolRow.master?.color_name ? ` · ${String(currentSpoolRow.master.color_name).trim()}` : ""}`
+        : String(taskOptions.spoolTitle || "").trim(),
+      currentVendor: String(currentSpoolRow?.master?.vendor || "").trim(),
+      currentReference: currentSpoolId ? `#${currentSpoolId.replace(/^spool[-_]?/, "").slice(-6)}` : "",
+      currentLocationId: String(currentSpoolRow?.spool?.location_id || "").trim(),
+      currentRemainingWeight: String(currentSpoolRow?.spool?.remaining_g ?? slotRow?.spool_remaining_g ?? "").trim(),
+      currentMeasuredWeight:
+        currentSpoolRow?.spool?.remaining_g != null
+          ? String(Math.max(0, currentSpoolRow.spool.remaining_g + resolveTare(currentSpoolRow)))
+          : "",
+      currentTareWeight: String(resolveTare(currentSpoolRow)).trim(),
+      currentSwatchColor:
+        String(currentSpoolRow?.master?.hex_color || slotRow?.spool_hex_color || taskOptions.swatchColor || "").trim(),
+      targetSpoolId,
+      targetSpoolTitle: targetSpoolRow
+        ? `${String(targetSpoolRow.master?.filament_name || "").trim()}${targetSpoolRow.master?.color_name ? ` · ${String(targetSpoolRow.master.color_name).trim()}` : ""}`
+        : "",
+      targetVendor: String(targetSpoolRow?.master?.vendor || "").trim(),
+      targetReference: targetSpoolId ? `#${targetSpoolId.replace(/^spool[-_]?/, "").slice(-6)}` : "",
+      targetLocationId: String(targetSpoolRow?.spool?.location_id || "").trim(),
+      targetRemainingWeight: String(targetSpoolRow?.spool?.remaining_g ?? "").trim(),
+      targetMeasuredWeight:
+        targetSpoolRow?.spool?.remaining_g != null
+          ? String(Math.max(0, targetSpoolRow.spool.remaining_g + resolveTare(targetSpoolRow)))
+          : "",
+      targetTareWeight: String(resolveTare(targetSpoolRow)).trim(),
+      targetSwatchColor: String(targetSpoolRow?.master?.hex_color || "").trim(),
+    };
     syncTaskSheetState();
     ensureActivePrinterSelection();
     syncLegacySectionState();
@@ -396,6 +524,9 @@ export function createCompanionShellState(options) {
     setDetailReturnContext,
     setLoanStatusFilter,
     setPrinterSpoolSearch,
+    startLoanPicker,
+    startLoanCreate,
+    startPrinterWeightUpdate,
     setWishlistQueueFilter,
     startPrinterSlotAssignment,
     setRootFlow,

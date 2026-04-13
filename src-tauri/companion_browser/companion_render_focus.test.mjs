@@ -56,12 +56,25 @@ function createRoot(beforeElements, afterElements = beforeElements) {
       return elements.includes(target);
     },
     querySelectorAll(selector) {
-      const expectedTag = String(selector || "").trim().toUpperCase();
-      return elements.filter((element) => String(element.tagName || "").toUpperCase() === expectedTag);
+      const normalizedSelector = String(selector || "").trim().toUpperCase();
+      return elements.filter((element) => {
+        const tag = String(element.tagName || "").toUpperCase();
+        return tag === normalizedSelector;
+      });
     },
     set innerHTML(value) {
       this.markup = value;
       elements = [...afterElements];
+    },
+  };
+}
+
+function createDetails(key, open = false) {
+  return {
+    tagName: "DETAILS",
+    open,
+    getAttribute(name) {
+      return name === "data-collapsible" ? key : null;
     },
   };
 }
@@ -121,4 +134,24 @@ test("restoreFocusedFormControl returns false when the replacement control is mi
   });
 
   assert.equal(restored, false);
+});
+
+test("renderMarkupPreservingFocus restores open collapsible details sections after rerender", () => {
+  const oldDetails = createDetails("details", true);
+  const oldHistory = createDetails("history", false);
+  const newDetails = createDetails("details", false);
+  const newHistory = createDetails("history", false);
+  const root = createRoot([oldDetails, oldHistory], [newDetails, newHistory]);
+
+  const restored = renderMarkupPreservingFocus({
+    root,
+    documentRef: {
+      activeElement: null,
+    },
+    markup: "<details></details>",
+  });
+
+  assert.equal(restored, false);
+  assert.equal(newDetails.open, true);
+  assert.equal(newHistory.open, false);
 });

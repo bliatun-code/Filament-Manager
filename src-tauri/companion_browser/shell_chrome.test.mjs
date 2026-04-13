@@ -112,7 +112,8 @@ test("detail modal shell wraps the provided body and close affordance", () => {
     escapeHtml: (value) => String(value ?? ""),
   });
 
-  assert.match(html, /PLA · Basic · White/);
+  assert.match(html, /<p class="workflow-kicker">Spool<\/p>/);
+  assert.doesNotMatch(html, /PLA · Basic · White/);
   assert.doesNotMatch(html, /#1/);
   assert.match(html, /Detail body/);
   assert.match(html, /data-action="close-detail"/);

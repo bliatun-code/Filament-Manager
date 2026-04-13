@@ -1856,6 +1856,14 @@ a {
   gap: 0.9rem;
 }
 
+.printers-workspace--with-roster {
+  grid-template-columns: 1fr;
+}
+
+.printers-workspace--single {
+  grid-template-columns: 1fr;
+}
+
 .printer-roster,
 .printer-board {
   border-radius: var(--content-card-radius);
@@ -1952,8 +1960,16 @@ a {
   margin-bottom: 0.68rem;
 }
 
+.printer-roster > .stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
 .printer-roster-item {
-  width: 100%;
+  width: auto;
+  min-width: min(100%, 14rem);
+  max-width: min(100%, 20rem);
   border: 1px solid var(--border);
   background: var(--surface-strong);
   color: var(--text);
@@ -2167,7 +2183,7 @@ a {
 
 .detail-stack {
   display: grid;
-  gap: 1rem;
+  gap: 0.82rem;
 }
 
 .detail-section-card {
@@ -2179,14 +2195,14 @@ a {
 .detail-summary-head {
   display: flex;
   justify-content: space-between;
-  gap: 0.62rem;
+  gap: 0.5rem;
   align-items: start;
   flex-wrap: wrap;
 }
 
 .detail-summary-copy {
   display: grid;
-  gap: 0.16rem;
+  gap: 0.08rem;
   min-width: 0;
 }
 
@@ -2198,6 +2214,7 @@ a {
 .detail-summary-meta {
   font-size: 0.8rem;
   line-height: 1.38;
+  margin-top: -0.08rem;
 }
 
 .detail-summary-stats {
@@ -2397,7 +2414,7 @@ a {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
-  padding-top: 0.72rem;
+  padding-top: 0.52rem;
   padding-bottom: max(0.64rem, env(safe-area-inset-bottom));
 }
 
@@ -2406,7 +2423,7 @@ a {
   top: -0.92rem;
   z-index: 2;
   margin: -0.92rem -0.96rem 0;
-  padding: 0.74rem 0.82rem 0.62rem;
+  padding: 0.68rem 0.82rem 0.46rem;
   border-bottom: 1px solid var(--border);
   background: var(--surface-strong);
   backdrop-filter: blur(18px);
@@ -2426,6 +2443,10 @@ a {
 
 .detail-modal-copy .section-copy {
   margin: 0.12rem 0 0;
+}
+
+.detail-modal-copy .workflow-kicker {
+  margin-bottom: 0;
 }
 
 .task-sheet-backdrop {
@@ -2629,7 +2650,6 @@ a {
   }
 
   .printers-workspace {
-    grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr);
     align-items: start;
   }
 
@@ -2693,7 +2713,6 @@ a {
   }
 
   .printers-workspace {
-    grid-template-columns: minmax(13.5rem, 15rem) minmax(0, 1fr);
     gap: 0.8rem;
   }
 
@@ -2960,6 +2979,23 @@ a {
     text-align: left;
   }
 
+  .storage-shell .dense-list-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .storage-shell .dense-list-side {
+    min-width: 4.75rem;
+    justify-items: end;
+    text-align: right;
+  }
+
+  .storage-shell .spool-row-weight,
+  .storage-shell .compact-pill-row {
+    justify-content: flex-end;
+    text-align: right;
+  }
+
   .toolbar-actions > * {
     flex: 1 1 auto;
   }
@@ -3054,12 +3090,13 @@ a {
   .printer-roster > .stack {
     display: grid;
     grid-template-columns: 1fr;
-    grid-auto-flow: row;
-    grid-auto-columns: 1fr;
     gap: 0.55rem;
   }
 
   .printer-roster-item {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
     min-height: 3.05rem;
   }
 

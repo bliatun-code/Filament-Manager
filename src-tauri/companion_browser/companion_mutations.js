@@ -27,6 +27,40 @@ export function createCompanionMutations(options) {
     return vendor.includes("bambu");
   }
 
+  function defaultSpoolTareWeightForVendor(vendor) {
+    const normalized = String(vendor || "").trim().toLowerCase();
+    if (normalized.includes("bambu")) {
+      return 250;
+    }
+    if (normalized.includes("esun")) {
+      return 224;
+    }
+    return 0;
+  }
+
+  function resolveSpoolTareWeight(row) {
+    const explicit = row?.spool?.spool_tare_weight_g;
+    if (Number.isFinite(explicit)) {
+      return Math.max(0, Math.round(explicit));
+    }
+    return defaultSpoolTareWeightForVendor(row?.master?.vendor);
+  }
+
+  function findSpoolRow(spoolId) {
+    const normalizedSpoolId = String(spoolId || "").trim();
+    if (!normalizedSpoolId) {
+      return null;
+    }
+    return (Array.isArray(state.spools) ? state.spools : []).find(
+      (row) => String(row?.spool?.id || "").trim() === normalizedSpoolId,
+    ) || null;
+  }
+
+  function normalizeMeasuredFilamentWeight(row, measuredWeight) {
+    const tareWeight = resolveSpoolTareWeight(row);
+    return Math.max(0, Math.round(measuredWeight - tareWeight));
+  }
+
   function resolveCatalogMaster(masterIdValue, sourceValue) {
     const source = String(sourceValue || "").trim().toLowerCase();
     if (source === "manual") {
@@ -102,7 +136,7 @@ export function createCompanionMutations(options) {
     });
   }
 
-  async function submitWeightUpdate(spoolId, gramsValue) {
+  async function submitWeightUpdate(spoolId, gramsValue, mutationOptions = {}) {
     const grams = Number.parseInt(gramsValue, 10);
     if (!Number.isFinite(grams) || grams < 0) {
       setStatus(
@@ -125,15 +159,36 @@ export function createCompanionMutations(options) {
         },
         body: JSON.stringify({ grams }),
       });
+      if (mutationOptions.closeTaskSheet) {
+        state.activeTaskSheet = null;
+      }
       await refreshOverview();
-      setDetailFeedback(spoolId, tr("status.weightUpdatedJustNow", "Weight updated just now."));
-      setStatus(tr("status.weightUpdated", "Weight updated."), "success");
+      setDetailFeedback(
+        spoolId,
+        mutationOptions.detailFeedbackMessage ||
+          tr("status.weightUpdatedJustNow", "Weight updated just now."),
+      );
+      setStatus(
+        mutationOptions.statusMessage || tr("status.weightUpdated", "Weight updated."),
+        "success",
+      );
     } catch (error) {
       setStatus(error.message || tr("status.weightFailed", "Failed to update weight."), "error");
       render();
     } finally {
       setBusy(false);
     }
+  }
+
+  async function submitPrinterSlotWeightUpdate(spoolId, gramsValue) {
+    await submitWeightUpdate(spoolId, gramsValue, {
+      closeTaskSheet: true,
+      statusMessage: tr("status.printerSlotWeightUpdated", "Printer slot weight updated."),
+      detailFeedbackMessage: tr(
+        "status.printerSlotWeightUpdatedJustNow",
+        "Printer slot weight updated just now.",
+      ),
+    });
   }
 
   async function submitTareWeightUpdate(spoolId, gramsValue) {
@@ -167,6 +222,48 @@ export function createCompanionMutations(options) {
         error.message || tr("status.tareWeightFailed", "Failed to update empty spool weight."),
         "error",
       );
+      render();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitSpoolDetailsUpdate(spoolId, statusValue, locationValue) {
+    const trimmedSpoolId = String(spoolId || "").trim();
+    const normalizedStatus = String(statusValue || "").trim().toUpperCase();
+    const normalizedLocation = String(locationValue || "").trim();
+
+    if (!trimmedSpoolId) {
+      setStatus(tr("status.selectSpoolBeforeEdit", "Select a spool before editing its details."), "error");
+      render();
+      return;
+    }
+    if (!["IN_STOCK", "EMPTY", "LOST"].includes(normalizedStatus)) {
+      setStatus(tr("status.invalidDetailStatus", "Choose a valid status before saving details."), "error");
+      render();
+      return;
+    }
+
+    clearDetailFeedback(trimmedSpoolId);
+    setBusy(true);
+    setStatus(tr("status.savingSpoolDetails", "Saving spool details..."), "default");
+    try {
+      await fetchJson(`/api/v1/spools/${encodeURIComponent(trimmedSpoolId)}/details`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": state.csrfToken,
+        },
+        body: JSON.stringify({
+          status: normalizedStatus,
+          location: normalizedLocation || null,
+        }),
+      });
+      await refreshOverview();
+      setDetailFeedback(trimmedSpoolId, tr("status.spoolDetailsUpdatedJustNow", "Details updated just now."));
+      setStatus(tr("status.spoolDetailsUpdated", "Spool details updated."), "success");
+    } catch (error) {
+      setStatus(error.message || tr("status.spoolDetailsUpdateFailed", "Failed to update spool details."), "error");
       render();
     } finally {
       setBusy(false);
@@ -245,11 +342,172 @@ export function createCompanionMutations(options) {
     }
   }
 
+  async function postPrinterUsage(printerId, spoolId, grams) {
+    await fetchJson(
+      `/api/v1/printers/${encodeURIComponent(printerId)}/spools/${encodeURIComponent(spoolId)}/usage`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": state.csrfToken,
+        },
+        body: JSON.stringify({
+          grams,
+          job_name: null,
+          success: true,
+        }),
+      },
+    );
+  }
+
+  async function applyMeasuredWeightWithUsage(printerId, spoolId, previousRemaining, measuredTotalWeight, tareWeight) {
+    const safeMeasuredTotal = Math.max(0, Math.round(measuredTotalWeight));
+    const safeTareWeight = Math.max(0, Math.round(tareWeight));
+    const measuredFilament = Math.max(0, safeMeasuredTotal - safeTareWeight);
+    const baseline =
+      previousRemaining != null && Number.isFinite(previousRemaining)
+        ? Math.max(0, Math.round(previousRemaining))
+        : null;
+    const usedGrams = baseline != null ? Math.max(0, baseline - measuredFilament) : 0;
+
+    if (baseline != null && usedGrams > 0) {
+      await postPrinterUsage(printerId, spoolId, usedGrams);
+      return;
+    }
+    if (baseline == null || measuredFilament !== baseline) {
+      await fetchJson(`/api/v1/spools/${encodeURIComponent(spoolId)}/weight`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": state.csrfToken,
+        },
+        body: JSON.stringify({ grams: safeMeasuredTotal }),
+      });
+    }
+  }
+
+  async function submitPrinterSlotOperation(currentGramsValue, incomingGramsValue, outgoingGramsValue) {
+    const task = state.activeTaskSheet || null;
+    if (!task || task.type !== "printer-weight") {
+      setStatus(tr("status.printerSlotFailed", "Failed to update printer slot."), "error");
+      render();
+      return;
+    }
+
+    const mode = String(task.mode || "update").trim().toLowerCase();
+    const currentSpoolId = String(task.currentSpoolId || "").trim();
+    const targetSpoolId = String(task.targetSpoolId || "").trim();
+    const requiresOutgoing =
+      Boolean(currentSpoolId) && (mode === "clear" || (mode === "assign" && currentSpoolId !== targetSpoolId));
+    const requiresIncoming = mode === "assign" && Boolean(targetSpoolId);
+    const currentMeasured =
+      mode === "update" ? Number.parseInt(String(currentGramsValue || "").trim(), 10) : null;
+    const incomingMeasured =
+      requiresIncoming ? Number.parseInt(String(incomingGramsValue || "").trim(), 10) : null;
+    const outgoingMeasured =
+      requiresOutgoing ? Number.parseInt(String(outgoingGramsValue || "").trim(), 10) : null;
+
+    if (mode === "update" && (!Number.isFinite(currentMeasured) || currentMeasured < 0)) {
+      setStatus(tr("status.weightInvalid", "Enter a valid non-negative weight in grams."), "error");
+      render();
+      return;
+    }
+    if (requiresIncoming && (!Number.isFinite(incomingMeasured) || incomingMeasured < 0)) {
+      setStatus(tr("status.weightInvalid", "Enter a valid non-negative weight in grams."), "error");
+      render();
+      return;
+    }
+    if (requiresOutgoing && (!Number.isFinite(outgoingMeasured) || outgoingMeasured < 0)) {
+      setStatus(tr("status.weightInvalid", "Enter a valid non-negative weight in grams."), "error");
+      render();
+      return;
+    }
+
+    setBusy(true);
+    setStatus(
+      mode === "clear"
+        ? tr("status.clearingPrinterSlot", "Clearing printer slot...")
+        : mode === "assign"
+          ? tr("status.updatingPrinterSlot", "Updating printer slot assignment...")
+          : tr("status.weightSaving", "Saving weight update..."),
+      "default",
+    );
+    try {
+      if (mode === "update" && currentSpoolId) {
+        const currentRow = findSpoolRow(currentSpoolId);
+        await applyMeasuredWeightWithUsage(
+          task.printerId,
+          currentSpoolId,
+          currentRow?.spool?.remaining_g,
+          currentMeasured,
+          resolveSpoolTareWeight(currentRow),
+        );
+      }
+
+      if ((mode === "clear" || mode === "assign") && currentSpoolId && requiresOutgoing) {
+        const currentRow = findSpoolRow(currentSpoolId);
+        await applyMeasuredWeightWithUsage(
+          task.printerId,
+          currentSpoolId,
+          currentRow?.spool?.remaining_g,
+          outgoingMeasured,
+          resolveSpoolTareWeight(currentRow),
+        );
+      }
+
+      if (mode === "clear" || mode === "assign") {
+        await fetchJson(
+          `/api/v1/printers/${encodeURIComponent(task.printerId)}/slots/${encodeURIComponent(task.slotId)}/assignment`,
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-csrf-token": state.csrfToken,
+            },
+            body: JSON.stringify({
+              spool_id: mode === "assign" ? targetSpoolId || null : null,
+            }),
+          },
+        );
+      }
+
+      if (mode === "assign" && targetSpoolId && requiresIncoming) {
+        await fetchJson(`/api/v1/spools/${encodeURIComponent(targetSpoolId)}/weight`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": state.csrfToken,
+          },
+          body: JSON.stringify({ grams: Math.max(0, Math.round(incomingMeasured)) }),
+        });
+      }
+
+      state.activeTaskSheet = null;
+      state.pendingPrinterSlotTarget = null;
+      state.printerSpoolSearch = "";
+      await refreshOverview();
+      setStatus(
+        mode === "clear"
+          ? tr("status.printerSlotCleared", "Printer slot cleared.")
+          : mode === "assign"
+            ? tr("status.printerSlotAssigned", "Printer slot assigned.")
+            : tr("status.printerSlotWeightUpdated", "Printer slot weight updated."),
+        "success",
+      );
+    } catch (error) {
+      setStatus(error.message || tr("status.printerSlotFailed", "Failed to update printer slot."), "error");
+      render();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submitSpoolLoan(spoolId, borrowerNameValue, gramsValue, noteValue) {
     const trimmedSpoolId = spoolId.trim();
     const borrowerName = borrowerNameValue.trim();
     const normalizedNote = noteValue.trim();
-    const grams = Number.parseInt(gramsValue, 10);
+    const measuredWeight = Number.parseInt(gramsValue, 10);
+    const spoolRow = findSpoolRow(trimmedSpoolId);
 
     if (!trimmedSpoolId) {
       setStatus(tr("status.loanSelectSpool", "Select a spool before creating a loan."), "error");
@@ -261,7 +519,7 @@ export function createCompanionMutations(options) {
       render();
       return;
     }
-    if (!Number.isFinite(grams) || grams < 0) {
+    if (!Number.isFinite(measuredWeight) || measuredWeight < 0) {
       setStatus(
         tr("status.loanOutgoingWeightInvalid", "Enter a valid non-negative outgoing weight in grams."),
         "error",
@@ -269,6 +527,7 @@ export function createCompanionMutations(options) {
       render();
       return;
     }
+    const grams = normalizeMeasuredFilamentWeight(spoolRow, measuredWeight);
 
     clearDetailFeedback(trimmedSpoolId);
     setBusy(true);
@@ -286,6 +545,8 @@ export function createCompanionMutations(options) {
           note: normalizedNote || null,
         }),
       });
+      state.activeRootFlow = "loans";
+      state.activeTaskSheet = null;
       await refreshOverview();
       setDetailFeedback(trimmedSpoolId, tr("status.loanCreatedJustNow", "Outbound loan created just now."));
       setStatus(tr("status.loanCreated", "Outbound loan created."), "success");
@@ -301,14 +562,15 @@ export function createCompanionMutations(options) {
     const trimmedLoanId = loanId.trim();
     const trimmedSpoolId = spoolId.trim();
     const normalizedNote = noteValue.trim();
-    const grams = Number.parseInt(gramsValue, 10);
+    const measuredWeight = Number.parseInt(gramsValue, 10);
+    const spoolRow = findSpoolRow(trimmedSpoolId);
 
     if (!trimmedLoanId) {
       setStatus(tr("status.loanReturnSelectActive", "Select an active loan before returning it."), "error");
       render();
       return;
     }
-    if (!Number.isFinite(grams) || grams < 0) {
+    if (!Number.isFinite(measuredWeight) || measuredWeight < 0) {
       setStatus(
         tr("status.loanReturnWeightInvalid", "Enter a valid non-negative returned weight in grams."),
         "error",
@@ -316,6 +578,7 @@ export function createCompanionMutations(options) {
       render();
       return;
     }
+    const grams = normalizeMeasuredFilamentWeight(spoolRow, measuredWeight);
 
     clearDetailFeedback(trimmedSpoolId);
     setBusy(true);
@@ -673,18 +936,21 @@ export function createCompanionMutations(options) {
     }
   }
 
-  async function submitBorrowedInHandBack(loanId, gramsValue, noteValue) {
+  async function submitBorrowedInHandBack(loanId, spoolId, gramsValue, noteValue) {
     const trimmedLoanId = loanId.trim();
+    const trimmedSpoolId = spoolId.trim();
     const normalizedNote = noteValue.trim();
-    const grams = Number.parseInt(gramsValue, 10);
+    const measuredWeight = Number.parseInt(gramsValue, 10);
     const currentSelectedSpoolId = state.selectedSpoolId;
+    const effectiveSpoolId = trimmedSpoolId || currentSelectedSpoolId;
+    const spoolRow = findSpoolRow(effectiveSpoolId);
 
     if (!trimmedLoanId) {
       setStatus(tr("status.borrowedInHandBackSelectActive", "Select an active borrowed-in loan before handing it back."), "error");
       render();
       return;
     }
-    if (!Number.isFinite(grams) || grams < 0) {
+    if (!Number.isFinite(measuredWeight) || measuredWeight < 0) {
       setStatus(
         tr("status.borrowedInHandBackWeightInvalid", "Enter a valid non-negative handed-back weight in grams."),
         "error",
@@ -692,6 +958,7 @@ export function createCompanionMutations(options) {
       render();
       return;
     }
+    const grams = normalizeMeasuredFilamentWeight(spoolRow, measuredWeight);
 
     setBusy(true);
     setStatus(tr("status.borrowedInHandingBack", "Handing back borrowed-in spool..."), "default");
@@ -712,8 +979,9 @@ export function createCompanionMutations(options) {
           note: normalizedNote || null,
         }),
       });
-      state.activeRootFlow = "storage";
+      state.activeRootFlow = "loans";
       state.detailOpen = false;
+      state.activeTaskSheet = null;
       await refreshOverview();
       setStatus(tr("status.borrowedInHandedBack", "Borrowed-in spool handed back."), "success");
       render();
@@ -729,7 +997,10 @@ export function createCompanionMutations(options) {
 
   return {
     submitWeightUpdate,
+    submitPrinterSlotWeightUpdate,
+    submitPrinterSlotOperation,
     submitTareWeightUpdate,
+    submitSpoolDetailsUpdate,
     submitPrinterSlotAssignment,
     submitSpoolLoan,
     submitSpoolLoanReturn,

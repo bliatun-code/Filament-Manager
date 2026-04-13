@@ -196,13 +196,42 @@ test("click router dispatches slot-targeted printer loading", () => {
   assert.deepEqual(calls, [["printer-1", "P1S", "slot-4", "4", "AMS 1 · Slot 4"]]);
 });
 
-test("click router builds printer slot feedback for assign and clear actions", () => {
+test("click router dispatches loan-create from the loans shell", () => {
   const calls = [];
-  const handlers = {
-    submitPrinterSlotAssignment(...args) {
-      calls.push(args);
+  const handled = routeCompanionClickAction(
+    "start-loan-create",
+    createTarget({
+      "data-spool-id": "spool-9",
+    }),
+    {
+      startLoanCreate(spoolId) {
+        calls.push(spoolId);
+      },
     },
-  };
+  );
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls, ["spool-9"]);
+});
+
+test("click router dispatches the loans picker launcher", () => {
+  const calls = [];
+  const handled = routeCompanionClickAction(
+    "start-loan-picker",
+    createTarget({}),
+    {
+      startLoanPicker() {
+        calls.push("picker");
+      },
+    },
+  );
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls, ["picker"]);
+});
+
+test("click router routes selected slot filament through the printer weight flow", () => {
+  const calls = [];
 
   assert.equal(
     routeCompanionClickAction(
@@ -215,45 +244,25 @@ test("click router builds printer slot feedback for assign and clear actions", (
         "data-slot-label": "AMS 1 · Slot 2",
         "data-spool-id": "spool-1",
       }),
-      handlers,
-    ),
-    true,
-  );
-  assert.equal(
-    routeCompanionClickAction(
-      "clear-slot",
-      createTarget({
-        "data-printer-id": "printer-1",
-        "data-printer-name": "X1C",
-        "data-slot-id": "slot-a",
-        "data-slot-index": "2",
-        "data-slot-label": "AMS 1 · Slot 2",
-        "data-spool-id": "spool-1",
-      }),
-      handlers,
+      {
+        startPrinterWeightUpdate(payload) {
+          calls.push(payload);
+        },
+      },
     ),
     true,
   );
 
   assert.deepEqual(calls, [
-    [
-      "printer-1",
-      "slot-a",
-      "spool-1",
-      {
-        feedbackSpoolId: "spool-1",
-        feedbackLabel: "X1C · AMS 1 · Slot 2",
-      },
-    ],
-    [
-      "printer-1",
-      "slot-a",
-      "",
-      {
-        feedbackSpoolId: "spool-1",
-        feedbackLabel: "X1C · AMS 1 · Slot 2",
-      },
-    ],
+    {
+      mode: "assign",
+      printerId: "printer-1",
+      printerName: "X1C",
+      slotId: "slot-a",
+      slotIndex: "2",
+      slotLabel: "AMS 1 · Slot 2",
+      targetSpoolId: "spool-1",
+    },
   ]);
 });
 

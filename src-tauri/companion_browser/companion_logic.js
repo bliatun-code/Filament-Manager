@@ -232,13 +232,19 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
     }
 
     const status = row.spool?.status?.trim().toUpperCase() || "";
+    if (status === "IN_USE") {
+      return {
+        allowed: false,
+        reason: t(locale(), "logic.loanInUseBlocked", "Spools that are loaded in printer slots cannot be loaned out."),
+      };
+    }
     if (status === "BORROWED") {
       return {
         allowed: false,
         reason: t(locale(), "logic.loanAlreadyLoanedOut", "This spool is already loaned out."),
       };
     }
-    if (status === "EMPTY" || status === "LOST") {
+    if (status === "EMPTY" || status === "LOST" || status === "MISSING") {
       return {
         allowed: false,
         reason: t(

@@ -5,6 +5,8 @@ import { renderPrinterBoard, renderPrinterRoster } from "./printer_workspace.js"
 export function renderPrintersShell(options) {
   const { state, activePrinter, escapeHtml, formatGrams } = options;
   const locale = state.locale || "en";
+  const printerCount = Array.isArray(state.printers) ? state.printers.length : 0;
+  const showPrinterRoster = printerCount > 1;
   const activePrinterToneStyle = styleObjectToString(
     printerBrandCssVars(activePrinter?.printer?.model || ""),
   );
@@ -18,12 +20,18 @@ export function renderPrintersShell(options) {
         </div>
       </div>
 
-      <div class="printers-workspace">
+      <div class="printers-workspace${showPrinterRoster ? " printers-workspace--with-roster" : " printers-workspace--single"}">
+        ${
+          showPrinterRoster
+            ? `
         <div class="surface-panel printer-roster">
           <div class="stack">
             ${renderPrinterRoster(state.printers, state.activePrinterId, escapeHtml, locale)}
           </div>
         </div>
+        `
+            : ""
+        }
 
         <div class="surface-panel printer-board${activePrinterToneStyle ? " printer-brand-surface" : ""}" ${activePrinterToneStyle ? `style="${escapeHtml(activePrinterToneStyle)}"` : ""}>
           ${renderPrinterBoard({

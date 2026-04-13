@@ -35,6 +35,41 @@ function hasTextSelection(target) {
   );
 }
 
+function isCollapsibleDetails(target) {
+  const tagName = normalizeTagName(target);
+  if (tagName !== "DETAILS") {
+    return false;
+  }
+  return typeof target?.getAttribute === "function" && String(target.getAttribute("data-collapsible") || "").trim().length > 0;
+}
+
+function captureOpenCollapsibles(root) {
+  if (typeof root?.querySelectorAll !== "function") {
+    return [];
+  }
+  return Array.from(root.querySelectorAll("details"))
+    .filter((element) => isCollapsibleDetails(element) && Boolean(element.open))
+    .map((element) => String(element.getAttribute("data-collapsible") || "").trim())
+    .filter(Boolean);
+}
+
+function restoreOpenCollapsibles(root, openKeys) {
+  if (!Array.isArray(openKeys) || !openKeys.length || typeof root?.querySelectorAll !== "function") {
+    return;
+  }
+  const wanted = new Set(openKeys);
+  Array.from(root.querySelectorAll("details")).forEach((element) => {
+    if (!isCollapsibleDetails(element)) {
+      return;
+    }
+    const key = String(element.getAttribute("data-collapsible") || "").trim();
+    if (!key) {
+      return;
+    }
+    element.open = wanted.has(key);
+  });
+}
+
 export function captureFocusedFormControl(root, documentRef) {
   const activeElement = documentRef?.activeElement;
   if (!activeElement || typeof root?.contains !== "function" || !root.contains(activeElement)) {
@@ -127,6 +162,8 @@ export function restoreFocusedFormControl(root, snapshot) {
 
 export function renderMarkupPreservingFocus({ root, documentRef, markup }) {
   const snapshot = captureFocusedFormControl(root, documentRef);
+  const openCollapsibles = captureOpenCollapsibles(root);
   root.innerHTML = markup;
+  restoreOpenCollapsibles(root, openCollapsibles);
   return restoreFocusedFormControl(root, snapshot);
 }

@@ -141,3 +141,92 @@ test("startPrinterSlotAssignment opens the picker for a specific slot target", (
   });
   assert.deepEqual(harness.renderCalls, ["render"]);
 });
+
+test("startLoanCreate opens a loans task sheet for the selected spool", () => {
+  const harness = createShellStateHarness({
+    state: {
+      activeRootFlow: "storage",
+      selectedSpoolId: "",
+    },
+  });
+
+  harness.shellState.startLoanCreate("spool-22");
+
+  assert.equal(harness.state.activeRootFlow, "loans");
+  assert.equal(harness.state.selectedSpoolId, "spool-22");
+  assert.equal(harness.state.detailOpen, false);
+  assert.deepEqual(harness.state.activeTaskSheet, {
+    type: "loan-create",
+    spoolId: "spool-22",
+  });
+  assert.deepEqual(harness.renderCalls, ["render"]);
+});
+
+test("startLoanPicker opens the loans picker task sheet", () => {
+  const harness = createShellStateHarness({
+    state: {
+      activeRootFlow: "storage",
+      detailOpen: true,
+    },
+  });
+
+  harness.shellState.startLoanPicker();
+
+  assert.equal(harness.state.activeRootFlow, "loans");
+  assert.equal(harness.state.detailOpen, false);
+  assert.deepEqual(harness.state.activeTaskSheet, {
+    type: "loan-picker",
+  });
+  assert.deepEqual(harness.renderCalls, ["render"]);
+});
+
+test("startPrinterWeightUpdate derives model-aware prusa slot labels for task sheets", () => {
+  const harness = createShellStateHarness({
+    state: {
+      activeRootFlow: "printers",
+      locale: "nb",
+      printers: [
+        {
+          printer: {
+            id: "printer-prusa",
+            name: "Prusan",
+            model: "Prusa MK4S",
+          },
+          slots: [
+            {
+              slot_id: "slot-2",
+              ams_id: "printer_prusa_ams_1",
+              slot_index: 2,
+              spool_id: "spool-7",
+              spool_remaining_g: 850,
+              spool_hex_color: "#ffffff",
+            },
+          ],
+        },
+      ],
+      spools: [
+        {
+          spool: {
+            id: "spool-7",
+            remaining_g: 850,
+            location_id: "Hylle 2",
+          },
+          master: {
+            filament_name: "PLA Basic",
+            color_name: "Silver",
+            vendor: "Prusa",
+            hex_color: "#ffffff",
+          },
+        },
+      ],
+    },
+  });
+
+  harness.shellState.startPrinterWeightUpdate({
+    mode: "update",
+    printerId: "printer-prusa",
+    slotId: "slot-2",
+  });
+
+  assert.equal(harness.state.activeTaskSheet?.slotLabel, "MMU3 · Kanal 2");
+});

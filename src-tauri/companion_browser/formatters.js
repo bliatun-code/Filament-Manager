@@ -66,6 +66,53 @@ export function formatInventoryDisplayTitle(materialRaw, filamentRaw, colorRaw =
   return tokens.length > 0 ? tokens.join(" · ") : "Unknown filament";
 }
 
+function compareDisplayStrings(left, right) {
+  return String(left || "").localeCompare(String(right || ""), undefined, {
+    sensitivity: "base",
+    numeric: true,
+  });
+}
+
+export function sortCatalogMastersAlphabetically(rows) {
+  const list = Array.isArray(rows) ? [...rows] : [];
+  return list.sort((left, right) => {
+    const titleCompare = compareDisplayStrings(
+      formatInventoryDisplayTitle(left?.material, left?.filament_name, left?.color_name),
+      formatInventoryDisplayTitle(right?.material, right?.filament_name, right?.color_name),
+    );
+    if (titleCompare !== 0) {
+      return titleCompare;
+    }
+    const vendorCompare = compareDisplayStrings(left?.vendor, right?.vendor);
+    if (vendorCompare !== 0) {
+      return vendorCompare;
+    }
+    return compareDisplayStrings(left?.id, right?.id);
+  });
+}
+
+export function sortSpoolRowsAlphabetically(rows) {
+  const list = Array.isArray(rows) ? [...rows] : [];
+  return list.sort((left, right) => {
+    const titleCompare = compareDisplayStrings(
+      formatInventoryDisplayTitle(left?.master?.material, left?.master?.filament_name, left?.master?.color_name),
+      formatInventoryDisplayTitle(right?.master?.material, right?.master?.filament_name, right?.master?.color_name),
+    );
+    if (titleCompare !== 0) {
+      return titleCompare;
+    }
+    const vendorCompare = compareDisplayStrings(left?.master?.vendor, right?.master?.vendor);
+    if (vendorCompare !== 0) {
+      return vendorCompare;
+    }
+    const locationCompare = compareDisplayStrings(left?.spool?.location_id, right?.spool?.location_id);
+    if (locationCompare !== 0) {
+      return locationCompare;
+    }
+    return compareDisplayStrings(left?.spool?.id, right?.spool?.id);
+  });
+}
+
 export function formatRollReference(spool) {
   const normalizedId = String(spool?.id ?? "").trim().replace(/^spool[-_]?/, "");
   if (!normalizedId) {

@@ -1,10 +1,26 @@
 # Session State
 
-Last updated: 2026-04-12
+Last updated: 2026-04-13
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
+- Browser parity RC checkpoint (2026-04-13, ready for commit/push + new prerelease):
+  - version target is now `v0.9.0-rc.9`
+  - trusted-LAN browser QA is green for the latest parity pass:
+    - browser `Printers` now follows the same operational weigh-in / weigh-out model as desktop for loading, clearing, and printer-linked usage
+    - browser printer slot lists and browser loan spool lists now sort alphabetically like the desktop app
+    - browser `Printers` large-screen roster is more compact and hides the selector entirely when only one printer exists
+    - browser Prusa slot labels are model-aware (`MMU3` channels vs `XL` toolheads)
+    - browser `Utlån / Loans` now owns loan creation, with filtered eligible-spool picking and required outgoing weighing
+    - browser return and hand-back flows now use measured total weight including the spool, while backend/statistics still receive net filament grams
+    - browser spool detail no longer exposes loan-create controls, and `Details` + `History` now stay stable through rerenders
+    - browser spool detail once again supports saving `status` and `location`
+    - browser detail/task-sheet tops are deduplicated and tighter, reducing repeated copy and wasted vertical space
+    - narrowest mobile `Storage` view now keeps weight/status aligned to the right for calmer, more even card heights
+  - validation baseline after the browser pass:
+    - `node scripts/run-companion-tests.mjs` ✅
+    - companion browser QA PASS on iPhone-oriented narrow mobile, iPad/tablet widths, and desktop-browser widths
 - Sync RC polish checkpoint (2026-04-12, ready for commit/push + new prerelease):
   - version target is now `v0.9.0-rc.8`
   - paired desktop/client QA is green for the latest repair/status round:

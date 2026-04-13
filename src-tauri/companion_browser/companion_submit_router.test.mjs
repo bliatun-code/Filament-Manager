@@ -134,6 +134,47 @@ test("submit router shares the same return handler for history and detail return
   ]);
 });
 
+test("submit router includes spool id for borrowed-in hand-back submissions", () => {
+  const calls = [];
+  const handled = routeCompanionSubmitAction(
+    "hand-back-loan-form",
+    createData({
+      "loan-id": "loan-9",
+      "spool-id": "spool-9",
+      "returned-grams": "400",
+      "return-note": "Back with owner",
+    }),
+    {
+      submitBorrowedInHandBack(...args) {
+        calls.push(args);
+      },
+    },
+  );
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls, [["loan-9", "spool-9", "400", "Back with owner"]]);
+});
+
+test("submit router dispatches spool detail updates for status and location", () => {
+  const calls = [];
+  const handled = routeCompanionSubmitAction(
+    "update-spool-details-form",
+    createData({
+      "spool-id": "spool-7",
+      status: "EMPTY",
+      location: "Archive Bin",
+    }),
+    {
+      submitSpoolDetailsUpdate(...args) {
+        calls.push(args);
+      },
+    },
+  );
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls, [["spool-7", "EMPTY", "Archive Bin"]]);
+});
+
 test("submit router returns false for unhandled actions", () => {
   const handled = routeCompanionSubmitAction("unknown-form", createData({}), {});
   assert.equal(handled, false);

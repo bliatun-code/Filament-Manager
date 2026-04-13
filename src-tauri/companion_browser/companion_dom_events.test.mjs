@@ -58,6 +58,7 @@ function createBaseOptions(overrides = {}) {
       return false;
     },
     submitWeightUpdate() {},
+    submitSpoolDetailsUpdate() {},
     submitSpoolLoan() {},
     submitSpoolLoanReturn() {},
     submitManualSpoolRegistration() {},
@@ -184,6 +185,47 @@ test("submit handler prevents default and dispatches browser form actions", () =
   assert.equal(handled, true);
   assert.equal(prevented, true);
   assert.deepEqual(submitCalls, ["qr-123"]);
+});
+
+test("submit handler dispatches spool detail updates from the detail form", () => {
+  let prevented = false;
+  const calls = [];
+  const formData = {
+    get(name) {
+      return {
+        "spool-id": "spool-12",
+        status: "EMPTY",
+        location: "Archive Bin",
+      }[name] ?? "";
+    },
+  };
+  const options = createBaseOptions({
+    createFormData() {
+      return formData;
+    },
+    submitSpoolDetailsUpdate(...args) {
+      calls.push(args);
+    },
+  });
+
+  const handled = handleCompanionSubmitEvent(
+    {
+      target: {
+        tagName: "FORM",
+        getAttribute(name) {
+          return name === "data-action" ? "update-spool-details-form" : null;
+        },
+      },
+      preventDefault() {
+        prevented = true;
+      },
+    },
+    options,
+  );
+
+  assert.equal(handled, true);
+  assert.equal(prevented, true);
+  assert.deepEqual(calls, [["spool-12", "EMPTY", "Archive Bin"]]);
 });
 
 test("installCompanionDomEvents registers the expected document and root listeners", () => {

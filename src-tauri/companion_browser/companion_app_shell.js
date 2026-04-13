@@ -7,10 +7,16 @@ import {
   formatInventoryDisplayTitle,
   formatPlacementLabel,
   ownershipLabel,
+  sortSpoolRowsAlphabetically,
 } from "./formatters.js";
-import { renderLoanReturnTaskSheetBody, renderLoansShell } from "./loans_shell.js";
+import {
+  renderLoanCreateTaskSheetBody,
+  renderLoanPickerTaskSheetBody,
+  renderLoanReturnTaskSheetBody,
+  renderLoansShell,
+} from "./loans_shell.js";
 import { renderPrintersShell } from "./printers_shell.js";
-import { renderPrinterPickerTaskSheetBody } from "./printer_workspace.js";
+import { renderPrinterPickerTaskSheetBody, renderPrinterWeightTaskSheetBody } from "./printer_workspace.js";
 import { renderSettingsShell } from "./settings_shell.js";
 import {
   renderDesktopRail,
@@ -74,6 +80,7 @@ function renderWorkflowShell(options) {
       state,
       loanRows,
       loanSummary: options.loanSummary,
+      loanSpoolOptions: options.loanSpoolOptions,
       selectedSpool,
       escapeHtml,
       formatDate,
@@ -253,6 +260,57 @@ function renderTaskSheet(options) {
     });
   }
 
+  if (activeTaskSheet.type === "loan-picker") {
+    return renderTaskSheetShell({
+      layoutMode: state.layoutMode,
+      title: t(state.locale || "en", "detail.lendSpool", "Lend spool"),
+      subtitle: t(
+        state.locale || "en",
+        "loans.loanPickerHelp",
+        "Choose a spool to lend out. Loaning is completed when outgoing weight is saved.",
+      ),
+      body: renderLoanPickerTaskSheetBody({
+        state,
+        loanSpoolOptions: options.loanSpoolOptions,
+        escapeHtml,
+        formatGrams,
+      }),
+      locale: state.locale,
+      escapeHtml,
+    });
+  }
+
+  if (activeTaskSheet.type === "loan-create") {
+    const spoolId = String(activeTaskSheet.spoolId || state.selectedSpoolId || "").trim();
+    const selectedSpool =
+      options.spools.find((row) => String(row?.spool?.id || "").trim() === spoolId) ||
+      state.spools.find((row) => String(row?.spool?.id || "").trim() === spoolId) ||
+      null;
+    const displayTitle = selectedSpool
+      ? formatInventoryDisplayTitle(
+          selectedSpool.master.material,
+          selectedSpool.master.filament_name,
+          selectedSpool.master.color_name,
+        )
+      : t(state.locale || "en", "detail.lendSpool", "Lend spool");
+    return renderTaskSheetShell({
+      layoutMode: state.layoutMode,
+      title: t(state.locale || "en", "detail.lendSpool", "Lend spool"),
+      subtitle: displayTitle,
+      body: renderLoanCreateTaskSheetBody({
+        state,
+        selectedSpool,
+        selectedAssignment: selectedSpool
+          ? options.findAssignedSlotForSpool(selectedSpool.spool.id)
+          : null,
+        escapeHtml,
+        formatGrams,
+      }),
+      locale: state.locale,
+      escapeHtml,
+    });
+  }
+
   if (activeTaskSheet.type === "printer-picker") {
     const pendingTarget = state.pendingPrinterSlotTarget || activeTaskSheet;
     const slotLabel =
@@ -268,6 +326,33 @@ function renderTaskSheet(options) {
       body: renderPrinterPickerTaskSheetBody({
         state,
         printerSpoolOptions: options.printerSpoolOptions,
+        escapeHtml,
+        formatGrams,
+      }),
+      locale: state.locale,
+      escapeHtml,
+    });
+  }
+
+  if (activeTaskSheet.type === "printer-weight") {
+    const slotLabel =
+      String(activeTaskSheet.slotLabel || "").trim() ||
+      `${t(state.locale || "en", "printers.slot", "Slot")} ${activeTaskSheet.slotIndex || "?"}`;
+    const subtitle = activeTaskSheet.printerName
+      ? `${activeTaskSheet.printerName} · ${slotLabel}`
+      : slotLabel;
+    return renderTaskSheetShell({
+      layoutMode: state.layoutMode,
+      title:
+        activeTaskSheet.mode === "clear"
+          ? t(state.locale || "en", "printers.clearSlot", "Clear slot")
+          : activeTaskSheet.mode === "assign"
+            ? t(state.locale || "en", "printers.loadFilament", "Load filament")
+            : t(state.locale || "en", "printers.updateWeight", "Update weight"),
+      subtitle,
+      body: renderPrinterWeightTaskSheetBody({
+        state,
+        activeTaskSheet,
         escapeHtml,
         formatGrams,
       }),
@@ -316,7 +401,46 @@ export function createCompanionAppShellRenderer(options) {
       state.printers.find((row) => row?.printer?.id === state.activePrinterId) ||
       state.printers[0] ||
       null;
-    const printerSpoolOptions = state.spools.filter((row) => row?.spool?.id && canLoadSpoolIntoPrinter(row));
+    const pendingPrinterTarget = state.pendingPrinterSlotTarget || state.activeTaskSheet || null;
+    const currentTargetSlotSpoolId =
+      pendingPrinterTarget?.slotId && activePrinter
+        ? String(
+            activePrinter.slots.find((slot) => String(slot?.slot_id || "").trim() === String(pendingPrinterTarget.slotId || "").trim())
+              ?.spool_id || "",
+          ).trim()
+        : "";
+    const printerSpoolOptions = sortSpoolRowsAlphabetically(
+      state.spools.filter((row) => {
+        if (!row?.spool?.id) {
+          return false;
+        }
+        const status = String(row.spool.status || "").trim().toUpperCase();
+        const ownershipType = String(row.spool.ownership_type || "OWNED").trim().toUpperCase();
+        if (
+          status === "EMPTY" ||
+          status === "LOST" ||
+          status === "MISSING" ||
+          (status === "BORROWED" && ownershipType !== "BORROWED_IN")
+        ) {
+          return false;
+        }
+        if (currentTargetSlotSpoolId && String(row.spool.id).trim() === currentTargetSlotSpoolId) {
+          return true;
+        }
+        if (status === "IN_USE") {
+          return false;
+        }
+        return canLoadSpoolIntoPrinter(row);
+      }),
+    );
+    const loanSpoolOptions = sortSpoolRowsAlphabetically(
+      state.spools.filter((row) => {
+        if (!loanActionState(row).allowed) {
+          return false;
+        }
+        return !findAssignedSlotForSpool(String(row?.spool?.id || "").trim());
+      }),
+    );
     const selectionCleared = selectionClearedAfterBorrowedInHandBack();
     const detailBusyLabel = detailBusyStatusLabel(selectedSpool?.spool?.id || state.selectedSpoolId);
 
@@ -355,6 +479,7 @@ export function createCompanionAppShellRenderer(options) {
                 spools,
                 activePrinter,
                 printerSpoolOptions,
+                loanSpoolOptions,
               })}
             </div>
             ${
@@ -373,7 +498,10 @@ export function createCompanionAppShellRenderer(options) {
             ? renderTaskSheet({
                 state,
                 loanRows,
+                spools,
+                loanSpoolOptions,
                 printerSpoolOptions,
+                findAssignedSlotForSpool,
               })
             : ""
         }
