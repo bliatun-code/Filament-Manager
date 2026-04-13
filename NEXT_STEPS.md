@@ -2,21 +2,18 @@
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current browser baseline is trusted-LAN-only, with `Storage` as the browser label for desktop `Inventory` / `Lager` and `Add spool` as the browser intake action.
 
-## v0.9.0-rc.9 Browser Parity RC (2026-04-13)
+## v0.9.1 Stable Browser + Desktop Baseline (2026-04-13)
 - Release target:
-  - next pre-release candidate after `rc.8`, focused on lifting the trusted-LAN browser companion closer to desktop parity
-  - intended for parallel validation on iPhone, iPad, and desktop browsers from the same host baseline
+  - first stable release after the `v0.9.0-rc.*` browser/device parity line
+  - intended to serve as the new shared baseline for desktop host/client use plus trusted-LAN browser use
 - Planned release actions:
-  - bump app/package/Tauri versions to `0.9.0-rc.9`
-  - publish GitHub pre-release with browser-companion parity notes
-  - attach refreshed macOS DMG and Windows MSI assets for shared host/browser testing
-- RC validation focus:
-  - confirm browser `Printers` load/clear only complete through weigh-in / weigh-out flows
-  - confirm browser `Utlån / Loans` owns loan create / return / hand-back with tare-aware measured weights
-  - confirm browser spool detail keeps `Detaljer / Details` and `Historikk / History` stable across rerenders
-  - confirm iPhone narrow-width `Storage` keeps calmer right-aligned weight/status rhythm
-  - confirm iPad/desktop browser `Printers` no longer wastes a full roster column
-  - technical preflight required before tagging:
+  - bump app/package/Tauri versions to `0.9.1`
+  - publish GitHub release with desktop + browser parity notes
+  - attach refreshed macOS DMG and Windows MSI assets
+- Validation baseline:
+  - desktop host/client QA PASS
+  - trusted-LAN browser QA PASS on iPhone, iPad, and desktop browsers
+  - technical preflight before tagging:
     - `npm run smoke`
     - `cargo check --manifest-path src-tauri/Cargo.toml`
 

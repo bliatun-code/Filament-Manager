@@ -178,15 +178,28 @@ export function renderDetailModalShell(options) {
 }
 
 export function renderTaskSheetShell(options) {
-  const { layoutMode, title, subtitle, body, escapeHtml, locale = "en" } = options;
+  const {
+    layoutMode,
+    title,
+    subtitle,
+    body,
+    escapeHtml,
+    locale = "en",
+    shellClass = "",
+    panelClass = "",
+    kicker = "",
+  } = options;
   const closeLabel = layoutMode === "phone" ? t(locale, "shell.done", "Done") : t(locale, "shell.close", "Close");
+  const shellClasses = ["task-sheet-shell", shellClass].filter(Boolean).join(" ");
+  const panelClasses = ["task-sheet", "surface-panel", panelClass].filter(Boolean).join(" ");
 
   return `
     <div class="task-sheet-backdrop" data-layout="${escapeHtml(layoutMode)}">
-      <div class="task-sheet-shell">
-        <section class="task-sheet surface-panel">
+      <div class="${escapeHtml(shellClasses)}">
+        <section class="${escapeHtml(panelClasses)}">
           <div class="task-sheet-header">
             <div class="task-sheet-copy">
+              ${kicker ? `<p class="workflow-kicker">${escapeHtml(kicker)}</p>` : ""}
               <h2>${escapeHtml(title)}</h2>
               ${subtitle ? `<p class="section-copy">${escapeHtml(subtitle)}</p>` : ""}
             </div>

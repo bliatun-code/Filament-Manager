@@ -219,13 +219,11 @@ function renderTaskSheet(options) {
   if (activeTaskSheet.type === "storage-add") {
     return renderTaskSheetShell({
       layoutMode: state.layoutMode,
+      kicker: t(state.locale || "en", "storage.stockEntry", "Stock entry"),
       title: t(state.locale || "en", "storage.addFilament", "Add filament"),
-      subtitle: t(
-        state.locale || "en",
-        "storage.addFilamentHelp",
-        "Pick a source, then add to stock or keep it in wishlist/order.",
-      ),
       body: renderAddFilamentTaskSheetBody(state, state.busy, escapeHtml),
+      shellClass: "task-sheet-shell-wide",
+      panelClass: "add-filament-sheet",
       locale: state.locale,
       escapeHtml,
     });

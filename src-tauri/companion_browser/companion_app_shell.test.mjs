@@ -151,6 +151,8 @@ test("app shell renderer opens add-spool task sheets above the root flow when re
   assert.match(html, /task-sheet-backdrop/);
   assert.match(html, /Add filament/);
   assert.match(html, /Add spool to inventory/);
+  assert.match(html, /task-sheet-shell task-sheet-shell-wide/);
+  assert.match(html, /task-sheet surface-panel add-filament-sheet/);
 });
 
 test("app shell renderer uses the shared task-sheet shell for loan picking", () => {

@@ -120,15 +120,8 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
     selection.filamentName || t(locale, "storage.filament", "Filament"),
     selection.colorName || t(locale, "storage.color", "Color"),
   );
-  const previewMeta = [
-    selection.vendor || t(locale, "storage.vendor", "Vendor"),
-    selection.selectedMaster?.default_weight ? `${selection.selectedMaster.default_weight} g` : "",
-    selection.selectedMaster?.is_discontinued
-      ? t(locale, "storage.discontinued", "Discontinued")
-      : "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const previewVendor = selection.vendor || t(locale, "storage.vendor", "Vendor");
+  const previewWeight = selection.selectedMaster?.default_weight ? `${selection.selectedMaster.default_weight} g` : "";
   const isBorrowedIn = String(draft.ownershipType || "").trim().toUpperCase() === "BORROWED_IN";
   const wishlistRows = selection.visibleWishlistItems
     .map((item) => {
@@ -196,38 +189,27 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
   return `
     <div class="stack add-spool-sheet">
       <section class="surface-card add-spool-section">
-        <div class="segmented-control" data-columns="3">
-          ${[
-            ["bambu", t(locale, "storage.vendorBambu", "Bambu")],
-            ["esun", t(locale, "storage.vendorEsun", "eSUN")],
-            ["manual", t(locale, "storage.vendorGeneric", "Generic")],
-          ]
-            .map(
-              ([sourceValue, label]) => `
-                <button
-                  class="segment-button"
-                  type="button"
-                  data-action="set-filament-source"
-                  data-filament-source="${escapeHtml(sourceValue)}"
-                  data-active="${selection.source === sourceValue ? "true" : "false"}"
-                >
-                  <span>${escapeHtml(label)}</span>
-                </button>
-              `,
-            )
-            .join("")}
-        </div>
-
-        <div class="filament-preview-card swatch-surface" style="${escapeHtml(previewStyle)}">
-          <div class="filament-preview-copy">
-            <div class="list-title">${escapeHtml(previewTitle)}</div>
-            <div class="section-copy">${escapeHtml(previewMeta || t(locale, "storage.selectionPreview", "Selection preview"))}</div>
-          </div>
-          <div class="filament-preview-side">
-            <span class="swatch-dot filament-preview-dot" style="background:${escapeHtml(
-              toSwatchColor(selection.previewHex),
-            )};"></span>
-            <span class="chip chip-quiet">${escapeHtml(selection.previewHex)}</span>
+        <div class="add-spool-source-head">
+          <div class="segmented-control" data-columns="3">
+            ${[
+              ["bambu", t(locale, "storage.vendorBambu", "Bambu")],
+              ["esun", t(locale, "storage.vendorEsun", "eSUN")],
+              ["manual", t(locale, "storage.vendorGeneric", "Generic")],
+            ]
+              .map(
+                ([sourceValue, label]) => `
+                  <button
+                    class="segment-button"
+                    type="button"
+                    data-action="set-filament-source"
+                    data-filament-source="${escapeHtml(sourceValue)}"
+                    data-active="${selection.source === sourceValue ? "true" : "false"}"
+                  >
+                    <span>${escapeHtml(label)}</span>
+                  </button>
+                `,
+              )
+              .join("")}
           </div>
         </div>
 
@@ -298,26 +280,6 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
                   )}"
                   autocomplete="off"
                 />
-                <div class="pill-row add-spool-filter-row">
-                  ${[
-                    ["ACTIVE", t(locale, "storage.activeOnly", "Active")],
-                    ["ALL", t(locale, "storage.allCatalog", "All")],
-                    ["DISCONTINUED", t(locale, "storage.discontinued", "Discontinued")],
-                  ]
-                    .map(
-                      ([filter, label]) => `
-                        <button
-                          class="${selection.catalogStatusFilter === filter ? "secondary-button" : "ghost-button"}"
-                          type="button"
-                          data-action="set-catalog-filter"
-                          data-catalog-filter="${escapeHtml(filter)}"
-                        >
-                          ${escapeHtml(label)}
-                        </button>
-                      `,
-                    )
-                    .join("")}
-                </div>
                 <div class="dense-list add-spool-catalog-list">
                   ${
                     selection.visibleCatalogMasters.length > 0
@@ -347,9 +309,6 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
                                       ),
                                     )}</span>
                                   </div>
-                                  <div class="list-subtitle">${escapeHtml(master.vendor)} · ${escapeHtml(
-                                    `${master.default_weight} g`,
-                                  )}</div>
                                 </div>
                                 <div class="dense-list-side">
                                   ${
@@ -377,17 +336,25 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
         }
       </section>
 
-      <form class="stack add-spool-form" data-action="add-spool-form">
-        ${renderSelectionHiddenInputs(selection, escapeHtml)}
-        <input type="hidden" name="filament-ownership-type" value="${escapeHtml(
-          isBorrowedIn ? "BORROWED_IN" : "OWNED",
-        )}" />
-        <section class="surface-card add-spool-section">
+      <section class="surface-card add-spool-section swatch-surface" style="${escapeHtml(previewStyle)}">
+        <div class="stack add-spool-section-head">
+          <div class="add-spool-selection-head">
+            <div class="stack add-spool-selection-copy">
+              <div class="list-title">${escapeHtml(previewTitle)}</div>
+              <div class="list-subtitle">${escapeHtml(previewVendor)}${previewWeight ? ` · ${escapeHtml(previewWeight)}` : ""}</div>
+            </div>
+            <span class="pill">${escapeHtml(t(locale, "storage.selected", "Selected"))}</span>
+          </div>
+        </div>
+
+        <form class="stack add-spool-action-form" data-action="add-spool-form">
+          ${renderSelectionHiddenInputs(selection, escapeHtml)}
+          <input type="hidden" name="filament-ownership-type" value="${escapeHtml(
+            isBorrowedIn ? "BORROWED_IN" : "OWNED",
+          )}" />
+
           <div class="stack add-spool-section-head">
             <div class="list-title">${escapeHtml(t(locale, "storage.addSpool", "Add spool"))}</div>
-            <div class="section-copy">${escapeHtml(
-              t(locale, "storage.addSpoolDetail", "Add this selection directly to stock, either as owned or borrowed-in."),
-            )}</div>
           </div>
 
           <div class="segmented-control">
@@ -494,17 +461,15 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
               )}
             </button>
           </div>
-        </section>
-      </form>
+        </form>
 
-      <form class="stack add-spool-wishlist-form" data-action="wishlist-item-form">
-        ${renderSelectionHiddenInputs(selection, escapeHtml)}
-        <section class="surface-card add-spool-section">
+        <div class="add-spool-action-divider"></div>
+
+        <form class="stack add-spool-action-form" data-action="wishlist-item-form">
+          ${renderSelectionHiddenInputs(selection, escapeHtml)}
+
           <div class="stack add-spool-section-head">
             <div class="list-title">${escapeHtml(t(locale, "storage.addToWishlist", "Add to wishlist / order"))}</div>
-            <div class="section-copy">${escapeHtml(
-              t(locale, "storage.addToWishlistHelp", "Use the same selection to keep wishlist and on-order tracking in the browser shell."),
-            )}</div>
           </div>
 
           <div class="borrowed-in-grid add-spool-grid">
@@ -536,51 +501,53 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
               ${escapeHtml(t(locale, "storage.addCurrentSelectionToWishlist", "Add current selection to wishlist"))}
             </button>
           </div>
-        </section>
-      </form>
-
-      <section class="surface-card add-spool-section">
-        <div class="stack add-spool-section-head">
-          <div class="list-title">${escapeHtml(t(locale, "storage.wishlistQueue", "Wishlist / order queue"))}</div>
-          <div class="section-copy">${escapeHtml(
-            t(locale, "storage.wishlistQueueHelp", "Move items between wishlist, on-order, and received, or stock them directly now."),
-          )}</div>
-        </div>
-
-        <div class="pill-row add-spool-filter-row">
-          ${[
-            ["ALL", `${t(locale, "storage.allCatalog", "All")} ${selection.wishlistSummary.all}`],
-            ["WISHLIST", `${t(locale, "storage.wishlist", "Wishlist")} ${selection.wishlistSummary.wishlist}`],
-            ["ON_ORDER", `${t(locale, "storage.onOrder", "On order")} ${selection.wishlistSummary.onOrder}`],
-            ["RECEIVED", `${t(locale, "storage.received", "Received")} ${selection.wishlistSummary.received}`],
-          ]
-            .map(
-              ([filter, label]) => `
-                <button
-                  class="${selection.wishlistFilter === filter ? "secondary-button" : "ghost-button"}"
-                  type="button"
-                  data-action="set-wishlist-filter"
-                  data-wishlist-filter="${escapeHtml(filter)}"
-                >
-                  ${escapeHtml(label)}
-                </button>
-              `,
-            )
-            .join("")}
-        </div>
-
-        <div class="dense-list add-spool-wishlist-list">
-          ${
-            selection.visibleWishlistItems.length > 0
-              ? wishlistRows
-              : `<div class="empty-card">${escapeHtml(
-                  selection.wishlistSummary.all > 0
-                    ? t(locale, "storage.noWishlistMatch", "No wishlist items match this filter.")
-                    : t(locale, "storage.noWishlistItems", "No wishlist items yet."),
-                )}</div>`
-          }
-        </div>
+        </form>
       </section>
+
+      <details class="surface-card add-spool-section detail-collapsible" data-collapsible="wishlist-queue">
+        <summary class="detail-collapsible-summary">
+          <span>${escapeHtml(t(locale, "storage.wishlistQueue", "Wishlist / order queue"))}</span>
+          <span class="detail-history-summary">${escapeHtml(
+            t(locale, "storage.wishlistQueueHelp", "Move items between wishlist, on-order, and received, or stock them directly now."),
+          )}</span>
+        </summary>
+
+        <div class="detail-collapsible-body">
+          <div class="pill-row add-spool-filter-row">
+            ${[
+              ["ALL", `${t(locale, "storage.allCatalog", "All")} ${selection.wishlistSummary.all}`],
+              ["WISHLIST", `${t(locale, "storage.wishlist", "Wishlist")} ${selection.wishlistSummary.wishlist}`],
+              ["ON_ORDER", `${t(locale, "storage.onOrder", "On order")} ${selection.wishlistSummary.onOrder}`],
+              ["RECEIVED", `${t(locale, "storage.received", "Received")} ${selection.wishlistSummary.received}`],
+            ]
+              .map(
+                ([filter, label]) => `
+                  <button
+                    class="${selection.wishlistFilter === filter ? "secondary-button" : "ghost-button"}"
+                    type="button"
+                    data-action="set-wishlist-filter"
+                    data-wishlist-filter="${escapeHtml(filter)}"
+                  >
+                    ${escapeHtml(label)}
+                  </button>
+                `,
+              )
+              .join("")}
+          </div>
+
+          <div class="dense-list add-spool-wishlist-list">
+            ${
+              selection.visibleWishlistItems.length > 0
+                ? wishlistRows
+                : `<div class="empty-card">${escapeHtml(
+                    selection.wishlistSummary.all > 0
+                      ? t(locale, "storage.noWishlistMatch", "No wishlist items match this filter.")
+                      : t(locale, "storage.noWishlistItems", "No wishlist items yet."),
+                  )}</div>`
+            }
+          </div>
+        </div>
+      </details>
     </div>
   `;
 }

@@ -5,8 +5,8 @@ Last updated: 2026-04-13
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
-- Browser parity RC checkpoint (2026-04-13, ready for commit/push + new prerelease):
-  - version target is now `v0.9.0-rc.9`
+- Stable browser parity release checkpoint (2026-04-13, ready for commit/push + release):
+  - version target is now `v0.9.1`
   - trusted-LAN browser QA is green for the latest parity pass:
     - browser `Printers` now follows the same operational weigh-in / weigh-out model as desktop for loading, clearing, and printer-linked usage
     - browser printer slot lists and browser loan spool lists now sort alphabetically like the desktop app
@@ -21,6 +21,11 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - validation baseline after the browser pass:
     - `node scripts/run-companion-tests.mjs` ✅
     - companion browser QA PASS on iPhone-oriented narrow mobile, iPad/tablet widths, and desktop-browser widths
+  - browser companion now feels close enough to the desktop product for normal daily use across:
+    - `Storage`
+    - `Printers`
+    - `Loans`
+    - spool detail / task-sheet flows
 - Sync RC polish checkpoint (2026-04-12, ready for commit/push + new prerelease):
   - version target is now `v0.9.0-rc.8`
   - paired desktop/client QA is green for the latest repair/status round:
