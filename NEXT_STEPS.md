@@ -2,6 +2,22 @@
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current browser baseline is trusted-LAN-only, with `Storage` as the browser label for desktop `Inventory` / `Lager` and `Add spool` as the browser intake action.
 
+## v0.10.1 AMS Slot Logic Follow-up (2026-04-16)
+- Release target:
+  - stable follow-up patch after `v0.10.0`
+  - intended to lock in stricter AMS-slot replacement behavior and manual-clear authority
+- Planned release actions:
+  - bump app/package/Tauri versions to `0.10.1`
+  - publish GitHub release with AMS slot logic follow-up notes
+  - attach refreshed macOS DMG and Windows MSI assets
+- Validation baseline:
+  - `npm run build`
+  - `cargo test --manifest-path src-tauri/Cargo.toml bambu_live -- --nocapture`
+- Release note focus:
+  - unknown RFID replacement clears only on strong `tray_uuid` + color evidence
+  - manual RFID override stays protected while the same unknown identity remains present
+  - manually emptied AMS slots stay empty until newer MQTT tray data arrives
+
 ## v0.9.2 Stable Import + Browser Polish (2026-04-14)
 - Release target:
   - stable follow-up patch after `v0.9.1`

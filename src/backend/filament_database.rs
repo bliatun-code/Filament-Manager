@@ -189,10 +189,14 @@ pub struct PrinterAmsSlotRow {
     pub spool_ownership_type: Option<String>,
     pub spool_owner_name: Option<String>,
     pub spool_remaining_g: Option<i64>,
+    pub spool_rfid_tag: Option<String>,
     pub spool_material: Option<String>,
     pub spool_filament_name: Option<String>,
     pub spool_color_name: Option<String>,
     pub spool_hex_color: Option<String>,
+    pub rfid_override_tray_uuid: Option<String>,
+    pub rfid_override_color_hex: Option<String>,
+    pub live_cache_cleared_at: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -437,6 +441,8 @@ impl FilamentDatabase {
         self.ensure_spool_identity_schema()?;
         self.ensure_borrowed_in_schema()?;
         self.ensure_printer_external_slot_schema()?;
+        self.ensure_printer_slot_rfid_override_schema()?;
+        self.ensure_printer_slot_live_cache_schema()?;
         self.ensure_trusted_lan_schema()?;
         Ok(())
     }
@@ -1282,11 +1288,11 @@ impl FilamentDatabase {
     }
 
     pub fn sqlite_datetime_shift(&self, base: &str, modifier: &str) -> InventoryResult<String> {
-        let value = self.conn.query_row(
-            "SELECT datetime(?1, ?2)",
-            params![base, modifier],
-            |row| row.get(0),
-        )?;
+        let value =
+            self.conn
+                .query_row("SELECT datetime(?1, ?2)", params![base, modifier], |row| {
+                    row.get(0)
+                })?;
         Ok(value)
     }
 
@@ -1537,6 +1543,35 @@ impl FilamentDatabase {
             [],
         )?;
 
+        Ok(())
+    }
+
+    pub fn ensure_printer_slot_rfid_override_schema(&self) -> InventoryResult<()> {
+        if !self.table_has_column("ams_slots", "rfid_override_tray_uuid")? {
+            self.conn.execute(
+                "ALTER TABLE ams_slots
+                 ADD COLUMN rfid_override_tray_uuid TEXT",
+                [],
+            )?;
+        }
+        if !self.table_has_column("ams_slots", "rfid_override_color_hex")? {
+            self.conn.execute(
+                "ALTER TABLE ams_slots
+                 ADD COLUMN rfid_override_color_hex TEXT",
+                [],
+            )?;
+        }
+        Ok(())
+    }
+
+    pub fn ensure_printer_slot_live_cache_schema(&self) -> InventoryResult<()> {
+        if !self.table_has_column("ams_slots", "live_cache_cleared_at")? {
+            self.conn.execute(
+                "ALTER TABLE ams_slots
+                 ADD COLUMN live_cache_cleared_at TEXT",
+                [],
+            )?;
+        }
         Ok(())
     }
 
@@ -2778,8 +2813,8 @@ impl FilamentDatabase {
                 "printer id is required for Bambu live integration".to_string(),
             ));
         }
-        let payload = serde_json::to_string(config)
-            .map_err(|error| InventoryError::Db(error.to_string()))?;
+        let payload =
+            serde_json::to_string(config).map_err(|error| InventoryError::Db(error.to_string()))?;
         self.set_setting(
             &Self::bambu_live_integration_setting_key(normalized_printer_id),
             &payload,
@@ -2791,10 +2826,14 @@ impl FilamentDatabase {
         if normalized_printer_id.is_empty() {
             return Ok(());
         }
-        self.delete_setting(&Self::bambu_live_integration_setting_key(normalized_printer_id))
+        self.delete_setting(&Self::bambu_live_integration_setting_key(
+            normalized_printer_id,
+        ))
     }
 
-    pub fn list_bambu_live_integrations(&self) -> InventoryResult<Vec<BambuLiveIntegrationEntryRow>> {
+    pub fn list_bambu_live_integrations(
+        &self,
+    ) -> InventoryResult<Vec<BambuLiveIntegrationEntryRow>> {
         let mut stmt = self.conn.prepare(
             "SELECT key, value
              FROM settings
@@ -2840,7 +2879,12 @@ impl FilamentDatabase {
         self.conn.execute(
             "INSERT INTO printer_live_events (id, printer_id, event_type, payload_json, created_at)
              VALUES (?1, ?2, ?3, ?4, datetime('now'))",
-            params![new_id(), normalized_printer_id, normalized_event_type, payload],
+            params![
+                new_id(),
+                normalized_printer_id,
+                normalized_event_type,
+                payload
+            ],
         )?;
         Ok(())
     }
@@ -3418,7 +3462,10 @@ impl FilamentDatabase {
                     END AS spool_ownership_type,
                     NULLIF(sp.owner_name, '') AS spool_owner_name,
                     sp.remaining_g,
-                    m.material, m.filament_name, m.color_name, m.hex_color
+                    sp.rfid_tag,
+                    m.material, m.filament_name, m.color_name, m.hex_color,
+                    s.rfid_override_tray_uuid, s.rfid_override_color_hex,
+                    s.live_cache_cleared_at
                  FROM ams_slots s
                  JOIN ams_units u ON u.id = s.ams_id
                  LEFT JOIN filament_spools sp ON sp.id = s.spool_id AND sp.deleted_at IS NULL
@@ -3446,10 +3493,14 @@ impl FilamentDatabase {
                     spool_ownership_type: row.get(5)?,
                     spool_owner_name: row.get(6)?,
                     spool_remaining_g: row.get(7)?,
-                    spool_material: row.get(8)?,
-                    spool_filament_name: row.get(9)?,
-                    spool_color_name: row.get(10)?,
-                    spool_hex_color: row.get(11)?,
+                    spool_rfid_tag: row.get(8)?,
+                    spool_material: row.get(9)?,
+                    spool_filament_name: row.get(10)?,
+                    spool_color_name: row.get(11)?,
+                    spool_hex_color: row.get(12)?,
+                    rfid_override_tray_uuid: row.get(13)?,
+                    rfid_override_color_hex: row.get(14)?,
+                    live_cache_cleared_at: row.get(15)?,
                 })
             })?;
             let mut slots = Vec::new();
@@ -3472,6 +3523,9 @@ impl FilamentDatabase {
         printer_id: &str,
         slot_id: &str,
         spool_id: Option<&str>,
+        rfid_override_tray_uuid: Option<&str>,
+        rfid_override_color_hex: Option<&str>,
+        clear_live_cache_before_next_refresh: bool,
     ) -> InventoryResult<()> {
         let tx = self.conn.unchecked_transaction()?;
 
@@ -3512,9 +3566,25 @@ impl FilamentDatabase {
         tx.execute(
             "UPDATE ams_slots
              SET spool_id = ?1,
-                 last_seen_at = datetime('now')
+                 last_seen_at = datetime('now'),
+                 rfid_override_tray_uuid = ?3,
+                 rfid_override_color_hex = ?4,
+                 live_cache_cleared_at = CASE
+                     WHEN ?5 = 1 THEN datetime('now')
+                     ELSE NULL
+                 END
              WHERE id = ?2",
-            params![spool_id, slot_id],
+            params![
+                spool_id,
+                slot_id,
+                normalize_optional_text(rfid_override_tray_uuid),
+                normalize_optional_text(rfid_override_color_hex),
+                if clear_live_cache_before_next_refresh {
+                    1
+                } else {
+                    0
+                }
+            ],
         )?;
 
         if previous_spool_id.as_deref() != spool_id {
@@ -3828,6 +3898,8 @@ impl FilamentDatabase {
                     .execute_batch("COMMIT; PRAGMA foreign_keys = ON;")?;
                 self.ensure_borrowed_in_schema()?;
                 self.ensure_printer_external_slot_schema()?;
+                self.ensure_printer_slot_rfid_override_schema()?;
+                self.ensure_printer_slot_live_cache_schema()?;
                 self.ensure_trusted_lan_schema()?;
                 Ok(())
             }

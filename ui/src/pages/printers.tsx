@@ -16,6 +16,7 @@ import {
   recordPrintUsage,
   recordLibrarySyncHostPrintUsage,
   updateLibrarySyncHostSpoolWeight,
+  updateSpoolRfidTag,
   updateSpoolWeight,
   type BambuLiveIntegrationEntry,
   type BambuLiveObservedTray,
@@ -331,6 +332,16 @@ type IncomingWeightPrompt = {
   currentColorName?: string | null;
 };
 
+type SlotRfidOverridePrompt = {
+  printerId: string;
+  printerName: string;
+  printerModel: string;
+  slot: PrinterAmsSlotRow;
+  spool: SpoolWithMasterRow;
+  liveTray: BambuLiveObservedTray;
+  observedAt: string | null;
+};
+
 export default function PrintersPage() {
   const { t, locale } = useI18n();
   const resolvedTheme = useResolvedTheme();
@@ -367,6 +378,9 @@ export default function PrintersPage() {
   );
   const [incomingWeightValue, setIncomingWeightValue] = useState("");
   const [outgoingWeightValue, setOutgoingWeightValue] = useState("");
+  const [rfidOverridePrompt, setRfidOverridePrompt] = useState<SlotRfidOverridePrompt | null>(
+    null,
+  );
   const selectedModelProfile = useMemo(
     () => resolvePrinterModelProfile(newPrinterModel || ""),
     [newPrinterModel],
@@ -553,6 +567,53 @@ export default function PrintersPage() {
     }
     return Date.now() - parsed.getTime() > minutes * 60_000;
   }, []);
+
+  const compareObservedTimestamps = useCallback((left?: string | null, right?: string | null) => {
+    const parseValue = (raw?: string | null) => {
+      if (!raw) {
+        return null;
+      }
+      const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+      const withTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized)
+        ? normalized
+        : `${normalized}Z`;
+      const parsed = new Date(withTimezone);
+      if (Number.isNaN(parsed.getTime())) {
+        return null;
+      }
+      return parsed.getTime();
+    };
+    const leftValue = parseValue(left);
+    const rightValue = parseValue(right);
+    if (leftValue == null || rightValue == null) {
+      return null;
+    }
+    return leftValue - rightValue;
+  }, []);
+
+  const isUnknownLiveRfid = useCallback((tray?: BambuLiveObservedTray | null) => {
+    return Boolean(tray?.tray_uuid && tray.match_status === "unknown_rfid");
+  }, []);
+
+  const liveUnknownMatchesSlotOverride = useCallback(
+    (slot: PrinterAmsSlotRow, tray?: BambuLiveObservedTray | null) => {
+      const observedTrayUuid = (tray?.tray_uuid ?? "").trim();
+      const observedColorHex = (tray?.color_hex ?? "").trim();
+      const overrideTrayUuid = (slot.rfid_override_tray_uuid ?? "").trim();
+      const overrideColorHex = (slot.rfid_override_color_hex ?? "").trim();
+      return Boolean(
+        observedTrayUuid &&
+          observedColorHex &&
+          overrideTrayUuid &&
+          overrideColorHex &&
+          observedTrayUuid.localeCompare(overrideTrayUuid, undefined, { sensitivity: "accent" }) ===
+            0 &&
+          observedColorHex.localeCompare(overrideColorHex, undefined, { sensitivity: "accent" }) ===
+            0,
+      );
+    },
+    [],
+  );
 
   const resolveLiveConnectionIndicator = useCallback(
     (liveConfig: BambuLiveIntegrationEntry["config"] | null) => {
@@ -897,6 +958,28 @@ export default function PrintersPage() {
     return spools.find((row) => row.spool.id === normalized) ?? null;
   }
 
+  function openRfidOverrideDialog(
+    printer: PrinterOverviewRow,
+    slot: PrinterAmsSlotRow,
+    liveTray: BambuLiveObservedTray,
+  ) {
+    const spool = findSpoolById(slot.spool_id);
+    if (!spool) {
+      return;
+    }
+    const liveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
+    setRfidOverridePrompt({
+      printerId: printer.printer.id,
+      printerName: printer.printer.name,
+      printerModel: printer.printer.model,
+      slot,
+      spool,
+      liveTray,
+      observedAt:
+        liveTray.last_identity_seen_at ?? liveConfig?.observed_state?.last_seen_at ?? null,
+    });
+  }
+
   function setSlotDraft(slotId: string, next: SlotSwapDraft) {
     setSlotDrafts((current) => ({
       ...current,
@@ -1014,6 +1097,45 @@ export default function PrintersPage() {
     setIncomingWeightPrompt(null);
     setIncomingWeightValue("");
     setOutgoingWeightValue("");
+  }
+
+  async function handleSaveOverrideRfid() {
+    if (!rfidOverridePrompt || !tauri || busy) {
+      return;
+    }
+    const observedRfid = rfidOverridePrompt.liveTray.tray_uuid?.trim() ?? "";
+    if (!observedRfid) {
+      setError(
+        t(
+          "printers.rfidOverrideNothingToSave",
+          "No non-empty tray identity is available to save for this slot.",
+        ),
+      );
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      await updateSpoolRfidTag({
+        spool_id: rfidOverridePrompt.spool.spool.id,
+        rfid_tag: observedRfid,
+        rfid_observed_at: rfidOverridePrompt.observedAt ?? new Date().toISOString(),
+      });
+      await reloadData();
+      setRfidOverridePrompt(null);
+      setInfo(t("inventory.rfidSaved", "RFID tag saved on the selected roll."));
+    } catch (saveError) {
+      console.error(saveError);
+      setError(
+        commandErrorText(
+          saveError,
+          t("inventory.error.saveRfid", "Failed to save RFID tag."),
+        ),
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   function openWeightPromptForDraft(
@@ -1137,6 +1259,21 @@ export default function PrintersPage() {
     const incomingWeightRaw = overrides ? "" : draft?.incomingWeight.trim() ?? "";
     const outgoingWeight = overrides ? overrides.outgoingWeight : parseWeightInput(outgoingWeightRaw);
     const incomingWeight = overrides ? overrides.incomingWeight : parseWeightInput(incomingWeightRaw);
+    const { tray: liveTray } = findLiveTrayForSlot(printerId, slot.slot_index, slot.ams_id);
+    const nextUnknownOverride =
+      targetSpoolId && !((slot.ams_id ?? "").endsWith("_ext")) && isUnknownLiveRfid(liveTray)
+        ? {
+            trayUuid: liveTray?.tray_uuid?.trim() ?? "",
+            colorHex: liveTray?.color_hex?.trim() ?? "",
+          }
+        : null;
+    const clearLiveCacheBeforeNextRefresh =
+      !targetSpoolId && !((slot.ams_id ?? "").endsWith("_ext")) && !!currentSpoolId;
+    const currentOverrideTrayUuid = (slot.rfid_override_tray_uuid ?? "").trim();
+    const currentOverrideColorHex = (slot.rfid_override_color_hex ?? "").trim();
+    const overrideChanged =
+      currentOverrideTrayUuid !== (nextUnknownOverride?.trayUuid ?? "") ||
+      currentOverrideColorHex !== (nextUnknownOverride?.colorHex ?? "");
 
     if (!overrides && outgoingWeightRaw && outgoingWeight == null) {
       setError(t("inventory.error.invalidWeight", "Weight value is invalid."));
@@ -1147,7 +1284,7 @@ export default function PrintersPage() {
       return false;
     }
 
-    if (!hasChange && outgoingWeight == null && incomingWeight == null) {
+    if (!hasChange && !overrideChanged && outgoingWeight == null && incomingWeight == null) {
       setInfo(t("printers.noPendingChanges", "No pending slot changes."));
       return false;
     }
@@ -1185,7 +1322,7 @@ export default function PrintersPage() {
         }
       }
 
-      if (hasChange) {
+      if (hasChange || overrideChanged) {
         if (clientReadOnly) {
           await assignLibrarySyncHostPrinterSlot(
             clientHostBaseUrl!,
@@ -1194,6 +1331,9 @@ export default function PrintersPage() {
               printer_id: printerId,
               slot_id: slot.slot_id,
               spool_id: targetSpoolId,
+              rfid_override_tray_uuid: nextUnknownOverride?.trayUuid || null,
+              rfid_override_color_hex: nextUnknownOverride?.colorHex || null,
+              clear_live_cache_before_next_refresh: clearLiveCacheBeforeNextRefresh,
             },
           );
         } else {
@@ -1201,6 +1341,9 @@ export default function PrintersPage() {
             printer_id: printerId,
             slot_id: slot.slot_id,
             spool_id: targetSpoolId,
+            rfid_override_tray_uuid: nextUnknownOverride?.trayUuid || null,
+            rfid_override_color_hex: nextUnknownOverride?.colorHex || null,
+            clear_live_cache_before_next_refresh: clearLiveCacheBeforeNextRefresh,
           });
         }
       }
@@ -1435,6 +1578,16 @@ export default function PrintersPage() {
                   slot.slot_index,
                   slot.ams_id,
                 );
+                const liveCacheSuppressedByManualClear =
+                  !isExtSlot &&
+                  !!slot.live_cache_cleared_at &&
+                  (
+                    compareObservedTimestamps(
+                      liveTray?.last_identity_seen_at ?? liveConfig?.observed_state?.last_seen_at ?? null,
+                      slot.live_cache_cleared_at,
+                    ) ?? -1
+                  ) <= 0;
+                const effectiveLiveTray = liveCacheSuppressedByManualClear ? null : liveTray;
                 const slotOptions = allowedSpoolsForSlot(slot.spool_id);
                 const draft = getSlotDraft(slot);
                 const searchTerm = draft.search.trim().toLowerCase();
@@ -1450,11 +1603,11 @@ export default function PrintersPage() {
                   draft.targetSpoolId.length > 0
                     ? slotOptions.find((row) => row.spool.id === draft.targetSpoolId) ?? null
                     : null;
-                const liveMatchedSpool = findSpoolById(liveTray?.matched_inventory_spool_id);
+                const liveMatchedSpool = findSpoolById(effectiveLiveTray?.matched_inventory_spool_id);
                 const lastLiveIdentityAt =
                   isExtSlot
                     ? null
-                    : liveTray?.last_identity_seen_at ?? liveConfig?.observed_state?.last_seen_at ?? null;
+                    : effectiveLiveTray?.last_identity_seen_at ?? null;
                 const liveIdentityFresh = !isOlderThanMinutes(lastLiveIdentityAt, 10);
                 const liveSlotInUse =
                   !isExtSlot &&
@@ -1464,17 +1617,19 @@ export default function PrintersPage() {
                   (liveConfig.observed_state?.progress_percent != null ||
                     liveConfig.observed_state?.remaining_minutes != null);
                 const liveIdentityLabel =
-                  liveIdentityFresh && liveTray?.matched_inventory_mode === "exact_rfid"
+                  liveIdentityFresh && effectiveLiveTray?.matched_inventory_mode === "exact_rfid"
                     ? t("printers.liveRfid", "Live RFID")
                     : null;
                 const unknownLiveRfid =
                   liveIdentityFresh &&
                   !!liveConfig?.enabled &&
-                  !!liveTray?.tray_uuid &&
-                  !liveMatchedSpool;
+                  isUnknownLiveRfid(effectiveLiveTray);
+                const rfidOverridden =
+                  unknownLiveRfid && liveUnknownMatchesSlotOverride(slot, effectiveLiveTray);
                 const showManualLabel =
                   !!slot.spool_id &&
                   !liveIdentityLabel &&
+                  !rfidOverridden &&
                   !!liveConfig?.enabled &&
                   isOlderThanMinutes(lastLiveIdentityAt, 10);
                 const liveObservedAge = formatRelativeAge(lastLiveIdentityAt);
@@ -1735,9 +1890,21 @@ export default function PrintersPage() {
                                   {t("printers.manualAssignment", "Manual")}
                                 </span>
                               ) : null}
-                              {unknownLiveRfid ? (
+                              {rfidOverridden ? (
+                                <button
+                                  type="button"
+                                  className={semanticChipClass("info", "px-2 py-0.5 text-[10px]")}
+                                  onClick={() =>
+                                    effectiveLiveTray &&
+                                    openRfidOverrideDialog(printer, slot, effectiveLiveTray)
+                                  }
+                                  disabled={!effectiveLiveTray || busy}
+                                >
+                                  {t("printers.rfidOverridden", "RFID overridden")}
+                                </button>
+                              ) : unknownLiveRfid ? (
                                 <span className={semanticChipClass("warning", "px-2 py-0.5 text-[10px]")}>
-                                  {t("printers.unknownLiveRfid", "Unknown RFID")}
+                                  {t("printers.unknownLiveRfid", "RFID is not registered")}
                                 </span>
                               ) : null}
                             </div>
@@ -1753,7 +1920,9 @@ export default function PrintersPage() {
                             ) : null}
                             {unknownLiveRfid ? (
                               <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-200">
-                                {`${t("printers.unknownLiveRfidHint", "AMS reported a tray identity that is not registered in inventory.")} ${liveTray?.tray_uuid}`}
+                                {rfidOverridden
+                                  ? `${t("printers.rfidOverriddenHint", "This slot is manually assigned while the same unregistered RFID identity is still active.")} ${effectiveLiveTray?.tray_uuid}`
+                                  : `${t("printers.unknownLiveRfidHint", "AMS reported a tray identity that is not registered in inventory.")} ${effectiveLiveTray?.tray_uuid}`}
                               </div>
                             ) : null}
                           </div>
@@ -1769,6 +1938,11 @@ export default function PrintersPage() {
                         {liveConfig?.enabled && liveObservedAtLabel ? (
                           <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                             {`${t("printers.lastKnownLive", "Last known live")}: ${liveObservedAtLabel}${liveObservedAge ? ` · ${liveObservedAge}` : ""}`}
+                          </div>
+                        ) : null}
+                        {unknownLiveRfid ? (
+                          <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-200">
+                            {`${t("printers.unknownLiveRfidHint", "AMS reported a tray identity that is not registered in inventory.")} ${effectiveLiveTray?.tray_uuid}`}
                           </div>
                         ) : null}
                       </div>
@@ -1852,6 +2026,116 @@ export default function PrintersPage() {
             ) : null}
           </div>
         </SaveOnlyModal>
+      ) : null}
+
+      {rfidOverridePrompt ? (
+        <AppModal
+          closeOnBackdrop
+          onBackdropClose={() => {
+            if (!busy) {
+              setRfidOverridePrompt(null);
+            }
+          }}
+          panelClassName={modalPanelClassName("md", "p-0")}
+        >
+          <div>
+            <ModalHeader
+              eyebrow={t("inventory.rfidCaptureTitle", "RFID capture")}
+              title={t("printers.rfidOverridden", "RFID overridden")}
+              subtitle={`${rfidOverridePrompt.printerName} · ${formatPrinterSlotLabelForModel(t, rfidOverridePrompt.printerModel, {
+                ams_id: rfidOverridePrompt.slot.ams_id,
+                slot_index: rfidOverridePrompt.slot.slot_index,
+              })}`}
+              onClose={() => setRfidOverridePrompt(null)}
+              closeLabel={t("common.close", "Close")}
+              disabled={busy}
+              className="px-6 py-5"
+            />
+
+            <div className="space-y-4 px-6 py-6">
+              <div className="rounded-2xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-100">
+                {t(
+                  "printers.rfidOverrideDialogHint",
+                  "This slot is manually assigned while AMS still reports the same unregistered tray identity. Save it on the selected roll when you are ready.",
+                )}
+              </div>
+
+              <div className="surface-card space-y-3">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                  {formatFilamentDisplayTitle(
+                    rfidOverridePrompt.spool.master.material,
+                    rfidOverridePrompt.spool.master.filament_name,
+                    rfidOverridePrompt.spool.master.color_name,
+                  )}
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  {`${rfidOverridePrompt.spool.master.vendor} · ${formatSpoolReference(rfidOverridePrompt.spool.spool.id)}`}
+                </div>
+                <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                      {t("inventory.rfidCurrentTag", "Saved RFID")}
+                    </dt>
+                    <dd className="mt-1 break-all font-mono text-slate-900 dark:text-slate-100">
+                      {rfidOverridePrompt.spool.spool.rfid_tag?.trim() || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                      {t("inventory.rfidObservedTag", "Observed RFID")}
+                    </dt>
+                    <dd className="mt-1 break-all font-mono text-slate-900 dark:text-slate-100">
+                      {rfidOverridePrompt.liveTray.tray_uuid?.trim() || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                      {t("inventory.rfidObservedColor", "Observed color")}
+                    </dt>
+                    <dd className="mt-1 flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                      <span
+                        className="h-5 w-5 rounded border border-slate-200 dark:border-slate-700"
+                        style={{ backgroundColor: toSwatchColor(rfidOverridePrompt.liveTray.color_hex) }}
+                      />
+                      <span className="font-mono">
+                        {rfidOverridePrompt.liveTray.color_hex?.trim() || "—"}
+                      </span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                      {t("inventory.rfidLastSeen", "Last seen")}
+                    </dt>
+                    <dd className="mt-1 text-slate-900 dark:text-slate-100">
+                      {rfidOverridePrompt.observedAt
+                        ? formatDateTime(rfidOverridePrompt.observedAt, locale)
+                        : "—"}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-3">
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-100"
+                  onClick={() => setRfidOverridePrompt(null)}
+                  disabled={busy}
+                >
+                  {t("common.cancel", "Cancel")}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-sky-300 bg-sky-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:border-sky-400/40 dark:bg-sky-500"
+                  onClick={() => void handleSaveOverrideRfid()}
+                  disabled={!rfidOverridePrompt.liveTray.tray_uuid?.trim() || busy}
+                >
+                  {t("inventory.saveRfid", "Save RFID")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </AppModal>
       ) : null}
 
       {showAddPrinterModal ? (

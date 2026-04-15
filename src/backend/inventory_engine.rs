@@ -154,6 +154,9 @@ pub struct AssignPrinterSlotInput {
     pub printer_id: String,
     pub slot_id: String,
     pub spool_id: Option<String>,
+    pub rfid_override_tray_uuid: Option<String>,
+    pub rfid_override_color_hex: Option<String>,
+    pub clear_live_cache_before_next_refresh: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -639,13 +642,13 @@ impl InventoryEngine {
             return Err(InventoryError::Db("spool id is required".to_string()));
         }
         let normalized_rfid = normalize_optional_input_text(input.rfid_tag.as_deref());
-        let normalized_observed_at = normalize_optional_input_text(input.rfid_observed_at.as_deref());
-        self.db
-            .update_spool_rfid_tag(
-                spool_id,
-                normalized_rfid.as_deref(),
-                normalized_observed_at.as_deref(),
-            )?;
+        let normalized_observed_at =
+            normalize_optional_input_text(input.rfid_observed_at.as_deref());
+        self.db.update_spool_rfid_tag(
+            spool_id,
+            normalized_rfid.as_deref(),
+            normalized_observed_at.as_deref(),
+        )?;
         self.log_spool_event(
             spool_id,
             "RFID_TAG_UPDATED",
@@ -836,6 +839,9 @@ impl InventoryEngine {
             &input.printer_id,
             &input.slot_id,
             input.spool_id.as_deref(),
+            input.rfid_override_tray_uuid.as_deref(),
+            input.rfid_override_color_hex.as_deref(),
+            input.clear_live_cache_before_next_refresh.unwrap_or(false),
         )?;
 
         if let Some(spool_id) = input.spool_id {
@@ -844,7 +850,10 @@ impl InventoryEngine {
                 "ASSIGNED_TO_AMS",
                 json!({
                     "printer_id": input.printer_id,
-                    "slot_id": input.slot_id
+                    "slot_id": input.slot_id,
+                    "rfid_override_tray_uuid": input.rfid_override_tray_uuid,
+                    "rfid_override_color_hex": input.rfid_override_color_hex,
+                    "clear_live_cache_before_next_refresh": input.clear_live_cache_before_next_refresh,
                 }),
             )?;
         }
@@ -1310,6 +1319,9 @@ mod tests {
                     printer_id: "printer_1".to_string(),
                     slot_id: "printer_1_ext_slot_1".to_string(),
                     spool_id: Some("borrowed_spool_2".to_string()),
+                    rfid_override_tray_uuid: None,
+                    rfid_override_color_hex: None,
+                    clear_live_cache_before_next_refresh: None,
                 })
                 .map_err(|error| error.to_string())?;
 

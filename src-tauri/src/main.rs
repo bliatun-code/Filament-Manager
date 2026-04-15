@@ -1,17 +1,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app_services;
-mod bambu_live;
 mod backend;
+mod bambu_live;
 mod companion_api;
 mod state;
 
 use app_services::{CompanionService, CompanionSpoolDetail};
 use backend::filament_database::{
-    ActiveSpoolLoanRow, BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow,
-    BackupValidationStats, CatalogResetStats, FilamentDatabase, FilamentMasterCatalogRow,
-    ImportDataStats, LibrarySyncSettingsRow, LoanUsageByPersonRow, PrinterOverviewRow,
-    PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolUsagePointRow,
+    ActiveSpoolLoanRow, BackupValidationStats, BambuLiveIntegrationEntryRow,
+    BambuLiveIntegrationRow, CatalogResetStats, FilamentDatabase, FilamentMasterCatalogRow,
+    ImportDataStats, LibrarySyncSettingsRow, LoanUsageByPersonRow, PrinterOverviewRow, PrinterRow,
+    SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolUsagePointRow,
     SpoolWithMasterRow, TrustedLanPairedBrowserRow, TrustedLanSettingsRow, WishlistItemRow,
 };
 use backend::inventory_engine::{
@@ -196,6 +196,9 @@ struct LibrarySyncAssignPrinterSlotInput {
     printer_id: String,
     slot_id: String,
     spool_id: Option<String>,
+    rfid_override_tray_uuid: Option<String>,
+    rfid_override_color_hex: Option<String>,
+    clear_live_cache_before_next_refresh: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -683,7 +686,8 @@ fn validate_library_sync_host(
         )
     };
 
-    let saved_auth_state = with_inventory(&state, |engine| engine.get_library_sync_client_auth_state())?;
+    let saved_auth_state =
+        with_inventory(&state, |engine| engine.get_library_sync_client_auth_state())?;
     let mut pairing_checked = false;
     let mut pairing_valid = false;
 
@@ -966,22 +970,20 @@ fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
             },
         )?;
 
-    let execute =
-        |session_id: &str,
-         device_token: &str|
-         -> Result<reqwest::blocking::Response, String> {
-            let host_header = library_sync_host_header_value(base_url)?;
-            let cookie_header =
-                build_library_sync_cookie_header(Some(session_id), Some(device_token))
-                    .ok_or_else(|| "Desktop sync read is missing session cookies.".to_string())?;
-            client
-                .get(format!("{base_url}{path}"))
-                .header(HOST, host_header)
-                .header(ORIGIN, base_url)
-                .header(reqwest::header::COOKIE, cookie_header)
-                .send()
-                .map_err(|error| format!("Desktop sync read request failed: {error}"))
-        };
+    let execute = |session_id: &str,
+                   device_token: &str|
+     -> Result<reqwest::blocking::Response, String> {
+        let host_header = library_sync_host_header_value(base_url)?;
+        let cookie_header = build_library_sync_cookie_header(Some(session_id), Some(device_token))
+            .ok_or_else(|| "Desktop sync read is missing session cookies.".to_string())?;
+        client
+            .get(format!("{base_url}{path}"))
+            .header(HOST, host_header)
+            .header(ORIGIN, base_url)
+            .header(reqwest::header::COOKIE, cookie_header)
+            .send()
+            .map_err(|error| format!("Desktop sync read request failed: {error}"))
+    };
 
     let mut response = execute(&initial_auth_state.0, &initial_auth_state.1)?;
 
@@ -1245,11 +1247,7 @@ fn fetch_library_sync_spool_detail(
     )?;
 
     with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(
-            true,
-            Some("Host spool detail refreshed."),
-            None,
-        )
+        engine.save_library_sync_validation_state(true, Some("Host spool detail refreshed."), None)
     })?;
 
     Ok(detail)
@@ -1387,10 +1385,8 @@ fn fetch_library_sync_filament_consumption(
         .unwrap_or_default();
     let rows: Vec<FilamentConsumptionRow> = fetch_library_sync_host_json(
         &normalized_base_url,
-        format!(
-            "/api/v1/library/statistics/filament-consumption?limit={limit}{printer_query}"
-        )
-        .as_str(),
+        format!("/api/v1/library/statistics/filament-consumption?limit={limit}{printer_query}")
+            .as_str(),
     )?;
 
     with_inventory(&state, |engine| {
@@ -1641,7 +1637,18 @@ fn assign_library_sync_host_printer_slot(
         &normalized_base_url,
         &format!("/api/v1/printers/{printer_id}/slots/{slot_id}/assignment"),
         &serde_json::json!({
-            "spool_id": input.spool_id.as_deref().map(str::trim).filter(|value| !value.is_empty())
+            "spool_id": input.spool_id.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+            "rfid_override_tray_uuid": input
+                .rfid_override_tray_uuid
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty()),
+            "rfid_override_color_hex": input
+                .rfid_override_color_hex
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty()),
+            "clear_live_cache_before_next_refresh": input.clear_live_cache_before_next_refresh.unwrap_or(false),
         }),
     )?;
 
@@ -1743,6 +1750,17 @@ fn assign_printer_slot(
                 .as_deref()
                 .map(str::trim)
                 .filter(|value| !value.is_empty()),
+            input
+                .rfid_override_tray_uuid
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty()),
+            input
+                .rfid_override_color_hex
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty()),
+            input.clear_live_cache_before_next_refresh.unwrap_or(false),
         )
         .map_err(|error| error.to_string())
 }
@@ -2508,7 +2526,11 @@ fn refresh_esun_catalog_blocking(
         let entries: Vec<backend::vendor_lookup::EsunKnownCatalogEntry> = rows
             .into_iter()
             .filter(|row| row.vendor.eq_ignore_ascii_case("eSUN"))
-            .filter(|row| material_types.iter().any(|material| material == &row.material.to_uppercase()))
+            .filter(|row| {
+                material_types
+                    .iter()
+                    .any(|material| material == &row.material.to_uppercase())
+            })
             .filter_map(|row| {
                 let product_url = row.product_url?;
                 Some(backend::vendor_lookup::EsunKnownCatalogEntry {

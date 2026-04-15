@@ -103,7 +103,10 @@ CREATE TABLE IF NOT EXISTS ams_slots (
   ams_id TEXT NOT NULL REFERENCES ams_units(id),
   slot_index INTEGER NOT NULL,
   spool_id TEXT REFERENCES filament_spools(id),
-  last_seen_at TEXT
+  last_seen_at TEXT,
+  rfid_override_tray_uuid TEXT,
+  rfid_override_color_hex TEXT,
+  live_cache_cleared_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS print_jobs (

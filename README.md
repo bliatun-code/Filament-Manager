@@ -56,7 +56,7 @@ npm run tauri -- build --bundles msi
 ## macOS App Download
 
 - Latest release (DMG): https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current stable: `v0.8.4`
+- Current stable: `v0.10.1`
 
 If macOS blocks first launch of an unsigned build downloaded from GitHub:
 
@@ -73,7 +73,7 @@ xattr -dr com.apple.quarantine "/Applications/Filament Manager.app"
 The repository includes a tag-triggered build workflow:
 - Workflow: `.github/workflows/release-build.yml`
 - Triggers:
-  - push tag matching `v*` (example: `v0.8.2`)
+  - push tag matching `v*` (example: `v0.10.1`)
   - manual run via `workflow_dispatch`
 - Outputs:
   - macOS DMG artifact
@@ -82,8 +82,8 @@ The repository includes a tag-triggered build workflow:
 How to trigger from git:
 
 ```bash
-git tag -a v0.8.2 -m "v0.8.2"
-git push origin v0.8.2
+git tag -a v0.10.1 -m "v0.10.1"
+git push origin v0.10.1
 ```
 
 How to download artifacts:

@@ -6,8 +6,7 @@ use crate::backend::filament_database::{
 };
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput,
-    DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, RecordPrintUsageInput,
-    ReturnSpoolLoanInput,
+    DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, RecordPrintUsageInput, ReturnSpoolLoanInput,
     UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::statistics::{FilamentConsumptionRow, InventoryOverview, StatisticsEngine};
@@ -179,6 +178,9 @@ struct DeleteSpoolRequest {
 #[derive(Deserialize)]
 struct UpdatePrinterSlotAssignmentRequest {
     spool_id: Option<String>,
+    rfid_override_tray_uuid: Option<String>,
+    rfid_override_color_hex: Option<String>,
+    clear_live_cache_before_next_refresh: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -489,8 +491,14 @@ fn build_router(state: CompanionApiState) -> Router {
             "/api/v1/library/statistics/filament-consumption",
             get(handle_library_filament_consumption),
         )
-        .route("/api/v1/library/catalog/masters", get(handle_library_catalog_masters))
-        .route("/api/v1/library/wishlist", get(handle_library_wishlist_items))
+        .route(
+            "/api/v1/library/catalog/masters",
+            get(handle_library_catalog_masters),
+        )
+        .route(
+            "/api/v1/library/wishlist",
+            get(handle_library_wishlist_items),
+        )
         .route("/api/v1/auth/session", get(handle_session_status))
         .route("/api/v1/auth/pair", post(handle_pair_session))
         .route("/api/v1/auth/renew", post(handle_renew_session))
@@ -1273,6 +1281,16 @@ async fn handle_update_printer_slot_assignment(
         .as_deref()
         .map(str::trim)
         .filter(|value| !value.is_empty());
+    let override_tray_uuid = payload
+        .rfid_override_tray_uuid
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let override_color_hex = payload
+        .rfid_override_color_hex
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
     let slot = find_printer_slot(&state, printer_id, slot_id)?;
 
     if slot.spool_id.is_none() && target_spool_id.is_none() {
@@ -1297,7 +1315,16 @@ async fn handle_update_printer_slot_assignment(
 
     state
         .service
-        .assign_printer_slot(printer_id, slot_id, target_spool_id)
+        .assign_printer_slot(
+            printer_id,
+            slot_id,
+            target_spool_id,
+            override_tray_uuid,
+            override_color_hex,
+            payload
+                .clear_live_cache_before_next_refresh
+                .unwrap_or(false),
+        )
         .map_err(CompanionApiError::from)?;
 
     Ok(Json(WriteResponse {

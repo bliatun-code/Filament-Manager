@@ -675,12 +675,19 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       liveConnectionWaiting: "Live waiting",
       liveRfid: "Live RFID",
       manualAssignment: "Manual",
-      unknownLiveRfid: "Unknown RFID",
+      unknownLiveRfid: "RFID is not registered",
+      rfidOverridden: "RFID overridden",
       lastKnownLive: "Last known live",
       waitingForLiveIdentity:
         "Showing the last saved slot assignment until stronger live identity arrives.",
       unknownLiveRfidHint:
         "AMS reported a tray identity that is not registered in inventory.",
+      rfidOverriddenHint:
+        "This slot is manually assigned while the same unregistered RFID identity is still active.",
+      rfidOverrideDialogHint:
+        "This slot is manually assigned while AMS still reports the same unregistered tray identity. Save it on the selected roll when you are ready.",
+      rfidOverrideNothingToSave:
+        "No non-empty tray identity is available to save for this slot.",
       grams: "grams",
       jobOptional: "Job name (optional)",
       swapNoteOptional: "Swap note (optional)",
@@ -1930,12 +1937,19 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       liveConnectionWaiting: "Live venter",
       liveRfid: "Live RFID",
       manualAssignment: "Manuell",
-      unknownLiveRfid: "Ukjent RFID",
+      unknownLiveRfid: "RFID er ikke registrert",
+      rfidOverridden: "RFID overstyrt",
       lastKnownLive: "Sist kjente live",
       waitingForLiveIdentity:
         "Viser sist lagrede sportildeling til sterkere live-identitet kommer inn.",
       unknownLiveRfidHint:
         "AMS rapporterte en tray-identitet som ikke er registrert i lageret.",
+      rfidOverriddenHint:
+        "Dette sporet er manuelt tildelt mens samme uregistrerte RFID-identitet fortsatt er aktiv.",
+      rfidOverrideDialogHint:
+        "Dette sporet er manuelt tildelt mens AMS fortsatt rapporterer samme uregistrerte tray-identitet. Lagre den på valgt filament når du er klar.",
+      rfidOverrideNothingToSave:
+        "Ingen ikke-tom tray-identitet er tilgjengelig å lagre for dette sporet.",
       grams: "gram",
       jobOptional: "Jobbnavn (valgfritt)",
       swapNoteOptional: "Byttenotat (valgfritt)",

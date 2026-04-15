@@ -69,10 +69,14 @@ export type PrinterAmsSlotRow = {
   spool_ownership_type?: string | null;
   spool_owner_name?: string | null;
   spool_remaining_g?: number | null;
+  spool_rfid_tag?: string | null;
   spool_material?: string | null;
   spool_filament_name?: string | null;
   spool_color_name?: string | null;
   spool_hex_color?: string | null;
+  rfid_override_tray_uuid?: string | null;
+  rfid_override_color_hex?: string | null;
+  live_cache_cleared_at?: string | null;
 };
 
 export type PrinterOverviewRow = {
@@ -378,6 +382,9 @@ export type AssignPrinterSlotInput = {
   printer_id: string;
   slot_id: string;
   spool_id?: string | null;
+  rfid_override_tray_uuid?: string | null;
+  rfid_override_color_hex?: string | null;
+  clear_live_cache_before_next_refresh?: boolean | null;
 };
 
 export type RecordPrintUsageInput = {
@@ -987,6 +994,9 @@ export async function assignLibrarySyncHostPrinterSlot(
       printer_id: input.printer_id,
       slot_id: input.slot_id,
       spool_id: input.spool_id ?? null,
+      rfid_override_tray_uuid: input.rfid_override_tray_uuid ?? null,
+      rfid_override_color_hex: input.rfid_override_color_hex ?? null,
+      clear_live_cache_before_next_refresh: input.clear_live_cache_before_next_refresh ?? false,
     },
   });
 }

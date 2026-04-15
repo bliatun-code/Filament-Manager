@@ -5,9 +5,8 @@ use crate::backend::filament_database::{
 };
 use crate::backend::inventory_engine::{
     AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
-    CreateWishlistItemInput, DeleteSpoolInput, InventoryEngine, LendSpoolInput,
-    RecordPrintUsageInput,
-    PurgeSpoolInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
+    CreateWishlistItemInput, DeleteSpoolInput, InventoryEngine, LendSpoolInput, PurgeSpoolInput,
+    RecordPrintUsageInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
     UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
 };
 use serde::{Deserialize, Serialize};
@@ -210,12 +209,18 @@ impl CompanionService {
         printer_id: &str,
         slot_id: &str,
         spool_id: Option<&str>,
+        rfid_override_tray_uuid: Option<&str>,
+        rfid_override_color_hex: Option<&str>,
+        clear_live_cache_before_next_refresh: bool,
     ) -> InventoryResult<()> {
         self.with_inventory(|engine| {
             engine.assign_printer_slot(AssignPrinterSlotInput {
                 printer_id: printer_id.to_string(),
                 slot_id: slot_id.to_string(),
                 spool_id: spool_id.map(str::to_string),
+                rfid_override_tray_uuid: rfid_override_tray_uuid.map(str::to_string),
+                rfid_override_color_hex: rfid_override_color_hex.map(str::to_string),
+                clear_live_cache_before_next_refresh: Some(clear_live_cache_before_next_refresh),
             })
         })
     }
@@ -672,7 +677,7 @@ mod tests {
                 .ok_or_else(|| "missing printer slot".to_string())?;
 
             service
-                .assign_printer_slot("printer_1", &slot_id, Some("spool_1"))
+                .assign_printer_slot("printer_1", &slot_id, Some("spool_1"), None, None, false)
                 .map_err(|error| error.to_string())?;
 
             let after_assign = service
@@ -685,7 +690,7 @@ mod tests {
             );
 
             service
-                .assign_printer_slot("printer_1", &slot_id, None)
+                .assign_printer_slot("printer_1", &slot_id, None, None, None, false)
                 .map_err(|error| error.to_string())?;
 
             let cleared_printer = service
