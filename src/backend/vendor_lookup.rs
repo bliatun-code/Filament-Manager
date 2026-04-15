@@ -465,7 +465,9 @@ fn refresh_esun_catalog_snapshot_from_material_sources(
 ) -> Result<EsunCatalogRefreshSnapshot, String> {
     let source_urls = esun_material_source_urls(material_filters);
     if source_urls.is_empty() {
-        return Err("No material-scoped eSUN source URLs resolved from the requested filters.".to_string());
+        return Err(
+            "No material-scoped eSUN source URLs resolved from the requested filters.".to_string(),
+        );
     }
 
     let mut warnings = Vec::new();
@@ -483,9 +485,8 @@ fn refresh_esun_catalog_snapshot_from_material_sources(
     }
 
     let mut listing_candidates = dedupe_site_listing_candidates(listing_candidates);
-    listing_candidates.retain(|candidate| {
-        matches_listing_candidate_material(candidate, material_filters)
-    });
+    listing_candidates
+        .retain(|candidate| matches_listing_candidate_material(candidate, material_filters));
 
     if listing_candidates.is_empty() {
         return Err(format!(
@@ -521,7 +522,10 @@ fn refresh_esun_catalog_snapshot_from_material_sources(
             break;
         }
         pause_between_requests(index + 1);
-        let detail = match fetch_esun_site_product_detail_with_client(client, &candidate.product_url) {
+        let detail = match fetch_esun_site_product_detail_with_client(
+            client,
+            &candidate.product_url,
+        ) {
             Ok(detail) => {
                 consecutive_anti_bot_errors = 0;
                 detail_fetches += 1;
@@ -692,9 +696,8 @@ fn refresh_esun_catalog_snapshot_from_site(
     }
 
     let mut listing_candidates = dedupe_site_listing_candidates(listing_candidates);
-    listing_candidates.retain(|candidate| {
-        matches_listing_candidate_material(candidate, material_filters)
-    });
+    listing_candidates
+        .retain(|candidate| matches_listing_candidate_material(candidate, material_filters));
     if listing_candidates.is_empty() {
         return Err("Fallback listing returned no product URLs.".to_string());
     }
@@ -726,8 +729,10 @@ fn refresh_esun_catalog_snapshot_from_site(
             break;
         }
         pause_between_requests(index + 1);
-        let detail =
-            match fetch_esun_site_product_detail_with_client(client, &candidate.product_url) {
+        let detail = match fetch_esun_site_product_detail_with_client(
+            client,
+            &candidate.product_url,
+        ) {
             Ok(detail) => {
                 consecutive_anti_bot_errors = 0;
                 detail_fetches += 1;
@@ -1081,8 +1086,8 @@ mod tests {
         append_known_entries_for_product_url, build_known_entry_lookup,
         dedupe_site_listing_candidates, esun_material_source_paths, esun_material_source_urls,
         extract_site_listing_candidates, filter_product_urls_by_material_hints,
-        matches_listing_candidate_material, ESUN_FILTERED_DETAIL_FETCH_BUDGET, EsunCatalogEntry,
-        EsunKnownCatalogEntry, EsunSiteListingCandidate,
+        matches_listing_candidate_material, EsunCatalogEntry, EsunKnownCatalogEntry,
+        EsunSiteListingCandidate, ESUN_FILTERED_DETAIL_FETCH_BUDGET,
     };
 
     #[test]
@@ -1091,8 +1096,14 @@ mod tests {
             esun_material_source_paths("PLA"),
             &["/general-materials/", "/aesthetic-materials/"]
         );
-        assert_eq!(esun_material_source_paths("TPU"), &["/flexibility-elasticity/"]);
-        assert_eq!(esun_material_source_paths("ABS"), &["/engineering-materials/"]);
+        assert_eq!(
+            esun_material_source_paths("TPU"),
+            &["/flexibility-elasticity/"]
+        );
+        assert_eq!(
+            esun_material_source_paths("ABS"),
+            &["/engineering-materials/"]
+        );
     }
 
     #[test]
@@ -1299,7 +1310,9 @@ fn extract_site_listing_candidates(html: &str) -> Vec<EsunSiteListingCandidate> 
         cleaned.set_fragment(None);
         let clean_url = cleaned.to_string();
         let inner = if tag_end + 1 <= close_anchor && close_anchor <= html.len() {
-            normalize_whitespace(&decode_html_entities(&strip_tags(&html[tag_end + 1..close_anchor])))
+            normalize_whitespace(&decode_html_entities(&strip_tags(
+                &html[tag_end + 1..close_anchor],
+            )))
         } else {
             String::new()
         };

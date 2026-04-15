@@ -5,9 +5,11 @@ Last updated: 2026-04-16
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
-- Release 0.10.1 checkpoint (2026-04-16, ready for commit/push + release):
-  - version target is now `v0.10.1`
-  - stable follow-up patch on top of `v0.10.0` is now bundled into the next release:
+- Release 0.10.1 shipped-to-git checkpoint (2026-04-16):
+  - `main` includes release commit `3c36f18`
+  - tag `v0.10.1` is pushed to `origin`
+  - GitHub release entry is still pending local `gh auth login`
+  - stable follow-up patch on top of `v0.10.0` now includes:
     - opt-in local `Live Bambu status` for Bambu Lab printers only
     - persistent `last known good` AMS / tray identity model for live slots
     - RFID capture flow from AMS slots, including slot switching, cached tray snapshots, and save-to-roll support
@@ -21,6 +23,7 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - validation baseline after the release pass:
     - `npm run build` ✅
     - `cargo test --manifest-path src-tauri/Cargo.toml bambu_live -- --nocapture` ✅
+    - `npm run smoke` ✅
 - Stable follow-up release checkpoint (2026-04-14, ready for commit/push + release):
   - version target is now `v0.9.2`
   - trusted-LAN browser and desktop polish are green for the latest patch pass:

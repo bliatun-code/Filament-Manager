@@ -173,16 +173,14 @@ pub fn refresh_bambu_catalog_snapshot(
         });
     }
 
-    if let Some(next_result) =
-        fetch_next_store_entries(
-            &client,
-            &detected.base_url,
-            &detected.handle,
-            &filters,
-            &known_entries_by_product_url,
-            stale_before,
-        )?
-    {
+    if let Some(next_result) = fetch_next_store_entries(
+        &client,
+        &detected.base_url,
+        &detected.handle,
+        &filters,
+        &known_entries_by_product_url,
+        stale_before,
+    )? {
         return Ok(BambuCatalogRefreshSnapshot {
             entries: next_result.entries,
             detected_store: next_result.base_url,

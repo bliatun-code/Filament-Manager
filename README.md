@@ -82,8 +82,8 @@ The repository includes a tag-triggered build workflow:
 How to trigger from git:
 
 ```bash
-git tag -a v0.10.1 -m "v0.10.1"
-git push origin v0.10.1
+git tag -a vX.Y.Z -m "vX.Y.Z"
+git push origin vX.Y.Z
 ```
 
 How to download artifacts:
