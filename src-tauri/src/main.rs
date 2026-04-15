@@ -1,23 +1,24 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app_services;
+mod bambu_live;
 mod backend;
 mod companion_api;
 mod state;
 
 use app_services::{CompanionService, CompanionSpoolDetail};
 use backend::filament_database::{
-    ActiveSpoolLoanRow, BackupValidationStats, CatalogResetStats, FilamentDatabase,
-    FilamentMasterCatalogRow, ImportDataStats, LibrarySyncSettingsRow, LoanUsageByPersonRow,
-    PrinterOverviewRow, PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow,
-    SpoolUsagePointRow, SpoolWithMasterRow, TrustedLanPairedBrowserRow, TrustedLanSettingsRow,
-    WishlistItemRow,
+    ActiveSpoolLoanRow, BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow,
+    BackupValidationStats, CatalogResetStats, FilamentDatabase, FilamentMasterCatalogRow,
+    ImportDataStats, LibrarySyncSettingsRow, LoanUsageByPersonRow, PrinterOverviewRow,
+    PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolUsagePointRow,
+    SpoolWithMasterRow, TrustedLanPairedBrowserRow, TrustedLanSettingsRow, WishlistItemRow,
 };
 use backend::inventory_engine::{
     AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
     CreateWishlistItemInput, DeleteSpoolInput, InventoryEngine, LendSpoolInput, PurgeSpoolInput,
     RecordPrintUsageInput, ReturnSpoolLoanInput, ScanSource, UpdateMasterCatalogEntryInput,
-    UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
+    UpdateSpoolDetailsInput, UpdateSpoolRfidTagInput, UpdateWishlistStatusInput, WeightSource,
 };
 use backend::statistics::{
     FilamentConsumptionRow, InventoryOverview, MaterialUsageRow, StatisticsEngine,
@@ -86,6 +87,16 @@ struct PrinterSettingsSnapshot {
     active_printer_id: Option<String>,
     printers: Vec<PrinterRow>,
     printer_models: Vec<String>,
+    bambu_live_integrations: Vec<BambuLiveIntegrationEntryRow>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct SaveBambuLiveIntegrationInput {
+    printer_id: String,
+    enabled: bool,
+    host: Option<String>,
+    access_code: Option<String>,
+    printer_serial: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -414,11 +425,13 @@ fn list_wishlist_items(
 fn get_printer_settings(
     state: tauri::State<'_, AppState>,
 ) -> Result<PrinterSettingsSnapshot, String> {
+    let bambu_live_integrations = with_db(&state, |db| db.list_bambu_live_integrations())?;
     with_inventory(&state, |engine| {
         Ok(PrinterSettingsSnapshot {
             active_printer_id: engine.get_active_printer()?,
             printers: engine.list_printers()?,
             printer_models: supported_printer_models(),
+            bambu_live_integrations,
         })
     })
 }
@@ -441,8 +454,66 @@ fn create_printer(
 }
 
 #[tauri::command]
+fn save_bambu_live_integration(
+    state: tauri::State<'_, AppState>,
+    input: SaveBambuLiveIntegrationInput,
+) -> Result<(), String> {
+    let printer_id = input.printer_id.trim();
+    if printer_id.is_empty() {
+        return Err("Printer id is required.".to_string());
+    }
+    with_inventory(&state, |engine| {
+        let exists = engine
+            .list_printers()?
+            .into_iter()
+            .any(|printer| printer.id == printer_id);
+        if !exists {
+            return Err(crate::backend::filament_database::InventoryError::NotFound);
+        }
+        Ok(())
+    })?;
+    with_db(&state, |db| {
+        db.save_bambu_live_integration(
+            printer_id,
+            &BambuLiveIntegrationRow {
+                enabled: input.enabled,
+                host: input
+                    .host
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(str::to_string),
+                access_code: input
+                    .access_code
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(str::to_string),
+                printer_serial: input
+                    .printer_serial
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(str::to_string),
+                last_error: None,
+                observed_state: None,
+            },
+        )
+    })
+}
+
+#[tauri::command]
+fn delete_bambu_live_integration(
+    state: tauri::State<'_, AppState>,
+    printer_id: String,
+) -> Result<(), String> {
+    with_db(&state, |db| db.delete_bambu_live_integration(&printer_id))
+}
+
+#[tauri::command]
 fn delete_printer(state: tauri::State<'_, AppState>, printer_id: String) -> Result<(), String> {
-    with_inventory(&state, |engine| engine.delete_printer(&printer_id))
+    with_inventory(&state, |engine| engine.delete_printer(&printer_id))?;
+    with_db(&state, |db| db.delete_bambu_live_integration(&printer_id))
 }
 
 #[tauri::command]
@@ -2726,6 +2797,14 @@ fn update_spool_details(
 }
 
 #[tauri::command]
+fn update_spool_rfid_tag(
+    state: tauri::State<'_, AppState>,
+    input: UpdateSpoolRfidTagInput,
+) -> Result<(), String> {
+    with_inventory(&state, |engine| engine.update_spool_rfid_tag(input))
+}
+
+#[tauri::command]
 fn update_master_catalog_entry(
     state: tauri::State<'_, AppState>,
     input: UpdateMasterCatalogEntryInput,
@@ -3179,6 +3258,11 @@ fn main() {
                 }
             });
 
+            let bambu_live_state = app.state::<AppState>().inner().clone();
+            tauri::async_runtime::spawn(async move {
+                bambu_live::run_live_observer(bambu_live_state).await;
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -3202,6 +3286,8 @@ fn main() {
             create_wishlist_item,
             create_manual_spool,
             create_printer,
+            save_bambu_live_integration,
+            delete_bambu_live_integration,
             delete_printer,
             set_active_printer,
             set_dock_icon_theme,
@@ -3243,6 +3329,7 @@ fn main() {
             update_spool_tare_weight,
             update_spool_status,
             update_spool_details,
+            update_spool_rfid_tag,
             update_master_catalog_entry,
             delete_spool,
             purge_spool,

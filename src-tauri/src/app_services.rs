@@ -678,7 +678,7 @@ mod tests {
             let after_assign = service
                 .get_spool_detail("spool_1", Some(20), Some(50))
                 .map_err(|error| error.to_string())?;
-            assert_eq!(after_assign.spool.spool.status, "IN_USE");
+            assert_eq!(after_assign.spool.spool.status, "ASSIGNED");
             assert_eq!(
                 after_assign.spool.spool.location_id,
                 Some(format!("Printer:Bench Printer:{slot_id}"))

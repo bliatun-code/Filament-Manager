@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS filament_spools (
   id TEXT PRIMARY KEY,
   master_id TEXT NOT NULL REFERENCES filament_master_list(id),
   qr_code TEXT UNIQUE,
+  rfid_tag TEXT,
+  rfid_observed_at TEXT,
   status TEXT NOT NULL,
   ownership_type TEXT NOT NULL DEFAULT 'OWNED',
   owner_name TEXT,
@@ -113,6 +115,14 @@ CREATE TABLE IF NOT EXISTS print_jobs (
   ended_at TEXT,
   material_used_g INTEGER,
   success INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS printer_live_events (
+  id TEXT PRIMARY KEY,
+  printer_id TEXT NOT NULL REFERENCES printers(id),
+  event_type TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS scales (
@@ -230,6 +240,7 @@ CREATE INDEX IF NOT EXISTS idx_spools_location ON filament_spools(location_id);
 CREATE INDEX IF NOT EXISTS idx_ams_slot_spool ON ams_slots(spool_id);
 CREATE INDEX IF NOT EXISTS idx_weight_spool_time ON weight_readings(spool_id, captured_at);
 CREATE INDEX IF NOT EXISTS idx_print_jobs_printer_time ON print_jobs(printer_id, started_at);
+CREATE INDEX IF NOT EXISTS idx_printer_live_events_printer_time ON printer_live_events(printer_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_spool_history_spool_time ON spool_history_events(spool_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_wishlist_status ON wishlist_items(status, updated_at);

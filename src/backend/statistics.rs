@@ -67,22 +67,22 @@ impl StatisticsEngine {
                 COUNT(*) AS total_spools,
                 COALESCE(SUM(CASE
                     WHEN COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'OWNED'
-                     AND status IN ('IN_STOCK', 'IN_USE')
+                     AND status IN ('IN_STOCK', 'IN_USE', 'ASSIGNED')
                     THEN 1 ELSE 0
                 END), 0) AS total_owned_spools,
                 COALESCE(SUM(CASE
                     WHEN COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'BORROWED_IN'
-                     AND status IN ('IN_STOCK', 'IN_USE')
+                     AND status IN ('IN_STOCK', 'IN_USE', 'ASSIGNED')
                     THEN 1 ELSE 0
                 END), 0) AS total_borrowed_in_spools,
-                COALESCE(SUM(CASE WHEN status = 'IN_USE' THEN 1 ELSE 0 END), 0) AS in_use,
+                COALESCE(SUM(CASE WHEN status IN ('IN_USE', 'ASSIGNED') THEN 1 ELSE 0 END), 0) AS in_use,
                 COALESCE(SUM(CASE
-                    WHEN status = 'IN_USE'
+                    WHEN status IN ('IN_USE', 'ASSIGNED')
                      AND COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'OWNED'
                     THEN 1 ELSE 0
                 END), 0) AS owned_in_use,
                 COALESCE(SUM(CASE
-                    WHEN status = 'IN_USE'
+                    WHEN status IN ('IN_USE', 'ASSIGNED')
                      AND COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'BORROWED_IN'
                     THEN 1 ELSE 0
                 END), 0) AS borrowed_in_in_use,
@@ -90,14 +90,14 @@ impl StatisticsEngine {
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
                      AND remaining_g <= 200
-                     AND status IN ('IN_STOCK', 'IN_USE')
+                     AND status IN ('IN_STOCK', 'IN_USE', 'ASSIGNED')
                     THEN 1 ELSE 0
                 END), 0) AS low_stock,
                 COALESCE(SUM(CASE
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
                      AND remaining_g <= 200
-                     AND status IN ('IN_STOCK', 'IN_USE')
+                     AND status IN ('IN_STOCK', 'IN_USE', 'ASSIGNED')
                      AND COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'OWNED'
                     THEN 1 ELSE 0
                 END), 0) AS owned_low_stock,
@@ -105,7 +105,7 @@ impl StatisticsEngine {
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
                      AND remaining_g <= 200
-                     AND status IN ('IN_STOCK', 'IN_USE')
+                     AND status IN ('IN_STOCK', 'IN_USE', 'ASSIGNED')
                      AND COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'BORROWED_IN'
                     THEN 1 ELSE 0
                 END), 0) AS borrowed_in_low_stock

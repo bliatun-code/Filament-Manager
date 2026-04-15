@@ -19,6 +19,25 @@ Historical notes below still mention the old localhost browser companion, `qa:co
     - `npm run smoke`
     - `cargo check --manifest-path src-tauri/Cargo.toml`
 
+## v0.10.0 Bambu Live + RFID Stable Release (2026-04-15)
+- Release target:
+  - next stable release after `v0.9.2`
+  - intended to package the Bambu live-status / RFID work, diagnostics tooling, and slot-status refactor
+- Planned release actions:
+  - bump app/package/Tauri versions to `0.10.0`
+  - publish GitHub release with Bambu live + RFID notes
+  - attach refreshed macOS DMG and Windows MSI assets
+- Validation baseline:
+  - `cargo check`
+  - `npm run build`
+  - optional fuller preflight before tagging:
+    - `npm run smoke`
+- Release note focus:
+  - opt-in Bambu live printer support
+  - AMS/RFID capture and save flow
+  - diagnostics capture/export improvements
+  - `ASSIGNED` slot-state refactor plus live `I bruk` badge behavior
+
 ## v0.9.0-rc.7 Snapshot Hotfix RC (2026-04-12)
 - Release target:
   - completed as the host hotfix RC that repaired the active-loan snapshot regression

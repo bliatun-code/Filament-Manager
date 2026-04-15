@@ -196,8 +196,9 @@ export function formatStatusLabel(value, locale = "en") {
   switch (normalized) {
     case "IN_STOCK":
       return t(normalizedLocale, "format.inStock", "In stock");
+    case "ASSIGNED":
     case "IN_USE":
-      return t(normalizedLocale, "format.inUse", "In use");
+      return t(normalizedLocale, "format.assigned", "Assigned");
     case "BORROWED":
       return t(normalizedLocale, "format.loanedOut", "Loaned out");
     case "EMPTY":

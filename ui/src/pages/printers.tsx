@@ -17,6 +17,8 @@ import {
   recordLibrarySyncHostPrintUsage,
   updateLibrarySyncHostSpoolWeight,
   updateSpoolWeight,
+  type BambuLiveIntegrationEntry,
+  type BambuLiveObservedTray,
   type PrinterOverviewRow,
   type PrinterAmsSlotRow,
   type SpoolWithMasterRow,
@@ -339,6 +341,9 @@ export default function PrintersPage() {
   const [info, setInfo] = useState<string | null>(null);
   const [printers, setPrinters] = useState<PrinterOverviewRow[]>([]);
   const [spools, setSpools] = useState<SpoolWithMasterRow[]>([]);
+  const [bambuLiveIntegrations, setBambuLiveIntegrations] = useState<
+    Record<string, BambuLiveIntegrationEntry["config"]>
+  >({});
   const [clientReadOnly, setClientReadOnly] = useState(false);
   const [clientHostWritePaired, setClientHostWritePaired] = useState(false);
   const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
@@ -440,8 +445,9 @@ export default function PrintersPage() {
       switch ((status ?? "").trim().toUpperCase()) {
         case "IN_STOCK":
           return t("inventory.statusInStock", "In stock");
+        case "ASSIGNED":
         case "IN_USE":
-          return t("inventory.statusInUse", "In use");
+          return t("inventory.statusAssigned", "Assigned");
         case "BORROWED":
           return t("inventory.statusBorrowed", "Loaned out");
         case "EMPTY":
@@ -457,6 +463,7 @@ export default function PrintersPage() {
 
   const formatPrinterSpoolStatusTone = useCallback((status?: string | null) => {
     switch ((status ?? "").trim().toUpperCase()) {
+      case "ASSIGNED":
       case "IN_USE":
         return "success";
       case "IN_STOCK":
@@ -501,18 +508,101 @@ export default function PrintersPage() {
 
   const sortedSpools = useMemo(() => sortSpoolsAlphabetically(spools, locale), [locale, spools]);
 
-  const reloadData = useCallback(async () => {
+  const formatRelativeAge = useCallback(
+    (raw?: string | null) => {
+      if (!raw) {
+        return null;
+      }
+      const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+      const withTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized)
+        ? normalized
+        : `${normalized}Z`;
+      const parsed = new Date(withTimezone);
+      if (Number.isNaN(parsed.getTime())) {
+        return null;
+      }
+      const diffMs = Date.now() - parsed.getTime();
+      const diffMinutes = Math.max(0, Math.round(diffMs / 60000));
+      if (diffMinutes < 1) {
+        return t("common.justNow", "just now");
+      }
+      if (diffMinutes < 60) {
+        return `${diffMinutes} ${t("common.minutes", "min")}`;
+      }
+      const diffHours = Math.round(diffMinutes / 60);
+      if (diffHours < 24) {
+        return `${diffHours} ${t("common.hoursShort", "h")}`;
+      }
+      const diffDays = Math.round(diffHours / 24);
+      return `${diffDays} ${t("common.daysShort", "d")}`;
+    },
+    [t],
+  );
+
+  const isOlderThanMinutes = useCallback((raw?: string | null, minutes = 10) => {
+    if (!raw) {
+      return true;
+    }
+    const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+    const withTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized)
+      ? normalized
+      : `${normalized}Z`;
+    const parsed = new Date(withTimezone);
+    if (Number.isNaN(parsed.getTime())) {
+      return true;
+    }
+    return Date.now() - parsed.getTime() > minutes * 60_000;
+  }, []);
+
+  const resolveLiveConnectionIndicator = useCallback(
+    (liveConfig: BambuLiveIntegrationEntry["config"] | null) => {
+      if (!liveConfig?.enabled) {
+        return null;
+      }
+
+      const observedState = liveConfig.observed_state ?? null;
+      const lastSeenAt = observedState?.last_seen_at ?? null;
+      const stale = isOlderThanMinutes(lastSeenAt, 2);
+
+      if (observedState?.mqtt_connected && !stale) {
+        return {
+          tone: "success" as const,
+          label: t("printers.liveConnectionConnected", "Live connected"),
+        };
+      }
+
+      if (lastSeenAt) {
+        return {
+          tone: "warning" as const,
+          label: t("printers.liveConnectionIdle", "Live idle"),
+        };
+      }
+
+      return {
+        tone: "neutral" as const,
+        label: t("printers.liveConnectionWaiting", "Live waiting"),
+      };
+    },
+    [isOlderThanMinutes, t],
+  );
+
+  const reloadData = useCallback(async (options?: { silent?: boolean }) => {
     if (!tauri) {
       return;
     }
-    setLoading(true);
+    if (!options?.silent) {
+      setLoading(true);
+    }
     try {
       const [overview, spoolRows, settings] = await Promise.all(
         clientReadOnly && clientHostBaseUrl && clientLibraryId
           ? [
               fetchLibrarySyncPrinterOverview(clientHostBaseUrl, clientLibraryId),
               fetchLibrarySyncSpools(clientHostBaseUrl, clientLibraryId, 1200, 0),
-              Promise.resolve({ printer_models: supportedPrinterModels }),
+              Promise.resolve({
+                printer_models: supportedPrinterModels,
+                bambu_live_integrations: [],
+              }),
             ]
           : [listPrinterOverview(), listSpools(1200, 0), getPrinterSettings()],
       );
@@ -530,14 +620,21 @@ export default function PrintersPage() {
         })),
       );
       setSpools(spoolRows);
+      setBambuLiveIntegrations(
+        Object.fromEntries(
+          (settings.bambu_live_integrations ?? []).map((entry) => [entry.printer_id, entry.config]),
+        ),
+      );
       setPrinterModels(
         settings.printer_models.length > 0 ? settings.printer_models : supportedPrinterModels,
       );
-      setSlotDrafts({});
-      setOpenDropdownSlotId(null);
-      setIncomingWeightPrompt(null);
-      setIncomingWeightValue("");
-      setOutgoingWeightValue("");
+      if (!options?.silent) {
+        setSlotDrafts({});
+        setOpenDropdownSlotId(null);
+        setIncomingWeightPrompt(null);
+        setIncomingWeightValue("");
+        setOutgoingWeightValue("");
+      }
     } catch (loadError) {
       console.error(loadError);
       if (clientReadOnly) {
@@ -556,12 +653,15 @@ export default function PrintersPage() {
               })),
             );
             setSpools(cachedSpools?.rows ?? []);
+            setBambuLiveIntegrations({});
             setPrinterModels(supportedPrinterModels);
-            setSlotDrafts({});
-            setOpenDropdownSlotId(null);
-            setIncomingWeightPrompt(null);
-            setIncomingWeightValue("");
-            setOutgoingWeightValue("");
+            if (!options?.silent) {
+              setSlotDrafts({});
+              setOpenDropdownSlotId(null);
+              setIncomingWeightPrompt(null);
+              setIncomingWeightValue("");
+              setOutgoingWeightValue("");
+            }
             return;
           }
         } catch (cacheError) {
@@ -571,10 +671,13 @@ export default function PrintersPage() {
         setClientPrinterUpdatedAt(null);
         setPrinters([]);
         setSpools([]);
+        setBambuLiveIntegrations({});
       }
       setError(t("printers.error.load", "Failed to load printer overview."));
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
   }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, supportedPrinterModels, t, tauri]);
 
@@ -583,6 +686,16 @@ export default function PrintersPage() {
       return;
     }
     void reloadData();
+  }, [librarySyncReady, reloadData, tauri]);
+
+  useEffect(() => {
+    if (!tauri || !librarySyncReady) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      void reloadData({ silent: true });
+    }, 15000);
+    return () => window.clearInterval(timer);
   }, [librarySyncReady, reloadData, tauri]);
 
   useEffect(() => {
@@ -718,7 +831,7 @@ export default function PrintersPage() {
       if (slotSpoolId && row.spool.id === slotSpoolId) {
         return true;
       }
-      if (status === "IN_USE") {
+      if (status === "IN_USE" || status === "ASSIGNED") {
         return false;
       }
       return true;
@@ -756,6 +869,32 @@ export default function PrintersPage() {
           : "",
       incomingWeight: "",
     };
+  }
+
+  function findLiveTrayForSlot(
+    printerId: string,
+    slotIndex: number,
+    amsId?: string | null,
+  ): {
+    liveConfig: BambuLiveIntegrationEntry["config"] | null;
+    tray: BambuLiveObservedTray | null;
+  } {
+    const liveConfig = bambuLiveIntegrations[printerId] ?? null;
+    if ((amsId ?? "").endsWith("_ext")) {
+      return { liveConfig, tray: null };
+    }
+    const tray =
+      liveConfig?.observed_state?.trays.find((candidate) => candidate.tray_index === slotIndex - 1) ??
+      null;
+    return { liveConfig, tray };
+  }
+
+  function findSpoolById(spoolId?: string | null) {
+    const normalized = (spoolId ?? "").trim();
+    if (!normalized) {
+      return null;
+    }
+    return spools.find((row) => row.spool.id === normalized) ?? null;
   }
 
   function setSlotDraft(slotId: string, next: SlotSwapDraft) {
@@ -1198,6 +1337,8 @@ export default function PrintersPage() {
             printer.printer.model,
             printer.slots,
           );
+          const printerLiveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
+          const liveConnectionIndicator = resolveLiveConnectionIndicator(printerLiveConfig);
           const usageMetrics = [
             {
               key: "jobs",
@@ -1227,7 +1368,9 @@ export default function PrintersPage() {
           return (
             <section
               key={printer.printer.id}
-              className="surface-card"
+              className={`surface-card relative ${
+                printer.slots.some((slot) => slot.slot_id === openDropdownSlotId) ? "z-40" : "z-0"
+              }`}
               style={printerBrandSurfaceStyle(printer.printer.model, "card", resolvedTheme)}
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1237,8 +1380,20 @@ export default function PrintersPage() {
                     hasMultiMaterial={hasMultiMaterial}
                   />
                   <div className="space-y-1">
-                    <div className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                      {printer.printer.name}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                        {printer.printer.name}
+                      </div>
+                      {liveConnectionIndicator ? (
+                        <span
+                          className={semanticChipClass(
+                            liveConnectionIndicator.tone,
+                            "px-2 py-0.5 text-[10px]",
+                          )}
+                        >
+                          {liveConnectionIndicator.label}
+                        </span>
+                      ) : null}
                     </div>
                     <div className="text-sm text-slate-600 dark:text-slate-300">
                       {printer.printer.model} ·{" "}
@@ -1274,6 +1429,12 @@ export default function PrintersPage() {
               </div>
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               {printer.slots.map((slot) => {
+                const isExtSlot = (slot.ams_id ?? "").endsWith("_ext");
+                const { liveConfig, tray: liveTray } = findLiveTrayForSlot(
+                  printer.printer.id,
+                  slot.slot_index,
+                  slot.ams_id,
+                );
                 const slotOptions = allowedSpoolsForSlot(slot.spool_id);
                 const draft = getSlotDraft(slot);
                 const searchTerm = draft.search.trim().toLowerCase();
@@ -1289,8 +1450,41 @@ export default function PrintersPage() {
                   draft.targetSpoolId.length > 0
                     ? slotOptions.find((row) => row.spool.id === draft.targetSpoolId) ?? null
                     : null;
+                const liveMatchedSpool = findSpoolById(liveTray?.matched_inventory_spool_id);
+                const lastLiveIdentityAt =
+                  isExtSlot
+                    ? null
+                    : liveTray?.last_identity_seen_at ?? liveConfig?.observed_state?.last_seen_at ?? null;
+                const liveIdentityFresh = !isOlderThanMinutes(lastLiveIdentityAt, 10);
+                const liveSlotInUse =
+                  !isExtSlot &&
+                  liveIdentityFresh &&
+                  liveConfig?.enabled &&
+                  liveConfig.observed_state?.active_tray_index === slot.slot_index - 1 &&
+                  (liveConfig.observed_state?.progress_percent != null ||
+                    liveConfig.observed_state?.remaining_minutes != null);
+                const liveIdentityLabel =
+                  liveIdentityFresh && liveTray?.matched_inventory_mode === "exact_rfid"
+                    ? t("printers.liveRfid", "Live RFID")
+                    : null;
+                const unknownLiveRfid =
+                  liveIdentityFresh &&
+                  !!liveConfig?.enabled &&
+                  !!liveTray?.tray_uuid &&
+                  !liveMatchedSpool;
+                const showManualLabel =
+                  !!slot.spool_id &&
+                  !liveIdentityLabel &&
+                  !!liveConfig?.enabled &&
+                  isOlderThanMinutes(lastLiveIdentityAt, 10);
+                const liveObservedAge = formatRelativeAge(lastLiveIdentityAt);
+                const liveObservedAtLabel =
+                  lastLiveIdentityAt
+                    ? formatDateTime(lastLiveIdentityAt, locale)
+                    : null;
                 const isDropdownOpen = openDropdownSlotId === slot.slot_id;
                 const slotSwatchHex =
+                  (liveIdentityFresh ? liveMatchedSpool?.master.hex_color : null) ??
                   selectedTargetSpool?.master.hex_color ?? slot.spool_hex_color ?? null;
                 const slotSelectorStyle = slotSwatchHex
                   ? printerSwatchInteractiveInsetStyle(
@@ -1312,7 +1506,9 @@ export default function PrintersPage() {
                 return (
                   <div
                     key={slot.slot_id}
-                    className="surface-subtle flex h-full flex-col p-3"
+                    className={`surface-subtle relative flex h-full flex-col p-3 ${
+                      isDropdownOpen ? "z-50" : "z-0"
+                    }`}
                     style={
                       slotSwatchHex
                         ? printerSwatchSurfaceStyle(slotSwatchHex, "panel", resolvedTheme)
@@ -1524,17 +1720,57 @@ export default function PrintersPage() {
                               >
                                 {formatPrinterSpoolStatusLabel(slot.spool_status)}
                               </span>
+                              {liveSlotInUse ? (
+                                <span className={semanticChipClass("success", "px-2 py-0.5 text-[10px]")}>
+                                  {t("inventory.statusInUse", "In use")}
+                                </span>
+                              ) : null}
+                              {liveIdentityLabel ? (
+                                <span className={semanticChipClass("info", "px-2 py-0.5 text-[10px]")}>
+                                  {liveIdentityLabel}
+                                </span>
+                              ) : null}
+                              {showManualLabel ? (
+                                <span className={semanticChipClass("neutral", "px-2 py-0.5 text-[10px]")}>
+                                  {t("printers.manualAssignment", "Manual")}
+                                </span>
+                              ) : null}
+                              {unknownLiveRfid ? (
+                                <span className={semanticChipClass("warning", "px-2 py-0.5 text-[10px]")}>
+                                  {t("printers.unknownLiveRfid", "Unknown RFID")}
+                                </span>
+                              ) : null}
                             </div>
+                            {liveConfig?.enabled ? (
+                              <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                {liveObservedAtLabel
+                                  ? `${t("printers.lastKnownLive", "Last known live")}: ${liveObservedAtLabel}${liveObservedAge ? ` · ${liveObservedAge}` : ""}`
+                                  : t(
+                                      "printers.waitingForLiveIdentity",
+                                      "Showing the last saved slot assignment until stronger live identity arrives.",
+                                    )}
+                              </div>
+                            ) : null}
+                            {unknownLiveRfid ? (
+                              <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-200">
+                                {`${t("printers.unknownLiveRfidHint", "AMS reported a tray identity that is not registered in inventory.")} ${liveTray?.tray_uuid}`}
+                              </div>
+                            ) : null}
                           </div>
                           <span
                             className="h-7 w-7 shrink-0 rounded-lg border border-slate-200 dark:border-slate-600"
-                            style={{ backgroundColor: toSwatchColor(slot.spool_hex_color) }}
+                            style={{ backgroundColor: toSwatchColor(slotSwatchHex) }}
                           />
                         </div>
                       </div>
                     ) : (
                       <div className="mt-3 rounded-xl border border-dashed border-slate-300/80 px-3 py-3 text-xs text-slate-500 dark:border-slate-600/80 dark:text-slate-400">
-                        {t("printers.noSpoolAssigned", "No spool assigned.")}
+                        <div>{t("printers.noSpoolAssigned", "No spool assigned.")}</div>
+                        {liveConfig?.enabled && liveObservedAtLabel ? (
+                          <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                            {`${t("printers.lastKnownLive", "Last known live")}: ${liveObservedAtLabel}${liveObservedAge ? ` · ${liveObservedAge}` : ""}`}
+                          </div>
+                        ) : null}
                       </div>
                     )}
 

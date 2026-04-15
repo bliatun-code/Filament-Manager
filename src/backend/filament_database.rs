@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 const SCHEMA_SQL: &str = include_str!("../database/schema.sql");
-const FULL_BACKUP_TABLES: [&str; 21] = [
+const FULL_BACKUP_TABLES: [&str; 22] = [
     "filament_master_list",
     "filament_spools",
     "spool_history_events",
@@ -20,6 +20,7 @@ const FULL_BACKUP_TABLES: [&str; 21] = [
     "ams_units",
     "ams_slots",
     "print_jobs",
+    "printer_live_events",
     "scales",
     "weight_readings",
     "scan_events",
@@ -105,6 +106,8 @@ pub struct SpoolRow {
     pub id: String,
     pub master_id: String,
     pub qr_code: Option<String>,
+    pub rfid_tag: Option<String>,
+    pub rfid_observed_at: Option<String>,
     pub status: String,
     pub ownership_type: String,
     pub owner_name: Option<String>,
@@ -197,6 +200,65 @@ pub struct PrinterOverviewRow {
     pub printer: PrinterRow,
     pub usage: PrinterUsageRow,
     pub slots: Vec<PrinterAmsSlotRow>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct BambuLiveObservedTrayRow {
+    pub tray_index: i64,
+    pub loaded: bool,
+    pub filament_type: Option<String>,
+    pub filament_name: Option<String>,
+    pub color_hex: Option<String>,
+    pub remaining_percent: Option<i64>,
+    pub remaining_grams: Option<i64>,
+    pub observed_rfid_tag: Option<String>,
+    pub tray_uuid: Option<String>,
+    pub chip_id: Option<String>,
+    pub tray_info_idx: Option<String>,
+    pub tray_id_name: Option<String>,
+    pub last_identity_seen_at: Option<String>,
+    pub last_empty_seen_at: Option<String>,
+    pub empty_observation_count: Option<i64>,
+    pub matched_inventory_spool_id: Option<String>,
+    pub matched_inventory_mode: Option<String>,
+    pub match_status: Option<String>,
+    pub match_note: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct BambuLiveObservedStateRow {
+    pub online: bool,
+    pub last_seen_at: Option<String>,
+    pub mqtt_connected: bool,
+    pub progress_percent: Option<i64>,
+    pub remaining_minutes: Option<i64>,
+    pub active_tray_index: Option<i64>,
+    pub nozzle_temp_c: Option<f64>,
+    pub bed_temp_c: Option<f64>,
+    pub ams_humidity_index: Option<i64>,
+    pub ams_temperature_c: Option<f64>,
+    pub ams_reading_bits: Option<String>,
+    pub ams_read_done_bits: Option<String>,
+    pub ams_bambu_bits: Option<String>,
+    pub raw_status_note: Option<String>,
+    pub raw_payload_json: Option<Value>,
+    pub trays: Vec<BambuLiveObservedTrayRow>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct BambuLiveIntegrationRow {
+    pub enabled: bool,
+    pub host: Option<String>,
+    pub access_code: Option<String>,
+    pub printer_serial: Option<String>,
+    pub last_error: Option<String>,
+    pub observed_state: Option<BambuLiveObservedStateRow>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BambuLiveIntegrationEntryRow {
+    pub printer_id: String,
+    pub config: BambuLiveIntegrationRow,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -352,6 +414,10 @@ pub struct FilamentDatabase {
 }
 
 impl FilamentDatabase {
+    fn bambu_live_integration_setting_key(printer_id: &str) -> String {
+        format!("bambu_live_integration:{printer_id}")
+    }
+
     pub fn open(path: impl AsRef<Path>) -> InventoryResult<Self> {
         let conn = Connection::open(path)?;
         conn.busy_timeout(std::time::Duration::from_secs(5))?;
@@ -368,6 +434,7 @@ impl FilamentDatabase {
         self.ensure_catalog_lifecycle_columns()?;
         self.ensure_spool_lifecycle_schema()?;
         self.ensure_spool_weight_schema()?;
+        self.ensure_spool_identity_schema()?;
         self.ensure_borrowed_in_schema()?;
         self.ensure_printer_external_slot_schema()?;
         self.ensure_trusted_lan_schema()?;
@@ -894,14 +961,16 @@ impl FilamentDatabase {
     pub fn insert_spool(&self, spool: &SpoolRow) -> InventoryResult<()> {
         self.conn.execute(
             "INSERT INTO filament_spools (
-                id, master_id, qr_code, status, ownership_type, owner_name, owner_contact,
+                id, master_id, qr_code, rfid_tag, rfid_observed_at, status, ownership_type, owner_name, owner_contact,
                 ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
                 location_id, purchase_date, purchase_price, batch_code, last_used_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)",
             params![
                 spool.id,
                 spool.master_id,
                 spool.qr_code,
+                spool.rfid_tag,
+                spool.rfid_observed_at,
                 spool.status,
                 spool.ownership_type,
                 spool.owner_name,
@@ -924,7 +993,7 @@ impl FilamentDatabase {
     pub fn get_spool_by_qr(&self, qr_code: &str) -> InventoryResult<Option<SpoolRow>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, master_id, qr_code, status, ownership_type, owner_name, owner_contact,
-                    ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
+                    rfid_tag, rfid_observed_at, ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
                     location_id, purchase_date, purchase_price, batch_code, last_used_at
              FROM filament_spools
              WHERE qr_code = ?1 AND deleted_at IS NULL",
@@ -938,7 +1007,7 @@ impl FilamentDatabase {
     pub fn get_spool_by_id(&self, spool_id: &str) -> InventoryResult<Option<SpoolRow>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, master_id, qr_code, status, ownership_type, owner_name, owner_contact,
-                    ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
+                    rfid_tag, rfid_observed_at, ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
                     location_id, purchase_date, purchase_price, batch_code, last_used_at
              FROM filament_spools
              WHERE id = ?1
@@ -956,7 +1025,7 @@ impl FilamentDatabase {
     ) -> InventoryResult<Option<SpoolWithMasterRow>> {
         let mut stmt = self.conn.prepare(
             "SELECT s.id, s.master_id, s.qr_code, s.status, s.ownership_type, s.owner_name,
-                    s.owner_contact, s.ownership_note, s.initial_weight_g, s.current_weight_g,
+                    s.owner_contact, s.rfid_tag, s.rfid_observed_at, s.ownership_note, s.initial_weight_g, s.current_weight_g,
                     s.remaining_g, s.spool_tare_weight_g, s.location_id, s.purchase_date,
                     s.purchase_price, s.batch_code, s.last_used_at, m.id, m.material,
                     m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor
@@ -1006,6 +1075,25 @@ impl FilamentDatabase {
              SET spool_tare_weight_g = ?1, updated_at = datetime('now')
              WHERE id = ?2 AND deleted_at IS NULL",
             params![spool_tare_weight_g, spool_id],
+        )?;
+        require_rows(affected)
+    }
+
+    pub fn update_spool_rfid_tag(
+        &self,
+        spool_id: &str,
+        rfid_tag: Option<&str>,
+        rfid_observed_at: Option<&str>,
+    ) -> InventoryResult<()> {
+        let affected = self.conn.execute(
+            "UPDATE filament_spools
+             SET rfid_tag = ?1, rfid_observed_at = ?2, updated_at = datetime('now')
+             WHERE id = ?3 AND deleted_at IS NULL",
+            params![
+                normalize_optional_text(rfid_tag),
+                normalize_optional_text(rfid_observed_at),
+                spool_id
+            ],
         )?;
         require_rows(affected)
     }
@@ -1260,6 +1348,24 @@ impl FilamentDatabase {
             self.conn.execute(
                 "ALTER TABLE filament_spools
                  ADD COLUMN spool_tare_weight_g INTEGER",
+                [],
+            )?;
+        }
+        Ok(())
+    }
+
+    pub fn ensure_spool_identity_schema(&self) -> InventoryResult<()> {
+        if !self.table_has_column("filament_spools", "rfid_tag")? {
+            self.conn.execute(
+                "ALTER TABLE filament_spools
+                 ADD COLUMN rfid_tag TEXT",
+                [],
+            )?;
+        }
+        if !self.table_has_column("filament_spools", "rfid_observed_at")? {
+            self.conn.execute(
+                "ALTER TABLE filament_spools
+                 ADD COLUMN rfid_observed_at TEXT",
                 [],
             )?;
         }
@@ -1634,7 +1740,7 @@ impl FilamentDatabase {
     ) -> InventoryResult<Vec<SpoolWithMasterRow>> {
         let mut stmt = self.conn.prepare(
             "SELECT s.id, s.master_id, s.qr_code, s.status, s.ownership_type, s.owner_name,
-                    s.owner_contact, s.ownership_note, s.initial_weight_g, s.current_weight_g,
+                    s.owner_contact, s.rfid_tag, s.rfid_observed_at, s.ownership_note, s.initial_weight_g, s.current_weight_g,
                     s.remaining_g, s.spool_tare_weight_g, s.location_id, s.purchase_date,
                     s.purchase_price, s.batch_code, s.last_used_at, m.id, m.material,
                     m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor
@@ -1657,7 +1763,7 @@ impl FilamentDatabase {
     pub fn list_low_stock_spools(&self, threshold: i64) -> InventoryResult<Vec<SpoolRow>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, master_id, qr_code, status, ownership_type, owner_name, owner_contact,
-                    ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
+                    rfid_tag, rfid_observed_at, ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
                     location_id, purchase_date, purchase_price, batch_code, last_used_at
              FROM filament_spools
              WHERE deleted_at IS NULL
@@ -2509,7 +2615,7 @@ impl FilamentDatabase {
                     if let Some(assigned_spool_id) = spool_id {
                         tx.execute(
                             "UPDATE filament_spools
-                             SET status = CASE WHEN status = 'IN_USE' THEN 'IN_STOCK' ELSE status END,
+                             SET status = CASE WHEN status IN ('IN_USE', 'ASSIGNED') THEN 'IN_STOCK' ELSE status END,
                                  location_id = CASE
                                      WHEN location_id LIKE 'Printer:%' THEN NULL
                                      ELSE location_id
@@ -2587,7 +2693,7 @@ impl FilamentDatabase {
                 if let Some(spool_id) = row? {
                     tx.execute(
                         "UPDATE filament_spools
-                         SET status = CASE WHEN status = 'IN_USE' THEN 'IN_STOCK' ELSE status END,
+                         SET status = CASE WHEN status IN ('IN_USE', 'ASSIGNED') THEN 'IN_STOCK' ELSE status END,
                              location_id = CASE
                                  WHEN location_id LIKE 'Printer:%' THEN NULL
                                  ELSE location_id
@@ -2659,6 +2765,84 @@ impl FilamentDatabase {
             )
             .optional()?;
         Ok(value)
+    }
+
+    pub fn save_bambu_live_integration(
+        &self,
+        printer_id: &str,
+        config: &BambuLiveIntegrationRow,
+    ) -> InventoryResult<()> {
+        let normalized_printer_id = printer_id.trim();
+        if normalized_printer_id.is_empty() {
+            return Err(InventoryError::Db(
+                "printer id is required for Bambu live integration".to_string(),
+            ));
+        }
+        let payload = serde_json::to_string(config)
+            .map_err(|error| InventoryError::Db(error.to_string()))?;
+        self.set_setting(
+            &Self::bambu_live_integration_setting_key(normalized_printer_id),
+            &payload,
+        )
+    }
+
+    pub fn delete_bambu_live_integration(&self, printer_id: &str) -> InventoryResult<()> {
+        let normalized_printer_id = printer_id.trim();
+        if normalized_printer_id.is_empty() {
+            return Ok(());
+        }
+        self.delete_setting(&Self::bambu_live_integration_setting_key(normalized_printer_id))
+    }
+
+    pub fn list_bambu_live_integrations(&self) -> InventoryResult<Vec<BambuLiveIntegrationEntryRow>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT key, value
+             FROM settings
+             WHERE key LIKE 'bambu_live_integration:%'
+             ORDER BY key ASC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            let key: String = row.get(0)?;
+            let value: String = row.get(1)?;
+            Ok((key, value))
+        })?;
+        let mut entries = Vec::new();
+        for row in rows {
+            let (key, value) = row?;
+            let Some(printer_id) = key.strip_prefix("bambu_live_integration:") else {
+                continue;
+            };
+            let config = serde_json::from_str::<BambuLiveIntegrationRow>(&value)
+                .map_err(|error| InventoryError::Db(error.to_string()))?;
+            entries.push(BambuLiveIntegrationEntryRow {
+                printer_id: printer_id.to_string(),
+                config,
+            });
+        }
+        Ok(entries)
+    }
+
+    pub fn insert_printer_live_event(
+        &self,
+        printer_id: &str,
+        event_type: &str,
+        payload_json: &Value,
+    ) -> InventoryResult<()> {
+        let normalized_printer_id = printer_id.trim();
+        let normalized_event_type = event_type.trim();
+        if normalized_printer_id.is_empty() || normalized_event_type.is_empty() {
+            return Err(InventoryError::Db(
+                "printer id and event type are required for printer live events".to_string(),
+            ));
+        }
+        let payload = serde_json::to_string(payload_json)
+            .map_err(|error| InventoryError::Db(error.to_string()))?;
+        self.conn.execute(
+            "INSERT INTO printer_live_events (id, printer_id, event_type, payload_json, created_at)
+             VALUES (?1, ?2, ?3, ?4, datetime('now'))",
+            params![new_id(), normalized_printer_id, normalized_event_type, payload],
+        )?;
+        Ok(())
     }
 
     pub fn get_trusted_lan_settings(&self) -> InventoryResult<TrustedLanSettingsRow> {
@@ -3337,7 +3521,7 @@ impl FilamentDatabase {
             if let Some(old_spool_id) = previous_spool_id {
                 tx.execute(
                     "UPDATE filament_spools
-                     SET status = CASE WHEN status = 'IN_USE' THEN 'IN_STOCK' ELSE status END,
+                     SET status = CASE WHEN status IN ('IN_USE', 'ASSIGNED') THEN 'IN_STOCK' ELSE status END,
                          location_id = CASE
                              WHEN location_id LIKE 'Printer:%' THEN NULL
                              ELSE location_id
@@ -3367,7 +3551,7 @@ impl FilamentDatabase {
                 )?;
                 tx.execute(
                     "UPDATE filament_spools
-                     SET status = 'IN_USE',
+                     SET status = 'ASSIGNED',
                          location_id = ?2,
                          updated_at = datetime('now')
                      WHERE id = ?1 AND deleted_at IS NULL",
@@ -3970,6 +4154,8 @@ impl FilamentDatabase {
                         id: spool_id.to_string(),
                         master_id,
                         qr_code,
+                        rfid_tag: None,
+                        rfid_observed_at: None,
                         status,
                         ownership_type: "OWNED".to_string(),
                         owner_name: None,
@@ -4019,30 +4205,32 @@ fn map_spool_row(row: &Row<'_>) -> Result<SpoolRow, rusqlite::Error> {
         ownership_type: row.get(4)?,
         owner_name: row.get(5)?,
         owner_contact: row.get(6)?,
-        ownership_note: row.get(7)?,
-        initial_weight_g: row.get(8)?,
-        current_weight_g: row.get(9)?,
-        remaining_g: row.get(10)?,
-        spool_tare_weight_g: row.get(11)?,
-        location_id: row.get(12)?,
-        purchase_date: row.get(13)?,
-        purchase_price: row.get(14)?,
-        batch_code: row.get(15)?,
-        last_used_at: row.get(16)?,
+        rfid_tag: row.get(7)?,
+        rfid_observed_at: row.get(8)?,
+        ownership_note: row.get(9)?,
+        initial_weight_g: row.get(10)?,
+        current_weight_g: row.get(11)?,
+        remaining_g: row.get(12)?,
+        spool_tare_weight_g: row.get(13)?,
+        location_id: row.get(14)?,
+        purchase_date: row.get(15)?,
+        purchase_price: row.get(16)?,
+        batch_code: row.get(17)?,
+        last_used_at: row.get(18)?,
     })
 }
 
 fn map_spool_with_master_row(row: &Row<'_>) -> Result<SpoolWithMasterRow, rusqlite::Error> {
     let spool = map_spool_row(row)?;
     let master = FilamentMasterSummary {
-        id: row.get(17)?,
-        material: row.get(18)?,
-        filament_name: row.get(19)?,
-        color_name: row.get(20)?,
-        hex_color: row.get(21)?,
-        product_url: row.get(22)?,
-        default_weight: row.get(23)?,
-        vendor: row.get(24)?,
+        id: row.get(19)?,
+        material: row.get(20)?,
+        filament_name: row.get(21)?,
+        color_name: row.get(22)?,
+        hex_color: row.get(23)?,
+        product_url: row.get(24)?,
+        default_weight: row.get(25)?,
+        vendor: row.get(26)?,
     };
     Ok(SpoolWithMasterRow { spool, master })
 }
@@ -4204,7 +4392,13 @@ fn normalize_spool_status(raw: Option<&str>) -> String {
         .to_uppercase();
     match status.as_str() {
         "LOANED_OUT" | "BORROWED" | "LOANED" => "BORROWED".to_string(),
-        "IN_STOCK" | "IN_USE" | "EMPTY" | "ARCHIVED" | "LOST" | "DELETED" => status,
+        "IN_STOCK" | "IN_USE" | "ASSIGNED" | "EMPTY" | "ARCHIVED" | "LOST" | "DELETED" => {
+            if status == "IN_USE" {
+                "ASSIGNED".to_string()
+            } else {
+                status
+            }
+        }
         _ => "IN_STOCK".to_string(),
     }
 }
@@ -4746,6 +4940,8 @@ mod tests {
                     id: "owned_out_1".to_string(),
                     master_id: master_id.clone(),
                     qr_code: None,
+                    rfid_tag: None,
+                    rfid_observed_at: None,
                     status: "IN_STOCK".to_string(),
                     ownership_type: "OWNED".to_string(),
                     owner_name: None,
@@ -4765,6 +4961,8 @@ mod tests {
                     id: "owned_out_2".to_string(),
                     master_id: master_id.clone(),
                     qr_code: None,
+                    rfid_tag: None,
+                    rfid_observed_at: None,
                     status: "IN_STOCK".to_string(),
                     ownership_type: "OWNED".to_string(),
                     owner_name: None,
@@ -4784,6 +4982,8 @@ mod tests {
                     id: "borrowed_in_1".to_string(),
                     master_id: master_id.clone(),
                     qr_code: None,
+                    rfid_tag: None,
+                    rfid_observed_at: None,
                     status: "IN_STOCK".to_string(),
                     ownership_type: "BORROWED_IN".to_string(),
                     owner_name: Some("Carla".to_string()),
@@ -4803,6 +5003,8 @@ mod tests {
                     id: "borrowed_in_2".to_string(),
                     master_id,
                     qr_code: None,
+                    rfid_tag: None,
+                    rfid_observed_at: None,
                     status: "IN_STOCK".to_string(),
                     ownership_type: "BORROWED_IN".to_string(),
                     owner_name: Some("Carla".to_string()),

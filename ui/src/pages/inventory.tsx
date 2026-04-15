@@ -38,6 +38,7 @@ import {
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncSpools,
   fetchLibrarySyncWishlistItems,
+  getPrinterSettings,
   getLibrarySyncSettings,
   getTrustedLanCompanionStatus,
   isTauri,
@@ -53,6 +54,7 @@ import {
   purgeSpool,
   recordPrintUsage,
   type ActiveSpoolLoanRow,
+  type BambuLiveIntegrationSettings,
   type MasterCatalogRow,
   type PrinterOverviewRow,
   type SpoolHistoryEventRow,
@@ -61,6 +63,7 @@ import {
   updateMasterCatalogEntry,
   updateLibrarySyncHostSpoolDetails,
   updateSpoolDetails,
+  updateSpoolRfidTag,
   updateSpoolStatus,
   updateLibrarySyncHostSpoolTareWeight,
   updateLibrarySyncHostSpoolWeight,
@@ -70,7 +73,7 @@ import {
   updateWishlistItemStatus,
 } from "../lib/tauri_client";
 
-type SpoolStatus = "IN_STOCK" | "IN_USE" | "BORROWED" | "EMPTY" | "LOST";
+type SpoolStatus = "IN_STOCK" | "ASSIGNED" | "BORROWED" | "EMPTY" | "LOST";
 type StatusFilter = "ALL" | SpoolStatus;
 type OwnershipType = "OWNED" | "BORROWED_IN";
 type OwnershipFilter = "ALL" | OwnershipType;
@@ -105,6 +108,17 @@ type InventorySpool = {
   spoolTareWeightGrams?: number | null;
   location?: string | null;
   qrCode?: string | null;
+  rfidTag?: string | null;
+  rfidObservedAt?: string | null;
+};
+
+type RfidCaptureField = {
+  path: string;
+  label: string;
+  valueText: string;
+  lastSeenAt: string;
+  receiveCount: number;
+  changeCount: number;
 };
 
 type SpoolGroup = {
@@ -135,6 +149,30 @@ type PrinterSlotOption = {
   spoolHexColor?: string | null;
 };
 
+type RfidCaptureSummary = {
+  rfidTag?: string | null;
+  tagUid?: string | null;
+  trayUuid?: string | null;
+  chipId?: string | null;
+  trayInfoIdx?: string | null;
+  trayIdName?: string | null;
+  material?: string | null;
+  filamentName?: string | null;
+  colorHex?: string | null;
+  trayWeightG?: string | null;
+  trayColorRaw?: string | null;
+  trayReadDoneBits?: string | null;
+  trayIsBblBits?: string | null;
+  amsRfidStatus?: string | null;
+};
+
+type RfidCaptureMatchConfidence = "EXACT" | "PARTIAL" | "NONE";
+
+type RfidObservedTraySnapshot = {
+  observedAt: string | null;
+  fields: RfidCaptureField[];
+};
+
 type SegmentedChoiceOption<T extends string> = {
   value: T;
   label: string;
@@ -144,7 +182,7 @@ type SegmentedChoiceOption<T extends string> = {
 const statuses: ReadonlyArray<StatusFilter> = [
   "ALL",
   "IN_STOCK",
-  "IN_USE",
+  "ASSIGNED",
   "BORROWED",
   "EMPTY",
   "LOST",
@@ -176,6 +214,291 @@ function segmentedChoiceCountClass(active: boolean): string {
       ? "bg-white/15 text-white dark:bg-slate-900/15 dark:text-slate-900"
       : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
   }`;
+}
+
+function formatCaptureTimestamp(raw: string, locale: Locale): string {
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return raw;
+  }
+  return new Intl.DateTimeFormat(locale === "nb" ? "nb-NO" : "en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(parsed);
+}
+
+type IdentityFreshness = "FRESH" | "AGED" | "MISSING";
+
+function getIdentityFreshness(
+  rfidTag: string | null | undefined,
+  observedAt: string | null | undefined,
+): IdentityFreshness {
+  if (!(rfidTag?.trim()) || !(observedAt?.trim())) {
+    return "MISSING";
+  }
+  const parsed = new Date(observedAt);
+  if (Number.isNaN(parsed.getTime())) {
+    return "AGED";
+  }
+  const ageMs = Date.now() - parsed.getTime();
+  return ageMs <= 1000 * 60 * 60 * 24 * 7 ? "FRESH" : "AGED";
+}
+
+function formatObservedAge(raw: string | null | undefined, locale: Locale): string {
+  if (!(raw?.trim())) {
+    return "—";
+  }
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return raw;
+  }
+  const diffMs = Date.now() - parsed.getTime();
+  if (diffMs < 60_000) {
+    return locale === "nb" ? "nå nettopp" : "just now";
+  }
+  const diffMinutes = Math.round(diffMs / 60_000);
+  if (diffMinutes < 60) {
+    return locale === "nb"
+      ? `${diffMinutes} min siden`
+      : `${diffMinutes} min ago`;
+  }
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 48) {
+    return locale === "nb"
+      ? `${diffHours} t siden`
+      : `${diffHours} h ago`;
+  }
+  const diffDays = Math.round(diffHours / 24);
+  return locale === "nb"
+    ? `${diffDays} dager siden`
+    : `${diffDays} days ago`;
+}
+
+function identityFreshnessCopy(
+  freshness: IdentityFreshness,
+  t: ReturnType<typeof useI18n>["t"],
+): { label: string; className: string } {
+  switch (freshness) {
+    case "FRESH":
+      return {
+        label: t("inventory.rfidFresh", "Fresh"),
+        className: semanticChipClass("success"),
+      };
+    case "AGED":
+      return {
+        label: t("inventory.rfidAged", "Aged"),
+        className: semanticChipClass("warning"),
+      };
+    default:
+      return {
+        label: t("inventory.rfidMissing", "Missing"),
+        className: neutralChipClass(false),
+      };
+  }
+}
+
+function flattenCaptureFields(value: unknown, prefix = ""): Array<{ path: string; valueText: string }> {
+  if (value == null) {
+    return prefix ? [{ path: prefix, valueText: "null" }] : [];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((entry, index) =>
+      flattenCaptureFields(entry, prefix ? `${prefix}[${index}]` : `[${index}]`),
+    );
+  }
+  if (typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>).flatMap(([key, entryValue]) =>
+      flattenCaptureFields(entryValue, prefix ? `${prefix}.${key}` : key),
+    );
+  }
+  return [{ path: prefix, valueText: typeof value === "string" ? value : String(value) }];
+}
+
+function normalizeCapturedRfidTag(value: string | null | undefined): string | null {
+  const normalized = value?.trim() ?? "";
+  if (!normalized || /^0+$/.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeCapturedHexColor(value: string | null | undefined): string | null {
+  const normalized = value?.trim().replace(/^#/, "") ?? "";
+  if (/^[0-9a-f]{8}$/i.test(normalized)) {
+    return `#${normalized.slice(0, 6).toUpperCase()}`;
+  }
+  if (/^[0-9a-f]{6}$/i.test(normalized)) {
+    return `#${normalized.toUpperCase()}`;
+  }
+  return null;
+}
+
+function extractRfidCaptureFields(rawPayload: unknown, slotIndex: number): Array<{ path: string; label: string; valueText: string }> {
+  const trayZeroIndex = Math.max(0, slotIndex - 1);
+  const trayPrefix = `ams.ams[0].tray[${trayZeroIndex}]`;
+  return flattenCaptureFields(rawPayload)
+    .filter(({ path }) =>
+      path.startsWith(`${trayPrefix}.`) ||
+      path === "ams.ams[0].chip_id" ||
+      path === "ams_rfid_status" ||
+      path === "ams_status" ||
+      path === "ams.tray_is_bbl_bits" ||
+      path === "ams.tray_read_done_bits" ||
+      path === "ams.tray_reading_bits" ||
+      path === "ams.tray_exist_bits" ||
+      path === "ams.ams_exist_bits",
+    )
+    .map(({ path, valueText }) => ({
+      path,
+      valueText,
+      label: path.startsWith(`${trayPrefix}.`) ? path.slice(trayPrefix.length + 1) : path,
+    }));
+}
+
+function summarizeRfidCapture(fields: RfidCaptureField[], slotIndex: number): RfidCaptureSummary {
+  const trayZeroIndex = Math.max(0, slotIndex - 1);
+  const trayPrefix = `ams.ams[0].tray[${trayZeroIndex}]`;
+  const fieldMap = new Map(fields.map((field) => [field.path, field.valueText]));
+  const trayValue = (name: string): string | null =>
+    fieldMap.get(`${trayPrefix}.${name}`)?.trim() || null;
+  return {
+    rfidTag: normalizeCapturedRfidTag(trayValue("tray_uuid")),
+    tagUid: normalizeCapturedRfidTag(trayValue("tag_uid")),
+    trayUuid: normalizeCapturedRfidTag(trayValue("tray_uuid")),
+    chipId: normalizeCapturedRfidTag(fieldMap.get("ams.ams[0].chip_id") ?? null),
+    trayInfoIdx: trayValue("tray_info_idx"),
+    trayIdName: trayValue("tray_id_name"),
+    material: trayValue("tray_type"),
+    filamentName: trayValue("tray_sub_brands"),
+    colorHex: normalizeCapturedHexColor(trayValue("tray_color")),
+    trayWeightG: trayValue("tray_weight"),
+    trayColorRaw: trayValue("tray_color"),
+    trayReadDoneBits: fieldMap.get("ams.tray_read_done_bits")?.trim() || null,
+    trayIsBblBits: fieldMap.get("ams.tray_is_bbl_bits")?.trim() || null,
+    amsRfidStatus: fieldMap.get("ams_rfid_status")?.trim() || null,
+  };
+}
+
+function buildObservedTrayCaptureSnapshot(
+  liveIntegration: BambuLiveIntegrationSettings | null | undefined,
+  slotIndex: number,
+): RfidObservedTraySnapshot | null {
+  const observedState = liveIntegration?.observed_state;
+  if (!observedState) {
+    return null;
+  }
+  const tray = observedState.trays.find((entry) => entry.tray_index === Math.max(0, slotIndex - 1));
+  if (!tray) {
+    return null;
+  }
+  const observedAt =
+    tray.last_identity_seen_at?.trim() ||
+    tray.last_empty_seen_at?.trim() ||
+    observedState.last_seen_at?.trim() ||
+    null;
+  const fields: RfidCaptureField[] = [];
+  const pushField = (path: string, label: string, valueText: string | number | null | undefined) => {
+    if (valueText == null) {
+      return;
+    }
+    const normalized = String(valueText).trim();
+    if (!normalized) {
+      return;
+    }
+    fields.push({
+      path,
+      label,
+      valueText: normalized,
+      lastSeenAt: observedAt ?? new Date().toISOString(),
+      receiveCount: 1,
+      changeCount: 1,
+    });
+  };
+
+  pushField("ams.ams[0].chip_id", "ams.ams[0].chip_id", tray.chip_id);
+  pushField("ams.tray_read_done_bits", "ams.tray_read_done_bits", observedState.ams_read_done_bits);
+  pushField("ams.tray_is_bbl_bits", "ams.tray_is_bbl_bits", observedState.ams_bambu_bits);
+
+  const trayPrefix = `ams.ams[0].tray[${Math.max(0, slotIndex - 1)}]`;
+  pushField(`${trayPrefix}.tag_uid`, "tag_uid", tray.observed_rfid_tag);
+  pushField(`${trayPrefix}.tray_uuid`, "tray_uuid", tray.tray_uuid);
+  pushField(`${trayPrefix}.tray_info_idx`, "tray_info_idx", tray.tray_info_idx);
+  pushField(`${trayPrefix}.tray_id_name`, "tray_id_name", tray.tray_id_name);
+  pushField(`${trayPrefix}.tray_type`, "tray_type", tray.filament_type);
+  pushField(`${trayPrefix}.tray_sub_brands`, "tray_sub_brands", tray.filament_name);
+  pushField(`${trayPrefix}.tray_color`, "tray_color", tray.color_hex);
+  pushField(`${trayPrefix}.remain`, "remain", tray.remaining_percent);
+  pushField(`${trayPrefix}.remaining_grams`, "remaining_grams", tray.remaining_grams);
+
+  if (fields.length === 0) {
+    return null;
+  }
+  return { observedAt, fields };
+}
+
+function mergeRfidCaptureFields(
+  baselineFields: RfidCaptureField[],
+  capturedFields: RfidCaptureField[],
+): RfidCaptureField[] {
+  const merged = new Map<string, RfidCaptureField>();
+  for (const field of baselineFields) {
+    merged.set(field.path, field);
+  }
+  for (const field of capturedFields) {
+    const existing = merged.get(field.path);
+    if (!existing) {
+      merged.set(field.path, field);
+      continue;
+    }
+    const existingStamp = Date.parse(existing.lastSeenAt);
+    const nextStamp = Date.parse(field.lastSeenAt);
+    merged.set(
+      field.path,
+      Number.isNaN(nextStamp) || (!Number.isNaN(existingStamp) && existingStamp > nextStamp)
+        ? existing
+        : field,
+    );
+  }
+  return Array.from(merged.values()).sort((left, right) =>
+    left.label.localeCompare(right.label, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    }),
+  );
+}
+
+function buildBaselineCaptureFieldsBySlotId(
+  printers: PrinterOverviewRow[],
+  integrations: Record<string, BambuLiveIntegrationSettings>,
+): Record<string, RfidCaptureField[]> {
+  const next: Record<string, RfidCaptureField[]> = {};
+  for (const printer of printers) {
+    const integration = integrations[printer.printer.id];
+    if (!integration?.enabled) {
+      continue;
+    }
+    for (const slot of printer.slots) {
+      if (slot.ams_id.endsWith("_ext")) {
+        continue;
+      }
+      const snapshot = buildObservedTrayCaptureSnapshot(integration, slot.slot_index);
+      if (snapshot?.fields.length) {
+        next[slot.slot_id] = snapshot.fields;
+      }
+    }
+  }
+  return next;
+}
+
+function latestRfidCaptureSeenAt(fields: RfidCaptureField[]): string | null {
+  return (
+    [...fields]
+      .map((field) => field.lastSeenAt)
+      .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null
+  );
 }
 
 type SegmentedChoiceRowProps<T extends string> = {
@@ -232,12 +555,10 @@ function SegmentedChoiceRow<T extends string>({
 
 function normalizeStatus(status: string): SpoolStatus {
   const upper = status.toUpperCase();
-  if (
-    upper === "IN_USE" ||
-    upper === "BORROWED" ||
-    upper === "EMPTY" ||
-    upper === "LOST"
-  ) {
+  if (upper === "IN_USE" || upper === "ASSIGNED") {
+    return "ASSIGNED";
+  }
+  if (upper === "BORROWED" || upper === "EMPTY" || upper === "LOST") {
     return upper;
   }
   return "IN_STOCK";
@@ -638,6 +959,70 @@ function formatInventoryDisplayTitle(
   return tokens.length > 0 ? tokens.join(" · ") : "—";
 }
 
+function normalizeMaterialForMatch(raw?: string | null): string {
+  return (raw ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "");
+}
+
+function hexDistance(leftRaw?: string | null, rightRaw?: string | null): number | null {
+  const left = hexToRgb(leftRaw);
+  const right = hexToRgb(rightRaw);
+  if (!left || !right) {
+    return null;
+  }
+  return Math.sqrt(
+    (left[0] - right[0]) ** 2 + (left[1] - right[1]) ** 2 + (left[2] - right[2]) ** 2,
+  );
+}
+
+function assessRfidCaptureMatch(
+  spool: InventorySpool | null,
+  summary: RfidCaptureSummary | null | undefined,
+): RfidCaptureMatchConfidence {
+  if (!spool || !summary?.material) {
+    return "NONE";
+  }
+  if (normalizeMaterialForMatch(spool.material) !== normalizeMaterialForMatch(summary.material)) {
+    return "NONE";
+  }
+  const observedHex = summary.colorHex;
+  const expectedHex = spool.hexColor;
+  if (!(observedHex?.trim()) || !(expectedHex?.trim())) {
+    return "NONE";
+  }
+  if (toSwatchColor(observedHex).toUpperCase() === toSwatchColor(expectedHex).toUpperCase()) {
+    return "EXACT";
+  }
+  const distance = hexDistance(observedHex, expectedHex);
+  if (distance != null && distance <= 48) {
+    return "PARTIAL";
+  }
+  return "NONE";
+}
+
+function rfidCaptureMatchMeta(
+  confidence: RfidCaptureMatchConfidence,
+  t: ReturnType<typeof useI18n>["t"],
+): { label: string; hint: string; className: string } | null {
+  if (confidence === "EXACT") {
+    return {
+      label: t("inventory.rfidMatchExact", "Sikker"),
+      hint: t("inventory.rfidMatchExactHint", "Materiale og HEX-farge stemmer."),
+      className: semanticChipClass("success", "px-2 py-0.5 text-[10px]"),
+    };
+  }
+  if (confidence === "PARTIAL") {
+    return {
+      label: t("inventory.rfidMatchPartial", "Partial"),
+      hint: t("inventory.rfidMatchPartialHint", "Materiale stemmer, og fargen er nær katalogfargen."),
+      className: semanticChipClass("warning", "px-2 py-0.5 text-[10px]"),
+    };
+  }
+  return null;
+}
+
 function formatRollReference(spool: Pick<InventorySpool, "id">): string {
   const normalizedId = spool.id.replace(/^spool_/, "");
   return `#${normalizedId.slice(-6)}`;
@@ -751,6 +1136,7 @@ export default function InventoryPage({
   const [sidePanelMode, setSidePanelMode] = useState<SidePanelMode>("MANAGE");
   const [showRollModal, setShowRollModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showRollHistory, setShowRollHistory] = useState(false);
   const [showLoanTrackingModal, setShowLoanTrackingModal] = useState(false);
   const [loanTrackingSpoolId, setLoanTrackingSpoolId] = useState<string | null>(null);
   const [createMode, setCreateMode] = useState<CreateMode>("bambu");
@@ -789,6 +1175,17 @@ export default function InventoryPage({
     null,
   );
   const [selectedSpoolQrLoading, setSelectedSpoolQrLoading] = useState(false);
+  const [bambuLiveIntegrations, setBambuLiveIntegrations] = useState<
+    Record<string, BambuLiveIntegrationSettings>
+  >({});
+  const [showRfidCaptureModal, setShowRfidCaptureModal] = useState(false);
+  const [showRfidCapturedFields, setShowRfidCapturedFields] = useState(false);
+  const [rfidCaptureFieldsBySlotId, setRfidCaptureFieldsBySlotId] = useState<
+    Record<string, RfidCaptureField[]>
+  >({});
+  const [selectedRfidCaptureSlotId, setSelectedRfidCaptureSlotId] = useState<string | null>(null);
+  const [rfidCaptureError, setRfidCaptureError] = useState<string | null>(null);
+  const [rfidCaptureLoading, setRfidCaptureLoading] = useState(false);
 
   useEffect(() => {
     if (!tauri) {
@@ -921,6 +1318,8 @@ export default function InventoryPage({
             spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
             location: row.spool.location_id ?? null,
             qrCode: row.spool.qr_code ?? null,
+            rfidTag: row.spool.rfid_tag ?? null,
+            rfidObservedAt: row.spool.rfid_observed_at ?? null,
           };
         }),
       );
@@ -959,6 +1358,8 @@ export default function InventoryPage({
                   spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
                   location: row.spool.location_id ?? null,
                   qrCode: row.spool.qr_code ?? null,
+                  rfidTag: row.spool.rfid_tag ?? null,
+                  rfidObservedAt: row.spool.rfid_observed_at ?? null,
                 };
               }),
             );
@@ -1050,16 +1451,39 @@ export default function InventoryPage({
       return;
     }
     try {
-      const rows =
+      const [rows, printerSettings] = await Promise.all([
         clientReadOnly && clientHostBaseUrl && clientLibraryId
-          ? await fetchLibrarySyncPrinterOverview(clientHostBaseUrl, clientLibraryId)
-          : await listPrinterOverview();
+          ? fetchLibrarySyncPrinterOverview(clientHostBaseUrl, clientLibraryId)
+          : listPrinterOverview(),
+        clientReadOnly ? Promise.resolve(null) : getPrinterSettings(),
+      ]);
       setPrinterOverview(
         rows.map((printer) => ({
           ...printer,
           slots: sortPrinterSlotsExtLast(printer.slots),
         })),
       );
+      const nextIntegrations =
+        printerSettings
+          ? (Object.fromEntries(
+              (printerSettings.bambu_live_integrations ?? []).map((entry) => [
+                entry.printer_id,
+                entry.config,
+              ]),
+            ) as Record<string, BambuLiveIntegrationSettings>)
+          : {};
+      setBambuLiveIntegrations(nextIntegrations);
+      setRfidCaptureFieldsBySlotId((current) => {
+        const seeded = buildBaselineCaptureFieldsBySlotId(rows, nextIntegrations);
+        if (Object.keys(seeded).length === 0) {
+          return current;
+        }
+        const merged = { ...current };
+        for (const [slotId, baselineFields] of Object.entries(seeded)) {
+          merged[slotId] = mergeRfidCaptureFields(baselineFields, merged[slotId] ?? []);
+        }
+        return merged;
+      });
     } catch (overviewError) {
       console.error(overviewError);
       if (clientReadOnly) {
@@ -1072,6 +1496,7 @@ export default function InventoryPage({
                 slots: sortPrinterSlotsExtLast(printer.slots),
               })),
             );
+            setBambuLiveIntegrations({});
             return;
           }
         } catch (cacheError) {
@@ -1079,6 +1504,7 @@ export default function InventoryPage({
         }
       }
       setPrinterOverview([]);
+      setBambuLiveIntegrations({});
     }
   }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauri]);
 
@@ -1252,16 +1678,18 @@ export default function InventoryPage({
           remaining > 0 &&
           remaining <= LOW_STOCK_GRAMS
         : true;
-      const searchMatch =
-        term.length === 0
-          ? true
-          : `${spool.material} ${spool.filamentName} ${spool.colorName} ${spool.location ?? ""} ${
-              spool.qrCode ?? ""
-            } ${spool.ownerName ?? ""} ${spool.ownerContact ?? ""} ${
-              spool.ownershipType === "BORROWED_IN" ? "borrowed in" : "owned"
-            }`
-              .toLowerCase()
-              .includes(term);
+	      const searchMatch =
+	        term.length === 0
+	          ? true
+	          : `${spool.id} ${formatRollReference(spool)} ${spool.material} ${spool.filamentName} ${
+	              spool.colorName
+	            } ${spool.location ?? ""} ${spool.qrCode ?? ""} ${spool.rfidTag ?? ""} ${
+	              spool.ownerName ?? ""
+	            } ${spool.ownerContact ?? ""} ${
+	              spool.ownershipType === "BORROWED_IN" ? "borrowed in" : "owned"
+	            }`
+	              .toLowerCase()
+	              .includes(term);
       return (
         statusMatch &&
         ownershipMatch &&
@@ -1376,6 +1804,147 @@ export default function InventoryPage({
     [printerSlotOptions, selectedSpool],
   );
 
+  const selectedSpoolRfidCaptureSlots = useMemo(() => {
+    const enabledPrinterIds = new Set(
+      Object.entries(bambuLiveIntegrations)
+        .filter(([, config]) => config?.enabled)
+        .map(([printerId]) => printerId),
+    );
+    const allEligible = printerSlotOptions.filter(
+      (slot) => enabledPrinterIds.has(slot.printerId) && !slot.amsId.endsWith("_ext"),
+    );
+    if (selectedSpoolAssignedSlot) {
+      const samePrinter = allEligible.filter((slot) => slot.printerId === selectedSpoolAssignedSlot.printerId);
+      if (samePrinter.length > 0) {
+        return samePrinter;
+      }
+    }
+    return allEligible;
+  }, [bambuLiveIntegrations, printerSlotOptions, selectedSpoolAssignedSlot]);
+
+  const selectedRfidCaptureSlot = useMemo(() => {
+    if (selectedSpoolRfidCaptureSlots.length === 0) {
+      return null;
+    }
+    if (selectedRfidCaptureSlotId) {
+      return (
+        selectedSpoolRfidCaptureSlots.find((slot) => slot.slotId === selectedRfidCaptureSlotId) ?? null
+      );
+    }
+    if (selectedSpoolAssignedSlot) {
+      return (
+        selectedSpoolRfidCaptureSlots.find((slot) => slot.slotId === selectedSpoolAssignedSlot.slotId) ??
+        selectedSpoolRfidCaptureSlots[0] ??
+        null
+      );
+    }
+    return selectedSpoolRfidCaptureSlots[0] ?? null;
+  }, [selectedRfidCaptureSlotId, selectedSpoolAssignedSlot, selectedSpoolRfidCaptureSlots]);
+
+  const selectedRfidCaptureLiveIntegration = useMemo(
+    () =>
+      selectedRfidCaptureSlot
+        ? bambuLiveIntegrations[selectedRfidCaptureSlot.printerId] ?? null
+        : null,
+    [bambuLiveIntegrations, selectedRfidCaptureSlot],
+  );
+
+  const selectedSpoolIdentityFreshness = useMemo(
+    () => getIdentityFreshness(selectedSpool?.rfidTag, selectedSpool?.rfidObservedAt),
+    [selectedSpool],
+  );
+
+  const selectedSpoolIdentityFreshnessMeta = useMemo(
+    () => identityFreshnessCopy(selectedSpoolIdentityFreshness, t),
+    [selectedSpoolIdentityFreshness, t],
+  );
+
+  const selectedSpoolSupportsRfidCapture = useMemo(
+    () =>
+      Boolean(
+        tauri &&
+          !clientReadOnly &&
+          selectedSpoolRfidCaptureSlots.length > 0 &&
+          selectedRfidCaptureLiveIntegration?.enabled,
+      ),
+    [clientReadOnly, selectedRfidCaptureLiveIntegration, selectedSpoolRfidCaptureSlots.length, tauri],
+  );
+
+  const selectedSpoolRfidSlotLabel = useMemo(
+    () =>
+      selectedRfidCaptureSlot
+        ? formatPrinterSlotLabelForModel(t, selectedRfidCaptureSlot.printerModel, {
+            ams_id: selectedRfidCaptureSlot.amsId,
+            slot_index: selectedRfidCaptureSlot.slotIndex,
+          })
+        : null,
+    [selectedRfidCaptureSlot, t],
+  );
+
+  const rfidCaptureFields = useMemo(
+    () =>
+      selectedRfidCaptureSlot
+        ? rfidCaptureFieldsBySlotId[selectedRfidCaptureSlot.slotId] ?? []
+        : [],
+    [rfidCaptureFieldsBySlotId, selectedRfidCaptureSlot],
+  );
+
+  const observedTrayCaptureSnapshot = useMemo(
+    () =>
+      selectedRfidCaptureSlot
+        ? buildObservedTrayCaptureSnapshot(
+            selectedRfidCaptureLiveIntegration ?? null,
+            selectedRfidCaptureSlot.slotIndex,
+          )
+        : null,
+    [selectedRfidCaptureLiveIntegration, selectedRfidCaptureSlot],
+  );
+
+  const effectiveRfidCaptureFields = useMemo(
+    () => mergeRfidCaptureFields(observedTrayCaptureSnapshot?.fields ?? [], rfidCaptureFields),
+    [observedTrayCaptureSnapshot, rfidCaptureFields],
+  );
+
+  const rfidCaptureLastSeenAt = useMemo(
+    () =>
+      latestRfidCaptureSeenAt(effectiveRfidCaptureFields) ??
+      observedTrayCaptureSnapshot?.observedAt ??
+      null,
+    [effectiveRfidCaptureFields, observedTrayCaptureSnapshot],
+  );
+
+  const rfidCaptureSummary = useMemo(
+    () =>
+      selectedRfidCaptureSlot
+        ? summarizeRfidCapture(effectiveRfidCaptureFields, selectedRfidCaptureSlot.slotIndex)
+        : {},
+    [effectiveRfidCaptureFields, selectedRfidCaptureSlot],
+  );
+
+  const rfidCaptureSlotSummaries = useMemo(() => {
+    const summaries: Record<string, RfidCaptureSummary> = {};
+    for (const slot of selectedSpoolRfidCaptureSlots) {
+      const snapshot = buildObservedTrayCaptureSnapshot(
+        bambuLiveIntegrations[slot.printerId] ?? null,
+        slot.slotIndex,
+      );
+      const cachedFields = rfidCaptureFieldsBySlotId[slot.slotId] ?? [];
+      const mergedFields = mergeRfidCaptureFields(snapshot?.fields ?? [], cachedFields);
+      summaries[slot.slotId] = summarizeRfidCapture(mergedFields, slot.slotIndex);
+    }
+    return summaries;
+  }, [bambuLiveIntegrations, rfidCaptureFieldsBySlotId, selectedSpoolRfidCaptureSlots]);
+
+  const rfidCaptureMatchConfidence = useMemo(
+    () => assessRfidCaptureMatch(selectedSpool, rfidCaptureSummary),
+    [rfidCaptureSummary, selectedSpool],
+  );
+
+  const rfidCaptureMatchMetaForSelected = useMemo(
+    () => rfidCaptureMatchMeta(rfidCaptureMatchConfidence, t),
+    [rfidCaptureMatchConfidence, t],
+  );
+
   const loanTrackingCandidates = useMemo(
     () =>
       spools.filter(
@@ -1418,8 +1987,8 @@ export default function InventoryPage({
       if (status === "IN_STOCK") {
         return t("inventory.statusInStock", "In stock");
       }
-      if (status === "IN_USE") {
-        return t("inventory.statusInUse", "In use");
+      if (status === "ASSIGNED") {
+        return t("inventory.statusAssigned", "Assigned");
       }
       if (status === "BORROWED") {
         return t("inventory.statusBorrowed", "Loaned out");
@@ -1437,7 +2006,7 @@ export default function InventoryPage({
     if (status === "IN_STOCK") {
       return "success" as const;
     }
-    if (status === "IN_USE") {
+    if (status === "ASSIGNED") {
       return "info" as const;
     }
     if (status === "BORROWED") {
@@ -1574,9 +2143,23 @@ export default function InventoryPage({
       }
       if (event.event_type === "WEIGHT_UPDATED") {
         const grams = payloadNumber(payload, "grams");
+        const previousGrams = payloadNumber(payload, "previous_grams");
+        const remainingPercent = payloadNumber(payload, "remaining_percent");
         const source = payloadString(payload, "source");
         const gramsText = grams == null ? "—" : `${grams} g`;
-        return `${gramsText}${source ? ` · ${source.replace(/_/g, " ")}` : ""}`;
+        const details = [`${gramsText}`];
+        if (previousGrams != null && grams != null && previousGrams !== grams) {
+          const delta = grams - previousGrams;
+          const deltaPrefix = delta > 0 ? "+" : "";
+          details.push(`${deltaPrefix}${delta} g`);
+        }
+        if (source) {
+          details.push(source.replace(/_/g, " "));
+        }
+        if (remainingPercent != null) {
+          details.push(`${remainingPercent}%`);
+        }
+        return details.join(" · ");
       }
       if (event.event_type === "STATUS_UPDATED" || event.event_type === "USED_UP") {
         const status = payloadString(payload, "status");
@@ -1779,6 +2362,7 @@ export default function InventoryPage({
     }
     setSelectedSpoolId(spoolId);
     setSidePanelMode("MANAGE");
+    setShowRollHistory(false);
     setShowRollModal(true);
   }, [clientReadOnly, t]);
 
@@ -1886,6 +2470,10 @@ export default function InventoryPage({
       setConfirmPurge(false);
       setSelectedSpoolLocationDraft("");
       setSelectedSpoolTareDraft("");
+      setShowRfidCaptureModal(false);
+      setSelectedRfidCaptureSlotId(null);
+      setRfidCaptureError(null);
+      setRfidCaptureLoading(false);
       setShowRollModal(false);
       return;
     }
@@ -1899,6 +2487,10 @@ export default function InventoryPage({
     setSelectedSpoolTareDraft(
       String(resolveSpoolTareWeight(selectedSpool.spoolTareWeightGrams, selectedSpool.vendor)),
     );
+    setShowRfidCaptureModal(false);
+    setSelectedRfidCaptureSlotId(null);
+    setRfidCaptureError(null);
+    setRfidCaptureLoading(false);
     setConfirmDelete(false);
     setConfirmPurge(false);
     void reloadHistory(selectedSpool.id);
@@ -1964,6 +2556,133 @@ export default function InventoryPage({
       cancelled = true;
     };
   }, [buildSpoolQrArtifacts, selectedSpool, showRollModal]);
+
+  useEffect(() => {
+    if (!showRfidCaptureModal || !tauri || clientReadOnly || !selectedRfidCaptureSlot) {
+      return;
+    }
+    let cancelled = false;
+
+    const refreshCapture = async () => {
+      setRfidCaptureLoading(true);
+      try {
+        const snapshot = await getPrinterSettings();
+        if (cancelled) {
+          return;
+        }
+        const nextIntegrations = Object.fromEntries(
+          (snapshot.bambu_live_integrations ?? []).map((entry) => [entry.printer_id, entry.config]),
+        ) as Record<string, BambuLiveIntegrationSettings>;
+        setBambuLiveIntegrations(nextIntegrations);
+        const observedState = nextIntegrations[selectedRfidCaptureSlot.printerId]?.observed_state;
+        if (!observedState?.raw_payload_json) {
+          if (rfidCaptureFields.length === 0 && !(observedTrayCaptureSnapshot?.fields.length)) {
+            setRfidCaptureError(
+              t(
+                "inventory.rfidCaptureNoPayload",
+                "Waiting for tray data from the printer. Start or resume a print if the stream is idle.",
+              ),
+            );
+          } else {
+            setRfidCaptureError(null);
+          }
+          return;
+        }
+        const capturedBySlot = selectedSpoolRfidCaptureSlots.map((slot) => ({
+          slotId: slot.slotId,
+          captured: extractRfidCaptureFields(observedState.raw_payload_json, slot.slotIndex),
+        }));
+        const captured =
+          capturedBySlot.find((entry) => entry.slotId === selectedRfidCaptureSlot.slotId)?.captured ?? [];
+        if (captured.length === 0) {
+          if (rfidCaptureFields.length === 0 && !(observedTrayCaptureSnapshot?.fields.length)) {
+            setRfidCaptureError(
+              t(
+                "inventory.rfidCaptureNoSlotData",
+                "No slot-specific AMS fields have arrived yet for this slot.",
+              ),
+            );
+          } else {
+            setRfidCaptureError(null);
+          }
+          return;
+        }
+        setRfidCaptureError(null);
+        const observedAt = observedState.last_seen_at ?? new Date().toISOString();
+        setRfidCaptureFieldsBySlotId((current) => {
+          const next = { ...current };
+          for (const slotEntry of capturedBySlot) {
+            if (slotEntry.captured.length === 0) {
+              continue;
+            }
+            const existingFields = next[slotEntry.slotId] ?? [];
+            const merged = new Map(existingFields.map((field) => [field.path, field]));
+            for (const field of slotEntry.captured) {
+              const existing = merged.get(field.path);
+              if (!existing) {
+                merged.set(field.path, {
+                  path: field.path,
+                  label: field.label,
+                  valueText: field.valueText,
+                  lastSeenAt: observedAt,
+                  receiveCount: 1,
+                  changeCount: 1,
+                });
+                continue;
+              }
+              merged.set(field.path, {
+                ...existing,
+                label: field.label,
+                valueText: field.valueText,
+                lastSeenAt: observedAt,
+                receiveCount: existing.receiveCount + 1,
+                changeCount:
+                  existing.valueText === field.valueText
+                    ? existing.changeCount
+                    : existing.changeCount + 1,
+              });
+            }
+            next[slotEntry.slotId] = Array.from(merged.values()).sort((left, right) =>
+              left.label.localeCompare(right.label, undefined, {
+                numeric: true,
+                sensitivity: "base",
+              }),
+            );
+          }
+          return next;
+        });
+      } catch (captureError) {
+        console.error(captureError);
+        if (!cancelled) {
+          setRfidCaptureError(
+            t("inventory.rfidCaptureFailed", "Could not refresh RFID capture from the printer."),
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setRfidCaptureLoading(false);
+        }
+      }
+    };
+
+    void refreshCapture();
+    const timer = window.setInterval(() => {
+      void refreshCapture();
+    }, 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [
+    clientReadOnly,
+    rfidCaptureFields.length,
+    observedTrayCaptureSnapshot,
+    selectedRfidCaptureSlot,
+    selectedSpoolRfidCaptureSlots,
+    showRfidCaptureModal,
+    t,
+    tauri,
+  ]);
 
   const bambuMasters = useMemo(
     () =>
@@ -3069,6 +3788,48 @@ export default function InventoryPage({
     }
   }
 
+  async function handleSaveCapturedRfid() {
+    if (!selectedSpool || !tauri || manageBusy) {
+      return;
+    }
+    const nextRfidTag = rfidCaptureSummary.rfidTag?.trim() ?? "";
+    if (!nextRfidTag) {
+      setRfidCaptureError(
+        t(
+          "inventory.rfidCaptureNothingToSave",
+          "No non-empty RFID tag has been observed for this slot yet.",
+        ),
+      );
+      return;
+    }
+    setManageBusy(true);
+    setError(null);
+    try {
+      const observedAt =
+        rfidCaptureLastSeenAt ??
+        selectedRfidCaptureLiveIntegration?.observed_state?.last_seen_at ??
+        new Date().toISOString();
+      await updateSpoolRfidTag({
+        spool_id: selectedSpool.id,
+        rfid_tag: nextRfidTag,
+        rfid_observed_at: observedAt,
+      });
+      await reloadSpools();
+      await reloadHistory(selectedSpool.id);
+      setInfoMessage(
+        t("inventory.rfidSaved", "RFID tag saved on the selected roll."),
+      );
+      setShowRfidCaptureModal(false);
+    } catch (saveError) {
+      console.error(saveError);
+      setRfidCaptureError(
+        commandErrorText(saveError, t("inventory.error.saveRfid", "Failed to save RFID tag.")),
+      );
+    } finally {
+      setManageBusy(false);
+    }
+  }
+
   async function handleWeightSubmit(grams: number) {
     if (!selectedSpool || !tauri || manageBusy) {
       return;
@@ -3368,14 +4129,26 @@ export default function InventoryPage({
                     >
                       <div className="grid gap-3 min-[760px]:grid-cols-2 2xl:grid-cols-3">
                         <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 min-[760px]:col-span-2 2xl:col-span-1 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                            {t("inventory.reference", "Reference")}
-                          </div>
-                          <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                          {t("inventory.reference", "Reference")}
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
                             {formatRollReference(selectedSpool)}
-                          </div>
+                          <span className={selectedSpoolIdentityFreshnessMeta.className}>
+                            {selectedSpoolIdentityFreshnessMeta.label}
+                          </span>
+                        </div>
                           <div className="mt-1 break-all text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
                             ID: {selectedSpool.id}
+                          </div>
+                          <div className="mt-1 break-all text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                            RFID: {selectedSpool.rfidTag?.trim() || "—"}
+                          </div>
+                          <div className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                            {t("inventory.lastAmsIdentitySeen", "Last AMS identity seen")}:{" "}
+                            {selectedSpool.rfidObservedAt
+                              ? `${formatCaptureTimestamp(selectedSpool.rfidObservedAt, locale)} (${formatObservedAge(selectedSpool.rfidObservedAt, locale)})`
+                              : "—"}
                           </div>
                         </div>
                         <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
@@ -3461,6 +4234,37 @@ export default function InventoryPage({
                         >
                           {t("inventory.printQr", "Print QR label")}
                         </button>
+                      </div>
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-100"
+                          onClick={() => {
+	                            setSelectedRfidCaptureSlotId(
+	                              selectedSpoolAssignedSlot?.slotId ??
+	                                selectedSpoolRfidCaptureSlots[0]?.slotId ??
+	                                null,
+	                            );
+	                            setRfidCaptureError(null);
+	                            setShowRfidCapturedFields(false);
+	                            void reloadPrinterOverview();
+	                            setShowRfidCaptureModal(true);
+	                          }}
+                          disabled={!tauri || clientReadOnly || !selectedSpoolSupportsRfidCapture}
+                        >
+                          {t("inventory.rfidButton", "RFID")}
+                        </button>
+                      </div>
+                      <div className="mt-2 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+                        {selectedSpoolSupportsRfidCapture
+                          ? t(
+                              "inventory.rfidHintReady",
+                              "Capture AMS slot identity data, review it, and save the observed RFID tag when it looks correct.",
+                            )
+                          : t(
+                              "inventory.rfidHintNeedsLive",
+                              "RFID capture needs a printer with Live Bambu status enabled and at least one AMS slot available.",
+                            )}
                       </div>
                     </div>
 
@@ -3677,22 +4481,26 @@ export default function InventoryPage({
                   <div
                     className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
                     style={inventorySwatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
-                  >
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                      {t("inventory.rollHistory", "Roll history")}
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      {historyLoading ? (
-                        <div className="text-xs text-slate-500">
-                          {t("inventory.loadingHistory", "Loading history...")}
-                        </div>
-                      ) : null}
-                      {!historyLoading && hasHiddenHistoryRows ? (
-                        <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/70 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-400/25 dark:bg-emerald-500/10 dark:text-emerald-100">
-                          {t(
-                            "inventory.historyFilteredHint",
-                            "Printer slot assignments are shown above so this history stays focused on roll activity.",
-                          )}
+	                  >
+	                    <div className="flex items-center justify-between gap-3">
+	                      <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+	                        {t("inventory.rollHistory", "Roll history")}
+	                      </div>
+	                      <button
+	                        type="button"
+	                        className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-200"
+	                        onClick={() => setShowRollHistory((current) => !current)}
+	                      >
+	                        {showRollHistory
+	                          ? t("common.hide", "Hide")
+	                          : t("common.show", "Show")}
+	                      </button>
+	                    </div>
+	                    {showRollHistory ? (
+	                    <div className="mt-3 space-y-2">
+	                      {historyLoading ? (
+	                        <div className="text-xs text-slate-500">
+	                          {t("inventory.loadingHistory", "Loading history...")}
                         </div>
                       ) : null}
                       {!historyLoading && visibleHistoryRows.length === 0 ? (
@@ -3716,11 +4524,19 @@ export default function InventoryPage({
                           </div>
                           <div className="mt-1 break-words text-slate-600 dark:text-slate-300">
                             {formatHistoryEventDetails(event)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+	                          </div>
+	                        </div>
+	                      ))}
+	                    </div>
+	                    ) : (
+	                      <div className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+	                        {t(
+	                          "inventory.rollHistoryCollapsed",
+	                          "Filamenthistorikk er kollapset som standard. Utvid når du vil se hendelsene.",
+	                        )}
+	                      </div>
+	                    )}
+	                  </div>
 
                   <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-5 shadow-sm dark:border-rose-500/35 dark:bg-rose-500/10 dark:shadow-none">
                     <div className="text-xs uppercase tracking-[0.2em] text-rose-600 dark:text-rose-300">
@@ -3777,6 +4593,335 @@ export default function InventoryPage({
               </div>
             </div>
           </>
+        </AppModal>
+      ) : null}
+
+      {showRfidCaptureModal && showRollModal && selectedSpool ? (
+        <AppModal
+          onBackdropClose={() => setShowRfidCaptureModal(false)}
+          panelClassName="w-full max-w-6xl rounded-3xl border border-slate-200/90 bg-white/95 p-0 shadow-2xl shadow-slate-300/25 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/92 dark:shadow-black/45"
+        >
+          <div className="mx-auto w-full max-w-none rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-950">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+	              <div>
+	                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+	                  {t("inventory.rfidCaptureTitle", "RFID capture")}
+	                </div>
+		                <div className="mt-2 flex flex-wrap items-center gap-3">
+		                  <span
+		                    className="h-5 w-5 rounded-md border border-slate-200 dark:border-slate-700"
+		                    style={{
+		                      backgroundColor: toSwatchColor(selectedSpool.hexColor),
+		                    }}
+		                  />
+		                  <div className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+		                    {selectedSpoolDisplayTitle}
+		                  </div>
+	                  {rfidCaptureMatchMetaForSelected ? (
+	                    <span className={rfidCaptureMatchMetaForSelected.className}>
+	                      {rfidCaptureMatchMetaForSelected.label}
+	                    </span>
+	                  ) : null}
+	                </div>
+		                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+		                  {selectedRfidCaptureSlot
+		                    ? `${selectedRfidCaptureSlot.printerName} · ${selectedSpoolRfidSlotLabel ?? `Slot ${selectedRfidCaptureSlot.slotIndex}`}`
+		                    : t("inventory.rfidNoCaptureSource", "No live AMS slot available")}
+		                </div>
+		                {rfidCaptureMatchMetaForSelected ? (
+		                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+		                    {rfidCaptureMatchMetaForSelected.hint}
+		                  </div>
+		                ) : null}
+	              </div>
+              <button
+                type="button"
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-100"
+                onClick={() => setShowRfidCaptureModal(false)}
+              >
+                {t("common.close", "Close")}
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 md:col-span-2 xl:col-span-4 dark:border-slate-700 dark:bg-slate-900/60">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {t("inventory.rfidSourceSlot", "RFID source slot")}
+                </div>
+	                <div className="mt-3 flex flex-wrap gap-2">
+	                  {selectedSpoolRfidCaptureSlots.map((slot) => {
+	                    const active = selectedRfidCaptureSlot?.slotId === slot.slotId;
+	                    const label = formatPrinterSlotLabelForModel(t, slot.printerModel, {
+	                      ams_id: slot.amsId,
+	                      slot_index: slot.slotIndex,
+	                    });
+	                    const slotSummary = rfidCaptureSlotSummaries[slot.slotId] ?? {};
+	                    const slotMatchMeta = rfidCaptureMatchMeta(
+	                      assessRfidCaptureMatch(selectedSpool, slotSummary),
+	                      t,
+	                    );
+	                    return (
+	                      <button
+	                        key={slot.slotId}
+	                        type="button"
+	                        className={`rounded-lg border px-3 py-2 text-left text-sm font-semibold transition ${
+	                          active
+	                            ? "border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-400/50 dark:bg-sky-500/15 dark:text-sky-200"
+	                            : "border-slate-200 text-slate-700 hover:bg-white dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-950/70"
+	                        }`}
+	                        onClick={() => {
+	                          setSelectedRfidCaptureSlotId(slot.slotId);
+	                          setRfidCaptureError(null);
+	                        }}
+	                      >
+	                        <div className="flex items-center gap-2">
+	                          <span
+	                            className="h-4 w-4 shrink-0 rounded border border-slate-200 dark:border-slate-700"
+	                            style={{
+	                              backgroundColor: toSwatchColor(
+	                                slotSummary.colorHex ?? selectedSpool.hexColor,
+	                              ),
+	                            }}
+	                          />
+	                          <span>{label ?? `Slot ${slot.slotIndex}`}</span>
+	                        </div>
+	                        {slotMatchMeta ? (
+	                          <div className="mt-1">
+	                            <span className={slotMatchMeta.className}>{slotMatchMeta.label}</span>
+	                          </div>
+	                        ) : null}
+	                      </button>
+	                    );
+	                  })}
+	                </div>
+	              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {t("inventory.rfidCurrentTag", "Saved RFID")}
+                </div>
+                <div className="mt-2 break-all font-mono text-sm text-slate-900 dark:text-slate-100">
+                  {selectedSpool.rfidTag?.trim() || "—"}
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {t("inventory.rfidObservedTag", "Observed RFID")}
+                </div>
+                <div className="mt-2 break-all font-mono text-sm text-slate-900 dark:text-slate-100">
+                  {rfidCaptureSummary.rfidTag || "—"}
+                </div>
+              </div>
+	              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">
+	                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+	                  {t("inventory.rfidObservedMaterial", "Observed filament")}
+	                </div>
+	                <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
+	                  {[rfidCaptureSummary.material, rfidCaptureSummary.filamentName].filter(Boolean).join(" · ") || "—"}
+	                </div>
+	                {rfidCaptureMatchMetaForSelected ? (
+	                  <div className="mt-2">
+	                    <span className={rfidCaptureMatchMetaForSelected.className}>
+	                      {rfidCaptureMatchMetaForSelected.label}
+	                    </span>
+	                  </div>
+	                ) : null}
+	              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {t("inventory.rfidObservedColor", "Observed color")}
+                </div>
+                <div className="mt-2 flex items-center gap-2 text-sm text-slate-900 dark:text-slate-100">
+                  <span
+                    className="h-5 w-5 rounded border border-slate-200 dark:border-slate-700"
+                    style={{ backgroundColor: rfidCaptureSummary.colorHex ?? "#0F172A" }}
+                  />
+                  <span className="font-mono">
+                    {rfidCaptureSummary.colorHex || rfidCaptureSummary.trayColorRaw || "—"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900/60">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {t("inventory.rfidIdentityCandidates", "Identity candidates")}
+                </div>
+                <dl className="mt-3 space-y-2 text-xs">
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-slate-500 dark:text-slate-400"><code>tag_uid</code></dt>
+                    <dd className="break-all font-mono text-slate-900 dark:text-slate-100">{rfidCaptureSummary.rfidTag || "—"}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-slate-500 dark:text-slate-400"><code>tray_uuid</code></dt>
+                    <dd className="break-all font-mono text-slate-900 dark:text-slate-100">{rfidCaptureSummary.trayUuid || "—"}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-slate-500 dark:text-slate-400"><code>chip_id</code></dt>
+                    <dd className="break-all font-mono text-slate-900 dark:text-slate-100">{rfidCaptureSummary.chipId || "—"}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-slate-500 dark:text-slate-400"><code>tray_info_idx</code></dt>
+                    <dd className="break-all font-mono text-slate-900 dark:text-slate-100">{rfidCaptureSummary.trayInfoIdx || "—"}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-slate-500 dark:text-slate-400"><code>tray_id_name</code></dt>
+                    <dd className="break-all font-mono text-slate-900 dark:text-slate-100">{rfidCaptureSummary.trayIdName || "—"}</dd>
+                  </div>
+                </dl>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900/60">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {t("inventory.rfidCaptureStatus", "Capture status")}
+                </div>
+                <dl className="mt-3 space-y-2 text-xs">
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-slate-500 dark:text-slate-400">{t("inventory.rfidPrinterLive", "Printer live")}</dt>
+                    <dd className="text-slate-900 dark:text-slate-100">
+                      {selectedRfidCaptureLiveIntegration?.observed_state?.mqtt_connected
+                        ? t("inventory.connected", "Connected")
+                        : t("inventory.disconnected", "Not connected")}
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-slate-500 dark:text-slate-400">{t("inventory.rfidLastSeen", "Last seen")}</dt>
+                    <dd className="text-slate-900 dark:text-slate-100">
+                      {selectedRfidCaptureLiveIntegration?.observed_state?.last_seen_at
+                        ? formatCaptureTimestamp(
+                            selectedRfidCaptureLiveIntegration.observed_state.last_seen_at,
+                            locale,
+                          )
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-slate-500 dark:text-slate-400">{t("inventory.rfidLastSlotData", "Last slot data")}</dt>
+                    <dd className="text-slate-900 dark:text-slate-100">
+                      {rfidCaptureLastSeenAt ? formatCaptureTimestamp(rfidCaptureLastSeenAt, locale) : "—"}
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-slate-500 dark:text-slate-400">{t("inventory.rfidActiveSource", "Active source")}</dt>
+                    <dd className="text-slate-900 dark:text-slate-100">
+                      {selectedSpoolRfidSlotLabel ?? "—"}
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-slate-500 dark:text-slate-400">{t("inventory.rfidAmsReadDone", "AMS read done bits")}</dt>
+                    <dd className="font-mono text-slate-900 dark:text-slate-100">{rfidCaptureSummary.trayReadDoneBits || "—"}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-slate-500 dark:text-slate-400">{t("inventory.rfidAmsBambuBits", "AMS Bambu bits")}</dt>
+                    <dd className="font-mono text-slate-900 dark:text-slate-100">{rfidCaptureSummary.trayIsBblBits || "—"}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-slate-500 dark:text-slate-400">{t("inventory.rfidAmsStatus", "AMS RFID status")}</dt>
+                    <dd className="font-mono text-slate-900 dark:text-slate-100">{rfidCaptureSummary.amsRfidStatus || "—"}</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            {rfidCaptureError ? (
+              <div className="mt-4 rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs text-amber-800 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-200">
+                {rfidCaptureError}
+              </div>
+            ) : null}
+
+	            <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-700">
+	              <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 text-xs dark:border-slate-700">
+	                <div className="font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+	                  {t("inventory.rfidCapturedFields", "Captured slot fields")}
+	                </div>
+	                <div className="flex items-center gap-3">
+	                  <div className="text-slate-500 dark:text-slate-400">
+	                    {rfidCaptureLoading
+	                      ? t("common.loading", "Loading...")
+	                      : `${effectiveRfidCaptureFields.length} ${t("inventory.fields", "fields")}`}
+	                  </div>
+	                  <button
+	                    type="button"
+	                    className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-200"
+	                    onClick={() => setShowRfidCapturedFields((current) => !current)}
+	                  >
+	                    {showRfidCapturedFields
+	                      ? t("common.hide", "Hide")
+	                      : t("common.show", "Show")}
+	                  </button>
+	                </div>
+	              </div>
+	              {showRfidCapturedFields ? (
+	              <div className="max-h-80 overflow-auto">
+	                {effectiveRfidCaptureFields.length > 0 ? (
+	                  <table className="min-w-full text-left text-xs">
+	                    <thead className="bg-slate-50 dark:bg-slate-900/60">
+                      <tr>
+                        <th className="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300">{t("inventory.field", "Field")}</th>
+                        <th className="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300">{t("inventory.value", "Value")}</th>
+                        <th className="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300">{t("inventory.lastUpdated", "Last updated")}</th>
+                        <th className="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300">{t("inventory.changes", "Changes")}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950/40">
+                      {effectiveRfidCaptureFields.map((field) => (
+                        <tr key={field.path}>
+                          <td className="px-4 py-2 font-mono text-slate-700 dark:text-slate-200">{field.label}</td>
+                          <td className="px-4 py-2 font-mono text-slate-600 dark:text-slate-300">{field.valueText}</td>
+                          <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
+                            {formatCaptureTimestamp(field.lastSeenAt, locale)}
+                          </td>
+                          <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{field.changeCount}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="px-4 py-5 text-sm text-slate-500 dark:text-slate-400">
+                    {selectedSpoolSupportsRfidCapture
+                      ? observedTrayCaptureSnapshot?.fields.length
+                        ? t(
+                            "inventory.rfidCaptureUsingLastKnown",
+                            "Showing the last known AMS slot data until newer tray data arrives.",
+                          )
+                        : t(
+                            "inventory.rfidCaptureWaiting",
+                            "Waiting for fresh AMS slot data. Previously captured values stay visible until newer data arrives.",
+                          )
+                      : t(
+                          "inventory.rfidCaptureUnavailable",
+                          "RFID capture needs a locally connected live Bambu integration on a printer with at least one AMS slot.",
+	                        )}
+	                  </div>
+	                )}
+	              </div>
+	              ) : (
+	                <div className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">
+	                  {t(
+	                    "inventory.rfidCapturedFieldsCollapsed",
+	                    "Captured slot fields are collapsed by default. Expand when you want to inspect the raw field list.",
+	                  )}
+	                </div>
+	              )}
+	            </div>
+
+            <div className="mt-5 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-100"
+                onClick={() => setShowRfidCaptureModal(false)}
+              >
+                {t("common.cancel", "Cancel")}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-sky-300 bg-sky-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:border-sky-400/40 dark:bg-sky-500"
+                onClick={() => void handleSaveCapturedRfid()}
+                disabled={!rfidCaptureSummary.rfidTag || manageBusy}
+              >
+                {t("inventory.saveRfid", "Save RFID")}
+              </button>
+            </div>
+          </div>
         </AppModal>
       ) : null}
 
@@ -3844,8 +4989,8 @@ export default function InventoryPage({
                         ? t("common.all", "All")
                         : status === "IN_STOCK"
                           ? t("inventory.statusInStock", "In stock")
-                          : status === "IN_USE"
-                            ? t("inventory.statusInUse", "In use")
+                          : status === "ASSIGNED"
+                            ? t("inventory.statusAssigned", "Assigned")
                             : status === "BORROWED"
                               ? t("inventory.statusBorrowed", "Loaned out")
                               : status === "EMPTY"

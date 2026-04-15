@@ -899,12 +899,12 @@ export default function StatisticsPage() {
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           <SummaryMetricTile
-            label={t("statistics.ownedInUse", "Owned in use")}
+            label={t("statistics.ownedInUse", "Owned assigned")}
             value={(overview?.owned_in_use ?? 0).toString()}
             tone="sky"
           />
           <SummaryMetricTile
-            label={t("statistics.borrowedInInUse", "Borrowed in use")}
+            label={t("statistics.borrowedInInUse", "Borrowed assigned")}
             value={(overview?.borrowed_in_in_use ?? 0).toString()}
             tone="amber"
           />
@@ -1685,7 +1685,7 @@ export default function StatisticsPage() {
                               tone="emerald"
                             />
                             <SummaryMetricTile
-                              label={t("inventory.statusInUse", "In use")}
+                              label={t("inventory.statusAssigned", "Assigned")}
                               value={t("statistics.currentSnapshot", "Current snapshot")}
                               tone="sky"
                             />

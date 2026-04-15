@@ -2,6 +2,8 @@ export type SpoolRow = {
   id: string;
   master_id: string;
   qr_code?: string | null;
+  rfid_tag?: string | null;
+  rfid_observed_at?: string | null;
   status: string;
   ownership_type?: string | null;
   owner_name?: string | null;
@@ -79,10 +81,66 @@ export type PrinterOverviewRow = {
   slots: PrinterAmsSlotRow[];
 };
 
+export type BambuLiveObservedTray = {
+  tray_index: number;
+  loaded: boolean;
+  filament_type?: string | null;
+  filament_name?: string | null;
+  color_hex?: string | null;
+  remaining_percent?: number | null;
+  remaining_grams?: number | null;
+  observed_rfid_tag?: string | null;
+  tray_uuid?: string | null;
+  chip_id?: string | null;
+  tray_info_idx?: string | null;
+  tray_id_name?: string | null;
+  last_identity_seen_at?: string | null;
+  last_empty_seen_at?: string | null;
+  empty_observation_count?: number | null;
+  matched_inventory_spool_id?: string | null;
+  matched_inventory_mode?: string | null;
+  match_status?: string | null;
+  match_note?: string | null;
+};
+
+export type BambuLiveObservedState = {
+  online: boolean;
+  last_seen_at?: string | null;
+  mqtt_connected: boolean;
+  progress_percent?: number | null;
+  remaining_minutes?: number | null;
+  active_tray_index?: number | null;
+  nozzle_temp_c?: number | null;
+  bed_temp_c?: number | null;
+  ams_humidity_index?: number | null;
+  ams_temperature_c?: number | null;
+  ams_reading_bits?: string | null;
+  ams_read_done_bits?: string | null;
+  ams_bambu_bits?: string | null;
+  raw_status_note?: string | null;
+  raw_payload_json?: unknown;
+  trays: BambuLiveObservedTray[];
+};
+
+export type BambuLiveIntegrationSettings = {
+  enabled: boolean;
+  host?: string | null;
+  access_code?: string | null;
+  printer_serial?: string | null;
+  last_error?: string | null;
+  observed_state?: BambuLiveObservedState | null;
+};
+
+export type BambuLiveIntegrationEntry = {
+  printer_id: string;
+  config: BambuLiveIntegrationSettings;
+};
+
 export type PrinterSettingsSnapshot = {
   active_printer_id?: string | null;
   printers: PrinterRow[];
   printer_models: string[];
+  bambu_live_integrations: BambuLiveIntegrationEntry[];
 };
 
 export type TrustedLanCompanionStatus = {
@@ -262,6 +320,12 @@ export type UpdateSpoolDetailsInput = {
   location?: string | null;
 };
 
+export type UpdateSpoolRfidTagInput = {
+  spool_id: string;
+  rfid_tag?: string | null;
+  rfid_observed_at?: string | null;
+};
+
 export type UpdateMasterCatalogEntryInput = {
   master_id: string;
   material: string;
@@ -300,6 +364,14 @@ export type CreatePrinterInput = {
   name: string;
   ams_units?: number | null;
   slots_per_ams?: number | null;
+};
+
+export type SaveBambuLiveIntegrationInput = {
+  printer_id: string;
+  enabled: boolean;
+  host?: string | null;
+  access_code?: string | null;
+  printer_serial?: string | null;
 };
 
 export type AssignPrinterSlotInput = {
@@ -841,6 +913,17 @@ export async function createPrinter(input: CreatePrinterInput) {
   return invoke<void>("create_printer", { input });
 }
 
+export async function saveBambuLiveIntegration(input: SaveBambuLiveIntegrationInput) {
+  return invoke<void>("save_bambu_live_integration", { input });
+}
+
+export async function deleteBambuLiveIntegration(printerId: string) {
+  return invoke<void>("delete_bambu_live_integration", {
+    printerId,
+    printer_id: printerId,
+  });
+}
+
 export async function createLibrarySyncHostPrinter(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
@@ -1053,6 +1136,10 @@ export async function updateSpoolStatus(spoolId: string, status: string) {
 
 export async function updateSpoolDetails(input: UpdateSpoolDetailsInput) {
   return invoke<void>("update_spool_details", { input });
+}
+
+export async function updateSpoolRfidTag(input: UpdateSpoolRfidTagInput) {
+  return invoke<void>("update_spool_rfid_tag", { input });
 }
 
 export async function updateMasterCatalogEntry(input: UpdateMasterCatalogEntryInput) {

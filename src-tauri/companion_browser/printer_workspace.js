@@ -326,7 +326,7 @@ function renderSlotCards(options) {
       const slotContentTitle = slot.spool_id ? materialBits : t(locale, "printers.empty", "Empty");
       const slotContentColor = toSwatchColor(slotSwatch);
       const slotSummary = slot.spool_id
-        ? [formatStatusLabel(slot.spool_status || "IN_USE", locale), formatRollReference({ id: slot.spool_id })]
+        ? [formatStatusLabel(slot.spool_status || "ASSIGNED", locale), formatRollReference({ id: slot.spool_id })]
             .filter(Boolean)
             .join(" · ")
         : slotIsPendingTarget

@@ -84,6 +84,13 @@ pub struct UpdateSpoolDetailsInput {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct UpdateSpoolRfidTagInput {
+    pub spool_id: String,
+    pub rfid_tag: Option<String>,
+    pub rfid_observed_at: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UpdateBorrowedInSpoolInput {
     pub spool_id: String,
     pub owner_name: String,
@@ -327,6 +334,8 @@ impl InventoryEngine {
             id: input.id,
             master_id: input.master_id,
             qr_code: input.qr_code,
+            rfid_tag: None,
+            rfid_observed_at: None,
             status: input.status,
             ownership_type: ownership_type.clone(),
             owner_name: owner_name.clone(),
@@ -411,6 +420,8 @@ impl InventoryEngine {
             id: spool_id.clone(),
             master_id,
             qr_code: input.qr_code,
+            rfid_tag: None,
+            rfid_observed_at: None,
             status,
             ownership_type: ownership_type.clone(),
             owner_name: owner_name.clone(),
@@ -560,9 +571,11 @@ impl InventoryEngine {
     }
 
     pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {
-        if status.eq_ignore_ascii_case("IN_USE") && !self.db.spool_assigned_to_printer(spool_id)? {
+        if (status.eq_ignore_ascii_case("IN_USE") || status.eq_ignore_ascii_case("ASSIGNED"))
+            && !self.db.spool_assigned_to_printer(spool_id)?
+        {
             return Err(InventoryError::Db(
-                "assign spool to a printer slot before setting IN_USE".to_string(),
+                "assign spool to a printer slot before setting ASSIGNED".to_string(),
             ));
         }
         self.db.update_spool_status(spool_id, status)?;
@@ -591,11 +604,12 @@ impl InventoryEngine {
     }
 
     pub fn update_spool_details(&self, input: UpdateSpoolDetailsInput) -> InventoryResult<()> {
-        if input.status.eq_ignore_ascii_case("IN_USE")
+        if (input.status.eq_ignore_ascii_case("IN_USE")
+            || input.status.eq_ignore_ascii_case("ASSIGNED"))
             && !self.db.spool_assigned_to_printer(&input.spool_id)?
         {
             return Err(InventoryError::Db(
-                "assign spool to a printer slot before setting IN_USE".to_string(),
+                "assign spool to a printer slot before setting ASSIGNED".to_string(),
             ));
         }
         let resolved_location = match input.location.as_deref() {
@@ -615,6 +629,29 @@ impl InventoryEngine {
                 "status": input.status,
                 "qr_code": input.qr_code,
                 "location": resolved_location
+            }),
+        )
+    }
+
+    pub fn update_spool_rfid_tag(&self, input: UpdateSpoolRfidTagInput) -> InventoryResult<()> {
+        let spool_id = input.spool_id.trim();
+        if spool_id.is_empty() {
+            return Err(InventoryError::Db("spool id is required".to_string()));
+        }
+        let normalized_rfid = normalize_optional_input_text(input.rfid_tag.as_deref());
+        let normalized_observed_at = normalize_optional_input_text(input.rfid_observed_at.as_deref());
+        self.db
+            .update_spool_rfid_tag(
+                spool_id,
+                normalized_rfid.as_deref(),
+                normalized_observed_at.as_deref(),
+            )?;
+        self.log_spool_event(
+            spool_id,
+            "RFID_TAG_UPDATED",
+            json!({
+                "rfid_tag": normalized_rfid,
+                "rfid_observed_at": normalized_observed_at,
             }),
         )
     }
@@ -844,7 +881,7 @@ impl InventoryEngine {
         let next_status = if next_remaining == 0 {
             "EMPTY"
         } else {
-            "IN_USE"
+            "ASSIGNED"
         };
 
         self.db.insert_print_job(

@@ -232,7 +232,7 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
     }
 
     const status = row.spool?.status?.trim().toUpperCase() || "";
-    if (status === "IN_USE") {
+    if (status === "IN_USE" || status === "ASSIGNED") {
       return {
         allowed: false,
         reason: t(locale(), "logic.loanInUseBlocked", "Spools that are loaded in printer slots cannot be loaned out."),

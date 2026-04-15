@@ -425,7 +425,7 @@ export function createCompanionAppShellRenderer(options) {
         if (currentTargetSlotSpoolId && String(row.spool.id).trim() === currentTargetSlotSpoolId) {
           return true;
         }
-        if (status === "IN_USE") {
+        if (status === "IN_USE" || status === "ASSIGNED") {
           return false;
         }
         return canLoadSpoolIntoPrinter(row);

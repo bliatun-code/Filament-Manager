@@ -9,7 +9,7 @@ export type FilamentCardData = {
   filamentName: string;
   colorName: string;
   hexColor?: string | null;
-  status: "IN_STOCK" | "IN_USE" | "EMPTY" | "LOST";
+  status: "IN_STOCK" | "ASSIGNED" | "EMPTY" | "LOST";
   remainingGrams?: number | null;
   location?: string | null;
 };
@@ -31,7 +31,7 @@ function formatRemaining(remainingGrams?: number | null): string {
 
 function statusBadge(status: FilamentCardData["status"]): string {
   switch (status) {
-    case "IN_USE":
+    case "ASSIGNED":
       return semanticChipClass("success");
     case "IN_STOCK":
       return semanticChipClass("info");

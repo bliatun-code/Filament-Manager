@@ -405,7 +405,7 @@ export default function DashboardPage({
           .reduce((sum, item) => sum + Math.max(1, item.quantity || 1), 0);
         const onHandRows = spoolRows.filter((row) => {
           const status = (row.spool.status ?? "").trim().toUpperCase();
-          return status === "IN_STOCK" || status === "IN_USE";
+          return status === "IN_STOCK" || status === "IN_USE" || status === "ASSIGNED";
         });
         const onHandTotal = onHandRows.length;
         const onHandOwned = onHandRows.filter((row) => {
@@ -418,7 +418,7 @@ export default function DashboardPage({
         }).length;
         const onHandInUse = onHandRows.filter((row) => {
           const status = (row.spool.status ?? "").trim().toUpperCase();
-          return status === "IN_USE";
+          return status === "IN_USE" || status === "ASSIGNED";
         }).length;
         const lowStockRows = spoolRows
           .filter((row) => {
@@ -485,7 +485,7 @@ export default function DashboardPage({
             title: t("dashboard.totalSpools", "Total Spools"),
             value: onHandTotal.toString(),
             subtitle: t("dashboard.totalSpoolsSubtitle", "Across all locations"),
-            trend: `${onHandInUse} ${t("dashboard.inUse", "in use")}`,
+            trend: `${onHandInUse} ${t("dashboard.assigned", "assigned")}`,
             accent: "sky" as const,
           },
           {
@@ -653,7 +653,7 @@ export default function DashboardPage({
         .reduce((sum, item) => sum + Math.max(1, item.quantity || 1), 0);
       const onHandRows = spoolRows.filter((row) => {
         const status = (row.spool.status ?? "").trim().toUpperCase();
-        return status === "IN_STOCK" || status === "IN_USE";
+        return status === "IN_STOCK" || status === "IN_USE" || status === "ASSIGNED";
       });
       const onHandTotal = onHandRows.length;
       const onHandOwned = onHandRows.filter((row) => {
@@ -666,7 +666,7 @@ export default function DashboardPage({
       }).length;
       const onHandInUse = onHandRows.filter((row) => {
         const status = (row.spool.status ?? "").trim().toUpperCase();
-        return status === "IN_USE";
+        return status === "IN_USE" || status === "ASSIGNED";
       }).length;
       setOwnershipOnHand({
         total: onHandTotal,
@@ -743,7 +743,7 @@ export default function DashboardPage({
           title: t("dashboard.totalSpools", "Total Spools"),
           value: onHandTotal.toString(),
           subtitle: t("dashboard.totalSpoolsSubtitle", "Across all locations"),
-          trend: `${onHandInUse} ${t("dashboard.inUse", "in use")}`,
+          trend: `${onHandInUse} ${t("dashboard.assigned", "assigned")}`,
           accent: "sky" as const,
         },
         {

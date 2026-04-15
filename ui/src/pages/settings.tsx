@@ -6,6 +6,7 @@ import {
   clearLibrarySyncClientAuth,
   createPrinter,
   createLibrarySyncHostPrinter,
+  deleteBambuLiveIntegration,
   deletePrinter,
   deleteLibrarySyncHostPrinter,
   exportFullBackupJson,
@@ -32,6 +33,7 @@ import {
   revokeTrustedLanPairedBrowser,
   resetAppData,
   resetCatalogData,
+  saveBambuLiveIntegration,
   saveLibrarySyncSettings,
   subscribeCatalogRefreshProgress,
   updateTrustedLanCompanionConfig,
@@ -39,6 +41,7 @@ import {
   validateLibrarySyncHost,
   validateFullBackupJson,
   type BackupValidationStats,
+  type BambuLiveIntegrationEntry,
   type CatalogRefreshProgressPayload,
   type CatalogRefreshResult,
   type CatalogResetStats,
@@ -160,6 +163,443 @@ function formatSettingsDateTime(raw: string, locale: Locale): string {
   }).format(parsed);
 }
 
+function formatDiagnosticJson(value: unknown): string {
+  try {
+    return JSON.stringify(value ?? null, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+type DiagnosticCaptureField = {
+  path: string;
+  valueText: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  lastChangedAt: string;
+  receiveCount: number;
+  changeCount: number;
+  avgReceiveIntervalMs: number | null;
+  avgChangeIntervalMs: number | null;
+  recentValues: Array<{
+    valueText: string;
+    seenAt: string;
+    changed: boolean;
+  }>;
+};
+
+type DiagnosticCaptureSample = {
+  fieldPath: string;
+  observedAt: string;
+  valueText: string;
+  changeKind: "seeded" | "first_seen" | "changed" | "refresh";
+};
+
+type DiagnosticCaptureSession = {
+  startedAt: string;
+  seededFromObservedAt: string | null;
+  lastCapturedAt: string | null;
+  fields: DiagnosticCaptureField[];
+  samples: DiagnosticCaptureSample[];
+};
+
+type DiagnosticSortKey =
+  | "path"
+  | "last_seen_desc"
+  | "avg_seen_interval"
+  | "change_count"
+  | "avg_change_interval";
+
+type DiagnosticFilterKey = "all" | "changed" | "recent" | "high_frequency";
+
+type DiagnosticGroupKey = "print" | "ams" | "tray" | "other";
+
+type DiagnosticTraySnapshot = {
+  trayIndex: number;
+  loaded: boolean;
+  filamentType?: string | null;
+  filamentName?: string | null;
+  colorHex?: string | null;
+  remainingPercent?: number | null;
+  tagUid?: string | null;
+  trayUuid?: string | null;
+  trayInfoIdx?: string | null;
+  trayIdName?: string | null;
+  lastSeenAt?: string | null;
+};
+
+type DiagnosticSignalQualityBucket = {
+  label: string;
+  description: string;
+  fields: DiagnosticCaptureField[];
+};
+
+function flattenDiagnosticFields(
+  value: unknown,
+  prefix = "",
+): Array<{ path: string; valueText: string }> {
+  if (value == null) {
+    return prefix ? [{ path: prefix, valueText: "null" }] : [];
+  }
+
+  if (Array.isArray(value)) {
+    const nested = value.flatMap((entry, index) =>
+      flattenDiagnosticFields(entry, prefix ? `${prefix}[${index}]` : `[${index}]`),
+    );
+    return nested.length > 0 ? nested : prefix ? [{ path: prefix, valueText: "[]" }] : [];
+  }
+
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>);
+    const nested = entries.flatMap(([key, entryValue]) =>
+      flattenDiagnosticFields(entryValue, prefix ? `${prefix}.${key}` : key),
+    );
+    return nested.length > 0 ? nested : prefix ? [{ path: prefix, valueText: "{}" }] : [];
+  }
+
+  return [
+    {
+      path: prefix,
+      valueText: typeof value === "string" ? value : String(value),
+    },
+  ];
+}
+
+function averageIntervalMs(previousAverage: number | null, sampleCount: number, nextSampleMs: number): number {
+  if (sampleCount <= 0) {
+    return nextSampleMs;
+  }
+  if (previousAverage == null) {
+    return nextSampleMs;
+  }
+  return (previousAverage * sampleCount + nextSampleMs) / (sampleCount + 1);
+}
+
+function diffMs(laterIso: string, earlierIso: string): number | null {
+  const later = Date.parse(laterIso);
+  const earlier = Date.parse(earlierIso);
+  if (!Number.isFinite(later) || !Number.isFinite(earlier)) {
+    return null;
+  }
+  return Math.max(0, later - earlier);
+}
+
+function formatIntervalMs(value: number | null): string {
+  if (value == null) {
+    return "—";
+  }
+  const seconds = value / 1000;
+  if (seconds < 1) {
+    return `${Math.round(value)} ms`;
+  }
+  if (seconds < 60) {
+    return `${seconds.toFixed(seconds < 10 ? 1 : 0)} s`;
+  }
+  const minutes = seconds / 60;
+  return `${minutes.toFixed(minutes < 10 ? 1 : 0)} min`;
+}
+
+function exportDiagnosticCaptureSessionCsv(session: DiagnosticCaptureSession): string {
+  const escapeCsv = (value: string): string => {
+    if (/[",\n]/.test(value)) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  };
+
+  const rows = [
+    [
+      "section",
+      "session_started_at",
+      "session_seeded_from_observed_at",
+      "session_last_captured_at",
+      "group",
+      "field",
+      "observed_at",
+      "value",
+      "change_kind",
+      "first_seen",
+      "last_seen",
+      "last_changed",
+      "receive_count",
+      "change_count",
+      "avg_seen_interval_ms",
+      "avg_change_interval_ms",
+      "recent_values",
+    ].join(","),
+  ];
+
+  for (const field of session.fields) {
+    const group = classifyDiagnosticField(field.path);
+    rows.push(
+      [
+        "field_summary",
+        session.startedAt,
+        session.seededFromObservedAt ?? "",
+        session.lastCapturedAt ?? "",
+        group,
+        field.path,
+        "",
+        field.valueText,
+        "",
+        field.firstSeenAt,
+        field.lastSeenAt,
+        field.lastChangedAt,
+        String(field.receiveCount),
+        String(field.changeCount),
+        field.avgReceiveIntervalMs == null ? "" : String(Math.round(field.avgReceiveIntervalMs)),
+        field.avgChangeIntervalMs == null ? "" : String(Math.round(field.avgChangeIntervalMs)),
+        field.recentValues
+          .map((sample) => `${sample.changed ? "*" : "="}${sample.valueText}@${sample.seenAt}`)
+          .join(" | "),
+      ]
+        .map(escapeCsv)
+        .join(","),
+    );
+  }
+
+  for (const sample of session.samples) {
+    rows.push(
+      [
+        "sample_log",
+        session.startedAt,
+        session.seededFromObservedAt ?? "",
+        session.lastCapturedAt ?? "",
+        classifyDiagnosticField(sample.fieldPath),
+        sample.fieldPath,
+        sample.observedAt,
+        sample.valueText,
+        sample.changeKind,
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ]
+        .map(escapeCsv)
+        .join(","),
+    );
+  }
+
+  return rows.join("\n");
+}
+
+function buildDiagnosticCaptureSession(
+  observedState: BambuLiveIntegrationEntry["config"]["observed_state"] | null | undefined,
+): DiagnosticCaptureSession {
+  const startedAt = new Date().toISOString();
+  const observedAt = observedState?.last_seen_at ?? startedAt;
+  const flattened = observedState?.raw_payload_json
+    ? flattenDiagnosticFields(observedState.raw_payload_json)
+    : [];
+
+  const fields = flattened
+    .map(({ path, valueText }) => ({
+      path,
+      valueText,
+      firstSeenAt: observedAt,
+      lastSeenAt: observedAt,
+      lastChangedAt: observedAt,
+      receiveCount: 1,
+      changeCount: 1,
+      avgReceiveIntervalMs: null,
+      avgChangeIntervalMs: null,
+      recentValues: [
+        {
+          valueText,
+          seenAt: observedAt,
+          changed: true,
+        },
+      ],
+    }))
+    .sort((left, right) => left.path.localeCompare(right.path, undefined, { numeric: true, sensitivity: "base" }));
+
+  const samples = flattened.map(({ path, valueText }) => ({
+    fieldPath: path,
+    observedAt,
+    valueText,
+    changeKind: "seeded" as const,
+  }));
+
+  return {
+    startedAt,
+    seededFromObservedAt: observedState?.raw_payload_json ? observedAt : null,
+    lastCapturedAt: observedState?.raw_payload_json ? observedAt : null,
+    fields,
+    samples,
+  };
+}
+
+function classifyDiagnosticField(path: string): DiagnosticGroupKey {
+  const normalized = path.trim().toLowerCase();
+  if (!normalized) {
+    return "other";
+  }
+  if (normalized.startsWith("ams.") || normalized.startsWith("ams[")) {
+    if (normalized.includes(".tray[") || normalized.includes(".tray.")) {
+      return "tray";
+    }
+    return "ams";
+  }
+  if (normalized.startsWith("tray") || normalized.includes(".tray[")) {
+    return "tray";
+  }
+  if (
+    normalized.startsWith("mc_") ||
+    normalized.startsWith("gcode_") ||
+    normalized.includes("temper") ||
+    normalized.includes("print") ||
+    normalized === "msg" ||
+    normalized === "command" ||
+    normalized === "sequence_id"
+  ) {
+    return "print";
+  }
+  return "other";
+}
+
+function diagnosticFieldValue(fields: DiagnosticCaptureField[], path: string): string | null {
+  return fields.find((field) => field.path === path)?.valueText ?? null;
+}
+
+function diagnosticFieldNumber(fields: DiagnosticCaptureField[], path: string): number | null {
+  const raw = diagnosticFieldValue(fields, path);
+  if (raw == null) {
+    return null;
+  }
+  const parsed = Number.parseFloat(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeDiagnosticHexColor(value: string | null): string | null {
+  const normalized = value?.trim().replace(/^#/, "") ?? "";
+  if (/^[0-9a-f]{8}$/i.test(normalized)) {
+    return `#${normalized.slice(0, 6).toUpperCase()}`;
+  }
+  if (/^[0-9a-f]{6}$/i.test(normalized)) {
+    return `#${normalized.toUpperCase()}`;
+  }
+  return null;
+}
+
+function extractDiagnosticTraySnapshots(fields: DiagnosticCaptureField[]): DiagnosticTraySnapshot[] {
+  const trayIndices = Array.from(
+    new Set(
+      fields
+        .map((field) => {
+          const match = field.path.match(/ams\.ams\[\d+\]\.tray\[(\d+)\]\./);
+          return match ? Number.parseInt(match[1] ?? "", 10) : null;
+        })
+        .filter((value): value is number => value != null && Number.isFinite(value)),
+    ),
+  ).sort((left, right) => left - right);
+
+  return trayIndices.map((trayIndex) => {
+    const prefix = `ams.ams[0].tray[${trayIndex}]`;
+    const fieldFor = (name: string) => fields.find((field) => field.path === `${prefix}.${name}`) ?? null;
+    const filamentType = fieldFor("tray_type")?.valueText ?? null;
+    const filamentName = fieldFor("tray_sub_brands")?.valueText ?? null;
+    const colorRaw = fieldFor("tray_color")?.valueText ?? null;
+    const remainingRaw = fieldFor("remain")?.valueText ?? null;
+    const remainingPercent =
+      remainingRaw != null && Number.isFinite(Number.parseFloat(remainingRaw))
+        ? Number.parseInt(remainingRaw, 10)
+        : null;
+    const lastSeenAt = [
+      fieldFor("tray_type")?.lastSeenAt,
+      fieldFor("tray_sub_brands")?.lastSeenAt,
+      fieldFor("tray_color")?.lastSeenAt,
+      fieldFor("remain")?.lastSeenAt,
+      fieldFor("tray_uuid")?.lastSeenAt,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
+
+    return {
+      trayIndex,
+      loaded: Boolean(
+        (filamentType && filamentType.trim()) ||
+          (filamentName && filamentName.trim()) ||
+          (fieldFor("tray_uuid")?.valueText && !/^0+$/.test(fieldFor("tray_uuid")?.valueText ?? "")),
+      ),
+      filamentType,
+      filamentName,
+      colorHex: normalizeDiagnosticHexColor(colorRaw),
+      remainingPercent,
+      tagUid: fieldFor("tag_uid")?.valueText ?? null,
+      trayUuid: fieldFor("tray_uuid")?.valueText ?? null,
+      trayInfoIdx: fieldFor("tray_info_idx")?.valueText ?? null,
+      trayIdName: fieldFor("tray_id_name")?.valueText ?? null,
+      lastSeenAt,
+    };
+  });
+}
+
+function pushRecentDiagnosticValue(
+  current: DiagnosticCaptureField["recentValues"],
+  sample: { valueText: string; seenAt: string; changed: boolean },
+): DiagnosticCaptureField["recentValues"] {
+  const last = current[current.length - 1];
+  if (last && last.valueText === sample.valueText && last.changed === sample.changed) {
+    const updated = [...current];
+    updated[updated.length - 1] = { ...last, seenAt: sample.seenAt };
+    return updated;
+  }
+  return [...current, sample].slice(-6);
+}
+
+function buildDiagnosticSignalQualityBuckets(
+  fields: DiagnosticCaptureField[],
+): DiagnosticSignalQualityBucket[] {
+  const stableMetadata = fields.filter((field) => {
+    const path = field.path.toLowerCase();
+    return (
+      /(tag_uid|tray_uuid|chip_id|tray_info_idx|tray_id_name|tray_sub_brands|tray_type|tray_color)/.test(
+        path,
+      ) &&
+      field.changeCount <= 2
+    );
+  });
+
+  const eventDrivenIdentity = fields.filter((field) => {
+    const path = field.path.toLowerCase();
+    return (
+      /(rfid|read_done|reading_bits|exist_bits|tray_is_bbl_bits|tray_now|ams_status)/.test(path) &&
+      (field.changeCount > 1 || field.avgReceiveIntervalMs == null || field.avgReceiveIntervalMs > 5000)
+    );
+  });
+
+  const continuousTelemetry = fields.filter((field) => {
+    const path = field.path.toLowerCase();
+    return (
+      /(temper|percent|remaining_time|wifi_signal|speed|mc_|bed_)/.test(path) &&
+      field.receiveCount > 1 &&
+      (field.avgReceiveIntervalMs == null || field.avgReceiveIntervalMs <= 10000)
+    );
+  });
+
+  return [
+    {
+      label: "Stable metadata",
+      description: "Identity and tray metadata that appears stable when observed.",
+      fields: stableMetadata,
+    },
+    {
+      label: "Event-driven identity",
+      description: "Fields that tend to appear or change around AMS read/sync events.",
+      fields: eventDrivenIdentity,
+    },
+    {
+      label: "Continuous telemetry",
+      description: "Fields that look like normal status/telemetry updates during operation.",
+      fields: continuousTelemetry,
+    },
+  ].filter((bucket) => bucket.fields.length > 0);
+}
+
 function toErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) {
     return `${fallback} (${error.message})`;
@@ -265,6 +705,81 @@ function suggestHexFromColor(master: MasterCatalogRow): string {
   const saturation = 50 + ((hash >>> 8) % 20);
   const lightness = 45 + ((hash >>> 16) % 18);
   return hslToHex(hue, saturation, lightness);
+}
+
+type InventoryMatchResult =
+  | { kind: "rfid_exact"; candidates: SpoolWithMasterRow[] }
+  | { kind: "metadata_single"; candidates: SpoolWithMasterRow[] }
+  | { kind: "metadata_multiple"; candidates: SpoolWithMasterRow[] }
+  | { kind: "none"; candidates: SpoolWithMasterRow[] };
+
+function normalizeInventoryMatchText(raw?: string | null): string {
+  return (raw ?? "").trim().toLowerCase();
+}
+
+function buildInventoryMatchResult(
+  spoolRows: SpoolWithMasterRow[],
+  observed: {
+    rfid?: string | null;
+    material?: string | null;
+    filamentName?: string | null;
+    colorHex?: string | null;
+  },
+): InventoryMatchResult {
+  const activeRows = spoolRows.filter((row) => {
+    const status = (row.spool.status ?? "").trim().toUpperCase();
+    return status !== "EMPTY" && status !== "LOST";
+  });
+
+  const normalizedObservedRfid =
+    observed.rfid?.trim() && !/^0+$/.test(observed.rfid.trim()) ? observed.rfid.trim() : null;
+  if (normalizedObservedRfid) {
+    const rfidMatches = activeRows.filter(
+      (row) => (row.spool.rfid_tag ?? "").trim() === normalizedObservedRfid,
+    );
+    if (rfidMatches.length > 0) {
+      return { kind: "rfid_exact", candidates: rfidMatches };
+    }
+  }
+
+  const observedMaterial = normalizeInventoryMatchText(observed.material);
+  const observedFilamentName = normalizeInventoryMatchText(observed.filamentName);
+  const observedHex = normalizeHex(observed.colorHex);
+
+  const metadataMatches = activeRows.filter((row) => {
+    const rowMaterial = normalizeInventoryMatchText(row.master.material);
+    if (observedMaterial && rowMaterial !== observedMaterial) {
+      return false;
+    }
+
+    const rowFilament = normalizeInventoryMatchText(row.master.filament_name);
+    if (observedFilamentName) {
+      const filamentMatches =
+        rowFilament === observedFilamentName ||
+        rowFilament.includes(observedFilamentName) ||
+        observedFilamentName.includes(rowFilament);
+      if (!filamentMatches) {
+        return false;
+      }
+    }
+
+    if (observedHex) {
+      const rowHex = normalizeHex(row.master.hex_color);
+      if (rowHex && rowHex !== observedHex) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  if (metadataMatches.length === 1) {
+    return { kind: "metadata_single", candidates: metadataMatches };
+  }
+  if (metadataMatches.length > 1) {
+    return { kind: "metadata_multiple", candidates: metadataMatches };
+  }
+  return { kind: "none", candidates: [] };
 }
 
 type SettingsTab = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
@@ -398,6 +913,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
   const [printers, setPrinters] = useState<PrinterRow[]>([]);
   const [printerOverview, setPrinterOverview] = useState<PrinterOverviewRow[]>([]);
+  const [spoolRows, setSpoolRows] = useState<SpoolWithMasterRow[]>([]);
   const [catalogMasters, setCatalogMasters] = useState<MasterCatalogRow[]>([]);
   const [swatchDraftById, setSwatchDraftById] = useState<Record<string, string>>({});
   const [swatchVendorFilter, setSwatchVendorFilter] = useState("ALL");
@@ -427,11 +943,30 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [confirmDeletePrinterId, setConfirmDeletePrinterId] = useState<string | null>(
     null,
   );
+  const [bambuLiveIntegrations, setBambuLiveIntegrations] = useState<
+    Record<string, BambuLiveIntegrationEntry["config"]>
+  >({});
   const [editPrinterId, setEditPrinterId] = useState<string | null>(null);
   const [editPrinterModel, setEditPrinterModel] = useState("");
   const [editPrinterName, setEditPrinterName] = useState("");
   const [editAmsUnits, setEditAmsUnits] = useState("0");
   const [editSlotsPerUnit, setEditSlotsPerUnit] = useState("4");
+  const [editBambuLiveEnabled, setEditBambuLiveEnabled] = useState(false);
+  const [editBambuLiveHost, setEditBambuLiveHost] = useState("");
+  const [editBambuLiveAccessCode, setEditBambuLiveAccessCode] = useState("");
+  const [editBambuLivePrinterSerial, setEditBambuLivePrinterSerial] = useState("");
+  const [expandedBambuDetailsPrinterId, setExpandedBambuDetailsPrinterId] = useState<string | null>(
+    null,
+  );
+  const [diagnosticCaptureByPrinterId, setDiagnosticCaptureByPrinterId] = useState<
+    Record<string, DiagnosticCaptureSession>
+  >({});
+  const [diagnosticSortByPrinterId, setDiagnosticSortByPrinterId] = useState<
+    Record<string, DiagnosticSortKey>
+  >({});
+  const [diagnosticFilterByPrinterId, setDiagnosticFilterByPrinterId] = useState<
+    Record<string, DiagnosticFilterKey>
+  >({});
   const backupImportInputRef = useRef<HTMLInputElement | null>(null);
   const backupValidateInputRef = useRef<HTMLInputElement | null>(null);
   const [confirmResetAction, setConfirmResetAction] = useState<ResetConfirmAction | null>(null);
@@ -690,16 +1225,19 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     [],
   );
 
-  const reloadSettings = useCallback(async () => {
+  const reloadSettings = useCallback(async (options?: { silent?: boolean }) => {
     if (!tauri) {
       return;
     }
-    setLoading(true);
+    if (!options?.silent) {
+      setLoading(true);
+    }
     try {
-      const [snapshot, catalogRows, syncSettings] = await Promise.all([
+      const [snapshot, catalogRows, syncSettings, spoolSnapshot] = await Promise.all([
         getPrinterSettings(),
         listMasterCatalog(5000),
         getLibrarySyncSettings(),
+        listSpools(5000, 0),
       ]);
       let overviewRows: PrinterOverviewRow[] = [];
       if (syncSettings.mode === "CLIENT") {
@@ -724,6 +1262,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         syncSettings.mode === "CLIENT" ? overviewRows.map((row) => row.printer) : snapshot.printers,
       );
       setPrinterOverview(overviewRows);
+      setSpoolRows(spoolSnapshot);
+      setBambuLiveIntegrations(
+        Object.fromEntries(
+          (snapshot.bambu_live_integrations ?? []).map((entry) => [entry.printer_id, entry.config]),
+        ),
+      );
       setCatalogMasters(catalogRows);
       setLibrarySyncSettings(syncSettings);
       setLibrarySyncModeDraft((syncSettings.mode as LibrarySyncMode) ?? "STANDALONE");
@@ -741,9 +1285,148 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       console.error(loadError);
       setError(t("settings.error.load", "Failed to load settings."));
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
   }, [t, tauri]);
+
+  useEffect(() => {
+    if (!tauri) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      void reloadSettings({ silent: true });
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [reloadSettings, tauri]);
+
+  useEffect(() => {
+    if (!expandedBambuDetailsPrinterId) {
+      return;
+    }
+    const observedState = bambuLiveIntegrations[expandedBambuDetailsPrinterId]?.observed_state;
+    if (!observedState?.raw_payload_json) {
+      return;
+    }
+    const flattened = flattenDiagnosticFields(observedState.raw_payload_json);
+    if (flattened.length === 0) {
+      return;
+    }
+    const observedAt = observedState.last_seen_at ?? new Date().toISOString();
+    setDiagnosticCaptureByPrinterId((current) => {
+      const next = { ...current };
+      const existingSession = next[expandedBambuDetailsPrinterId] ?? buildDiagnosticCaptureSession(null);
+      const previousFields = new Map(
+        existingSession.fields.map((field) => [field.path, field]),
+      );
+      const nextSamples = [...existingSession.samples];
+      for (const { path, valueText } of flattened) {
+        const existing = previousFields.get(path);
+        if (!existing) {
+          previousFields.set(path, {
+            path,
+            valueText,
+            firstSeenAt: observedAt,
+            lastSeenAt: observedAt,
+            lastChangedAt: observedAt,
+            receiveCount: 1,
+            changeCount: 1,
+            avgReceiveIntervalMs: null,
+            avgChangeIntervalMs: null,
+            recentValues: [
+              {
+                valueText,
+                seenAt: observedAt,
+                changed: true,
+              },
+            ],
+          });
+          nextSamples.push({
+            fieldPath: path,
+            observedAt,
+            valueText,
+            changeKind: existingSession.seededFromObservedAt == null ? "first_seen" : "changed",
+          });
+          continue;
+        }
+        const receiveIntervalMs = diffMs(observedAt, existing.lastSeenAt);
+        if (existing.valueText === valueText) {
+          previousFields.set(path, {
+            ...existing,
+            lastSeenAt: observedAt,
+            receiveCount: existing.receiveCount + 1,
+            avgReceiveIntervalMs:
+              receiveIntervalMs == null
+                ? existing.avgReceiveIntervalMs
+                : averageIntervalMs(
+                    existing.avgReceiveIntervalMs,
+                    Math.max(0, existing.receiveCount - 1),
+                    receiveIntervalMs,
+                  ),
+            recentValues: pushRecentDiagnosticValue(existing.recentValues, {
+              valueText,
+              seenAt: observedAt,
+              changed: false,
+            }),
+          });
+          nextSamples.push({
+            fieldPath: path,
+            observedAt,
+            valueText,
+            changeKind: "refresh",
+          });
+          continue;
+        }
+        const changeIntervalMs = diffMs(observedAt, existing.lastChangedAt);
+        previousFields.set(path, {
+          path,
+          valueText,
+          firstSeenAt: existing.firstSeenAt,
+          lastSeenAt: observedAt,
+          lastChangedAt: observedAt,
+          receiveCount: existing.receiveCount + 1,
+          changeCount: existing.changeCount + 1,
+          avgReceiveIntervalMs:
+            receiveIntervalMs == null
+              ? existing.avgReceiveIntervalMs
+              : averageIntervalMs(
+                  existing.avgReceiveIntervalMs,
+                  Math.max(0, existing.receiveCount - 1),
+                  receiveIntervalMs,
+                ),
+          avgChangeIntervalMs:
+            changeIntervalMs == null
+              ? existing.avgChangeIntervalMs
+              : averageIntervalMs(
+                  existing.avgChangeIntervalMs,
+                  Math.max(0, existing.changeCount - 1),
+                  changeIntervalMs,
+                ),
+          recentValues: pushRecentDiagnosticValue(existing.recentValues, {
+            valueText,
+            seenAt: observedAt,
+            changed: true,
+          }),
+        });
+        nextSamples.push({
+          fieldPath: path,
+          observedAt,
+          valueText,
+          changeKind: "changed",
+        });
+      }
+      next[expandedBambuDetailsPrinterId] = {
+        ...existingSession,
+        lastCapturedAt: observedAt,
+        fields: Array.from(previousFields.values()).sort((left, right) =>
+          left.path.localeCompare(right.path, undefined, { numeric: true, sensitivity: "base" }),
+        ),
+        samples: nextSamples,
+      };
+      return next;
+    });
+  }, [bambuLiveIntegrations, expandedBambuDetailsPrinterId]);
 
   const loadTrustedLanCompanionStatus = useCallback(async (): Promise<TrustedLanCompanionStatus | null> => {
     if (!tauri) {
@@ -1519,13 +2202,23 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     return { units, slotsPerUnit };
   }
 
+  function isBambuLabPrinter(model: string): boolean {
+    return model.trim().toLowerCase().startsWith("bambu lab");
+  }
+
   function handleStartEditPrinter(printer: PrinterRow) {
     const config = derivePrinterMultiConfig(printer.id, printer.model);
+    const liveConfig = bambuLiveIntegrations[printer.id];
     setEditPrinterId(printer.id);
     setEditPrinterModel(printer.model);
     setEditPrinterName(printer.name);
     setEditAmsUnits(String(config.units));
     setEditSlotsPerUnit(String(config.slotsPerUnit));
+    setEditBambuLiveEnabled(liveConfig?.enabled ?? false);
+    setEditBambuLiveHost(liveConfig?.host ?? "");
+    setEditBambuLiveAccessCode(liveConfig?.access_code ?? "");
+    setEditBambuLivePrinterSerial(liveConfig?.printer_serial ?? "");
+    setExpandedBambuDetailsPrinterId(null);
     setConfirmDeletePrinterId(null);
   }
 
@@ -1535,6 +2228,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setEditPrinterName("");
     setEditAmsUnits("0");
     setEditSlotsPerUnit("4");
+    setEditBambuLiveEnabled(false);
+    setEditBambuLiveHost("");
+    setEditBambuLiveAccessCode("");
+    setEditBambuLivePrinterSerial("");
+    setExpandedBambuDetailsPrinterId(null);
   }
 
   async function handleSavePrinterReconfigure() {
@@ -1546,6 +2244,18 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     const name = editPrinterName.trim();
     if (!current || !model || !name) {
       setError(t("settings.error.printerRequired", "Printer name and model are required."));
+      return;
+    }
+    if (
+      editBambuLiveEnabled &&
+      (!editBambuLiveHost.trim() || !editBambuLiveAccessCode.trim() || !editBambuLivePrinterSerial.trim())
+    ) {
+      setError(
+        t(
+          "settings.error.bambuLiveFieldsRequired",
+          "Host, access code and printer serial are required when live Bambu status is enabled.",
+        ),
+      );
       return;
     }
     const profile = resolvePrinterModelProfile(model);
@@ -1590,6 +2300,17 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           ams_units: units,
           slots_per_ams: slots,
         });
+        if (editBambuLiveEnabled) {
+          await saveBambuLiveIntegration({
+            printer_id: editPrinterId,
+            enabled: true,
+            host: editBambuLiveHost.trim() || null,
+            access_code: editBambuLiveAccessCode.trim() || null,
+            printer_serial: editBambuLivePrinterSerial.trim() || null,
+          });
+        } else {
+          await deleteBambuLiveIntegration(editPrinterId);
+        }
       }
       await reloadSettings();
       setInfo(
@@ -2652,6 +3373,129 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               {sortedPrinters.map((printer) => {
                 const printerSlots =
                   printerOverview.find((item) => item.printer.id === printer.id)?.slots ?? [];
+                const liveConfig = bambuLiveIntegrations[printer.id] ?? null;
+                const observedState = liveConfig?.observed_state ?? null;
+                const diagnosticSession = diagnosticCaptureByPrinterId[printer.id] ?? null;
+                const diagnosticFields = diagnosticSession?.fields ?? [];
+                const diagnosticSort = diagnosticSortByPrinterId[printer.id] ?? "path";
+                const diagnosticFilter = diagnosticFilterByPrinterId[printer.id] ?? "all";
+                const captureTraySnapshots = extractDiagnosticTraySnapshots(diagnosticFields);
+                const captureTrayByIndex = new Map(
+                  captureTraySnapshots.map((tray) => [tray.trayIndex, tray]),
+                );
+                const displayTrays =
+                  observedState?.trays.length && observedState.trays.length > 0
+                    ? observedState.trays
+                    : captureTraySnapshots.map((tray) => ({
+                        tray_index: tray.trayIndex,
+                        loaded: tray.loaded,
+                        filament_type: tray.filamentType ?? null,
+                        filament_name: tray.filamentName ?? null,
+                        color_hex: tray.colorHex ?? null,
+                        remaining_percent: tray.remainingPercent ?? null,
+                        match_status: null,
+                        match_note:
+                          [tray.tagUid, tray.trayUuid, tray.trayInfoIdx, tray.trayIdName]
+                            .filter(Boolean)
+                            .join(" · ") || null,
+                      }));
+                const captureSessionStartedAt = diagnosticSession?.startedAt ?? null;
+                const captureSessionSeededAt = diagnosticSession?.seededFromObservedAt ?? null;
+                const captureSessionLastSeenAt =
+                  diagnosticSession?.lastCapturedAt ??
+                  (diagnosticFields
+                    .map((field) => field.lastSeenAt)
+                    .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null);
+                const changedFieldCount = diagnosticFields.filter((field) => field.changeCount > 1).length;
+                const identityFieldCount = diagnosticFields.filter((field) =>
+                  /(tag_uid|tray_uuid|chip_id|tray_info_idx|tray_id_name)/.test(field.path),
+                ).length;
+                const amsTrayReadingBits = diagnosticFieldValue(diagnosticFields, "ams.tray_reading_bits");
+                const amsReadInProgress =
+                  Boolean(
+                    amsTrayReadingBits &&
+                      amsTrayReadingBits.trim() &&
+                      !/^0+$/i.test(amsTrayReadingBits.trim()),
+                  );
+                const signalQualityBuckets = buildDiagnosticSignalQualityBuckets(diagnosticFields);
+                const fallbackSummaryParts = [
+                  diagnosticFieldNumber(diagnosticFields, "mc_percent") != null
+                    ? `${diagnosticFieldNumber(diagnosticFields, "mc_percent")}%`
+                    : null,
+                  diagnosticFieldNumber(diagnosticFields, "mc_remaining_time") != null
+                    ? `${diagnosticFieldNumber(diagnosticFields, "mc_remaining_time")} min`
+                    : null,
+                  diagnosticFieldNumber(diagnosticFields, "ams.tray_now") != null
+                    ? `Tray ${diagnosticFieldNumber(diagnosticFields, "ams.tray_now")}`
+                    : diagnosticFieldNumber(diagnosticFields, "tray_now") != null
+                      ? `Tray ${diagnosticFieldNumber(diagnosticFields, "tray_now")}`
+                      : null,
+                  diagnosticFieldNumber(diagnosticFields, "ams.ams[0].humidity") != null
+                    ? `AMS humidity ${diagnosticFieldNumber(diagnosticFields, "ams.ams[0].humidity")}`
+                    : diagnosticFieldNumber(diagnosticFields, "humidity") != null
+                      ? `AMS humidity ${diagnosticFieldNumber(diagnosticFields, "humidity")}`
+                      : null,
+                ].filter(Boolean);
+                const filteredDiagnosticFields = diagnosticFields.filter((field) => {
+                  if (diagnosticFilter === "changed") {
+                    return field.changeCount > 1;
+                  }
+                  if (diagnosticFilter === "recent") {
+                    const diff = diffMs(new Date().toISOString(), field.lastSeenAt);
+                    return diff != null && diff <= 60_000;
+                  }
+                  if (diagnosticFilter === "high_frequency") {
+                    return field.avgReceiveIntervalMs != null && field.avgReceiveIntervalMs <= 5_000;
+                  }
+                  return true;
+                });
+                const sortedDiagnosticFields = [...filteredDiagnosticFields].sort((left, right) => {
+                  if (diagnosticSort === "last_seen_desc") {
+                    return Date.parse(right.lastSeenAt) - Date.parse(left.lastSeenAt);
+                  }
+                  if (diagnosticSort === "avg_seen_interval") {
+                    return (left.avgReceiveIntervalMs ?? Number.POSITIVE_INFINITY)
+                      - (right.avgReceiveIntervalMs ?? Number.POSITIVE_INFINITY);
+                  }
+                  if (diagnosticSort === "change_count") {
+                    return right.changeCount - left.changeCount;
+                  }
+                  if (diagnosticSort === "avg_change_interval") {
+                    return (left.avgChangeIntervalMs ?? Number.POSITIVE_INFINITY)
+                      - (right.avgChangeIntervalMs ?? Number.POSITIVE_INFINITY);
+                  }
+                  return left.path.localeCompare(right.path, undefined, {
+                    numeric: true,
+                    sensitivity: "base",
+                  });
+                });
+                const diagnosticGroups: Array<{
+                  key: DiagnosticGroupKey;
+                  label: string;
+                  fields: DiagnosticCaptureField[];
+                }> = (["print", "ams", "tray", "other"] as const)
+                  .map((groupKey) => ({
+                    key: groupKey,
+                    label:
+                      groupKey === "print"
+                        ? t("settings.bambuLiveGroupPrint", "Print & status")
+                        : groupKey === "ams"
+                          ? t("settings.bambuLiveGroupAms", "AMS")
+                          : groupKey === "tray"
+                            ? t("settings.bambuLiveGroupTray", "Tray & chip")
+                            : t("settings.bambuLiveGroupOther", "Other"),
+                    fields: sortedDiagnosticFields.filter(
+                      (field) => classifyDiagnosticField(field.path) === groupKey,
+                    ),
+                  }))
+                  .filter((group) => group.fields.length > 0);
+                const reviewTrayCount =
+                  observedState?.trays.filter(
+                    (tray) =>
+                      tray.match_status &&
+                      tray.match_status !== "clear_match" &&
+                      tray.match_status !== "unknown_from_printer",
+                  ).length ?? 0;
                 const hasMultiMaterial = hasConfiguredMultiMaterial(printerSlots);
                 const configuredSetup = describeConfiguredPrinterSetup(
                   t,
@@ -2676,12 +3520,51 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                           <span className="font-semibold text-slate-900 dark:text-slate-50">
                             {printer.name}
                           </span>{" "}
+                          {liveConfig?.enabled ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-sky-700 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-200">
+                              {t("settings.bambuLiveBadge", "Live")}
+                              {reviewTrayCount > 0 ? <span aria-hidden="true">!</span> : null}
+                            </span>
+                          ) : null}{" "}
                           · {printer.model} ·{" "}
                           {describePrinterCapability(t, printer.model, hasMultiMaterial)} ·{" "}
                           {configuredSetup}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        {liveConfig?.enabled ? (
+                          <button
+                            type="button"
+                            className="rounded border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200"
+                            onClick={() => {
+                              setExpandedBambuDetailsPrinterId((currentExpanded) => {
+                                const nextExpanded = currentExpanded === printer.id ? null : printer.id;
+                                if (nextExpanded === printer.id) {
+                                  const observedState =
+                                    bambuLiveIntegrations[printer.id]?.observed_state ?? null;
+                                  setDiagnosticCaptureByPrinterId((current) => ({
+                                    ...current,
+                                    [printer.id]: buildDiagnosticCaptureSession(observedState),
+                                  }));
+                                  setDiagnosticSortByPrinterId((current) => ({
+                                    ...current,
+                                    [printer.id]: "path",
+                                  }));
+                                  setDiagnosticFilterByPrinterId((current) => ({
+                                    ...current,
+                                    [printer.id]: "all",
+                                  }));
+                                }
+                                return nextExpanded;
+                              });
+                            }}
+                            disabled={!tauri}
+                          >
+                            {expandedBambuDetailsPrinterId === printer.id
+                              ? t("settings.hideObservedDetails", "Hide observed details")
+                              : t("settings.showObservedDetails", "Show observed details & capture")}
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className={`rounded border px-2 py-1 text-xs font-semibold disabled:opacity-50 ${
@@ -2719,63 +3602,700 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                       </div>
                     </div>
 
-                    {isEditing ? (
-                      <div className="mt-3 grid grid-cols-1 gap-3 border-t border-slate-200 pt-3 dark:border-slate-700 md:grid-cols-[1.2fr_1fr_110px_130px_auto]">
-                        <input
-                          type="text"
-                          value={editPrinterModel}
-                          onChange={(event) => {
-                            const nextModel = event.target.value;
-                            setEditPrinterModel(nextModel);
-                            const exactProfile = findPrinterModelProfileExact(nextModel);
-                            if (exactProfile) {
-                              setEditAmsUnits(String(exactProfile.defaultUnits));
-                              setEditSlotsPerUnit(String(exactProfile.defaultSlotsPerUnit));
-                            }
-                          }}
-                          list="printer-model-options"
-                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-                          placeholder={t("settings.printerModel", "Printer model")}
-                          disabled={!tauri || busy}
-                        />
-                        <input
-                          type="text"
-                          value={editPrinterName}
-                          onChange={(event) => setEditPrinterName(event.target.value)}
-                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-                          placeholder={t("settings.printerName", "Printer name")}
-                          disabled={!tauri || busy}
-                        />
-                        <input
-                          type="number"
-                          min={0}
-                          max={editModelProfile.maxUnits}
-                          value={editAmsUnits}
-                          onChange={(event) => setEditAmsUnits(event.target.value)}
-                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-                          title={multiMaterialUnitsInputLabel(t, editPrinterModel)}
-                          disabled={!tauri || busy || editModelProfile.maxUnits === 0}
-                        />
-                        <input
-                          type="number"
-                          min={1}
-                          max={editModelProfile.maxSlotsPerUnit}
-                          value={editSlotsPerUnit}
-                          onChange={(event) => setEditSlotsPerUnit(event.target.value)}
-                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-                          title={multiMaterialSlotsInputLabel(t, editPrinterModel)}
-                          disabled={!tauri || busy || editModelProfile.maxUnits === 0}
-                        />
-                        <button
-                          type="button"
-                          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
-                          onClick={() => void handleSavePrinterReconfigure()}
-                          disabled={!tauri || busy}
-                        >
-                          {t("settings.saveReconfigure", "Save changes")}
-                        </button>
+                    {expandedBambuDetailsPrinterId === printer.id && liveConfig?.enabled ? (
+                      <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200">
+                        {observedState ? (
+                          <div className="space-y-3">
+                            <div>
+                              {t("settings.bambuLiveStatus", "Connection status")}:{" "}
+                              {observedState.mqtt_connected
+                                ? t("settings.bambuLiveConnected", "Connected")
+                                : t("settings.bambuLiveDisconnected", "Not connected")}
+                            </div>
+                            <div>
+                              {t("settings.bambuLiveLastSeen", "Last seen")}:{" "}
+                              {observedState.last_seen_at
+                                ? formatSettingsDateTime(
+                                    observedState.last_seen_at,
+                                    locale,
+                                  )
+                                : "—"}
+                            </div>
+                            <div>
+                              {t("settings.bambuLiveObservedSummary", "Observed summary")}:{" "}
+                              {[
+                                observedState.progress_percent != null
+                                  ? `${observedState.progress_percent}%`
+                                  : null,
+                                observedState.remaining_minutes != null
+                                  ? `${observedState.remaining_minutes} min`
+                                  : null,
+                                observedState.active_tray_index != null
+                                  ? `Tray ${observedState.active_tray_index}`
+                                  : null,
+                                observedState.ams_humidity_index != null
+                                  ? `AMS humidity ${observedState.ams_humidity_index}`
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ") ||
+                                fallbackSummaryParts.join(" · ") ||
+                                "—"}
+                            </div>
+                            {observedState.raw_status_note ? (
+                              <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+                                {observedState.raw_status_note}
+                              </div>
+                            ) : null}
+                            {amsReadInProgress ? (
+                              <div className="rounded border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] text-sky-800 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-200">
+                                {t(
+                                  "settings.bambuLiveAmsReading",
+                                  "AMS refresh in progress. RFID and tray matching can look temporarily uncertain until reading finishes.",
+                                )}
+                              </div>
+                            ) : null}
+                            {displayTrays.length > 0 ? (
+                              <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+                                {displayTrays.map((tray) => {
+                                  const slotNumber = tray.tray_index + 1;
+                                  const capturedTraySnapshot =
+                                    captureTrayByIndex.get(tray.tray_index) ?? null;
+                                  const observedRfid =
+                                    capturedTraySnapshot?.trayUuid?.trim() &&
+                                    !/^0+$/.test(capturedTraySnapshot.trayUuid.trim())
+                                      ? capturedTraySnapshot.trayUuid.trim()
+                                      : null;
+                                  const inventoryMatch = buildInventoryMatchResult(spoolRows, {
+                                    rfid: observedRfid,
+                                    material: tray.filament_type ?? capturedTraySnapshot?.filamentType ?? null,
+                                    filamentName:
+                                      tray.filament_name ?? capturedTraySnapshot?.filamentName ?? null,
+                                    colorHex: tray.color_hex ?? capturedTraySnapshot?.colorHex ?? null,
+                                  });
+                                  const primaryInventoryMatch = inventoryMatch.candidates[0] ?? null;
+                                  const hasReview =
+                                    !amsReadInProgress &&
+                                    tray.match_status &&
+                                    tray.match_status !== "clear_match" &&
+                                    tray.match_status !== "unknown_from_printer";
+                                  return (
+                                    <div
+                                      key={`${printer.id}-live-tray-${tray.tray_index}`}
+                                      className="rounded-lg border border-slate-200 bg-white px-2 py-2 dark:border-slate-700 dark:bg-slate-950/50"
+                                    >
+                                      <div className="flex items-center justify-between gap-2">
+                                        <div className="font-semibold text-slate-900 dark:text-slate-100">
+                                          {`Slot ${slotNumber}`}
+                                        </div>
+                                        {hasReview ? (
+                                          <span
+                                            title={tray.match_note ?? ""}
+                                            className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-amber-300 bg-amber-50 px-1 text-[11px] font-bold text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"
+                                          >
+                                            !
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                        {`MQTT tray ${tray.tray_index}`}
+                                      </div>
+                                      <div className="mt-1 text-[11px] text-slate-600 dark:text-slate-300">
+                                        {tray.loaded
+                                          ? tray.filament_name ||
+                                            tray.filament_type ||
+                                            t("settings.bambuLiveTrayLoaded", "Loaded")
+                                          : t("settings.bambuLiveTrayEmptyUnknown", "Empty / unknown")}
+                                      </div>
+                                      <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                        {[
+                                          tray.filament_type,
+                                          tray.remaining_percent != null
+                                            ? `${tray.remaining_percent}%`
+                                            : null,
+                                        ]
+                                          .filter(Boolean)
+                                          .join(" · ") || "—"}
+                                      </div>
+                                      <div className="mt-2 rounded-md border border-slate-200/80 bg-slate-50/80 px-2 py-1.5 text-[11px] leading-4 text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+                                        <div className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-200">
+                                          <span
+                                            className="h-3.5 w-3.5 rounded-sm border border-slate-300/80 dark:border-slate-600"
+                                            style={{
+                                              backgroundColor: primaryInventoryMatch
+                                                ? toSwatchColor(primaryInventoryMatch.master.hex_color)
+                                                : toSwatchColor(tray.color_hex ?? capturedTraySnapshot?.colorHex),
+                                            }}
+                                          />
+                                          <span>
+                                            {primaryInventoryMatch
+                                              ? `${primaryInventoryMatch.master.filament_name} · ${primaryInventoryMatch.master.color_name}`
+                                              : t("settings.bambuLiveNoInventoryMatch", "No clear inventory match")}
+                                          </span>
+                                        </div>
+                                        <div className="mt-1">
+                                          {inventoryMatch.kind === "rfid_exact"
+                                            ? t(
+                                                "settings.bambuLiveInventoryRfidMatch",
+                                                "Exact tray identity match against inventory.",
+                                              )
+                                            : inventoryMatch.kind === "metadata_single"
+                                              ? t(
+                                                  "settings.bambuLiveInventoryLikelyMatch",
+                                                  "Single likely inventory match from material/name/color.",
+                                                )
+                                              : inventoryMatch.kind === "metadata_multiple"
+                                                ? t(
+                                                    "settings.bambuLiveInventoryMultipleMatches",
+                                                    "Multiple inventory rolls could match this filament.",
+                                                  )
+                                                : observedRfid
+                                                  ? t(
+                                                      "settings.bambuLiveInventoryNoRfidMatch",
+                                                      "Observed tray identity did not match anything in inventory.",
+                                                    )
+                                                  : t(
+                                                      "settings.bambuLiveInventoryNoMatch",
+                                                      "No clear inventory match yet.",
+                                                    )}
+                                        </div>
+                                        {(observedRfid || inventoryMatch.candidates.length > 1) ? (
+                                          <div className="mt-1 break-all text-[10px] text-slate-500 dark:text-slate-400">
+                                            {observedRfid ? `Observed: ${observedRfid}` : null}
+                                            {observedRfid && inventoryMatch.kind === "metadata_multiple" ? " · " : null}
+                                            {inventoryMatch.kind === "metadata_multiple"
+                                              ? `${inventoryMatch.candidates.length} candidates`
+                                              : null}
+                                          </div>
+                                        ) : null}
+                                        {inventoryMatch.kind === "metadata_multiple" ? (
+                                          <div className="mt-2 space-y-1.5">
+                                            {inventoryMatch.candidates.slice(0, 3).map((candidate) => (
+                                              <div
+                                                key={candidate.spool.id}
+                                                className="flex items-center gap-2 rounded border border-slate-200/80 bg-white/70 px-2 py-1 dark:border-slate-700 dark:bg-slate-950/40"
+                                              >
+                                                <span
+                                                  className="h-3 w-3 rounded-sm border border-slate-300/80 dark:border-slate-600"
+                                                  style={{
+                                                    backgroundColor: toSwatchColor(candidate.master.hex_color),
+                                                  }}
+                                                />
+                                                <div className="min-w-0 flex-1">
+                                                  <div className="truncate text-[10px] font-medium text-slate-700 dark:text-slate-200">
+                                                    {candidate.master.filament_name} · {candidate.master.color_name}
+                                                  </div>
+                                                  <div className="truncate text-[10px] text-slate-500 dark:text-slate-400">
+                                                    {candidate.spool.rfid_tag?.trim()
+                                                      ? `RFID saved · ${candidate.spool.id}`
+                                                      : `No RFID saved · ${candidate.spool.id}`}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            ))}
+                                            {inventoryMatch.candidates.length > 3 ? (
+                                              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                                {t(
+                                                  "settings.bambuLiveMoreInventoryCandidates",
+                                                  "More matching rolls exist in inventory.",
+                                                )}
+                                              </div>
+                                            ) : null}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                      {tray.match_note && !amsReadInProgress ? (
+                                        <div className="mt-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                                          {tray.match_note}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                            <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-950/50">
+                              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                                {t("settings.bambuLiveDiagnostics", "Diagnostics")}
+                              </div>
+                              <div className="mt-2 space-y-2 text-[11px] text-slate-600 dark:text-slate-300">
+                                <div>
+                                  {t("settings.bambuLiveConfiguredHost", "Configured host")}:{" "}
+                                  {liveConfig.host?.trim() || "—"}
+                                </div>
+                                <div>
+                                  {t("settings.bambuLiveConfiguredSerial", "Configured printer serial")}:{" "}
+                                  {liveConfig.printer_serial?.trim() || "—"}
+                                </div>
+                                <div>
+                                  {t("settings.bambuLivePrinterOnline", "Online")}:{" "}
+                                  {observedState.online ? "true" : "false"}
+                                </div>
+                                <div>
+                                  {t("settings.bambuLiveMqttConnected", "MQTT connected")}:{" "}
+                                  {observedState.mqtt_connected ? "true" : "false"}
+                                </div>
+                                <div>
+                                  {t("settings.bambuLiveFieldCount", "Observed top-level fields")}:{" "}
+                                  {observedState.raw_payload_json &&
+                                  typeof observedState.raw_payload_json === "object" &&
+                                  !Array.isArray(observedState.raw_payload_json)
+                                    ? Object.keys(observedState.raw_payload_json as Record<string, unknown>).length
+                                    : 0}
+                                </div>
+                                <div>
+                                  {t("settings.bambuLiveCapturedFieldCount", "Captured fields in this session")}:{" "}
+                                  {diagnosticFields.length}
+                                </div>
+                              </div>
+                              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+                                <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60">
+                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                                    {t("settings.bambuLiveCaptureStarted", "Capture started")}
+                                  </div>
+                                  <div className="mt-1 text-[11px] text-slate-700 dark:text-slate-200">
+                                    {captureSessionStartedAt
+                                      ? formatSettingsDateTime(captureSessionStartedAt, locale)
+                                      : "—"}
+                                  </div>
+                                </div>
+                                <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60">
+                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                                    {t("settings.bambuLiveCaptureLastUpdate", "Last captured")}
+                                  </div>
+                                  <div className="mt-1 text-[11px] text-slate-700 dark:text-slate-200">
+                                    {captureSessionLastSeenAt
+                                      ? formatSettingsDateTime(captureSessionLastSeenAt, locale)
+                                      : "—"}
+                                  </div>
+                                </div>
+                                <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60">
+                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                                    {t("settings.bambuLiveCaptureSeededFrom", "Seeded from live state")}
+                                  </div>
+                                  <div className="mt-1 text-[11px] text-slate-700 dark:text-slate-200">
+                                    {captureSessionSeededAt
+                                      ? formatSettingsDateTime(captureSessionSeededAt, locale)
+                                      : "—"}
+                                  </div>
+                                </div>
+                                <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60">
+                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                                    {t("settings.bambuLiveChangedFields", "Changed fields")}
+                                  </div>
+                                  <div className="mt-1 text-[11px] text-slate-700 dark:text-slate-200">
+                                    {changedFieldCount}
+                                  </div>
+                                </div>
+                                <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60">
+                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                                    {t("settings.bambuLiveIdentitySignals", "Identity signals")}
+                                  </div>
+                                  <div className="mt-1 text-[11px] text-slate-700 dark:text-slate-200">
+                                    {identityFieldCount}
+                                  </div>
+                                </div>
+                              </div>
+                              {signalQualityBuckets.length > 0 ? (
+                                <div className="mt-3 grid grid-cols-1 gap-2 xl:grid-cols-3">
+                                  {signalQualityBuckets.map((bucket) => (
+                                    <div
+                                      key={`${printer.id}-${bucket.label}`}
+                                      className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60"
+                                    >
+                                      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                                        {bucket.label === "Stable metadata"
+                                          ? t("settings.bambuLiveSignalStable", "Stable metadata")
+                                          : bucket.label === "Event-driven identity"
+                                            ? t("settings.bambuLiveSignalEventDriven", "Event-driven identity")
+                                            : t("settings.bambuLiveSignalContinuous", "Continuous telemetry")}
+                                      </div>
+                                      <div className="mt-1 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                                        {bucket.label === "Stable metadata"
+                                          ? t(
+                                              "settings.bambuLiveSignalStableDesc",
+                                              "Identity and tray metadata that appears stable when observed.",
+                                            )
+                                          : bucket.label === "Event-driven identity"
+                                            ? t(
+                                                "settings.bambuLiveSignalEventDrivenDesc",
+                                                "Fields that tend to appear or change around AMS read/sync events.",
+                                              )
+                                            : t(
+                                                "settings.bambuLiveSignalContinuousDesc",
+                                                "Fields that look like normal status/telemetry updates during operation.",
+                                              )}
+                                      </div>
+                                      <div className="mt-2 flex flex-wrap gap-1">
+                                        {bucket.fields.slice(0, 6).map((field) => (
+                                          <span
+                                            key={`${printer.id}-${bucket.label}-${field.path}`}
+                                            className="inline-flex items-center rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] text-slate-600 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-300"
+                                            title={field.path}
+                                          >
+                                            {field.path}
+                                          </span>
+                                        ))}
+                                        {bucket.fields.length > 6 ? (
+                                          <span className="inline-flex items-center rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-500 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-400">
+                                            +{bucket.fields.length - 6}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null}
+                              <div className="mt-3 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+                                {t("settings.bambuLiveCapturedTable", "Captured live fields")}
+                              </div>
+                              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <select
+                                    value={diagnosticSort}
+                                    onChange={(event) =>
+                                      setDiagnosticSortByPrinterId((current) => ({
+                                        ...current,
+                                        [printer.id]: event.target.value as DiagnosticSortKey,
+                                      }))
+                                    }
+                                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                                  >
+                                    <option value="path">{t("settings.bambuLiveSortPath", "Sort: Field")}</option>
+                                    <option value="last_seen_desc">
+                                      {t("settings.bambuLiveSortLastSeen", "Sort: Most recently seen")}
+                                    </option>
+                                    <option value="avg_seen_interval">
+                                      {t("settings.bambuLiveSortSeenInterval", "Sort: Fastest seen")}
+                                    </option>
+                                    <option value="change_count">
+                                      {t("settings.bambuLiveSortChangeCount", "Sort: Most changed")}
+                                    </option>
+                                    <option value="avg_change_interval">
+                                      {t("settings.bambuLiveSortChangeInterval", "Sort: Fastest changed")}
+                                    </option>
+                                  </select>
+                                  <select
+                                    value={diagnosticFilter}
+                                    onChange={(event) =>
+                                      setDiagnosticFilterByPrinterId((current) => ({
+                                        ...current,
+                                        [printer.id]: event.target.value as DiagnosticFilterKey,
+                                      }))
+                                    }
+                                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                                  >
+                                    <option value="all">{t("settings.bambuLiveFilterAll", "Filter: All")}</option>
+                                    <option value="changed">
+                                      {t("settings.bambuLiveFilterChanged", "Filter: Changed fields")}
+                                    </option>
+                                    <option value="recent">
+                                      {t("settings.bambuLiveFilterRecent", "Filter: Seen in last minute")}
+                                    </option>
+                                    <option value="high_frequency">
+                                      {t("settings.bambuLiveFilterFrequent", "Filter: High frequency")}
+                                    </option>
+                                  </select>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 dark:border-slate-600 dark:text-slate-200"
+                                  onClick={() => {
+                                    if (!diagnosticSession) {
+                                      return;
+                                    }
+                                    const csv = exportDiagnosticCaptureSessionCsv(diagnosticSession);
+                                    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+                                    const url = URL.createObjectURL(blob);
+                                    const anchor = document.createElement("a");
+                                    anchor.href = url;
+                                    anchor.download = `${printer.name.replace(/\s+/g, "-").toLowerCase()}-live-capture.csv`;
+                                    anchor.click();
+                                    URL.revokeObjectURL(url);
+                                  }}
+                                  disabled={!diagnosticSession || diagnosticSession.fields.length === 0}
+                                >
+                                  {t("settings.bambuLiveExportCsv", "Export CSV")}
+                                </button>
+                              </div>
+                              <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+                                <div className="max-h-80 overflow-auto">
+                                  {sortedDiagnosticFields.length > 0 ? (
+                                    <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                                      {diagnosticGroups.map((group) => (
+                                        <div key={`${printer.id}-${group.key}`}>
+                                          <div className="bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 dark:bg-slate-900/80 dark:text-slate-300">
+                                            {group.label}
+                                          </div>
+                                          <table className="min-w-full divide-y divide-slate-200 text-left text-[11px] dark:divide-slate-700">
+                                            <thead className="bg-slate-50/80 dark:bg-slate-900/40">
+                                              <tr>
+                                                <th className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-300">
+                                                  {t("settings.bambuLiveFieldPath", "Field")}
+                                                </th>
+                                                <th className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-300">
+                                                  {t("settings.bambuLiveFieldValue", "Value")}
+                                                </th>
+                                                <th className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-300">
+                                                  {t("settings.bambuLiveFieldUpdated", "Last seen")}
+                                                </th>
+                                                <th className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-300">
+                                                  {t("settings.bambuLiveFieldCadence", "Avg seen interval")}
+                                                </th>
+                                                <th className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-300">
+                                                  {t("settings.bambuLiveFieldChanges", "Changes")}
+                                                </th>
+                                                <th className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-300">
+                                                  {t("settings.bambuLiveFieldChangeCadence", "Avg change interval")}
+                                                </th>
+                                                <th className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-300">
+                                                  {t("settings.bambuLiveFieldRecentValues", "Recent values")}
+                                                </th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950/40">
+                                              {group.fields.map((field) => (
+                                                <tr key={`${printer.id}-${group.key}-${field.path}`}>
+                                                  <td className="px-3 py-2 font-mono text-slate-700 dark:text-slate-200">
+                                                    {field.path}
+                                                  </td>
+                                                  <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-300">
+                                                    {field.valueText}
+                                                  </td>
+                                                  <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
+                                                    {formatSettingsDateTime(field.lastSeenAt, locale)}
+                                                  </td>
+                                                  <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
+                                                    {formatIntervalMs(field.avgReceiveIntervalMs)}
+                                                  </td>
+                                                  <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
+                                                    {field.changeCount}
+                                                  </td>
+                                                  <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
+                                                    {formatIntervalMs(field.avgChangeIntervalMs)}
+                                                  </td>
+                                                  <td className="px-3 py-2 text-[10px] leading-4 text-slate-500 dark:text-slate-400">
+                                                    <div className="flex min-w-[220px] flex-wrap gap-1">
+                                                      {field.recentValues.length > 0 ? (
+                                                        field.recentValues.map((sample, index) => (
+                                                          <span
+                                                            key={`${field.path}-sample-${index}`}
+                                                            className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 ${
+                                                              sample.changed
+                                                                ? "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200"
+                                                                : "border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400"
+                                                            }`}
+                                                            title={formatSettingsDateTime(sample.seenAt, locale)}
+                                                          >
+                                                            <span className="font-mono">
+                                                              {sample.valueText}
+                                                            </span>
+                                                            <span aria-hidden="true">
+                                                              {sample.changed ? "•" : "·"}
+                                                            </span>
+                                                          </span>
+                                                        ))
+                                                      ) : (
+                                                        <span>—</span>
+                                                      )}
+                                                    </div>
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <table className="min-w-full divide-y divide-slate-200 text-left text-[11px] dark:divide-slate-700">
+                                      <tbody className="bg-white dark:bg-slate-950/40">
+                                        <tr>
+                                          <td
+                                            colSpan={7}
+                                            className="px-3 py-3 text-slate-500 dark:text-slate-400"
+                                          >
+                                            {t(
+                                              "settings.bambuLiveCaptureWaiting",
+                                              "Waiting for live field updates. Start a print or let the printer report more data while this panel is open.",
+                                            )}
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="mt-3 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+                                {t("settings.bambuLiveRawPayload", "Latest raw live payload")}
+                              </div>
+                              <pre className="mt-2 max-h-80 overflow-auto rounded-lg border border-slate-200 bg-slate-950 px-3 py-3 text-[11px] leading-5 text-emerald-200 dark:border-slate-700">
+{formatDiagnosticJson(observedState.raw_payload_json)}
+                              </pre>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="font-semibold text-slate-900 dark:text-slate-100">
+                              {t("settings.bambuLiveObservedDetails", "Observed live details")}
+                            </div>
+                            <div>
+                              {t(
+                                "settings.bambuLiveObservedEmpty",
+                                "No observed live data yet. This section will later show the incoming status fields, connection health and useful AMS values for this printer.",
+                              )}
+                            </div>
+                            <div>
+                              {t("settings.bambuLiveConfiguredHost", "Configured host")}:{" "}
+                              {liveConfig.host?.trim() || "—"}
+                            </div>
+                            <div>
+                              {t("settings.bambuLiveConfiguredSerial", "Configured printer serial")}:{" "}
+                              {liveConfig.printer_serial?.trim() || "—"}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : null}
+
+                    {isEditing ? (
+                      <div className="mt-3 space-y-4 border-t border-slate-200 pt-3 dark:border-slate-700">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.2fr_1fr_110px_130px_auto]">
+                          <input
+                            type="text"
+                            value={editPrinterModel}
+                            onChange={(event) => {
+                              const nextModel = event.target.value;
+                              setEditPrinterModel(nextModel);
+                              const exactProfile = findPrinterModelProfileExact(nextModel);
+                              if (exactProfile) {
+                                setEditAmsUnits(String(exactProfile.defaultUnits));
+                                setEditSlotsPerUnit(String(exactProfile.defaultSlotsPerUnit));
+                              }
+                            }}
+                            list="printer-model-options"
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
+                            placeholder={t("settings.printerModel", "Printer model")}
+                            disabled={!tauri || busy}
+                          />
+                          <input
+                            type="text"
+                            value={editPrinterName}
+                            onChange={(event) => setEditPrinterName(event.target.value)}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
+                            placeholder={t("settings.printerName", "Printer name")}
+                            disabled={!tauri || busy}
+                          />
+                          <input
+                            type="number"
+                            min={0}
+                            max={editModelProfile.maxUnits}
+                            value={editAmsUnits}
+                            onChange={(event) => setEditAmsUnits(event.target.value)}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
+                            title={multiMaterialUnitsInputLabel(t, editPrinterModel)}
+                            disabled={!tauri || busy || editModelProfile.maxUnits === 0}
+                          />
+                          <input
+                            type="number"
+                            min={1}
+                            max={editModelProfile.maxSlotsPerUnit}
+                            value={editSlotsPerUnit}
+                            onChange={(event) => setEditSlotsPerUnit(event.target.value)}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
+                            title={multiMaterialSlotsInputLabel(t, editPrinterModel)}
+                            disabled={!tauri || busy || editModelProfile.maxUnits === 0}
+                          />
+                          <button
+                            type="button"
+                            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+                            onClick={() => void handleSavePrinterReconfigure()}
+                            disabled={!tauri || busy}
+                          >
+                            {t("settings.saveReconfigure", "Save changes")}
+                          </button>
+                        </div>
+
+	                        {isBambuLabPrinter(printer.model) ? (
+	                        <div className="rounded-lg border border-dashed border-slate-300 bg-white/80 p-3 dark:border-slate-600 dark:bg-slate-950/40">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                {t("settings.bambuLiveSection", "Live Bambu status (beta)")}
+                              </div>
+                              <div className="max-w-2xl text-xs leading-5 text-slate-600 dark:text-slate-400">
+                                {t(
+                                  "settings.bambuLiveHint",
+                                  "Optional local read-only integration for observing printer and AMS status while we evaluate which live fields are stable and valuable.",
+                                )}
+                              </div>
+                            </div>
+                            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                              <input
+                                type="checkbox"
+                                checked={editBambuLiveEnabled}
+                                onChange={(event) => setEditBambuLiveEnabled(event.target.checked)}
+                                disabled={!tauri || busy || settingsClientReadOnly}
+                              />
+                              {t("settings.enableBambuLive", "Enable live status")}
+                            </label>
+                          </div>
+
+                          {settingsClientReadOnly ? (
+                            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+                              {t(
+                                "settings.bambuLiveStandaloneOnly",
+                                "Live Bambu status can only be configured on the host desktop in this phase.",
+                              )}
+                            </div>
+                          ) : null}
+
+                          {editBambuLiveEnabled ? (
+                            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+                              <input
+                                type="text"
+                                value={editBambuLiveHost}
+                                onChange={(event) => setEditBambuLiveHost(event.target.value)}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
+                                placeholder={t("settings.bambuLiveHost", "Printer host / IP")}
+                                disabled={!tauri || busy || settingsClientReadOnly}
+                              />
+                              <input
+                                type="password"
+                                value={editBambuLiveAccessCode}
+                                onChange={(event) => setEditBambuLiveAccessCode(event.target.value)}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
+                                placeholder={t("settings.bambuLiveAccessCode", "Access code")}
+                                disabled={!tauri || busy || settingsClientReadOnly}
+                              />
+                              <input
+                                type="text"
+                                value={editBambuLivePrinterSerial}
+                                onChange={(event) => setEditBambuLivePrinterSerial(event.target.value)}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
+                                placeholder={t("settings.bambuLivePrinterSerial", "Printer serial")}
+                                disabled={!tauri || busy || settingsClientReadOnly}
+                              />
+                            </div>
+                          ) : null}
+
+	                          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+	                            <div className="text-xs text-slate-500 dark:text-slate-400">
+                              {editBambuLiveEnabled
+                                ? t(
+                                    "settings.bambuLiveOptInNote",
+                                    "Credentials are stored locally on this desktop as part of the current experimental opt-in flow.",
+                                  )
+                                : t(
+                                    "settings.bambuLiveDisabledNote",
+                                    "Leave disabled to keep the current printer flow unchanged.",
+                                  )}
+	                            </div>
+	                          </div>
+	                        </div>
+	                        ) : null}
+	                      </div>
+	                    ) : null}
                   </div>
                 );
               })}
@@ -3399,7 +4919,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                   value={librarySyncSnapshot!.total_spools}
                                 />
                                 <SettingsMetricTile
-                                  label={t("settings.librarySyncSnapshotInUse", "In use")}
+                                  label={t("settings.librarySyncSnapshotAssigned", "Assigned")}
                                   value={librarySyncSnapshot!.in_use}
                                 />
                                 <SettingsMetricTile

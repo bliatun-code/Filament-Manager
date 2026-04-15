@@ -23,7 +23,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use rand::rngs::OsRng;
-use rand::RngCore;
+use rand::TryRngCore;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -1411,7 +1411,10 @@ async fn handle_update_spool_details(
                 .to_string(),
         ));
     }
-    if current_status == "IN_USE" || spool_assigned_to_printer(&state, spool_id)? {
+    if current_status == "IN_USE"
+        || current_status == "ASSIGNED"
+        || spool_assigned_to_printer(&state, spool_id)?
+    {
         return Err(CompanionApiError::BadRequest(
             "Loaded spools use printer-slot actions instead of manual status/location edits"
                 .to_string(),
@@ -2091,7 +2094,9 @@ fn unix_epoch_seconds() -> u64 {
 
 fn random_hex_token(byte_count: usize) -> String {
     let mut bytes = vec![0u8; byte_count];
-    OsRng.fill_bytes(&mut bytes);
+    OsRng
+        .try_fill_bytes(&mut bytes)
+        .expect("OS RNG should be available for trusted-LAN token generation");
     bytes
         .iter()
         .map(|byte| format!("{byte:02x}"))

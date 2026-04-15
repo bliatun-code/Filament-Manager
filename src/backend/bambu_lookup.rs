@@ -227,7 +227,7 @@ fn sleep_with_jitter(base_ms: u64, jitter_ms: u64) {
     let jitter = if jitter_ms == 0 {
         0
     } else {
-        rand::thread_rng().gen_range(0..=jitter_ms)
+        rand::rng().random_range(0..=jitter_ms)
     };
     thread::sleep(Duration::from_millis(base_ms.saturating_add(jitter)));
 }
