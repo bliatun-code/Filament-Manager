@@ -22,6 +22,9 @@ Historical notes below still mention the old localhost browser companion, `qa:co
     - host/client printer-slot batch 2 now enriches paired-client printer snapshots with minimal live slot/RFID status from the host, without exposing full Bambu live settings
   - security/release baseline:
     - `rand` upgraded to `0.9` with local compatibility fixes for token generation and jitter
+    - Dependabot `rand` alerts remain open, but are transitive through the current Tauri/`tauri-utils` chain rather than direct project dependencies
+    - checked 2026-04-16: latest published Tauri versions do not remove the affected `rand 0.7/0.8` branches, and those lockfile entries cannot be bumped safely in isolation without breaking upstream version requirements
+    - revisit this during a later Tauri dependency upgrade rather than forcing a local lockfile-only fix
   - validation baseline after the release pass:
     - `npm run build` ✅
     - `cargo test --manifest-path src-tauri/Cargo.toml bambu_live -- --nocapture` ✅
@@ -1271,7 +1274,7 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - `cd /Users/bliatun/Documents/Codex/bambu-filament-manager && npm run smoke` passed
 - Current known technical debt carried into/after `v0.1.0`:
   - frontend bundle warning: `settings` chunk remains above 500 kB minified warning threshold
-  - repository security hygiene: GitHub reports 2 moderate Dependabot vulnerabilities
+  - repository security hygiene: open Dependabot `rand` alerts are transitive through the current Tauri/`tauri-utils` dependency chain and should be revisited on a later Tauri upgrade
   - manual visual RC checks still required for specific real-device/macOS behaviors (see `UI_RELEASE_CANDIDATE_CHECKLIST.md`)
 - Release docs updated:
   - `/Users/bliatun/Documents/Codex/bambu-filament-manager/RELEASE_NOTES_v0.1.0.md`

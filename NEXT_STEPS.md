@@ -221,7 +221,8 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - QR detail + label + A4 print flows are in place
 - Remaining pre/post-release debt:
   - split oversized frontend `settings` chunk (>500 kB warning)
-  - resolve 2 moderate GitHub Dependabot vulnerabilities
+  - Dependabot `rand` alerts remain open, but are transitive through the current Tauri/`tauri-utils` chain and should be revisited on the next Tauri dependency upgrade
+  - checked 2026-04-16: latest published Tauri versions still resolve the affected `rand 0.7/0.8` branches, and those entries cannot be bumped safely in isolation
   - complete manual RC visual checks in:
     - `/Users/bliatun/Documents/Codex/bambu-filament-manager/UI_RELEASE_CANDIDATE_CHECKLIST.md`
 
@@ -232,8 +233,8 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - dependency lockfiles refreshed (`root` + `ui`) within current semver ranges
   - `npm audit` currently reports zero vulnerabilities in both package roots
 - Follow-up checklist:
-  - verify GitHub Dependabot alerts directly in repo Security tab (token scope needed for API access)
-  - if alerts remain open, patch and release `v0.1.1` with focused notes only
+  - Dependabot alerts are now verified directly against the repo Security view/API
+  - do not force a local lockfile-only patch for the remaining `rand` alerts; wait for a supported upstream Tauri dependency update
   - keep scope limited to hardening and regression fixes (no workflow redesign)
 - Plan doc:
   - `/Users/bliatun/Documents/Codex/bambu-filament-manager/V0_1_1_HARDENING_PLAN.md`
