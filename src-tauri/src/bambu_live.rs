@@ -208,6 +208,8 @@ fn merge_tray_snapshots(
             let Some(previous) = previous_by_index.get(&next.tray_index) else {
                 return next.clone();
             };
+            let carry_forward_observed_identity =
+                !next.loaded && next.empty_observation_count == previous.empty_observation_count;
             BambuLiveObservedTrayRow {
                 tray_index: next.tray_index,
                 loaded: next.loaded || previous.loaded,
@@ -225,27 +227,24 @@ fn merge_tray_snapshots(
                     .or_else(|| previous.color_hex.clone()),
                 remaining_percent: next.remaining_percent.or(previous.remaining_percent),
                 remaining_grams: next.remaining_grams.or(previous.remaining_grams),
-                observed_rfid_tag: next
-                    .observed_rfid_tag
-                    .clone()
-                    .or_else(|| previous.observed_rfid_tag.clone()),
-                tray_uuid: next
-                    .tray_uuid
-                    .clone()
-                    .or_else(|| previous.tray_uuid.clone()),
-                chip_id: next.chip_id.clone().or_else(|| previous.chip_id.clone()),
-                tray_info_idx: next
-                    .tray_info_idx
-                    .clone()
-                    .or_else(|| previous.tray_info_idx.clone()),
-                tray_id_name: next
-                    .tray_id_name
-                    .clone()
-                    .or_else(|| previous.tray_id_name.clone()),
-                last_identity_seen_at: next
-                    .last_identity_seen_at
-                    .clone()
-                    .or_else(|| previous.last_identity_seen_at.clone()),
+                observed_rfid_tag: next.observed_rfid_tag.clone().or_else(|| {
+                    carry_forward_observed_identity
+                        .then(|| previous.observed_rfid_tag.clone())
+                        .flatten()
+                }),
+                tray_uuid: next.tray_uuid.clone().or_else(|| {
+                    carry_forward_observed_identity
+                        .then(|| previous.tray_uuid.clone())
+                        .flatten()
+                }),
+                chip_id: next.chip_id.clone(),
+                tray_info_idx: next.tray_info_idx.clone(),
+                tray_id_name: next.tray_id_name.clone(),
+                last_identity_seen_at: next.last_identity_seen_at.clone().or_else(|| {
+                    carry_forward_observed_identity
+                        .then(|| previous.last_identity_seen_at.clone())
+                        .flatten()
+                }),
                 last_empty_seen_at: next
                     .last_empty_seen_at
                     .clone()
@@ -253,22 +252,10 @@ fn merge_tray_snapshots(
                 empty_observation_count: next
                     .empty_observation_count
                     .or(previous.empty_observation_count),
-                matched_inventory_spool_id: next
-                    .matched_inventory_spool_id
-                    .clone()
-                    .or_else(|| previous.matched_inventory_spool_id.clone()),
-                matched_inventory_mode: next
-                    .matched_inventory_mode
-                    .clone()
-                    .or_else(|| previous.matched_inventory_mode.clone()),
-                match_status: next
-                    .match_status
-                    .clone()
-                    .or_else(|| previous.match_status.clone()),
-                match_note: next
-                    .match_note
-                    .clone()
-                    .or_else(|| previous.match_note.clone()),
+                matched_inventory_spool_id: next.matched_inventory_spool_id.clone(),
+                matched_inventory_mode: next.matched_inventory_mode.clone(),
+                match_status: next.match_status.clone(),
+                match_note: next.match_note.clone(),
             }
         })
         .collect()
@@ -1007,15 +994,17 @@ fn merge_tray_payload(
     let filament_name = as_string(tray.get("tray_sub_brands"));
     let color_hex = normalize_color(as_string(tray.get("tray_color")));
     let remaining_percent = normalize_remaining_percent(as_i64(tray.get("remain")));
-    let has_identity_signal = observed_rfid_tag.is_some()
+    let has_rfid_identity_signal = tray_uuid.is_some();
+    let has_live_observation_signal = observed_rfid_tag.is_some()
         || tray_uuid.is_some()
         || chip_id.is_some()
         || tray_info_idx.is_some()
         || tray_id_name.is_some();
-    let empty_observation = !substantive_fields && !has_identity_signal;
+    let empty_observation = !substantive_fields && !has_live_observation_signal;
+    let should_reset_observed_identity = substantive_fields || empty_observation;
 
     let previous_loaded = previous.map(|value| value.loaded).unwrap_or(false);
-    let loaded = if substantive_fields || has_identity_signal {
+    let loaded = if substantive_fields || has_live_observation_signal {
         true
     } else if empty_observation {
         false
@@ -1036,16 +1025,35 @@ fn merge_tray_payload(
         remaining_grams: remaining_percent
             .and_then(percent_to_grams)
             .or_else(|| previous.and_then(|value| value.remaining_grams)),
-        observed_rfid_tag: observed_rfid_tag
-            .or_else(|| previous.and_then(|value| value.observed_rfid_tag.clone())),
-        tray_uuid: tray_uuid.or_else(|| previous.and_then(|value| value.tray_uuid.clone())),
-        chip_id: chip_id.or_else(|| previous.and_then(|value| value.chip_id.clone())),
-        tray_info_idx: tray_info_idx
-            .or_else(|| previous.and_then(|value| value.tray_info_idx.clone())),
-        tray_id_name: tray_id_name
-            .or_else(|| previous.and_then(|value| value.tray_id_name.clone())),
-        last_identity_seen_at: if has_identity_signal {
+        observed_rfid_tag: if should_reset_observed_identity {
+            observed_rfid_tag
+        } else {
+            observed_rfid_tag.or_else(|| previous.and_then(|value| value.observed_rfid_tag.clone()))
+        },
+        tray_uuid: if should_reset_observed_identity {
+            tray_uuid
+        } else {
+            tray_uuid.or_else(|| previous.and_then(|value| value.tray_uuid.clone()))
+        },
+        chip_id: if should_reset_observed_identity {
+            chip_id
+        } else {
+            chip_id.or_else(|| previous.and_then(|value| value.chip_id.clone()))
+        },
+        tray_info_idx: if should_reset_observed_identity {
+            tray_info_idx
+        } else {
+            tray_info_idx.or_else(|| previous.and_then(|value| value.tray_info_idx.clone()))
+        },
+        tray_id_name: if should_reset_observed_identity {
+            tray_id_name
+        } else {
+            tray_id_name.or_else(|| previous.and_then(|value| value.tray_id_name.clone()))
+        },
+        last_identity_seen_at: if has_rfid_identity_signal {
             Some(observed_at.to_string())
+        } else if should_reset_observed_identity {
+            None
         } else {
             previous.and_then(|value| value.last_identity_seen_at.clone())
         },
@@ -1066,11 +1074,26 @@ fn merge_tray_payload(
         } else {
             previous.and_then(|value| value.empty_observation_count)
         },
-        matched_inventory_spool_id: previous
-            .and_then(|value| value.matched_inventory_spool_id.clone()),
-        matched_inventory_mode: previous.and_then(|value| value.matched_inventory_mode.clone()),
-        match_status: previous.and_then(|value| value.match_status.clone()),
-        match_note: previous.and_then(|value| value.match_note.clone()),
+        matched_inventory_spool_id: if should_reset_observed_identity {
+            None
+        } else {
+            previous.and_then(|value| value.matched_inventory_spool_id.clone())
+        },
+        matched_inventory_mode: if should_reset_observed_identity {
+            None
+        } else {
+            previous.and_then(|value| value.matched_inventory_mode.clone())
+        },
+        match_status: if should_reset_observed_identity {
+            None
+        } else {
+            previous.and_then(|value| value.match_status.clone())
+        },
+        match_note: if should_reset_observed_identity {
+            None
+        } else {
+            previous.and_then(|value| value.match_note.clone())
+        },
     }
 }
 
@@ -1229,7 +1252,7 @@ fn chrono_like_utc(timestamp: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        apply_tray_match_status, should_auto_clear_live_unknown_replacement,
+        apply_tray_match_status, merge_tray_payload, should_auto_clear_live_unknown_replacement,
         slot_override_matches_live_unknown,
     };
     use crate::backend::filament_database::{
@@ -1425,5 +1448,26 @@ mod tests {
             Some("2026-04-15T10:00:01Z"),
             Some("2026-04-15 10:00:00")
         ));
+    }
+
+    #[test]
+    fn merge_tray_payload_clears_stale_rfid_identity_on_new_non_rfid_observation() {
+        let previous = make_tray();
+        let payload = serde_json::json!({
+            "id": 0,
+            "tray_type": "PLA",
+            "tray_sub_brands": "eSUN PLA+"
+        });
+
+        let merged = merge_tray_payload(Some(&previous), 0, &payload, "2026-04-16T14:00:00Z");
+
+        assert!(merged.loaded);
+        assert_eq!(merged.filament_name.as_deref(), Some("eSUN PLA+"));
+        assert!(merged.tray_uuid.is_none());
+        assert!(merged.observed_rfid_tag.is_none());
+        assert!(merged.last_identity_seen_at.is_none());
+        assert!(merged.matched_inventory_spool_id.is_none());
+        assert!(merged.matched_inventory_mode.is_none());
+        assert!(merged.match_status.is_none());
     }
 }

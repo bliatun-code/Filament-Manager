@@ -929,7 +929,8 @@ impl InventoryEngine {
             }
         };
 
-        let slot_has_spool = Self::normalize_optional_text(slot.spool_id.as_deref()).is_some();
+        let current_slot_spool_id = Self::normalize_optional_text(slot.spool_id.as_deref());
+        let slot_has_spool = current_slot_spool_id.is_some();
         let is_ext_slot = slot.ams_id.ends_with("_ext");
         let effective_clear =
             explicit_clear || (requested_spool_id.is_none() && slot_has_spool && !is_ext_slot);
@@ -958,10 +959,16 @@ impl InventoryEngine {
             }
         }
 
+        let manual_reassignment_needs_live_suppression = !is_ext_slot
+            && requested_spool_id != current_slot_spool_id
+            && requested_spool_id.is_some()
+            && effective_override_tray_uuid.is_none()
+            && effective_override_color_hex.is_none();
+
         Ok((
             effective_override_tray_uuid,
             effective_override_color_hex,
-            effective_clear,
+            effective_clear || manual_reassignment_needs_live_suppression,
         ))
     }
 
@@ -1761,6 +1768,99 @@ mod tests {
         if let Err(message) = result {
             panic!(
                 "assign_printer_slot_derives_manual_clear_cache_suppression_on_host failed: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn assign_printer_slot_derives_manual_reassignment_cache_suppression_on_host() {
+        let db_path = temp_db_path("derive-host-reassign-cache");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            let engine = InventoryEngine::new(db);
+
+            engine
+                .create_printer(CreatePrinterInput {
+                    id: "printer_1".to_string(),
+                    model: "P1S".to_string(),
+                    name: "Bambu Lab P1S".to_string(),
+                    ams_units: Some(1),
+                    slots_per_ams: Some(1),
+                })
+                .map_err(|error| error.to_string())?;
+
+            for (spool_id, color_name, hex_color) in [
+                ("spool_old", "Black", "#000000"),
+                ("spool_new", "Orange", "#FF7A00"),
+            ] {
+                engine
+                    .create_manual_spool(CreateManualSpoolInput {
+                        id: spool_id.to_string(),
+                        material: "PLA".to_string(),
+                        filament_name: "Basic".to_string(),
+                        color_name: color_name.to_string(),
+                        hex_color: Some(hex_color.to_string()),
+                        product_url: None,
+                        vendor: Some("Manual".to_string()),
+                        default_weight_g: Some(1000),
+                        qr_code: Some(format!("qr-{spool_id}")),
+                        status: Some("IN_STOCK".to_string()),
+                        ownership_type: Some("OWNED".to_string()),
+                        owner_name: None,
+                        owner_contact: None,
+                        ownership_note: None,
+                        initial_weight_g: Some(1000),
+                        location: Some("Shelf C".to_string()),
+                    })
+                    .map_err(|error| error.to_string())?;
+            }
+
+            engine
+                .assign_printer_slot(AssignPrinterSlotInput {
+                    printer_id: "printer_1".to_string(),
+                    slot_id: "printer_1_ams_1_slot_1".to_string(),
+                    spool_id: Some("spool_old".to_string()),
+                    rfid_override_tray_uuid: None,
+                    rfid_override_color_hex: None,
+                    clear_live_cache_before_next_refresh: None,
+                })
+                .map_err(|error| error.to_string())?;
+
+            engine
+                .assign_printer_slot(AssignPrinterSlotInput {
+                    printer_id: "printer_1".to_string(),
+                    slot_id: "printer_1_ams_1_slot_1".to_string(),
+                    spool_id: Some("spool_new".to_string()),
+                    rfid_override_tray_uuid: None,
+                    rfid_override_color_hex: None,
+                    clear_live_cache_before_next_refresh: None,
+                })
+                .map_err(|error| error.to_string())?;
+
+            let printer_overview = engine
+                .db
+                .list_printer_overview()
+                .map_err(|error| error.to_string())?;
+            let slot = printer_overview[0]
+                .slots
+                .iter()
+                .find(|slot| slot.slot_id == "printer_1_ams_1_slot_1")
+                .ok_or_else(|| "expected ams slot".to_string())?;
+
+            assert_eq!(slot.spool_id.as_deref(), Some("spool_new"));
+            assert!(slot.rfid_override_tray_uuid.is_none());
+            assert!(slot.rfid_override_color_hex.is_none());
+            assert!(slot.live_cache_cleared_at.is_some());
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "assign_printer_slot_derives_manual_reassignment_cache_suppression_on_host failed: {message}"
             );
         }
     }
