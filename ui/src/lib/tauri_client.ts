@@ -1146,6 +1146,22 @@ export async function updateLibrarySyncHostSpoolDetails(
   });
 }
 
+export async function updateLibrarySyncHostSpoolRfidTag(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: UpdateSpoolRfidTagInput,
+) {
+  return invoke<void>("update_library_sync_host_spool_rfid_tag", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      spool_id: input.spool_id,
+      rfid_tag: input.rfid_tag ?? null,
+      rfid_observed_at: input.rfid_observed_at ?? null,
+    },
+  });
+}
+
 export async function updateSpoolStatus(spoolId: string, status: string) {
   return invoke<void>("update_spool_status", {
     spoolId,

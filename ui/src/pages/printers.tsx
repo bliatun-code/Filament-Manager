@@ -15,6 +15,7 @@ import {
   listSpools,
   recordPrintUsage,
   recordLibrarySyncHostPrintUsage,
+  updateLibrarySyncHostSpoolRfidTag,
   updateLibrarySyncHostSpoolWeight,
   updateSpoolRfidTag,
   updateSpoolWeight,
@@ -1135,6 +1136,12 @@ export default function PrintersPage() {
     if (!rfidOverridePrompt || !tauri || busy) {
       return;
     }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
     const observedRfid = rfidOverridePrompt.liveTray.tray_uuid?.trim() ?? "";
     if (!observedRfid) {
       setError(
@@ -1149,11 +1156,20 @@ export default function PrintersPage() {
     setError(null);
     setInfo(null);
     try {
-      await updateSpoolRfidTag({
+      const updateInput = {
         spool_id: rfidOverridePrompt.spool.spool.id,
         rfid_tag: observedRfid,
         rfid_observed_at: rfidOverridePrompt.observedAt ?? new Date().toISOString(),
-      });
+      };
+      if (clientReadOnly) {
+        await updateLibrarySyncHostSpoolRfidTag(
+          clientHostBaseUrl!,
+          clientLibraryId,
+          updateInput,
+        );
+      } else {
+        await updateSpoolRfidTag(updateInput);
+      }
       await reloadData();
       setRfidOverridePrompt(null);
       setInfo(t("inventory.rfidSaved", "RFID tag saved on the selected roll."));
@@ -1469,18 +1485,6 @@ export default function PrintersPage() {
       {info ? (
         <FeedbackBanner tone="success" className="mt-4">
           {info}
-        </FeedbackBanner>
-      ) : null}
-
-      {clientReadOnly && clientPrinterSource === "LIVE" ? (
-        <FeedbackBanner tone="success" className="mt-4">
-          <span className="font-semibold">
-            {t("printers.clientReadOnlyLive", "Showing live host printers.")}
-          </span>{" "}
-          {t(
-            "printers.clientReadOnlyLiveHint",
-            "Live RFID and slot activity badges are coming from the host. Cached or offline snapshots may hide those live-only signals.",
-          )}
         </FeedbackBanner>
       ) : null}
 

@@ -675,10 +675,7 @@ fn should_auto_clear_live_unknown_replacement(
     if let Some(saved_rfid) = live_identity_text(slot.spool_rfid_tag.as_deref()) {
         return !saved_rfid.eq_ignore_ascii_case(observed_tray_uuid);
     }
-    let Some(saved_color_hex) = live_identity_text(slot.spool_hex_color.as_deref()) else {
-        return false;
-    };
-    !saved_color_hex.eq_ignore_ascii_case(observed_color_hex)
+    true
 }
 
 fn slot_override_matches_live_unknown(
@@ -1371,7 +1368,7 @@ mod tests {
     }
 
     #[test]
-    fn unknown_rfid_replacement_requires_real_conflict_and_respects_override() {
+    fn unknown_rfid_replacement_clears_on_new_unknown_identity_and_respects_override() {
         let mut slot = make_slot();
         let tray = BambuLiveObservedTrayRow {
             match_status: Some("unknown_rfid".to_string()),
@@ -1392,20 +1389,26 @@ mod tests {
     }
 
     #[test]
-    fn unknown_rfid_replacement_does_not_clear_ext_like_or_same_color_without_more_signal() {
+    fn unknown_rfid_replacement_does_not_clear_same_identity_or_missing_color_signal() {
         let mut slot = make_slot();
-        slot.spool_hex_color = Some("#00FF00".to_string());
         let tray = BambuLiveObservedTrayRow {
             match_status: Some("unknown_rfid".to_string()),
             ..make_tray()
         };
 
-        assert!(!should_auto_clear_live_unknown_replacement(&tray, &slot));
-
         slot.spool_rfid_tag = Some("tray-uuid-unknown".to_string());
-        slot.spool_hex_color = Some("#FF0000".to_string());
-
         assert!(!should_auto_clear_live_unknown_replacement(&tray, &slot));
+
+        let missing_color = BambuLiveObservedTrayRow {
+            color_hex: None,
+            ..tray
+        };
+        let mut different_unknown_without_saved_rfid = make_slot();
+        different_unknown_without_saved_rfid.spool_rfid_tag = None;
+        assert!(!should_auto_clear_live_unknown_replacement(
+            &missing_color,
+            &different_unknown_without_saved_rfid
+        ));
     }
 
     #[test]

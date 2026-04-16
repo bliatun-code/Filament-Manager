@@ -212,10 +212,6 @@ impl InventoryEngine {
         self.db.list_printers()
     }
 
-    pub fn list_printer_overview(&self) -> InventoryResult<Vec<PrinterOverviewRow>> {
-        self.db.list_printer_overview()
-    }
-
     pub fn get_library_sync_settings(&self) -> InventoryResult<LibrarySyncSettingsRow> {
         self.db.get_library_sync_settings()
     }
@@ -1523,6 +1519,7 @@ mod tests {
             assert!(outbound_history.is_empty());
 
             let printer_overview = engine
+                .db
                 .list_printer_overview()
                 .map_err(|error| error.to_string())?;
             let ext_slot = printer_overview[0]
@@ -1654,6 +1651,7 @@ mod tests {
                 .map_err(|error| error.to_string())?;
 
             let printer_overview = engine
+                .db
                 .list_printer_overview()
                 .map_err(|error| error.to_string())?;
             let slot = printer_overview[0]
@@ -1742,6 +1740,7 @@ mod tests {
                 .map_err(|error| error.to_string())?;
 
             let printer_overview = engine
+                .db
                 .list_printer_overview()
                 .map_err(|error| error.to_string())?;
             let slot = printer_overview[0]

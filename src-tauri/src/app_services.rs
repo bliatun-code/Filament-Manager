@@ -208,6 +208,13 @@ impl CompanionService {
         self.with_inventory(|engine| engine.update_spool_details(input))
     }
 
+    pub fn update_spool_rfid_tag(
+        &self,
+        input: crate::backend::inventory_engine::UpdateSpoolRfidTagInput,
+    ) -> InventoryResult<()> {
+        self.with_inventory(|engine| engine.update_spool_rfid_tag(input))
+    }
+
     pub fn assign_printer_slot(
         &self,
         printer_id: &str,

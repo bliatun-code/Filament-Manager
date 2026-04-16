@@ -190,6 +190,15 @@ struct LibrarySyncUpdateSpoolDetailsInput {
 }
 
 #[derive(Deserialize)]
+struct LibrarySyncUpdateSpoolRfidTagInput {
+    base_url: String,
+    expected_library_id: Option<String>,
+    spool_id: String,
+    rfid_tag: Option<String>,
+    rfid_observed_at: Option<String>,
+}
+
+#[derive(Deserialize)]
 struct LibrarySyncAssignPrinterSlotInput {
     base_url: String,
     expected_library_id: Option<String>,
@@ -1609,6 +1618,48 @@ fn update_library_sync_host_spool_details(
 
     with_inventory(&state, |engine| {
         engine.save_library_sync_validation_state(true, Some("Host spool details updated."), None)
+    })?;
+    Ok(())
+}
+
+#[tauri::command]
+fn update_library_sync_host_spool_rfid_tag(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncUpdateSpoolRfidTagInput,
+) -> Result<(), String> {
+    let validation_input = ValidateLibrarySyncHostInput {
+        base_url: input.base_url.clone(),
+        expected_library_id: input.expected_library_id.clone(),
+    };
+    let (normalized_base_url, expected_library_id) =
+        normalize_library_sync_host_input(&validation_input)?;
+    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+
+    let spool_id = input.spool_id.trim();
+    if spool_id.is_empty() {
+        return Err("Spool id is required.".to_string());
+    }
+
+    perform_library_sync_host_write(
+        &state,
+        &normalized_base_url,
+        &format!("/api/v1/spools/{spool_id}/rfid"),
+        &serde_json::json!({
+            "rfid_tag": input
+                .rfid_tag
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty()),
+            "rfid_observed_at": input
+                .rfid_observed_at
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty()),
+        }),
+    )?;
+
+    with_inventory(&state, |engine| {
+        engine.save_library_sync_validation_state(true, Some("Host spool RFID updated."), None)
     })?;
     Ok(())
 }
@@ -3341,6 +3392,7 @@ fn main() {
             update_library_sync_host_spool_weight,
             update_library_sync_host_spool_tare_weight,
             update_library_sync_host_spool_details,
+            update_library_sync_host_spool_rfid_tag,
             assign_library_sync_host_printer_slot,
             record_library_sync_host_print_usage,
             return_library_sync_host_loan,

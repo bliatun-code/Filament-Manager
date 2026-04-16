@@ -170,6 +170,12 @@ struct UpdateSpoolTareWeightRequest {
     grams: i64,
 }
 
+#[derive(Deserialize)]
+struct UpdateSpoolRfidTagRequest {
+    rfid_tag: Option<String>,
+    rfid_observed_at: Option<String>,
+}
+
 #[derive(Deserialize, Default)]
 struct DeleteSpoolRequest {
     reason: Option<String>,
@@ -465,6 +471,7 @@ fn build_router(state: CompanionApiState) -> Router {
             "/spools/:spool_id/tare-weight",
             post(handle_update_spool_tare_weight),
         )
+        .route("/spools/:spool_id/rfid", post(handle_update_spool_rfid_tag))
         .route("/spools/:spool_id/delete", post(handle_delete_spool))
         .route("/spools/:spool_id/purge", post(handle_purge_spool))
         .route("/loans/:loan_id/return", post(handle_return_spool_loan))
@@ -1727,6 +1734,33 @@ async fn handle_update_spool_tare_weight(
     Ok(Json(WriteResponse {
         ok: true,
         message: "Tare weight updated".to_string(),
+    }))
+}
+
+async fn handle_update_spool_rfid_tag(
+    State(state): State<CompanionApiState>,
+    Path(spool_id): Path<String>,
+    Json(payload): Json<UpdateSpoolRfidTagRequest>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    let spool_id = spool_id.trim();
+    if spool_id.is_empty() {
+        return Err(CompanionApiError::BadRequest(
+            "spool_id is required".to_string(),
+        ));
+    }
+
+    state
+        .service
+        .update_spool_rfid_tag(crate::backend::inventory_engine::UpdateSpoolRfidTagInput {
+            spool_id: spool_id.to_string(),
+            rfid_tag: payload.rfid_tag,
+            rfid_observed_at: payload.rfid_observed_at,
+        })
+        .map_err(CompanionApiError::from)?;
+
+    Ok(Json(WriteResponse {
+        ok: true,
+        message: "Spool RFID updated".to_string(),
     }))
 }
 
