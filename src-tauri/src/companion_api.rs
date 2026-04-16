@@ -264,6 +264,7 @@ struct UpdateBorrowedInSpoolRequest {
 struct UpdateSpoolDetailsRequest {
     status: String,
     location: Option<String>,
+    home_location: Option<Option<String>>,
 }
 
 #[derive(Deserialize)]
@@ -996,6 +997,7 @@ async fn handle_create_owned_spool(
                 initial_weight_g: payload.initial_weight_g,
                 current_weight_g: payload.initial_weight_g,
                 location_id: None,
+                home_location_id: None,
                 purchase_date: None,
                 purchase_price: None,
                 batch_code: None,
@@ -1008,7 +1010,8 @@ async fn handle_create_owned_spool(
                     spool_id: spool_id.clone(),
                     qr_code,
                     status: "IN_STOCK".to_string(),
-                    location,
+                    location: location.clone(),
+                    home_location: Some(location.clone()),
                 })
                 .map_err(CompanionApiError::from)?;
         }
@@ -1090,6 +1093,7 @@ async fn handle_create_borrowed_in_spool(
                 initial_weight_g: payload.initial_weight_g,
                 current_weight_g: payload.initial_weight_g,
                 location_id: None,
+                home_location_id: None,
                 purchase_date: None,
                 purchase_price: None,
                 batch_code: None,
@@ -1102,7 +1106,8 @@ async fn handle_create_borrowed_in_spool(
                     spool_id: spool_id.clone(),
                     qr_code,
                     status: "IN_STOCK".to_string(),
-                    location,
+                    location: location.clone(),
+                    home_location: Some(location.clone()),
                 })
                 .map_err(CompanionApiError::from)?;
         }
@@ -1445,9 +1450,14 @@ async fn handle_update_spool_details(
                 .to_string(),
         ));
     }
-    if current_status == "IN_USE"
+    let requested_location = normalize_optional_text(payload.location.as_deref());
+    let editing_home_location_only = payload.home_location.is_some()
+        && requested_location == spool.spool.location_id
+        && status == current_status;
+    if (current_status == "IN_USE"
         || current_status == "ASSIGNED"
-        || spool_assigned_to_printer(&state, spool_id)?
+        || spool_assigned_to_printer(&state, spool_id)?)
+        && !editing_home_location_only
     {
         return Err(CompanionApiError::BadRequest(
             "Loaded spools use printer-slot actions instead of manual status/location edits"
@@ -1473,7 +1483,8 @@ async fn handle_update_spool_details(
             spool_id: spool_id.to_string(),
             qr_code: spool.spool.qr_code.clone(),
             status,
-            location: normalize_optional_text(payload.location.as_deref()),
+            location: requested_location,
+            home_location: payload.home_location,
         })
         .map_err(CompanionApiError::from)?;
 

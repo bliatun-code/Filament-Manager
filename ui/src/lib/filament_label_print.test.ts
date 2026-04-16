@@ -32,6 +32,7 @@ test("buildFilamentLabelHtml includes QR image and required filament details", (
     material: "PLA",
     filamentName: "Basic",
     colorName: "White",
+    homeLocation: "Shelf 7",
     reference: "QR-22",
     qrPayload: "v1:QR-22",
     qrDataUrl: "data:image/png;base64,abc123",
@@ -39,7 +40,7 @@ test("buildFilamentLabelHtml includes QR image and required filament details", (
       vendor: "Vendor",
       material: "Material",
       filament: "Filament",
-      color: "Color",
+      homeLocation: "Home location",
       reference: "Reference",
       qrPayload: "QR payload",
     },
@@ -48,10 +49,11 @@ test("buildFilamentLabelHtml includes QR image and required filament details", (
   assert.match(html, /data:image\/png;base64,abc123/);
   assert.match(html, /Vendor:\<\/strong\> Bambu/);
   assert.match(html, /Filament:\<\/strong\> Basic/);
-  assert.match(html, /Color:\<\/strong\> White/);
+  assert.match(html, /Home location:\<\/strong\> Shelf 7/);
   assert.match(html, /Reference:\<\/strong\> #QR-22/);
   assert.doesNotMatch(html, /Material:\<\/strong\>/);
   assert.doesNotMatch(html, /QR payload:\<\/strong\>/);
+  assert.doesNotMatch(html, /Color:\<\/strong\>/);
 });
 
 test("buildFilamentLabelHtml formats spool id reference in human-friendly style", () => {
@@ -60,6 +62,7 @@ test("buildFilamentLabelHtml formats spool id reference in human-friendly style"
     material: "PLA",
     filamentName: "Basic",
     colorName: "White",
+    homeLocation: null,
     reference: "spool_177531758936",
     qrPayload: "v1:spool_177531758936",
     qrDataUrl: "data:image/png;base64,abc123",
@@ -67,7 +70,7 @@ test("buildFilamentLabelHtml formats spool id reference in human-friendly style"
       vendor: "Vendor",
       material: "Material",
       filament: "Filament",
-      color: "Color",
+      homeLocation: "Home location",
       reference: "Reference",
       qrPayload: "QR payload",
     },

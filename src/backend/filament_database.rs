@@ -118,6 +118,7 @@ pub struct SpoolRow {
     pub remaining_g: Option<i64>,
     pub spool_tare_weight_g: Option<i64>,
     pub location_id: Option<String>,
+    pub home_location_id: Option<String>,
     pub purchase_date: Option<String>,
     pub purchase_price: Option<f64>,
     pub batch_code: Option<String>,
@@ -449,6 +450,7 @@ impl FilamentDatabase {
         self.ensure_spool_lifecycle_schema()?;
         self.ensure_spool_weight_schema()?;
         self.ensure_spool_identity_schema()?;
+        self.ensure_spool_home_location_schema()?;
         self.ensure_borrowed_in_schema()?;
         self.ensure_printer_external_slot_schema()?;
         self.ensure_printer_slot_rfid_override_schema()?;
@@ -979,8 +981,8 @@ impl FilamentDatabase {
             "INSERT INTO filament_spools (
                 id, master_id, qr_code, rfid_tag, rfid_observed_at, status, ownership_type, owner_name, owner_contact,
                 ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
-                location_id, purchase_date, purchase_price, batch_code, last_used_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)",
+                location_id, home_location_id, purchase_date, purchase_price, batch_code, last_used_at
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)",
             params![
                 spool.id,
                 spool.master_id,
@@ -997,6 +999,7 @@ impl FilamentDatabase {
                 spool.remaining_g,
                 spool.spool_tare_weight_g,
                 spool.location_id,
+                spool.home_location_id,
                 spool.purchase_date,
                 spool.purchase_price,
                 spool.batch_code,
@@ -1010,7 +1013,7 @@ impl FilamentDatabase {
         let mut stmt = self.conn.prepare(
             "SELECT id, master_id, qr_code, status, ownership_type, owner_name, owner_contact,
                     rfid_tag, rfid_observed_at, ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
-                    location_id, purchase_date, purchase_price, batch_code, last_used_at
+                    location_id, home_location_id, purchase_date, purchase_price, batch_code, last_used_at
              FROM filament_spools
              WHERE qr_code = ?1 AND deleted_at IS NULL",
         )?;
@@ -1024,7 +1027,7 @@ impl FilamentDatabase {
         let mut stmt = self.conn.prepare(
             "SELECT id, master_id, qr_code, status, ownership_type, owner_name, owner_contact,
                     rfid_tag, rfid_observed_at, ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
-                    location_id, purchase_date, purchase_price, batch_code, last_used_at
+                    location_id, home_location_id, purchase_date, purchase_price, batch_code, last_used_at
              FROM filament_spools
              WHERE id = ?1
              LIMIT 1",
@@ -1042,7 +1045,7 @@ impl FilamentDatabase {
         let mut stmt = self.conn.prepare(
             "SELECT s.id, s.master_id, s.qr_code, s.status, s.ownership_type, s.owner_name,
                     s.owner_contact, s.rfid_tag, s.rfid_observed_at, s.ownership_note, s.initial_weight_g, s.current_weight_g,
-                    s.remaining_g, s.spool_tare_weight_g, s.location_id, s.purchase_date,
+                    s.remaining_g, s.spool_tare_weight_g, s.location_id, s.home_location_id, s.purchase_date,
                     s.purchase_price, s.batch_code, s.last_used_at, m.id, m.material,
                     m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor
              FROM filament_spools s
@@ -1134,15 +1137,31 @@ impl FilamentDatabase {
         qr_code: Option<&str>,
         status: &str,
         location_id: Option<&str>,
+        home_location_id: Option<&str>,
     ) -> InventoryResult<()> {
         let affected = self.conn.execute(
             "UPDATE filament_spools
              SET qr_code = ?1,
                  status = ?2,
                  location_id = ?3,
+                 home_location_id = ?4,
                  updated_at = datetime('now')
-             WHERE id = ?4 AND deleted_at IS NULL",
-            params![qr_code, status, location_id, spool_id],
+             WHERE id = ?5 AND deleted_at IS NULL",
+            params![qr_code, status, location_id, home_location_id, spool_id],
+        )?;
+        require_rows(affected)
+    }
+
+    pub fn set_spool_home_location(
+        &self,
+        spool_id: &str,
+        home_location_id: Option<&str>,
+    ) -> InventoryResult<()> {
+        let affected = self.conn.execute(
+            "UPDATE filament_spools
+             SET home_location_id = ?1, updated_at = datetime('now')
+             WHERE id = ?2 AND deleted_at IS NULL",
+            params![home_location_id, spool_id],
         )?;
         require_rows(affected)
     }
@@ -1385,6 +1404,22 @@ impl FilamentDatabase {
                 [],
             )?;
         }
+        Ok(())
+    }
+
+    pub fn ensure_spool_home_location_schema(&self) -> InventoryResult<()> {
+        if !self.table_has_column("filament_spools", "home_location_id")? {
+            self.conn.execute(
+                "ALTER TABLE filament_spools
+                 ADD COLUMN home_location_id TEXT REFERENCES inventory_locations(id)",
+                [],
+            )?;
+        }
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_spools_home_location
+             ON filament_spools(home_location_id)",
+            [],
+        )?;
         Ok(())
     }
 
@@ -1786,7 +1821,7 @@ impl FilamentDatabase {
         let mut stmt = self.conn.prepare(
             "SELECT s.id, s.master_id, s.qr_code, s.status, s.ownership_type, s.owner_name,
                     s.owner_contact, s.rfid_tag, s.rfid_observed_at, s.ownership_note, s.initial_weight_g, s.current_weight_g,
-                    s.remaining_g, s.spool_tare_weight_g, s.location_id, s.purchase_date,
+                    s.remaining_g, s.spool_tare_weight_g, s.location_id, s.home_location_id, s.purchase_date,
                     s.purchase_price, s.batch_code, s.last_used_at, m.id, m.material,
                     m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor
              FROM filament_spools s
@@ -1809,7 +1844,7 @@ impl FilamentDatabase {
         let mut stmt = self.conn.prepare(
             "SELECT id, master_id, qr_code, status, ownership_type, owner_name, owner_contact,
                     rfid_tag, rfid_observed_at, ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
-                    location_id, purchase_date, purchase_price, batch_code, last_used_at
+                    location_id, home_location_id, purchase_date, purchase_price, batch_code, last_used_at
              FROM filament_spools
              WHERE deleted_at IS NULL
                AND remaining_g IS NOT NULL
@@ -2662,7 +2697,7 @@ impl FilamentDatabase {
                             "UPDATE filament_spools
                              SET status = CASE WHEN status IN ('IN_USE', 'ASSIGNED') THEN 'IN_STOCK' ELSE status END,
                                  location_id = CASE
-                                     WHEN location_id LIKE 'Printer:%' THEN NULL
+                                     WHEN location_id LIKE 'Printer:%' THEN home_location_id
                                      ELSE location_id
                                  END,
                                  updated_at = datetime('now')
@@ -2740,7 +2775,7 @@ impl FilamentDatabase {
                         "UPDATE filament_spools
                          SET status = CASE WHEN status IN ('IN_USE', 'ASSIGNED') THEN 'IN_STOCK' ELSE status END,
                              location_id = CASE
-                                 WHEN location_id LIKE 'Printer:%' THEN NULL
+                                 WHEN location_id LIKE 'Printer:%' THEN home_location_id
                                  ELSE location_id
                              END,
                              updated_at = datetime('now')
@@ -3612,7 +3647,7 @@ impl FilamentDatabase {
                     "UPDATE filament_spools
                      SET status = CASE WHEN status IN ('IN_USE', 'ASSIGNED') THEN 'IN_STOCK' ELSE status END,
                          location_id = CASE
-                             WHEN location_id LIKE 'Printer:%' THEN NULL
+                             WHEN location_id LIKE 'Printer:%' THEN home_location_id
                              ELSE location_id
                          END,
                          updated_at = datetime('now')
@@ -4203,6 +4238,7 @@ impl FilamentDatabase {
                     Some(location) => Some(self.ensure_location(&location)?),
                     None => None,
                 };
+                let home_location_id = location_id.clone();
                 let qr_code = normalize_optional_text(row.qr_code.as_deref());
                 let vendor = normalize_optional_text(row.vendor.as_deref());
                 let master_id = self.upsert_manual_master(
@@ -4226,8 +4262,9 @@ impl FilamentDatabase {
                              remaining_g = ?6,
                              spool_tare_weight_g = NULL,
                              location_id = ?7,
+                             home_location_id = ?8,
                              updated_at = datetime('now')
-                         WHERE id = ?8",
+                         WHERE id = ?9",
                         params![
                             master_id,
                             qr_code,
@@ -4235,6 +4272,7 @@ impl FilamentDatabase {
                             initial_weight_g,
                             current_weight_g,
                             remaining_g,
+                            location_id,
                             location_id,
                             spool_id
                         ],
@@ -4257,6 +4295,7 @@ impl FilamentDatabase {
                         remaining_g: Some(remaining_g),
                         spool_tare_weight_g: None,
                         location_id,
+                        home_location_id,
                         purchase_date: None,
                         purchase_price: None,
                         batch_code: None,
@@ -4304,24 +4343,25 @@ fn map_spool_row(row: &Row<'_>) -> Result<SpoolRow, rusqlite::Error> {
         remaining_g: row.get(12)?,
         spool_tare_weight_g: row.get(13)?,
         location_id: row.get(14)?,
-        purchase_date: row.get(15)?,
-        purchase_price: row.get(16)?,
-        batch_code: row.get(17)?,
-        last_used_at: row.get(18)?,
+        home_location_id: row.get(15)?,
+        purchase_date: row.get(16)?,
+        purchase_price: row.get(17)?,
+        batch_code: row.get(18)?,
+        last_used_at: row.get(19)?,
     })
 }
 
 fn map_spool_with_master_row(row: &Row<'_>) -> Result<SpoolWithMasterRow, rusqlite::Error> {
     let spool = map_spool_row(row)?;
     let master = FilamentMasterSummary {
-        id: row.get(19)?,
-        material: row.get(20)?,
-        filament_name: row.get(21)?,
-        color_name: row.get(22)?,
-        hex_color: row.get(23)?,
-        product_url: row.get(24)?,
-        default_weight: row.get(25)?,
-        vendor: row.get(26)?,
+        id: row.get(20)?,
+        material: row.get(21)?,
+        filament_name: row.get(22)?,
+        color_name: row.get(23)?,
+        hex_color: row.get(24)?,
+        product_url: row.get(25)?,
+        default_weight: row.get(26)?,
+        vendor: row.get(27)?,
     };
     Ok(SpoolWithMasterRow { spool, master })
 }
@@ -5043,6 +5083,7 @@ mod tests {
                     remaining_g: Some(1000),
                     spool_tare_weight_g: None,
                     location_id: None,
+                    home_location_id: None,
                     purchase_date: None,
                     purchase_price: None,
                     batch_code: None,
@@ -5064,6 +5105,7 @@ mod tests {
                     remaining_g: Some(1000),
                     spool_tare_weight_g: None,
                     location_id: None,
+                    home_location_id: None,
                     purchase_date: None,
                     purchase_price: None,
                     batch_code: None,
@@ -5085,6 +5127,7 @@ mod tests {
                     remaining_g: Some(850),
                     spool_tare_weight_g: None,
                     location_id: None,
+                    home_location_id: None,
                     purchase_date: None,
                     purchase_price: None,
                     batch_code: None,
@@ -5106,6 +5149,7 @@ mod tests {
                     remaining_g: Some(800),
                     spool_tare_weight_g: None,
                     location_id: None,
+                    home_location_id: None,
                     purchase_date: None,
                     purchase_price: None,
                     batch_code: None,

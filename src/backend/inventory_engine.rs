@@ -51,6 +51,7 @@ pub struct CreateSpoolInput {
     pub initial_weight_g: Option<i64>,
     pub current_weight_g: Option<i64>,
     pub location_id: Option<String>,
+    pub home_location_id: Option<String>,
     pub purchase_date: Option<String>,
     pub purchase_price: Option<f64>,
     pub batch_code: Option<String>,
@@ -82,6 +83,7 @@ pub struct UpdateSpoolDetailsInput {
     pub qr_code: Option<String>,
     pub status: String,
     pub location: Option<String>,
+    pub home_location: Option<Option<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -330,6 +332,7 @@ impl InventoryEngine {
             ));
         }
         let remaining_g = compute_remaining(input.initial_weight_g, input.current_weight_g);
+        let location_id = input.location_id.clone();
         let spool = SpoolRow {
             id: input.id,
             master_id: input.master_id,
@@ -345,7 +348,8 @@ impl InventoryEngine {
             current_weight_g: input.current_weight_g,
             remaining_g,
             spool_tare_weight_g: None,
-            location_id: input.location_id,
+            location_id: location_id.clone(),
+            home_location_id: input.home_location_id.or(location_id),
             purchase_date: input.purchase_date,
             purchase_price: input.purchase_price,
             batch_code: input.batch_code,
@@ -432,6 +436,7 @@ impl InventoryEngine {
             remaining_g: initial_weight,
             spool_tare_weight_g: default_spool_tare_for_vendor(Some(vendor_label.as_str())),
             location_id: None,
+            home_location_id: None,
             purchase_date: None,
             purchase_price: None,
             batch_code: None,
@@ -596,6 +601,7 @@ impl InventoryEngine {
             _ => None,
         };
         self.db.set_spool_location(spool_id, resolved.as_deref())?;
+        self.db.set_spool_home_location(spool_id, resolved.as_deref())?;
         self.log_spool_event(
             spool_id,
             "LOCATION_UPDATED",
@@ -616,11 +622,21 @@ impl InventoryEngine {
             Some(value) if !value.trim().is_empty() => Some(self.db.ensure_location(value)?),
             _ => None,
         };
+        let existing_spool = self
+            .db
+            .get_spool_by_id(&input.spool_id)?
+            .ok_or(InventoryError::NotFound)?;
+        let resolved_home_location = match input.home_location {
+            Some(Some(value)) if !value.trim().is_empty() => Some(self.db.ensure_location(&value)?),
+            Some(_) => None,
+            None => existing_spool.home_location_id.clone(),
+        };
         self.db.update_spool_details(
             &input.spool_id,
             input.qr_code.as_deref(),
             &input.status,
             resolved_location.as_deref(),
+            resolved_home_location.as_deref(),
         )?;
         self.log_spool_event(
             &input.spool_id,
@@ -628,7 +644,8 @@ impl InventoryEngine {
             json!({
                 "status": input.status,
                 "qr_code": input.qr_code,
-                "location": resolved_location
+                "location": resolved_location,
+                "home_location": resolved_home_location
             }),
         )
     }
@@ -1761,6 +1778,13 @@ mod tests {
             assert!(slot.rfid_override_tray_uuid.is_none());
             assert!(slot.rfid_override_color_hex.is_none());
             assert!(slot.live_cache_cleared_at.is_some());
+            let restored_spool = engine
+                .db
+                .get_spool_by_id("spool_1")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "expected restored spool".to_string())?;
+            assert_eq!(restored_spool.location_id.as_deref(), Some("Shelf B"));
+            assert_eq!(restored_spool.home_location_id.as_deref(), Some("Shelf B"));
 
             Ok(())
         })();
@@ -1854,6 +1878,13 @@ mod tests {
             assert!(slot.rfid_override_tray_uuid.is_none());
             assert!(slot.rfid_override_color_hex.is_none());
             assert!(slot.live_cache_cleared_at.is_some());
+            let old_spool = engine
+                .db
+                .get_spool_by_id("spool_old")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "expected previous spool".to_string())?;
+            assert_eq!(old_spool.location_id.as_deref(), Some("Shelf C"));
+            assert_eq!(old_spool.home_location_id.as_deref(), Some("Shelf C"));
 
             Ok(())
         })();

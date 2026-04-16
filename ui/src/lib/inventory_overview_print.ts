@@ -8,6 +8,7 @@ export type InventoryOverviewPrintRow = {
   material: string;
   filamentName: string;
   colorName: string;
+  homeLocation?: string | null;
   swatchHex: string;
   qrDataUrl: string;
 };
@@ -20,7 +21,7 @@ export type InventoryOverviewPrintLabels = {
   vendor: string;
   material: string;
   filament: string;
-  color: string;
+  homeLocation: string;
   reference: string;
 };
 
@@ -30,15 +31,15 @@ const A4_LANDSCAPE_HEIGHT = 595.28;
 const PAGE_MARGIN_X = 28;
 const PAGE_MARGIN_TOP = 26;
 const PAGE_MARGIN_BOTTOM = 24;
-const COLUMN_GAP = 16;
+const COLUMN_GAP = 12;
 const HEADER_GAP = 10;
 const GROUP_GAP = 8;
 const ROW_GAP = 8;
 const GROUP_SECTION_GAP = 12;
 
-const CARD_HEIGHT = 96;
-const QR_SIZE = 68;
-const SWATCH_SIZE = 14;
+const CARD_HEIGHT = 90;
+const QR_SIZE = 54;
+const SWATCH_SIZE = 12;
 
 function normalizeSwatch(hex: string): string {
   const value = hex.trim();
@@ -167,8 +168,9 @@ export async function buildInventoryOverviewPrintPdfBase64(
   const fontRegular = await pdf.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
+  const columnCount = 3;
   const columnWidth =
-    (A4_LANDSCAPE_WIDTH - PAGE_MARGIN_X * 2 - COLUMN_GAP) / 2;
+    (A4_LANDSCAPE_WIDTH - PAGE_MARGIN_X * 2 - COLUMN_GAP * (columnCount - 1)) / columnCount;
 
   const byMaterial = new Map<string, InventoryOverviewPrintRow[]>();
   for (const row of rows) {
@@ -264,10 +266,10 @@ export async function buildInventoryOverviewPrintPdfBase64(
         return safeText(left.colorName).localeCompare(safeText(right.colorName));
       });
 
-      for (let index = 0; index < sortedRows.length; index += 2) {
+      for (let index = 0; index < sortedRows.length; index += columnCount) {
         ensureSpace(CARD_HEIGHT + ROW_GAP);
 
-        const pair = sortedRows.slice(index, index + 2);
+        const pair = sortedRows.slice(index, index + columnCount);
         for (let column = 0; column < pair.length; column += 1) {
           const row = pair[column];
           const x = PAGE_MARGIN_X + column * (columnWidth + COLUMN_GAP);
@@ -307,7 +309,7 @@ export async function buildInventoryOverviewPrintPdfBase64(
           }
 
           const textX = qrFrameX + QR_SIZE + 10;
-          const titleY = cardTop - 16;
+          const titleY = cardTop - 14;
 
           const swatch = hexToRgb(row.swatchHex);
           page.drawCircle({
@@ -322,11 +324,11 @@ export async function buildInventoryOverviewPrintPdfBase64(
           const titleX = textX + SWATCH_SIZE + 6;
           const titleWidth = x + columnWidth - 10 - titleX;
           page.drawText(
-            fitText(fontBold, safeText(row.colorName), 10.5, titleWidth),
+            fitText(fontBold, safeText(row.colorName), 10, titleWidth),
             {
               x: titleX,
-              y: titleY - 4,
-              size: 10.5,
+              y: titleY - 3,
+              size: 10,
               font: fontBold,
               color: rgb(0.1, 0.14, 0.2),
             },
@@ -359,8 +361,8 @@ export async function buildInventoryOverviewPrintPdfBase64(
             page,
             fontBold,
             fontRegular,
-            labels.color,
-            safeText(row.colorName),
+            labels.homeLocation,
+            safeText(row.homeLocation, "—"),
             textX,
             titleY - 42,
             detailWidth,

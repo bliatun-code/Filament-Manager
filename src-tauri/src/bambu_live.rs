@@ -1445,6 +1445,7 @@ mod tests {
                 remaining_g: Some(1000),
                 spool_tare_weight_g: None,
                 location_id: None,
+                home_location_id: None,
                 purchase_date: None,
                 purchase_price: None,
                 batch_code: None,

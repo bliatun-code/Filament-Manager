@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS filament_spools (
   current_weight_g INTEGER,
   remaining_g INTEGER,
   location_id TEXT REFERENCES inventory_locations(id),
+  home_location_id TEXT REFERENCES inventory_locations(id),
   purchase_date TEXT,
   purchase_price REAL,
   batch_code TEXT,
@@ -175,6 +176,7 @@ CREATE INDEX IF NOT EXISTS idx_master_color ON filament_master_list(color_name);
 CREATE INDEX IF NOT EXISTS idx_spools_status ON filament_spools(status);
 CREATE INDEX IF NOT EXISTS idx_spools_qr ON filament_spools(qr_code);
 CREATE INDEX IF NOT EXISTS idx_spools_location ON filament_spools(location_id);
+CREATE INDEX IF NOT EXISTS idx_spools_home_location ON filament_spools(home_location_id);
 CREATE INDEX IF NOT EXISTS idx_ams_slot_spool ON ams_slots(spool_id);
 CREATE INDEX IF NOT EXISTS idx_weight_spool_time ON weight_readings(spool_id, captured_at);
 CREATE INDEX IF NOT EXISTS idx_print_jobs_printer_time ON print_jobs(printer_id, started_at);

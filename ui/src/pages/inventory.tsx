@@ -107,6 +107,7 @@ type InventorySpool = {
   remainingGrams?: number | null;
   spoolTareWeightGrams?: number | null;
   location?: string | null;
+  homeLocation?: string | null;
   qrCode?: string | null;
   rfidTag?: string | null;
   rfidObservedAt?: string | null;
@@ -1317,6 +1318,7 @@ export default function InventoryPage({
             remainingGrams: row.spool.remaining_g ?? null,
             spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
             location: row.spool.location_id ?? null,
+            homeLocation: row.spool.home_location_id ?? null,
             qrCode: row.spool.qr_code ?? null,
             rfidTag: row.spool.rfid_tag ?? null,
             rfidObservedAt: row.spool.rfid_observed_at ?? null,
@@ -1357,6 +1359,7 @@ export default function InventoryPage({
                   remainingGrams: row.spool.remaining_g ?? null,
                   spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
                   location: row.spool.location_id ?? null,
+                  homeLocation: row.spool.home_location_id ?? null,
                   qrCode: row.spool.qr_code ?? null,
                   rfidTag: row.spool.rfid_tag ?? null,
                   rfidObservedAt: row.spool.rfid_observed_at ?? null,
@@ -2531,7 +2534,7 @@ export default function InventoryPage({
     setEditMasterFilamentName(selectedSpool.filamentName);
     setEditMasterColorName(selectedSpool.colorName);
     setEditMasterHexColor(selectedSpool.hexColor ?? "");
-    setSelectedSpoolLocationDraft(selectedSpool.location ?? "");
+    setSelectedSpoolLocationDraft(selectedSpool.homeLocation ?? "");
     setSelectedSpoolTareDraft(
       String(resolveSpoolTareWeight(selectedSpool.spoolTareWeightGrams, selectedSpool.vendor)),
     );
@@ -3590,7 +3593,8 @@ export default function InventoryPage({
             spool_id: selectedSpool.id,
             qr_code: selectedSpool.qrCode ?? null,
             status: selectedSpool.status,
-            location: location || null,
+            location: selectedSpool.location ?? null,
+            home_location: location || null,
           },
         );
         await reloadSpools();
@@ -3602,7 +3606,8 @@ export default function InventoryPage({
         spool_id: selectedSpool.id,
         qr_code: selectedSpool.qrCode ?? null,
         status: selectedSpool.status,
-        location: location || null,
+        location: selectedSpool.location ?? null,
+        home_location: location || null,
       });
       await reloadSpools();
       await reloadPrinterOverview();
@@ -3815,6 +3820,7 @@ export default function InventoryPage({
         material: selectedSpool.material,
         filamentName: selectedSpool.filamentName,
         colorName: selectedSpool.colorName || null,
+        homeLocation: selectedSpool.homeLocation ?? null,
         reference: qrReference,
         qrPayload,
         qrDataUrl,
@@ -3822,7 +3828,7 @@ export default function InventoryPage({
           vendor: t("inventory.vendor", "Vendor"),
           material: t("inventory.material", "Material"),
           filament: t("inventory.filament", "Filament"),
-          color: t("inventory.color", "Color"),
+          homeLocation: t("inventory.homeLocationLabel", "Home location"),
           reference: t("inventory.reference", "Reference"),
           qrPayload: t("inventory.qrPayload", "QR payload"),
         },
@@ -4012,12 +4018,6 @@ export default function InventoryPage({
     (newOwnershipType === "BORROWED_IN" && !borrowedFromName.trim());
 
   const isCatalogCreateMode = createMode === "bambu" || createMode === "esun";
-  const activeVendorLabel =
-    createMode === "bambu"
-      ? t("vendor.bambu", "Bambu")
-      : createMode === "esun"
-        ? t("vendor.esun", "eSUN")
-        : t("vendor.generic", "Generic");
   const activeCatalogMasters =
     createMode === "bambu"
       ? filteredBambuMasters
@@ -4463,22 +4463,22 @@ export default function InventoryPage({
                     style={inventorySwatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
                   >
                     <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                      {t("inventory.editLocation", "Edit location")}
+                      {t("inventory.editHomeLocation", "Home location")}
                     </div>
                     <div className="mt-3 flex items-center gap-3">
                       <input
                         type="text"
                         value={selectedSpoolLocationDraft}
                         onChange={(event) => setSelectedSpoolLocationDraft(event.target.value)}
-                        placeholder={t("inventory.locationOptional", "Location (optional)")}
+                        placeholder={t("inventory.homeLocationOptional", "Home location (optional)")}
                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100"
-                        disabled={!tauri || manageBusy || Boolean(selectedSpoolAssignedSlot)}
+                        disabled={!tauri || manageBusy}
                       />
                       <button
                         type="button"
                         onClick={handleSaveSpoolLocation}
                         className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-slate-300/30 transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white"
-                        disabled={!tauri || manageBusy || Boolean(selectedSpoolAssignedSlot)}
+                        disabled={!tauri || manageBusy}
                       >
                         {t("common.save", "Save")}
                       </button>
@@ -4486,8 +4486,8 @@ export default function InventoryPage({
                     {selectedSpoolAssignedSlot ? (
                       <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                         {t(
-                          "inventory.assignmentManagedOnPrinters",
-                          "Filament placement and slot assignment is managed on the Printers page.",
+                          "inventory.homeLocationHintWhileAssigned",
+                          "Current placement is managed on the Printers page. Home location is where the spool returns when it is no longer loaded.",
                         )}
                       </div>
                     ) : null}
@@ -5540,10 +5540,17 @@ export default function InventoryPage({
                                       ? setBambuCatalogQuery(event.target.value)
                                       : setEsunCatalogQuery(event.target.value)
                                   }
-                                  placeholder={t(
-                                    "inventory.searchVendorCatalog",
-                                    `Search ${activeVendorLabel} material, filament or color`,
-                                  )}
+                                  placeholder={
+                                    createMode === "bambu"
+                                      ? t(
+                                          "wishlist.searchBambu",
+                                          "Search Bambu material/color",
+                                        )
+                                      : t(
+                                          "wishlist.searchEsun",
+                                          "Search eSUN material/color",
+                                        )
+                                  }
                                   className="page-header-search !w-full"
                                   disabled={!tauri}
                                 />
@@ -5663,7 +5670,7 @@ export default function InventoryPage({
                                 }
                               }}
                             >
-                              {t("inventory.addMissingFilamentManual", "Missing filament? Add it manually")}
+                              {t("wishlist.addMissingFilamentManual", "Missing filament? Add it manually")}
                             </button>
                           </div>
                         ) : null}
@@ -5838,7 +5845,10 @@ export default function InventoryPage({
                             type="text"
                             value={newLocation}
                             onChange={(event) => setNewLocation(event.target.value)}
-                            placeholder={t("inventory.locationOptional", "Location (optional)")}
+                            placeholder={t(
+                              "inventory.homeLocationOptional",
+                              "Home location (optional)",
+                            )}
                             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
                             disabled={!tauri}
                           />

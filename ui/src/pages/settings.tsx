@@ -2640,6 +2640,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
             material: row.master.material || t("common.unknown", "Unknown"),
             filamentName: row.master.filament_name || t("common.unknown", "Unknown"),
             colorName: row.master.color_name || t("common.unknown", "Unknown"),
+            homeLocation: row.spool.home_location_id ?? null,
             swatchHex: row.master.hex_color ?? "#CBD5E1",
             qrDataUrl,
           };
@@ -2654,7 +2655,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         vendor: t("settings.inventoryOverviewPrintVendor", "Vendor"),
         material: t("settings.inventoryOverviewPrintMaterial", "Material"),
         filament: t("settings.inventoryOverviewPrintFilament", "Filament"),
-        color: t("settings.inventoryOverviewPrintColor", "Color"),
+        homeLocation: t("inventory.homeLocationLabel", "Home location"),
         reference: t("settings.inventoryOverviewPrintReference", "Reference"),
       });
       await printLabelPdf(pdfBase64, null, 1);

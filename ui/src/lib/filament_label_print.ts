@@ -10,6 +10,7 @@ export type FilamentLabelHtmlInput = {
   material: string;
   filamentName: string;
   colorName?: string | null;
+  homeLocation?: string | null;
   reference: string;
   qrPayload: string;
   qrDataUrl: string;
@@ -17,7 +18,7 @@ export type FilamentLabelHtmlInput = {
     vendor: string;
     material: string;
     filament: string;
-    color: string;
+    homeLocation: string;
     reference: string;
     qrPayload: string;
   };
@@ -65,8 +66,8 @@ export function buildFilamentLabelHtml(input: FilamentLabelHtmlInput): string {
           <div><strong>${escapeHtml(input.labels.vendor)}:</strong> ${escapeHtml(input.vendor)}</div>
           <div><strong>${escapeHtml(input.labels.filament)}:</strong> ${escapeHtml(input.filamentName)}</div>
           ${
-            input.colorName
-              ? `<div><strong>${escapeHtml(input.labels.color)}:</strong> ${escapeHtml(input.colorName)}</div>`
+            input.homeLocation
+              ? `<div><strong>${escapeHtml(input.labels.homeLocation)}:</strong> ${escapeHtml(input.homeLocation)}</div>`
               : ""
           }
           <div><strong>${escapeHtml(input.labels.reference)}:</strong> ${escapeHtml(referenceLabel)}</div>

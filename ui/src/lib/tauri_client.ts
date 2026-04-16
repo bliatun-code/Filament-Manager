@@ -14,6 +14,7 @@ export type SpoolRow = {
   remaining_g?: number | null;
   spool_tare_weight_g?: number | null;
   location_id?: string | null;
+  home_location_id?: string | null;
 };
 
 export type SpoolHistoryEventRow = {
@@ -332,6 +333,7 @@ export type UpdateSpoolDetailsInput = {
   qr_code?: string | null;
   status: string;
   location?: string | null;
+  home_location?: string | null;
 };
 
 export type UpdateSpoolRfidTagInput = {
@@ -1143,6 +1145,8 @@ export async function updateLibrarySyncHostSpoolDetails(
       qr_code: input.qr_code ?? null,
       status: input.status,
       location: input.location ?? null,
+      home_location:
+        input.home_location === undefined ? undefined : input.home_location,
     },
   });
 }

@@ -187,6 +187,7 @@ struct LibrarySyncUpdateSpoolDetailsInput {
     qr_code: Option<String>,
     status: String,
     location: Option<String>,
+    home_location: Option<Option<String>>,
 }
 
 #[derive(Deserialize)]
@@ -1613,6 +1614,9 @@ fn update_library_sync_host_spool_details(
             "qr_code": input.qr_code.as_deref().map(str::trim).filter(|value| !value.is_empty()),
             "status": input.status.trim(),
             "location": input.location.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+            "home_location": input.home_location.as_ref().map(|value| {
+                value.as_deref().map(str::trim).filter(|entry| !entry.is_empty())
+            }),
         }),
     )?;
 

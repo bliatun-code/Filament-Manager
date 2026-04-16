@@ -658,6 +658,7 @@ mod tests {
                     qr_code: Some("detail-qr-2".to_string()),
                     status: "LOST".to_string(),
                     location: Some("Archive Bin".to_string()),
+                    home_location: None,
                 })
                 .map_err(|error| error.to_string())?;
 

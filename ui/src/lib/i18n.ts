@@ -273,6 +273,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       stockEntryHelp:
         "Choose a vendor flow, pick a filament, then confirm stock details below.",
       vendorSource: "Vendor source",
+      searchVendorCatalog: "Search {{vendor}} material, filament or color",
       catalogRefreshFilter: "Catalog refresh & filter",
       catalogSelection: "Catalog selection",
       catalogManagedInSettings:
@@ -317,6 +318,11 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       locationSaved: "Location updated.",
       editLocation: "Edit location",
       locationOptional: "Location (optional)",
+      editHomeLocation: "Home location",
+      homeLocationOptional: "Home location (optional)",
+      homeLocationLabel: "Home location",
+      homeLocationHintWhileAssigned:
+        "Current placement is managed on the Printers page. Home location is where the spool returns when it is no longer loaded.",
       lostStatus: "Lost status",
       markLost: "Mark as lost",
       markFound: "Mark as found (in stock)",
@@ -506,7 +512,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       manualHint:
         "Use manual mode when the vendor catalog is missing the filament you need.",
       addMissingBambuManual: "Bambu filament missing? Add it manually",
-      addMissingFilamentManual: "Missing filament? Add it manually",
+      addMissingFilamentManual: "Missing the filament? Add it manually",
       viewRefreshLog: "View refresh log",
       refreshBambu: "Refresh Bambu catalog",
       refreshEsun: "Refresh eSUN catalog",
@@ -1536,6 +1542,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       stockEntryHelp:
         "Velg leverandørflyt, plukk filamentet og bekreft lagerdetaljene under.",
       vendorSource: "Leverandørkilde",
+      searchVendorCatalog: "Søk etter {{vendor}}-materiale, filament eller farge",
       catalogRefreshFilter: "Katalogoppdatering og filtrering",
       catalogSelection: "Katalogvalg",
       catalogManagedInSettings:
@@ -1581,6 +1588,11 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       locationSaved: "Lokasjon oppdatert.",
       editLocation: "Rediger lokasjon",
       locationOptional: "Lokasjon (valgfritt)",
+      editHomeLocation: "Hjemmeplassering",
+      homeLocationOptional: "Hjemmeplassering (valgfritt)",
+      homeLocationLabel: "Hjemmeplassering",
+      homeLocationHintWhileAssigned:
+        "Nåværende plassering styres fra Printers-siden. Hjemmeplassering er hvor rullen skal tilbake når den ikke lenger er lastet.",
       lostStatus: "Tapt-status",
       markLost: "Marker som tapt",
       markFound: "Marker som funnet (på lager)",
@@ -1770,7 +1782,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       manualHint:
         "Bruk manuell modus når leverandørkatalogen mangler filamentet du trenger.",
       addMissingBambuManual: "Mangler Bambu-filament? Legg det inn manuelt",
-      addMissingFilamentManual: "Mangler filament? Legg det inn manuelt",
+      addMissingFilamentManual: "Mangler filamentet? Legg det inn manuelt",
       viewRefreshLog: "Vis oppdateringslogg",
       refreshBambu: "Oppdater Bambu-katalog",
       refreshEsun: "Oppdater eSUN-katalog",

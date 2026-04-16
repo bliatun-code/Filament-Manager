@@ -22,6 +22,7 @@ test("buildInventoryOverviewPrintPdfBase64 renders a valid landscape A4 PDF with
         material: "ABS",
         filamentName: "Basic",
         colorName: "Azure",
+        homeLocation: "Shelf 1",
         swatchHex: "#3B82F6",
         qrDataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7aSykAAAAASUVORK5CYII=",
       },
@@ -31,6 +32,7 @@ test("buildInventoryOverviewPrintPdfBase64 renders a valid landscape A4 PDF with
         material: "PETG",
         filamentName: "PETG+",
         colorName: "Blue",
+        homeLocation: "Shelf 2",
         swatchHex: "#2563EB",
         qrDataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7aSykAAAAASUVORK5CYII=",
       },
@@ -43,7 +45,7 @@ test("buildInventoryOverviewPrintPdfBase64 renders a valid landscape A4 PDF with
       vendor: "Vendor",
       material: "Material",
       filament: "Filament",
-      color: "Color",
+      homeLocation: "Home location",
       reference: "Reference",
     },
   );
@@ -71,7 +73,7 @@ test("buildInventoryOverviewPrintPdfBase64 renders an empty-state PDF when no ro
     vendor: "Vendor",
     material: "Material",
     filament: "Filament",
-    color: "Color",
+    homeLocation: "Home location",
     reference: "Reference",
   });
 
