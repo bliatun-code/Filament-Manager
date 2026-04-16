@@ -212,7 +212,7 @@ fn merge_tray_snapshots(
                 !next.loaded && next.empty_observation_count == previous.empty_observation_count;
             BambuLiveObservedTrayRow {
                 tray_index: next.tray_index,
-                loaded: next.loaded || previous.loaded,
+                loaded: next.loaded,
                 filament_type: next
                     .filament_type
                     .clone()
@@ -1001,7 +1001,13 @@ fn merge_tray_payload(
         || tray_info_idx.is_some()
         || tray_id_name.is_some();
     let empty_observation = !substantive_fields && !has_live_observation_signal;
-    let should_reset_observed_identity = substantive_fields || empty_observation;
+    let metadata_replacement_signal = previous.is_some() && substantive_tray_metadata_changed(
+        previous,
+        filament_type.as_deref(),
+        filament_name.as_deref(),
+        color_hex.as_deref(),
+    );
+    let should_reset_observed_identity = empty_observation || metadata_replacement_signal;
 
     let previous_loaded = previous.map(|value| value.loaded).unwrap_or(false);
     let loaded = if substantive_fields || has_live_observation_signal {
@@ -1095,6 +1101,30 @@ fn merge_tray_payload(
             previous.and_then(|value| value.match_note.clone())
         },
     }
+}
+
+fn substantive_tray_metadata_changed(
+    previous: Option<&BambuLiveObservedTrayRow>,
+    filament_type: Option<&str>,
+    filament_name: Option<&str>,
+    color_hex: Option<&str>,
+) -> bool {
+    let Some(previous) = previous else {
+        return false;
+    };
+    substantive_value_changed(filament_type, previous.filament_type.as_deref())
+        || substantive_value_changed(filament_name, previous.filament_name.as_deref())
+        || substantive_value_changed(color_hex, previous.color_hex.as_deref())
+}
+
+fn substantive_value_changed(next: Option<&str>, previous: Option<&str>) -> bool {
+    let Some(next) = next.map(str::trim).filter(|value| !value.is_empty()) else {
+        return false;
+    };
+    let Some(previous) = previous.map(str::trim).filter(|value| !value.is_empty()) else {
+        return false;
+    };
+    !next.eq_ignore_ascii_case(previous)
 }
 
 fn has_substantive_tray_fields(object: &Map<String, Value>) -> bool {
@@ -1469,5 +1499,52 @@ mod tests {
         assert!(merged.matched_inventory_spool_id.is_none());
         assert!(merged.matched_inventory_mode.is_none());
         assert!(merged.match_status.is_none());
+    }
+
+    #[test]
+    fn merge_tray_payload_keeps_exact_rfid_identity_on_partial_same_metadata_update() {
+        let previous = make_tray();
+        let payload = serde_json::json!({
+            "id": 0,
+            "tray_type": "PLA",
+            "tray_sub_brands": "Basic",
+            "tray_color": "00FF00FF"
+        });
+
+        let merged = merge_tray_payload(Some(&previous), 0, &payload, "2026-04-16T14:05:00Z");
+
+        assert!(merged.loaded);
+        assert_eq!(merged.tray_uuid.as_deref(), Some("tray-uuid-unknown"));
+        assert_eq!(
+            merged.last_identity_seen_at.as_deref(),
+            previous.last_identity_seen_at.as_deref()
+        );
+    }
+
+    #[test]
+    fn merge_tray_snapshots_allows_empty_update_to_clear_loaded_state() {
+        let previous = make_tray();
+        let next = BambuLiveObservedTrayRow {
+            loaded: false,
+            observed_rfid_tag: None,
+            tray_uuid: None,
+            chip_id: None,
+            tray_info_idx: None,
+            tray_id_name: None,
+            last_identity_seen_at: None,
+            last_empty_seen_at: Some("2026-04-16T14:10:00Z".to_string()),
+            empty_observation_count: Some(2),
+            matched_inventory_spool_id: None,
+            matched_inventory_mode: None,
+            match_status: None,
+            match_note: None,
+            ..make_tray()
+        };
+
+        let merged = super::merge_tray_snapshots(&[previous], &[next]);
+
+        assert_eq!(merged.len(), 1);
+        assert!(!merged[0].loaded);
+        assert!(merged[0].tray_uuid.is_none());
     }
 }
