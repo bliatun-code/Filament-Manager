@@ -100,6 +100,7 @@ export type BambuLiveObservedTray = {
   filament_type?: string | null;
   filament_name?: string | null;
   color_hex?: string | null;
+  tray_weight_g?: number | null;
   remaining_percent?: number | null;
   remaining_grams?: number | null;
   observed_rfid_tag?: string | null;

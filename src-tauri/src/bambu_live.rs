@@ -225,6 +225,7 @@ fn merge_tray_snapshots(
                     .color_hex
                     .clone()
                     .or_else(|| previous.color_hex.clone()),
+                tray_weight_g: next.tray_weight_g.or(previous.tray_weight_g),
                 remaining_percent: next.remaining_percent.or(previous.remaining_percent),
                 remaining_grams: next.remaining_grams.or(previous.remaining_grams),
                 observed_rfid_tag: next.observed_rfid_tag.clone().or_else(|| {
@@ -748,6 +749,7 @@ fn sync_live_weight(
             "grams": remaining_grams,
             "previous_grams": current,
             "remaining_percent": tray.remaining_percent,
+            "tray_weight_g": tray.tray_weight_g,
             "source": "BAMBU_AMS",
             "printer_id": printer_id,
             "observed_at": tray.last_identity_seen_at,
@@ -761,6 +763,7 @@ fn sync_live_weight(
             "spool_id": spool_id,
             "remaining_grams": remaining_grams,
             "remaining_percent": tray.remaining_percent,
+            "tray_weight_g": tray.tray_weight_g,
             "observed_at": tray.last_identity_seen_at,
         }),
     )?;
@@ -1027,6 +1030,7 @@ fn merge_tray_payload(
     let filament_type = as_string(tray.get("tray_type"));
     let filament_name = as_string(tray.get("tray_sub_brands"));
     let color_hex = normalize_color(as_string(tray.get("tray_color")));
+    let tray_weight_g = normalize_tray_weight(as_i64(tray.get("tray_weight")));
     let remaining_percent = normalize_remaining_percent(as_i64(tray.get("remain")));
     let has_rfid_identity_signal = tray_uuid.is_some();
     let has_live_observation_signal = observed_rfid_tag.is_some()
@@ -1070,10 +1074,16 @@ fn merge_tray_payload(
         } else {
             color_hex.or_else(|| previous.and_then(|value| value.color_hex.clone()))
         },
+        tray_weight_g: if empty_observation {
+            tray_weight_g
+        } else {
+            tray_weight_g.or_else(|| previous.and_then(|value| value.tray_weight_g))
+        },
         remaining_percent: remaining_percent
             .or_else(|| previous.and_then(|value| value.remaining_percent)),
         remaining_grams: remaining_percent
-            .and_then(percent_to_grams)
+            .zip(tray_weight_g.or_else(|| previous.and_then(|value| value.tray_weight_g)))
+            .and_then(|(percent, tray_weight_g)| percent_to_grams(percent, tray_weight_g))
             .or_else(|| previous.and_then(|value| value.remaining_grams)),
         observed_rfid_tag: if should_reset_observed_identity {
             observed_rfid_tag
@@ -1199,11 +1209,19 @@ fn normalize_remaining_percent(value: Option<i64>) -> Option<i64> {
     Some(value)
 }
 
-fn percent_to_grams(value: i64) -> Option<i64> {
-    if !(0..=100).contains(&value) {
+fn normalize_tray_weight(value: Option<i64>) -> Option<i64> {
+    let value = value?;
+    if value <= 0 {
         return None;
     }
-    Some(value * 10)
+    Some(value)
+}
+
+fn percent_to_grams(value: i64, tray_weight_g: i64) -> Option<i64> {
+    if !(0..=100).contains(&value) || tray_weight_g <= 0 {
+        return None;
+    }
+    Some(((tray_weight_g * value) + 50) / 100)
 }
 
 fn identity_is_recent(raw: Option<&str>, max_age_minutes: i64) -> bool {
@@ -1371,6 +1389,7 @@ mod tests {
             filament_type: Some("PLA".to_string()),
             filament_name: Some("Basic".to_string()),
             color_hex: Some("#00FF00".to_string()),
+            tray_weight_g: Some(1000),
             remaining_percent: Some(80),
             remaining_grams: Some(800),
             observed_rfid_tag: Some("legacy".to_string()),
@@ -1632,6 +1651,7 @@ mod tests {
                             {
                                 "id": "1",
                                 "tray_color": "F7E6DEFF",
+                                "tray_weight": "1000",
                                 "tray_type": "PLA",
                                 "tray_sub_brands": "PLA Basic",
                                 "tray_uuid": "F5993C11FBCC470BBACFCBA4344280B5"
@@ -1652,6 +1672,26 @@ mod tests {
         assert_eq!(state.trays.len(), 2);
         assert!(!state.trays[0].loaded);
         assert_eq!(state.trays[1].tray_uuid.as_deref(), Some("F5993C11FBCC470BBACFCBA4344280B5"));
+        assert_eq!(state.trays[1].tray_weight_g, Some(1000));
+    }
+
+    #[test]
+    fn merge_tray_payload_derives_remaining_grams_from_tray_weight() {
+        let previous = make_tray();
+        let payload = serde_json::json!({
+            "id": 0,
+            "tray_type": "PLA",
+            "tray_sub_brands": "Support for PLA",
+            "tray_color": "FFFFFFFF",
+            "tray_weight": "250",
+            "remain": 33
+        });
+
+        let merged = merge_tray_payload(Some(&previous), 0, &payload, "2026-04-16T14:05:00Z");
+
+        assert_eq!(merged.tray_weight_g, Some(250));
+        assert_eq!(merged.remaining_percent, Some(33));
+        assert_eq!(merged.remaining_grams, Some(83));
     }
 
     #[test]

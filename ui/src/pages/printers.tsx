@@ -949,6 +949,7 @@ export default function PrintersPage() {
       filament_type: null,
       filament_name: null,
       color_hex: slot.live_color_hex ?? null,
+      tray_weight_g: null,
       remaining_percent: null,
       remaining_grams: null,
       observed_rfid_tag: null,

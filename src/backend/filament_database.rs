@@ -222,6 +222,7 @@ pub struct BambuLiveObservedTrayRow {
     pub filament_type: Option<String>,
     pub filament_name: Option<String>,
     pub color_hex: Option<String>,
+    pub tray_weight_g: Option<i64>,
     pub remaining_percent: Option<i64>,
     pub remaining_grams: Option<i64>,
     pub observed_rfid_tag: Option<String>,

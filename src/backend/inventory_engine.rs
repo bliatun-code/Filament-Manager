@@ -1626,6 +1626,7 @@ mod tests {
                                 filament_type: Some("PLA".to_string()),
                                 filament_name: Some("Unknown".to_string()),
                                 color_hex: Some("#00FF00".to_string()),
+                                tray_weight_g: Some(1000),
                                 remaining_percent: Some(82),
                                 remaining_grams: Some(820),
                                 observed_rfid_tag: None,
