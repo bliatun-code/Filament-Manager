@@ -932,21 +932,53 @@ export default function PrintersPage() {
     };
   }
 
+  function slotLiveTrayFallback(slot: PrinterAmsSlotRow): BambuLiveObservedTray | null {
+    if (!clientReadOnly || clientPrinterSource !== "LIVE") {
+      return null;
+    }
+    if ((slot.ams_id ?? "").endsWith("_ext")) {
+      return null;
+    }
+    if (!slot.live_last_identity_seen_at && !slot.live_tray_uuid && !slot.live_match_status) {
+      return null;
+    }
+    return {
+      tray_index: slot.slot_index - 1,
+      loaded: slot.live_loaded ?? !!slot.live_tray_uuid,
+      filament_type: null,
+      filament_name: null,
+      color_hex: slot.live_color_hex ?? null,
+      remaining_percent: null,
+      remaining_grams: null,
+      observed_rfid_tag: null,
+      tray_uuid: slot.live_tray_uuid ?? null,
+      chip_id: null,
+      tray_info_idx: null,
+      tray_id_name: null,
+      last_identity_seen_at: slot.live_last_identity_seen_at ?? null,
+      last_empty_seen_at: null,
+      empty_observation_count: null,
+      matched_inventory_spool_id: slot.live_matched_inventory_spool_id ?? null,
+      matched_inventory_mode: slot.live_matched_inventory_mode ?? null,
+      match_status: slot.live_match_status ?? null,
+      match_note: slot.live_match_note ?? null,
+    };
+  }
+
   function findLiveTrayForSlot(
     printerId: string,
-    slotIndex: number,
-    amsId?: string | null,
+    slot: PrinterAmsSlotRow,
   ): {
     liveConfig: BambuLiveIntegrationEntry["config"] | null;
     tray: BambuLiveObservedTray | null;
   } {
     const liveConfig = bambuLiveIntegrations[printerId] ?? null;
-    if ((amsId ?? "").endsWith("_ext")) {
+    if ((slot.ams_id ?? "").endsWith("_ext")) {
       return { liveConfig, tray: null };
     }
     const tray =
-      liveConfig?.observed_state?.trays.find((candidate) => candidate.tray_index === slotIndex - 1) ??
-      null;
+      liveConfig?.observed_state?.trays.find((candidate) => candidate.tray_index === slot.slot_index - 1) ??
+      slotLiveTrayFallback(slot);
     return { liveConfig, tray };
   }
 
@@ -1259,7 +1291,7 @@ export default function PrintersPage() {
     const incomingWeightRaw = overrides ? "" : draft?.incomingWeight.trim() ?? "";
     const outgoingWeight = overrides ? overrides.outgoingWeight : parseWeightInput(outgoingWeightRaw);
     const incomingWeight = overrides ? overrides.incomingWeight : parseWeightInput(incomingWeightRaw);
-    const { tray: liveTray } = findLiveTrayForSlot(printerId, slot.slot_index, slot.ams_id);
+    const { tray: liveTray } = findLiveTrayForSlot(printerId, slot);
     const nextUnknownOverride =
       targetSpoolId && !((slot.ams_id ?? "").endsWith("_ext")) && isUnknownLiveRfid(liveTray)
         ? {
@@ -1440,6 +1472,18 @@ export default function PrintersPage() {
         </FeedbackBanner>
       ) : null}
 
+      {clientReadOnly && clientPrinterSource === "LIVE" ? (
+        <FeedbackBanner tone="success" className="mt-4">
+          <span className="font-semibold">
+            {t("printers.clientReadOnlyLive", "Showing live host printers.")}
+          </span>{" "}
+          {t(
+            "printers.clientReadOnlyLiveHint",
+            "Live RFID and slot activity badges are coming from the host. Cached or offline snapshots may hide those live-only signals.",
+          )}
+        </FeedbackBanner>
+      ) : null}
+
       {clientReadOnly && clientPrinterSource !== "LIVE" ? (
         <FeedbackBanner tone="warning" className="mt-4">
           {clientHostDeviceName
@@ -1573,11 +1617,7 @@ export default function PrintersPage() {
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               {printer.slots.map((slot) => {
                 const isExtSlot = (slot.ams_id ?? "").endsWith("_ext");
-                const { liveConfig, tray: liveTray } = findLiveTrayForSlot(
-                  printer.printer.id,
-                  slot.slot_index,
-                  slot.ams_id,
-                );
+                const { liveConfig, tray: liveTray } = findLiveTrayForSlot(printer.printer.id, slot);
                 const liveCacheSuppressedByManualClear =
                   !isExtSlot &&
                   !!slot.live_cache_cleared_at &&
@@ -1609,20 +1649,25 @@ export default function PrintersPage() {
                     ? null
                     : effectiveLiveTray?.last_identity_seen_at ?? null;
                 const liveIdentityFresh = !isOlderThanMinutes(lastLiveIdentityAt, 10);
-                const liveSlotInUse =
+                const liveSignalEnabled =
                   !isExtSlot &&
+                  (Boolean(liveConfig?.enabled) ||
+                    (clientReadOnly && clientPrinterSource === "LIVE" && !!effectiveLiveTray));
+                const liveSlotInUse =
+                  liveSignalEnabled &&
                   liveIdentityFresh &&
-                  liveConfig?.enabled &&
-                  liveConfig.observed_state?.active_tray_index === slot.slot_index - 1 &&
-                  (liveConfig.observed_state?.progress_percent != null ||
-                    liveConfig.observed_state?.remaining_minutes != null);
+                  ((liveConfig?.enabled &&
+                    liveConfig.observed_state?.active_tray_index === slot.slot_index - 1 &&
+                    (liveConfig.observed_state?.progress_percent != null ||
+                      liveConfig.observed_state?.remaining_minutes != null)) ||
+                    slot.live_is_active === true);
                 const liveIdentityLabel =
                   liveIdentityFresh && effectiveLiveTray?.matched_inventory_mode === "exact_rfid"
                     ? t("printers.liveRfid", "Live RFID")
                     : null;
                 const unknownLiveRfid =
                   liveIdentityFresh &&
-                  !!liveConfig?.enabled &&
+                  liveSignalEnabled &&
                   isUnknownLiveRfid(effectiveLiveTray);
                 const rfidOverridden =
                   unknownLiveRfid && liveUnknownMatchesSlotOverride(slot, effectiveLiveTray);
@@ -1630,7 +1675,7 @@ export default function PrintersPage() {
                   !!slot.spool_id &&
                   !liveIdentityLabel &&
                   !rfidOverridden &&
-                  !!liveConfig?.enabled &&
+                  liveSignalEnabled &&
                   isOlderThanMinutes(lastLiveIdentityAt, 10);
                 const liveObservedAge = formatRelativeAge(lastLiveIdentityAt);
                 const liveObservedAtLabel =
@@ -1908,7 +1953,7 @@ export default function PrintersPage() {
                                 </span>
                               ) : null}
                             </div>
-                            {liveConfig?.enabled ? (
+                            {liveSignalEnabled ? (
                               <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                                 {liveObservedAtLabel
                                   ? `${t("printers.lastKnownLive", "Last known live")}: ${liveObservedAtLabel}${liveObservedAge ? ` · ${liveObservedAge}` : ""}`
@@ -1935,7 +1980,7 @@ export default function PrintersPage() {
                     ) : (
                       <div className="mt-3 rounded-xl border border-dashed border-slate-300/80 px-3 py-3 text-xs text-slate-500 dark:border-slate-600/80 dark:text-slate-400">
                         <div>{t("printers.noSpoolAssigned", "No spool assigned.")}</div>
-                        {liveConfig?.enabled && liveObservedAtLabel ? (
+                        {liveSignalEnabled && liveObservedAtLabel ? (
                           <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                             {`${t("printers.lastKnownLive", "Last known live")}: ${liveObservedAtLabel}${liveObservedAge ? ` · ${liveObservedAge}` : ""}`}
                           </div>

@@ -1,8 +1,9 @@
 use crate::backend::filament_database::{
-    ActiveSpoolLoanRow, CatalogResetStats, FilamentDatabase, InventoryError, InventoryResult,
-    LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, LoanUsageByPersonRow, PrinterOverviewRow,
-    PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow,
-    SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow,
+    ActiveSpoolLoanRow, BambuLiveIntegrationRow, BambuLiveObservedTrayRow, CatalogResetStats,
+    FilamentDatabase, InventoryError, InventoryResult, LibrarySyncCachedSnapshotRow,
+    LibrarySyncSettingsRow, LoanUsageByPersonRow, PrinterOverviewRow, PrinterRow,
+    SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow, SpoolUsagePointRow,
+    SpoolWithMasterRow, WishlistItemRow,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -834,14 +835,154 @@ impl InventoryEngine {
         self.db.get_setting("active_printer_id")
     }
 
-    pub fn assign_printer_slot(&self, input: AssignPrinterSlotInput) -> InventoryResult<()> {
+    fn normalize_optional_text(value: Option<&str>) -> Option<String> {
+        value
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
+    }
+
+    fn resolve_live_unknown_override(
+        &self,
+        printer_id: &str,
+        slot_index: i64,
+        ams_id: &str,
+    ) -> InventoryResult<Option<(String, String)>> {
+        if ams_id.ends_with("_ext") {
+            return Ok(None);
+        }
+
+        let integration = self
+            .db
+            .list_bambu_live_integrations()?
+            .into_iter()
+            .find(|entry| entry.printer_id == printer_id)
+            .map(|entry| entry.config);
+
+        Ok(integration
+            .as_ref()
+            .and_then(|config| self.find_live_unknown_override_for_slot(config, slot_index)))
+    }
+
+    fn find_live_unknown_override_for_slot(
+        &self,
+        config: &BambuLiveIntegrationRow,
+        slot_index: i64,
+    ) -> Option<(String, String)> {
+        let tray = config
+            .observed_state
+            .as_ref()?
+            .trays
+            .iter()
+            .find(|candidate| candidate.tray_index == slot_index - 1)?;
+        self.live_unknown_override_from_tray(tray)
+    }
+
+    fn live_unknown_override_from_tray(
+        &self,
+        tray: &BambuLiveObservedTrayRow,
+    ) -> Option<(String, String)> {
+        if !tray.loaded || tray.match_status.as_deref() != Some("unknown_rfid") {
+            return None;
+        }
+
+        let tray_uuid = Self::normalize_optional_text(tray.tray_uuid.as_deref())?;
+        let color_hex = Self::normalize_optional_text(tray.color_hex.as_deref())?;
+        Some((tray_uuid, color_hex))
+    }
+
+    fn derive_assign_printer_slot_live_context(
+        &self,
+        input: &AssignPrinterSlotInput,
+    ) -> InventoryResult<(Option<String>, Option<String>, bool)> {
+        let requested_spool_id = Self::normalize_optional_text(input.spool_id.as_deref());
+        let explicit_override_tray_uuid =
+            Self::normalize_optional_text(input.rfid_override_tray_uuid.as_deref());
+        let explicit_override_color_hex =
+            Self::normalize_optional_text(input.rfid_override_color_hex.as_deref());
+        let explicit_clear = input.clear_live_cache_before_next_refresh.unwrap_or(false);
+
+        let printer = match self
+            .db
+            .list_printer_overview()?
+            .into_iter()
+            .find(|row| row.printer.id == input.printer_id)
+        {
+            Some(row) => row,
+            None => {
+                return Ok((
+                    explicit_override_tray_uuid,
+                    explicit_override_color_hex,
+                    explicit_clear,
+                ));
+            }
+        };
+
+        let slot = match printer
+            .slots
+            .into_iter()
+            .find(|slot| slot.slot_id == input.slot_id)
+        {
+            Some(slot) => slot,
+            None => {
+                return Ok((
+                    explicit_override_tray_uuid,
+                    explicit_override_color_hex,
+                    explicit_clear,
+                ));
+            }
+        };
+
+        let slot_has_spool = Self::normalize_optional_text(slot.spool_id.as_deref()).is_some();
+        let is_ext_slot = slot.ams_id.ends_with("_ext");
+        let effective_clear =
+            explicit_clear || (requested_spool_id.is_none() && slot_has_spool && !is_ext_slot);
+
+        if requested_spool_id.is_none() || is_ext_slot {
+            return Ok((
+                explicit_override_tray_uuid,
+                explicit_override_color_hex,
+                effective_clear,
+            ));
+        }
+
+        let mut effective_override_tray_uuid = explicit_override_tray_uuid;
+        let mut effective_override_color_hex = explicit_override_color_hex;
+
+        if effective_override_tray_uuid.is_none() || effective_override_color_hex.is_none() {
+            if let Some((derived_tray_uuid, derived_color_hex)) =
+                self.resolve_live_unknown_override(&input.printer_id, slot.slot_index, &slot.ams_id)?
+            {
+                if effective_override_tray_uuid.is_none() {
+                    effective_override_tray_uuid = Some(derived_tray_uuid);
+                }
+                if effective_override_color_hex.is_none() {
+                    effective_override_color_hex = Some(derived_color_hex);
+                }
+            }
+        }
+
+        Ok((
+            effective_override_tray_uuid,
+            effective_override_color_hex,
+            effective_clear,
+        ))
+    }
+
+    pub fn assign_printer_slot(&self, mut input: AssignPrinterSlotInput) -> InventoryResult<()> {
+        let (effective_override_tray_uuid, effective_override_color_hex, effective_clear) =
+            self.derive_assign_printer_slot_live_context(&input)?;
+        input.rfid_override_tray_uuid = effective_override_tray_uuid;
+        input.rfid_override_color_hex = effective_override_color_hex;
+        input.clear_live_cache_before_next_refresh = Some(effective_clear);
+
         self.db.assign_spool_to_ams_slot(
             &input.printer_id,
             &input.slot_id,
             input.spool_id.as_deref(),
             input.rfid_override_tray_uuid.as_deref(),
             input.rfid_override_color_hex.as_deref(),
-            input.clear_live_cache_before_next_refresh.unwrap_or(false),
+            effective_clear,
         )?;
 
         if let Some(spool_id) = input.spool_id {
@@ -1147,7 +1288,10 @@ mod tests {
         AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, InventoryEngine,
         ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, WeightSource,
     };
-    use crate::backend::filament_database::FilamentDatabase;
+    use crate::backend::filament_database::{
+        BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow,
+        FilamentDatabase,
+    };
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -1402,6 +1546,222 @@ mod tests {
         if let Err(message) = result {
             panic!(
                 "return_borrowed_in_spool_hands_back_and_hides_from_inventory test failed: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn assign_printer_slot_derives_unknown_live_rfid_override_on_host() {
+        let db_path = temp_db_path("derive-host-rfid-override");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            let engine = InventoryEngine::new(db);
+
+            engine
+                .create_printer(CreatePrinterInput {
+                    id: "printer_1".to_string(),
+                    model: "P1S".to_string(),
+                    name: "Bambu Lab P1S".to_string(),
+                    ams_units: Some(1),
+                    slots_per_ams: Some(1),
+                })
+                .map_err(|error| error.to_string())?;
+
+            engine
+                .create_manual_spool(CreateManualSpoolInput {
+                    id: "spool_1".to_string(),
+                    material: "PLA".to_string(),
+                    filament_name: "Basic".to_string(),
+                    color_name: "Green".to_string(),
+                    hex_color: Some("#00FF00".to_string()),
+                    product_url: None,
+                    vendor: Some("Manual".to_string()),
+                    default_weight_g: Some(1000),
+                    qr_code: Some("qr-host-override".to_string()),
+                    status: Some("IN_STOCK".to_string()),
+                    ownership_type: Some("OWNED".to_string()),
+                    owner_name: None,
+                    owner_contact: None,
+                    ownership_note: None,
+                    initial_weight_g: Some(1000),
+                    location: Some("Shelf A".to_string()),
+                })
+                .map_err(|error| error.to_string())?;
+
+            engine
+                .db
+                .save_bambu_live_integration(
+                    "printer_1",
+                    &BambuLiveIntegrationRow {
+                        enabled: true,
+                        host: Some("192.168.1.10".to_string()),
+                        access_code: None,
+                        printer_serial: Some("SERIAL-1".to_string()),
+                        last_error: None,
+                        observed_state: Some(BambuLiveObservedStateRow {
+                            online: true,
+                            last_seen_at: Some("2026-04-16T12:00:00Z".to_string()),
+                            mqtt_connected: true,
+                            progress_percent: None,
+                            remaining_minutes: None,
+                            active_tray_index: None,
+                            nozzle_temp_c: None,
+                            bed_temp_c: None,
+                            ams_humidity_index: None,
+                            ams_temperature_c: None,
+                            ams_reading_bits: None,
+                            ams_read_done_bits: None,
+                            ams_bambu_bits: None,
+                            raw_status_note: None,
+                            raw_payload_json: None,
+                            trays: vec![BambuLiveObservedTrayRow {
+                                tray_index: 0,
+                                loaded: true,
+                                filament_type: Some("PLA".to_string()),
+                                filament_name: Some("Unknown".to_string()),
+                                color_hex: Some("#00FF00".to_string()),
+                                remaining_percent: Some(82),
+                                remaining_grams: Some(820),
+                                observed_rfid_tag: None,
+                                tray_uuid: Some("tray-uuid-unknown".to_string()),
+                                chip_id: None,
+                                tray_info_idx: None,
+                                tray_id_name: None,
+                                last_identity_seen_at: Some("2026-04-16T12:00:00Z".to_string()),
+                                last_empty_seen_at: None,
+                                empty_observation_count: Some(0),
+                                matched_inventory_spool_id: None,
+                                matched_inventory_mode: None,
+                                match_status: Some("unknown_rfid".to_string()),
+                                match_note: Some("RFID not registered".to_string()),
+                            }],
+                        }),
+                    },
+                )
+                .map_err(|error| error.to_string())?;
+
+            engine
+                .assign_printer_slot(AssignPrinterSlotInput {
+                    printer_id: "printer_1".to_string(),
+                    slot_id: "printer_1_ams_1_slot_1".to_string(),
+                    spool_id: Some("spool_1".to_string()),
+                    rfid_override_tray_uuid: None,
+                    rfid_override_color_hex: None,
+                    clear_live_cache_before_next_refresh: None,
+                })
+                .map_err(|error| error.to_string())?;
+
+            let printer_overview = engine
+                .list_printer_overview()
+                .map_err(|error| error.to_string())?;
+            let slot = printer_overview[0]
+                .slots
+                .iter()
+                .find(|slot| slot.slot_id == "printer_1_ams_1_slot_1")
+                .ok_or_else(|| "expected ams slot".to_string())?;
+
+            assert_eq!(slot.spool_id.as_deref(), Some("spool_1"));
+            assert_eq!(
+                slot.rfid_override_tray_uuid.as_deref(),
+                Some("tray-uuid-unknown")
+            );
+            assert_eq!(slot.rfid_override_color_hex.as_deref(), Some("#00FF00"));
+            assert!(slot.live_cache_cleared_at.is_none());
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("assign_printer_slot_derives_unknown_live_rfid_override_on_host failed: {message}");
+        }
+    }
+
+    #[test]
+    fn assign_printer_slot_derives_manual_clear_cache_suppression_on_host() {
+        let db_path = temp_db_path("derive-host-clear-cache");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            let engine = InventoryEngine::new(db);
+
+            engine
+                .create_printer(CreatePrinterInput {
+                    id: "printer_1".to_string(),
+                    model: "P1S".to_string(),
+                    name: "Bambu Lab P1S".to_string(),
+                    ams_units: Some(1),
+                    slots_per_ams: Some(1),
+                })
+                .map_err(|error| error.to_string())?;
+
+            engine
+                .create_manual_spool(CreateManualSpoolInput {
+                    id: "spool_1".to_string(),
+                    material: "PLA".to_string(),
+                    filament_name: "Basic".to_string(),
+                    color_name: "White".to_string(),
+                    hex_color: Some("#FFFFFF".to_string()),
+                    product_url: None,
+                    vendor: Some("Manual".to_string()),
+                    default_weight_g: Some(1000),
+                    qr_code: Some("qr-host-clear".to_string()),
+                    status: Some("IN_STOCK".to_string()),
+                    ownership_type: Some("OWNED".to_string()),
+                    owner_name: None,
+                    owner_contact: None,
+                    ownership_note: None,
+                    initial_weight_g: Some(1000),
+                    location: Some("Shelf B".to_string()),
+                })
+                .map_err(|error| error.to_string())?;
+
+            engine
+                .assign_printer_slot(AssignPrinterSlotInput {
+                    printer_id: "printer_1".to_string(),
+                    slot_id: "printer_1_ams_1_slot_1".to_string(),
+                    spool_id: Some("spool_1".to_string()),
+                    rfid_override_tray_uuid: None,
+                    rfid_override_color_hex: None,
+                    clear_live_cache_before_next_refresh: None,
+                })
+                .map_err(|error| error.to_string())?;
+
+            engine
+                .assign_printer_slot(AssignPrinterSlotInput {
+                    printer_id: "printer_1".to_string(),
+                    slot_id: "printer_1_ams_1_slot_1".to_string(),
+                    spool_id: None,
+                    rfid_override_tray_uuid: None,
+                    rfid_override_color_hex: None,
+                    clear_live_cache_before_next_refresh: None,
+                })
+                .map_err(|error| error.to_string())?;
+
+            let printer_overview = engine
+                .list_printer_overview()
+                .map_err(|error| error.to_string())?;
+            let slot = printer_overview[0]
+                .slots
+                .iter()
+                .find(|slot| slot.slot_id == "printer_1_ams_1_slot_1")
+                .ok_or_else(|| "expected ams slot".to_string())?;
+
+            assert!(slot.spool_id.is_none());
+            assert!(slot.rfid_override_tray_uuid.is_none());
+            assert!(slot.rfid_override_color_hex.is_none());
+            assert!(slot.live_cache_cleared_at.is_some());
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "assign_printer_slot_derives_manual_clear_cache_suppression_on_host failed: {message}"
             );
         }
     }

@@ -77,6 +77,15 @@ export type PrinterAmsSlotRow = {
   rfid_override_tray_uuid?: string | null;
   rfid_override_color_hex?: string | null;
   live_cache_cleared_at?: string | null;
+  live_loaded?: boolean | null;
+  live_tray_uuid?: string | null;
+  live_color_hex?: string | null;
+  live_last_identity_seen_at?: string | null;
+  live_match_status?: string | null;
+  live_match_note?: string | null;
+  live_matched_inventory_spool_id?: string | null;
+  live_matched_inventory_mode?: string | null;
+  live_is_active?: boolean | null;
 };
 
 export type PrinterOverviewRow = {

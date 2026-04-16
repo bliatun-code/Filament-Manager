@@ -1258,6 +1258,15 @@ mod tests {
             rfid_override_tray_uuid: None,
             rfid_override_color_hex: None,
             live_cache_cleared_at: None,
+            live_loaded: None,
+            live_tray_uuid: None,
+            live_color_hex: None,
+            live_last_identity_seen_at: None,
+            live_match_status: None,
+            live_match_note: None,
+            live_matched_inventory_spool_id: None,
+            live_matched_inventory_mode: None,
+            live_is_active: None,
         }
     }
 

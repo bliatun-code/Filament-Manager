@@ -8,7 +8,7 @@ Historical notes below still mention the old localhost browser companion, `qa:co
 - Release 0.10.1 shipped-to-git checkpoint (2026-04-16):
   - `main` includes release commit `3c36f18`
   - tag `v0.10.1` is pushed to `origin`
-  - GitHub release entry is still pending local `gh auth login`
+  - GitHub release entry is published
   - stable follow-up patch on top of `v0.10.0` now includes:
     - opt-in local `Live Bambu status` for Bambu Lab printers only
     - persistent `last known good` AMS / tray identity model for live slots
@@ -18,6 +18,8 @@ Historical notes below still mention the old localhost browser companion, `qa:co
     - Norwegian localization cleanup for newly added inventory / settings live UI
     - AMS slot handling now treats manually cleared slots as authoritative until newer MQTT slot data arrives
     - unknown live RFID can clear replaced AMS slots conservatively, while same-identity manual overrides stay protected
+    - host/client printer-slot batch 1 now lets the host derive unknown-RFID override context and manual-clear cache suppression during protected slot writes
+    - host/client printer-slot batch 2 now enriches paired-client printer snapshots with minimal live slot/RFID status from the host, without exposing full Bambu live settings
   - security/release baseline:
     - `rand` upgraded to `0.9` with local compatibility fixes for token generation and jitter
   - validation baseline after the release pass:

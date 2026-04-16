@@ -638,6 +638,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Pair this desktop client with the host before running protected printer actions.",
       clientReadOnlyHost: "Host",
       clientReadOnlyLive: "Showing live host printers.",
+      clientReadOnlyLiveHint:
+        "Live RFID and slot activity badges are coming from the host. Cached or offline snapshots may hide those live-only signals.",
       clientReadOnlyCached: "Host is unavailable. Showing the last cached printer snapshot.",
       clientReadOnlyOffline: "Host is unavailable and no cached printer snapshot is available yet.",
       clientReadOnlyUpdated: "Updated",
@@ -1899,6 +1901,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Par denne desktop-klienten med verten før beskyttede printerhandlinger brukes.",
       clientReadOnlyHost: "Vert",
       clientReadOnlyLive: "Viser live printerdata fra verten.",
+      clientReadOnlyLiveHint:
+        "Live RFID- og sporaktivitetsmerker kommer fra verten. Bufrede eller offline snapshots kan mangle disse live-signalene.",
       clientReadOnlyCached: "Verten er utilgjengelig. Viser sist bufrede printerdata.",
       clientReadOnlyOffline:
         "Verten er utilgjengelig, og ingen bufrede printerdata er tilgjengelige ennå.",

@@ -1,7 +1,8 @@
 use crate::backend::filament_database::{
-    ActiveSpoolLoanRow, FilamentDatabase, FilamentMasterCatalogRow, InventoryError,
-    InventoryResult, PrinterOverviewRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow,
-    SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow,
+    ActiveSpoolLoanRow, BambuLiveIntegrationEntryRow, BambuLiveObservedTrayRow, FilamentDatabase,
+    FilamentMasterCatalogRow, InventoryError, InventoryResult, PrinterOverviewRow,
+    SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow, SpoolUsagePointRow,
+    SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::backend::inventory_engine::{
     AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
@@ -52,7 +53,10 @@ impl CompanionService {
     }
 
     pub fn list_printer_overview(&self) -> InventoryResult<Vec<PrinterOverviewRow>> {
-        self.with_inventory(|engine| engine.list_printer_overview())
+        let db = FilamentDatabase::open(&self.db_path)?;
+        let rows = db.list_printer_overview()?;
+        let integrations = db.list_bambu_live_integrations()?;
+        Ok(enrich_printer_overview_with_live_slots(rows, &integrations))
     }
 
     pub fn list_active_spool_loans(&self) -> InventoryResult<Vec<ActiveSpoolLoanRow>> {
@@ -266,6 +270,52 @@ impl CompanionService {
     }
 }
 
+fn enrich_printer_overview_with_live_slots(
+    mut rows: Vec<PrinterOverviewRow>,
+    integrations: &[BambuLiveIntegrationEntryRow],
+) -> Vec<PrinterOverviewRow> {
+    for printer in &mut rows {
+        let live_config = integrations
+            .iter()
+            .find(|entry| entry.printer_id == printer.printer.id)
+            .map(|entry| &entry.config);
+        let observed_state = live_config.and_then(|config| config.observed_state.as_ref());
+        for slot in &mut printer.slots {
+            if slot.ams_id.ends_with("_ext") {
+                continue;
+            }
+            let tray = observed_state.and_then(|state| {
+                state
+                    .trays
+                    .iter()
+                    .find(|candidate| candidate.tray_index == slot.slot_index - 1)
+            });
+            apply_live_tray_to_slot(slot, tray, observed_state);
+        }
+    }
+    rows
+}
+
+fn apply_live_tray_to_slot(
+    slot: &mut crate::backend::filament_database::PrinterAmsSlotRow,
+    tray: Option<&BambuLiveObservedTrayRow>,
+    observed_state: Option<&crate::backend::filament_database::BambuLiveObservedStateRow>,
+) {
+    slot.live_loaded = tray.map(|value| value.loaded);
+    slot.live_tray_uuid = tray.and_then(|value| value.tray_uuid.clone());
+    slot.live_color_hex = tray.and_then(|value| value.color_hex.clone());
+    slot.live_last_identity_seen_at = tray.and_then(|value| value.last_identity_seen_at.clone());
+    slot.live_match_status = tray.and_then(|value| value.match_status.clone());
+    slot.live_match_note = tray.and_then(|value| value.match_note.clone());
+    slot.live_matched_inventory_spool_id =
+        tray.and_then(|value| value.matched_inventory_spool_id.clone());
+    slot.live_matched_inventory_mode = tray.and_then(|value| value.matched_inventory_mode.clone());
+    slot.live_is_active = observed_state.map(|state| {
+        state.active_tray_index == Some(slot.slot_index - 1)
+            && (state.progress_percent.is_some() || state.remaining_minutes.is_some())
+    });
+}
+
 fn map_active_loan_detail(row: SpoolLoanDetailsRow) -> ActiveSpoolLoanRow {
     ActiveSpoolLoanRow {
         loan: row.loan,
@@ -282,7 +332,10 @@ fn map_active_loan_detail(row: SpoolLoanDetailsRow) -> ActiveSpoolLoanRow {
 #[cfg(test)]
 mod tests {
     use super::CompanionService;
-    use crate::backend::filament_database::FilamentDatabase;
+    use crate::backend::filament_database::{
+        BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow,
+        FilamentDatabase,
+    };
     use crate::backend::inventory_engine::{
         CreateManualSpoolInput, CreatePrinterInput, InventoryEngine, LendSpoolInput,
         ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, WeightSource,
@@ -710,6 +763,104 @@ mod tests {
         let _ = std::fs::remove_file(&db_path);
         if let Err(message) = result {
             panic!("companion_service_assigns_and_clears_printer_slot failed: {message}");
+        }
+    }
+
+    #[test]
+    fn companion_service_list_printer_overview_exposes_live_slot_snapshot() {
+        let db_path = temp_db_path("printer-live-overview");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            let engine = InventoryEngine::new(db);
+
+            engine
+                .create_printer(CreatePrinterInput {
+                    id: "printer_1".to_string(),
+                    model: "Bambu X1C".to_string(),
+                    name: "Bench Printer".to_string(),
+                    ams_units: Some(1),
+                    slots_per_ams: Some(1),
+                })
+                .map_err(|error| error.to_string())?;
+
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.save_bambu_live_integration(
+                    "printer_1",
+                    &BambuLiveIntegrationRow {
+                        enabled: true,
+                        host: Some("192.168.1.10".to_string()),
+                        access_code: None,
+                        printer_serial: Some("SERIAL-1".to_string()),
+                        last_error: None,
+                        observed_state: Some(BambuLiveObservedStateRow {
+                            online: true,
+                            last_seen_at: Some("2026-04-16T14:00:00Z".to_string()),
+                            mqtt_connected: true,
+                            progress_percent: Some(27),
+                            remaining_minutes: Some(18),
+                            active_tray_index: Some(0),
+                            nozzle_temp_c: None,
+                            bed_temp_c: None,
+                            ams_humidity_index: None,
+                            ams_temperature_c: None,
+                            ams_reading_bits: None,
+                            ams_read_done_bits: None,
+                            ams_bambu_bits: None,
+                            raw_status_note: None,
+                            raw_payload_json: None,
+                            trays: vec![BambuLiveObservedTrayRow {
+                                tray_index: 0,
+                                loaded: true,
+                                filament_type: Some("PLA".to_string()),
+                                filament_name: Some("Unknown".to_string()),
+                                color_hex: Some("#00FF00".to_string()),
+                                remaining_percent: Some(82),
+                                remaining_grams: Some(820),
+                                observed_rfid_tag: None,
+                                tray_uuid: Some("tray-uuid-unknown".to_string()),
+                                chip_id: None,
+                                tray_info_idx: None,
+                                tray_id_name: None,
+                                last_identity_seen_at: Some("2026-04-16T14:00:00Z".to_string()),
+                                last_empty_seen_at: None,
+                                empty_observation_count: Some(0),
+                                matched_inventory_spool_id: None,
+                                matched_inventory_mode: None,
+                                match_status: Some("unknown_rfid".to_string()),
+                                match_note: Some("RFID not registered".to_string()),
+                            }],
+                        }),
+                    },
+                )
+                .map_err(|error| error.to_string())?;
+
+            let service = CompanionService::new(db_path.to_string_lossy().to_string());
+            let overview = service
+                .list_printer_overview()
+                .map_err(|error| error.to_string())?;
+            let slot = overview[0]
+                .slots
+                .iter()
+                .find(|row| row.slot_id == "printer_1_ams_1_slot_1")
+                .ok_or_else(|| "missing printer slot".to_string())?;
+
+            assert_eq!(slot.live_tray_uuid.as_deref(), Some("tray-uuid-unknown"));
+            assert_eq!(slot.live_color_hex.as_deref(), Some("#00FF00"));
+            assert_eq!(slot.live_match_status.as_deref(), Some("unknown_rfid"));
+            assert_eq!(
+                slot.live_last_identity_seen_at.as_deref(),
+                Some("2026-04-16T14:00:00Z")
+            );
+            assert_eq!(slot.live_is_active, Some(true));
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("companion_service_list_printer_overview_exposes_live_slot_snapshot failed: {message}");
         }
     }
 

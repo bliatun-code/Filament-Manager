@@ -7,7 +7,9 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - stable follow-up patch after `v0.10.0`
   - intended to lock in stricter AMS-slot replacement behavior and manual-clear authority
   - version bump, commit, and tag push are complete for `v0.10.1`
-  - remaining publish step is GitHub release creation after local `gh auth login`
+  - GitHub release is published
+  - host/client batch 1 is complete: host derives unknown-RFID override context and manual-clear cache suppression on protected slot writes
+  - host/client batch 2 is complete: paired client receives minimal live slot/RFID snapshot data from the host
 - Validation baseline:
   - `npm run build` ✅
   - `cargo test --manifest-path src-tauri/Cargo.toml bambu_live -- --nocapture` ✅
@@ -16,6 +18,9 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - unknown RFID replacement clears only on strong `tray_uuid` + color evidence
   - manual RFID override stays protected while the same unknown identity remains present
   - manually emptied AMS slots stay empty until newer MQTT tray data arrives
+- Next client/host polish focus:
+  - validate paired-client printer UI across `LIVE`, `CACHED`, and `OFFLINE` host states
+  - decide whether paired client needs any extra visual distinction for host-driven `In use` vs passive live identity badges
 
 ## v0.9.2 Stable Import + Browser Polish (2026-04-14)
 - Release target:

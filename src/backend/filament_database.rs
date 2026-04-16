@@ -197,6 +197,15 @@ pub struct PrinterAmsSlotRow {
     pub rfid_override_tray_uuid: Option<String>,
     pub rfid_override_color_hex: Option<String>,
     pub live_cache_cleared_at: Option<String>,
+    pub live_loaded: Option<bool>,
+    pub live_tray_uuid: Option<String>,
+    pub live_color_hex: Option<String>,
+    pub live_last_identity_seen_at: Option<String>,
+    pub live_match_status: Option<String>,
+    pub live_match_note: Option<String>,
+    pub live_matched_inventory_spool_id: Option<String>,
+    pub live_matched_inventory_mode: Option<String>,
+    pub live_is_active: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -3501,6 +3510,15 @@ impl FilamentDatabase {
                     rfid_override_tray_uuid: row.get(13)?,
                     rfid_override_color_hex: row.get(14)?,
                     live_cache_cleared_at: row.get(15)?,
+                    live_loaded: None,
+                    live_tray_uuid: None,
+                    live_color_hex: None,
+                    live_last_identity_seen_at: None,
+                    live_match_status: None,
+                    live_match_note: None,
+                    live_matched_inventory_spool_id: None,
+                    live_matched_inventory_mode: None,
+                    live_is_active: None,
                 })
             })?;
             let mut slots = Vec::new();
