@@ -5,6 +5,16 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      platform:
+        description: "Select which installer artifacts to build"
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - windows
+          - macos
 
 concurrency:
   group: release-build-${{ github.ref }}
@@ -16,6 +26,7 @@ permissions:
 jobs:
   build-macos-dmg:
     name: Build macOS DMG
+    if: github.event_name == 'push' || github.event.inputs.platform == 'both' || github.event.inputs.platform == 'macos'
     runs-on: macos-latest
     timeout-minutes: 45
     steps:
@@ -52,6 +63,7 @@ jobs:
 
   build-windows-msi:
     name: Build Windows MSI
+    if: github.event_name == 'push' || github.event.inputs.platform == 'both' || github.event.inputs.platform == 'windows'
     runs-on: windows-latest
     timeout-minutes: 50
     steps:

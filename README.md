@@ -74,7 +74,7 @@ The repository includes a tag-triggered build workflow:
 - Workflow: `.github/workflows/release-build.yml`
 - Triggers:
   - push tag matching `v*` (example: `v0.10.1`)
-  - manual run via `workflow_dispatch`
+  - manual run via `workflow_dispatch` with platform selection: `both`, `windows`, or `macos`
 - Outputs:
   - macOS DMG artifact
   - Windows MSI artifact
@@ -92,6 +92,14 @@ How to download artifacts:
 3. Download artifacts from the `Artifacts` section:
    - `filament-manager-macos-dmg-<tag>`
    - `filament-manager-windows-msi-<tag>`
+
+How to run manually for a single platform:
+1. Open GitHub repo -> `Actions` tab -> `Release Build Artifacts`.
+2. Click `Run workflow`.
+3. Choose `platform`:
+   - `windows` to build only the MSI
+   - `macos` to build only the DMG
+   - `both` to build both installers
 
 ### Windows RC notes
 
