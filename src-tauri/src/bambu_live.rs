@@ -541,12 +541,21 @@ fn auto_sync_live_slots(
             .iter()
             .find(|slot| !slot.ams_id.ends_with("_ext") && slot.slot_index == tray.tray_index + 1);
 
-        if should_auto_clear_live_slot(tray)
-            || slot
-                .map(|configured_slot| {
-                    should_auto_clear_live_unknown_replacement(tray, configured_slot)
-                })
-                .unwrap_or(false)
+        let auto_clear_empty_signal = should_auto_clear_live_slot(tray);
+        let auto_clear_unknown_replacement = slot
+            .map(|configured_slot| should_auto_clear_live_unknown_replacement(tray, configured_slot))
+            .unwrap_or(false);
+        let auto_clear_color_replacement = slot
+            .map(|configured_slot| {
+                should_auto_clear_live_color_replacement(
+                    tray,
+                    configured_slot.live_color_hex.as_deref(),
+                    configured_slot,
+                )
+            })
+            .unwrap_or(false);
+
+        if auto_clear_empty_signal || auto_clear_unknown_replacement || auto_clear_color_replacement
         {
             if let Some(slot) = slot {
                 if slot.spool_id.is_some() {
@@ -564,14 +573,16 @@ fn auto_sync_live_slots(
                         &json!({
                             "slot_id": slot.slot_id,
                             "slot_index": slot.slot_index,
-                            "reason": if should_auto_clear_live_slot(tray) {
+                            "reason": if auto_clear_empty_signal {
                                 "empty_signal"
+                            } else if auto_clear_color_replacement {
+                                "color_replacement_without_rfid"
                             } else {
                                 "unknown_rfid_replacement"
                             },
                             "observed_tray_uuid": tray.tray_uuid,
                             "observed_color_hex": tray.color_hex,
-                            "observed_at": if should_auto_clear_live_slot(tray) {
+                            "observed_at": if auto_clear_empty_signal {
                                 tray.last_empty_seen_at.clone()
                             } else {
                                 tray.last_identity_seen_at.clone()
@@ -637,7 +648,7 @@ fn should_auto_clear_live_slot(tray: &BambuLiveObservedTrayRow) -> bool {
         && tray.observed_rfid_tag.is_none()
         && tray.tray_uuid.is_none()
         && tray.chip_id.is_none()
-        && tray.empty_observation_count.unwrap_or(0) >= 2
+        && tray.empty_observation_count.unwrap_or(0) >= 1
 }
 
 fn should_auto_clear_live_unknown_replacement(
@@ -663,6 +674,26 @@ fn should_auto_clear_live_unknown_replacement(
         return !saved_rfid.eq_ignore_ascii_case(observed_tray_uuid);
     }
     true
+}
+
+fn should_auto_clear_live_color_replacement(
+    tray: &BambuLiveObservedTrayRow,
+    previous_live_color_hex: Option<&str>,
+    slot: &crate::backend::filament_database::PrinterAmsSlotRow,
+) -> bool {
+    if slot.spool_id.is_none() || !tray.loaded {
+        return false;
+    }
+    if live_identity_text(tray.tray_uuid.as_deref()).is_some() {
+        return false;
+    }
+    let Some(observed_color_hex) = live_identity_text(tray.color_hex.as_deref()) else {
+        return false;
+    };
+    let Some(previous_color_hex) = live_identity_text(previous_live_color_hex) else {
+        return false;
+    };
+    !previous_color_hex.eq_ignore_ascii_case(observed_color_hex)
 }
 
 fn slot_override_matches_live_unknown(
@@ -936,9 +967,15 @@ fn parse_publish_payload(payload: &[u8]) -> Result<Option<Value>, String> {
 }
 
 fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) {
-    let Some(print) = message.get("print") else {
+    let print = message.get("print").unwrap_or(message);
+    let has_supported_live_fields = print.get("ams").is_some()
+        || print.get("mc_percent").is_some()
+        || print.get("mc_remaining_time").is_some()
+        || print.get("nozzle_temper").is_some()
+        || print.get("bed_temper").is_some();
+    if !has_supported_live_fields {
         return;
-    };
+    }
 
     state.raw_payload_json = Some(print.clone());
 
@@ -950,12 +987,9 @@ fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) {
     state.ams_humidity_index =
         as_i64(print.pointer("/ams/ams/0/humidity")).or(state.ams_humidity_index);
     state.ams_temperature_c = as_f64(print.pointer("/ams/ams/0/temp")).or(state.ams_temperature_c);
-    state.ams_reading_bits = as_string(print.pointer("/ams/tray_reading_bits"))
-        .or_else(|| state.ams_reading_bits.clone());
-    state.ams_read_done_bits = as_string(print.pointer("/ams/tray_read_done_bits"))
-        .or_else(|| state.ams_read_done_bits.clone());
-    state.ams_bambu_bits =
-        as_string(print.pointer("/ams/tray_is_bbl_bits")).or_else(|| state.ams_bambu_bits.clone());
+    state.ams_reading_bits = as_string(print.pointer("/ams/tray_reading_bits"));
+    state.ams_read_done_bits = as_string(print.pointer("/ams/tray_read_done_bits"));
+    state.ams_bambu_bits = as_string(print.pointer("/ams/tray_is_bbl_bits"));
 
     if let Some(ams_trays) = print.pointer("/ams/ams/0/tray").and_then(Value::as_array) {
         let observed_at = state.last_seen_at.clone().unwrap_or_else(now_iso_string);
@@ -1021,11 +1055,21 @@ fn merge_tray_payload(
     BambuLiveObservedTrayRow {
         tray_index,
         loaded,
-        filament_type: filament_type
-            .or_else(|| previous.and_then(|value| value.filament_type.clone())),
-        filament_name: filament_name
-            .or_else(|| previous.and_then(|value| value.filament_name.clone())),
-        color_hex: color_hex.or_else(|| previous.and_then(|value| value.color_hex.clone())),
+        filament_type: if empty_observation {
+            filament_type
+        } else {
+            filament_type.or_else(|| previous.and_then(|value| value.filament_type.clone()))
+        },
+        filament_name: if empty_observation {
+            filament_name
+        } else {
+            filament_name.or_else(|| previous.and_then(|value| value.filament_name.clone()))
+        },
+        color_hex: if empty_observation {
+            color_hex
+        } else {
+            color_hex.or_else(|| previous.and_then(|value| value.color_hex.clone()))
+        },
         remaining_percent: remaining_percent
             .or_else(|| previous.and_then(|value| value.remaining_percent)),
         remaining_grams: remaining_percent
@@ -1282,8 +1326,8 @@ fn chrono_like_utc(timestamp: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        apply_tray_match_status, merge_tray_payload, should_auto_clear_live_unknown_replacement,
-        slot_override_matches_live_unknown,
+        apply_tray_match_status, merge_tray_payload, should_auto_clear_live_color_replacement,
+        should_auto_clear_live_unknown_replacement, slot_override_matches_live_unknown,
     };
     use crate::backend::filament_database::{
         BambuLiveObservedTrayRow, FilamentMasterSummary, PrinterAmsSlotRow, PrinterOverviewRow,
@@ -1465,6 +1509,68 @@ mod tests {
     }
 
     #[test]
+    fn color_replacement_without_rfid_clears_when_new_color_arrives() {
+        let slot = make_slot();
+        let tray = BambuLiveObservedTrayRow {
+            observed_rfid_tag: None,
+            tray_uuid: None,
+            color_hex: Some("#FFFF00".to_string()),
+            match_status: Some("no_clear_match".to_string()),
+            ..make_tray()
+        };
+        assert!(should_auto_clear_live_color_replacement(
+            &tray,
+            Some("#00FF00"),
+            &slot
+        ));
+    }
+
+    #[test]
+    fn color_replacement_without_rfid_does_not_clear_same_missing_or_rfid_color() {
+        let slot = make_slot();
+        let same_color_tray = BambuLiveObservedTrayRow {
+            observed_rfid_tag: None,
+            tray_uuid: None,
+            color_hex: Some("#FF0000".to_string()),
+            ..make_tray()
+        };
+        assert!(!should_auto_clear_live_color_replacement(
+            &same_color_tray,
+            Some("#FF0000"),
+            &slot
+        ));
+
+        let missing_color_tray = BambuLiveObservedTrayRow {
+            observed_rfid_tag: None,
+            tray_uuid: None,
+            color_hex: None,
+            ..make_tray()
+        };
+        assert!(!should_auto_clear_live_color_replacement(
+            &missing_color_tray,
+            Some("#FF0000"),
+            &slot
+        ));
+
+        let rfid_tray = BambuLiveObservedTrayRow {
+            tray_uuid: Some("real-rfid".to_string()),
+            color_hex: Some("#FFFF00".to_string()),
+            ..make_tray()
+        };
+        assert!(!should_auto_clear_live_color_replacement(
+            &rfid_tray,
+            Some("#FF0000"),
+            &slot
+        ));
+
+        assert!(!should_auto_clear_live_color_replacement(
+            &same_color_tray,
+            None,
+            &slot
+        ));
+    }
+
+    #[test]
     fn manual_clear_blocks_stale_live_identity_until_newer_mqtt_arrives() {
         assert!(super::live_identity_is_blocked_by_manual_clear(
             Some("2026-04-15T10:00:00Z"),
@@ -1478,6 +1584,74 @@ mod tests {
             Some("2026-04-15T10:00:01Z"),
             Some("2026-04-15 10:00:00")
         ));
+    }
+
+    #[test]
+    fn id_only_tray_payload_marks_empty_and_clears_on_first_observation() {
+        let previous = make_tray();
+        let payload = serde_json::json!({
+            "id": "2"
+        });
+
+        let merged = merge_tray_payload(Some(&previous), 2, &payload, "2026-04-16T15:14:10Z");
+
+        assert!(!merged.loaded);
+        assert!(merged.tray_uuid.is_none());
+        assert!(merged.observed_rfid_tag.is_none());
+        assert_eq!(merged.empty_observation_count, Some(1));
+        assert!(super::should_auto_clear_live_slot(&merged));
+    }
+
+    #[test]
+    fn id_only_tray_payload_clears_stale_live_metadata() {
+        let previous = make_tray();
+        let payload = serde_json::json!({
+            "id": "2"
+        });
+
+        let merged = merge_tray_payload(Some(&previous), 2, &payload, "2026-04-16T15:14:10Z");
+
+        assert!(merged.color_hex.is_none());
+        assert!(merged.filament_type.is_none());
+        assert!(merged.filament_name.is_none());
+    }
+
+    #[test]
+    fn merge_print_payload_accepts_top_level_ams_payload() {
+        let mut state = super::default_offline_state();
+        state.online = true;
+        state.mqtt_connected = true;
+        state.last_seen_at = Some("2026-04-16T17:29:03Z".to_string());
+        let payload = serde_json::json!({
+            "ams": {
+                "ams": [
+                    {
+                        "id": "0",
+                        "tray": [
+                            { "id": "0" },
+                            {
+                                "id": "1",
+                                "tray_color": "F7E6DEFF",
+                                "tray_type": "PLA",
+                                "tray_sub_brands": "PLA Basic",
+                                "tray_uuid": "F5993C11FBCC470BBACFCBA4344280B5"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "bed_temper": 22.6875,
+            "command": "push_status",
+            "msg": 1,
+            "sequence_id": "57491"
+        });
+
+        super::merge_print_payload(&mut state, &payload);
+
+        assert_eq!(state.bed_temp_c, Some(22.6875));
+        assert_eq!(state.trays.len(), 2);
+        assert!(!state.trays[0].loaded);
+        assert_eq!(state.trays[1].tray_uuid.as_deref(), Some("F5993C11FBCC470BBACFCBA4344280B5"));
     }
 
     #[test]
