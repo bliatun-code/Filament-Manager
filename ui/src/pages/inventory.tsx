@@ -2108,6 +2108,9 @@ export default function InventoryPage({
       if (eventType === "DETAILS_UPDATED") {
         return t("inventory.historyEvent.detailsUpdated", "Details updated");
       }
+      if (eventType === "RFID_TAG_UPDATED") {
+        return t("inventory.historyEvent.rfidSaved", "RFID saved");
+      }
       if (eventType === "ASSIGNED_TO_AMS") {
         return t("inventory.historyEvent.assignedToAms", "Assigned to printer slot");
       }
@@ -2128,6 +2131,9 @@ export default function InventoryPage({
       }
       if (eventType === "DELETED") {
         return t("inventory.historyEvent.deleted", "Deleted");
+      }
+      if (eventType === "CREATED") {
+        return t("inventory.historyEvent.addedToLibrary", "Added to library");
       }
       return fallbackEventLabel(eventType);
     },
@@ -2198,6 +2204,25 @@ export default function InventoryPage({
           details.push(ownershipNote);
         }
         return details.join(" · ") || historyPayloadText(payload);
+      }
+      if (event.event_type === "RFID_TAG_UPDATED") {
+        const observedAt = payloadString(payload, "rfid_observed_at");
+        const rfidTag = payloadString(payload, "rfid_tag");
+        const details: string[] = [
+          t(
+            "inventory.historyEvent.rfidSavedDetail",
+            "RFID identity was saved from AMS capture.",
+          ),
+        ];
+        if (observedAt) {
+          details.push(
+            `${t("inventory.lastAmsIdentitySeen", "Last AMS identity seen")}: ${formatDateTime(observedAt, locale)}`,
+          );
+        }
+        if (rfidTag) {
+          details.push(`${t("inventory.rfidObservedTag", "Observed RFID")}: ${rfidTag}`);
+        }
+        return details.join(" · ");
       }
       if (event.event_type === "ASSIGNED_TO_AMS") {
         const printerId = payloadString(payload, "printer_id");
@@ -2297,9 +2322,32 @@ export default function InventoryPage({
           return reason;
         }
       }
+      if (event.event_type === "CREATED") {
+        const status = payloadString(payload, "status");
+        const ownershipType = payloadString(payload, "ownership_type");
+        const vendor = payloadString(payload, "vendor");
+        const details: string[] = [
+          t(
+            "inventory.historyEvent.addedToLibraryDetail",
+            "Filament was added to the library.",
+          ),
+        ];
+        if (status) {
+          details.push(`${t("inventory.status", "Status")}: ${formatStatusLabel(status)}`);
+        }
+        if (ownershipType === "OWNED") {
+          details.push(t("inventory.ownedByUs", "Owned"));
+        } else if (ownershipType === "BORROWED_IN") {
+          details.push(t("inventory.borrowedInRegistered", "Borrowed-in spool registered"));
+        }
+        if (vendor) {
+          details.push(vendor);
+        }
+        return details.join(" · ");
+      }
       return historyPayloadText(payload) || "—";
     },
-    [formatStatusLabel, printerNameById, slotLabelById, t],
+    [formatDateTime, formatStatusLabel, locale, printerNameById, slotLabelById, t],
   );
 
   const visibleHistoryRows = useMemo(
