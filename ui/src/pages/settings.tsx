@@ -69,6 +69,7 @@ import { useI18n, type Locale } from "../lib/i18n";
 import { neutralChipClass } from "../lib/chip_styles";
 import { copyTextToClipboard } from "../lib/clipboard";
 import { PrinterModelPreview } from "../components/printer_model_preview";
+import { DiagnosticCaptureChart } from "../components/diagnostic_capture_chart";
 import {
   describePrinterCapability,
   describeConfiguredPrinterSetup,
@@ -201,6 +202,11 @@ type DiagnosticCaptureSession = {
   lastCapturedAt: string | null;
   fields: DiagnosticCaptureField[];
   samples: DiagnosticCaptureSample[];
+};
+
+type DiagnosticChartFieldOption = {
+  path: string;
+  label: string;
 };
 
 type DiagnosticSortKey =
@@ -600,6 +606,67 @@ function buildDiagnosticSignalQualityBuckets(
   ].filter((bucket) => bucket.fields.length > 0);
 }
 
+function isDiagnosticChartFieldCandidate(field: DiagnosticCaptureField): boolean {
+  const path = field.path.trim().toLowerCase();
+  const numericValue = Number.parseFloat(field.valueText);
+  if (!Number.isFinite(numericValue) || field.receiveCount < 2 || field.changeCount < 2) {
+    return false;
+  }
+  if (
+    /(sequence_id|^msg$|^command$|_uuid|tag_uid|chip_id|tray_weight|total_len|tray_diameter|tray_time|bed_temp_type|nozzle_temp_min|nozzle_temp_max|tray_info_idx|tray_id_name|home_flag|\.id$|^id$)/.test(
+      path,
+    )
+  ) {
+    return false;
+  }
+  return /(temper|temp|percent|remaining_time|humidity_raw|speed|layer_num|remain|fan)/.test(path);
+}
+
+function buildDiagnosticChartFieldOptions(
+  fields: DiagnosticCaptureField[],
+): DiagnosticChartFieldOption[] {
+  return fields
+    .filter(isDiagnosticChartFieldCandidate)
+    .sort((left, right) => {
+      if (right.changeCount !== left.changeCount) {
+        return right.changeCount - left.changeCount;
+      }
+      if (right.receiveCount !== left.receiveCount) {
+        return right.receiveCount - left.receiveCount;
+      }
+      return left.path.localeCompare(right.path, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+    })
+    .map((field) => ({
+      path: field.path,
+      label: field.path,
+    }));
+}
+
+function buildDiagnosticChartPoints(
+  session: DiagnosticCaptureSession | null,
+  fieldPath: string | null,
+): Array<{ observedAt: string; value: number; valueText: string }> {
+  if (!session || !fieldPath) {
+    return [];
+  }
+  return session.samples
+    .filter((sample) => sample.fieldPath === fieldPath)
+    .map((sample) => {
+      const value = Number.parseFloat(sample.valueText);
+      return Number.isFinite(value)
+        ? {
+            observedAt: sample.observedAt,
+            value,
+            valueText: sample.valueText,
+          }
+        : null;
+    })
+    .filter((point): point is { observedAt: string; value: number; valueText: string } => point != null);
+}
+
 function toErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) {
     return `${fallback} (${error.message})`;
@@ -961,6 +1028,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [diagnosticCaptureByPrinterId, setDiagnosticCaptureByPrinterId] = useState<
     Record<string, DiagnosticCaptureSession>
   >({});
+  const [diagnosticCaptureActiveByPrinterId, setDiagnosticCaptureActiveByPrinterId] = useState<
+    Record<string, boolean>
+  >({});
+  const [diagnosticChartFieldByPrinterId, setDiagnosticChartFieldByPrinterId] = useState<
+    Record<string, string>
+  >({});
   const [diagnosticSortByPrinterId, setDiagnosticSortByPrinterId] = useState<
     Record<string, DiagnosticSortKey>
   >({});
@@ -1305,6 +1378,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (!expandedBambuDetailsPrinterId) {
       return;
     }
+    if (!diagnosticCaptureActiveByPrinterId[expandedBambuDetailsPrinterId]) {
+      return;
+    }
     const observedState = bambuLiveIntegrations[expandedBambuDetailsPrinterId]?.observed_state;
     if (!observedState?.raw_payload_json) {
       return;
@@ -1426,7 +1502,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       };
       return next;
     });
-  }, [bambuLiveIntegrations, expandedBambuDetailsPrinterId]);
+  }, [bambuLiveIntegrations, diagnosticCaptureActiveByPrinterId, expandedBambuDetailsPrinterId]);
 
   const loadTrustedLanCompanionStatus = useCallback(async (): Promise<TrustedLanCompanionStatus | null> => {
     if (!tauri) {
@@ -3377,9 +3453,21 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 const liveConfig = bambuLiveIntegrations[printer.id] ?? null;
                 const observedState = liveConfig?.observed_state ?? null;
                 const diagnosticSession = diagnosticCaptureByPrinterId[printer.id] ?? null;
+                const captureActive = diagnosticCaptureActiveByPrinterId[printer.id] ?? false;
                 const diagnosticFields = diagnosticSession?.fields ?? [];
                 const diagnosticSort = diagnosticSortByPrinterId[printer.id] ?? "path";
                 const diagnosticFilter = diagnosticFilterByPrinterId[printer.id] ?? "all";
+                const diagnosticChartFields = buildDiagnosticChartFieldOptions(diagnosticFields);
+                const selectedDiagnosticChartField =
+                  diagnosticChartFields.find(
+                    (option) => option.path === diagnosticChartFieldByPrinterId[printer.id],
+                  )?.path ??
+                  diagnosticChartFields[0]?.path ??
+                  null;
+                const diagnosticChartPoints = buildDiagnosticChartPoints(
+                  diagnosticSession,
+                  selectedDiagnosticChartField,
+                );
                 const captureTraySnapshots = extractDiagnosticTraySnapshots(diagnosticFields);
                 const captureTrayByIndex = new Map(
                   captureTraySnapshots.map((tray) => [tray.trayIndex, tray]),
@@ -3543,17 +3631,26 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                 if (nextExpanded === printer.id) {
                                   const observedState =
                                     bambuLiveIntegrations[printer.id]?.observed_state ?? null;
-                                  setDiagnosticCaptureByPrinterId((current) => ({
+                                  setDiagnosticCaptureByPrinterId((current) => {
+                                    if (current[printer.id]) {
+                                      return current;
+                                    }
+                                    return {
+                                      ...current,
+                                      [printer.id]: buildDiagnosticCaptureSession(observedState),
+                                    };
+                                  });
+                                  setDiagnosticCaptureActiveByPrinterId((current) => ({
                                     ...current,
-                                    [printer.id]: buildDiagnosticCaptureSession(observedState),
+                                    [printer.id]: current[printer.id] ?? true,
                                   }));
                                   setDiagnosticSortByPrinterId((current) => ({
                                     ...current,
-                                    [printer.id]: "path",
+                                    [printer.id]: current[printer.id] ?? "path",
                                   }));
                                   setDiagnosticFilterByPrinterId((current) => ({
                                     ...current,
-                                    [printer.id]: "all",
+                                    [printer.id]: current[printer.id] ?? "all",
                                   }));
                                 }
                                 return nextExpanded;
@@ -3656,6 +3753,69 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                 )}
                               </div>
                             ) : null}
+                            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/60">
+                              <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                                  {captureActive
+                                    ? t("settings.bambuLiveCaptureRunning", "Capture is running")
+                                    : t("settings.bambuLiveCapturePaused", "Capture is paused")}
+                                </span>
+                                <span className="ml-2">
+                                  {captureActive
+                                    ? t(
+                                        "settings.bambuLiveCaptureRunningHint",
+                                        "Incoming live bursts are being collected into this session now.",
+                                      )
+                                    : t(
+                                        "settings.bambuLiveCapturePausedHint",
+                                        "The current session is frozen until you start capture again.",
+                                      )}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  className={`rounded border px-2 py-1 text-[11px] font-semibold disabled:opacity-50 ${
+                                    captureActive
+                                      ? "border-amber-300 text-amber-700 dark:border-amber-500/40 dark:text-amber-200"
+                                      : "border-sky-300 text-sky-700 dark:border-sky-500/40 dark:text-sky-200"
+                                  }`}
+                                  onClick={() => {
+                                    if (captureActive) {
+                                      setDiagnosticCaptureActiveByPrinterId((current) => ({
+                                        ...current,
+                                        [printer.id]: false,
+                                      }));
+                                      return;
+                                    }
+                                    const nextObservedState =
+                                      bambuLiveIntegrations[printer.id]?.observed_state ?? null;
+                                    const nextSession = buildDiagnosticCaptureSession(nextObservedState);
+                                    setDiagnosticCaptureByPrinterId((current) => ({
+                                      ...current,
+                                      [printer.id]: nextSession,
+                                    }));
+                                    setDiagnosticCaptureActiveByPrinterId((current) => ({
+                                      ...current,
+                                      [printer.id]: true,
+                                    }));
+                                    setDiagnosticChartFieldByPrinterId((current) => {
+                                      if (!current[printer.id]) {
+                                        return current;
+                                      }
+                                      return {
+                                        ...current,
+                                        [printer.id]: "",
+                                      };
+                                    });
+                                  }}
+                                >
+                                  {captureActive
+                                    ? t("settings.bambuLiveStopCapture", "Stop capture")
+                                    : t("settings.bambuLiveStartCapture", "Start capture")}
+                                </button>
+                              </div>
+                            </div>
                             {displayTrays.length > 0 ? (
                               <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
                                 {displayTrays.map((tray) => {
@@ -3947,6 +4107,61 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                   ))}
                                 </div>
                               ) : null}
+                              <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-950/40">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                                      {t("settings.bambuLiveChartTitle", "Capture chart")}
+                                    </div>
+                                    <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                      {t(
+                                        "settings.bambuLiveChartHint",
+                                        "Choose a numeric field to plot only the values captured in this session.",
+                                      )}
+                                    </div>
+                                  </div>
+                                  <select
+                                    value={selectedDiagnosticChartField ?? ""}
+                                    onChange={(event) =>
+                                      setDiagnosticChartFieldByPrinterId((current) => ({
+                                        ...current,
+                                        [printer.id]: event.target.value,
+                                      }))
+                                    }
+                                    disabled={diagnosticChartFields.length === 0}
+                                    className="min-w-[260px] rounded border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                                  >
+                                    {diagnosticChartFields.length === 0 ? (
+                                      <option value="">
+                                        {t(
+                                          "settings.bambuLiveChartNoFields",
+                                          "No chart-ready numeric fields yet",
+                                        )}
+                                      </option>
+                                    ) : null}
+                                    {diagnosticChartFields.map((field) => (
+                                      <option key={`${printer.id}-${field.path}`} value={field.path}>
+                                        {field.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="mt-3">
+                                  {selectedDiagnosticChartField ? (
+                                    <DiagnosticCaptureChart
+                                      fieldPath={selectedDiagnosticChartField}
+                                      points={diagnosticChartPoints}
+                                    />
+                                  ) : (
+                                    <div className="rounded-lg border border-dashed border-slate-200 px-3 py-3 text-[11px] text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                                      {t(
+                                        "settings.bambuLiveChartNoFields",
+                                        "No chart-ready numeric fields yet",
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                               <div className="mt-3 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
                                 {t("settings.bambuLiveCapturedTable", "Captured live fields")}
                               </div>
@@ -4127,8 +4342,41 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                   )}
                                 </div>
                               </div>
-                              <div className="mt-3 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
-                                {t("settings.bambuLiveRawPayload", "Latest raw live payload")}
+                              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                                <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+                                  {t("settings.bambuLiveRawPayload", "Latest raw live payload")}
+                                </div>
+                                <button
+                                  type="button"
+                                  className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200"
+                                  onClick={async () => {
+                                    try {
+                                      await copyTextToClipboard(
+                                        formatDiagnosticJson(observedState.raw_payload_json),
+                                      );
+                                      setInfo(
+                                        t(
+                                          "settings.bambuLiveRawPayloadCopied",
+                                          "Raw live payload copied.",
+                                        ),
+                                      );
+                                    } catch (copyError) {
+                                      console.error(copyError);
+                                      setError(
+                                        toErrorMessage(
+                                          copyError,
+                                          t(
+                                            "settings.error.copyBambuLiveRawPayload",
+                                            "Failed to copy raw live payload.",
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }}
+                                  disabled={!observedState.raw_payload_json}
+                                >
+                                  {t("settings.bambuLiveCopyRawPayload", "Copy payload")}
+                                </button>
                               </div>
                               <pre className="mt-2 max-h-80 overflow-auto rounded-lg border border-slate-200 bg-slate-950 px-3 py-3 text-[11px] leading-5 text-emerald-200 dark:border-slate-700">
 {formatDiagnosticJson(observedState.raw_payload_json)}
