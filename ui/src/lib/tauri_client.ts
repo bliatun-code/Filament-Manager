@@ -79,14 +79,26 @@ export type PrinterAmsSlotRow = {
   rfid_override_color_hex?: string | null;
   live_cache_cleared_at?: string | null;
   live_loaded?: boolean | null;
+  live_observed_rfid_tag?: string | null;
   live_tray_uuid?: string | null;
+  live_chip_id?: string | null;
+  live_tray_info_idx?: string | null;
+  live_tray_id_name?: string | null;
+  live_filament_type?: string | null;
+  live_filament_name?: string | null;
   live_color_hex?: string | null;
+  live_tray_weight_g?: number | null;
+  live_remaining_percent?: number | null;
   live_last_identity_seen_at?: string | null;
   live_match_status?: string | null;
   live_match_note?: string | null;
   live_matched_inventory_spool_id?: string | null;
   live_matched_inventory_mode?: string | null;
   live_is_active?: boolean | null;
+  live_printer_last_seen_at?: string | null;
+  live_mqtt_connected?: boolean | null;
+  live_ams_read_done_bits?: string | null;
+  live_ams_bambu_bits?: string | null;
 };
 
 export type PrinterOverviewRow = {

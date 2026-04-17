@@ -148,6 +148,22 @@ type PrinterSlotOption = {
   spoolFilamentName?: string | null;
   spoolColorName?: string | null;
   spoolHexColor?: string | null;
+  liveLoaded?: boolean | null;
+  liveObservedRfidTag?: string | null;
+  liveTrayUuid?: string | null;
+  liveChipId?: string | null;
+  liveTrayInfoIdx?: string | null;
+  liveTrayIdName?: string | null;
+  liveFilamentType?: string | null;
+  liveFilamentName?: string | null;
+  liveColorHex?: string | null;
+  liveTrayWeightG?: number | null;
+  liveRemainingPercent?: number | null;
+  liveLastIdentitySeenAt?: string | null;
+  livePrinterLastSeenAt?: string | null;
+  liveMqttConnected?: boolean | null;
+  liveAmsReadDoneBits?: string | null;
+  liveAmsBambuBits?: string | null;
 };
 
 type RfidCaptureSummary = {
@@ -438,6 +454,75 @@ function buildObservedTrayCaptureSnapshot(
     return null;
   }
   return { observedAt, fields };
+}
+
+function buildObservedTrayCaptureSnapshotFromHostSlot(
+  slot: PrinterSlotOption | null | undefined,
+): RfidObservedTraySnapshot | null {
+  if (!slot || slot.amsId.endsWith("_ext")) {
+    return null;
+  }
+  const observedAt =
+    slot.liveLastIdentitySeenAt?.trim() ||
+    slot.livePrinterLastSeenAt?.trim() ||
+    null;
+  const fields: RfidCaptureField[] = [];
+  const pushField = (path: string, label: string, valueText: string | number | null | undefined) => {
+    if (valueText == null) {
+      return;
+    }
+    const normalized = String(valueText).trim();
+    if (!normalized) {
+      return;
+    }
+    fields.push({
+      path,
+      label,
+      valueText: normalized,
+      lastSeenAt: observedAt ?? new Date().toISOString(),
+      receiveCount: 1,
+      changeCount: 1,
+    });
+  };
+
+  pushField("ams.ams[0].chip_id", "ams.ams[0].chip_id", slot.liveChipId);
+  pushField("ams.tray_read_done_bits", "ams.tray_read_done_bits", slot.liveAmsReadDoneBits);
+  pushField("ams.tray_is_bbl_bits", "ams.tray_is_bbl_bits", slot.liveAmsBambuBits);
+
+  const trayPrefix = `ams.ams[0].tray[${Math.max(0, slot.slotIndex - 1)}]`;
+  pushField(`${trayPrefix}.tag_uid`, "tag_uid", slot.liveObservedRfidTag);
+  pushField(`${trayPrefix}.tray_uuid`, "tray_uuid", slot.liveTrayUuid);
+  pushField(`${trayPrefix}.tray_info_idx`, "tray_info_idx", slot.liveTrayInfoIdx);
+  pushField(`${trayPrefix}.tray_id_name`, "tray_id_name", slot.liveTrayIdName);
+  pushField(`${trayPrefix}.tray_type`, "tray_type", slot.liveFilamentType);
+  pushField(`${trayPrefix}.tray_sub_brands`, "tray_sub_brands", slot.liveFilamentName);
+  pushField(`${trayPrefix}.tray_color`, "tray_color", slot.liveColorHex);
+  pushField(`${trayPrefix}.tray_weight`, "tray_weight", slot.liveTrayWeightG);
+  pushField(`${trayPrefix}.remain`, "remain", slot.liveRemainingPercent);
+
+  if (fields.length === 0) {
+    return null;
+  }
+  return { observedAt, fields };
+}
+
+function hasHostRfidCaptureData(slot: PrinterSlotOption | null | undefined): boolean {
+  if (!slot || slot.amsId.endsWith("_ext")) {
+    return false;
+  }
+  return Boolean(
+    slot.liveObservedRfidTag?.trim() ||
+      slot.liveTrayUuid?.trim() ||
+      slot.liveChipId?.trim() ||
+      slot.liveTrayInfoIdx?.trim() ||
+      slot.liveTrayIdName?.trim() ||
+      slot.liveFilamentType?.trim() ||
+      slot.liveFilamentName?.trim() ||
+      slot.liveColorHex?.trim() ||
+      slot.liveLastIdentitySeenAt?.trim() ||
+      slot.livePrinterLastSeenAt?.trim() ||
+      slot.liveLoaded != null,
+  );
 }
 
 function mergeRfidCaptureFields(
@@ -1793,6 +1878,22 @@ export default function InventoryPage({
           spoolFilamentName: slot.spool_filament_name ?? null,
           spoolColorName: slot.spool_color_name ?? null,
           spoolHexColor: slot.spool_hex_color ?? null,
+          liveLoaded: slot.live_loaded ?? null,
+          liveObservedRfidTag: slot.live_observed_rfid_tag ?? null,
+          liveTrayUuid: slot.live_tray_uuid ?? null,
+          liveChipId: slot.live_chip_id ?? null,
+          liveTrayInfoIdx: slot.live_tray_info_idx ?? null,
+          liveTrayIdName: slot.live_tray_id_name ?? null,
+          liveFilamentType: slot.live_filament_type ?? null,
+          liveFilamentName: slot.live_filament_name ?? null,
+          liveColorHex: slot.live_color_hex ?? null,
+          liveTrayWeightG: slot.live_tray_weight_g ?? null,
+          liveRemainingPercent: slot.live_remaining_percent ?? null,
+          liveLastIdentitySeenAt: slot.live_last_identity_seen_at ?? null,
+          livePrinterLastSeenAt: slot.live_printer_last_seen_at ?? null,
+          liveMqttConnected: slot.live_mqtt_connected ?? null,
+          liveAmsReadDoneBits: slot.live_ams_read_done_bits ?? null,
+          liveAmsBambuBits: slot.live_ams_bambu_bits ?? null,
         });
       }
     }
@@ -1808,6 +1909,16 @@ export default function InventoryPage({
   );
 
   const selectedSpoolRfidCaptureSlots = useMemo(() => {
+    if (clientReadOnly) {
+      const allEligible = printerSlotOptions.filter((slot) => hasHostRfidCaptureData(slot));
+      if (selectedSpoolAssignedSlot) {
+        const samePrinter = allEligible.filter((slot) => slot.printerId === selectedSpoolAssignedSlot.printerId);
+        if (samePrinter.length > 0) {
+          return samePrinter;
+        }
+      }
+      return allEligible;
+    }
     const enabledPrinterIds = new Set(
       Object.entries(bambuLiveIntegrations)
         .filter(([, config]) => config?.enabled)
@@ -1823,7 +1934,7 @@ export default function InventoryPage({
       }
     }
     return allEligible;
-  }, [bambuLiveIntegrations, printerSlotOptions, selectedSpoolAssignedSlot]);
+  }, [bambuLiveIntegrations, clientReadOnly, printerSlotOptions, selectedSpoolAssignedSlot]);
 
   const selectedRfidCaptureSlot = useMemo(() => {
     if (selectedSpoolRfidCaptureSlots.length === 0) {
@@ -1846,10 +1957,10 @@ export default function InventoryPage({
 
   const selectedRfidCaptureLiveIntegration = useMemo(
     () =>
-      selectedRfidCaptureSlot
+      selectedRfidCaptureSlot && !clientReadOnly
         ? bambuLiveIntegrations[selectedRfidCaptureSlot.printerId] ?? null
         : null,
-    [bambuLiveIntegrations, selectedRfidCaptureSlot],
+    [bambuLiveIntegrations, clientReadOnly, selectedRfidCaptureSlot],
   );
 
   const selectedSpoolIdentityFreshness = useMemo(
@@ -1863,14 +1974,16 @@ export default function InventoryPage({
   );
 
   const selectedSpoolSupportsRfidCapture = useMemo(
-    () =>
-      Boolean(
-        tauri &&
-          !clientReadOnly &&
-          selectedSpoolRfidCaptureSlots.length > 0 &&
-          selectedRfidCaptureLiveIntegration?.enabled,
-      ),
-    [clientReadOnly, selectedRfidCaptureLiveIntegration, selectedSpoolRfidCaptureSlots.length, tauri],
+    () => {
+      if (!tauri || selectedSpoolRfidCaptureSlots.length === 0) {
+        return false;
+      }
+      if (clientReadOnly) {
+        return hasHostRfidCaptureData(selectedRfidCaptureSlot);
+      }
+      return Boolean(selectedRfidCaptureLiveIntegration?.enabled);
+    },
+    [clientReadOnly, selectedRfidCaptureLiveIntegration, selectedRfidCaptureSlot, selectedSpoolRfidCaptureSlots.length, tauri],
   );
 
   const selectedSpoolRfidSlotLabel = useMemo(
@@ -1895,12 +2008,14 @@ export default function InventoryPage({
   const observedTrayCaptureSnapshot = useMemo(
     () =>
       selectedRfidCaptureSlot
-        ? buildObservedTrayCaptureSnapshot(
-            selectedRfidCaptureLiveIntegration ?? null,
-            selectedRfidCaptureSlot.slotIndex,
-          )
+        ? clientReadOnly
+          ? buildObservedTrayCaptureSnapshotFromHostSlot(selectedRfidCaptureSlot)
+          : buildObservedTrayCaptureSnapshot(
+              selectedRfidCaptureLiveIntegration ?? null,
+              selectedRfidCaptureSlot.slotIndex,
+            )
         : null,
-    [selectedRfidCaptureLiveIntegration, selectedRfidCaptureSlot],
+    [clientReadOnly, selectedRfidCaptureLiveIntegration, selectedRfidCaptureSlot],
   );
 
   const effectiveRfidCaptureFields = useMemo(
@@ -1927,16 +2042,18 @@ export default function InventoryPage({
   const rfidCaptureSlotSummaries = useMemo(() => {
     const summaries: Record<string, RfidCaptureSummary> = {};
     for (const slot of selectedSpoolRfidCaptureSlots) {
-      const snapshot = buildObservedTrayCaptureSnapshot(
-        bambuLiveIntegrations[slot.printerId] ?? null,
-        slot.slotIndex,
-      );
+      const snapshot = clientReadOnly
+        ? buildObservedTrayCaptureSnapshotFromHostSlot(slot)
+        : buildObservedTrayCaptureSnapshot(
+            bambuLiveIntegrations[slot.printerId] ?? null,
+            slot.slotIndex,
+          );
       const cachedFields = rfidCaptureFieldsBySlotId[slot.slotId] ?? [];
       const mergedFields = mergeRfidCaptureFields(snapshot?.fields ?? [], cachedFields);
       summaries[slot.slotId] = summarizeRfidCapture(mergedFields, slot.slotIndex);
     }
     return summaries;
-  }, [bambuLiveIntegrations, rfidCaptureFieldsBySlotId, selectedSpoolRfidCaptureSlots]);
+  }, [bambuLiveIntegrations, clientReadOnly, rfidCaptureFieldsBySlotId, selectedSpoolRfidCaptureSlots]);
 
   const rfidCaptureMatchConfidence = useMemo(
     () => assessRfidCaptureMatch(selectedSpool, rfidCaptureSummary),
@@ -4812,15 +4929,22 @@ export default function InventoryPage({
                     <dd className="text-slate-900 dark:text-slate-100">
                       {selectedRfidCaptureLiveIntegration?.observed_state?.mqtt_connected
                         ? t("inventory.connected", "Connected")
+                        : clientReadOnly
+                          ? selectedRfidCaptureSlot?.liveMqttConnected
+                            ? t("inventory.connected", "Connected")
+                            : t("inventory.disconnected", "Not connected")
                         : t("inventory.disconnected", "Not connected")}
                     </dd>
                   </div>
                   <div className="flex items-start justify-between gap-3">
                     <dt className="text-slate-500 dark:text-slate-400">{t("inventory.rfidLastSeen", "Last seen")}</dt>
                     <dd className="text-slate-900 dark:text-slate-100">
-                      {selectedRfidCaptureLiveIntegration?.observed_state?.last_seen_at
+                      {(selectedRfidCaptureLiveIntegration?.observed_state?.last_seen_at ||
+                        selectedRfidCaptureSlot?.livePrinterLastSeenAt)
                         ? formatCaptureTimestamp(
-                            selectedRfidCaptureLiveIntegration.observed_state.last_seen_at,
+                            selectedRfidCaptureLiveIntegration?.observed_state?.last_seen_at ??
+                              selectedRfidCaptureSlot?.livePrinterLastSeenAt ??
+                              "",
                             locale,
                           )
                         : "—"}
@@ -4921,7 +5045,7 @@ export default function InventoryPage({
                           )
                       : t(
                           "inventory.rfidCaptureUnavailable",
-                          "RFID capture needs a locally connected live Bambu integration on a printer with at least one AMS slot.",
+                          "RFID capture needs live Bambu data from this device or the connected host on a printer with at least one AMS slot.",
 	                        )}
 	                  </div>
 	                )}

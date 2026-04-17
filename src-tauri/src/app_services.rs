@@ -309,14 +309,26 @@ fn apply_live_tray_to_slot(
     observed_state: Option<&crate::backend::filament_database::BambuLiveObservedStateRow>,
 ) {
     slot.live_loaded = tray.map(|value| value.loaded);
+    slot.live_observed_rfid_tag = tray.and_then(|value| value.observed_rfid_tag.clone());
     slot.live_tray_uuid = tray.and_then(|value| value.tray_uuid.clone());
+    slot.live_chip_id = tray.and_then(|value| value.chip_id.clone());
+    slot.live_tray_info_idx = tray.and_then(|value| value.tray_info_idx.clone());
+    slot.live_tray_id_name = tray.and_then(|value| value.tray_id_name.clone());
+    slot.live_filament_type = tray.and_then(|value| value.filament_type.clone());
+    slot.live_filament_name = tray.and_then(|value| value.filament_name.clone());
     slot.live_color_hex = tray.and_then(|value| value.color_hex.clone());
+    slot.live_tray_weight_g = tray.and_then(|value| value.tray_weight_g);
+    slot.live_remaining_percent = tray.and_then(|value| value.remaining_percent);
     slot.live_last_identity_seen_at = tray.and_then(|value| value.last_identity_seen_at.clone());
     slot.live_match_status = tray.and_then(|value| value.match_status.clone());
     slot.live_match_note = tray.and_then(|value| value.match_note.clone());
     slot.live_matched_inventory_spool_id =
         tray.and_then(|value| value.matched_inventory_spool_id.clone());
     slot.live_matched_inventory_mode = tray.and_then(|value| value.matched_inventory_mode.clone());
+    slot.live_printer_last_seen_at = observed_state.and_then(|state| state.last_seen_at.clone());
+    slot.live_mqtt_connected = observed_state.map(|state| state.mqtt_connected);
+    slot.live_ams_read_done_bits = observed_state.and_then(|state| state.ams_read_done_bits.clone());
+    slot.live_ams_bambu_bits = observed_state.and_then(|state| state.ams_bambu_bits.clone());
     slot.live_is_active = observed_state.map(|state| {
         state.active_tray_index == Some(slot.slot_index - 1)
             && (state.progress_percent.is_some() || state.remaining_minutes.is_some())
