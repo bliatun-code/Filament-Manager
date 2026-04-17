@@ -2925,7 +2925,7 @@ export default function InventoryPage({
             ownership_note: ownershipNote || null,
             initial_weight_g: initialWeight,
             current_weight_g: initialWeight,
-            location_id: null,
+            location_id: newLocation.trim() || null,
             purchase_date: null,
             purchase_price: null,
             batch_code: null,
@@ -2942,19 +2942,11 @@ export default function InventoryPage({
             ownership_note: ownershipNote || null,
             initial_weight_g: initialWeight,
             current_weight_g: initialWeight,
-            location_id: null,
+            location_id: newLocation.trim() || null,
             purchase_date: null,
             purchase_price: null,
             batch_code: null,
           });
-          if (newLocation.trim()) {
-            await updateSpoolDetails({
-              spool_id: id,
-              qr_code: null,
-              status: "IN_STOCK",
-              location: newLocation.trim(),
-            });
-          }
         }
       } else if (createMode === "esun") {
         if (!selectedEsunMaster) {
@@ -2980,7 +2972,7 @@ export default function InventoryPage({
             ownership_note: ownershipNote || null,
             initial_weight_g: initialWeight,
             current_weight_g: initialWeight,
-            location_id: null,
+            location_id: newLocation.trim() || null,
             purchase_date: null,
             purchase_price: null,
             batch_code: null,
@@ -2997,19 +2989,11 @@ export default function InventoryPage({
             ownership_note: ownershipNote || null,
             initial_weight_g: initialWeight,
             current_weight_g: initialWeight,
-            location_id: null,
+            location_id: newLocation.trim() || null,
             purchase_date: null,
             purchase_price: null,
             batch_code: null,
           });
-          if (newLocation.trim()) {
-            await updateSpoolDetails({
-              spool_id: id,
-              qr_code: null,
-              status: "IN_STOCK",
-              location: newLocation.trim(),
-            });
-          }
         }
       } else {
         if (!manualFilamentName.trim() || !manualColorName.trim()) {

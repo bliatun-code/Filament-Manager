@@ -332,7 +332,14 @@ impl InventoryEngine {
             ));
         }
         let remaining_g = compute_remaining(input.initial_weight_g, input.current_weight_g);
-        let location_id = input.location_id.clone();
+        let location_id = match input.location_id.as_deref() {
+            Some(value) if !value.trim().is_empty() => Some(self.db.ensure_location(value)?),
+            _ => None,
+        };
+        let home_location_id = match input.home_location_id.as_deref() {
+            Some(value) if !value.trim().is_empty() => Some(self.db.ensure_location(value)?),
+            _ => location_id.clone(),
+        };
         let spool = SpoolRow {
             id: input.id,
             master_id: input.master_id,
@@ -349,7 +356,7 @@ impl InventoryEngine {
             remaining_g,
             spool_tare_weight_g: None,
             location_id: location_id.clone(),
-            home_location_id: input.home_location_id.or(location_id),
+            home_location_id,
             purchase_date: input.purchase_date,
             purchase_price: input.purchase_price,
             batch_code: input.batch_code,
@@ -626,16 +633,38 @@ impl InventoryEngine {
             .db
             .get_spool_by_id(&input.spool_id)?
             .ok_or(InventoryError::NotFound)?;
-        let resolved_home_location = match input.home_location {
-            Some(Some(value)) if !value.trim().is_empty() => Some(self.db.ensure_location(&value)?),
+        let has_active_loan = self
+            .db
+            .list_active_spool_loans()?
+            .into_iter()
+            .any(|row| row.loan.spool_id == input.spool_id);
+        let resolved_home_location = match &input.home_location {
+            Some(Some(value)) if !value.trim().is_empty() => Some(self.db.ensure_location(value)?),
             Some(_) => None,
             None => existing_spool.home_location_id.clone(),
+        };
+        let location_locked_by_assignment =
+            self.db.spool_assigned_to_printer(&input.spool_id)?
+                || has_active_loan
+                || existing_spool.status.eq_ignore_ascii_case("BORROWED");
+        let should_sync_home_to_current_location = input.home_location.is_some()
+            && !location_locked_by_assignment
+            && match (&resolved_location, &existing_spool.location_id) {
+                (Some(requested), Some(existing)) => requested == existing,
+                (None, None) => true,
+                (None, Some(existing)) => existing.trim().is_empty(),
+                _ => false,
+            };
+        let effective_location = if should_sync_home_to_current_location {
+            resolved_home_location.clone()
+        } else {
+            resolved_location.clone()
         };
         self.db.update_spool_details(
             &input.spool_id,
             input.qr_code.as_deref(),
             &input.status,
-            resolved_location.as_deref(),
+            effective_location.as_deref(),
             resolved_home_location.as_deref(),
         )?;
         self.log_spool_event(
@@ -644,7 +673,7 @@ impl InventoryEngine {
             json!({
                 "status": input.status,
                 "qr_code": input.qr_code,
-                "location": resolved_location,
+                "location": effective_location,
                 "home_location": resolved_home_location
             }),
         )
@@ -1305,8 +1334,9 @@ fn normalize_ownership_type(value: Option<&str>) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, InventoryEngine,
-        ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, WeightSource,
+        AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
+        InventoryEngine, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
+        UpdateSpoolDetailsInput, WeightSource,
     };
     use crate::backend::filament_database::{
         BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow,
@@ -1435,6 +1465,65 @@ mod tests {
         let _ = std::fs::remove_file(&db_path);
         if let Err(message) = result {
             panic!("create_manual_borrowed_in_spool_registers_inbound_loan test failed: {message}");
+        }
+    }
+
+    #[test]
+    fn create_spool_with_location_persists_location_and_home_location() {
+        let db_path = temp_db_path("create-spool-with-location");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            let engine = InventoryEngine::new(db);
+
+            let master_id = engine
+                .db
+                .upsert_manual_master(
+                "PETG",
+                "HS",
+                "Blue",
+                Some("#3366ff"),
+                None,
+                Some("eSUN"),
+                Some(1000),
+            )
+                .map_err(|error| error.to_string())?;
+
+            engine
+                .create_spool(CreateSpoolInput {
+                    id: "spool_1".to_string(),
+                    master_id,
+                    qr_code: None,
+                    status: "IN_STOCK".to_string(),
+                    ownership_type: Some("OWNED".to_string()),
+                    owner_name: None,
+                    owner_contact: None,
+                    ownership_note: None,
+                    initial_weight_g: Some(1000),
+                    current_weight_g: Some(1000),
+                    location_id: Some("Shelf G".to_string()),
+                    home_location_id: None,
+                    purchase_date: None,
+                    purchase_price: None,
+                    batch_code: None,
+                })
+                .map_err(|error| error.to_string())?;
+
+            let spool = engine
+                .db
+                .get_spool_by_id("spool_1")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "expected created spool".to_string())?;
+            assert_eq!(spool.location_id.as_deref(), Some("Shelf G"));
+            assert_eq!(spool.home_location_id.as_deref(), Some("Shelf G"));
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("create_spool_with_location_persists_location_and_home_location failed: {message}");
         }
     }
 
@@ -1893,6 +1982,154 @@ mod tests {
         if let Err(message) = result {
             panic!(
                 "assign_printer_slot_derives_manual_reassignment_cache_suppression_on_host failed: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn update_spool_details_syncs_home_location_to_current_location_when_unassigned() {
+        let db_path = temp_db_path("sync-home-location-when-unassigned");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            let engine = InventoryEngine::new(db);
+
+            engine
+                .create_manual_spool(CreateManualSpoolInput {
+                    id: "spool_1".to_string(),
+                    material: "PETG".to_string(),
+                    filament_name: "Blue".to_string(),
+                    color_name: "Blue".to_string(),
+                    hex_color: Some("#2F6DFF".to_string()),
+                    product_url: None,
+                    vendor: Some("eSUN".to_string()),
+                    default_weight_g: Some(1000),
+                    qr_code: Some("qr-sync-home".to_string()),
+                    status: Some("IN_STOCK".to_string()),
+                    ownership_type: Some("OWNED".to_string()),
+                    owner_name: None,
+                    owner_contact: None,
+                    ownership_note: None,
+                    initial_weight_g: Some(1000),
+                    location: None,
+                })
+                .map_err(|error| error.to_string())?;
+
+            engine
+                .update_spool_details(UpdateSpoolDetailsInput {
+                    spool_id: "spool_1".to_string(),
+                    qr_code: Some("qr-sync-home".to_string()),
+                    status: "IN_STOCK".to_string(),
+                    location: None,
+                    home_location: Some(Some("Shelf D".to_string())),
+                })
+                .map_err(|error| error.to_string())?;
+
+            let spool = engine
+                .db
+                .get_spool_by_id("spool_1")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "expected updated spool".to_string())?;
+            assert_eq!(spool.home_location_id.as_deref(), Some("Shelf D"));
+            assert_eq!(spool.location_id.as_deref(), Some("Shelf D"));
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "update_spool_details_syncs_home_location_to_current_location_when_unassigned failed: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn update_spool_details_keeps_printer_location_while_updating_home_location() {
+        let db_path = temp_db_path("keep-printer-location-when-updating-home");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            let engine = InventoryEngine::new(db);
+
+            engine
+                .create_printer(CreatePrinterInput {
+                    id: "printer_1".to_string(),
+                    model: "P1S".to_string(),
+                    name: "Brutus".to_string(),
+                    ams_units: Some(1),
+                    slots_per_ams: Some(1),
+                })
+                .map_err(|error| error.to_string())?;
+
+            engine
+                .create_manual_spool(CreateManualSpoolInput {
+                    id: "spool_1".to_string(),
+                    material: "PLA".to_string(),
+                    filament_name: "Basic".to_string(),
+                    color_name: "White".to_string(),
+                    hex_color: Some("#FFFFFF".to_string()),
+                    product_url: None,
+                    vendor: Some("Bambu".to_string()),
+                    default_weight_g: Some(1000),
+                    qr_code: Some("qr-keep-printer-location".to_string()),
+                    status: Some("IN_STOCK".to_string()),
+                    ownership_type: Some("OWNED".to_string()),
+                    owner_name: None,
+                    owner_contact: None,
+                    ownership_note: None,
+                    initial_weight_g: Some(1000),
+                    location: Some("Shelf E".to_string()),
+                })
+                .map_err(|error| error.to_string())?;
+
+            engine
+                .assign_printer_slot(AssignPrinterSlotInput {
+                    printer_id: "printer_1".to_string(),
+                    slot_id: "printer_1_ams_1_slot_1".to_string(),
+                    spool_id: Some("spool_1".to_string()),
+                    rfid_override_tray_uuid: None,
+                    rfid_override_color_hex: None,
+                    clear_live_cache_before_next_refresh: None,
+                })
+                .map_err(|error| error.to_string())?;
+
+            let assigned_before = engine
+                .db
+                .get_spool_by_id("spool_1")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "expected assigned spool".to_string())?;
+
+            engine
+                .update_spool_details(UpdateSpoolDetailsInput {
+                    spool_id: "spool_1".to_string(),
+                    qr_code: assigned_before.qr_code.clone(),
+                    status: assigned_before.status.clone(),
+                    location: assigned_before.location_id.clone(),
+                    home_location: Some(Some("Shelf F".to_string())),
+                })
+                .map_err(|error| error.to_string())?;
+
+            let spool = engine
+                .db
+                .get_spool_by_id("spool_1")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "expected updated spool".to_string())?;
+            assert_eq!(spool.home_location_id.as_deref(), Some("Shelf F"));
+            assert!(spool
+                .location_id
+                .as_deref()
+                .is_some_and(|value| value.starts_with("Printer:")));
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "update_spool_details_keeps_printer_location_while_updating_home_location failed: {message}"
             );
         }
     }
