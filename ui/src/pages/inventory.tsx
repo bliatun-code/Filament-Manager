@@ -62,6 +62,7 @@ import {
   type WishlistItemRow,
   updateMasterCatalogEntry,
   updateLibrarySyncHostSpoolDetails,
+  updateLibrarySyncHostSpoolRfidTag,
   updateSpoolDetails,
   updateSpoolRfidTag,
   updateSpoolStatus,
@@ -3964,11 +3965,22 @@ export default function InventoryPage({
         rfidCaptureLastSeenAt ??
         selectedRfidCaptureLiveIntegration?.observed_state?.last_seen_at ??
         new Date().toISOString();
-      await updateSpoolRfidTag({
-        spool_id: selectedSpool.id,
-        rfid_tag: nextRfidTag,
-        rfid_observed_at: observedAt,
-      });
+      if (clientReadOnly) {
+        if (!canUseClientHostWrite()) {
+          return;
+        }
+        await updateLibrarySyncHostSpoolRfidTag(clientHostBaseUrl!, clientLibraryId!, {
+          spool_id: selectedSpool.id,
+          rfid_tag: nextRfidTag,
+          rfid_observed_at: observedAt,
+        });
+      } else {
+        await updateSpoolRfidTag({
+          spool_id: selectedSpool.id,
+          rfid_tag: nextRfidTag,
+          rfid_observed_at: observedAt,
+        });
+      }
       await reloadSpools();
       await reloadHistory(selectedSpool.id);
       setInfoMessage(
@@ -4399,8 +4411,8 @@ export default function InventoryPage({
 	                            void reloadPrinterOverview();
 	                            setShowRfidCaptureModal(true);
 	                          }}
-                          disabled={!tauri || clientReadOnly || !selectedSpoolSupportsRfidCapture}
-                        >
+	                          disabled={!tauri || !selectedSpoolSupportsRfidCapture}
+	                        >
                           {t("inventory.rfidButton", "RFID")}
                         </button>
                       </div>
