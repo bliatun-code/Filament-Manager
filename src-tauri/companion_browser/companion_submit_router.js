@@ -1,4 +1,13 @@
 export function routeCompanionSubmitAction(action, data, handlers) {
+  function parseRfidSourcePayload(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+      return { rfidTag: "", observedAt: "" };
+    }
+    const [rfidTag = "", observedAt = ""] = raw.split("|").map((part) => decodeURIComponent(part || ""));
+    return { rfidTag, observedAt };
+  }
+
   if (action === "update-weight-form") {
     handlers.submitWeightUpdate(String(data.get("spool-id") || ""), String(data.get("grams") || ""));
     return true;
@@ -26,6 +35,17 @@ export function routeCompanionSubmitAction(action, data, handlers) {
       String(data.get("spool-id") || ""),
       String(data.get("status") || ""),
       String(data.get("location") || ""),
+      String(data.get("home-location") || ""),
+    );
+    return true;
+  }
+
+  if (action === "update-spool-rfid-form") {
+    const parsedSource = parseRfidSourcePayload(String(data.get("rfid-source") || ""));
+    handlers.submitSpoolRfidUpdate(
+      String(data.get("spool-id") || ""),
+      String(data.get("rfid-tag") || parsedSource.rfidTag || ""),
+      String(data.get("rfid-observed-at") || parsedSource.observedAt || ""),
     );
     return true;
   }

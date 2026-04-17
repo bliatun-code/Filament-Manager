@@ -16,7 +16,11 @@ import {
   renderLoansShell,
 } from "./loans_shell.js";
 import { renderPrintersShell } from "./printers_shell.js";
-import { renderPrinterPickerTaskSheetBody, renderPrinterWeightTaskSheetBody } from "./printer_workspace.js";
+import {
+  formatPrinterSlotLabel,
+  renderPrinterPickerTaskSheetBody,
+  renderPrinterWeightTaskSheetBody,
+} from "./printer_workspace.js";
 import { renderSettingsShell } from "./settings_shell.js";
 import {
   renderDesktopRail,
@@ -178,6 +182,39 @@ function renderDetailModal(options) {
       </div>
     `;
   } else {
+    const rfidCaptureSources = [];
+    const printerRows = Array.isArray(state.printers) ? state.printers : [];
+    for (const printerRow of printerRows) {
+      for (const slot of Array.isArray(printerRow?.slots) ? printerRow.slots : []) {
+        const observedRfid = String(slot?.live_tray_uuid || "").trim();
+        const hasLiveSignal =
+          Boolean(slot?.live_loaded) ||
+          Boolean(slot?.live_tray_uuid) ||
+          Boolean(slot?.live_match_status) ||
+          Boolean(slot?.live_mqtt_connected);
+        if (!hasLiveSignal) {
+          continue;
+        }
+        rfidCaptureSources.push({
+          slotId: String(slot.slot_id || "").trim(),
+          printerId: String(printerRow?.printer?.id || "").trim(),
+          printerName: String(printerRow?.printer?.name || "").trim(),
+          slotLabel: formatPrinterSlotLabel(slot, state.locale || "en", printerRow?.printer?.model || ""),
+          rfidTag: observedRfid || "",
+          observedAt: String(slot?.live_last_identity_seen_at || slot?.live_printer_last_seen_at || "").trim(),
+          filamentLabel:
+            formatInventoryDisplayTitle(slot?.live_filament_type, slot?.live_filament_name, slot?.live_tray_id_name) || "",
+          statusLabel:
+            slot?.live_match_status === "unknown_rfid"
+              ? t(state.locale || "en", "printers.liveMatchUnknownRfid", "RFID not registered")
+              : slot?.live_matched_inventory_mode === "exact_rfid"
+                ? t(state.locale || "en", "printers.liveMatchClear", "Live inventory match")
+                : slot?.live_match_status || slot?.live_match_note
+                  ? t(state.locale || "en", "printers.liveMatchNoClear", "No clear inventory match")
+                  : t(state.locale || "en", "printers.liveObserved", "Live observed"),
+        });
+      }
+    }
     const detailFeedback =
       state.detailFeedback?.spoolId === selectedSpool.spool.id ? state.detailFeedback.message : "";
     body = renderSelectedSpoolDetailBody({
@@ -193,6 +230,7 @@ function renderDetailModal(options) {
       formatGrams,
       formatPlacementLabel: (value) => formatPlacementLabel(value, state.locale),
       ownershipLabel: (spool) => ownershipLabel(spool, state.locale),
+      rfidCaptureSources,
       locale: state.locale || "en",
     });
   }

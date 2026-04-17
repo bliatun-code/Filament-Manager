@@ -14,6 +14,7 @@ function createSelectedSpool(overrides = {}) {
       ownership_note: "",
       qr_code: "qr-1",
       location_id: "Shelf A",
+      home_location_id: "Shelf A",
       initial_weight_g: 1000,
       current_weight_g: 920,
       remaining_g: 900,
@@ -58,6 +59,7 @@ function renderBody(overrides = {}) {
     formatPlacementLabel: (value) => value || "Unplaced",
     ownershipLabel: (spool) =>
       spool.ownership_type === "BORROWED_IN" ? "Borrowed in" : "Owned",
+    rfidCaptureSources: overrides.rfidCaptureSources ?? [],
     locale: overrides.locale ?? "en",
   });
 }
@@ -95,6 +97,7 @@ test("detail content keeps borrowed-in spools out of loan actions inside detail"
   assert.doesNotMatch(html, /return-loan-form/);
   assert.match(html, /data-action="update-spool-details-form"/);
   assert.match(html, /Shelf A/);
+  assert.match(html, /name="home-location"/);
 });
 
 test("detail content does not render outbound loan return flow inside detail", () => {
@@ -144,6 +147,8 @@ test("detail content falls back invalid status values to IN_STOCK and shows matc
   assert.match(html, /Weight updated just now\./);
   assert.match(html, /In stock/);
   assert.match(html, /data-action="update-spool-details-form"/);
+  assert.match(html, /name="location"/);
+  assert.match(html, /name="home-location"/);
 });
 
 test("compact detail keeps history collapsed behind a short summary", () => {
@@ -173,6 +178,8 @@ test("detail content localizes core labels in norwegian", () => {
   });
 
   assert.match(html, /Detaljer/);
+  assert.match(html, /Nåværende plassering/);
+  assert.match(html, /Hjemmeplassering \(valgfritt\)/);
   assert.match(html, /Målt totalvekt \(g\)/);
   assert.match(html, /Tom rull-vekt \(g\)/);
   assert.match(html, /Lagre vekt/);
@@ -194,4 +201,27 @@ test("detail content renders a generated QR image tied to the selected spool id"
     /src="\/api\/v1\/spools\/spool-qr-42\/qr-image\.svg"/
   );
   assert.match(html, /class="detail-qr-preview"/);
+});
+
+test("detail content renders RFID capture controls from live printer sources", () => {
+  const html = renderBody({
+    rfidCaptureSources: [
+      {
+        slotId: "slot-4",
+        printerId: "printer-1",
+        printerName: "Brutus",
+        slotLabel: "AMS 1 · Slot 4",
+        rfidTag: "B85A8848EEFD4C9784072CD4D7D04FAC",
+        observedAt: "2026-04-17T18:45:56Z",
+        filamentLabel: "PLA · Jade White",
+        statusLabel: "RFID not registered",
+      },
+    ],
+  });
+
+  assert.match(html, /data-action="update-spool-rfid-form"/);
+  assert.match(html, /Saved RFID/);
+  assert.match(html, /Observed RFID/);
+  assert.match(html, /Brutus · AMS 1 · Slot 4 · PLA · Jade White/);
+  assert.match(html, /Save RFID/);
 });

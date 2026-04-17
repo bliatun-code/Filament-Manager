@@ -34,6 +34,7 @@ export function renderSelectedSpoolDetailBody(options) {
     formatGrams,
     formatPlacementLabel,
     ownershipLabel,
+    rfidCaptureSources = [],
     locale = "en",
   } = options;
 
@@ -45,7 +46,11 @@ export function renderSelectedSpoolDetailBody(options) {
     : "IN_STOCK";
   const detailStatusLabel = formatStatusLabel(detailStatus, locale);
   const detailLocation = selectedSpool.spool.location_id || "";
+  const detailHomeLocation = selectedSpool.spool.home_location_id || "";
   const detailPlacementLabel = formatPlacementLabel(detailLocation, locale);
+  const detailHomePlacementLabel = detailHomeLocation
+    ? formatPlacementLabel(detailHomeLocation, locale)
+    : t(locale, "format.unassigned", "Unassigned");
   const detailTitle = formatInventoryDisplayTitle(
     selectedSpool.master.material,
     selectedSpool.master.filament_name,
@@ -75,6 +80,7 @@ export function renderSelectedSpoolDetailBody(options) {
   const historyCount = selectedDetail?.history?.length || 0;
   const usageTimeline = renderUsageTimeline(selectedDetail?.usage || [], { escapeHtml, formatDate, formatGrams, locale });
   const historyTimeline = renderHistoryTimeline(selectedDetail?.history || [], { escapeHtml, formatDate, locale });
+  const selectedCaptureSource = rfidCaptureSources.find((source) => source.rfidTag) || rfidCaptureSources[0] || null;
   return `
     <div class="detail-stack">
       <div
@@ -147,6 +153,10 @@ export function renderSelectedSpoolDetailBody(options) {
           <form class="stack detail-form detail-edit-pane" data-action="update-spool-details-form">
             <input type="hidden" name="spool-id" value="${escapeHtml(selectedSpool.spool.id)}" />
             <div class="meta-line">${escapeHtml(`${detailReference} · ${detailPlacementLabel}`)}</div>
+            <div class="stack detail-field">
+              <span class="muted">${escapeHtml(t(locale, "detail.currentLocation", "Current location"))}</span>
+              <div class="meta-line">${escapeHtml(detailPlacementLabel)}</div>
+            </div>
             <label class="stack detail-field">
               <span class="muted">${escapeHtml(t(locale, "detail.status", "Status"))}</span>
               <select class="text-input" name="status" ${busy ? "disabled" : ""}>
@@ -163,15 +173,17 @@ export function renderSelectedSpoolDetailBody(options) {
               </select>
             </label>
             <label class="stack detail-field">
-              <span class="muted">${escapeHtml(t(locale, "detail.locationOptional", "Location (optional)"))}</span>
+              <span class="muted">${escapeHtml(t(locale, "detail.homeLocationOptional", "Home location (optional)"))}</span>
+              <input type="hidden" name="location" value="${escapeHtml(detailLocation)}" />
               <input
                 class="text-input"
-                name="location"
+                name="home-location"
                 type="text"
-                value="${escapeHtml(detailLocation)}"
-                placeholder="${escapeHtml(t(locale, "detail.locationPlaceholder", "Shelf, drawer, or cart"))}"
+                value="${escapeHtml(detailHomeLocation)}"
+                placeholder="${escapeHtml(t(locale, "detail.homeLocationPlaceholder", "Shelf, drawer, or cart"))}"
                 ${busy ? "disabled" : ""}
               />
+              <div class="meta-line">${escapeHtml(detailHomePlacementLabel)}</div>
             </label>
             <div class="detail-actions form-action-block">
               <button class="primary-button" type="submit" ${busy ? "disabled" : ""}>
@@ -187,6 +199,55 @@ export function renderSelectedSpoolDetailBody(options) {
               alt="${escapeHtml(t(locale, "detail.qrPreviewAlt", "Filament QR code for quick companion detail lookup"))}"
             />
           </div>
+        </div>
+      </details>
+
+      <details class="surface-card detail-section-card detail-collapsible" data-collapsible="rfid">
+        <summary class="detail-collapsible-summary">
+          <span>${escapeHtml(t(locale, "inventory.rfidButton", "RFID"))}</span>
+          <span class="detail-history-summary">${escapeHtml(t(locale, "inventory.rfidHintReady", "Capture and save observed AMS identity to this spool."))}</span>
+        </summary>
+        <div class="detail-collapsible-body">
+          <form class="stack detail-form detail-edit-pane" data-action="update-spool-rfid-form">
+            <input type="hidden" name="spool-id" value="${escapeHtml(selectedSpool.spool.id)}" />
+            <div class="stack detail-field">
+              <span class="muted">${escapeHtml(t(locale, "inventory.rfidCurrentTag", "Saved RFID"))}</span>
+              <div class="meta-line">${escapeHtml(selectedSpool.spool.rfid_tag?.trim() || "—")}</div>
+            </div>
+            <label class="stack detail-field">
+              <span class="muted">${escapeHtml(t(locale, "inventory.rfidSourceSlot", "RFID source slot"))}</span>
+              <select class="text-input" name="rfid-source" ${busy || !selectedCaptureSource ? "disabled" : ""}>
+                ${
+                  rfidCaptureSources.length > 0
+                    ? rfidCaptureSources
+                        .map(
+                          (source, index) => `
+                            <option value="${escapeHtml(`${encodeURIComponent(source.rfidTag || "")}|${encodeURIComponent(source.observedAt || "")}`)}" ${index === 0 ? "selected" : ""}>
+                              ${escapeHtml([source.printerName, source.slotLabel, source.filamentLabel || source.statusLabel].filter(Boolean).join(" · "))}
+                            </option>
+                          `,
+                        )
+                        .join("")
+                    : `<option value="">${escapeHtml(t(locale, "inventory.rfidNoCaptureSource", "No live AMS slot available"))}</option>`
+                }
+              </select>
+            </label>
+            <div class="stack detail-field">
+              <span class="muted">${escapeHtml(t(locale, "inventory.rfidObservedTag", "Observed RFID"))}</span>
+              <div class="meta-line">${escapeHtml(selectedCaptureSource?.rfidTag || "—")}</div>
+            </div>
+            <div class="stack detail-field">
+              <span class="muted">${escapeHtml(t(locale, "inventory.rfidCaptureStatus", "Capture status"))}</span>
+              <div class="meta-line">${escapeHtml(selectedCaptureSource?.statusLabel || t(locale, "inventory.rfidCaptureUnavailable", "No live capture available right now."))}</div>
+            </div>
+            <input type="hidden" name="rfid-tag" value="${escapeHtml(selectedCaptureSource?.rfidTag || "")}" />
+            <input type="hidden" name="rfid-observed-at" value="${escapeHtml(selectedCaptureSource?.observedAt || "")}" />
+            <div class="detail-actions form-action-block">
+              <button class="primary-button" type="submit" ${busy || !selectedCaptureSource?.rfidTag ? "disabled" : ""}>
+                ${escapeHtml(t(locale, "inventory.rfidSaveAction", "Save RFID"))}
+              </button>
+            </div>
+          </form>
         </div>
       </details>
 

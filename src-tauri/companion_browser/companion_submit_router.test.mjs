@@ -155,14 +155,15 @@ test("submit router includes spool id for borrowed-in hand-back submissions", ()
   assert.deepEqual(calls, [["loan-9", "spool-9", "400", "Back with owner"]]);
 });
 
-test("submit router dispatches spool detail updates for status and location", () => {
+test("submit router dispatches spool detail updates for status, current location, and home location", () => {
   const calls = [];
   const handled = routeCompanionSubmitAction(
     "update-spool-details-form",
     createData({
       "spool-id": "spool-7",
       status: "EMPTY",
-      location: "Archive Bin",
+      location: "Printer:Brutus:printer_1_ams_1_slot_2",
+      "home-location": "Archive Bin",
     }),
     {
       submitSpoolDetailsUpdate(...args) {
@@ -172,7 +173,35 @@ test("submit router dispatches spool detail updates for status and location", ()
   );
 
   assert.equal(handled, true);
-  assert.deepEqual(calls, [["spool-7", "EMPTY", "Archive Bin"]]);
+  assert.deepEqual(calls, [[
+    "spool-7",
+    "EMPTY",
+    "Printer:Brutus:printer_1_ams_1_slot_2",
+    "Archive Bin",
+  ]]);
+});
+
+test("submit router dispatches RFID save payloads from the selected live source", () => {
+  const calls = [];
+  const handled = routeCompanionSubmitAction(
+    "update-spool-rfid-form",
+    createData({
+      "spool-id": "spool-11",
+      "rfid-source": `${encodeURIComponent("B85A8848EEFD4C9784072CD4D7D04FAC")}|${encodeURIComponent("2026-04-17T18:45:56Z")}`,
+    }),
+    {
+      submitSpoolRfidUpdate(...args) {
+        calls.push(args);
+      },
+    },
+  );
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls, [[
+    "spool-11",
+    "B85A8848EEFD4C9784072CD4D7D04FAC",
+    "2026-04-17T18:45:56Z",
+  ]]);
 });
 
 test("submit router returns false for unhandled actions", () => {

@@ -228,10 +228,11 @@ export function createCompanionMutations(options) {
     }
   }
 
-  async function submitSpoolDetailsUpdate(spoolId, statusValue, locationValue) {
+  async function submitSpoolDetailsUpdate(spoolId, statusValue, locationValue, homeLocationValue) {
     const trimmedSpoolId = String(spoolId || "").trim();
     const normalizedStatus = String(statusValue || "").trim().toUpperCase();
     const normalizedLocation = String(locationValue || "").trim();
+    const normalizedHomeLocation = String(homeLocationValue || "").trim();
 
     if (!trimmedSpoolId) {
       setStatus(tr("status.selectSpoolBeforeEdit", "Select a spool before editing its details."), "error");
@@ -257,6 +258,7 @@ export function createCompanionMutations(options) {
         body: JSON.stringify({
           status: normalizedStatus,
           location: normalizedLocation || null,
+          home_location: normalizedHomeLocation || null,
         }),
       });
       await refreshOverview();
@@ -264,6 +266,48 @@ export function createCompanionMutations(options) {
       setStatus(tr("status.spoolDetailsUpdated", "Spool details updated."), "success");
     } catch (error) {
       setStatus(error.message || tr("status.spoolDetailsUpdateFailed", "Failed to update spool details."), "error");
+      render();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitSpoolRfidUpdate(spoolId, rfidTagValue, observedAtValue) {
+    const trimmedSpoolId = String(spoolId || "").trim();
+    const normalizedRfidTag = String(rfidTagValue || "").trim();
+    const normalizedObservedAt = String(observedAtValue || "").trim() || new Date().toISOString();
+
+    if (!trimmedSpoolId) {
+      setStatus(tr("status.selectSpoolBeforeEdit", "Select a spool before editing its details."), "error");
+      render();
+      return;
+    }
+    if (!normalizedRfidTag) {
+      setStatus(tr("status.rfidCaptureNothingToSave", "No observed RFID was available to save."), "error");
+      render();
+      return;
+    }
+
+    clearDetailFeedback(trimmedSpoolId);
+    setBusy(true);
+    setStatus(tr("status.savingSpoolRfid", "Saving RFID..."), "default");
+    try {
+      await fetchJson(`/api/v1/spools/${encodeURIComponent(trimmedSpoolId)}/rfid`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": state.csrfToken,
+        },
+        body: JSON.stringify({
+          rfid_tag: normalizedRfidTag,
+          rfid_observed_at: normalizedObservedAt,
+        }),
+      });
+      await refreshOverview();
+      setDetailFeedback(trimmedSpoolId, tr("status.rfidSavedJustNow", "RFID saved just now."));
+      setStatus(tr("status.rfidSaved", "RFID saved."), "success");
+    } catch (error) {
+      setStatus(error.message || tr("status.rfidSaveFailed", "Failed to save RFID."), "error");
       render();
     } finally {
       setBusy(false);
@@ -1001,6 +1045,7 @@ export function createCompanionMutations(options) {
     submitPrinterSlotOperation,
     submitTareWeightUpdate,
     submitSpoolDetailsUpdate,
+    submitSpoolRfidUpdate,
     submitPrinterSlotAssignment,
     submitSpoolLoan,
     submitSpoolLoanReturn,

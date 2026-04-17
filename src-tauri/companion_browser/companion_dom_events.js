@@ -126,6 +126,7 @@ export function handleCompanionSubmitEvent(event, options) {
     submitWeightUpdate: (...args) => void options.submitWeightUpdate(...args),
     submitPrinterSlotOperation: (...args) => void options.submitPrinterSlotOperation(...args),
     submitSpoolDetailsUpdate: (...args) => void options.submitSpoolDetailsUpdate(...args),
+    submitSpoolRfidUpdate: (...args) => void options.submitSpoolRfidUpdate(...args),
     submitSpoolLoan: (...args) => void options.submitSpoolLoan(...args),
     submitSpoolLoanReturn: (...args) => void options.submitSpoolLoanReturn(...args),
     submitManualSpoolRegistration: (...args) => void options.submitManualSpoolRegistration(...args),
