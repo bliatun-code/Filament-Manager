@@ -850,6 +850,60 @@ function buildInventoryMatchResult(
   return { kind: "none", candidates: [] };
 }
 
+function translateObservedMatchNote(
+  note: string | null | undefined,
+  t: (key: string, fallback?: string) => string,
+): string | null {
+  const normalized = (note ?? "").trim();
+  if (!normalized) {
+    return null;
+  }
+  switch (normalized) {
+    case "Exact tray identity match against inventory.":
+      return t(
+        "settings.bambuLiveMatchNoteExact",
+        "Exact tray identity match against inventory.",
+      );
+    case "Multiple inventory rolls share this saved tray identity.":
+      return t(
+        "settings.bambuLiveMatchNoteDuplicateIdentity",
+        "Multiple inventory rolls share this saved tray identity.",
+      );
+    case "Showing last known good tray identity until a stronger update arrives.":
+      return t(
+        "settings.bambuLiveMatchNoteLastKnownGood",
+        "Showing last known good tray identity until a stronger update arrives.",
+      );
+    case "Multiple configured slots share this tray index.":
+      return t(
+        "settings.bambuLiveMatchNoteDuplicateTrayIndex",
+        "Multiple configured slots share this tray index.",
+      );
+    case "AMS reported a tray identity that is not registered in inventory.":
+      return t(
+        "settings.bambuLiveMatchNoteUnknownIdentity",
+        "AMS reported a tray identity that is not registered in inventory.",
+      );
+    case "Last known tray identity does not map cleanly to the currently configured spool.":
+      return t(
+        "settings.bambuLiveMatchNoteConfiguredMismatch",
+        "Last known tray identity does not map cleanly to the currently configured spool.",
+      );
+    case "No clear stored spool matches this last known tray identity.":
+      return t(
+        "settings.bambuLiveMatchNoteNoStoredMatch",
+        "No clear stored spool matches this last known tray identity.",
+      );
+    case "One likely stored spool matches this last known tray identity.":
+      return t(
+        "settings.bambuLiveMatchNoteOneStoredMatch",
+        "One likely stored spool matches this last known tray identity.",
+      );
+    default:
+      return normalized;
+  }
+}
+
 type SettingsTab = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
 type ResetConfirmAction = "APP" | "CATALOG";
 type CatalogVendor = "Bambu" | "eSUN";
@@ -3522,14 +3576,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                     ? `${diagnosticFieldNumber(diagnosticFields, "mc_remaining_time")} min`
                     : null,
                   diagnosticFieldNumber(diagnosticFields, "ams.tray_now") != null
-                    ? `Tray ${diagnosticFieldNumber(diagnosticFields, "ams.tray_now")}`
+                    ? `${t("settings.bambuLiveSummaryTray", "Tray")} ${diagnosticFieldNumber(diagnosticFields, "ams.tray_now")}`
                     : diagnosticFieldNumber(diagnosticFields, "tray_now") != null
-                      ? `Tray ${diagnosticFieldNumber(diagnosticFields, "tray_now")}`
+                      ? `${t("settings.bambuLiveSummaryTray", "Tray")} ${diagnosticFieldNumber(diagnosticFields, "tray_now")}`
                       : null,
                   diagnosticFieldNumber(diagnosticFields, "ams.ams[0].humidity") != null
-                    ? `AMS humidity ${diagnosticFieldNumber(diagnosticFields, "ams.ams[0].humidity")}`
+                    ? `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${diagnosticFieldNumber(diagnosticFields, "ams.ams[0].humidity")}`
                     : diagnosticFieldNumber(diagnosticFields, "humidity") != null
-                      ? `AMS humidity ${diagnosticFieldNumber(diagnosticFields, "humidity")}`
+                      ? `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${diagnosticFieldNumber(diagnosticFields, "humidity")}`
                       : null,
                 ].filter(Boolean);
                 const filteredDiagnosticFields = diagnosticFields.filter((field) => {
@@ -3736,10 +3790,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                   ? `${observedState.remaining_minutes} min`
                                   : null,
                                 observedState.active_tray_index != null
-                                  ? `Tray ${observedState.active_tray_index}`
+                                  ? `${t("settings.bambuLiveSummaryTray", "Tray")} ${observedState.active_tray_index}`
                                   : null,
                                 observedState.ams_humidity_index != null
-                                  ? `AMS humidity ${observedState.ams_humidity_index}`
+                                  ? `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${observedState.ams_humidity_index}`
                                   : null,
                               ]
                                 .filter(Boolean)
@@ -3854,7 +3908,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                     >
                                       <div className="flex items-center justify-between gap-2">
                                         <div className="font-semibold text-slate-900 dark:text-slate-100">
-                                          {`Slot ${slotNumber}`}
+                                          {`${t("settings.bambuLiveSlotLabel", "Slot")} ${slotNumber}`}
                                         </div>
                                         {hasReview ? (
                                           <span
@@ -3866,7 +3920,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                         ) : null}
                                       </div>
                                       <div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                        {`MQTT tray ${tray.tray_index}`}
+                                        {`${t("settings.bambuLiveMqttTrayLabel", "MQTT tray")} ${tray.tray_index}`}
                                       </div>
                                       <div className="mt-1 text-[11px] text-slate-600 dark:text-slate-300">
                                         {tray.loaded
@@ -3929,10 +3983,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                         </div>
                                         {(observedRfid || inventoryMatch.candidates.length > 1) ? (
                                           <div className="mt-1 break-all text-[10px] text-slate-500 dark:text-slate-400">
-                                            {observedRfid ? `Observed: ${observedRfid}` : null}
+                                            {observedRfid
+                                              ? `${t("settings.bambuLiveObservedPrefix", "Observed")}: ${observedRfid}`
+                                              : null}
                                             {observedRfid && inventoryMatch.kind === "metadata_multiple" ? " · " : null}
                                             {inventoryMatch.kind === "metadata_multiple"
-                                              ? `${inventoryMatch.candidates.length} candidates`
+                                              ? `${inventoryMatch.candidates.length} ${t("settings.bambuLiveCandidateCount", "candidates")}`
                                               : null}
                                           </div>
                                         ) : null}
@@ -3974,7 +4030,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                       </div>
                                       {tray.match_note && !amsReadInProgress ? (
                                         <div className="mt-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
-                                          {tray.match_note}
+                                          {translateObservedMatchNote(tray.match_note, t)}
                                         </div>
                                       ) : null}
                                     </div>
