@@ -1529,9 +1529,16 @@ export default function PrintersPage() {
             printer.printer.model,
             printer.slots,
           );
-          const printerLiveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
-          const liveConnectionIndicator = resolveLiveConnectionIndicator(printerLiveConfig);
-          const usageMetrics = [
+	          const printerLiveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
+	          const liveConnectionIndicator = resolveLiveConnectionIndicator(printerLiveConfig);
+	          const hostLiveIndicator =
+	            clientReadOnly && clientPrinterSource === "LIVE"
+	              ? {
+	                  tone: "success" as const,
+	                  label: t("librarySyncStatusLive", "Live"),
+	                }
+	              : null;
+	          const usageMetrics = [
             {
               key: "jobs",
               label: t("printers.jobs", "Jobs"),
@@ -1572,13 +1579,23 @@ export default function PrintersPage() {
                     hasMultiMaterial={hasMultiMaterial}
                   />
                   <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                        {printer.printer.name}
-                      </div>
-                      {liveConnectionIndicator ? (
-                        <span
-                          className={semanticChipClass(
+	                    <div className="flex flex-wrap items-center gap-2">
+	                      <div className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+	                        {printer.printer.name}
+	                      </div>
+	                      {hostLiveIndicator ? (
+	                        <span
+	                          className={semanticChipClass(
+	                            hostLiveIndicator.tone,
+	                            "px-2 py-0.5 text-[10px]",
+	                          )}
+	                        >
+	                          {hostLiveIndicator.label}
+	                        </span>
+	                      ) : null}
+	                      {liveConnectionIndicator ? (
+	                        <span
+	                          className={semanticChipClass(
                             liveConnectionIndicator.tone,
                             "px-2 py-0.5 text-[10px]",
                           )}
