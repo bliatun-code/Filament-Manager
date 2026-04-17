@@ -4275,15 +4275,15 @@ export default function InventoryPage({
                   style={inventorySwatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
                 >
                   <div className="space-y-5 text-sm text-slate-700 dark:text-slate-200">
-                    {manageBusy ? (
-                      <div className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs text-amber-800 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-200">
-                        {t("inventory.updatingRoll", "Updating selected roll...")}
-                      </div>
-                    ) : null}
                     {error ? (
                       <div className="rounded-xl border border-rose-200/80 bg-rose-50/90 px-3 py-2 text-xs text-rose-700 dark:border-rose-400/40 dark:bg-rose-500/15 dark:text-rose-200">
                         {error}
                       </div>
+                    ) : null}
+                    {!error && infoMessage ? (
+                      <FeedbackBanner tone="success">
+                        {infoMessage}
+                      </FeedbackBanner>
                     ) : null}
 
                     <div
@@ -5282,7 +5282,7 @@ export default function InventoryPage({
         </FeedbackBanner>
       ) : null}
 
-      {!error && infoMessage && !(showAddModal && sidePanelMode === "ADD") ? (
+      {!error && infoMessage && !(showAddModal && sidePanelMode === "ADD") && !showRollModal ? (
         <FeedbackBanner tone="success" className="mt-4">
           {infoMessage}
         </FeedbackBanner>
