@@ -2521,19 +2521,21 @@ export default function InventoryPage({
   }, [formatInventoryPlacementLabel, selectedSpool, selectedSpoolAssignedSlot]);
 
   const selectRollForManage = useCallback((spoolId: string) => {
-    if (clientReadOnly) {
+    if (clientReadOnly && !clientHostWritePaired) {
       setInfoMessage(
         t(
           "inventory.clientReadOnlyManage",
           "This device is connected as a client. You can review the roll here, and paired host actions will stay limited and explicit.",
         ),
       );
+    } else {
+      setInfoMessage(null);
     }
     setSelectedSpoolId(spoolId);
     setSidePanelMode("MANAGE");
     setShowRollHistory(false);
     setShowRollModal(true);
-  }, [clientReadOnly, t]);
+  }, [clientHostWritePaired, clientReadOnly, t]);
 
   const ensureLocalWriteAllowed = useCallback(() => {
     if (!clientReadOnly) {
