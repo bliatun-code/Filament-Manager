@@ -10,10 +10,22 @@ Historical notes below still mention the old localhost browser companion, `qa:co
   - GitHub release is published
   - host/client batch 1 is complete: host derives unknown-RFID override context and manual-clear cache suppression on protected slot writes
   - host/client batch 2 is complete: paired client receives minimal live slot/RFID snapshot data from the host
+  - post-release client/host follow-up (2026-04-17) is also landed on `main`:
+    - inventory RFID capture is host-backed in paired client mode
+    - inventory RFID save-to-roll now writes through the host
+    - `home location` is preserved across printer-slot use and paired-client spool create/update
+    - roll-modal messaging no longer shows stale read-only/client banners when host-write pairing is available
 - Validation baseline:
   - `npm run build` ✅
   - `cargo test --manifest-path src-tauri/Cargo.toml bambu_live -- --nocapture` ✅
   - `npm run smoke` ✅
+  - focused follow-up validation:
+    - `cargo check --manifest-path src-tauri/Cargo.toml` ✅
+    - `npm run build` ✅
+    - paired-client manual PASS:
+      - inventory RFID capture open/save flow
+      - `Add spool` with `home location`
+      - roll-modal `home location` save feedback
 - Release note focus:
   - unknown RFID replacement clears only on strong `tray_uuid` + color evidence
   - manual RFID override stays protected while the same unknown identity remains present
@@ -21,6 +33,7 @@ Historical notes below still mention the old localhost browser companion, `qa:co
 - Next client/host polish focus:
   - validate paired-client printer UI across `LIVE`, `CACHED`, and `OFFLINE` host states
   - decide whether paired client needs any extra visual distinction for host-driven `In use` vs passive live identity badges
+  - consider a small cleanup pass to normalize client-host create/update adapters so spool create/update uses one consistent `location`/`home_location` vocabulary across local + host paths
 
 ## v0.9.2 Stable Import + Browser Polish (2026-04-14)
 - Release target:

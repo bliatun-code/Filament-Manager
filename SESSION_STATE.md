@@ -1,6 +1,6 @@
 # Session State
 
-Last updated: 2026-04-16
+Last updated: 2026-04-17
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
@@ -20,6 +20,17 @@ Historical notes below still mention the old localhost browser companion, `qa:co
     - unknown live RFID can clear replaced AMS slots conservatively, while same-identity manual overrides stay protected
     - host/client printer-slot batch 1 now lets the host derive unknown-RFID override context and manual-clear cache suppression during protected slot writes
     - host/client printer-slot batch 2 now enriches paired-client printer snapshots with minimal live slot/RFID status from the host, without exposing full Bambu live settings
+    - paired-client inventory RFID capture is now host-backed end-to-end:
+      - inventory RFID modal can open in paired client mode from host live slot data
+      - observed AMS identity/material/color data comes from the host printer snapshot path
+      - save-to-roll from the inventory RFID modal now writes back through the host
+    - spool `home location` is now explicit and preserved across printer-slot use:
+      - loaded spools restore `location` from `home_location` when removed from printer slots
+      - paired client can update `home location`
+      - paired-client `Add spool` now preserves `home location` and initial `location` during create
+    - inventory popup messaging is calmer and more consistent:
+      - stale generic client read-only banner no longer appears when host-write pairing is available
+      - roll-modal success messages are shown inside the modal instead of behind it
   - security/release baseline:
     - `rand` upgraded to `0.9` with local compatibility fixes for token generation and jitter
     - Dependabot `rand` alerts remain open, but are transitive through the current Tauri/`tauri-utils` chain rather than direct project dependencies
@@ -29,6 +40,13 @@ Historical notes below still mention the old localhost browser companion, `qa:co
     - `npm run build` ✅
     - `cargo test --manifest-path src-tauri/Cargo.toml bambu_live -- --nocapture` ✅
     - `npm run smoke` ✅
+  - follow-up local validation after the 2026-04-17 client/host fixes:
+    - `cargo check --manifest-path src-tauri/Cargo.toml` ✅
+    - `npm run build` ✅
+    - manual PASS:
+      - paired-client inventory RFID capture open/save flow
+      - paired-client `Add spool` with `home location`
+      - roll-modal `home location` save/status messaging
 - Stable follow-up release checkpoint (2026-04-14, ready for commit/push + release):
   - version target is now `v0.9.2`
   - trusted-LAN browser and desktop polish are green for the latest patch pass:
