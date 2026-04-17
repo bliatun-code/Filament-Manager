@@ -5,6 +5,22 @@ Last updated: 2026-04-17
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
+- Release 0.11.0 prep checkpoint (2026-04-17):
+  - `main` is now being prepared for the next stable release after `v0.10.1`
+  - version sources are aligned to `0.11.0` in root package, Tauri config, and Rust package metadata
+  - release-note cleanup is underway:
+    - `RELEASE_NOTES_v0.11.0.md` becomes the active upcoming release note
+    - older versioned notes before `v0.10.1` are archived under `docs/releases/archive/`
+  - release scope for `v0.11.0` is the combined parity/polish pass across desktop host, paired client, and browser companion:
+    - host-backed inventory RFID capture/save in paired client
+    - host-backed printer diagnostics in paired client settings
+    - `home location` model across desktop, paired client, and browser companion
+    - browser companion live printer badges, live slot context, and RFID capture/save
+    - browser companion spool-history localization and browser-safe status/location feedback
+    - desktop diagnostics capture improvements, including explicit capture start/stop and chartable numeric fields
+  - release-preflight validation is green on the current baseline:
+    - `npm run smoke` ✅
+    - `cargo check --manifest-path src-tauri/Cargo.toml` ✅
 - Release 0.10.1 shipped-to-git checkpoint (2026-04-16):
   - `main` includes release commit `3c36f18`
   - tag `v0.10.1` is pushed to `origin`

@@ -2,6 +2,30 @@
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current browser baseline is trusted-LAN-only, with `Storage` as the browser label for desktop `Inventory` / `Lager` and `Add spool` as the browser intake action.
 
+## v0.11.0 Release Prep (2026-04-17)
+- Release target:
+  - next stable release after `v0.10.1`
+  - intended to consolidate the rapid host/client/browser parity work landed since the `v0.10.1` follow-up
+- Release note focus:
+  - paired client and browser companion now cover much more of the same live printer, RFID, and spool-management workflows as the desktop host
+  - `home location` is now a first-class spool concept across desktop, paired client, and browser companion
+  - diagnostics capture is stronger, clearer, and more actionable across desktop and paired-client settings flows
+  - browser companion now has better parity for live printer visibility, RFID capture/save, and spool history language
+- Release prep status:
+  - version bump target is now `0.11.0`
+  - older release notes before `v0.10.1` are archived under `docs/releases/archive/`
+  - current release notes should be treated as:
+    - `RELEASE_NOTES_v0.10.1.md` for the previous stable baseline
+    - `RELEASE_NOTES_v0.11.0.md` for the upcoming release
+- Validation baseline:
+  - `npm run smoke` ✅
+  - `cargo check --manifest-path src-tauri/Cargo.toml` ✅
+  - focused browser companion tests are included in `npm run smoke`
+  - manual host/client/browser sanity remains the last worthwhile release-confidence pass for:
+    - RFID capture/save
+    - `home location`
+    - printer live/diagnostics visibility
+
 ## v0.10.1 AMS Slot Logic Follow-up (2026-04-16)
 - Release status:
   - stable follow-up patch after `v0.10.0`
