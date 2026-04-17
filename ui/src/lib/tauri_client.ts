@@ -897,6 +897,10 @@ export async function createLibrarySyncHostSpool(
   expectedLibraryId: string | null | undefined,
   input: CreateSpoolInput | CreateManualSpoolInput,
 ) {
+  const normalizedLocation =
+    ("location" in input ? input.location : undefined) ??
+    ("location_id" in input ? input.location_id : undefined) ??
+    null;
   return invoke<string>("create_library_sync_host_spool", {
     input: {
       base_url: baseUrl,
@@ -907,7 +911,7 @@ export async function createLibrarySyncHostSpool(
       color_name: "color_name" in input ? input.color_name : null,
       vendor: "vendor" in input ? input.vendor ?? null : null,
       initial_weight_g: input.initial_weight_g ?? null,
-      location: "location" in input ? input.location ?? null : null,
+      location: normalizedLocation,
       hex_color: "hex_color" in input ? input.hex_color ?? null : null,
       owner_name: input.owner_name ?? null,
       owner_contact: input.owner_contact ?? null,
