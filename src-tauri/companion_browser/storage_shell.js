@@ -426,13 +426,13 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
               />
             </label>
             <label class="stack detail-field">
-              <span class="muted">${escapeHtml(t(locale, "storage.locationOptional", "Location (optional)"))}</span>
+              <span class="muted">${escapeHtml(t(locale, "storage.homeLocationOptional", "Home location (optional)"))}</span>
               <input
                 class="text-input"
                 name="filament-location"
                 type="text"
                 value="${escapeHtml(String(draft.location || ""))}"
-                placeholder="${escapeHtml(t(locale, "storage.locationPlaceholder", "Shelf, bin, drawer, cart..."))}"
+                placeholder="${escapeHtml(t(locale, "storage.homeLocationPlaceholder", "Shelf, bin, drawer, cart..."))}"
               />
             </label>
             ${
@@ -552,16 +552,28 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
   `;
 }
 
-function renderSelectedSpoolHiddenBanner(selectedSpool, hasLoanHistory, escapeHtml, formatGrams, formatPlacementLabel) {
+function renderSelectedSpoolHiddenBanner(
+  selectedSpool,
+  hasLoanHistory,
+  escapeHtml,
+  formatGrams,
+  formatPlacementLabel,
+  locale = "en",
+) {
   const displayTitle = formatInventoryDisplayTitle(
     selectedSpool.master.material,
     selectedSpool.master.filament_name,
     selectedSpool.master.color_name,
   );
+  const homeLocationId = selectedSpool.spool.home_location_id || "";
   const summaryLine = [
     formatRollReference(selectedSpool.spool),
     formatGrams(selectedSpool.spool.remaining_g),
-    selectedSpool.spool.location_id ? formatPlacementLabel(selectedSpool.spool.location_id) : "",
+    selectedSpool.spool.location_id ? formatPlacementLabel(selectedSpool.spool.location_id, locale) : "",
+    homeLocationId &&
+    homeLocationId !== selectedSpool.spool.location_id
+      ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(homeLocationId, locale)}`
+      : "",
   ]
     .filter(Boolean)
     .map((value) => escapeHtml(value))
@@ -618,7 +630,10 @@ function renderSpoolRows(options) {
         .map((value) => escapeHtml(value))
         .join(" · ");
       const metaBits = [
-        row.spool.location_id ? formatPlacementLabel(row.spool.location_id) : "",
+        row.spool.location_id ? formatPlacementLabel(row.spool.location_id, locale) : "",
+        row.spool.home_location_id && row.spool.home_location_id !== row.spool.location_id
+          ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(row.spool.home_location_id, locale)}`
+          : "",
         row.spool.owner_name ? `Borrowed from ${row.spool.owner_name}` : "",
       ]
         .filter(Boolean)
@@ -725,6 +740,7 @@ export function renderStorageShell(options) {
               escapeHtml,
               formatGrams,
               formatPlacementLabel,
+              locale,
             )
           : ""
       }

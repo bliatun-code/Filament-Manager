@@ -128,6 +128,7 @@ test("add filament task sheet exposes stock and wishlist flows from the same sel
   assert.match(html, /data-action="add-spool-form"/);
   assert.match(html, /data-action="wishlist-item-form"/);
   assert.match(html, /Add spool to inventory/);
+  assert.match(html, /Home location \(optional\)/);
   assert.match(html, /Add current selection to wishlist/);
 });
 
@@ -161,5 +162,6 @@ test("add filament task sheet localizes key copy in norwegian", () => {
   assert.match(html, /Materiale/);
   assert.match(html, /Filamentnavn/);
   assert.match(html, /Legg spole i lager/);
+  assert.match(html, /Hjemmeplassering \(valgfritt\)/);
   assert.match(html, /Ønskeliste \/ bestillingskø/);
 });

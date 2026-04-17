@@ -41,6 +41,7 @@ export function renderPrinterPickerTaskSheetBody(options) {
       row.master.vendor,
       row.spool.id,
       row.spool.location_id,
+      row.spool.home_location_id,
       row.spool.qr_code,
     ]
       .filter(Boolean)
@@ -77,6 +78,10 @@ export function renderPrinterPickerTaskSheetBody(options) {
                     row.master.vendor,
                     formatRollReference(row.spool),
                     row.spool.location_id ? formatPlacementLabel(row.spool.location_id, locale) : "",
+                    row.spool.home_location_id &&
+                    row.spool.home_location_id !== row.spool.location_id
+                      ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(row.spool.home_location_id, locale)}`
+                      : "",
                   ]
                     .filter(Boolean)
                     .join(" · ");
@@ -292,6 +297,26 @@ export function renderPrinterRoster(printers, activePrinterId, escapeHtml, local
     .join("");
 }
 
+function hasLivePrinterSignal(activePrinter) {
+  const slots = Array.isArray(activePrinter?.slots) ? activePrinter.slots : [];
+  return slots.some(
+    (slot) => Boolean(slot?.live_mqtt_connected) || Boolean(slot?.live_printer_last_seen_at) || Boolean(slot?.live_loaded),
+  );
+}
+
+function formatLiveSlotStatus(slot, locale) {
+  if (slot.live_match_status === "unknown_rfid") {
+    return t(locale, "printers.liveMatchUnknownRfid", "RFID not registered");
+  }
+  if (slot.live_matched_inventory_mode === "exact_rfid") {
+    return t(locale, "printers.liveMatchClear", "Live inventory match");
+  }
+  if (slot.live_match_status || slot.live_match_note) {
+    return t(locale, "printers.liveMatchNoClear", "No clear inventory match");
+  }
+  return t(locale, "printers.liveObserved", "Live observed");
+}
+
 function renderSlotCards(options) {
   const { activePrinter, state, escapeHtml, formatGrams } = options;
   const locale = state.locale || "en";
@@ -321,37 +346,60 @@ function renderSlotCards(options) {
             slot.spool_vendor,
             slot.spool_material,
           )
-        : "#ced8e3";
-      const slotToneStyle = slot.spool_id ? styleObjectToString(swatchCssVars(slotSwatch)) : "";
-      const slotContentTitle = slot.spool_id ? materialBits : t(locale, "printers.empty", "Empty");
+        : slot.live_color_hex ||
+          suggestSwatchHex(slot.live_filament_name, slot.live_filament_type, "", slot.live_filament_type) ||
+          "#ced8e3";
+      const slotHasLiveLoaded = !slot.spool_id && Boolean(slot.live_loaded || slot.live_tray_uuid || slot.live_match_status);
+      const slotToneStyle =
+        slot.spool_id || slotHasLiveLoaded ? styleObjectToString(swatchCssVars(slotSwatch)) : "";
+      const liveMaterialBits = formatInventoryDisplayTitle(
+        slot.live_filament_type,
+        slot.live_filament_name,
+        slot.live_tray_id_name,
+      );
+      const slotContentTitle = slot.spool_id
+        ? materialBits
+        : slotHasLiveLoaded
+          ? liveMaterialBits || t(locale, "printers.liveDetected", "Live filament detected")
+          : t(locale, "printers.empty", "Empty");
       const slotContentColor = toSwatchColor(slotSwatch);
       const slotSummary = slot.spool_id
         ? [formatStatusLabel(slot.spool_status || "ASSIGNED", locale), formatRollReference({ id: slot.spool_id })]
             .filter(Boolean)
             .join(" · ")
+        : slotHasLiveLoaded
+          ? formatLiveSlotStatus(slot, locale)
         : slotIsPendingTarget
           ? t(locale, "printers.loadTarget", "Load target")
           : t(locale, "printers.openSlot", "Open slot");
       const slotMeta = slot.spool_id
         ? formatGrams(slot.spool_remaining_g)
+        : slotHasLiveLoaded
+          ? [
+              slot.live_remaining_percent != null ? `${slot.live_remaining_percent}%` : "",
+              slot.live_is_active ? t(locale, "printers.activeSlot", "Active slot") : "",
+              slot.live_last_identity_seen_at ? t(locale, "printers.liveMatchLastKnown", "Showing last known identity") : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")
         : slotIsPendingTarget
           ? t(locale, "printers.chooseBelow", "Choose filament below.")
           : t(locale, "printers.loadHere", "Load a spool here.");
 
       return `
         <article
-          class="slot-card ${slot.spool_id ? "slot-card-loaded swatch-surface" : "slot-card-empty"}"
+          class="slot-card ${slot.spool_id || slotHasLiveLoaded ? "slot-card-loaded swatch-surface" : "slot-card-empty"}"
           data-slot-selected="false"
           data-slot-targeted="${slotIsPendingTarget ? "true" : "false"}"
-          data-slot-loaded="${slot.spool_id ? "true" : "false"}"
+          data-slot-loaded="${slot.spool_id || slotHasLiveLoaded ? "true" : "false"}"
           ${slotToneStyle ? `style="${escapeHtml(slotToneStyle)}"` : ""}
         >
           <div class="slot-card-head">
             <div>
               <div class="list-title">${escapeHtml(slotLabel)}</div>
-              <div class="muted">${escapeHtml(slot.spool_id ? t(locale, "printers.loaded", "Loaded") : t(locale, "printers.openSlot", "Open slot"))}</div>
+              <div class="muted">${escapeHtml(slot.spool_id ? t(locale, "printers.loaded", "Loaded") : slotHasLiveLoaded ? t(locale, "printers.liveSummary", "Live from host") : t(locale, "printers.openSlot", "Open slot"))}</div>
             </div>
-            <span class="pill">${escapeHtml(slot.spool_id ? t(locale, "printers.loaded", "Loaded") : t(locale, "printers.empty", "Empty"))}</span>
+            <span class="pill">${escapeHtml(slot.spool_id ? t(locale, "printers.loaded", "Loaded") : slotHasLiveLoaded ? t(locale, "printers.liveBadge", "Live") : t(locale, "printers.empty", "Empty"))}</span>
           </div>
           <div class="slot-content-line swatch-line">
             <span class="swatch-dot" style="background:${escapeHtml(slotContentColor)}"></span>
@@ -435,6 +483,7 @@ export function renderPrinterBoard(options) {
   const activePrinterSlots = Array.isArray(activePrinter?.slots) ? activePrinter.slots : [];
   const loadedSlots = activePrinterSlots.filter((slot) => Boolean(slot?.spool_id)).length;
   const emptySlots = Math.max(activePrinterSlots.length - loadedSlots, 0);
+  const printerHasLiveSignal = hasLivePrinterSignal(activePrinter);
 
   return `
     <div class="printer-board-header">
@@ -442,6 +491,7 @@ export function renderPrinterBoard(options) {
         <h3>${escapeHtml(activePrinter.printer.name)}</h3>
         <p class="section-copy">${escapeHtml(activePrinter.printer.model)}</p>
         <div class="meta-line printer-board-meta">
+          ${printerHasLiveSignal ? `<span class="pill">${escapeHtml(t(locale, "printers.liveBadge", "Live"))}</span> · ` : ""}
           ${escapeHtml(t(locale, "printers.loadedSummary", "{loaded} loaded · {open} open", { loaded: loadedSlots, open: emptySlots }))}
         </div>
       </div>

@@ -160,6 +160,51 @@ test("printer workspace gives loaded slot cards a filament tint even without exp
   assert.match(html, /--swatch-rgb:/);
 });
 
+test("printer workspace shows a live badge when host live data is present", () => {
+  const html = renderBoard({
+    activePrinter: createPrinterRow({
+      slots: [
+        {
+          slot_id: "slot-1",
+          ams_id: "ams_1",
+          slot_index: 1,
+          spool_id: null,
+          live_mqtt_connected: true,
+        },
+      ],
+    }),
+  });
+
+  assert.match(html, />Live</);
+  assert.match(html, /0 loaded · 1 open/);
+});
+
+test("printer workspace shows live slot status for unassigned observed trays", () => {
+  const html = renderBoard({
+    activePrinter: createPrinterRow({
+      slots: [
+        {
+          slot_id: "slot-1",
+          ams_id: "ams_1",
+          slot_index: 1,
+          spool_id: null,
+          live_loaded: true,
+          live_filament_type: "PLA",
+          live_filament_name: "Basic",
+          live_color_hex: "#81FB80",
+          live_match_status: "unknown_rfid",
+          live_remaining_percent: 74,
+        },
+      ],
+    }),
+  });
+
+  assert.match(html, /RFID not registered/);
+  assert.match(html, /PLA · Basic/);
+  assert.match(html, /74%/);
+  assert.match(html, /slot-card-loaded swatch-surface/);
+});
+
 test("printer workspace highlights the targeted empty slot without rendering an inline picker", () => {
   const html = renderBoard({
     state: {
