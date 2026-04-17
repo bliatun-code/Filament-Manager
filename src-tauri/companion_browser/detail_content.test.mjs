@@ -225,3 +225,31 @@ test("detail content renders RFID capture controls from live printer sources", (
   assert.match(html, /Brutus · AMS 1 · Slot 4 · PLA · Jade White/);
   assert.match(html, /Save RFID/);
 });
+
+test("detail content localizes newer history event labels in norwegian", () => {
+  const html = renderBody({
+    locale: "nb",
+    selectedDetail: createSelectedDetail({
+      history: [
+        { event_type: "CREATED", created_at: "2026-04-17T10:00:00Z" },
+        { event_type: "RFID_TAG_UPDATED", created_at: "2026-04-17T11:00:00Z" },
+        { event_type: "TARE_WEIGHT_UPDATED", created_at: "2026-04-17T12:00:00Z" },
+      ],
+    }),
+  });
+
+  assert.match(html, /Lagt til i lageret/);
+  assert.match(html, /RFID lagret/);
+  assert.match(html, /Tom rull-vekt oppdatert/);
+});
+
+test("detail content localizes WEIGHT_UPDATED history labels in norwegian", () => {
+  const html = renderBody({
+    locale: "nb",
+    selectedDetail: createSelectedDetail({
+      history: [{ event_type: "WEIGHT_UPDATED", created_at: "2026-04-17T13:00:00Z" }],
+    }),
+  });
+
+  assert.match(html, /Vekt oppdatert/);
+});

@@ -204,6 +204,32 @@ test("submit router dispatches RFID save payloads from the selected live source"
   ]]);
 });
 
+test("submit router still routes detail updates that may later return translated browser errors", () => {
+  const calls = [];
+  const handled = routeCompanionSubmitAction(
+    "update-spool-details-form",
+    createData({
+      "spool-id": "spool-9",
+      status: "IN_STOCK",
+      location: "Printer:Brutus:printer_1_ams_1_slot_2",
+      "home-location": "Hylle 8",
+    }),
+    {
+      submitSpoolDetailsUpdate(...args) {
+        calls.push(args);
+      },
+    },
+  );
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls, [[
+    "spool-9",
+    "IN_STOCK",
+    "Printer:Brutus:printer_1_ams_1_slot_2",
+    "Hylle 8",
+  ]]);
+});
+
 test("submit router returns false for unhandled actions", () => {
   const handled = routeCompanionSubmitAction("unknown-form", createData({}), {});
   assert.equal(handled, false);

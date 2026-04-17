@@ -19,6 +19,32 @@ export function createCompanionMutations(options) {
   const locale = () => state.locale || "en";
   const tr = (key, fallback, params = undefined) => t(locale(), key, fallback, params);
 
+  function translateKnownCompanionError(message) {
+    const normalized = String(message || "").trim();
+    if (!normalized) {
+      return "";
+    }
+    switch (normalized) {
+      case "Loaded spools use printer-slot actions instead of manual status/location edits":
+        return tr(
+          "status.loadedSpoolEditBlocked",
+          "Loaded spools use printer-slot actions instead of manual status/location edits",
+        );
+      case "Loaned-out spools use the companion loan return flow instead of manual status/location edits":
+        return tr(
+          "status.loanedOutEditBlocked",
+          "Loaned-out spools use the companion loan return flow instead of manual status/location edits",
+        );
+      case "Browser status/location edits are limited to IN_STOCK, EMPTY, or LOST":
+        return tr(
+          "status.browserStatusLocationLimited",
+          "Browser status/location edits are limited to IN_STOCK, EMPTY, or LOST",
+        );
+      default:
+        return normalized;
+    }
+  }
+
   function catalogMatchesSource(master, source) {
     const vendor = String(master?.vendor || "").trim().toLowerCase();
     if (source === "esun") {
@@ -265,7 +291,11 @@ export function createCompanionMutations(options) {
       setDetailFeedback(trimmedSpoolId, tr("status.spoolDetailsUpdatedJustNow", "Details updated just now."));
       setStatus(tr("status.spoolDetailsUpdated", "Spool details updated."), "success");
     } catch (error) {
-      setStatus(error.message || tr("status.spoolDetailsUpdateFailed", "Failed to update spool details."), "error");
+      setStatus(
+        translateKnownCompanionError(error.message) ||
+          tr("status.spoolDetailsUpdateFailed", "Failed to update spool details."),
+        "error",
+      );
       render();
     } finally {
       setBusy(false);

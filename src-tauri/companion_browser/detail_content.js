@@ -359,13 +359,22 @@ function formatHistoryEventLabel(value, locale = "en") {
   if (!label) {
     return t(locale, "detail.activity", "Activity");
   }
-  const normalized = label.replaceAll("_", " ");
+  const normalizedKey = label.toLowerCase();
+  const normalized = normalizedKey.replaceAll("_", " ");
   const eventKeys = {
     weight_update: "detail.eventWeightUpdate",
+    weight_updated: "detail.eventWeightUpdate",
+    tare_weight_updated: "detail.eventTareWeightUpdate",
+    created: "detail.eventCreated",
+    details_updated: "detail.eventDetailsUpdated",
+    rfid_tag_updated: "detail.eventRfidSaved",
+    status_updated: "detail.eventStatusUpdated",
+    location_updated: "detail.eventLocationUpdated",
     qr_code_update: "detail.eventQrCodeUpdate",
     status_location_update: "detail.eventStatusLocationUpdate",
     assigned_to_ams: "detail.eventAssignedToAms",
     cleared_from_ams: "detail.eventClearedFromAms",
+    deleted: "detail.eventDeleted",
   };
-  return t(locale, eventKeys[label] || "", normalized);
+  return t(locale, eventKeys[normalizedKey] || "", normalized);
 }

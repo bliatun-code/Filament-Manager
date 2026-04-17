@@ -225,7 +225,7 @@ test("submit handler dispatches spool detail updates from the detail form", () =
 
   assert.equal(handled, true);
   assert.equal(prevented, true);
-  assert.deepEqual(calls, [["spool-12", "EMPTY", "Archive Bin"]]);
+  assert.deepEqual(calls, [["spool-12", "EMPTY", "Archive Bin", ""]]);
 });
 
 test("installCompanionDomEvents registers the expected document and root listeners", () => {
