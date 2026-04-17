@@ -14,6 +14,7 @@ import {
   exportInventoryJson,
   fetchLibrarySyncSnapshot,
   fetchLibrarySyncPrinterOverview,
+  fetchLibrarySyncPrinterSettings,
   getAppVersion,
   getLibrarySyncSettings,
   pairLibrarySyncHost,
@@ -1313,13 +1314,23 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         listSpools(5000, 0),
       ]);
       let overviewRows: PrinterOverviewRow[] = [];
+      let nextBambuLiveIntegrations = Object.fromEntries(
+        (snapshot.bambu_live_integrations ?? []).map((entry) => [entry.printer_id, entry.config]),
+      );
       if (syncSettings.mode === "CLIENT") {
         const cachedPrinterRows = syncSettings.cached_printers?.rows ?? [];
         if (syncSettings.host_base_url && syncSettings.library_id) {
           try {
-            overviewRows = await fetchLibrarySyncPrinterOverview(
-              syncSettings.host_base_url,
-              syncSettings.library_id,
+            const [hostOverviewRows, hostPrinterSettings] = await Promise.all([
+              fetchLibrarySyncPrinterOverview(syncSettings.host_base_url, syncSettings.library_id),
+              fetchLibrarySyncPrinterSettings(syncSettings.host_base_url, syncSettings.library_id),
+            ]);
+            overviewRows = hostOverviewRows;
+            nextBambuLiveIntegrations = Object.fromEntries(
+              (hostPrinterSettings.bambu_live_integrations ?? []).map((entry) => [
+                entry.printer_id,
+                entry.config,
+              ]),
             );
           } catch (loadError) {
             console.warn("Settings host printer overview unavailable, using cached snapshot.", loadError);
@@ -1336,11 +1347,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       );
       setPrinterOverview(overviewRows);
       setSpoolRows(spoolSnapshot);
-      setBambuLiveIntegrations(
-        Object.fromEntries(
-          (snapshot.bambu_live_integrations ?? []).map((entry) => [entry.printer_id, entry.config]),
-        ),
-      );
+      setBambuLiveIntegrations(nextBambuLiveIntegrations);
       setCatalogMasters(catalogRows);
       setLibrarySyncSettings(syncSettings);
       setLibrarySyncModeDraft((syncSettings.mode as LibrarySyncMode) ?? "STANDALONE");

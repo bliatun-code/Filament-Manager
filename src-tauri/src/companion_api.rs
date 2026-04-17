@@ -1,8 +1,9 @@
 use crate::app_services::{CompanionService, CompanionSpoolDetail};
 use crate::backend::filament_database::{
-    ActiveSpoolLoanRow, FilamentDatabase, FilamentMasterCatalogRow, InventoryError,
-    LibrarySyncSettingsRow, PrinterAmsSlotRow, PrinterOverviewRow, SpoolLoanDetailsRow,
-    SpoolLoanRow, SpoolWithMasterRow, TrustedLanPairedBrowserRow, WishlistItemRow,
+    ActiveSpoolLoanRow, BambuLiveIntegrationEntryRow, FilamentDatabase, FilamentMasterCatalogRow,
+    InventoryError, LibrarySyncSettingsRow, PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow,
+    SpoolLoanDetailsRow, SpoolLoanRow, SpoolWithMasterRow, TrustedLanPairedBrowserRow,
+    WishlistItemRow,
 };
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput,
@@ -146,6 +147,14 @@ struct LoanListQuery {
     limit: Option<i64>,
     include_returned: Option<bool>,
     direction: Option<String>,
+}
+
+#[derive(Serialize)]
+struct CompanionPrinterSettingsResponse {
+    active_printer_id: Option<String>,
+    printers: Vec<PrinterRow>,
+    printer_models: Vec<String>,
+    bambu_live_integrations: Vec<BambuLiveIntegrationEntryRow>,
 }
 
 #[derive(Deserialize, Default)]
@@ -494,6 +503,7 @@ fn build_router(state: CompanionApiState) -> Router {
         .route("/api/v1/library/snapshot", get(handle_library_snapshot))
         .route("/api/v1/library/spools", get(handle_library_spools))
         .route("/api/v1/library/printers", get(handle_library_printers))
+        .route("/api/v1/library/printer-settings", get(handle_library_printer_settings))
         .route("/api/v1/library/loans", get(handle_library_loans))
         .route(
             "/api/v1/library/statistics/filament-consumption",
@@ -612,6 +622,36 @@ async fn handle_library_printers(
         .list_printer_overview()
         .map_err(CompanionApiError::from)?;
     Ok(Json(rows))
+}
+
+async fn handle_library_printer_settings(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+) -> Result<Json<CompanionPrinterSettingsResponse>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    let bambu_live_integrations = FilamentDatabase::open(&state.db_path)
+        .map_err(CompanionApiError::from)?
+        .list_bambu_live_integrations()
+        .map_err(CompanionApiError::from)?
+        .into_iter()
+        .map(|mut entry| {
+            entry.config.host = None;
+            entry.config.access_code = None;
+            entry.config.printer_serial = None;
+            entry
+        })
+        .collect();
+    let printers = FilamentDatabase::open(&state.db_path)
+        .map_err(CompanionApiError::from)?
+        .list_printers()
+        .map_err(CompanionApiError::from)?;
+
+    Ok(Json(CompanionPrinterSettingsResponse {
+        active_printer_id: None,
+        printers,
+        printer_models: Vec::new(),
+        bambu_live_integrations,
+    }))
 }
 
 async fn handle_library_loans(

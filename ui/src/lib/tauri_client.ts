@@ -735,6 +735,18 @@ export async function fetchLibrarySyncPrinterOverview(
   });
 }
 
+export async function fetchLibrarySyncPrinterSettings(
+  baseUrl: string,
+  expectedLibraryId?: string | null,
+) {
+  return invoke<PrinterSettingsSnapshot>("fetch_library_sync_printer_settings", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+    },
+  });
+}
+
 export async function fetchCachedLibrarySyncSpools() {
   return invoke<LibrarySyncCachedSpoolList | null>("fetch_cached_library_sync_spools");
 }

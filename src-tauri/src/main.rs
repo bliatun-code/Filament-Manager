@@ -82,7 +82,7 @@ struct CatalogRefreshProgressEvent {
     message: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct PrinterSettingsSnapshot {
     active_printer_id: Option<String>,
     printers: Vec<PrinterRow>,
@@ -1327,6 +1327,29 @@ fn fetch_library_sync_printer_overview(
     })?;
 
     Ok(rows)
+}
+
+#[tauri::command]
+fn fetch_library_sync_printer_settings(
+    state: tauri::State<'_, AppState>,
+    input: ValidateLibrarySyncHostInput,
+) -> Result<PrinterSettingsSnapshot, String> {
+    let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(&input)?;
+    let health = ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    let snapshot: PrinterSettingsSnapshot = fetch_library_sync_host_json(
+        &normalized_base_url,
+        "/api/v1/library/printer-settings",
+    )?;
+
+    with_inventory(&state, |engine| {
+        engine.save_library_sync_validation_state(
+            true,
+            Some("Host printer settings refreshed."),
+            health.device_name.as_deref(),
+        )
+    })?;
+
+    Ok(snapshot)
 }
 
 #[tauri::command]
@@ -3379,6 +3402,7 @@ fn main() {
             fetch_library_sync_wishlist_items,
             fetch_cached_library_sync_spools,
             fetch_library_sync_printer_overview,
+            fetch_library_sync_printer_settings,
             fetch_cached_library_sync_printer_overview,
             fetch_library_sync_loans,
             fetch_library_sync_filament_consumption,
