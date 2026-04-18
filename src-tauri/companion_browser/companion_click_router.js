@@ -49,6 +49,16 @@ export function routeCompanionClickAction(action, target, handlers) {
     return true;
   }
 
+  if (action === "start-qr-scanner") {
+    handlers.startQrScanner();
+    return true;
+  }
+
+  if (action === "stop-qr-scanner") {
+    handlers.stopQrScanner();
+    return true;
+  }
+
   if (action === "toggle-borrowed-in-form" || action === "toggle-add-spool-form") {
     handlers.toggleBorrowedInForm();
     return true;

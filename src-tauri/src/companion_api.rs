@@ -49,6 +49,8 @@ const COMPANION_BROWSER_INPUT_ROUTER_JS: &str =
     include_str!("../companion_browser/companion_input_router.js");
 const COMPANION_BROWSER_MUTATIONS_JS: &str =
     include_str!("../companion_browser/companion_mutations.js");
+const COMPANION_BROWSER_QR_SCANNER_JS: &str =
+    include_str!("../companion_browser/companion_qr_scanner.js");
 const COMPANION_BROWSER_QR_PAYLOAD_JS: &str = include_str!("../companion_browser/qr_payload.js");
 const COMPANION_BROWSER_RENDER_FOCUS_JS: &str =
     include_str!("../companion_browser/companion_render_focus.js");
@@ -2380,6 +2382,10 @@ fn companion_browser_asset(path: &str) -> Option<CompanionBrowserAsset> {
         "companion_mutations.js" => Some(CompanionBrowserAsset {
             content_type: "application/javascript; charset=utf-8",
             content: COMPANION_BROWSER_MUTATIONS_JS,
+        }),
+        "companion_qr_scanner.js" => Some(CompanionBrowserAsset {
+            content_type: "application/javascript; charset=utf-8",
+            content: COMPANION_BROWSER_QR_SCANNER_JS,
         }),
         "qr_payload.js" => Some(CompanionBrowserAsset {
             content_type: "application/javascript; charset=utf-8",
@@ -5097,6 +5103,18 @@ mod tests {
                 .await
                 .map_err(|error| error.to_string())?;
             assert_eq!(companion_mutations_response.status(), StatusCode::OK);
+
+            let companion_qr_scanner_response = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri("/companion/companion_qr_scanner.js")
+                        .body(Body::empty())
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            assert_eq!(companion_qr_scanner_response.status(), StatusCode::OK);
 
             let companion_render_focus_response = router
                 .clone()

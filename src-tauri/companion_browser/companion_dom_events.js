@@ -42,6 +42,8 @@ export function handleCompanionClickEvent(event, options) {
   return routeCompanionClickAction(action, target, {
     refresh: () => void options.refreshOverview(),
     setRootFlow: options.setRootFlow,
+    startQrScanner: options.startQrScanner,
+    stopQrScanner: options.stopQrScanner,
     startPrinterSlotAssignment: options.startPrinterSlotAssignment,
     startPrinterWeightUpdate: options.startPrinterWeightUpdate,
     toggleStorageQrSheet: options.toggleStorageQrSheet,
@@ -113,6 +115,21 @@ export function handleCompanionInputEvent(event, options) {
   });
 }
 
+export function handleCompanionChangeEvent(event, options) {
+  const target = event?.target;
+  if (!target || typeof target.name !== "string") {
+    return false;
+  }
+
+  if (String(target.name).trim().toLowerCase() === "qr-image-file") {
+    options.handleQrImageSelection?.(target.files);
+    target.value = "";
+    return true;
+  }
+
+  return false;
+}
+
 export function handleCompanionSubmitEvent(event, options) {
   const form = event?.target;
   if (!isFormElementLike(form)) {
@@ -147,6 +164,9 @@ export function installCompanionDomEvents(options) {
   const inputHandler = (event) => {
     handleCompanionInputEvent(event, options);
   };
+  const changeHandler = (event) => {
+    handleCompanionChangeEvent(event, options);
+  };
   const submitHandler = (event) => {
     handleCompanionSubmitEvent(event, options);
   };
@@ -154,12 +174,14 @@ export function installCompanionDomEvents(options) {
   options.documentRef.addEventListener("keydown", keydownHandler);
   options.root.addEventListener("click", clickHandler);
   options.root.addEventListener("input", inputHandler);
+  options.root.addEventListener("change", changeHandler);
   options.root.addEventListener("submit", submitHandler);
 
   return {
     keydownHandler,
     clickHandler,
     inputHandler,
+    changeHandler,
     submitHandler,
   };
 }

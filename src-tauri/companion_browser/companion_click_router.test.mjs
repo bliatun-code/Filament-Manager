@@ -230,6 +230,49 @@ test("click router dispatches the loans picker launcher", () => {
   assert.deepEqual(calls, ["picker"]);
 });
 
+test("click router dispatches QR sheet and scanner actions", () => {
+  const calls = [];
+
+  assert.equal(
+    routeCompanionClickAction(
+      "toggle-qr-sheet",
+      createTarget({}),
+      {
+        toggleStorageQrSheet() {
+          calls.push("toggle");
+        },
+      },
+    ),
+    true,
+  );
+  assert.equal(
+    routeCompanionClickAction(
+      "start-qr-scanner",
+      createTarget({}),
+      {
+        startQrScanner() {
+          calls.push("start");
+        },
+      },
+    ),
+    true,
+  );
+  assert.equal(
+    routeCompanionClickAction(
+      "stop-qr-scanner",
+      createTarget({}),
+      {
+        stopQrScanner() {
+          calls.push("stop");
+        },
+      },
+    ),
+    true,
+  );
+
+  assert.deepEqual(calls, ["toggle", "start", "stop"]);
+});
+
 test("click router routes selected slot filament through the printer weight flow", () => {
   const calls = [];
 

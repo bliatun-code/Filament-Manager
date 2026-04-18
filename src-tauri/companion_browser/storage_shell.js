@@ -552,6 +552,122 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
   `;
 }
 
+export function renderStorageQrTaskSheetBody(state, busy, escapeHtml) {
+  const locale = state.locale || "en";
+  const scannerTone = String(state.qrScannerTone || "default").trim() || "default";
+  const scannerMessage = String(state.qrScannerMessage || "").trim();
+
+  return `
+    <div class="stack qr-lookup-sheet">
+      <section class="surface-card qr-lookup-section">
+        <div class="stack add-spool-section-head">
+          <div class="list-title">${escapeHtml(t(locale, "storage.qrLookup", "QR lookup"))}</div>
+          <div class="section-copy">${escapeHtml(
+            t(locale, "storage.qrLookupHelp", "Open a spool by QR or saved reference code."),
+          )}</div>
+        </div>
+
+        <form class="stack lookup-form" data-action="qr-lookup-form">
+          <label class="stack detail-field">
+            <span class="muted">${escapeHtml(t(locale, "storage.qrLookup", "QR lookup"))}</span>
+            <input
+              class="search-input"
+              name="qr-lookup"
+              type="search"
+              value="${escapeHtml(String(state.qrLookup || ""))}"
+              placeholder="${escapeHtml(
+                t(locale, "storage.qrLookupPlaceholder", "Paste or type a QR/reference code"),
+              )}"
+              autocomplete="off"
+            />
+          </label>
+          <div class="detail-actions form-action-block utility-sheet-actions">
+            <button class="primary-button" type="submit" ${busy ? "disabled" : ""}>
+              ${escapeHtml(t(locale, "storage.openSpoolByQr", "Open spool"))}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="surface-card qr-lookup-section">
+        <div class="stack add-spool-section-head">
+          <div class="list-title">${escapeHtml(t(locale, "storage.qrScanner", "Scan QR"))}</div>
+          <div class="section-copy">${escapeHtml(
+            t(
+              locale,
+              "storage.qrScannerHelp",
+              "Use the device camera when the browser allows it, or pick a photo from the device to scan a QR code.",
+            ),
+          )}</div>
+        </div>
+
+        <div class="stack qr-lookup-capture-block">
+          <div class="pill-row compact-pill-row qr-lookup-capture-actions">
+            ${
+              state.qrScannerLiveSupported
+                ? `
+                  <button
+                    class="${state.qrScannerActive ? "secondary-button" : "ghost-button"}"
+                    type="button"
+                    data-action="${state.qrScannerActive ? "stop-qr-scanner" : "start-qr-scanner"}"
+                    ${busy ? "disabled" : ""}
+                  >
+                    ${escapeHtml(
+                      state.qrScannerActive
+                        ? t(locale, "storage.qrScannerStop", "Stop camera")
+                        : t(locale, "storage.qrScannerStart", "Start camera"),
+                    )}
+                  </button>
+                `
+                : `<span class="pill">${escapeHtml(
+                    t(
+                      locale,
+                      "storage.qrScannerLiveUnavailable",
+                      "Live camera scanning is unavailable in this browser/session.",
+                    ),
+                  )}</span>`
+            }
+
+            ${
+              state.qrScannerImageSupported
+                ? `
+                  <label class="ghost-button qr-lookup-file-button${busy ? " is-disabled" : ""}">
+                    <span>${escapeHtml(t(locale, "storage.qrScannerPhoto", "Scan from photo"))}</span>
+                    <input
+                      class="qr-lookup-file-input"
+                      type="file"
+                      name="qr-image-file"
+                      accept="image/*"
+                      capture="environment"
+                      ${busy ? "disabled" : ""}
+                    />
+                  </label>
+                `
+                : ""
+            }
+          </div>
+
+          ${
+            state.qrScannerActive
+              ? `
+                <div class="qr-lookup-video-shell">
+                  <video class="qr-lookup-video" data-qr-scanner-video autoplay muted playsinline></video>
+                </div>
+              `
+              : ""
+          }
+
+          ${
+            scannerMessage
+              ? `<div class="status-banner" data-tone="${escapeHtml(scannerTone)}">${escapeHtml(scannerMessage)}</div>`
+              : ""
+          }
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function renderSelectedSpoolHiddenBanner(
   selectedSpool,
   hasLoanHistory,
@@ -725,6 +841,9 @@ export function renderStorageShell(options) {
             autocomplete="off"
           />
           <div class="toolbar-actions">
+            <button class="secondary-button" type="button" data-action="toggle-qr-sheet" ${state.busy ? "disabled" : ""}>
+              ${escapeHtml(t(locale, "storage.qrScanner", "Scan QR"))}
+            </button>
             <button class="primary-button" type="button" data-action="toggle-add-spool-form" ${state.busy ? "disabled" : ""}>
               ${escapeHtml(t(locale, "storage.addSpool", "Add spool"))}
             </button>

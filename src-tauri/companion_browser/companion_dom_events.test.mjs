@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   handleCompanionClickEvent,
+  handleCompanionChangeEvent,
   handleCompanionInputEvent,
   handleCompanionKeydownEvent,
   handleCompanionSubmitEvent,
@@ -42,6 +43,8 @@ function createBaseOptions(overrides = {}) {
     setStatus() {},
     refreshOverview() {},
     setRootFlow() {},
+    startQrScanner() {},
+    stopQrScanner() {},
     toggleStorageQrSheet() {},
     toggleBorrowedInForm() {},
     setFilamentOwnership() {},
@@ -63,6 +66,7 @@ function createBaseOptions(overrides = {}) {
     submitSpoolLoanReturn() {},
     submitManualSpoolRegistration() {},
     submitQrLookup() {},
+    handleQrImageSelection() {},
     submitBorrowedInUpdate() {},
     submitBorrowedInHandBack() {},
     ...overrides,
@@ -228,6 +232,28 @@ test("submit handler dispatches spool detail updates from the detail form", () =
   assert.deepEqual(calls, [["spool-12", "EMPTY", "Archive Bin", ""]]);
 });
 
+test("change handler forwards QR image selections to the scanner hook", () => {
+  const files = [{ name: "qr.png" }];
+  const calls = [];
+  const handled = handleCompanionChangeEvent(
+    {
+      target: {
+        name: "qr-image-file",
+        files,
+        value: "C:/fakepath/qr.png",
+      },
+    },
+    createBaseOptions({
+      handleQrImageSelection(nextFiles) {
+        calls.push(nextFiles);
+      },
+    }),
+  );
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls, [files]);
+});
+
 test("installCompanionDomEvents registers the expected document and root listeners", () => {
   const documentEvents = [];
   const rootEvents = [];
@@ -247,9 +273,10 @@ test("installCompanionDomEvents registers the expected document and root listene
   const installed = installCompanionDomEvents(options);
 
   assert.deepEqual(documentEvents, ["keydown"]);
-  assert.deepEqual(rootEvents, ["click", "input", "submit"]);
+  assert.deepEqual(rootEvents, ["click", "input", "change", "submit"]);
   assert.equal(typeof installed.keydownHandler, "function");
   assert.equal(typeof installed.clickHandler, "function");
   assert.equal(typeof installed.inputHandler, "function");
+  assert.equal(typeof installed.changeHandler, "function");
   assert.equal(typeof installed.submitHandler, "function");
 });
