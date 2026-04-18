@@ -3174,7 +3174,7 @@ fn find_spool_by_qr(
     qr_code: String,
 ) -> Result<Option<backend::filament_database::SpoolRow>, String> {
     companion_service(&state)
-        .find_spool_row_by_qr(&qr_code)
+        .find_spool_row_by_qr_or_id(&qr_code)
         .map_err(inventory_error_to_string)
 }
 

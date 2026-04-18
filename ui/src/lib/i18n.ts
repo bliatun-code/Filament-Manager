@@ -226,6 +226,16 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       assignedSlotLabel: "Assigned slot",
       qrCode: "QR code",
       qrLabel: "QR",
+      qrMode: "QR mode",
+      qrModePortable: "Portable",
+      qrModeCompanion: "Companion link",
+      qrTarget: "QR target",
+      qrTargetPortableHint:
+        "This QR contains only the spool reference. It is mainly useful together with an in-app QR lookup flow rather than a normal phone camera.",
+      qrTargetCompanionHint:
+        "This QR opens the browser companion directly as long as the target URL is still reachable.",
+      qrCompanionUnavailable:
+        "Companion link is unavailable right now. Start the Trusted-LAN companion on the active host to build a direct browser link; otherwise the fallback QR only contains the spool reference.",
       saveQrCode: "Save QR code",
       qrSaved: "QR code saved.",
       assignmentManagedOnPrinters:
@@ -1593,6 +1603,16 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       assignedSlotLabel: "Tildelt spor",
       qrCode: "QR-kode",
       qrLabel: "QR",
+      qrMode: "QR-modus",
+      qrModePortable: "Portabel",
+      qrModeCompanion: "Kompanjonglenke",
+      qrTarget: "QR-mål",
+      qrTargetPortableHint:
+        "Denne QR-koden inneholder bare filamentreferansen. Den er i praksis mest nyttig sammen med en QR-oppslag-flyt i appen, ikke med vanlig mobilkamera.",
+      qrTargetCompanionHint:
+        "Denne QR-koden åpner nettleserkompanjongen direkte så lenge mål-URL-en fortsatt er tilgjengelig.",
+      qrCompanionUnavailable:
+        "Kompanjonglenke er ikke tilgjengelig akkurat nå. Start Trusted-LAN-kompanjongen på den aktive verten for å bygge en direkte nettleserlenke; ellers inneholder fallback-QR-en bare filamentreferansen.",
       saveQrCode: "Lagre QR-kode",
       qrSaved: "QR-kode lagret.",
       assignmentManagedOnPrinters:

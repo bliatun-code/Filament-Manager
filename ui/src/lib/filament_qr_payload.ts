@@ -10,6 +10,14 @@ export type ParsedFilamentQrPayload = {
   ref: string;
 };
 
+export type FilamentQrMode = "portable" | "companion";
+
+export type BuiltFilamentQrPayload = {
+  mode: FilamentQrMode;
+  payload: string;
+  target: string;
+};
+
 export function encodeVersionedFilamentQrRef(
   ref: string,
   version = "v1",
@@ -84,20 +92,83 @@ export function parseFilamentQrPayload(
   return direct;
 }
 
+export function buildPortableSpoolQrPayload(ref: string): string {
+  return encodeVersionedFilamentQrRef(ref);
+}
+
+export function deriveCompanionShellUrl(
+  baseUrl: string | null | undefined,
+): string | null {
+  const normalizedBaseUrl = normalizeRef(baseUrl);
+  if (!normalizedBaseUrl) {
+    return null;
+  }
+  try {
+    const url = new URL(normalizedBaseUrl);
+    const trimmedPath = url.pathname.replace(/\/+$/, "");
+    if (!trimmedPath || trimmedPath === "/") {
+      url.pathname = "/companion";
+    } else if (!trimmedPath.endsWith("/companion")) {
+      url.pathname = `${trimmedPath}/companion`;
+    }
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+export function buildFilamentQrPayload(
+  ref: string,
+  options?: {
+    mode?: FilamentQrMode;
+    companionShellUrl?: string | null;
+  },
+): BuiltFilamentQrPayload {
+  const portablePayload = buildPortableSpoolQrPayload(ref);
+  const mode = options?.mode ?? "portable";
+  if (mode === "portable") {
+    return {
+      mode: "portable",
+      payload: portablePayload,
+      target: portablePayload,
+    };
+  }
+
+  const normalizedShellUrl = normalizeRef(options?.companionShellUrl);
+  if (!normalizedShellUrl) {
+    return {
+      mode: "portable",
+      payload: portablePayload,
+      target: portablePayload,
+    };
+  }
+
+  try {
+    const shellUrl = new URL(normalizedShellUrl);
+    shellUrl.searchParams.set("spool_qr", portablePayload);
+    const target = shellUrl.toString();
+    return {
+      mode: "companion",
+      payload: target,
+      target,
+    };
+  } catch {
+    return {
+      mode: "portable",
+      payload: portablePayload,
+      target: portablePayload,
+    };
+  }
+}
+
 export function buildCompanionSpoolQrPayload(
   ref: string,
   companionShellUrl?: string | null,
 ): string {
-  const encodedRef = encodeVersionedFilamentQrRef(ref);
-  const normalizedShellUrl = normalizeRef(companionShellUrl);
-  if (!normalizedShellUrl) {
-    return encodedRef;
-  }
-  try {
-    const shellUrl = new URL(normalizedShellUrl);
-    shellUrl.searchParams.set("spool_qr", encodedRef);
-    return shellUrl.toString();
-  } catch {
-    return encodedRef;
-  }
+  return buildFilamentQrPayload(ref, {
+    mode: "companion",
+    companionShellUrl,
+  }).payload;
 }

@@ -10,7 +10,11 @@ import {
   buildFilamentLabelHtml,
   buildFilamentLabelQrDataUrl,
 } from "../lib/filament_label_print";
-import { buildCompanionSpoolQrPayload } from "../lib/filament_qr_payload";
+import {
+  buildFilamentQrPayload,
+  deriveCompanionShellUrl,
+  type FilamentQrMode,
+} from "../lib/filament_qr_payload";
 import { useI18n, type Locale } from "../lib/i18n";
 import { LOW_STOCK_GRAMS } from "../lib/inventory_constants";
 import { materialTone } from "../lib/material_theme";
@@ -1262,6 +1266,13 @@ export default function InventoryPage({
     null,
   );
   const [selectedSpoolQrLoading, setSelectedSpoolQrLoading] = useState(false);
+  const [selectedSpoolQrMode, setSelectedSpoolQrMode] = useState<FilamentQrMode>("companion");
+  const [selectedSpoolQrResolvedMode, setSelectedSpoolQrResolvedMode] =
+    useState<FilamentQrMode>("portable");
+  const [selectedSpoolQrTarget, setSelectedSpoolQrTarget] = useState<string | null>(null);
+  const [selectedSpoolQrCompanionShellUrl, setSelectedSpoolQrCompanionShellUrl] = useState<
+    string | null
+  >(null);
   const [bambuLiveIntegrations, setBambuLiveIntegrations] = useState<
     Record<string, BambuLiveIntegrationSettings>
   >({});
@@ -2520,6 +2531,8 @@ export default function InventoryPage({
     return formatInventoryPlacementLabel(selectedSpool.location);
   }, [formatInventoryPlacementLabel, selectedSpool, selectedSpoolAssignedSlot]);
 
+  const selectedSpoolQrCompanionAvailable = Boolean(selectedSpoolQrCompanionShellUrl?.trim());
+
   const selectRollForManage = useCallback((spoolId: string) => {
     if (clientReadOnly && !clientHostWritePaired) {
       setInfoMessage(
@@ -2641,6 +2654,10 @@ export default function InventoryPage({
       setConfirmPurge(false);
       setSelectedSpoolLocationDraft("");
       setSelectedSpoolTareDraft("");
+      setSelectedSpoolQrMode("companion");
+      setSelectedSpoolQrResolvedMode("portable");
+      setSelectedSpoolQrTarget(null);
+      setSelectedSpoolQrCompanionShellUrl(null);
       setShowRfidCaptureModal(false);
       setSelectedRfidCaptureSlotId(null);
       setRfidCaptureError(null);
@@ -2658,6 +2675,7 @@ export default function InventoryPage({
     setSelectedSpoolTareDraft(
       String(resolveSpoolTareWeight(selectedSpool.spoolTareWeightGrams, selectedSpool.vendor)),
     );
+    setSelectedSpoolQrMode("companion");
     setShowRfidCaptureModal(false);
     setSelectedRfidCaptureSlotId(null);
     setRfidCaptureError(null);
@@ -2681,37 +2699,57 @@ export default function InventoryPage({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [showRollModal]);
 
-  const buildSpoolQrArtifacts = useCallback(async (spool: InventorySpool) => {
-    const qrReference = spool.id.trim();
+  const resolveSpoolQrCompanionShellUrl = useCallback(async () => {
+    if (clientReadOnly && clientHostBaseUrl?.trim()) {
+      return deriveCompanionShellUrl(clientHostBaseUrl);
+    }
     const trustedLanStatus = await getTrustedLanCompanionStatus().catch(() => null);
-    const qrPayload = buildCompanionSpoolQrPayload(
-      qrReference,
-      trustedLanStatus?.shell_url ?? null,
-    );
-    const qrDataUrl = await buildFilamentLabelQrDataUrl(qrPayload);
+    return trustedLanStatus?.shell_url?.trim() || null;
+  }, [clientHostBaseUrl, clientReadOnly]);
+
+  const buildSpoolQrArtifacts = useCallback(async (
+    spool: InventorySpool,
+    mode: FilamentQrMode = "companion",
+  ) => {
+    const qrReference = spool.id.trim();
+    const companionShellUrl = await resolveSpoolQrCompanionShellUrl();
+    const qr = buildFilamentQrPayload(qrReference, {
+      mode,
+      companionShellUrl,
+    });
+    const qrDataUrl = await buildFilamentLabelQrDataUrl(qr.payload);
     return {
       qrReference,
-      qrPayload,
+      qrPayload: qr.payload,
       qrDataUrl,
+      qrMode: qr.mode,
+      qrTarget: qr.target,
+      companionShellUrl,
     };
-  }, []);
+  }, [resolveSpoolQrCompanionShellUrl]);
 
   useEffect(() => {
     if (!selectedSpool || !showRollModal) {
       setSelectedSpoolQrDataUrl(null);
       setSelectedSpoolQrLoading(false);
+      setSelectedSpoolQrResolvedMode("portable");
+      setSelectedSpoolQrTarget(null);
+      setSelectedSpoolQrCompanionShellUrl(null);
       return;
     }
 
     let cancelled = false;
     setSelectedSpoolQrLoading(true);
 
-    void buildSpoolQrArtifacts(selectedSpool)
-      .then(({ qrDataUrl }) => {
+    void buildSpoolQrArtifacts(selectedSpool, selectedSpoolQrMode)
+      .then(({ qrDataUrl, qrMode, qrTarget, companionShellUrl }) => {
         if (cancelled) {
           return;
         }
         setSelectedSpoolQrDataUrl(qrDataUrl);
+        setSelectedSpoolQrResolvedMode(qrMode);
+        setSelectedSpoolQrTarget(qrTarget);
+        setSelectedSpoolQrCompanionShellUrl(companionShellUrl);
         setSelectedSpoolQrLoading(false);
       })
       .catch((qrError) => {
@@ -2720,13 +2758,16 @@ export default function InventoryPage({
           return;
         }
         setSelectedSpoolQrDataUrl(null);
+        setSelectedSpoolQrResolvedMode("portable");
+        setSelectedSpoolQrTarget(null);
+        setSelectedSpoolQrCompanionShellUrl(null);
         setSelectedSpoolQrLoading(false);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [buildSpoolQrArtifacts, selectedSpool, showRollModal]);
+  }, [buildSpoolQrArtifacts, selectedSpool, selectedSpoolQrMode, showRollModal]);
 
   useEffect(() => {
     if (!showRfidCaptureModal || !tauri || clientReadOnly || !selectedRfidCaptureSlot) {
@@ -3918,6 +3959,7 @@ export default function InventoryPage({
     try {
       const { qrReference, qrPayload, qrDataUrl } = await buildSpoolQrArtifacts(
         selectedSpool,
+        selectedSpoolQrMode,
       );
       const html = buildFilamentLabelHtml({
         vendor: selectedSpool.vendor,
@@ -4369,6 +4411,44 @@ export default function InventoryPage({
                       <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                         {t("inventory.qrLabel", "QR")}
                       </div>
+                      <div className="mt-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                          {t("inventory.qrMode", "QR mode")}
+                        </div>
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                              selectedSpoolQrMode === "companion"
+                                ? "border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-950"
+                                : "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800/70"
+                            }`}
+                            onClick={() => setSelectedSpoolQrMode("companion")}
+                            disabled={!selectedSpoolQrCompanionAvailable}
+                          >
+                            {t("inventory.qrModeCompanion", "Companion link")}
+                          </button>
+                          <button
+                            type="button"
+                            className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                              selectedSpoolQrMode === "portable"
+                                ? "border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-950"
+                                : "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800/70"
+                            }`}
+                            onClick={() => setSelectedSpoolQrMode("portable")}
+                          >
+                            {t("inventory.qrModePortable", "Portable")}
+                          </button>
+                        </div>
+                        {!selectedSpoolQrCompanionAvailable ? (
+                          <div className="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                            {t(
+                              "inventory.qrCompanionUnavailable",
+                              "Companion link is unavailable right now. Start the Trusted-LAN companion on the active host to build a direct browser link.",
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
                       {selectedSpoolQrDataUrl ? (
                         <div className="mt-3 flex justify-center">
                           <img
@@ -4388,6 +4468,27 @@ export default function InventoryPage({
                             : t("inventory.error.printLabel", "Failed to generate label.")}
                         </div>
                       )}
+                      {selectedSpoolQrTarget ? (
+                        <div className="mt-3 rounded-lg border border-slate-200/80 bg-white/80 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+                          <div className="font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                            {t("inventory.qrTarget", "QR target")}
+                          </div>
+                          <div className="mt-1 break-all font-mono text-[11px] leading-relaxed">
+                            {selectedSpoolQrTarget}
+                          </div>
+                          <div className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                            {selectedSpoolQrResolvedMode === "companion"
+                              ? t(
+                                  "inventory.qrTargetCompanionHint",
+                                  "This QR opens the browser companion directly as long as the target URL is still reachable.",
+                                )
+                              : t(
+                                  "inventory.qrTargetPortableHint",
+                                  "This QR contains only the spool reference, which is more robust for small prints and host changes.",
+                                )}
+                          </div>
+                        </div>
+                      ) : null}
                       <div className="mt-3">
                         <button
                           type="button"

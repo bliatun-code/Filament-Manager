@@ -94,8 +94,17 @@ impl CompanionService {
         self.with_inventory(|engine| engine.get_spool_with_master(spool_id))
     }
 
-    pub fn find_spool_row_by_qr(&self, qr_code: &str) -> InventoryResult<Option<SpoolRow>> {
-        self.with_inventory(|engine| engine.find_spool_by_qr(qr_code))
+    pub fn find_spool_row_by_qr_or_id(
+        &self,
+        qr_code: &str,
+    ) -> InventoryResult<Option<SpoolRow>> {
+        self.with_inventory(|engine| {
+            if let Some(spool) = engine.find_spool_by_qr(qr_code)? {
+                Ok(Some(spool))
+            } else {
+                Ok(engine.get_spool_with_master(qr_code)?.map(|detail| detail.spool))
+            }
+        })
     }
 
     pub fn find_spool_by_qr(&self, qr_code: &str) -> InventoryResult<Option<SpoolWithMasterRow>> {
@@ -545,6 +554,54 @@ mod tests {
         let _ = std::fs::remove_file(&db_path);
         if let Err(message) = result {
             panic!("companion_service_finds_spool_by_qr failed: {message}");
+        }
+    }
+
+    #[test]
+    fn companion_service_finds_spool_row_by_id_when_qr_code_is_missing() {
+        let db_path = temp_db_path("find-row-by-qr-or-id");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            let engine = InventoryEngine::new(db);
+
+            engine
+                .create_manual_spool(CreateManualSpoolInput {
+                    id: "spool_qr_2".to_string(),
+                    material: "PLA".to_string(),
+                    filament_name: "Basic".to_string(),
+                    color_name: "Black".to_string(),
+                    hex_color: Some("#111111".to_string()),
+                    product_url: None,
+                    vendor: Some("Manual".to_string()),
+                    default_weight_g: Some(1000),
+                    qr_code: None,
+                    status: Some("IN_STOCK".to_string()),
+                    ownership_type: Some("OWNED".to_string()),
+                    owner_name: None,
+                    owner_contact: None,
+                    ownership_note: None,
+                    initial_weight_g: Some(1000),
+                    location: Some("Shelf".to_string()),
+                })
+                .map_err(|error| error.to_string())?;
+
+            let service = CompanionService::new(db_path.to_string_lossy().to_string());
+            let matched = service
+                .find_spool_row_by_qr_or_id("spool_qr_2")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "expected QR/id lookup to find spool".to_string())?;
+
+            assert_eq!(matched.id, "spool_qr_2");
+            assert_eq!(matched.qr_code, None);
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("companion_service_finds_spool_row_by_id_when_qr_code_is_missing failed: {message}");
         }
     }
 
