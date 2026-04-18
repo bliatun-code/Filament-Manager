@@ -9,6 +9,7 @@ import {
   deriveCompanionShellUrl,
   encodeVersionedFilamentQrRef,
   parseFilamentQrPayload,
+  resolvePreferredCompanionShellUrl,
 } from "./filament_qr_payload";
 
 test("encodeVersionedFilamentQrRef builds versioned references", () => {
@@ -75,4 +76,23 @@ test("deriveCompanionShellUrl normalizes a host base URL to the companion shell"
     "http://192.168.1.50:4278/companion",
   );
   assert.equal(deriveCompanionShellUrl(""), null);
+});
+
+test("resolvePreferredCompanionShellUrl prefers the host companion link in client mode", () => {
+  assert.equal(
+    resolvePreferredCompanionShellUrl({
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://192.168.1.50:4278",
+      trustedLanShellUrl: "http://127.0.0.1:4278/companion",
+    }),
+    "http://192.168.1.50:4278/companion",
+  );
+  assert.equal(
+    resolvePreferredCompanionShellUrl({
+      clientReadOnly: false,
+      clientHostBaseUrl: "http://192.168.1.50:4278",
+      trustedLanShellUrl: "http://127.0.0.1:4278/companion",
+    }),
+    "http://127.0.0.1:4278/companion",
+  );
 });

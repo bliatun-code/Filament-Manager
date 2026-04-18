@@ -119,6 +119,20 @@ export function deriveCompanionShellUrl(
   }
 }
 
+export function resolvePreferredCompanionShellUrl(options?: {
+  clientReadOnly?: boolean;
+  clientHostBaseUrl?: string | null;
+  trustedLanShellUrl?: string | null;
+}): string | null {
+  if (options?.clientReadOnly) {
+    const clientShellUrl = deriveCompanionShellUrl(options.clientHostBaseUrl);
+    if (clientShellUrl) {
+      return clientShellUrl;
+    }
+  }
+  return normalizeRef(options?.trustedLanShellUrl) || null;
+}
+
 export function buildFilamentQrPayload(
   ref: string,
   options?: {

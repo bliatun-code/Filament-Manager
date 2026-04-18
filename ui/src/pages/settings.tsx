@@ -2750,7 +2750,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         });
 
       const [
-        { buildFilamentQrPayload },
+        { buildFilamentQrPayload, resolvePreferredCompanionShellUrl },
         { buildFilamentLabelQrDataUrl },
         { buildInventoryOverviewPrintPdfBase64 },
       ] = await Promise.all([
@@ -2759,12 +2759,18 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         import("../lib/inventory_overview_print"),
       ]);
 
+      const companionShellUrl = resolvePreferredCompanionShellUrl({
+        clientReadOnly: settingsClientReadOnly,
+        clientHostBaseUrl: settingsClientHostBaseUrl,
+        trustedLanShellUrl: trustedLanStatus?.shell_url ?? null,
+      });
+
       const printRows = await Promise.all(
         inStockRows.map(async (row) => {
           const qrReference = row.spool.id.trim();
           const qrPayload = buildFilamentQrPayload(qrReference, {
             mode: "companion",
-            companionShellUrl: trustedLanStatus?.shell_url ?? null,
+            companionShellUrl,
           }).payload;
           const qrDataUrl = await buildFilamentLabelQrDataUrl(qrPayload);
           return {
