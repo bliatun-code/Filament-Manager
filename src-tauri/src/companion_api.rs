@@ -1204,13 +1204,9 @@ async fn handle_find_spool_by_qr(
     {
         spool
     } else {
-        state
-            .service
-            .get_spool(qr_code)
-            .map_err(CompanionApiError::from)?
-            .ok_or_else(|| {
-                CompanionApiError::NotFound("No spool found for that QR code".to_string())
-            })?
+        return Err(CompanionApiError::NotFound(
+            "No spool found for that QR code".to_string(),
+        ));
     };
     Ok(Json(spool))
 }
