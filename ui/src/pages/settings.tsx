@@ -12,6 +12,7 @@ import {
   exportFullBackupJson,
   exportInventoryCsv,
   exportInventoryJson,
+  fetchLibrarySyncSpools,
   fetchLibrarySyncSnapshot,
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncPrinterSettings,
@@ -392,6 +393,51 @@ function exportDiagnosticCaptureSessionCsv(session: DiagnosticCaptureSession): s
   }
 
   return rows.join("\n");
+}
+
+function escapeInventoryExportCsv(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function buildInventoryExportCsv(rows: SpoolWithMasterRow[]): string {
+  const output = [
+    "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code",
+  ];
+  for (const entry of rows) {
+    output.push(
+      [
+        entry.spool.id,
+        entry.master.material,
+        entry.master.filament_name,
+        entry.master.color_name,
+        entry.spool.status,
+        String(entry.spool.remaining_g ?? 0),
+        entry.spool.location_id ?? "",
+        entry.spool.qr_code ?? "",
+      ]
+        .map(escapeInventoryExportCsv)
+        .join(","),
+    );
+  }
+  return output.join("\n");
+}
+
+function buildInventoryExportJson(rows: SpoolWithMasterRow[]): string {
+  return JSON.stringify(
+    rows.map((entry) => ({
+      spool_id: entry.spool.id,
+      material: entry.master.material,
+      filament_name: entry.master.filament_name,
+      color_name: entry.master.color_name,
+      status: entry.spool.status,
+      remaining_g: entry.spool.remaining_g ?? 0,
+      location: entry.spool.location_id ?? "",
+      qr_code: entry.spool.qr_code ?? "",
+    })),
+  );
 }
 
 function buildDiagnosticCaptureSession(
@@ -1361,13 +1407,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setLoading(true);
     }
     try {
-      const [snapshot, catalogRows, syncSettings, spoolSnapshot] = await Promise.all([
+      const [snapshot, catalogRows, syncSettings, localSpoolSnapshot] = await Promise.all([
         getPrinterSettings(),
         listMasterCatalog(5000),
         getLibrarySyncSettings(),
         listSpools(5000, 0),
       ]);
       let overviewRows: PrinterOverviewRow[] = [];
+      let nextSpoolRows = localSpoolSnapshot;
       let nextBambuLiveIntegrations = Object.fromEntries(
         (snapshot.bambu_live_integrations ?? []).map((entry) => [entry.printer_id, entry.config]),
       );
@@ -1375,11 +1422,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         const cachedPrinterRows = syncSettings.cached_printers?.rows ?? [];
         if (syncSettings.host_base_url && syncSettings.library_id) {
           try {
-            const [hostOverviewRows, hostPrinterSettings] = await Promise.all([
+            const [hostOverviewRows, hostPrinterSettings, hostSpoolRows] = await Promise.all([
               fetchLibrarySyncPrinterOverview(syncSettings.host_base_url, syncSettings.library_id),
               fetchLibrarySyncPrinterSettings(syncSettings.host_base_url, syncSettings.library_id),
+              fetchLibrarySyncSpools(syncSettings.host_base_url, syncSettings.library_id, 5000, 0),
             ]);
             overviewRows = hostOverviewRows;
+            nextSpoolRows = hostSpoolRows;
             nextBambuLiveIntegrations = Object.fromEntries(
               (hostPrinterSettings.bambu_live_integrations ?? []).map((entry) => [
                 entry.printer_id,
@@ -1400,7 +1449,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         syncSettings.mode === "CLIENT" ? overviewRows.map((row) => row.printer) : snapshot.printers,
       );
       setPrinterOverview(overviewRows);
-      setSpoolRows(spoolSnapshot);
+      setSpoolRows(nextSpoolRows);
       setBambuLiveIntegrations(nextBambuLiveIntegrations);
       setCatalogMasters(catalogRows);
       setLibrarySyncSettings(syncSettings);
@@ -2610,6 +2659,29 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     URL.revokeObjectURL(url);
   }
 
+  async function loadSettingsInventoryRows(): Promise<SpoolWithMasterRow[]> {
+    const allRows: SpoolWithMasterRow[] = [];
+    let offset = 0;
+    const limit = 200;
+    while (true) {
+      const page =
+        settingsClientReadOnly && settingsClientHostBaseUrl && settingsClientLibraryId
+          ? await fetchLibrarySyncSpools(
+              settingsClientHostBaseUrl,
+              settingsClientLibraryId,
+              limit,
+              offset,
+            )
+          : await listSpools(limit, offset);
+      allRows.push(...page);
+      if (page.length < limit) {
+        break;
+      }
+      offset += page.length;
+    }
+    return allRows;
+  }
+
   async function handleExportFullBackup() {
     if (!tauri || busy) {
       return;
@@ -2661,7 +2733,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setError(null);
     setInfo(null);
     try {
-      const payload = await exportInventoryCsv();
+      const payload =
+        settingsClientReadOnly && settingsClientHostBaseUrl && settingsClientLibraryId
+          ? { content: buildInventoryExportCsv(await loadSettingsInventoryRows()) }
+          : await exportInventoryCsv();
       downloadTextFile(
         payload.content,
         `filament-manager-inventory-${Date.now()}.csv`,
@@ -2689,7 +2764,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setError(null);
     setInfo(null);
     try {
-      const payload = await exportInventoryJson();
+      const payload =
+        settingsClientReadOnly && settingsClientHostBaseUrl && settingsClientLibraryId
+          ? { content: buildInventoryExportJson(await loadSettingsInventoryRows()) }
+          : await exportInventoryJson();
       downloadTextFile(
         payload.content,
         `filament-manager-inventory-${Date.now()}.json`,
@@ -2717,17 +2795,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setError(null);
     setInfo(null);
     try {
-      const allRows: SpoolWithMasterRow[] = [];
-      let offset = 0;
-      const limit = 200;
-      while (true) {
-        const page = await listSpools(limit, offset);
-        allRows.push(...page);
-        if (page.length < limit) {
-          break;
-        }
-        offset += page.length;
-      }
+      const allRows = await loadSettingsInventoryRows();
 
       const inStockRows = allRows
         .filter((row) => {
