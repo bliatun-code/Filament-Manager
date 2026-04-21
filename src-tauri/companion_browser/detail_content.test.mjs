@@ -179,7 +179,7 @@ test("detail content localizes core labels in norwegian", () => {
 
   assert.match(html, /Detaljer/);
   assert.match(html, /Nåværende plassering/);
-  assert.match(html, /Hjemmeplassering \(valgfritt\)/);
+  assert.match(html, /Hjemmeplassering/);
   assert.match(html, /Målt totalvekt \(g\)/);
   assert.match(html, /Tom rull-vekt \(g\)/);
   assert.match(html, /Lagre vekt/);

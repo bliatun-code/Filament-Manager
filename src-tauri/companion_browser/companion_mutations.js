@@ -259,6 +259,14 @@ export function createCompanionMutations(options) {
     const normalizedStatus = String(statusValue || "").trim().toUpperCase();
     const normalizedLocation = String(locationValue || "").trim();
     const normalizedHomeLocation = String(homeLocationValue || "").trim();
+    const currentSpool = state.spools.find((row) => String(row?.spool?.id || "").trim() === trimmedSpoolId) || null;
+    const currentStatus = String(currentSpool?.spool?.status || "").trim().toUpperCase();
+    const currentLocation = String(currentSpool?.spool?.location_id || "").trim();
+    const currentHomeLocation = String(currentSpool?.spool?.home_location_id || "").trim();
+    const homeLocationOnlyUpdate =
+      normalizedStatus === currentStatus &&
+      normalizedLocation === currentLocation &&
+      normalizedHomeLocation !== currentHomeLocation;
 
     if (!trimmedSpoolId) {
       setStatus(tr("status.selectSpoolBeforeEdit", "Select a spool before editing its details."), "error");
@@ -288,12 +296,24 @@ export function createCompanionMutations(options) {
         }),
       });
       await refreshOverview();
-      setDetailFeedback(trimmedSpoolId, tr("status.spoolDetailsUpdatedJustNow", "Details updated just now."));
-      setStatus(tr("status.spoolDetailsUpdated", "Spool details updated."), "success");
+      setDetailFeedback(
+        trimmedSpoolId,
+        homeLocationOnlyUpdate
+          ? tr("status.homeLocationSaved", "Home location saved.")
+          : tr("status.spoolDetailsUpdatedJustNow", "Details updated just now."),
+      );
+      setStatus(
+        homeLocationOnlyUpdate
+          ? tr("status.homeLocationSaved", "Home location saved.")
+          : tr("status.spoolDetailsUpdated", "Spool details updated."),
+        "success",
+      );
     } catch (error) {
       setStatus(
         translateKnownCompanionError(error.message) ||
-          tr("status.spoolDetailsUpdateFailed", "Failed to update spool details."),
+          (homeLocationOnlyUpdate
+            ? tr("status.homeLocationSaveFailed", "Failed to save home location.")
+            : tr("status.spoolDetailsUpdateFailed", "Failed to update spool details.")),
         "error",
       );
       render();

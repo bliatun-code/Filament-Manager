@@ -3749,7 +3749,7 @@ export default function InventoryPage({
         );
         await reloadSpools();
         await reloadPrinterOverview();
-        setInfoMessage(t("inventory.locationSaved", "Location updated."));
+        setInfoMessage(t("inventory.homeLocationSaved", "Home location saved."));
         return;
       }
       await updateSpoolDetails({
@@ -3763,13 +3763,13 @@ export default function InventoryPage({
       await reloadPrinterOverview();
       await reloadHistory(selectedSpool.id);
       await reloadUsage(selectedSpool.id);
-      setInfoMessage(t("inventory.locationSaved", "Location updated."));
+      setInfoMessage(t("inventory.homeLocationSaved", "Home location saved."));
     } catch (updateError) {
       console.error(updateError);
       setError(
         commandErrorText(
           updateError,
-          t("inventory.error.updateLocation", "Failed to update location."),
+          t("inventory.error.updateHomeLocation", "Failed to save home location."),
         ),
       );
     } finally {

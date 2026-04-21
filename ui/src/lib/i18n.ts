@@ -326,6 +326,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       borrowedInRegistered: "Borrowed-in spool registered",
       tareWeightUpdated: "Empty spool weight updated.",
       locationSaved: "Location updated.",
+      homeLocationSaved: "Home location saved.",
       editLocation: "Edit location",
       locationOptional: "Location (optional)",
       editHomeLocation: "Home location",
@@ -471,6 +472,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         updateWeight: "Failed to update weight.",
         updateTareWeight: "Failed to update empty spool weight.",
         updateLocation: "Failed to update location.",
+        updateHomeLocation: "Failed to save home location.",
         toggleLost: "Failed to update lost status.",
         refill: "Failed to reactivate roll.",
         refillRequiresWeight:
@@ -1704,6 +1706,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       borrowedInRegistered: "Innlånt filament registrert",
       tareWeightUpdated: "Tom rull-vekt oppdatert.",
       locationSaved: "Lokasjon oppdatert.",
+      homeLocationSaved: "Hjemmeplassering lagret.",
       editLocation: "Rediger lokasjon",
       locationOptional: "Lokasjon (valgfritt)",
       editHomeLocation: "Hjemmeplassering",
@@ -1849,6 +1852,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         updateWeight: "Kunne ikke oppdatere vekt.",
         updateTareWeight: "Kunne ikke oppdatere tom rull-vekt.",
         updateLocation: "Kunne ikke oppdatere lokasjon.",
+        updateHomeLocation: "Kunne ikke lagre hjemmeplassering.",
         toggleLost: "Kunne ikke oppdatere tapt-status.",
         refill: "Kunne ikke reaktivere rullen.",
         refillRequiresWeight:
