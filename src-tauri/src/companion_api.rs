@@ -103,6 +103,207 @@ struct CompanionBinaryAsset {
     content: &'static [u8],
 }
 
+fn companion_browser_assets() -> &'static [(&'static str, CompanionBrowserAsset)] {
+    &[
+        (
+            "app.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_APP_JS,
+            },
+        ),
+        (
+            "companion_api_client.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_API_CLIENT_JS,
+            },
+        ),
+        (
+            "companion_app_shell.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_APP_SHELL_JS,
+            },
+        ),
+        (
+            "companion_click_router.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_CLICK_ROUTER_JS,
+            },
+        ),
+        (
+            "companion_data_controller.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_DATA_CONTROLLER_JS,
+            },
+        ),
+        (
+            "companion_dom_events.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_DOM_EVENTS_JS,
+            },
+        ),
+        (
+            "companion_i18n.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_I18N_JS,
+            },
+        ),
+        (
+            "companion_input_router.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_INPUT_ROUTER_JS,
+            },
+        ),
+        (
+            "companion_mutations.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_MUTATIONS_JS,
+            },
+        ),
+        (
+            "companion_qr_scanner.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_QR_SCANNER_JS,
+            },
+        ),
+        (
+            "qr_payload.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_QR_PAYLOAD_JS,
+            },
+        ),
+        (
+            "companion_render_focus.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_RENDER_FOCUS_JS,
+            },
+        ),
+        (
+            "companion_runtime_state.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_RUNTIME_STATE_JS,
+            },
+        ),
+        (
+            "companion_shell_state.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_SHELL_STATE_JS,
+            },
+        ),
+        (
+            "companion_submit_router.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_SUBMIT_ROUTER_JS,
+            },
+        ),
+        (
+            "companion_theme.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_THEME_JS,
+            },
+        ),
+        (
+            "detail_content.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_DETAIL_CONTENT_JS,
+            },
+        ),
+        (
+            "companion_logic.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_COMPANION_LOGIC_JS,
+            },
+        ),
+        (
+            "formatters.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_FORMATTERS_JS,
+            },
+        ),
+        (
+            "loans_shell.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_LOANS_SHELL_JS,
+            },
+        ),
+        (
+            "printer_slot_labels.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_PRINTER_SLOT_LABELS_JS,
+            },
+        ),
+        (
+            "printer_workspace.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_PRINTER_WORKSPACE_JS,
+            },
+        ),
+        (
+            "printers_shell.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_PRINTERS_SHELL_JS,
+            },
+        ),
+        (
+            "session_state.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_SESSION_STATE_JS,
+            },
+        ),
+        (
+            "settings_shell.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_SETTINGS_SHELL_JS,
+            },
+        ),
+        (
+            "shell_chrome.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_SHELL_CHROME_JS,
+            },
+        ),
+        (
+            "storage_shell.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_STORAGE_SHELL_JS,
+            },
+        ),
+        (
+            "app.css",
+            CompanionBrowserAsset {
+                content_type: "text/css; charset=utf-8",
+                content: COMPANION_BROWSER_CSS,
+            },
+        ),
+    ]
+}
+
 #[derive(Clone)]
 struct CompanionApiState {
     service: CompanionService,
@@ -2346,121 +2547,9 @@ fn validate_initial_weight(initial_weight_g: Option<i64>) -> Result<(), Companio
 }
 
 fn companion_browser_asset(path: &str) -> Option<CompanionBrowserAsset> {
-    match path {
-        "app.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_APP_JS,
-        }),
-        "companion_api_client.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_API_CLIENT_JS,
-        }),
-        "companion_app_shell.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_APP_SHELL_JS,
-        }),
-        "companion_click_router.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_CLICK_ROUTER_JS,
-        }),
-        "companion_data_controller.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_DATA_CONTROLLER_JS,
-        }),
-        "companion_dom_events.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_DOM_EVENTS_JS,
-        }),
-        "companion_i18n.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_I18N_JS,
-        }),
-        "companion_input_router.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_INPUT_ROUTER_JS,
-        }),
-        "companion_mutations.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_MUTATIONS_JS,
-        }),
-        "companion_qr_scanner.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_QR_SCANNER_JS,
-        }),
-        "qr_payload.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_QR_PAYLOAD_JS,
-        }),
-        "companion_render_focus.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_RENDER_FOCUS_JS,
-        }),
-        "companion_runtime_state.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_RUNTIME_STATE_JS,
-        }),
-        "companion_shell_state.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_SHELL_STATE_JS,
-        }),
-        "companion_submit_router.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_SUBMIT_ROUTER_JS,
-        }),
-        "companion_theme.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_THEME_JS,
-        }),
-        "detail_content.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_DETAIL_CONTENT_JS,
-        }),
-        "companion_logic.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_COMPANION_LOGIC_JS,
-        }),
-        "formatters.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_FORMATTERS_JS,
-        }),
-        "loans_shell.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_LOANS_SHELL_JS,
-        }),
-        "printer_slot_labels.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_PRINTER_SLOT_LABELS_JS,
-        }),
-        "printer_workspace.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_PRINTER_WORKSPACE_JS,
-        }),
-        "printers_shell.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_PRINTERS_SHELL_JS,
-        }),
-        "session_state.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_SESSION_STATE_JS,
-        }),
-        "settings_shell.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_SETTINGS_SHELL_JS,
-        }),
-        "shell_chrome.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_SHELL_CHROME_JS,
-        }),
-        "storage_shell.js" => Some(CompanionBrowserAsset {
-            content_type: "application/javascript; charset=utf-8",
-            content: COMPANION_BROWSER_STORAGE_SHELL_JS,
-        }),
-        "app.css" => Some(CompanionBrowserAsset {
-            content_type: "text/css; charset=utf-8",
-            content: COMPANION_BROWSER_CSS,
-        }),
-        _ => None,
-    }
+    companion_browser_assets()
+        .iter()
+        .find_map(|(asset_path, asset)| (*asset_path == path).then_some(*asset))
 }
 
 fn companion_browser_binary_asset(path: &str) -> Option<CompanionBinaryAsset> {
@@ -2536,7 +2625,7 @@ impl IntoResponse for CompanionApiError {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_router, hash_secret, CompanionApiState, COMPANION_CSRF_HEADER,
+        build_router, companion_browser_assets, hash_secret, CompanionApiState, COMPANION_CSRF_HEADER,
         COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_DEVICE_COOKIE,
     };
     use crate::app_services::CompanionService;
@@ -5050,6 +5139,26 @@ mod tests {
                 String::from_utf8(module_body.to_vec()).map_err(|error| error.to_string())?;
             assert!(module_text.contains("createCompanionApiClient"));
 
+            for (asset_path, asset) in companion_browser_assets() {
+                let response = router
+                    .clone()
+                    .oneshot(
+                        Request::builder()
+                            .uri(format!("/companion/{asset_path}"))
+                            .body(Body::empty())
+                            .map_err(|error| error.to_string())?,
+                    )
+                    .await
+                    .map_err(|error| error.to_string())?;
+                assert_eq!(response.status(), StatusCode::OK);
+                let content_type = response
+                    .headers()
+                    .get(axum::http::header::CONTENT_TYPE)
+                    .and_then(|value| value.to_str().ok())
+                    .unwrap_or_default();
+                assert_eq!(content_type, asset.content_type);
+            }
+
             let icon_response = router
                 .clone()
                 .oneshot(
@@ -5067,198 +5176,6 @@ mod tests {
                 .and_then(|value| value.to_str().ok())
                 .unwrap_or_default();
             assert!(icon_content_type.starts_with("image/png"));
-
-            let storage_shell_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/storage_shell.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(storage_shell_response.status(), StatusCode::OK);
-
-            let companion_app_shell_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/companion_app_shell.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(companion_app_shell_response.status(), StatusCode::OK);
-
-            let companion_mutations_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/companion_mutations.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(companion_mutations_response.status(), StatusCode::OK);
-
-            let companion_qr_scanner_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/companion_qr_scanner.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(companion_qr_scanner_response.status(), StatusCode::OK);
-
-            let companion_render_focus_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/companion_render_focus.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(companion_render_focus_response.status(), StatusCode::OK);
-
-            let companion_click_router_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/companion_click_router.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(companion_click_router_response.status(), StatusCode::OK);
-
-            let companion_data_controller_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/companion_data_controller.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(companion_data_controller_response.status(), StatusCode::OK);
-
-            let companion_dom_events_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/companion_dom_events.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(companion_dom_events_response.status(), StatusCode::OK);
-
-            let companion_input_router_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/companion_input_router.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(companion_input_router_response.status(), StatusCode::OK);
-
-            let companion_shell_state_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/companion_shell_state.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(companion_shell_state_response.status(), StatusCode::OK);
-
-            let companion_submit_router_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/companion_submit_router.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(companion_submit_router_response.status(), StatusCode::OK);
-
-            let companion_runtime_state_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/companion_runtime_state.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(companion_runtime_state_response.status(), StatusCode::OK);
-
-            let companion_i18n_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/companion_i18n.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(companion_i18n_response.status(), StatusCode::OK);
-
-            let loans_shell_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/loans_shell.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(loans_shell_response.status(), StatusCode::OK);
-
-            let settings_shell_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/settings_shell.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(settings_shell_response.status(), StatusCode::OK);
-
-            let shell_chrome_response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri("/companion/shell_chrome.js")
-                        .body(Body::empty())
-                        .map_err(|error| error.to_string())?,
-                )
-                .await
-                .map_err(|error| error.to_string())?;
-            assert_eq!(shell_chrome_response.status(), StatusCode::OK);
 
             let missing_asset = router
                 .oneshot(
