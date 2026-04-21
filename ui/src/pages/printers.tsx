@@ -7,12 +7,10 @@ import {
   fetchCachedLibrarySyncPrinterOverview,
   fetchCachedLibrarySyncSpools,
   fetchLibrarySyncPrinterOverview,
-  fetchLibrarySyncSpools,
   getLibrarySyncSettings,
   getPrinterSettings,
   isTauri,
   listPrinterOverview,
-  listSpools,
   recordPrintUsage,
   recordLibrarySyncHostPrintUsage,
   updateLibrarySyncHostSpoolRfidTag,
@@ -25,6 +23,7 @@ import {
   type PrinterAmsSlotRow,
   type SpoolWithMasterRow,
 } from "../lib/tauri_client";
+import { loadSpoolRowsPage } from "../lib/spool_data_source";
 import { AppModal } from "../components/app_modal";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { ModalHeader, modalPanelClassName } from "../components/modal_chrome";
@@ -660,13 +659,33 @@ export default function PrintersPage() {
         clientReadOnly && clientHostBaseUrl && clientLibraryId
           ? [
               fetchLibrarySyncPrinterOverview(clientHostBaseUrl, clientLibraryId),
-              fetchLibrarySyncSpools(clientHostBaseUrl, clientLibraryId, 1200, 0),
+              loadSpoolRowsPage(
+                {
+                  clientReadOnly,
+                  clientHostBaseUrl,
+                  clientLibraryId,
+                },
+                1200,
+                0,
+              ),
               Promise.resolve({
                 printer_models: supportedPrinterModels,
                 bambu_live_integrations: [],
               }),
             ]
-          : [listPrinterOverview(), listSpools(1200, 0), getPrinterSettings()],
+          : [
+              listPrinterOverview(),
+              loadSpoolRowsPage(
+                {
+                  clientReadOnly,
+                  clientHostBaseUrl,
+                  clientLibraryId,
+                },
+                1200,
+                0,
+              ),
+              getPrinterSettings(),
+            ],
       );
       if (clientReadOnly) {
         setClientPrinterSource("LIVE");

@@ -18,6 +18,7 @@ import {
 import { useI18n, type Locale } from "../lib/i18n";
 import { LOW_STOCK_GRAMS } from "../lib/inventory_constants";
 import { materialTone } from "../lib/material_theme";
+import { loadSpoolRowsPage } from "../lib/spool_data_source";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import {
   formatPrinterSlotLabelForModel,
@@ -40,7 +41,6 @@ import {
   fetchCachedLibrarySyncPrinterOverview,
   fetchCachedLibrarySyncSpools,
   fetchLibrarySyncPrinterOverview,
-  fetchLibrarySyncSpools,
   fetchLibrarySyncWishlistItems,
   getPrinterSettings,
   getLibrarySyncSettings,
@@ -52,7 +52,6 @@ import {
   listWishlistItems,
   listSpoolHistory,
   listSpoolUsage,
-  listSpools,
   printLabelHtml,
   purgeLibrarySyncHostSpool,
   purgeSpool,
@@ -1381,9 +1380,15 @@ export default function InventoryPage({
     setLoading(true);
     try {
       const rows =
-        clientReadOnly && clientHostBaseUrl && clientLibraryId
-          ? await fetchLibrarySyncSpools(clientHostBaseUrl, clientLibraryId, 1200, 0)
-          : await listSpools(1200, 0);
+        await loadSpoolRowsPage(
+          {
+            clientReadOnly,
+            clientHostBaseUrl,
+            clientLibraryId,
+          },
+          1200,
+          0,
+        );
       if (clientReadOnly) {
         setClientInventorySource("LIVE");
         const cached = await fetchCachedLibrarySyncSpools().catch(() => null);

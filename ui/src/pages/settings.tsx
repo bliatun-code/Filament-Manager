@@ -12,7 +12,6 @@ import {
   exportFullBackupJson,
   exportInventoryCsv,
   exportInventoryJson,
-  fetchLibrarySyncSpools,
   fetchLibrarySyncSnapshot,
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncPrinterSettings,
@@ -25,7 +24,6 @@ import {
   isTauri,
   listMasterCatalog,
   listPrinterOverview,
-  listSpools,
   listTrustedLanInterfaces,
   listTrustedLanPairedBrowsers,
   printLabelPdf,
@@ -72,6 +70,7 @@ import { neutralChipClass } from "../lib/chip_styles";
 import { copyTextToClipboard } from "../lib/clipboard";
 import { PrinterModelPreview } from "../components/printer_model_preview";
 import { DiagnosticCaptureChart } from "../components/diagnostic_capture_chart";
+import { loadAllSpoolRows } from "../lib/spool_data_source";
 import {
   describePrinterCapability,
   describeConfiguredPrinterSetup,
@@ -1411,7 +1410,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         getPrinterSettings(),
         listMasterCatalog(5000),
         getLibrarySyncSettings(),
-        listSpools(5000, 0),
+        loadAllSpoolRows(
+          {
+            clientReadOnly: false,
+          },
+          5000,
+        ),
       ]);
       let overviewRows: PrinterOverviewRow[] = [];
       let nextSpoolRows = localSpoolSnapshot;
@@ -1425,7 +1429,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
             const [hostOverviewRows, hostPrinterSettings, hostSpoolRows] = await Promise.all([
               fetchLibrarySyncPrinterOverview(syncSettings.host_base_url, syncSettings.library_id),
               fetchLibrarySyncPrinterSettings(syncSettings.host_base_url, syncSettings.library_id),
-              fetchLibrarySyncSpools(syncSettings.host_base_url, syncSettings.library_id, 5000, 0),
+              loadAllSpoolRows(
+                {
+                  clientReadOnly: true,
+                  clientHostBaseUrl: syncSettings.host_base_url,
+                  clientLibraryId: syncSettings.library_id,
+                },
+                5000,
+              ),
             ]);
             overviewRows = hostOverviewRows;
             nextSpoolRows = hostSpoolRows;
@@ -2660,26 +2671,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   }
 
   async function loadSettingsInventoryRows(): Promise<SpoolWithMasterRow[]> {
-    const allRows: SpoolWithMasterRow[] = [];
-    let offset = 0;
-    const limit = 200;
-    while (true) {
-      const page =
-        settingsClientReadOnly && settingsClientHostBaseUrl && settingsClientLibraryId
-          ? await fetchLibrarySyncSpools(
-              settingsClientHostBaseUrl,
-              settingsClientLibraryId,
-              limit,
-              offset,
-            )
-          : await listSpools(limit, offset);
-      allRows.push(...page);
-      if (page.length < limit) {
-        break;
-      }
-      offset += page.length;
-    }
-    return allRows;
+    return loadAllSpoolRows(
+      {
+        clientReadOnly: settingsClientReadOnly,
+        clientHostBaseUrl: settingsClientHostBaseUrl,
+        clientLibraryId: settingsClientLibraryId,
+      },
+      200,
+    );
   }
 
   async function handleExportFullBackup() {
