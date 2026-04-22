@@ -73,23 +73,29 @@ import { DiagnosticCaptureChart } from "../components/diagnostic_capture_chart";
 import { loadAllSpoolRows } from "../lib/spool_data_source";
 import {
   averageIntervalMs,
+  buildDiagnosticDisplayTrays,
   buildDiagnosticCaptureSession,
   buildDiagnosticChartFieldOptions,
   buildDiagnosticChartPoints,
+  buildDiagnosticFallbackSummary,
   buildDiagnosticSignalQualityBuckets,
-  classifyDiagnosticField,
-  diagnosticFieldNumber,
-  diagnosticFieldValue,
+  countChangedDiagnosticFields,
+  countDiagnosticIdentitySignals,
+  countReviewDiagnosticTrays,
   diffMs,
   exportDiagnosticCaptureSessionCsv,
   extractDiagnosticTraySnapshots,
   flattenDiagnosticFields,
+  groupDiagnosticFields,
+  isDiagnosticAmsReadInProgress,
+  latestDiagnosticCaptureSeenAt,
+  filterDiagnosticFields,
   formatIntervalMs,
   pushRecentDiagnosticValue,
-  type DiagnosticCaptureField,
+  sortDiagnosticFields,
   type DiagnosticCaptureSession,
   type DiagnosticFilterKey,
-  type DiagnosticGroupKey,
+  type DiagnosticFieldGroup,
   type DiagnosticSortKey,
 } from "../lib/diagnostic_capture";
 import {
@@ -3132,119 +3138,44 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 const captureTrayByIndex = new Map(
                   captureTraySnapshots.map((tray) => [tray.trayIndex, tray]),
                 );
-                const displayTrays =
-                  observedState?.trays.length && observedState.trays.length > 0
-                    ? observedState.trays
-                    : captureTraySnapshots.map((tray) => ({
-                        tray_index: tray.trayIndex,
-                        loaded: tray.loaded,
-                        filament_type: tray.filamentType ?? null,
-                        filament_name: tray.filamentName ?? null,
-                        color_hex: tray.colorHex ?? null,
-                        remaining_percent: tray.remainingPercent ?? null,
-                        match_status: null,
-                        match_note:
-                          [tray.tagUid, tray.trayUuid, tray.trayInfoIdx, tray.trayIdName]
-                            .filter(Boolean)
-                            .join(" · ") || null,
-                      }));
+                const displayTrays = buildDiagnosticDisplayTrays(observedState?.trays ?? [], diagnosticFields);
                 const captureSessionStartedAt = diagnosticSession?.startedAt ?? null;
                 const captureSessionSeededAt = diagnosticSession?.seededFromObservedAt ?? null;
-                const captureSessionLastSeenAt =
-                  diagnosticSession?.lastCapturedAt ??
-                  (diagnosticFields
-                    .map((field) => field.lastSeenAt)
-                    .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null);
-                const changedFieldCount = diagnosticFields.filter((field) => field.changeCount > 1).length;
-                const identityFieldCount = diagnosticFields.filter((field) =>
-                  /(tag_uid|tray_uuid|chip_id|tray_info_idx|tray_id_name)/.test(field.path),
-                ).length;
-                const amsTrayReadingBits = diagnosticFieldValue(diagnosticFields, "ams.tray_reading_bits");
-                const amsReadInProgress =
-                  Boolean(
-                    amsTrayReadingBits &&
-                      amsTrayReadingBits.trim() &&
-                      !/^0+$/i.test(amsTrayReadingBits.trim()),
-                  );
+                const captureSessionLastSeenAt = latestDiagnosticCaptureSeenAt(
+                  diagnosticSession,
+                  diagnosticFields,
+                );
+                const changedFieldCount = countChangedDiagnosticFields(diagnosticFields);
+                const identityFieldCount = countDiagnosticIdentitySignals(diagnosticFields);
+                const amsReadInProgress = isDiagnosticAmsReadInProgress(diagnosticFields);
                 const signalQualityBuckets = buildDiagnosticSignalQualityBuckets(diagnosticFields);
+                const fallbackSummary = buildDiagnosticFallbackSummary(diagnosticFields);
                 const fallbackSummaryParts = [
-                  diagnosticFieldNumber(diagnosticFields, "mc_percent") != null
-                    ? `${diagnosticFieldNumber(diagnosticFields, "mc_percent")}%`
+                  fallbackSummary.progressPercent != null ? `${fallbackSummary.progressPercent}%` : null,
+                  fallbackSummary.remainingMinutes != null ? `${fallbackSummary.remainingMinutes} min` : null,
+                  fallbackSummary.activeTrayIndex != null
+                    ? `${t("settings.bambuLiveSummaryTray", "Tray")} ${fallbackSummary.activeTrayIndex}`
                     : null,
-                  diagnosticFieldNumber(diagnosticFields, "mc_remaining_time") != null
-                    ? `${diagnosticFieldNumber(diagnosticFields, "mc_remaining_time")} min`
+                  fallbackSummary.amsHumidityIndex != null
+                    ? `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${fallbackSummary.amsHumidityIndex}`
                     : null,
-                  diagnosticFieldNumber(diagnosticFields, "ams.tray_now") != null
-                    ? `${t("settings.bambuLiveSummaryTray", "Tray")} ${diagnosticFieldNumber(diagnosticFields, "ams.tray_now")}`
-                    : diagnosticFieldNumber(diagnosticFields, "tray_now") != null
-                      ? `${t("settings.bambuLiveSummaryTray", "Tray")} ${diagnosticFieldNumber(diagnosticFields, "tray_now")}`
-                      : null,
-                  diagnosticFieldNumber(diagnosticFields, "ams.ams[0].humidity") != null
-                    ? `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${diagnosticFieldNumber(diagnosticFields, "ams.ams[0].humidity")}`
-                    : diagnosticFieldNumber(diagnosticFields, "humidity") != null
-                      ? `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${diagnosticFieldNumber(diagnosticFields, "humidity")}`
-                      : null,
                 ].filter(Boolean);
-                const filteredDiagnosticFields = diagnosticFields.filter((field) => {
-                  if (diagnosticFilter === "changed") {
-                    return field.changeCount > 1;
-                  }
-                  if (diagnosticFilter === "recent") {
-                    const diff = diffMs(new Date().toISOString(), field.lastSeenAt);
-                    return diff != null && diff <= 60_000;
-                  }
-                  if (diagnosticFilter === "high_frequency") {
-                    return field.avgReceiveIntervalMs != null && field.avgReceiveIntervalMs <= 5_000;
-                  }
-                  return true;
-                });
-                const sortedDiagnosticFields = [...filteredDiagnosticFields].sort((left, right) => {
-                  if (diagnosticSort === "last_seen_desc") {
-                    return Date.parse(right.lastSeenAt) - Date.parse(left.lastSeenAt);
-                  }
-                  if (diagnosticSort === "avg_seen_interval") {
-                    return (left.avgReceiveIntervalMs ?? Number.POSITIVE_INFINITY)
-                      - (right.avgReceiveIntervalMs ?? Number.POSITIVE_INFINITY);
-                  }
-                  if (diagnosticSort === "change_count") {
-                    return right.changeCount - left.changeCount;
-                  }
-                  if (diagnosticSort === "avg_change_interval") {
-                    return (left.avgChangeIntervalMs ?? Number.POSITIVE_INFINITY)
-                      - (right.avgChangeIntervalMs ?? Number.POSITIVE_INFINITY);
-                  }
-                  return left.path.localeCompare(right.path, undefined, {
-                    numeric: true,
-                    sensitivity: "base",
-                  });
-                });
-                const diagnosticGroups: Array<{
-                  key: DiagnosticGroupKey;
-                  label: string;
-                  fields: DiagnosticCaptureField[];
-                }> = (["print", "ams", "tray", "other"] as const)
-                  .map((groupKey) => ({
-                    key: groupKey,
-                    label:
-                      groupKey === "print"
-                        ? t("settings.bambuLiveGroupPrint", "Print & status")
-                        : groupKey === "ams"
-                          ? t("settings.bambuLiveGroupAms", "AMS")
-                          : groupKey === "tray"
-                            ? t("settings.bambuLiveGroupTray", "Tray & chip")
-                            : t("settings.bambuLiveGroupOther", "Other"),
-                    fields: sortedDiagnosticFields.filter(
-                      (field) => classifyDiagnosticField(field.path) === groupKey,
-                    ),
-                  }))
-                  .filter((group) => group.fields.length > 0);
-                const reviewTrayCount =
-                  observedState?.trays.filter(
-                    (tray) =>
-                      tray.match_status &&
-                      tray.match_status !== "clear_match" &&
-                      tray.match_status !== "unknown_from_printer",
-                  ).length ?? 0;
+                const filteredDiagnosticFields = filterDiagnosticFields(diagnosticFields, diagnosticFilter);
+                const sortedDiagnosticFields = sortDiagnosticFields(filteredDiagnosticFields, diagnosticSort);
+                const diagnosticGroups: Array<DiagnosticFieldGroup & { label: string }> = groupDiagnosticFields(
+                  sortedDiagnosticFields,
+                ).map((group) => ({
+                  ...group,
+                  label:
+                    group.key === "print"
+                      ? t("settings.bambuLiveGroupPrint", "Print & status")
+                      : group.key === "ams"
+                        ? t("settings.bambuLiveGroupAms", "AMS")
+                        : group.key === "tray"
+                          ? t("settings.bambuLiveGroupTray", "Tray & chip")
+                          : t("settings.bambuLiveGroupOther", "Other"),
+                }));
+                const reviewTrayCount = countReviewDiagnosticTrays(observedState?.trays ?? []);
                 const hasMultiMaterial = hasConfiguredMultiMaterial(printerSlots);
                 const configuredSetup = describeConfiguredPrinterSetup(
                   t,

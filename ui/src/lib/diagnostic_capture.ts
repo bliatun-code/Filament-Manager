@@ -1,4 +1,4 @@
-import type { BambuLiveIntegrationEntry } from "./tauri_client";
+import type { BambuLiveIntegrationEntry, BambuLiveObservedTray } from "./tauri_client";
 
 export type DiagnosticCaptureField = {
   path: string;
@@ -66,6 +66,18 @@ export type DiagnosticSignalQualityBucket = {
   label: string;
   description: string;
   fields: DiagnosticCaptureField[];
+};
+
+export type DiagnosticFieldGroup = {
+  key: DiagnosticGroupKey;
+  fields: DiagnosticCaptureField[];
+};
+
+export type DiagnosticFallbackSummary = {
+  progressPercent: number | null;
+  remainingMinutes: number | null;
+  activeTrayIndex: number | null;
+  amsHumidityIndex: number | null;
 };
 
 export function flattenDiagnosticFields(
@@ -497,4 +509,124 @@ export function buildDiagnosticChartPoints(
         : null;
     })
     .filter((point): point is { observedAt: string; value: number; valueText: string } => point != null);
+}
+
+export function buildDiagnosticDisplayTrays(
+  observedTrays: BambuLiveObservedTray[],
+  fields: DiagnosticCaptureField[],
+): BambuLiveObservedTray[] {
+  if (observedTrays.length > 0) {
+    return observedTrays;
+  }
+  return extractDiagnosticTraySnapshots(fields).map((tray) => ({
+    tray_index: tray.trayIndex,
+    loaded: tray.loaded,
+    filament_type: tray.filamentType ?? null,
+    filament_name: tray.filamentName ?? null,
+    color_hex: tray.colorHex ?? null,
+    remaining_percent: tray.remainingPercent ?? null,
+    match_status: null,
+    match_note:
+      [tray.tagUid, tray.trayUuid, tray.trayInfoIdx, tray.trayIdName].filter(Boolean).join(" · ") || null,
+  }));
+}
+
+export function latestDiagnosticCaptureSeenAt(
+  session: DiagnosticCaptureSession | null,
+  fields: DiagnosticCaptureField[],
+): string | null {
+  return (
+    session?.lastCapturedAt ??
+    fields.map((field) => field.lastSeenAt).sort((left, right) => Date.parse(right) - Date.parse(left))[0] ??
+    null
+  );
+}
+
+export function countChangedDiagnosticFields(fields: DiagnosticCaptureField[]): number {
+  return fields.filter((field) => field.changeCount > 1).length;
+}
+
+export function countDiagnosticIdentitySignals(fields: DiagnosticCaptureField[]): number {
+  return fields.filter((field) => /(tag_uid|tray_uuid|chip_id|tray_info_idx|tray_id_name)/.test(field.path)).length;
+}
+
+export function isDiagnosticAmsReadInProgress(fields: DiagnosticCaptureField[]): boolean {
+  const amsTrayReadingBits = diagnosticFieldValue(fields, "ams.tray_reading_bits");
+  return Boolean(amsTrayReadingBits && amsTrayReadingBits.trim() && !/^0+$/i.test(amsTrayReadingBits.trim()));
+}
+
+export function buildDiagnosticFallbackSummary(fields: DiagnosticCaptureField[]): DiagnosticFallbackSummary {
+  return {
+    progressPercent: diagnosticFieldNumber(fields, "mc_percent"),
+    remainingMinutes: diagnosticFieldNumber(fields, "mc_remaining_time"),
+    activeTrayIndex: diagnosticFieldNumber(fields, "ams.tray_now") ?? diagnosticFieldNumber(fields, "tray_now"),
+    amsHumidityIndex:
+      diagnosticFieldNumber(fields, "ams.ams[0].humidity") ?? diagnosticFieldNumber(fields, "humidity"),
+  };
+}
+
+export function filterDiagnosticFields(
+  fields: DiagnosticCaptureField[],
+  filterKey: DiagnosticFilterKey,
+  nowIso = new Date().toISOString(),
+): DiagnosticCaptureField[] {
+  return fields.filter((field) => {
+    if (filterKey === "changed") {
+      return field.changeCount > 1;
+    }
+    if (filterKey === "recent") {
+      const diff = diffMs(nowIso, field.lastSeenAt);
+      return diff != null && diff <= 60_000;
+    }
+    if (filterKey === "high_frequency") {
+      return field.avgReceiveIntervalMs != null && field.avgReceiveIntervalMs <= 5_000;
+    }
+    return true;
+  });
+}
+
+export function sortDiagnosticFields(
+  fields: DiagnosticCaptureField[],
+  sortKey: DiagnosticSortKey,
+): DiagnosticCaptureField[] {
+  return [...fields].sort((left, right) => {
+    if (sortKey === "last_seen_desc") {
+      return Date.parse(right.lastSeenAt) - Date.parse(left.lastSeenAt);
+    }
+    if (sortKey === "avg_seen_interval") {
+      return (left.avgReceiveIntervalMs ?? Number.POSITIVE_INFINITY)
+        - (right.avgReceiveIntervalMs ?? Number.POSITIVE_INFINITY);
+    }
+    if (sortKey === "change_count") {
+      return right.changeCount - left.changeCount;
+    }
+    if (sortKey === "avg_change_interval") {
+      return (left.avgChangeIntervalMs ?? Number.POSITIVE_INFINITY)
+        - (right.avgChangeIntervalMs ?? Number.POSITIVE_INFINITY);
+    }
+    return left.path.localeCompare(right.path, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+  });
+}
+
+export function groupDiagnosticFields(fields: DiagnosticCaptureField[]): DiagnosticFieldGroup[] {
+  return (["print", "ams", "tray", "other"] as const)
+    .map((groupKey) => ({
+      key: groupKey,
+      fields: fields.filter((field) => classifyDiagnosticField(field.path) === groupKey),
+    }))
+    .filter((group) => group.fields.length > 0);
+}
+
+export function countReviewDiagnosticTrays(observedTrays: BambuLiveObservedTray[]): number {
+  return (
+    observedTrays.filter(
+      (tray) =>
+        tray.match_status &&
+        tray.match_status !== "clear_match" &&
+        tray.match_status !== "unknown_from_printer",
+    ).length ?? 0
+  );
 }
