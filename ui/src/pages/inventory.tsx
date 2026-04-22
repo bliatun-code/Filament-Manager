@@ -16,7 +16,21 @@ import {
   type FilamentQrMode,
 } from "../lib/filament_qr_payload";
 import { useI18n, type Locale } from "../lib/i18n";
-import { LOW_STOCK_GRAMS } from "../lib/inventory_constants";
+import {
+  buildMaterialOptions,
+  buildVendorOptions,
+  filterInventorySpools,
+  formatRollReference,
+  groupInventorySpools,
+  normalizeOwnershipType,
+  normalizeStatus,
+  type InventorySpool,
+  type OwnershipFilter,
+  type OwnershipType,
+  type SpoolGroup,
+  type SpoolStatus,
+  type StatusFilter,
+} from "../lib/inventory_list_model";
 import {
   buildBaselineCaptureFieldsBySlotId,
   buildObservedTrayCaptureSnapshot,
@@ -98,10 +112,6 @@ import {
   updateWishlistItemStatus,
 } from "../lib/tauri_client";
 
-type SpoolStatus = "IN_STOCK" | "ASSIGNED" | "BORROWED" | "EMPTY" | "LOST";
-type StatusFilter = "ALL" | SpoolStatus;
-type OwnershipType = "OWNED" | "BORROWED_IN";
-type OwnershipFilter = "ALL" | OwnershipType;
 type CreateMode = "bambu" | "esun" | "manual";
 type SidePanelMode = "MANAGE" | "ADD";
 type WishlistStatus = "WISHLIST" | "ON_ORDER" | "RECEIVED";
@@ -113,42 +123,6 @@ type InventoryPageProps = {
     seq: number;
   } | null;
   onConsumeNavigationIntent?: () => void;
-};
-
-type InventorySpool = {
-  id: string;
-  masterId: string;
-  vendor: string;
-  material: string;
-  filamentName: string;
-  colorName: string;
-  hexColor?: string | null;
-  initialWeightGrams: number;
-  status: SpoolStatus;
-  ownershipType: OwnershipType;
-  ownerName?: string | null;
-  ownerContact?: string | null;
-  ownershipNote?: string | null;
-  remainingGrams?: number | null;
-  spoolTareWeightGrams?: number | null;
-  location?: string | null;
-  homeLocation?: string | null;
-  qrCode?: string | null;
-  rfidTag?: string | null;
-  rfidObservedAt?: string | null;
-};
-
-type SpoolGroup = {
-  key: string;
-  vendor: string;
-  material: string;
-  filamentName: string;
-  colorName: string;
-  hexColor?: string | null;
-  ownershipType: OwnershipType;
-  ownerName?: string | null;
-  totalRemaining: number;
-  rolls: InventorySpool[];
 };
 
 type PrinterSlotOption = {
@@ -276,25 +250,6 @@ function SegmentedChoiceRow<T extends string>({
       </div>
     </div>
   );
-}
-
-function normalizeStatus(status: string): SpoolStatus {
-  const upper = status.toUpperCase();
-  if (upper === "IN_USE" || upper === "ASSIGNED") {
-    return "ASSIGNED";
-  }
-  if (upper === "BORROWED" || upper === "EMPTY" || upper === "LOST") {
-    return upper;
-  }
-  return "IN_STOCK";
-}
-
-function normalizeOwnershipType(raw?: string | null): OwnershipType {
-  const normalized = (raw ?? "").trim().toUpperCase().replaceAll("-", "_");
-  if (normalized === "BORROWED_IN") {
-    return "BORROWED_IN";
-  }
-  return "OWNED";
 }
 
 function toSwatchColor(raw?: string | null): string {
@@ -746,11 +701,6 @@ function rfidCaptureMatchMeta(
     };
   }
   return null;
-}
-
-function formatRollReference(spool: Pick<InventorySpool, "id">): string {
-  const normalizedId = spool.id.replace(/^spool_/, "");
-  return `#${normalizedId.slice(-6)}`;
 }
 
 function commandErrorText(error: unknown, fallback: string): string {
@@ -1320,120 +1270,32 @@ export default function InventoryPage({
     tauri,
   ]);
 
-  const vendorOptions = useMemo(() => {
-    const values = new Set<string>();
-    for (const spool of spools) {
-      const vendor = (spool.vendor || "").trim();
-      if (vendor) {
-        values.add(vendor);
-      }
-    }
-    return ["ALL", ...Array.from(values).sort((a, b) => a.localeCompare(b))];
-  }, [spools]);
+  const vendorOptions = useMemo(() => buildVendorOptions(spools), [spools]);
 
-  const materialOptions = useMemo(() => {
-    const values = new Set<string>();
-    for (const spool of spools) {
-      const material = spool.material.trim();
-      if (material) {
-        values.add(material);
-      }
-    }
-    return ["ALL", ...Array.from(values).sort((a, b) => a.localeCompare(b))];
-  }, [spools]);
+  const materialOptions = useMemo(() => buildMaterialOptions(spools), [spools]);
 
-  const filteredSpools = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return spools.filter((spool) => {
-      const normalizedStatus = normalizeStatus(spool.status);
-      const remaining = Math.max(
-        0,
-        spool.remainingGrams ?? spool.initialWeightGrams ?? 0,
-      );
-      const statusMatch =
-        statusFilter === "ALL"
-          ? normalizedStatus !== "EMPTY"
-          : normalizedStatus === statusFilter;
-      const ownershipMatch =
-        ownershipFilter === "ALL" ? true : spool.ownershipType === ownershipFilter;
-      const materialMatch =
-        materialFilter === "ALL" ? true : spool.material === materialFilter;
-      const vendorMatch =
-        vendorFilter === "ALL" ? true : spool.vendor === vendorFilter;
-      const lowStockMatch = lowStockOnly
-        ? normalizedStatus !== "EMPTY" &&
-          normalizedStatus !== "LOST" &&
-          remaining > 0 &&
-          remaining <= LOW_STOCK_GRAMS
-        : true;
-	      const searchMatch =
-	        term.length === 0
-	          ? true
-	          : `${spool.id} ${formatRollReference(spool)} ${spool.material} ${spool.filamentName} ${
-	              spool.colorName
-	            } ${spool.location ?? ""} ${spool.qrCode ?? ""} ${spool.rfidTag ?? ""} ${
-	              spool.ownerName ?? ""
-	            } ${spool.ownerContact ?? ""} ${
-	              spool.ownershipType === "BORROWED_IN" ? "borrowed in" : "owned"
-	            }`
-	              .toLowerCase()
-	              .includes(term);
-      return (
-        statusMatch &&
-        ownershipMatch &&
-        materialMatch &&
-        vendorMatch &&
-        lowStockMatch &&
-        searchMatch
-      );
-    });
-  }, [
-    lowStockOnly,
-    materialFilter,
-    ownershipFilter,
-    search,
-    spools,
-    statusFilter,
-    vendorFilter,
-  ]);
+  const filteredSpools = useMemo(
+    () =>
+      filterInventorySpools(spools, {
+        search,
+        statusFilter,
+        ownershipFilter,
+        materialFilter,
+        vendorFilter,
+        lowStockOnly,
+      }),
+    [
+      lowStockOnly,
+      materialFilter,
+      ownershipFilter,
+      search,
+      spools,
+      statusFilter,
+      vendorFilter,
+    ],
+  );
 
-  const groupedSpools = useMemo<SpoolGroup[]>(() => {
-    const index = new Map<string, SpoolGroup>();
-    for (const spool of filteredSpools) {
-      const key = `${spool.vendor}|${spool.material}|${spool.filamentName}|${spool.colorName}|${
-        spool.hexColor ?? ""
-      }|${spool.ownershipType}|${spool.ownerName ?? ""}`;
-      if (!index.has(key)) {
-        index.set(key, {
-          key,
-          vendor: spool.vendor,
-          material: spool.material,
-          filamentName: spool.filamentName,
-          colorName: spool.colorName,
-          hexColor: spool.hexColor,
-          ownershipType: spool.ownershipType,
-          ownerName: spool.ownerName ?? null,
-          totalRemaining: 0,
-          rolls: [],
-        });
-      }
-      const group = index.get(key);
-      if (!group) {
-        continue;
-      }
-      group.rolls.push(spool);
-      group.totalRemaining += spool.remainingGrams ?? 0;
-    }
-    return Array.from(index.values()).sort((left, right) => {
-      if (left.material !== right.material) {
-        return left.material.localeCompare(right.material);
-      }
-      if (left.filamentName !== right.filamentName) {
-        return left.filamentName.localeCompare(right.filamentName);
-      }
-      return left.colorName.localeCompare(right.colorName);
-    });
-  }, [filteredSpools]);
+  const groupedSpools = useMemo<SpoolGroup[]>(() => groupInventorySpools(filteredSpools), [filteredSpools]);
   const visibleInventoryCount = filteredSpools.length;
 
   const selectedSpool = useMemo(
