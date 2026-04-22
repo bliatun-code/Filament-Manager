@@ -7,20 +7,16 @@ import { neutralChipClass } from "../lib/chip_styles";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import { useI18n, type Locale } from "../lib/i18n";
 import { printerBrandSurfaceStyle } from "../lib/printer_branding";
+import {
+  deriveStatisticsLibrarySyncState,
+  loadStatisticsData,
+} from "../lib/statistics_data_source";
 import { useResolvedTheme } from "../lib/theme_mode";
 import {
-  fetchCachedLibrarySyncLoans,
   fetchLibrarySyncFilamentConsumption,
-  fetchCachedLibrarySyncPrinterOverview,
-  fetchLibrarySyncLoans,
-  fetchLibrarySyncPrinterOverview,
-  fetchLibrarySyncSnapshot,
   getLibrarySyncSettings,
-  inventoryOverview,
   listFilamentConsumption,
   isTauri,
-  listLoanUsageByPerson,
-  listPrinterOverview,
   listSpoolLoans,
   type FilamentConsumptionRow,
   type InventoryOverview,
@@ -58,6 +54,10 @@ type TranslateFn = (key: string, fallback: string) => string;
 
 function normalizeLoanDirection(value?: string | null): LoanDirection {
   return (value ?? "").trim().toUpperCase() === "INBOUND" ? "INBOUND" : "OUTBOUND";
+}
+
+function loanPartyName(row: SpoolLoanDetailsRow): string {
+  return (row.loan.counterparty_name ?? "").trim() || row.loan.borrower_name;
 }
 
 type BorrowerFilamentUsageRow = {
@@ -103,48 +103,6 @@ function groupedLoanUsage(rows: SpoolLoanDetailsRow[]): BorrowerFilamentUsageRow
     });
   }
   return Array.from(grouped.values()).sort((left, right) => right.consumedGrams - left.consumedGrams);
-}
-
-function loanPartyName(row: SpoolLoanDetailsRow): string {
-  return (row.loan.counterparty_name ?? "").trim() || row.loan.borrower_name;
-}
-
-function groupLoanUsageByPerson(
-  rows: SpoolLoanDetailsRow[],
-  direction: LoanDirection,
-): LoanUsageByPersonRow[] {
-  const grouped = new Map<string, LoanUsageByPersonRow>();
-  for (const row of rows) {
-    if (normalizeLoanDirection(row.loan.loan_direction) !== direction) {
-      continue;
-    }
-    const partyName = loanPartyName(row).trim();
-    if (!partyName) {
-      continue;
-    }
-    const current = grouped.get(partyName) ?? {
-      loan_direction: direction,
-      borrower_name: partyName,
-      total_consumed_g: 0,
-      completed_loans: 0,
-      active_loans: 0,
-    };
-    grouped.set(partyName, {
-      ...current,
-      total_consumed_g: current.total_consumed_g + Math.max(0, row.loan.consumed_grams ?? 0),
-      completed_loans: current.completed_loans + (row.loan.returned_at ? 1 : 0),
-      active_loans: current.active_loans + (row.loan.returned_at ? 0 : 1),
-    });
-  }
-  return Array.from(grouped.values()).sort((left, right) => {
-    if (right.active_loans !== left.active_loans) {
-      return right.active_loans - left.active_loans;
-    }
-    if (right.total_consumed_g !== left.total_consumed_g) {
-      return right.total_consumed_g - left.total_consumed_g;
-    }
-    return left.borrower_name.localeCompare(right.borrower_name);
-  });
 }
 
 function toSwatchColor(raw?: string | null): string {
@@ -391,113 +349,28 @@ export default function StatisticsPage() {
       setError(null);
       try {
         const syncSettings = await getLibrarySyncSettings();
-        const isClientMode =
-          syncSettings.mode === "CLIENT" &&
-          Boolean(syncSettings.host_base_url) &&
-          Boolean(syncSettings.library_id);
+        const syncState = deriveStatisticsLibrarySyncState(syncSettings);
 
         if (cancelled) {
           return;
         }
 
-        setClientReadOnly(isClientMode);
-        setClientHostDeviceName(syncSettings.host_device_name ?? null);
-        setClientHostBaseUrl(syncSettings.host_base_url ?? null);
-        setClientLibraryId(syncSettings.library_id ?? null);
+        setClientReadOnly(syncState.clientReadOnly);
+        setClientHostDeviceName(syncState.clientHostDeviceName);
+        setClientHostBaseUrl(syncState.clientHostBaseUrl);
+        setClientLibraryId(syncState.clientLibraryId);
 
-        if (isClientMode) {
-          const [snapshotResult, printersResult, loansResult, cachedPrinters, cachedLoans] =
-            await Promise.all([
-              fetchLibrarySyncSnapshot(syncSettings.host_base_url!, syncSettings.library_id).then(
-                (value) => ({ ok: true as const, value }),
-                (error) => ({ ok: false as const, error }),
-              ),
-              fetchLibrarySyncPrinterOverview(
-                syncSettings.host_base_url!,
-                syncSettings.library_id,
-              ).then(
-                (value) => ({ ok: true as const, value }),
-                (error) => ({ ok: false as const, error }),
-              ),
-              fetchLibrarySyncLoans(syncSettings.host_base_url!, syncSettings.library_id).then(
-                (value) => ({ ok: true as const, value }),
-                (error) => ({ ok: false as const, error }),
-              ),
-              fetchCachedLibrarySyncPrinterOverview().catch(() => null),
-              fetchCachedLibrarySyncLoans().catch(() => null),
-            ]);
-
-          if (cancelled) {
-            return;
-          }
-
-          if (!snapshotResult.ok) {
-            console.error(snapshotResult.error);
-          }
-
-          if (!printersResult.ok) {
-            console.error(printersResult.error);
-          }
-
-          if (!loansResult.ok) {
-            console.error(loansResult.error);
-          }
-
-          const resolvedSnapshot = snapshotResult.ok
-            ? snapshotResult.value
-            : syncSettings.cached_snapshot ?? null;
-          const resolvedPrinters = printersResult.ok
-            ? printersResult.value
-            : cachedPrinters?.rows ?? syncSettings.cached_printers?.rows ?? [];
-          const resolvedLoans = loansResult.ok
-            ? loansResult.value
-            : cachedLoans?.rows ?? syncSettings.cached_loans?.rows ?? [];
-
-          if (resolvedSnapshot || resolvedPrinters.length > 0 || resolvedLoans.length > 0) {
-            setOverview(resolvedSnapshot?.inventory ?? null);
-            setPrinters(resolvedPrinters);
-            setLoanDetails(resolvedLoans);
-            setLoanUsage(groupLoanUsageByPerson(resolvedLoans, "OUTBOUND"));
-            setInboundLoanUsage(groupLoanUsageByPerson(resolvedLoans, "INBOUND"));
-            setClientStatisticsUpdatedAt(
-              resolvedSnapshot?.captured_at ??
-                cachedPrinters?.captured_at ??
-                syncSettings.cached_printers?.captured_at ??
-                cachedLoans?.captured_at ??
-                syncSettings.cached_loans?.captured_at ??
-                null,
-            );
-            setClientStatsSource(
-              snapshotResult.ok && printersResult.ok && loansResult.ok ? "LIVE" : "CACHED",
-            );
-          } else {
-            setOverview(null);
-            setPrinters([]);
-            setLoanDetails([]);
-            setLoanUsage([]);
-            setInboundLoanUsage([]);
-            setClientStatisticsUpdatedAt(null);
-            setClientStatsSource("OFFLINE");
-          }
-          return;
-        }
-
-        const [overviewRows, printerRows, loanRows, inboundLoanRows] = await Promise.all([
-          inventoryOverview(),
-          listPrinterOverview(),
-          listLoanUsageByPerson(30, "OUTBOUND"),
-          listLoanUsageByPerson(30, "INBOUND"),
-        ]);
+        const result = await loadStatisticsData(syncSettings);
         if (cancelled) {
           return;
         }
-        setOverview(overviewRows);
-        setPrinters(printerRows);
-        setLoanUsage(loanRows);
-        setInboundLoanUsage(inboundLoanRows);
-        setLoanDetails([]);
-        setClientStatisticsUpdatedAt(null);
-        setClientStatsSource("OFFLINE");
+        setOverview(result.overview);
+        setPrinters(result.printers);
+        setLoanDetails(result.loanDetails);
+        setLoanUsage(result.loanUsage);
+        setInboundLoanUsage(result.inboundLoanUsage);
+        setClientStatisticsUpdatedAt(result.updatedAt);
+        setClientStatsSource(result.source);
       } catch (loadError) {
         console.error(loadError);
         if (!cancelled) {
