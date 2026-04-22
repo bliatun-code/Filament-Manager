@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   exportLoansCsv,
-  fetchCachedLibrarySyncLoans,
-  fetchLibrarySyncLoans,
   getLibrarySyncSettings,
   isTauri,
-  listSpoolLoans,
   returnLibrarySyncHostLoan,
   returnInboundSpoolLoan,
   returnSpoolLoan,
@@ -35,6 +32,10 @@ import {
   toMeasuredTotalWeight,
   toReturnedFilamentWeight,
 } from "../lib/loan_display";
+import {
+  deriveLoanLibrarySyncState,
+  loadLoanRowsPage,
+} from "../lib/loan_data_source";
 import { useResolvedTheme } from "../lib/theme_mode";
 
 export default function LoansPage() {
@@ -75,11 +76,12 @@ export default function LoansPage() {
         if (cancelled) {
           return;
         }
-        setClientReadOnly(syncSettings.mode === "CLIENT");
-        setClientHostWritePaired(syncSettings.client_auth_paired ?? false);
-        setClientHostDeviceName(syncSettings.host_device_name ?? null);
-        setClientHostBaseUrl(syncSettings.host_base_url ?? null);
-        setClientLibraryId(syncSettings.library_id ?? null);
+        const nextState = deriveLoanLibrarySyncState(syncSettings);
+        setClientReadOnly(nextState.clientReadOnly);
+        setClientHostWritePaired(nextState.clientHostWritePaired);
+        setClientHostDeviceName(nextState.clientHostDeviceName);
+        setClientHostBaseUrl(nextState.clientHostBaseUrl);
+        setClientLibraryId(nextState.clientLibraryId);
       } catch (syncError) {
         console.error(syncError);
       } finally {
@@ -99,34 +101,22 @@ export default function LoansPage() {
     }
     setLoading(true);
     try {
-      const loanRows =
-        clientReadOnly && clientHostBaseUrl && clientLibraryId
-          ? await fetchLibrarySyncLoans(clientHostBaseUrl, clientLibraryId, 2000)
-          : await listSpoolLoans(2000, true, "ALL");
+      const result = await loadLoanRowsPage({
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+        limit: 2000,
+      });
       if (clientReadOnly) {
-        setClientLoanSource("LIVE");
-        const cached = await fetchCachedLibrarySyncLoans().catch(() => null);
-        setClientLoanUpdatedAt(cached?.captured_at ?? null);
+        setClientLoanSource(result.source);
+        setClientLoanUpdatedAt(result.updatedAt);
       }
-      setLoans(loanRows);
+      setLoans(result.rows);
+      if (clientReadOnly && result.source === "OFFLINE") {
+        setError(t("loans.error.load", "Failed to load loan data."));
+      }
     } catch (loadError) {
       console.error(loadError);
-      if (clientReadOnly) {
-        try {
-          const cached = await fetchCachedLibrarySyncLoans();
-          if (cached) {
-            setClientLoanSource("CACHED");
-            setClientLoanUpdatedAt(cached.captured_at ?? null);
-            setLoans(cached.rows);
-            return;
-          }
-        } catch (cacheError) {
-          console.error(cacheError);
-        }
-        setClientLoanSource("OFFLINE");
-        setClientLoanUpdatedAt(null);
-        setLoans([]);
-      }
       setError(t("loans.error.load", "Failed to load loan data."));
     } finally {
       setLoading(false);
