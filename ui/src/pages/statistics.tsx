@@ -8,6 +8,41 @@ import { formatFilamentDisplayTitle } from "../lib/display_format";
 import { useI18n, type Locale } from "../lib/i18n";
 import { printerBrandSurfaceStyle } from "../lib/printer_branding";
 import {
+  buildActiveSlotRows,
+  countActiveSlotOwnerships,
+  DEFAULT_BORROWER_PREFS,
+  DEFAULT_CONSUMPTION_PREFS,
+  filterActiveSlotRows,
+  filterBorrowerRows,
+  filterConsumptionRows,
+  filterLoanUsageRows,
+  formatActiveSlotLabel,
+  gramsToKgText,
+  groupedLoanUsage,
+  listConsumptionMaterialOptions,
+  listConsumptionVendorOptions,
+  normalizeLoanDirection,
+  ownershipBadgeClass,
+  ownershipLabel,
+  parseConsumptionSort,
+  parseOwnershipFilter,
+  readBorrowerPopupPrefs,
+  readConsumptionPopupPrefs,
+  sortFailedPrinterRows,
+  sortLoggedPrinterRows,
+  toSwatchColor,
+  type BorrowerFilamentUsageRow,
+  type BorrowerPopupPrefs,
+  type ConsumptionPopupPrefs,
+  type LoanDirection,
+  type LoanUsageListFilter,
+  type MetricModalKind,
+  type OwnershipFilter,
+  BORROWER_PREFS_STORAGE_KEY,
+  CONSUMPTION_PREFS_STORAGE_KEY,
+  deriveStatisticsTotals,
+} from "../lib/statistics_model";
+import {
   deriveStatisticsLibrarySyncState,
   loadStatisticsData,
 } from "../lib/statistics_data_source";
@@ -21,102 +56,12 @@ import {
   type FilamentConsumptionRow,
   type InventoryOverview,
   type LoanUsageByPersonRow,
-  type PrinterAmsSlotRow,
   type PrinterOverviewRow,
   type SpoolLoanDetailsRow,
 } from "../lib/tauri_client";
-import {
-  formatPrinterSlotLabelForModel,
-  sortPrinterSlotsExtLast,
-  summarizeEffectivePrinterSlots,
-} from "../lib/printer_profiles";
-
-function gramsToKgText(value: number): string {
-  return `${(value / 1000).toFixed(2)} kg`;
-}
-
-type ConsumptionSort = "USED_DESC" | "USED_ASC" | "NAME_ASC" | "JOBS_DESC";
-type LoanDirection = "OUTBOUND" | "INBOUND";
-type LoanUsageListFilter = "ALL" | "ACTIVE" | "COMPLETED";
-type OwnershipFilter = "ALL" | "OWNED" | "BORROWED_IN";
-type MetricModalKind = "LOGGED_JOBS" | "FAILED_JOBS" | "ACTIVE_SLOTS";
-type ConsumptionPopupPrefs = {
-  search: string;
-  vendorFilter: string;
-  materialFilter: string;
-  ownershipFilter: OwnershipFilter;
-  sort: ConsumptionSort;
-};
-type BorrowerPopupPrefs = {
-  search: string;
-};
-type TranslateFn = (key: string, fallback: string) => string;
-
-function normalizeLoanDirection(value?: string | null): LoanDirection {
-  return (value ?? "").trim().toUpperCase() === "INBOUND" ? "INBOUND" : "OUTBOUND";
-}
 
 function loanPartyName(row: SpoolLoanDetailsRow): string {
   return (row.loan.counterparty_name ?? "").trim() || row.loan.borrower_name;
-}
-
-type BorrowerFilamentUsageRow = {
-  material: string;
-  filamentName: string;
-  colorName: string;
-  vendor: string;
-  hexColor?: string | null;
-  consumedGrams: number;
-  lentOutGrams: number;
-  loans: number;
-  activeLoans: number;
-};
-
-function groupedLoanUsage(rows: SpoolLoanDetailsRow[]): BorrowerFilamentUsageRow[] {
-  const grouped = new Map<string, BorrowerFilamentUsageRow>();
-  for (const row of rows) {
-    const material = (row.material ?? "").trim() || "Unknown";
-    const filamentName = (row.filament_name ?? "").trim() || "Unknown";
-    const colorName = (row.color_name ?? "").trim() || "Unknown";
-    const vendor = (row.vendor ?? "").trim() || "Unknown";
-    const key = `${material}|${filamentName}|${colorName}|${vendor}|${row.hex_color ?? ""}`;
-    const current = grouped.get(key) ?? {
-      material,
-      filamentName,
-      colorName,
-      vendor,
-      hexColor: row.hex_color ?? null,
-      consumedGrams: 0,
-      lentOutGrams: 0,
-      loans: 0,
-      activeLoans: 0,
-    };
-    const consumed = Math.max(0, row.loan.consumed_grams ?? 0);
-    const lentOut = Math.max(0, row.loan.grams_out ?? 0);
-    const active = row.loan.returned_at ? 0 : 1;
-    grouped.set(key, {
-      ...current,
-      consumedGrams: current.consumedGrams + consumed,
-      lentOutGrams: current.lentOutGrams + lentOut,
-      loans: current.loans + 1,
-      activeLoans: current.activeLoans + active,
-    });
-  }
-  return Array.from(grouped.values()).sort((left, right) => right.consumedGrams - left.consumedGrams);
-}
-
-function toSwatchColor(raw?: string | null): string {
-  const value = (raw ?? "").trim();
-  if (!value) {
-    return "#CBD5E1";
-  }
-  if (/^#[0-9a-fA-F]{3}$/.test(value) || /^#[0-9a-fA-F]{6}$/.test(value)) {
-    return value;
-  }
-  if (/^[0-9a-fA-F]{3}$/.test(value) || /^[0-9a-fA-F]{6}$/.test(value)) {
-    return `#${value}`;
-  }
-  return "#CBD5E1";
 }
 
 type MetricTone = "slate" | "sky" | "emerald" | "amber" | "rose";
@@ -158,62 +103,6 @@ function SummaryMetricTile({
   );
 }
 
-const CONSUMPTION_PREFS_STORAGE_KEY = "statistics_consumption_popup_prefs_v1";
-const BORROWER_PREFS_STORAGE_KEY = "statistics_borrower_popup_prefs_v1";
-const DEFAULT_CONSUMPTION_PREFS: ConsumptionPopupPrefs = {
-  search: "",
-  vendorFilter: "ALL",
-  materialFilter: "ALL",
-  ownershipFilter: "ALL",
-  sort: "USED_DESC",
-};
-const DEFAULT_BORROWER_PREFS: BorrowerPopupPrefs = {
-  search: "",
-};
-
-function parseConsumptionSort(raw: unknown): ConsumptionSort {
-  if (raw === "USED_ASC" || raw === "NAME_ASC" || raw === "JOBS_DESC" || raw === "USED_DESC") {
-    return raw;
-  }
-  return "USED_DESC";
-}
-
-function parseOwnershipFilter(raw: unknown): OwnershipFilter {
-  if (raw === "OWNED" || raw === "BORROWED_IN" || raw === "ALL") {
-    return raw;
-  }
-  return "ALL";
-}
-
-function normalizeOwnershipType(raw?: string | null): Exclude<OwnershipFilter, "ALL"> {
-  return (raw ?? "").trim().toUpperCase() === "BORROWED_IN" ? "BORROWED_IN" : "OWNED";
-}
-
-function matchesOwnershipFilter(filter: OwnershipFilter, raw?: string | null): boolean {
-  return filter === "ALL" || normalizeOwnershipType(raw) === filter;
-}
-
-function ownershipBadgeClass(raw?: string | null): string {
-  return normalizeOwnershipType(raw) === "BORROWED_IN"
-    ? "border-amber-200/85 bg-amber-50/85 text-amber-800 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-200"
-    : "border-sky-200/85 bg-sky-50/85 text-sky-800 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-200";
-}
-
-function ownershipLabel(
-  t: TranslateFn,
-  ownershipType?: string | null,
-  ownerName?: string | null,
-): string {
-  if (normalizeOwnershipType(ownershipType) === "BORROWED_IN") {
-    const owner = (ownerName ?? "").trim();
-    if (owner.length > 0) {
-      return `${t("inventory.borrowedIn", "Borrowed in")} · ${owner}`;
-    }
-    return t("inventory.borrowedIn", "Borrowed in");
-  }
-  return t("inventory.ownedByUs", "Owned");
-}
-
 function formatDateTime(raw: string, locale: Locale): string {
   const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
   const withTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized) ? normalized : `${normalized}Z`;
@@ -229,47 +118,6 @@ function formatDateTime(raw: string, locale: Locale): string {
     minute: "2-digit",
     second: "2-digit",
   }).format(parsed);
-}
-
-function readConsumptionPopupPrefs(): ConsumptionPopupPrefs {
-  if (typeof window === "undefined" || !window.localStorage) {
-    return DEFAULT_CONSUMPTION_PREFS;
-  }
-  try {
-    const raw = window.localStorage.getItem(CONSUMPTION_PREFS_STORAGE_KEY);
-    if (!raw) {
-      return DEFAULT_CONSUMPTION_PREFS;
-    }
-    const parsed = JSON.parse(raw) as Partial<ConsumptionPopupPrefs>;
-    return {
-      search: typeof parsed.search === "string" ? parsed.search : "",
-      vendorFilter: typeof parsed.vendorFilter === "string" ? parsed.vendorFilter : "ALL",
-      materialFilter:
-        typeof parsed.materialFilter === "string" ? parsed.materialFilter : "ALL",
-      ownershipFilter: parseOwnershipFilter(parsed.ownershipFilter),
-      sort: parseConsumptionSort(parsed.sort),
-    };
-  } catch {
-    return DEFAULT_CONSUMPTION_PREFS;
-  }
-}
-
-function readBorrowerPopupPrefs(): BorrowerPopupPrefs {
-  if (typeof window === "undefined" || !window.localStorage) {
-    return DEFAULT_BORROWER_PREFS;
-  }
-  try {
-    const raw = window.localStorage.getItem(BORROWER_PREFS_STORAGE_KEY);
-    if (!raw) {
-      return DEFAULT_BORROWER_PREFS;
-    }
-    const parsed = JSON.parse(raw) as Partial<BorrowerPopupPrefs>;
-    return {
-      search: typeof parsed.search === "string" ? parsed.search : "",
-    };
-  } catch {
-    return DEFAULT_BORROWER_PREFS;
-  }
 }
 
 export default function StatisticsPage() {
@@ -388,30 +236,7 @@ export default function StatisticsPage() {
     };
   }, [t, tauri]);
 
-  const totals = useMemo(() => {
-    const totalUsed = printers.reduce(
-      (sum, row) => sum + (row.usage.total_used_g || 0),
-      0,
-    );
-    const totalJobs = printers.reduce(
-      (sum, row) => sum + (row.usage.total_jobs || 0),
-      0,
-    );
-    const failedJobs = printers.reduce(
-      (sum, row) => sum + (row.usage.failed_jobs || 0),
-      0,
-    );
-    const activeSlots = printers.reduce(
-      (sum, row) => sum + summarizeEffectivePrinterSlots(row.slots).loadedSlots,
-      0,
-    );
-    return {
-      totalUsed,
-      totalJobs,
-      failedJobs,
-      activeSlots,
-    };
-  }, [printers]);
+  const totals = useMemo(() => deriveStatisticsTotals(printers), [printers]);
 
   const openConsumptionModal = useCallback(
     async (printer?: PrinterOverviewRow) => {
@@ -464,84 +289,25 @@ export default function StatisticsPage() {
     [clientHostBaseUrl, clientLibraryId, clientReadOnly, t, tauri],
   );
 
-  const consumptionVendorOptions = useMemo(() => {
-    const values = new Set<string>();
-    for (const row of consumptionRows) {
-      const value = row.vendor.trim();
-      if (value) {
-        values.add(value);
-      }
-    }
-    return ["ALL", ...Array.from(values).sort((left, right) => left.localeCompare(right))];
-  }, [consumptionRows]);
+  const consumptionVendorOptions = useMemo(
+    () => listConsumptionVendorOptions(consumptionRows),
+    [consumptionRows],
+  );
 
-  const consumptionMaterialOptions = useMemo(() => {
-    const values = new Set<string>();
-    for (const row of consumptionRows) {
-      const value = row.material.trim();
-      if (value) {
-        values.add(value);
-      }
-    }
-    return ["ALL", ...Array.from(values).sort((left, right) => left.localeCompare(right))];
-  }, [consumptionRows]);
+  const consumptionMaterialOptions = useMemo(
+    () => listConsumptionMaterialOptions(consumptionRows),
+    [consumptionRows],
+  );
 
-  const filteredConsumptionRows = useMemo(() => {
-    const searchTerm = consumptionPrefs.search.trim().toLowerCase();
-    const filtered = consumptionRows.filter((row) => {
-      const vendorMatch =
-        consumptionPrefs.vendorFilter === "ALL"
-          ? true
-          : row.vendor === consumptionPrefs.vendorFilter;
-      const materialMatch =
-        consumptionPrefs.materialFilter === "ALL"
-          ? true
-          : row.material === consumptionPrefs.materialFilter;
-      const ownershipMatch = matchesOwnershipFilter(
-        consumptionPrefs.ownershipFilter,
-        row.ownership_type,
-      );
-      const searchMatch =
-        searchTerm.length === 0
-          ? true
-          : `${row.material} ${row.filament_name} ${row.color_name} ${row.vendor} ${row.owner_name ?? ""}`
-              .toLowerCase()
-              .includes(searchTerm);
-      return vendorMatch && materialMatch && ownershipMatch && searchMatch;
-    });
-    const sorted = [...filtered];
-    sorted.sort((left, right) => {
-      switch (consumptionPrefs.sort) {
-        case "USED_ASC":
-          return left.used_grams - right.used_grams;
-        case "NAME_ASC":
-          return `${left.material} ${left.filament_name} ${left.color_name}`.localeCompare(
-            `${right.material} ${right.filament_name} ${right.color_name}`,
-          );
-        case "JOBS_DESC":
-          return right.jobs - left.jobs;
-        case "USED_DESC":
-        default:
-          return right.used_grams - left.used_grams;
-      }
-    });
-    return sorted;
-  }, [
-    consumptionPrefs,
-    consumptionRows,
-  ]);
+  const filteredConsumptionRows = useMemo(
+    () => filterConsumptionRows(consumptionRows, consumptionPrefs),
+    [consumptionPrefs, consumptionRows],
+  );
 
-  const filteredBorrowerRows = useMemo(() => {
-    const searchTerm = borrowerPrefs.search.trim().toLowerCase();
-    if (!searchTerm) {
-      return borrowerRows;
-    }
-    return borrowerRows.filter((row) =>
-      `${row.material} ${row.filamentName} ${row.colorName} ${row.vendor}`
-        .toLowerCase()
-        .includes(searchTerm),
-    );
-  }, [borrowerPrefs.search, borrowerRows]);
+  const filteredBorrowerRows = useMemo(
+    () => filterBorrowerRows(borrowerRows, borrowerPrefs),
+    [borrowerPrefs, borrowerRows],
+  );
 
   const openBorrowerModal = useCallback(
     async (borrowerName: string, direction: LoanDirection) => {
@@ -582,74 +348,26 @@ export default function StatisticsPage() {
     [clientReadOnly, loanDetails, t, tauri],
   );
 
-  const activeSlotRows = useMemo(() => {
-    const rows: Array<{
-      printerId: string;
-      printerName: string;
-      printerModel: string;
-      slot: PrinterAmsSlotRow;
-    }> = [];
-    for (const printer of printers) {
-      for (const slot of sortPrinterSlotsExtLast(summarizeEffectivePrinterSlots(printer.slots).slots)) {
-        if (!slot.spool_id) {
-          continue;
-        }
-        rows.push({
-          printerId: printer.printer.id,
-          printerName: printer.printer.name,
-          printerModel: printer.printer.model,
-          slot,
-        });
-      }
-    }
-    return rows;
-  }, [printers]);
+  const activeSlotRows = useMemo(() => buildActiveSlotRows(printers), [printers]);
 
   const filteredActiveSlotRows = useMemo(
-    () =>
-      activeSlotRows.filter((row) =>
-        matchesOwnershipFilter(slotOwnershipFilter, row.slot.spool_ownership_type),
-      ),
+    () => filterActiveSlotRows(activeSlotRows, slotOwnershipFilter),
     [activeSlotRows, slotOwnershipFilter],
   );
 
   const activeSlotOwnershipCounts = useMemo(
-    () => ({
-      owned: activeSlotRows.filter(
-        (row) => normalizeOwnershipType(row.slot.spool_ownership_type) === "OWNED",
-      ).length,
-      borrowedIn: activeSlotRows.filter(
-        (row) => normalizeOwnershipType(row.slot.spool_ownership_type) === "BORROWED_IN",
-      ).length,
-    }),
+    () => countActiveSlotOwnerships(activeSlotRows),
     [activeSlotRows],
   );
 
-  const failedPrinterRows = useMemo(
-    () =>
-      [...printers]
-        .filter((row) => row.usage.failed_jobs > 0)
-        .sort((left, right) => right.usage.failed_jobs - left.usage.failed_jobs),
-    [printers],
-  );
+  const failedPrinterRows = useMemo(() => sortFailedPrinterRows(printers), [printers]);
 
-  const loggedPrinterRows = useMemo(
-    () =>
-      [...printers].sort((left, right) => right.usage.total_jobs - left.usage.total_jobs),
-    [printers],
-  );
+  const loggedPrinterRows = useMemo(() => sortLoggedPrinterRows(printers), [printers]);
 
-  const filteredLoanUsage = useMemo(() => {
-    switch (loanUsageListFilter) {
-      case "ACTIVE":
-        return loanUsage.filter((row) => row.active_loans > 0);
-      case "COMPLETED":
-        return loanUsage.filter((row) => row.active_loans === 0 && row.completed_loans > 0);
-      case "ALL":
-      default:
-        return loanUsage;
-    }
-  }, [loanUsage, loanUsageListFilter]);
+  const filteredLoanUsage = useMemo(
+    () => filterLoanUsageRows(loanUsage, loanUsageListFilter),
+    [loanUsage, loanUsageListFilter],
+  );
 
   return (
     <div className="page-shell">
@@ -1529,7 +1247,7 @@ export default function StatisticsPage() {
                             <div className="min-w-0">
                               <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
                                 {row.printerName} ·{" "}
-                                {formatPrinterSlotLabelForModel(t, row.printerModel, row.slot)}
+                                {formatActiveSlotLabel(t, row.printerModel, row.slot)}
                               </div>
                               <div className="truncate text-xs text-slate-500 dark:text-slate-400">
                                 {formatFilamentDisplayTitle(

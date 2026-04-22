@@ -1,0 +1,356 @@
+import {
+  formatPrinterSlotLabelForModel,
+  sortPrinterSlotsExtLast,
+  summarizeEffectivePrinterSlots,
+} from "./printer_profiles";
+import type {
+  FilamentConsumptionRow,
+  LoanUsageByPersonRow,
+  PrinterAmsSlotRow,
+  PrinterOverviewRow,
+  SpoolLoanDetailsRow,
+} from "./tauri_client";
+
+export type ConsumptionSort = "USED_DESC" | "USED_ASC" | "NAME_ASC" | "JOBS_DESC";
+export type LoanDirection = "OUTBOUND" | "INBOUND";
+export type LoanUsageListFilter = "ALL" | "ACTIVE" | "COMPLETED";
+export type OwnershipFilter = "ALL" | "OWNED" | "BORROWED_IN";
+export type MetricModalKind = "LOGGED_JOBS" | "FAILED_JOBS" | "ACTIVE_SLOTS";
+export type ConsumptionPopupPrefs = {
+  search: string;
+  vendorFilter: string;
+  materialFilter: string;
+  ownershipFilter: OwnershipFilter;
+  sort: ConsumptionSort;
+};
+export type BorrowerPopupPrefs = {
+  search: string;
+};
+export type TranslateFn = (key: string, fallback?: string) => string;
+export type BorrowerFilamentUsageRow = {
+  material: string;
+  filamentName: string;
+  colorName: string;
+  vendor: string;
+  hexColor?: string | null;
+  consumedGrams: number;
+  lentOutGrams: number;
+  loans: number;
+  activeLoans: number;
+};
+export type ActiveSlotDisplayRow = {
+  printerId: string;
+  printerName: string;
+  printerModel: string;
+  slot: PrinterAmsSlotRow;
+};
+export type StatisticsTotals = {
+  totalUsed: number;
+  totalJobs: number;
+  failedJobs: number;
+  activeSlots: number;
+};
+
+export const CONSUMPTION_PREFS_STORAGE_KEY = "statistics_consumption_popup_prefs_v1";
+export const BORROWER_PREFS_STORAGE_KEY = "statistics_borrower_popup_prefs_v1";
+export const DEFAULT_CONSUMPTION_PREFS: ConsumptionPopupPrefs = {
+  search: "",
+  vendorFilter: "ALL",
+  materialFilter: "ALL",
+  ownershipFilter: "ALL",
+  sort: "USED_DESC",
+};
+export const DEFAULT_BORROWER_PREFS: BorrowerPopupPrefs = {
+  search: "",
+};
+
+export function gramsToKgText(value: number): string {
+  return `${(value / 1000).toFixed(2)} kg`;
+}
+
+export function normalizeLoanDirection(value?: string | null): LoanDirection {
+  return (value ?? "").trim().toUpperCase() === "INBOUND" ? "INBOUND" : "OUTBOUND";
+}
+
+export function groupedLoanUsage(rows: SpoolLoanDetailsRow[]): BorrowerFilamentUsageRow[] {
+  const grouped = new Map<string, BorrowerFilamentUsageRow>();
+  for (const row of rows) {
+    const material = (row.material ?? "").trim() || "Unknown";
+    const filamentName = (row.filament_name ?? "").trim() || "Unknown";
+    const colorName = (row.color_name ?? "").trim() || "Unknown";
+    const vendor = (row.vendor ?? "").trim() || "Unknown";
+    const key = `${material}|${filamentName}|${colorName}|${vendor}|${row.hex_color ?? ""}`;
+    const current = grouped.get(key) ?? {
+      material,
+      filamentName,
+      colorName,
+      vendor,
+      hexColor: row.hex_color ?? null,
+      consumedGrams: 0,
+      lentOutGrams: 0,
+      loans: 0,
+      activeLoans: 0,
+    };
+    const consumed = Math.max(0, row.loan.consumed_grams ?? 0);
+    const lentOut = Math.max(0, row.loan.grams_out ?? 0);
+    const active = row.loan.returned_at ? 0 : 1;
+    grouped.set(key, {
+      ...current,
+      consumedGrams: current.consumedGrams + consumed,
+      lentOutGrams: current.lentOutGrams + lentOut,
+      loans: current.loans + 1,
+      activeLoans: current.activeLoans + active,
+    });
+  }
+  return Array.from(grouped.values()).sort((left, right) => right.consumedGrams - left.consumedGrams);
+}
+
+export function toSwatchColor(raw?: string | null): string {
+  const value = (raw ?? "").trim();
+  if (!value) {
+    return "#CBD5E1";
+  }
+  if (/^#[0-9a-fA-F]{3}$/.test(value) || /^#[0-9a-fA-F]{6}$/.test(value)) {
+    return value;
+  }
+  if (/^[0-9a-fA-F]{3}$/.test(value) || /^[0-9a-fA-F]{6}$/.test(value)) {
+    return `#${value}`;
+  }
+  return "#CBD5E1";
+}
+
+export function parseConsumptionSort(raw: unknown): ConsumptionSort {
+  if (raw === "USED_ASC" || raw === "NAME_ASC" || raw === "JOBS_DESC" || raw === "USED_DESC") {
+    return raw;
+  }
+  return "USED_DESC";
+}
+
+export function parseOwnershipFilter(raw: unknown): OwnershipFilter {
+  if (raw === "OWNED" || raw === "BORROWED_IN" || raw === "ALL") {
+    return raw;
+  }
+  return "ALL";
+}
+
+export function normalizeOwnershipType(raw?: string | null): Exclude<OwnershipFilter, "ALL"> {
+  return (raw ?? "").trim().toUpperCase() === "BORROWED_IN" ? "BORROWED_IN" : "OWNED";
+}
+
+export function matchesOwnershipFilter(filter: OwnershipFilter, raw?: string | null): boolean {
+  return filter === "ALL" || normalizeOwnershipType(raw) === filter;
+}
+
+export function ownershipBadgeClass(raw?: string | null): string {
+  return normalizeOwnershipType(raw) === "BORROWED_IN"
+    ? "border-amber-200/85 bg-amber-50/85 text-amber-800 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-200"
+    : "border-sky-200/85 bg-sky-50/85 text-sky-800 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-200";
+}
+
+export function ownershipLabel(
+  t: TranslateFn,
+  ownershipType?: string | null,
+  ownerName?: string | null,
+): string {
+  if (normalizeOwnershipType(ownershipType) === "BORROWED_IN") {
+    const owner = (ownerName ?? "").trim();
+    if (owner.length > 0) {
+      return `${t("inventory.borrowedIn", "Borrowed in")} · ${owner}`;
+    }
+    return t("inventory.borrowedIn", "Borrowed in");
+  }
+  return t("inventory.ownedByUs", "Owned");
+}
+
+export function readConsumptionPopupPrefs(): ConsumptionPopupPrefs {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return DEFAULT_CONSUMPTION_PREFS;
+  }
+  try {
+    const raw = window.localStorage.getItem(CONSUMPTION_PREFS_STORAGE_KEY);
+    if (!raw) {
+      return DEFAULT_CONSUMPTION_PREFS;
+    }
+    const parsed = JSON.parse(raw) as Partial<ConsumptionPopupPrefs>;
+    return {
+      search: typeof parsed.search === "string" ? parsed.search : "",
+      vendorFilter: typeof parsed.vendorFilter === "string" ? parsed.vendorFilter : "ALL",
+      materialFilter: typeof parsed.materialFilter === "string" ? parsed.materialFilter : "ALL",
+      ownershipFilter: parseOwnershipFilter(parsed.ownershipFilter),
+      sort: parseConsumptionSort(parsed.sort),
+    };
+  } catch {
+    return DEFAULT_CONSUMPTION_PREFS;
+  }
+}
+
+export function readBorrowerPopupPrefs(): BorrowerPopupPrefs {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return DEFAULT_BORROWER_PREFS;
+  }
+  try {
+    const raw = window.localStorage.getItem(BORROWER_PREFS_STORAGE_KEY);
+    if (!raw) {
+      return DEFAULT_BORROWER_PREFS;
+    }
+    const parsed = JSON.parse(raw) as Partial<BorrowerPopupPrefs>;
+    return {
+      search: typeof parsed.search === "string" ? parsed.search : "",
+    };
+  } catch {
+    return DEFAULT_BORROWER_PREFS;
+  }
+}
+
+export function deriveStatisticsTotals(printers: PrinterOverviewRow[]): StatisticsTotals {
+  const totalUsed = printers.reduce((sum, row) => sum + (row.usage.total_used_g || 0), 0);
+  const totalJobs = printers.reduce((sum, row) => sum + (row.usage.total_jobs || 0), 0);
+  const failedJobs = printers.reduce((sum, row) => sum + (row.usage.failed_jobs || 0), 0);
+  const activeSlots = printers.reduce(
+    (sum, row) => sum + summarizeEffectivePrinterSlots(row.slots).loadedSlots,
+    0,
+  );
+  return { totalUsed, totalJobs, failedJobs, activeSlots };
+}
+
+export function listConsumptionVendorOptions(rows: FilamentConsumptionRow[]): string[] {
+  const values = new Set<string>();
+  for (const row of rows) {
+    const value = row.vendor.trim();
+    if (value) {
+      values.add(value);
+    }
+  }
+  return ["ALL", ...Array.from(values).sort((left, right) => left.localeCompare(right))];
+}
+
+export function listConsumptionMaterialOptions(rows: FilamentConsumptionRow[]): string[] {
+  const values = new Set<string>();
+  for (const row of rows) {
+    const value = row.material.trim();
+    if (value) {
+      values.add(value);
+    }
+  }
+  return ["ALL", ...Array.from(values).sort((left, right) => left.localeCompare(right))];
+}
+
+export function filterConsumptionRows(
+  rows: FilamentConsumptionRow[],
+  prefs: ConsumptionPopupPrefs,
+): FilamentConsumptionRow[] {
+  const searchTerm = prefs.search.trim().toLowerCase();
+  const filtered = rows.filter((row) => {
+    const vendorMatch = prefs.vendorFilter === "ALL" ? true : row.vendor === prefs.vendorFilter;
+    const materialMatch =
+      prefs.materialFilter === "ALL" ? true : row.material === prefs.materialFilter;
+    const ownershipMatch = matchesOwnershipFilter(prefs.ownershipFilter, row.ownership_type);
+    const searchMatch =
+      searchTerm.length === 0
+        ? true
+        : `${row.material} ${row.filament_name} ${row.color_name} ${row.vendor} ${row.owner_name ?? ""}`
+            .toLowerCase()
+            .includes(searchTerm);
+    return vendorMatch && materialMatch && ownershipMatch && searchMatch;
+  });
+  const sorted = [...filtered];
+  sorted.sort((left, right) => {
+    switch (prefs.sort) {
+      case "USED_ASC":
+        return left.used_grams - right.used_grams;
+      case "NAME_ASC":
+        return `${left.material} ${left.filament_name} ${left.color_name}`.localeCompare(
+          `${right.material} ${right.filament_name} ${right.color_name}`,
+        );
+      case "JOBS_DESC":
+        return right.jobs - left.jobs;
+      case "USED_DESC":
+      default:
+        return right.used_grams - left.used_grams;
+    }
+  });
+  return sorted;
+}
+
+export function filterBorrowerRows(
+  rows: BorrowerFilamentUsageRow[],
+  prefs: BorrowerPopupPrefs,
+): BorrowerFilamentUsageRow[] {
+  const searchTerm = prefs.search.trim().toLowerCase();
+  if (!searchTerm) {
+    return rows;
+  }
+  return rows.filter((row) =>
+    `${row.material} ${row.filamentName} ${row.colorName} ${row.vendor}`
+      .toLowerCase()
+      .includes(searchTerm),
+  );
+}
+
+export function buildActiveSlotRows(printers: PrinterOverviewRow[]): ActiveSlotDisplayRow[] {
+  const rows: ActiveSlotDisplayRow[] = [];
+  for (const printer of printers) {
+    for (const slot of sortPrinterSlotsExtLast(summarizeEffectivePrinterSlots(printer.slots).slots)) {
+      if (!slot.spool_id) {
+        continue;
+      }
+      rows.push({
+        printerId: printer.printer.id,
+        printerName: printer.printer.name,
+        printerModel: printer.printer.model,
+        slot,
+      });
+    }
+  }
+  return rows;
+}
+
+export function filterActiveSlotRows(
+  rows: ActiveSlotDisplayRow[],
+  ownershipFilter: OwnershipFilter,
+): ActiveSlotDisplayRow[] {
+  return rows.filter((row) => matchesOwnershipFilter(ownershipFilter, row.slot.spool_ownership_type));
+}
+
+export function countActiveSlotOwnerships(rows: ActiveSlotDisplayRow[]) {
+  return {
+    owned: rows.filter((row) => normalizeOwnershipType(row.slot.spool_ownership_type) === "OWNED")
+      .length,
+    borrowedIn: rows.filter(
+      (row) => normalizeOwnershipType(row.slot.spool_ownership_type) === "BORROWED_IN",
+    ).length,
+  };
+}
+
+export function sortFailedPrinterRows(printers: PrinterOverviewRow[]): PrinterOverviewRow[] {
+  return [...printers]
+    .filter((row) => row.usage.failed_jobs > 0)
+    .sort((left, right) => right.usage.failed_jobs - left.usage.failed_jobs);
+}
+
+export function sortLoggedPrinterRows(printers: PrinterOverviewRow[]): PrinterOverviewRow[] {
+  return [...printers].sort((left, right) => right.usage.total_jobs - left.usage.total_jobs);
+}
+
+export function filterLoanUsageRows(
+  rows: LoanUsageByPersonRow[],
+  filter: LoanUsageListFilter,
+): LoanUsageByPersonRow[] {
+  switch (filter) {
+    case "ACTIVE":
+      return rows.filter((row) => row.active_loans > 0);
+    case "COMPLETED":
+      return rows.filter((row) => row.active_loans === 0 && row.completed_loans > 0);
+    case "ALL":
+    default:
+      return rows;
+  }
+}
+
+export function formatActiveSlotLabel(
+  t: TranslateFn,
+  printerModel: string,
+  slot: PrinterAmsSlotRow,
+): string {
+  return formatPrinterSlotLabelForModel(t, printerModel, slot);
+}
