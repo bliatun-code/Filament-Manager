@@ -22,13 +22,14 @@ import {
   listSpools,
   topMaterials,
   validateLibrarySyncHost,
-  type SpoolLoanDetailsRow,
   type WishlistItemRow,
   type TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
+import {
+  buildDashboardDerivedState,
+  type DashboardGoalMetrics,
+} from "../lib/dashboard_model";
 import { useI18n } from "../lib/i18n";
-import { LOW_STOCK_GRAMS } from "../lib/inventory_constants";
-import { summarizeEffectivePrinterSlots } from "../lib/printer_profiles";
 import type { PageKey } from "../App";
 
 const defaultStats = [
@@ -66,14 +67,6 @@ const defaultStats = [
   },
 ];
 
-type DashboardGoalMetrics = {
-  activeSpools: number;
-  placedActiveSpools: number;
-  totalJobs: number;
-  totalSlots: number;
-  loadedSlots: number;
-};
-
 function parseUtcTimestamp(raw: string): Date | null {
   const normalized = raw.trim();
   if (!normalized) {
@@ -96,14 +89,6 @@ function progressRatio(current: number, target: number): number {
     return 0;
   }
   return Math.min(1, Math.max(0, current / target));
-}
-
-function isActiveOutboundLoan(
-  row: Pick<SpoolLoanDetailsRow, "loan">,
-): boolean {
-  const loanStatus = (row.loan.loan_status ?? "").trim().toUpperCase();
-  const loanDirection = (row.loan.loan_direction ?? "OUTBOUND").trim().toUpperCase();
-  return loanDirection === "OUTBOUND" && (loanStatus === "ACTIVE" || !row.loan.returned_at);
 }
 
 type DashboardPageProps = {
@@ -387,138 +372,16 @@ export default function DashboardPage({
         const spoolRows = clientSpoolRows ?? [];
         const printers = clientPrinterRows ?? [];
         const loans = clientLoanRows ?? [];
-        const activeLoans = loans.filter(isActiveOutboundLoan);
-        const overview = activeClientSnapshot.inventory;
-        const printerCount = printers.length;
-        const effectiveSlotTotals = printers.reduce(
-          (sum, printer) => {
-            const summary = summarizeEffectivePrinterSlots(printer.slots);
-            return {
-              loadedSlots: sum.loadedSlots + summary.loadedSlots,
-              totalSlots: sum.totalSlots + summary.totalSlots,
-            };
-          },
-          { loadedSlots: 0, totalSlots: 0 },
-        );
-        const onOrderCount = clientWishlistRows
-          .filter((item) => item.status === "ON_ORDER")
-          .reduce((sum, item) => sum + Math.max(1, item.quantity || 1), 0);
-        const onHandRows = spoolRows.filter((row) => {
-          const status = (row.spool.status ?? "").trim().toUpperCase();
-          return status === "IN_STOCK" || status === "IN_USE" || status === "ASSIGNED";
+        const derived = buildDashboardDerivedState({
+          overview: activeClientSnapshot.inventory,
+          printers,
+          spoolRows,
+          loans,
+          wishlist: clientWishlistRows,
+          materialRows: null,
+          t,
         });
-        const onHandTotal = onHandRows.length;
-        const onHandOwned = onHandRows.filter((row) => {
-          const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
-          return ownershipType !== "BORROWED_IN";
-        }).length;
-        const onHandBorrowedIn = onHandRows.filter((row) => {
-          const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
-          return ownershipType === "BORROWED_IN";
-        }).length;
-        const onHandInUse = onHandRows.filter((row) => {
-          const status = (row.spool.status ?? "").trim().toUpperCase();
-          return status === "IN_USE" || status === "ASSIGNED";
-        }).length;
-        const lowStockRows = spoolRows
-          .filter((row) => {
-            const status = (row.spool.status ?? "").trim().toUpperCase();
-            const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
-            return (
-              status !== "EMPTY" &&
-              status !== "LOST" &&
-              remaining > 0 &&
-              remaining <= LOW_STOCK_GRAMS
-            );
-          })
-          .sort((left, right) => (left.spool.remaining_g ?? 0) - (right.spool.remaining_g ?? 0))
-          .slice(0, 5)
-          .map((row) => ({
-            id: row.spool.id,
-            name: row.master.filament_name,
-            color: row.master.color_name,
-            remaining: `${row.spool.remaining_g ?? 0} g`,
-          }));
-        const lowStockCount = lowStockRows.length;
-        const ownedLowStockCount = spoolRows.filter((row) => {
-          const status = (row.spool.status ?? "").trim().toUpperCase();
-          const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
-          const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
-          return (
-            status !== "EMPTY" &&
-            status !== "LOST" &&
-            ownershipType !== "BORROWED_IN" &&
-            remaining > 0 &&
-            remaining <= LOW_STOCK_GRAMS
-          );
-        }).length;
-        const borrowedInLowStockCount = spoolRows.filter((row) => {
-          const status = (row.spool.status ?? "").trim().toUpperCase();
-          const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
-          const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
-          return (
-            status !== "EMPTY" &&
-            status !== "LOST" &&
-            ownershipType === "BORROWED_IN" &&
-            remaining > 0 &&
-            remaining <= LOW_STOCK_GRAMS
-          );
-        }).length;
-        const liveActivity: ActivityItem[] = [
-          ...activeLoans.slice(0, 3).map((loan) => ({
-            id: `loan-${loan.loan.id}`,
-            title: `${t("dashboard.loanedTo", "Loaned to")} ${loan.loan.borrower_name}`,
-            detail: `${loan.material} ${loan.filament_name} · ${loan.loan.grams_out} g`,
-            tone: "amber" as const,
-          })),
-          ...printers.slice(0, 3).map((printer) => ({
-            id: `printer-${printer.printer.id}`,
-            title: printer.printer.name,
-            detail: `${printer.usage.total_jobs} ${t("printers.jobs", "jobs")} · ${printer.usage.total_used_g} g ${t("printers.used", "used")}`,
-            tone: "sky" as const,
-          })),
-        ];
-
-        setStats([
-          {
-            id: "total",
-            title: t("dashboard.totalSpools", "Total Spools"),
-            value: onHandTotal.toString(),
-            subtitle: t("dashboard.totalSpoolsSubtitle", "Across all locations"),
-            trend: `${onHandInUse} ${t("dashboard.assigned", "assigned")}`,
-            accent: "sky" as const,
-          },
-          {
-            id: "activePrinters",
-            title: t("dashboard.activePrinters", "Active Printers"),
-            value: printerCount.toString(),
-            subtitle: `${printerCount} ${t("dashboard.configured", "configured")}`,
-            trend:
-              printerCount > 0
-                ? t("dashboard.allConfiguredActive", "All configured printers are active")
-                : t("dashboard.noPrintersConfigured", "No printers configured"),
-            accent: "emerald" as const,
-          },
-          {
-            id: "lowStock",
-            title: t("dashboard.lowStock", "Low Stock"),
-            value: lowStockCount.toString(),
-            subtitle: t("dashboard.below200", "Below 200g"),
-            trend:
-              lowStockRows.length > 0
-                ? `${lowStockRows[0].remaining} ${t("dashboard.lowest", "lowest")}`
-                : t("dashboard.noAlerts", "No alerts"),
-            accent: "rose" as const,
-          },
-          {
-            id: "monthlyUsage",
-            title: t("dashboard.monthlyUsage", "Monthly Usage"),
-            value: `${overview.total_consumption_30d} g`,
-            subtitle: t("dashboard.last30", "Last 30 days"),
-            trend: `${Math.round(overview.total_consumption_30d / 30)} g/day`,
-            accent: "amber" as const,
-          },
-        ]);
+        setStats(derived.stats);
         const capturedAt = parseUtcTimestamp(activeClientSnapshot.captured_at);
         setLastSyncLabel(
           `${t(
@@ -535,91 +398,13 @@ export default function DashboardPage({
               : activeClientSnapshot.captured_at
           }`,
         );
-        setActivity(
-          liveActivity.length > 0
-            ? liveActivity
-            : [
-                {
-                  id: "empty",
-                  title: t("dashboard.noRecentActivity", "No recent activity yet."),
-                  detail: t(
-                    "dashboard.activityEmptyHint",
-                    "Loans, printer jobs, and other tracked activity will appear here.",
-                  ),
-                  tone: "slate",
-                },
-              ],
-        );
-        setUsagePoints([0, overview.total_consumption_30d]);
-        setOwnershipOnHand({
-          total: onHandTotal || overview.total_spools,
-          owned: onHandOwned || overview.total_owned_spools,
-          borrowedIn: onHandBorrowedIn || overview.total_borrowed_in_spools,
-          inUse: onHandInUse,
-        });
-        setOwnershipLowStock({
-          owned: ownedLowStockCount || overview.owned_low_stock,
-          borrowedIn: borrowedInLowStockCount || overview.borrowed_in_low_stock,
-        });
-        cachedGoalMetrics = {
-          activeSpools: onHandTotal,
-          placedActiveSpools: onHandRows.filter((row) =>
-            Boolean((row.spool.location_id ?? "").trim()),
-          ).length,
-          totalJobs: printers.reduce((sum, printer) => sum + Math.max(0, printer.usage.total_jobs), 0),
-          totalSlots: effectiveSlotTotals.totalSlots,
-          loadedSlots: effectiveSlotTotals.loadedSlots,
-        };
+        setActivity(derived.activity);
+        setUsagePoints(derived.usagePoints);
+        setOwnershipOnHand(derived.ownershipOnHand);
+        setOwnershipLowStock(derived.ownershipLowStock);
+        cachedGoalMetrics = derived.goalMetrics;
         setGoalMetrics(cachedGoalMetrics);
-        const healthySpools = spoolRows.filter((row) => {
-          const remaining =
-            row.spool.remaining_g ??
-            row.spool.current_weight_g ??
-            row.spool.initial_weight_g ??
-            0;
-          return row.spool.status !== "EMPTY" && row.spool.status !== "LOST" && remaining >= 200;
-        }).length;
-        const healthScore =
-          onHandTotal === 0 ? 100 : Math.round((healthySpools / onHandTotal) * 100);
-        setHealth({
-          score: healthScore,
-          headline:
-            healthScore >= 90
-              ? t("dashboard.healthStable", "Stable supply")
-              : healthScore >= 70
-                ? t("dashboard.healthMonitor", "Monitor restock")
-                : t("dashboard.healthRestock", "Restock recommended"),
-          detail: t(
-            "dashboard.healthBalanceHint",
-            "Watch low stock, loans, orders, and loaded slots together.",
-          ),
-          metrics: [
-            {
-              id: "lowStock",
-              label: t("dashboard.lowStockShort", "low stock"),
-              value: lowStockCount.toString(),
-              tone: "rose" as const,
-            },
-            {
-              id: "loaned",
-              label: t("dashboard.loaned", "loaned"),
-              value: activeLoans.length.toString(),
-              tone: "amber" as const,
-            },
-            {
-              id: "onOrder",
-              label: t("dashboard.onOrder", "on order"),
-              value: onOrderCount.toString(),
-              tone: "sky" as const,
-            },
-            {
-              id: "loaded",
-              label: t("dashboard.amsLoaded", "slots loaded"),
-              value: effectiveSlotTotals.loadedSlots.toString(),
-              tone: "emerald" as const,
-            },
-          ],
-        });
+        setHealth(derived.health);
         return;
       }
 
@@ -635,250 +420,23 @@ export default function DashboardPage({
         return;
       }
 
-      const activeLoans = loans.filter(isActiveOutboundLoan);
-
-      const printerCount = printers.length;
-      const effectiveSlotTotals = printers.reduce(
-        (sum, printer) => {
-          const summary = summarizeEffectivePrinterSlots(printer.slots);
-          return {
-            loadedSlots: sum.loadedSlots + summary.loadedSlots,
-            totalSlots: sum.totalSlots + summary.totalSlots,
-          };
-        },
-        { loadedSlots: 0, totalSlots: 0 },
-      );
-      const onOrderCount = wishlist
-        .filter((item) => item.status === "ON_ORDER")
-        .reduce((sum, item) => sum + Math.max(1, item.quantity || 1), 0);
-      const onHandRows = spoolRows.filter((row) => {
-        const status = (row.spool.status ?? "").trim().toUpperCase();
-        return status === "IN_STOCK" || status === "IN_USE" || status === "ASSIGNED";
+      const derived = buildDashboardDerivedState({
+        overview,
+        printers,
+        spoolRows,
+        loans,
+        wishlist,
+        materialRows,
+        t,
       });
-      const onHandTotal = onHandRows.length;
-      const onHandOwned = onHandRows.filter((row) => {
-        const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
-        return ownershipType !== "BORROWED_IN";
-      }).length;
-      const onHandBorrowedIn = onHandRows.filter((row) => {
-        const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
-        return ownershipType === "BORROWED_IN";
-      }).length;
-      const onHandInUse = onHandRows.filter((row) => {
-        const status = (row.spool.status ?? "").trim().toUpperCase();
-        return status === "IN_USE" || status === "ASSIGNED";
-      }).length;
-      setOwnershipOnHand({
-        total: onHandTotal,
-        owned: onHandOwned,
-        borrowedIn: onHandBorrowedIn,
-        inUse: onHandInUse,
-      });
-      const lowStockRows = spoolRows
-        .filter((row) => {
-          const status = (row.spool.status ?? "").trim().toUpperCase();
-          const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
-          return (
-            status !== "EMPTY" &&
-            status !== "LOST" &&
-            remaining > 0 &&
-            remaining <= LOW_STOCK_GRAMS
-          );
-        })
-        .sort((left, right) => (left.spool.remaining_g ?? 0) - (right.spool.remaining_g ?? 0))
-        .slice(0, 5)
-        .map((row) => ({
-          id: row.spool.id,
-          name: row.master.filament_name,
-          color: row.master.color_name,
-          remaining: `${row.spool.remaining_g ?? 0} g`,
-        }));
-      const lowStockCount = lowStockRows.length;
-      const ownedLowStockCount = spoolRows.filter((row) => {
-        const status = (row.spool.status ?? "").trim().toUpperCase();
-        const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
-        const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
-        return (
-          status !== "EMPTY" &&
-          status !== "LOST" &&
-          ownershipType !== "BORROWED_IN" &&
-          remaining > 0 &&
-          remaining <= LOW_STOCK_GRAMS
-        );
-      }).length;
-      const borrowedInLowStockCount = spoolRows.filter((row) => {
-        const status = (row.spool.status ?? "").trim().toUpperCase();
-        const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
-        const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
-        return (
-          status !== "EMPTY" &&
-          status !== "LOST" &&
-          ownershipType === "BORROWED_IN" &&
-          remaining > 0 &&
-          remaining <= LOW_STOCK_GRAMS
-        );
-      }).length;
-      setOwnershipLowStock({
-        owned: ownedLowStockCount,
-        borrowedIn: borrowedInLowStockCount,
-      });
-      const liveActivity: ActivityItem[] = [
-        ...activeLoans.slice(0, 3).map((loan) => ({
-          id: `loan-${loan.loan.id}`,
-          title: `${t("dashboard.loanedTo", "Loaned to")} ${loan.loan.borrower_name}`,
-          detail: `${loan.material} ${loan.filament_name} · ${loan.loan.grams_out} g`,
-          tone: "amber" as const,
-        })),
-        ...printers.slice(0, 3).map((printer) => ({
-          id: `printer-${printer.printer.id}`,
-          title: printer.printer.name,
-          detail: `${printer.usage.total_jobs} ${t("printers.jobs", "jobs")} · ${printer.usage.total_used_g} g ${t("printers.used", "used")}`,
-          tone: "sky" as const,
-        })),
-      ];
-
-      setStats([
-        {
-          id: "total",
-          title: t("dashboard.totalSpools", "Total Spools"),
-          value: onHandTotal.toString(),
-          subtitle: t("dashboard.totalSpoolsSubtitle", "Across all locations"),
-          trend: `${onHandInUse} ${t("dashboard.assigned", "assigned")}`,
-          accent: "sky" as const,
-        },
-        {
-          id: "activePrinters",
-          title: t("dashboard.activePrinters", "Active Printers"),
-          value: printerCount.toString(),
-          subtitle: `${printerCount} ${t("dashboard.configured", "configured")}`,
-          trend:
-            printerCount > 0
-              ? t("dashboard.allConfiguredActive", "All configured printers are active")
-              : t("dashboard.noPrintersConfigured", "No printers configured"),
-          accent: "emerald" as const,
-        },
-        {
-          id: "lowStock",
-          title: t("dashboard.lowStock", "Low Stock"),
-          value: lowStockCount.toString(),
-          subtitle: t("dashboard.below200", "Below 200g"),
-          trend:
-            lowStockRows.length > 0
-              ? `${lowStockRows[0].remaining} ${t("dashboard.lowest", "lowest")}`
-              : t("dashboard.noAlerts", "No alerts"),
-          accent: "rose" as const,
-        },
-        {
-          id: "monthlyUsage",
-          title: t("dashboard.monthlyUsage", "Monthly Usage"),
-          value: `${overview.total_consumption_30d} g`,
-          subtitle: t("dashboard.last30", "Last 30 days"),
-          trend: `${Math.round(overview.total_consumption_30d / 30)} g/day`,
-          accent: "amber" as const,
-        },
-      ]);
-      setActivity(
-        liveActivity.length > 0
-          ? liveActivity
-          : [
-              {
-                id: "empty",
-                title: t("dashboard.noRecentActivity", "No recent activity yet."),
-                detail: t(
-                  "dashboard.activityEmptyHint",
-                  "Loans, printer jobs, and other tracked activity will appear here.",
-                ),
-                tone: "slate",
-              },
-            ],
-      );
-
-      const dynamicUsage = materialRows
-        .map((row) => Math.max(0, row.used_grams))
-        .filter((value) => value > 0)
-        .slice(0, 8)
-        .reverse();
-      if (dynamicUsage.length >= 2) {
-        setUsagePoints(dynamicUsage);
-      } else if (dynamicUsage.length === 1) {
-        setUsagePoints([0, dynamicUsage[0]]);
-      } else {
-        setUsagePoints([0, overview.total_consumption_30d]);
-      }
-
-      const activeSpoolRows = spoolRows.filter((row) => {
-        const status = row.spool.status.trim().toUpperCase();
-        return status !== "EMPTY" && status !== "LOST";
-      });
-      const placedActiveSpools = activeSpoolRows.filter((row) =>
-        Boolean((row.spool.location_id ?? "").trim()),
-      ).length;
-      const totalJobs = printers.reduce(
-        (sum, printer) => sum + Math.max(0, printer.usage.total_jobs),
-        0,
-      );
-      const nextGoalMetrics = {
-        activeSpools: activeSpoolRows.length,
-        placedActiveSpools,
-        totalJobs,
-        totalSlots: effectiveSlotTotals.totalSlots,
-        loadedSlots: effectiveSlotTotals.loadedSlots,
-      };
-      cachedGoalMetrics = nextGoalMetrics;
-      setGoalMetrics(nextGoalMetrics);
-
-      const healthySpools = spoolRows.filter((row) => {
-        const remaining =
-          row.spool.remaining_g ??
-          row.spool.current_weight_g ??
-          row.spool.initial_weight_g ??
-          0;
-        return row.spool.status !== "EMPTY" && row.spool.status !== "LOST" && remaining >= 200;
-      }).length;
-      const healthScore =
-        onHandTotal === 0
-          ? 100
-          : Math.round((healthySpools / onHandTotal) * 100);
-      const headline =
-        healthScore >= 90
-          ? t("dashboard.healthStable", "Stable supply")
-          : healthScore >= 70
-            ? t("dashboard.healthMonitor", "Monitor restock")
-            : t("dashboard.healthRestock", "Restock recommended");
-      setHealth({
-        score: healthScore,
-        headline,
-        detail: t(
-          "dashboard.healthBalanceHint",
-          "Watch low stock, loans, orders, and loaded slots together.",
-        ),
-        metrics: [
-          {
-            id: "lowStock",
-            label: t("dashboard.lowStockShort", "low stock"),
-            value: lowStockCount.toString(),
-            tone: "rose" as const,
-          },
-          {
-            id: "loaned",
-            label: t("dashboard.loaned", "loaned"),
-            value: activeLoans.length.toString(),
-            tone: "amber" as const,
-          },
-          {
-            id: "onOrder",
-            label: t("dashboard.onOrder", "on order"),
-            value: onOrderCount.toString(),
-            tone: "sky" as const,
-          },
-          {
-            id: "loaded",
-            label: t("dashboard.amsLoaded", "slots loaded"),
-            value: effectiveSlotTotals.loadedSlots.toString(),
-            tone: "emerald" as const,
-          },
-        ],
-      });
+      setOwnershipOnHand(derived.ownershipOnHand);
+      setOwnershipLowStock(derived.ownershipLowStock);
+      setStats(derived.stats);
+      setActivity(derived.activity);
+      setUsagePoints(derived.usagePoints);
+      cachedGoalMetrics = derived.goalMetrics;
+      setGoalMetrics(derived.goalMetrics);
+      setHealth(derived.health);
       setLastSyncLabel(
         `${t("dashboard.synced", "Synced")} ${new Date().toLocaleTimeString([], {
           hour: "2-digit",
