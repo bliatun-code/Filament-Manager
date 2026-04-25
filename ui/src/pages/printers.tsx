@@ -23,6 +23,19 @@ import {
   loadPrinterPageData,
   type PrinterSnapshotSource,
 } from "../lib/printer_data_source";
+import {
+  buildEmptySlotWeightPrompt,
+  buildIncomingWeightPrompt,
+  buildRfidOverridePrompt,
+  buildSlotSwapDraft,
+  filterAllowedSpoolsForSlot,
+  filterSlotOptionsBySearch,
+  parseWeightInput,
+  resolveSpoolTareWeightForRow,
+  type IncomingWeightPrompt,
+  type SlotRfidOverridePrompt,
+  type SlotSwapDraft,
+} from "../lib/printer_slot_model";
 import { AppModal } from "../components/app_modal";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { ModalHeader, modalPanelClassName } from "../components/modal_chrome";
@@ -86,63 +99,9 @@ function parseNonNegativeInt(raw: string, fallback: number): number {
   return parsed;
 }
 
-function defaultSpoolTareWeightForVendor(vendor?: string | null): number {
-  const normalized = (vendor ?? "").trim().toLowerCase();
-  if (normalized.includes("bambu")) {
-    return 250;
-  }
-  if (normalized.includes("esun")) {
-    return 224;
-  }
-  return 0;
-}
-
-function resolveSpoolTareWeightForRow(row?: SpoolWithMasterRow | null): number {
-  if (!row) {
-    return 0;
-  }
-  const explicit = row.spool.spool_tare_weight_g;
-  if (explicit != null && Number.isFinite(explicit)) {
-    return Math.max(0, Math.round(explicit));
-  }
-  return defaultSpoolTareWeightForVendor(row.master.vendor);
-}
-
 function clampInt(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
-
-type SlotSwapDraft = {
-  targetSpoolId: string;
-  search: string;
-  outgoingWeight: string;
-  incomingWeight: string;
-};
-
-type IncomingWeightPrompt = {
-  printerId: string;
-  slotId: string;
-  targetSpoolId: string | null;
-  targetMaterial: string;
-  targetFilamentName: string;
-  targetColorName: string;
-  targetHexColor?: string | null;
-  requiresOutgoingWeight: boolean;
-  requiresIncomingWeight: boolean;
-  currentMaterial?: string | null;
-  currentFilamentName?: string | null;
-  currentColorName?: string | null;
-};
-
-type SlotRfidOverridePrompt = {
-  printerId: string;
-  printerName: string;
-  printerModel: string;
-  slot: PrinterAmsSlotRow;
-  spool: SpoolWithMasterRow;
-  liveTray: BambuLiveObservedTray;
-  observedAt: string | null;
-};
 
 export default function PrintersPage() {
   const { t, locale } = useI18n();
@@ -482,59 +441,17 @@ export default function PrintersPage() {
     }
   }
 
-  function allowedSpoolsForSlot(slotSpoolId?: string | null) {
-    return sortedSpools.filter((row) => {
-      const status = (row.spool.status ?? "").trim().toUpperCase();
-      const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
-      if (
-        status === "EMPTY" ||
-        status === "LOST" ||
-        status === "MISSING" ||
-        (status === "BORROWED" && ownershipType !== "BORROWED_IN")
-      ) {
-        return false;
-      }
-      if (slotSpoolId && row.spool.id === slotSpoolId) {
-        return true;
-      }
-      if (status === "IN_USE" || status === "ASSIGNED") {
-        return false;
-      }
-      return true;
-    });
-  }
-
-  function parseWeightInput(raw: string): number | null {
-    const trimmed = raw.trim();
-    if (!trimmed) {
-      return null;
-    }
-    const parsed = Number.parseInt(trimmed, 10);
-    if (!Number.isFinite(parsed) || parsed < 0) {
-      return null;
-    }
-    return Math.round(parsed);
-  }
+  const allowedSpoolsForSlot = useCallback(
+    (slotSpoolId?: string | null) => filterAllowedSpoolsForSlot(sortedSpools, slotSpoolId),
+    [sortedSpools],
+  );
 
   function getSlotDraft(slot: PrinterAmsSlotRow): SlotSwapDraft {
     const cached = slotDrafts[slot.slot_id];
     if (cached) {
       return cached;
     }
-    return {
-      targetSpoolId: slot.spool_id ?? "",
-      search: "",
-      outgoingWeight:
-        slot.spool_remaining_g != null
-          ? String(
-              Math.max(
-                0,
-                slot.spool_remaining_g + resolveSpoolTareWeightById(slot.spool_id ?? null),
-              ),
-            )
-          : "",
-      incomingWeight: "",
-    };
+    return buildSlotSwapDraft(slot, resolveSpoolTareWeightById);
   }
 
   function findLiveTrayForSlot(
@@ -571,16 +488,9 @@ export default function PrintersPage() {
       return;
     }
     const liveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
-    setRfidOverridePrompt({
-      printerId: printer.printer.id,
-      printerName: printer.printer.name,
-      printerModel: printer.printer.model,
-      slot,
-      spool,
-      liveTray,
-      observedAt:
-        liveTray.last_identity_seen_at ?? liveConfig?.observed_state?.last_seen_at ?? null,
-    });
+    setRfidOverridePrompt(
+      buildRfidOverridePrompt(printer, slot, spool, liveTray, liveConfig),
+    );
   }
 
   function setSlotDraft(slotId: string, next: SlotSwapDraft) {
@@ -595,28 +505,15 @@ export default function PrintersPage() {
     slot: PrinterAmsSlotRow,
     row: SpoolWithMasterRow,
   ) {
-    const requiresOutgoingWeight = Boolean(slot.spool_id && slot.spool_id !== row.spool.id);
-    setIncomingWeightPrompt({
-      printerId,
-      slotId: slot.slot_id,
-      targetSpoolId: row.spool.id,
-      targetMaterial: row.master.material,
-      targetFilamentName: row.master.filament_name,
-      targetColorName: row.master.color_name,
-      targetHexColor: row.master.hex_color,
-      requiresOutgoingWeight,
-      requiresIncomingWeight: true,
-      currentMaterial: slot.spool_material,
-      currentFilamentName: slot.spool_filament_name,
-      currentColorName: slot.spool_color_name,
-    });
+    const prompt = buildIncomingWeightPrompt(printerId, slot, row);
+    setIncomingWeightPrompt(prompt);
     setIncomingWeightValue(
       row.spool.remaining_g != null
         ? String(Math.max(0, row.spool.remaining_g + resolveSpoolTareWeightForRow(row)))
         : "",
     );
     setOutgoingWeightValue(
-      requiresOutgoingWeight && slot.spool_remaining_g != null
+      prompt.requiresOutgoingWeight && slot.spool_remaining_g != null
         ? String(
             Math.max(
               0,
@@ -631,20 +528,7 @@ export default function PrintersPage() {
     if (!slot.spool_id) {
       return;
     }
-    setIncomingWeightPrompt({
-      printerId,
-      slotId: slot.slot_id,
-      targetSpoolId: null,
-      targetMaterial: slot.spool_material ?? "—",
-      targetFilamentName: slot.spool_filament_name ?? "—",
-      targetColorName: slot.spool_color_name ?? "—",
-      targetHexColor: slot.spool_hex_color,
-      requiresOutgoingWeight: true,
-      requiresIncomingWeight: false,
-      currentMaterial: slot.spool_material,
-      currentFilamentName: slot.spool_filament_name,
-      currentColorName: slot.spool_color_name,
-    });
+    setIncomingWeightPrompt(buildEmptySlotWeightPrompt(printerId, slot));
     setIncomingWeightValue("");
     setOutgoingWeightValue(
       slot.spool_remaining_g != null
@@ -1221,15 +1105,7 @@ export default function PrintersPage() {
                 const effectiveLiveTray = liveCacheSuppressedByManualClear ? null : liveTray;
                 const slotOptions = allowedSpoolsForSlot(slot.spool_id);
                 const draft = getSlotDraft(slot);
-                const searchTerm = draft.search.trim().toLowerCase();
-                const filteredSlotOptions = slotOptions.filter((row) => {
-                  if (!searchTerm) {
-                    return true;
-                  }
-                  return `${row.master.vendor} ${row.master.material} ${row.master.filament_name} ${row.master.color_name} ${row.spool.id} ${row.spool.location_id ?? ""}`
-                    .toLowerCase()
-                    .includes(searchTerm);
-                });
+                const filteredSlotOptions = filterSlotOptionsBySearch(slotOptions, draft.search);
                 const selectedTargetSpool =
                   draft.targetSpoolId.length > 0
                     ? slotOptions.find((row) => row.spool.id === draft.targetSpoolId) ?? null
