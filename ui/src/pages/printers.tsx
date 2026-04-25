@@ -4,13 +4,8 @@ import {
   assignLibrarySyncHostPrinterSlot,
   createPrinter,
   createLibrarySyncHostPrinter,
-  fetchCachedLibrarySyncPrinterOverview,
-  fetchCachedLibrarySyncSpools,
-  fetchLibrarySyncPrinterOverview,
   getLibrarySyncSettings,
-  getPrinterSettings,
   isTauri,
-  listPrinterOverview,
   recordPrintUsage,
   recordLibrarySyncHostPrintUsage,
   updateLibrarySyncHostSpoolRfidTag,
@@ -23,7 +18,11 @@ import {
   type PrinterAmsSlotRow,
   type SpoolWithMasterRow,
 } from "../lib/tauri_client";
-import { loadSpoolRowsPage } from "../lib/spool_data_source";
+import {
+  derivePrinterLibrarySyncState,
+  loadPrinterPageData,
+  type PrinterSnapshotSource,
+} from "../lib/printer_data_source";
 import { AppModal } from "../components/app_modal";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { ModalHeader, modalPanelClassName } from "../components/modal_chrome";
@@ -164,9 +163,7 @@ export default function PrintersPage() {
   const [clientHostBaseUrl, setClientHostBaseUrl] = useState<string | null>(null);
   const [clientLibraryId, setClientLibraryId] = useState<string | null>(null);
   const [librarySyncReady, setLibrarySyncReady] = useState(!tauri);
-  const [clientPrinterSource, setClientPrinterSource] = useState<"LIVE" | "CACHED" | "OFFLINE">(
-    "LIVE",
-  );
+  const [clientPrinterSource, setClientPrinterSource] = useState<PrinterSnapshotSource>("LIVE");
   const [clientPrinterUpdatedAt, setClientPrinterUpdatedAt] = useState<string | null>(null);
   const [printerModels, setPrinterModels] = useState<string[]>([]);
   const [showAddPrinterModal, setShowAddPrinterModal] = useState(false);
@@ -201,11 +198,12 @@ export default function PrintersPage() {
         if (cancelled) {
           return;
         }
-        setClientReadOnly(syncSettings.mode === "CLIENT");
-        setClientHostWritePaired(syncSettings.client_auth_paired ?? false);
-        setClientHostDeviceName(syncSettings.host_device_name ?? null);
-        setClientHostBaseUrl(syncSettings.host_base_url ?? null);
-        setClientLibraryId(syncSettings.library_id ?? null);
+        const syncState = derivePrinterLibrarySyncState(syncSettings);
+        setClientReadOnly(syncState.clientReadOnly);
+        setClientHostWritePaired(syncState.clientHostWritePaired);
+        setClientHostDeviceName(syncState.clientHostDeviceName);
+        setClientHostBaseUrl(syncState.clientHostBaseUrl);
+        setClientLibraryId(syncState.clientLibraryId);
       } catch (syncError) {
         console.error(syncError);
       } finally {
@@ -315,60 +313,23 @@ export default function PrintersPage() {
       setLoading(true);
     }
     try {
-      const [overview, spoolRows, settings] = await Promise.all(
-        clientReadOnly && clientHostBaseUrl && clientLibraryId
-          ? [
-              fetchLibrarySyncPrinterOverview(clientHostBaseUrl, clientLibraryId),
-              loadSpoolRowsPage(
-                {
-                  clientReadOnly,
-                  clientHostBaseUrl,
-                  clientLibraryId,
-                },
-                1200,
-                0,
-              ),
-              Promise.resolve({
-                printer_models: supportedPrinterModels,
-                bambu_live_integrations: [],
-              }),
-            ]
-          : [
-              listPrinterOverview(),
-              loadSpoolRowsPage(
-                {
-                  clientReadOnly,
-                  clientHostBaseUrl,
-                  clientLibraryId,
-                },
-                1200,
-                0,
-              ),
-              getPrinterSettings(),
-            ],
-      );
-      if (clientReadOnly) {
-        setClientPrinterSource("LIVE");
-        const [cachedPrinters] = await Promise.all([
-          fetchCachedLibrarySyncPrinterOverview().catch(() => null),
-        ]);
-        setClientPrinterUpdatedAt(cachedPrinters?.captured_at ?? null);
-      }
+      const loaded = await loadPrinterPageData({
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+        supportedPrinterModels,
+      });
+      setClientPrinterSource(loaded.source);
+      setClientPrinterUpdatedAt(loaded.updatedAt);
       setPrinters(
-        overview.map((printer) => ({
+        loaded.printers.map((printer) => ({
           ...printer,
           slots: sortPrinterSlotsExtLast(printer.slots),
         })),
       );
-      setSpools(spoolRows);
-      setBambuLiveIntegrations(
-        Object.fromEntries(
-          (settings.bambu_live_integrations ?? []).map((entry) => [entry.printer_id, entry.config]),
-        ),
-      );
-      setPrinterModels(
-        settings.printer_models.length > 0 ? settings.printer_models : supportedPrinterModels,
-      );
+      setSpools(loaded.spools);
+      setBambuLiveIntegrations(loaded.bambuLiveIntegrations);
+      setPrinterModels(loaded.printerModels);
       if (!options?.silent) {
         setSlotDrafts({});
         setOpenDropdownSlotId(null);
@@ -378,42 +339,6 @@ export default function PrintersPage() {
       }
     } catch (loadError) {
       console.error(loadError);
-      if (clientReadOnly) {
-        try {
-          const [cachedPrinters, cachedSpools] = await Promise.all([
-            fetchCachedLibrarySyncPrinterOverview(),
-            fetchCachedLibrarySyncSpools(),
-          ]);
-          if (cachedPrinters?.rows || cachedSpools?.rows) {
-            setClientPrinterSource("CACHED");
-            setClientPrinterUpdatedAt(cachedPrinters?.captured_at ?? null);
-            setPrinters(
-              (cachedPrinters?.rows ?? []).map((printer) => ({
-                ...printer,
-                slots: sortPrinterSlotsExtLast(printer.slots),
-              })),
-            );
-            setSpools(cachedSpools?.rows ?? []);
-            setBambuLiveIntegrations({});
-            setPrinterModels(supportedPrinterModels);
-            if (!options?.silent) {
-              setSlotDrafts({});
-              setOpenDropdownSlotId(null);
-              setIncomingWeightPrompt(null);
-              setIncomingWeightValue("");
-              setOutgoingWeightValue("");
-            }
-            return;
-          }
-        } catch (cacheError) {
-          console.error(cacheError);
-        }
-        setClientPrinterSource("OFFLINE");
-        setClientPrinterUpdatedAt(null);
-        setPrinters([]);
-        setSpools([]);
-        setBambuLiveIntegrations({});
-      }
       setError(t("printers.error.load", "Failed to load printer overview."));
     } finally {
       if (!options?.silent) {
