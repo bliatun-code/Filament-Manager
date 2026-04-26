@@ -1,10 +1,58 @@
 # Session State
 
-Last updated: 2026-04-17
+Last updated: 2026-04-26
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
+- Cleanup / hardening checkpoint (2026-04-26):
+  - `main` is clean, pushed, and currently aligned with `origin/main`
+  - the large parity/refactor pass across desktop host, paired client, and browser companion is now materially further along than the 2026-04-17 checkpoint below
+  - new shared helper/data-source layers are landed for:
+    - `Inventory`
+    - `Settings`
+    - `Dashboard`
+    - `Loans`
+    - `Statistics`
+    - `Printers` (now substantially reduced: live/display, data source, slot model/display, form model, and measured-weight helpers extracted)
+  - recent key refactor commits include:
+    - `64fd124 refactor: extract printer data source helpers`
+    - `59fd4b8 refactor: extract printer live display helpers`
+    - `9284688 refactor: extract printer slot model helpers`
+    - `a3a0f21 refactor: prepare printer slot assignment payloads`
+    - `39d2b63 refactor: extract printer slot display state`
+    - `c5b7fbb refactor: extract printer form model helpers`
+    - `cac4ef0 refactor: extract printer measured weight model`
+    - `bf094bf fix: derive client statistics ownership metrics from host rows`
+    - `a5f7ba0 fix: stabilize client printer live indicators`
+    - `93b845c refactor: extract statistics derived view state`
+    - `5f7f15f refactor: extract statistics data source helpers`
+    - `25f210e refactor: extract loan data source helpers`
+    - `40c7ef0 refactor: extract loan display helpers`
+    - `4d0e749 refactor: extract dashboard derived state helpers`
+    - `c0c51fd refactor: extract inventory list model helpers`
+    - `c3f1269 refactor: extract inventory history formatters`
+    - `e7e3a19 refactor: extract inventory RFID capture helpers`
+    - `62754f7 refactor: extract settings diagnostic derived state`
+    - `ce94b88 refactor: extract settings diagnostic capture helpers`
+  - browser companion hardening and parity work is also landed, including:
+    - centralized asset registry
+    - live printer status
+    - RFID capture/save
+    - QR scanner
+    - history/localization cleanup
+  - the latest desktop `Printers` UI polish/fixes also include:
+    - removal of the redundant printer-header `Live` chip
+    - removal of the redundant slot `Tildelt` chip
+    - paired-client live connection badge now uses fresh slot snapshot evidence as a stability fallback, which avoids false `Live inaktiv` flips while the host still shows a stable live connection
+  - the latest paired-client `Statistics` fix now derives ownership overview cards from host spool/usage rows when available, avoiding stale aggregate mismatches on the client
+  - security/dependency follow-up on GitHub was reviewed and cleaned up:
+    - OpenSSL bump landed: `8728b00 fix: bump openssl to 0.10.78`
+    - `rustls-webpki` bump is merged via GitHub
+    - `postcss` bump landed: `2f1febc fix: bump postcss to 8.5.10`
+    - all actionable new Dependabot items were handled
+    - only the 2 low transitive `rand` alerts remain open, intentionally, pending newer upstream Tauri dependency versions
+  - no separate bootstrap handoff file remains; continue from `SESSION_STATE.md` and `NEXT_STEPS.md`
 - Release 0.11.0 prep checkpoint (2026-04-17):
   - `main` is now being prepared for the next stable release after `v0.10.1`
   - version sources are aligned to `0.11.0` in root package, Tauri config, and Rust package metadata

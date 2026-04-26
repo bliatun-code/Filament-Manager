@@ -2,6 +2,36 @@
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current browser baseline is trusted-LAN-only, with `Storage` as the browser label for desktop `Inventory` / `Lager` and `Add spool` as the browser intake action.
 
+## Active Cleanup Continuation (2026-04-26)
+- Current cleanup baseline:
+  - `main` is aligned with `origin/main` after the latest cleanup/fix batches
+  - the large parity/refactor pass is active, but now at a calmer checkpoint after several controlled `Printers` extractions plus one paired-client statistics fix
+  - handoff should continue from `SESSION_STATE.md` + `NEXT_STEPS.md`; the temporary bootstrap prompt file was removed
+- What is already cleaned up:
+  - shared data/model/helper layers are landed for `Inventory`, `Settings`, `Dashboard`, `Loans`, and `Statistics`
+  - `Printers` has already had:
+    - live/display helpers extracted
+    - data source / reload helpers extracted
+    - slot draft / prompt helpers extracted
+    - slot assignment payload preparation extracted
+    - slot display-state derivation extracted
+    - add-printer form/model shaping extracted
+    - measured-weight usage math extracted
+    - paired-client live header badge stabilized against fresher slot snapshots
+    - redundant `Live` / `Tildelt` chips removed from the desktop printer board
+  - browser companion parity/hardening is substantially improved and landed
+  - GitHub / Dependabot cleanup is up to date except for the 2 known low transitive `rand` alerts
+  - recent follow-up fix also landed for paired-client `Statistics` ownership metrics so client ownership cards derive from host rows instead of a stale aggregate path
+- Recommended next coding target:
+  - do not jump into broad new rewrites by default
+  - prefer small, behavior-led follow-up batches:
+    - real host/client/browser parity fixes discovered during use
+    - narrow `Printers` cleanup only if a remaining dense write-orchestration pocket becomes painful enough to justify the risk
+    - otherwise shift energy toward release validation and edge-case hardening
+- Things intentionally not to “fix” right now:
+  - the 2 remaining low `rand` alerts
+  - they are still transitive via current Tauri / `tauri-utils` dependencies and should be revisited only when newer upstream versions are available
+
 ## v0.11.0 Release Prep (2026-04-17)
 - Release target:
   - next stable release after `v0.10.1`
