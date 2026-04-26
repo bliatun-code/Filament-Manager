@@ -1,10 +1,12 @@
 import type {
+  AssignPrinterSlotInput,
   BambuLiveIntegrationEntry,
   BambuLiveObservedTray,
   PrinterAmsSlotRow,
   PrinterOverviewRow,
   SpoolWithMasterRow,
 } from "./tauri_client";
+import { isUnknownLiveRfid } from "./printer_live_display";
 
 export type SlotSwapDraft = {
   targetSpoolId: string;
@@ -36,6 +38,15 @@ export type SlotRfidOverridePrompt = {
   spool: SpoolWithMasterRow;
   liveTray: BambuLiveObservedTray;
   observedAt: string | null;
+};
+
+export type PreparedPrinterSlotAssignment = {
+  currentSpoolId: string | null;
+  targetSpoolId: string | null;
+  hasChange: boolean;
+  overrideChanged: boolean;
+  shouldAssignSlot: boolean;
+  assignInput: AssignPrinterSlotInput;
 };
 
 function defaultSpoolTareWeightForVendor(vendor?: string | null): number {
@@ -183,5 +194,46 @@ export function buildRfidOverridePrompt(
     spool,
     liveTray,
     observedAt: liveTray.last_identity_seen_at ?? liveConfig?.observed_state?.last_seen_at ?? null,
+  };
+}
+
+export function preparePrinterSlotAssignment(
+  printerId: string,
+  slot: PrinterAmsSlotRow,
+  targetSpoolId: string | null | undefined,
+  liveTray: BambuLiveObservedTray | null,
+): PreparedPrinterSlotAssignment {
+  const currentSpoolId = slot.spool_id ?? null;
+  const normalizedTargetSpoolId = targetSpoolId?.trim() || null;
+  const isExtSlot = (slot.ams_id ?? "").endsWith("_ext");
+  const hasChange = currentSpoolId !== normalizedTargetSpoolId;
+  const nextUnknownOverride =
+    normalizedTargetSpoolId && !isExtSlot && isUnknownLiveRfid(liveTray)
+      ? {
+          trayUuid: liveTray?.tray_uuid?.trim() ?? "",
+          colorHex: liveTray?.color_hex?.trim() ?? "",
+        }
+      : null;
+  const clearLiveCacheBeforeNextRefresh = !normalizedTargetSpoolId && !isExtSlot && !!currentSpoolId;
+  const currentOverrideTrayUuid = (slot.rfid_override_tray_uuid ?? "").trim();
+  const currentOverrideColorHex = (slot.rfid_override_color_hex ?? "").trim();
+  const overrideChanged =
+    currentOverrideTrayUuid !== (nextUnknownOverride?.trayUuid ?? "") ||
+    currentOverrideColorHex !== (nextUnknownOverride?.colorHex ?? "");
+
+  return {
+    currentSpoolId,
+    targetSpoolId: normalizedTargetSpoolId,
+    hasChange,
+    overrideChanged,
+    shouldAssignSlot: hasChange || overrideChanged,
+    assignInput: {
+      printer_id: printerId,
+      slot_id: slot.slot_id,
+      spool_id: normalizedTargetSpoolId,
+      rfid_override_tray_uuid: nextUnknownOverride?.trayUuid || null,
+      rfid_override_color_hex: nextUnknownOverride?.colorHex || null,
+      clear_live_cache_before_next_refresh: clearLiveCacheBeforeNextRefresh,
+    },
   };
 }

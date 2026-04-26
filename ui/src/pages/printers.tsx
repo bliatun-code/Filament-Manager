@@ -31,6 +31,7 @@ import {
   filterAllowedSpoolsForSlot,
   filterSlotOptionsBySearch,
   parseWeightInput,
+  preparePrinterSlotAssignment,
   resolveSpoolTareWeightForRow,
   type IncomingWeightPrompt,
   type SlotRfidOverridePrompt,
@@ -58,7 +59,7 @@ import {
   formatPrinterSpoolStatusTone as resolvePrinterSpoolStatusTone,
   formatRelativeAge as formatRelativeAgeLabel,
   isOlderThanMinutes,
-  isUnknownLiveRfid as isUnknownLiveRfidTray,
+  isUnknownLiveRfid,
   liveUnknownMatchesSlotOverride as doesLiveUnknownMatchSlotOverride,
   printerSwatchActionButtonStyle,
   printerSwatchInteractiveInsetStyle,
@@ -753,29 +754,20 @@ export default function PrintersPage() {
     if (!tauri || busy) {
       return false;
     }
-    const currentSpoolId = slot.spool_id ?? null;
     const draft = overrides ? null : getSlotDraft(slot);
     const targetSpoolId = overrides ? overrides.targetSpoolId : draft?.targetSpoolId || null;
-    const hasChange = currentSpoolId !== targetSpoolId;
     const outgoingWeightRaw = overrides ? "" : draft?.outgoingWeight.trim() ?? "";
     const incomingWeightRaw = overrides ? "" : draft?.incomingWeight.trim() ?? "";
     const outgoingWeight = overrides ? overrides.outgoingWeight : parseWeightInput(outgoingWeightRaw);
     const incomingWeight = overrides ? overrides.incomingWeight : parseWeightInput(incomingWeightRaw);
     const { tray: liveTray } = findLiveTrayForSlot(printerId, slot);
-    const nextUnknownOverride =
-      targetSpoolId && !((slot.ams_id ?? "").endsWith("_ext")) && isUnknownLiveRfidTray(liveTray)
-        ? {
-            trayUuid: liveTray?.tray_uuid?.trim() ?? "",
-            colorHex: liveTray?.color_hex?.trim() ?? "",
-          }
-        : null;
-    const clearLiveCacheBeforeNextRefresh =
-      !targetSpoolId && !((slot.ams_id ?? "").endsWith("_ext")) && !!currentSpoolId;
-    const currentOverrideTrayUuid = (slot.rfid_override_tray_uuid ?? "").trim();
-    const currentOverrideColorHex = (slot.rfid_override_color_hex ?? "").trim();
-    const overrideChanged =
-      currentOverrideTrayUuid !== (nextUnknownOverride?.trayUuid ?? "") ||
-      currentOverrideColorHex !== (nextUnknownOverride?.colorHex ?? "");
+    const preparedAssignment = preparePrinterSlotAssignment(
+      printerId,
+      slot,
+      targetSpoolId,
+      liveTray,
+    );
+    const { currentSpoolId } = preparedAssignment;
 
     if (!overrides && outgoingWeightRaw && outgoingWeight == null) {
       setError(t("inventory.error.invalidWeight", "Weight value is invalid."));
@@ -786,7 +778,11 @@ export default function PrintersPage() {
       return false;
     }
 
-    if (!hasChange && !overrideChanged && outgoingWeight == null && incomingWeight == null) {
+    if (
+      !preparedAssignment.shouldAssignSlot &&
+      outgoingWeight == null &&
+      incomingWeight == null
+    ) {
       setInfo(t("printers.noPendingChanges", "No pending slot changes."));
       return false;
     }
@@ -795,7 +791,7 @@ export default function PrintersPage() {
     setError(null);
     setInfo(null);
     try {
-      if (currentSpoolId && hasChange) {
+      if (currentSpoolId && preparedAssignment.hasChange) {
         if (outgoingWeight == null) {
           throw new Error(
             t(
@@ -811,7 +807,11 @@ export default function PrintersPage() {
           outgoingWeight,
           resolveSpoolTareWeightById(currentSpoolId),
         );
-      } else if (currentSpoolId && !hasChange && (incomingWeight != null || outgoingWeight != null)) {
+      } else if (
+        currentSpoolId &&
+        !preparedAssignment.hasChange &&
+        (incomingWeight != null || outgoingWeight != null)
+      ) {
         const sameRollMeasuredWeight = incomingWeight ?? outgoingWeight;
         if (sameRollMeasuredWeight != null) {
           await applyMeasuredWeightWithUsage(
@@ -824,42 +824,32 @@ export default function PrintersPage() {
         }
       }
 
-      if (hasChange || overrideChanged) {
+      if (preparedAssignment.shouldAssignSlot) {
         if (clientReadOnly) {
           await assignLibrarySyncHostPrinterSlot(
             clientHostBaseUrl!,
             clientLibraryId,
-            {
-              printer_id: printerId,
-              slot_id: slot.slot_id,
-              spool_id: targetSpoolId,
-              rfid_override_tray_uuid: nextUnknownOverride?.trayUuid || null,
-              rfid_override_color_hex: nextUnknownOverride?.colorHex || null,
-              clear_live_cache_before_next_refresh: clearLiveCacheBeforeNextRefresh,
-            },
+            preparedAssignment.assignInput,
           );
         } else {
-          await assignPrinterSlot({
-            printer_id: printerId,
-            slot_id: slot.slot_id,
-            spool_id: targetSpoolId,
-            rfid_override_tray_uuid: nextUnknownOverride?.trayUuid || null,
-            rfid_override_color_hex: nextUnknownOverride?.colorHex || null,
-            clear_live_cache_before_next_refresh: clearLiveCacheBeforeNextRefresh,
-          });
+          await assignPrinterSlot(preparedAssignment.assignInput);
         }
       }
 
-      if (hasChange && targetSpoolId && incomingWeight != null) {
+      if (
+        preparedAssignment.hasChange &&
+        preparedAssignment.targetSpoolId &&
+        incomingWeight != null
+      ) {
         if (clientReadOnly) {
           await updateLibrarySyncHostSpoolWeight(
             clientHostBaseUrl!,
             clientLibraryId,
-            targetSpoolId,
+            preparedAssignment.targetSpoolId,
             incomingWeight,
           );
         } else {
-          await updateSpoolWeight(targetSpoolId, incomingWeight);
+          await updateSpoolWeight(preparedAssignment.targetSpoolId, incomingWeight);
         }
       }
       await reloadData();
@@ -1135,7 +1125,7 @@ export default function PrintersPage() {
                 const unknownLiveRfid =
                   liveIdentityFresh &&
                   liveSignalEnabled &&
-                  isUnknownLiveRfidTray(effectiveLiveTray);
+                  isUnknownLiveRfid(effectiveLiveTray);
                 const rfidOverridden =
                   unknownLiveRfid &&
                   doesLiveUnknownMatchSlotOverride(slot, effectiveLiveTray);
