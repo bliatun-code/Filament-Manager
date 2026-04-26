@@ -31,6 +31,7 @@ import {
   sortFailedPrinterRows,
   sortLoggedPrinterRows,
   toSwatchColor,
+  deriveInventoryOverviewFromRows,
   type BorrowerFilamentUsageRow,
   type BorrowerPopupPrefs,
   type ConsumptionPopupPrefs,
@@ -57,6 +58,7 @@ import {
   type InventoryOverview,
   type LoanUsageByPersonRow,
   type PrinterOverviewRow,
+  type SpoolWithMasterRow,
   type SpoolLoanDetailsRow,
 } from "../lib/tauri_client";
 
@@ -98,7 +100,9 @@ function SummaryMetricTile({
       <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
         {label}
       </div>
-      <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-50">{value}</div>
+      <div key={value} className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-50">
+        {value}
+      </div>
     </div>
   );
 }
@@ -126,6 +130,10 @@ export default function StatisticsPage() {
   const tauri = isTauri();
   const [overview, setOverview] = useState<InventoryOverview | null>(null);
   const [printers, setPrinters] = useState<PrinterOverviewRow[]>([]);
+  const [spoolRows, setSpoolRows] = useState<SpoolWithMasterRow[]>([]);
+  const [overviewConsumptionRows, setOverviewConsumptionRows] = useState<FilamentConsumptionRow[]>(
+    [],
+  );
   const [loanUsage, setLoanUsage] = useState<LoanUsageByPersonRow[]>([]);
   const [inboundLoanUsage, setInboundLoanUsage] = useState<LoanUsageByPersonRow[]>([]);
   const [loanDetails, setLoanDetails] = useState<SpoolLoanDetailsRow[]>([]);
@@ -161,7 +169,6 @@ export default function StatisticsPage() {
   const [slotOwnershipFilter, setSlotOwnershipFilter] = useState<OwnershipFilter>("ALL");
   const [loanUsageListFilter, setLoanUsageListFilter] =
     useState<LoanUsageListFilter>("ACTIVE");
-
   useEffect(() => {
     if (typeof window === "undefined" || !window.localStorage) {
       return;
@@ -187,21 +194,18 @@ export default function StatisticsPage() {
     }
   }, [borrowerPrefs]);
 
-  useEffect(() => {
-    if (!tauri) {
-      return;
-    }
-    let cancelled = false;
-    async function loadStatistics() {
-      setLoading(true);
+  const loadStatistics = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!tauri) {
+        return;
+      }
+      if (!options?.silent) {
+        setLoading(true);
+      }
       setError(null);
       try {
         const syncSettings = await getLibrarySyncSettings();
         const syncState = deriveStatisticsLibrarySyncState(syncSettings);
-
-        if (cancelled) {
-          return;
-        }
 
         setClientReadOnly(syncState.clientReadOnly);
         setClientHostDeviceName(syncState.clientHostDeviceName);
@@ -209,11 +213,10 @@ export default function StatisticsPage() {
         setClientLibraryId(syncState.clientLibraryId);
 
         const result = await loadStatisticsData(syncSettings);
-        if (cancelled) {
-          return;
-        }
-        setOverview(result.overview);
+        setOverview(result.overview ? { ...result.overview } : null);
         setPrinters(result.printers);
+        setSpoolRows([...result.spoolRows]);
+        setOverviewConsumptionRows([...result.consumptionRows]);
         setLoanDetails(result.loanDetails);
         setLoanUsage(result.loanUsage);
         setInboundLoanUsage(result.inboundLoanUsage);
@@ -221,23 +224,27 @@ export default function StatisticsPage() {
         setClientStatsSource(result.source);
       } catch (loadError) {
         console.error(loadError);
-        if (!cancelled) {
-          setError(t("statistics.error.load", "Failed to load statistics."));
-        }
+        setError(t("statistics.error.load", "Failed to load statistics."));
       } finally {
-        if (!cancelled) {
+        if (!options?.silent) {
           setLoading(false);
         }
       }
-    }
+    },
+    [t, tauri],
+  );
+
+  useEffect(() => {
     void loadStatistics();
-    return () => {
-      cancelled = true;
-    };
-  }, [t, tauri]);
+  }, [loadStatistics]);
 
   const totals = useMemo(() => deriveStatisticsTotals(printers), [printers]);
-
+  const ownershipOverview = useMemo(() => {
+    if (spoolRows.length > 0 || overviewConsumptionRows.length > 0) {
+      return deriveInventoryOverviewFromRows(spoolRows, overviewConsumptionRows);
+    }
+    return overview;
+  }, [overview, overviewConsumptionRows, spoolRows]);
   const openConsumptionModal = useCallback(
     async (printer?: PrinterOverviewRow) => {
       if (!tauri) {
@@ -468,45 +475,49 @@ export default function StatisticsPage() {
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           <SummaryMetricTile
+            key={`owned-on-hand-${ownershipOverview?.total_owned_spools ?? 0}`}
             label={t("statistics.ownedOnHand", "Owned on hand")}
-            value={(overview?.total_owned_spools ?? 0).toString()}
+            value={(ownershipOverview?.total_owned_spools ?? 0).toString()}
             tone="sky"
           />
           <SummaryMetricTile
+            key={`borrowed-on-hand-${ownershipOverview?.total_borrowed_in_spools ?? 0}`}
             label={t("statistics.borrowedInOnHand", "Borrowed in on hand")}
-            value={(overview?.total_borrowed_in_spools ?? 0).toString()}
+            value={(ownershipOverview?.total_borrowed_in_spools ?? 0).toString()}
             tone="amber"
           />
           <SummaryMetricTile
+            key={`owned-consumption-${ownershipOverview?.owned_consumption_30d ?? 0}`}
             label={t("statistics.ownedPrintUsage30d", "Owned print use (30d)")}
-            value={`${overview?.owned_consumption_30d ?? 0} g`}
+            value={`${ownershipOverview?.owned_consumption_30d ?? 0} g`}
             tone="emerald"
           />
           <SummaryMetricTile
+            key={`borrowed-consumption-${ownershipOverview?.borrowed_in_consumption_30d ?? 0}`}
             label={t("statistics.borrowedInPrintUsage30d", "Borrowed-in print use (30d)")}
-            value={`${overview?.borrowed_in_consumption_30d ?? 0} g`}
+            value={`${ownershipOverview?.borrowed_in_consumption_30d ?? 0} g`}
             tone="amber"
           />
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           <SummaryMetricTile
             label={t("statistics.ownedInUse", "Owned assigned")}
-            value={(overview?.owned_in_use ?? 0).toString()}
+            value={(ownershipOverview?.owned_in_use ?? 0).toString()}
             tone="sky"
           />
           <SummaryMetricTile
             label={t("statistics.borrowedInInUse", "Borrowed assigned")}
-            value={(overview?.borrowed_in_in_use ?? 0).toString()}
+            value={(ownershipOverview?.borrowed_in_in_use ?? 0).toString()}
             tone="amber"
           />
           <SummaryMetricTile
             label={t("statistics.ownedLowStock", "Owned low stock")}
-            value={(overview?.owned_low_stock ?? 0).toString()}
+            value={(ownershipOverview?.owned_low_stock ?? 0).toString()}
             tone="rose"
           />
           <SummaryMetricTile
             label={t("statistics.borrowedInLowStock", "Borrowed-in low stock")}
-            value={(overview?.borrowed_in_low_stock ?? 0).toString()}
+            value={(ownershipOverview?.borrowed_in_low_stock ?? 0).toString()}
             tone="rose"
           />
         </div>

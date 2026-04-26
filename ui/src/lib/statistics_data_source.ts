@@ -13,6 +13,8 @@ import {
   type LibrarySyncSettings,
   type LoanUsageByPersonRow,
   type PrinterOverviewRow,
+  type FilamentConsumptionRow,
+  type SpoolWithMasterRow,
   type SpoolLoanDetailsRow,
 } from "./tauri_client";
 import { loadAllSpoolRows } from "./spool_data_source";
@@ -30,6 +32,8 @@ export type StatisticsLibrarySyncState = {
 export type StatisticsDataLoadResult = {
   overview: InventoryOverview | null;
   printers: PrinterOverviewRow[];
+  spoolRows: SpoolWithMasterRow[];
+  consumptionRows: FilamentConsumptionRow[];
   loanDetails: SpoolLoanDetailsRow[];
   loanUsage: LoanUsageByPersonRow[];
   inboundLoanUsage: LoanUsageByPersonRow[];
@@ -170,9 +174,11 @@ export async function loadStatisticsData(
     const resolvedLoans = loansResult.ok
       ? loansResult.value
       : cachedLoans?.rows ?? syncSettings.cached_loans?.rows ?? [];
+    const resolvedSpoolRows = spoolsResult.ok ? spoolsResult.value : cachedSpools?.rows ?? [];
+    const resolvedConsumptionRows = consumptionResult.ok ? consumptionResult.value : [];
     const derivedOverview =
-      spoolsResult.ok && consumptionResult.ok
-        ? deriveInventoryOverviewFromRows(spoolsResult.value, consumptionResult.value)
+      resolvedSpoolRows.length > 0 || resolvedConsumptionRows.length > 0
+        ? deriveInventoryOverviewFromRows(resolvedSpoolRows, resolvedConsumptionRows)
         : null;
     const resolvedOverview = derivedOverview ?? resolvedSnapshot?.inventory ?? null;
     const hasLiveOverview = snapshotResult.ok || derivedOverview != null;
@@ -181,6 +187,8 @@ export async function loadStatisticsData(
       return {
         overview: resolvedOverview,
         printers: resolvedPrinters,
+        spoolRows: resolvedSpoolRows,
+        consumptionRows: resolvedConsumptionRows,
         loanDetails: resolvedLoans,
         loanUsage: groupLoanUsageByPerson(resolvedLoans, "OUTBOUND"),
         inboundLoanUsage: groupLoanUsageByPerson(resolvedLoans, "INBOUND"),
@@ -201,6 +209,8 @@ export async function loadStatisticsData(
     return {
       overview: null,
       printers: [],
+      spoolRows: [],
+      consumptionRows: [],
       loanDetails: [],
       loanUsage: [],
       inboundLoanUsage: [],
@@ -224,6 +234,8 @@ export async function loadStatisticsData(
   return {
     overview: deriveInventoryOverviewFromRows(spoolRows, consumptionRows),
     printers: printerRows,
+    spoolRows,
+    consumptionRows,
     loanDetails: [],
     loanUsage: loanRows,
     inboundLoanUsage: inboundLoanRows,
