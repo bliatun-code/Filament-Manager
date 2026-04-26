@@ -342,6 +342,7 @@ export function liveUnknownMatchesSlotOverride(
 
 export function resolveLiveConnectionIndicator(
   liveConfig: BambuLiveIntegrationEntry["config"] | null,
+  slots: PrinterAmsSlotRow[],
   t: TranslateFn,
 ) {
   if (!liveConfig?.enabled) {
@@ -351,15 +352,39 @@ export function resolveLiveConnectionIndicator(
   const observedState = liveConfig.observed_state ?? null;
   const lastSeenAt = observedState?.last_seen_at ?? null;
   const stale = isOlderThanMinutes(lastSeenAt, 2);
+  let slotLastSeenAt: string | null = null;
+  let slotMqttConnected = false;
 
-  if (observedState?.mqtt_connected && !stale) {
+  for (const slot of slots) {
+    if ((slot.ams_id ?? "").endsWith("_ext")) {
+      continue;
+    }
+    if (slot.live_mqtt_connected === true) {
+      slotMqttConnected = true;
+    }
+    const candidateLastSeenAt = slot.live_printer_last_seen_at ?? null;
+    if (!candidateLastSeenAt) {
+      continue;
+    }
+    if (
+      slotLastSeenAt == null ||
+      (compareObservedTimestamps(candidateLastSeenAt, slotLastSeenAt) ?? 0) > 0
+    ) {
+      slotLastSeenAt = candidateLastSeenAt;
+    }
+  }
+
+  const slotStale = isOlderThanMinutes(slotLastSeenAt, 2);
+  const connectedViaSlotSnapshot = slotMqttConnected && !slotStale;
+
+  if ((observedState?.mqtt_connected && !stale) || connectedViaSlotSnapshot) {
     return {
       tone: "success" as const,
       label: t("printers.liveConnectionConnected", "Live connected"),
     };
   }
 
-  if (lastSeenAt) {
+  if (lastSeenAt || slotLastSeenAt) {
     return {
       tone: "warning" as const,
       label: t("printers.liveConnectionIdle", "Live idle"),

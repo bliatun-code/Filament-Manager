@@ -61,8 +61,6 @@ import {
   findLiveTrayForSlot as resolveLiveTrayForSlot,
   formatDateTime,
   formatGrams,
-  formatPrinterSpoolStatusLabel as resolvePrinterSpoolStatusLabel,
-  formatPrinterSpoolStatusTone as resolvePrinterSpoolStatusTone,
   printerSwatchActionButtonStyle,
   printerSwatchInteractiveInsetStyle,
   printerSwatchSurfaceStyle,
@@ -200,16 +198,6 @@ export default function PrintersPage() {
     return true;
   }, [clientHostBaseUrl, clientHostWritePaired, clientLibraryId, clientReadOnly, t]);
 
-  const formatPrinterSpoolStatusLabel = useCallback(
-    (status?: string | null) => resolvePrinterSpoolStatusLabel(status, t),
-    [t],
-  );
-
-  const formatPrinterSpoolStatusTone = useCallback(
-    (status?: string | null) => resolvePrinterSpoolStatusTone(status),
-    [],
-  );
-
   const resolveSpoolTareWeightById = useCallback(
     (spoolId: string | null | undefined) => {
       const id = (spoolId ?? "").trim();
@@ -240,8 +228,10 @@ export default function PrintersPage() {
   const sortedSpools = useMemo(() => sortSpoolsAlphabetically(spools, locale), [locale, spools]);
 
   const resolveLiveConnectionIndicator = useCallback(
-    (liveConfig: BambuLiveIntegrationEntry["config"] | null) =>
-      buildLiveConnectionIndicator(liveConfig, t),
+    (
+      liveConfig: BambuLiveIntegrationEntry["config"] | null,
+      slots: PrinterOverviewRow["slots"],
+    ) => buildLiveConnectionIndicator(liveConfig, slots, t),
     [t],
   );
 
@@ -929,16 +919,12 @@ export default function PrintersPage() {
             printer.printer.model,
             printer.slots,
           );
-	          const printerLiveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
-	          const liveConnectionIndicator = resolveLiveConnectionIndicator(printerLiveConfig);
-	          const hostLiveIndicator =
-	            clientReadOnly && clientPrinterSource === "LIVE"
-	              ? {
-	                  tone: "success" as const,
-	                  label: t("librarySyncStatusLive", "Live"),
-	                }
-	              : null;
-	          const usageMetrics = [
+          const printerLiveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
+          const liveConnectionIndicator = resolveLiveConnectionIndicator(
+            printerLiveConfig,
+            printer.slots,
+          );
+          const usageMetrics = [
             {
               key: "jobs",
               label: t("printers.jobs", "Jobs"),
@@ -979,23 +965,13 @@ export default function PrintersPage() {
                     hasMultiMaterial={hasMultiMaterial}
                   />
                   <div className="space-y-1">
-	                    <div className="flex flex-wrap items-center gap-2">
-	                      <div className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-	                        {printer.printer.name}
-	                      </div>
-	                      {hostLiveIndicator ? (
-	                        <span
-	                          className={semanticChipClass(
-	                            hostLiveIndicator.tone,
-	                            "px-2 py-0.5 text-[10px]",
-	                          )}
-	                        >
-	                          {hostLiveIndicator.label}
-	                        </span>
-	                      ) : null}
-	                      {liveConnectionIndicator ? (
-	                        <span
-	                          className={semanticChipClass(
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                        {printer.printer.name}
+                      </div>
+                      {liveConnectionIndicator ? (
+                        <span
+                          className={semanticChipClass(
                             liveConnectionIndicator.tone,
                             "px-2 py-0.5 text-[10px]",
                           )}
@@ -1295,14 +1271,6 @@ export default function PrintersPage() {
                               <span>
                                 {t("inventory.reference", "Reference")}{" "}
                                 {formatSpoolReference(slot.spool_id)}
-                              </span>
-                              <span
-                                className={semanticChipClass(
-                                  formatPrinterSpoolStatusTone(slot.spool_status),
-                                  "px-2 py-0.5 text-[10px]",
-                                )}
-                              >
-                                {formatPrinterSpoolStatusLabel(slot.spool_status)}
                               </span>
                               {liveSlotInUse ? (
                                 <span className={semanticChipClass("success", "px-2 py-0.5 text-[10px]")}>
