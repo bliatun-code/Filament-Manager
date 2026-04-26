@@ -23,6 +23,7 @@ import {
   loadPrinterPageData,
   type PrinterSnapshotSource,
 } from "../lib/printer_data_source";
+import { derivePrinterSlotDisplayState } from "../lib/printer_slot_display";
 import {
   buildEmptySlotWeightPrompt,
   buildIncomingWeightPrompt,
@@ -51,16 +52,11 @@ import {
 import { useI18n } from "../lib/i18n";
 import {
   commandErrorText,
-  compareObservedTimestamps,
   findLiveTrayForSlot as resolveLiveTrayForSlot,
   formatDateTime,
   formatGrams,
   formatPrinterSpoolStatusLabel as resolvePrinterSpoolStatusLabel,
   formatPrinterSpoolStatusTone as resolvePrinterSpoolStatusTone,
-  formatRelativeAge as formatRelativeAgeLabel,
-  isOlderThanMinutes,
-  isUnknownLiveRfid,
-  liveUnknownMatchesSlotOverride as doesLiveUnknownMatchSlotOverride,
   printerSwatchActionButtonStyle,
   printerSwatchInteractiveInsetStyle,
   printerSwatchSurfaceStyle,
@@ -253,11 +249,6 @@ export default function PrintersPage() {
   }, [printers]);
 
   const sortedSpools = useMemo(() => sortSpoolsAlphabetically(spools, locale), [locale, spools]);
-
-  const formatRelativeAge = useCallback(
-    (raw?: string | null) => formatRelativeAgeLabel(raw, t),
-    [t],
-  );
 
   const resolveLiveConnectionIndicator = useCallback(
     (liveConfig: BambuLiveIntegrationEntry["config"] | null) =>
@@ -1081,18 +1072,7 @@ export default function PrintersPage() {
               </div>
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               {printer.slots.map((slot) => {
-                const isExtSlot = (slot.ams_id ?? "").endsWith("_ext");
                 const { liveConfig, tray: liveTray } = findLiveTrayForSlot(printer.printer.id, slot);
-                const liveCacheSuppressedByManualClear =
-                  !isExtSlot &&
-                  !!slot.live_cache_cleared_at &&
-                  (
-                    compareObservedTimestamps(
-                      liveTray?.last_identity_seen_at ?? liveConfig?.observed_state?.last_seen_at ?? null,
-                      slot.live_cache_cleared_at,
-                    ) ?? -1
-                  ) <= 0;
-                const effectiveLiveTray = liveCacheSuppressedByManualClear ? null : liveTray;
                 const slotOptions = allowedSpoolsForSlot(slot.spool_id);
                 const draft = getSlotDraft(slot);
                 const filteredSlotOptions = filterSlotOptionsBySearch(slotOptions, draft.search);
@@ -1100,50 +1080,30 @@ export default function PrintersPage() {
                   draft.targetSpoolId.length > 0
                     ? slotOptions.find((row) => row.spool.id === draft.targetSpoolId) ?? null
                     : null;
-                const liveMatchedSpool = findSpoolById(effectiveLiveTray?.matched_inventory_spool_id);
-                const lastLiveIdentityAt =
-                  isExtSlot
-                    ? null
-                    : effectiveLiveTray?.last_identity_seen_at ?? null;
-                const liveIdentityFresh = !isOlderThanMinutes(lastLiveIdentityAt, 10);
-                const liveSignalEnabled =
-                  !isExtSlot &&
-                  (Boolean(liveConfig?.enabled) ||
-                    (clientReadOnly && clientPrinterSource === "LIVE" && !!effectiveLiveTray));
-                const liveSlotInUse =
-                  liveSignalEnabled &&
-                  liveIdentityFresh &&
-                  ((liveConfig?.enabled &&
-                    liveConfig.observed_state?.active_tray_index === slot.slot_index - 1 &&
-                    (liveConfig.observed_state?.progress_percent != null ||
-                      liveConfig.observed_state?.remaining_minutes != null)) ||
-                    slot.live_is_active === true);
-                const liveIdentityLabel =
-                  liveIdentityFresh && effectiveLiveTray?.matched_inventory_mode === "exact_rfid"
-                    ? t("printers.liveRfid", "Live RFID")
-                    : null;
-                const unknownLiveRfid =
-                  liveIdentityFresh &&
-                  liveSignalEnabled &&
-                  isUnknownLiveRfid(effectiveLiveTray);
-                const rfidOverridden =
-                  unknownLiveRfid &&
-                  doesLiveUnknownMatchSlotOverride(slot, effectiveLiveTray);
-                const showManualLabel =
-                  !!slot.spool_id &&
-                  !liveIdentityLabel &&
-                  !rfidOverridden &&
-                  liveSignalEnabled &&
-                  isOlderThanMinutes(lastLiveIdentityAt, 10);
-                const liveObservedAge = formatRelativeAge(lastLiveIdentityAt);
-                const liveObservedAtLabel =
-                  lastLiveIdentityAt
-                    ? formatDateTime(lastLiveIdentityAt, locale)
-                    : null;
+                const slotDisplay = derivePrinterSlotDisplayState({
+                  slot,
+                  liveConfig,
+                  liveTray,
+                  selectedTargetSpool,
+                  clientReadOnly,
+                  clientPrinterSource,
+                  locale,
+                  t,
+                  findSpoolById,
+                });
+                const {
+                  effectiveLiveTray,
+                  liveSignalEnabled,
+                  liveSlotInUse,
+                  liveIdentityLabel,
+                  unknownLiveRfid,
+                  rfidOverridden,
+                  showManualLabel,
+                  liveObservedAge,
+                  liveObservedAtLabel,
+                  slotSwatchHex,
+                } = slotDisplay;
                 const isDropdownOpen = openDropdownSlotId === slot.slot_id;
-                const slotSwatchHex =
-                  (liveIdentityFresh ? liveMatchedSpool?.master.hex_color : null) ??
-                  selectedTargetSpool?.master.hex_color ?? slot.spool_hex_color ?? null;
                 const slotSelectorStyle = slotSwatchHex
                   ? printerSwatchInteractiveInsetStyle(
                       slotSwatchHex,
