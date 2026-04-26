@@ -23,6 +23,11 @@ import {
   loadPrinterPageData,
   type PrinterSnapshotSource,
 } from "../lib/printer_data_source";
+import {
+  buildCreatePrinterInput,
+  defaultPrinterFormCapacityForModel,
+  derivePrinterFormCapacity,
+} from "../lib/printer_form_model";
 import { derivePrinterSlotDisplayState } from "../lib/printer_slot_display";
 import {
   buildEmptySlotWeightPrompt,
@@ -69,7 +74,6 @@ import { useResolvedTheme } from "../lib/theme_mode";
 import {
   describePrinterCapability,
   describeConfiguredPrinterSetup,
-  findPrinterModelProfileExact,
   formatPrinterSlotLabelForModel,
   hasConfiguredMultiMaterial,
   listSupportedPrinterModels,
@@ -79,26 +83,6 @@ import {
   sortPrinterSlotsExtLast,
   summarizeEffectivePrinterSlots,
 } from "../lib/printer_profiles";
-
-function parsePositiveInt(raw: string, fallback: number): number {
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallback;
-  }
-  return parsed;
-}
-
-function parseNonNegativeInt(raw: string, fallback: number): number {
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return fallback;
-  }
-  return parsed;
-}
-
-function clampInt(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
 
 export default function PrintersPage() {
   const { t, locale } = useI18n();
@@ -140,6 +124,10 @@ export default function PrintersPage() {
   const selectedModelProfile = useMemo(
     () => resolvePrinterModelProfile(newPrinterModel || ""),
     [newPrinterModel],
+  );
+  const newPrinterCapacity = useMemo(
+    () => derivePrinterFormCapacity(newPrinterModel, newAmsUnits, newSlotsPerUnit),
+    [newAmsUnits, newPrinterModel, newSlotsPerUnit],
   );
   const supportedPrinterModels = useMemo(() => listSupportedPrinterModels(), []);
 
@@ -383,39 +371,22 @@ export default function PrintersPage() {
       return;
     }
 
-    const profile = resolvePrinterModelProfile(model);
-    const units = clampInt(
-      parseNonNegativeInt(newAmsUnits, profile.defaultUnits),
-      0,
-      profile.maxUnits,
-    );
-    const slotsPerUnit = clampInt(
-      parsePositiveInt(newSlotsPerUnit, profile.defaultSlotsPerUnit),
-      1,
-      profile.maxSlotsPerUnit,
-    );
-
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
       const printerId = `printer_${Date.now()}`;
+      const createInput = buildCreatePrinterInput(
+        printerId,
+        model,
+        name,
+        newAmsUnits,
+        newSlotsPerUnit,
+      );
       if (clientReadOnly) {
-        await createLibrarySyncHostPrinter(clientHostBaseUrl!, clientLibraryId, {
-          id: printerId,
-          model,
-          name,
-          ams_units: units,
-          slots_per_ams: slotsPerUnit,
-        });
+        await createLibrarySyncHostPrinter(clientHostBaseUrl!, clientLibraryId, createInput);
       } else {
-        await createPrinter({
-          id: printerId,
-          model,
-          name,
-          ams_units: units,
-          slots_per_ams: slotsPerUnit,
-        });
+        await createPrinter(createInput);
       }
       setShowAddPrinterModal(false);
       await reloadData();
@@ -1632,13 +1603,10 @@ export default function PrintersPage() {
                     onChange={(event) => {
                       const nextModel = event.target.value;
                       setNewPrinterModel(nextModel);
-                      const exactProfile = findPrinterModelProfileExact(nextModel);
-                      if (exactProfile) {
-                        setNewAmsUnits(String(exactProfile.defaultUnits));
-                        setNewSlotsPerUnit(String(exactProfile.defaultSlotsPerUnit));
-                      } else if (!nextModel) {
-                        setNewAmsUnits("0");
-                        setNewSlotsPerUnit("4");
+                      const nextDefaults = defaultPrinterFormCapacityForModel(nextModel);
+                      if (nextDefaults) {
+                        setNewAmsUnits(nextDefaults.amsUnits);
+                        setNewSlotsPerUnit(nextDefaults.slotsPerUnit);
                       }
                     }}
                     className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
@@ -1712,24 +1680,14 @@ export default function PrintersPage() {
                 >
                   <PrinterModelPreview
                     model={newPrinterModel || "Printer"}
-                    hasMultiMaterial={
-                      clampInt(
-                        parseNonNegativeInt(newAmsUnits, selectedModelProfile.defaultUnits),
-                        0,
-                        selectedModelProfile.maxUnits,
-                      ) > 0
-                    }
+                    hasMultiMaterial={newPrinterCapacity.hasMultiMaterial}
                     compact
                   />
                   <div className="text-xs text-slate-600 dark:text-slate-300">
                     {describePrinterCapability(
                       t,
                       newPrinterModel || "",
-                      clampInt(
-                        parseNonNegativeInt(newAmsUnits, selectedModelProfile.defaultUnits),
-                        0,
-                        selectedModelProfile.maxUnits,
-                      ) > 0,
+                      newPrinterCapacity.hasMultiMaterial,
                     )}
                   </div>
                 </div>
