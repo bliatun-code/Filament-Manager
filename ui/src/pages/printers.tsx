@@ -1,17 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  assignPrinterSlot,
-  assignLibrarySyncHostPrinterSlot,
   createPrinter,
   createLibrarySyncHostPrinter,
   getLibrarySyncSettings,
   isTauri,
-  recordPrintUsage,
-  recordLibrarySyncHostPrintUsage,
   updateLibrarySyncHostSpoolRfidTag,
-  updateLibrarySyncHostSpoolWeight,
   updateSpoolRfidTag,
-  updateSpoolWeight,
   type BambuLiveIntegrationEntry,
   type BambuLiveObservedTray,
   type PrinterOverviewRow,
@@ -44,6 +38,11 @@ import {
   type SlotRfidOverridePrompt,
   type SlotSwapDraft,
 } from "../lib/printer_slot_model";
+import {
+  writePreparedMeasuredWeightUpdate,
+  writePreparedPrinterSlotAssignment,
+  writeSpoolMeasuredWeight,
+} from "../lib/printer_slot_writes";
 import { AppModal } from "../components/app_modal";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { ModalHeader, modalPanelClassName } from "../components/modal_chrome";
@@ -640,47 +639,16 @@ export default function PrintersPage() {
       measuredTotalWeight,
       tareWeight,
     );
-    if (clientReadOnly) {
-      if (!canUseClientHostWrite()) {
-        throw new Error(
-          t(
-            "printers.clientWriteRequiresPairing",
-            "Pair this desktop client with the host before running protected printer actions.",
-          ),
-        );
-      }
-      if (preparedWeight.clientAction === "record_usage") {
-        await recordLibrarySyncHostPrintUsage(clientHostBaseUrl!, clientLibraryId, {
-          printer_id: printerId,
-          spool_id: spoolId,
-          grams: preparedWeight.usedGrams,
-          job_name: null,
-          success: true,
-        });
-      } else {
-        await updateLibrarySyncHostSpoolWeight(
-          clientHostBaseUrl!,
-          clientLibraryId,
-          spoolId,
-          preparedWeight.safeMeasuredTotal,
-        );
-      }
-      return;
-    }
-    if (preparedWeight.localAction === "record_usage") {
-      await recordPrintUsage({
-        printer_id: printerId,
-        spool_id: spoolId,
-        grams: preparedWeight.usedGrams,
-        job_name: null,
-        success: true,
-      });
-      return;
-    }
-    if (preparedWeight.localAction === "update_weight") {
-      await updateSpoolWeight(spoolId, preparedWeight.safeMeasuredTotal);
-      return;
-    }
+    await writePreparedMeasuredWeightUpdate(
+      {
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+      },
+      printerId,
+      spoolId,
+      preparedWeight,
+    );
   }
 
   async function applySlotChange(
@@ -772,15 +740,14 @@ export default function PrintersPage() {
       }
 
       if (preparedAssignment.shouldAssignSlot) {
-        if (clientReadOnly) {
-          await assignLibrarySyncHostPrinterSlot(
-            clientHostBaseUrl!,
+        await writePreparedPrinterSlotAssignment(
+          {
+            clientReadOnly,
+            clientHostBaseUrl,
             clientLibraryId,
-            preparedAssignment.assignInput,
-          );
-        } else {
-          await assignPrinterSlot(preparedAssignment.assignInput);
-        }
+          },
+          preparedAssignment,
+        );
       }
 
       if (
@@ -788,16 +755,15 @@ export default function PrintersPage() {
         preparedAssignment.targetSpoolId &&
         incomingWeight != null
       ) {
-        if (clientReadOnly) {
-          await updateLibrarySyncHostSpoolWeight(
-            clientHostBaseUrl!,
+        await writeSpoolMeasuredWeight(
+          {
+            clientReadOnly,
+            clientHostBaseUrl,
             clientLibraryId,
-            preparedAssignment.targetSpoolId,
-            incomingWeight,
-          );
-        } else {
-          await updateSpoolWeight(preparedAssignment.targetSpoolId, incomingWeight);
-        }
+          },
+          preparedAssignment.targetSpoolId,
+          incomingWeight,
+        );
       }
       await reloadData();
       setInfo(t("printers.slotUpdated", "Printer slot updated."));
