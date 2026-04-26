@@ -8,6 +8,7 @@ import type {
   LoanUsageByPersonRow,
   PrinterAmsSlotRow,
   PrinterOverviewRow,
+  SpoolWithMasterRow,
   SpoolLoanDetailsRow,
 } from "./tauri_client";
 
@@ -211,6 +212,105 @@ export function deriveStatisticsTotals(printers: PrinterOverviewRow[]): Statisti
     0,
   );
   return { totalUsed, totalJobs, failedJobs, activeSlots };
+}
+
+export function deriveInventoryOverviewFromRows(
+  spools: SpoolWithMasterRow[],
+  consumptionRows: FilamentConsumptionRow[],
+): {
+  total_spools: number;
+  total_owned_spools: number;
+  total_borrowed_in_spools: number;
+  in_use: number;
+  owned_in_use: number;
+  borrowed_in_in_use: number;
+  low_stock: number;
+  owned_low_stock: number;
+  borrowed_in_low_stock: number;
+  total_consumption_30d: number;
+  owned_consumption_30d: number;
+  borrowed_in_consumption_30d: number;
+} {
+  const includedStatuses = new Set(["IN_STOCK", "IN_USE", "ASSIGNED"]);
+  const inUseStatuses = new Set(["IN_USE", "ASSIGNED"]);
+
+  let totalOwnedSpools = 0;
+  let totalBorrowedInSpools = 0;
+  let inUse = 0;
+  let ownedInUse = 0;
+  let borrowedInInUse = 0;
+  let lowStock = 0;
+  let ownedLowStock = 0;
+  let borrowedInLowStock = 0;
+
+  for (const row of spools) {
+    const status = (row.spool.status ?? "").trim().toUpperCase();
+    const ownershipType = normalizeOwnershipType(row.spool.ownership_type);
+    const remaining = row.spool.remaining_g ?? null;
+
+    if (includedStatuses.has(status)) {
+      if (ownershipType === "BORROWED_IN") {
+        totalBorrowedInSpools += 1;
+      } else {
+        totalOwnedSpools += 1;
+      }
+    }
+
+    if (inUseStatuses.has(status)) {
+      inUse += 1;
+      if (ownershipType === "BORROWED_IN") {
+        borrowedInInUse += 1;
+      } else {
+        ownedInUse += 1;
+      }
+    }
+
+    if (
+      remaining != null &&
+      Number.isFinite(remaining) &&
+      remaining > 0 &&
+      remaining <= 200 &&
+      includedStatuses.has(status)
+    ) {
+      lowStock += 1;
+      if (ownershipType === "BORROWED_IN") {
+        borrowedInLowStock += 1;
+      } else {
+        ownedLowStock += 1;
+      }
+    }
+  }
+
+  const totalConsumption30d = consumptionRows.reduce((sum, row) => sum + Math.max(0, row.used_grams), 0);
+  const ownedConsumption30d = consumptionRows.reduce(
+    (sum, row) =>
+      normalizeOwnershipType(row.ownership_type) === "BORROWED_IN"
+        ? sum
+        : sum + Math.max(0, row.used_grams),
+    0,
+  );
+  const borrowedInConsumption30d = consumptionRows.reduce(
+    (sum, row) =>
+      normalizeOwnershipType(row.ownership_type) === "BORROWED_IN"
+        ? sum + Math.max(0, row.used_grams)
+        : sum,
+    0,
+  );
+
+  return {
+    total_spools: spools.length,
+    total_owned_spools: totalOwnedSpools,
+    total_borrowed_in_spools: totalBorrowedInSpools,
+    in_use: inUse,
+    owned_in_use: ownedInUse,
+    borrowed_in_in_use: borrowedInInUse,
+    low_stock: lowStock,
+    owned_low_stock: ownedLowStock,
+    borrowed_in_low_stock: borrowedInLowStock,
+    total_consumption_30d: totalConsumption30d,
+    owned_consumption_30d: ownedConsumption30d,
+    borrowed_in_consumption_30d: borrowedInConsumption30d,
+  };
 }
 
 export function listConsumptionVendorOptions(rows: FilamentConsumptionRow[]): string[] {

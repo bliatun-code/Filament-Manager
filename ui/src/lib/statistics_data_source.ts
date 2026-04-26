@@ -1,11 +1,13 @@
 import {
+  fetchCachedLibrarySyncSpools,
   fetchCachedLibrarySyncLoans,
   fetchCachedLibrarySyncPrinterOverview,
+  fetchLibrarySyncFilamentConsumption,
   fetchLibrarySyncLoans,
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncSnapshot,
-  inventoryOverview,
   listLoanUsageByPerson,
+  listFilamentConsumption,
   listPrinterOverview,
   type InventoryOverview,
   type LibrarySyncSettings,
@@ -13,6 +15,8 @@ import {
   type PrinterOverviewRow,
   type SpoolLoanDetailsRow,
 } from "./tauri_client";
+import { loadAllSpoolRows } from "./spool_data_source";
+import { deriveInventoryOverviewFromRows } from "./statistics_model";
 
 export type StatisticsSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
 
@@ -96,7 +100,16 @@ export async function loadStatisticsData(
   const syncState = deriveStatisticsLibrarySyncState(syncSettings);
 
   if (syncState.clientReadOnly && syncState.clientHostBaseUrl && syncState.clientLibraryId) {
-    const [snapshotResult, printersResult, loansResult, cachedPrinters, cachedLoans] =
+    const [
+      snapshotResult,
+      printersResult,
+      loansResult,
+      spoolsResult,
+      consumptionResult,
+      cachedPrinters,
+      cachedLoans,
+      cachedSpools,
+    ] =
       await Promise.all([
         fetchLibrarySyncSnapshot(syncState.clientHostBaseUrl, syncState.clientLibraryId).then(
           (value) => ({ ok: true as const, value }),
@@ -110,8 +123,26 @@ export async function loadStatisticsData(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
+        loadAllSpoolRows({
+          clientReadOnly: true,
+          clientHostBaseUrl: syncState.clientHostBaseUrl,
+          clientLibraryId: syncState.clientLibraryId,
+        }).then(
+          (value) => ({ ok: true as const, value }),
+          (error) => ({ ok: false as const, error }),
+        ),
+        fetchLibrarySyncFilamentConsumption(
+          syncState.clientHostBaseUrl,
+          syncState.clientLibraryId,
+          500,
+          null,
+        ).then(
+          (value) => ({ ok: true as const, value }),
+          (error) => ({ ok: false as const, error }),
+        ),
         fetchCachedLibrarySyncPrinterOverview().catch(() => null),
         fetchCachedLibrarySyncLoans().catch(() => null),
+        fetchCachedLibrarySyncSpools().catch(() => null),
       ]);
 
     if (!snapshotResult.ok) {
@@ -123,6 +154,12 @@ export async function loadStatisticsData(
     if (!loansResult.ok) {
       console.error(loansResult.error);
     }
+    if (!spoolsResult.ok) {
+      console.error(spoolsResult.error);
+    }
+    if (!consumptionResult.ok) {
+      console.error(consumptionResult.error);
+    }
 
     const resolvedSnapshot = snapshotResult.ok
       ? snapshotResult.value
@@ -133,10 +170,16 @@ export async function loadStatisticsData(
     const resolvedLoans = loansResult.ok
       ? loansResult.value
       : cachedLoans?.rows ?? syncSettings.cached_loans?.rows ?? [];
+    const derivedOverview =
+      spoolsResult.ok && consumptionResult.ok
+        ? deriveInventoryOverviewFromRows(spoolsResult.value, consumptionResult.value)
+        : null;
+    const resolvedOverview = derivedOverview ?? resolvedSnapshot?.inventory ?? null;
+    const hasLiveOverview = snapshotResult.ok || derivedOverview != null;
 
-    if (resolvedSnapshot || resolvedPrinters.length > 0 || resolvedLoans.length > 0) {
+    if (resolvedOverview || resolvedPrinters.length > 0 || resolvedLoans.length > 0) {
       return {
-        overview: resolvedSnapshot?.inventory ?? null,
+        overview: resolvedOverview,
         printers: resolvedPrinters,
         loanDetails: resolvedLoans,
         loanUsage: groupLoanUsageByPerson(resolvedLoans, "OUTBOUND"),
@@ -147,8 +190,11 @@ export async function loadStatisticsData(
           syncSettings.cached_printers?.captured_at ??
           cachedLoans?.captured_at ??
           syncSettings.cached_loans?.captured_at ??
+          cachedSpools?.captured_at ??
+          syncSettings.cached_spools?.captured_at ??
           null,
-        source: snapshotResult.ok && printersResult.ok && loansResult.ok ? "LIVE" : "CACHED",
+        source:
+          hasLiveOverview && printersResult.ok && loansResult.ok ? "LIVE" : "CACHED",
       };
     }
 
@@ -163,15 +209,20 @@ export async function loadStatisticsData(
     };
   }
 
-  const [overviewRows, printerRows, loanRows, inboundLoanRows] = await Promise.all([
-    inventoryOverview(),
+  const [spoolRows, consumptionRows, printerRows, loanRows, inboundLoanRows] = await Promise.all([
+    loadAllSpoolRows({
+      clientReadOnly: false,
+      clientHostBaseUrl: null,
+      clientLibraryId: null,
+    }),
+    listFilamentConsumption(500, null),
     listPrinterOverview(),
     listLoanUsageByPerson(30, "OUTBOUND"),
     listLoanUsageByPerson(30, "INBOUND"),
   ]);
 
   return {
-    overview: overviewRows,
+    overview: deriveInventoryOverviewFromRows(spoolRows, consumptionRows),
     printers: printerRows,
     loanDetails: [],
     loanUsage: loanRows,
