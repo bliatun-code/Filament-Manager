@@ -37,6 +37,7 @@ import {
   filterAllowedSpoolsForSlot,
   filterSlotOptionsBySearch,
   parseWeightInput,
+  prepareMeasuredWeightUpdate,
   preparePrinterSlotAssignment,
   resolveSpoolTareWeightForRow,
   type IncomingWeightPrompt,
@@ -644,14 +645,11 @@ export default function PrintersPage() {
     measuredTotalWeight: number,
     tareWeight: number,
   ) {
-    const safeMeasuredTotal = Math.max(0, Math.round(measuredTotalWeight));
-    const safeTareWeight = Math.max(0, Math.round(tareWeight));
-    const measuredFilament = Math.max(0, safeMeasuredTotal - safeTareWeight);
-    const baseline =
-      previousRemaining != null && Number.isFinite(previousRemaining)
-        ? Math.max(0, Math.round(previousRemaining))
-        : null;
-    const usedGrams = baseline != null ? Math.max(0, baseline - measuredFilament) : 0;
+    const preparedWeight = prepareMeasuredWeightUpdate(
+      previousRemaining,
+      measuredTotalWeight,
+      tareWeight,
+    );
     if (clientReadOnly) {
       if (!canUseClientHostWrite()) {
         throw new Error(
@@ -661,11 +659,11 @@ export default function PrintersPage() {
           ),
         );
       }
-      if (baseline != null && usedGrams > 0) {
+      if (preparedWeight.clientAction === "record_usage") {
         await recordLibrarySyncHostPrintUsage(clientHostBaseUrl!, clientLibraryId, {
           printer_id: printerId,
           spool_id: spoolId,
-          grams: usedGrams,
+          grams: preparedWeight.usedGrams,
           job_name: null,
           success: true,
         });
@@ -674,28 +672,25 @@ export default function PrintersPage() {
           clientHostBaseUrl!,
           clientLibraryId,
           spoolId,
-          safeMeasuredTotal,
+          preparedWeight.safeMeasuredTotal,
         );
       }
       return;
     }
-    if (baseline != null) {
-      if (usedGrams > 0) {
-        await recordPrintUsage({
-          printer_id: printerId,
-          spool_id: spoolId,
-          grams: usedGrams,
-          job_name: null,
-          success: true,
-        });
-        return;
-      }
-      if (measuredFilament !== baseline) {
-        await updateSpoolWeight(spoolId, safeMeasuredTotal);
-      }
+    if (preparedWeight.localAction === "record_usage") {
+      await recordPrintUsage({
+        printer_id: printerId,
+        spool_id: spoolId,
+        grams: preparedWeight.usedGrams,
+        job_name: null,
+        success: true,
+      });
       return;
     }
-    await updateSpoolWeight(spoolId, safeMeasuredTotal);
+    if (preparedWeight.localAction === "update_weight") {
+      await updateSpoolWeight(spoolId, preparedWeight.safeMeasuredTotal);
+      return;
+    }
   }
 
   async function applySlotChange(

@@ -49,6 +49,16 @@ export type PreparedPrinterSlotAssignment = {
   assignInput: AssignPrinterSlotInput;
 };
 
+export type PreparedMeasuredWeightUpdate = {
+  safeMeasuredTotal: number;
+  safeTareWeight: number;
+  measuredFilament: number;
+  baseline: number | null;
+  usedGrams: number;
+  clientAction: "record_usage" | "update_weight";
+  localAction: "record_usage" | "update_weight" | "none";
+};
+
 function defaultSpoolTareWeightForVendor(vendor?: string | null): number {
   const normalized = (vendor ?? "").trim().toLowerCase();
   if (normalized.includes("bambu")) {
@@ -235,5 +245,37 @@ export function preparePrinterSlotAssignment(
       rfid_override_color_hex: nextUnknownOverride?.colorHex || null,
       clear_live_cache_before_next_refresh: clearLiveCacheBeforeNextRefresh,
     },
+  };
+}
+
+export function prepareMeasuredWeightUpdate(
+  previousRemaining: number | null | undefined,
+  measuredTotalWeight: number,
+  tareWeight: number,
+): PreparedMeasuredWeightUpdate {
+  const safeMeasuredTotal = Math.max(0, Math.round(measuredTotalWeight));
+  const safeTareWeight = Math.max(0, Math.round(tareWeight));
+  const measuredFilament = Math.max(0, safeMeasuredTotal - safeTareWeight);
+  const baseline =
+    previousRemaining != null && Number.isFinite(previousRemaining)
+      ? Math.max(0, Math.round(previousRemaining))
+      : null;
+  const usedGrams = baseline != null ? Math.max(0, baseline - measuredFilament) : 0;
+
+  return {
+    safeMeasuredTotal,
+    safeTareWeight,
+    measuredFilament,
+    baseline,
+    usedGrams,
+    clientAction: baseline != null && usedGrams > 0 ? "record_usage" : "update_weight",
+    localAction:
+      baseline != null
+        ? usedGrams > 0
+          ? "record_usage"
+          : measuredFilament !== baseline
+            ? "update_weight"
+            : "none"
+        : "update_weight",
   };
 }
