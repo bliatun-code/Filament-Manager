@@ -10,10 +10,10 @@ type StatCardProps = {
 };
 
 const accentMap: Record<NonNullable<StatCardProps["accent"]>, string> = {
-  emerald: "from-emerald-500/20 to-emerald-500/5 border-emerald-400/30",
-  sky: "from-sky-500/20 to-sky-500/5 border-sky-400/30",
-  amber: "from-amber-500/20 to-amber-500/5 border-amber-400/30",
-  rose: "from-rose-500/20 to-rose-500/5 border-rose-400/30",
+  emerald: "border-l-emerald-500 dark:border-l-emerald-300",
+  sky: "border-l-sky-500 dark:border-l-sky-300",
+  amber: "border-l-amber-500 dark:border-l-amber-300",
+  rose: "border-l-rose-500 dark:border-l-rose-300",
 };
 
 export function StatCard({
@@ -26,9 +26,9 @@ export function StatCard({
 }: StatCardProps) {
   return (
     <div
-      className={`surface-card bg-gradient-to-br ${accentMap[accent]} ${
+      className={`surface-card border-l-4 ${accentMap[accent]} ${
         onClick
-          ? "cursor-pointer transition hover:-translate-y-0.5 hover:shadow"
+          ? "cursor-pointer transition hover:-translate-y-0.5 hover:border-slate-400/45 dark:hover:border-slate-500"
           : ""
       }`}
       role={onClick ? "button" : undefined}
@@ -46,8 +46,8 @@ export function StatCard({
       }
     >
       <div className="section-eyebrow">{title}</div>
-      <div className="mt-3 text-3xl font-semibold text-slate-950 dark:text-slate-50">{value}</div>
-      <div className="mt-2 flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
+      <div className="mt-3 text-3xl font-semibold leading-none text-slate-950 dark:text-slate-50">{value}</div>
+      <div className="mt-3 flex items-center justify-between gap-3 text-sm text-slate-600 dark:text-slate-300">
         <span>{subtitle}</span>
         {trend ? <span className="font-medium text-slate-800 dark:text-slate-200">{trend}</span> : null}
       </div>
@@ -72,7 +72,7 @@ export function LowStockList({ items, onClick }: LowStockListProps) {
   return (
     <div
       className={`surface-card ${
-        onClick ? "cursor-pointer transition hover:-translate-y-0.5 hover:shadow" : ""
+        onClick ? "cursor-pointer transition hover:-translate-y-0.5 hover:border-slate-400/45 dark:hover:border-slate-500" : ""
       }`}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
@@ -98,7 +98,7 @@ export function LowStockList({ items, onClick }: LowStockListProps) {
               <div className="text-sm font-semibold text-slate-950 dark:text-slate-50">{item.name}</div>
               <div className="text-xs text-slate-600 dark:text-slate-300">{item.color}</div>
             </div>
-            <div className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:border-rose-400/35 dark:bg-rose-500/12 dark:text-rose-200">
               {item.remaining}
             </div>
           </div>
@@ -144,7 +144,7 @@ export function UsageChart({ title, value, caption, points, onClick }: UsageChar
   return (
     <div
       className={`surface-card ${
-        onClick ? "cursor-pointer transition hover:-translate-y-0.5 hover:shadow" : ""
+        onClick ? "cursor-pointer transition hover:-translate-y-0.5 hover:border-slate-400/45 dark:hover:border-slate-500" : ""
       }`}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
@@ -164,7 +164,7 @@ export function UsageChart({ title, value, caption, points, onClick }: UsageChar
         <div className="section-eyebrow">{title}</div>
         <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">{value}</div>
       </div>
-      <div className="mt-4 h-32 w-full rounded-xl bg-gradient-to-r from-slate-100/90 via-white to-slate-100/80 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
+      <div className="surface-subtle mt-4 h-32 w-full overflow-hidden p-2">
         <svg
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
           preserveAspectRatio="none"
@@ -196,25 +196,25 @@ const activityToneMap: Record<
 > = {
   sky: {
     panel:
-      "border-sky-200/85 bg-sky-50/80 dark:border-sky-400/25 dark:bg-sky-500/10",
+      "border-sky-200/80 bg-sky-50/62 dark:border-sky-400/22 dark:bg-sky-500/[0.08]",
     dot: "bg-sky-500 dark:bg-sky-300",
     title: "text-slate-950 dark:text-slate-50",
   },
   amber: {
     panel:
-      "border-amber-200/85 bg-amber-50/80 dark:border-amber-400/25 dark:bg-amber-500/10",
+      "border-amber-200/80 bg-amber-50/62 dark:border-amber-400/22 dark:bg-amber-500/[0.08]",
     dot: "bg-amber-500 dark:bg-amber-300",
     title: "text-slate-950 dark:text-slate-50",
   },
   emerald: {
     panel:
-      "border-emerald-200/85 bg-emerald-50/80 dark:border-emerald-400/25 dark:bg-emerald-500/10",
+      "border-emerald-200/80 bg-emerald-50/62 dark:border-emerald-400/22 dark:bg-emerald-500/[0.08]",
     dot: "bg-emerald-500 dark:bg-emerald-300",
     title: "text-slate-950 dark:text-slate-50",
   },
   slate: {
     panel:
-      "border-slate-200/85 bg-slate-50/85 dark:border-slate-700 dark:bg-slate-950/45",
+      "border-slate-200/80 bg-white/58 dark:border-slate-700 dark:bg-slate-950/34",
     dot: "bg-slate-400 dark:bg-slate-500",
     title: "text-slate-900 dark:text-slate-100",
   },
@@ -231,7 +231,7 @@ export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
             {t("dashboard.recentActivity", "Recent Activity")}
           </div>
         </div>
-        <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200 dark:shadow-none">
+        <div className="rounded-lg border border-slate-200 bg-white/75 px-2.5 py-1 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-950/42 dark:text-slate-200">
           {itemCount}
         </div>
       </div>
@@ -241,7 +241,7 @@ export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
           return (
             <div
               key={item.id}
-              className={`rounded-2xl border px-4 py-3 ${tone.panel}`}
+              className={`rounded-lg border px-4 py-3 ${tone.panel}`}
             >
               <div className="flex gap-3">
                 <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${tone.dot}`} />
@@ -273,28 +273,28 @@ export function BadgePanel({ badges }: { badges: Badge[] }) {
   const accentStyles = [
     {
       panel:
-        "border-sky-200/85 bg-sky-50/78 shadow-sm shadow-sky-200/20 dark:border-sky-400/20 dark:bg-sky-500/[0.07] dark:shadow-none",
+        "border-sky-200/80 bg-sky-50/58 dark:border-sky-400/20 dark:bg-sky-500/[0.07]",
       dot: "bg-sky-500 dark:bg-sky-300",
       pill:
-        "border-sky-200/80 bg-white/85 text-sky-800 dark:border-sky-400/25 dark:bg-slate-950/60 dark:text-sky-200",
+        "border-sky-200/80 bg-white/78 text-sky-800 dark:border-sky-400/25 dark:bg-slate-950/52 dark:text-sky-200",
       track: "bg-sky-100/85 dark:bg-slate-950/55",
       bar: "bg-sky-700 dark:bg-sky-300",
     },
     {
       panel:
-        "border-emerald-200/85 bg-emerald-50/78 shadow-sm shadow-emerald-200/20 dark:border-emerald-400/20 dark:bg-emerald-500/[0.07] dark:shadow-none",
+        "border-emerald-200/80 bg-emerald-50/58 dark:border-emerald-400/20 dark:bg-emerald-500/[0.07]",
       dot: "bg-emerald-500 dark:bg-emerald-300",
       pill:
-        "border-emerald-200/80 bg-white/85 text-emerald-800 dark:border-emerald-400/25 dark:bg-slate-950/60 dark:text-emerald-200",
+        "border-emerald-200/80 bg-white/78 text-emerald-800 dark:border-emerald-400/25 dark:bg-slate-950/52 dark:text-emerald-200",
       track: "bg-emerald-100/85 dark:bg-slate-950/55",
       bar: "bg-emerald-700 dark:bg-emerald-300",
     },
     {
       panel:
-        "border-amber-200/85 bg-amber-50/78 shadow-sm shadow-amber-200/20 dark:border-amber-400/20 dark:bg-amber-500/[0.07] dark:shadow-none",
+        "border-amber-200/80 bg-amber-50/58 dark:border-amber-400/20 dark:bg-amber-500/[0.07]",
       dot: "bg-amber-500 dark:bg-amber-300",
       pill:
-        "border-amber-200/80 bg-white/85 text-amber-800 dark:border-amber-400/25 dark:bg-slate-950/60 dark:text-amber-200",
+        "border-amber-200/80 bg-white/78 text-amber-800 dark:border-amber-400/25 dark:bg-slate-950/52 dark:text-amber-200",
       track: "bg-amber-100/85 dark:bg-slate-950/55",
       bar: "bg-amber-700 dark:bg-amber-300",
     },
@@ -307,7 +307,7 @@ export function BadgePanel({ badges }: { badges: Badge[] }) {
             {t("dashboard.achievements", "Achievements")}
           </div>
         </div>
-        <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200 dark:shadow-none">
+        <div className="rounded-lg border border-slate-200 bg-white/75 px-2.5 py-1 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-950/42 dark:text-slate-200">
           {badges.length}
         </div>
       </div>
@@ -317,7 +317,7 @@ export function BadgePanel({ badges }: { badges: Badge[] }) {
           return (
             <div
               key={badge.id}
-              className={`rounded-2xl border px-4 py-4 ${tone.panel}`}
+              className={`rounded-lg border px-4 py-4 ${tone.panel}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -328,7 +328,7 @@ export function BadgePanel({ badges }: { badges: Badge[] }) {
                     </div>
                   </div>
                 </div>
-                <div className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${tone.pill}`}>
+                <div className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${tone.pill}`}>
                   {Math.round(badge.progress * 100)}%
                 </div>
               </div>

@@ -25,8 +25,8 @@ export function FeedbackBanner({
   compact = false,
 }: FeedbackBannerProps) {
   const densityClassName = compact
-    ? "rounded-xl px-3.5 py-3 text-xs leading-5"
-    : "rounded-2xl px-4 py-3.5 text-sm leading-6";
+    ? "rounded-lg px-3.5 py-3 text-xs leading-5"
+    : "rounded-lg px-4 py-3.5 text-sm leading-6";
 
   return (
     <div

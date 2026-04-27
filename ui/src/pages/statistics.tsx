@@ -96,8 +96,8 @@ function SummaryMetricTile({
   className?: string;
 }) {
   return (
-    <div className={`rounded-xl border px-3 py-2 ${metricTileClass(tone)} ${className}`.trim()}>
-      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+    <div className={`rounded-lg border px-3 py-2 ${metricTileClass(tone)} ${className}`.trim()}>
+      <div className="text-[11px] uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
         {label}
       </div>
       <div key={value} className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-50">

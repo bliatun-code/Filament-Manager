@@ -153,36 +153,40 @@ export default function App() {
   return (
     <div>
       <nav className="app-nav">
-        <div className="mr-2 flex items-center gap-3 pr-2">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/80 shadow-sm shadow-slate-200/60 backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/75 dark:shadow-none">
-            <img
-              src={resolvedTheme === "dark" ? brandIconDark : brandIconLight}
-              alt="Filament Manager icon"
-              className="h-9 w-9 rounded-xl"
-            />
+        <div className="app-nav-inner">
+          <div className="app-nav-brand">
+            <div className="app-nav-logo">
+              <img
+                src={resolvedTheme === "dark" ? brandIconDark : brandIconLight}
+                alt="Filament Manager icon"
+                className="h-8 w-8 rounded-lg"
+              />
+            </div>
+            <span className="hidden text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:block">
+              {t("app.title", "Filament Manager")}
+            </span>
           </div>
-          <span className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-            {t("app.title", "Filament Manager")}
-          </span>
+          <div className="app-nav-list" aria-label={t("app.navigation", "Navigation")}>
+            {pages.map((page) => (
+              <button
+                key={page.key}
+                type="button"
+                onClick={() => {
+                  navigateToPage(page.key);
+                }}
+                className={`app-nav-button ${
+                  activePage === page.key ? "app-nav-button-active" : "app-nav-button-idle"
+                }`}
+              >
+                {page.label}
+              </button>
+            ))}
+          </div>
         </div>
-        {pages.map((page) => (
-          <button
-            key={page.key}
-            type="button"
-            onClick={() => {
-              navigateToPage(page.key);
-            }}
-            className={`app-nav-button ${
-              activePage === page.key ? "app-nav-button-active" : "app-nav-button-idle"
-            }`}
-          >
-            {page.label}
-          </button>
-        ))}
       </nav>
       <Suspense
         fallback={
-          <div className="mt-4 flex min-h-[14rem] items-center justify-center rounded-[28px] border border-slate-200/80 bg-white/80 px-6 text-sm font-medium tracking-[0.02em] text-slate-500 shadow-sm shadow-slate-200/60 backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/75 dark:text-slate-300 dark:shadow-none">
+          <div className="surface-card mx-auto mt-4 flex min-h-[14rem] w-[calc(100%-2rem)] max-w-[1500px] items-center justify-center px-6 text-sm font-medium text-slate-500 dark:text-slate-300">
             {t("app.loadingPage", "Loading page...")} {activePageLabel}
           </div>
         }

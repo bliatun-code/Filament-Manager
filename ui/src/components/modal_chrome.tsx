@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import type { ReactNode } from "react";
 
 type ModalPanelWidth = "md" | "lg" | "xl" | "wide";
@@ -14,7 +15,7 @@ export function modalPanelClassName(
   extraClassName = "p-5",
 ): string {
   return [
-    "w-full overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white shadow-2xl shadow-slate-300/22 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/94 dark:shadow-black/45",
+    "w-full overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-2xl shadow-slate-300/18 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/94 dark:shadow-black/38",
     widthClassName[width],
     extraClassName,
   ]
@@ -59,7 +60,7 @@ export function ModalHeader({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           {eyebrow ? (
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
               {eyebrow}
             </div>
           ) : null}
@@ -94,7 +95,7 @@ export function ModalHeader({
             <button
               type="button"
               onClick={disabled ? undefined : onClose}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/85 text-base leading-none text-slate-600 shadow-sm shadow-slate-200/30 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-300 dark:shadow-none dark:hover:bg-slate-800/70"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200/80 bg-white/85 text-base leading-none text-slate-600 shadow-sm shadow-slate-200/25 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-300 dark:shadow-none dark:hover:bg-slate-800/70"
               aria-label={closeLabel}
               title={closeLabel}
               disabled={disabled}

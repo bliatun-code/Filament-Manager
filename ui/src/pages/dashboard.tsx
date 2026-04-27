@@ -578,13 +578,13 @@ export default function DashboardPage({
           <button
             type="button"
             onClick={() => onOpenCompanionSettings?.()}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300/70 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm shadow-slate-300/35 backdrop-blur transition hover:bg-slate-50 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-200 dark:shadow-none dark:hover:bg-slate-900"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300/70 bg-white/86 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm shadow-slate-300/25 backdrop-blur transition hover:bg-white dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-200 dark:shadow-none dark:hover:bg-slate-900"
             title={t("dashboard.openCompanionSettings", "Open companion settings")}
           >
             <span className={`h-2.5 w-2.5 rounded-full ${companionDotClass}`} />
             {companionLabel}
           </button>
-          <div className="rounded-full border border-slate-300/70 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm shadow-slate-300/35 backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-300 dark:shadow-none">
+          <div className="rounded-lg border border-slate-300/70 bg-white/72 px-3 py-2 text-sm text-slate-600 shadow-sm shadow-slate-300/20 backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/60 dark:text-slate-300 dark:shadow-none">
             {lastSyncLabel}
           </div>
         </div>
@@ -619,7 +619,7 @@ export default function DashboardPage({
           </div>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-sky-200/85 bg-sky-50/80 px-3 py-3 dark:border-sky-400/25 dark:bg-sky-500/10">
+          <div className="rounded-lg border border-sky-200/80 bg-sky-50/58 px-3 py-3 dark:border-sky-400/22 dark:bg-sky-500/[0.08]">
             <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
               {ownershipOnHand.owned}
             </div>
@@ -627,7 +627,7 @@ export default function DashboardPage({
               {t("dashboard.ownedOnHand", "Owned on hand")}
             </div>
           </div>
-          <div className="rounded-2xl border border-amber-200/85 bg-amber-50/80 px-3 py-3 dark:border-amber-400/25 dark:bg-amber-500/10">
+          <div className="rounded-lg border border-amber-200/80 bg-amber-50/58 px-3 py-3 dark:border-amber-400/22 dark:bg-amber-500/[0.08]">
             <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
               {ownershipOnHand.borrowedIn}
             </div>
@@ -635,7 +635,7 @@ export default function DashboardPage({
               {t("dashboard.borrowedInOnHand", "Borrowed in on hand")}
             </div>
           </div>
-          <div className="rounded-2xl border border-rose-200/85 bg-rose-50/80 px-3 py-3 dark:border-rose-400/25 dark:bg-rose-500/10">
+          <div className="rounded-lg border border-rose-200/80 bg-rose-50/58 px-3 py-3 dark:border-rose-400/22 dark:bg-rose-500/[0.08]">
             <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
               {ownershipLowStock.owned}
             </div>
@@ -643,7 +643,7 @@ export default function DashboardPage({
               {t("dashboard.ownedLowStock", "Owned low stock")}
             </div>
           </div>
-          <div className="rounded-2xl border border-orange-200/85 bg-orange-50/80 px-3 py-3 dark:border-orange-400/25 dark:bg-orange-500/10">
+          <div className="rounded-lg border border-orange-200/80 bg-orange-50/58 px-3 py-3 dark:border-orange-400/22 dark:bg-orange-500/[0.08]">
             <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
               {ownershipLowStock.borrowedIn}
             </div>
@@ -691,14 +691,14 @@ export default function DashboardPage({
             {health.metrics.map((metric) => (
               <div
                 key={metric.id}
-                className={`rounded-2xl border px-3 py-3 ${
+                className={`rounded-lg border px-3 py-3 ${
                   metric.tone === "rose"
-                    ? "border-rose-200/85 bg-rose-50/80 dark:border-rose-400/25 dark:bg-rose-500/10"
+                    ? "border-rose-200/80 bg-rose-50/58 dark:border-rose-400/22 dark:bg-rose-500/[0.08]"
                     : metric.tone === "amber"
-                      ? "border-amber-200/85 bg-amber-50/80 dark:border-amber-400/25 dark:bg-amber-500/10"
+                      ? "border-amber-200/80 bg-amber-50/58 dark:border-amber-400/22 dark:bg-amber-500/[0.08]"
                       : metric.tone === "sky"
-                        ? "border-sky-200/85 bg-sky-50/80 dark:border-sky-400/25 dark:bg-sky-500/10"
-                        : "border-emerald-200/85 bg-emerald-50/80 dark:border-emerald-400/25 dark:bg-emerald-500/10"
+                        ? "border-sky-200/80 bg-sky-50/58 dark:border-sky-400/22 dark:bg-sky-500/[0.08]"
+                        : "border-emerald-200/80 bg-emerald-50/58 dark:border-emerald-400/22 dark:bg-emerald-500/[0.08]"
                 }`}
               >
                 <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
