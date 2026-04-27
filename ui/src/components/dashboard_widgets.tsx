@@ -46,10 +46,12 @@ export function StatCard({
       }
     >
       <div className="section-eyebrow">{title}</div>
-      <div className="mt-3 text-3xl font-semibold leading-none text-slate-950 dark:text-slate-50">{value}</div>
-      <div className="mt-3 flex items-center justify-between gap-3 text-sm text-slate-600 dark:text-slate-300">
-        <span>{subtitle}</span>
-        {trend ? <span className="font-medium text-slate-800 dark:text-slate-200">{trend}</span> : null}
+      <div className="mt-2 text-[1.75rem] font-semibold leading-none text-slate-950 dark:text-slate-50">{value}</div>
+      <div className="mt-2 flex items-end justify-between gap-3 text-sm text-slate-600 dark:text-slate-300">
+        <span className="min-w-0 leading-5">{subtitle}</span>
+        {trend ? (
+          <span className="shrink-0 text-right font-medium leading-5 text-slate-800 dark:text-slate-200">{trend}</span>
+        ) : null}
       </div>
     </div>
   );

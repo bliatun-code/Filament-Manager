@@ -70,7 +70,7 @@
 
 @layer components {
   .page-shell {
-    @apply mx-auto min-h-screen w-full max-w-[1500px] px-5 py-7 text-slate-900 dark:text-slate-100 sm:px-7 lg:px-9;
+    @apply mx-auto min-h-screen w-full max-w-[1500px] px-5 py-6 text-slate-900 dark:text-slate-100 sm:px-7 lg:px-9;
   }
 
   .section-eyebrow {
@@ -78,19 +78,19 @@
   }
 
   .page-title {
-    @apply text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-50 sm:text-4xl;
+    @apply text-[2rem] font-semibold tracking-tight text-slate-950 dark:text-slate-50 sm:text-[2.45rem];
   }
 
   .page-subtitle {
-    @apply max-w-4xl text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-base;
+    @apply max-w-4xl text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-[0.95rem];
   }
 
   .page-header {
-    @apply flex flex-col gap-5;
+    @apply flex flex-col gap-4;
   }
 
   .page-header-copy {
-    @apply min-w-0 flex-1 space-y-3;
+    @apply min-w-0 flex-1 space-y-2;
   }
 
   .page-header-actions {
@@ -102,11 +102,11 @@
   }
 
   .page-header-search {
-    @apply w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm placeholder:text-slate-500 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder:text-slate-400;
+    @apply w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm shadow-sm placeholder:text-slate-500 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder:text-slate-400;
   }
 
   .page-header-filter-surface {
-    @apply surface-subtle w-full px-3.5 py-2.5 min-[920px]:w-auto;
+    @apply surface-subtle w-full px-3 py-2 min-[920px]:w-auto;
   }
 
   @media (min-width: 920px) {
@@ -128,7 +128,7 @@
   }
 
   .header-button-primary {
-    @apply whitespace-nowrap rounded-lg border px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50;
+    @apply whitespace-nowrap rounded-lg border px-3.5 py-2 text-sm font-semibold transition disabled:opacity-50;
     border-color: rgba(15, 23, 42, 0.92);
     background-color: rgba(15, 23, 42, 0.98);
     color: rgb(255 255 255);
@@ -140,7 +140,7 @@
   }
 
   .header-button-secondary {
-    @apply whitespace-nowrap rounded-lg border px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50;
+    @apply whitespace-nowrap rounded-lg border px-3.5 py-2 text-sm font-semibold transition disabled:opacity-50;
     border-color: rgba(203, 213, 225, 0.95);
     background-color: rgba(255, 255, 255, 0.96);
     color: rgb(30 41 59);
@@ -176,7 +176,7 @@
   }
 
   .surface-card {
-    @apply rounded-lg border p-5 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/75 dark:shadow-none;
+    @apply rounded-lg border p-4 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/75 dark:shadow-none;
     border-color: rgba(148, 163, 184, 0.24);
     background-color: rgba(248, 251, 255, 0.86);
     box-shadow:
@@ -201,7 +201,7 @@
   }
 
   .app-nav {
-    @apply sticky top-0 z-20 border-b px-4 py-3 backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-950/85 sm:px-6;
+    @apply sticky top-0 z-20 border-b px-4 py-2.5 backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-950/85 sm:px-6;
     border-color: rgba(148, 163, 184, 0.26);
     background-color: rgba(247, 250, 255, 0.88);
     box-shadow: 0 12px 28px -28px rgba(51, 65, 85, 0.38);
@@ -220,17 +220,27 @@
   }
 
   .app-nav-list {
-    @apply flex min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-xl border border-slate-200/70 bg-white/55 p-1 dark:border-slate-800/90 dark:bg-slate-950/40;
+    @apply flex min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-lg border border-slate-200/70 bg-white/55 p-1 dark:border-slate-800/90 dark:bg-slate-950/40;
   }
 
   .app-nav-button {
     @apply shrink-0 rounded-lg px-3.5 py-2 text-sm font-semibold transition;
   }
 
+  .app-nav-button:focus,
+  .app-nav-button:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
   .app-nav-button-active {
     @apply text-slate-950 shadow-sm dark:bg-slate-100 dark:text-slate-900 dark:shadow-none;
     border: 1px solid rgba(148, 163, 184, 0.24);
     background-color: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 8px 18px -16px rgba(51, 65, 85, 0.34);
+  }
+
+  .app-nav-button-active:focus-visible {
     box-shadow: 0 8px 18px -16px rgba(51, 65, 85, 0.34);
   }
 
