@@ -727,6 +727,7 @@ export default function InventoryPage({
   const [materialFilter, setMaterialFilter] = useState("ALL");
   const [lowStockOnly, setLowStockOnly] = useState(false);
   const [inventoryView, setInventoryView] = useState<InventoryViewMode>("CARDS");
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [spools, setSpools] = useState<InventorySpool[]>([]);
   const [selectedSpoolId, setSelectedSpoolId] = useState<string | null>(null);
   const [loading, setLoading] = useState(tauri);
@@ -1297,6 +1298,13 @@ export default function InventoryPage({
 
   const groupedSpools = useMemo<SpoolGroup[]>(() => groupInventorySpools(filteredSpools), [filteredSpools]);
   const visibleInventoryCount = filteredSpools.length;
+  const activeAdvancedFilterCount = [
+    inventoryView !== "CARDS",
+    ownershipFilter !== "ALL",
+    vendorFilter !== "ALL",
+    materialFilter !== "ALL",
+  ].filter(Boolean).length;
+  const showAdvancedFilters = advancedFiltersOpen;
 
   const selectedSpool = useMemo(
     () => spools.find((spool) => spool.id === selectedSpoolId) ?? null,
@@ -4485,77 +4493,102 @@ export default function InventoryPage({
         </div>
       </div>
 
-      <div className="surface-subtle mt-4 px-4 py-3.5">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-24">
-              {t("inventory.viewGroup", "View")}
+      <div className="surface-subtle mt-4 px-3 py-2.5">
+        <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center min-[920px]:justify-between">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              {t("inventory.filters", "Filters")}
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => setInventoryView("CARDS")}
-                className={neutralChipClass(inventoryView === "CARDS", "px-3.5 py-2 text-xs")}
-              >
-                {t("inventory.viewCards", "Card view")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setInventoryView("LIST")}
-                className={neutralChipClass(inventoryView === "LIST", "px-3.5 py-2 text-xs")}
-              >
-                {t("inventory.viewList", "List view")}
-              </button>
-            </div>
+            <span className="rounded-full border border-slate-300 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200 dark:shadow-none">
+              {visibleInventoryCount}
+            </span>
+            {activeAdvancedFilterCount > 0 ? (
+              <span className="rounded-full border border-sky-300/65 bg-sky-50/70 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:border-sky-400/35 dark:bg-sky-500/10 dark:text-sky-200">
+                {activeAdvancedFilterCount} {t("inventory.activeFilters", "active")}
+              </span>
+            ) : null}
           </div>
-          <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-24">
-              {t("inventory.ownershipGroup", "Ownership")}
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {ownershipFilters.map((ownership) => (
+          <button
+            type="button"
+            onClick={() => setAdvancedFiltersOpen((current) => !current)}
+            className={neutralChipClass(showAdvancedFilters, "px-3 py-1.5 text-xs")}
+          >
+            {showAdvancedFilters
+              ? t("inventory.hideAdvancedFilters", "Hide details")
+              : t("inventory.showAdvancedFilters", "More filters")}
+          </button>
+        </div>
+
+        {showAdvancedFilters ? (
+          <div className="mt-3 space-y-2 border-t border-slate-200/70 pt-3 dark:border-slate-700/70">
+            <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-24">
+                {t("inventory.viewGroup", "View")}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
                 <button
-                  key={ownership}
                   type="button"
-                  onClick={() => setOwnershipFilter(ownership)}
-                  className={neutralChipClass(
-                    ownershipFilter === ownership,
-                    "px-3.5 py-2 text-xs",
-                  )}
+                  onClick={() => setInventoryView("CARDS")}
+                  className={neutralChipClass(inventoryView === "CARDS", "px-3 py-1.5 text-xs")}
                 >
-                  {ownership === "ALL"
-                    ? t("inventory.ownershipAll", "All")
-                    : ownership === "OWNED"
-                      ? t("inventory.ownedByUs", "Owned")
-                      : t("inventory.borrowedIn", "Borrowed in")}
+                  {t("inventory.viewCards", "Card view")}
                 </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-24">
-              {t("inventory.vendorGroup", "Vendor")}
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {vendorOptions.map((vendor) => (
                 <button
-                  key={vendor}
                   type="button"
-                  onClick={() => setVendorFilter(vendor)}
-                  className={neutralChipClass(vendorFilter === vendor, "px-3.5 py-2 text-xs")}
+                  onClick={() => setInventoryView("LIST")}
+                  className={neutralChipClass(inventoryView === "LIST", "px-3 py-1.5 text-xs")}
                 >
-                  {vendor === "ALL"
-                    ? t("inventory.vendorAll", "All")
-                    : vendor}
+                  {t("inventory.viewList", "List view")}
                 </button>
-              ))}
+              </div>
             </div>
-          </div>
-          <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-24">
-              {t("inventory.materialGroup", "Material")}
+            <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-24">
+                {t("inventory.ownershipGroup", "Ownership")}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {ownershipFilters.map((ownership) => (
+                  <button
+                    key={ownership}
+                    type="button"
+                    onClick={() => setOwnershipFilter(ownership)}
+                    className={neutralChipClass(
+                      ownershipFilter === ownership,
+                      "px-3 py-1.5 text-xs",
+                    )}
+                  >
+                    {ownership === "ALL"
+                      ? t("inventory.ownershipAll", "All")
+                      : ownership === "OWNED"
+                        ? t("inventory.ownedByUs", "Owned")
+                        : t("inventory.borrowedIn", "Borrowed in")}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+            <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-24">
+                {t("inventory.vendorGroup", "Vendor")}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {vendorOptions.map((vendor) => (
+                  <button
+                    key={vendor}
+                    type="button"
+                    onClick={() => setVendorFilter(vendor)}
+                    className={neutralChipClass(vendorFilter === vendor, "px-3 py-1.5 text-xs")}
+                  >
+                    {vendor === "ALL"
+                      ? t("inventory.vendorAll", "All")
+                      : vendor}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-24">
+                {t("inventory.materialGroup", "Material")}
+              </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {materialOptions.map((material) => (
                   <button
@@ -4564,8 +4597,8 @@ export default function InventoryPage({
                     onClick={() => setMaterialFilter(material)}
                     className={
                       material === "ALL"
-                        ? neutralChipClass(materialFilter === material, "px-3.5 py-2 text-xs")
-                        : `rounded-full border px-3.5 py-2 text-xs font-semibold ${
+                        ? neutralChipClass(materialFilter === material, "px-3 py-1.5 text-xs")
+                        : `rounded-full border px-3 py-1.5 text-xs font-semibold ${
                             materialFilter === material
                               ? materialTone(material).filterActive
                               : materialTone(material).filterInactive
@@ -4578,12 +4611,9 @@ export default function InventoryPage({
                   </button>
                 ))}
               </div>
-              <span className="shrink-0 rounded-full border border-slate-300 bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200 dark:shadow-none">
-                {visibleInventoryCount}
-              </span>
             </div>
           </div>
-        </div>
+        ) : null}
       </div>
 
       {error && !(showAddModal && sidePanelMode === "ADD") ? (
@@ -4631,10 +4661,6 @@ export default function InventoryPage({
               const hasRecentRoll = group.rolls.some(
                 (roll) => roll.id === recentlyAddedSpoolId,
               );
-              const uniqueStatuses = Array.from(
-                new Set(group.rolls.map((roll) => normalizeStatus(roll.status))),
-              );
-              const sharedStatus = uniqueStatuses.length === 1 ? uniqueStatuses[0] : null;
               const visibleRolls = [...group.rolls]
                 .sort((left, right) => {
                   if (left.id === recentlyAddedSpoolId) {
@@ -4696,16 +4722,6 @@ export default function InventoryPage({
                             {formatOwnershipLabel(group.ownershipType)}
                           </span>
                         ) : null}
-                        {sharedStatus ? (
-                          <span
-                            className={semanticChipClass(
-                              formatStatusTone(sharedStatus),
-                              "px-2 py-0.5 text-[10px]",
-                            )}
-                          >
-                            {formatStatusLabel(sharedStatus)}
-                          </span>
-                        ) : null}
                         <span>
                           {t("inventory.rolls", "Rolls")}: {group.rolls.length}
                         </span>
@@ -4754,16 +4770,6 @@ export default function InventoryPage({
                                   )}
                                 >
                                   {formatOwnershipLabel(roll.ownershipType)}
-                                </span>
-                              ) : null}
-                              {!sharedStatus ? (
-                                <span
-                                  className={semanticChipClass(
-                                    formatStatusTone(roll.status),
-                                    "px-2 py-0.5 text-[10px]",
-                                  )}
-                                >
-                                  {formatStatusLabel(roll.status)}
                                 </span>
                               ) : null}
                             </div>
@@ -4837,14 +4843,6 @@ export default function InventoryPage({
                           {formatOwnershipLabel(roll.ownershipType)}
                         </span>
                       ) : null}
-                      <span
-                        className={semanticChipClass(
-                          formatStatusTone(roll.status),
-                          "px-2 py-0.5 text-[10px]",
-                        )}
-                      >
-                        {formatStatusLabel(roll.status)}
-                      </span>
                     </div>
                     <div className="mt-1 text-xs text-slate-500">
                       {formatInventoryPlacementLabel(roll.location)} ·{" "}
