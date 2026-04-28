@@ -561,6 +561,7 @@ export default function DashboardPage({
       : effectiveCompanionTone === "warn"
         ? "bg-amber-400 shadow-[0_0_0_5px_rgba(251,191,36,0.14)]"
         : "bg-slate-400 shadow-[0_0_0_5px_rgba(148,163,184,0.12)]";
+  const monthlyUsageValue = stats.find((stat) => stat.id === "monthlyUsage")?.value ?? "0 g";
 
   return (
     <div className="page-shell">
@@ -593,7 +594,7 @@ export default function DashboardPage({
       <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
           <StatCard
-            key={stat.title}
+            key={stat.id}
             {...stat}
             onClick={
               stat.id === "total"
@@ -656,8 +657,9 @@ export default function DashboardPage({
 
       <div className="mt-8">
         <UsageChart
+          key={monthlyUsageValue}
           title={t("dashboard.consumption", "Filament Consumption")}
-          value={stats[3]?.value ?? "0 g"}
+          value={monthlyUsageValue}
           caption={t(
             "dashboard.consumptionCaption",
             "Usage is aggregated from printer-linked print jobs.",

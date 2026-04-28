@@ -145,8 +145,8 @@ export function UsageChart({ title, value, caption, points, onClick }: UsageChar
 
   return (
     <div
-      className={`surface-card ${
-        onClick ? "cursor-pointer transition hover:-translate-y-0.5 hover:border-slate-400/45 dark:hover:border-slate-500" : ""
+      className={`surface-card isolate transform-gpu ${
+        onClick ? "cursor-pointer transition hover:border-slate-400/45 dark:hover:border-slate-500" : ""
       }`}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
@@ -162,9 +162,11 @@ export function UsageChart({ title, value, caption, points, onClick }: UsageChar
           : undefined
       }
     >
-      <div className="flex items-center justify-between">
-        <div className="section-eyebrow">{title}</div>
-        <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">{value}</div>
+      <div className="relative z-10 flex min-h-7 items-center justify-between gap-4">
+        <div className="section-eyebrow min-w-0">{title}</div>
+        <div className="shrink-0 text-right text-lg font-semibold leading-none text-slate-950 dark:text-slate-50">
+          {value}
+        </div>
       </div>
       <div className="surface-subtle mt-4 h-32 w-full overflow-hidden p-2">
         <svg
@@ -222,6 +224,9 @@ const activityToneMap: Record<
   },
 };
 
+const panelCountClass =
+  "rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1 text-sm font-semibold text-slate-900 shadow-sm dark:border-slate-500/70 dark:bg-slate-900 dark:text-slate-50 dark:shadow-none";
+
 export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
   const { t } = useI18n();
   const itemCount = items.length === 1 && items[0]?.id === "empty" ? 0 : items.length;
@@ -233,7 +238,7 @@ export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
             {t("dashboard.recentActivity", "Recent Activity")}
           </div>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white/75 px-2.5 py-1 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-950/42 dark:text-slate-200">
+        <div className={panelCountClass}>
           {itemCount}
         </div>
       </div>
@@ -309,7 +314,7 @@ export function BadgePanel({ badges }: { badges: Badge[] }) {
             {t("dashboard.achievements", "Achievements")}
           </div>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white/75 px-2.5 py-1 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-950/42 dark:text-slate-200">
+        <div className={panelCountClass}>
           {badges.length}
         </div>
       </div>
