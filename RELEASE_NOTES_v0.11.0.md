@@ -53,5 +53,5 @@ Release date: 2026-04-17
   - diagnostics capture/chart/copy flow
 
 ## Notes
-- Older release notes before `v0.10.1` are now archived under `docs/releases/archive/`
+- Older local release-draft history has been removed from the repository so this note can serve as the current clean baseline.
 - GitHub `latest` remains the source of truth for downloadable DMG/MSI assets
