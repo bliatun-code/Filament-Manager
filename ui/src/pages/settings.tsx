@@ -490,9 +490,9 @@ type SettingsPageProps = {
 
 function tabButtonClass(active: boolean): string {
   if (active) {
-    return "rounded-2xl border border-slate-900 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-slate-300/30 transition dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none";
+    return "rounded-lg border border-slate-300/80 bg-white/88 px-3.5 py-2 text-sm font-semibold text-slate-950 shadow-sm shadow-slate-300/20 outline-none transition focus-visible:border-sky-300/80 dark:border-slate-500/70 dark:bg-slate-800/86 dark:text-slate-50 dark:shadow-none";
   }
-  return "rounded-2xl border border-transparent px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-white/80 dark:text-slate-300 dark:hover:bg-slate-900/60";
+  return "rounded-lg border border-transparent px-3.5 py-2 text-sm font-semibold text-slate-600 outline-none transition hover:border-slate-300/70 hover:bg-white/66 hover:text-slate-900 focus-visible:border-sky-300/70 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-900/62 dark:hover:text-slate-50";
 }
 
 function chipButtonClass(active: boolean): string {
@@ -502,16 +502,16 @@ function chipButtonClass(active: boolean): string {
 function settingsChoiceButtonClass(active: boolean, tone: "indigo" | "emerald" = "indigo"): string {
   if (active) {
     if (tone === "emerald") {
-      return "inline-flex items-center justify-center rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 shadow-sm shadow-emerald-200/40 transition dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-100 dark:shadow-none";
+      return "inline-flex items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50/85 px-3.5 py-2.5 text-sm font-semibold text-emerald-900 outline-none transition focus-visible:border-sky-300/80 dark:border-emerald-400/40 dark:bg-emerald-500/14 dark:text-emerald-100";
     }
-    return "inline-flex items-center justify-center rounded-2xl border border-indigo-300 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-900 shadow-sm shadow-indigo-200/40 transition dark:border-indigo-400/40 dark:bg-indigo-500/15 dark:text-indigo-100 dark:shadow-none";
+    return "inline-flex items-center justify-center rounded-lg border border-indigo-300 bg-indigo-50/86 px-3.5 py-2.5 text-sm font-semibold text-indigo-900 outline-none transition focus-visible:border-sky-300/80 dark:border-indigo-400/40 dark:bg-indigo-500/14 dark:text-indigo-100";
   }
-  return "inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-200 dark:hover:bg-slate-900/80";
+  return "inline-flex items-center justify-center rounded-lg border border-slate-300/80 bg-white/72 px-3.5 py-2.5 text-sm font-semibold text-slate-700 outline-none transition hover:bg-white focus-visible:border-sky-300/70 dark:border-slate-700 dark:bg-slate-950/42 dark:text-slate-200 dark:hover:bg-slate-900/72";
 }
 
 function settingsActionButtonClass(variant: "neutral" | "accent" = "neutral"): string {
   const base =
-    "inline-flex items-center justify-center rounded-xl border px-3 py-2 text-sm font-semibold transition disabled:opacity-50";
+    "inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold outline-none transition focus-visible:border-sky-300/70 disabled:opacity-50";
   if (variant === "accent") {
     return `${base} border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-400/40 dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25`;
   }
@@ -531,7 +531,7 @@ function SettingsMetricTile({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-slate-200 bg-white/85 px-4 py-3 shadow-sm shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-900/60 dark:shadow-none ${className}`.trim()}
+      className={`rounded-lg border border-slate-300/70 bg-white/58 px-4 py-3 dark:border-slate-700/72 dark:bg-slate-950/30 ${className}`.trim()}
     >
       <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
         {label}
@@ -609,6 +609,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [showTrustedLanRevokedBrowsers, setShowTrustedLanRevokedBrowsers] = useState(false);
   const trustedLanPairedBrowsersRef = useRef<TrustedLanPairedBrowser[]>([]);
   const librarySyncAutoValidationRef = useRef<string | null>(null);
+  const transientInfoTimeoutRef = useRef<number | null>(null);
 
   const [printers, setPrinters] = useState<PrinterRow[]>([]);
   const [printerOverview, setPrinterOverview] = useState<PrinterOverviewRow[]>([]);
@@ -817,6 +818,28 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       ] satisfies Array<{ id: SettingsTab; label: string }>,
     [t],
   );
+
+  const clearTransientInfoTimeout = useCallback(() => {
+    if (transientInfoTimeoutRef.current === null) {
+      return;
+    }
+    window.clearTimeout(transientInfoTimeoutRef.current);
+    transientInfoTimeoutRef.current = null;
+  }, []);
+
+  const showTransientInfo = useCallback(
+    (message: string, timeoutMs = 3500) => {
+      clearTransientInfoTimeout();
+      setInfo(message);
+      transientInfoTimeoutRef.current = window.setTimeout(() => {
+        setInfo((currentInfo) => (currentInfo === message ? null : currentInfo));
+        transientInfoTimeoutRef.current = null;
+      }, timeoutMs);
+    },
+    [clearTransientInfoTimeout],
+  );
+
+  useEffect(() => clearTransientInfoTimeout, [clearTransientInfoTimeout]);
 
   const swatchVendorOptions = useMemo(() => {
     const vendors = Array.from(
@@ -1484,9 +1507,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         if (result.pairing_checked && !result.pairing_valid) {
           return;
         }
-        setInfo(
-          t("settings.librarySyncHostCheckOk", "Host check passed."),
-        );
+        showTransientInfo(t("settings.librarySyncHostCheckOk", "Host check passed."));
       }
     } catch (validationError) {
       console.error(validationError);
@@ -1499,7 +1520,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setLibrarySyncValidationBusy(false);
     }
-  }, [librarySyncHostBaseUrlDraft, librarySyncSettings, settingsClientHostBaseUrl, t, tauri]);
+  }, [
+    librarySyncHostBaseUrlDraft,
+    librarySyncSettings,
+    settingsClientHostBaseUrl,
+    showTransientInfo,
+    t,
+    tauri,
+  ]);
 
   const handlePairLibrarySyncHost = useCallback(async () => {
     const pairingInput = librarySyncPairingDraft.trim();
@@ -3080,8 +3108,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         </FeedbackBanner>
       ) : null}
 
-      <div className="surface-subtle mt-6 p-2">
-        <div className="flex flex-wrap gap-2">
+      <div className="mt-6 rounded-lg border border-slate-300/50 bg-white/44 p-1.5 dark:border-slate-700/70 dark:bg-slate-950/24">
+        <div className="flex flex-wrap gap-1.5">
         {settingsTabs.map((tab) => (
           <button
             key={tab.id}
@@ -4327,7 +4355,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 </div>
 
                 {librarySyncModeDraft !== "CLIENT" && showLibraryWebappDetails ? (
-                  <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-white/70 px-4 py-4 dark:border-slate-700/70 dark:bg-slate-950/35">
+                  <div className="space-y-4 rounded-lg border border-slate-200/80 bg-white/70 px-4 py-4 dark:border-slate-700/70 dark:bg-slate-950/35">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div className="font-semibold text-slate-800 dark:text-slate-100">
@@ -4370,7 +4398,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
                     {showTrustedLanNetworkSummary ? (
                       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
-                        <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-slate-700/70 dark:bg-slate-950/50">
+                        <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-slate-700/70 dark:bg-slate-950/50">
                           <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                             {t("settings.trustedLanInterface", "Selected interface")}
                           </div>
@@ -4378,7 +4406,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                             {trustedLanCompanionModel.interfaceValue}
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-slate-700/70 dark:bg-slate-950/50">
+                        <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-slate-700/70 dark:bg-slate-950/50">
                           <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                             {t("settings.trustedLanPort", "Port")}
                           </div>
@@ -4386,7 +4414,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                             :{trustedLanCompanionModel.portValue}
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 sm:col-span-2 dark:border-slate-700/70 dark:bg-slate-950/50">
+                        <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 sm:col-span-2 dark:border-slate-700/70 dark:bg-slate-950/50">
                           <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                             {t("settings.trustedLanShellUrl", "LAN URL")}
                           </div>
@@ -4398,14 +4426,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                     ) : null}
 
                     {showTrustedLanNetworkEditor ? (
-                      <div className="rounded-2xl border border-slate-200/80 bg-white/78 px-4 py-4 shadow-sm shadow-slate-200/20 dark:border-white/12 dark:bg-slate-950/35 dark:shadow-none">
+                      <div className="rounded-lg border border-slate-200/80 bg-white/78 px-4 py-4 shadow-sm shadow-slate-200/20 dark:border-white/12 dark:bg-slate-950/35 dark:shadow-none">
                         <div className="grid gap-4">
                           <label className="block">
                             <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
                               {t("settings.trustedLanInterfaceSelect", "Private interface")}
                             </div>
                             <select
-                              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
+                              className="mt-2 w-full rounded-lg border border-slate-200 bg-white/85 px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
                               value={trustedLanInterfaceAddressDraft}
                               disabled={trustedLanCompanionModel.configActionDisabled}
                               onChange={(event) => setTrustedLanInterfaceAddressDraft(event.target.value)}
@@ -4435,7 +4463,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                 type="number"
                                 min={1}
                                 max={65535}
-                                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
+                                className="mt-2 w-full rounded-lg border border-slate-200 bg-white/85 px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
                                 value={trustedLanPortDraft}
                                 disabled={trustedLanCompanionModel.configActionDisabled}
                                 onChange={(event) => setTrustedLanPortDraft(event.target.value)}
@@ -4465,7 +4493,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 ) : null}
 
                 {librarySyncModeDraft === "HOST" ? null : (
-                  <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+                  <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
                     {librarySyncModeDraft === "STANDALONE"
                       ? standaloneWebappEnabled
                         ? t(
@@ -4512,7 +4540,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
                 {librarySyncModeDraft === "CLIENT" ? (
                   <div className="space-y-4">
-                    <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-4 dark:border-slate-700/70 dark:bg-slate-950/50">
+                    <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-4 dark:border-slate-700/70 dark:bg-slate-950/50">
                       <div className="font-semibold text-slate-900 dark:text-slate-100">
                         {t("settings.librarySyncClientAuthTitle", "Desktop client pairing")}
                       </div>
@@ -4630,7 +4658,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
                       {librarySyncValidation ? (
                         <div
-                          className={`mt-3 rounded-2xl border px-4 py-3 text-sm leading-6 ${
+                          className={`mt-3 rounded-lg border px-4 py-3 text-sm leading-6 ${
                             librarySyncValidation.ok &&
                             librarySyncValidation.matches_library_id &&
                             (!librarySyncValidation.pairing_checked ||
@@ -4654,7 +4682,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                       ) : null}
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-4 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+                    <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-4 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <div className="font-semibold text-slate-900 dark:text-slate-100">
@@ -4681,7 +4709,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
                       {showLibraryClientAdvanced ? (
                         <div className="mt-4 space-y-4">
-                          <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-4 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+                          <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-4 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
                             <div className="flex flex-wrap items-start justify-between gap-3">
                               <div className="min-w-0 flex-1">
                                 <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
@@ -4738,7 +4766,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                           </div>
 
                           {clientHasSnapshot ? (
-                            <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+                            <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
                               <div className="flex items-center justify-between gap-3">
                                 <div className="font-semibold">
                                   {t("settings.librarySyncCachedSnapshot", "Cached host snapshot")}
@@ -4812,14 +4840,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                   </div>
 
                   <div className={`mt-4 grid gap-4 ${trustedLanPairingLink ? "lg:grid-cols-[1fr_220px]" : ""}`}>
-                    <div className="rounded-2xl border border-slate-200 bg-white/85 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/55">
+                    <div className="rounded-lg border border-slate-200 bg-white/85 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/55">
                       <label className="block">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                           {t("settings.trustedLanPairingLabelInput", "Browser label")}
                         </div>
                         <input
                           type="text"
-                          className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
+                          className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
                           value={trustedLanPairingBrowserLabelDraft}
                           disabled={trustedLanCompanionModel.pairActionDisabled}
                           onChange={(event) => setTrustedLanPairingBrowserLabelDraft(event.target.value)}
@@ -4862,7 +4890,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                           <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                             {t("settings.trustedLanLatestPairing", "Latest pairing link")}
                           </div>
-                          <div className="mt-2 break-all rounded-2xl border border-slate-200 bg-slate-50/85 px-3 py-3 text-sm font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-900/55 dark:text-slate-100">
+                          <div className="mt-2 break-all rounded-lg border border-slate-200 bg-slate-50/85 px-3 py-3 text-sm font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-900/55 dark:text-slate-100">
                             {trustedLanPairingLink}
                           </div>
                           <div className="mt-3 flex flex-wrap gap-2">
@@ -4880,11 +4908,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                     </div>
 
                     {trustedLanPairingLink ? (
-                    <div className="rounded-2xl border border-slate-200 bg-white/85 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/55">
+                    <div className="rounded-lg border border-slate-200 bg-white/85 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/55">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                         {t("settings.trustedLanPairingQrTitle", "Pairing QR")}
                       </div>
-                      <div className="mt-3 flex min-h-[208px] items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/90 p-3 dark:border-slate-700 dark:bg-slate-950/70">
+                      <div className="mt-3 flex min-h-[208px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white/90 p-3 dark:border-slate-700 dark:bg-slate-950/70">
                         {trustedLanPairingQrDataUrl ? (
                           <img
                             src={trustedLanPairingQrDataUrl}
@@ -4962,7 +4990,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 </div>
 
                 {trustedLanPairedBrowsers.length === 0 ? (
-                  <div className="mt-4 rounded-2xl border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                  <div className="mt-4 rounded-lg border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
                     {t(
                       "settings.trustedLanBrowsersEmpty",
                       "No trusted-LAN browsers have been paired yet.",
@@ -4971,7 +4999,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 ) : (
                   <div className="mt-4 space-y-4">
                     {activeTrustedLanPairedBrowsers.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                      <div className="rounded-lg border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
                         {t(
                           "settings.trustedLanNoActiveBrowsers",
                           "No active browsers right now.",
@@ -4982,11 +5010,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                         {activeTrustedLanPairedBrowsers.map((browser) => (
                           <div
                             key={browser.id}
-                            className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-950/55 dark:shadow-none"
+                            className="rounded-lg border border-slate-200 bg-white/90 px-4 py-3 shadow-sm shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-950/55 dark:shadow-none"
                           >
                             <div className="flex flex-wrap items-start justify-between gap-3">
                               <div className="flex min-w-0 flex-1 items-start gap-3">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-sm font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-sm font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
                                   {browser.initials}
                                 </div>
                                 <div className="min-w-0 flex-1">
@@ -5029,7 +5057,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                     )}
 
                     {revokedTrustedLanPairedBrowsers.length > 0 ? (
-                      <div className="rounded-2xl border border-slate-200 bg-white/65 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/45">
+                      <div className="rounded-lg border border-slate-200 bg-white/65 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/45">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <div className="font-semibold text-slate-800 dark:text-slate-100">
@@ -5060,10 +5088,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                             {revokedTrustedLanPairedBrowsers.map((browser) => (
                               <div
                                 key={browser.id}
-                                className="rounded-2xl border border-slate-200/80 bg-slate-50/85 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/55"
+                                className="rounded-lg border border-slate-200/80 bg-slate-50/85 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/55"
                               >
                                 <div className="flex min-w-0 items-start gap-3">
-                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-300">
+                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-300">
                                     {browser.initials}
                                   </div>
                                   <div className="min-w-0 flex-1">
@@ -5150,7 +5178,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               </div>
 
               <div className="p-5">
-                <div className="rounded-2xl border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
+                <div className="rounded-lg border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
                   <div className="grid gap-4 lg:grid-cols-[0.7fr_1.3fr]">
                     <div>
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
@@ -5223,7 +5251,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 </div>
 
                 {catalogRefreshBusy ? (
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/60 dark:shadow-none">
+                  <div className="mt-4 rounded-lg border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/60 dark:shadow-none">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
@@ -5254,7 +5282,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 ) : null}
 
                 {catalogRefreshSummary ? (
-                  <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 text-emerald-950 shadow-sm shadow-emerald-200/30 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-100 dark:shadow-none">
+                  <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/90 p-4 text-emerald-950 shadow-sm shadow-emerald-200/30 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-100 dark:shadow-none">
                     <div
                       className={`grid gap-3 ${
                         catalogRefreshSummary.reused_cached_products != null ||
@@ -5304,7 +5332,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 ) : null}
 
                 {showCatalogRefreshLog ? (
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/60 dark:shadow-none">
+                  <div className="mt-4 rounded-lg border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/60 dark:shadow-none">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                       {catalogRefreshVendor} {t("wishlist.refreshLog", "refresh log")}
                     </div>
@@ -5354,7 +5382,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               </div>
 
               <div className="p-5">
-                <div className="rounded-2xl border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
+                <div className="rounded-lg border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
                   <div className="flex flex-wrap items-center gap-2">
                     {swatchVendorOptions.map((vendor) => (
                       <button
@@ -5409,7 +5437,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 </div>
 
                 {visibleMissingSwatchMasters.length === 0 ? (
-                  <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white/70 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+                  <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-white/70 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
                     {t("settings.noMissingSwatches", "No missing swatches to fill.")}
                   </div>
                 ) : (
@@ -5420,12 +5448,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                       return (
                         <div
                           key={master.id}
-                          className="rounded-2xl border border-slate-200 bg-white/80 p-3 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none"
+                          className="rounded-lg border border-slate-200 bg-white/80 p-3 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none"
                         >
                           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                             <div className="flex min-w-0 items-start gap-3">
                               <span
-                                className="mt-0.5 h-11 w-11 shrink-0 rounded-2xl border border-slate-200 shadow-inner dark:border-slate-700"
+                                className="mt-0.5 h-11 w-11 shrink-0 rounded-lg border border-slate-200 shadow-inner dark:border-slate-700"
                                 style={{ backgroundColor: toSwatchColor(normalizedDraft) }}
                                 title={normalizedDraft}
                               />
@@ -5515,7 +5543,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               </div>
 
               <div className="grid gap-4 p-5 lg:grid-cols-[1.15fr_0.95fr]">
-                <div className="rounded-2xl border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
+                <div className="rounded-lg border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
                   <div className="section-eyebrow">
                     {t("settings.backupExportGroup", "Backup and export")}
                   </div>
@@ -5547,11 +5575,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
+                <div className="rounded-lg border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
                   <div className="section-eyebrow">
                     {t("settings.backupImportGroup", "Import and validation")}
                   </div>
-                  <div className="mt-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/90 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
+                  <div className="mt-2 rounded-lg border border-dashed border-slate-200 bg-slate-50/90 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
                     {t(
                       "settings.noBackupValidationYet",
                       "Validate a backup file here to see compatibility details before importing.",
@@ -5577,7 +5605,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                   </div>
 
                   {lastBackupValidation ? (
-                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/90 p-4 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-200">
+                    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/90 p-4 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-200">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="font-semibold">
                           {t("settings.backupValidationSummary", "Backup validation summary")}
@@ -5800,7 +5828,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               <button
                 type="button"
                 onClick={closeLibraryRoleChangeModal}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white/85 text-[1.35rem] leading-none text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-800/60"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white/85 text-[1.35rem] leading-none text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-800/60"
               >
                 ×
               </button>
@@ -5992,7 +6020,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               <button
                 type="button"
                 onClick={() => void handleConfirmLibraryRoleChange()}
-                className={`inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold shadow-sm transition disabled:opacity-50 ${
+                className={`inline-flex items-center justify-center rounded-lg px-4 py-3 text-sm font-semibold shadow-sm transition disabled:opacity-50 ${
                   libraryRoleConfirmArmed
                     ? "border border-amber-300 bg-amber-500 text-slate-950 shadow-amber-900/20 hover:bg-amber-400 dark:border-amber-400/40 dark:bg-amber-400 dark:hover:bg-amber-300"
                     : "border border-indigo-300 bg-indigo-500 text-white shadow-indigo-900/20 hover:bg-indigo-600 dark:border-indigo-400/40 dark:bg-indigo-400 dark:text-slate-950 dark:hover:bg-indigo-300"
