@@ -798,7 +798,6 @@ export function createCompanionMutations(options) {
       const spoolId = String(payload?.spool_id || "").trim();
       state.activeTaskSheet = null;
       state.showBorrowedInForm = false;
-      state.showStorageQr = false;
       state.borrowedInDraft = createBorrowedInDraft();
       state.activeRootFlow = "storage";
       if (spoolId) {
@@ -972,10 +971,8 @@ export function createCompanionMutations(options) {
       if (!spoolId) {
         throw new Error(tr("status.qrLookupMissingSpoolId", "QR lookup returned no spool id"));
       }
-      state.qrLookup = String(qrCodeValue || "").trim();
       state.activeRootFlow = "storage";
       state.activeTaskSheet = null;
-      state.showStorageQr = false;
       setStatus(tr("status.qrLookupMatched", "QR code matched local spool."), "success");
       openSpoolDetail(spoolId, { rootFlow: "storage" });
     } catch (error) {

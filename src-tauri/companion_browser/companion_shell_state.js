@@ -82,7 +82,6 @@ export function createCompanionShellState(options) {
 
   function syncTaskSheetState() {
     const taskType = String(state.activeTaskSheet?.type || "").trim();
-    state.showStorageQr = taskType === "storage-qr";
     state.showBorrowedInForm = taskType === "storage-add";
     state.expandedLoanReturnId =
       taskType === "loan-return" ? String(state.activeTaskSheet?.loanId || "").trim() : "";
@@ -192,11 +191,6 @@ export function createCompanionShellState(options) {
     state.layoutMode = normalizeLayoutMode(nextLayoutMode);
     state.compactLayout = state.layoutMode === "phone";
     syncLegacySectionState();
-  }
-
-  function toggleStorageQrSheet() {
-    const nextTaskSheet = state.activeTaskSheet?.type === "storage-qr" ? null : { type: "storage-qr" };
-    setActiveTaskSheet(nextTaskSheet);
   }
 
   function toggleBorrowedInForm() {
@@ -534,6 +528,5 @@ export function createCompanionShellState(options) {
     syncLegacySectionState,
     toggleBorrowedInForm,
     toggleLoanReturn,
-    toggleStorageQrSheet,
   };
 }

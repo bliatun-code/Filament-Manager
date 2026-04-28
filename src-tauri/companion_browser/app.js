@@ -11,12 +11,6 @@ import {
 } from "./companion_i18n.js";
 import { createCompanionLogic } from "./companion_logic.js";
 import { createCompanionMutations } from "./companion_mutations.js";
-import {
-  decodeQrFromFile,
-  startLiveQrScanner,
-  supportsLiveQrScanner,
-  supportsQrImageDecode,
-} from "./companion_qr_scanner.js";
 import { createCompanionRuntimeState } from "./companion_runtime_state.js";
 import { renderMarkupPreservingFocus } from "./companion_render_focus.js";
 import { createCompanionShellState, detectCompanionLayoutMode } from "./companion_shell_state.js";
@@ -104,7 +98,6 @@ const {
   syncLegacySectionState,
   toggleBorrowedInForm,
   toggleLoanReturn,
-  toggleStorageQrSheet,
 } = companionShellState;
 
 const companionDataController = createCompanionDataController({
@@ -317,8 +310,6 @@ function main() {
   syncRecoverySectionLabels(state.locale);
   state.themeMode = readStoredThemeMode();
   state.resolvedTheme = applyCompanionThemeMode(state.themeMode, document, window);
-  state.qrScannerLiveSupported = supportsLiveQrScanner(window, navigator);
-  state.qrScannerImageSupported = supportsQrImageDecode(window);
   syncCompanionIconLinks(state.resolvedTheme);
 
   render();
@@ -356,9 +347,6 @@ const {
   submitBorrowedInUpdate,
   submitBorrowedInHandBack,
 } = companionMutations;
-
-let stopQrScannerSessionHandle = null;
-let qrScannerSessionId = 0;
 
 let overlayScrollLocked = false;
 let overlayLockedScrollY = 0;
@@ -417,184 +405,6 @@ function syncOverlayScrollLock() {
   overlayScrollLocked = false;
 }
 
-function setQrScannerFeedback(message = "", tone = "default") {
-  state.qrScannerMessage = String(message || "").trim();
-  state.qrScannerTone = String(tone || "default").trim() || "default";
-}
-
-function stopQrScannerSession(options = {}) {
-  const clearFeedback = options.clearFeedback !== false;
-  if (stopQrScannerSessionHandle) {
-    stopQrScannerSessionHandle();
-    stopQrScannerSessionHandle = null;
-  }
-  qrScannerSessionId += 1;
-  state.qrScannerActive = false;
-  if (clearFeedback) {
-    setQrScannerFeedback("", "default");
-  }
-}
-
-async function handleQrScannerResult(payload) {
-  const nextPayload = String(payload || "").trim();
-  if (!nextPayload) {
-    return;
-  }
-  state.qrLookup = nextPayload;
-  setQrScannerFeedback(
-    t(state.locale || "en", "status.qrScannerFound", "QR found. Opening spool..."),
-    "success",
-  );
-  stopQrScannerSession({ clearFeedback: false });
-  render();
-  await submitQrLookup(nextPayload);
-}
-
-async function ensureQrScannerSession() {
-  if (!state.qrScannerActive || stopQrScannerSessionHandle) {
-    return;
-  }
-  const sessionId = ++qrScannerSessionId;
-  const video = document.querySelector("[data-qr-scanner-video]");
-  if (!(video instanceof HTMLVideoElement)) {
-    state.qrScannerActive = false;
-    setQrScannerFeedback(
-      t(state.locale || "en", "status.qrScannerVideoUnavailable", "QR scanner preview is unavailable."),
-      "error",
-    );
-    render();
-    return;
-  }
-
-  try {
-    stopQrScannerSessionHandle = await startLiveQrScanner({
-      video,
-      onResult: (payload) => {
-        if (sessionId !== qrScannerSessionId) {
-          return;
-        }
-        void handleQrScannerResult(payload);
-      },
-      onError: (message) => {
-        if (sessionId !== qrScannerSessionId) {
-          return;
-        }
-        setQrScannerFeedback(
-          message ||
-            t(state.locale || "en", "status.qrScannerLiveFailed", "Live QR scanning failed."),
-          "error",
-        );
-        render();
-      },
-      windowRef: window,
-      navigatorRef: navigator,
-    });
-    if (sessionId !== qrScannerSessionId || !state.qrScannerActive) {
-      stopQrScannerSessionHandle?.();
-      stopQrScannerSessionHandle = null;
-      return;
-    }
-    setQrScannerFeedback(
-      t(state.locale || "en", "status.qrScannerLiveReady", "Camera is running. Point it at a QR code."),
-      "default",
-    );
-    render();
-  } catch (error) {
-    stopQrScannerSession();
-    setQrScannerFeedback(
-      String(
-        error?.message ||
-          error ||
-          t(state.locale || "en", "status.qrScannerLiveFailed", "Live QR scanning failed."),
-      ),
-      "error",
-    );
-    render();
-  }
-}
-
-function syncQrScannerLifecycle() {
-  const qrSheetOpen = state.activeTaskSheet?.type === "storage-qr";
-  if (!qrSheetOpen) {
-    if (state.qrScannerActive || stopQrScannerSessionHandle) {
-      stopQrScannerSession();
-    }
-    return;
-  }
-  if (state.qrScannerActive && !stopQrScannerSessionHandle) {
-    void ensureQrScannerSession();
-  }
-}
-
-function startQrScanner() {
-  if (state.busy) {
-    return;
-  }
-  if (!state.qrScannerLiveSupported) {
-    setQrScannerFeedback(
-      t(
-        state.locale || "en",
-        "status.qrScannerLiveUnavailable",
-        "Live camera scanning is not available in this browser session.",
-      ),
-      "error",
-    );
-    render();
-    return;
-  }
-  state.qrScannerActive = true;
-  setQrScannerFeedback(
-    t(state.locale || "en", "status.qrScannerStarting", "Starting camera..."),
-    "default",
-  );
-  render();
-}
-
-function stopQrScanner() {
-  stopQrScannerSession();
-  render();
-}
-
-async function handleQrImageSelection(fileList) {
-  const file = fileList?.[0] || null;
-  if (!file) {
-    return;
-  }
-  if (!state.qrScannerImageSupported) {
-    setQrScannerFeedback(
-      t(
-        state.locale || "en",
-        "status.qrScannerImageUnavailable",
-        "QR image scanning is not available in this browser session.",
-      ),
-      "error",
-    );
-    render();
-    return;
-  }
-
-  setQrScannerFeedback(
-    t(state.locale || "en", "status.qrScannerImageReading", "Scanning selected image..."),
-    "default",
-  );
-  render();
-
-  try {
-    const payload = await decodeQrFromFile(file, { windowRef: window });
-    await handleQrScannerResult(payload);
-  } catch (error) {
-    setQrScannerFeedback(
-      String(
-        error?.message ||
-          error ||
-          t(state.locale || "en", "status.qrScannerImageFailed", "Failed to scan the selected image."),
-      ),
-      "error",
-    );
-    render();
-  }
-}
-
 function render() {
   syncOverlayScrollLock();
   renderMarkupPreservingFocus({
@@ -602,7 +412,6 @@ function render() {
     documentRef: document,
     markup: companionAppShellRenderer.renderRoot(),
   });
-  syncQrScannerLifecycle();
 }
 
 installCompanionDomEvents({
@@ -614,13 +423,10 @@ installCompanionDomEvents({
   setStatus,
   refreshOverview,
   setRootFlow,
-  startQrScanner,
-  stopQrScanner,
   startLoanPicker,
   startLoanCreate,
   startPrinterSlotAssignment,
   startPrinterWeightUpdate,
-  toggleStorageQrSheet,
   toggleBorrowedInForm,
   setAddSpoolSource,
   setCatalogStatusFilter,
@@ -634,7 +440,6 @@ installCompanionDomEvents({
   setLoanStatusFilter,
   setWishlistQueueFilter,
   setPrinterSpoolSearch,
-  handleQrImageSelection,
   submitPrinterSlotAssignment,
   submitWishlistStatus,
   submitWishlistStock,
@@ -650,7 +455,6 @@ installCompanionDomEvents({
   submitSpoolLoanReturn,
   submitManualSpoolRegistration,
   submitWishlistCreate,
-  submitQrLookup,
   submitBorrowedInUpdate,
   submitBorrowedInHandBack,
   setThemeMode,

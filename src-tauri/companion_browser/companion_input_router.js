@@ -6,11 +6,6 @@ export function routeCompanionInputChange(name, value, handlers) {
     return true;
   }
 
-  if (normalizedName === "qr-lookup") {
-    handlers.setQrLookup(String(value || ""));
-    return true;
-  }
-
   if (normalizedName === "loan-search") {
     handlers.setLoanSearch(String(value || ""));
     return true;

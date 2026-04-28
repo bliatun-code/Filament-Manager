@@ -42,11 +42,8 @@ export function handleCompanionClickEvent(event, options) {
   return routeCompanionClickAction(action, target, {
     refresh: () => void options.refreshOverview(),
     setRootFlow: options.setRootFlow,
-    startQrScanner: options.startQrScanner,
-    stopQrScanner: options.stopQrScanner,
     startPrinterSlotAssignment: options.startPrinterSlotAssignment,
     startPrinterWeightUpdate: options.startPrinterWeightUpdate,
-    toggleStorageQrSheet: options.toggleStorageQrSheet,
     toggleBorrowedInForm: options.toggleBorrowedInForm,
     setAddSpoolSource: options.setAddSpoolSource,
     setCatalogStatusFilter: options.setCatalogStatusFilter,
@@ -97,10 +94,6 @@ export function handleCompanionInputEvent(event, options) {
       options.state.search = value;
       options.render();
     },
-    setQrLookup: (value) => {
-      options.state.qrLookup = value;
-      options.render();
-    },
     setLoanSearch: (value) => {
       options.state.loanSearch = value;
       if (options.state.activeTaskSheet?.type === "loan-return") {
@@ -119,12 +112,6 @@ export function handleCompanionChangeEvent(event, options) {
   const target = event?.target;
   if (!target || typeof target.name !== "string") {
     return false;
-  }
-
-  if (String(target.name).trim().toLowerCase() === "qr-image-file") {
-    options.handleQrImageSelection?.(target.files);
-    target.value = "";
-    return true;
   }
 
   return false;
@@ -148,7 +135,6 @@ export function handleCompanionSubmitEvent(event, options) {
     submitSpoolLoanReturn: (...args) => void options.submitSpoolLoanReturn(...args),
     submitManualSpoolRegistration: (...args) => void options.submitManualSpoolRegistration(...args),
     submitWishlistCreate: (...args) => void options.submitWishlistCreate(...args),
-    submitQrLookup: (...args) => void options.submitQrLookup(...args),
     submitBorrowedInUpdate: (...args) => void options.submitBorrowedInUpdate(...args),
     submitBorrowedInHandBack: (...args) => void options.submitBorrowedInHandBack(...args),
   });

@@ -35,7 +35,6 @@ function createBaseOptions(overrides = {}) {
       activeRootFlow: "storage",
       detailOpen: true,
       search: "",
-      qrLookup: "",
       loanSearch: "",
       expandedLoanReturnId: "",
     },
@@ -43,9 +42,6 @@ function createBaseOptions(overrides = {}) {
     setStatus() {},
     refreshOverview() {},
     setRootFlow() {},
-    startQrScanner() {},
-    stopQrScanner() {},
-    toggleStorageQrSheet() {},
     toggleBorrowedInForm() {},
     setFilamentOwnership() {},
     setThemeMode() {},
@@ -65,8 +61,6 @@ function createBaseOptions(overrides = {}) {
     submitSpoolLoan() {},
     submitSpoolLoanReturn() {},
     submitManualSpoolRegistration() {},
-    submitQrLookup() {},
-    handleQrImageSelection() {},
     submitBorrowedInUpdate() {},
     submitBorrowedInHandBack() {},
     ...overrides,
@@ -95,7 +89,6 @@ test("click handler refreshes current trusted-LAN companion data", async () => {
       activeRootFlow: "storage",
       detailOpen: false,
       search: "",
-      qrLookup: "",
       loanSearch: "",
       expandedLoanReturnId: "",
     },
@@ -127,7 +120,6 @@ test("input handler updates loan search and collapses the expanded return state"
       activeRootFlow: "storage",
       detailOpen: false,
       search: "",
-      qrLookup: "",
       loanSearch: "",
       expandedLoanReturnId: "loan-1",
     },
@@ -151,44 +143,6 @@ test("input handler updates loan search and collapses the expanded return state"
   assert.equal(options.state.loanSearch, "alice");
   assert.equal(options.state.expandedLoanReturnId, "");
   assert.equal(renderCount, 1);
-});
-
-test("submit handler prevents default and dispatches browser form actions", () => {
-  let prevented = false;
-  const submitCalls = [];
-  const formData = {
-    get(name) {
-      return name === "qr-lookup" ? "qr-123" : "";
-    },
-  };
-  const options = createBaseOptions({
-    createFormData(target) {
-      assert.equal(target.tagName, "FORM");
-      return formData;
-    },
-    submitQrLookup(value) {
-      submitCalls.push(value);
-    },
-  });
-
-  const handled = handleCompanionSubmitEvent(
-    {
-      target: {
-        tagName: "FORM",
-        getAttribute(name) {
-          return name === "data-action" ? "qr-lookup-form" : null;
-        },
-      },
-      preventDefault() {
-        prevented = true;
-      },
-    },
-    options,
-  );
-
-  assert.equal(handled, true);
-  assert.equal(prevented, true);
-  assert.deepEqual(submitCalls, ["qr-123"]);
 });
 
 test("submit handler dispatches spool detail updates from the detail form", () => {
@@ -230,28 +184,6 @@ test("submit handler dispatches spool detail updates from the detail form", () =
   assert.equal(handled, true);
   assert.equal(prevented, true);
   assert.deepEqual(calls, [["spool-12", "EMPTY", "Archive Bin", ""]]);
-});
-
-test("change handler forwards QR image selections to the scanner hook", () => {
-  const files = [{ name: "qr.png" }];
-  const calls = [];
-  const handled = handleCompanionChangeEvent(
-    {
-      target: {
-        name: "qr-image-file",
-        files,
-        value: "C:/fakepath/qr.png",
-      },
-    },
-    createBaseOptions({
-      handleQrImageSelection(nextFiles) {
-        calls.push(nextFiles);
-      },
-    }),
-  );
-
-  assert.equal(handled, true);
-  assert.deepEqual(calls, [files]);
 });
 
 test("installCompanionDomEvents registers the expected document and root listeners", () => {

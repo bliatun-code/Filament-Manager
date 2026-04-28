@@ -81,9 +81,7 @@ test("submitQrLookup opens the matched spool in storage mode", async () => {
 
   await harness.mutations.submitQrLookup("QR-7");
 
-  assert.equal(harness.state.qrLookup, "QR-7");
   assert.equal(harness.state.activeRootFlow, "storage");
-  assert.equal(harness.state.showStorageQr, false);
   assert.deepEqual(harness.openSpoolDetailCalls, [
     { spoolId: "spool-7", source: { rootFlow: "storage" } },
   ]);
@@ -112,7 +110,6 @@ test("submitManualSpoolRegistration routes borrowed-in spools through the inboun
   const harness = createMutationHarness({
     state: {
       showBorrowedInForm: true,
-      showStorageQr: true,
       borrowedInDraft: {
         ...createBorrowedInDraft(),
         ownerName: "Before",
@@ -144,7 +141,6 @@ test("submitManualSpoolRegistration routes borrowed-in spools through the inboun
   assert.equal(harness.state.selectedSpoolId, "borrowed-1");
   assert.equal(harness.state.detailOpen, true);
   assert.equal(harness.state.showBorrowedInForm, false);
-  assert.equal(harness.state.showStorageQr, false);
   assert.equal(harness.state.borrowedInDraft.ownerName, "");
   assert.deepEqual(harness.setDetailReturnContextCalls, ["storage"]);
   assert.deepEqual(harness.detailFeedbackCalls, [

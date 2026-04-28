@@ -55,7 +55,7 @@ test("storage shell keeps search and primary actions close to the spool list", (
 
   assert.match(html, /Storage/);
   assert.match(html, /Add spool/);
-  assert.match(html, /Scan QR/);
+  assert.doesNotMatch(html, /Scan QR/);
   assert.match(html, /data-action="select-spool"/);
   assert.doesNotMatch(html, /Selected spool/);
   assert.match(html, /Browse local stock and open the spool you need\./);

@@ -32,7 +32,6 @@ import {
 } from "./shell_chrome.js";
 import {
   renderAddFilamentTaskSheetBody,
-  renderStorageQrTaskSheetBody,
   renderStorageShell,
 } from "./storage_shell.js";
 
@@ -263,17 +262,6 @@ function renderTaskSheet(options) {
       body: renderAddFilamentTaskSheetBody(state, state.busy, escapeHtml),
       shellClass: "task-sheet-shell-wide",
       panelClass: "add-filament-sheet",
-      locale: state.locale,
-      escapeHtml,
-    });
-  }
-
-  if (activeTaskSheet.type === "storage-qr") {
-    return renderTaskSheetShell({
-      layoutMode: state.layoutMode,
-      kicker: t(state.locale || "en", "storage.qrLookup", "QR lookup"),
-      title: t(state.locale || "en", "storage.qrScanner", "Scan QR"),
-      body: renderStorageQrTaskSheetBody(state, state.busy, escapeHtml),
       locale: state.locale,
       escapeHtml,
     });

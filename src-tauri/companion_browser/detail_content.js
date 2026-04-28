@@ -147,7 +147,6 @@ export function renderSelectedSpoolDetailBody(options) {
       <details class="surface-card detail-section-card detail-collapsible" data-collapsible="details">
         <summary class="detail-collapsible-summary">
           <span>${escapeHtml(t(locale, "detail.details", "Details"))}</span>
-          <span class="detail-history-summary">${escapeHtml(t(locale, "detail.detailsHelp", "Code, status, and placement."))}</span>
         </summary>
         <div class="detail-collapsible-body">
           <form class="stack detail-form detail-edit-pane" data-action="update-spool-details-form">

@@ -199,7 +199,6 @@ test("session reset clears stale companion data but preserves the current layout
     apiReady: true,
     csrfToken: "csrf",
     search: "pla",
-    qrLookup: "qr-1",
     loanSearch: "alex",
     spools: [createSpoolRow("spool-1")],
     printers: [createPrinter("spool-1")],

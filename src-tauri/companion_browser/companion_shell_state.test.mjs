@@ -37,7 +37,6 @@ test("setRootFlow collapses storage utilities and preserves printer selection wi
   const harness = createShellStateHarness({
     state: {
       activeRootFlow: "storage",
-      showStorageQr: true,
       showBorrowedInForm: true,
       detailOpen: true,
       printers: [{ printer: { id: "printer-2" } }],
@@ -49,7 +48,6 @@ test("setRootFlow collapses storage utilities and preserves printer selection wi
 
   assert.equal(harness.state.activeRootFlow, "printers");
   assert.equal(harness.state.activePrinterId, "printer-2");
-  assert.equal(harness.state.showStorageQr, false);
   assert.equal(harness.state.showBorrowedInForm, false);
   assert.equal(harness.state.detailOpen, false);
   assert.equal(harness.state.activeTaskSheet, null);
@@ -57,10 +55,9 @@ test("setRootFlow collapses storage utilities and preserves printer selection wi
   assert.equal(harness.renderCalls.length, 1);
 });
 
-test("toggleBorrowedInForm closes the QR sheet and updates the shell immediately", () => {
+test("toggleBorrowedInForm updates the shell immediately", () => {
   const harness = createShellStateHarness({
     state: {
-      showStorageQr: true,
       showBorrowedInForm: false,
     },
   });
@@ -68,7 +65,6 @@ test("toggleBorrowedInForm closes the QR sheet and updates the shell immediately
   harness.shellState.toggleBorrowedInForm();
 
   assert.equal(harness.state.showBorrowedInForm, true);
-  assert.equal(harness.state.showStorageQr, false);
   assert.equal(harness.renderCalls.length, 1);
 });
 

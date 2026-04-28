@@ -49,8 +49,6 @@ const COMPANION_BROWSER_INPUT_ROUTER_JS: &str =
     include_str!("../companion_browser/companion_input_router.js");
 const COMPANION_BROWSER_MUTATIONS_JS: &str =
     include_str!("../companion_browser/companion_mutations.js");
-const COMPANION_BROWSER_QR_SCANNER_JS: &str =
-    include_str!("../companion_browser/companion_qr_scanner.js");
 const COMPANION_BROWSER_QR_PAYLOAD_JS: &str = include_str!("../companion_browser/qr_payload.js");
 const COMPANION_BROWSER_RENDER_FOCUS_JS: &str =
     include_str!("../companion_browser/companion_render_focus.js");
@@ -166,13 +164,6 @@ fn companion_browser_assets() -> &'static [(&'static str, CompanionBrowserAsset)
             CompanionBrowserAsset {
                 content_type: "application/javascript; charset=utf-8",
                 content: COMPANION_BROWSER_MUTATIONS_JS,
-            },
-        ),
-        (
-            "companion_qr_scanner.js",
-            CompanionBrowserAsset {
-                content_type: "application/javascript; charset=utf-8",
-                content: COMPANION_BROWSER_QR_SCANNER_JS,
             },
         ),
         (

@@ -103,11 +103,6 @@ export function routeCompanionSubmitAction(action, data, handlers) {
     return true;
   }
 
-  if (action === "qr-lookup-form") {
-    handlers.submitQrLookup(String(data.get("qr-lookup") || ""));
-    return true;
-  }
-
   if (action === "update-borrowed-in-form") {
     handlers.submitBorrowedInUpdate(
       String(data.get("spool-id") || ""),

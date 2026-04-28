@@ -155,23 +155,6 @@ test("app shell renderer opens add-spool task sheets above the root flow when re
   assert.match(html, /task-sheet surface-panel add-filament-sheet/);
 });
 
-test("app shell renderer opens the QR task sheet with manual lookup and scan actions", () => {
-  const renderer = createRenderer({
-    state: {
-      activeTaskSheet: { type: "storage-qr" },
-      qrScannerLiveSupported: true,
-      qrScannerImageSupported: true,
-    },
-  });
-
-  const html = renderer.renderRoot();
-
-  assert.match(html, /Scan QR/);
-  assert.match(html, /data-action="qr-lookup-form"/);
-  assert.match(html, /data-action="start-qr-scanner"/);
-  assert.match(html, /name="qr-image-file"/);
-});
-
 test("app shell renderer uses the shared task-sheet shell for loan picking", () => {
   const renderer = createRenderer({
     state: {
