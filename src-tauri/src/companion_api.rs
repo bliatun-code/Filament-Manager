@@ -697,7 +697,10 @@ fn build_router(state: CompanionApiState) -> Router {
         .route("/api/v1/library/snapshot", get(handle_library_snapshot))
         .route("/api/v1/library/spools", get(handle_library_spools))
         .route("/api/v1/library/printers", get(handle_library_printers))
-        .route("/api/v1/library/printer-settings", get(handle_library_printer_settings))
+        .route(
+            "/api/v1/library/printer-settings",
+            get(handle_library_printer_settings),
+        )
         .route("/api/v1/library/loans", get(handle_library_loans))
         .route(
             "/api/v1/library/statistics/filament-consumption",
@@ -1527,6 +1530,16 @@ async fn handle_update_printer_slot_assignment(
         return Err(CompanionApiError::BadRequest(
             "Slot is already empty".to_string(),
         ));
+    }
+    if let (Some(current_spool_id), Some(next_spool_id)) =
+        (slot.spool_id.as_deref(), target_spool_id)
+    {
+        if current_spool_id != next_spool_id {
+            return Err(CompanionApiError::BadRequest(
+                "Slot must be cleared before assigning another spool from the browser companion"
+                    .to_string(),
+            ));
+        }
     }
     if let Some(next_spool_id) = target_spool_id {
         let spool = state
@@ -2612,8 +2625,8 @@ impl IntoResponse for CompanionApiError {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_router, companion_browser_assets, hash_secret, CompanionApiState, COMPANION_CSRF_HEADER,
-        COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_DEVICE_COOKIE,
+        build_router, companion_browser_assets, hash_secret, CompanionApiState,
+        COMPANION_CSRF_HEADER, COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_DEVICE_COOKIE,
     };
     use crate::app_services::CompanionService;
     use crate::backend::filament_database::FilamentDatabase;
@@ -3113,7 +3126,7 @@ mod tests {
             let detail_text =
                 String::from_utf8(detail_body.to_vec()).map_err(|error| error.to_string())?;
             assert!(detail_text.contains("\"remaining_g\":740"));
-            assert!(detail_text.contains("\"status\":\"IN_USE\""));
+            assert!(detail_text.contains("\"status\":\"ASSIGNED\""));
 
             let clear_slot = router
                 .clone()
