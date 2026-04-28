@@ -2804,6 +2804,11 @@ impl FilamentDatabase {
             params![printer_id],
         )?;
         tx.execute(
+            "DELETE FROM printer_live_events
+             WHERE printer_id = ?1",
+            params![printer_id],
+        )?;
+        tx.execute(
             "DELETE FROM ams_slots
              WHERE ams_id IN (
                 SELECT id FROM ams_units WHERE printer_id = ?1
@@ -3747,6 +3752,7 @@ impl FilamentDatabase {
         tx.execute("DELETE FROM spool_history_events", [])?;
         tx.execute("DELETE FROM spool_loans", [])?;
         tx.execute("DELETE FROM print_jobs", [])?;
+        tx.execute("DELETE FROM printer_live_events", [])?;
         tx.execute(
             "UPDATE ams_slots SET spool_id = NULL, last_seen_at = NULL",
             [],
@@ -4812,6 +4818,7 @@ mod tests {
         TrustedLanSettingsRow,
     };
     use crate::InventoryOverview;
+    use serde_json::json;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -5265,6 +5272,14 @@ mod tests {
                 Some("https://192.168.1.50:4278"),
             )
             .map_err(|error| error.to_string())?;
+            db.upsert_printer_with_ams("printer_1", "P1S", "BambuLab P1S", 1, 4)
+                .map_err(|error| error.to_string())?;
+            db.insert_printer_live_event(
+                "printer_1",
+                "poll_error",
+                &json!({ "message": "temporary live failure" }),
+            )
+            .map_err(|error| error.to_string())?;
 
             let pairings_before: i64 = db
                 .conn
@@ -5280,8 +5295,15 @@ mod tests {
                     |row| row.get(0),
                 )
                 .map_err(|error| error.to_string())?;
+            let live_events_before: i64 = db
+                .conn
+                .query_row("SELECT COUNT(*) FROM printer_live_events", [], |row| {
+                    row.get(0)
+                })
+                .map_err(|error| error.to_string())?;
             assert!(pairings_before > 0);
             assert!(browsers_before > 0);
+            assert!(live_events_before > 0);
 
             db.reset_app_state_data()
                 .map_err(|error| error.to_string())?;
@@ -5300,8 +5322,20 @@ mod tests {
                     |row| row.get(0),
                 )
                 .map_err(|error| error.to_string())?;
+            let live_events_after: i64 = db
+                .conn
+                .query_row("SELECT COUNT(*) FROM printer_live_events", [], |row| {
+                    row.get(0)
+                })
+                .map_err(|error| error.to_string())?;
+            let printers_after: i64 = db
+                .conn
+                .query_row("SELECT COUNT(*) FROM printers", [], |row| row.get(0))
+                .map_err(|error| error.to_string())?;
             assert_eq!(pairings_after, 0);
             assert_eq!(browsers_after, 0);
+            assert_eq!(live_events_after, 0);
+            assert_eq!(printers_after, 0);
 
             Ok(())
         })();
