@@ -253,3 +253,26 @@ test("detail content localizes WEIGHT_UPDATED history labels in norwegian", () =
 
   assert.match(html, /Vekt oppdatert/);
 });
+
+test("detail content localizes loan history and usage source labels in norwegian", () => {
+  const html = renderBody({
+    locale: "nb",
+    selectedDetail: createSelectedDetail({
+      usage: [
+        { grams: 165, source: "MANUAL", captured_at: "2026-04-17T13:00:00Z" },
+        { grams: 120, source: "LOAN_RETURN", captured_at: "2026-04-17T14:00:00Z" },
+      ],
+      history: [
+        { event_type: "loaned out", created_at: "2026-04-17T15:00:00Z" },
+        { event_type: "LOAN_RETURN", created_at: "2026-04-17T16:00:00Z" },
+      ],
+    }),
+  });
+
+  assert.match(html, /Manuell/);
+  assert.match(html, /Utlån returnert/);
+  assert.match(html, /Lånt ut/);
+  assert.doesNotMatch(html, /MANUAL/);
+  assert.doesNotMatch(html, /LOAN_RETURN/);
+  assert.doesNotMatch(html, /loaned out/);
+});

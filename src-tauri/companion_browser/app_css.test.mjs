@@ -34,5 +34,7 @@ test("phone CSS keeps root headers secondary, task sheets scrollable, and modal 
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.detail-modal-shell\s*\{[\s\S]*height: calc\(100dvh - max\(1rem, env\(safe-area-inset-top\)\) - max\(1rem, env\(safe-area-inset-bottom\)\)\);/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.detail-modal-actions > \.compact-back-button\s*\{\s*width: auto;/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*:root\[data-theme-mode="light"\] \.phone-bottom-nav\s*\{[\s\S]*background: rgba\(248, 251, 255, 0\.98\);/);
-  assert.match(css, /@media \(max-width: 767px\) and \(prefers-color-scheme: light\)[\s\S]*:root\[data-theme-mode="auto"\] \.swatch-surface\s*\{[\s\S]*--swatch-surface-top: 0\.085;/);
+  assert.match(css, /@media \(max-width: 767px\) and \(prefers-color-scheme: light\)[\s\S]*:root\[data-theme-mode="auto"\] \.swatch-surface\s*\{[\s\S]*--swatch-surface-top: 0\.24;/);
+  assert.match(css, /:root\[data-theme-mode="light"\] \.list-row\.swatch-surface[\s\S]*inset 3px 0 0 rgb\(var\(--swatch-rgb\) \/ 0\.56\)/);
+  assert.match(css, /:root\[data-theme-mode="light"\] \.printer-board\.printer-brand-surface[\s\S]*inset 3px 0 0 rgb\(var\(--brand-rgb\) \/ 0\.5\)/);
 });

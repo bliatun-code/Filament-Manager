@@ -275,7 +275,7 @@ function renderUsageTimeline(usageRows, helpers) {
       (point) => `
         <div class="timeline-item">
           <div class="list-title">${escapeHtml(formatGrams(point.grams))}</div>
-          <div class="muted">${escapeHtml(point.source || t(locale, "detail.unknownSource", "Unknown source"))}</div>
+          <div class="muted">${escapeHtml(formatUsageSourceLabel(point.source, locale))}</div>
           <div class="meta-line">${escapeHtml(formatDate(point.captured_at))}</div>
         </div>
       `,
@@ -360,6 +360,7 @@ function formatHistoryEventLabel(value, locale = "en") {
     return t(locale, "detail.activity", "Activity");
   }
   const normalizedKey = label.toLowerCase();
+  const compactKey = normalizedKey.replace(/[\s-]+/g, "_");
   const normalized = normalizedKey.replaceAll("_", " ");
   const eventKeys = {
     weight_update: "detail.eventWeightUpdate",
@@ -374,7 +375,33 @@ function formatHistoryEventLabel(value, locale = "en") {
     status_location_update: "detail.eventStatusLocationUpdate",
     assigned_to_ams: "detail.eventAssignedToAms",
     cleared_from_ams: "detail.eventClearedFromAms",
+    loan_out: "detail.eventLoanedOut",
+    loaned_out: "detail.eventLoanedOut",
+    loan_return: "detail.eventLoanReturned",
+    loan_returned: "detail.eventLoanReturned",
+    returned_loan: "detail.eventLoanReturned",
     deleted: "detail.eventDeleted",
   };
-  return t(locale, eventKeys[normalizedKey] || "", normalized);
+  return t(locale, eventKeys[normalizedKey] || eventKeys[compactKey] || "", normalized);
+}
+
+function formatUsageSourceLabel(value, locale = "en") {
+  const label = String(value || "").trim();
+  if (!label) {
+    return t(locale, "detail.unknownSource", "Unknown source");
+  }
+  const normalizedKey = label.toLowerCase().replace(/[\s-]+/g, "_");
+  const sourceKeys = {
+    manual: "detail.usageSourceManual",
+    rfid: "detail.usageSourceRfid",
+    live_rfid: "detail.usageSourceRfid",
+    printer: "detail.usageSourcePrinter",
+    printer_slot: "detail.usageSourcePrinter",
+    ams: "detail.usageSourcePrinter",
+    loan_return: "detail.usageSourceLoanReturn",
+    loan_returned: "detail.usageSourceLoanReturn",
+    loan_out: "detail.usageSourceLoanOut",
+    loaned_out: "detail.usageSourceLoanOut",
+  };
+  return t(locale, sourceKeys[normalizedKey] || "", label.replaceAll("_", " "));
 }
