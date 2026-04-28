@@ -509,6 +509,17 @@ function settingsChoiceButtonClass(active: boolean, tone: "indigo" | "emerald" =
   return "inline-flex items-center justify-center rounded-lg border border-slate-300/80 bg-white/72 px-3.5 py-2.5 text-sm font-semibold text-slate-700 outline-none transition hover:bg-white focus-visible:border-sky-300/70 dark:border-slate-700 dark:bg-slate-950/42 dark:text-slate-200 dark:hover:bg-slate-900/72";
 }
 
+function settingsLibraryRoleButtonClass(active: boolean): string {
+  const activeClass = "settings-library-role-active";
+  const idleClass =
+    "border-slate-300/80 bg-white/72 text-slate-700 hover:bg-white dark:border-slate-700 dark:bg-slate-950/42 dark:text-slate-200 dark:hover:bg-slate-900/72";
+  return `inline-flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-sm font-semibold outline-none transition focus-visible:border-sky-300/80 disabled:opacity-70 ${active ? activeClass : idleClass}`;
+}
+
+function settingsWebappStatusClass(active: boolean): string {
+  return `inline-flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-sm font-semibold outline-none transition ${active ? "settings-webapp-status-active" : "settings-webapp-status-warn"}`;
+}
+
 function settingsWebappSwitchClass(active: boolean): string {
   const activeClass = "settings-webapp-switch-active";
   const idleClass =
@@ -4307,9 +4318,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                         key={option.mode}
                         type="button"
                         onClick={() => handleRequestLibraryRoleChange(option.mode)}
-                        className={settingsChoiceButtonClass(librarySyncModeDraft === option.mode)}
+                        className={settingsLibraryRoleButtonClass(librarySyncModeDraft === option.mode)}
                         disabled={!tauri || librarySyncBusy}
                       >
+                        {librarySyncModeDraft === option.mode ? (
+                          <span className="settings-library-role-dot" aria-hidden="true" />
+                        ) : null}
                         {option.label}
                       </button>
                     ))}
@@ -4335,11 +4349,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                   ) : librarySyncModeDraft === "HOST" ? (
                     <div className="flex flex-wrap gap-2">
                       <span
-                        className={settingsChoiceButtonClass(
+                        className={settingsWebappStatusClass(
                           Boolean(trustedLanStatus?.enabled && trustedLanStatus?.running),
-                          trustedLanStatus?.enabled && trustedLanStatus?.running ? "emerald" : undefined,
                         )}
                       >
+                        <span className="settings-webapp-status-dot" aria-hidden="true" />
                         {trustedLanStatus?.enabled && trustedLanStatus?.running
                           ? t("settings.libraryWebappRunning", "Running")
                           : trustedLanActionBusy
