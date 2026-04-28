@@ -348,4 +348,36 @@
     color: rgb(226 232 240);
     background-color: rgb(15 23 42);
   }
+
+  .settings-webapp-switch-active {
+    border-color: rgba(110, 231, 183, 0.8);
+    background-color: rgb(236, 253, 245);
+    color: rgb(6, 78, 59);
+    box-shadow: 0 12px 24px -20px rgba(6, 78, 59, 0.34);
+  }
+
+  .settings-webapp-switch-track-active {
+    border-color: rgb(110, 231, 183);
+    background-color: rgb(16, 185, 129);
+  }
+
+  .settings-webapp-switch-knob-active {
+    background-color: rgb(255, 255, 255);
+  }
+
+  html.dark .settings-webapp-switch-active {
+    border-color: rgba(52, 211, 153, 0.34) !important;
+    background-color: rgba(2, 6, 23, 0.42) !important;
+    color: rgb(241, 245, 249) !important;
+    box-shadow: none !important;
+  }
+
+  html.dark .settings-webapp-switch-track-active {
+    border-color: rgba(52, 211, 153, 0.46) !important;
+    background-color: rgba(16, 185, 129, 0.24) !important;
+  }
+
+  html.dark .settings-webapp-switch-knob-active {
+    background-color: rgb(167, 243, 208) !important;
+  }
 }

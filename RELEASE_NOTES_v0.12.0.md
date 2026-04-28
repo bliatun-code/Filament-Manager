@@ -11,6 +11,7 @@ Release date: 2026-04-28
 
 ## UI Polish
 - Settings library/web-app controls now use a single accessible switch in standalone mode
+- The Settings web-app switch now keeps a calmer, readable active state in dark mode
 - Settings subtabs, inventory filters, badges, and shared surfaces have been tightened for a cleaner operational feel
 - Dashboard usage widgets are more stable during refresh
 - Companion light mode has clearer contrast, calmer cards, stronger swatches, and printer cards that preserve vendor color intent
