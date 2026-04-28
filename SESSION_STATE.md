@@ -1,10 +1,33 @@
 # Session State
 
-Last updated: 2026-04-26
+Last updated: 2026-04-28
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current product direction is the trusted-LAN-only browser path described in the `Current Status` section, where the browser root is `Storage` and the intake sheet is `Add spool`.
 
 ## Current Status
+- UI polish / companion cleanup checkpoint (2026-04-28):
+  - `main` is clean, pushed, and currently aligned with `origin/main`
+  - latest pushed commit:
+    - `3d2a602 refactor: remove companion QR scanner`
+  - desktop and companion UI polish work is landed across dark/light mode:
+    - desktop light mode has stronger contrast and less washed-out card treatment
+    - companion light mode has stronger swatch visibility while keeping card surfaces calmer than the first high-saturation pass
+    - companion printer cards again preserve brand color intent in light mode (`Bambu` green, `Prusa` orange, etc.)
+  - browser companion QR camera scanning and manual QR lookup have been removed from the companion UI:
+    - `Skann QR` / scanner sheets are gone
+    - QR lookup/search controls are gone from companion storage and task flows
+    - the scanner asset/module is removed from the served companion bundle
+    - the lingering detail-section helper text for QR/status/location was removed after the UI cleanup
+  - generated/printed QR labels and camera-app deep links are still intentionally supported:
+    - users can scan a printed QR with the device camera app
+    - incoming `spool_qr` / `qr_code` companion deep links still open the matched spool detail modal
+  - latest verification for the QR-removal batch:
+    - `npm run test:companion` ✅ (`138 / 138`)
+    - `cargo check --manifest-path src-tauri/Cargo.toml` ✅
+    - `git diff --check` ✅
+  - security/dependency status is unchanged:
+    - GitHub still reports the 2 known low transitive `rand` alerts
+    - they remain intentionally open until upstream Tauri / `tauri-utils` dependencies move
 - Cleanup / hardening checkpoint (2026-04-26):
   - `main` is clean, pushed, and currently aligned with `origin/main`
   - the large parity/refactor pass across desktop host, paired client, and browser companion is now materially further along than the 2026-04-17 checkpoint below
@@ -39,7 +62,7 @@ Historical notes below still mention the old localhost browser companion, `qa:co
     - centralized asset registry
     - live printer status
     - RFID capture/save
-    - QR scanner
+    - printed-QR / camera-app deep-link detail lookup
     - history/localization cleanup
   - the latest desktop `Printers` UI polish/fixes also include:
     - removal of the redundant printer-header `Live` chip

@@ -509,6 +509,28 @@ function settingsChoiceButtonClass(active: boolean, tone: "indigo" | "emerald" =
   return "inline-flex items-center justify-center rounded-lg border border-slate-300/80 bg-white/72 px-3.5 py-2.5 text-sm font-semibold text-slate-700 outline-none transition hover:bg-white focus-visible:border-sky-300/70 dark:border-slate-700 dark:bg-slate-950/42 dark:text-slate-200 dark:hover:bg-slate-900/72";
 }
 
+function settingsWebappSwitchClass(active: boolean): string {
+  const activeClass =
+    "border-emerald-300/80 bg-emerald-50 text-emerald-950 shadow-sm shadow-emerald-900/10 dark:border-emerald-300/60 dark:bg-emerald-500/18 dark:text-emerald-50 dark:shadow-none";
+  const idleClass =
+    "border-slate-300/80 bg-white/72 text-slate-700 hover:bg-white dark:border-slate-700 dark:bg-slate-950/42 dark:text-slate-200 dark:hover:bg-slate-900/72";
+  return `inline-flex items-center gap-3 rounded-full border px-3 py-2 text-sm font-semibold outline-none transition focus-visible:border-sky-300/80 disabled:opacity-70 ${active ? activeClass : idleClass}`;
+}
+
+function settingsWebappSwitchTrackClass(active: boolean): string {
+  return `relative h-7 w-12 rounded-full border transition ${
+    active
+      ? "border-emerald-300 bg-emerald-500 dark:border-emerald-300/70 dark:bg-emerald-400"
+      : "border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-800"
+  }`;
+}
+
+function settingsWebappSwitchKnobClass(active: boolean): string {
+  return `absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm shadow-slate-900/30 transition ${
+    active ? "left-6" : "left-1"
+  }`;
+}
+
 function settingsActionButtonClass(variant: "neutral" | "accent" = "neutral"): string {
   const base =
     "inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold outline-none transition focus-visible:border-sky-300/70 disabled:opacity-50";
@@ -4330,25 +4352,24 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => void handleToggleTrustedLanEnabled(false)}
-                        className={settingsChoiceButtonClass(!trustedLanEnabledDraft)}
-                        disabled={!tauri || trustedLanActionBusy}
-                      >
-                        {t("common.off", "Off")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleToggleTrustedLanEnabled(true)}
-                        className={settingsChoiceButtonClass(trustedLanEnabledDraft, "emerald")}
+                        role="switch"
+                        aria-checked={trustedLanEnabledDraft}
+                        onClick={() => void handleToggleTrustedLanEnabled(!trustedLanEnabledDraft)}
+                        className={settingsWebappSwitchClass(trustedLanEnabledDraft)}
                         disabled={
                           !tauri ||
                           trustedLanActionBusy ||
                           (!trustedLanEnabledDraft && !trustedLanHasPrivateInterfaces)
                         }
                       >
-                        {trustedLanEnabledDraft
-                          ? t("settings.libraryWebappRunning", "Running")
-                          : t("common.on", "On")}
+                        <span className={settingsWebappSwitchTrackClass(trustedLanEnabledDraft)} aria-hidden="true">
+                          <span className={settingsWebappSwitchKnobClass(trustedLanEnabledDraft)} />
+                        </span>
+                        <span>
+                          {trustedLanEnabledDraft
+                            ? t("settings.libraryWebappRunning", "Running")
+                            : t("common.off", "Off")}
+                        </span>
                       </button>
                     </div>
                   )}

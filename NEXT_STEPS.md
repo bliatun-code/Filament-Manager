@@ -2,10 +2,12 @@
 
 Historical notes below still mention the old localhost browser companion, `qa:companion-local`, and older browser wording like `Inventory` / `Add filament` where they describe earlier landed work. The current browser baseline is trusted-LAN-only, with `Storage` as the browser label for desktop `Inventory` / `Lager` and `Add spool` as the browser intake action.
 
-## Active Cleanup Continuation (2026-04-26)
+## Active Cleanup Continuation (2026-04-28)
 - Current cleanup baseline:
-  - `main` is aligned with `origin/main` after the latest cleanup/fix batches
-  - the large parity/refactor pass is active, but now at a calmer checkpoint after several controlled `Printers` extractions plus one paired-client statistics fix
+  - `main` is aligned with `origin/main` after the latest cleanup/fix/polish batches
+  - latest pushed commit:
+    - `3d2a602 refactor: remove companion QR scanner`
+  - the large parity/refactor pass is active, but now at a calmer checkpoint after controlled `Printers` extractions, paired-client statistics/live fixes, desktop UI polish, and companion UI polish
   - handoff should continue from `SESSION_STATE.md` + `NEXT_STEPS.md`; the temporary bootstrap prompt file was removed
 - What is already cleaned up:
   - shared data/model/helper layers are landed for `Inventory`, `Settings`, `Dashboard`, `Loans`, and `Statistics`
@@ -20,12 +22,17 @@ Historical notes below still mention the old localhost browser companion, `qa:co
     - paired-client live header badge stabilized against fresher slot snapshots
     - redundant `Live` / `Tildelt` chips removed from the desktop printer board
   - browser companion parity/hardening is substantially improved and landed
+  - companion UI polish is landed across dark/light modes, including stronger light-mode swatch visibility and restored brand tinting for printer cards
+  - companion internal QR scanning/manual QR lookup has been removed:
+    - no `Skann QR` action or scanner task sheet remains in the browser companion
+    - printed QR / camera-app deep links are still supported through incoming `spool_qr` / `qr_code` URLs that open spool detail directly
   - GitHub / Dependabot cleanup is up to date except for the 2 known low transitive `rand` alerts
   - recent follow-up fix also landed for paired-client `Statistics` ownership metrics so client ownership cards derive from host rows instead of a stale aggregate path
 - Recommended next coding target:
   - do not jump into broad new rewrites by default
   - prefer small, behavior-led follow-up batches:
     - real host/client/browser parity fixes discovered during use
+    - small UI polish only where live data/screenshots show clear clutter, contrast, or layout issues
     - narrow `Printers` cleanup only if a remaining dense write-orchestration pocket becomes painful enough to justify the risk
     - otherwise shift energy toward release validation and edge-case hardening
 - Things intentionally not to “fix” right now:
