@@ -28,7 +28,8 @@
   body {
     @apply bg-slate-100 text-slate-900;
     background-image:
-      linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(238, 244, 251, 0.98) 42%, rgba(229, 236, 245, 0.99) 100%);
+      radial-gradient(circle at 50% -10%, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0) 36%),
+      linear-gradient(180deg, rgba(243, 248, 253, 0.98) 0%, rgba(231, 239, 248, 0.99) 46%, rgba(221, 231, 243, 1) 100%);
     transition: background-color 180ms ease, color 180ms ease;
   }
 
@@ -103,6 +104,9 @@
 
   .page-header-search {
     @apply w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm shadow-sm placeholder:text-slate-500 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder:text-slate-400;
+    box-shadow:
+      0 10px 22px -20px rgba(51, 65, 85, 0.3),
+      0 1px 0 rgba(255, 255, 255, 0.82) inset;
   }
 
   .page-header-filter-surface {
@@ -141,21 +145,25 @@
 
   .header-button-secondary {
     @apply whitespace-nowrap rounded-lg border px-3.5 py-2 text-sm font-semibold transition disabled:opacity-50;
-    border-color: rgba(203, 213, 225, 0.95);
-    background-color: rgba(255, 255, 255, 0.96);
+    border-color: rgba(148, 163, 184, 0.46);
+    background-color: rgba(255, 255, 255, 0.98);
     color: rgb(30 41 59);
-    box-shadow: 0 14px 28px -24px rgba(148, 163, 184, 0.45);
+    box-shadow: 0 14px 28px -22px rgba(71, 85, 105, 0.26);
   }
 
   .header-button-secondary:hover {
-    border-color: rgba(148, 163, 184, 0.65);
-    background-color: rgba(248, 250, 252, 0.98);
+    border-color: rgba(100, 116, 139, 0.52);
+    background-color: rgb(255, 255, 255);
   }
 
   html.dark .header-button-primary {
     border-color: rgba(241, 245, 249, 0.95);
     background-color: rgba(248, 250, 252, 0.98);
     color: rgb(15 23 42);
+    box-shadow: none;
+  }
+
+  html.dark .page-header-search {
     box-shadow: none;
   }
 
@@ -177,34 +185,36 @@
 
   .surface-card {
     @apply rounded-lg border p-4 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/75 dark:shadow-none;
-    border-color: rgba(148, 163, 184, 0.24);
-    background-color: rgba(248, 251, 255, 0.86);
+    border-color: rgba(148, 163, 184, 0.36);
+    background-color: rgba(255, 255, 255, 0.9);
     box-shadow:
-      0 14px 28px -24px rgba(71, 85, 105, 0.24),
-      0 1px 0 rgba(255, 255, 255, 0.55) inset;
+      0 16px 34px -26px rgba(51, 65, 85, 0.32),
+      0 1px 0 rgba(255, 255, 255, 0.82) inset;
   }
 
   .surface-card-compact {
     @apply rounded-lg border p-4 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/75 dark:shadow-none;
-    border-color: rgba(148, 163, 184, 0.22);
-    background-color: rgba(248, 251, 255, 0.86);
+    border-color: rgba(148, 163, 184, 0.34);
+    background-color: rgba(255, 255, 255, 0.9);
     box-shadow:
-      0 12px 24px -22px rgba(71, 85, 105, 0.2),
-      0 1px 0 rgba(255, 255, 255, 0.52) inset;
+      0 14px 30px -24px rgba(51, 65, 85, 0.28),
+      0 1px 0 rgba(255, 255, 255, 0.8) inset;
   }
 
   .surface-subtle {
     @apply rounded-lg border dark:border-slate-700/70 dark:bg-slate-900/60 dark:shadow-none;
-    border-color: rgba(148, 163, 184, 0.22);
-    background-color: rgba(239, 245, 252, 0.72);
-    box-shadow: 0 8px 18px -18px rgba(71, 85, 105, 0.18);
+    border-color: rgba(148, 163, 184, 0.34);
+    background-color: rgba(239, 246, 253, 0.84);
+    box-shadow:
+      0 10px 22px -20px rgba(51, 65, 85, 0.26),
+      0 1px 0 rgba(255, 255, 255, 0.66) inset;
   }
 
   .app-nav {
     @apply sticky top-0 z-20 border-b px-4 py-2.5 backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-950/85 sm:px-6;
-    border-color: rgba(148, 163, 184, 0.26);
-    background-color: rgba(247, 250, 255, 0.88);
-    box-shadow: 0 12px 28px -28px rgba(51, 65, 85, 0.38);
+    border-color: rgba(148, 163, 184, 0.34);
+    background-color: rgba(250, 252, 255, 0.92);
+    box-shadow: 0 14px 30px -26px rgba(51, 65, 85, 0.36);
   }
 
   .app-nav-inner {
@@ -216,11 +226,12 @@
   }
 
   .app-nav-logo {
-    @apply flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200/80 bg-white/80 shadow-sm shadow-slate-200/35 backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/75 dark:shadow-none;
+    @apply flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200/80 bg-white/90 shadow-sm shadow-slate-200/35 backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/75 dark:shadow-none;
   }
 
   .app-nav-list {
-    @apply flex min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-lg border border-slate-200/70 bg-white/55 p-1 dark:border-slate-800/90 dark:bg-slate-950/40;
+    @apply flex min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-lg border border-slate-200/80 p-1 dark:border-slate-800/90 dark:bg-slate-950/40;
+    background-color: rgba(255, 255, 255, 0.72);
   }
 
   .app-nav-button {
@@ -235,13 +246,13 @@
 
   .app-nav-button-active {
     @apply text-slate-950 shadow-sm dark:bg-slate-100 dark:text-slate-900 dark:shadow-none;
-    border: 1px solid rgba(148, 163, 184, 0.24);
-    background-color: rgba(255, 255, 255, 0.94);
-    box-shadow: 0 8px 18px -16px rgba(51, 65, 85, 0.34);
+    border: 1px solid rgba(148, 163, 184, 0.32);
+    background-color: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 10px 20px -16px rgba(51, 65, 85, 0.32);
   }
 
   .app-nav-button-active:focus-visible {
-    box-shadow: 0 8px 18px -16px rgba(51, 65, 85, 0.34);
+    box-shadow: 0 10px 20px -16px rgba(51, 65, 85, 0.32);
   }
 
   .app-nav-button-idle {
@@ -250,29 +261,33 @@
   }
 
   .app-nav-button-idle:hover {
-    border-color: rgba(148, 163, 184, 0.22);
-    background-color: rgba(255, 255, 255, 0.6);
+    border-color: rgba(148, 163, 184, 0.3);
+    background-color: rgba(255, 255, 255, 0.74);
+  }
+
+  html.dark .app-nav-list {
+    background-color: rgba(2, 6, 23, 0.4);
   }
 
   html:not(.dark) .bg-white {
-    background-color: rgb(248 251 255) !important;
+    background-color: rgb(255 255 255) !important;
   }
 
   html:not(.dark) .bg-white\/95 {
-    background-color: rgba(248, 251, 255, 0.95) !important;
+    background-color: rgba(255, 255, 255, 0.95) !important;
   }
 
   html:not(.dark) .bg-slate-50 {
-    background-color: rgb(241 246 251) !important;
+    background-color: rgb(244 248 252) !important;
   }
 
   html:not(.dark) .bg-slate-100 {
-    background-color: rgb(232 239 247) !important;
+    background-color: rgb(232 240 248) !important;
   }
 
   html:not(.dark) .border-slate-200,
   html:not(.dark) .border-slate-300 {
-    border-color: rgba(148, 163, 184, 0.28) !important;
+    border-color: rgba(148, 163, 184, 0.38) !important;
   }
 
   html.dark .bg-slate-50 {
