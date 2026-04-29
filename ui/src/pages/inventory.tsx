@@ -1027,17 +1027,15 @@ export default function InventoryPage({
           ? await fetchLibrarySyncCatalogMasters(clientHostBaseUrl, clientLibraryId, 1000)
           : await listMasterCatalog(1000);
       setMasters(rows);
-      if (!newBambuMasterId && rows.length > 0) {
+      if (rows.length > 0) {
         const firstBambu = rows.find((row) =>
           row.vendor.toLowerCase().includes("bambu"),
         );
-        setNewBambuMasterId(firstBambu?.id ?? rows[0].id);
-      }
-      if (!newEsunMasterId && rows.length > 0) {
         const firstEsun = rows.find((row) =>
           row.vendor.toLowerCase().includes("esun"),
         );
-        setNewEsunMasterId(firstEsun?.id ?? "");
+        setNewBambuMasterId((current) => current || firstBambu?.id || rows[0].id);
+        setNewEsunMasterId((current) => current || firstEsun?.id || "");
       }
     } catch (catalogError) {
       console.error(catalogError);
@@ -1047,7 +1045,7 @@ export default function InventoryPage({
       }
       setError(t("wishlist.error.loadCatalog", "Could not load master catalog."));
     }
-  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, newBambuMasterId, newEsunMasterId, t, tauri]);
+  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, t, tauri]);
 
   const reloadWishlist = useCallback(async () => {
     if (!tauri) {
@@ -2142,12 +2140,13 @@ export default function InventoryPage({
   }, [bambuCatalogQuery, bambuMasters]);
 
   const selectedBambuMaster = useMemo(() => {
-    const fromId = masters.find((master) => master.id === newBambuMasterId) ?? null;
+    const fromId =
+      filteredBambuMasters.find((master) => master.id === newBambuMasterId) ?? null;
     if (fromId) {
       return fromId;
     }
     return filteredBambuMasters[0] ?? null;
-  }, [filteredBambuMasters, masters, newBambuMasterId]);
+  }, [filteredBambuMasters, newBambuMasterId]);
 
   useEffect(() => {
     if (createMode !== "bambu") {
@@ -2201,12 +2200,13 @@ export default function InventoryPage({
   }, [esunCatalogQuery, esunMasters]);
 
   const selectedEsunMaster = useMemo(() => {
-    const fromId = masters.find((master) => master.id === newEsunMasterId) ?? null;
+    const fromId =
+      filteredEsunMasters.find((master) => master.id === newEsunMasterId) ?? null;
     if (fromId) {
       return fromId;
     }
     return filteredEsunMasters[0] ?? null;
-  }, [filteredEsunMasters, masters, newEsunMasterId]);
+  }, [filteredEsunMasters, newEsunMasterId]);
 
   useEffect(() => {
     if (createMode !== "esun") {
