@@ -1,0 +1,31 @@
+import type { Locale } from "./i18n";
+
+export function parseDateTimeMs(raw?: string | null): number | null {
+  if (!raw) {
+    return null;
+  }
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const withTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized)
+    ? normalized
+    : `${normalized}Z`;
+  const parsed = new Date(withTimezone);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  return parsed.getTime();
+}
+
+export function formatDateTime(raw: string, locale: Locale): string {
+  const parsedMs = parseDateTimeMs(raw);
+  if (parsedMs == null) {
+    return raw;
+  }
+  return new Intl.DateTimeFormat(locale === "nb" ? "nb-NO" : "en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(parsedMs));
+}

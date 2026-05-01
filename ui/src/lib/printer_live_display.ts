@@ -1,11 +1,12 @@
 import { hexToRgb } from "./color_utils";
+import { parseDateTimeMs } from "./date_time";
 import type {
   BambuLiveIntegrationEntry,
   BambuLiveObservedTray,
   PrinterAmsSlotRow,
 } from "./tauri_client";
-import type { Locale } from "./i18n";
 import type { ResolvedTheme } from "./theme_mode";
+export { formatDateTime } from "./date_time";
 
 type TranslateFn = (key: string, fallback?: string) => string;
 
@@ -16,38 +17,8 @@ export function formatGrams(value?: number | null): string {
   return `${Math.max(0, value)} g`;
 }
 
-function parseObservedTimestamp(raw?: string | null): number | null {
-  if (!raw) {
-    return null;
-  }
-  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
-  const withTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized)
-    ? normalized
-    : `${normalized}Z`;
-  const parsed = new Date(withTimezone);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-  return parsed.getTime();
-}
-
-export function formatDateTime(raw: string, locale: Locale): string {
-  const parsedMs = parseObservedTimestamp(raw);
-  if (parsedMs == null) {
-    return raw;
-  }
-  return new Intl.DateTimeFormat(locale === "nb" ? "nb-NO" : "en-US", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(new Date(parsedMs));
-}
-
 export function formatRelativeAge(raw: string | null | undefined, t: TranslateFn): string | null {
-  const parsedMs = parseObservedTimestamp(raw);
+  const parsedMs = parseDateTimeMs(raw);
   if (parsedMs == null) {
     return null;
   }
@@ -68,7 +39,7 @@ export function formatRelativeAge(raw: string | null | undefined, t: TranslateFn
 }
 
 export function isOlderThanMinutes(raw?: string | null, minutes = 10): boolean {
-  const parsedMs = parseObservedTimestamp(raw);
+  const parsedMs = parseDateTimeMs(raw);
   if (parsedMs == null) {
     return true;
   }
@@ -79,8 +50,8 @@ export function compareObservedTimestamps(
   left?: string | null,
   right?: string | null,
 ): number | null {
-  const leftValue = parseObservedTimestamp(left);
-  const rightValue = parseObservedTimestamp(right);
+  const leftValue = parseDateTimeMs(left);
+  const rightValue = parseDateTimeMs(right);
   if (leftValue == null || rightValue == null) {
     return null;
   }

@@ -1,9 +1,9 @@
 import { hexToRgb, toSwatchColor } from "./color_utils";
 import { normalizeDisplayToken } from "./display_format";
-import type { Locale } from "./i18n";
 import { resolveSpoolTareWeight } from "./spool_weight";
 import type { ResolvedTheme } from "./theme_mode";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
+export { formatDateTime } from "./date_time";
 
 export type LoanFilter = "ALL" | "ACTIVE" | "RETURNED";
 export type LoanDirectionFilter = "ALL" | "OUTBOUND" | "INBOUND";
@@ -182,23 +182,6 @@ export function compactLoanTimestamp(raw?: string | null): string {
   }
   const [, , month, day, hour, minute] = match;
   return `${day}.${month} ${hour}:${minute}`;
-}
-
-export function formatDateTime(raw: string, locale: Locale): string {
-  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
-  const withTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized) ? normalized : `${normalized}Z`;
-  const parsed = new Date(withTimezone);
-  if (Number.isNaN(parsed.getTime())) {
-    return raw;
-  }
-  return new Intl.DateTimeFormat(locale === "nb" ? "nb-NO" : "en-US", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(parsed);
 }
 
 export function formatLoanReference(spoolIdRaw?: string | null): string {

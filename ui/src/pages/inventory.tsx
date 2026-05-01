@@ -7,6 +7,7 @@ import { VendorBadge } from "../components/vendor_badge";
 import { WeightInput } from "../components/weight_input";
 import { neutralChipClass, semanticChipClass } from "../lib/chip_styles";
 import { hexToRgb, isValidHexColor, toSwatchColor } from "../lib/color_utils";
+import { formatDateTime } from "../lib/date_time";
 import {
   buildFilamentLabelHtml,
   buildFilamentLabelQrDataUrl,
@@ -16,7 +17,7 @@ import {
   deriveCompanionShellUrl,
   type FilamentQrMode,
 } from "../lib/filament_qr_payload";
-import { useI18n, type Locale } from "../lib/i18n";
+import { useI18n } from "../lib/i18n";
 import {
   buildMaterialOptions,
   buildVendorOptions,
@@ -488,23 +489,6 @@ function formatGrams(value?: number | null): string {
     return "0 g";
   }
   return `${value} g`;
-}
-
-function formatDateTime(raw: string, locale: Locale): string {
-  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
-  const withTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized) ? normalized : `${normalized}Z`;
-  const parsed = new Date(withTimezone);
-  if (Number.isNaN(parsed.getTime())) {
-    return raw;
-  }
-  return new Intl.DateTimeFormat(locale === "nb" ? "nb-NO" : "en-US", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(parsed);
 }
 
 function formatMasterDisplayTitle(master: MasterCatalogRow): string {
