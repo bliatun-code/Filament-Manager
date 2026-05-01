@@ -1,5 +1,4 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-#![allow(clippy::items_after_test_module)]
 
 mod app_services;
 mod backend;
@@ -3600,162 +3599,6 @@ fn ensure_db(app: &tauri::App) -> Result<PathBuf, String> {
     Ok(db_path)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{
-        chrono_id, detect_bambu_skip_discontinued_reason, load_trusted_lan_runtime,
-        write_generated_file,
-    };
-    use crate::backend::filament_database::{FilamentDatabase, TrustedLanSettingsRow};
-    use std::path::PathBuf;
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    fn temp_db_path(test_name: &str) -> PathBuf {
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos();
-        std::env::temp_dir().join(format!("filament-manager-main-{test_name}-{nanos}.db"))
-    }
-
-    #[test]
-    fn bambu_discontinued_is_applied_on_clean_refresh_output() {
-        let output = "\
-Detected store: https://eu.store.bambulab.com\n\
-Detected collection: bambu-lab-3d-printer-filament\n\
-Products discovered: 36\n\
-Products detailed: 36\n\
-Imported 256 entries.\n";
-        let reason = detect_bambu_skip_discontinued_reason(output, 256);
-        assert!(reason.is_none());
-    }
-
-    #[test]
-    fn bambu_discontinued_is_skipped_on_rate_limit_output() {
-        let output = "\
-Scraper: retrying https://eu.store.bambulab.com/products/pa6-cf after 429\n\
-Scraper: 429 Too Many Requests https://eu.store.bambulab.com/products/pa6-cf\n\
-Refresh quality: partial\n\
-Imported 278 entries.\n";
-        let reason = detect_bambu_skip_discontinued_reason(output, 278);
-        assert_eq!(
-            reason,
-            Some("anti-bot/rate-limit responses detected".to_string())
-        );
-    }
-
-    #[test]
-    fn bambu_discontinued_partial_without_antibot_uses_source_warning_reason() {
-        let output = "\
-Detected store: https://eu.store.bambulab.com\n\
-Anti-bot blocks: 0\n\
-Refresh quality: partial\n\
-Imported 296 entries.\n\
-Warnings:\n\
-Some product detail pages could not be fetched.\n";
-        let reason = detect_bambu_skip_discontinued_reason(output, 296);
-        assert_eq!(
-            reason,
-            Some("refresh had warnings/errors from source".to_string())
-        );
-    }
-
-    #[test]
-    fn bambu_discontinued_is_skipped_when_zero_imported() {
-        let output = "Imported 0 entries.\n";
-        let reason = detect_bambu_skip_discontinued_reason(output, 0);
-        assert_eq!(reason, Some("no rows imported".to_string()));
-    }
-
-    #[test]
-    fn trusted_lan_runtime_keeps_enabled_state_from_settings() {
-        let db_path = temp_db_path("trusted-lan-dark-startup");
-        let result = (|| -> Result<(), String> {
-            {
-                let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
-                db.apply_schema().map_err(|error| error.to_string())?;
-                db.save_trusted_lan_settings(&TrustedLanSettingsRow {
-                    enabled: true,
-                    selected_interface_name: Some("Wi-Fi".to_string()),
-                    selected_interface_address: Some("192.168.1.50".to_string()),
-                    listen_port: 4278,
-                })
-                .map_err(|error| error.to_string())?;
-            }
-
-            let runtime = load_trusted_lan_runtime(db_path.to_string_lossy().as_ref())?;
-            let snapshot = runtime.snapshot();
-            assert!(snapshot.enabled);
-            assert_eq!(snapshot.selected_interface_name.as_deref(), Some("Wi-Fi"));
-            assert_eq!(
-                snapshot.selected_interface_address.as_deref(),
-                Some("192.168.1.50")
-            );
-            assert_eq!(snapshot.listen_port, 4278);
-            Ok(())
-        })();
-
-        let _ = std::fs::remove_file(&db_path);
-        if let Err(error) = result {
-            panic!("{error}");
-        }
-    }
-
-    #[test]
-    fn generated_file_write_persists_contents() {
-        let path = std::env::temp_dir().join(format!("filament-manager-write-{}.txt", chrono_id()));
-        let result = (|| -> Result<(), String> {
-            write_generated_file(&path, b"hello windows rc")?;
-            let contents = std::fs::read_to_string(&path).map_err(|error| error.to_string())?;
-            assert_eq!(contents, "hello windows rc");
-            Ok(())
-        })();
-
-        let _ = std::fs::remove_file(&path);
-        if let Err(error) = result {
-            panic!("{error}");
-        }
-    }
-
-    #[cfg(target_os = "windows")]
-    #[test]
-    fn windows_storage_prefers_existing_db_location() {
-        use super::resolve_windows_storage_dir;
-
-        let base =
-            std::env::temp_dir().join(format!("filament-manager-windows-storage-{}", chrono_id()));
-        let roaming_dir = base.join("roaming");
-        let local_dir = base.join("local");
-        let result = (|| -> Result<(), String> {
-            std::fs::create_dir_all(&roaming_dir).map_err(|error| error.to_string())?;
-            std::fs::create_dir_all(&local_dir).map_err(|error| error.to_string())?;
-
-            let selected_without_db =
-                resolve_windows_storage_dir(roaming_dir.clone(), local_dir.clone());
-            assert_eq!(selected_without_db, local_dir);
-
-            std::fs::write(roaming_dir.join("bambu.db"), b"roaming-db")
-                .map_err(|error| error.to_string())?;
-            let selected_with_roaming =
-                resolve_windows_storage_dir(roaming_dir.clone(), local_dir.clone());
-            assert_eq!(selected_with_roaming, roaming_dir);
-
-            std::fs::write(local_dir.join("bambu.db"), b"local-db")
-                .map_err(|error| error.to_string())?;
-            let selected_with_local =
-                resolve_windows_storage_dir(roaming_dir.clone(), local_dir.clone());
-            assert_eq!(selected_with_local, local_dir);
-
-            Ok(())
-        })();
-
-        let _ = std::fs::remove_dir_all(&base);
-        if let Err(error) = result {
-            panic!("{error}");
-        }
-    }
-}
-
 fn write_label_to_disk(app: &tauri::AppHandle, html: &str) -> Result<PathBuf, String> {
     let app_dir = resolve_app_storage_dir_for_handle(app)?;
     let label_dir = app_dir.join("labels");
@@ -4051,4 +3894,160 @@ where
 {
     let stats = StatisticsEngine::open(&state.db_path).map_err(|error| error.to_string())?;
     func(stats).map_err(|error| error.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        chrono_id, detect_bambu_skip_discontinued_reason, load_trusted_lan_runtime,
+        write_generated_file,
+    };
+    use crate::backend::filament_database::{FilamentDatabase, TrustedLanSettingsRow};
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_db_path(test_name: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        std::env::temp_dir().join(format!("filament-manager-main-{test_name}-{nanos}.db"))
+    }
+
+    #[test]
+    fn bambu_discontinued_is_applied_on_clean_refresh_output() {
+        let output = "\
+Detected store: https://eu.store.bambulab.com\n\
+Detected collection: bambu-lab-3d-printer-filament\n\
+Products discovered: 36\n\
+Products detailed: 36\n\
+Imported 256 entries.\n";
+        let reason = detect_bambu_skip_discontinued_reason(output, 256);
+        assert!(reason.is_none());
+    }
+
+    #[test]
+    fn bambu_discontinued_is_skipped_on_rate_limit_output() {
+        let output = "\
+Scraper: retrying https://eu.store.bambulab.com/products/pa6-cf after 429\n\
+Scraper: 429 Too Many Requests https://eu.store.bambulab.com/products/pa6-cf\n\
+Refresh quality: partial\n\
+Imported 278 entries.\n";
+        let reason = detect_bambu_skip_discontinued_reason(output, 278);
+        assert_eq!(
+            reason,
+            Some("anti-bot/rate-limit responses detected".to_string())
+        );
+    }
+
+    #[test]
+    fn bambu_discontinued_partial_without_antibot_uses_source_warning_reason() {
+        let output = "\
+Detected store: https://eu.store.bambulab.com\n\
+Anti-bot blocks: 0\n\
+Refresh quality: partial\n\
+Imported 296 entries.\n\
+Warnings:\n\
+Some product detail pages could not be fetched.\n";
+        let reason = detect_bambu_skip_discontinued_reason(output, 296);
+        assert_eq!(
+            reason,
+            Some("refresh had warnings/errors from source".to_string())
+        );
+    }
+
+    #[test]
+    fn bambu_discontinued_is_skipped_when_zero_imported() {
+        let output = "Imported 0 entries.\n";
+        let reason = detect_bambu_skip_discontinued_reason(output, 0);
+        assert_eq!(reason, Some("no rows imported".to_string()));
+    }
+
+    #[test]
+    fn trusted_lan_runtime_keeps_enabled_state_from_settings() {
+        let db_path = temp_db_path("trusted-lan-dark-startup");
+        let result = (|| -> Result<(), String> {
+            {
+                let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+                db.apply_schema().map_err(|error| error.to_string())?;
+                db.save_trusted_lan_settings(&TrustedLanSettingsRow {
+                    enabled: true,
+                    selected_interface_name: Some("Wi-Fi".to_string()),
+                    selected_interface_address: Some("192.168.1.50".to_string()),
+                    listen_port: 4278,
+                })
+                .map_err(|error| error.to_string())?;
+            }
+
+            let runtime = load_trusted_lan_runtime(db_path.to_string_lossy().as_ref())?;
+            let snapshot = runtime.snapshot();
+            assert!(snapshot.enabled);
+            assert_eq!(snapshot.selected_interface_name.as_deref(), Some("Wi-Fi"));
+            assert_eq!(
+                snapshot.selected_interface_address.as_deref(),
+                Some("192.168.1.50")
+            );
+            assert_eq!(snapshot.listen_port, 4278);
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[test]
+    fn generated_file_write_persists_contents() {
+        let path = std::env::temp_dir().join(format!("filament-manager-write-{}.txt", chrono_id()));
+        let result = (|| -> Result<(), String> {
+            write_generated_file(&path, b"hello windows rc")?;
+            let contents = std::fs::read_to_string(&path).map_err(|error| error.to_string())?;
+            assert_eq!(contents, "hello windows rc");
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&path);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_storage_prefers_existing_db_location() {
+        use super::resolve_windows_storage_dir;
+
+        let base =
+            std::env::temp_dir().join(format!("filament-manager-windows-storage-{}", chrono_id()));
+        let roaming_dir = base.join("roaming");
+        let local_dir = base.join("local");
+        let result = (|| -> Result<(), String> {
+            std::fs::create_dir_all(&roaming_dir).map_err(|error| error.to_string())?;
+            std::fs::create_dir_all(&local_dir).map_err(|error| error.to_string())?;
+
+            let selected_without_db =
+                resolve_windows_storage_dir(roaming_dir.clone(), local_dir.clone());
+            assert_eq!(selected_without_db, local_dir);
+
+            std::fs::write(roaming_dir.join("bambu.db"), b"roaming-db")
+                .map_err(|error| error.to_string())?;
+            let selected_with_roaming =
+                resolve_windows_storage_dir(roaming_dir.clone(), local_dir.clone());
+            assert_eq!(selected_with_roaming, roaming_dir);
+
+            std::fs::write(local_dir.join("bambu.db"), b"local-db")
+                .map_err(|error| error.to_string())?;
+            let selected_with_local =
+                resolve_windows_storage_dir(roaming_dir.clone(), local_dir.clone());
+            assert_eq!(selected_with_local, local_dir);
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_dir_all(&base);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
 }
