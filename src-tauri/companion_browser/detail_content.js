@@ -1,25 +1,7 @@
 import { t } from "./companion_i18n.js";
+import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference, formatStatusLabel } from "./formatters.js";
 import { styleObjectToString, swatchCssVars } from "./companion_theme.js";
-
-function defaultSpoolTareWeightForVendor(vendor) {
-  const normalized = String(vendor || "").trim().toLowerCase();
-  if (normalized.includes("bambu")) {
-    return 250;
-  }
-  if (normalized.includes("esun")) {
-    return 224;
-  }
-  return 0;
-}
-
-function resolveSpoolTareWeight(spool, master) {
-  const explicit = spool?.spool_tare_weight_g;
-  if (Number.isFinite(explicit)) {
-    return Math.max(0, Math.round(explicit));
-  }
-  return defaultSpoolTareWeightForVendor(master?.vendor);
-}
 
 export function renderSelectedSpoolDetailBody(options) {
   const {
@@ -39,7 +21,7 @@ export function renderSelectedSpoolDetailBody(options) {
   } = options;
 
   const selectedAssignment = findAssignedSlotForSpool(selectedSpool.spool.id);
-  const detailTareWeight = resolveSpoolTareWeight(selectedSpool.spool, selectedSpool.master);
+  const detailTareWeight = resolveSpoolTareWeight(selectedSpool.spool, selectedSpool.master?.vendor);
   const normalizedDetailStatus = (selectedSpool.spool.status || "").trim().toUpperCase();
   const detailStatus = ["IN_STOCK", "EMPTY", "LOST"].includes(normalizedDetailStatus)
     ? normalizedDetailStatus

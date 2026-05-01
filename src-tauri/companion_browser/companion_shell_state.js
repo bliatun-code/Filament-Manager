@@ -1,4 +1,5 @@
 import { formatPrinterSlotLabelForModel } from "./printer_slot_labels.js";
+import { resolveSpoolRowTareWeight } from "./companion_spool_weight.js";
 
 const ROOT_FLOW_STORAGE = "storage";
 const ROOT_FLOW_PRINTERS = "printers";
@@ -53,17 +54,6 @@ function catalogMatchesSource(master, source) {
     return false;
   }
   return vendor.includes("bambu");
-}
-
-function defaultSpoolTareWeightForVendor(vendor) {
-  const normalized = String(vendor || "").trim().toLowerCase();
-  if (normalized.includes("bambu")) {
-    return 250;
-  }
-  if (normalized.includes("esun")) {
-    return 224;
-  }
-  return 0;
 }
 
 export function detectCompanionLayoutMode(viewportWidth) {
@@ -362,14 +352,6 @@ export function createCompanionShellState(options) {
       spoolRows.find((row) => String(row?.spool?.id || "").trim() === currentSpoolId) || null;
     const targetSpoolRow =
       spoolRows.find((row) => String(row?.spool?.id || "").trim() === targetSpoolId) || null;
-    const resolveTare = (row) => {
-      const explicit = row?.spool?.spool_tare_weight_g;
-      if (Number.isFinite(explicit)) {
-        return Math.max(0, Math.round(explicit));
-      }
-      return defaultSpoolTareWeightForVendor(row?.master?.vendor);
-    };
-
     state.activeRootFlow = ROOT_FLOW_PRINTERS;
     state.activePrinterId = normalizedPrinterId;
     state.detailOpen = false;
@@ -396,9 +378,9 @@ export function createCompanionShellState(options) {
       currentRemainingWeight: String(currentSpoolRow?.spool?.remaining_g ?? slotRow?.spool_remaining_g ?? "").trim(),
       currentMeasuredWeight:
         currentSpoolRow?.spool?.remaining_g != null
-          ? String(Math.max(0, currentSpoolRow.spool.remaining_g + resolveTare(currentSpoolRow)))
+          ? String(Math.max(0, currentSpoolRow.spool.remaining_g + resolveSpoolRowTareWeight(currentSpoolRow)))
           : "",
-      currentTareWeight: String(resolveTare(currentSpoolRow)).trim(),
+      currentTareWeight: String(resolveSpoolRowTareWeight(currentSpoolRow)).trim(),
       currentSwatchColor:
         String(currentSpoolRow?.master?.hex_color || slotRow?.spool_hex_color || taskOptions.swatchColor || "").trim(),
       targetSpoolId,
@@ -411,9 +393,9 @@ export function createCompanionShellState(options) {
       targetRemainingWeight: String(targetSpoolRow?.spool?.remaining_g ?? "").trim(),
       targetMeasuredWeight:
         targetSpoolRow?.spool?.remaining_g != null
-          ? String(Math.max(0, targetSpoolRow.spool.remaining_g + resolveTare(targetSpoolRow)))
+          ? String(Math.max(0, targetSpoolRow.spool.remaining_g + resolveSpoolRowTareWeight(targetSpoolRow)))
           : "",
-      targetTareWeight: String(resolveTare(targetSpoolRow)).trim(),
+      targetTareWeight: String(resolveSpoolRowTareWeight(targetSpoolRow)).trim(),
       targetSwatchColor: String(targetSpoolRow?.master?.hex_color || "").trim(),
     };
     syncTaskSheetState();

@@ -56,6 +56,8 @@ const COMPANION_BROWSER_RUNTIME_STATE_JS: &str =
     include_str!("../companion_browser/companion_runtime_state.js");
 const COMPANION_BROWSER_SHELL_STATE_JS: &str =
     include_str!("../companion_browser/companion_shell_state.js");
+const COMPANION_BROWSER_SPOOL_WEIGHT_JS: &str =
+    include_str!("../companion_browser/companion_spool_weight.js");
 const COMPANION_BROWSER_SUBMIT_ROUTER_JS: &str =
     include_str!("../companion_browser/companion_submit_router.js");
 const COMPANION_BROWSER_THEME_JS: &str = include_str!("../companion_browser/companion_theme.js");
@@ -192,6 +194,13 @@ fn companion_browser_assets() -> &'static [(&'static str, CompanionBrowserAsset)
             CompanionBrowserAsset {
                 content_type: "application/javascript; charset=utf-8",
                 content: COMPANION_BROWSER_SHELL_STATE_JS,
+            },
+        ),
+        (
+            "companion_spool_weight.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_SPOOL_WEIGHT_JS,
             },
         ),
         (

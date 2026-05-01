@@ -1,25 +1,7 @@
 import { t } from "./companion_i18n.js";
+import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference } from "./formatters.js";
 import { styleObjectToString, suggestSwatchHex, swatchCssVars, toSwatchColor } from "./companion_theme.js";
-
-function defaultSpoolTareWeightForVendor(vendor) {
-  const normalized = String(vendor || "").trim().toLowerCase();
-  if (normalized.includes("bambu")) {
-    return 250;
-  }
-  if (normalized.includes("esun")) {
-    return 224;
-  }
-  return 0;
-}
-
-function resolveSpoolTareWeight(spoolLike, vendor) {
-  const explicit = spoolLike?.spool_tare_weight_g;
-  if (Number.isFinite(explicit)) {
-    return Math.max(0, Math.round(explicit));
-  }
-  return defaultSpoolTareWeightForVendor(vendor);
-}
 
 function loanStateLabel(row, locale = "en") {
   const returned = Boolean(row?.loan?.returned_at);

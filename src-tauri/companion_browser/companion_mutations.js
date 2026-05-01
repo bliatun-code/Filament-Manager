@@ -1,4 +1,5 @@
 import { t } from "./companion_i18n.js";
+import { resolveSpoolRowTareWeight } from "./companion_spool_weight.js";
 import { normalizeHex, suggestSwatchHex } from "./companion_theme.js";
 import { parseQrPayload } from "./qr_payload.js";
 
@@ -53,25 +54,6 @@ export function createCompanionMutations(options) {
     return vendor.includes("bambu");
   }
 
-  function defaultSpoolTareWeightForVendor(vendor) {
-    const normalized = String(vendor || "").trim().toLowerCase();
-    if (normalized.includes("bambu")) {
-      return 250;
-    }
-    if (normalized.includes("esun")) {
-      return 224;
-    }
-    return 0;
-  }
-
-  function resolveSpoolTareWeight(row) {
-    const explicit = row?.spool?.spool_tare_weight_g;
-    if (Number.isFinite(explicit)) {
-      return Math.max(0, Math.round(explicit));
-    }
-    return defaultSpoolTareWeightForVendor(row?.master?.vendor);
-  }
-
   function findSpoolRow(spoolId) {
     const normalizedSpoolId = String(spoolId || "").trim();
     if (!normalizedSpoolId) {
@@ -83,7 +65,7 @@ export function createCompanionMutations(options) {
   }
 
   function normalizeMeasuredFilamentWeight(row, measuredWeight) {
-    const tareWeight = resolveSpoolTareWeight(row);
+    const tareWeight = resolveSpoolRowTareWeight(row);
     return Math.max(0, Math.round(measuredWeight - tareWeight));
   }
 
@@ -534,7 +516,7 @@ export function createCompanionMutations(options) {
           currentSpoolId,
           currentRow?.spool?.remaining_g,
           currentMeasured,
-          resolveSpoolTareWeight(currentRow),
+          resolveSpoolRowTareWeight(currentRow),
         );
       }
 
@@ -545,7 +527,7 @@ export function createCompanionMutations(options) {
           currentSpoolId,
           currentRow?.spool?.remaining_g,
           outgoingMeasured,
-          resolveSpoolTareWeight(currentRow),
+          resolveSpoolRowTareWeight(currentRow),
         );
       }
 
