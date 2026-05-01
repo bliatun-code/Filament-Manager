@@ -11,6 +11,7 @@ import {
 import { hexToRgb, toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import { sortSpoolsAlphabetically } from "../lib/spool_sort";
+import { resolveSpoolTareWeight } from "../lib/spool_weight";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import {
   fetchLibrarySyncPrinterOverview,
@@ -155,23 +156,8 @@ function formatGrams(value?: number | null): string {
   return `${Math.max(0, value)} g`;
 }
 
-function defaultSpoolTareWeightForVendor(vendor?: string | null): number {
-  const normalized = (vendor ?? "").trim().toLowerCase();
-  if (normalized.includes("bambu")) {
-    return 250;
-  }
-  if (normalized.includes("esun")) {
-    return 224;
-  }
-  return 0;
-}
-
 function resolveLoanableSpoolTareWeight(spool: LoanableSpool): number {
-  const explicit = spool.spoolTareWeightGrams;
-  if (explicit != null && Number.isFinite(explicit)) {
-    return Math.max(0, Math.round(explicit));
-  }
-  return defaultSpoolTareWeightForVendor(spool.vendor);
+  return resolveSpoolTareWeight(spool.spoolTareWeightGrams, spool.vendor);
 }
 
 function toMeasuredTotalWeight(spool: LoanableSpool, filamentGrams?: number | null): number {

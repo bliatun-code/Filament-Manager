@@ -55,6 +55,7 @@ import {
 } from "../lib/inventory_history";
 import { materialTone } from "../lib/material_theme";
 import { loadSpoolRowsPage } from "../lib/spool_data_source";
+import { resolveSpoolTareWeight } from "../lib/spool_weight";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import {
   formatPrinterSlotLabelForModel,
@@ -477,27 +478,6 @@ function parseWeight(raw: string, fallback: number): number {
     return fallback;
   }
   return parsed;
-}
-
-function defaultSpoolTareWeightForVendor(vendor?: string | null): number {
-  const normalized = (vendor ?? "").trim().toLowerCase();
-  if (normalized.includes("bambu")) {
-    return 250;
-  }
-  if (normalized.includes("esun")) {
-    return 224;
-  }
-  return 0;
-}
-
-function resolveSpoolTareWeight(
-  explicitTareWeightGrams?: number | null,
-  vendor?: string | null,
-): number {
-  if (explicitTareWeightGrams != null && Number.isFinite(explicitTareWeightGrams)) {
-    return Math.max(0, Math.round(explicitTareWeightGrams));
-  }
-  return defaultSpoolTareWeightForVendor(vendor);
 }
 
 function formatGrams(value?: number | null): string {

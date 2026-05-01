@@ -7,6 +7,7 @@ import type {
   SpoolWithMasterRow,
 } from "./tauri_client";
 import { isUnknownLiveRfid } from "./printer_live_display";
+import { resolveSpoolTareWeight } from "./spool_weight";
 
 export type SlotSwapDraft = {
   targetSpoolId: string;
@@ -59,26 +60,11 @@ export type PreparedMeasuredWeightUpdate = {
   localAction: "record_usage" | "update_weight" | "none";
 };
 
-function defaultSpoolTareWeightForVendor(vendor?: string | null): number {
-  const normalized = (vendor ?? "").trim().toLowerCase();
-  if (normalized.includes("bambu")) {
-    return 250;
-  }
-  if (normalized.includes("esun")) {
-    return 224;
-  }
-  return 0;
-}
-
 export function resolveSpoolTareWeightForRow(row?: SpoolWithMasterRow | null): number {
   if (!row) {
     return 0;
   }
-  const explicit = row.spool.spool_tare_weight_g;
-  if (explicit != null && Number.isFinite(explicit)) {
-    return Math.max(0, Math.round(explicit));
-  }
-  return defaultSpoolTareWeightForVendor(row.master.vendor);
+  return resolveSpoolTareWeight(row.spool.spool_tare_weight_g, row.master.vendor);
 }
 
 export function parseWeightInput(raw: string): number | null {

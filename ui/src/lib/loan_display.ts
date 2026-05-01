@@ -1,6 +1,7 @@
 import { hexToRgb, toSwatchColor } from "./color_utils";
 import { normalizeDisplayToken } from "./display_format";
 import type { Locale } from "./i18n";
+import { resolveSpoolTareWeight } from "./spool_weight";
 import type { ResolvedTheme } from "./theme_mode";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
 
@@ -24,23 +25,8 @@ export function formatGrams(value?: number | null): string {
   return `${Math.max(0, value)} g`;
 }
 
-function defaultSpoolTareWeightForVendor(vendor?: string | null): number {
-  const normalized = (vendor ?? "").trim().toLowerCase();
-  if (normalized.includes("bambu")) {
-    return 250;
-  }
-  if (normalized.includes("esun")) {
-    return 224;
-  }
-  return 0;
-}
-
 function resolveLoanTareWeight(loan: SpoolLoanDetailsRow): number {
-  const explicit = loan.spool_tare_weight_g;
-  if (explicit != null && Number.isFinite(explicit)) {
-    return Math.max(0, Math.round(explicit));
-  }
-  return defaultSpoolTareWeightForVendor(loan.vendor);
+  return resolveSpoolTareWeight(loan.spool_tare_weight_g, loan.vendor);
 }
 
 export function toMeasuredTotalWeight(
