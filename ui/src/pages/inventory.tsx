@@ -1694,7 +1694,7 @@ export default function InventoryPage({
         printerNameById,
         slotLabelById,
       }),
-    [formatDateTime, formatStatusLabel, locale, printerNameById, slotLabelById, t],
+    [formatStatusLabel, locale, printerNameById, slotLabelById, t],
   );
 
   const visibleHistoryRows = useMemo(

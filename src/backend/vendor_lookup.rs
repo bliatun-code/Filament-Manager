@@ -1,3 +1,5 @@
+#![allow(clippy::items_after_test_module)]
+
 use reqwest::blocking::Client;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -337,7 +339,7 @@ fn parse_search_results(html: &str, limit: usize) -> Vec<EsunSearchResult> {
 
         let title = extract_attr_value(tag, "title")
             .or_else(|| {
-                if tag_end + 1 <= close_anchor && close_anchor <= html.len() {
+                if tag_end < close_anchor && close_anchor <= html.len() {
                     Some(strip_tags(&html[tag_end + 1..close_anchor]))
                 } else {
                     None
@@ -1309,7 +1311,7 @@ fn extract_site_listing_candidates(html: &str) -> Vec<EsunSiteListingCandidate> 
         cleaned.set_query(None);
         cleaned.set_fragment(None);
         let clean_url = cleaned.to_string();
-        let inner = if tag_end + 1 <= close_anchor && close_anchor <= html.len() {
+        let inner = if tag_end < close_anchor && close_anchor <= html.len() {
             normalize_whitespace(&decode_html_entities(&strip_tags(
                 &html[tag_end + 1..close_anchor],
             )))
@@ -1361,10 +1363,9 @@ fn fetch_esun_site_product_detail_with_client(
 
     let slug = url
         .path_segments()
-        .and_then(|segments| {
+        .and_then(|mut segments| {
             segments
-                .filter(|segment| !segment.is_empty())
-                .last()
+                .rfind(|segment| !segment.is_empty())
                 .map(|segment| segment.to_string())
         })
         .unwrap_or_else(|| "unknown-product".to_string());
@@ -1552,7 +1553,7 @@ fn normalize_esun_color_name(raw: &str, material: &str, filament_name: &str) -> 
         "Colour".to_string(),
     ];
     prefixes.retain(|prefix| !prefix.trim().is_empty());
-    prefixes.sort_by(|left, right| right.len().cmp(&left.len()));
+    prefixes.sort_by_key(|right| std::cmp::Reverse(right.len()));
     prefixes.dedup();
 
     let mut changed = true;
@@ -1612,7 +1613,7 @@ fn pause_between_requests(seed: usize) {
     if seed == 0 {
         return;
     }
-    let jitter = ((seed as u64).wrapping_mul(97) % ESUN_REQUEST_JITTER_MS.max(1)) as u64;
+    let jitter = (seed as u64).wrapping_mul(97) % ESUN_REQUEST_JITTER_MS.max(1);
     thread::sleep(Duration::from_millis(ESUN_REQUEST_DELAY_MS + jitter));
 }
 
@@ -1687,7 +1688,7 @@ fn find_matching_bracket(text: &str, start: usize, open: char, close: char) -> O
 fn sanitize_handle(raw: &str) -> String {
     raw.trim()
         .trim_start_matches("/products/")
-        .split(|ch| ch == '?' || ch == '#' || ch == '/' || ch == '\"')
+        .split(['?', '#', '/', '\"'])
         .next()
         .unwrap_or_default()
         .trim()

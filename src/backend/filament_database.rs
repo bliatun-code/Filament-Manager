@@ -9,6 +9,17 @@ use rusqlite::{params, Connection, OptionalExtension, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+type LibrarySyncClientAuthState = (String, String, String, Option<String>);
+type MasterCatalogExistingRow = (
+    String,
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+    i64,
+    String,
+);
+
 const SCHEMA_SQL: &str = include_str!("../database/schema.sql");
 const FULL_BACKUP_TABLES: [&str; 22] = [
     "filament_master_list",
@@ -542,6 +553,7 @@ impl FilamentDatabase {
         Ok(results)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn upsert_manual_master(
         &self,
         material: &str,
@@ -757,6 +769,7 @@ impl FilamentDatabase {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn update_master_catalog_entry(
         &self,
         master_id: &str,
@@ -768,15 +781,7 @@ impl FilamentDatabase {
         vendor: Option<&str>,
         default_weight: Option<i64>,
     ) -> InventoryResult<String> {
-        let existing: Option<(
-            String,
-            String,
-            String,
-            Option<String>,
-            Option<String>,
-            i64,
-            String,
-        )> = self
+        let existing: Option<MasterCatalogExistingRow> = self
             .conn
             .query_row(
                 "SELECT material, filament_name, color_name, hex_color, product_url, default_weight, vendor
@@ -1029,9 +1034,7 @@ impl FilamentDatabase {
              FROM filament_spools
              WHERE qr_code = ?1 AND deleted_at IS NULL",
         )?;
-        let row = stmt
-            .query_row(params![qr_code], |row| map_spool_row(row))
-            .optional()?;
+        let row = stmt.query_row(params![qr_code], map_spool_row).optional()?;
         Ok(row)
     }
 
@@ -1044,9 +1047,7 @@ impl FilamentDatabase {
              WHERE id = ?1
              LIMIT 1",
         )?;
-        let row = stmt
-            .query_row(params![spool_id], |record| map_spool_row(record))
-            .optional()?;
+        let row = stmt.query_row(params![spool_id], map_spool_row).optional()?;
         Ok(row)
     }
 
@@ -1864,7 +1865,7 @@ impl FilamentDatabase {
                AND remaining_g <= ?1
                AND status NOT IN ('EMPTY', 'LOST')",
         )?;
-        let rows = stmt.query_map(params![threshold], |row| map_spool_row(row))?;
+        let rows = stmt.query_map(params![threshold], map_spool_row)?;
         let mut results = Vec::new();
         for row in rows {
             results.push(row?);
@@ -2067,7 +2068,7 @@ impl FilamentDatabase {
              WHERE id = ?1
              LIMIT 1",
             params![loan_id],
-            |row| map_spool_loan_row(row),
+            map_spool_loan_row,
         )?;
 
         tx.commit()?;
@@ -2144,7 +2145,7 @@ impl FilamentDatabase {
              WHERE id = ?1
              LIMIT 1",
             params![loan_id],
-            |row| map_spool_loan_row(row),
+            map_spool_loan_row,
         )?;
 
         tx.commit()?;
@@ -2173,7 +2174,7 @@ impl FilamentDatabase {
                  WHERE id = ?1
                  LIMIT 1",
                 params![loan_id],
-                |row| map_spool_loan_row(row),
+                map_spool_loan_row,
             )
             .optional()?;
 
@@ -2250,7 +2251,7 @@ impl FilamentDatabase {
              WHERE id = ?1
              LIMIT 1",
             params![loan_id],
-            |row| map_spool_loan_row(row),
+            map_spool_loan_row,
         )?;
 
         tx.commit()?;
@@ -2279,7 +2280,7 @@ impl FilamentDatabase {
                  WHERE id = ?1
                  LIMIT 1",
                 params![loan_id],
-                |row| map_spool_loan_row(row),
+                map_spool_loan_row,
             )
             .optional()?;
 
@@ -2364,7 +2365,7 @@ impl FilamentDatabase {
              WHERE id = ?1
              LIMIT 1",
             params![loan_id],
-            |row| map_spool_loan_row(row),
+            map_spool_loan_row,
         )?;
 
         tx.commit()?;
@@ -3223,7 +3224,7 @@ impl FilamentDatabase {
 
     pub fn get_library_sync_client_auth_state(
         &self,
-    ) -> InventoryResult<Option<(String, String, String, Option<String>)>> {
+    ) -> InventoryResult<Option<LibrarySyncClientAuthState>> {
         let session_id = self
             .get_setting("library_sync_client_session_id")?
             .map(|value| value.trim().to_string())
@@ -4536,8 +4537,7 @@ fn normalize_loan_direction_filter(raw: Option<&str>) -> String {
         .filter(|value| !value.is_empty())
         .unwrap_or("OUTBOUND")
         .to_uppercase()
-        .replace('-', "_")
-        .replace(' ', "_");
+        .replace(['-', ' '], "_");
     match direction.as_str() {
         "ALL" => "ALL".to_string(),
         "INBOUND" => "INBOUND".to_string(),

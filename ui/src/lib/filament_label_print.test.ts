@@ -47,13 +47,13 @@ test("buildFilamentLabelHtml includes QR image and required filament details", (
   });
 
   assert.match(html, /data:image\/png;base64,abc123/);
-  assert.match(html, /Vendor:\<\/strong\> Bambu/);
-  assert.match(html, /Filament:\<\/strong\> Basic/);
-  assert.match(html, /Home location:\<\/strong\> Shelf 7/);
-  assert.match(html, /Reference:\<\/strong\> #QR-22/);
-  assert.doesNotMatch(html, /Material:\<\/strong\>/);
-  assert.doesNotMatch(html, /QR payload:\<\/strong\>/);
-  assert.doesNotMatch(html, /Color:\<\/strong\>/);
+  assert.match(html, /Vendor:<\/strong> Bambu/);
+  assert.match(html, /Filament:<\/strong> Basic/);
+  assert.match(html, /Home location:<\/strong> Shelf 7/);
+  assert.match(html, /Reference:<\/strong> #QR-22/);
+  assert.doesNotMatch(html, /Material:<\/strong>/);
+  assert.doesNotMatch(html, /QR payload:<\/strong>/);
+  assert.doesNotMatch(html, /Color:<\/strong>/);
 });
 
 test("buildFilamentLabelHtml formats spool id reference in human-friendly style", () => {
@@ -76,5 +76,5 @@ test("buildFilamentLabelHtml formats spool id reference in human-friendly style"
     },
   });
 
-  assert.match(html, /Reference:\<\/strong\> #758936/);
+  assert.match(html, /Reference:<\/strong> #758936/);
 });

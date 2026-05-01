@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![allow(clippy::items_after_test_module)]
 
 mod app_services;
 mod backend;
@@ -549,7 +550,7 @@ fn set_dock_icon_theme(app: tauri::AppHandle, theme: String) -> Result<(), Strin
         } else {
             DOCK_ICON_LIGHT_BYTES
         };
-        return apply_macos_dock_icon(&app, icon_bytes);
+        apply_macos_dock_icon(&app, icon_bytes)
     }
 
     #[cfg(not(target_os = "macos"))]

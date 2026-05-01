@@ -1340,6 +1340,90 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     [loadTrustedLanCompanionStatus],
   );
 
+  const persistTrustedLanConfig = useCallback(
+    async (nextEnabled: boolean, successMessage: string): Promise<boolean> => {
+      if (!tauri) {
+        return false;
+      }
+
+      if (nextEnabled && !trustedLanSelectedInterfaceOption) {
+        setError(
+          t(
+            "settings.error.trustedLanNoInterface",
+            "Pick a private interface before turning on the web app server.",
+          ),
+        );
+        return false;
+      }
+
+      setTrustedLanActionBusy(true);
+      setError(null);
+      try {
+        const nextStatus = await updateTrustedLanCompanionConfig({
+          enabled: nextEnabled,
+          selected_interface_name: trustedLanSelectedInterfaceOption?.name ?? null,
+          selected_interface_address: trustedLanSelectedInterfaceOption?.address ?? null,
+          listen_port: parsePositiveInt(trustedLanPortDraft, 4278),
+        });
+        setTrustedLanStatus(nextStatus);
+        syncTrustedLanDraftFromStatus(nextStatus, trustedLanInterfaces);
+        setShowTrustedLanNetworkEditor(false);
+        setTrustedLanPairingLabel(null);
+        setTrustedLanPairingExpiresAtMs(null);
+        setTrustedLanPairingLink(null);
+        setInfo(
+          nextEnabled && !nextStatus.shell_reachable
+            ? t("settings.trustedLanStartingInfo", "Starting web app server...")
+            : successMessage,
+        );
+        setTrustedLanActionBusy(false);
+
+        void refreshTrustedLanStatusUntilSettled(nextEnabled).then((refreshedStatus) => {
+          if (!nextEnabled) {
+            return;
+          }
+          if (
+            refreshedStatus?.enabled &&
+            refreshedStatus.running &&
+            refreshedStatus.shell_reachable
+          ) {
+            setInfo(successMessage);
+            return;
+          }
+          setInfo(
+            t(
+              "settings.trustedLanEnabledPendingInfo",
+              "Web app server is starting. Refresh status if it takes a moment.",
+            ),
+          );
+        });
+        return true;
+      } catch (saveError) {
+        console.error(saveError);
+        setTrustedLanActionBusy(false);
+        setError(
+          toErrorMessage(
+            saveError,
+            t(
+              "settings.error.saveTrustedLanConfig",
+              "Failed to save trusted-LAN companion settings.",
+            ),
+          ),
+        );
+        return false;
+      }
+    },
+    [
+      refreshTrustedLanStatusUntilSettled,
+      syncTrustedLanDraftFromStatus,
+      t,
+      tauri,
+      trustedLanInterfaces,
+      trustedLanPortDraft,
+      trustedLanSelectedInterfaceOption,
+    ],
+  );
+
   useEffect(() => {
     if (!tauri) {
       return;
@@ -2831,78 +2915,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         ? t("settings.langSetNb", "Language set to Norwegian.")
         : t("settings.langSetEn", "Language set to English."),
     );
-  }
-
-  async function persistTrustedLanConfig(
-    nextEnabled: boolean,
-    successMessage: string,
-  ): Promise<boolean> {
-    if (!tauri) {
-      return false;
-    }
-
-    if (nextEnabled && !trustedLanSelectedInterfaceOption) {
-      setError(
-        t(
-          "settings.error.trustedLanNoInterface",
-          "Pick a private interface before turning on the web app server.",
-        ),
-      );
-      return false;
-    }
-
-    setTrustedLanActionBusy(true);
-    setError(null);
-    try {
-      const nextStatus = await updateTrustedLanCompanionConfig({
-        enabled: nextEnabled,
-        selected_interface_name: trustedLanSelectedInterfaceOption?.name ?? null,
-        selected_interface_address: trustedLanSelectedInterfaceOption?.address ?? null,
-        listen_port: parsePositiveInt(trustedLanPortDraft, 4278),
-      });
-      setTrustedLanStatus(nextStatus);
-      syncTrustedLanDraftFromStatus(nextStatus, trustedLanInterfaces);
-      setShowTrustedLanNetworkEditor(false);
-      setTrustedLanPairingLabel(null);
-      setTrustedLanPairingExpiresAtMs(null);
-      setTrustedLanPairingLink(null);
-      setInfo(
-        nextEnabled && !nextStatus.shell_reachable
-          ? t("settings.trustedLanStartingInfo", "Starting web app server...")
-          : successMessage,
-      );
-      setTrustedLanActionBusy(false);
-
-      void refreshTrustedLanStatusUntilSettled(nextEnabled).then((refreshedStatus) => {
-        if (!nextEnabled) {
-          return;
-        }
-        if (refreshedStatus?.enabled && refreshedStatus.running && refreshedStatus.shell_reachable) {
-          setInfo(successMessage);
-          return;
-        }
-        setInfo(
-          t(
-            "settings.trustedLanEnabledPendingInfo",
-            "Web app server is starting. Refresh status if it takes a moment.",
-          ),
-        );
-      });
-      return true;
-    } catch (saveError) {
-      console.error(saveError);
-      setTrustedLanActionBusy(false);
-      setError(
-        toErrorMessage(
-          saveError,
-          t(
-            "settings.error.saveTrustedLanConfig",
-            "Failed to save trusted-LAN companion settings.",
-          ),
-        ),
-      );
-      return false;
-    }
   }
 
   async function handleSaveTrustedLanConfig() {

@@ -587,9 +587,8 @@ pub async fn reconcile_trusted_lan_server(state: AppState) -> Result<(), String>
     let join_handle = tauri::async_runtime::spawn(async move {
         let _ = run_companion_server(listener, api_state, Some(shutdown_rx))
             .await
-            .map_err(|error| {
-                runtime.mark_failed(error.clone());
-                error
+            .inspect_err(|error| {
+                runtime.mark_failed((*error).clone());
             });
     });
     state
@@ -2152,10 +2151,10 @@ async fn maybe_apply_qa_delay(
     Ok(())
 }
 
-fn header_string<'a>(
-    headers: &'a HeaderMap,
+fn header_string(
+    headers: &HeaderMap,
     header_name: axum::http::header::HeaderName,
-) -> Option<&'a str> {
+) -> Option<&str> {
     headers
         .get(header_name)
         .and_then(|value| value.to_str().ok())
@@ -2637,7 +2636,7 @@ mod tests {
     use axum::body::{to_bytes, Body};
     use axum::http::{header::SET_COOKIE, HeaderMap, Request, StatusCode};
     use std::collections::HashMap;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::sync::{Arc, RwLock};
     use std::time::{SystemTime, UNIX_EPOCH};
     use tower::ServiceExt;
@@ -2652,7 +2651,7 @@ mod tests {
         ))
     }
 
-    fn seed_db(db_path: &PathBuf) -> Result<(), String> {
+    fn seed_db(db_path: &Path) -> Result<(), String> {
         let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
         db.apply_schema().map_err(|error| error.to_string())?;
         let engine = InventoryEngine::new(db);
@@ -2715,7 +2714,7 @@ mod tests {
         runtime
     }
 
-    fn test_state(db_path: &PathBuf) -> CompanionApiState {
+    fn test_state(db_path: &Path) -> CompanionApiState {
         CompanionApiState {
             service: CompanionService::new(db_path.to_string_lossy().to_string()),
             db_path: db_path.to_string_lossy().to_string(),
@@ -2724,7 +2723,7 @@ mod tests {
         }
     }
 
-    fn qa_test_state(db_path: &PathBuf) -> CompanionApiState {
+    fn qa_test_state(db_path: &Path) -> CompanionApiState {
         CompanionApiState {
             service: CompanionService::new(db_path.to_string_lossy().to_string()),
             db_path: db_path.to_string_lossy().to_string(),
@@ -2733,7 +2732,7 @@ mod tests {
         }
     }
 
-    fn trusted_lan_test_state(db_path: &PathBuf) -> CompanionApiState {
+    fn trusted_lan_test_state(db_path: &Path) -> CompanionApiState {
         CompanionApiState {
             service: CompanionService::new(db_path.to_string_lossy().to_string()),
             db_path: db_path.to_string_lossy().to_string(),
@@ -2780,7 +2779,7 @@ mod tests {
 
     async fn pair_test_session(
         router: &axum::Router,
-        db_path: &PathBuf,
+        db_path: &Path,
     ) -> Result<AuthenticatedTestSession, String> {
         let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
         let pairing_token = format!("pairing-{}", hash_secret(&db_path.to_string_lossy()));

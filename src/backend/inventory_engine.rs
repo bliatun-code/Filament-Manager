@@ -8,6 +8,8 @@ use crate::backend::filament_database::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+type LibrarySyncClientAuthState = (String, String, String, Option<String>);
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum WeightSource {
     Auto,
@@ -284,7 +286,7 @@ impl InventoryEngine {
 
     pub fn get_library_sync_client_auth_state(
         &self,
-    ) -> InventoryResult<Option<(String, String, String, Option<String>)>> {
+    ) -> InventoryResult<Option<LibrarySyncClientAuthState>> {
         self.db.get_library_sync_client_auth_state()
     }
 
@@ -1323,8 +1325,7 @@ fn normalize_ownership_type(value: Option<&str>) -> String {
         .filter(|raw| !raw.is_empty())
         .unwrap_or("OWNED")
         .to_uppercase()
-        .replace('-', "_")
-        .replace(' ', "_");
+        .replace(['-', ' '], "_");
     match normalized.as_str() {
         "BORROWED_IN" => "BORROWED_IN".to_string(),
         _ => "OWNED".to_string(),

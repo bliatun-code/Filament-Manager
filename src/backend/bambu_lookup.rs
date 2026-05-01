@@ -288,7 +288,7 @@ fn fetch_json_collections(client: &Client, base_url: &str) -> Option<Vec<Shopify
         12_000,
         DETECT_RETRY_JITTER_MS,
     )?;
-    if status < 200 || status >= 300 {
+    if !(200..300).contains(&status) {
         return None;
     }
     let parsed: ShopifyCollectionsResponse = serde_json::from_str(&body).ok()?;
@@ -335,7 +335,7 @@ fn probe_collection(client: &Client, base_url: &str, handle: &str) -> bool {
         12_000,
         DETECT_RETRY_JITTER_MS,
     ) {
-        if status >= 200 && status < 300 {
+        if (200..300).contains(&status) {
             if let Ok(parsed) = serde_json::from_str::<ShopifyProductsResponse>(&body) {
                 return parsed.products.is_some();
             }
@@ -353,7 +353,7 @@ fn probe_collection(client: &Client, base_url: &str, handle: &str) -> bool {
         12_000,
         DETECT_RETRY_JITTER_MS,
     ) {
-        if status >= 200 && status < 300 {
+        if (200..300).contains(&status) {
             return body.contains("productList");
         }
     }
@@ -732,7 +732,7 @@ fn fetch_products_page(
             continue;
         };
 
-        if status < 200 || status >= 300 {
+        if !(200..300).contains(&status) {
             if is_anti_bot_or_rate_limited(status) {
                 anti_bot_blocked = true;
             }
@@ -813,7 +813,7 @@ fn extract_raw_js_string(source: &str, start_index: usize) -> (String, usize) {
                 backslashes += 1;
                 j -= 1;
             }
-            if backslashes % 2 == 0 {
+            if backslashes.is_multiple_of(2) {
                 return (source[start_index..i].to_string(), i);
             }
         }
@@ -1149,7 +1149,7 @@ fn fetch_next_store_entries(
     ) else {
         return Ok(None);
     };
-    if status < 200 || status >= 300 {
+    if !(200..300).contains(&status) {
         return Ok(None);
     }
 
@@ -1210,7 +1210,7 @@ fn fetch_next_store_entries(
             continue;
         };
 
-        if product_status < 200 || product_status >= 300 {
+        if !(200..300).contains(&product_status) {
             if is_anti_bot_or_rate_limited(product_status) {
                 anti_bot_blocks += 1;
                 consecutive_anti_bot_blocks += 1;
