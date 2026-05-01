@@ -3,6 +3,7 @@ import {
   sortPrinterSlotsExtLast,
   summarizeEffectivePrinterSlots,
 } from "./printer_profiles";
+export { toSwatchColor } from "./color_utils";
 import type {
   FilamentConsumptionRow,
   LoanUsageByPersonRow,
@@ -104,20 +105,6 @@ export function groupedLoanUsage(rows: SpoolLoanDetailsRow[]): BorrowerFilamentU
     });
   }
   return Array.from(grouped.values()).sort((left, right) => right.consumedGrams - left.consumedGrams);
-}
-
-export function toSwatchColor(raw?: string | null): string {
-  const value = (raw ?? "").trim();
-  if (!value) {
-    return "#CBD5E1";
-  }
-  if (/^#[0-9a-fA-F]{3}$/.test(value) || /^#[0-9a-fA-F]{6}$/.test(value)) {
-    return value;
-  }
-  if (/^[0-9a-fA-F]{3}$/.test(value) || /^[0-9a-fA-F]{6}$/.test(value)) {
-    return `#${value}`;
-  }
-  return "#CBD5E1";
 }
 
 export function parseConsumptionSort(raw: unknown): ConsumptionSort {

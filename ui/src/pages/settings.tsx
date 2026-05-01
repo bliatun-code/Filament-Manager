@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import type { SettingsTabKey } from "../App";
+import { isValidHexColor, normalizeHexColor, toSwatchColor } from "../lib/color_utils";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
   createTrustedLanPairing,
@@ -145,30 +146,6 @@ function clampInt(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function isValidHex(raw?: string | null): boolean {
-  const value = (raw ?? "").trim();
-  return (
-    /^#[0-9a-fA-F]{3}$/.test(value) ||
-    /^#[0-9a-fA-F]{6}$/.test(value) ||
-    /^[0-9a-fA-F]{3}$/.test(value) ||
-    /^[0-9a-fA-F]{6}$/.test(value)
-  );
-}
-
-function normalizeHex(raw?: string | null): string | null {
-  const value = (raw ?? "").trim();
-  if (!value) {
-    return null;
-  }
-  if (/^#[0-9a-fA-F]{3}$/.test(value) || /^#[0-9a-fA-F]{6}$/.test(value)) {
-    return value.toUpperCase();
-  }
-  if (/^[0-9a-fA-F]{3}$/.test(value) || /^[0-9a-fA-F]{6}$/.test(value)) {
-    return `#${value.toUpperCase()}`;
-  }
-  return null;
-}
-
 function formatTrustedLanPairingExpiry(expiresAtMs: number, locale: Locale): string {
   return new Intl.DateTimeFormat(locale === "nb" ? "nb-NO" : "en-US", {
     hour: "2-digit",
@@ -274,10 +251,6 @@ function extractBaseUrlFromPairingInput(raw: string): string | null {
   } catch {
     return null;
   }
-}
-
-function toSwatchColor(raw?: string | null): string {
-  return normalizeHex(raw) ?? "#CBD5E1";
 }
 
 function hslToHex(h: number, s: number, l: number): string {
@@ -389,7 +362,7 @@ function buildInventoryMatchResult(
 
   const observedMaterial = normalizeInventoryMatchText(observed.material);
   const observedFilamentName = normalizeInventoryMatchText(observed.filamentName);
-  const observedHex = normalizeHex(observed.colorHex);
+  const observedHex = normalizeHexColor(observed.colorHex, { uppercase: true });
 
   const metadataMatches = activeRows.filter((row) => {
     const rowMaterial = normalizeInventoryMatchText(row.master.material);
@@ -409,7 +382,7 @@ function buildInventoryMatchResult(
     }
 
     if (observedHex) {
-      const rowHex = normalizeHex(row.master.hex_color);
+      const rowHex = normalizeHexColor(row.master.hex_color, { uppercase: true });
       if (rowHex && rowHex !== observedHex) {
         return false;
       }
@@ -811,7 +784,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     !librarySyncValidation?.pairing_checked ||
     librarySyncValidation.pairing_valid;
   const missingSwatchMasters = useMemo(
-    () => catalogMasters.filter((master) => !isValidHex(master.hex_color)),
+    () => catalogMasters.filter((master) => !isValidHexColor(master.hex_color)),
     [catalogMasters],
   );
 
@@ -1058,7 +1031,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setLibrarySyncSnapshot(syncSettings.cached_snapshot ?? null);
       const nextDrafts: Record<string, string> = {};
       for (const master of catalogRows) {
-        const normalized = normalizeHex(master.hex_color);
+        const normalized = normalizeHexColor(master.hex_color, { uppercase: true });
         nextDrafts[master.id] = normalized ?? suggestHexFromColor(master);
       }
       setSwatchDraftById(nextDrafts);
@@ -2781,7 +2754,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       return;
     }
     const normalizedHex =
-      normalizeHex(swatchDraftById[master.id]) ?? suggestHexFromColor(master);
+      normalizeHexColor(swatchDraftById[master.id], { uppercase: true }) ?? suggestHexFromColor(master);
     if (!normalizedHex) {
       setError(
         t(
@@ -2854,7 +2827,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     try {
       for (const master of targets) {
         const normalizedHex =
-          normalizeHex(swatchDraftById[master.id]) ?? suggestHexFromColor(master);
+          normalizeHexColor(swatchDraftById[master.id], { uppercase: true }) ?? suggestHexFromColor(master);
         if (!normalizedHex) {
           skipped += 1;
           continue;
@@ -5490,7 +5463,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                   <div className="mt-4 max-h-[460px] space-y-3 overflow-auto pr-1">
                     {visibleMissingSwatchMasters.map((master) => {
                       const draftHex = swatchDraftById[master.id] ?? suggestHexFromColor(master);
-                      const normalizedDraft = normalizeHex(draftHex) ?? suggestHexFromColor(master);
+                      const normalizedDraft =
+                        normalizeHexColor(draftHex, { uppercase: true }) ?? suggestHexFromColor(master);
                       return (
                         <div
                           key={master.id}

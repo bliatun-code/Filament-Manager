@@ -8,6 +8,7 @@ import {
   formatPlacementLabel,
   formatSpoolReference,
 } from "../lib/display_format";
+import { hexToRgb, toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import { sortSpoolsAlphabetically } from "../lib/spool_sort";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
@@ -48,47 +49,6 @@ type LoanableSpool = {
   spoolTareWeightGrams?: number | null;
   location?: string | null;
 };
-
-function toSwatchColor(raw?: string | null): string {
-  const value = (raw ?? "").trim();
-  if (!value) {
-    return "#CBD5E1";
-  }
-  if (/^#[0-9a-fA-F]{3}$/.test(value) || /^#[0-9a-fA-F]{6}$/.test(value)) {
-    return value;
-  }
-  if (/^[0-9a-fA-F]{3}$/.test(value) || /^[0-9a-fA-F]{6}$/.test(value)) {
-    return `#${value}`;
-  }
-  return "#CBD5E1";
-}
-
-function hexToRgb(raw?: string | null): [number, number, number] | null {
-  const normalized = toSwatchColor(raw).replace("#", "");
-  if (normalized.length === 3) {
-    const expanded = normalized
-      .split("")
-      .map((part) => `${part}${part}`)
-      .join("");
-    const red = Number.parseInt(expanded.slice(0, 2), 16);
-    const green = Number.parseInt(expanded.slice(2, 4), 16);
-    const blue = Number.parseInt(expanded.slice(4, 6), 16);
-    if ([red, green, blue].some((channel) => Number.isNaN(channel))) {
-      return null;
-    }
-    return [red, green, blue];
-  }
-  if (normalized.length === 6) {
-    const red = Number.parseInt(normalized.slice(0, 2), 16);
-    const green = Number.parseInt(normalized.slice(2, 4), 16);
-    const blue = Number.parseInt(normalized.slice(4, 6), 16);
-    if ([red, green, blue].some((channel) => Number.isNaN(channel))) {
-      return null;
-    }
-    return [red, green, blue];
-  }
-  return null;
-}
 
 function swatchRgba(raw: string | null | undefined, alpha: number): string {
   const rgb = hexToRgb(raw);

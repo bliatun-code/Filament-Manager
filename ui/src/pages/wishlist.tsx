@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppModal } from "../components/app_modal";
 import { VendorBadge } from "../components/vendor_badge";
 import { neutralChipClass, semanticChipClass } from "../lib/chip_styles";
+import { toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import { materialTone } from "../lib/material_theme";
 import {
@@ -32,20 +33,6 @@ const catalogFilters: ReadonlyArray<CatalogFilter> = [
   "ACTIVE",
   "DISCONTINUED",
 ];
-
-function toSwatchColor(raw?: string | null): string {
-  const value = (raw ?? "").trim();
-  if (!value) {
-    return "#CBD5E1";
-  }
-  if (/^#[0-9a-fA-F]{3}$/.test(value) || /^#[0-9a-fA-F]{6}$/.test(value)) {
-    return value;
-  }
-  if (/^[0-9a-fA-F]{3}$/.test(value) || /^[0-9a-fA-F]{6}$/.test(value)) {
-    return `#${value}`;
-  }
-  return "#CBD5E1";
-}
 
 function statusBadgeClasses(status: string): string {
   switch (status) {

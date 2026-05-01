@@ -6,6 +6,7 @@ import { RollUsageChart } from "../components/roll_usage_chart";
 import { VendorBadge } from "../components/vendor_badge";
 import { WeightInput } from "../components/weight_input";
 import { neutralChipClass, semanticChipClass } from "../lib/chip_styles";
+import { hexToRgb, isValidHexColor, toSwatchColor } from "../lib/color_utils";
 import {
   buildFilamentLabelHtml,
   buildFilamentLabelQrDataUrl,
@@ -252,47 +253,6 @@ function SegmentedChoiceRow<T extends string>({
   );
 }
 
-function toSwatchColor(raw?: string | null): string {
-  const value = (raw ?? "").trim();
-  if (!value) {
-    return "#CBD5E1";
-  }
-  if (/^#[0-9a-fA-F]{3}$/.test(value) || /^#[0-9a-fA-F]{6}$/.test(value)) {
-    return value;
-  }
-  if (/^[0-9a-fA-F]{3}$/.test(value) || /^[0-9a-fA-F]{6}$/.test(value)) {
-    return `#${value}`;
-  }
-  return "#CBD5E1";
-}
-
-function hexToRgb(raw?: string | null): [number, number, number] | null {
-  const normalized = toSwatchColor(raw).replace("#", "");
-  if (normalized.length === 3) {
-    const expanded = normalized
-      .split("")
-      .map((part) => `${part}${part}`)
-      .join("");
-    const red = Number.parseInt(expanded.slice(0, 2), 16);
-    const green = Number.parseInt(expanded.slice(2, 4), 16);
-    const blue = Number.parseInt(expanded.slice(4, 6), 16);
-    if ([red, green, blue].some((channel) => Number.isNaN(channel))) {
-      return null;
-    }
-    return [red, green, blue];
-  }
-  if (normalized.length === 6) {
-    const red = Number.parseInt(normalized.slice(0, 2), 16);
-    const green = Number.parseInt(normalized.slice(2, 4), 16);
-    const blue = Number.parseInt(normalized.slice(4, 6), 16);
-    if ([red, green, blue].some((channel) => Number.isNaN(channel))) {
-      return null;
-    }
-    return [red, green, blue];
-  }
-  return null;
-}
-
 function swatchRgba(raw: string | null | undefined, alpha: number): string {
   const rgb = hexToRgb(raw);
   if (!rgb) {
@@ -509,16 +469,6 @@ function inventorySwatchActionButtonStyle(
         ? `0 18px 36px -24px ${swatchRgba(raw, 0.74)}, inset 0 1px 0 rgba(255, 255, 255, 0.1)`
         : `0 18px 36px -24px ${swatchRgba(raw, 0.62)}, inset 0 1px 0 rgba(255, 255, 255, 0.18)`,
   } as const;
-}
-
-function isValidHex(raw?: string | null): boolean {
-  const value = (raw ?? "").trim();
-  return (
-    /^#[0-9a-fA-F]{3}$/.test(value) ||
-    /^#[0-9a-fA-F]{6}$/.test(value) ||
-    /^[0-9a-fA-F]{3}$/.test(value) ||
-    /^[0-9a-fA-F]{6}$/.test(value)
-  );
 }
 
 function parseWeight(raw: string, fallback: number): number {
@@ -2392,7 +2342,7 @@ export default function InventoryPage({
             material: manualMaterial.trim() || "PLA",
             filament_name: manualFilamentName.trim(),
             color_name: manualColorName.trim(),
-            hex_color: isValidHex(manualHexColor) ? toSwatchColor(manualHexColor) : null,
+            hex_color: isValidHexColor(manualHexColor) ? toSwatchColor(manualHexColor) : null,
             product_url: null,
             default_weight_g: initialWeight,
             qr_code: null,
@@ -2411,7 +2361,7 @@ export default function InventoryPage({
             material: manualMaterial.trim() || "PLA",
             filament_name: manualFilamentName.trim(),
             color_name: manualColorName.trim(),
-            hex_color: isValidHex(manualHexColor) ? toSwatchColor(manualHexColor) : null,
+            hex_color: isValidHexColor(manualHexColor) ? toSwatchColor(manualHexColor) : null,
             product_url: null,
             default_weight_g: initialWeight,
             qr_code: null,
@@ -2771,7 +2721,7 @@ export default function InventoryPage({
     }
 
     const rawHex = editMasterHexColor.trim();
-    if (rawHex && !isValidHex(rawHex)) {
+    if (rawHex && !isValidHexColor(rawHex)) {
       setError(
         t(
           "inventory.error.invalidHex",
@@ -3406,7 +3356,7 @@ export default function InventoryPage({
         : null;
   const currentCreateSwatchHex =
     createMode === "manual"
-      ? isValidHex(manualHexColor)
+      ? isValidHexColor(manualHexColor)
         ? toSwatchColor(manualHexColor)
         : null
       : selectedCatalogMaster?.hex_color ?? null;
