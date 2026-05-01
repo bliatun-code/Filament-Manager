@@ -94,15 +94,14 @@ impl CompanionService {
         self.with_inventory(|engine| engine.get_spool_with_master(spool_id))
     }
 
-    pub fn find_spool_row_by_qr_or_id(
-        &self,
-        qr_code: &str,
-    ) -> InventoryResult<Option<SpoolRow>> {
+    pub fn find_spool_row_by_qr_or_id(&self, qr_code: &str) -> InventoryResult<Option<SpoolRow>> {
         self.with_inventory(|engine| {
             if let Some(spool) = engine.find_spool_by_qr(qr_code)? {
                 Ok(Some(spool))
             } else {
-                Ok(engine.get_spool_with_master(qr_code)?.map(|detail| detail.spool))
+                Ok(engine
+                    .get_spool_with_master(qr_code)?
+                    .map(|detail| detail.spool))
             }
         })
     }
@@ -336,7 +335,8 @@ fn apply_live_tray_to_slot(
     slot.live_matched_inventory_mode = tray.and_then(|value| value.matched_inventory_mode.clone());
     slot.live_printer_last_seen_at = observed_state.and_then(|state| state.last_seen_at.clone());
     slot.live_mqtt_connected = observed_state.map(|state| state.mqtt_connected);
-    slot.live_ams_read_done_bits = observed_state.and_then(|state| state.ams_read_done_bits.clone());
+    slot.live_ams_read_done_bits =
+        observed_state.and_then(|state| state.ams_read_done_bits.clone());
     slot.live_ams_bambu_bits = observed_state.and_then(|state| state.ams_bambu_bits.clone());
     slot.live_is_active = observed_state.map(|state| {
         state.active_tray_index == Some(slot.slot_index - 1)
@@ -601,7 +601,9 @@ mod tests {
 
         let _ = std::fs::remove_file(&db_path);
         if let Err(message) = result {
-            panic!("companion_service_finds_spool_row_by_id_when_qr_code_is_missing failed: {message}");
+            panic!(
+                "companion_service_finds_spool_row_by_id_when_qr_code_is_missing failed: {message}"
+            );
         }
     }
 
@@ -913,55 +915,55 @@ mod tests {
 
             let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
             db.save_bambu_live_integration(
-                    "printer_1",
-                    &BambuLiveIntegrationRow {
-                        enabled: true,
-                        host: Some("192.168.1.10".to_string()),
-                        access_code: None,
-                        printer_serial: Some("SERIAL-1".to_string()),
-                        last_error: None,
-                        observed_state: Some(BambuLiveObservedStateRow {
-                            online: true,
-                            last_seen_at: Some("2026-04-16T14:00:00Z".to_string()),
-                            mqtt_connected: true,
-                            progress_percent: Some(27),
-                            remaining_minutes: Some(18),
-                            active_tray_index: Some(0),
-                            nozzle_temp_c: None,
-                            bed_temp_c: None,
-                            ams_humidity_index: None,
-                            ams_temperature_c: None,
-                            ams_reading_bits: None,
-                            ams_read_done_bits: None,
-                            ams_bambu_bits: None,
-                            raw_status_note: None,
-                            raw_payload_json: None,
-                            trays: vec![BambuLiveObservedTrayRow {
-                                tray_index: 0,
-                                loaded: true,
-                                filament_type: Some("PLA".to_string()),
-                                filament_name: Some("Unknown".to_string()),
-                                color_hex: Some("#00FF00".to_string()),
-                                tray_weight_g: Some(1000),
-                                remaining_percent: Some(82),
-                                remaining_grams: Some(820),
-                                observed_rfid_tag: None,
-                                tray_uuid: Some("tray-uuid-unknown".to_string()),
-                                chip_id: None,
-                                tray_info_idx: None,
-                                tray_id_name: None,
-                                last_identity_seen_at: Some("2026-04-16T14:00:00Z".to_string()),
-                                last_empty_seen_at: None,
-                                empty_observation_count: Some(0),
-                                matched_inventory_spool_id: None,
-                                matched_inventory_mode: None,
-                                match_status: Some("unknown_rfid".to_string()),
-                                match_note: Some("RFID not registered".to_string()),
-                            }],
-                        }),
-                    },
-                )
-                .map_err(|error| error.to_string())?;
+                "printer_1",
+                &BambuLiveIntegrationRow {
+                    enabled: true,
+                    host: Some("192.168.1.10".to_string()),
+                    access_code: None,
+                    printer_serial: Some("SERIAL-1".to_string()),
+                    last_error: None,
+                    observed_state: Some(BambuLiveObservedStateRow {
+                        online: true,
+                        last_seen_at: Some("2026-04-16T14:00:00Z".to_string()),
+                        mqtt_connected: true,
+                        progress_percent: Some(27),
+                        remaining_minutes: Some(18),
+                        active_tray_index: Some(0),
+                        nozzle_temp_c: None,
+                        bed_temp_c: None,
+                        ams_humidity_index: None,
+                        ams_temperature_c: None,
+                        ams_reading_bits: None,
+                        ams_read_done_bits: None,
+                        ams_bambu_bits: None,
+                        raw_status_note: None,
+                        raw_payload_json: None,
+                        trays: vec![BambuLiveObservedTrayRow {
+                            tray_index: 0,
+                            loaded: true,
+                            filament_type: Some("PLA".to_string()),
+                            filament_name: Some("Unknown".to_string()),
+                            color_hex: Some("#00FF00".to_string()),
+                            tray_weight_g: Some(1000),
+                            remaining_percent: Some(82),
+                            remaining_grams: Some(820),
+                            observed_rfid_tag: None,
+                            tray_uuid: Some("tray-uuid-unknown".to_string()),
+                            chip_id: None,
+                            tray_info_idx: None,
+                            tray_id_name: None,
+                            last_identity_seen_at: Some("2026-04-16T14:00:00Z".to_string()),
+                            last_empty_seen_at: None,
+                            empty_observation_count: Some(0),
+                            matched_inventory_spool_id: None,
+                            matched_inventory_mode: None,
+                            match_status: Some("unknown_rfid".to_string()),
+                            match_note: Some("RFID not registered".to_string()),
+                        }],
+                    }),
+                },
+            )
+            .map_err(|error| error.to_string())?;
 
             let service = CompanionService::new(db_path.to_string_lossy().to_string());
             let overview = service

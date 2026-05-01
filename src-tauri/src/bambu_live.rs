@@ -544,7 +544,9 @@ fn auto_sync_live_slots(
 
         let auto_clear_empty_signal = should_auto_clear_live_slot(tray);
         let auto_clear_unknown_replacement = slot
-            .map(|configured_slot| should_auto_clear_live_unknown_replacement(tray, configured_slot))
+            .map(|configured_slot| {
+                should_auto_clear_live_unknown_replacement(tray, configured_slot)
+            })
             .unwrap_or(false);
         let auto_clear_color_replacement = slot
             .map(|configured_slot| {
@@ -1039,12 +1041,13 @@ fn merge_tray_payload(
         || tray_info_idx.is_some()
         || tray_id_name.is_some();
     let empty_observation = !substantive_fields && !has_live_observation_signal;
-    let metadata_replacement_signal = previous.is_some() && substantive_tray_metadata_changed(
-        previous,
-        filament_type.as_deref(),
-        filament_name.as_deref(),
-        color_hex.as_deref(),
-    );
+    let metadata_replacement_signal = previous.is_some()
+        && substantive_tray_metadata_changed(
+            previous,
+            filament_type.as_deref(),
+            filament_name.as_deref(),
+            color_hex.as_deref(),
+        );
     let should_reset_observed_identity = empty_observation || metadata_replacement_signal;
 
     let previous_loaded = previous.map(|value| value.loaded).unwrap_or(false);
@@ -1684,7 +1687,10 @@ mod tests {
         assert_eq!(state.bed_temp_c, Some(22.6875));
         assert_eq!(state.trays.len(), 2);
         assert!(!state.trays[0].loaded);
-        assert_eq!(state.trays[1].tray_uuid.as_deref(), Some("F5993C11FBCC470BBACFCBA4344280B5"));
+        assert_eq!(
+            state.trays[1].tray_uuid.as_deref(),
+            Some("F5993C11FBCC470BBACFCBA4344280B5")
+        );
         assert_eq!(state.trays[1].tray_weight_g, Some(1000));
     }
 

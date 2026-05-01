@@ -263,7 +263,7 @@ impl StatisticsEngine {
 #[cfg(test)]
 mod tests {
     use super::StatisticsEngine;
-    use crate::backend::filament_database::{FilamentDatabase, SpoolRow};
+    use crate::backend::filament_database::{FilamentDatabase, ManualMasterInput, SpoolRow};
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -284,15 +284,15 @@ mod tests {
             db.apply_schema().map_err(|error| error.to_string())?;
 
             let master_id = db
-                .upsert_manual_master(
-                    "PLA",
-                    "Basic",
-                    "Red",
-                    Some("#ff5544"),
-                    None,
-                    Some("Generic"),
-                    Some(1000),
-                )
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Basic",
+                    color_name: "Red",
+                    hex_color: Some("#ff5544"),
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
                 .map_err(|error| error.to_string())?;
 
             db.insert_spool(&SpoolRow {
@@ -484,15 +484,15 @@ mod tests {
             db.apply_schema().map_err(|error| error.to_string())?;
 
             let master_id = db
-                .upsert_manual_master(
-                    "PLA",
-                    "Basic",
-                    "Red",
-                    Some("#ff5544"),
-                    None,
-                    Some("Generic"),
-                    Some(1000),
-                )
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Basic",
+                    color_name: "Red",
+                    hex_color: Some("#ff5544"),
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
                 .map_err(|error| error.to_string())?;
 
             db.insert_spool(&SpoolRow {

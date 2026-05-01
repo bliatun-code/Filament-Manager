@@ -12,9 +12,10 @@ use app_services::{CompanionService, CompanionSpoolDetail};
 use backend::filament_database::{
     ActiveSpoolLoanRow, BackupValidationStats, BambuLiveIntegrationEntryRow,
     BambuLiveIntegrationRow, CatalogResetStats, FilamentDatabase, FilamentMasterCatalogRow,
-    ImportDataStats, LibrarySyncSettingsRow, LoanUsageByPersonRow, PrinterOverviewRow, PrinterRow,
-    SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolUsagePointRow,
-    SpoolWithMasterRow, TrustedLanPairedBrowserRow, TrustedLanSettingsRow, WishlistItemRow,
+    ImportDataStats, LibrarySyncSettingsRow, LoanUsageByPersonRow, ManualMasterInput,
+    PrinterOverviewRow, PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow,
+    SpoolUsagePointRow, SpoolWithMasterRow, TrustedLanPairedBrowserRow, TrustedLanSettingsRow,
+    WishlistItemRow,
 };
 use backend::inventory_engine::{
     AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
@@ -34,8 +35,8 @@ use objc2_app_kit::{NSApp, NSImage};
 #[cfg(target_os = "macos")]
 use objc2_foundation::NSData;
 use reqwest::header::{CONTENT_TYPE, HOST, ORIGIN, SET_COOKIE};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use security::hash_secret;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use state::{AppState, TrustedLanCompanionRuntime, TrustedLanCompanionRuntimeSnapshot};
 #[cfg(target_os = "macos")]
 use std::ffi::c_void;
@@ -1338,10 +1339,8 @@ fn fetch_library_sync_printer_settings(
 ) -> Result<PrinterSettingsSnapshot, String> {
     let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(&input)?;
     let health = ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
-    let snapshot: PrinterSettingsSnapshot = fetch_library_sync_host_json(
-        &normalized_base_url,
-        "/api/v1/library/printer-settings",
-    )?;
+    let snapshot: PrinterSettingsSnapshot =
+        fetch_library_sync_host_json(&normalized_base_url, "/api/v1/library/printer-settings")?;
 
     with_inventory(&state, |engine| {
         engine.save_library_sync_validation_state(
@@ -2461,15 +2460,15 @@ fn refresh_bambu_catalog_blocking(
                 }
                 continue;
             }
-            db.upsert_manual_master(
+            db.upsert_manual_master(ManualMasterInput {
                 material,
                 filament_name,
                 color_name,
-                entry.hex_color.as_deref(),
-                Some(&entry.product_url),
-                Some("Bambu"),
-                Some(entry.default_weight_g),
-            )
+                hex_color: entry.hex_color.as_deref(),
+                product_url: Some(&entry.product_url),
+                vendor: Some("Bambu"),
+                default_weight: Some(entry.default_weight_g),
+            })
             .map_err(|error| format!("{:?}", error))?;
             processed += 1;
             if processed % 25 == 0 {
@@ -2665,15 +2664,15 @@ fn refresh_esun_catalog_blocking(
         let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
         let mut processed = 0i64;
         for entry in &snapshot.entries {
-            db.upsert_manual_master(
-                &entry.material,
-                &entry.filament_name,
-                &entry.color_name,
-                entry.hex_color.as_deref(),
-                Some(&entry.product_url),
-                Some("eSUN"),
-                Some(entry.default_weight_g),
-            )
+            db.upsert_manual_master(ManualMasterInput {
+                material: &entry.material,
+                filament_name: &entry.filament_name,
+                color_name: &entry.color_name,
+                hex_color: entry.hex_color.as_deref(),
+                product_url: Some(&entry.product_url),
+                vendor: Some("eSUN"),
+                default_weight: Some(entry.default_weight_g),
+            })
             .map_err(|error| format!("{:?}", error))?;
             processed += 1;
             if processed % 25 == 0 {

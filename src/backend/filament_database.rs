@@ -20,6 +20,27 @@ type MasterCatalogExistingRow = (
     String,
 );
 
+pub struct ManualMasterInput<'a> {
+    pub material: &'a str,
+    pub filament_name: &'a str,
+    pub color_name: &'a str,
+    pub hex_color: Option<&'a str>,
+    pub product_url: Option<&'a str>,
+    pub vendor: Option<&'a str>,
+    pub default_weight: Option<i64>,
+}
+
+pub struct MasterCatalogUpdateInput<'a> {
+    pub master_id: &'a str,
+    pub material: &'a str,
+    pub filament_name: &'a str,
+    pub color_name: &'a str,
+    pub hex_color: Option<&'a str>,
+    pub product_url: Option<&'a str>,
+    pub vendor: Option<&'a str>,
+    pub default_weight: Option<i64>,
+}
+
 const SCHEMA_SQL: &str = include_str!("../database/schema.sql");
 const FULL_BACKUP_TABLES: [&str; 22] = [
     "filament_master_list",
@@ -553,17 +574,16 @@ impl FilamentDatabase {
         Ok(results)
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn upsert_manual_master(
-        &self,
-        material: &str,
-        filament_name: &str,
-        color_name: &str,
-        hex_color: Option<&str>,
-        product_url: Option<&str>,
-        vendor: Option<&str>,
-        default_weight: Option<i64>,
-    ) -> InventoryResult<String> {
+    pub fn upsert_manual_master(&self, input: ManualMasterInput<'_>) -> InventoryResult<String> {
+        let ManualMasterInput {
+            material,
+            filament_name,
+            color_name,
+            hex_color,
+            product_url,
+            vendor,
+            default_weight,
+        } = input;
         let material = material.trim();
         let filament_name = filament_name.trim();
         let color_name = color_name.trim();
@@ -769,18 +789,20 @@ impl FilamentDatabase {
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn update_master_catalog_entry(
         &self,
-        master_id: &str,
-        material: &str,
-        filament_name: &str,
-        color_name: &str,
-        hex_color: Option<&str>,
-        product_url: Option<&str>,
-        vendor: Option<&str>,
-        default_weight: Option<i64>,
+        input: MasterCatalogUpdateInput<'_>,
     ) -> InventoryResult<String> {
+        let MasterCatalogUpdateInput {
+            master_id,
+            material,
+            filament_name,
+            color_name,
+            hex_color,
+            product_url,
+            vendor,
+            default_weight,
+        } = input;
         let existing: Option<MasterCatalogExistingRow> = self
             .conn
             .query_row(
@@ -1047,7 +1069,9 @@ impl FilamentDatabase {
              WHERE id = ?1
              LIMIT 1",
         )?;
-        let row = stmt.query_row(params![spool_id], map_spool_row).optional()?;
+        let row = stmt
+            .query_row(params![spool_id], map_spool_row)
+            .optional()?;
         Ok(row)
     }
 
@@ -4272,15 +4296,15 @@ impl FilamentDatabase {
                 let home_location_id = location_id.clone();
                 let qr_code = normalize_optional_text(row.qr_code.as_deref());
                 let vendor = normalize_optional_text(row.vendor.as_deref());
-                let master_id = self.upsert_manual_master(
+                let master_id = self.upsert_manual_master(ManualMasterInput {
                     material,
                     filament_name,
                     color_name,
-                    None,
-                    None,
-                    vendor.as_deref(),
-                    Some(initial_weight_g),
-                )?;
+                    hex_color: None,
+                    product_url: None,
+                    vendor: vendor.as_deref(),
+                    default_weight: Some(initial_weight_g),
+                })?;
 
                 if self.get_spool_by_id(spool_id)?.is_some() {
                     self.conn.execute(
@@ -4814,8 +4838,8 @@ fn parse_inventory_spools_csv(content: &str) -> InventoryResult<Vec<InventoryImp
 #[cfg(test)]
 mod tests {
     use super::{
-        FilamentDatabase, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, SpoolRow,
-        TrustedLanSettingsRow,
+        FilamentDatabase, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, ManualMasterInput,
+        SpoolRow, TrustedLanSettingsRow,
     };
     use crate::InventoryOverview;
     use serde_json::json;
@@ -5086,15 +5110,15 @@ mod tests {
             db.apply_schema().map_err(|error| error.to_string())?;
 
             let master_id = db
-                .upsert_manual_master(
-                    "PLA",
-                    "Basic",
-                    "Gray",
-                    Some("#808080"),
-                    None,
-                    Some("Generic"),
-                    Some(1000),
-                )
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Basic",
+                    color_name: "Gray",
+                    hex_color: Some("#808080"),
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
                 .map_err(|error| error.to_string())?;
 
             for spool in [

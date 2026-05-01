@@ -2160,10 +2160,7 @@ async fn maybe_apply_qa_delay(
     Ok(())
 }
 
-fn header_string(
-    headers: &HeaderMap,
-    header_name: axum::http::header::HeaderName,
-) -> Option<&str> {
+fn header_string(headers: &HeaderMap, header_name: axum::http::header::HeaderName) -> Option<&str> {
     headers
         .get(header_name)
         .and_then(|value| value.to_str().ok())

@@ -1,9 +1,9 @@
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, BambuLiveIntegrationRow, BambuLiveObservedTrayRow, CatalogResetStats,
     FilamentDatabase, InventoryError, InventoryResult, LibrarySyncCachedSnapshotRow,
-    LibrarySyncSettingsRow, LoanUsageByPersonRow, PrinterOverviewRow, PrinterRow,
-    SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow, SpoolUsagePointRow,
-    SpoolWithMasterRow, WishlistItemRow,
+    LibrarySyncSettingsRow, LoanUsageByPersonRow, ManualMasterInput, MasterCatalogUpdateInput,
+    PrinterOverviewRow, PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow,
+    SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -414,15 +414,15 @@ impl InventoryEngine {
                 "borrowed-in spools require an owner/counterparty name".to_string(),
             ));
         }
-        let master_id = self.db.upsert_manual_master(
-            &input.material,
-            &input.filament_name,
-            &input.color_name,
-            input.hex_color.as_deref(),
-            input.product_url.as_deref(),
-            input.vendor.as_deref(),
-            input.default_weight_g,
-        )?;
+        let master_id = self.db.upsert_manual_master(ManualMasterInput {
+            material: &input.material,
+            filament_name: &input.filament_name,
+            color_name: &input.color_name,
+            hex_color: input.hex_color.as_deref(),
+            product_url: input.product_url.as_deref(),
+            vendor: input.vendor.as_deref(),
+            default_weight: input.default_weight_g,
+        })?;
         let initial_weight = input
             .initial_weight_g
             .or(input.default_weight_g)
@@ -517,16 +517,17 @@ impl InventoryEngine {
             ));
         }
 
-        self.db.update_master_catalog_entry(
-            input.master_id.trim(),
-            material,
-            filament_name,
-            color_name,
-            input.hex_color.as_deref(),
-            input.product_url.as_deref(),
-            input.vendor.as_deref(),
-            input.default_weight,
-        )
+        self.db
+            .update_master_catalog_entry(MasterCatalogUpdateInput {
+                master_id: input.master_id.trim(),
+                material,
+                filament_name,
+                color_name,
+                hex_color: input.hex_color.as_deref(),
+                product_url: input.product_url.as_deref(),
+                vendor: input.vendor.as_deref(),
+                default_weight: input.default_weight,
+            })
     }
 
     pub fn update_spool_weight(
@@ -610,7 +611,8 @@ impl InventoryEngine {
             _ => None,
         };
         self.db.set_spool_location(spool_id, resolved.as_deref())?;
-        self.db.set_spool_home_location(spool_id, resolved.as_deref())?;
+        self.db
+            .set_spool_home_location(spool_id, resolved.as_deref())?;
         self.log_spool_event(
             spool_id,
             "LOCATION_UPDATED",
@@ -645,10 +647,9 @@ impl InventoryEngine {
             Some(_) => None,
             None => existing_spool.home_location_id.clone(),
         };
-        let location_locked_by_assignment =
-            self.db.spool_assigned_to_printer(&input.spool_id)?
-                || has_active_loan
-                || existing_spool.status.eq_ignore_ascii_case("BORROWED");
+        let location_locked_by_assignment = self.db.spool_assigned_to_printer(&input.spool_id)?
+            || has_active_loan
+            || existing_spool.status.eq_ignore_ascii_case("BORROWED");
         let should_sync_home_to_current_location = input.home_location.is_some()
             && !location_locked_by_assignment
             && match (&resolved_location, &existing_spool.location_id) {
@@ -995,8 +996,8 @@ impl InventoryEngine {
         let mut effective_override_color_hex = explicit_override_color_hex;
 
         if effective_override_tray_uuid.is_none() || effective_override_color_hex.is_none() {
-            if let Some((derived_tray_uuid, derived_color_hex)) =
-                self.resolve_live_unknown_override(&input.printer_id, slot.slot_index, &slot.ams_id)?
+            if let Some((derived_tray_uuid, derived_color_hex)) = self
+                .resolve_live_unknown_override(&input.printer_id, slot.slot_index, &slot.ams_id)?
             {
                 if effective_override_tray_uuid.is_none() {
                     effective_override_tray_uuid = Some(derived_tray_uuid);
@@ -1336,12 +1337,12 @@ fn normalize_ownership_type(value: Option<&str>) -> String {
 mod tests {
     use super::{
         AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
-        InventoryEngine, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
-        UpdateSpoolDetailsInput, WeightSource,
+        InventoryEngine, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput,
+        WeightSource,
     };
     use crate::backend::filament_database::{
         BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow,
-        FilamentDatabase,
+        FilamentDatabase, ManualMasterInput,
     };
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -1480,15 +1481,15 @@ mod tests {
 
             let master_id = engine
                 .db
-                .upsert_manual_master(
-                "PETG",
-                "HS",
-                "Blue",
-                Some("#3366ff"),
-                None,
-                Some("eSUN"),
-                Some(1000),
-            )
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PETG",
+                    filament_name: "HS",
+                    color_name: "Blue",
+                    hex_color: Some("#3366ff"),
+                    product_url: None,
+                    vendor: Some("eSUN"),
+                    default_weight: Some(1000),
+                })
                 .map_err(|error| error.to_string())?;
 
             engine
@@ -1524,7 +1525,9 @@ mod tests {
 
         let _ = std::fs::remove_file(&db_path);
         if let Err(message) = result {
-            panic!("create_spool_with_location_persists_location_and_home_location failed: {message}");
+            panic!(
+                "create_spool_with_location_persists_location_and_home_location failed: {message}"
+            );
         }
     }
 
@@ -1788,7 +1791,9 @@ mod tests {
 
         let _ = std::fs::remove_file(&db_path);
         if let Err(message) = result {
-            panic!("assign_printer_slot_derives_unknown_live_rfid_override_on_host failed: {message}");
+            panic!(
+                "assign_printer_slot_derives_unknown_live_rfid_override_on_host failed: {message}"
+            );
         }
     }
 
