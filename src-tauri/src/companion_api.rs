@@ -11,6 +11,7 @@ use crate::backend::inventory_engine::{
     UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::statistics::{FilamentConsumptionRow, InventoryOverview, StatisticsEngine};
+use crate::security::hash_secret;
 use crate::state::{AppState, TrustedLanCompanionRuntime};
 use axum::body::Body;
 use axum::extract::{Path, Query, State};
@@ -25,7 +26,6 @@ use axum::{Json, Router};
 use rand::rngs::OsRng;
 use rand::TryRngCore;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -2256,17 +2256,6 @@ fn has_valid_csrf(headers: &HeaderMap, expected: &str) -> bool {
         .and_then(|value| value.to_str().ok())
         .map(|value| value.trim() == expected)
         .unwrap_or(false)
-}
-
-fn hash_secret(value: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(value.as_bytes());
-    let digest = hasher.finalize();
-    let mut output = String::with_capacity(digest.len() * 2);
-    for byte in digest {
-        output.push_str(&format!("{:02x}", byte));
-    }
-    output
 }
 
 fn open_companion_db(state: &CompanionApiState) -> Result<FilamentDatabase, CompanionApiError> {

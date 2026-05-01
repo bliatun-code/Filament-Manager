@@ -5,6 +5,7 @@ mod app_services;
 mod backend;
 mod bambu_live;
 mod companion_api;
+mod security;
 mod state;
 
 use app_services::{CompanionService, CompanionSpoolDetail};
@@ -34,7 +35,7 @@ use objc2_app_kit::{NSApp, NSImage};
 use objc2_foundation::NSData;
 use reqwest::header::{CONTENT_TYPE, HOST, ORIGIN, SET_COOKIE};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+use security::hash_secret;
 use state::{AppState, TrustedLanCompanionRuntime, TrustedLanCompanionRuntimeSnapshot};
 #[cfg(target_os = "macos")]
 use std::ffi::c_void;
@@ -4022,17 +4023,6 @@ fn ensure_private_trusted_lan_interface(address: &str) -> Result<(), String> {
         "Trusted-LAN address {} is not currently available on a private interface.",
         address.trim()
     ))
-}
-
-fn hash_secret(value: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(value.as_bytes());
-    let digest = hasher.finalize();
-    let mut output = String::with_capacity(digest.len() * 2);
-    for byte in digest {
-        output.push_str(&format!("{:02x}", byte));
-    }
-    output
 }
 
 fn inventory_error_to_string(error: backend::filament_database::InventoryError) -> String {
