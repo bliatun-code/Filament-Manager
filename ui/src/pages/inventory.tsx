@@ -112,6 +112,7 @@ import {
   type MasterCatalogRow,
   type PrinterOverviewRow,
   type SpoolHistoryEventRow,
+  type SpoolWithMasterRow,
   type SpoolUsagePointRow,
   type WishlistItemRow,
   updateMasterCatalogEntry,
@@ -213,6 +214,39 @@ function segmentedChoiceCountClass(active: boolean): string {
       ? "bg-white/15 text-white dark:bg-slate-900/15 dark:text-slate-900"
       : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
   }`;
+}
+
+function mapSpoolRowToInventorySpool(row: SpoolWithMasterRow): InventorySpool {
+  const fallbackInitial =
+    Number.isFinite(row.master.default_weight) && row.master.default_weight > 0
+      ? row.master.default_weight
+      : 1000;
+
+  return {
+    id: row.spool.id,
+    masterId: row.spool.master_id,
+    vendor: row.master.vendor,
+    material: row.master.material,
+    filamentName: row.master.filament_name,
+    colorName: row.master.color_name,
+    hexColor: row.master.hex_color,
+    initialWeightGrams:
+      row.spool.initial_weight_g && row.spool.initial_weight_g > 0
+        ? row.spool.initial_weight_g
+        : fallbackInitial,
+    status: normalizeStatus(row.spool.status),
+    ownershipType: normalizeOwnershipType(row.spool.ownership_type),
+    ownerName: row.spool.owner_name ?? null,
+    ownerContact: row.spool.owner_contact ?? null,
+    ownershipNote: row.spool.ownership_note ?? null,
+    remainingGrams: row.spool.remaining_g ?? null,
+    spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
+    location: row.spool.location_id ?? null,
+    homeLocation: row.spool.home_location_id ?? null,
+    qrCode: row.spool.qr_code ?? null,
+    rfidTag: row.spool.rfid_tag ?? null,
+    rfidObservedAt: row.spool.rfid_observed_at ?? null,
+  };
 }
 
 
@@ -673,39 +707,7 @@ export default function InventoryPage({
         const cached = await fetchCachedLibrarySyncSpools().catch(() => null);
         setClientInventoryUpdatedAt(cached?.captured_at ?? null);
       }
-      setSpools(
-        rows.map((row) => {
-          const fallbackInitial =
-            Number.isFinite(row.master.default_weight) && row.master.default_weight > 0
-              ? row.master.default_weight
-              : 1000;
-          return {
-            id: row.spool.id,
-            masterId: row.spool.master_id,
-            vendor: row.master.vendor,
-            material: row.master.material,
-            filamentName: row.master.filament_name,
-            colorName: row.master.color_name,
-            hexColor: row.master.hex_color,
-            initialWeightGrams:
-              row.spool.initial_weight_g && row.spool.initial_weight_g > 0
-                ? row.spool.initial_weight_g
-                : fallbackInitial,
-            status: normalizeStatus(row.spool.status),
-            ownershipType: normalizeOwnershipType(row.spool.ownership_type),
-            ownerName: row.spool.owner_name ?? null,
-            ownerContact: row.spool.owner_contact ?? null,
-            ownershipNote: row.spool.ownership_note ?? null,
-            remainingGrams: row.spool.remaining_g ?? null,
-            spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
-            location: row.spool.location_id ?? null,
-            homeLocation: row.spool.home_location_id ?? null,
-            qrCode: row.spool.qr_code ?? null,
-            rfidTag: row.spool.rfid_tag ?? null,
-            rfidObservedAt: row.spool.rfid_observed_at ?? null,
-          };
-        }),
-      );
+      setSpools(rows.map(mapSpoolRowToInventorySpool));
     } catch (loadError) {
       console.error(loadError);
       if (clientReadOnly) {
@@ -714,39 +716,7 @@ export default function InventoryPage({
           if (cached) {
             setClientInventorySource("CACHED");
             setClientInventoryUpdatedAt(cached.captured_at ?? null);
-            setSpools(
-              cached.rows.map((row) => {
-                const fallbackInitial =
-                  Number.isFinite(row.master.default_weight) && row.master.default_weight > 0
-                    ? row.master.default_weight
-                    : 1000;
-                return {
-                  id: row.spool.id,
-                  masterId: row.spool.master_id,
-                  vendor: row.master.vendor,
-                  material: row.master.material,
-                  filamentName: row.master.filament_name,
-                  colorName: row.master.color_name,
-                  hexColor: row.master.hex_color,
-                  initialWeightGrams:
-                    row.spool.initial_weight_g && row.spool.initial_weight_g > 0
-                      ? row.spool.initial_weight_g
-                      : fallbackInitial,
-                  status: normalizeStatus(row.spool.status),
-                  ownershipType: normalizeOwnershipType(row.spool.ownership_type),
-                  ownerName: row.spool.owner_name ?? null,
-                  ownerContact: row.spool.owner_contact ?? null,
-                  ownershipNote: row.spool.ownership_note ?? null,
-                  remainingGrams: row.spool.remaining_g ?? null,
-                  spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
-                  location: row.spool.location_id ?? null,
-                  homeLocation: row.spool.home_location_id ?? null,
-                  qrCode: row.spool.qr_code ?? null,
-                  rfidTag: row.spool.rfid_tag ?? null,
-                  rfidObservedAt: row.spool.rfid_observed_at ?? null,
-                };
-              }),
-            );
+            setSpools(cached.rows.map(mapSpoolRowToInventorySpool));
             return;
           }
         } catch (cacheError) {
