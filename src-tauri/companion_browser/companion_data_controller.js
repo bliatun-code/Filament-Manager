@@ -25,9 +25,13 @@ export function createCompanionDataController(options) {
     if (typeof readLocationHref !== "function" || typeof replaceLocationHref !== "function") {
       return;
     }
-    const cleanUrl = new URL(readLocationHref());
-    cleanUrl.searchParams.delete(paramName);
-    replaceLocationHref(cleanUrl.toString());
+    try {
+      const cleanUrl = new URL(readLocationHref());
+      cleanUrl.searchParams.delete(paramName);
+      replaceLocationHref(cleanUrl.toString());
+    } catch {
+      // URL cleanup is best-effort; pairing and data refresh should still succeed.
+    }
   }
 
   async function finishAuthenticatedLoad(message) {

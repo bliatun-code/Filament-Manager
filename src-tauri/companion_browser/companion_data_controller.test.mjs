@@ -165,3 +165,40 @@ test("pairAndLoad cleans a pairing URL token after a successful trusted-LAN pair
   assert.equal(replacedUrls[0].includes("foo=1"), true);
   assert.equal(harness.state.statusTone, "success");
 });
+
+test("pairAndLoad treats pairing URL cleanup as best-effort", async () => {
+  const pairingCalls = [];
+  const harness = createDataHarness({
+    pairSession: async (token) => {
+      pairingCalls.push(token);
+      harness.state.apiReady = true;
+    },
+    fetchJson: async (path) => {
+      if (path.startsWith("/api/v1/inventory/spools")) {
+        return [];
+      }
+      if (path.startsWith("/api/v1/catalog/masters")) {
+        return [];
+      }
+      if (path.startsWith("/api/v1/wishlist")) {
+        return [];
+      }
+      if (path === "/api/v1/printers/overview") {
+        return [];
+      }
+      if (path.startsWith("/api/v1/loans")) {
+        return [];
+      }
+      throw new Error(`unexpected path ${path}`);
+    },
+    readLocationHref: () => "not a valid url",
+    replaceLocationHref: () => {
+      throw new Error("history denied");
+    },
+  });
+
+  await harness.controller.pairAndLoad("secret", { fromUrl: true });
+
+  assert.deepEqual(pairingCalls, ["secret"]);
+  assert.equal(harness.state.statusTone, "success");
+});
