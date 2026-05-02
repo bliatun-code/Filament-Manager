@@ -1,0 +1,110 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  buildInventoryMatchResult,
+  translateObservedMatchNote,
+} from "./inventory_match";
+import type { SpoolWithMasterRow } from "./tauri_client";
+
+function createRow(
+  id: string,
+  overrides: {
+    status?: string;
+    rfidTag?: string | null;
+    material?: string;
+    filamentName?: string;
+    hexColor?: string | null;
+  } = {},
+): SpoolWithMasterRow {
+  return {
+    spool: {
+      id,
+      master_id: `${id}-master`,
+      status: overrides.status ?? "IN_STOCK",
+      rfid_tag: overrides.rfidTag,
+    },
+    master: {
+      id: `${id}-master`,
+      material: overrides.material ?? "PLA",
+      filament_name: overrides.filamentName ?? "PLA Basic",
+      color_name: "Blue",
+      hex_color: overrides.hexColor ?? "#2563EB",
+      default_weight: 1000,
+      vendor: "Bambu",
+    },
+  };
+}
+
+test("buildInventoryMatchResult prefers exact non-zero RFID matches", () => {
+  const result = buildInventoryMatchResult(
+    [
+      createRow("spool-1", { rfidTag: "ABC123", filamentName: "PLA Basic" }),
+      createRow("spool-2", { rfidTag: "XYZ789", filamentName: "PLA Basic" }),
+    ],
+    {
+      rfid: " ABC123 ",
+      material: "PLA",
+      filamentName: "PLA Basic",
+    },
+  );
+
+  assert.equal(result.kind, "rfid_exact");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), ["spool-1"]);
+});
+
+test("buildInventoryMatchResult ignores empty and lost rows", () => {
+  const result = buildInventoryMatchResult(
+    [
+      createRow("empty", { status: "EMPTY", rfidTag: "ABC123" }),
+      createRow("lost", { status: "LOST", material: "PLA", filamentName: "PLA Basic" }),
+    ],
+    {
+      rfid: "ABC123",
+      material: "PLA",
+      filamentName: "PLA Basic",
+    },
+  );
+
+  assert.equal(result.kind, "none");
+});
+
+test("buildInventoryMatchResult falls back to metadata matching", () => {
+  const result = buildInventoryMatchResult(
+    [
+      createRow("spool-1", { material: "PETG", filamentName: "PETG Basic" }),
+      createRow("spool-2", { material: "PLA", filamentName: "PLA Basic", hexColor: "#2563EB" }),
+    ],
+    {
+      rfid: "000000",
+      material: "pla",
+      filamentName: "Basic",
+      colorHex: "2563eb",
+    },
+  );
+
+  assert.equal(result.kind, "metadata_single");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), ["spool-2"]);
+});
+
+test("buildInventoryMatchResult reports multiple metadata candidates", () => {
+  const result = buildInventoryMatchResult(
+    [createRow("spool-1"), createRow("spool-2")],
+    {
+      material: "PLA",
+      filamentName: "PLA Basic",
+    },
+  );
+
+  assert.equal(result.kind, "metadata_multiple");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), ["spool-1", "spool-2"]);
+});
+
+test("translateObservedMatchNote localizes known notes and preserves unknown notes", () => {
+  const t = (key: string, fallback?: string) => `${key}:${fallback ?? ""}`;
+  assert.equal(
+    translateObservedMatchNote("Exact tray identity match against inventory.", t),
+    "settings.bambuLiveMatchNoteExact:Exact tray identity match against inventory.",
+  );
+  assert.equal(translateObservedMatchNote("Custom note", t), "Custom note");
+  assert.equal(translateObservedMatchNote("  ", t), null);
+});
