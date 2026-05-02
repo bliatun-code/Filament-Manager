@@ -63,12 +63,22 @@ export function normalizeThemeMode(mode) {
   return VALID_THEME_MODES.has(normalized) ? normalized : "auto";
 }
 
+export function readCompanionMediaQuery(windowRef, query) {
+  try {
+    return windowRef?.matchMedia?.(query) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function resolveCompanionTheme(mode, windowRef = window) {
   const normalized = normalizeThemeMode(mode);
   if (normalized === "light" || normalized === "dark") {
     return normalized;
   }
-  return windowRef?.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
+  return readCompanionMediaQuery(windowRef, "(prefers-color-scheme: dark)")?.matches
+    ? "dark"
+    : "light";
 }
 
 export function applyCompanionThemeMode(mode, documentRef = document, windowRef = window) {

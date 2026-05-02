@@ -5,7 +5,9 @@ import {
   applyCompanionThemeMode,
   normalizeHex,
   printerBrandCssVars,
+  readCompanionMediaQuery,
   readStoredCompanionThemeMode,
+  resolveCompanionTheme,
   styleObjectToString,
   subscribeToMediaQueryChange,
   suggestSwatchHex,
@@ -82,6 +84,29 @@ test("readStoredCompanionThemeMode falls back when storage throws", () => {
       },
     }),
     "auto",
+  );
+});
+
+test("theme media query helpers tolerate missing or blocked matchMedia", () => {
+  assert.equal(readCompanionMediaQuery({}, "(prefers-color-scheme: dark)"), null);
+  assert.equal(
+    readCompanionMediaQuery(
+      {
+        matchMedia() {
+          throw new Error("matchMedia denied");
+        },
+      },
+      "(prefers-color-scheme: dark)",
+    ),
+    null,
+  );
+  assert.equal(
+    resolveCompanionTheme("auto", {
+      matchMedia() {
+        throw new Error("matchMedia denied");
+      },
+    }),
+    "light",
   );
 });
 

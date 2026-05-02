@@ -17,6 +17,7 @@ import {
   applyCompanionThemeMode,
   COMPANION_THEME_STORAGE_KEY,
   normalizeThemeMode,
+  readCompanionMediaQuery,
   readStoredCompanionThemeMode,
   resolveCompanionTheme,
   subscribeToMediaQueryChange,
@@ -196,7 +197,7 @@ function setLocale(nextLocale) {
 }
 
 function installThemeWatcher() {
-  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  const media = readCompanionMediaQuery(window, "(prefers-color-scheme: dark)");
   let lastResolvedTheme = state.resolvedTheme;
   const sync = () => {
     if (state.themeMode !== "auto") {
