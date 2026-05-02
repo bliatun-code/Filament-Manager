@@ -7,6 +7,7 @@ import type {
 } from "./tauri_client";
 import type { ResolvedTheme } from "./theme_mode";
 export { formatDateTime } from "./date_time";
+export { commandErrorText } from "./error_text";
 
 type TranslateFn = (key: string, fallback?: string) => string;
 
@@ -198,16 +199,6 @@ export function printerSwatchActionButtonStyle(
         ? `0 18px 36px -24px ${swatchRgba(raw, 0.72)}, inset 0 1px 0 rgba(255, 255, 255, 0.08)`
         : `0 18px 36px -24px ${swatchRgba(raw, 0.54)}, inset 0 1px 0 rgba(255, 255, 255, 0.18)`,
   } as const;
-}
-
-export function commandErrorText(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) {
-    return `${fallback} (${error.message})`;
-  }
-  if (typeof error === "string" && error.trim()) {
-    return `${fallback} (${error})`;
-  }
-  return fallback;
 }
 
 export function formatPrinterSpoolStatusLabel(

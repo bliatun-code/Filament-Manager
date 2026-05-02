@@ -72,6 +72,7 @@ import {
 import { FeedbackBanner } from "../components/feedback_banner";
 import { AppModal } from "../components/app_modal";
 import { useI18n, type Locale } from "../lib/i18n";
+import { toErrorMessage } from "../lib/error_text";
 import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/inventory_export";
 import {
   buildInventoryMatchResult,
@@ -86,7 +87,6 @@ import {
   isFullBackupValidationFormat,
   parseNonNegativeInt,
   parsePositiveInt,
-  toErrorMessage,
   waitForMs,
 } from "../lib/settings_utils";
 import { neutralChipClass } from "../lib/chip_styles";

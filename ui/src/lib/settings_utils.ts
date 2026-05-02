@@ -57,16 +57,6 @@ export function formatDiagnosticJson(value: unknown): string {
   }
 }
 
-export function toErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) {
-    return `${fallback} (${error.message})`;
-  }
-  if (typeof error === "string" && error.trim()) {
-    return `${fallback} (${error})`;
-  }
-  return fallback;
-}
-
 export function isFullBackupValidationFormat(format?: string | null): boolean {
   const normalized = (format ?? "").trim().toUpperCase();
   return normalized === "FULL_BACKUP" || normalized === "FILAMENT-MANAGER-BACKUP-V1";

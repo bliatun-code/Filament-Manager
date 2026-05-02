@@ -9,7 +9,6 @@ import {
   isFullBackupValidationFormat,
   parseNonNegativeInt,
   parsePositiveInt,
-  toErrorMessage,
 } from "./settings_utils";
 
 test("settings number helpers parse and clamp expected values", () => {
@@ -37,12 +36,6 @@ test("formatDiagnosticJson serializes values and falls back for cyclic input", (
   const cyclic: { self?: unknown } = {};
   cyclic.self = cyclic;
   assert.equal(formatDiagnosticJson(cyclic), "[object Object]");
-});
-
-test("toErrorMessage appends useful error details", () => {
-  assert.equal(toErrorMessage(new Error("boom"), "Fallback"), "Fallback (boom)");
-  assert.equal(toErrorMessage("plain", "Fallback"), "Fallback (plain)");
-  assert.equal(toErrorMessage("", "Fallback"), "Fallback");
 });
 
 test("isFullBackupValidationFormat accepts supported full backup markers", () => {

@@ -8,6 +8,7 @@ import { WeightInput } from "../components/weight_input";
 import { neutralChipClass, semanticChipClass } from "../lib/chip_styles";
 import { hexToRgb, isValidHexColor, toSwatchColor } from "../lib/color_utils";
 import { formatDateTime } from "../lib/date_time";
+import { commandErrorText } from "../lib/error_text";
 import {
   buildFilamentLabelHtml,
   buildFilamentLabelQrDataUrl,
@@ -556,16 +557,6 @@ function rfidCaptureMatchMeta(
     };
   }
   return null;
-}
-
-function commandErrorText(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) {
-    return `${fallback} (${error.message})`;
-  }
-  if (typeof error === "string" && error.trim()) {
-    return `${fallback} (${error})`;
-  }
-  return fallback;
 }
 
 export default function InventoryPage({
