@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createPrinter,
   createLibrarySyncHostPrinter,
@@ -120,6 +120,7 @@ export default function PrintersPage() {
   const [rfidOverridePrompt, setRfidOverridePrompt] = useState<SlotRfidOverridePrompt | null>(
     null,
   );
+  const reloadInFlightRef = useRef(false);
   const selectedModelProfile = useMemo(
     () => resolvePrinterModelProfile(newPrinterModel || ""),
     [newPrinterModel],
@@ -236,9 +237,10 @@ export default function PrintersPage() {
   );
 
   const reloadData = useCallback(async (options?: { silent?: boolean }) => {
-    if (!tauri) {
+    if (!tauri || reloadInFlightRef.current) {
       return;
     }
+    reloadInFlightRef.current = true;
     if (!options?.silent) {
       setLoading(true);
     }
@@ -271,6 +273,7 @@ export default function PrintersPage() {
       console.error(loadError);
       setError(t("printers.error.load", "Failed to load printer overview."));
     } finally {
+      reloadInFlightRef.current = false;
       if (!options?.silent) {
         setLoading(false);
       }
