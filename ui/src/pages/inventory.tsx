@@ -6,7 +6,14 @@ import { RollUsageChart } from "../components/roll_usage_chart";
 import { VendorBadge } from "../components/vendor_badge";
 import { WeightInput } from "../components/weight_input";
 import { neutralChipClass, semanticChipClass } from "../lib/chip_styles";
-import { hexToRgb, isValidHexColor, toSwatchColor } from "../lib/color_utils";
+import {
+  blendSwatchColor,
+  hexToRgb,
+  isValidHexColor,
+  swatchRgba,
+  swatchTextColor,
+  toSwatchColor,
+} from "../lib/color_utils";
 import { formatDateTime } from "../lib/date_time";
 import { commandErrorText } from "../lib/error_text";
 import {
@@ -260,14 +267,6 @@ function SegmentedChoiceRow<T extends string>({
   );
 }
 
-function swatchRgba(raw: string | null | undefined, alpha: number): string {
-  const rgb = hexToRgb(raw);
-  if (!rgb) {
-    return `rgba(203, 213, 225, ${alpha})`;
-  }
-  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
-}
-
 function inventorySwatchBorderColor(
   raw: string | null | undefined,
   resolvedTheme: ResolvedTheme,
@@ -429,27 +428,6 @@ function inventorySwatchInteractiveInsetStyle(
     } as const;
   }
   return base;
-}
-
-function swatchTextColor(raw: string | null | undefined): string {
-  const rgb = hexToRgb(raw);
-  if (!rgb) {
-    return "#FFFFFF";
-  }
-  const brightness = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000;
-  return brightness >= 170 ? "#0F172A" : "#FFFFFF";
-}
-
-function blendSwatchColor(
-  raw: string | null | undefined,
-  target: [number, number, number],
-  amount: number,
-): string {
-  const rgb = hexToRgb(raw) ?? [51, 65, 85];
-  const mixed = rgb.map((channel, index) =>
-    Math.round(channel + (target[index] - channel) * amount),
-  ) as [number, number, number];
-  return `rgb(${mixed[0]}, ${mixed[1]}, ${mixed[2]})`;
 }
 
 function inventorySwatchActionButtonStyle(

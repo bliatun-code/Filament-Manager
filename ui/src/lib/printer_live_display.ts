@@ -1,4 +1,4 @@
-import { hexToRgb } from "./color_utils";
+import { blendSwatchColor, swatchRgba, swatchTextColor } from "./color_utils";
 import { parseDateTimeMs } from "./date_time";
 import type {
   BambuLiveIntegrationEntry,
@@ -54,14 +54,6 @@ export function compareObservedTimestamps(
 }
 
 export { toSwatchColor } from "./color_utils";
-
-function swatchRgba(raw: string | null | undefined, alpha: number): string {
-  const rgb = hexToRgb(raw);
-  if (!rgb) {
-    return `rgba(203, 213, 225, ${alpha})`;
-  }
-  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
-}
 
 export function printerSwatchSurfaceStyle(
   raw: string | null | undefined,
@@ -146,27 +138,6 @@ export function printerSwatchInteractiveInsetStyle(
     } as const;
   }
   return base;
-}
-
-function swatchTextColor(raw: string | null | undefined): string {
-  const rgb = hexToRgb(raw);
-  if (!rgb) {
-    return "#FFFFFF";
-  }
-  const brightness = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000;
-  return brightness >= 170 ? "#0F172A" : "#FFFFFF";
-}
-
-function blendSwatchColor(
-  raw: string | null | undefined,
-  target: [number, number, number],
-  amount: number,
-): string {
-  const rgb = hexToRgb(raw) ?? [51, 65, 85];
-  const mixed = rgb.map((channel, index) =>
-    Math.round(channel + (target[index] - channel) * amount),
-  ) as [number, number, number];
-  return `rgb(${mixed[0]}, ${mixed[1]}, ${mixed[2]})`;
 }
 
 export function printerSwatchActionButtonStyle(

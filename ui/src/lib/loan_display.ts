@@ -1,4 +1,4 @@
-import { hexToRgb, toSwatchColor } from "./color_utils";
+import { swatchRgba, toSwatchColor } from "./color_utils";
 import { normalizeDisplayToken } from "./display_format";
 import { resolveSpoolTareWeight } from "./spool_weight";
 import type { ResolvedTheme } from "./theme_mode";
@@ -39,14 +39,6 @@ export function toReturnedFilamentWeight(
   measuredTotalGrams: number,
 ): number {
   return Math.max(0, measuredTotalGrams - resolveLoanTareWeight(loan));
-}
-
-function swatchRgba(raw: string | null | undefined, alpha: number): string {
-  const rgb = hexToRgb(raw);
-  if (!rgb) {
-    return `rgba(203, 213, 225, ${alpha})`;
-  }
-  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
 }
 
 export function loanSwatchSurfaceStyle(

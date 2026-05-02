@@ -9,7 +9,7 @@ import {
   formatPlacementLabel,
   formatSpoolReference,
 } from "../lib/display_format";
-import { hexToRgb, toSwatchColor } from "../lib/color_utils";
+import { swatchRgba, toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import { sortSpoolsAlphabetically } from "../lib/spool_sort";
 import { resolveSpoolTareWeight } from "../lib/spool_weight";
@@ -52,14 +52,6 @@ type LoanableSpool = {
   spoolTareWeightGrams?: number | null;
   location?: string | null;
 };
-
-function swatchRgba(raw: string | null | undefined, alpha: number): string {
-  const rgb = hexToRgb(raw);
-  if (!rgb) {
-    return `rgba(203, 213, 225, ${alpha})`;
-  }
-  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
-}
 
 function swatchPanelStyle(
   raw: string | null | undefined,
