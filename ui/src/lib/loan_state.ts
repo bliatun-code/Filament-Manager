@@ -15,9 +15,10 @@ export function isActiveOutboundLoan(
 ): boolean {
   const loanStatus = (row.loan.loan_status ?? "").trim().toUpperCase();
   const loanDirection = (row.loan.loan_direction ?? "OUTBOUND").trim().toUpperCase();
+  const currentlyActive = isLoanCurrentlyActive(row);
   return (
     loanDirection === "OUTBOUND" &&
-    (loanStatus === "ACTIVE" || isLoanCurrentlyActive(row)) &&
-    !loanHasDeletedSpool(row)
+    currentlyActive &&
+    (loanStatus === "" || loanStatus === "ACTIVE")
   );
 }

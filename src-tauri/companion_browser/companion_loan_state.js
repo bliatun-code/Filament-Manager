@@ -9,5 +9,6 @@ export function isLoanCurrentlyActive(row) {
 export function isActiveOutboundLoan(row) {
   const direction = String(row?.loan?.loan_direction || "OUTBOUND").trim().toUpperCase();
   const status = String(row?.loan?.loan_status || "").trim().toUpperCase();
-  return direction === "OUTBOUND" && (status === "ACTIVE" || isLoanCurrentlyActive(row)) && !loanHasDeletedSpool(row);
+  const currentlyActive = isLoanCurrentlyActive(row);
+  return direction === "OUTBOUND" && currentlyActive && (status === "" || status === "ACTIVE");
 }

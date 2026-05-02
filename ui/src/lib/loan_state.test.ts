@@ -77,6 +77,17 @@ test("isActiveOutboundLoan rejects returned, inbound, and deleted rows", () => {
   );
   assert.equal(
     isActiveOutboundLoan(
+      loanRow("stale_returned_outbound", {
+        loan: {
+          returned_at: "2026-04-02 10:00:00",
+          loan_status: "ACTIVE",
+        },
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    isActiveOutboundLoan(
       loanRow("active_inbound", {
         loan: {
           loan_direction: "INBOUND",

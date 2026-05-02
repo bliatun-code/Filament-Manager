@@ -60,5 +60,16 @@ test("companion outbound active state rejects inbound, returned, and deleted row
     ),
     false,
   );
+  assert.equal(
+    isActiveOutboundLoan(
+      loanRow({
+        loan: {
+          returned_at: "2026-04-02 10:00:00",
+          loan_status: "ACTIVE",
+        },
+      }),
+    ),
+    false,
+  );
   assert.equal(isActiveOutboundLoan(loanRow({ spool_status: "DELETED" })), false);
 });
