@@ -1628,6 +1628,80 @@ mod tests {
     }
 
     #[test]
+    fn delete_spool_rejects_active_loan() {
+        let db_path = temp_db_path("delete-spool-active-loan");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            let engine = InventoryEngine::new(db);
+
+            engine
+                .create_manual_spool(CreateManualSpoolInput {
+                    id: "spool_1".to_string(),
+                    material: "PLA".to_string(),
+                    filament_name: "Basic".to_string(),
+                    color_name: "Blue".to_string(),
+                    hex_color: Some("#2563EB".to_string()),
+                    product_url: None,
+                    vendor: Some("Generic".to_string()),
+                    default_weight_g: Some(1000),
+                    qr_code: Some("active-loan-delete-qr".to_string()),
+                    status: Some("IN_STOCK".to_string()),
+                    ownership_type: Some("OWNED".to_string()),
+                    owner_name: None,
+                    owner_contact: None,
+                    ownership_note: None,
+                    initial_weight_g: Some(1000),
+                    location: Some("Shelf".to_string()),
+                })
+                .map_err(|error| error.to_string())?;
+            engine
+                .lend_spool(super::LendSpoolInput {
+                    spool_id: "spool_1".to_string(),
+                    borrower_name: "Alice".to_string(),
+                    grams_out: Some(800),
+                    note: None,
+                })
+                .map_err(|error| error.to_string())?;
+
+            let delete_result = engine.delete_spool(DeleteSpoolInput {
+                spool_id: "spool_1".to_string(),
+                reason: Some("Accidental delete attempt".to_string()),
+            });
+            assert!(delete_result.is_err());
+
+            let stored_spool = engine
+                .db
+                .get_spool_by_id("spool_1")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "expected loaned spool to remain".to_string())?;
+            assert_eq!(stored_spool.status, "BORROWED");
+            assert_eq!(
+                stored_spool.location_id.as_deref(),
+                Some("Loaned to: Alice")
+            );
+
+            let active_loans = engine
+                .list_active_spool_loans()
+                .map_err(|error| error.to_string())?;
+            assert_eq!(active_loans.len(), 1);
+
+            let history_rows = engine
+                .list_spool_history("spool_1", 20)
+                .map_err(|error| error.to_string())?;
+            assert!(!history_rows.iter().any(|row| row.event_type == "DELETED"));
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("delete_spool_rejects_active_loan test failed: {message}");
+        }
+    }
+
+    #[test]
     fn return_borrowed_in_spool_hands_back_and_hides_from_inventory() {
         let db_path = temp_db_path("return-borrowed-in");
 

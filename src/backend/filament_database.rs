@@ -1279,6 +1279,23 @@ impl FilamentDatabase {
 
     pub fn soft_delete_spool(&self, spool_id: &str) -> InventoryResult<()> {
         let tx = self.conn.unchecked_transaction()?;
+        let active_loan_exists: Option<i64> = tx
+            .query_row(
+                "SELECT 1
+                 FROM spool_loans
+                 WHERE spool_id = ?1
+                   AND returned_at IS NULL
+                 LIMIT 1",
+                params![spool_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        if active_loan_exists.is_some() {
+            return Err(InventoryError::Db(
+                "spool has an active loan; return it before deleting".to_string(),
+            ));
+        }
+
         let affected = tx.execute(
             "UPDATE filament_spools
              SET deleted_at = datetime('now'),
