@@ -41,6 +41,11 @@ docs/MODAL_UX_CHECKLIST.md
 docs/MULTI_DEVICE_SYNC_QA_CHECKLIST.md
 docs/ROADMAP.md
 docs/STEP3_TRUSTED_LAN_PLAN.md
+assets/logo-concept-*.svg
+assets/logo-concepts.md
+ui/src/assets/logo_variants/logo-v3-0*.svg
+ui/src/assets/logo_variants/logo-v3-10.svg
+ui/src/assets/logo_variants/README.md
 
 # Local env files
 .env
