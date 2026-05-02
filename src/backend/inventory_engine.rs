@@ -1606,6 +1606,7 @@ mod tests {
                 .map_err(|error| error.to_string())?
                 .ok_or_else(|| "expected soft-deleted spool to remain for history".to_string())?;
             assert_eq!(stored_spool.status, "DELETED");
+            assert!(stored_spool.location_id.is_none());
 
             let active_spools = engine
                 .list_spools(20, 0)

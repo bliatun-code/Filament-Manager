@@ -1283,6 +1283,7 @@ impl FilamentDatabase {
             "UPDATE filament_spools
              SET deleted_at = datetime('now'),
                  status = 'DELETED',
+                 location_id = NULL,
                  updated_at = datetime('now')
              WHERE id = ?1 AND deleted_at IS NULL",
             params![spool_id],
