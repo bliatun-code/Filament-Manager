@@ -1009,10 +1009,22 @@ export function readStoredCompanionLocale(storageKey, storageRef) {
   }
 }
 
-export function resolveInitialCompanionLocale(storageRef = localStorage, navigatorRef = navigator) {
+function readCompanionGlobal(name) {
+  try {
+    return globalThis?.[name] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function resolveInitialCompanionLocale(storageRef, navigatorRef) {
+  const effectiveStorage =
+    storageRef === undefined ? readCompanionGlobal("localStorage") : storageRef;
+  const effectiveNavigator =
+    navigatorRef === undefined ? readCompanionGlobal("navigator") : navigatorRef;
   let storedValue = null;
   try {
-    storedValue = storageRef?.getItem?.(COMPANION_LOCALE_STORAGE_KEY);
+    storedValue = effectiveStorage?.getItem?.(COMPANION_LOCALE_STORAGE_KEY);
   } catch {
     storedValue = null;
   }
@@ -1021,7 +1033,7 @@ export function resolveInitialCompanionLocale(storageRef = localStorage, navigat
   }
   let language = "";
   try {
-    language = String(navigatorRef?.language || "").trim().toLowerCase();
+    language = String(effectiveNavigator?.language || "").trim().toLowerCase();
   } catch {
     language = "";
   }

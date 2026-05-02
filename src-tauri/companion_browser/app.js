@@ -129,13 +129,25 @@ function detectLayoutMode() {
   return detectCompanionLayoutMode(width);
 }
 
+function readBrowserGlobal(name) {
+  try {
+    return globalThis?.[name] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function readBrowserStorage() {
+  return readBrowserGlobal("localStorage");
+}
+
 function readStoredThemeMode() {
-  return readStoredCompanionThemeMode(THEME_STORAGE_KEY, localStorage);
+  return readStoredCompanionThemeMode(THEME_STORAGE_KEY, readBrowserStorage());
 }
 
 function persistCompanionPreference(storageKey, value) {
   try {
-    localStorage.setItem(storageKey, value);
+    readBrowserStorage()?.setItem?.(storageKey, value);
   } catch {
     // Browser storage is best-effort; the in-memory companion state still updates.
   }
@@ -306,7 +318,10 @@ function main() {
   installLayoutWatcher();
   installThemeWatcher();
 
-  state.locale = resolveInitialCompanionLocale(localStorage, navigator);
+  state.locale = resolveInitialCompanionLocale(
+    readBrowserStorage(),
+    readBrowserGlobal("navigator"),
+  );
   syncRecoverySectionLabels(state.locale);
   state.themeMode = readStoredThemeMode();
   state.resolvedTheme = applyCompanionThemeMode(state.themeMode, document, window);

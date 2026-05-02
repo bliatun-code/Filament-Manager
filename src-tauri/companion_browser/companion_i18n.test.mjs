@@ -46,3 +46,36 @@ test("resolveInitialCompanionLocale falls back to English when storage and navig
 
   assert.equal(locale, "en");
 });
+
+test("resolveInitialCompanionLocale tolerates blocked browser globals", () => {
+  const storageDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+
+  try {
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      get() {
+        throw new Error("localStorage denied");
+      },
+    });
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      get() {
+        throw new Error("navigator denied");
+      },
+    });
+
+    assert.equal(resolveInitialCompanionLocale(), "en");
+  } finally {
+    if (storageDescriptor) {
+      Object.defineProperty(globalThis, "localStorage", storageDescriptor);
+    } else {
+      delete globalThis.localStorage;
+    }
+    if (navigatorDescriptor) {
+      Object.defineProperty(globalThis, "navigator", navigatorDescriptor);
+    } else {
+      delete globalThis.navigator;
+    }
+  }
+});
