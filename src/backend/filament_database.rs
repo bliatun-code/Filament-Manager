@@ -3798,16 +3798,7 @@ impl FilamentDatabase {
                 self.conn.execute(&format!("DELETE FROM {table}"), [])?;
             }
 
-            let has_foreign_key_violation = {
-                let mut statement = self.conn.prepare("PRAGMA foreign_key_check")?;
-                let mut rows = statement.query([])?;
-                rows.next()?.is_some()
-            };
-            if has_foreign_key_violation {
-                return Err(InventoryError::Db(
-                    "App-state reset would leave foreign key violations".to_string(),
-                ));
-            }
+            self.ensure_no_foreign_key_violations("App-state reset")?;
 
             Ok(())
         })();
@@ -4033,24 +4024,31 @@ impl FilamentDatabase {
                 }
             }
 
+            self.ensure_no_foreign_key_violations("Full backup import")?;
+
             Ok(())
         })();
 
         match result {
-            Ok(()) => {
-                self.conn
-                    .execute_batch("COMMIT; PRAGMA foreign_keys = ON;")?;
-                self.ensure_borrowed_in_schema()?;
-                self.ensure_printer_external_slot_schema()?;
-                self.ensure_printer_slot_rfid_override_schema()?;
-                self.ensure_printer_slot_live_cache_schema()?;
-                self.ensure_trusted_lan_schema()?;
-                Ok(())
-            }
+            Ok(()) => match self.conn.execute_batch("COMMIT") {
+                Ok(()) => {
+                    self.conn.execute_batch("PRAGMA foreign_keys = ON;")?;
+                    self.ensure_borrowed_in_schema()?;
+                    self.ensure_printer_external_slot_schema()?;
+                    self.ensure_printer_slot_rfid_override_schema()?;
+                    self.ensure_printer_slot_live_cache_schema()?;
+                    self.ensure_trusted_lan_schema()?;
+                    Ok(())
+                }
+                Err(error) => {
+                    let _ = self.conn.execute_batch("ROLLBACK");
+                    let _ = self.conn.execute_batch("PRAGMA foreign_keys = ON;");
+                    Err(error.into())
+                }
+            },
             Err(error) => {
-                let _ = self
-                    .conn
-                    .execute_batch("ROLLBACK; PRAGMA foreign_keys = ON;");
+                let _ = self.conn.execute_batch("ROLLBACK");
+                let _ = self.conn.execute_batch("PRAGMA foreign_keys = ON;");
                 Err(error)
             }
         }
@@ -4177,6 +4175,19 @@ impl FilamentDatabase {
 
     fn table_has_column(&self, table: &str, column: &str) -> InventoryResult<bool> {
         Ok(self.table_columns(table)?.contains(column))
+    }
+
+    fn ensure_no_foreign_key_violations(&self, context: &str) -> InventoryResult<()> {
+        let mut statement = self.conn.prepare("PRAGMA foreign_key_check")?;
+        let mut rows = statement.query([])?;
+        if let Some(row) = rows.next()? {
+            let table: String = row.get(0)?;
+            let parent_table: String = row.get(2)?;
+            return Err(InventoryError::Db(format!(
+                "{context} would leave a foreign key violation in `{table}` referencing `{parent_table}`"
+            )));
+        }
+        Ok(())
     }
 }
 
@@ -5926,6 +5937,79 @@ mod tests {
         let _ = std::fs::remove_file(&db_path);
         if let Err(message) = result {
             panic!("import_full_backup_skips_machine_local_sync_and_trusted_lan_state failed: {message}");
+        }
+    }
+
+    #[test]
+    fn import_full_backup_rejects_foreign_key_violations_and_rolls_back() {
+        let db_path = temp_db_path("backup-import-rejects-fk-violations");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            db.conn
+                .execute(
+                    "INSERT INTO filament_master_list (
+                        id, material, filament_name, color_name, default_weight, vendor
+                     ) VALUES ('master_existing', 'PLA', 'Basic', 'Red', 1000, 'Bambu')",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
+
+            let backup = serde_json::json!({
+                "exported_at": "2026-04-09T00:00:00Z",
+                "format": "filament-manager-backup-v1",
+                "tables": {
+                    "filament_spools": [{
+                        "id": "spool_orphan",
+                        "master_id": "missing_master",
+                        "status": "IN_STOCK"
+                    }]
+                }
+            });
+
+            let error = db
+                .import_full_backup_json(&backup.to_string())
+                .expect_err("orphaned backup rows should fail before commit");
+            let message = error.to_string();
+            assert!(
+                message.contains("Full backup import would leave a foreign key violation"),
+                "unexpected error: {message}"
+            );
+
+            let existing_master_count: i64 = db
+                .conn
+                .query_row(
+                    "SELECT COUNT(*) FROM filament_master_list WHERE id = 'master_existing'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            let orphan_spool_count: i64 = db
+                .conn
+                .query_row(
+                    "SELECT COUNT(*) FROM filament_spools WHERE id = 'spool_orphan'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            let foreign_keys_enabled: i64 = db
+                .conn
+                .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+                .map_err(|error| error.to_string())?;
+
+            assert_eq!(existing_master_count, 1);
+            assert_eq!(orphan_spool_count, 0);
+            assert_eq!(foreign_keys_enabled, 1);
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "import_full_backup_rejects_foreign_key_violations_and_rolls_back failed: {message}"
+            );
         }
     }
 }
