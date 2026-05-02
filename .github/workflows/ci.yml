@@ -41,6 +41,9 @@ jobs:
       - name: Run smoke
         run: npm run smoke
 
+      - name: Run Rust tests
+        run: npm run test:rust
+
   windows-smoke:
     name: Windows Smoke
     runs-on: windows-latest
@@ -68,3 +71,6 @@ jobs:
 
       - name: Run smoke
         run: npm run smoke
+
+      - name: Run Rust tests
+        run: npm run test:rust
