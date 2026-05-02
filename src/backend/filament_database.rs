@@ -2487,40 +2487,52 @@ impl FilamentDatabase {
              ORDER BY l.lent_at DESC",
         )?;
 
-        let rows = stmt.query_map([], |row| {
-            Ok(ActiveSpoolLoanRow {
-                loan: SpoolLoanRow {
-                    id: row.get(0)?,
-                    spool_id: row.get(1)?,
-                    borrower_name: row.get(2)?,
-                    loan_direction: row.get(3)?,
-                    loan_status: row.get(4)?,
-                    counterparty_name: row.get(5)?,
-                    counterparty_contact: row.get(6)?,
-                    counterparty_note: row.get(7)?,
-                    grams_out: row.get(8)?,
-                    lent_note: row.get(9)?,
-                    lent_at: row.get(10)?,
-                    expected_return_at: row.get(11)?,
-                    returned_at: row.get(12)?,
-                    returned_grams: row.get(13)?,
-                    consumed_grams: row.get(14)?,
-                    return_note: row.get(15)?,
-                },
-                spool_status: row.get(16)?,
-                spool_remaining_g: row.get(17)?,
-                material: row.get(19)?,
-                filament_name: row.get(20)?,
-                color_name: row.get(21)?,
-                vendor: row.get(22)?,
-                hex_color: row.get(23)?,
-            })
-        })?;
+        let rows = stmt.query_map([], map_active_spool_loan_row)?;
         let mut output = Vec::new();
         for row in rows {
             output.push(row?);
         }
         Ok(output)
+    }
+
+    pub fn find_active_spool_loan_for_direction(
+        &self,
+        spool_id: &str,
+        direction: &str,
+    ) -> InventoryResult<Option<ActiveSpoolLoanRow>> {
+        let loan_direction = if direction.trim().eq_ignore_ascii_case("INBOUND") {
+            "INBOUND"
+        } else {
+            "OUTBOUND"
+        };
+
+        self.conn
+            .query_row(
+                "SELECT
+                    l.id, l.spool_id, l.borrower_name,
+                    COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') AS loan_direction,
+                    COALESCE(NULLIF(l.loan_status, ''), CASE
+                        WHEN l.returned_at IS NULL THEN 'ACTIVE'
+                        ELSE 'RETURNED'
+                    END) AS loan_status,
+                    COALESCE(NULLIF(l.counterparty_name, ''), l.borrower_name) AS counterparty_name,
+                    l.counterparty_contact, l.counterparty_note, l.grams_out, l.lent_note, l.lent_at,
+                    l.expected_return_at, l.returned_at, l.returned_grams, l.consumed_grams, l.return_note,
+                    s.status, s.remaining_g, s.spool_tare_weight_g,
+                    m.material, m.filament_name, m.color_name, m.vendor, m.hex_color
+                 FROM spool_loans l
+                 JOIN filament_spools s ON s.id = l.spool_id
+                 JOIN filament_master_list m ON m.id = s.master_id
+                 WHERE l.spool_id = ?1
+                   AND COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') = ?2
+                   AND l.returned_at IS NULL
+                   AND s.deleted_at IS NULL
+                 LIMIT 1",
+                params![spool_id, loan_direction],
+                map_active_spool_loan_row,
+            )
+            .optional()
+            .map_err(InventoryError::from)
     }
 
     pub fn list_loan_usage_by_person_for_direction(
@@ -4594,6 +4606,19 @@ fn map_spool_loan_row(row: &Row<'_>) -> Result<SpoolLoanRow, rusqlite::Error> {
         returned_grams: row.get(13)?,
         consumed_grams: row.get(14)?,
         return_note: row.get(15)?,
+    })
+}
+
+fn map_active_spool_loan_row(row: &Row<'_>) -> Result<ActiveSpoolLoanRow, rusqlite::Error> {
+    Ok(ActiveSpoolLoanRow {
+        loan: map_spool_loan_row(row)?,
+        spool_status: row.get(16)?,
+        spool_remaining_g: row.get(17)?,
+        material: row.get(19)?,
+        filament_name: row.get(20)?,
+        color_name: row.get(21)?,
+        vendor: row.get(22)?,
+        hex_color: row.get(23)?,
     })
 }
 

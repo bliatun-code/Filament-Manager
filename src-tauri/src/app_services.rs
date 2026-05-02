@@ -146,10 +146,8 @@ impl CompanionService {
         {
             outbound_active_loan
         } else {
-            self.list_spool_loans(250, false, Some("INBOUND"))?
-                .into_iter()
-                .find(|row| row.loan.spool_id == spool_id && row.loan.returned_at.is_none())
-                .map(map_active_loan_detail)
+            let db = FilamentDatabase::open(&self.db_path)?;
+            db.find_active_spool_loan_for_direction(spool_id, "INBOUND")?
         };
 
         Ok(CompanionSpoolDetail {
@@ -344,32 +342,19 @@ fn apply_live_tray_to_slot(
     });
 }
 
-fn map_active_loan_detail(row: SpoolLoanDetailsRow) -> ActiveSpoolLoanRow {
-    ActiveSpoolLoanRow {
-        loan: row.loan,
-        spool_status: row.spool_status.unwrap_or_else(|| "UNKNOWN".to_string()),
-        spool_remaining_g: row.spool_remaining_g,
-        material: row.material.unwrap_or_else(|| "Unknown".to_string()),
-        filament_name: row.filament_name.unwrap_or_else(|| "Unknown".to_string()),
-        color_name: row.color_name.unwrap_or_else(|| "Unknown".to_string()),
-        vendor: row.vendor.unwrap_or_else(|| "Unknown".to_string()),
-        hex_color: row.hex_color,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::CompanionService;
     use crate::backend::filament_database::{
         BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow,
-        FilamentDatabase,
+        FilamentDatabase, ManualMasterInput, SpoolRow,
     };
     use crate::backend::inventory_engine::{
         CreateManualSpoolInput, CreatePrinterInput, InventoryEngine, LendSpoolInput,
         ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, WeightSource,
     };
     use std::path::PathBuf;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     fn temp_db_path(test_name: &str) -> PathBuf {
         let nanos = SystemTime::now()
@@ -501,6 +486,85 @@ mod tests {
         let _ = std::fs::remove_file(&db_path);
         if let Err(message) = result {
             panic!("companion_service_creates_borrowed_in_manual_spool failed: {message}");
+        }
+    }
+
+    #[test]
+    fn companion_service_finds_old_active_inbound_loan_in_spool_detail() {
+        let db_path = temp_db_path("borrowed-in-detail-old-active-loan");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            let master_id = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PETG",
+                    filament_name: "Shared",
+                    color_name: "Blue",
+                    hex_color: Some("#2563EB"),
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
+                .map_err(|error| error.to_string())?;
+
+            let make_spool = |id: &str| SpoolRow {
+                id: id.to_string(),
+                master_id: master_id.clone(),
+                qr_code: None,
+                rfid_tag: None,
+                rfid_observed_at: None,
+                status: "IN_STOCK".to_string(),
+                ownership_type: "BORROWED_IN".to_string(),
+                owner_name: Some("Carla".to_string()),
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                current_weight_g: Some(1000),
+                remaining_g: Some(1000),
+                spool_tare_weight_g: None,
+                location_id: None,
+                home_location_id: None,
+                purchase_date: None,
+                purchase_price: None,
+                batch_code: None,
+                last_used_at: None,
+            };
+
+            db.insert_spool(&make_spool("target_borrowed_spool"))
+                .map_err(|error| error.to_string())?;
+            db.create_inbound_spool_loan("target_borrowed_spool", "Carla", None, None, 1000)
+                .map_err(|error| error.to_string())?;
+
+            std::thread::sleep(Duration::from_secs(1));
+
+            for index in 0..251 {
+                let spool_id = format!("recent_borrowed_spool_{index}");
+                db.insert_spool(&make_spool(&spool_id))
+                    .map_err(|error| error.to_string())?;
+                db.create_inbound_spool_loan(&spool_id, "Carla", None, None, 1000)
+                    .map_err(|error| error.to_string())?;
+            }
+
+            let service = CompanionService::new(db_path.to_string_lossy().to_string());
+            let detail = service
+                .get_spool_detail("target_borrowed_spool", Some(20), Some(50))
+                .map_err(|error| error.to_string())?;
+            let active_loan = detail
+                .active_loan
+                .ok_or_else(|| "missing old active inbound loan in spool detail".to_string())?;
+            assert_eq!(active_loan.loan.spool_id, "target_borrowed_spool");
+            assert_eq!(active_loan.loan.loan_direction, "INBOUND");
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "companion_service_finds_old_active_inbound_loan_in_spool_detail failed: {message}"
+            );
         }
     }
 
