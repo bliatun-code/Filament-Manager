@@ -48,6 +48,7 @@ import {
   buildBaselineCaptureFieldsBySlotId,
   buildObservedTrayCaptureSnapshot,
   buildObservedTrayCaptureSnapshotFromHostSlot,
+  assessRfidCaptureMatch,
   extractRfidCaptureFields,
   formatCaptureTimestamp,
   formatObservedAge,
@@ -56,9 +57,9 @@ import {
   identityFreshnessCopy,
   latestRfidCaptureSeenAt,
   mergeRfidCaptureFields,
+  rfidCaptureMatchMeta,
   summarizeRfidCapture,
   type RfidCaptureField,
-  type RfidCaptureMatchConfidence,
   type RfidCaptureSummary,
 } from "../lib/inventory_rfid_capture";
 import {
@@ -454,70 +455,6 @@ function inventorySwatchActionButtonStyle(
         ? `0 18px 36px -24px ${swatchRgba(raw, 0.74)}, inset 0 1px 0 rgba(255, 255, 255, 0.1)`
         : `0 18px 36px -24px ${swatchRgba(raw, 0.62)}, inset 0 1px 0 rgba(255, 255, 255, 0.18)`,
   } as const;
-}
-
-function normalizeMaterialForMatch(raw?: string | null): string {
-  return (raw ?? "")
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "");
-}
-
-function hexDistance(leftRaw?: string | null, rightRaw?: string | null): number | null {
-  const left = hexToRgb(leftRaw);
-  const right = hexToRgb(rightRaw);
-  if (!left || !right) {
-    return null;
-  }
-  return Math.sqrt(
-    (left[0] - right[0]) ** 2 + (left[1] - right[1]) ** 2 + (left[2] - right[2]) ** 2,
-  );
-}
-
-function assessRfidCaptureMatch(
-  spool: InventorySpool | null,
-  summary: RfidCaptureSummary | null | undefined,
-): RfidCaptureMatchConfidence {
-  if (!spool || !summary?.material) {
-    return "NONE";
-  }
-  if (normalizeMaterialForMatch(spool.material) !== normalizeMaterialForMatch(summary.material)) {
-    return "NONE";
-  }
-  const observedHex = summary.colorHex;
-  const expectedHex = spool.hexColor;
-  if (!(observedHex?.trim()) || !(expectedHex?.trim())) {
-    return "NONE";
-  }
-  if (toSwatchColor(observedHex).toUpperCase() === toSwatchColor(expectedHex).toUpperCase()) {
-    return "EXACT";
-  }
-  const distance = hexDistance(observedHex, expectedHex);
-  if (distance != null && distance <= 48) {
-    return "PARTIAL";
-  }
-  return "NONE";
-}
-
-function rfidCaptureMatchMeta(
-  confidence: RfidCaptureMatchConfidence,
-  t: ReturnType<typeof useI18n>["t"],
-): { label: string; hint: string; className: string } | null {
-  if (confidence === "EXACT") {
-    return {
-      label: t("inventory.rfidMatchExact", "Sikker"),
-      hint: t("inventory.rfidMatchExactHint", "Materiale og HEX-farge stemmer."),
-      className: semanticChipClass("success", "px-2 py-0.5 text-[10px]"),
-    };
-  }
-  if (confidence === "PARTIAL") {
-    return {
-      label: t("inventory.rfidMatchPartial", "Partial"),
-      hint: t("inventory.rfidMatchPartialHint", "Materiale stemmer, og fargen er nær katalogfargen."),
-      className: semanticChipClass("warning", "px-2 py-0.5 text-[10px]"),
-    };
-  }
-  return null;
 }
 
 export default function InventoryPage({
