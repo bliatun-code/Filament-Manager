@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import {
   dictionaries,
-  I18N_STORAGE_KEY,
   I18nContext,
   lookup,
+  persistLocale,
   resolveInitialLocale,
   type Locale,
   type I18nContextValue,
@@ -14,7 +14,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const setLocale = useCallback((nextLocale: Locale) => {
     setLocaleState(nextLocale);
-    localStorage.setItem(I18N_STORAGE_KEY, nextLocale);
+    persistLocale(nextLocale);
   }, []);
 
   const t = useCallback(

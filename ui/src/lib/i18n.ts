@@ -2786,12 +2786,44 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
   },
 };
 
+function readStoredLocale(): string | null {
+  try {
+    if (typeof localStorage === "undefined") {
+      return null;
+    }
+    return localStorage.getItem(I18N_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function resolveNavigatorLanguage(): string {
+  try {
+    if (typeof navigator === "undefined") {
+      return "";
+    }
+    return navigator.language || "";
+  } catch {
+    return "";
+  }
+}
+
+export function persistLocale(locale: Locale): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(I18N_STORAGE_KEY, locale);
+    }
+  } catch {
+    // Locale persistence is best-effort; the in-memory React state is still updated.
+  }
+}
+
 export function resolveInitialLocale(): Locale {
-  const stored = localStorage.getItem(I18N_STORAGE_KEY);
+  const stored = readStoredLocale();
   if (stored === "en" || stored === "nb") {
     return stored;
   }
-  const language = (navigator.language || "").toLowerCase();
+  const language = resolveNavigatorLanguage().toLowerCase();
   if (language.startsWith("nb") || language.startsWith("no")) {
     return "nb";
   }

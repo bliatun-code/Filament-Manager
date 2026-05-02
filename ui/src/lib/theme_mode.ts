@@ -9,10 +9,16 @@ const CHANGE_EVENT = "bfm-theme-mode-change";
 let mediaListenerAttached = false;
 
 function resolveSystemDark(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false;
+  }
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
 function applyResolvedTheme(mode: ThemeMode) {
+  if (typeof document === "undefined") {
+    return;
+  }
   const root = document.documentElement;
   const dark = mode === "dark" || (mode === "auto" && resolveSystemDark());
   root.classList.toggle("dark", dark);
@@ -23,7 +29,13 @@ function ensureMediaListener() {
   if (mediaListenerAttached) {
     return;
   }
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return;
+  }
   const media = window.matchMedia("(prefers-color-scheme: dark)");
+  if (typeof media.addEventListener !== "function") {
+    return;
+  }
   const onChange = () => {
     if (getThemeMode() === "auto") {
       applyResolvedTheme("auto");
@@ -42,7 +54,14 @@ export function getResolvedTheme(mode: ThemeMode = getThemeMode()): ResolvedThem
 }
 
 export function getThemeMode(): ThemeMode {
-  const stored = localStorage.getItem(STORAGE_KEY);
+  let stored: string | null = null;
+  try {
+    if (typeof localStorage !== "undefined") {
+      stored = localStorage.getItem(STORAGE_KEY);
+    }
+  } catch {
+    stored = null;
+  }
   if (stored === "light" || stored === "dark" || stored === "auto") {
     return stored;
   }
@@ -50,9 +69,17 @@ export function getThemeMode(): ThemeMode {
 }
 
 export function setThemeMode(mode: ThemeMode) {
-  localStorage.setItem(STORAGE_KEY, mode);
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, mode);
+    }
+  } catch {
+    // Theme persistence is best-effort; the active document theme still updates.
+  }
   applyResolvedTheme(mode);
-  window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: mode }));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: mode }));
+  }
 }
 
 export function onThemeModeChange(handler: (mode: ThemeMode) => void): () => void {
@@ -64,6 +91,9 @@ export function onThemeModeChange(handler: (mode: ThemeMode) => void): () => voi
     }
     handler(getThemeMode());
   };
+  if (typeof window === "undefined") {
+    return () => {};
+  }
   window.addEventListener(CHANGE_EVENT, listener);
   return () => window.removeEventListener(CHANGE_EVENT, listener);
 }
