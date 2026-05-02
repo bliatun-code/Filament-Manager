@@ -65,6 +65,72 @@ export function formatRollReference(spool: Pick<InventorySpool, "id">): string {
   return `#${normalizedId.slice(-6)}`;
 }
 
+export function formatMasterDisplayTitle(master: {
+  material: string;
+  filament_name: string;
+  color_name: string;
+}): string {
+  return formatInventoryDisplayTitle(
+    master.material,
+    master.filament_name,
+    master.color_name,
+  );
+}
+
+export function normalizeDisplayToken(value?: string | null): string | null {
+  const trimmed = (value ?? "").trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function splitDisplayTokens(value?: string | null): string[] {
+  const normalized = normalizeDisplayToken(value);
+  if (!normalized) {
+    return [];
+  }
+  return normalized
+    .split("·")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
+function tokenStartsWithToken(baseToken: string, nextToken: string): boolean {
+  const base = baseToken.trim().toLowerCase();
+  const next = nextToken.trim().toLowerCase();
+  if (!base || !next) {
+    return false;
+  }
+  return (
+    next === base ||
+    next.startsWith(`${base} `) ||
+    next.startsWith(`${base}-`) ||
+    next.startsWith(`${base}+`) ||
+    next.startsWith(`${base}/`)
+  );
+}
+
+export function formatInventoryDisplayTitle(
+  materialRaw?: string | null,
+  filamentRaw?: string | null,
+  colorRaw?: string | null,
+): string {
+  const tokens = [
+    ...splitDisplayTokens(materialRaw),
+    ...splitDisplayTokens(filamentRaw),
+    ...splitDisplayTokens(colorRaw),
+  ].filter((token, index, allTokens) => {
+    if (index === 0) {
+      return true;
+    }
+    return allTokens[index - 1].toLowerCase() !== token.toLowerCase();
+  });
+
+  if (tokens.length >= 2 && tokenStartsWithToken(tokens[0], tokens[1])) {
+    tokens.shift();
+  }
+
+  return tokens.length > 0 ? tokens.join(" · ") : "—";
+}
+
 export function buildVendorOptions(spools: InventorySpool[]): string[] {
   const values = new Set<string>();
   for (const spool of spools) {
