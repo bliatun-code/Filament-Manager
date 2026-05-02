@@ -14,6 +14,7 @@ yarn-error.log*
 # Rust / Tauri build
 target/
 src-tauri/target/
+src-tauri/gen/schemas/* 2.json
 
 # Local runtime data (SQLite)
 data/*.db
