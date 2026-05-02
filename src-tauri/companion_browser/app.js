@@ -5,7 +5,6 @@ import { installCompanionDomEvents } from "./companion_dom_events.js";
 import {
   COMPANION_LOCALE_STORAGE_KEY,
   normalizeCompanionLocale,
-  readStoredCompanionLocale,
   resolveInitialCompanionLocale,
   t,
 } from "./companion_i18n.js";
@@ -134,8 +133,12 @@ function readStoredThemeMode() {
   return readStoredCompanionThemeMode(THEME_STORAGE_KEY, localStorage);
 }
 
-function readStoredLocale() {
-  return readStoredCompanionLocale(LOCALE_STORAGE_KEY, localStorage);
+function persistCompanionPreference(storageKey, value) {
+  try {
+    localStorage.setItem(storageKey, value);
+  } catch {
+    // Browser storage is best-effort; the in-memory companion state still updates.
+  }
 }
 
 function iconHrefForTheme(theme) {
@@ -163,7 +166,7 @@ function setThemeMode(nextMode) {
   state.themeMode = normalizedMode;
   state.resolvedTheme = applyCompanionThemeMode(normalizedMode, document, window);
   syncCompanionIconLinks(state.resolvedTheme);
-  localStorage.setItem(THEME_STORAGE_KEY, normalizedMode);
+  persistCompanionPreference(THEME_STORAGE_KEY, normalizedMode);
   render();
 }
 
@@ -171,7 +174,7 @@ function setLocale(nextLocale) {
   const normalizedLocale = normalizeCompanionLocale(nextLocale);
   state.locale = normalizedLocale;
   syncRecoverySectionLabels(normalizedLocale);
-  localStorage.setItem(LOCALE_STORAGE_KEY, normalizedLocale);
+  persistCompanionPreference(LOCALE_STORAGE_KEY, normalizedLocale);
   setStatus(
     normalizedLocale === "nb"
       ? t(normalizedLocale, "status.languageSetNb", "Language set to Norwegian.")
@@ -303,10 +306,7 @@ function main() {
   installLayoutWatcher();
   installThemeWatcher();
 
-  state.locale =
-    localStorage.getItem(LOCALE_STORAGE_KEY) != null
-      ? readStoredLocale()
-      : resolveInitialCompanionLocale(localStorage, navigator);
+  state.locale = resolveInitialCompanionLocale(localStorage, navigator);
   syncRecoverySectionLabels(state.locale);
   state.themeMode = readStoredThemeMode();
   state.resolvedTheme = applyCompanionThemeMode(state.themeMode, document, window);

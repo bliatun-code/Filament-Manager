@@ -74,6 +74,17 @@ test("readStoredCompanionThemeMode falls back to auto", () => {
   );
 });
 
+test("readStoredCompanionThemeMode falls back when storage throws", () => {
+  assert.equal(
+    readStoredCompanionThemeMode("theme-key", {
+      getItem() {
+        throw new Error("storage denied");
+      },
+    }),
+    "auto",
+  );
+});
+
 test("subscribeToMediaQueryChange supports both modern and legacy media query listeners", () => {
   const modernCalls = [];
   const legacyCalls = [];

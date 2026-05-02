@@ -204,6 +204,25 @@ test("submit router dispatches RFID save payloads from the selected live source"
   ]]);
 });
 
+test("submit router keeps routing RFID updates when selected live source is malformed", () => {
+  const calls = [];
+  const handled = routeCompanionSubmitAction(
+    "update-spool-rfid-form",
+    createData({
+      "spool-id": "spool-12",
+      "rfid-source": "bad%zz|2026-04-17T18%3A45%3A56Z",
+    }),
+    {
+      submitSpoolRfidUpdate(...args) {
+        calls.push(args);
+      },
+    },
+  );
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls, [["spool-12", "bad%zz", "2026-04-17T18:45:56Z"]]);
+});
+
 test("submit router still routes detail updates that may later return translated browser errors", () => {
   const calls = [];
   const handled = routeCompanionSubmitAction(

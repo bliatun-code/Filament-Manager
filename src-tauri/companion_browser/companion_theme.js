@@ -99,7 +99,11 @@ export function subscribeToMediaQueryChange(mediaQueryList, handler) {
 }
 
 export function readStoredCompanionThemeMode(storageKey, storageRef) {
-  return normalizeThemeMode(storageRef?.getItem?.(storageKey));
+  try {
+    return normalizeThemeMode(storageRef?.getItem?.(storageKey));
+  } catch {
+    return "auto";
+  }
 }
 
 export function normalizeHex(raw) {

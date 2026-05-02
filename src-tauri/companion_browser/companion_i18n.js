@@ -1002,15 +1002,29 @@ export function normalizeCompanionLocale(locale) {
 }
 
 export function readStoredCompanionLocale(storageKey, storageRef) {
-  return normalizeCompanionLocale(storageRef?.getItem?.(storageKey));
+  try {
+    return normalizeCompanionLocale(storageRef?.getItem?.(storageKey));
+  } catch {
+    return "en";
+  }
 }
 
 export function resolveInitialCompanionLocale(storageRef = localStorage, navigatorRef = navigator) {
-  const storedValue = storageRef?.getItem?.(COMPANION_LOCALE_STORAGE_KEY);
+  let storedValue = null;
+  try {
+    storedValue = storageRef?.getItem?.(COMPANION_LOCALE_STORAGE_KEY);
+  } catch {
+    storedValue = null;
+  }
   if (storedValue === "en" || storedValue === "nb") {
     return storedValue;
   }
-  const language = String(navigatorRef?.language || "").trim().toLowerCase();
+  let language = "";
+  try {
+    language = String(navigatorRef?.language || "").trim().toLowerCase();
+  } catch {
+    language = "";
+  }
   if (language.startsWith("nb") || language.startsWith("no")) {
     return "nb";
   }

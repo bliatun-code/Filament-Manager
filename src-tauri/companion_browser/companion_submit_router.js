@@ -1,10 +1,20 @@
 export function routeCompanionSubmitAction(action, data, handlers) {
+  function safeDecodeURIComponent(value) {
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  }
+
   function parseRfidSourcePayload(value) {
     const raw = String(value || "").trim();
     if (!raw) {
       return { rfidTag: "", observedAt: "" };
     }
-    const [rfidTag = "", observedAt = ""] = raw.split("|").map((part) => decodeURIComponent(part || ""));
+    const [rfidTag = "", observedAt = ""] = raw
+      .split("|")
+      .map((part) => safeDecodeURIComponent(part || ""));
     return { rfidTag, observedAt };
   }
 
