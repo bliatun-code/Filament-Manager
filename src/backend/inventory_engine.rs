@@ -1337,8 +1337,8 @@ fn normalize_ownership_type(value: Option<&str>) -> String {
 mod tests {
     use super::{
         AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
-        InventoryEngine, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput,
-        WeightSource,
+        DeleteSpoolInput, InventoryEngine, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
+        UpdateSpoolDetailsInput, WeightSource,
     };
     use crate::backend::filament_database::{
         BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow,
@@ -1528,6 +1528,101 @@ mod tests {
             panic!(
                 "create_spool_with_location_persists_location_and_home_location failed: {message}"
             );
+        }
+    }
+
+    #[test]
+    fn delete_spool_clears_printer_slot_assignment() {
+        let db_path = temp_db_path("delete-spool-clears-slot");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            let engine = InventoryEngine::new(db);
+
+            engine
+                .create_printer(CreatePrinterInput {
+                    id: "printer_1".to_string(),
+                    model: "P1S".to_string(),
+                    name: "Bambu Lab P1S".to_string(),
+                    ams_units: Some(1),
+                    slots_per_ams: Some(4),
+                })
+                .map_err(|error| error.to_string())?;
+            engine
+                .create_manual_spool(CreateManualSpoolInput {
+                    id: "spool_1".to_string(),
+                    material: "PLA".to_string(),
+                    filament_name: "Basic".to_string(),
+                    color_name: "Green".to_string(),
+                    hex_color: Some("#00B140".to_string()),
+                    product_url: None,
+                    vendor: Some("Generic".to_string()),
+                    default_weight_g: Some(1000),
+                    qr_code: Some("delete-slot-qr".to_string()),
+                    status: Some("IN_STOCK".to_string()),
+                    ownership_type: Some("OWNED".to_string()),
+                    owner_name: None,
+                    owner_contact: None,
+                    ownership_note: None,
+                    initial_weight_g: Some(1000),
+                    location: Some("Shelf".to_string()),
+                })
+                .map_err(|error| error.to_string())?;
+
+            let slot_id = "printer_1_ams_1_slot_1";
+            engine
+                .assign_printer_slot(AssignPrinterSlotInput {
+                    printer_id: "printer_1".to_string(),
+                    slot_id: slot_id.to_string(),
+                    spool_id: Some("spool_1".to_string()),
+                    rfid_override_tray_uuid: None,
+                    rfid_override_color_hex: None,
+                    clear_live_cache_before_next_refresh: None,
+                })
+                .map_err(|error| error.to_string())?;
+
+            engine
+                .delete_spool(DeleteSpoolInput {
+                    spool_id: "spool_1".to_string(),
+                    reason: Some("Removed from active inventory".to_string()),
+                })
+                .map_err(|error| error.to_string())?;
+
+            let printer_overview = engine
+                .db
+                .list_printer_overview()
+                .map_err(|error| error.to_string())?;
+            let slot = printer_overview[0]
+                .slots
+                .iter()
+                .find(|slot| slot.slot_id == slot_id)
+                .ok_or_else(|| "expected assigned slot to exist".to_string())?;
+            assert!(slot.spool_id.is_none());
+
+            let stored_spool = engine
+                .db
+                .get_spool_by_id("spool_1")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "expected soft-deleted spool to remain for history".to_string())?;
+            assert_eq!(stored_spool.status, "DELETED");
+
+            let active_spools = engine
+                .list_spools(20, 0)
+                .map_err(|error| error.to_string())?;
+            assert!(active_spools.is_empty());
+
+            let history_rows = engine
+                .list_spool_history("spool_1", 20)
+                .map_err(|error| error.to_string())?;
+            assert!(history_rows.iter().any(|row| row.event_type == "DELETED"));
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("delete_spool_clears_printer_slot_assignment test failed: {message}");
         }
     }
 

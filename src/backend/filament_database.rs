@@ -1278,7 +1278,8 @@ impl FilamentDatabase {
     }
 
     pub fn soft_delete_spool(&self, spool_id: &str) -> InventoryResult<()> {
-        let affected = self.conn.execute(
+        let tx = self.conn.unchecked_transaction()?;
+        let affected = tx.execute(
             "UPDATE filament_spools
              SET deleted_at = datetime('now'),
                  status = 'DELETED',
@@ -1286,7 +1287,16 @@ impl FilamentDatabase {
              WHERE id = ?1 AND deleted_at IS NULL",
             params![spool_id],
         )?;
-        require_rows(affected)
+        require_rows(affected)?;
+        tx.execute(
+            "UPDATE ams_slots
+             SET spool_id = NULL,
+                 last_seen_at = datetime('now')
+             WHERE spool_id = ?1",
+            params![spool_id],
+        )?;
+        tx.commit()?;
+        Ok(())
     }
 
     pub fn purge_spool(&self, spool_id: &str) -> InventoryResult<()> {
