@@ -637,32 +637,32 @@ impl InventoryEngine {
             .db
             .get_spool_by_id(&input.spool_id)?
             .ok_or(InventoryError::NotFound)?;
-        let has_active_loan = self
-            .db
-            .list_active_spool_loans()?
-            .into_iter()
-            .any(|row| row.loan.spool_id == input.spool_id);
+        let has_active_loan = self.db.spool_has_active_loan(&input.spool_id)?;
         let resolved_home_location = match &input.home_location {
             Some(Some(value)) if !value.trim().is_empty() => Some(self.db.ensure_location(value)?),
             Some(_) => None,
             None => existing_spool.home_location_id.clone(),
         };
-        let location_locked_by_assignment = self.db.spool_assigned_to_printer(&input.spool_id)?
-            || has_active_loan
-            || existing_spool.status.eq_ignore_ascii_case("BORROWED");
+        let should_preserve_current_location =
+            self.db.spool_assigned_to_printer(&input.spool_id)?
+                || has_active_loan
+                || existing_spool.status.eq_ignore_ascii_case("BORROWED");
         let should_sync_home_to_current_location = input.home_location.is_some()
-            && !location_locked_by_assignment
+            && !should_preserve_current_location
             && match (&resolved_location, &existing_spool.location_id) {
                 (Some(requested), Some(existing)) => requested == existing,
                 (None, None) => true,
                 (None, Some(existing)) => existing.trim().is_empty(),
                 _ => false,
             };
-        let effective_location = if should_sync_home_to_current_location {
-            resolved_home_location.clone()
-        } else {
-            resolved_location.clone()
-        };
+        let effective_location =
+            if should_preserve_current_location && input.home_location.is_some() {
+                existing_spool.location_id.clone()
+            } else if should_sync_home_to_current_location {
+                resolved_home_location.clone()
+            } else {
+                resolved_location.clone()
+            };
         self.db.update_spool_details(
             &input.spool_id,
             input.qr_code.as_deref(),
@@ -2217,6 +2217,74 @@ mod tests {
         if let Err(message) = result {
             panic!(
                 "update_spool_details_syncs_home_location_to_current_location_when_unassigned failed: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn update_spool_details_keeps_active_inbound_location_while_updating_home_location() {
+        let db_path = temp_db_path("keep-active-inbound-location-when-updating-home");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            let engine = InventoryEngine::new(db);
+
+            engine
+                .create_manual_spool(CreateManualSpoolInput {
+                    id: "borrowed_spool_1".to_string(),
+                    material: "PETG".to_string(),
+                    filament_name: "Translucent".to_string(),
+                    color_name: "Orange".to_string(),
+                    hex_color: Some("#ff9a3d".to_string()),
+                    product_url: None,
+                    vendor: Some("Generic".to_string()),
+                    default_weight_g: Some(1000),
+                    qr_code: Some("borrowed-qr-1".to_string()),
+                    status: Some("IN_STOCK".to_string()),
+                    ownership_type: Some("BORROWED_IN".to_string()),
+                    owner_name: Some("Carla".to_string()),
+                    owner_contact: Some("carla@example.com".to_string()),
+                    ownership_note: Some("Return once fit-checks are done".to_string()),
+                    initial_weight_g: Some(820),
+                    location: Some("Shelf B".to_string()),
+                })
+                .map_err(|error| error.to_string())?;
+
+            let borrowed_before = engine
+                .db
+                .get_spool_by_id("borrowed_spool_1")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "expected borrowed-in spool".to_string())?;
+
+            engine
+                .update_spool_details(UpdateSpoolDetailsInput {
+                    spool_id: "borrowed_spool_1".to_string(),
+                    qr_code: borrowed_before.qr_code.clone(),
+                    status: borrowed_before.status.clone(),
+                    location: None,
+                    home_location: Some(Some("Owner Shelf".to_string())),
+                })
+                .map_err(|error| error.to_string())?;
+
+            let borrowed_after = engine
+                .db
+                .get_spool_by_id("borrowed_spool_1")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "expected updated borrowed-in spool".to_string())?;
+            assert_eq!(
+                borrowed_after.home_location_id.as_deref(),
+                Some("Owner Shelf")
+            );
+            assert_eq!(borrowed_after.location_id.as_deref(), Some("Shelf B"));
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "update_spool_details_keeps_active_inbound_location_while_updating_home_location failed: {message}"
             );
         }
     }

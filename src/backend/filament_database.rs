@@ -2151,6 +2151,22 @@ impl FilamentDatabase {
         Ok(loan)
     }
 
+    pub fn spool_has_active_loan(&self, spool_id: &str) -> InventoryResult<bool> {
+        let exists: Option<i64> = self
+            .conn
+            .query_row(
+                "SELECT 1
+                 FROM spool_loans
+                 WHERE spool_id = ?1
+                   AND returned_at IS NULL
+                 LIMIT 1",
+                params![spool_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        Ok(exists.is_some())
+    }
+
     pub fn create_inbound_spool_loan(
         &self,
         spool_id: &str,
@@ -5275,8 +5291,7 @@ mod tests {
             };
 
             for spool in [make_spool("active_spool"), make_spool("deleted_spool")] {
-                db.insert_spool(&spool)
-                    .map_err(|error| error.to_string())?;
+                db.insert_spool(&spool).map_err(|error| error.to_string())?;
             }
 
             db.create_spool_loan("active_spool", "Alice", 700, None)
