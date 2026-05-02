@@ -157,11 +157,10 @@ fn merge_idle_observation(
     previous: Option<&BambuLiveObservedStateRow>,
     mut next: BambuLiveObservedStateRow,
 ) -> BambuLiveObservedStateRow {
-    if previous.is_none() {
+    let Some(previous) = previous else {
         return next;
-    }
+    };
 
-    let previous = previous.expect("checked is_some above");
     next.last_seen_at = next.last_seen_at.or_else(|| previous.last_seen_at.clone());
     next.progress_percent = next.progress_percent.or(previous.progress_percent);
     next.remaining_minutes = next.remaining_minutes.or(previous.remaining_minutes);
@@ -938,23 +937,26 @@ fn read_mqtt_packet(stream: &mut impl Read) -> Result<(u8, Vec<u8>), String> {
 
     let mut multiplier = 1_usize;
     let mut remaining_length = 0_usize;
-    loop {
+    for byte_index in 0..4 {
         let mut encoded = [0_u8; 1];
         stream
             .read_exact(&mut encoded)
             .map_err(|error| format!("failed to read MQTT remaining length: {error}"))?;
         remaining_length += ((encoded[0] & 0x7F) as usize) * multiplier;
         if encoded[0] & 0x80 == 0 {
-            break;
+            let mut payload = vec![0_u8; remaining_length];
+            stream
+                .read_exact(&mut payload)
+                .map_err(|error| format!("failed to read MQTT payload: {error}"))?;
+            return Ok((fixed_header[0], payload));
+        }
+        if byte_index == 3 {
+            return Err("invalid MQTT remaining length: exceeds 4 bytes".to_string());
         }
         multiplier *= 128;
     }
 
-    let mut payload = vec![0_u8; remaining_length];
-    stream
-        .read_exact(&mut payload)
-        .map_err(|error| format!("failed to read MQTT payload: {error}"))?;
-    Ok((fixed_header[0], payload))
+    Err("invalid MQTT remaining length".to_string())
 }
 
 fn parse_publish_payload(payload: &[u8]) -> Result<Option<Value>, String> {
@@ -1354,6 +1356,7 @@ mod tests {
         BambuLiveObservedTrayRow, FilamentMasterSummary, PrinterAmsSlotRow, PrinterOverviewRow,
         PrinterRow, PrinterUsageRow, SpoolRow, SpoolWithMasterRow,
     };
+    use std::io::Cursor;
 
     fn make_slot() -> PrinterAmsSlotRow {
         PrinterAmsSlotRow {
@@ -1619,6 +1622,30 @@ mod tests {
             Some("2026-04-15T10:00:01Z"),
             Some("2026-04-15 10:00:00")
         ));
+    }
+
+    #[test]
+    fn read_mqtt_packet_rejects_oversized_remaining_length_varints() {
+        let mut stream = Cursor::new(vec![0x30, 0x80, 0x80, 0x80, 0x80, 0x00]);
+
+        let error = super::read_mqtt_packet(&mut stream)
+            .expect_err("MQTT remaining length must not exceed four bytes");
+
+        assert!(
+            error.contains("exceeds 4 bytes"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn read_mqtt_packet_reads_valid_payload() {
+        let mut stream = Cursor::new(vec![0x30, 0x03, b'a', b'b', b'c']);
+
+        let (packet_type, payload) =
+            super::read_mqtt_packet(&mut stream).expect("valid MQTT packet should parse");
+
+        assert_eq!(packet_type, 0x30);
+        assert_eq!(payload, b"abc");
     }
 
     #[test]
