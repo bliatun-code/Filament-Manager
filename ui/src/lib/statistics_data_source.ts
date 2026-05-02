@@ -18,6 +18,7 @@ import {
   type SpoolLoanDetailsRow,
 } from "./tauri_client";
 import { loadAllSpoolRows } from "./spool_data_source";
+import { isLoanCurrentlyActive } from "./loan_state";
 import { deriveInventoryOverviewFromRows } from "./statistics_model";
 
 export type StatisticsSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
@@ -84,7 +85,7 @@ export function groupLoanUsageByPerson(
       ...current,
       total_consumed_g: current.total_consumed_g + Math.max(0, row.loan.consumed_grams ?? 0),
       completed_loans: current.completed_loans + (row.loan.returned_at ? 1 : 0),
-      active_loans: current.active_loans + (row.loan.returned_at ? 0 : 1),
+      active_loans: current.active_loans + (isLoanCurrentlyActive(row) ? 1 : 0),
     });
   }
   return Array.from(grouped.values()).sort((left, right) => {

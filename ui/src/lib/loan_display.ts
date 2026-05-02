@@ -1,5 +1,6 @@
 import { swatchRgba, toSwatchColor } from "./color_utils";
 import { normalizeDisplayToken } from "./display_format";
+import { isLoanCurrentlyActive } from "./loan_state";
 import { resolveSpoolTareWeight } from "./spool_weight";
 import type { ResolvedTheme } from "./theme_mode";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
@@ -201,7 +202,7 @@ export function filterLoans(
       filter === "ALL"
         ? true
         : filter === "ACTIVE"
-          ? !loan.loan.returned_at
+          ? isLoanCurrentlyActive(loan)
           : Boolean(loan.loan.returned_at);
     const searchMatch =
       term.length === 0

@@ -3,6 +3,7 @@ import {
   sortPrinterSlotsExtLast,
   summarizeEffectivePrinterSlots,
 } from "./printer_profiles";
+import { isLoanCurrentlyActive } from "./loan_state";
 export { toSwatchColor } from "./color_utils";
 import type {
   FilamentConsumptionRow,
@@ -95,7 +96,7 @@ export function groupedLoanUsage(rows: SpoolLoanDetailsRow[]): BorrowerFilamentU
     };
     const consumed = Math.max(0, row.loan.consumed_grams ?? 0);
     const lentOut = Math.max(0, row.loan.grams_out ?? 0);
-    const active = row.loan.returned_at ? 0 : 1;
+    const active = isLoanCurrentlyActive(row) ? 1 : 0;
     grouped.set(key, {
       ...current,
       consumedGrams: current.consumedGrams + consumed,
