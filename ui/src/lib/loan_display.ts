@@ -3,6 +3,7 @@ import { normalizeDisplayToken } from "./display_format";
 import { resolveSpoolTareWeight } from "./spool_weight";
 import type { ResolvedTheme } from "./theme_mode";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
+import { formatGrams as formatWeightGrams } from "./weight_display";
 export { formatDateTime } from "./date_time";
 
 export type LoanFilter = "ALL" | "ACTIVE" | "RETURNED";
@@ -19,10 +20,7 @@ export function normalizeLoanDirection(value?: string | null): "OUTBOUND" | "INB
 }
 
 export function formatGrams(value?: number | null): string {
-  if (value == null) {
-    return "0 g";
-  }
-  return `${Math.max(0, value)} g`;
+  return formatWeightGrams(value, "zero");
 }
 
 function resolveLoanTareWeight(loan: SpoolLoanDetailsRow): number {

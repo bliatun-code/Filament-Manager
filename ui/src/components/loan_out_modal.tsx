@@ -14,6 +14,7 @@ import { useI18n } from "../lib/i18n";
 import { sortSpoolsAlphabetically } from "../lib/spool_sort";
 import { resolveSpoolTareWeight } from "../lib/spool_weight";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
+import { formatGrams as formatWeightGrams } from "../lib/weight_display";
 import {
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncSpools,
@@ -151,10 +152,7 @@ function swatchInsetStyle(
 }
 
 function formatGrams(value?: number | null): string {
-  if (value == null) {
-    return "0 g";
-  }
-  return `${Math.max(0, value)} g`;
+  return formatWeightGrams(value, "zero");
 }
 
 function resolveLoanableSpoolTareWeight(spool: LoanableSpool): number {

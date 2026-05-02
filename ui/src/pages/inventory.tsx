@@ -62,6 +62,7 @@ import { materialTone } from "../lib/material_theme";
 import { loadSpoolRowsPage } from "../lib/spool_data_source";
 import { resolveSpoolTareWeight } from "../lib/spool_weight";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
+import { formatGrams, parsePositiveWeight } from "../lib/weight_display";
 import {
   formatPrinterSlotLabelForModel,
   sortPrinterSlotsExtLast,
@@ -475,24 +476,6 @@ function inventorySwatchActionButtonStyle(
         ? `0 18px 36px -24px ${swatchRgba(raw, 0.74)}, inset 0 1px 0 rgba(255, 255, 255, 0.1)`
         : `0 18px 36px -24px ${swatchRgba(raw, 0.62)}, inset 0 1px 0 rgba(255, 255, 255, 0.18)`,
   } as const;
-}
-
-function parseWeight(raw: string, fallback: number): number {
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallback;
-  }
-  return parsed;
-}
-
-function formatGrams(value?: number | null): string {
-  if (value == null) {
-    return "—";
-  }
-  if (value <= 0) {
-    return "0 g";
-  }
-  return `${value} g`;
 }
 
 function normalizeMaterialForMatch(raw?: string | null): string {
@@ -2133,7 +2116,7 @@ export default function InventoryPage({
           setBusy(false);
           return;
         }
-        const initialWeight = parseWeight(
+        const initialWeight = parsePositiveWeight(
           newInitialWeight,
           selectedBambuMaster.default_weight,
         );
@@ -2180,7 +2163,7 @@ export default function InventoryPage({
           setBusy(false);
           return;
         }
-        const initialWeight = parseWeight(
+        const initialWeight = parsePositiveWeight(
           newInitialWeight,
           selectedEsunMaster.default_weight,
         );
@@ -2230,7 +2213,7 @@ export default function InventoryPage({
           setBusy(false);
           return;
         }
-        const initialWeight = parseWeight(newInitialWeight, 1000);
+        const initialWeight = parsePositiveWeight(newInitialWeight, 1000);
         if (clientReadOnly) {
           createdSpoolId = await createLibrarySyncHostSpool(clientHostBaseUrl!, clientLibraryId, {
             id,

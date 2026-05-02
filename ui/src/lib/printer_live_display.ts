@@ -8,15 +8,9 @@ import type {
 import type { ResolvedTheme } from "./theme_mode";
 export { formatDateTime } from "./date_time";
 export { commandErrorText } from "./error_text";
+export { formatGrams } from "./weight_display";
 
 type TranslateFn = (key: string, fallback?: string) => string;
-
-export function formatGrams(value?: number | null): string {
-  if (value == null) {
-    return "—";
-  }
-  return `${Math.max(0, value)} g`;
-}
 
 export function formatRelativeAge(raw: string | null | undefined, t: TranslateFn): string | null {
   const parsedMs = parseDateTimeMs(raw);
