@@ -9,6 +9,13 @@ type SpoolDataSourceOptions = {
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
 };
+type SpoolRowsPageLoader = (
+  options: SpoolDataSourceOptions,
+  limit: number,
+  offset: number,
+) => Promise<SpoolWithMasterRow[]>;
+
+const MAX_LOAD_ALL_SPOOL_PAGES = 500;
 
 export async function loadSpoolRowsPage(
   options: SpoolDataSourceOptions,
@@ -26,15 +33,28 @@ export async function loadAllSpoolRows(
   options: SpoolDataSourceOptions,
   limit = 200,
 ): Promise<SpoolWithMasterRow[]> {
+  return loadAllSpoolRowsWithPageLoader(options, limit, loadSpoolRowsPage);
+}
+
+export async function loadAllSpoolRowsWithPageLoader(
+  options: SpoolDataSourceOptions,
+  limit = 200,
+  loadPage: SpoolRowsPageLoader,
+  maxPages = MAX_LOAD_ALL_SPOOL_PAGES,
+): Promise<SpoolWithMasterRow[]> {
   const allRows: SpoolWithMasterRow[] = [];
+  const pageLimit = Math.max(1, Math.floor(limit));
   let offset = 0;
-  while (true) {
-    const page = await loadSpoolRowsPage(options, limit, offset);
+  for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
+    const page = await loadPage(options, pageLimit, offset);
     allRows.push(...page);
-    if (page.length < limit) {
+    if (page.length < pageLimit) {
       break;
     }
     offset += page.length;
+  }
+  if (allRows.length >= pageLimit * maxPages) {
+    throw new Error("Stopped loading spools because pagination did not finish.");
   }
   return allRows;
 }
