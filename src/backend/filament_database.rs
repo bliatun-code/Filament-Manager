@@ -2467,6 +2467,7 @@ impl FilamentDatabase {
              JOIN filament_master_list m ON m.id = s.master_id
              WHERE COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') = 'OUTBOUND'
                AND l.returned_at IS NULL
+               AND s.deleted_at IS NULL
              ORDER BY l.lent_at DESC",
         )?;
 
@@ -5227,6 +5228,94 @@ mod tests {
         let _ = std::fs::remove_file(&db_path);
         if let Err(message) = result {
             panic!("delete_printer_removes_bambu_live_integration_setting failed: {message}");
+        }
+    }
+
+    #[test]
+    fn list_active_spool_loans_hides_deleted_spools() {
+        let db_path = temp_db_path("active-loans-hide-deleted");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            let master_id = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Basic",
+                    color_name: "Gray",
+                    hex_color: Some("#808080"),
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
+                .map_err(|error| error.to_string())?;
+
+            let make_spool = |id: &str| SpoolRow {
+                id: id.to_string(),
+                master_id: master_id.clone(),
+                qr_code: None,
+                rfid_tag: None,
+                rfid_observed_at: None,
+                status: "IN_STOCK".to_string(),
+                ownership_type: "OWNED".to_string(),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                current_weight_g: Some(1000),
+                remaining_g: Some(1000),
+                spool_tare_weight_g: None,
+                location_id: None,
+                home_location_id: None,
+                purchase_date: None,
+                purchase_price: None,
+                batch_code: None,
+                last_used_at: None,
+            };
+
+            for spool in [make_spool("active_spool"), make_spool("deleted_spool")] {
+                db.insert_spool(&spool)
+                    .map_err(|error| error.to_string())?;
+            }
+
+            db.create_spool_loan("active_spool", "Alice", 700, None)
+                .map_err(|error| error.to_string())?;
+            db.create_spool_loan("deleted_spool", "Bob", 650, None)
+                .map_err(|error| error.to_string())?;
+
+            db.conn
+                .execute(
+                    "UPDATE filament_spools
+                     SET deleted_at = datetime('now'), status = 'DELETED', location_id = NULL
+                     WHERE id = 'deleted_spool'",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
+
+            let active_loans = db
+                .list_active_spool_loans()
+                .map_err(|error| error.to_string())?;
+            assert_eq!(active_loans.len(), 1);
+            assert_eq!(active_loans[0].loan.spool_id, "active_spool");
+            assert_eq!(active_loans[0].loan.borrower_name, "Alice");
+
+            let history = db
+                .list_spool_loans_for_direction(10, true, Some("OUTBOUND"))
+                .map_err(|error| error.to_string())?;
+            assert!(
+                history
+                    .iter()
+                    .any(|row| row.loan.spool_id == "deleted_spool"),
+                "deleted spool loan should remain available in history"
+            );
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("list_active_spool_loans_hides_deleted_spools failed: {message}");
         }
     }
 
