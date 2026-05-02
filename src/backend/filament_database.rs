@@ -2598,7 +2598,7 @@ impl FilamentDatabase {
         let status_clause = if include_returned {
             "1 = 1"
         } else {
-            "l.returned_at IS NULL"
+            "l.returned_at IS NULL AND s.deleted_at IS NULL"
         };
         let mut stmt = self.conn.prepare(&format!(
             "SELECT
@@ -5328,6 +5328,12 @@ mod tests {
                     .any(|row| row.loan.spool_id == "deleted_spool"),
                 "deleted spool loan should remain available in history"
             );
+
+            let active_history = db
+                .list_spool_loans_for_direction(10, false, Some("OUTBOUND"))
+                .map_err(|error| error.to_string())?;
+            assert_eq!(active_history.len(), 1);
+            assert_eq!(active_history[0].loan.spool_id, "active_spool");
 
             Ok(())
         })();
