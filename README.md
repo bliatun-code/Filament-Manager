@@ -193,5 +193,4 @@ npm run tauri -- info
 
 ## Tauri Config Source of Truth
 
-- Use `/Users/bliatun/Documents/Codex/bambu-filament-manager/src-tauri/tauri.conf.json` as the only Tauri app config.
-- The root-level `tauri.conf.json` is intentionally not used.
+- Use `src-tauri/tauri.conf.json` as the Tauri app config.
