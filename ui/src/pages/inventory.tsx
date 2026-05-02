@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppModal } from "../components/app_modal";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { LoanOutModal } from "../components/loan_out_modal";
@@ -561,6 +561,7 @@ export default function InventoryPage({
   const [selectedRfidCaptureSlotId, setSelectedRfidCaptureSlotId] = useState<string | null>(null);
   const [rfidCaptureError, setRfidCaptureError] = useState<string | null>(null);
   const [rfidCaptureLoading, setRfidCaptureLoading] = useState(false);
+  const rfidCaptureRefreshInFlightRef = useRef(false);
 
   useEffect(() => {
     if (!tauri) {
@@ -1735,6 +1736,10 @@ export default function InventoryPage({
     let cancelled = false;
 
     const refreshCapture = async () => {
+      if (cancelled || rfidCaptureRefreshInFlightRef.current) {
+        return;
+      }
+      rfidCaptureRefreshInFlightRef.current = true;
       setRfidCaptureLoading(true);
       try {
         const snapshot = await getPrinterSettings();
@@ -1830,6 +1835,7 @@ export default function InventoryPage({
           );
         }
       } finally {
+        rfidCaptureRefreshInFlightRef.current = false;
         if (!cancelled) {
           setRfidCaptureLoading(false);
         }
