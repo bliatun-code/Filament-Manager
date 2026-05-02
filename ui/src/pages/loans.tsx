@@ -11,7 +11,8 @@ import {
 import { AppModal } from "../components/app_modal";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { LoanOutModal } from "../components/loan_out_modal";
-import { ModalHeader, modalPanelClassName } from "../components/modal_chrome";
+import { ModalHeader } from "../components/modal_chrome";
+import { modalPanelClassName } from "../components/modal_panel_class";
 import { VendorBadge } from "../components/vendor_badge";
 import { neutralChipClass, semanticChipClass } from "../lib/chip_styles";
 import { useI18n } from "../lib/i18n";

@@ -45,7 +45,8 @@ import {
 } from "../lib/printer_slot_writes";
 import { AppModal } from "../components/app_modal";
 import { FeedbackBanner } from "../components/feedback_banner";
-import { ModalHeader, modalPanelClassName } from "../components/modal_chrome";
+import { ModalHeader } from "../components/modal_chrome";
+import { modalPanelClassName } from "../components/modal_panel_class";
 import { PrinterModelPreview } from "../components/printer_model_preview";
 import { SaveOnlyModal } from "../components/save_only_modal";
 import { semanticChipClass } from "../lib/chip_styles";

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
-import { ModalHeader, modalPanelClassName } from "./modal_chrome";
+import { ModalHeader } from "./modal_chrome";
+import { modalPanelClassName } from "./modal_panel_class";
 import { VendorBadge } from "./vendor_badge";
 import {
   formatFilamentDisplayTitle,
