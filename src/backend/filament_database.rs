@@ -92,6 +92,7 @@ const RESET_APP_STATE_TABLES: [&str; 20] = [
 #[derive(Debug)]
 pub enum InventoryError {
     Db(String),
+    InvalidOperation(String),
     NotFound,
 }
 
@@ -107,6 +108,7 @@ impl std::fmt::Display for InventoryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             InventoryError::Db(message) => write!(f, "Database error: {message}"),
+            InventoryError::InvalidOperation(message) => write!(f, "{message}"),
             InventoryError::NotFound => write!(f, "Record not found"),
         }
     }
@@ -1291,7 +1293,7 @@ impl FilamentDatabase {
             )
             .optional()?;
         if active_loan_exists.is_some() {
-            return Err(InventoryError::Db(
+            return Err(InventoryError::InvalidOperation(
                 "spool has an active loan; return it before deleting".to_string(),
             ));
         }

@@ -2598,6 +2598,7 @@ impl From<InventoryError> for CompanionApiError {
     fn from(error: InventoryError) -> Self {
         match error {
             InventoryError::NotFound => CompanionApiError::NotFound("Record not found".to_string()),
+            InventoryError::InvalidOperation(message) => CompanionApiError::BadRequest(message),
             InventoryError::Db(message) => CompanionApiError::Internal(message),
         }
     }
@@ -2625,7 +2626,7 @@ mod tests {
     use crate::app_services::CompanionService;
     use crate::backend::filament_database::{BambuLiveIntegrationRow, FilamentDatabase};
     use crate::backend::inventory_engine::{
-        CreateManualSpoolInput, CreatePrinterInput, InventoryEngine,
+        CreateManualSpoolInput, CreatePrinterInput, InventoryEngine, LendSpoolInput,
     };
     use crate::state::TrustedLanCompanionRuntime;
     use axum::body::{to_bytes, Body};
@@ -4517,6 +4518,67 @@ mod tests {
         let _ = std::fs::remove_file(&db_path);
         if let Err(error) = result {
             panic!("companion_api_creates_and_deletes_printer failed: {error}");
+        }
+    }
+
+    #[tokio::test]
+    async fn companion_api_rejects_spool_delete_with_active_loan() {
+        let db_path = temp_db_path("delete-spool-active-loan");
+        let result = async {
+            seed_db(&db_path)?;
+            let router = build_router(test_state(&db_path));
+
+            let AuthenticatedTestSession {
+                session_cookie,
+                csrf_token,
+                ..
+            } = pair_test_session(&router, &db_path).await?;
+
+            CompanionService::new(db_path.to_string_lossy().to_string())
+                .lend_spool(LendSpoolInput {
+                    spool_id: "spool_1".to_string(),
+                    borrower_name: "Alice".to_string(),
+                    grams_out: Some(800),
+                    note: None,
+                })
+                .map_err(|error| error.to_string())?;
+
+            let delete_spool = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/api/v1/spools/spool_1/delete")
+                        .header("content-type", "application/json")
+                        .header("host", "127.0.0.1:4278")
+                        .header("origin", "http://127.0.0.1:4278")
+                        .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                        .header(COMPANION_CSRF_HEADER, &csrf_token)
+                        .body(Body::from("{}"))
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            assert_eq!(delete_spool.status(), StatusCode::BAD_REQUEST);
+            let delete_body = to_bytes(delete_spool.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?;
+            let delete_text =
+                String::from_utf8(delete_body.to_vec()).map_err(|error| error.to_string())?;
+            assert!(delete_text.contains("return it before deleting"));
+
+            let active_loans = CompanionService::new(db_path.to_string_lossy().to_string())
+                .list_active_spool_loans()
+                .map_err(|error| error.to_string())?;
+            assert_eq!(active_loans.len(), 1);
+
+            Ok::<(), String>(())
+        }
+        .await;
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(error) = result {
+            panic!("companion_api_rejects_spool_delete_with_active_loan failed: {error}");
         }
     }
 
