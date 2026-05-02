@@ -4944,10 +4944,11 @@ mod tests {
     use super::{
         BambuLiveIntegrationRow, FilamentDatabase, LibrarySyncCachedSnapshotRow,
         LibrarySyncSettingsRow, ManualMasterInput, SpoolRow, TrustedLanSettingsRow,
-        RESET_APP_STATE_TABLES,
+        FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES,
     };
     use crate::InventoryOverview;
     use serde_json::json;
+    use std::collections::HashSet;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -4957,6 +4958,26 @@ mod tests {
             .unwrap_or_default()
             .as_nanos();
         std::env::temp_dir().join(format!("filament-manager-{test_name}-{nanos}.db"))
+    }
+
+    #[test]
+    fn reset_app_state_table_list_tracks_all_backup_tables() {
+        let full_backup_tables: HashSet<&str> = FULL_BACKUP_TABLES.iter().copied().collect();
+        let reset_tables: HashSet<&str> = RESET_APP_STATE_TABLES.iter().copied().collect();
+        let preserved_tables: HashSet<&str> =
+            ["filament_master_list", "label_templates"].into_iter().collect();
+
+        assert!(
+            reset_tables.is_disjoint(&preserved_tables),
+            "app-state reset tables must not include catalog/template tables"
+        );
+
+        let covered_tables: HashSet<&str> =
+            reset_tables.union(&preserved_tables).copied().collect();
+        assert_eq!(
+            covered_tables, full_backup_tables,
+            "each full-backup table must be either reset as app state or explicitly preserved"
+        );
     }
 
     #[test]
