@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import type { SettingsTabKey } from "../App";
-import { isValidHexColor, normalizeHexColor, toSwatchColor } from "../lib/color_utils";
+import {
+  isValidHexColor,
+  normalizeHexColor,
+  suggestHexFromColor,
+  toSwatchColor,
+} from "../lib/color_utils";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
   createTrustedLanPairing,
@@ -207,78 +212,6 @@ function extractBaseUrlFromPairingInput(raw: string): string | null {
   } catch {
     return null;
   }
-}
-
-function hslToHex(h: number, s: number, l: number): string {
-  const saturation = Math.max(0, Math.min(100, s)) / 100;
-  const lightness = Math.max(0, Math.min(100, l)) / 100;
-  const c = (1 - Math.abs(2 * lightness - 1)) * saturation;
-  const hh = ((h % 360) + 360) % 360 / 60;
-  const x = c * (1 - Math.abs((hh % 2) - 1));
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  if (hh >= 0 && hh < 1) {
-    r = c;
-    g = x;
-  } else if (hh < 2) {
-    r = x;
-    g = c;
-  } else if (hh < 3) {
-    g = c;
-    b = x;
-  } else if (hh < 4) {
-    g = x;
-    b = c;
-  } else if (hh < 5) {
-    r = x;
-    b = c;
-  } else {
-    r = c;
-    b = x;
-  }
-  const m = lightness - c / 2;
-  const toHex = (channel: number) =>
-    Math.round((channel + m) * 255)
-      .toString(16)
-      .padStart(2, "0")
-      .toUpperCase();
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-}
-
-function suggestHexFromColor(master: MasterCatalogRow): string {
-  const source = `${master.color_name} ${master.filament_name}`.toLowerCase();
-  const named: Array<[RegExp, string]> = [
-    [/(^|\s)black(\s|$)|charcoal|onyx/, "#1F2937"],
-    [/(^|\s)white(\s|$)|ivory/, "#F8FAFC"],
-    [/gray|grey|silver/, "#9CA3AF"],
-    [/red|crimson|scarlet/, "#DC2626"],
-    [/orange|amber/, "#F97316"],
-    [/yellow|gold/, "#EAB308"],
-    [/green|jade|olive|lime/, "#16A34A"],
-    [/blue|azure|cobalt|navy|indigo/, "#2563EB"],
-    [/purple|violet|lavender/, "#7C3AED"],
-    [/pink|rose|magenta/, "#EC4899"],
-    [/brown|chocolate|coffee/, "#8B5E3C"],
-    [/beige|tan|sand|khaki/, "#C8A97E"],
-    [/cyan|teal|turquoise/, "#06B6D4"],
-    [/clear|natural|transparent/, "#D1D5DB"],
-  ];
-  for (const [pattern, hex] of named) {
-    if (pattern.test(source)) {
-      return hex;
-    }
-  }
-  let hash = 2166136261 >>> 0;
-  const seed = `${master.vendor}|${master.material}|${master.filament_name}|${master.color_name}`;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash ^= seed.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  const hue = hash % 360;
-  const saturation = 50 + ((hash >>> 8) % 20);
-  const lightness = 45 + ((hash >>> 16) % 18);
-  return hslToHex(hue, saturation, lightness);
 }
 
 type InventoryMatchResult =
