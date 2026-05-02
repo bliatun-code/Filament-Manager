@@ -1,4 +1,5 @@
 import { t } from "./companion_i18n.js";
+import { isLoanCurrentlyActive } from "./companion_loan_state.js";
 
 function normalizeDetailRootFlow(rootFlow) {
   return rootFlow === "printers" || rootFlow === "loans" ? rootFlow : "storage";
@@ -137,7 +138,7 @@ export function createCompanionDataController(options) {
       state.wishlistItems = Array.isArray(wishlistItems) ? wishlistItems : [];
       state.printers = Array.isArray(printers) ? printers : [];
       state.loanHistory = Array.isArray(loanHistory) ? loanHistory : [];
-      state.activeLoans = state.loanHistory.filter((row) => !row.loan?.returned_at);
+      state.activeLoans = state.loanHistory.filter(isLoanCurrentlyActive);
       ensureActivePrinterSelection();
 
       const selectedStillExists = state.selectedSpoolId

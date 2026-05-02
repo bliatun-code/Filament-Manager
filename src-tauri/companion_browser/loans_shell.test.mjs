@@ -92,6 +92,20 @@ test("loans shell keeps return UI out of the row until a task sheet opens", () =
   assert.doesNotMatch(html, /Returned weight \(g\)/);
 });
 
+test("loans shell marks deleted active history inactive without return action", () => {
+  const html = renderShell({
+    state: {
+      activeLoans: [],
+    },
+    loanRows: [createLoanRow({ spool_status: "DELETED" })],
+    loanSummary: { active: 0, returned: 0, total: 1 },
+  });
+
+  assert.match(html, /Inactive/);
+  assert.doesNotMatch(html, />\s*Return loan\s*</);
+  assert.doesNotMatch(html, /on spool/);
+});
+
 test("loan return task sheet renders the compact return form", () => {
   const state = {
     ...createInitialCompanionState(),

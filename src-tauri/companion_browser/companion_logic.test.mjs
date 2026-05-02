@@ -36,6 +36,12 @@ function createSpoolRow(id, overrides = {}) {
 
 function createLoanRow(spoolId, overrides = {}) {
   return {
+    loan_direction: overrides.loan_direction ?? "OUTBOUND",
+    material: "PLA",
+    filament_name: "Basic",
+    color_name: "White",
+    vendor: "Bambu",
+    ...overrides,
     loan: {
       id: `loan-${spoolId}`,
       spool_id: spoolId,
@@ -46,11 +52,6 @@ function createLoanRow(spoolId, overrides = {}) {
       return_note: "",
       ...overrides.loan,
     },
-    loan_direction: overrides.loan_direction ?? "OUTBOUND",
-    material: "PLA",
-    filament_name: "Basic",
-    color_name: "White",
-    vendor: "Bambu",
   };
 }
 
@@ -149,6 +150,45 @@ test("loan guard helper preserves browser-safe write constraints", () => {
   assert.equal(borrowedInState.allowed, false);
   assert.match(borrowedInState.reason, /Borrowed-in spools/);
 
+});
+
+test("loan filters and summary ignore legacy active rows for deleted spools", () => {
+  const { state, logic } = createLogic({
+    loanStatusFilter: "ACTIVE",
+    loanHistory: [
+      createLoanRow("active-spool"),
+      createLoanRow("deleted-spool", {
+        spool_status: "DELETED",
+      }),
+      createLoanRow("returned-spool", {
+        loan: {
+          returned_at: "2026-04-02 10:00:00",
+        },
+      }),
+    ],
+  });
+
+  assert.deepEqual(
+    logic.filteredLoanRows().map((row) => row.loan.spool_id),
+    ["active-spool"],
+  );
+  assert.deepEqual(logic.loanHistorySummary(), {
+    active: 1,
+    returned: 1,
+    total: 3,
+  });
+
+  state.loanStatusFilter = "ALL";
+  assert.deepEqual(
+    logic.filteredLoanRows().map((row) => row.loan.spool_id),
+    ["active-spool", "deleted-spool", "returned-spool"],
+  );
+
+  state.loanStatusFilter = "RETURNED";
+  assert.deepEqual(
+    logic.filteredLoanRows().map((row) => row.loan.spool_id),
+    ["returned-spool"],
+  );
 });
 
 test("hero refresh label reflects recovery-driven detail opens", () => {

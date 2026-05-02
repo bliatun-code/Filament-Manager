@@ -81,7 +81,10 @@ test("refreshOverview selects the first spool and loads its detail when nothing 
         return [{ printer: { id: "printer-1" } }];
       }
       if (path.startsWith("/api/v1/loans")) {
-        return [{ loan: { id: "loan-1", returned_at: null } }];
+        return [
+          { loan: { id: "loan-1", returned_at: null } },
+          { loan: { id: "loan-2", returned_at: null }, spool_status: "DELETED" },
+        ];
       }
       if (path.startsWith("/api/v1/spools/spool-1")) {
         return { spool: { spool: { id: "spool-1" } } };
@@ -95,6 +98,7 @@ test("refreshOverview selects the first spool and loads its detail when nothing 
   assert.equal(harness.state.selectedSpoolId, "spool-1");
   assert.equal(harness.state.selectedDetail?.spool?.spool?.id, "spool-1");
   assert.equal(harness.state.activeLoans.length, 1);
+  assert.equal(harness.state.activeLoans[0].loan.id, "loan-1");
   assert.equal(harness.state.catalogMasters.length, 1);
   assert.equal(harness.state.wishlistItems.length, 1);
   assert.equal(harness.ensureActivePrinterSelectionCount, 1);

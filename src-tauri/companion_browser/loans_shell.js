@@ -1,4 +1,5 @@
 import { t } from "./companion_i18n.js";
+import { isLoanCurrentlyActive } from "./companion_loan_state.js";
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference } from "./formatters.js";
 import { styleObjectToString, suggestSwatchHex, swatchCssVars, toSwatchColor } from "./companion_theme.js";
@@ -8,6 +9,9 @@ function loanStateLabel(row, locale = "en") {
   const direction = String(row?.loan?.loan_direction || "OUTBOUND").trim().toUpperCase();
   if (returned) {
     return t(locale, "loans.returned", "Returned");
+  }
+  if (!isLoanCurrentlyActive(row)) {
+    return t(locale, "loans.inactive", "Inactive");
   }
   return direction === "INBOUND"
     ? t(locale, "loans.borrowedInActive", "Borrowed in")
@@ -130,6 +134,7 @@ function renderLoanRows(options) {
         row.loan.counterparty_name ||
         t(locale, "loans.unknownBorrower", "Unknown");
       const returned = Boolean(row.loan.returned_at);
+      const active = isLoanCurrentlyActive(row);
       const isSelected = row.loan.spool_id === state.selectedSpoolId;
       const swatch =
         row.hex_color ||
@@ -152,7 +157,7 @@ function renderLoanRows(options) {
       const metaBits = [
         vendorName,
         loanReference,
-        returned ? "" : `${formatGrams(row.spool_remaining_g)} ${t(locale, "loans.onSpool", "on spool")}`,
+        active ? `${formatGrams(row.spool_remaining_g)} ${t(locale, "loans.onSpool", "on spool")}` : "",
       ]
         .filter(Boolean)
         .map((value) => escapeHtml(value))
@@ -188,7 +193,7 @@ function renderLoanRows(options) {
           }
           <div class="loan-card-actions">
             ${
-              !returned
+              active
                 ? `
                   <button
                     class="primary-button loan-action-button"
