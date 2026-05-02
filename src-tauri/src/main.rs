@@ -527,8 +527,7 @@ fn delete_bambu_live_integration(
 
 #[tauri::command]
 fn delete_printer(state: tauri::State<'_, AppState>, printer_id: String) -> Result<(), String> {
-    with_inventory(&state, |engine| engine.delete_printer(&printer_id))?;
-    with_db(&state, |db| db.delete_bambu_live_integration(&printer_id))
+    with_inventory(&state, |engine| engine.delete_printer(&printer_id))
 }
 
 #[tauri::command]

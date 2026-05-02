@@ -4891,8 +4891,9 @@ fn parse_inventory_spools_csv(content: &str) -> InventoryResult<Vec<InventoryImp
 #[cfg(test)]
 mod tests {
     use super::{
-        FilamentDatabase, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, ManualMasterInput,
-        SpoolRow, TrustedLanSettingsRow, RESET_APP_STATE_TABLES,
+        BambuLiveIntegrationRow, FilamentDatabase, LibrarySyncCachedSnapshotRow,
+        LibrarySyncSettingsRow, ManualMasterInput, SpoolRow, TrustedLanSettingsRow,
+        RESET_APP_STATE_TABLES,
     };
     use crate::InventoryOverview;
     use serde_json::json;
@@ -5151,6 +5152,51 @@ mod tests {
         let _ = std::fs::remove_file(&db_path);
         if let Err(message) = result {
             panic!("upsert_printer_with_ams test failed: {message}");
+        }
+    }
+
+    #[test]
+    fn delete_printer_removes_bambu_live_integration_setting() {
+        let db_path = temp_db_path("delete-printer-live-integration");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            db.upsert_printer_with_ams("printer_1", "P1S", "BambuLab P1S", 1, 4)
+                .map_err(|error| error.to_string())?;
+            db.save_bambu_live_integration(
+                "printer_1",
+                &BambuLiveIntegrationRow {
+                    enabled: true,
+                    host: Some("192.168.1.42".to_string()),
+                    access_code: Some("test-access-code".to_string()),
+                    printer_serial: Some("TEST-SERIAL".to_string()),
+                    last_error: None,
+                    observed_state: None,
+                },
+            )
+            .map_err(|error| error.to_string())?;
+
+            let integrations_before = db
+                .list_bambu_live_integrations()
+                .map_err(|error| error.to_string())?;
+            assert_eq!(integrations_before.len(), 1);
+
+            db.delete_printer("printer_1")
+                .map_err(|error| error.to_string())?;
+
+            let integrations_after = db
+                .list_bambu_live_integrations()
+                .map_err(|error| error.to_string())?;
+            assert!(integrations_after.is_empty());
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("delete_printer_removes_bambu_live_integration_setting failed: {message}");
         }
     }
 
