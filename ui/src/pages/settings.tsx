@@ -67,6 +67,7 @@ import {
 import { FeedbackBanner } from "../components/feedback_banner";
 import { AppModal } from "../components/app_modal";
 import { useI18n, type Locale } from "../lib/i18n";
+import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/inventory_export";
 import { neutralChipClass } from "../lib/chip_styles";
 import { copyTextToClipboard } from "../lib/clipboard";
 import { PrinterModelPreview } from "../components/printer_model_preview";
@@ -175,51 +176,6 @@ function formatDiagnosticJson(value: unknown): string {
   } catch {
     return String(value);
   }
-}
-
-function escapeInventoryExportCsv(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
-function buildInventoryExportCsv(rows: SpoolWithMasterRow[]): string {
-  const output = [
-    "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code",
-  ];
-  for (const entry of rows) {
-    output.push(
-      [
-        entry.spool.id,
-        entry.master.material,
-        entry.master.filament_name,
-        entry.master.color_name,
-        entry.spool.status,
-        String(entry.spool.remaining_g ?? 0),
-        entry.spool.location_id ?? "",
-        entry.spool.qr_code ?? "",
-      ]
-        .map(escapeInventoryExportCsv)
-        .join(","),
-    );
-  }
-  return output.join("\n");
-}
-
-function buildInventoryExportJson(rows: SpoolWithMasterRow[]): string {
-  return JSON.stringify(
-    rows.map((entry) => ({
-      spool_id: entry.spool.id,
-      material: entry.master.material,
-      filament_name: entry.master.filament_name,
-      color_name: entry.master.color_name,
-      status: entry.spool.status,
-      remaining_g: entry.spool.remaining_g ?? 0,
-      location: entry.spool.location_id ?? "",
-      qr_code: entry.spool.qr_code ?? "",
-    })),
-  );
 }
 
 function toErrorMessage(error: unknown, fallback: string): string {
