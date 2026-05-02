@@ -67,7 +67,7 @@ import {
   formatInventoryHistoryEventType,
 } from "../lib/inventory_history";
 import { materialTone } from "../lib/material_theme";
-import { loadSpoolRowsPage } from "../lib/spool_data_source";
+import { loadInventorySpools } from "../lib/inventory_data_source";
 import { resolveSpoolTareWeight } from "../lib/spool_weight";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import { formatGrams, parsePositiveWeight } from "../lib/weight_display";
@@ -90,7 +90,6 @@ import {
   fetchLibrarySyncCatalogMasters,
   fetchLibrarySyncSpoolDetail,
   fetchCachedLibrarySyncPrinterOverview,
-  fetchCachedLibrarySyncSpools,
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncWishlistItems,
   getPrinterSettings,
@@ -112,7 +111,6 @@ import {
   type MasterCatalogRow,
   type PrinterOverviewRow,
   type SpoolHistoryEventRow,
-  type SpoolWithMasterRow,
   type SpoolUsagePointRow,
   type WishlistItemRow,
   updateMasterCatalogEntry,
@@ -215,40 +213,6 @@ function segmentedChoiceCountClass(active: boolean): string {
       : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
   }`;
 }
-
-function mapSpoolRowToInventorySpool(row: SpoolWithMasterRow): InventorySpool {
-  const fallbackInitial =
-    Number.isFinite(row.master.default_weight) && row.master.default_weight > 0
-      ? row.master.default_weight
-      : 1000;
-
-  return {
-    id: row.spool.id,
-    masterId: row.spool.master_id,
-    vendor: row.master.vendor,
-    material: row.master.material,
-    filamentName: row.master.filament_name,
-    colorName: row.master.color_name,
-    hexColor: row.master.hex_color,
-    initialWeightGrams:
-      row.spool.initial_weight_g && row.spool.initial_weight_g > 0
-        ? row.spool.initial_weight_g
-        : fallbackInitial,
-    status: normalizeStatus(row.spool.status),
-    ownershipType: normalizeOwnershipType(row.spool.ownership_type),
-    ownerName: row.spool.owner_name ?? null,
-    ownerContact: row.spool.owner_contact ?? null,
-    ownershipNote: row.spool.ownership_note ?? null,
-    remainingGrams: row.spool.remaining_g ?? null,
-    spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
-    location: row.spool.location_id ?? null,
-    homeLocation: row.spool.home_location_id ?? null,
-    qrCode: row.spool.qr_code ?? null,
-    rfidTag: row.spool.rfid_tag ?? null,
-    rfidObservedAt: row.spool.rfid_observed_at ?? null,
-  };
-}
-
 
 type SegmentedChoiceRowProps<T extends string> = {
   label?: string;
@@ -692,40 +656,21 @@ export default function InventoryPage({
     }
     setLoading(true);
     try {
-      const rows =
-        await loadSpoolRowsPage(
-          {
-            clientReadOnly,
-            clientHostBaseUrl,
-            clientLibraryId,
-          },
-          1200,
-          0,
-        );
+      const result = await loadInventorySpools({
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+      });
       if (clientReadOnly) {
-        setClientInventorySource("LIVE");
-        const cached = await fetchCachedLibrarySyncSpools().catch(() => null);
-        setClientInventoryUpdatedAt(cached?.captured_at ?? null);
+        setClientInventorySource(result.source);
+        setClientInventoryUpdatedAt(result.updatedAt);
+        if (result.source === "OFFLINE") {
+          setError(t("inventory.error.loadSpools", "Could not load inventory spools."));
+        }
       }
-      setSpools(rows.map(mapSpoolRowToInventorySpool));
+      setSpools(result.rows);
     } catch (loadError) {
       console.error(loadError);
-      if (clientReadOnly) {
-        try {
-          const cached = await fetchCachedLibrarySyncSpools();
-          if (cached) {
-            setClientInventorySource("CACHED");
-            setClientInventoryUpdatedAt(cached.captured_at ?? null);
-            setSpools(cached.rows.map(mapSpoolRowToInventorySpool));
-            return;
-          }
-        } catch (cacheError) {
-          console.error(cacheError);
-        }
-        setClientInventorySource("OFFLINE");
-        setClientInventoryUpdatedAt(null);
-        setSpools([]);
-      }
       setError(t("inventory.error.loadSpools", "Could not load inventory spools."));
     } finally {
       setLoading(false);
