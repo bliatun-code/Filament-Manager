@@ -1,5 +1,6 @@
 import type { ActivityItem } from "../components/dashboard_widgets";
 import { LOW_STOCK_GRAMS } from "./inventory_constants";
+import { isActiveOutboundLoan } from "./loan_state";
 import { summarizeEffectivePrinterSlots } from "./printer_profiles";
 import type {
   InventoryOverview,
@@ -60,12 +61,6 @@ export type DashboardDerivedState = {
   goalMetrics: DashboardGoalMetrics;
   health: DashboardHealth;
 };
-
-function isActiveOutboundLoan(row: Pick<SpoolLoanDetailsRow, "loan">): boolean {
-  const loanStatus = (row.loan.loan_status ?? "").trim().toUpperCase();
-  const loanDirection = (row.loan.loan_direction ?? "OUTBOUND").trim().toUpperCase();
-  return loanDirection === "OUTBOUND" && (loanStatus === "ACTIVE" || !row.loan.returned_at);
-}
 
 export function buildDashboardDerivedState(params: {
   overview: InventoryOverview;

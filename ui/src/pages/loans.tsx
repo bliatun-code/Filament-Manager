@@ -33,6 +33,7 @@ import {
   toMeasuredTotalWeight,
   toReturnedFilamentWeight,
 } from "../lib/loan_display";
+import { isLoanCurrentlyActive } from "../lib/loan_state";
 import {
   deriveLoanLibrarySyncState,
   loadLoanRowsPage,
@@ -209,7 +210,7 @@ export default function LoansPage() {
     if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
-    if (!tauri || busy || loan.loan.returned_at) {
+    if (!tauri || busy || !isLoanCurrentlyActive(loan)) {
       return;
     }
     const loanDirection = normalizeLoanDirection(loan.loan.loan_direction);
@@ -237,7 +238,7 @@ export default function LoansPage() {
   }
 
   async function handleConfirmReturnLoan() {
-    if (!tauri || busy || !returnModalLoan || returnModalLoan.loan.returned_at) {
+    if (!tauri || busy || !returnModalLoan || !isLoanCurrentlyActive(returnModalLoan)) {
       return;
     }
     const measuredTotalGrams = Number.parseInt(returnModalGrams, 10);
@@ -473,7 +474,7 @@ export default function LoansPage() {
 
           <div className="grid grid-cols-1 gap-2 min-[720px]:grid-cols-2 xl:grid-cols-4">
             {filteredLoans.map((loan) => {
-              const isActive = !loan.loan.returned_at;
+              const isActive = isLoanCurrentlyActive(loan);
               const loanDirection = normalizeLoanDirection(loan.loan.loan_direction);
               const isInbound = loanDirection === "INBOUND";
               const loanTitle = compactLoanTitle(

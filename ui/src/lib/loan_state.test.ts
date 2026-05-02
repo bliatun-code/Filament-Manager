@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { filterLoans } from "./loan_display";
-import { isLoanCurrentlyActive } from "./loan_state";
+import { isActiveOutboundLoan, isLoanCurrentlyActive } from "./loan_state";
 import { groupLoanUsageByPerson } from "./statistics_data_source";
 import { groupedLoanUsage } from "./statistics_model";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
@@ -58,6 +58,35 @@ test("isLoanCurrentlyActive ignores legacy active rows for deleted spools", () =
         },
       }),
     ),
+    false,
+  );
+});
+
+test("isActiveOutboundLoan rejects returned, inbound, and deleted rows", () => {
+  assert.equal(isActiveOutboundLoan(loanRow("active_outbound")), true);
+  assert.equal(
+    isActiveOutboundLoan(
+      loanRow("returned_outbound", {
+        loan: {
+          returned_at: "2026-04-02 10:00:00",
+          loan_status: "RETURNED",
+        },
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    isActiveOutboundLoan(
+      loanRow("active_inbound", {
+        loan: {
+          loan_direction: "INBOUND",
+        },
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    isActiveOutboundLoan(loanRow("deleted_outbound", { spool_status: "DELETED" })),
     false,
   );
 });
