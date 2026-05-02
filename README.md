@@ -182,10 +182,6 @@ Optional tuning:
 - Prusa XL profiles use toolhead counts (`1`, `2`, or `5` toolheads).
 - Prusa MINI+ defaults to single-material (`EXT` only).
 
-## UI modal standards
-
-- Modal UX checklist: `docs/MODAL_UX_CHECKLIST.md`
-
 ## Tauri CLI
 
 Use local CLI from dependencies:
