@@ -1001,8 +1001,10 @@ async function fetchNextStoreEntries(
     const uniqueEntries = dedupeEntries(entries);
     if (uniqueEntries.length > 0) {
       const warningList = Array.from(warnings.values());
-      for (const warning of warningList) {
-        console.warn(`Scraper warning: ${warning}`);
+      if (verbose) {
+        for (const warning of warningList) {
+          console.warn(`Scraper warning: ${warning}`);
+        }
       }
       return {
         baseUrl,
