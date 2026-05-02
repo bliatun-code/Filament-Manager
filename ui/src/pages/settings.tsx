@@ -301,6 +301,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [trustedLanPairingQrUnavailable, setTrustedLanPairingQrUnavailable] = useState(false);
   const [showTrustedLanRevokedBrowsers, setShowTrustedLanRevokedBrowsers] = useState(false);
   const trustedLanPairedBrowsersRef = useRef<TrustedLanPairedBrowser[]>([]);
+  const trustedLanPairedBrowsersRefreshInFlightRef = useRef(false);
   const librarySyncAutoValidationRef = useRef<string | null>(null);
   const transientInfoTimeoutRef = useRef<number | null>(null);
   const silentReloadInFlightRef = useRef(false);
@@ -955,9 +956,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
   const refreshTrustedLanPairedBrowsers = useCallback(
     async (options?: { announceNewPairing?: boolean; suppressErrors?: boolean }) => {
-      if (!tauri) {
+      if (!tauri || trustedLanPairedBrowsersRefreshInFlightRef.current) {
         return;
       }
+      trustedLanPairedBrowsersRefreshInFlightRef.current = true;
       try {
         const nextBrowsers = await listTrustedLanPairedBrowsers();
         const newActiveIds = findNewTrustedLanActiveBrowserIds(
@@ -986,6 +988,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
             ),
           );
         }
+      } finally {
+        trustedLanPairedBrowsersRefreshInFlightRef.current = false;
       }
     },
     [t, tauri],
