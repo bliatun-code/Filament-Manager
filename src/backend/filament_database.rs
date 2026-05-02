@@ -2670,9 +2670,6 @@ impl FilamentDatabase {
         include_returned: bool,
         direction: Option<&str>,
     ) -> InventoryResult<String> {
-        if normalize_loan_direction_filter(direction) == "OUTBOUND" {
-            return self.export_loans_csv(include_returned);
-        }
         let rows = self.list_spool_loans_for_direction(20_000, include_returned, direction)?;
         let mut output = String::from(
             "loan_id,spool_id,direction,counterparty,grams_out,lent_at,returned_at,returned_grams,consumed_grams,material,filament,color,vendor,status\n",
@@ -5545,6 +5542,105 @@ mod tests {
         let _ = std::fs::remove_file(&db_path);
         if let Err(message) = result {
             panic!("list_loan_usage_by_person_can_scope_to_inbound_and_outbound test failed: {message}");
+        }
+    }
+
+    #[test]
+    fn export_loans_csv_defaults_to_outbound_without_recursing() {
+        let db_path = temp_db_path("loan-csv-default-outbound");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            let master_id = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Basic",
+                    color_name: "Gray",
+                    hex_color: Some("#808080"),
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
+                .map_err(|error| error.to_string())?;
+
+            for spool in [
+                SpoolRow {
+                    id: "owned_out_1".to_string(),
+                    master_id: master_id.clone(),
+                    qr_code: None,
+                    rfid_tag: None,
+                    rfid_observed_at: None,
+                    status: "IN_STOCK".to_string(),
+                    ownership_type: "OWNED".to_string(),
+                    owner_name: None,
+                    owner_contact: None,
+                    ownership_note: None,
+                    initial_weight_g: Some(1000),
+                    current_weight_g: Some(1000),
+                    remaining_g: Some(1000),
+                    spool_tare_weight_g: None,
+                    location_id: None,
+                    home_location_id: None,
+                    purchase_date: None,
+                    purchase_price: None,
+                    batch_code: None,
+                    last_used_at: None,
+                },
+                SpoolRow {
+                    id: "borrowed_in_1".to_string(),
+                    master_id,
+                    qr_code: None,
+                    rfid_tag: None,
+                    rfid_observed_at: None,
+                    status: "IN_STOCK".to_string(),
+                    ownership_type: "BORROWED_IN".to_string(),
+                    owner_name: Some("Carla".to_string()),
+                    owner_contact: Some("carla@example.com".to_string()),
+                    ownership_note: None,
+                    initial_weight_g: Some(900),
+                    current_weight_g: Some(900),
+                    remaining_g: Some(900),
+                    spool_tare_weight_g: None,
+                    location_id: None,
+                    home_location_id: None,
+                    purchase_date: None,
+                    purchase_price: None,
+                    batch_code: None,
+                    last_used_at: None,
+                },
+            ] {
+                db.insert_spool(&spool).map_err(|error| error.to_string())?;
+            }
+
+            db.create_spool_loan("owned_out_1", "Alice", 750, None)
+                .map_err(|error| error.to_string())?;
+            db.create_inbound_spool_loan("borrowed_in_1", "Carla", None, None, 820)
+                .map_err(|error| error.to_string())?;
+
+            let outbound_csv = db
+                .export_loans_csv(false)
+                .map_err(|error| error.to_string())?;
+            let explicit_outbound_csv = db
+                .export_loans_csv_for_direction(false, Some("OUTBOUND"))
+                .map_err(|error| error.to_string())?;
+            assert_eq!(outbound_csv, explicit_outbound_csv);
+            assert!(outbound_csv.contains(",owned_out_1,OUTBOUND,Alice,"));
+            assert!(!outbound_csv.contains(",borrowed_in_1,INBOUND,Carla,"));
+
+            let inbound_csv = db
+                .export_loans_csv_for_direction(false, Some("INBOUND"))
+                .map_err(|error| error.to_string())?;
+            assert!(inbound_csv.contains(",borrowed_in_1,INBOUND,Carla,"));
+            assert!(!inbound_csv.contains(",owned_out_1,OUTBOUND,Alice,"));
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("export_loans_csv_defaults_to_outbound_without_recursing failed: {message}");
         }
     }
 
