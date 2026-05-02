@@ -303,6 +303,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const trustedLanPairedBrowsersRef = useRef<TrustedLanPairedBrowser[]>([]);
   const librarySyncAutoValidationRef = useRef<string | null>(null);
   const transientInfoTimeoutRef = useRef<number | null>(null);
+  const silentReloadInFlightRef = useRef(false);
 
   const [printers, setPrinters] = useState<PrinterRow[]>([]);
   const [printerOverview, setPrinterOverview] = useState<PrinterOverviewRow[]>([]);
@@ -650,6 +651,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (!tauri) {
       return;
     }
+    if (options?.silent && silentReloadInFlightRef.current) {
+      return;
+    }
+    if (options?.silent) {
+      silentReloadInFlightRef.current = true;
+    }
     if (!options?.silent) {
       setLoading(true);
     }
@@ -727,6 +734,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       console.error(loadError);
       setError(t("settings.error.load", "Failed to load settings."));
     } finally {
+      if (options?.silent) {
+        silentReloadInFlightRef.current = false;
+      }
       if (!options?.silent) {
         setLoading(false);
       }
