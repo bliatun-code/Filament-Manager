@@ -66,6 +66,28 @@ const FULL_BACKUP_TABLES: [&str; 22] = [
     "trusted_lan_paired_browsers",
     "sync_queue",
 ];
+const RESET_APP_STATE_TABLES: [&str; 20] = [
+    "trusted_lan_pairings",
+    "trusted_lan_paired_browsers",
+    "label_print_jobs",
+    "weight_readings",
+    "scan_events",
+    "spool_history_events",
+    "spool_loans",
+    "print_jobs",
+    "printer_live_events",
+    "ams_slots",
+    "ams_units",
+    "filament_spools",
+    "inventory_locations",
+    "wishlist_items",
+    "alerts",
+    "sync_queue",
+    "scales",
+    "purchase_recommendations",
+    "settings",
+    "printers",
+];
 
 #[derive(Debug)]
 pub enum InventoryError {
@@ -3768,33 +3790,46 @@ impl FilamentDatabase {
     }
 
     pub fn reset_app_state_data(&self) -> InventoryResult<()> {
-        let tx = self.conn.unchecked_transaction()?;
-        tx.execute("DELETE FROM trusted_lan_pairings", [])?;
-        tx.execute("DELETE FROM trusted_lan_paired_browsers", [])?;
-        tx.execute("DELETE FROM label_print_jobs", [])?;
-        tx.execute("DELETE FROM weight_readings", [])?;
-        tx.execute("DELETE FROM scan_events", [])?;
-        tx.execute("DELETE FROM spool_history_events", [])?;
-        tx.execute("DELETE FROM spool_loans", [])?;
-        tx.execute("DELETE FROM print_jobs", [])?;
-        tx.execute("DELETE FROM printer_live_events", [])?;
-        tx.execute(
-            "UPDATE ams_slots SET spool_id = NULL, last_seen_at = NULL",
-            [],
-        )?;
-        tx.execute("DELETE FROM filament_spools", [])?;
-        tx.execute("DELETE FROM inventory_locations", [])?;
-        tx.execute("DELETE FROM wishlist_items", [])?;
-        tx.execute("DELETE FROM alerts", [])?;
-        tx.execute("DELETE FROM sync_queue", [])?;
-        tx.execute("DELETE FROM scales", [])?;
-        tx.execute("DELETE FROM purchase_recommendations", [])?;
-        tx.execute("DELETE FROM settings", [])?;
-        tx.execute("DELETE FROM ams_slots", [])?;
-        tx.execute("DELETE FROM ams_units", [])?;
-        tx.execute("DELETE FROM printers", [])?;
-        tx.commit()?;
-        Ok(())
+        self.conn
+            .execute_batch("PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE;")?;
+
+        let result: InventoryResult<()> = (|| {
+            for table in RESET_APP_STATE_TABLES {
+                self.conn.execute(&format!("DELETE FROM {table}"), [])?;
+            }
+
+            let has_foreign_key_violation = {
+                let mut statement = self.conn.prepare("PRAGMA foreign_key_check")?;
+                let mut rows = statement.query([])?;
+                rows.next()?.is_some()
+            };
+            if has_foreign_key_violation {
+                return Err(InventoryError::Db(
+                    "App-state reset would leave foreign key violations".to_string(),
+                ));
+            }
+
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => match self.conn.execute_batch("COMMIT") {
+                Ok(()) => {
+                    self.conn.execute_batch("PRAGMA foreign_keys = ON;")?;
+                    Ok(())
+                }
+                Err(error) => {
+                    let _ = self.conn.execute_batch("ROLLBACK");
+                    let _ = self.conn.execute_batch("PRAGMA foreign_keys = ON;");
+                    Err(error.into())
+                }
+            },
+            Err(error) => {
+                let _ = self.conn.execute_batch("ROLLBACK");
+                let _ = self.conn.execute_batch("PRAGMA foreign_keys = ON;");
+                Err(error)
+            }
+        }
     }
 
     pub fn reset_catalog_data(&self) -> InventoryResult<CatalogResetStats> {
@@ -4839,7 +4874,7 @@ fn parse_inventory_spools_csv(content: &str) -> InventoryResult<Vec<InventoryImp
 mod tests {
     use super::{
         FilamentDatabase, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, ManualMasterInput,
-        SpoolRow, TrustedLanSettingsRow,
+        SpoolRow, TrustedLanSettingsRow, RESET_APP_STATE_TABLES,
     };
     use crate::InventoryOverview;
     use serde_json::json;
@@ -5368,6 +5403,137 @@ mod tests {
         if let Err(message) = result {
             panic!(
                 "reset_app_state_clears_trusted_lan_pairings_and_paired_browsers failed: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn reset_app_state_clears_fk_graph_without_dropping_catalog_data() {
+        let db_path = temp_db_path("reset-app-state-fk-graph");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            db.conn
+                .execute_batch(
+                    "
+                    INSERT INTO filament_master_list (
+                      id, material, filament_name, color_name, default_weight, vendor
+                    ) VALUES ('master_1', 'PLA', 'Basic', 'Blue', 1000, 'Bambu');
+
+                    INSERT INTO inventory_locations (id, name, type)
+                    VALUES ('location_1', 'Shelf A', 'SHELF');
+
+                    INSERT INTO filament_spools (
+                      id, master_id, status, initial_weight_g, remaining_g, location_id, home_location_id
+                    ) VALUES ('spool_1', 'master_1', 'IN_STOCK', 1000, 900, 'location_1', 'location_1');
+
+                    INSERT INTO spool_history_events (id, spool_id, event_type, payload_json)
+                    VALUES ('history_1', 'spool_1', 'CREATED', '{}');
+
+                    INSERT INTO spool_loans (id, spool_id, borrower_name, grams_out)
+                    VALUES ('loan_1', 'spool_1', 'Alex', 100);
+
+                    INSERT INTO printers (id, model, name)
+                    VALUES ('printer_1', 'P1S', 'Workshop P1S');
+
+                    INSERT INTO ams_units (id, printer_id, slot_count)
+                    VALUES ('ams_1', 'printer_1', 4);
+
+                    INSERT INTO ams_slots (id, ams_id, slot_index, spool_id, last_seen_at)
+                    VALUES ('slot_1', 'ams_1', 1, 'spool_1', datetime('now'));
+
+                    INSERT INTO print_jobs (
+                      id, printer_id, spool_id, job_name, started_at, ended_at, material_used_g, success
+                    ) VALUES ('print_1', 'printer_1', 'spool_1', 'Calibration', datetime('now'), datetime('now'), 10, 1);
+
+                    INSERT INTO printer_live_events (id, printer_id, event_type, payload_json)
+                    VALUES ('live_1', 'printer_1', 'poll', '{}');
+
+                    INSERT INTO scales (id, name, protocol)
+                    VALUES ('scale_1', 'Bench scale', 'manual');
+
+                    INSERT INTO weight_readings (id, scale_id, spool_id, grams, captured_at, source)
+                    VALUES ('reading_1', 'scale_1', 'spool_1', 900, datetime('now'), 'manual');
+
+                    INSERT INTO scan_events (id, spool_id, qr_code, source)
+                    VALUES ('scan_1', 'spool_1', 'qr_1', 'manual');
+
+                    INSERT INTO label_templates (id, name, layout_json)
+                    VALUES ('template_1', 'Default', '{}');
+
+                    INSERT INTO label_print_jobs (id, template_id, spool_id, status)
+                    VALUES ('label_job_1', 'template_1', 'spool_1', 'DONE');
+
+                    INSERT INTO purchase_recommendations (id, material, color_name, reason, confidence)
+                    VALUES ('recommendation_1', 'PLA', 'Blue', 'Low stock', 0.9);
+
+                    INSERT INTO wishlist_items (
+                      id, master_id, material, filament_name, color_name, vendor
+                    ) VALUES ('wishlist_1', 'master_1', 'PLA', 'Basic', 'Blue', 'Bambu');
+
+                    INSERT INTO alerts (id, type, payload_json)
+                    VALUES ('alert_1', 'LOW_STOCK', '{}');
+
+                    INSERT INTO settings (key, value)
+                    VALUES ('theme', 'dark');
+
+                    INSERT INTO trusted_lan_pairings (id, display_name, pairing_token_hash, expires_at)
+                    VALUES ('pairing_1', 'Phone', 'pairing_hash_1', datetime('now', '+10 minutes'));
+
+                    INSERT INTO trusted_lan_paired_browsers (id, display_name, device_token_hash)
+                    VALUES ('browser_1', 'Phone Safari', 'device_hash_1');
+
+                    INSERT INTO sync_queue (id, action_type, payload_json)
+                    VALUES ('sync_1', 'UPSERT', '{}');
+                    ",
+                )
+                .map_err(|error| error.to_string())?;
+
+            db.reset_app_state_data()
+                .map_err(|error| error.to_string())?;
+
+            for table in RESET_APP_STATE_TABLES {
+                let count: i64 = db
+                    .conn
+                    .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                        row.get(0)
+                    })
+                    .map_err(|error| error.to_string())?;
+                assert_eq!(count, 0, "{table} should be empty after app-state reset");
+            }
+
+            let master_count: i64 = db
+                .conn
+                .query_row("SELECT COUNT(*) FROM filament_master_list", [], |row| {
+                    row.get(0)
+                })
+                .map_err(|error| error.to_string())?;
+            let template_count: i64 = db
+                .conn
+                .query_row("SELECT COUNT(*) FROM label_templates", [], |row| row.get(0))
+                .map_err(|error| error.to_string())?;
+            assert_eq!(master_count, 1);
+            assert_eq!(template_count, 1);
+
+            let mut statement = db
+                .conn
+                .prepare("PRAGMA foreign_key_check")
+                .map_err(|error| error.to_string())?;
+            let mut rows = statement.query([]).map_err(|error| error.to_string())?;
+            assert!(
+                rows.next().map_err(|error| error.to_string())?.is_none(),
+                "app-state reset should not leave foreign key violations"
+            );
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "reset_app_state_clears_fk_graph_without_dropping_catalog_data failed: {message}"
             );
         }
     }
