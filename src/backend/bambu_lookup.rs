@@ -404,7 +404,7 @@ fn detect_store(client: &Client) -> Result<DetectStoreResult, String> {
                     }
                 })
                 .collect();
-            scored.sort_by(|a, b| b.1.cmp(&a.1));
+            scored.sort_by_key(|entry| std::cmp::Reverse(entry.1));
 
             let mut candidate_handles: Vec<String> =
                 scored.into_iter().map(|entry| entry.0).collect();
