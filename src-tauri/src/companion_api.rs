@@ -2623,7 +2623,7 @@ mod tests {
         COMPANION_CSRF_HEADER, COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_DEVICE_COOKIE,
     };
     use crate::app_services::CompanionService;
-    use crate::backend::filament_database::FilamentDatabase;
+    use crate::backend::filament_database::{BambuLiveIntegrationRow, FilamentDatabase};
     use crate::backend::inventory_engine::{
         CreateManualSpoolInput, CreatePrinterInput, InventoryEngine,
     };
@@ -4450,6 +4450,21 @@ mod tests {
             assert!(overview_text.contains("\"id\":\"printer_sync_test\""));
             assert!(overview_text.contains("\"name\":\"Sync Test Printer\""));
 
+            FilamentDatabase::open(&db_path)
+                .map_err(|error| error.to_string())?
+                .save_bambu_live_integration(
+                    "printer_sync_test",
+                    &BambuLiveIntegrationRow {
+                        enabled: true,
+                        host: Some("192.168.1.42".to_string()),
+                        access_code: Some("test-access-code".to_string()),
+                        printer_serial: Some("TEST-SERIAL".to_string()),
+                        last_error: None,
+                        observed_state: None,
+                    },
+                )
+                .map_err(|error| error.to_string())?;
+
             let delete_printer = router
                 .clone()
                 .oneshot(
@@ -4486,6 +4501,14 @@ mod tests {
             let overview_text =
                 String::from_utf8(overview_body.to_vec()).map_err(|error| error.to_string())?;
             assert!(!overview_text.contains("\"id\":\"printer_sync_test\""));
+
+            let live_integrations = FilamentDatabase::open(&db_path)
+                .map_err(|error| error.to_string())?
+                .list_bambu_live_integrations()
+                .map_err(|error| error.to_string())?;
+            assert!(!live_integrations
+                .iter()
+                .any(|entry| entry.printer_id == "printer_sync_test"));
 
             Ok::<(), String>(())
         }

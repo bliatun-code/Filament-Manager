@@ -2816,6 +2816,8 @@ impl FilamentDatabase {
     }
 
     pub fn delete_printer(&self, printer_id: &str) -> InventoryResult<()> {
+        let bambu_live_integration_key =
+            Self::bambu_live_integration_setting_key(printer_id.trim());
         let tx = self.conn.unchecked_transaction()?;
 
         {
@@ -2871,6 +2873,11 @@ impl FilamentDatabase {
             "DELETE FROM settings
              WHERE key = 'active_printer_id' AND value = ?1",
             params![printer_id],
+        )?;
+        tx.execute(
+            "DELETE FROM settings
+             WHERE key = ?1",
+            params![bambu_live_integration_key],
         )?;
         let removed = tx.execute(
             "DELETE FROM printers
