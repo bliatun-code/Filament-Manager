@@ -2529,23 +2529,30 @@ impl FilamentDatabase {
         direction: Option<&str>,
     ) -> InventoryResult<Vec<LoanUsageByPersonRow>> {
         let direction_clause = match normalize_loan_direction_filter(direction).as_str() {
-            "INBOUND" => "COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND') = 'INBOUND'",
+            "INBOUND" => "COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') = 'INBOUND'",
             "ALL" => "1 = 1",
-            _ => "COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND') = 'OUTBOUND'",
+            _ => "COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') = 'OUTBOUND'",
         };
         let mut stmt = self.conn.prepare(
             &format!(
                 "SELECT
-                COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND') AS loan_direction,
-                COALESCE(NULLIF(counterparty_name, ''), borrower_name) AS borrower_name,
-                COALESCE(SUM(consumed_grams), 0) AS total_consumed_g,
-                COALESCE(SUM(CASE WHEN returned_at IS NOT NULL THEN 1 ELSE 0 END), 0) AS completed_loans,
-                COALESCE(SUM(CASE WHEN returned_at IS NULL THEN 1 ELSE 0 END), 0) AS active_loans
-             FROM spool_loans
+                COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') AS loan_direction,
+                COALESCE(NULLIF(l.counterparty_name, ''), l.borrower_name) AS borrower_name,
+                COALESCE(SUM(l.consumed_grams), 0) AS total_consumed_g,
+                COALESCE(SUM(CASE WHEN l.returned_at IS NOT NULL THEN 1 ELSE 0 END), 0) AS completed_loans,
+                COALESCE(SUM(CASE
+                    WHEN l.returned_at IS NULL AND s.id IS NOT NULL AND s.deleted_at IS NULL THEN 1
+                    ELSE 0
+                END), 0) AS active_loans
+             FROM spool_loans l
+             LEFT JOIN filament_spools s ON s.id = l.spool_id
              WHERE {}
              GROUP BY
-                COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND'),
-                COALESCE(NULLIF(counterparty_name, ''), borrower_name)
+                COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND'),
+                COALESCE(NULLIF(l.counterparty_name, ''), l.borrower_name)
+             HAVING total_consumed_g > 0
+                OR completed_loans > 0
+                OR active_loans > 0
              ORDER BY total_consumed_g DESC, borrower_name ASC
              LIMIT ?1",
                 direction_clause
@@ -5400,6 +5407,28 @@ mod tests {
                     last_used_at: None,
                 },
                 SpoolRow {
+                    id: "owned_out_deleted".to_string(),
+                    master_id: master_id.clone(),
+                    qr_code: None,
+                    rfid_tag: None,
+                    rfid_observed_at: None,
+                    status: "IN_STOCK".to_string(),
+                    ownership_type: "OWNED".to_string(),
+                    owner_name: None,
+                    owner_contact: None,
+                    ownership_note: None,
+                    initial_weight_g: Some(1000),
+                    current_weight_g: Some(1000),
+                    remaining_g: Some(1000),
+                    spool_tare_weight_g: None,
+                    location_id: None,
+                    home_location_id: None,
+                    purchase_date: None,
+                    purchase_price: None,
+                    batch_code: None,
+                    last_used_at: None,
+                },
+                SpoolRow {
                     id: "borrowed_in_1".to_string(),
                     master_id: master_id.clone(),
                     qr_code: None,
@@ -5454,6 +5483,16 @@ mod tests {
                 .map_err(|error| error.to_string())?;
             db.create_spool_loan("owned_out_2", "Bob", 700, None)
                 .map_err(|error| error.to_string())?;
+            db.create_spool_loan("owned_out_deleted", "Dana", 690, None)
+                .map_err(|error| error.to_string())?;
+            db.conn
+                .execute(
+                    "UPDATE filament_spools
+                     SET deleted_at = datetime('now'), status = 'DELETED'
+                     WHERE id = 'owned_out_deleted'",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
 
             let inbound_returned = db
                 .create_inbound_spool_loan("borrowed_in_1", "Carla", None, None, 760)
@@ -5482,6 +5521,10 @@ mod tests {
             assert_eq!(bob.total_consumed_g, 0);
             assert_eq!(bob.completed_loans, 0);
             assert_eq!(bob.active_loans, 1);
+            assert!(
+                outbound.iter().all(|row| row.borrower_name != "Dana"),
+                "deleted active spool loan should not count as current loan usage"
+            );
 
             let inbound = db
                 .list_loan_usage_by_person_for_direction(10, Some("INBOUND"))
