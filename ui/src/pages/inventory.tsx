@@ -68,6 +68,7 @@ import {
 } from "../lib/inventory_history";
 import { materialTone } from "../lib/material_theme";
 import { loadInventorySpools } from "../lib/inventory_data_source";
+import { loadPrinterOverviewData } from "../lib/printer_data_source";
 import { resolveSpoolTareWeight } from "../lib/spool_weight";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import { formatGrams, parsePositiveWeight } from "../lib/weight_display";
@@ -89,8 +90,6 @@ import {
   deleteWishlistItem,
   fetchLibrarySyncCatalogMasters,
   fetchLibrarySyncSpoolDetail,
-  fetchCachedLibrarySyncPrinterOverview,
-  fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncWishlistItems,
   getPrinterSettings,
   getLibrarySyncSettings,
@@ -98,7 +97,6 @@ import {
   isTauri,
   listActiveSpoolLoans,
   listMasterCatalog,
-  listPrinterOverview,
   listWishlistItems,
   listSpoolHistory,
   listSpoolUsage,
@@ -748,27 +746,19 @@ export default function InventoryPage({
       return;
     }
     try {
-      const [rows, printerSettings] = await Promise.all([
-        clientReadOnly && clientHostBaseUrl && clientLibraryId
-          ? fetchLibrarySyncPrinterOverview(clientHostBaseUrl, clientLibraryId)
-          : listPrinterOverview(),
-        clientReadOnly ? Promise.resolve(null) : getPrinterSettings(),
-      ]);
+      const overview = await loadPrinterOverviewData({
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+      });
+      const rows = overview.printers;
       setPrinterOverview(
         rows.map((printer) => ({
           ...printer,
           slots: sortPrinterSlotsExtLast(printer.slots),
         })),
       );
-      const nextIntegrations =
-        printerSettings
-          ? (Object.fromEntries(
-              (printerSettings.bambu_live_integrations ?? []).map((entry) => [
-                entry.printer_id,
-                entry.config,
-              ]),
-            ) as Record<string, BambuLiveIntegrationSettings>)
-          : {};
+      const nextIntegrations = overview.bambuLiveIntegrations;
       setBambuLiveIntegrations(nextIntegrations);
       setRfidCaptureFieldsBySlotId((current) => {
         const seeded = buildBaselineCaptureFieldsBySlotId(rows, nextIntegrations);
@@ -783,23 +773,6 @@ export default function InventoryPage({
       });
     } catch (overviewError) {
       console.error(overviewError);
-      if (clientReadOnly) {
-        try {
-          const cached = await fetchCachedLibrarySyncPrinterOverview();
-          if (cached?.rows) {
-            setPrinterOverview(
-              cached.rows.map((printer) => ({
-                ...printer,
-                slots: sortPrinterSlotsExtLast(printer.slots),
-              })),
-            );
-            setBambuLiveIntegrations({});
-            return;
-          }
-        } catch (cacheError) {
-          console.error(cacheError);
-        }
-      }
       setPrinterOverview([]);
       setBambuLiveIntegrations({});
     }

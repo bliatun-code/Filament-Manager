@@ -29,6 +29,12 @@ export type PrinterDataSourceOptions = {
   supportedPrinterModels: string[];
 };
 
+export type PrinterOverviewDataSourceOptions = {
+  clientReadOnly: boolean;
+  clientHostBaseUrl?: string | null;
+  clientLibraryId?: string | null;
+};
+
 export type PrinterDataLoadResult = {
   printers: PrinterOverviewRow[];
   spools: SpoolWithMasterRow[];
@@ -36,6 +42,21 @@ export type PrinterDataLoadResult = {
   printerModels: string[];
   source: PrinterSnapshotSource;
   updatedAt: string | null;
+};
+
+export type PrinterOverviewDataLoadResult = {
+  printers: PrinterOverviewRow[];
+  bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
+  source: PrinterSnapshotSource;
+  updatedAt: string | null;
+};
+
+type PrinterOverviewDataSourceDependencies = {
+  fetchHostOverview?: typeof fetchLibrarySyncPrinterOverview;
+  listLocalOverview?: typeof listPrinterOverview;
+  loadLocalSettings?: typeof getPrinterSettings;
+  fetchCachedOverview?: typeof fetchCachedLibrarySyncPrinterOverview;
+  onLoadError?: (error: unknown) => void;
 };
 
 function mapBambuLiveIntegrations(
@@ -60,6 +81,57 @@ export function derivePrinterLibrarySyncState(
     clientHostDeviceName: syncSettings.host_device_name ?? null,
     clientHostBaseUrl: syncSettings.host_base_url ?? null,
     clientLibraryId: syncSettings.library_id ?? null,
+  };
+}
+
+export async function loadPrinterOverviewData(
+  options: PrinterOverviewDataSourceOptions,
+  dependencies: PrinterOverviewDataSourceDependencies = {},
+): Promise<PrinterOverviewDataLoadResult> {
+  const fetchHostOverview = dependencies.fetchHostOverview ?? fetchLibrarySyncPrinterOverview;
+  const listLocalOverview = dependencies.listLocalOverview ?? listPrinterOverview;
+  const loadLocalSettings = dependencies.loadLocalSettings ?? getPrinterSettings;
+  const fetchCachedOverview =
+    dependencies.fetchCachedOverview ?? fetchCachedLibrarySyncPrinterOverview;
+  const onLoadError = dependencies.onLoadError ?? console.error;
+  const { clientReadOnly, clientHostBaseUrl, clientLibraryId } = options;
+  const canUseHost = clientReadOnly && clientHostBaseUrl && clientLibraryId;
+
+  if (canUseHost) {
+    try {
+      return {
+        printers: await fetchHostOverview(clientHostBaseUrl, clientLibraryId),
+        bambuLiveIntegrations: {},
+        source: "LIVE",
+        updatedAt: null,
+      };
+    } catch (loadError) {
+      onLoadError(loadError);
+      const cached = await fetchCachedOverview().catch(() => null);
+      if (cached?.rows) {
+        return {
+          printers: cached.rows,
+          bambuLiveIntegrations: {},
+          source: "CACHED",
+          updatedAt: cached.captured_at ?? null,
+        };
+      }
+
+      return {
+        printers: [],
+        bambuLiveIntegrations: {},
+        source: "OFFLINE",
+        updatedAt: null,
+      };
+    }
+  }
+
+  const [printers, settings] = await Promise.all([listLocalOverview(), loadLocalSettings()]);
+  return {
+    printers,
+    bambuLiveIntegrations: mapBambuLiveIntegrations(settings.bambu_live_integrations),
+    source: "LIVE",
+    updatedAt: null,
   };
 }
 
