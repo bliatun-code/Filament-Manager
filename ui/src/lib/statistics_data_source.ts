@@ -21,15 +21,13 @@ import {
 import { loadAllSpoolRows } from "./spool_data_source";
 import { isLoanCurrentlyActive } from "./loan_state";
 import { deriveInventoryOverviewFromRows } from "./statistics_model";
+import {
+  deriveLibrarySyncPageState,
+  type LibrarySyncPageState,
+} from "./library_sync_state";
 
 export type StatisticsSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
-
-export type StatisticsLibrarySyncState = {
-  clientReadOnly: boolean;
-  clientHostDeviceName: string | null;
-  clientHostBaseUrl: string | null;
-  clientLibraryId: string | null;
-};
+export type StatisticsLibrarySyncState = LibrarySyncPageState;
 
 export type StatisticsDataLoadResult = {
   overview: InventoryOverview | null;
@@ -70,17 +68,7 @@ type LoanBreakdownRowsDependencies = {
 export function deriveStatisticsLibrarySyncState(
   syncSettings: LibrarySyncSettings,
 ): StatisticsLibrarySyncState {
-  const isClientMode =
-    syncSettings.mode === "CLIENT" &&
-    Boolean(syncSettings.host_base_url) &&
-    Boolean(syncSettings.library_id);
-
-  return {
-    clientReadOnly: isClientMode,
-    clientHostDeviceName: syncSettings.host_device_name ?? null,
-    clientHostBaseUrl: syncSettings.host_base_url ?? null,
-    clientLibraryId: syncSettings.library_id ?? null,
-  };
+  return deriveLibrarySyncPageState(syncSettings, { requireHostForClientReadOnly: true });
 }
 
 export function groupLoanUsageByPerson(

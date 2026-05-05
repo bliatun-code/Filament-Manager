@@ -6,21 +6,17 @@ import {
   getPrinterSettings,
   listPrinterOverview,
   type BambuLiveIntegrationEntry,
-  type LibrarySyncSettings,
   type PrinterOverviewRow,
   type SpoolWithMasterRow,
 } from "./tauri_client";
 import { loadSpoolRowsPage } from "./spool_data_source";
+import {
+  deriveLibrarySyncPageState,
+  type LibrarySyncPageState,
+} from "./library_sync_state";
 
 export type PrinterSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
-
-export type PrinterLibrarySyncState = {
-  clientReadOnly: boolean;
-  clientHostWritePaired: boolean;
-  clientHostDeviceName: string | null;
-  clientHostBaseUrl: string | null;
-  clientLibraryId: string | null;
-};
+export type PrinterLibrarySyncState = LibrarySyncPageState;
 
 export type PrinterDataSourceOptions = {
   clientReadOnly: boolean;
@@ -72,17 +68,7 @@ function resolvePrinterModels(
   return printerModels && printerModels.length > 0 ? printerModels : supportedPrinterModels;
 }
 
-export function derivePrinterLibrarySyncState(
-  syncSettings: LibrarySyncSettings,
-): PrinterLibrarySyncState {
-  return {
-    clientReadOnly: syncSettings.mode === "CLIENT",
-    clientHostWritePaired: syncSettings.client_auth_paired ?? false,
-    clientHostDeviceName: syncSettings.host_device_name ?? null,
-    clientHostBaseUrl: syncSettings.host_base_url ?? null,
-    clientLibraryId: syncSettings.library_id ?? null,
-  };
-}
+export const derivePrinterLibrarySyncState = deriveLibrarySyncPageState;
 
 export async function loadPrinterOverviewData(
   options: PrinterOverviewDataSourceOptions,

@@ -2,19 +2,15 @@ import {
   fetchCachedLibrarySyncLoans,
   fetchLibrarySyncLoans,
   listSpoolLoans,
-  type LibrarySyncSettings,
   type SpoolLoanDetailsRow,
 } from "./tauri_client";
+import {
+  deriveLibrarySyncPageState,
+  type LibrarySyncPageState,
+} from "./library_sync_state";
 
 export type LoanSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
-
-export type LoanLibrarySyncState = {
-  clientReadOnly: boolean;
-  clientHostWritePaired: boolean;
-  clientHostDeviceName: string | null;
-  clientHostBaseUrl: string | null;
-  clientLibraryId: string | null;
-};
+export type LoanLibrarySyncState = LibrarySyncPageState;
 
 export type LoanDataSourceOptions = {
   clientReadOnly: boolean;
@@ -30,17 +26,7 @@ export type LoanDataLoadResult = {
   usedFallback: boolean;
 };
 
-export function deriveLoanLibrarySyncState(
-  syncSettings: LibrarySyncSettings,
-): LoanLibrarySyncState {
-  return {
-    clientReadOnly: syncSettings.mode === "CLIENT",
-    clientHostWritePaired: syncSettings.client_auth_paired ?? false,
-    clientHostDeviceName: syncSettings.host_device_name ?? null,
-    clientHostBaseUrl: syncSettings.host_base_url ?? null,
-    clientLibraryId: syncSettings.library_id ?? null,
-  };
-}
+export const deriveLoanLibrarySyncState = deriveLibrarySyncPageState;
 
 export async function loadLoanRowsPage(
   options: LoanDataSourceOptions,
