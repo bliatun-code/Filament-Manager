@@ -9,6 +9,7 @@ import {
 } from "../lib/catalog_data_source";
 import { useI18n } from "../lib/i18n";
 import { materialTone } from "../lib/material_theme";
+import { loadWishlistItems } from "../lib/wishlist_data_source";
 import {
   type CatalogRefreshProgressPayload,
   type CatalogRefreshResult,
@@ -17,7 +18,6 @@ import {
   createWishlistItem,
   deleteWishlistItem,
   isTauri,
-  listWishlistItems,
   refreshBambuCatalog,
   refreshEsunCatalog,
   subscribeCatalogRefreshProgress,
@@ -173,7 +173,7 @@ export default function WishlistPage() {
     }
     setWishlistLoading(true);
     try {
-      const rows = await listWishlistItems(500);
+      const rows = await loadWishlistItems();
       setWishlistItems(rows);
     } catch (wishlistError) {
       console.error(wishlistError);

@@ -76,6 +76,7 @@ import { loadPrinterOverviewData } from "../lib/printer_data_source";
 import { resolveSpoolTareWeight } from "../lib/spool_weight";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import { formatGrams, parsePositiveWeight } from "../lib/weight_display";
+import { loadWishlistItems } from "../lib/wishlist_data_source";
 import {
   formatPrinterSlotLabelForModel,
   sortPrinterSlotsExtLast,
@@ -93,13 +94,11 @@ import {
   deleteSpool,
   deleteWishlistItem,
   fetchLibrarySyncSpoolDetail,
-  fetchLibrarySyncWishlistItems,
   getPrinterSettings,
   getLibrarySyncSettings,
   getTrustedLanCompanionStatus,
   isTauri,
   listActiveSpoolLoans,
-  listWishlistItems,
   listSpoolHistory,
   listSpoolUsage,
   printLabelHtml,
@@ -707,10 +706,11 @@ export default function InventoryPage({
     }
     setWishlistLoading(true);
     try {
-      const rows =
-        clientReadOnly && clientHostBaseUrl && clientLibraryId
-          ? await fetchLibrarySyncWishlistItems(clientHostBaseUrl, clientLibraryId, 500)
-          : await listWishlistItems(500);
+      const rows = await loadWishlistItems({
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+      });
       setWishlistItems(rows);
     } catch (wishlistError) {
       console.error(wishlistError);
