@@ -59,7 +59,7 @@ type PrinterOverviewDataSourceDependencies = {
   onLoadError?: (error: unknown) => void;
 };
 
-function mapBambuLiveIntegrations(
+export function mapBambuLiveIntegrations(
   entries: BambuLiveIntegrationEntry[] | null | undefined,
 ): Record<string, BambuLiveIntegrationEntry["config"]> {
   return Object.fromEntries((entries ?? []).map((entry) => [entry.printer_id, entry.config]));

@@ -19,17 +19,12 @@ import {
   exportInventoryCsv,
   exportInventoryJson,
   fetchLibrarySyncSnapshot,
-  fetchLibrarySyncPrinterOverview,
-  fetchLibrarySyncPrinterSettings,
   getAppVersion,
   getLibrarySyncSettings,
   pairLibrarySyncHost,
-  getPrinterSettings,
   getTrustedLanCompanionStatus,
   importDataFile,
   isTauri,
-  listMasterCatalog,
-  listPrinterOverview,
   listTrustedLanInterfaces,
   listTrustedLanPairedBrowsers,
   printLabelPdf,
@@ -94,6 +89,7 @@ import { copyTextToClipboard } from "../lib/clipboard";
 import { PrinterModelPreview } from "../components/printer_model_preview";
 import { DiagnosticCaptureChart } from "../components/diagnostic_capture_chart";
 import { loadAllSpoolRows } from "../lib/spool_data_source";
+import { loadSettingsPageData } from "../lib/settings_data_source";
 import {
   averageIntervalMs,
   buildDiagnosticDisplayTrays,
@@ -662,62 +658,24 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setLoading(true);
     }
     try {
-      const [snapshot, catalogRows, syncSettings, localSpoolSnapshot] = await Promise.all([
-        getPrinterSettings(),
-        listMasterCatalog(5000),
-        getLibrarySyncSettings(),
-        loadAllSpoolRows(
-          {
-            clientReadOnly: false,
-          },
-          5000,
-        ),
-      ]);
-      let overviewRows: PrinterOverviewRow[] = [];
-      let nextSpoolRows = localSpoolSnapshot;
-      let nextBambuLiveIntegrations = Object.fromEntries(
-        (snapshot.bambu_live_integrations ?? []).map((entry) => [entry.printer_id, entry.config]),
-      );
-      if (syncSettings.mode === "CLIENT") {
-        const cachedPrinterRows = syncSettings.cached_printers?.rows ?? [];
-        if (syncSettings.host_base_url && syncSettings.library_id) {
-          try {
-            const [hostOverviewRows, hostPrinterSettings, hostSpoolRows] = await Promise.all([
-              fetchLibrarySyncPrinterOverview(syncSettings.host_base_url, syncSettings.library_id),
-              fetchLibrarySyncPrinterSettings(syncSettings.host_base_url, syncSettings.library_id),
-              loadAllSpoolRows(
-                {
-                  clientReadOnly: true,
-                  clientHostBaseUrl: syncSettings.host_base_url,
-                  clientLibraryId: syncSettings.library_id,
-                },
-                5000,
-              ),
-            ]);
-            overviewRows = hostOverviewRows;
-            nextSpoolRows = hostSpoolRows;
-            nextBambuLiveIntegrations = Object.fromEntries(
-              (hostPrinterSettings.bambu_live_integrations ?? []).map((entry) => [
-                entry.printer_id,
-                entry.config,
-              ]),
-            );
-          } catch (loadError) {
-            console.warn("Settings host printer overview unavailable, using cached snapshot.", loadError);
-            overviewRows = cachedPrinterRows;
-          }
-        } else {
-          overviewRows = cachedPrinterRows;
-        }
-      } else {
-        overviewRows = await listPrinterOverview();
-      }
+      const {
+        snapshot,
+        catalogRows,
+        syncSettings,
+        overviewRows,
+        spoolRows,
+        bambuLiveIntegrations,
+      } = await loadSettingsPageData({
+        onHostLoadError: (loadError) => {
+          console.warn("Settings host printer overview unavailable, using cached snapshot.", loadError);
+        },
+      });
       setPrinters(
         syncSettings.mode === "CLIENT" ? overviewRows.map((row) => row.printer) : snapshot.printers,
       );
       setPrinterOverview(overviewRows);
-      setSpoolRows(nextSpoolRows);
-      setBambuLiveIntegrations(nextBambuLiveIntegrations);
+      setSpoolRows(spoolRows);
+      setBambuLiveIntegrations(bambuLiveIntegrations);
       setCatalogMasters(catalogRows);
       setLibrarySyncSettings(syncSettings);
       setLibrarySyncModeDraft((syncSettings.mode as LibrarySyncMode) ?? "STANDALONE");
