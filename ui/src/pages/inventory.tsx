@@ -67,6 +67,10 @@ import {
   formatInventoryHistoryEventType,
 } from "../lib/inventory_history";
 import { materialTone } from "../lib/material_theme";
+import {
+  loadCatalogMasters,
+  resolveCatalogSelectionDefaults,
+} from "../lib/catalog_data_source";
 import { loadInventorySpools } from "../lib/inventory_data_source";
 import { loadPrinterOverviewData } from "../lib/printer_data_source";
 import { resolveSpoolTareWeight } from "../lib/spool_weight";
@@ -88,7 +92,6 @@ import {
   deleteLibrarySyncHostWishlistItem,
   deleteSpool,
   deleteWishlistItem,
-  fetchLibrarySyncCatalogMasters,
   fetchLibrarySyncSpoolDetail,
   fetchLibrarySyncWishlistItems,
   getPrinterSettings,
@@ -96,7 +99,6 @@ import {
   getTrustedLanCompanionStatus,
   isTauri,
   listActiveSpoolLoans,
-  listMasterCatalog,
   listWishlistItems,
   listSpoolHistory,
   listSpoolUsage,
@@ -680,21 +682,15 @@ export default function InventoryPage({
       return;
     }
     try {
-      const rows =
-        clientReadOnly && clientHostBaseUrl && clientLibraryId
-          ? await fetchLibrarySyncCatalogMasters(clientHostBaseUrl, clientLibraryId, 1000)
-          : await listMasterCatalog(1000);
+      const rows = await loadCatalogMasters({
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+      });
       setMasters(rows);
-      if (rows.length > 0) {
-        const firstBambu = rows.find((row) =>
-          row.vendor.toLowerCase().includes("bambu"),
-        );
-        const firstEsun = rows.find((row) =>
-          row.vendor.toLowerCase().includes("esun"),
-        );
-        setNewBambuMasterId((current) => current || firstBambu?.id || rows[0].id);
-        setNewEsunMasterId((current) => current || firstEsun?.id || "");
-      }
+      const defaults = resolveCatalogSelectionDefaults(rows);
+      setNewBambuMasterId((current) => current || defaults.bambuMasterId);
+      setNewEsunMasterId((current) => current || defaults.esunMasterId);
     } catch (catalogError) {
       console.error(catalogError);
       if (clientReadOnly) {

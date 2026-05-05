@@ -3,6 +3,10 @@ import { AppModal } from "../components/app_modal";
 import { VendorBadge } from "../components/vendor_badge";
 import { neutralChipClass, semanticChipClass } from "../lib/chip_styles";
 import { toSwatchColor } from "../lib/color_utils";
+import {
+  loadCatalogMasters,
+  resolveCatalogSelectionDefaults,
+} from "../lib/catalog_data_source";
 import { useI18n } from "../lib/i18n";
 import { materialTone } from "../lib/material_theme";
 import {
@@ -13,7 +17,6 @@ import {
   createWishlistItem,
   deleteWishlistItem,
   isTauri,
-  listMasterCatalog,
   listWishlistItems,
   refreshBambuCatalog,
   refreshEsunCatalog,
@@ -153,25 +156,16 @@ export default function WishlistPage() {
       return;
     }
     try {
-      const rows = await listMasterCatalog(1000);
+      const rows = await loadCatalogMasters();
       setMasters(rows);
-      if (!newBambuMasterId && rows.length > 0) {
-        const firstBambu = rows.find((row) =>
-          row.vendor.toLowerCase().includes("bambu"),
-        );
-        setNewBambuMasterId(firstBambu?.id ?? rows[0].id);
-      }
-      if (!newEsunMasterId && rows.length > 0) {
-        const firstEsun = rows.find((row) =>
-          row.vendor.toLowerCase().includes("esun"),
-        );
-        setNewEsunMasterId(firstEsun?.id ?? "");
-      }
+      const defaults = resolveCatalogSelectionDefaults(rows);
+      setNewBambuMasterId((current) => current || defaults.bambuMasterId);
+      setNewEsunMasterId((current) => current || defaults.esunMasterId);
     } catch (catalogError) {
       console.error(catalogError);
       setError(t("wishlist.error.loadCatalog", "Could not load master catalog."));
     }
-  }, [newBambuMasterId, newEsunMasterId, t, tauri]);
+  }, [t, tauri]);
 
   const reloadWishlist = useCallback(async () => {
     if (!tauri) {
