@@ -7,28 +7,12 @@ import {
   type ActivityItem,
 } from "../components/dashboard_widgets";
 import {
-  fetchLibrarySyncLoans,
-  fetchLibrarySyncPrinterOverview,
-  fetchLibrarySyncSnapshot,
-  fetchLibrarySyncWishlistItems,
-  getTrustedLanCompanionStatus,
-  getLibrarySyncSettings,
-  inventoryOverview,
   isTauri,
-  listActiveSpoolLoans,
-  listPrinterOverview,
-  listWishlistItems,
-  topMaterials,
-  validateLibrarySyncHost,
-  type WishlistItemRow,
   type TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
-import {
-  buildDashboardDerivedState,
-  type DashboardGoalMetrics,
-} from "../lib/dashboard_model";
+import { type DashboardGoalMetrics } from "../lib/dashboard_model";
 import { useI18n } from "../lib/i18n";
-import { loadAllSpoolRows } from "../lib/spool_data_source";
+import { loadDashboardData } from "../lib/dashboard_data_source";
 import type { PageKey } from "../App";
 
 const defaultStats = [
@@ -76,11 +60,6 @@ function parseUtcTimestamp(raw: string): Date | null {
     return null;
   }
   return parsed;
-}
-
-function hasInvalidClientPairingMessage(message?: string | null): boolean {
-  const normalized = (message ?? "").trim().toLowerCase();
-  return normalized.includes("desktop client pairing is no longer valid");
 }
 
 function progressRatio(current: number, target: number): number {
@@ -267,183 +246,47 @@ export default function DashboardPage({
       if (!tauri) {
         return;
       }
-      const [syncSettings, trustedLan] =
-        await Promise.all([
-          getLibrarySyncSettings().catch(() => null),
-          getTrustedLanCompanionStatus().catch(() => null),
-        ]);
+      const loaded = await loadDashboardData({
+        previousClientHostNeedsRepair: clientHostNeedsRepair,
+        t,
+      });
       if (cancelledRef?.current) {
         return;
       }
 
-      setDashboardSyncMode((syncSettings?.mode ?? "STANDALONE").trim().toUpperCase());
-      setCompanionStatus(trustedLan);
-      const cachedSnapshot = syncSettings?.cached_snapshot ?? null;
-      const clientMode = syncSettings?.mode === "CLIENT";
-      const persistedPairingNeedsRepair =
-        clientMode &&
-        !!syncSettings?.client_auth_paired &&
-        hasInvalidClientPairingMessage(syncSettings?.last_validation_message);
-      let pairingNeedsRepair = clientMode && (clientHostNeedsRepair || persistedPairingNeedsRepair);
-      setClientHostDisplayName(
-        syncSettings?.host_device_name ?? cachedSnapshot?.device_name ?? null,
-      );
-      setClientHostNeedsRepair(pairingNeedsRepair);
-      if (clientMode) {
-        if (!syncSettings?.host_base_url) {
-          setClientHostCompanionTone("off");
-        } else if (pairingNeedsRepair) {
-          setClientHostCompanionTone("warn");
-        }
-      } else {
-        setClientHostNeedsRepair(false);
-        setClientHostCompanionTone(
-          !trustedLan?.enabled
-            ? "off"
-            : trustedLan.running && trustedLan.shell_reachable
-              ? "live"
-              : "warn",
-        );
-      }
-      let activeClientSnapshot = cachedSnapshot;
-      let clientSnapshotSource: "live" | "cached" = "cached";
-      let clientSpoolRows = syncSettings?.cached_spools?.rows ?? null;
-      let clientPrinterRows = syncSettings?.cached_printers?.rows ?? null;
-      let clientLoanRows = syncSettings?.cached_loans?.rows ?? null;
-      let clientWishlistRows = [] as WishlistItemRow[];
-      if (clientMode && syncSettings?.host_base_url) {
-        const [validationResult, snapshotResult, spoolsResult, printersResult, loansResult, wishlistResult] =
-          await Promise.allSettled([
-            validateLibrarySyncHost(syncSettings.host_base_url, syncSettings.library_id),
-            fetchLibrarySyncSnapshot(syncSettings.host_base_url, syncSettings.library_id),
-            loadAllSpoolRows({
-              clientReadOnly: true,
-              clientHostBaseUrl: syncSettings.host_base_url,
-              clientLibraryId: syncSettings.library_id,
-            }),
-            fetchLibrarySyncPrinterOverview(syncSettings.host_base_url, syncSettings.library_id),
-            fetchLibrarySyncLoans(syncSettings.host_base_url, syncSettings.library_id, 2000),
-            fetchLibrarySyncWishlistItems(syncSettings.host_base_url, syncSettings.library_id, 500),
-          ]);
-        if (validationResult.status === "fulfilled") {
-          const validation = validationResult.value;
-          pairingNeedsRepair =
-            validation.pairing_checked && !validation.pairing_valid;
-          setClientHostNeedsRepair(pairingNeedsRepair);
-          if (validation.device_name) {
-            setClientHostDisplayName(validation.device_name);
-          }
-          if (!validation.reachable) {
-            setClientHostCompanionTone("off");
-          } else if (!validation.ok || !validation.matches_library_id || pairingNeedsRepair) {
-            setClientHostCompanionTone("warn");
-          }
-        } else {
-          console.error(validationResult.reason);
-        }
-        if (snapshotResult.status === "fulfilled") {
-          activeClientSnapshot = snapshotResult.value;
-          clientSnapshotSource = "live";
-          setClientHostCompanionTone(pairingNeedsRepair ? "warn" : "live");
-          setClientHostDisplayName(snapshotResult.value.device_name ?? syncSettings?.host_device_name ?? null);
-        } else {
-          console.error(snapshotResult.reason);
-          setClientHostCompanionTone(syncSettings?.host_base_url ? "warn" : "off");
-        }
-        if (spoolsResult.status === "fulfilled") {
-          clientSpoolRows = spoolsResult.value;
-        } else {
-          console.error(spoolsResult.reason);
-        }
-        if (printersResult.status === "fulfilled") {
-          clientPrinterRows = printersResult.value;
-        } else {
-          console.error(printersResult.reason);
-        }
-        if (loansResult.status === "fulfilled") {
-          clientLoanRows = loansResult.value;
-        } else {
-          console.error(loansResult.reason);
-        }
-        if (wishlistResult.status === "fulfilled") {
-          clientWishlistRows = wishlistResult.value;
-        } else {
-          console.error(wishlistResult.reason);
-        }
-      }
-      if (clientMode && activeClientSnapshot) {
-        const spoolRows = clientSpoolRows ?? [];
-        const printers = clientPrinterRows ?? [];
-        const loans = clientLoanRows ?? [];
-        const derived = buildDashboardDerivedState({
-          overview: activeClientSnapshot.inventory,
-          printers,
-          spoolRows,
-          loans,
-          wishlist: clientWishlistRows,
-          materialRows: null,
-          t,
-        });
-        setStats(derived.stats);
-        const capturedAt = parseUtcTimestamp(activeClientSnapshot.captured_at);
+      setDashboardSyncMode(loaded.syncMode);
+      setCompanionStatus(loaded.trustedLan);
+      setClientHostCompanionTone(loaded.clientHostCompanionTone);
+      setClientHostDisplayName(loaded.clientHostDisplayName);
+      setClientHostNeedsRepair(loaded.clientHostNeedsRepair);
+      setStats(loaded.derived.stats);
+      setActivity(loaded.derived.activity);
+      setUsagePoints(loaded.derived.usagePoints);
+      setOwnershipOnHand(loaded.derived.ownershipOnHand);
+      setOwnershipLowStock(loaded.derived.ownershipLowStock);
+      cachedGoalMetrics = loaded.derived.goalMetrics;
+      setGoalMetrics(cachedGoalMetrics);
+      setHealth(loaded.derived.health);
+
+      if (loaded.syncSource !== "local") {
+        const capturedAt = loaded.capturedAt ? parseUtcTimestamp(loaded.capturedAt) : null;
         setLastSyncLabel(
           `${t(
-            clientSnapshotSource === "live"
+            loaded.syncSource === "client-live"
               ? "dashboard.clientSnapshotSyncedLive"
               : "dashboard.clientSnapshotSyncedCached",
-            clientSnapshotSource === "live" ? "Live host snapshot" : "Cached host snapshot",
+            loaded.syncSource === "client-live" ? "Live host snapshot" : "Cached host snapshot",
           )} ${
             capturedAt
               ? capturedAt.toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
                 })
-              : activeClientSnapshot.captured_at
+              : loaded.capturedAt
           }`,
         );
-        setActivity(derived.activity);
-        setUsagePoints(derived.usagePoints);
-        setOwnershipOnHand(derived.ownershipOnHand);
-        setOwnershipLowStock(derived.ownershipLowStock);
-        cachedGoalMetrics = derived.goalMetrics;
-        setGoalMetrics(cachedGoalMetrics);
-        setHealth(derived.health);
         return;
       }
-
-      const [overview, printers, spoolRows, loans, wishlist, materialRows] = await Promise.all([
-        inventoryOverview(),
-        listPrinterOverview(),
-        loadAllSpoolRows({
-          clientReadOnly: false,
-          clientHostBaseUrl: null,
-          clientLibraryId: null,
-        }),
-        listActiveSpoolLoans(),
-        listWishlistItems(500),
-        topMaterials(12),
-      ]);
-      if (cancelledRef?.current) {
-        return;
-      }
-
-      const derived = buildDashboardDerivedState({
-        overview,
-        printers,
-        spoolRows,
-        loans,
-        wishlist,
-        materialRows,
-        t,
-      });
-      setOwnershipOnHand(derived.ownershipOnHand);
-      setOwnershipLowStock(derived.ownershipLowStock);
-      setStats(derived.stats);
-      setActivity(derived.activity);
-      setUsagePoints(derived.usagePoints);
-      cachedGoalMetrics = derived.goalMetrics;
-      setGoalMetrics(derived.goalMetrics);
-      setHealth(derived.health);
       setLastSyncLabel(
         `${t("dashboard.synced", "Synced")} ${new Date().toLocaleTimeString([], {
           hour: "2-digit",
