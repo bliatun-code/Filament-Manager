@@ -9,6 +9,7 @@ import {
   listLoanUsageByPerson,
   listFilamentConsumption,
   listPrinterOverview,
+  listSpoolLoans,
   type InventoryOverview,
   type LibrarySyncSettings,
   type LoanUsageByPersonRow,
@@ -40,6 +41,30 @@ export type StatisticsDataLoadResult = {
   inboundLoanUsage: LoanUsageByPersonRow[];
   updatedAt: string | null;
   source: StatisticsSnapshotSource;
+};
+
+export type FilamentConsumptionBreakdownOptions = {
+  clientReadOnly: boolean;
+  clientHostBaseUrl?: string | null;
+  clientLibraryId?: string | null;
+  printerId?: string | null;
+  limit?: number;
+};
+
+export type LoanBreakdownRowsOptions = {
+  clientReadOnly: boolean;
+  cachedLoanDetails: SpoolLoanDetailsRow[];
+  direction?: string | null;
+  limit?: number;
+};
+
+type FilamentConsumptionBreakdownDependencies = {
+  fetchHostConsumption?: typeof fetchLibrarySyncFilamentConsumption;
+  listLocalConsumption?: typeof listFilamentConsumption;
+};
+
+type LoanBreakdownRowsDependencies = {
+  listLocalLoans?: typeof listSpoolLoans;
 };
 
 export function deriveStatisticsLibrarySyncState(
@@ -97,6 +122,40 @@ export function groupLoanUsageByPerson(
     }
     return left.borrower_name.localeCompare(right.borrower_name);
   });
+}
+
+export async function loadFilamentConsumptionBreakdown(
+  options: FilamentConsumptionBreakdownOptions,
+  dependencies: FilamentConsumptionBreakdownDependencies = {},
+): Promise<FilamentConsumptionRow[]> {
+  const fetchHostConsumption =
+    dependencies.fetchHostConsumption ?? fetchLibrarySyncFilamentConsumption;
+  const listLocalConsumption = dependencies.listLocalConsumption ?? listFilamentConsumption;
+  const {
+    clientReadOnly,
+    clientHostBaseUrl,
+    clientLibraryId,
+    printerId = null,
+    limit = 500,
+  } = options;
+
+  if (clientReadOnly && clientHostBaseUrl && clientLibraryId) {
+    return fetchHostConsumption(clientHostBaseUrl, clientLibraryId, limit, printerId);
+  }
+
+  return listLocalConsumption(limit, printerId);
+}
+
+export async function loadLoanBreakdownRows(
+  options: LoanBreakdownRowsOptions,
+  dependencies: LoanBreakdownRowsDependencies = {},
+): Promise<SpoolLoanDetailsRow[]> {
+  if (options.clientReadOnly) {
+    return options.cachedLoanDetails;
+  }
+
+  const listLocalLoans = dependencies.listLocalLoans ?? listSpoolLoans;
+  return listLocalLoans(options.limit ?? 2000, true, options.direction ?? null);
 }
 
 export async function loadStatisticsData(

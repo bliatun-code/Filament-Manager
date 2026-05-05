@@ -47,15 +47,14 @@ import {
 } from "../lib/statistics_model";
 import {
   deriveStatisticsLibrarySyncState,
+  loadFilamentConsumptionBreakdown,
+  loadLoanBreakdownRows,
   loadStatisticsData,
 } from "../lib/statistics_data_source";
 import { useResolvedTheme } from "../lib/theme_mode";
 import {
-  fetchLibrarySyncFilamentConsumption,
   getLibrarySyncSettings,
-  listFilamentConsumption,
   isTauri,
-  listSpoolLoans,
   type FilamentConsumptionRow,
   type InventoryOverview,
   type LoanUsageByPersonRow,
@@ -259,14 +258,12 @@ export default function StatisticsPage() {
       setConsumptionLoading(true);
       setConsumptionError(null);
       try {
-        const rows = clientReadOnly
-          ? await fetchLibrarySyncFilamentConsumption(
-              clientHostBaseUrl!,
-              clientLibraryId,
-              500,
-              printerId,
-            )
-          : await listFilamentConsumption(500, printerId);
+        const rows = await loadFilamentConsumptionBreakdown({
+          clientReadOnly,
+          clientHostBaseUrl,
+          clientLibraryId,
+          printerId,
+        });
         setConsumptionRows(rows);
       } catch (loadError) {
         console.error(loadError);
@@ -319,7 +316,11 @@ export default function StatisticsPage() {
       setBorrowerError(null);
       setBorrowerRows([]);
       try {
-        const loanRows = clientReadOnly ? loanDetails : await listSpoolLoans(2000, true, direction);
+        const loanRows = await loadLoanBreakdownRows({
+          clientReadOnly,
+          cachedLoanDetails: loanDetails,
+          direction,
+        });
         const borrowerLoanRows = loanRows.filter(
           (row) =>
             normalizeLoanDirection(row.loan.loan_direction) === direction &&
