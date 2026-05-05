@@ -10,7 +10,6 @@ import {
   fetchLibrarySyncLoans,
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncSnapshot,
-  fetchLibrarySyncSpools,
   fetchLibrarySyncWishlistItems,
   getTrustedLanCompanionStatus,
   getLibrarySyncSettings,
@@ -19,7 +18,6 @@ import {
   listActiveSpoolLoans,
   listPrinterOverview,
   listWishlistItems,
-  listSpools,
   topMaterials,
   validateLibrarySyncHost,
   type WishlistItemRow,
@@ -30,6 +28,7 @@ import {
   type DashboardGoalMetrics,
 } from "../lib/dashboard_model";
 import { useI18n } from "../lib/i18n";
+import { loadAllSpoolRows } from "../lib/spool_data_source";
 import type { PageKey } from "../App";
 
 const defaultStats = [
@@ -317,7 +316,11 @@ export default function DashboardPage({
           await Promise.allSettled([
             validateLibrarySyncHost(syncSettings.host_base_url, syncSettings.library_id),
             fetchLibrarySyncSnapshot(syncSettings.host_base_url, syncSettings.library_id),
-            fetchLibrarySyncSpools(syncSettings.host_base_url, syncSettings.library_id, 2500, 0),
+            loadAllSpoolRows({
+              clientReadOnly: true,
+              clientHostBaseUrl: syncSettings.host_base_url,
+              clientLibraryId: syncSettings.library_id,
+            }),
             fetchLibrarySyncPrinterOverview(syncSettings.host_base_url, syncSettings.library_id),
             fetchLibrarySyncLoans(syncSettings.host_base_url, syncSettings.library_id, 2000),
             fetchLibrarySyncWishlistItems(syncSettings.host_base_url, syncSettings.library_id, 500),
@@ -411,7 +414,11 @@ export default function DashboardPage({
       const [overview, printers, spoolRows, loans, wishlist, materialRows] = await Promise.all([
         inventoryOverview(),
         listPrinterOverview(),
-        listSpools(2500, 0),
+        loadAllSpoolRows({
+          clientReadOnly: false,
+          clientHostBaseUrl: null,
+          clientLibraryId: null,
+        }),
         listActiveSpoolLoans(),
         listWishlistItems(500),
         topMaterials(12),
