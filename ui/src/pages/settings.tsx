@@ -22,10 +22,8 @@ import {
   getAppVersion,
   getLibrarySyncSettings,
   pairLibrarySyncHost,
-  getTrustedLanCompanionStatus,
   importDataFile,
   isTauri,
-  listTrustedLanInterfaces,
   listTrustedLanPairedBrowsers,
   printLabelPdf,
   refreshBambuCatalog,
@@ -90,6 +88,7 @@ import { PrinterModelPreview } from "../components/printer_model_preview";
 import { DiagnosticCaptureChart } from "../components/diagnostic_capture_chart";
 import { loadAllSpoolRows } from "../lib/spool_data_source";
 import { loadSettingsPageData } from "../lib/settings_data_source";
+import { loadTrustedLanSettingsData } from "../lib/trusted_lan_data_source";
 import {
   averageIntervalMs,
   buildDiagnosticDisplayTrays,
@@ -847,29 +846,19 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       return null;
     }
     setTrustedLanLoading(true);
-    let nextTrustedLanStatus: TrustedLanCompanionStatus | null = null;
     try {
-      const [trustedLanResult, trustedLanInterfacesResult, pairedBrowsersResult] =
-        await Promise.allSettled([
-          getTrustedLanCompanionStatus(),
-          listTrustedLanInterfaces(),
-          listTrustedLanPairedBrowsers(),
-        ]);
-      const nextTrustedLanInterfaces =
-        trustedLanInterfacesResult.status === "fulfilled" ? trustedLanInterfacesResult.value : [];
+      const trustedLanData = await loadTrustedLanSettingsData();
 
-      if (trustedLanResult.status === "fulfilled") {
-        nextTrustedLanStatus = trustedLanResult.value;
-        setTrustedLanStatus(trustedLanResult.value);
-        syncTrustedLanDraftFromStatus(trustedLanResult.value, nextTrustedLanInterfaces);
-      } else {
-        console.error(trustedLanResult.reason);
-        nextTrustedLanStatus = null;
-        setTrustedLanStatus(null);
-        syncTrustedLanDraftFromStatus(null, nextTrustedLanInterfaces);
+      setTrustedLanStatus(trustedLanData.status);
+      setTrustedLanInterfaces(trustedLanData.interfaces);
+      setTrustedLanPairedBrowsers(trustedLanData.pairedBrowsers);
+      syncTrustedLanDraftFromStatus(trustedLanData.status, trustedLanData.interfaces);
+
+      if (trustedLanData.statusError) {
+        console.error(trustedLanData.statusError);
         setError(
           toErrorMessage(
-            trustedLanResult.reason,
+            trustedLanData.statusError,
             t(
               "settings.error.loadTrustedLanCompanion",
               "Failed to load trusted-LAN companion status.",
@@ -878,19 +867,15 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         );
       }
 
-      if (trustedLanInterfacesResult.status === "fulfilled") {
-        setTrustedLanInterfaces(nextTrustedLanInterfaces);
-      } else {
-        console.error(trustedLanInterfacesResult.reason);
-        setTrustedLanInterfaces([]);
+      if (trustedLanData.interfacesError) {
+        console.error(trustedLanData.interfacesError);
       }
 
-      if (pairedBrowsersResult.status === "fulfilled") {
-        setTrustedLanPairedBrowsers(pairedBrowsersResult.value);
-      } else {
-        console.error(pairedBrowsersResult.reason);
-        setTrustedLanPairedBrowsers([]);
+      if (trustedLanData.pairedBrowsersError) {
+        console.error(trustedLanData.pairedBrowsersError);
       }
+
+      return trustedLanData.status;
     } catch (loadError) {
       console.error(loadError);
       setTrustedLanStatus(null);
@@ -909,7 +894,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setTrustedLanLoading(false);
     }
-    return nextTrustedLanStatus;
   }, [syncTrustedLanDraftFromStatus, t, tauri]);
 
   const refreshTrustedLanPairedBrowsers = useCallback(
