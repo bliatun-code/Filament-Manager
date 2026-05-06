@@ -15,6 +15,11 @@ export function parseDateTimeMs(raw?: string | null): number | null {
   return parsed.getTime();
 }
 
+export function parseDateTime(raw?: string | null): Date | null {
+  const parsedMs = parseDateTimeMs(raw);
+  return parsedMs == null ? null : new Date(parsedMs);
+}
+
 export function formatDateTime(raw: string, locale: Locale): string {
   const parsedMs = parseDateTimeMs(raw);
   if (parsedMs == null) {

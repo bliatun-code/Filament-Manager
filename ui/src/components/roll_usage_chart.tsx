@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { parseDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
 
 type UsagePoint = {
@@ -18,8 +19,8 @@ const CHART_HEIGHT = 120;
 const CHART_PADDING = 14;
 
 function toDisplayTime(raw: string): string {
-  const parsed = new Date(raw);
-  if (Number.isNaN(parsed.getTime())) {
+  const parsed = parseDateTime(raw);
+  if (!parsed) {
     return raw;
   }
   return parsed.toLocaleString();

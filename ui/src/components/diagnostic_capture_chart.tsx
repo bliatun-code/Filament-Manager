@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { parseDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
 
 type DiagnosticCaptureChartPoint = {
@@ -18,8 +19,8 @@ const CHART_PADDING_X = 18;
 const CHART_PADDING_Y = 16;
 
 function formatObservedAt(raw: string): string {
-  const parsed = new Date(raw);
-  if (Number.isNaN(parsed.getTime())) {
+  const parsed = parseDateTime(raw);
+  if (!parsed) {
     return raw;
   }
   return parsed.toLocaleString();

@@ -10,6 +10,7 @@ import {
   isTauri,
   type TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
+import { parseDateTime } from "../lib/date_time";
 import { type DashboardGoalMetrics } from "../lib/dashboard_model";
 import { useI18n } from "../lib/i18n";
 import { loadDashboardData } from "../lib/dashboard_data_source";
@@ -49,18 +50,6 @@ const defaultStats = [
     accent: "amber" as const,
   },
 ];
-
-function parseUtcTimestamp(raw: string): Date | null {
-  const normalized = raw.trim();
-  if (!normalized) {
-    return null;
-  }
-  const parsed = new Date(normalized.replace(" ", "T") + "Z");
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-  return parsed;
-}
 
 function progressRatio(current: number, target: number): number {
   if (target <= 0) {
@@ -269,7 +258,7 @@ export default function DashboardPage({
       setHealth(loaded.derived.health);
 
       if (loaded.syncSource !== "local") {
-        const capturedAt = loaded.capturedAt ? parseUtcTimestamp(loaded.capturedAt) : null;
+        const capturedAt = parseDateTime(loaded.capturedAt);
         setLastSyncLabel(
           `${t(
             loaded.syncSource === "client-live"
