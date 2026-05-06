@@ -16,15 +16,8 @@ import {
 } from "../lib/color_utils";
 import { formatDateTime } from "../lib/date_time";
 import { commandErrorText } from "../lib/error_text";
-import {
-  buildFilamentLabelHtml,
-  buildFilamentLabelQrDataUrl,
-} from "../lib/filament_label_print";
-import {
-  buildFilamentQrPayload,
-  deriveCompanionShellUrl,
-  type FilamentQrMode,
-} from "../lib/filament_qr_payload";
+import { buildFilamentLabelHtml } from "../lib/filament_label_print";
+import type { FilamentQrMode } from "../lib/filament_qr_payload";
 import { useI18n } from "../lib/i18n";
 import {
   buildMaterialOptions,
@@ -81,6 +74,7 @@ import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import { formatGrams, parsePositiveWeight } from "../lib/weight_display";
 import { loadWishlistItems } from "../lib/wishlist_data_source";
 import { loadLibrarySyncPageState } from "../lib/library_sync_state";
+import { buildSpoolQrArtifacts } from "../lib/spool_qr_artifacts";
 import {
   formatPrinterSlotLabelForModel,
   sortPrinterSlotsExtLast,
@@ -98,7 +92,6 @@ import {
   deleteSpool,
   deleteWishlistItem,
   getPrinterSettings,
-  getTrustedLanCompanionStatus,
   isTauri,
   printLabelHtml,
   purgeLibrarySyncHostSpool,
@@ -1482,34 +1475,17 @@ export default function InventoryPage({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [showRollModal]);
 
-  const resolveSpoolQrCompanionShellUrl = useCallback(async () => {
-    if (clientReadOnly && clientHostBaseUrl?.trim()) {
-      return deriveCompanionShellUrl(clientHostBaseUrl);
-    }
-    const trustedLanStatus = await getTrustedLanCompanionStatus().catch(() => null);
-    return trustedLanStatus?.shell_url?.trim() || null;
-  }, [clientHostBaseUrl, clientReadOnly]);
-
-  const buildSpoolQrArtifacts = useCallback(async (
+  const buildSelectedSpoolQrArtifacts = useCallback(async (
     spool: InventorySpool,
     mode: FilamentQrMode = "companion",
   ) => {
-    const qrReference = spool.id.trim();
-    const companionShellUrl = await resolveSpoolQrCompanionShellUrl();
-    const qr = buildFilamentQrPayload(qrReference, {
+    return buildSpoolQrArtifacts({
+      spoolId: spool.id,
       mode,
-      companionShellUrl,
+      clientReadOnly,
+      clientHostBaseUrl,
     });
-    const qrDataUrl = await buildFilamentLabelQrDataUrl(qr.payload);
-    return {
-      qrReference,
-      qrPayload: qr.payload,
-      qrDataUrl,
-      qrMode: qr.mode,
-      qrTarget: qr.target,
-      companionShellUrl,
-    };
-  }, [resolveSpoolQrCompanionShellUrl]);
+  }, [clientHostBaseUrl, clientReadOnly]);
 
   useEffect(() => {
     if (!selectedSpool || !showRollModal) {
@@ -1524,7 +1500,7 @@ export default function InventoryPage({
     let cancelled = false;
     setSelectedSpoolQrLoading(true);
 
-    void buildSpoolQrArtifacts(selectedSpool, selectedSpoolQrMode)
+    void buildSelectedSpoolQrArtifacts(selectedSpool, selectedSpoolQrMode)
       .then(({ qrDataUrl, qrMode, qrTarget, companionShellUrl }) => {
         if (cancelled) {
           return;
@@ -1550,7 +1526,7 @@ export default function InventoryPage({
     return () => {
       cancelled = true;
     };
-  }, [buildSpoolQrArtifacts, selectedSpool, selectedSpoolQrMode, showRollModal]);
+  }, [buildSelectedSpoolQrArtifacts, selectedSpool, selectedSpoolQrMode, showRollModal]);
 
   useEffect(() => {
     if (!showRfidCaptureModal || !tauri || clientReadOnly || !selectedRfidCaptureSlot) {
@@ -2742,7 +2718,7 @@ export default function InventoryPage({
       return;
     }
     try {
-      const { qrReference, qrPayload, qrDataUrl } = await buildSpoolQrArtifacts(
+      const { qrReference, qrPayload, qrDataUrl } = await buildSelectedSpoolQrArtifacts(
         selectedSpool,
         selectedSpoolQrMode,
       );
