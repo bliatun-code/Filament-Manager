@@ -83,6 +83,10 @@ import { buildSpoolQrArtifacts } from "../lib/spool_qr_artifacts";
 import {
   createInventorySpoolFromMaster,
   createManualInventorySpool,
+  deleteInventorySpool,
+  purgeInventorySpool,
+  updateInventorySpoolDetails,
+  updateInventorySpoolStatus,
 } from "../lib/spool_writes";
 import {
   formatPrinterSlotLabelForModel,
@@ -91,13 +95,9 @@ import {
 import {
   assignPrinterSlot,
   assignLibrarySyncHostPrinterSlot,
-  deleteLibrarySyncHostSpool,
-  deleteSpool,
   getPrinterSettings,
   isTauri,
   printLabelHtml,
-  purgeLibrarySyncHostSpool,
-  purgeSpool,
   recordPrintUsage,
   type ActiveSpoolLoanRow,
   type BambuLiveIntegrationSettings,
@@ -107,11 +107,8 @@ import {
   type SpoolUsagePointRow,
   type WishlistItemRow,
   updateMasterCatalogEntry,
-  updateLibrarySyncHostSpoolDetails,
   updateLibrarySyncHostSpoolRfidTag,
-  updateSpoolDetails,
   updateSpoolRfidTag,
-  updateSpoolStatus,
   updateLibrarySyncHostSpoolTareWeight,
   updateLibrarySyncHostSpoolWeight,
   updateSpoolTareWeight,
@@ -2303,21 +2300,13 @@ export default function InventoryPage({
     setManageBusy(true);
     setError(null);
     try {
-      if (clientReadOnly) {
-        await deleteLibrarySyncHostSpool(
-          clientHostBaseUrl!,
-          clientLibraryId,
-          {
-            spool_id: selectedSpool.id,
-            reason: "manual removal",
-          },
-        );
-      } else {
-        await deleteSpool({
+      await deleteInventorySpool(
+        {
           spool_id: selectedSpool.id,
           reason: "manual removal",
-        });
-      }
+        },
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+      );
       setSelectedSpoolId(null);
       setHistoryRows([]);
       setUsagePoints([]);
@@ -2369,17 +2358,16 @@ export default function InventoryPage({
           });
         }
       }
+      await updateInventorySpoolStatus(
+        {
+          spool_id: selectedSpool.id,
+          qr_code: selectedSpool.qrCode ?? null,
+          status: "EMPTY",
+          location: selectedSpool.location ?? null,
+        },
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+      );
       if (clientReadOnly) {
-        await updateLibrarySyncHostSpoolDetails(
-          clientHostBaseUrl!,
-          clientLibraryId,
-          {
-            spool_id: selectedSpool.id,
-            qr_code: selectedSpool.qrCode ?? null,
-            status: "EMPTY",
-            location: selectedSpool.location ?? null,
-          },
-        );
         await updateLibrarySyncHostSpoolWeight(
           clientHostBaseUrl!,
           clientLibraryId,
@@ -2387,7 +2375,6 @@ export default function InventoryPage({
           0,
         );
       } else {
-        await updateSpoolStatus(selectedSpool.id, "EMPTY");
         await updateSpoolWeight(selectedSpool.id, 0);
       }
       await reloadSpools();
@@ -2415,36 +2402,24 @@ export default function InventoryPage({
     setManageBusy(true);
     setError(null);
     try {
-      if (clientReadOnly) {
-        if (!canUseClientHostWrite()) {
-          return;
-        }
-        await updateLibrarySyncHostSpoolDetails(
-          clientHostBaseUrl!,
-          clientLibraryId,
-          {
-            spool_id: selectedSpool.id,
-            qr_code: selectedSpool.qrCode ?? null,
-            status: selectedSpool.status,
-            location: selectedSpool.location ?? null,
-            home_location: location || null,
-          },
-        );
-        await reloadSpools();
-        await reloadPrinterOverview();
-        setInfoMessage(t("inventory.homeLocationSaved", "Home location saved."));
+      if (clientReadOnly && !canUseClientHostWrite()) {
         return;
       }
-      await updateSpoolDetails({
-        spool_id: selectedSpool.id,
-        qr_code: selectedSpool.qrCode ?? null,
-        status: selectedSpool.status,
-        location: selectedSpool.location ?? null,
-        home_location: location || null,
-      });
+      await updateInventorySpoolDetails(
+        {
+          spool_id: selectedSpool.id,
+          qr_code: selectedSpool.qrCode ?? null,
+          status: selectedSpool.status,
+          location: selectedSpool.location ?? null,
+          home_location: location || null,
+        },
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+      );
       await reloadSpools();
       await reloadPrinterOverview();
-      await reloadSpoolDetail(selectedSpool.id);
+      if (!clientReadOnly) {
+        await reloadSpoolDetail(selectedSpool.id);
+      }
       setInfoMessage(t("inventory.homeLocationSaved", "Home location saved."));
     } catch (updateError) {
       console.error(updateError);
@@ -2484,20 +2459,15 @@ export default function InventoryPage({
     setManageBusy(true);
     setError(null);
     try {
-      if (clientReadOnly) {
-        await updateLibrarySyncHostSpoolDetails(
-          clientHostBaseUrl!,
-          clientLibraryId,
-          {
-            spool_id: selectedSpool.id,
-            qr_code: selectedSpool.qrCode ?? null,
-            status: "IN_STOCK",
-            location: selectedSpool.location ?? null,
-          },
-        );
-      } else {
-        await updateSpoolStatus(selectedSpool.id, "IN_STOCK");
-      }
+      await updateInventorySpoolStatus(
+        {
+          spool_id: selectedSpool.id,
+          qr_code: selectedSpool.qrCode ?? null,
+          status: "IN_STOCK",
+          location: selectedSpool.location ?? null,
+        },
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+      );
       await reloadSpools();
       await reloadPrinterOverview();
       await reloadActiveLoans();
@@ -2524,10 +2494,10 @@ export default function InventoryPage({
     setManageBusy(true);
     setError(null);
     try {
+      if (clientReadOnly && !canUseClientHostWrite()) {
+        return;
+      }
       if (clientReadOnly) {
-        if (!canUseClientHostWrite()) {
-          return;
-        }
         if (nextStatus === "LOST" && selectedSpoolAssignedSlot) {
           setError(
             t(
@@ -2537,38 +2507,28 @@ export default function InventoryPage({
           );
           return;
         }
-        await updateLibrarySyncHostSpoolDetails(
-          clientHostBaseUrl!,
-          clientLibraryId,
-          {
-            spool_id: selectedSpool.id,
-            qr_code: selectedSpool.qrCode ?? null,
-            status: nextStatus,
-            location: selectedSpool.location ?? null,
-          },
-        );
-        await reloadSpools();
-        await reloadPrinterOverview();
-        await reloadActiveLoans();
-        setInfoMessage(
-          nextStatus === "LOST"
-            ? t("inventory.markedLost", "Roll marked as lost.")
-            : t("inventory.markedFound", "Roll restored to in stock."),
-        );
-        return;
-      }
-      if (nextStatus === "LOST" && selectedSpoolAssignedSlot) {
+      } else if (nextStatus === "LOST" && selectedSpoolAssignedSlot) {
         await assignPrinterSlot({
           printer_id: selectedSpoolAssignedSlot.printerId,
           slot_id: selectedSpoolAssignedSlot.slotId,
           spool_id: null,
         });
       }
-      await updateSpoolStatus(selectedSpool.id, nextStatus);
+      await updateInventorySpoolStatus(
+        {
+          spool_id: selectedSpool.id,
+          qr_code: selectedSpool.qrCode ?? null,
+          status: nextStatus,
+          location: selectedSpool.location ?? null,
+        },
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+      );
       await reloadSpools();
       await reloadPrinterOverview();
       await reloadActiveLoans();
-      await reloadSpoolDetail(selectedSpool.id);
+      if (!clientReadOnly) {
+        await reloadSpoolDetail(selectedSpool.id);
+      }
       setInfoMessage(
         nextStatus === "LOST"
           ? t("inventory.markedLost", "Roll marked as lost.")
@@ -2605,21 +2565,13 @@ export default function InventoryPage({
     setManageBusy(true);
     setError(null);
     try {
-      if (clientReadOnly) {
-        await purgeLibrarySyncHostSpool(
-          clientHostBaseUrl!,
-          clientLibraryId,
-          {
-            spool_id: selectedSpool.id,
-            reason: "manual purge",
-          },
-        );
-      } else {
-        await purgeSpool({
+      await purgeInventorySpool(
+        {
           spool_id: selectedSpool.id,
           reason: "manual purge",
-        });
-      }
+        },
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+      );
       setSelectedSpoolId(null);
       setHistoryRows([]);
       setUsagePoints([]);
@@ -2783,7 +2735,12 @@ export default function InventoryPage({
       }
       const calculatedRemaining = Math.max(0, safeGrams - selectedSpoolResolvedTare);
       if (selectedSpool.status === "EMPTY" && calculatedRemaining > 0) {
-        await updateSpoolStatus(selectedSpool.id, "IN_STOCK");
+        await updateInventorySpoolStatus({
+          spool_id: selectedSpool.id,
+          qr_code: selectedSpool.qrCode ?? null,
+          status: "IN_STOCK",
+          location: selectedSpool.location ?? null,
+        });
         setInfoMessage(t("inventory.refilledAuto", "Roll reactivated from new measured weight."));
       }
       await reloadSpools();
