@@ -16,10 +16,12 @@ import {
   updateWishlistEntryStatus,
 } from "../lib/wishlist_data_source";
 import {
+  createInventorySpoolFromMaster,
+  createManualInventorySpool,
+} from "../lib/spool_writes";
+import {
   type CatalogRefreshProgressPayload,
   type CatalogRefreshResult,
-  createManualSpool,
-  createSpool,
   isTauri,
   refreshBambuCatalog,
   refreshEsunCatalog,
@@ -721,7 +723,7 @@ export default function WishlistPage() {
       for (let index = 0; index < quantity; index += 1) {
         const id = `spool_${Date.now()}_${index}`;
         if (linkedMaster) {
-          await createSpool({
+          await createInventorySpoolFromMaster({
             id,
             master_id: linkedMaster.id,
             qr_code: null,
@@ -734,7 +736,7 @@ export default function WishlistPage() {
             batch_code: null,
           });
         } else {
-          await createManualSpool({
+          await createManualInventorySpool({
             id,
             vendor: item.vendor,
             material: item.material,

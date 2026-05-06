@@ -81,15 +81,16 @@ import {
 import { loadLibrarySyncPageState } from "../lib/library_sync_state";
 import { buildSpoolQrArtifacts } from "../lib/spool_qr_artifacts";
 import {
+  createInventorySpoolFromMaster,
+  createManualInventorySpool,
+} from "../lib/spool_writes";
+import {
   formatPrinterSlotLabelForModel,
   sortPrinterSlotsExtLast,
 } from "../lib/printer_profiles";
 import {
   assignPrinterSlot,
   assignLibrarySyncHostPrinterSlot,
-  createManualSpool,
-  createLibrarySyncHostSpool,
-  createSpool,
   deleteLibrarySyncHostSpool,
   deleteSpool,
   getPrinterSettings,
@@ -1839,8 +1840,8 @@ export default function InventoryPage({
           newInitialWeight,
           selectedBambuMaster.default_weight,
         );
-        if (clientReadOnly) {
-          createdSpoolId = await createLibrarySyncHostSpool(clientHostBaseUrl!, clientLibraryId, {
+        createdSpoolId = await createInventorySpoolFromMaster(
+          {
             id,
             master_id: selectedBambuMaster.id,
             qr_code: null,
@@ -1855,25 +1856,9 @@ export default function InventoryPage({
             purchase_date: null,
             purchase_price: null,
             batch_code: null,
-          });
-        } else {
-          await createSpool({
-            id,
-            master_id: selectedBambuMaster.id,
-            qr_code: null,
-            status: "IN_STOCK",
-            ownership_type: createOwnershipType,
-            owner_name: ownerName || null,
-            owner_contact: ownerContact || null,
-            ownership_note: ownershipNote || null,
-            initial_weight_g: initialWeight,
-            current_weight_g: initialWeight,
-            location_id: newLocation.trim() || null,
-            purchase_date: null,
-            purchase_price: null,
-            batch_code: null,
-          });
-        }
+          },
+          { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+        );
       } else if (createMode === "esun") {
         if (!selectedEsunMaster) {
           setError(
@@ -1886,8 +1871,8 @@ export default function InventoryPage({
           newInitialWeight,
           selectedEsunMaster.default_weight,
         );
-        if (clientReadOnly) {
-          createdSpoolId = await createLibrarySyncHostSpool(clientHostBaseUrl!, clientLibraryId, {
+        createdSpoolId = await createInventorySpoolFromMaster(
+          {
             id,
             master_id: selectedEsunMaster.id,
             qr_code: null,
@@ -1902,25 +1887,9 @@ export default function InventoryPage({
             purchase_date: null,
             purchase_price: null,
             batch_code: null,
-          });
-        } else {
-          await createSpool({
-            id,
-            master_id: selectedEsunMaster.id,
-            qr_code: null,
-            status: "IN_STOCK",
-            ownership_type: createOwnershipType,
-            owner_name: ownerName || null,
-            owner_contact: ownerContact || null,
-            ownership_note: ownershipNote || null,
-            initial_weight_g: initialWeight,
-            current_weight_g: initialWeight,
-            location_id: newLocation.trim() || null,
-            purchase_date: null,
-            purchase_price: null,
-            batch_code: null,
-          });
-        }
+          },
+          { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+        );
       } else {
         if (!manualFilamentName.trim() || !manualColorName.trim()) {
           setError(
@@ -1933,8 +1902,8 @@ export default function InventoryPage({
           return;
         }
         const initialWeight = parsePositiveWeight(newInitialWeight, 1000);
-        if (clientReadOnly) {
-          createdSpoolId = await createLibrarySyncHostSpool(clientHostBaseUrl!, clientLibraryId, {
+        createdSpoolId = await createManualInventorySpool(
+          {
             id,
             vendor: manualVendor.trim() || "Generic",
             material: manualMaterial.trim() || "PLA",
@@ -1951,27 +1920,9 @@ export default function InventoryPage({
             ownership_note: ownershipNote || null,
             initial_weight_g: initialWeight,
             location: newLocation.trim() || null,
-          });
-        } else {
-          await createManualSpool({
-            id,
-            vendor: manualVendor.trim() || "Generic",
-            material: manualMaterial.trim() || "PLA",
-            filament_name: manualFilamentName.trim(),
-            color_name: manualColorName.trim(),
-            hex_color: isValidHexColor(manualHexColor) ? toSwatchColor(manualHexColor) : null,
-            product_url: null,
-            default_weight_g: initialWeight,
-            qr_code: null,
-            status: "IN_STOCK",
-            ownership_type: createOwnershipType,
-            owner_name: ownerName || null,
-            owner_contact: ownerContact || null,
-            ownership_note: ownershipNote || null,
-            initial_weight_g: initialWeight,
-            location: newLocation.trim() || null,
-          });
-        }
+          },
+          { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+        );
       }
 
       await reloadSpools();
@@ -2196,8 +2147,8 @@ export default function InventoryPage({
         ? masters.find((master) => master.id === item.master_id) ?? null
         : null;
       if (linkedMaster) {
-        if (clientReadOnly) {
-          createdSpoolId = await createLibrarySyncHostSpool(clientHostBaseUrl!, clientLibraryId, {
+        createdSpoolId = await createInventorySpoolFromMaster(
+          {
             id,
             master_id: linkedMaster.id,
             qr_code: null,
@@ -2208,24 +2159,12 @@ export default function InventoryPage({
             purchase_date: null,
             purchase_price: null,
             batch_code: null,
-          });
-        } else {
-          await createSpool({
-            id,
-            master_id: linkedMaster.id,
-            qr_code: null,
-            status: "IN_STOCK",
-            initial_weight_g: linkedMaster.default_weight,
-            current_weight_g: linkedMaster.default_weight,
-            location_id: null,
-            purchase_date: null,
-            purchase_price: null,
-            batch_code: null,
-          });
-        }
+          },
+          { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+        );
       } else {
-        if (clientReadOnly) {
-          createdSpoolId = await createLibrarySyncHostSpool(clientHostBaseUrl!, clientLibraryId, {
+        createdSpoolId = await createManualInventorySpool(
+          {
             id,
             vendor: item.vendor,
             material: item.material,
@@ -2238,23 +2177,9 @@ export default function InventoryPage({
             status: "IN_STOCK",
             initial_weight_g: 1000,
             location: null,
-          });
-        } else {
-          await createManualSpool({
-            id,
-            vendor: item.vendor,
-            material: item.material,
-            filament_name: item.filament_name,
-            color_name: item.color_name,
-            hex_color: null,
-            product_url: null,
-            default_weight_g: 1000,
-            qr_code: null,
-            status: "IN_STOCK",
-            initial_weight_g: 1000,
-            location: null,
-          });
-        }
+          },
+          { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+        );
       }
 
       await updateWishlistEntryStatus(
