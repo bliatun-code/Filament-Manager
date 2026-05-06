@@ -47,6 +47,8 @@ const COMPANION_BROWSER_DOM_EVENTS_JS: &str =
 const COMPANION_BROWSER_I18N_JS: &str = include_str!("../companion_browser/companion_i18n.js");
 const COMPANION_BROWSER_INPUT_ROUTER_JS: &str =
     include_str!("../companion_browser/companion_input_router.js");
+const COMPANION_BROWSER_LOAN_STATE_JS: &str =
+    include_str!("../companion_browser/companion_loan_state.js");
 const COMPANION_BROWSER_MUTATIONS_JS: &str =
     include_str!("../companion_browser/companion_mutations.js");
 const COMPANION_BROWSER_QR_PAYLOAD_JS: &str = include_str!("../companion_browser/qr_payload.js");
@@ -159,6 +161,13 @@ fn companion_browser_assets() -> &'static [(&'static str, CompanionBrowserAsset)
             CompanionBrowserAsset {
                 content_type: "application/javascript; charset=utf-8",
                 content: COMPANION_BROWSER_INPUT_ROUTER_JS,
+            },
+        ),
+        (
+            "companion_loan_state.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_LOAN_STATE_JS,
             },
         ),
         (
@@ -2645,6 +2654,26 @@ mod tests {
         std::env::temp_dir().join(format!(
             "filament-manager-companion-api-{test_name}-{nanos}.db"
         ))
+    }
+
+    fn companion_browser_relative_imports(content: &str) -> Vec<String> {
+        let mut imports = Vec::new();
+        for (needle, terminator) in [
+            ("from \"./", '"'),
+            ("from './", '\''),
+            ("import(\"./", '"'),
+            ("import('./", '\''),
+        ] {
+            for tail in content.split(needle).skip(1) {
+                if let Some(end_index) = tail.find(terminator) {
+                    let import_path = &tail[..end_index];
+                    if import_path.ends_with(".js") {
+                        imports.push(import_path.to_string());
+                    }
+                }
+            }
+        }
+        imports
     }
 
     fn seed_db(db_path: &Path) -> Result<(), String> {
@@ -5218,6 +5247,8 @@ mod tests {
                 String::from_utf8(module_body.to_vec()).map_err(|error| error.to_string())?;
             assert!(module_text.contains("createCompanionApiClient"));
 
+            let served_assets: HashMap<&str, _> =
+                companion_browser_assets().iter().copied().collect();
             for (asset_path, asset) in companion_browser_assets() {
                 let response = router
                     .clone()
@@ -5236,6 +5267,15 @@ mod tests {
                     .and_then(|value| value.to_str().ok())
                     .unwrap_or_default();
                 assert_eq!(content_type, asset.content_type);
+
+                if asset_path.ends_with(".js") {
+                    for import_path in companion_browser_relative_imports(asset.content) {
+                        assert!(
+                            served_assets.contains_key(import_path.as_str()),
+                            "{asset_path} imports {import_path}, but it is not served by /companion/:asset"
+                        );
+                    }
+                }
             }
 
             let icon_response = router
