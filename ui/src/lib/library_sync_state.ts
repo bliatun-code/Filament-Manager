@@ -1,4 +1,7 @@
-import type { LibrarySyncSettings } from "./tauri_client";
+import {
+  getLibrarySyncSettings,
+  type LibrarySyncSettings,
+} from "./tauri_client";
 
 export type LibrarySyncPageState = {
   clientReadOnly: boolean;
@@ -28,4 +31,14 @@ export function deriveLibrarySyncPageState(
     clientHostBaseUrl: syncSettings.host_base_url ?? null,
     clientLibraryId: syncSettings.library_id ?? null,
   };
+}
+
+export async function loadLibrarySyncPageState(
+  options: LibrarySyncPageStateOptions = {},
+  dependencies: {
+    loadSyncSettings?: typeof getLibrarySyncSettings;
+  } = {},
+): Promise<LibrarySyncPageState> {
+  const loadSyncSettings = dependencies.loadSyncSettings ?? getLibrarySyncSettings;
+  return deriveLibrarySyncPageState(await loadSyncSettings(), options);
 }

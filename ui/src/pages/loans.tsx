@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   exportLoansCsv,
-  getLibrarySyncSettings,
   isTauri,
   returnLibrarySyncHostLoan,
   returnInboundSpoolLoan,
@@ -34,10 +33,8 @@ import {
   toReturnedFilamentWeight,
 } from "../lib/loan_display";
 import { isLoanCurrentlyActive } from "../lib/loan_state";
-import {
-  deriveLoanLibrarySyncState,
-  loadLoanRowsPage,
-} from "../lib/loan_data_source";
+import { loadLoanRowsPage } from "../lib/loan_data_source";
+import { loadLibrarySyncPageState } from "../lib/library_sync_state";
 import { useResolvedTheme } from "../lib/theme_mode";
 
 export default function LoansPage() {
@@ -74,11 +71,10 @@ export default function LoansPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const syncSettings = await getLibrarySyncSettings();
+        const nextState = await loadLibrarySyncPageState();
         if (cancelled) {
           return;
         }
-        const nextState = deriveLoanLibrarySyncState(syncSettings);
         setClientReadOnly(nextState.clientReadOnly);
         setClientHostWritePaired(nextState.clientHostWritePaired);
         setClientHostDeviceName(nextState.clientHostDeviceName);

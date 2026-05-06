@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createPrinter,
   createLibrarySyncHostPrinter,
-  getLibrarySyncSettings,
   isTauri,
   updateLibrarySyncHostSpoolRfidTag,
   updateSpoolRfidTag,
@@ -13,10 +12,10 @@ import {
   type SpoolWithMasterRow,
 } from "../lib/tauri_client";
 import {
-  derivePrinterLibrarySyncState,
   loadPrinterPageData,
   type PrinterSnapshotSource,
 } from "../lib/printer_data_source";
+import { loadLibrarySyncPageState } from "../lib/library_sync_state";
 import {
   buildCreatePrinterInput,
   defaultPrinterFormCapacityForModel,
@@ -138,11 +137,10 @@ export default function PrintersPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const syncSettings = await getLibrarySyncSettings();
+        const syncState = await loadLibrarySyncPageState();
         if (cancelled) {
           return;
         }
-        const syncState = derivePrinterLibrarySyncState(syncSettings);
         setClientReadOnly(syncState.clientReadOnly);
         setClientHostWritePaired(syncState.clientHostWritePaired);
         setClientHostDeviceName(syncState.clientHostDeviceName);

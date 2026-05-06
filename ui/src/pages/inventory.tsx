@@ -80,6 +80,7 @@ import { resolveSpoolTareWeight } from "../lib/spool_weight";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import { formatGrams, parsePositiveWeight } from "../lib/weight_display";
 import { loadWishlistItems } from "../lib/wishlist_data_source";
+import { loadLibrarySyncPageState } from "../lib/library_sync_state";
 import {
   formatPrinterSlotLabelForModel,
   sortPrinterSlotsExtLast,
@@ -97,7 +98,6 @@ import {
   deleteSpool,
   deleteWishlistItem,
   getPrinterSettings,
-  getLibrarySyncSettings,
   getTrustedLanCompanionStatus,
   isTauri,
   listActiveSpoolLoans,
@@ -567,15 +567,15 @@ export default function InventoryPage({
     let cancelled = false;
     void (async () => {
       try {
-        const syncSettings = await getLibrarySyncSettings();
+        const syncState = await loadLibrarySyncPageState();
         if (cancelled) {
           return;
         }
-        setClientReadOnly(syncSettings.mode === "CLIENT");
-        setClientHostWritePaired(syncSettings.client_auth_paired ?? false);
-        setClientHostDeviceName(syncSettings.host_device_name ?? null);
-        setClientHostBaseUrl(syncSettings.host_base_url ?? null);
-        setClientLibraryId(syncSettings.library_id ?? null);
+        setClientReadOnly(syncState.clientReadOnly);
+        setClientHostWritePaired(syncState.clientHostWritePaired);
+        setClientHostDeviceName(syncState.clientHostDeviceName);
+        setClientHostBaseUrl(syncState.clientHostBaseUrl);
+        setClientLibraryId(syncState.clientLibraryId);
       } catch (syncError) {
         console.error(syncError);
       } finally {
