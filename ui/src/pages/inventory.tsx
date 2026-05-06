@@ -100,7 +100,6 @@ import {
   getPrinterSettings,
   getTrustedLanCompanionStatus,
   isTauri,
-  listActiveSpoolLoans,
   printLabelHtml,
   purgeLibrarySyncHostSpool,
   purgeSpool,
@@ -125,6 +124,7 @@ import {
   updateLibrarySyncHostWishlistItemStatus,
   updateWishlistItemStatus,
 } from "../lib/tauri_client";
+import { loadActiveLoanRows } from "../lib/loan_data_source";
 
 type CreateMode = "bambu" | "esun" | "manual";
 type SidePanelMode = "MANAGE" | "ADD";
@@ -724,12 +724,8 @@ export default function InventoryPage({
     if (!tauri) {
       return;
     }
-    if (clientReadOnly) {
-      setActiveLoans([]);
-      return;
-    }
     try {
-      const rows = await listActiveSpoolLoans();
+      const rows = await loadActiveLoanRows({ clientReadOnly });
       setActiveLoans(rows);
     } catch (loanError) {
       console.error(loanError);

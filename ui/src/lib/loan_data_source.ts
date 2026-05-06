@@ -1,7 +1,9 @@
 import {
   fetchCachedLibrarySyncLoans,
   fetchLibrarySyncLoans,
+  listActiveSpoolLoans,
   listSpoolLoans,
+  type ActiveSpoolLoanRow,
   type SpoolLoanDetailsRow,
 } from "./tauri_client";
 import {
@@ -26,7 +28,23 @@ export type LoanDataLoadResult = {
   usedFallback: boolean;
 };
 
+type ActiveLoanRowsDependencies = {
+  listLocalActiveLoans?: typeof listActiveSpoolLoans;
+};
+
 export const deriveLoanLibrarySyncState = deriveLibrarySyncPageState;
+
+export async function loadActiveLoanRows(
+  options: { clientReadOnly: boolean },
+  dependencies: ActiveLoanRowsDependencies = {},
+): Promise<ActiveSpoolLoanRow[]> {
+  if (options.clientReadOnly) {
+    return [];
+  }
+
+  const listLocalActiveLoans = dependencies.listLocalActiveLoans ?? listActiveSpoolLoans;
+  return listLocalActiveLoans();
+}
 
 export async function loadLoanRowsPage(
   options: LoanDataSourceOptions,
