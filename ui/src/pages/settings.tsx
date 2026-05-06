@@ -10,11 +10,7 @@ import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
   createTrustedLanPairing,
   clearLibrarySyncClientAuth,
-  createPrinter,
-  createLibrarySyncHostPrinter,
   deleteBambuLiveIntegration,
-  deletePrinter,
-  deleteLibrarySyncHostPrinter,
   exportFullBackupJson,
   exportInventoryCsv,
   exportInventoryJson,
@@ -89,6 +85,7 @@ import { DiagnosticCaptureChart } from "../components/diagnostic_capture_chart";
 import { loadAllSpoolRows } from "../lib/spool_data_source";
 import { loadSettingsPageData } from "../lib/settings_data_source";
 import { loadTrustedLanSettingsData } from "../lib/trusted_lan_data_source";
+import { createManagedPrinter, deleteManagedPrinter } from "../lib/printer_writes";
 import {
   averageIntervalMs,
   buildDiagnosticDisplayTrays,
@@ -1775,15 +1772,22 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           setBusy(false);
           return;
         }
-        await createLibrarySyncHostPrinter(settingsClientHostBaseUrl, settingsClientLibraryId, {
-          id: editPrinterId,
-          model,
-          name,
-          ams_units: units,
-          slots_per_ams: slots,
-        });
+        await createManagedPrinter(
+          {
+            id: editPrinterId,
+            model,
+            name,
+            ams_units: units,
+            slots_per_ams: slots,
+          },
+          {
+            clientReadOnly: true,
+            clientHostBaseUrl: settingsClientHostBaseUrl,
+            clientLibraryId: settingsClientLibraryId,
+          },
+        );
       } else {
-        await createPrinter({
+        await createManagedPrinter({
           id: editPrinterId,
           model,
           name,
@@ -1852,13 +1856,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           setBusy(false);
           return;
         }
-        await deleteLibrarySyncHostPrinter(
-          settingsClientHostBaseUrl,
-          settingsClientLibraryId,
-          printer.id,
-        );
+        await deleteManagedPrinter(printer.id, {
+          clientReadOnly: true,
+          clientHostBaseUrl: settingsClientHostBaseUrl,
+          clientLibraryId: settingsClientLibraryId,
+        });
       } else {
-        await deletePrinter(printer.id);
+        await deleteManagedPrinter(printer.id);
       }
       await reloadSettings();
       setInfo(`${t("settings.removedPrinter", "Removed printer")} "${printer.name}".`);

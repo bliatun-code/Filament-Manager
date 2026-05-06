@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  createPrinter,
-  createLibrarySyncHostPrinter,
   isTauri,
   type BambuLiveIntegrationEntry,
   type BambuLiveObservedTray,
@@ -13,6 +11,7 @@ import {
   loadPrinterPageData,
   type PrinterSnapshotSource,
 } from "../lib/printer_data_source";
+import { createManagedPrinter } from "../lib/printer_writes";
 import { loadLibrarySyncPageState } from "../lib/library_sync_state";
 import { updateInventorySpoolRfidTag } from "../lib/spool_writes";
 import {
@@ -374,11 +373,11 @@ export default function PrintersPage() {
         newAmsUnits,
         newSlotsPerUnit,
       );
-      if (clientReadOnly) {
-        await createLibrarySyncHostPrinter(clientHostBaseUrl!, clientLibraryId, createInput);
-      } else {
-        await createPrinter(createInput);
-      }
+      await createManagedPrinter(createInput, {
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+      });
       setShowAddPrinterModal(false);
       await reloadData();
       setInfo(`${t("settings.addedPrinter", "Added printer")} "${name}".`);
