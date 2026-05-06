@@ -9,21 +9,23 @@ import {
 } from "../lib/catalog_data_source";
 import { useI18n } from "../lib/i18n";
 import { materialTone } from "../lib/material_theme";
-import { loadWishlistItems } from "../lib/wishlist_data_source";
+import {
+  createWishlistEntry,
+  deleteWishlistEntry,
+  loadWishlistItems,
+  updateWishlistEntryStatus,
+} from "../lib/wishlist_data_source";
 import {
   type CatalogRefreshProgressPayload,
   type CatalogRefreshResult,
   createManualSpool,
   createSpool,
-  createWishlistItem,
-  deleteWishlistItem,
   isTauri,
   refreshBambuCatalog,
   refreshEsunCatalog,
   subscribeCatalogRefreshProgress,
   type MasterCatalogRow,
   type WishlistItemRow,
-  updateWishlistItemStatus,
 } from "../lib/tauri_client";
 
 type CreateMode = "bambu" | "esun" | "manual";
@@ -638,7 +640,7 @@ export default function WishlistPage() {
     setBusy(true);
     setError(null);
     try {
-      await createWishlistItem({
+      await createWishlistEntry({
         id: `wish_${Date.now()}`,
         master_id: draft.master_id ?? null,
         vendor: draft.vendor,
@@ -665,7 +667,7 @@ export default function WishlistPage() {
     setBusy(true);
     setError(null);
     try {
-      await updateWishlistItemStatus({
+      await updateWishlistEntryStatus({
         item_id: itemId,
         status,
       });
@@ -690,7 +692,7 @@ export default function WishlistPage() {
     setBusy(true);
     setError(null);
     try {
-      await deleteWishlistItem(itemId);
+      await deleteWishlistEntry(itemId);
       await reloadWishlist();
     } catch (deleteError) {
       console.error(deleteError);
@@ -749,7 +751,7 @@ export default function WishlistPage() {
         }
       }
 
-      await updateWishlistItemStatus({
+      await updateWishlistEntryStatus({
         item_id: item.id,
         status: "RECEIVED",
       });

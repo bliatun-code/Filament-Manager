@@ -72,7 +72,12 @@ import { loadPrinterOverviewData } from "../lib/printer_data_source";
 import { resolveSpoolTareWeight } from "../lib/spool_weight";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import { formatGrams, parsePositiveWeight } from "../lib/weight_display";
-import { loadWishlistItems } from "../lib/wishlist_data_source";
+import {
+  createWishlistEntry,
+  deleteWishlistEntry,
+  loadWishlistItems,
+  updateWishlistEntryStatus,
+} from "../lib/wishlist_data_source";
 import { loadLibrarySyncPageState } from "../lib/library_sync_state";
 import { buildSpoolQrArtifacts } from "../lib/spool_qr_artifacts";
 import {
@@ -85,12 +90,8 @@ import {
   createManualSpool,
   createLibrarySyncHostSpool,
   createSpool,
-  createLibrarySyncHostWishlistItem,
-  createWishlistItem,
   deleteLibrarySyncHostSpool,
-  deleteLibrarySyncHostWishlistItem,
   deleteSpool,
-  deleteWishlistItem,
   getPrinterSettings,
   isTauri,
   printLabelHtml,
@@ -114,8 +115,6 @@ import {
   updateLibrarySyncHostSpoolWeight,
   updateSpoolTareWeight,
   updateSpoolWeight,
-  updateLibrarySyncHostWishlistItemStatus,
-  updateWishlistItemStatus,
 } from "../lib/tauri_client";
 import { loadActiveLoanRows } from "../lib/loan_data_source";
 
@@ -2093,11 +2092,11 @@ export default function InventoryPage({
         quantity: 1,
         note: null,
       };
-      if (clientReadOnly) {
-        await createLibrarySyncHostWishlistItem(clientHostBaseUrl!, clientLibraryId, input);
-      } else {
-        await createWishlistItem(input);
-      }
+      await createWishlistEntry(input, {
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+      });
       await reloadWishlist();
     } catch (wishlistError) {
       console.error(wishlistError);
@@ -2125,11 +2124,11 @@ export default function InventoryPage({
         item_id: itemId,
         status,
       };
-      if (clientReadOnly) {
-        await updateLibrarySyncHostWishlistItemStatus(clientHostBaseUrl!, clientLibraryId, input);
-      } else {
-        await updateWishlistItemStatus(input);
-      }
+      await updateWishlistEntryStatus(input, {
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+      });
       await reloadWishlist();
     } catch (statusError) {
       console.error(statusError);
@@ -2163,11 +2162,11 @@ export default function InventoryPage({
     setBusy(true);
     setError(null);
     try {
-      if (clientReadOnly) {
-        await deleteLibrarySyncHostWishlistItem(clientHostBaseUrl!, clientLibraryId, itemId);
-      } else {
-        await deleteWishlistItem(itemId);
-      }
+      await deleteWishlistEntry(itemId, {
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+      });
       await reloadWishlist();
     } catch (deleteError) {
       console.error(deleteError);
@@ -2258,17 +2257,17 @@ export default function InventoryPage({
         }
       }
 
-      if (clientReadOnly) {
-        await updateLibrarySyncHostWishlistItemStatus(clientHostBaseUrl!, clientLibraryId, {
+      await updateWishlistEntryStatus(
+        {
           item_id: item.id,
           status: "RECEIVED",
-        });
-      } else {
-        await updateWishlistItemStatus({
-          item_id: item.id,
-          status: "RECEIVED",
-        });
-      }
+        },
+        {
+          clientReadOnly,
+          clientHostBaseUrl,
+          clientLibraryId,
+        },
+      );
       await reloadSpools();
       await reloadWishlist();
       setSelectedSpoolId(createdSpoolId);

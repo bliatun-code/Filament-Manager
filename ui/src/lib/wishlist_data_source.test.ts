@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadWishlistItems } from "./wishlist_data_source";
-import type { WishlistItemRow } from "./tauri_client";
+import {
+  createWishlistEntry,
+  deleteWishlistEntry,
+  loadWishlistItems,
+  updateWishlistEntryStatus,
+} from "./wishlist_data_source";
+import type { CreateWishlistItemInput, WishlistItemRow } from "./tauri_client";
 
 function wishlistItem(id: string): WishlistItemRow {
   return {
@@ -63,4 +68,95 @@ test("loadWishlistItems falls back to local loading when client host details are
   );
 
   assert.deepEqual(rows.map((row) => row.id), ["local-fallback"]);
+});
+
+function wishlistInput(overrides: Partial<CreateWishlistItemInput> = {}): CreateWishlistItemInput {
+  return {
+    id: "wish-1",
+    master_id: "master-1",
+    vendor: "Generic",
+    material: "PLA",
+    filament_name: "Basic",
+    color_name: "Gray",
+    quantity: 1,
+    note: null,
+    ...overrides,
+  };
+}
+
+test("createWishlistEntry routes client writes to the host", async () => {
+  const calls: Array<{
+    baseUrl: string;
+    libraryId: string | null | undefined;
+    input: CreateWishlistItemInput;
+  }> = [];
+  const input = wishlistInput();
+
+  await createWishlistEntry(
+    input,
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      createHostWishlistItem: async (baseUrl, libraryId, createInput) => {
+        calls.push({ baseUrl, libraryId, input: createInput });
+      },
+    },
+  );
+
+  assert.deepEqual(calls, [{ baseUrl: "http://host", libraryId: "library-1", input }]);
+});
+
+test("createWishlistEntry uses local writes outside client mode", async () => {
+  const calls: CreateWishlistItemInput[] = [];
+  const input = wishlistInput({ id: "local-wish" });
+
+  await createWishlistEntry(
+    input,
+    { clientReadOnly: false },
+    {
+      createLocalWishlistItem: async (createInput) => {
+        calls.push(createInput);
+      },
+    },
+  );
+
+  assert.deepEqual(calls, [input]);
+});
+
+test("updateWishlistEntryStatus routes status changes to the host", async () => {
+  const calls: Array<{ baseUrl: string; itemId: string; status: string }> = [];
+
+  await updateWishlistEntryStatus(
+    { item_id: "wish-1", status: "RECEIVED" },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      updateHostWishlistItemStatus: async (baseUrl, _libraryId, input) => {
+        calls.push({ baseUrl, itemId: input.item_id, status: input.status });
+      },
+    },
+  );
+
+  assert.deepEqual(calls, [{ baseUrl: "http://host", itemId: "wish-1", status: "RECEIVED" }]);
+});
+
+test("deleteWishlistEntry routes deletes to the host", async () => {
+  const calls: Array<{ baseUrl: string; itemId: string }> = [];
+
+  await deleteWishlistEntry(
+    "wish-1",
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      deleteHostWishlistItem: async (baseUrl, _libraryId, itemId) => {
+        calls.push({ baseUrl, itemId });
+      },
+    },
+  );
+
+  assert.deepEqual(calls, [{ baseUrl: "http://host", itemId: "wish-1" }]);
+});
+
+test("wishlist host mutations reject missing client host details", async () => {
+  await assert.rejects(
+    () => createWishlistEntry(wishlistInput(), { clientReadOnly: true, clientHostBaseUrl: "" }),
+    /Client host base URL/,
+  );
 });
