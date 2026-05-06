@@ -14,7 +14,6 @@ import {
   exportFullBackupJson,
   exportInventoryCsv,
   exportInventoryJson,
-  fetchLibrarySyncSnapshot,
   getAppVersion,
   getLibrarySyncSettings,
   pairLibrarySyncHost,
@@ -83,7 +82,7 @@ import { copyTextToClipboard } from "../lib/clipboard";
 import { PrinterModelPreview } from "../components/printer_model_preview";
 import { DiagnosticCaptureChart } from "../components/diagnostic_capture_chart";
 import { loadAllSpoolRows } from "../lib/spool_data_source";
-import { loadSettingsPageData } from "../lib/settings_data_source";
+import { loadSettingsPageData, refreshLibrarySyncSnapshot } from "../lib/settings_data_source";
 import { loadTrustedLanSettingsData } from "../lib/trusted_lan_data_source";
 import { createManagedPrinter, deleteManagedPrinter } from "../lib/printer_writes";
 import {
@@ -1455,14 +1454,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setError(null);
     setInfo(null);
     try {
-      const snapshot = await fetchLibrarySyncSnapshot(
+      const refreshed = await refreshLibrarySyncSnapshot(
         librarySyncHostBaseUrlDraft,
         librarySyncSettings.library_id,
       );
-      setLibrarySyncSnapshot(snapshot);
-      const refreshed = await getLibrarySyncSettings();
-      setLibrarySyncSettings(refreshed);
-      setLibrarySyncSnapshot(refreshed.cached_snapshot ?? snapshot);
+      setLibrarySyncSettings(refreshed.syncSettings);
+      setLibrarySyncSnapshot(refreshed.snapshot);
       setInfo(
         t("settings.librarySyncSnapshotRefreshed", "Host snapshot refreshed."),
       );

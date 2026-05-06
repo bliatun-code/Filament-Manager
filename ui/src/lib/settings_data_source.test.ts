@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadSettingsPageData } from "./settings_data_source";
+import { loadSettingsPageData, refreshLibrarySyncSnapshot } from "./settings_data_source";
 import type {
   LibrarySyncSettings,
+  LibrarySyncRemoteSnapshot,
   MasterCatalogRow,
   PrinterOverviewRow,
   PrinterSettingsSnapshot,
@@ -66,6 +67,41 @@ function syncSettings(
 const catalogRows: MasterCatalogRow[] = [];
 const localSpoolRows: SpoolWithMasterRow[] = [];
 const hostSpoolRows: SpoolWithMasterRow[] = [];
+
+function remoteSnapshot(
+  overrides: Partial<LibrarySyncRemoteSnapshot> = {},
+): LibrarySyncRemoteSnapshot {
+  return {
+    captured_at: "2026-04-01 12:00:00",
+    library_id: "library-host",
+    device_name: "Host",
+    sync_mode: "HOST",
+    inventory: {
+      total_spools: 0,
+      total_owned_spools: 0,
+      total_borrowed_in_spools: 0,
+      in_use: 0,
+      owned_in_use: 0,
+      borrowed_in_in_use: 0,
+      low_stock: 0,
+      owned_low_stock: 0,
+      borrowed_in_low_stock: 0,
+      total_consumption_30d: 0,
+      owned_consumption_30d: 0,
+      borrowed_in_consumption_30d: 0,
+    },
+    total_spools: 0,
+    in_use: 0,
+    low_stock: 0,
+    active_loans: 0,
+    wishlist_open: 0,
+    printers: [],
+    loans: [],
+    wishlist: [],
+    spools: [],
+    ...overrides,
+  };
+}
 
 test("loadSettingsPageData loads local settings overview and local spools", async () => {
   const result = await loadSettingsPageData({
@@ -134,4 +170,44 @@ test("loadSettingsPageData falls back to cached client printers and local spools
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-cache"]);
   assert.equal(result.spoolRows, localSpoolRows);
   assert.equal(result.bambuLiveIntegrations["printer-local"]?.enabled, true);
+});
+
+test("refreshLibrarySyncSnapshot returns the freshly cached sync snapshot", async () => {
+  const fetchedSnapshot = remoteSnapshot({ device_name: "Fetched" });
+  const cachedSnapshot = remoteSnapshot({ device_name: "Cached" });
+
+  const result = await refreshLibrarySyncSnapshot("http://host", "library-host", {
+    fetchHostSnapshot: async (baseUrl, libraryId) => {
+      assert.equal(baseUrl, "http://host");
+      assert.equal(libraryId, "library-host");
+      return fetchedSnapshot;
+    },
+    loadSyncSettings: async () =>
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: "http://host",
+        library_id: "library-host",
+        cached_snapshot: cachedSnapshot,
+      }),
+  });
+
+  assert.equal(result.snapshot.device_name, "Cached");
+  assert.equal(result.syncSettings.cached_snapshot, cachedSnapshot);
+});
+
+test("refreshLibrarySyncSnapshot falls back to the fetched snapshot before cache is updated", async () => {
+  const fetchedSnapshot = remoteSnapshot({ device_name: "Fetched" });
+
+  const result = await refreshLibrarySyncSnapshot("http://host", "library-host", {
+    fetchHostSnapshot: async () => fetchedSnapshot,
+    loadSyncSettings: async () =>
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: "http://host",
+        library_id: "library-host",
+        cached_snapshot: null,
+      }),
+  });
+
+  assert.equal(result.snapshot, fetchedSnapshot);
 });

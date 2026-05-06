@@ -1,4 +1,5 @@
 import {
+  fetchLibrarySyncSnapshot,
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncPrinterSettings,
   getLibrarySyncSettings,
@@ -7,6 +8,7 @@ import {
   listPrinterOverview,
   type BambuLiveIntegrationEntry,
   type LibrarySyncSettings,
+  type LibrarySyncRemoteSnapshot,
   type MasterCatalogRow,
   type PrinterOverviewRow,
   type PrinterSettingsSnapshot,
@@ -33,6 +35,16 @@ type SettingsPageDataDependencies = {
   fetchHostPrinterSettings?: typeof fetchLibrarySyncPrinterSettings;
   listLocalPrinterOverview?: typeof listPrinterOverview;
   onHostLoadError?: (error: unknown) => void;
+};
+
+type LibrarySyncSnapshotRefreshDependencies = {
+  fetchHostSnapshot?: typeof fetchLibrarySyncSnapshot;
+  loadSyncSettings?: typeof getLibrarySyncSettings;
+};
+
+export type LibrarySyncSnapshotRefreshResult = {
+  snapshot: LibrarySyncRemoteSnapshot;
+  syncSettings: LibrarySyncSettings;
 };
 
 export async function loadSettingsPageData(
@@ -104,5 +116,22 @@ export async function loadSettingsPageData(
     overviewRows,
     spoolRows,
     bambuLiveIntegrations,
+  };
+}
+
+export async function refreshLibrarySyncSnapshot(
+  baseUrl: string,
+  libraryId: string,
+  dependencies: LibrarySyncSnapshotRefreshDependencies = {},
+): Promise<LibrarySyncSnapshotRefreshResult> {
+  const fetchHostSnapshot = dependencies.fetchHostSnapshot ?? fetchLibrarySyncSnapshot;
+  const loadSyncSettings = dependencies.loadSyncSettings ?? getLibrarySyncSettings;
+
+  const snapshot = await fetchHostSnapshot(baseUrl, libraryId);
+  const syncSettings = await loadSyncSettings();
+
+  return {
+    snapshot: syncSettings.cached_snapshot ?? snapshot,
+    syncSettings,
   };
 }
