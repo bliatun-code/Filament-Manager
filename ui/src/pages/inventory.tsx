@@ -96,8 +96,6 @@ import {
   sortPrinterSlotsExtLast,
 } from "../lib/printer_profiles";
 import {
-  assignPrinterSlot,
-  assignLibrarySyncHostPrinterSlot,
   getPrinterSettings,
   isTauri,
   printLabelHtml,
@@ -112,6 +110,7 @@ import {
   updateMasterCatalogEntry,
 } from "../lib/tauri_client";
 import { loadActiveLoanRows } from "../lib/loan_data_source";
+import { writePrinterSlotAssignment } from "../lib/printer_slot_writes";
 
 type CreateMode = "bambu" | "esun" | "manual";
 type SidePanelMode = "MANAGE" | "ADD";
@@ -2337,23 +2336,18 @@ export default function InventoryPage({
     setError(null);
     try {
       if (selectedSpoolAssignedSlot) {
-        if (clientReadOnly) {
-          await assignLibrarySyncHostPrinterSlot(
-            clientHostBaseUrl!,
+        await writePrinterSlotAssignment(
+          {
+            clientReadOnly,
+            clientHostBaseUrl,
             clientLibraryId,
-            {
-              printer_id: selectedSpoolAssignedSlot.printerId,
-              slot_id: selectedSpoolAssignedSlot.slotId,
-              spool_id: null,
-            },
-          );
-        } else {
-          await assignPrinterSlot({
+          },
+          {
             printer_id: selectedSpoolAssignedSlot.printerId,
             slot_id: selectedSpoolAssignedSlot.slotId,
             spool_id: null,
-          });
-        }
+          },
+        );
       }
       await updateInventorySpoolStatus(
         {
@@ -2500,11 +2494,18 @@ export default function InventoryPage({
           return;
         }
       } else if (nextStatus === "LOST" && selectedSpoolAssignedSlot) {
-        await assignPrinterSlot({
-          printer_id: selectedSpoolAssignedSlot.printerId,
-          slot_id: selectedSpoolAssignedSlot.slotId,
-          spool_id: null,
-        });
+        await writePrinterSlotAssignment(
+          {
+            clientReadOnly,
+            clientHostBaseUrl,
+            clientLibraryId,
+          },
+          {
+            printer_id: selectedSpoolAssignedSlot.printerId,
+            slot_id: selectedSpoolAssignedSlot.slotId,
+            spool_id: null,
+          },
+        );
       }
       await updateInventorySpoolStatus(
         {

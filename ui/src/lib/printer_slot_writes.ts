@@ -5,6 +5,7 @@ import {
   recordPrintUsage,
   updateLibrarySyncHostSpoolWeight,
   updateSpoolWeight,
+  type AssignPrinterSlotInput,
 } from "./tauri_client";
 import type {
   PreparedMeasuredWeightUpdate,
@@ -17,14 +18,37 @@ export type PrinterSlotWriteTarget = {
   clientLibraryId: string | null;
 };
 
+type PrinterSlotWriteDependencies = {
+  assignHostPrinterSlot?: typeof assignLibrarySyncHostPrinterSlot;
+  assignLocalPrinterSlot?: typeof assignPrinterSlot;
+};
+
 function requireClientHostTarget(target: PrinterSlotWriteTarget) {
-  if (!target.clientHostBaseUrl || !target.clientLibraryId) {
+  if (!target.clientHostBaseUrl?.trim() || !target.clientLibraryId?.trim()) {
     throw new Error("Host connection details are missing for this printer action.");
   }
   return {
     baseUrl: target.clientHostBaseUrl,
     libraryId: target.clientLibraryId,
   };
+}
+
+export async function writePrinterSlotAssignment(
+  target: PrinterSlotWriteTarget,
+  input: AssignPrinterSlotInput,
+  dependencies: PrinterSlotWriteDependencies = {},
+) {
+  const assignHostPrinterSlot =
+    dependencies.assignHostPrinterSlot ?? assignLibrarySyncHostPrinterSlot;
+  const assignLocalPrinterSlot = dependencies.assignLocalPrinterSlot ?? assignPrinterSlot;
+
+  if (target.clientReadOnly) {
+    const hostTarget = requireClientHostTarget(target);
+    await assignHostPrinterSlot(hostTarget.baseUrl, hostTarget.libraryId, input);
+    return;
+  }
+
+  await assignLocalPrinterSlot(input);
 }
 
 export async function writePreparedMeasuredWeightUpdate(
@@ -73,18 +97,9 @@ export async function writePreparedMeasuredWeightUpdate(
 export async function writePreparedPrinterSlotAssignment(
   target: PrinterSlotWriteTarget,
   preparedAssignment: PreparedPrinterSlotAssignment,
+  dependencies: PrinterSlotWriteDependencies = {},
 ) {
-  if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
-    await assignLibrarySyncHostPrinterSlot(
-      hostTarget.baseUrl,
-      hostTarget.libraryId,
-      preparedAssignment.assignInput,
-    );
-    return;
-  }
-
-  await assignPrinterSlot(preparedAssignment.assignInput);
+  await writePrinterSlotAssignment(target, preparedAssignment.assignInput, dependencies);
 }
 
 export async function writeSpoolMeasuredWeight(
