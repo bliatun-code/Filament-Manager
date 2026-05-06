@@ -11,18 +11,15 @@ import {
 } from "../lib/display_format";
 import { swatchRgba, toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
-import { sortSpoolsAlphabetically } from "../lib/spool_sort";
 import { resolveSpoolTareWeight } from "../lib/spool_weight";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import { formatGrams as formatWeightGrams } from "../lib/weight_display";
 import { lendInventorySpool } from "../lib/loan_data_source";
 import {
-  fetchLibrarySyncPrinterOverview,
-  fetchLibrarySyncSpools,
-  isTauri,
-  listPrinterOverview,
-  listSpools,
-} from "../lib/tauri_client";
+  loadLoanableSpoolCandidates,
+  type LoanableSpool,
+} from "../lib/loan_out_data_source";
+import { isTauri } from "../lib/tauri_client";
 
 type LoanOutModalProps = {
   open: boolean;
@@ -37,19 +34,6 @@ type LoanOutModalProps = {
     borrowerName: string;
     gramsOut: number;
   }) => Promise<void> | void;
-};
-
-type LoanableSpool = {
-  id: string;
-  vendor: string;
-  material: string;
-  filamentName: string;
-  colorName: string;
-  hexColor?: string | null;
-  status: string;
-  remainingGrams?: number | null;
-  spoolTareWeightGrams?: number | null;
-  location?: string | null;
 };
 
 function swatchPanelStyle(
@@ -199,48 +183,11 @@ export function LoanOutModal({
     setLoading(true);
     setError(null);
     try {
-      const [spoolRows, printerOverview] = await Promise.all([
-        clientReadOnly && clientHostBaseUrl && clientLibraryId
-          ? fetchLibrarySyncSpools(clientHostBaseUrl, clientLibraryId, 1200, 0)
-          : listSpools(1200, 0),
-        clientReadOnly && clientHostBaseUrl && clientLibraryId
-          ? fetchLibrarySyncPrinterOverview(clientHostBaseUrl, clientLibraryId)
-          : listPrinterOverview(),
-      ]);
-      const assignedSpoolIds = new Set(
-        printerOverview.flatMap((printer) =>
-          printer.slots
-            .map((slot) => slot.spool_id)
-            .filter((spoolId): spoolId is string => typeof spoolId === "string" && spoolId.length > 0),
-        ),
-      );
-      const candidates = sortSpoolsAlphabetically(spoolRows)
-        .filter((row) => {
-          const status = (row.spool.status ?? "").trim().toUpperCase();
-          const ownershipType = (row.spool.ownership_type ?? "").trim().toUpperCase();
-          if (assignedSpoolIds.has(row.spool.id)) {
-            return false;
-          }
-          if (ownershipType === "BORROWED_IN") {
-            return false;
-          }
-          if (status !== "IN_STOCK") {
-            return false;
-          }
-          return true;
-        })
-        .map((row) => ({
-          id: row.spool.id,
-          vendor: row.master.vendor,
-          material: row.master.material,
-          filamentName: row.master.filament_name,
-          colorName: row.master.color_name,
-          hexColor: row.master.hex_color ?? null,
-          status: row.spool.status,
-          remainingGrams: row.spool.remaining_g ?? row.spool.current_weight_g ?? null,
-          spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
-          location: row.spool.location_id ?? null,
-        }));
+      const candidates = await loadLoanableSpoolCandidates({
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+      });
       setSpools(candidates);
       const preferred =
         (preferredSpoolId
