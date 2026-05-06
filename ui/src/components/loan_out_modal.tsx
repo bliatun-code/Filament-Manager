@@ -15,12 +15,11 @@ import { sortSpoolsAlphabetically } from "../lib/spool_sort";
 import { resolveSpoolTareWeight } from "../lib/spool_weight";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
 import { formatGrams as formatWeightGrams } from "../lib/weight_display";
+import { lendInventorySpool } from "../lib/loan_data_source";
 import {
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncSpools,
   isTauri,
-  lendLibrarySyncHostSpool,
-  lendSpool,
   listPrinterOverview,
   listSpools,
 } from "../lib/tauri_client";
@@ -321,21 +320,15 @@ export function LoanOutModal({
     setBusy(true);
     setError(null);
     try {
-      if (clientReadOnly) {
-        await lendLibrarySyncHostSpool(clientHostBaseUrl!, clientLibraryId, {
+      await lendInventorySpool(
+        {
           spool_id: selectedSpool.id,
           borrower_name: borrower,
           grams_out: grams,
           note: note.trim() || null,
-        });
-      } else {
-        await lendSpool({
-          spool_id: selectedSpool.id,
-          borrower_name: borrower,
-          grams_out: grams,
-          note: note.trim() || null,
-        });
-      }
+        },
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+      );
       await onLoanCreated?.({
         spoolId: selectedSpool.id,
         borrowerName: borrower,

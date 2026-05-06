@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadActiveLoanRows } from "./loan_data_source";
-import type { ActiveSpoolLoanRow } from "./tauri_client";
+import {
+  lendInventorySpool,
+  loadActiveLoanRows,
+  returnInventoryLoan,
+} from "./loan_data_source";
+import type { ActiveSpoolLoanRow, LendSpoolInput, ReturnSpoolLoanInput } from "./tauri_client";
 
 function activeLoanRow(spoolId: string): ActiveSpoolLoanRow {
   return {
@@ -56,4 +60,110 @@ test("loadActiveLoanRows loads local active loans outside client mode", async ()
   );
 
   assert.deepEqual(rows.map((row) => row.loan.spool_id), ["spool-1"]);
+});
+
+test("lendInventorySpool routes client writes to the host", async () => {
+  const calls: Array<{ baseUrl: string; input: LendSpoolInput }> = [];
+
+  await lendInventorySpool(
+    {
+      spool_id: "spool-1",
+      borrower_name: "Ada",
+      grams_out: 250,
+      note: "Bring back",
+    },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      lendHostSpool: async (baseUrl, _libraryId, input) => {
+        calls.push({ baseUrl, input });
+      },
+    },
+  );
+
+  assert.deepEqual(calls, [
+    {
+      baseUrl: "http://host",
+      input: {
+        spool_id: "spool-1",
+        borrower_name: "Ada",
+        grams_out: 250,
+        note: "Bring back",
+      },
+    },
+  ]);
+});
+
+test("lendInventorySpool writes locally outside client mode", async () => {
+  const calls: LendSpoolInput[] = [];
+
+  await lendInventorySpool(
+    {
+      spool_id: "spool-1",
+      borrower_name: "Ada",
+      grams_out: 250,
+      note: null,
+    },
+    { clientReadOnly: false },
+    {
+      lendLocalSpool: async (input) => {
+        calls.push(input);
+      },
+    },
+  );
+
+  assert.deepEqual(calls.map((call) => call.spool_id), ["spool-1"]);
+});
+
+test("returnInventoryLoan routes client returns to the host with inbound flag", async () => {
+  const calls: Array<{ baseUrl: string; input: ReturnSpoolLoanInput & { inbound?: boolean } }> = [];
+
+  await returnInventoryLoan(
+    {
+      loan_id: "loan-1",
+      returned_grams: 120,
+      note: "Done",
+      inbound: true,
+    },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      returnHostLoan: async (baseUrl, _libraryId, input) => {
+        calls.push({ baseUrl, input });
+      },
+    },
+  );
+
+  assert.equal(calls[0]?.baseUrl, "http://host");
+  assert.equal(calls[0]?.input.inbound, true);
+});
+
+test("returnInventoryLoan chooses the local inbound return command", async () => {
+  const outboundCalls: ReturnSpoolLoanInput[] = [];
+  const inboundCalls: ReturnSpoolLoanInput[] = [];
+
+  await returnInventoryLoan(
+    { loan_id: "loan-1", returned_grams: 120, note: null, inbound: true },
+    { clientReadOnly: false },
+    {
+      returnLocalLoan: async (input) => {
+        outboundCalls.push(input);
+      },
+      returnLocalInboundLoan: async (input) => {
+        inboundCalls.push(input);
+      },
+    },
+  );
+
+  assert.deepEqual(outboundCalls, []);
+  assert.deepEqual(inboundCalls.map((call) => call.loan_id), ["loan-1"]);
+});
+
+test("loan host writes reject missing host details", async () => {
+  await assert.rejects(
+    () =>
+      returnInventoryLoan(
+        { loan_id: "loan-1", returned_grams: 0, note: null },
+        { clientReadOnly: true },
+      ),
+    /Host connection details/,
+  );
 });

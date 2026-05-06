@@ -2,9 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   exportLoansCsv,
   isTauri,
-  returnLibrarySyncHostLoan,
-  returnInboundSpoolLoan,
-  returnSpoolLoan,
   type SpoolLoanDetailsRow,
 } from "../lib/tauri_client";
 import { AppModal } from "../components/app_modal";
@@ -33,7 +30,7 @@ import {
   toReturnedFilamentWeight,
 } from "../lib/loan_display";
 import { isLoanCurrentlyActive } from "../lib/loan_state";
-import { loadLoanRowsPage } from "../lib/loan_data_source";
+import { loadLoanRowsPage, returnInventoryLoan } from "../lib/loan_data_source";
 import { loadLibrarySyncPageState } from "../lib/library_sync_state";
 import { useResolvedTheme } from "../lib/theme_mode";
 
@@ -251,28 +248,18 @@ export default function LoansPage() {
     try {
       const loanDirection = normalizeLoanDirection(returnModalLoan.loan.loan_direction);
       const returnedFilamentGrams = toReturnedFilamentWeight(returnModalLoan, measuredTotalGrams);
-      if (clientReadOnly) {
-        if (!canUseClientHostWrite()) {
-          return;
-        }
-        await returnLibrarySyncHostLoan(
-          clientHostBaseUrl!,
-          clientLibraryId,
-          {
-            loan_id: returnModalLoan.loan.id,
-            returned_grams: returnedFilamentGrams,
-            note: returnModalNote.trim() || null,
-            inbound: loanDirection === "INBOUND",
-          },
-        );
-      } else {
-        const action = loanDirection === "INBOUND" ? returnInboundSpoolLoan : returnSpoolLoan;
-        await action({
+      if (clientReadOnly && !canUseClientHostWrite()) {
+        return;
+      }
+      await returnInventoryLoan(
+        {
           loan_id: returnModalLoan.loan.id,
           returned_grams: returnedFilamentGrams,
           note: returnModalNote.trim() || null,
-        });
-      }
+          inbound: loanDirection === "INBOUND",
+        },
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+      );
       await reload();
       setInfo(
         loanDirection === "INBOUND"
