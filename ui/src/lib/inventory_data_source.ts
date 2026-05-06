@@ -1,6 +1,11 @@
 import {
   fetchCachedLibrarySyncSpools,
+  fetchLibrarySyncSpoolDetail,
+  listSpoolHistory,
+  listSpoolUsage,
   type LibrarySyncCachedSpoolList,
+  type SpoolHistoryEventRow,
+  type SpoolUsagePointRow,
   type SpoolWithMasterRow,
 } from "./tauri_client";
 import {
@@ -25,9 +30,26 @@ export type InventoryDataLoadResult = {
   usedFallback: boolean;
 };
 
+export type InventorySpoolDetailOptions = InventoryDataSourceOptions & {
+  spoolId: string;
+  historyLimit?: number;
+  usageLimit?: number;
+};
+
+export type InventorySpoolDetailLoadResult = {
+  historyRows: SpoolHistoryEventRow[];
+  usagePoints: SpoolUsagePointRow[];
+};
+
 type InventoryDataSourceDependencies = {
   loadRowsPage?: typeof loadSpoolRowsPage;
   fetchCachedSpools?: typeof fetchCachedLibrarySyncSpools;
+};
+
+type InventorySpoolDetailDependencies = {
+  fetchHostSpoolDetail?: typeof fetchLibrarySyncSpoolDetail;
+  listLocalHistory?: typeof listSpoolHistory;
+  listLocalUsage?: typeof listSpoolUsage;
 };
 
 export function mapSpoolRowToInventorySpool(row: SpoolWithMasterRow): InventorySpool {
@@ -103,4 +125,46 @@ export async function loadInventorySpools(
       usedFallback: true,
     };
   }
+}
+
+export async function loadInventorySpoolDetail(
+  options: InventorySpoolDetailOptions,
+  dependencies: InventorySpoolDetailDependencies = {},
+): Promise<InventorySpoolDetailLoadResult> {
+  const fetchHostSpoolDetail = dependencies.fetchHostSpoolDetail ?? fetchLibrarySyncSpoolDetail;
+  const listLocalHistory = dependencies.listLocalHistory ?? listSpoolHistory;
+  const listLocalUsage = dependencies.listLocalUsage ?? listSpoolUsage;
+  const { clientReadOnly, clientHostBaseUrl, clientLibraryId, spoolId, historyLimit = 80, usageLimit = 500 } =
+    options;
+
+  if (clientReadOnly) {
+    if (!clientHostBaseUrl || !clientLibraryId) {
+      return {
+        historyRows: [],
+        usagePoints: [],
+      };
+    }
+
+    const detail = await fetchHostSpoolDetail(
+      clientHostBaseUrl,
+      clientLibraryId,
+      spoolId,
+      historyLimit,
+      usageLimit,
+    );
+    return {
+      historyRows: detail.history ?? [],
+      usagePoints: detail.usage ?? [],
+    };
+  }
+
+  const [historyRows, usagePoints] = await Promise.all([
+    listLocalHistory(spoolId, historyLimit),
+    listLocalUsage(spoolId, usageLimit),
+  ]);
+
+  return {
+    historyRows,
+    usagePoints,
+  };
 }

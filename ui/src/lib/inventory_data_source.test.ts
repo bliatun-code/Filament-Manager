@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  loadInventorySpoolDetail,
   loadInventorySpools,
   mapSpoolRowToInventorySpool,
 } from "./inventory_data_source";
@@ -161,4 +162,90 @@ test("loadInventorySpools rethrows local load failures", async () => {
       ),
     /database unavailable/,
   );
+});
+
+test("loadInventorySpoolDetail loads client history and usage with one host detail request", async () => {
+  const calls: Array<{
+    baseUrl: string;
+    libraryId: string | null | undefined;
+    spoolId: string | undefined;
+    historyLimit: number;
+    usageLimit: number;
+  }> = [];
+  const result = await loadInventorySpoolDetail(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      spoolId: "spool-1",
+    },
+    {
+      fetchHostSpoolDetail: async (baseUrl, libraryId, spoolId, historyLimit, usageLimit) => {
+        calls.push({ baseUrl, libraryId, spoolId, historyLimit, usageLimit });
+        return {
+          spool: spoolRow("spool-1"),
+          history: [
+            {
+              id: "history-1",
+              spool_id: "spool-1",
+              event_type: "CREATED",
+              from_status: null,
+              to_status: "IN_STOCK",
+              from_remaining_g: null,
+              to_remaining_g: 1000,
+              note: null,
+              created_at: "2026-04-01 10:00:00",
+            },
+          ],
+          usage: [
+            {
+              job_id: "job-1",
+              printer_id: "printer-1",
+              printer_name: "Printer",
+              grams: 20,
+              job_name: null,
+              success: true,
+              used_at: "2026-04-01 10:00:00",
+            },
+          ],
+          active_loan: null,
+        };
+      },
+    },
+  );
+
+  assert.deepEqual(calls, [
+    {
+      baseUrl: "http://host",
+      libraryId: "library-1",
+      spoolId: "spool-1",
+      historyLimit: 80,
+      usageLimit: 500,
+    },
+  ]);
+  assert.deepEqual(result.historyRows.map((row) => row.id), ["history-1"]);
+  assert.deepEqual(result.usagePoints.map((row) => row.job_id), ["job-1"]);
+});
+
+test("loadInventorySpoolDetail loads local history and usage together outside client mode", async () => {
+  const calls: string[] = [];
+  const result = await loadInventorySpoolDetail(
+    { clientReadOnly: false, spoolId: "spool-1", historyLimit: 12, usageLimit: 34 },
+    {
+      listLocalHistory: async (spoolId, limit) => {
+        calls.push(`history:${spoolId}:${limit}`);
+        return [];
+      },
+      listLocalUsage: async (spoolId, limit) => {
+        calls.push(`usage:${spoolId}:${limit}`);
+        return [];
+      },
+    },
+  );
+
+  assert.deepEqual(calls.sort(), ["history:spool-1:12", "usage:spool-1:34"]);
+  assert.deepEqual(result, {
+    historyRows: [],
+    usagePoints: [],
+  });
 });

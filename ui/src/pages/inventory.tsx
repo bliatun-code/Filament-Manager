@@ -71,7 +71,10 @@ import {
   loadCatalogMasters,
   resolveCatalogSelectionDefaults,
 } from "../lib/catalog_data_source";
-import { loadInventorySpools } from "../lib/inventory_data_source";
+import {
+  loadInventorySpoolDetail,
+  loadInventorySpools,
+} from "../lib/inventory_data_source";
 import { loadPrinterOverviewData } from "../lib/printer_data_source";
 import { resolveSpoolTareWeight } from "../lib/spool_weight";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
@@ -93,14 +96,11 @@ import {
   deleteLibrarySyncHostWishlistItem,
   deleteSpool,
   deleteWishlistItem,
-  fetchLibrarySyncSpoolDetail,
   getPrinterSettings,
   getLibrarySyncSettings,
   getTrustedLanCompanionStatus,
   isTauri,
   listActiveSpoolLoans,
-  listSpoolHistory,
-  listSpoolUsage,
   printLabelHtml,
   purgeLibrarySyncHostSpool,
   purgeSpool,
@@ -774,84 +774,28 @@ export default function InventoryPage({
     }
   }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauri]);
 
-  const reloadHistory = useCallback(
+  const reloadSpoolDetail = useCallback(
     async (spoolId: string) => {
       if (!tauri) {
-        return;
-      }
-      if (clientReadOnly) {
-        if (!clientHostBaseUrl || !clientLibraryId) {
-          setHistoryRows([]);
-          return;
-        }
-        setHistoryLoading(true);
-        try {
-          const detail = await fetchLibrarySyncSpoolDetail(
-            clientHostBaseUrl,
-            clientLibraryId,
-            spoolId,
-            80,
-            500,
-          );
-          setHistoryRows(detail.history ?? []);
-        } catch (historyError) {
-          console.error(historyError);
-          setHistoryRows([]);
-        } finally {
-          setHistoryLoading(false);
-        }
         return;
       }
       setHistoryLoading(true);
-      try {
-        const rows = await listSpoolHistory(spoolId, 80);
-        setHistoryRows(rows);
-      } catch (historyError) {
-        console.error(historyError);
-        setHistoryRows([]);
-      } finally {
-        setHistoryLoading(false);
-      }
-    },
-    [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauri],
-  );
-
-  const reloadUsage = useCallback(
-    async (spoolId: string) => {
-      if (!tauri) {
-        return;
-      }
-      if (clientReadOnly) {
-        if (!clientHostBaseUrl || !clientLibraryId) {
-          setUsagePoints([]);
-          return;
-        }
-        setUsageLoading(true);
-        try {
-          const detail = await fetchLibrarySyncSpoolDetail(
-            clientHostBaseUrl,
-            clientLibraryId,
-            spoolId,
-            80,
-            500,
-          );
-          setUsagePoints(detail.usage ?? []);
-        } catch (usageError) {
-          console.error(usageError);
-          setUsagePoints([]);
-        } finally {
-          setUsageLoading(false);
-        }
-        return;
-      }
       setUsageLoading(true);
       try {
-        const rows = await listSpoolUsage(spoolId, 500);
-        setUsagePoints(rows);
-      } catch (usageError) {
-        console.error(usageError);
+        const detail = await loadInventorySpoolDetail({
+          clientReadOnly,
+          clientHostBaseUrl,
+          clientLibraryId,
+          spoolId,
+        });
+        setHistoryRows(detail.historyRows);
+        setUsagePoints(detail.usagePoints);
+      } catch (detailError) {
+        console.error(detailError);
+        setHistoryRows([]);
         setUsagePoints([]);
       } finally {
+        setHistoryLoading(false);
         setUsageLoading(false);
       }
     },
@@ -1526,9 +1470,8 @@ export default function InventoryPage({
     setRfidCaptureLoading(false);
     setConfirmDelete(false);
     setConfirmPurge(false);
-    void reloadHistory(selectedSpool.id);
-    void reloadUsage(selectedSpool.id);
-  }, [reloadHistory, reloadUsage, selectedSpool]);
+    void reloadSpoolDetail(selectedSpool.id);
+  }, [reloadSpoolDetail, selectedSpool]);
 
   useEffect(() => {
     if (!showRollModal) {
@@ -2431,8 +2374,7 @@ export default function InventoryPage({
       await reloadCatalog();
       await reloadActiveLoans();
       await reloadPrinterOverview();
-      await reloadHistory(selectedSpool.id);
-      await reloadUsage(selectedSpool.id);
+      await reloadSpoolDetail(selectedSpool.id);
       setMasterEditUnlocked(false);
     } catch (updateError) {
       console.error(updateError);
@@ -2555,8 +2497,7 @@ export default function InventoryPage({
       await reloadSpools();
       await reloadPrinterOverview();
       await reloadActiveLoans();
-      await reloadHistory(selectedSpool.id);
-      await reloadUsage(selectedSpool.id);
+      await reloadSpoolDetail(selectedSpool.id);
     } catch (statusError) {
       console.error(statusError);
       setError(
@@ -2607,8 +2548,7 @@ export default function InventoryPage({
       });
       await reloadSpools();
       await reloadPrinterOverview();
-      await reloadHistory(selectedSpool.id);
-      await reloadUsage(selectedSpool.id);
+      await reloadSpoolDetail(selectedSpool.id);
       setInfoMessage(t("inventory.homeLocationSaved", "Home location saved."));
     } catch (updateError) {
       console.error(updateError);
@@ -2665,8 +2605,7 @@ export default function InventoryPage({
       await reloadSpools();
       await reloadPrinterOverview();
       await reloadActiveLoans();
-      await reloadHistory(selectedSpool.id);
-      await reloadUsage(selectedSpool.id);
+      await reloadSpoolDetail(selectedSpool.id);
       setInfoMessage(t("inventory.refilled", "Roll reactivated and ready for use."));
     } catch (statusError) {
       console.error(statusError);
@@ -2733,8 +2672,7 @@ export default function InventoryPage({
       await reloadSpools();
       await reloadPrinterOverview();
       await reloadActiveLoans();
-      await reloadHistory(selectedSpool.id);
-      await reloadUsage(selectedSpool.id);
+      await reloadSpoolDetail(selectedSpool.id);
       setInfoMessage(
         nextStatus === "LOST"
           ? t("inventory.markedLost", "Roll marked as lost.")
@@ -2877,7 +2815,7 @@ export default function InventoryPage({
         });
       }
       await reloadSpools();
-      await reloadHistory(selectedSpool.id);
+      await reloadSpoolDetail(selectedSpool.id);
       setInfoMessage(
         t("inventory.rfidSaved", "RFID tag saved on the selected roll."),
       );
@@ -2954,8 +2892,7 @@ export default function InventoryPage({
       }
       await reloadSpools();
       await reloadPrinterOverview();
-      await reloadHistory(selectedSpool.id);
-      await reloadUsage(selectedSpool.id);
+      await reloadSpoolDetail(selectedSpool.id);
     } catch (updateError) {
       console.error(updateError);
       setError(
@@ -3001,7 +2938,7 @@ export default function InventoryPage({
       }
       await updateSpoolTareWeight(selectedSpool.id, safeGrams);
       await reloadSpools();
-      await reloadHistory(selectedSpool.id);
+      await reloadSpoolDetail(selectedSpool.id);
       setInfoMessage(t("inventory.tareWeightUpdated", "Empty spool weight updated."));
     } catch (updateError) {
       console.error(updateError);
@@ -3083,8 +3020,7 @@ export default function InventoryPage({
           await reloadSpools();
           await reloadPrinterOverview();
           await reloadActiveLoans();
-          await reloadHistory(spoolId);
-          await reloadUsage(spoolId);
+          await reloadSpoolDetail(spoolId);
           setInfoMessage(t("inventory.loanCreated", "Loan created."));
         }}
       />
