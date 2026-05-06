@@ -7,7 +7,10 @@ import {
   deleteInventorySpool,
   purgeInventorySpool,
   updateInventorySpoolDetails,
+  updateInventorySpoolRfidTag,
   updateInventorySpoolStatus,
+  updateInventorySpoolTareWeight,
+  updateInventorySpoolWeight,
 } from "./spool_writes";
 import type {
   CreateManualSpoolInput,
@@ -214,4 +217,70 @@ test("deleteInventorySpool and purgeInventorySpool route destructive writes to t
 
   assert.deepEqual(deletes, [{ baseUrl: "http://host", reason: "manual removal" }]);
   assert.deepEqual(purges, [{ baseUrl: "http://host", reason: "manual purge" }]);
+});
+
+test("updateInventorySpoolWeight routes weight writes to host and local targets", async () => {
+  const hostCalls: Array<{ baseUrl: string; spoolId: string; grams: number }> = [];
+  const localCalls: Array<{ spoolId: string; grams: number }> = [];
+
+  await updateInventorySpoolWeight(
+    "spool-1",
+    700,
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      updateHostSpoolWeight: async (baseUrl, _libraryId, spoolId, grams) => {
+        hostCalls.push({ baseUrl, spoolId, grams });
+      },
+    },
+  );
+  await updateInventorySpoolWeight(
+    "spool-2",
+    650,
+    { clientReadOnly: false },
+    {
+      updateLocalSpoolWeight: async (spoolId, grams) => {
+        localCalls.push({ spoolId, grams });
+      },
+    },
+  );
+
+  assert.deepEqual(hostCalls, [{ baseUrl: "http://host", spoolId: "spool-1", grams: 700 }]);
+  assert.deepEqual(localCalls, [{ spoolId: "spool-2", grams: 650 }]);
+});
+
+test("updateInventorySpoolTareWeight routes empty spool weight writes", async () => {
+  const calls: Array<{ spoolId: string; grams: number }> = [];
+
+  await updateInventorySpoolTareWeight(
+    "spool-1",
+    180,
+    { clientReadOnly: false },
+    {
+      updateLocalSpoolTareWeight: async (spoolId, grams) => {
+        calls.push({ spoolId, grams });
+      },
+    },
+  );
+
+  assert.deepEqual(calls, [{ spoolId: "spool-1", grams: 180 }]);
+});
+
+test("updateInventorySpoolRfidTag routes RFID writes to the host", async () => {
+  const calls: Array<{ baseUrl: string; rfidTag?: string | null }> = [];
+
+  await updateInventorySpoolRfidTag(
+    {
+      spool_id: "spool-1",
+      rfid_tag: "rfid-1",
+      rfid_observed_at: "2026-04-01 10:00:00",
+    },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      updateHostSpoolRfidTag: async (baseUrl, _libraryId, input) => {
+        calls.push({ baseUrl, rfidTag: input.rfid_tag });
+      },
+    },
+  );
+
+  assert.deepEqual(calls, [{ baseUrl: "http://host", rfidTag: "rfid-1" }]);
 });

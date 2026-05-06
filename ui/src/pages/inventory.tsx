@@ -86,7 +86,10 @@ import {
   deleteInventorySpool,
   purgeInventorySpool,
   updateInventorySpoolDetails,
+  updateInventorySpoolRfidTag,
   updateInventorySpoolStatus,
+  updateInventorySpoolTareWeight,
+  updateInventorySpoolWeight,
 } from "../lib/spool_writes";
 import {
   formatPrinterSlotLabelForModel,
@@ -107,12 +110,6 @@ import {
   type SpoolUsagePointRow,
   type WishlistItemRow,
   updateMasterCatalogEntry,
-  updateLibrarySyncHostSpoolRfidTag,
-  updateSpoolRfidTag,
-  updateLibrarySyncHostSpoolTareWeight,
-  updateLibrarySyncHostSpoolWeight,
-  updateSpoolTareWeight,
-  updateSpoolWeight,
 } from "../lib/tauri_client";
 import { loadActiveLoanRows } from "../lib/loan_data_source";
 
@@ -630,11 +627,11 @@ export default function InventoryPage({
           return;
         }
         if (measuredFilament !== baseline) {
-          await updateSpoolWeight(spoolId, safeMeasuredTotal);
+          await updateInventorySpoolWeight(spoolId, safeMeasuredTotal);
         }
         return;
       }
-      await updateSpoolWeight(spoolId, safeMeasuredTotal);
+      await updateInventorySpoolWeight(spoolId, safeMeasuredTotal);
     },
     [],
   );
@@ -2367,16 +2364,11 @@ export default function InventoryPage({
         },
         { clientReadOnly, clientHostBaseUrl, clientLibraryId },
       );
-      if (clientReadOnly) {
-        await updateLibrarySyncHostSpoolWeight(
-          clientHostBaseUrl!,
-          clientLibraryId,
-          selectedSpool.id,
-          0,
-        );
-      } else {
-        await updateSpoolWeight(selectedSpool.id, 0);
-      }
+      await updateInventorySpoolWeight(
+        selectedSpool.id,
+        0,
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+      );
       await reloadSpools();
       await reloadPrinterOverview();
       await reloadActiveLoans();
@@ -2646,22 +2638,17 @@ export default function InventoryPage({
         rfidCaptureLastSeenAt ??
         selectedRfidCaptureLiveIntegration?.observed_state?.last_seen_at ??
         new Date().toISOString();
-      if (clientReadOnly) {
-        if (!canUseClientHostWrite()) {
-          return;
-        }
-        await updateLibrarySyncHostSpoolRfidTag(clientHostBaseUrl!, clientLibraryId!, {
-          spool_id: selectedSpool.id,
-          rfid_tag: nextRfidTag,
-          rfid_observed_at: observedAt,
-        });
-      } else {
-        await updateSpoolRfidTag({
-          spool_id: selectedSpool.id,
-          rfid_tag: nextRfidTag,
-          rfid_observed_at: observedAt,
-        });
+      if (clientReadOnly && !canUseClientHostWrite()) {
+        return;
       }
+      await updateInventorySpoolRfidTag(
+        {
+          spool_id: selectedSpool.id,
+          rfid_tag: nextRfidTag,
+          rfid_observed_at: observedAt,
+        },
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+      );
       await reloadSpools();
       await reloadSpoolDetail(selectedSpool.id);
       setInfoMessage(
@@ -2705,11 +2692,10 @@ export default function InventoryPage({
           );
           return;
         }
-        await updateLibrarySyncHostSpoolWeight(
-          clientHostBaseUrl!,
-          clientLibraryId,
+        await updateInventorySpoolWeight(
           selectedSpool.id,
           safeGrams,
+          { clientReadOnly, clientHostBaseUrl, clientLibraryId },
         );
         await reloadSpools();
         await reloadPrinterOverview();
@@ -2731,7 +2717,7 @@ export default function InventoryPage({
           null,
         );
       } else {
-        await updateSpoolWeight(selectedSpool.id, safeGrams);
+        await updateInventorySpoolWeight(selectedSpool.id, safeGrams);
       }
       const calculatedRemaining = Math.max(0, safeGrams - selectedSpoolResolvedTare);
       if (selectedSpool.status === "EMPTY" && calculatedRemaining > 0) {
@@ -2773,11 +2759,10 @@ export default function InventoryPage({
         if (!canUseClientHostWrite()) {
           return;
         }
-        await updateLibrarySyncHostSpoolTareWeight(
-          clientHostBaseUrl!,
-          clientLibraryId,
+        await updateInventorySpoolTareWeight(
           selectedSpool.id,
           safeGrams,
+          { clientReadOnly, clientHostBaseUrl, clientLibraryId },
         );
         await reloadSpools();
         setSelectedSpoolTareDraft(String(safeGrams));
@@ -2789,7 +2774,7 @@ export default function InventoryPage({
         );
         return;
       }
-      await updateSpoolTareWeight(selectedSpool.id, safeGrams);
+      await updateInventorySpoolTareWeight(selectedSpool.id, safeGrams);
       await reloadSpools();
       await reloadSpoolDetail(selectedSpool.id);
       setInfoMessage(t("inventory.tareWeightUpdated", "Empty spool weight updated."));

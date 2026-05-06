@@ -7,13 +7,20 @@ import {
   purgeLibrarySyncHostSpool,
   purgeSpool,
   updateLibrarySyncHostSpoolDetails,
+  updateLibrarySyncHostSpoolRfidTag,
+  updateLibrarySyncHostSpoolTareWeight,
+  updateLibrarySyncHostSpoolWeight,
   updateSpoolDetails,
+  updateSpoolRfidTag,
   updateSpoolStatus,
+  updateSpoolTareWeight,
+  updateSpoolWeight,
   type CreateManualSpoolInput,
   type CreateSpoolInput,
   type DeleteSpoolInput,
   type PurgeSpoolInput,
   type UpdateSpoolDetailsInput,
+  type UpdateSpoolRfidTagInput,
 } from "./tauri_client";
 
 export type SpoolWriteTarget = {
@@ -33,6 +40,12 @@ type SpoolWriteDependencies = {
   deleteLocalSpool?: typeof deleteSpool;
   purgeHostSpool?: typeof purgeLibrarySyncHostSpool;
   purgeLocalSpool?: typeof purgeSpool;
+  updateHostSpoolWeight?: typeof updateLibrarySyncHostSpoolWeight;
+  updateLocalSpoolWeight?: typeof updateSpoolWeight;
+  updateHostSpoolTareWeight?: typeof updateLibrarySyncHostSpoolTareWeight;
+  updateLocalSpoolTareWeight?: typeof updateSpoolTareWeight;
+  updateHostSpoolRfidTag?: typeof updateLibrarySyncHostSpoolRfidTag;
+  updateLocalSpoolRfidTag?: typeof updateSpoolRfidTag;
 };
 
 function requireClientHostTarget(target: SpoolWriteTarget): {
@@ -151,4 +164,62 @@ export async function purgeInventorySpool(
   }
 
   await purgeLocalSpool(input);
+}
+
+export async function updateInventorySpoolWeight(
+  spoolId: string,
+  grams: number,
+  target: SpoolWriteTarget = {},
+  dependencies: SpoolWriteDependencies = {},
+): Promise<void> {
+  const updateHostSpoolWeight =
+    dependencies.updateHostSpoolWeight ?? updateLibrarySyncHostSpoolWeight;
+  const updateLocalSpoolWeight = dependencies.updateLocalSpoolWeight ?? updateSpoolWeight;
+
+  if (target.clientReadOnly) {
+    const hostTarget = requireClientHostTarget(target);
+    await updateHostSpoolWeight(hostTarget.baseUrl, hostTarget.libraryId, spoolId, grams);
+    return;
+  }
+
+  await updateLocalSpoolWeight(spoolId, grams);
+}
+
+export async function updateInventorySpoolTareWeight(
+  spoolId: string,
+  grams: number,
+  target: SpoolWriteTarget = {},
+  dependencies: SpoolWriteDependencies = {},
+): Promise<void> {
+  const updateHostSpoolTareWeight =
+    dependencies.updateHostSpoolTareWeight ?? updateLibrarySyncHostSpoolTareWeight;
+  const updateLocalSpoolTareWeight =
+    dependencies.updateLocalSpoolTareWeight ?? updateSpoolTareWeight;
+
+  if (target.clientReadOnly) {
+    const hostTarget = requireClientHostTarget(target);
+    await updateHostSpoolTareWeight(hostTarget.baseUrl, hostTarget.libraryId, spoolId, grams);
+    return;
+  }
+
+  await updateLocalSpoolTareWeight(spoolId, grams);
+}
+
+export async function updateInventorySpoolRfidTag(
+  input: UpdateSpoolRfidTagInput,
+  target: SpoolWriteTarget = {},
+  dependencies: SpoolWriteDependencies = {},
+): Promise<void> {
+  const updateHostSpoolRfidTag =
+    dependencies.updateHostSpoolRfidTag ?? updateLibrarySyncHostSpoolRfidTag;
+  const updateLocalSpoolRfidTag =
+    dependencies.updateLocalSpoolRfidTag ?? updateSpoolRfidTag;
+
+  if (target.clientReadOnly) {
+    const hostTarget = requireClientHostTarget(target);
+    await updateHostSpoolRfidTag(hostTarget.baseUrl, hostTarget.libraryId, input);
+    return;
+  }
+
+  await updateLocalSpoolRfidTag(input);
 }

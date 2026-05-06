@@ -3,8 +3,6 @@ import {
   createPrinter,
   createLibrarySyncHostPrinter,
   isTauri,
-  updateLibrarySyncHostSpoolRfidTag,
-  updateSpoolRfidTag,
   type BambuLiveIntegrationEntry,
   type BambuLiveObservedTray,
   type PrinterOverviewRow,
@@ -16,6 +14,7 @@ import {
   type PrinterSnapshotSource,
 } from "../lib/printer_data_source";
 import { loadLibrarySyncPageState } from "../lib/library_sync_state";
+import { updateInventorySpoolRfidTag } from "../lib/spool_writes";
 import {
   buildCreatePrinterInput,
   defaultPrinterFormCapacityForModel,
@@ -570,15 +569,11 @@ export default function PrintersPage() {
         rfid_tag: observedRfid,
         rfid_observed_at: rfidOverridePrompt.observedAt ?? new Date().toISOString(),
       };
-      if (clientReadOnly) {
-        await updateLibrarySyncHostSpoolRfidTag(
-          clientHostBaseUrl!,
-          clientLibraryId,
-          updateInput,
-        );
-      } else {
-        await updateSpoolRfidTag(updateInput);
-      }
+      await updateInventorySpoolRfidTag(updateInput, {
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+      });
       await reloadData();
       setRfidOverridePrompt(null);
       setInfo(t("inventory.rfidSaved", "RFID tag saved on the selected roll."));
