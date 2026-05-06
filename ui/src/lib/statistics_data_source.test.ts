@@ -4,8 +4,13 @@ import test from "node:test";
 import {
   loadFilamentConsumptionBreakdown,
   loadLoanBreakdownRows,
+  loadStatisticsPageData,
 } from "./statistics_data_source";
-import type { FilamentConsumptionRow, SpoolLoanDetailsRow } from "./tauri_client";
+import type {
+  FilamentConsumptionRow,
+  LibrarySyncSettings,
+  SpoolLoanDetailsRow,
+} from "./tauri_client";
 
 function consumptionRow(id: string): FilamentConsumptionRow {
   return {
@@ -49,6 +54,16 @@ function loanRow(spoolId: string): SpoolLoanDetailsRow {
       consumed_grams: null,
       return_note: null,
     },
+  };
+}
+
+function syncSettings(overrides: Partial<LibrarySyncSettings> = {}): LibrarySyncSettings {
+  return {
+    mode: "STANDALONE",
+    device_name: "desktop",
+    library_id: "library-1",
+    client_auth_paired: false,
+    ...overrides,
   };
 }
 
@@ -119,4 +134,30 @@ test("loadLoanBreakdownRows loads local loans outside client mode", async () => 
 
   assert.deepEqual(calls, [{ limit: 50, includeReturned: true, direction: "INBOUND" }]);
   assert.deepEqual(rows.map((row) => row.loan.spool_id), ["local-spool"]);
+});
+
+test("loadStatisticsPageData loads sync settings once and returns derived sync state", async () => {
+  const result = await loadStatisticsPageData({
+    loadSyncSettings: async () =>
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: "http://host",
+        host_device_name: "Host",
+      }),
+    loadData: async () => ({
+      overview: null,
+      printers: [],
+      spoolRows: [],
+      consumptionRows: [],
+      loanDetails: [],
+      loanUsage: [],
+      inboundLoanUsage: [],
+      updatedAt: null,
+      source: "OFFLINE",
+    }),
+  });
+
+  assert.equal(result.syncState.clientReadOnly, true);
+  assert.equal(result.syncState.clientHostDeviceName, "Host");
+  assert.equal(result.syncState.clientHostBaseUrl, "http://host");
 });

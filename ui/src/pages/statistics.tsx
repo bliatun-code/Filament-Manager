@@ -46,14 +46,12 @@ import {
   deriveStatisticsTotals,
 } from "../lib/statistics_model";
 import {
-  deriveStatisticsLibrarySyncState,
   loadFilamentConsumptionBreakdown,
   loadLoanBreakdownRows,
-  loadStatisticsData,
+  loadStatisticsPageData,
 } from "../lib/statistics_data_source";
 import { useResolvedTheme } from "../lib/theme_mode";
 import {
-  getLibrarySyncSettings,
   isTauri,
   type FilamentConsumptionRow,
   type InventoryOverview,
@@ -188,15 +186,14 @@ export default function StatisticsPage() {
       }
       setError(null);
       try {
-        const syncSettings = await getLibrarySyncSettings();
-        const syncState = deriveStatisticsLibrarySyncState(syncSettings);
+        const result = await loadStatisticsPageData();
+        const { syncState } = result;
 
         setClientReadOnly(syncState.clientReadOnly);
         setClientHostDeviceName(syncState.clientHostDeviceName);
         setClientHostBaseUrl(syncState.clientHostBaseUrl);
         setClientLibraryId(syncState.clientLibraryId);
 
-        const result = await loadStatisticsData(syncSettings);
         setOverview(result.overview ? { ...result.overview } : null);
         setPrinters(result.printers);
         setSpoolRows([...result.spoolRows]);

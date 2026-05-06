@@ -6,6 +6,7 @@ import {
   fetchLibrarySyncLoans,
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncSnapshot,
+  getLibrarySyncSettings,
   listLoanUsageByPerson,
   listFilamentConsumption,
   listPrinterOverview,
@@ -41,6 +42,10 @@ export type StatisticsDataLoadResult = {
   source: StatisticsSnapshotSource;
 };
 
+export type StatisticsPageDataLoadResult = StatisticsDataLoadResult & {
+  syncState: StatisticsLibrarySyncState;
+};
+
 export type FilamentConsumptionBreakdownOptions = {
   clientReadOnly: boolean;
   clientHostBaseUrl?: string | null;
@@ -63,6 +68,11 @@ type FilamentConsumptionBreakdownDependencies = {
 
 type LoanBreakdownRowsDependencies = {
   listLocalLoans?: typeof listSpoolLoans;
+};
+
+type StatisticsPageDataDependencies = {
+  loadSyncSettings?: typeof getLibrarySyncSettings;
+  loadData?: typeof loadStatisticsData;
 };
 
 export function deriveStatisticsLibrarySyncState(
@@ -110,6 +120,23 @@ export function groupLoanUsageByPerson(
     }
     return left.borrower_name.localeCompare(right.borrower_name);
   });
+}
+
+export async function loadStatisticsPageData(
+  dependencies: StatisticsPageDataDependencies = {},
+): Promise<StatisticsPageDataLoadResult> {
+  const loadSyncSettings = dependencies.loadSyncSettings ?? getLibrarySyncSettings;
+  const loadData = dependencies.loadData ?? loadStatisticsData;
+  const syncSettings = await loadSyncSettings();
+  const [syncState, data] = await Promise.all([
+    Promise.resolve(deriveStatisticsLibrarySyncState(syncSettings)),
+    loadData(syncSettings),
+  ]);
+
+  return {
+    ...data,
+    syncState,
+  };
 }
 
 export async function loadFilamentConsumptionBreakdown(
