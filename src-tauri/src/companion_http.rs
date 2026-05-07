@@ -1,4 +1,4 @@
-use crate::companion_api::CompanionApiError;
+use crate::companion_error::CompanionApiError;
 use crate::state::TrustedLanCompanionRuntime;
 use axum::http::{
     header::{COOKIE, HOST, ORIGIN},

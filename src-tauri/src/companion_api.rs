@@ -1,9 +1,8 @@
 use crate::app_services::{CompanionService, CompanionSpoolDetail};
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, BambuLiveIntegrationEntryRow, FilamentDatabase, FilamentMasterCatalogRow,
-    InventoryError, LibrarySyncSettingsRow, PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow,
-    SpoolLoanDetailsRow, SpoolLoanRow, SpoolWithMasterRow, TrustedLanPairedBrowserRow,
-    WishlistItemRow,
+    LibrarySyncSettingsRow, PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow, SpoolLoanDetailsRow,
+    SpoolLoanRow, SpoolWithMasterRow, TrustedLanPairedBrowserRow, WishlistItemRow,
 };
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput,
@@ -16,6 +15,7 @@ use crate::companion_assets::companion_browser_assets;
 use crate::companion_assets::{
     companion_browser_asset, companion_browser_binary_asset, COMPANION_BROWSER_HTML,
 };
+use crate::companion_error::CompanionApiError;
 use crate::companion_http::{
     cookie_value_from_headers, has_valid_csrf, header_string, maybe_apply_qa_delay,
     require_allowed_host, require_allowed_origin, requires_csrf,
@@ -26,7 +26,7 @@ use axum::body::Body;
 use axum::extract::{Path, Query, State};
 use axum::http::{
     header::{ORIGIN, SET_COOKIE},
-    HeaderMap, HeaderValue, Request, StatusCode,
+    HeaderMap, HeaderValue, Request,
 };
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
@@ -58,15 +58,6 @@ struct CompanionSession {
     csrf_token: String,
     created_at_epoch_s: u64,
     paired_browser_id: Option<String>,
-}
-
-#[derive(Debug)]
-pub(crate) enum CompanionApiError {
-    BadRequest(String),
-    Unauthorized(String),
-    Forbidden(String),
-    NotFound(String),
-    Internal(String),
 }
 
 #[derive(Deserialize, Default)]
@@ -289,12 +280,6 @@ struct CreateSpoolResponse {
     ok: bool,
     message: String,
     spool_id: String,
-}
-
-#[derive(Serialize)]
-struct ErrorResponse {
-    ok: bool,
-    message: String,
 }
 
 pub fn generate_pairing_token() -> String {
@@ -2208,29 +2193,6 @@ fn bytes_response(content_type: &'static str, content: &'static [u8]) -> Respons
 
 fn html_response(content: &'static str) -> Response {
     text_response("text/html; charset=utf-8", content)
-}
-
-impl From<InventoryError> for CompanionApiError {
-    fn from(error: InventoryError) -> Self {
-        match error {
-            InventoryError::NotFound => CompanionApiError::NotFound("Record not found".to_string()),
-            InventoryError::InvalidOperation(message) => CompanionApiError::BadRequest(message),
-            InventoryError::Db(message) => CompanionApiError::Internal(message),
-        }
-    }
-}
-
-impl IntoResponse for CompanionApiError {
-    fn into_response(self) -> Response {
-        let (status, message) = match self {
-            CompanionApiError::BadRequest(message) => (StatusCode::BAD_REQUEST, message),
-            CompanionApiError::Unauthorized(message) => (StatusCode::UNAUTHORIZED, message),
-            CompanionApiError::Forbidden(message) => (StatusCode::FORBIDDEN, message),
-            CompanionApiError::NotFound(message) => (StatusCode::NOT_FOUND, message),
-            CompanionApiError::Internal(message) => (StatusCode::INTERNAL_SERVER_ERROR, message),
-        };
-        (status, Json(ErrorResponse { ok: false, message })).into_response()
-    }
 }
 
 #[cfg(test)]
