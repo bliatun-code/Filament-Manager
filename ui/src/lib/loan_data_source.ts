@@ -17,6 +17,7 @@ import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
 } from "./library_sync_state";
+import { requireClientHostWriteTarget } from "./host_write_target";
 
 export type LoanSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
 export type LoanLibrarySyncState = LibrarySyncPageState;
@@ -52,19 +53,6 @@ type LoanWriteDependencies = {
   returnLocalLoan?: typeof returnSpoolLoan;
   returnLocalInboundLoan?: typeof returnInboundSpoolLoan;
 };
-
-function requireClientHostTarget(target: LoanWriteTarget): {
-  baseUrl: string;
-  libraryId: string;
-} {
-  if (!target.clientHostBaseUrl?.trim() || !target.clientLibraryId?.trim()) {
-    throw new Error("Host connection details are missing for this loan action.");
-  }
-  return {
-    baseUrl: target.clientHostBaseUrl,
-    libraryId: target.clientLibraryId,
-  };
-}
 
 export const deriveLoanLibrarySyncState = deriveLibrarySyncPageState;
 
@@ -136,7 +124,10 @@ export async function lendInventorySpool(
   const lendLocalSpool = dependencies.lendLocalSpool ?? lendSpool;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(
+      target,
+      "Host connection details are missing for this loan action.",
+    );
     await lendHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input);
     return;
   }
@@ -155,7 +146,10 @@ export async function returnInventoryLoan(
     dependencies.returnLocalInboundLoan ?? returnInboundSpoolLoan;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(
+      target,
+      "Host connection details are missing for this loan action.",
+    );
     await returnHostLoan(hostTarget.baseUrl, hostTarget.libraryId, input);
     return;
   }

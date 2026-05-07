@@ -11,6 +11,7 @@ import type {
   PreparedMeasuredWeightUpdate,
   PreparedPrinterSlotAssignment,
 } from "./printer_slot_model";
+import { requireClientHostWriteTarget } from "./host_write_target";
 
 export type PrinterSlotWriteTarget = {
   clientReadOnly: boolean;
@@ -23,16 +24,6 @@ type PrinterSlotWriteDependencies = {
   assignLocalPrinterSlot?: typeof assignPrinterSlot;
 };
 
-function requireClientHostTarget(target: PrinterSlotWriteTarget) {
-  if (!target.clientHostBaseUrl?.trim() || !target.clientLibraryId?.trim()) {
-    throw new Error("Host connection details are missing for this printer action.");
-  }
-  return {
-    baseUrl: target.clientHostBaseUrl,
-    libraryId: target.clientLibraryId,
-  };
-}
-
 export async function writePrinterSlotAssignment(
   target: PrinterSlotWriteTarget,
   input: AssignPrinterSlotInput,
@@ -43,7 +34,10 @@ export async function writePrinterSlotAssignment(
   const assignLocalPrinterSlot = dependencies.assignLocalPrinterSlot ?? assignPrinterSlot;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(
+      target,
+      "Host connection details are missing for this printer action.",
+    );
     await assignHostPrinterSlot(hostTarget.baseUrl, hostTarget.libraryId, input);
     return;
   }
@@ -58,7 +52,10 @@ export async function writePreparedMeasuredWeightUpdate(
   preparedWeight: PreparedMeasuredWeightUpdate,
 ) {
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(
+      target,
+      "Host connection details are missing for this printer action.",
+    );
     if (preparedWeight.clientAction === "record_usage") {
       await recordLibrarySyncHostPrintUsage(hostTarget.baseUrl, hostTarget.libraryId, {
         printer_id: printerId,
@@ -108,7 +105,10 @@ export async function writeSpoolMeasuredWeight(
   grams: number,
 ) {
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(
+      target,
+      "Host connection details are missing for this printer action.",
+    );
     await updateLibrarySyncHostSpoolWeight(hostTarget.baseUrl, hostTarget.libraryId, spoolId, grams);
     return;
   }

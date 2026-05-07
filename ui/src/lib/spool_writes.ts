@@ -22,6 +22,7 @@ import {
   type UpdateSpoolDetailsInput,
   type UpdateSpoolRfidTagInput,
 } from "./tauri_client";
+import { requireClientHostWriteTarget } from "./host_write_target";
 
 export type SpoolWriteTarget = {
   clientReadOnly?: boolean;
@@ -48,18 +49,8 @@ type SpoolWriteDependencies = {
   updateLocalSpoolRfidTag?: typeof updateSpoolRfidTag;
 };
 
-function requireClientHostTarget(target: SpoolWriteTarget): {
-  baseUrl: string;
-  libraryId: string;
-} {
-  if (!target.clientHostBaseUrl?.trim() || !target.clientLibraryId?.trim()) {
-    throw new Error("Host connection details are missing for this spool action.");
-  }
-  return {
-    baseUrl: target.clientHostBaseUrl,
-    libraryId: target.clientLibraryId,
-  };
-}
+const missingSpoolHostTargetMessage =
+  "Host connection details are missing for this spool action.";
 
 export async function createInventorySpoolFromMaster(
   input: CreateSpoolInput,
@@ -70,7 +61,7 @@ export async function createInventorySpoolFromMaster(
   const createLocalSpool = dependencies.createLocalSpool ?? createSpool;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
     return createHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input);
   }
 
@@ -88,7 +79,7 @@ export async function createManualInventorySpool(
     dependencies.createLocalManualSpool ?? createManualSpool;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
     return createHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input);
   }
 
@@ -106,7 +97,7 @@ export async function updateInventorySpoolDetails(
   const updateLocalSpoolDetails = dependencies.updateLocalSpoolDetails ?? updateSpoolDetails;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
     await updateHostSpoolDetails(hostTarget.baseUrl, hostTarget.libraryId, input);
     return;
   }
@@ -124,7 +115,7 @@ export async function updateInventorySpoolStatus(
   const updateLocalSpoolStatus = dependencies.updateLocalSpoolStatus ?? updateSpoolStatus;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
     await updateHostSpoolDetails(hostTarget.baseUrl, hostTarget.libraryId, input);
     return;
   }
@@ -141,7 +132,7 @@ export async function deleteInventorySpool(
   const deleteLocalSpool = dependencies.deleteLocalSpool ?? deleteSpool;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
     await deleteHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input);
     return;
   }
@@ -158,7 +149,7 @@ export async function purgeInventorySpool(
   const purgeLocalSpool = dependencies.purgeLocalSpool ?? purgeSpool;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
     await purgeHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input);
     return;
   }
@@ -177,7 +168,7 @@ export async function updateInventorySpoolWeight(
   const updateLocalSpoolWeight = dependencies.updateLocalSpoolWeight ?? updateSpoolWeight;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
     await updateHostSpoolWeight(hostTarget.baseUrl, hostTarget.libraryId, spoolId, grams);
     return;
   }
@@ -197,7 +188,7 @@ export async function updateInventorySpoolTareWeight(
     dependencies.updateLocalSpoolTareWeight ?? updateSpoolTareWeight;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
     await updateHostSpoolTareWeight(hostTarget.baseUrl, hostTarget.libraryId, spoolId, grams);
     return;
   }
@@ -216,7 +207,7 @@ export async function updateInventorySpoolRfidTag(
     dependencies.updateLocalSpoolRfidTag ?? updateSpoolRfidTag;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
     await updateHostSpoolRfidTag(hostTarget.baseUrl, hostTarget.libraryId, input);
     return;
   }

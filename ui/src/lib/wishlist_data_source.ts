@@ -11,6 +11,7 @@ import {
   type UpdateWishlistStatusInput,
   type WishlistItemRow,
 } from "./tauri_client";
+import { requireClientHostBaseTarget } from "./host_write_target";
 
 export type WishlistDataSourceOptions = {
   clientReadOnly?: boolean;
@@ -30,18 +31,8 @@ type WishlistDataSourceDependencies = {
   deleteLocalWishlistItem?: typeof deleteWishlistItem;
 };
 
-function requireClientHostDetails(options: WishlistDataSourceOptions): {
-  clientHostBaseUrl: string;
-  clientLibraryId: string | null | undefined;
-} {
-  if (!options.clientHostBaseUrl?.trim()) {
-    throw new Error("Client host base URL is required for wishlist host writes.");
-  }
-  return {
-    clientHostBaseUrl: options.clientHostBaseUrl,
-    clientLibraryId: options.clientLibraryId,
-  };
-}
+const missingWishlistHostTargetMessage =
+  "Client host base URL is required for wishlist host writes.";
 
 export async function loadWishlistItems(
   options: WishlistDataSourceOptions = {},
@@ -68,8 +59,11 @@ export async function createWishlistEntry(
   const createLocalWishlistItem = dependencies.createLocalWishlistItem ?? createWishlistItem;
 
   if (options.clientReadOnly) {
-    const { clientHostBaseUrl, clientLibraryId } = requireClientHostDetails(options);
-    await createHostWishlistItem(clientHostBaseUrl, clientLibraryId, input);
+    const hostTarget = requireClientHostBaseTarget(
+      options,
+      missingWishlistHostTargetMessage,
+    );
+    await createHostWishlistItem(hostTarget.baseUrl, hostTarget.libraryId, input);
     return;
   }
 
@@ -87,8 +81,11 @@ export async function updateWishlistEntryStatus(
     dependencies.updateLocalWishlistItemStatus ?? updateWishlistItemStatus;
 
   if (options.clientReadOnly) {
-    const { clientHostBaseUrl, clientLibraryId } = requireClientHostDetails(options);
-    await updateHostWishlistItemStatus(clientHostBaseUrl, clientLibraryId, input);
+    const hostTarget = requireClientHostBaseTarget(
+      options,
+      missingWishlistHostTargetMessage,
+    );
+    await updateHostWishlistItemStatus(hostTarget.baseUrl, hostTarget.libraryId, input);
     return;
   }
 
@@ -105,8 +102,11 @@ export async function deleteWishlistEntry(
   const deleteLocalWishlistItem = dependencies.deleteLocalWishlistItem ?? deleteWishlistItem;
 
   if (options.clientReadOnly) {
-    const { clientHostBaseUrl, clientLibraryId } = requireClientHostDetails(options);
-    await deleteHostWishlistItem(clientHostBaseUrl, clientLibraryId, itemId);
+    const hostTarget = requireClientHostBaseTarget(
+      options,
+      missingWishlistHostTargetMessage,
+    );
+    await deleteHostWishlistItem(hostTarget.baseUrl, hostTarget.libraryId, itemId);
     return;
   }
 

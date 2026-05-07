@@ -5,6 +5,7 @@ import {
   deletePrinter,
   type CreatePrinterInput,
 } from "./tauri_client";
+import { requireClientHostWriteTarget } from "./host_write_target";
 
 export type PrinterWriteTarget = {
   clientReadOnly?: boolean;
@@ -19,19 +20,6 @@ type PrinterWriteDependencies = {
   deleteLocalPrinter?: typeof deletePrinter;
 };
 
-function requireClientHostTarget(target: PrinterWriteTarget): {
-  baseUrl: string;
-  libraryId: string;
-} {
-  if (!target.clientHostBaseUrl?.trim() || !target.clientLibraryId?.trim()) {
-    throw new Error("Host connection details are missing for this printer action.");
-  }
-  return {
-    baseUrl: target.clientHostBaseUrl,
-    libraryId: target.clientLibraryId,
-  };
-}
-
 export async function createManagedPrinter(
   input: CreatePrinterInput,
   target: PrinterWriteTarget = {},
@@ -41,7 +29,10 @@ export async function createManagedPrinter(
   const createLocalPrinter = dependencies.createLocalPrinter ?? createPrinter;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(
+      target,
+      "Host connection details are missing for this printer action.",
+    );
     await createHostPrinter(hostTarget.baseUrl, hostTarget.libraryId, input);
     return;
   }
@@ -58,7 +49,10 @@ export async function deleteManagedPrinter(
   const deleteLocalPrinter = dependencies.deleteLocalPrinter ?? deletePrinter;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostTarget(target);
+    const hostTarget = requireClientHostWriteTarget(
+      target,
+      "Host connection details are missing for this printer action.",
+    );
     await deleteHostPrinter(hostTarget.baseUrl, hostTarget.libraryId, printerId);
     return;
   }
