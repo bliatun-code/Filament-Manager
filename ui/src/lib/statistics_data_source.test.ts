@@ -72,8 +72,8 @@ test("loadFilamentConsumptionBreakdown uses host consumption in client mode", as
   const rows = await loadFilamentConsumptionBreakdown(
     {
       clientReadOnly: true,
-      clientHostBaseUrl: "http://host",
-      clientLibraryId: "library-1",
+      clientHostBaseUrl: " http://host ",
+      clientLibraryId: " library-1 ",
       printerId: "printer-1",
     },
     {

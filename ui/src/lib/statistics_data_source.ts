@@ -26,6 +26,7 @@ import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
 } from "./library_sync_state";
+import { resolveClientHostTarget } from "./host_write_target";
 
 export type StatisticsSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
 export type StatisticsLibrarySyncState = LibrarySyncPageState;
@@ -146,16 +147,11 @@ export async function loadFilamentConsumptionBreakdown(
   const fetchHostConsumption =
     dependencies.fetchHostConsumption ?? fetchLibrarySyncFilamentConsumption;
   const listLocalConsumption = dependencies.listLocalConsumption ?? listFilamentConsumption;
-  const {
-    clientReadOnly,
-    clientHostBaseUrl,
-    clientLibraryId,
-    printerId = null,
-    limit = 500,
-  } = options;
+  const { clientReadOnly, printerId = null, limit = 500 } = options;
+  const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
 
-  if (clientReadOnly && clientHostBaseUrl && clientLibraryId) {
-    return fetchHostConsumption(clientHostBaseUrl, clientLibraryId, limit, printerId);
+  if (hostTarget) {
+    return fetchHostConsumption(hostTarget.baseUrl, hostTarget.libraryId, limit, printerId);
   }
 
   return listLocalConsumption(limit, printerId);
@@ -177,8 +173,9 @@ export async function loadStatisticsData(
   syncSettings: LibrarySyncSettings,
 ): Promise<StatisticsDataLoadResult> {
   const syncState = deriveStatisticsLibrarySyncState(syncSettings);
+  const hostTarget = syncState.clientReadOnly ? resolveClientHostTarget(syncState) : null;
 
-  if (syncState.clientReadOnly && syncState.clientHostBaseUrl && syncState.clientLibraryId) {
+  if (hostTarget) {
     const [
       snapshotResult,
       printersResult,
@@ -190,29 +187,29 @@ export async function loadStatisticsData(
       cachedSpools,
     ] =
       await Promise.all([
-        fetchLibrarySyncSnapshot(syncState.clientHostBaseUrl, syncState.clientLibraryId).then(
+        fetchLibrarySyncSnapshot(hostTarget.baseUrl, hostTarget.libraryId).then(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
-        fetchLibrarySyncPrinterOverview(syncState.clientHostBaseUrl, syncState.clientLibraryId).then(
+        fetchLibrarySyncPrinterOverview(hostTarget.baseUrl, hostTarget.libraryId).then(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
-        fetchLibrarySyncLoans(syncState.clientHostBaseUrl, syncState.clientLibraryId).then(
+        fetchLibrarySyncLoans(hostTarget.baseUrl, hostTarget.libraryId).then(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
         loadAllSpoolRows({
           clientReadOnly: true,
-          clientHostBaseUrl: syncState.clientHostBaseUrl,
-          clientLibraryId: syncState.clientLibraryId,
+          clientHostBaseUrl: hostTarget.baseUrl,
+          clientLibraryId: hostTarget.libraryId,
         }).then(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
         fetchLibrarySyncFilamentConsumption(
-          syncState.clientHostBaseUrl,
-          syncState.clientLibraryId,
+          hostTarget.baseUrl,
+          hostTarget.libraryId,
           500,
           null,
         ).then(
