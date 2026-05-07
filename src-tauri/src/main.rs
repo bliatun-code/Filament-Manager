@@ -4,6 +4,7 @@ mod app_services;
 mod backend;
 mod bambu_live;
 mod companion_api;
+mod companion_assets;
 mod security;
 mod state;
 
