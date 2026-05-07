@@ -151,11 +151,6 @@ export async function loadDashboardData(
       if (validation.device_name) {
         clientHostDisplayName = validation.device_name;
       }
-      if (!validation.reachable) {
-        clientHostCompanionTone = "off";
-      } else if (!validation.ok || !validation.matches_library_id || clientHostNeedsRepair) {
-        clientHostCompanionTone = "warn";
-      }
     } else {
       onLoadError(validationResult.reason);
     }

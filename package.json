@@ -21,10 +21,10 @@
     "tauri": "node ./scripts/run-tauri.mjs"
   },
   "optionalDependencies": {
-    "better-sqlite3": "^12.6.2"
+    "better-sqlite3": "^12.9.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.10.1",
-    "tsx": "^4.7.0"
+    "@tauri-apps/cli": "^2.11.1",
+    "tsx": "^4.21.0"
   }
 }

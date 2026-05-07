@@ -12,7 +12,7 @@ function addPluginIfInstalled(name, options = {}) {
   }
 }
 
-addPluginIfInstalled("tailwindcss");
+addPluginIfInstalled("@tailwindcss/postcss");
 addPluginIfInstalled("autoprefixer");
 
 export default { plugins };

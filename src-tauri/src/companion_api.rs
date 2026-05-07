@@ -23,8 +23,8 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use rand::rngs::OsRng;
-use rand::TryRngCore;
+use rand::rngs::SysRng;
+use rand::TryRng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -648,17 +648,17 @@ fn build_router(state: CompanionApiState) -> Router {
         .route("/loans", get(handle_list_spool_loans))
         .route("/printers/overview", get(handle_list_printer_overview))
         .route("/printers", post(handle_create_printer))
-        .route("/printers/:printer_id/delete", post(handle_delete_printer))
+        .route("/printers/{printer_id}/delete", post(handle_delete_printer))
         .route("/printers/active", post(handle_set_active_printer))
         .route("/loans/active", get(handle_list_active_spool_loans))
         .route("/wishlist", get(handle_list_wishlist_items))
         .route("/wishlist", post(handle_create_wishlist_item))
         .route(
-            "/wishlist/:item_id/status",
+            "/wishlist/{item_id}/status",
             post(handle_update_wishlist_item_status),
         )
         .route(
-            "/wishlist/:item_id/delete",
+            "/wishlist/{item_id}/delete",
             post(handle_delete_wishlist_item),
         )
         .route("/spools/by-qr", get(handle_find_spool_by_qr))
@@ -666,38 +666,44 @@ fn build_router(state: CompanionApiState) -> Router {
         .route("/spools/manual", post(handle_create_owned_spool))
         .route("/spools/borrowed-in", post(handle_create_borrowed_in_spool))
         .route(
-            "/spools/:spool_id/borrowed-in",
+            "/spools/{spool_id}/borrowed-in",
             post(handle_update_borrowed_in_spool),
         )
         .route(
-            "/spools/:spool_id/details",
+            "/spools/{spool_id}/details",
             post(handle_update_spool_details),
         )
         .route(
-            "/spools/:spool_id/qr-image.svg",
+            "/spools/{spool_id}/qr-image.svg",
             get(handle_spool_qr_image_svg),
         )
         .route(
-            "/printers/:printer_id/slots/:slot_id/assignment",
+            "/printers/{printer_id}/slots/{slot_id}/assignment",
             post(handle_update_printer_slot_assignment),
         )
         .route(
-            "/printers/:printer_id/spools/:spool_id/usage",
+            "/printers/{printer_id}/spools/{spool_id}/usage",
             post(handle_record_print_usage),
         )
-        .route("/spools/:spool_id", get(handle_get_spool_detail))
-        .route("/spools/:spool_id/lend", post(handle_lend_spool))
-        .route("/spools/:spool_id/weight", post(handle_update_spool_weight))
+        .route("/spools/{spool_id}", get(handle_get_spool_detail))
+        .route("/spools/{spool_id}/lend", post(handle_lend_spool))
         .route(
-            "/spools/:spool_id/tare-weight",
+            "/spools/{spool_id}/weight",
+            post(handle_update_spool_weight),
+        )
+        .route(
+            "/spools/{spool_id}/tare-weight",
             post(handle_update_spool_tare_weight),
         )
-        .route("/spools/:spool_id/rfid", post(handle_update_spool_rfid_tag))
-        .route("/spools/:spool_id/delete", post(handle_delete_spool))
-        .route("/spools/:spool_id/purge", post(handle_purge_spool))
-        .route("/loans/:loan_id/return", post(handle_return_spool_loan))
         .route(
-            "/loans/:loan_id/hand-back",
+            "/spools/{spool_id}/rfid",
+            post(handle_update_spool_rfid_tag),
+        )
+        .route("/spools/{spool_id}/delete", post(handle_delete_spool))
+        .route("/spools/{spool_id}/purge", post(handle_purge_spool))
+        .route("/loans/{loan_id}/return", post(handle_return_spool_loan))
+        .route(
+            "/loans/{loan_id}/hand-back",
             post(handle_hand_back_borrowed_in_spool),
         )
         .route_layer(middleware::from_fn_with_state(
@@ -709,7 +715,7 @@ fn build_router(state: CompanionApiState) -> Router {
     Router::new()
         .route("/companion", get(handle_companion_shell))
         .route("/companion/", get(handle_companion_shell))
-        .route("/companion/:asset", get(handle_companion_asset))
+        .route("/companion/{asset}", get(handle_companion_asset))
         .route("/api/v1/health", get(handle_health))
         .route("/api/v1/library/snapshot", get(handle_library_snapshot))
         .route("/api/v1/library/spools", get(handle_library_spools))
@@ -2400,7 +2406,7 @@ fn unix_epoch_seconds() -> u64 {
 
 fn random_hex_token(byte_count: usize) -> String {
     let mut bytes = vec![0u8; byte_count];
-    OsRng
+    SysRng
         .try_fill_bytes(&mut bytes)
         .expect("OS RNG should be available for trusted-LAN token generation");
     bytes
@@ -5272,7 +5278,7 @@ mod tests {
                     for import_path in companion_browser_relative_imports(asset.content) {
                         assert!(
                             served_assets.contains_key(import_path.as_str()),
-                            "{asset_path} imports {import_path}, but it is not served by /companion/:asset"
+                            "{asset_path} imports {import_path}, but it is not served by the companion asset router"
                         );
                     }
                 }

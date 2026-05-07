@@ -189,12 +189,10 @@ export function LoanOutModal({
         clientLibraryId,
       });
       setSpools(candidates);
-      const preferred =
-        (preferredSpoolId
-          ? candidates.find((spool) => spool.id === preferredSpoolId) ?? null
-          : null) ??
-        candidates[0] ??
-        null;
+      const preferredById = preferredSpoolId
+        ? candidates.find((spool) => spool.id === preferredSpoolId)
+        : undefined;
+      const preferred = preferredById ?? candidates[0] ?? null;
       setSelectedSpoolId(preferred?.id ?? null);
       setGramsOut(
         preferred?.remainingGrams != null

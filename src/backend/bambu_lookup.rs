@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::RngExt;
 use reqwest::blocking::Client;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};

@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 @layer base {
   :root {
@@ -110,7 +108,10 @@
   }
 
   .page-header-filter-surface {
-    @apply surface-subtle w-full px-3 py-2 min-[920px]:w-auto;
+    @apply w-full rounded-lg border px-3 py-2 dark:border-slate-700/70 dark:bg-slate-900/60 dark:shadow-none min-[920px]:w-auto;
+    background: rgba(255, 255, 255, 0.76);
+    border-color: rgba(203, 213, 225, 0.72);
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.07);
   }
 
   @media (min-width: 920px) {

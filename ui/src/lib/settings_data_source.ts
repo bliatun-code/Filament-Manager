@@ -73,7 +73,7 @@ export async function loadSettingsPageData(
     ),
   ]);
 
-  let overviewRows: PrinterOverviewRow[] = [];
+  let overviewRows: PrinterOverviewRow[];
   let spoolRows = localSpoolSnapshot;
   let bambuLiveIntegrations = mapBambuLiveIntegrations(snapshot.bambu_live_integrations);
 
