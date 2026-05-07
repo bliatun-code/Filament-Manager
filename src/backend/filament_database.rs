@@ -4989,8 +4989,9 @@ mod tests {
     fn reset_app_state_table_list_tracks_all_backup_tables() {
         let full_backup_tables: HashSet<&str> = FULL_BACKUP_TABLES.iter().copied().collect();
         let reset_tables: HashSet<&str> = RESET_APP_STATE_TABLES.iter().copied().collect();
-        let preserved_tables: HashSet<&str> =
-            ["filament_master_list", "label_templates"].into_iter().collect();
+        let preserved_tables: HashSet<&str> = ["filament_master_list", "label_templates"]
+            .into_iter()
+            .collect();
 
         assert!(
             reset_tables.is_disjoint(&preserved_tables),

@@ -10,8 +10,9 @@
   "scripts": {
     "doctor": "node ./scripts/doctor.mjs",
     "lint:ui": "npm --prefix ./ui run lint",
+    "fmt:rust": "cargo fmt --all -- --check",
     "test:companion": "node ./scripts/run-companion-tests.mjs",
-    "test:rust": "cargo test && cargo clippy --all-targets -- -D warnings",
+    "test:rust": "npm run fmt:rust && cargo test && cargo clippy --all-targets -- -D warnings",
     "test:ui": "node ./scripts/run-ui-tests.mjs",
     "test:settings-ui": "npm run test:ui",
     "smoke": "npm --prefix ./ui run build && npm run lint:ui && npm run test:companion && npm run test:ui && npm run doctor",
