@@ -17,7 +17,10 @@ import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
 } from "./library_sync_state";
-import { requireClientHostWriteTarget } from "./host_write_target";
+import {
+  requireClientHostWriteTarget,
+  resolveClientHostTarget,
+} from "./host_write_target";
 
 export type LoanSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
 export type LoanLibrarySyncState = LibrarySyncPageState;
@@ -71,11 +74,12 @@ export async function loadActiveLoanRows(
 export async function loadLoanRowsPage(
   options: LoanDataSourceOptions,
 ): Promise<LoanDataLoadResult> {
-  const { clientReadOnly, clientHostBaseUrl, clientLibraryId, limit = 2000 } = options;
+  const { clientReadOnly, limit = 2000 } = options;
+  const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
 
-  if (clientReadOnly && clientHostBaseUrl && clientLibraryId) {
+  if (hostTarget) {
     try {
-      const rows = await fetchLibrarySyncLoans(clientHostBaseUrl, clientLibraryId, limit);
+      const rows = await fetchLibrarySyncLoans(hostTarget.baseUrl, hostTarget.libraryId, limit);
       const cached = await fetchCachedLibrarySyncLoans().catch(() => null);
       return {
         rows,

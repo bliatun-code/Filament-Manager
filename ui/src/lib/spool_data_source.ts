@@ -3,6 +3,7 @@ import {
   listSpools,
   type SpoolWithMasterRow,
 } from "./tauri_client";
+import { resolveClientHostTarget } from "./host_write_target";
 
 type SpoolDataSourceOptions = {
   clientReadOnly: boolean;
@@ -22,9 +23,9 @@ export async function loadSpoolRowsPage(
   limit = 1200,
   offset = 0,
 ): Promise<SpoolWithMasterRow[]> {
-  const { clientReadOnly, clientHostBaseUrl, clientLibraryId } = options;
-  if (clientReadOnly && clientHostBaseUrl && clientLibraryId) {
-    return fetchLibrarySyncSpools(clientHostBaseUrl, clientLibraryId, limit, offset);
+  const hostTarget = options.clientReadOnly ? resolveClientHostTarget(options) : null;
+  if (hostTarget) {
+    return fetchLibrarySyncSpools(hostTarget.baseUrl, hostTarget.libraryId, limit, offset);
   }
   return listSpools(limit, offset);
 }

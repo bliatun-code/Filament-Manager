@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   requireClientHostBaseTarget,
   requireClientHostWriteTarget,
+  resolveClientHostTarget,
 } from "./host_write_target";
 
 test("requireClientHostWriteTarget trims and returns complete host details", () => {
@@ -27,6 +28,16 @@ test("requireClientHostWriteTarget rejects missing library details", () => {
         "missing host",
       ),
     /missing host/,
+  );
+});
+
+test("resolveClientHostTarget returns null until base URL and library id are complete", () => {
+  assert.equal(
+    resolveClientHostTarget({
+      clientHostBaseUrl: "http://host.local",
+      clientLibraryId: "",
+    }),
+    null,
   );
 });
 

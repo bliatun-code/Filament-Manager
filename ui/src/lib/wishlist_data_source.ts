@@ -11,7 +11,10 @@ import {
   type UpdateWishlistStatusInput,
   type WishlistItemRow,
 } from "./tauri_client";
-import { requireClientHostBaseTarget } from "./host_write_target";
+import {
+  requireClientHostBaseTarget,
+  resolveClientHostTarget,
+} from "./host_write_target";
 
 export type WishlistDataSourceOptions = {
   clientReadOnly?: boolean;
@@ -40,10 +43,11 @@ export async function loadWishlistItems(
 ): Promise<WishlistItemRow[]> {
   const fetchHostWishlist = dependencies.fetchHostWishlist ?? fetchLibrarySyncWishlistItems;
   const listLocalWishlist = dependencies.listLocalWishlist ?? listWishlistItems;
-  const { clientReadOnly = false, clientHostBaseUrl, clientLibraryId, limit = 500 } = options;
+  const { clientReadOnly = false, limit = 500 } = options;
+  const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
 
-  if (clientReadOnly && clientHostBaseUrl && clientLibraryId) {
-    return fetchHostWishlist(clientHostBaseUrl, clientLibraryId, limit);
+  if (hostTarget) {
+    return fetchHostWishlist(hostTarget.baseUrl, hostTarget.libraryId, limit);
   }
 
   return listLocalWishlist(limit);

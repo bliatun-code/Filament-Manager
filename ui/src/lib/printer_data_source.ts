@@ -14,6 +14,7 @@ import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
 } from "./library_sync_state";
+import { resolveClientHostTarget } from "./host_write_target";
 
 export type PrinterSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
 export type PrinterLibrarySyncState = LibrarySyncPageState;
@@ -80,13 +81,12 @@ export async function loadPrinterOverviewData(
   const fetchCachedOverview =
     dependencies.fetchCachedOverview ?? fetchCachedLibrarySyncPrinterOverview;
   const onLoadError = dependencies.onLoadError ?? console.error;
-  const { clientReadOnly, clientHostBaseUrl, clientLibraryId } = options;
-  const canUseHost = clientReadOnly && clientHostBaseUrl && clientLibraryId;
+  const hostTarget = options.clientReadOnly ? resolveClientHostTarget(options) : null;
 
-  if (canUseHost) {
+  if (hostTarget) {
     try {
       return {
-        printers: await fetchHostOverview(clientHostBaseUrl, clientLibraryId),
+        printers: await fetchHostOverview(hostTarget.baseUrl, hostTarget.libraryId),
         bambuLiveIntegrations: {},
         source: "LIVE",
         updatedAt: null,
@@ -125,22 +125,22 @@ export async function loadPrinterPageData(
   options: PrinterDataSourceOptions,
 ): Promise<PrinterDataLoadResult> {
   const { clientReadOnly, clientHostBaseUrl, clientLibraryId, supportedPrinterModels } = options;
-  const canUseHost = clientReadOnly && clientHostBaseUrl && clientLibraryId;
+  const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
 
-  if (canUseHost) {
+  if (hostTarget) {
     try {
       const [overview, spoolRows, settingsResult, cachedPrinters] = await Promise.all([
-        fetchLibrarySyncPrinterOverview(clientHostBaseUrl, clientLibraryId),
+        fetchLibrarySyncPrinterOverview(hostTarget.baseUrl, hostTarget.libraryId),
         loadSpoolRowsPage(
           {
             clientReadOnly,
-            clientHostBaseUrl,
-            clientLibraryId,
+            clientHostBaseUrl: hostTarget.baseUrl,
+            clientLibraryId: hostTarget.libraryId,
           },
           1200,
           0,
         ),
-        fetchLibrarySyncPrinterSettings(clientHostBaseUrl, clientLibraryId).then(
+        fetchLibrarySyncPrinterSettings(hostTarget.baseUrl, hostTarget.libraryId).then(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),

@@ -14,6 +14,7 @@ import {
   type InventorySpool,
 } from "./inventory_list_model";
 import { loadSpoolRowsPage } from "./spool_data_source";
+import { resolveClientHostTarget } from "./host_write_target";
 
 export type InventorySnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
 
@@ -134,11 +135,11 @@ export async function loadInventorySpoolDetail(
   const fetchHostSpoolDetail = dependencies.fetchHostSpoolDetail ?? fetchLibrarySyncSpoolDetail;
   const listLocalHistory = dependencies.listLocalHistory ?? listSpoolHistory;
   const listLocalUsage = dependencies.listLocalUsage ?? listSpoolUsage;
-  const { clientReadOnly, clientHostBaseUrl, clientLibraryId, spoolId, historyLimit = 80, usageLimit = 500 } =
-    options;
+  const { clientReadOnly, spoolId, historyLimit = 80, usageLimit = 500 } = options;
 
   if (clientReadOnly) {
-    if (!clientHostBaseUrl || !clientLibraryId) {
+    const hostTarget = resolveClientHostTarget(options);
+    if (!hostTarget) {
       return {
         historyRows: [],
         usagePoints: [],
@@ -146,8 +147,8 @@ export async function loadInventorySpoolDetail(
     }
 
     const detail = await fetchHostSpoolDetail(
-      clientHostBaseUrl,
-      clientLibraryId,
+      hostTarget.baseUrl,
+      hostTarget.libraryId,
       spoolId,
       historyLimit,
       usageLimit,

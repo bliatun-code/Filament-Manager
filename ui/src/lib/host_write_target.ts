@@ -22,11 +22,23 @@ export function requireClientHostWriteTarget(
   target: ClientHostTargetInput,
   errorMessage: string,
 ): ClientHostWriteTarget {
+  const resolvedTarget = resolveClientHostTarget(target);
+
+  if (!resolvedTarget) {
+    throw new Error(errorMessage);
+  }
+
+  return resolvedTarget;
+}
+
+export function resolveClientHostTarget(
+  target: ClientHostTargetInput,
+): ClientHostWriteTarget | null {
   const baseUrl = normalizedText(target.clientHostBaseUrl);
   const libraryId = normalizedText(target.clientLibraryId);
 
   if (!baseUrl || !libraryId) {
-    throw new Error(errorMessage);
+    return null;
   }
 
   return { baseUrl, libraryId };

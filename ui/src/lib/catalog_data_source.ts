@@ -3,6 +3,7 @@ import {
   listMasterCatalog,
   type MasterCatalogRow,
 } from "./tauri_client";
+import { resolveClientHostTarget } from "./host_write_target";
 
 export type CatalogDataSourceOptions = {
   clientReadOnly?: boolean;
@@ -28,11 +29,11 @@ export async function loadCatalogMasters(
 ): Promise<MasterCatalogRow[]> {
   const fetchHostCatalog = dependencies.fetchHostCatalog ?? fetchLibrarySyncCatalogMasters;
   const listLocalCatalog = dependencies.listLocalCatalog ?? listMasterCatalog;
-  const { clientReadOnly = false, clientHostBaseUrl, clientLibraryId, limit = 1000, search } =
-    options;
+  const { clientReadOnly = false, limit = 1000, search } = options;
+  const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
 
-  if (clientReadOnly && clientHostBaseUrl && clientLibraryId) {
-    return fetchHostCatalog(clientHostBaseUrl, clientLibraryId, limit, search ?? null);
+  if (hostTarget) {
+    return fetchHostCatalog(hostTarget.baseUrl, hostTarget.libraryId, limit, search ?? null);
   }
 
   return listLocalCatalog(limit, search ?? undefined);
