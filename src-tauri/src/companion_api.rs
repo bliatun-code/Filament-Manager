@@ -16,13 +16,17 @@ use crate::companion_assets::companion_browser_assets;
 use crate::companion_assets::{
     companion_browser_asset, companion_browser_binary_asset, COMPANION_BROWSER_HTML,
 };
+use crate::companion_http::{
+    cookie_value_from_headers, has_valid_csrf, header_string, maybe_apply_qa_delay,
+    require_allowed_host, require_allowed_origin, requires_csrf,
+};
 use crate::security::hash_secret;
 use crate::state::{AppState, TrustedLanCompanionRuntime};
 use axum::body::Body;
 use axum::extract::{Path, Query, State};
 use axum::http::{
-    header::{COOKIE, HOST, ORIGIN, SET_COOKIE},
-    HeaderMap, HeaderValue, Method, Request, StatusCode,
+    header::{ORIGIN, SET_COOKIE},
+    HeaderMap, HeaderValue, Request, StatusCode,
 };
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
@@ -33,16 +37,13 @@ use rand::TryRng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const COMPANION_DEFAULT_PORT: u16 = 4278;
 const COMPANION_SESSION_COOKIE: &str = "bfm_companion_session";
 const COMPANION_TRUSTED_LAN_DEVICE_COOKIE: &str = "bfm_trusted_lan_device";
-const COMPANION_CSRF_HEADER: &str = "x-csrf-token";
 const COMPANION_SESSION_MAX_AGE_SECONDS: u64 = 8 * 60 * 60;
 const COMPANION_TRUSTED_LAN_DEVICE_MAX_AGE_SECONDS: u64 = 30 * 24 * 60 * 60;
-const COMPANION_QA_DELAY_HEADER: &str = "x-companion-qa-delay-ms";
 
 #[derive(Clone)]
 struct CompanionApiState {
@@ -60,7 +61,7 @@ struct CompanionSession {
 }
 
 #[derive(Debug)]
-enum CompanionApiError {
+pub(crate) enum CompanionApiError {
     BadRequest(String),
     Unauthorized(String),
     Forbidden(String),
@@ -1846,93 +1847,6 @@ async fn require_companion_session(
     next.run(request).await
 }
 
-fn require_allowed_host(
-    headers: &HeaderMap,
-    runtime: &TrustedLanCompanionRuntime,
-) -> Result<(), CompanionApiError> {
-    let Some(host) = header_string(headers, HOST) else {
-        return Ok(());
-    };
-
-    if is_allowed_host(host, runtime) {
-        Ok(())
-    } else {
-        Err(CompanionApiError::Forbidden(
-            "Host header is not allowed for the trusted-LAN companion API".to_string(),
-        ))
-    }
-}
-
-fn require_allowed_origin(
-    headers: &HeaderMap,
-    runtime: &TrustedLanCompanionRuntime,
-) -> Result<(), CompanionApiError> {
-    let Some(origin) = header_string(headers, ORIGIN) else {
-        return Err(CompanionApiError::Forbidden(
-            "Origin header is required for mutating companion requests".to_string(),
-        ));
-    };
-
-    if is_allowed_origin(origin, runtime) {
-        Ok(())
-    } else {
-        Err(CompanionApiError::Forbidden(
-            "Origin header is not allowed for the trusted-LAN companion API".to_string(),
-        ))
-    }
-}
-
-async fn maybe_apply_qa_delay(
-    runtime: &TrustedLanCompanionRuntime,
-    headers: &HeaderMap,
-) -> Result<(), CompanionApiError> {
-    if !runtime.qa_mode() {
-        return Ok(());
-    }
-
-    let Some(delay_header) = header_string(
-        headers,
-        axum::http::header::HeaderName::from_static(COMPANION_QA_DELAY_HEADER),
-    ) else {
-        return Ok(());
-    };
-
-    let delay_ms = delay_header
-        .trim()
-        .parse::<u64>()
-        .map_err(|_| CompanionApiError::BadRequest("Invalid QA delay header".to_string()))?;
-    let clamped_delay_ms = delay_ms.clamp(1, 5_000);
-    tokio::time::sleep(Duration::from_millis(clamped_delay_ms)).await;
-    Ok(())
-}
-
-fn header_string(headers: &HeaderMap, header_name: axum::http::header::HeaderName) -> Option<&str> {
-    headers
-        .get(header_name)
-        .and_then(|value| value.to_str().ok())
-}
-
-fn is_allowed_host(host: &str, runtime: &TrustedLanCompanionRuntime) -> bool {
-    let normalized = host.trim().to_ascii_lowercase();
-    let runtime_host = runtime
-        .bind_address()
-        .unwrap_or_default()
-        .trim()
-        .to_ascii_lowercase();
-    normalized == runtime_host
-}
-
-fn is_allowed_origin(origin: &str, runtime: &TrustedLanCompanionRuntime) -> bool {
-    let normalized = origin.trim().trim_end_matches('/').to_ascii_lowercase();
-    let runtime_origin = runtime
-        .base_url()
-        .unwrap_or_default()
-        .trim()
-        .trim_end_matches('/')
-        .to_ascii_lowercase();
-    normalized == runtime_origin
-}
-
 fn find_printer_slot(
     state: &CompanionApiState,
     printer_id: &str,
@@ -1974,18 +1888,6 @@ fn trusted_lan_device_token_from_headers(headers: &HeaderMap) -> Option<String> 
     cookie_value_from_headers(headers, COMPANION_TRUSTED_LAN_DEVICE_COOKIE)
 }
 
-fn cookie_value_from_headers(headers: &HeaderMap, cookie_name: &str) -> Option<String> {
-    let cookie_header = header_string(headers, COOKIE)?;
-    for entry in cookie_header.split(';') {
-        let trimmed = entry.trim();
-        let (name, value) = trimmed.split_once('=')?;
-        if name == cookie_name && !value.trim().is_empty() {
-            return Some(value.trim().to_string());
-        }
-    }
-    None
-}
-
 fn build_session_cookie(session_id: &str) -> String {
     format!(
         "{COMPANION_SESSION_COOKIE}={session_id}; HttpOnly; SameSite=Strict; Max-Age={COMPANION_SESSION_MAX_AGE_SECONDS}; Path=/api/v1"
@@ -1996,18 +1898,6 @@ fn build_trusted_lan_device_cookie(device_token: &str) -> String {
     format!(
         "{COMPANION_TRUSTED_LAN_DEVICE_COOKIE}={device_token}; HttpOnly; SameSite=Strict; Max-Age={COMPANION_TRUSTED_LAN_DEVICE_MAX_AGE_SECONDS}; Path=/api/v1/auth"
     )
-}
-
-fn requires_csrf(method: &Method) -> bool {
-    !matches!(*method, Method::GET | Method::HEAD | Method::OPTIONS)
-}
-
-fn has_valid_csrf(headers: &HeaderMap, expected: &str) -> bool {
-    headers
-        .get(COMPANION_CSRF_HEADER)
-        .and_then(|value| value.to_str().ok())
-        .map(|value| value.trim() == expected)
-        .unwrap_or(false)
 }
 
 fn open_companion_db(state: &CompanionApiState) -> Result<FilamentDatabase, CompanionApiError> {
@@ -2347,13 +2237,14 @@ impl IntoResponse for CompanionApiError {
 mod tests {
     use super::{
         build_router, companion_browser_assets, hash_secret, CompanionApiState,
-        COMPANION_CSRF_HEADER, COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_DEVICE_COOKIE,
+        COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_DEVICE_COOKIE,
     };
     use crate::app_services::CompanionService;
     use crate::backend::filament_database::{BambuLiveIntegrationRow, FilamentDatabase};
     use crate::backend::inventory_engine::{
         CreateManualSpoolInput, CreatePrinterInput, InventoryEngine, LendSpoolInput,
     };
+    use crate::companion_http::COMPANION_CSRF_HEADER;
     use crate::state::TrustedLanCompanionRuntime;
     use axum::body::{to_bytes, Body};
     use axum::http::{header::SET_COOKIE, HeaderMap, Request, StatusCode};
