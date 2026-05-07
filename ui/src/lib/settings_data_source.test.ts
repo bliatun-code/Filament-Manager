@@ -131,13 +131,21 @@ test("loadSettingsPageData prefers host overview, settings, and spools for clien
     loadSyncSettings: async () =>
       syncSettings({
         mode: "CLIENT",
-        host_base_url: "http://host",
-        library_id: "library-host",
+        host_base_url: " http://host ",
+        library_id: " library-host ",
       }),
     loadSpoolRows: async (options) =>
       options.clientReadOnly ? hostSpoolRows : localSpoolRows,
-    fetchHostPrinterOverview: async () => [printerOverviewRow("printer-host")],
-    fetchHostPrinterSettings: async () => printerSettingsSnapshot("printer-host"),
+    fetchHostPrinterOverview: async (baseUrl, libraryId) => {
+      assert.equal(baseUrl, "http://host");
+      assert.equal(libraryId, "library-host");
+      return [printerOverviewRow("printer-host")];
+    },
+    fetchHostPrinterSettings: async (baseUrl, libraryId) => {
+      assert.equal(baseUrl, "http://host");
+      assert.equal(libraryId, "library-host");
+      return printerSettingsSnapshot("printer-host");
+    },
   });
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-host"]);

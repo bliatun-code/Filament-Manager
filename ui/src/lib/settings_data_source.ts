@@ -16,6 +16,7 @@ import {
 } from "./tauri_client";
 import { mapBambuLiveIntegrations } from "./printer_data_source";
 import { loadAllSpoolRows } from "./spool_data_source";
+import { resolveClientHostTarget } from "./host_write_target";
 
 export type SettingsPageData = {
   snapshot: PrinterSettingsSnapshot;
@@ -79,16 +80,20 @@ export async function loadSettingsPageData(
 
   if (syncSettings.mode === "CLIENT") {
     const cachedPrinterRows = syncSettings.cached_printers?.rows ?? [];
-    if (syncSettings.host_base_url && syncSettings.library_id) {
+    const hostTarget = resolveClientHostTarget({
+      clientHostBaseUrl: syncSettings.host_base_url,
+      clientLibraryId: syncSettings.library_id,
+    });
+    if (hostTarget) {
       try {
         const [hostOverviewRows, hostPrinterSettings, hostSpoolRows] = await Promise.all([
-          fetchHostPrinterOverview(syncSettings.host_base_url, syncSettings.library_id),
-          fetchHostPrinterSettings(syncSettings.host_base_url, syncSettings.library_id),
+          fetchHostPrinterOverview(hostTarget.baseUrl, hostTarget.libraryId),
+          fetchHostPrinterSettings(hostTarget.baseUrl, hostTarget.libraryId),
           loadSpoolRows(
             {
               clientReadOnly: true,
-              clientHostBaseUrl: syncSettings.host_base_url,
-              clientLibraryId: syncSettings.library_id,
+              clientHostBaseUrl: hostTarget.baseUrl,
+              clientLibraryId: hostTarget.libraryId,
             },
             5000,
           ),
