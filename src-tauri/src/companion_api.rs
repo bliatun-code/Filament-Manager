@@ -20,6 +20,11 @@ use crate::companion_http::{
     has_valid_csrf, header_string, maybe_apply_qa_delay, require_allowed_host,
     require_allowed_origin, requires_csrf,
 };
+use crate::companion_payload::{
+    build_companion_spool_qr_payload, build_qr_svg, bytes_response, html_response,
+    normalize_optional_hex_color, normalize_optional_text, normalize_owned_manual_fields,
+    string_response, text_response, validate_initial_weight,
+};
 use crate::companion_session::{
     build_authenticated_session_response, find_active_session, find_active_trusted_lan_browser,
     generate_companion_spool_id, new_companion_session_store, random_hex_token, unix_epoch_millis,
@@ -1856,165 +1861,6 @@ fn open_companion_db(state: &CompanionApiState) -> Result<FilamentDatabase, Comp
     FilamentDatabase::open(&state.db_path).map_err(|error| {
         CompanionApiError::Internal(format!("Failed to open companion database: {error}"))
     })
-}
-
-fn normalize_optional_text(value: Option<&str>) -> Option<String> {
-    value
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(str::to_string)
-}
-
-fn normalize_optional_hex_color(value: Option<&str>) -> Result<Option<String>, CompanionApiError> {
-    let Some(value) = normalize_optional_text(value) else {
-        return Ok(None);
-    };
-
-    let normalized = if value.starts_with('#') {
-        value.to_uppercase()
-    } else {
-        format!("#{}", value.to_uppercase())
-    };
-
-    let valid = match normalized.len() {
-        4 => normalized
-            .chars()
-            .skip(1)
-            .all(|char| char.is_ascii_hexdigit()),
-        7 => normalized
-            .chars()
-            .skip(1)
-            .all(|char| char.is_ascii_hexdigit()),
-        _ => false,
-    };
-
-    if !valid {
-        return Err(CompanionApiError::BadRequest(
-            "hex_color must use #RGB or #RRGGBB".to_string(),
-        ));
-    }
-
-    Ok(Some(normalized))
-}
-
-fn encode_versioned_qr_ref(reference: &str) -> String {
-    format!("v1:{}", reference.trim())
-}
-
-fn build_companion_spool_qr_payload(
-    runtime: &TrustedLanCompanionRuntime,
-    reference: &str,
-) -> String {
-    let encoded_ref = encode_versioned_qr_ref(reference);
-    let shell_url = runtime.snapshot().shell_url.unwrap_or_default();
-    if shell_url.trim().is_empty() {
-        return encoded_ref;
-    }
-    match reqwest::Url::parse(shell_url.trim()) {
-        Ok(mut url) => {
-            url.query_pairs_mut().append_pair("spool_qr", &encoded_ref);
-            url.to_string()
-        }
-        Err(_) => encoded_ref,
-    }
-}
-
-fn build_qr_svg(payload: &str) -> Result<String, CompanionApiError> {
-    use qrcode::render::svg;
-    use qrcode::QrCode;
-
-    let code = QrCode::new(payload.as_bytes())
-        .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
-    Ok(code
-        .render::<svg::Color>()
-        .min_dimensions(224, 224)
-        .dark_color(svg::Color("#0f172a"))
-        .light_color(svg::Color("#ffffff"))
-        .build())
-}
-
-struct NormalizedManualSpoolFields {
-    material: String,
-    filament_name: String,
-    color_name: String,
-}
-
-fn normalize_owned_manual_fields(
-    material: Option<&str>,
-    filament_name: Option<&str>,
-    color_name: Option<&str>,
-) -> Result<NormalizedManualSpoolFields, CompanionApiError> {
-    let material = material.unwrap_or("").trim();
-    if material.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "material is required when master_id is missing".to_string(),
-        ));
-    }
-
-    let filament_name = filament_name.unwrap_or("").trim();
-    if filament_name.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "filament_name is required when master_id is missing".to_string(),
-        ));
-    }
-
-    let color_name = color_name.unwrap_or("").trim();
-    if color_name.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "color_name is required when master_id is missing".to_string(),
-        ));
-    }
-
-    Ok(NormalizedManualSpoolFields {
-        material: material.to_string(),
-        filament_name: filament_name.to_string(),
-        color_name: color_name.to_string(),
-    })
-}
-
-fn validate_initial_weight(initial_weight_g: Option<i64>) -> Result<(), CompanionApiError> {
-    if let Some(initial_weight_g) = initial_weight_g {
-        if initial_weight_g < 0 {
-            return Err(CompanionApiError::BadRequest(
-                "initial_weight_g must be zero or greater".to_string(),
-            ));
-        }
-    }
-    Ok(())
-}
-
-fn text_response(content_type: &'static str, content: &'static str) -> Response {
-    (
-        [
-            (axum::http::header::CONTENT_TYPE, content_type),
-            (axum::http::header::CACHE_CONTROL, "no-store, max-age=0"),
-        ],
-        content,
-    )
-        .into_response()
-}
-
-fn string_response(content_type: &'static str, content: String) -> Response {
-    (
-        [
-            (axum::http::header::CONTENT_TYPE, content_type),
-            (axum::http::header::CACHE_CONTROL, "no-store, max-age=0"),
-        ],
-        content,
-    )
-        .into_response()
-}
-
-fn bytes_response(content_type: &'static str, content: &'static [u8]) -> Response {
-    Response::builder()
-        .header(axum::http::header::CONTENT_TYPE, content_type)
-        .header(axum::http::header::CACHE_CONTROL, "no-store, max-age=0")
-        .body(Body::from(content))
-        .unwrap_or_else(|_| Response::new(Body::empty()))
-}
-
-fn html_response(content: &'static str) -> Response {
-    text_response("text/html; charset=utf-8", content)
 }
 
 #[cfg(test)]
