@@ -1,8 +1,7 @@
-use crate::app_services::{CompanionService, CompanionSpoolDetail};
+use crate::app_services::CompanionSpoolDetail;
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, FilamentDatabase, FilamentMasterCatalogRow, LibrarySyncSettingsRow,
-    PrinterAmsSlotRow, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
-    WishlistItemRow,
+    PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput,
@@ -28,11 +27,11 @@ use crate::companion_payload::{
 };
 use crate::companion_session::{
     build_authenticated_session_response, find_active_session, find_active_trusted_lan_browser,
-    generate_companion_spool_id, new_companion_session_store, random_hex_token, unix_epoch_millis,
-    CompanionSessionStore,
+    generate_companion_spool_id, random_hex_token, unix_epoch_millis,
 };
+use crate::companion_state::CompanionApiState;
 use crate::security::hash_secret;
-use crate::state::{AppState, TrustedLanCompanionRuntime};
+use crate::state::AppState;
 use axum::body::Body;
 use axum::extract::{Path, Query, State};
 use axum::http::{header::ORIGIN, HeaderMap, Request};
@@ -42,14 +41,6 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 
 pub const COMPANION_DEFAULT_PORT: u16 = 4278;
-
-#[derive(Clone)]
-struct CompanionApiState {
-    service: CompanionService,
-    db_path: String,
-    runtime: TrustedLanCompanionRuntime,
-    sessions: CompanionSessionStore,
-}
 
 pub fn generate_pairing_token() -> String {
     crate::companion_session::generate_pairing_token()
@@ -80,12 +71,8 @@ pub async fn reconcile_trusted_lan_server(state: AppState) -> Result<(), String>
         }
     };
 
-    let api_state = CompanionApiState {
-        service: CompanionService::new(state.db_path.clone()),
-        db_path: state.db_path.clone(),
-        runtime: state.companion.trusted_lan.clone(),
-        sessions: new_companion_session_store(),
-    };
+    let api_state =
+        CompanionApiState::new(state.db_path.clone(), state.companion.trusted_lan.clone());
     let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
     let runtime = state.companion.trusted_lan.clone();
     let join_handle = tauri::async_runtime::spawn(async move {
@@ -481,7 +468,7 @@ async fn handle_pair_session(
     }
 
     let origin = header_string(&headers, ORIGIN).map(|value| value.trim().to_string());
-    let db = open_companion_db(&state)?;
+    let db = state.open_db()?;
     let pairing_token_hash = hash_secret(pairing_token);
     let pairing_display_name = db
         .consume_trusted_lan_pairing(&pairing_token_hash)
@@ -1041,7 +1028,7 @@ async fn handle_update_printer_slot_assignment(
         .as_deref()
         .map(str::trim)
         .filter(|value| !value.is_empty());
-    let slot = find_printer_slot(&state, printer_id, slot_id)?;
+    let slot = state.find_printer_slot(printer_id, slot_id)?;
 
     if slot.spool_id.is_none() && target_spool_id.is_none() {
         return Err(CompanionApiError::BadRequest(
@@ -1204,7 +1191,7 @@ async fn handle_update_spool_details(
         && status == current_status;
     if (current_status == "IN_USE"
         || current_status == "ASSIGNED"
-        || spool_assigned_to_printer(&state, spool_id)?)
+        || state.spool_assigned_to_printer(spool_id)?)
         && !editing_home_location_only
     {
         return Err(CompanionApiError::BadRequest(
@@ -1609,51 +1596,9 @@ async fn require_companion_session(
     next.run(request).await
 }
 
-fn find_printer_slot(
-    state: &CompanionApiState,
-    printer_id: &str,
-    slot_id: &str,
-) -> Result<PrinterAmsSlotRow, CompanionApiError> {
-    state
-        .service
-        .list_printer_overview()
-        .map_err(CompanionApiError::from)?
-        .into_iter()
-        .find(|printer| printer.printer.id == printer_id)
-        .and_then(|printer| {
-            printer
-                .slots
-                .into_iter()
-                .find(|slot| slot.slot_id == slot_id)
-        })
-        .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))
-}
-
-fn spool_assigned_to_printer(
-    state: &CompanionApiState,
-    spool_id: &str,
-) -> Result<bool, CompanionApiError> {
-    Ok(state
-        .service
-        .list_printer_overview()
-        .map_err(CompanionApiError::from)?
-        .into_iter()
-        .flat_map(|printer| printer.slots.into_iter())
-        .any(|slot| slot.spool_id.as_deref() == Some(spool_id)))
-}
-
-fn open_companion_db(state: &CompanionApiState) -> Result<FilamentDatabase, CompanionApiError> {
-    FilamentDatabase::open(&state.db_path).map_err(|error| {
-        CompanionApiError::Internal(format!("Failed to open companion database: {error}"))
-    })
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{
-        build_router, companion_browser_assets, hash_secret, new_companion_session_store,
-        CompanionApiState,
-    };
+    use super::{build_router, companion_browser_assets, hash_secret, CompanionApiState};
     use crate::app_services::CompanionService;
     use crate::backend::filament_database::{BambuLiveIntegrationRow, FilamentDatabase};
     use crate::backend::inventory_engine::{
@@ -1763,30 +1708,24 @@ mod tests {
     }
 
     fn test_state(db_path: &Path) -> CompanionApiState {
-        CompanionApiState {
-            service: CompanionService::new(db_path.to_string_lossy().to_string()),
-            db_path: db_path.to_string_lossy().to_string(),
-            runtime: trusted_lan_runtime_for_address("127.0.0.1"),
-            sessions: new_companion_session_store(),
-        }
+        CompanionApiState::new(
+            db_path.to_string_lossy().to_string(),
+            trusted_lan_runtime_for_address("127.0.0.1"),
+        )
     }
 
     fn qa_test_state(db_path: &Path) -> CompanionApiState {
-        CompanionApiState {
-            service: CompanionService::new(db_path.to_string_lossy().to_string()),
-            db_path: db_path.to_string_lossy().to_string(),
-            runtime: trusted_lan_runtime_for_address("127.0.0.1").with_qa_mode(true),
-            sessions: new_companion_session_store(),
-        }
+        CompanionApiState::new(
+            db_path.to_string_lossy().to_string(),
+            trusted_lan_runtime_for_address("127.0.0.1").with_qa_mode(true),
+        )
     }
 
     fn trusted_lan_test_state(db_path: &Path) -> CompanionApiState {
-        CompanionApiState {
-            service: CompanionService::new(db_path.to_string_lossy().to_string()),
-            db_path: db_path.to_string_lossy().to_string(),
-            runtime: trusted_lan_runtime_for_address("192.168.1.50"),
-            sessions: new_companion_session_store(),
-        }
+        CompanionApiState::new(
+            db_path.to_string_lossy().to_string(),
+            trusted_lan_runtime_for_address("192.168.1.50"),
+        )
     }
 
     fn extract_cookie_value(set_cookie: &str) -> Result<String, String> {

@@ -10,6 +10,7 @@ mod companion_http;
 mod companion_models;
 mod companion_payload;
 mod companion_session;
+mod companion_state;
 mod security;
 mod state;
 
