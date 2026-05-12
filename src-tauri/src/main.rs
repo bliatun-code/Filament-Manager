@@ -7,6 +7,7 @@ mod companion_api;
 mod companion_assets;
 mod companion_error;
 mod companion_http;
+mod companion_session;
 mod security;
 mod state;
 

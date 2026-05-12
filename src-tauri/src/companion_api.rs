@@ -2,7 +2,7 @@ use crate::app_services::{CompanionService, CompanionSpoolDetail};
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, BambuLiveIntegrationEntryRow, FilamentDatabase, FilamentMasterCatalogRow,
     LibrarySyncSettingsRow, PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow, SpoolLoanDetailsRow,
-    SpoolLoanRow, SpoolWithMasterRow, TrustedLanPairedBrowserRow, WishlistItemRow,
+    SpoolLoanRow, SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput,
@@ -17,47 +17,33 @@ use crate::companion_assets::{
 };
 use crate::companion_error::CompanionApiError;
 use crate::companion_http::{
-    cookie_value_from_headers, has_valid_csrf, header_string, maybe_apply_qa_delay,
-    require_allowed_host, require_allowed_origin, requires_csrf,
+    has_valid_csrf, header_string, maybe_apply_qa_delay, require_allowed_host,
+    require_allowed_origin, requires_csrf,
+};
+use crate::companion_session::{
+    build_authenticated_session_response, find_active_session, find_active_trusted_lan_browser,
+    generate_companion_spool_id, new_companion_session_store, random_hex_token, unix_epoch_millis,
+    CompanionSessionStore,
 };
 use crate::security::hash_secret;
 use crate::state::{AppState, TrustedLanCompanionRuntime};
 use axum::body::Body;
 use axum::extract::{Path, Query, State};
-use axum::http::{
-    header::{ORIGIN, SET_COOKIE},
-    HeaderMap, HeaderValue, Request,
-};
+use axum::http::{header::ORIGIN, HeaderMap, Request};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use rand::rngs::SysRng;
-use rand::TryRng;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const COMPANION_DEFAULT_PORT: u16 = 4278;
-const COMPANION_SESSION_COOKIE: &str = "bfm_companion_session";
-const COMPANION_TRUSTED_LAN_DEVICE_COOKIE: &str = "bfm_trusted_lan_device";
-const COMPANION_SESSION_MAX_AGE_SECONDS: u64 = 8 * 60 * 60;
-const COMPANION_TRUSTED_LAN_DEVICE_MAX_AGE_SECONDS: u64 = 30 * 24 * 60 * 60;
 
 #[derive(Clone)]
 struct CompanionApiState {
     service: CompanionService,
     db_path: String,
     runtime: TrustedLanCompanionRuntime,
-    sessions: Arc<RwLock<HashMap<String, CompanionSession>>>,
-}
-
-#[derive(Clone, Debug, Serialize)]
-struct CompanionSession {
-    csrf_token: String,
-    created_at_epoch_s: u64,
-    paired_browser_id: Option<String>,
+    sessions: CompanionSessionStore,
 }
 
 #[derive(Deserialize, Default)]
@@ -246,13 +232,6 @@ struct CompanionLibrarySnapshotResponse {
 }
 
 #[derive(Serialize)]
-struct AuthenticatedSessionResponse {
-    ok: bool,
-    csrf_token: String,
-    expires_in_seconds: u64,
-}
-
-#[derive(Serialize)]
 struct WriteResponse {
     ok: bool,
     message: String,
@@ -283,7 +262,7 @@ struct CreateSpoolResponse {
 }
 
 pub fn generate_pairing_token() -> String {
-    random_hex_token(24)
+    crate::companion_session::generate_pairing_token()
 }
 
 pub async fn reconcile_trusted_lan_server(state: AppState) -> Result<(), String> {
@@ -315,7 +294,7 @@ pub async fn reconcile_trusted_lan_server(state: AppState) -> Result<(), String>
         service: CompanionService::new(state.db_path.clone()),
         db_path: state.db_path.clone(),
         runtime: state.companion.trusted_lan.clone(),
-        sessions: Arc::new(RwLock::new(HashMap::new())),
+        sessions: new_companion_session_store(),
     };
     let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
     let runtime = state.companion.trusted_lan.clone();
@@ -674,7 +653,7 @@ async fn handle_session_status(
 ) -> Result<Json<SessionStatusResponse>, CompanionApiError> {
     require_allowed_host(&headers, &state.runtime)?;
 
-    let active_session = find_active_session(&state, &headers)?;
+    let active_session = find_active_session(&state.sessions, &state.db_path, &headers)?;
     let mut authenticated = false;
     let mut csrf_token = None;
     let mut can_renew = false;
@@ -683,7 +662,7 @@ async fn handle_session_status(
         authenticated = true;
         csrf_token = Some(session.csrf_token);
     } else {
-        can_renew = find_active_trusted_lan_browser(&state, &headers)?.is_some();
+        can_renew = find_active_trusted_lan_browser(&state.db_path, &headers)?.is_some();
     }
 
     Ok(Json(SessionStatusResponse {
@@ -733,7 +712,8 @@ async fn handle_pair_session(
         .map_err(CompanionApiError::from)?;
 
     build_authenticated_session_response(
-        &state,
+        &state.sessions,
+        &state.db_path,
         Some(paired_browser.id),
         Some(&device_token),
         origin.as_deref(),
@@ -747,12 +727,19 @@ async fn handle_renew_session(
     require_allowed_host(&headers, &state.runtime)?;
     require_allowed_origin(&headers, &state.runtime)?;
 
-    let paired_browser = find_active_trusted_lan_browser(&state, &headers)?.ok_or_else(|| {
-        CompanionApiError::Unauthorized("Trusted-LAN browser pairing is required".to_string())
-    })?;
+    let paired_browser =
+        find_active_trusted_lan_browser(&state.db_path, &headers)?.ok_or_else(|| {
+            CompanionApiError::Unauthorized("Trusted-LAN browser pairing is required".to_string())
+        })?;
 
     let origin = header_string(&headers, ORIGIN).map(|value| value.trim().to_string());
-    build_authenticated_session_response(&state, Some(paired_browser.id), None, origin.as_deref())
+    build_authenticated_session_response(
+        &state.sessions,
+        &state.db_path,
+        Some(paired_browser.id),
+        None,
+        origin.as_deref(),
+    )
 }
 
 async fn handle_qa_expire_session(
@@ -1808,7 +1795,7 @@ async fn require_companion_session(
         return error.into_response();
     }
 
-    let session = match find_active_session(&state, headers) {
+    let session = match find_active_session(&state.sessions, &state.db_path, headers) {
         Ok(Some(value)) => value,
         Ok(None) => {
             return CompanionApiError::Unauthorized(
@@ -1865,175 +1852,10 @@ fn spool_assigned_to_printer(
         .any(|slot| slot.spool_id.as_deref() == Some(spool_id)))
 }
 
-fn session_id_from_headers(headers: &HeaderMap) -> Option<String> {
-    cookie_value_from_headers(headers, COMPANION_SESSION_COOKIE)
-}
-
-fn trusted_lan_device_token_from_headers(headers: &HeaderMap) -> Option<String> {
-    cookie_value_from_headers(headers, COMPANION_TRUSTED_LAN_DEVICE_COOKIE)
-}
-
-fn build_session_cookie(session_id: &str) -> String {
-    format!(
-        "{COMPANION_SESSION_COOKIE}={session_id}; HttpOnly; SameSite=Strict; Max-Age={COMPANION_SESSION_MAX_AGE_SECONDS}; Path=/api/v1"
-    )
-}
-
-fn build_trusted_lan_device_cookie(device_token: &str) -> String {
-    format!(
-        "{COMPANION_TRUSTED_LAN_DEVICE_COOKIE}={device_token}; HttpOnly; SameSite=Strict; Max-Age={COMPANION_TRUSTED_LAN_DEVICE_MAX_AGE_SECONDS}; Path=/api/v1/auth"
-    )
-}
-
 fn open_companion_db(state: &CompanionApiState) -> Result<FilamentDatabase, CompanionApiError> {
     FilamentDatabase::open(&state.db_path).map_err(|error| {
         CompanionApiError::Internal(format!("Failed to open companion database: {error}"))
     })
-}
-
-fn find_active_session(
-    state: &CompanionApiState,
-    headers: &HeaderMap,
-) -> Result<Option<CompanionSession>, CompanionApiError> {
-    let Some(session_id) = session_id_from_headers(headers) else {
-        return Ok(None);
-    };
-
-    let session = state
-        .sessions
-        .read()
-        .map_err(|_| CompanionApiError::Internal("Failed to read session state".to_string()))?
-        .get(session_id.as_str())
-        .cloned();
-
-    let Some(session) = session else {
-        return Ok(None);
-    };
-    if session_is_expired(&session) {
-        return Ok(None);
-    }
-
-    let Some(browser_id) = session.paired_browser_id.as_deref() else {
-        return Ok(None);
-    };
-    let db = open_companion_db(state)?;
-    let browser = db
-        .get_trusted_lan_paired_browser_by_id(browser_id)
-        .map_err(CompanionApiError::from)?;
-    if browser
-        .as_ref()
-        .and_then(|value| value.revoked_at.as_ref())
-        .is_some()
-    {
-        return Ok(None);
-    }
-
-    Ok(Some(session))
-}
-
-fn find_active_trusted_lan_browser(
-    state: &CompanionApiState,
-    headers: &HeaderMap,
-) -> Result<Option<TrustedLanPairedBrowserRow>, CompanionApiError> {
-    let Some(device_token) = trusted_lan_device_token_from_headers(headers) else {
-        return Ok(None);
-    };
-
-    let db = open_companion_db(state)?;
-    let device_token_hash = hash_secret(&device_token);
-    db.get_active_trusted_lan_paired_browser_by_device_token_hash(&device_token_hash)
-        .map_err(CompanionApiError::from)
-}
-
-fn build_authenticated_session_response(
-    state: &CompanionApiState,
-    paired_browser_id: Option<String>,
-    device_token: Option<&str>,
-    last_origin: Option<&str>,
-) -> Result<Response, CompanionApiError> {
-    let session_id = random_hex_token(32);
-    let csrf_token = random_hex_token(24);
-    let session = CompanionSession {
-        csrf_token: csrf_token.clone(),
-        created_at_epoch_s: unix_epoch_seconds(),
-        paired_browser_id: paired_browser_id.clone(),
-    };
-
-    state
-        .sessions
-        .write()
-        .map_err(|_| CompanionApiError::Internal("Failed to write session state".to_string()))?
-        .insert(session_id.clone(), session);
-
-    if let Some(browser_id) = paired_browser_id.as_deref() {
-        let db = open_companion_db(state)?;
-        db.touch_trusted_lan_paired_browser(browser_id, last_origin)
-            .map_err(CompanionApiError::from)?;
-    }
-
-    let response_body = AuthenticatedSessionResponse {
-        ok: true,
-        csrf_token,
-        expires_in_seconds: COMPANION_SESSION_MAX_AGE_SECONDS,
-    };
-    let mut response = Json(response_body).into_response();
-    let session_cookie = build_session_cookie(&session_id);
-    response.headers_mut().append(
-        SET_COOKIE,
-        HeaderValue::from_str(&session_cookie).map_err(|error| {
-            CompanionApiError::Internal(format!("Failed to build session cookie: {error}"))
-        })?,
-    );
-    if let Some(device_token) = device_token {
-        let device_cookie = build_trusted_lan_device_cookie(device_token);
-        response.headers_mut().append(
-            SET_COOKIE,
-            HeaderValue::from_str(&device_cookie).map_err(|error| {
-                CompanionApiError::Internal(format!(
-                    "Failed to build trusted-LAN device cookie: {error}"
-                ))
-            })?,
-        );
-    }
-    Ok(response)
-}
-
-fn session_is_expired(session: &CompanionSession) -> bool {
-    unix_epoch_seconds().saturating_sub(session.created_at_epoch_s)
-        > COMPANION_SESSION_MAX_AGE_SECONDS
-}
-
-fn unix_epoch_seconds() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
-}
-
-fn random_hex_token(byte_count: usize) -> String {
-    let mut bytes = vec![0u8; byte_count];
-    SysRng
-        .try_fill_bytes(&mut bytes)
-        .expect("OS RNG should be available for trusted-LAN token generation");
-    bytes
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect::<String>()
-}
-
-fn generate_companion_spool_id() -> String {
-    format!(
-        "spool_companion_{}_{}",
-        unix_epoch_millis(),
-        random_hex_token(4)
-    )
-}
-
-fn unix_epoch_millis() -> u128 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis()
 }
 
 fn normalize_optional_text(value: Option<&str>) -> Option<String> {
@@ -2198,8 +2020,8 @@ fn html_response(content: &'static str) -> Response {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_router, companion_browser_assets, hash_secret, CompanionApiState,
-        COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_DEVICE_COOKIE,
+        build_router, companion_browser_assets, hash_secret, new_companion_session_store,
+        CompanionApiState,
     };
     use crate::app_services::CompanionService;
     use crate::backend::filament_database::{BambuLiveIntegrationRow, FilamentDatabase};
@@ -2207,12 +2029,12 @@ mod tests {
         CreateManualSpoolInput, CreatePrinterInput, InventoryEngine, LendSpoolInput,
     };
     use crate::companion_http::COMPANION_CSRF_HEADER;
+    use crate::companion_session::{COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_DEVICE_COOKIE};
     use crate::state::TrustedLanCompanionRuntime;
     use axum::body::{to_bytes, Body};
     use axum::http::{header::SET_COOKIE, HeaderMap, Request, StatusCode};
     use std::collections::HashMap;
     use std::path::{Path, PathBuf};
-    use std::sync::{Arc, RwLock};
     use std::time::{SystemTime, UNIX_EPOCH};
     use tower::ServiceExt;
 
@@ -2314,7 +2136,7 @@ mod tests {
             service: CompanionService::new(db_path.to_string_lossy().to_string()),
             db_path: db_path.to_string_lossy().to_string(),
             runtime: trusted_lan_runtime_for_address("127.0.0.1"),
-            sessions: Arc::new(RwLock::new(HashMap::new())),
+            sessions: new_companion_session_store(),
         }
     }
 
@@ -2323,7 +2145,7 @@ mod tests {
             service: CompanionService::new(db_path.to_string_lossy().to_string()),
             db_path: db_path.to_string_lossy().to_string(),
             runtime: trusted_lan_runtime_for_address("127.0.0.1").with_qa_mode(true),
-            sessions: Arc::new(RwLock::new(HashMap::new())),
+            sessions: new_companion_session_store(),
         }
     }
 
@@ -2332,7 +2154,7 @@ mod tests {
             service: CompanionService::new(db_path.to_string_lossy().to_string()),
             db_path: db_path.to_string_lossy().to_string(),
             runtime: trusted_lan_runtime_for_address("192.168.1.50"),
-            sessions: Arc::new(RwLock::new(HashMap::new())),
+            sessions: new_companion_session_store(),
         }
     }
 
