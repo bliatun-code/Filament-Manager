@@ -1,15 +1,15 @@
 use crate::app_services::{CompanionService, CompanionSpoolDetail};
 use crate::backend::filament_database::{
-    ActiveSpoolLoanRow, BambuLiveIntegrationEntryRow, FilamentDatabase, FilamentMasterCatalogRow,
-    LibrarySyncSettingsRow, PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow, SpoolLoanDetailsRow,
-    SpoolLoanRow, SpoolWithMasterRow, WishlistItemRow,
+    ActiveSpoolLoanRow, FilamentDatabase, FilamentMasterCatalogRow, LibrarySyncSettingsRow,
+    PrinterAmsSlotRow, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
+    WishlistItemRow,
 };
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput,
     DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, RecordPrintUsageInput, ReturnSpoolLoanInput,
     UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
 };
-use crate::backend::statistics::{FilamentConsumptionRow, InventoryOverview, StatisticsEngine};
+use crate::backend::statistics::{FilamentConsumptionRow, StatisticsEngine};
 #[cfg(test)]
 use crate::companion_assets::companion_browser_assets;
 use crate::companion_assets::{
@@ -20,6 +20,7 @@ use crate::companion_http::{
     has_valid_csrf, header_string, maybe_apply_qa_delay, require_allowed_host,
     require_allowed_origin, requires_csrf,
 };
+use crate::companion_models::*;
 use crate::companion_payload::{
     build_companion_spool_qr_payload, build_qr_svg, bytes_response, html_response,
     normalize_optional_hex_color, normalize_optional_text, normalize_owned_manual_fields,
@@ -39,7 +40,6 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use serde::{Deserialize, Serialize};
 
 pub const COMPANION_DEFAULT_PORT: u16 = 4278;
 
@@ -49,221 +49,6 @@ struct CompanionApiState {
     db_path: String,
     runtime: TrustedLanCompanionRuntime,
     sessions: CompanionSessionStore,
-}
-
-#[derive(Deserialize, Default)]
-struct PaginationQuery {
-    limit: Option<i64>,
-    offset: Option<i64>,
-}
-
-#[derive(Deserialize, Default)]
-struct CatalogListQuery {
-    limit: Option<i64>,
-    search: Option<String>,
-}
-
-#[derive(Deserialize, Default)]
-struct QrLookupQuery {
-    qr_code: Option<String>,
-}
-
-#[derive(Deserialize, Default)]
-struct LoanListQuery {
-    limit: Option<i64>,
-    include_returned: Option<bool>,
-    direction: Option<String>,
-}
-
-#[derive(Serialize)]
-struct CompanionPrinterSettingsResponse {
-    active_printer_id: Option<String>,
-    printers: Vec<PrinterRow>,
-    printer_models: Vec<String>,
-    bambu_live_integrations: Vec<BambuLiveIntegrationEntryRow>,
-}
-
-#[derive(Deserialize, Default)]
-struct FilamentConsumptionQuery {
-    limit: Option<i64>,
-    printer_id: Option<String>,
-}
-
-#[derive(Deserialize, Default)]
-struct SpoolDetailQuery {
-    history_limit: Option<i64>,
-    usage_limit: Option<i64>,
-}
-
-#[derive(Deserialize)]
-struct UpdateWeightRequest {
-    grams: i64,
-}
-
-#[derive(Deserialize)]
-struct UpdateSpoolTareWeightRequest {
-    grams: i64,
-}
-
-#[derive(Deserialize)]
-struct UpdateSpoolRfidTagRequest {
-    rfid_tag: Option<String>,
-    rfid_observed_at: Option<String>,
-}
-
-#[derive(Deserialize, Default)]
-struct DeleteSpoolRequest {
-    reason: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdatePrinterSlotAssignmentRequest {
-    spool_id: Option<String>,
-    rfid_override_tray_uuid: Option<String>,
-    rfid_override_color_hex: Option<String>,
-    clear_live_cache_before_next_refresh: Option<bool>,
-}
-
-#[derive(Deserialize)]
-struct RecordPrintUsageRequest {
-    grams: i64,
-    job_name: Option<String>,
-    success: Option<bool>,
-}
-
-#[derive(Deserialize)]
-struct CreateSpoolLoanRequest {
-    borrower_name: String,
-    grams_out: Option<i64>,
-    note: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct CreateOwnedSpoolRequest {
-    master_id: Option<String>,
-    material: Option<String>,
-    filament_name: Option<String>,
-    color_name: Option<String>,
-    vendor: Option<String>,
-    initial_weight_g: Option<i64>,
-    qr_code: Option<String>,
-    location: Option<String>,
-    hex_color: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct CreateBorrowedInSpoolRequest {
-    master_id: Option<String>,
-    owner_name: String,
-    owner_contact: Option<String>,
-    ownership_note: Option<String>,
-    material: Option<String>,
-    filament_name: Option<String>,
-    color_name: Option<String>,
-    vendor: Option<String>,
-    initial_weight_g: Option<i64>,
-    qr_code: Option<String>,
-    location: Option<String>,
-    hex_color: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct CreateWishlistItemRequest {
-    master_id: Option<String>,
-    material: String,
-    filament_name: String,
-    color_name: String,
-    vendor: Option<String>,
-    quantity: Option<i64>,
-    note: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdateWishlistItemStatusRequest {
-    status: String,
-}
-
-#[derive(Deserialize)]
-struct SetActivePrinterRequest {
-    printer_id: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdateBorrowedInSpoolRequest {
-    owner_name: String,
-    owner_contact: Option<String>,
-    ownership_note: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdateSpoolDetailsRequest {
-    status: String,
-    location: Option<String>,
-    home_location: Option<Option<String>>,
-}
-
-#[derive(Deserialize)]
-struct ReturnSpoolLoanRequest {
-    returned_grams: i64,
-    note: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct PairSessionRequest {
-    pairing_token: String,
-}
-
-#[derive(Serialize)]
-struct CompanionHealthResponse {
-    ok: bool,
-    api_version: &'static str,
-    auth_mode: String,
-    access_mode: &'static str,
-    library_id: String,
-    device_name: String,
-    sync_mode: String,
-}
-
-#[derive(Serialize)]
-struct CompanionLibrarySnapshotResponse {
-    ok: bool,
-    captured_at: String,
-    library_id: String,
-    device_name: String,
-    sync_mode: String,
-    inventory: InventoryOverview,
-    active_loans: i64,
-    printers: i64,
-}
-
-#[derive(Serialize)]
-struct WriteResponse {
-    ok: bool,
-    message: String,
-}
-
-#[derive(Serialize)]
-struct SessionStatusResponse {
-    ok: bool,
-    auth_mode: String,
-    access_mode: String,
-    authenticated: bool,
-    csrf_token: Option<String>,
-    can_renew: bool,
-}
-
-#[derive(Serialize)]
-struct LoanWriteResponse {
-    ok: bool,
-    message: String,
-    loan: SpoolLoanRow,
-}
-
-#[derive(Serialize)]
-struct CreateSpoolResponse {
-    ok: bool,
-    message: String,
-    spool_id: String,
 }
 
 pub fn generate_pairing_token() -> String {
