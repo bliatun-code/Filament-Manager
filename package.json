@@ -1,7 +1,7 @@
 {
   "name": "bambu-filament-manager",
   "private": true,
-  "version": "0.13.0",
+  "version": "0.14.0",
   "type": "module",
   "engines": {
     "node": ">=24 <25",
@@ -23,7 +23,7 @@
     "tauri": "node ./scripts/run-tauri.mjs"
   },
   "optionalDependencies": {
-    "better-sqlite3": "^12.9.0"
+    "better-sqlite3": "^12.10.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.1",
