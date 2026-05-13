@@ -4971,7 +4971,7 @@ mod tests {
         LibrarySyncSettingsRow, ManualMasterInput, SpoolRow, TrustedLanSettingsRow,
         FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES,
     };
-    use crate::InventoryOverview;
+    use crate::backend::statistics::InventoryOverview;
     use serde_json::json;
     use std::collections::HashSet;
     use std::path::PathBuf;
