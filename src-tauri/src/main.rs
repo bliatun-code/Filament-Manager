@@ -12,6 +12,7 @@ mod companion_models;
 mod companion_payload;
 mod companion_session;
 mod companion_state;
+mod document_commands;
 mod inventory_commands;
 mod library_sync_commands;
 mod printer_commands;
@@ -19,23 +20,18 @@ mod security;
 mod state;
 mod trusted_lan_commands;
 
-use backend::filament_database::{BackupValidationStats, FilamentDatabase, ImportDataStats};
+use backend::filament_database::FilamentDatabase;
 use backend::inventory_engine::InventoryEngine;
 use backend::statistics::StatisticsEngine;
-use base64::Engine;
 #[cfg(target_os = "macos")]
 use objc2::{AnyThread, MainThreadMarker};
 #[cfg(target_os = "macos")]
 use objc2_app_kit::{NSApp, NSImage};
 #[cfg(target_os = "macos")]
 use objc2_foundation::NSData;
-use serde::Serialize;
 use state::AppState;
 #[cfg(target_os = "macos")]
 use std::ffi::c_void;
-use std::fs::File;
-use std::io::Write;
-use std::path::Path;
 use std::path::PathBuf;
 use tauri::Manager;
 
@@ -43,11 +39,6 @@ use tauri::Manager;
 const DOCK_ICON_LIGHT_BYTES: &[u8] = include_bytes!("../icons/dock-light.png");
 #[cfg(target_os = "macos")]
 const DOCK_ICON_DARK_BYTES: &[u8] = include_bytes!("../icons/dock-dark.png");
-#[derive(Serialize)]
-struct ExportPayload {
-    content: String,
-}
-
 #[tauri::command]
 fn set_dock_icon_theme(app: tauri::AppHandle, theme: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
@@ -72,81 +63,6 @@ fn set_dock_icon_theme(app: tauri::AppHandle, theme: String) -> Result<(), Strin
 #[tauri::command]
 fn get_app_version(app: tauri::AppHandle) -> Result<String, String> {
     Ok(app.package_info().version.to_string())
-}
-
-#[tauri::command]
-fn export_inventory_csv(state: tauri::State<'_, AppState>) -> Result<ExportPayload, String> {
-    let content = with_db(&state, |db| db.export_spools_csv())?;
-    Ok(ExportPayload { content })
-}
-
-#[tauri::command]
-fn export_inventory_json(state: tauri::State<'_, AppState>) -> Result<ExportPayload, String> {
-    let content = with_db(&state, |db| db.export_spools_json())?;
-    Ok(ExportPayload { content })
-}
-
-#[tauri::command]
-fn export_full_backup_json(state: tauri::State<'_, AppState>) -> Result<ExportPayload, String> {
-    let content = with_db(&state, |db| db.export_full_backup_json())?;
-    Ok(ExportPayload { content })
-}
-
-#[tauri::command]
-fn import_full_backup_json(
-    state: tauri::State<'_, AppState>,
-    content: String,
-) -> Result<(), String> {
-    with_db(&state, |db| db.import_full_backup_json(&content))
-}
-
-#[tauri::command]
-fn import_data_file(
-    state: tauri::State<'_, AppState>,
-    content: String,
-) -> Result<ImportDataStats, String> {
-    with_db(&state, |db| db.import_data_content(&content))
-}
-
-#[tauri::command]
-fn validate_full_backup_json(
-    state: tauri::State<'_, AppState>,
-    content: String,
-) -> Result<BackupValidationStats, String> {
-    with_db(&state, |db| db.validate_full_backup_json(&content))
-}
-
-#[tauri::command]
-fn print_label_html(
-    app: tauri::AppHandle,
-    html: String,
-    printer_name: Option<String>,
-    copies: Option<u32>,
-) -> Result<(), String> {
-    let path = write_label_to_disk(&app, &html)?;
-    let _ = printer_name;
-    let _ = copies;
-
-    open_generated_document(&path)?;
-    Ok(())
-}
-
-#[tauri::command]
-fn print_label_pdf(
-    app: tauri::AppHandle,
-    pdf_base64: String,
-    printer_name: Option<String>,
-    copies: Option<u32>,
-) -> Result<(), String> {
-    let bytes = base64::engine::general_purpose::STANDARD
-        .decode(pdf_base64.trim())
-        .map_err(|error| format!("Invalid PDF payload: {error}"))?;
-    let path = write_pdf_to_disk(&app, &bytes)?;
-    let _ = printer_name;
-    let _ = copies;
-
-    open_generated_document(&path)?;
-    Ok(())
 }
 
 #[cfg(target_os = "macos")]
@@ -286,12 +202,12 @@ fn main() {
             inventory_commands::assign_location,
             inventory_commands::find_spool_by_qr,
             inventory_commands::record_scan_event,
-            export_inventory_csv,
-            export_inventory_json,
-            export_full_backup_json,
-            import_full_backup_json,
-            import_data_file,
-            validate_full_backup_json,
+            document_commands::export_inventory_csv,
+            document_commands::export_inventory_json,
+            document_commands::export_full_backup_json,
+            document_commands::import_full_backup_json,
+            document_commands::import_data_file,
+            document_commands::validate_full_backup_json,
             inventory_commands::inventory_overview,
             inventory_commands::reset_app_data,
             inventory_commands::reset_catalog_data,
@@ -299,8 +215,8 @@ fn main() {
             inventory_commands::list_filament_consumption,
             inventory_commands::check_low_stock,
             inventory_commands::enqueue_sync_action,
-            print_label_html,
-            print_label_pdf,
+            document_commands::print_label_html,
+            document_commands::print_label_pdf,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -327,50 +243,7 @@ fn ensure_db(app: &tauri::App) -> Result<PathBuf, String> {
     Ok(db_path)
 }
 
-fn write_label_to_disk(app: &tauri::AppHandle, html: &str) -> Result<PathBuf, String> {
-    let app_dir = resolve_app_storage_dir_for_handle(app)?;
-    let label_dir = app_dir.join("labels");
-    std::fs::create_dir_all(&label_dir).map_err(|error| error.to_string())?;
-    let filename = format!("label_{}.html", chrono_id());
-    let path = label_dir.join(filename);
-    write_generated_file(&path, html.as_bytes())?;
-    Ok(path)
-}
-
-fn write_pdf_to_disk(app: &tauri::AppHandle, bytes: &[u8]) -> Result<PathBuf, String> {
-    let app_dir = resolve_app_storage_dir_for_handle(app)?;
-    let label_dir = app_dir.join("labels");
-    std::fs::create_dir_all(&label_dir).map_err(|error| error.to_string())?;
-    let filename = format!("label_{}.pdf", chrono_id());
-    let path = label_dir.join(filename);
-    write_generated_file(&path, bytes)?;
-    Ok(path)
-}
-
 fn resolve_app_storage_dir_for_app(app: &tauri::App) -> Result<PathBuf, String> {
-    let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| error.to_string())?;
-    #[cfg(target_os = "windows")]
-    {
-        let app_local_data_dir = app
-            .path()
-            .app_local_data_dir()
-            .map_err(|error| error.to_string())?;
-        Ok(resolve_windows_storage_dir(
-            app_data_dir,
-            app_local_data_dir,
-        ))
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        Ok(app_data_dir)
-    }
-}
-
-fn resolve_app_storage_dir_for_handle(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = app
         .path()
         .app_data_dir()
@@ -406,41 +279,6 @@ fn resolve_windows_storage_dir(roaming_dir: PathBuf, local_dir: PathBuf) -> Path
     local_dir
 }
 
-fn write_generated_file(path: &Path, contents: &[u8]) -> Result<(), String> {
-    let temp_path = path.with_extension(format!("{}.tmp", chrono_id()));
-    let mut file = File::create(&temp_path).map_err(|error| error.to_string())?;
-    file.write_all(contents)
-        .map_err(|error| error.to_string())?;
-    file.sync_all().map_err(|error| error.to_string())?;
-    drop(file);
-    std::fs::rename(&temp_path, path).map_err(|error| error.to_string())?;
-    Ok(())
-}
-
-fn open_generated_document(path: &Path) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
-    {
-        open::that(path).map_err(|error| {
-            format!("Failed to open generated file in the default Windows handler: {error}")
-        })?;
-        Ok(())
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        open::that(path).map_err(|error| error.to_string())?;
-        Ok(())
-    }
-}
-
-fn chrono_id() -> String {
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    nanos.to_string()
-}
-
 pub(crate) fn with_inventory<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>
 where
     Func: FnOnce(InventoryEngine) -> backend::filament_database::InventoryResult<Output>,
@@ -468,7 +306,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{chrono_id, write_generated_file};
     use crate::backend::filament_database::{FilamentDatabase, TrustedLanSettingsRow};
     use crate::trusted_lan_commands::load_trusted_lan_runtime;
     use std::path::PathBuf;
@@ -516,26 +353,11 @@ mod tests {
         }
     }
 
-    #[test]
-    fn generated_file_write_persists_contents() {
-        let path = std::env::temp_dir().join(format!("filament-manager-write-{}.txt", chrono_id()));
-        let result = (|| -> Result<(), String> {
-            write_generated_file(&path, b"hello windows rc")?;
-            let contents = std::fs::read_to_string(&path).map_err(|error| error.to_string())?;
-            assert_eq!(contents, "hello windows rc");
-            Ok(())
-        })();
-
-        let _ = std::fs::remove_file(&path);
-        if let Err(error) = result {
-            panic!("{error}");
-        }
-    }
-
     #[cfg(target_os = "windows")]
     #[test]
     fn windows_storage_prefers_existing_db_location() {
         use super::resolve_windows_storage_dir;
+        use crate::document_commands::chrono_id;
 
         let base =
             std::env::temp_dir().join(format!("filament-manager-windows-storage-{}", chrono_id()));
