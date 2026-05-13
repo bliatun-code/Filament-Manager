@@ -3,6 +3,7 @@
 mod app_services;
 mod backend;
 mod bambu_live;
+mod bambu_live_sync;
 mod bambu_mqtt;
 mod catalog_commands;
 mod companion_api;

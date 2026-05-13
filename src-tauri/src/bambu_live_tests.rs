@@ -1,10 +1,12 @@
-use super::{
-    apply_tray_match_status, merge_tray_payload, should_auto_clear_live_color_replacement,
-    should_auto_clear_live_unknown_replacement, slot_override_matches_live_unknown,
-};
+use super::merge_tray_payload;
 use crate::backend::filament_database::{
     BambuLiveObservedTrayRow, FilamentMasterSummary, PrinterAmsSlotRow, PrinterOverviewRow,
     PrinterRow, PrinterUsageRow, SpoolRow, SpoolWithMasterRow,
+};
+use crate::bambu_live_sync::{
+    apply_tray_match_status, live_identity_is_blocked_by_manual_clear,
+    should_auto_clear_live_color_replacement, should_auto_clear_live_slot,
+    should_auto_clear_live_unknown_replacement, slot_override_matches_live_unknown,
 };
 use std::io::Cursor;
 
@@ -260,15 +262,15 @@ fn color_replacement_without_rfid_does_not_clear_same_missing_or_rfid_color() {
 
 #[test]
 fn manual_clear_blocks_stale_live_identity_until_newer_mqtt_arrives() {
-    assert!(super::live_identity_is_blocked_by_manual_clear(
+    assert!(live_identity_is_blocked_by_manual_clear(
         Some("2026-04-15T10:00:00Z"),
         Some("2026-04-15 10:00:00")
     ));
-    assert!(super::live_identity_is_blocked_by_manual_clear(
+    assert!(live_identity_is_blocked_by_manual_clear(
         None,
         Some("2026-04-15 10:00:00")
     ));
-    assert!(!super::live_identity_is_blocked_by_manual_clear(
+    assert!(!live_identity_is_blocked_by_manual_clear(
         Some("2026-04-15T10:00:01Z"),
         Some("2026-04-15 10:00:00")
     ));
@@ -311,7 +313,7 @@ fn id_only_tray_payload_marks_empty_and_clears_on_first_observation() {
     assert!(merged.tray_uuid.is_none());
     assert!(merged.observed_rfid_tag.is_none());
     assert_eq!(merged.empty_observation_count, Some(1));
-    assert!(super::should_auto_clear_live_slot(&merged));
+    assert!(should_auto_clear_live_slot(&merged));
 }
 
 #[test]
