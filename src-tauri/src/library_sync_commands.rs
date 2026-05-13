@@ -4,9 +4,10 @@ use crate::backend::filament_database::{
     SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::backend::statistics::{FilamentConsumptionRow, InventoryOverview};
+use crate::printer_commands::PrinterSettingsSnapshot;
 use crate::state::AppState;
 use crate::trusted_lan_commands::CompanionHealthCheckResponse;
-use crate::{with_inventory, PrinterSettingsSnapshot};
+use crate::with_inventory;
 use reqwest::header::{CONTENT_TYPE, HOST, ORIGIN, SET_COOKIE};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::time::Duration;
