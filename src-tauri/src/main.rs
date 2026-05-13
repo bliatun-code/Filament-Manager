@@ -15,6 +15,7 @@ mod companion_state;
 mod document_commands;
 mod inventory_commands;
 mod library_sync_commands;
+mod library_sync_host_client;
 mod printer_commands;
 mod security;
 mod state;
