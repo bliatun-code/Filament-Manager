@@ -16,6 +16,20 @@ const accentMap: Record<NonNullable<StatCardProps["accent"]>, string> = {
   rose: "border-l-rose-500 dark:border-l-rose-300",
 };
 
+const accentSurfaceMap: Record<NonNullable<StatCardProps["accent"]>, string> = {
+  emerald: "from-emerald-500/12 to-emerald-500/0 dark:from-emerald-300/10",
+  sky: "from-sky-500/12 to-sky-500/0 dark:from-sky-300/10",
+  amber: "from-amber-500/14 to-amber-500/0 dark:from-amber-300/10",
+  rose: "from-rose-500/12 to-rose-500/0 dark:from-rose-300/10",
+};
+
+const accentDotMap: Record<NonNullable<StatCardProps["accent"]>, string> = {
+  emerald: "bg-emerald-500 shadow-emerald-500/25 dark:bg-emerald-300",
+  sky: "bg-sky-500 shadow-sky-500/25 dark:bg-sky-300",
+  amber: "bg-amber-500 shadow-amber-500/25 dark:bg-amber-300",
+  rose: "bg-rose-500 shadow-rose-500/25 dark:bg-rose-300",
+};
+
 export function StatCard({
   title,
   value,
@@ -26,7 +40,7 @@ export function StatCard({
 }: StatCardProps) {
   return (
     <div
-      className={`surface-card border-l-4 ${accentMap[accent]} ${
+      className={`surface-card relative overflow-hidden border-l-4 ${accentMap[accent]} ${
         onClick
           ? "cursor-pointer transition hover:-translate-y-0.5 hover:border-slate-400/45 dark:hover:border-slate-500"
           : ""
@@ -45,8 +59,12 @@ export function StatCard({
           : undefined
       }
     >
-      <div className="section-eyebrow">{title}</div>
-      <div className="mt-2 text-[1.75rem] font-semibold leading-none text-slate-950 dark:text-slate-50">{value}</div>
+      <div className={`pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${accentSurfaceMap[accent]}`} />
+      <div className="relative flex items-center justify-between gap-3">
+        <div className="section-eyebrow">{title}</div>
+        <span className={`h-2.5 w-2.5 shrink-0 rounded-full shadow-[0_0_0_5px] ${accentDotMap[accent]}`} />
+      </div>
+      <div className="relative mt-3 text-[1.85rem] font-semibold leading-none text-slate-950 dark:text-slate-50">{value}</div>
       <div className="mt-2 flex items-end justify-between gap-3 text-sm text-slate-600 dark:text-slate-300">
         <span className="min-w-0 leading-5">{subtitle}</span>
         {trend ? (

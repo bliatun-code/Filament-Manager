@@ -455,7 +455,7 @@ export default function LoansPage() {
             </div>
           ) : null}
 
-          <div className="grid grid-cols-1 gap-2 min-[720px]:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 items-start gap-3 min-[860px]:grid-cols-2 2xl:grid-cols-3">
             {filteredLoans.map((loan) => {
               const isActive = isLoanCurrentlyActive(loan);
               const loanDirection = normalizeLoanDirection(loan.loan.loan_direction);
@@ -468,13 +468,13 @@ export default function LoansPage() {
               return (
                 <div
                   key={loan.loan.id}
-                  className="rounded-2xl border border-slate-300/80 p-3 shadow-sm shadow-slate-300/25 dark:border-slate-700/80 dark:shadow-none"
+                  className="rounded-xl border border-slate-300/80 p-3.5 shadow-sm shadow-slate-300/25 dark:border-slate-700/80 dark:shadow-none"
                   style={loanSwatchSurfaceStyle(loan.hex_color, "card", resolvedTheme)}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/70 bg-white/60 p-1.5 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/70 bg-white/60 p-1.5 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
                       <span
-                        className="h-full w-full rounded-xl border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
+                        className="h-full w-full rounded-lg border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
                         style={loanSwatchPreviewStyle(loan.hex_color)}
                       />
                     </div>
@@ -482,7 +482,7 @@ export default function LoansPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div
-                            className="overflow-hidden break-words text-[15px] font-semibold leading-tight text-slate-950 [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] dark:text-slate-50"
+                            className="overflow-hidden break-words text-[14px] font-semibold leading-tight text-slate-950 [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] dark:text-slate-50"
                             title={loanTitle}
                           >
                             {loanTitle}
@@ -510,31 +510,42 @@ export default function LoansPage() {
                             </span>
                           </div>
                         </div>
-                        <span
-                          className={semanticChipClass(
-                            isActive ? "warning" : "success",
-                            "px-2.5 py-0.5 text-[10px] whitespace-nowrap",
-                          )}
-                        >
-                          {isActive
-                            ? t("common.active", "Active")
-                            : isInbound
+                        {isActive ? (
+                          <button
+                            type="button"
+                            onClick={() => openReturnModal(loan)}
+                            disabled={busy}
+                            className="shrink-0 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 shadow-sm shadow-emerald-200/25 transition hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-400/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:shadow-none dark:hover:bg-emerald-500/25"
+                          >
+                            {isInbound
+                              ? t("loans.handBackAction", "Hand back")
+                              : t("loans.returnAction", "Return")}
+                          </button>
+                        ) : (
+                          <span
+                            className={semanticChipClass(
+                              "success",
+                              "px-2.5 py-0.5 text-[10px] whitespace-nowrap",
+                            )}
+                          >
+                            {isInbound
                               ? t("loans.handedBack", "Handed back")
                               : t("loans.returned", "Returned")}
-                        </span>
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   <div
-                    className="mt-2 rounded-[1.05rem] border px-2.5 py-2"
+                    className="mt-3 rounded-xl border px-3 py-2.5"
                     style={loanSwatchSurfaceStyle(
                       loan.hex_color,
                       "inset",
                       resolvedTheme,
                     )}
                   >
-                    <div className="grid grid-cols-[minmax(0,1.45fr)_minmax(108px,0.9fr)] gap-x-4 gap-y-3">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 min-[520px]:grid-cols-3">
                       <div className="min-w-0">
                         <div className={loanFactLabelClassName}>
                           {t("inventory.reference", "Reference")}
@@ -556,7 +567,7 @@ export default function LoansPage() {
                           {formatGrams(loan.loan.grams_out)}
                         </div>
                       </div>
-                      <div className={isActive ? "col-span-2" : ""}>
+                      <div className="min-w-0">
                         <div className={loanFactLabelClassName}>
                           {isInbound
                             ? t("loans.borrowedInAt", "Borrowed in")
@@ -588,7 +599,7 @@ export default function LoansPage() {
                               {formatGrams(loan.loan.returned_grams)}
                             </div>
                           </div>
-                          <div className="col-span-2">
+                          <div className="min-w-0">
                             <div className={loanFactLabelClassName}>
                               {t("loans.consumed", "Consumed")}
                             </div>
@@ -600,21 +611,6 @@ export default function LoansPage() {
                       ) : null}
                     </div>
                   </div>
-
-                  {isActive ? (
-                    <div className="mt-2 flex justify-start">
-                      <button
-                        type="button"
-                        onClick={() => openReturnModal(loan)}
-                        disabled={busy}
-                        className="w-full rounded-xl border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm shadow-emerald-200/25 disabled:opacity-50 min-[420px]:w-auto dark:border-emerald-400/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:shadow-none"
-                      >
-                        {isInbound
-                          ? t("loans.handBackAction", "Hand back")
-                          : t("loans.returnAction", "Return")}
-                      </button>
-                    </div>
-                  ) : null}
                 </div>
               );
             })}

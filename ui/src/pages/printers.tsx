@@ -920,7 +920,7 @@ export default function PrintersPage() {
               }`}
               style={printerBrandSurfaceStyle(printer.printer.model, "card", resolvedTheme)}
             >
-              <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <PrinterModelPreview
                     model={printer.printer.model}
@@ -953,28 +953,28 @@ export default function PrintersPage() {
                     </div>
                   </div>
                 </div>
-                <div className="grid w-full grid-cols-2 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[24rem] min-[1080px]:grid-cols-4">
+                <div className="grid w-full grid-cols-2 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[20rem] min-[1080px]:grid-cols-4">
                   {usageMetrics.map((metric) => (
                     <div
                       key={metric.key}
-                      className="rounded-2xl border px-3 py-2.5 shadow-sm dark:shadow-none"
+                      className="rounded-xl border px-2.5 py-2 shadow-sm dark:shadow-none"
                       style={printerBrandSurfaceStyle(
                         printer.printer.model,
                         "compact",
                         resolvedTheme,
                       )}
                     >
-                      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                      <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                         {metric.label}
                       </div>
-                      <div className={`mt-1 text-lg font-semibold ${metric.valueClassName}`}>
+                      <div className={`mt-0.5 text-base font-semibold ${metric.valueClassName}`}>
                         {metric.value}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="mt-3 grid grid-cols-1 gap-2.5 md:grid-cols-2">
               {printer.slots.map((slot) => {
                 const { liveConfig, tray: liveTray } = findLiveTrayForSlot(printer.printer.id, slot);
                 const slotOptions = allowedSpoolsForSlot(slot.spool_id);
@@ -1008,19 +1008,31 @@ export default function PrintersPage() {
                   slotSwatchHex,
                 } = slotDisplay;
                 const isDropdownOpen = openDropdownSlotId === slot.slot_id;
+                const softInnerShadow =
+                  resolvedTheme === "dark"
+                    ? "inset 0 1px 0 rgba(255, 255, 255, 0.04)"
+                    : "inset 0 1px 0 rgba(255, 255, 255, 0.45)";
                 const slotSelectorStyle = slotSwatchHex
-                  ? printerSwatchInteractiveInsetStyle(
-                      slotSwatchHex,
-                      resolvedTheme,
-                      selectedTargetSpool ? "selected" : "default",
-                    )
+                  ? {
+                      ...printerSwatchInteractiveInsetStyle(
+                        slotSwatchHex,
+                        resolvedTheme,
+                        selectedTargetSpool ? "selected" : "default",
+                      ),
+                      borderColor: "transparent",
+                      boxShadow: softInnerShadow,
+                    }
                   : undefined;
                 const slotCurrentRollStyle = slot.spool_id
-                  ? printerSwatchInteractiveInsetStyle(
-                      slot.spool_hex_color,
-                      resolvedTheme,
-                      "selected",
-                    )
+                  ? {
+                      ...printerSwatchInteractiveInsetStyle(
+                        slotSwatchHex,
+                        resolvedTheme,
+                        "selected",
+                      ),
+                      borderColor: "transparent",
+                      boxShadow: softInnerShadow,
+                    }
                   : undefined;
                 const slotActionStyle = slotSwatchHex
                   ? printerSwatchActionButtonStyle(slotSwatchHex, resolvedTheme)
@@ -1028,7 +1040,7 @@ export default function PrintersPage() {
                 return (
                   <div
                     key={slot.slot_id}
-                    className={`surface-subtle relative flex h-full flex-col p-3 ${
+                    className={`surface-subtle relative flex h-full flex-col p-2.5 ${
                       isDropdownOpen ? "z-50" : "z-0"
                     }`}
                     style={
@@ -1050,7 +1062,7 @@ export default function PrintersPage() {
                     >
                       <button
                         type="button"
-                        className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-800 shadow-sm disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100 dark:shadow-none"
+                        className="flex w-full items-center justify-between gap-2 rounded-xl bg-white/70 px-2.5 py-2 text-left text-sm text-slate-800 disabled:opacity-50 dark:bg-slate-900/55 dark:text-slate-100"
                         onClick={() =>
                           setOpenDropdownSlotId((current) =>
                             current === slot.slot_id ? null : slot.slot_id,
@@ -1061,7 +1073,7 @@ export default function PrintersPage() {
                       >
                         <span className="flex min-w-0 items-center gap-2">
                           <span
-                            className="h-5 w-5 shrink-0 rounded border border-slate-200 dark:border-slate-600"
+                            className="h-4.5 w-4.5 shrink-0 rounded border border-slate-500/20 shadow-inner shadow-black/10 dark:border-white/10 dark:shadow-black/20"
                             style={{
                               backgroundColor: toSwatchColor(slotSwatchHex),
                             }}
@@ -1221,16 +1233,21 @@ export default function PrintersPage() {
 
                     {slot.spool_id ? (
                       <div
-                        className="mt-3 rounded-xl border p-3 text-xs text-slate-700 dark:text-slate-300"
+                        className="mt-2 rounded-xl px-2.5 py-2 text-xs text-slate-700 dark:text-slate-300"
                         style={slotCurrentRollStyle}
                       >
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2">
+                          <span
+                            className="mt-0.5 h-4.5 w-4.5 shrink-0 rounded border border-slate-500/20 shadow-inner shadow-black/10 dark:border-white/10 dark:shadow-black/20"
+                            style={{ backgroundColor: toSwatchColor(slotSwatchHex) }}
+                          />
                           <div className="min-w-0">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                              {t("printers.currentRoll", "Current roll")}
-                            </div>
-                            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300">
-                              <span>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                              <span className="font-medium text-slate-700 dark:text-slate-200">
+                                {t("printers.currentRoll", "Current roll")}
+                              </span>
+                              <span className="text-slate-400 dark:text-slate-500">·</span>
+                              <span className="text-slate-500 dark:text-slate-400">
                                 {t("inventory.reference", "Reference")}{" "}
                                 {formatSpoolReference(slot.spool_id)}
                               </span>
@@ -1245,7 +1262,7 @@ export default function PrintersPage() {
                                 </span>
                               ) : null}
                               {showManualLabel ? (
-                                <span className={semanticChipClass("neutral", "px-2 py-0.5 text-[10px]")}>
+                                <span className="rounded-md border border-slate-300/60 bg-slate-100/60 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-600 dark:border-slate-600/70 dark:bg-slate-800/55 dark:text-slate-300">
                                   {t("printers.manualAssignment", "Manual")}
                                 </span>
                               ) : null}
@@ -1268,7 +1285,7 @@ export default function PrintersPage() {
                               ) : null}
                             </div>
                             {liveSignalEnabled ? (
-                              <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                              <div className="mt-0.5 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
                                 {liveObservedAtLabel
                                   ? `${t("printers.lastKnownLive", "Last known live")}: ${liveObservedAtLabel}${liveObservedAge ? ` · ${liveObservedAge}` : ""}`
                                   : t(
@@ -1278,21 +1295,17 @@ export default function PrintersPage() {
                               </div>
                             ) : null}
                             {unknownLiveRfid ? (
-                              <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-200">
+                              <div className="mt-0.5 text-[11px] leading-5 text-amber-700 dark:text-amber-200">
                                 {rfidOverridden
                                   ? `${t("printers.rfidOverriddenHint", "This slot is manually assigned while the same unregistered RFID identity is still active.")} ${effectiveLiveTray?.tray_uuid}`
                                   : `${t("printers.unknownLiveRfidHint", "AMS reported a tray identity that is not registered in inventory.")} ${effectiveLiveTray?.tray_uuid}`}
                               </div>
                             ) : null}
                           </div>
-                          <span
-                            className="h-7 w-7 shrink-0 rounded-lg border border-slate-200 dark:border-slate-600"
-                            style={{ backgroundColor: toSwatchColor(slotSwatchHex) }}
-                          />
                         </div>
                       </div>
                     ) : (
-                      <div className="mt-3 rounded-xl border border-dashed border-slate-300/80 px-3 py-3 text-xs text-slate-500 dark:border-slate-600/80 dark:text-slate-400">
+                      <div className="mt-2 rounded-xl bg-slate-950/[0.03] px-2.5 py-2 text-xs text-slate-500 dark:bg-white/[0.03] dark:text-slate-400">
                         <div>{t("printers.noSpoolAssigned", "No spool assigned.")}</div>
                         {liveSignalEnabled && liveObservedAtLabel ? (
                           <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
@@ -1309,7 +1322,7 @@ export default function PrintersPage() {
 
                     <button
                       type="button"
-                      className={`mt-2 w-full rounded-xl border px-3 py-2.5 text-xs font-semibold transition disabled:opacity-50 ${
+                      className={`mt-2 w-full self-end rounded-lg border px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 min-[720px]:w-auto ${
                         slotActionStyle
                           ? "shadow-sm"
                           : "border-slate-200 bg-white text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100 dark:shadow-none"
