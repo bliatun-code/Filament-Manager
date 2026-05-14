@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   exportLoansCsv,
   isTauri,
@@ -55,6 +55,7 @@ export default function LoansPage() {
   const [filter, setFilter] = useState<LoanFilter>("ACTIVE");
   const [directionFilter, setDirectionFilter] = useState<LoanDirectionFilter>("ALL");
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [loans, setLoans] = useState<SpoolLoanDetailsRow[]>([]);
   const [showLoanOutModal, setShowLoanOutModal] = useState(false);
   const [returnModalLoan, setReturnModalLoan] = useState<SpoolLoanDetailsRow | null>(null);
@@ -164,8 +165,8 @@ export default function LoansPage() {
   }, [clientHostBaseUrl, clientHostWritePaired, clientLibraryId, clientReadOnly, t]);
 
   const filteredLoans = useMemo(
-    () => filterLoans(loans, directionFilter, filter, search),
-    [directionFilter, filter, loans, search],
+    () => filterLoans(loans, directionFilter, filter, deferredSearch),
+    [deferredSearch, directionFilter, filter, loans],
   );
 
   async function handleExportCsv() {

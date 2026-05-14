@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { AppModal } from "../components/app_modal";
 import { StatCard } from "../components/dashboard_widgets";
 import { FeedbackBanner } from "../components/feedback_banner";
@@ -151,6 +151,30 @@ export default function StatisticsPage() {
   const [slotOwnershipFilter, setSlotOwnershipFilter] = useState<OwnershipFilter>("ALL");
   const [loanUsageListFilter, setLoanUsageListFilter] =
     useState<LoanUsageListFilter>("ACTIVE");
+  const deferredConsumptionSearch = useDeferredValue(consumptionPrefs.search);
+  const deferredBorrowerSearch = useDeferredValue(borrowerPrefs.search);
+  const deferredConsumptionPrefs = useMemo<ConsumptionPopupPrefs>(
+    () => ({
+      search: deferredConsumptionSearch,
+      vendorFilter: consumptionPrefs.vendorFilter,
+      materialFilter: consumptionPrefs.materialFilter,
+      ownershipFilter: consumptionPrefs.ownershipFilter,
+      sort: consumptionPrefs.sort,
+    }),
+    [
+      consumptionPrefs.materialFilter,
+      consumptionPrefs.ownershipFilter,
+      consumptionPrefs.sort,
+      consumptionPrefs.vendorFilter,
+      deferredConsumptionSearch,
+    ],
+  );
+  const deferredBorrowerPrefs = useMemo<BorrowerPopupPrefs>(
+    () => ({
+      search: deferredBorrowerSearch,
+    }),
+    [deferredBorrowerSearch],
+  );
   useEffect(() => {
     if (typeof window === "undefined" || !window.localStorage) {
       return;
@@ -286,13 +310,13 @@ export default function StatisticsPage() {
   );
 
   const filteredConsumptionRows = useMemo(
-    () => filterConsumptionRows(consumptionRows, consumptionPrefs),
-    [consumptionPrefs, consumptionRows],
+    () => filterConsumptionRows(consumptionRows, deferredConsumptionPrefs),
+    [consumptionRows, deferredConsumptionPrefs],
   );
 
   const filteredBorrowerRows = useMemo(
-    () => filterBorrowerRows(borrowerRows, borrowerPrefs),
-    [borrowerPrefs, borrowerRows],
+    () => filterBorrowerRows(borrowerRows, deferredBorrowerPrefs),
+    [borrowerRows, deferredBorrowerPrefs],
   );
 
   const openBorrowerModal = useCallback(

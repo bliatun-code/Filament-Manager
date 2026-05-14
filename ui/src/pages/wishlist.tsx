@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { AppModal } from "../components/app_modal";
 import { VendorBadge } from "../components/vendor_badge";
 import { neutralChipClass, semanticChipClass } from "../lib/chip_styles";
@@ -146,6 +146,8 @@ export default function WishlistPage() {
   const [esunCatalogFilter, setEsunCatalogFilter] =
     useState<CatalogFilter>("ALL");
   const [newEsunMasterId, setNewEsunMasterId] = useState("");
+  const deferredBambuCatalogQuery = useDeferredValue(bambuCatalogQuery);
+  const deferredEsunCatalogQuery = useDeferredValue(esunCatalogQuery);
   const [wishlistQuantity, setWishlistQuantity] = useState("1");
   const [wishlistNote, setWishlistNote] = useState("");
 
@@ -285,8 +287,13 @@ export default function WishlistPage() {
     [masters],
   );
 
+  const masterById = useMemo(
+    () => new Map(masters.map((master) => [master.id, master])),
+    [masters],
+  );
+
   const filteredBambuMasters = useMemo(() => {
-    const term = bambuCatalogQuery.trim().toLowerCase();
+    const term = deferredBambuCatalogQuery.trim().toLowerCase();
     return bambuMasters.filter((master) => {
       const stateMatch =
         bambuCatalogFilter === "ALL"
@@ -302,15 +309,15 @@ export default function WishlistPage() {
               .includes(term);
       return stateMatch && textMatch;
     });
-  }, [bambuCatalogFilter, bambuCatalogQuery, bambuMasters]);
+  }, [bambuCatalogFilter, deferredBambuCatalogQuery, bambuMasters]);
 
   const selectedBambuMaster = useMemo(() => {
-    const fromId = masters.find((master) => master.id === newBambuMasterId) ?? null;
+    const fromId = masterById.get(newBambuMasterId) ?? null;
     if (fromId) {
       return fromId;
     }
     return filteredBambuMasters[0] ?? null;
-  }, [filteredBambuMasters, masters, newBambuMasterId]);
+  }, [filteredBambuMasters, masterById, newBambuMasterId]);
 
   useEffect(() => {
     if (createMode !== "bambu") {
@@ -344,7 +351,7 @@ export default function WishlistPage() {
   );
 
   const filteredEsunMasters = useMemo(() => {
-    const term = esunCatalogQuery.trim().toLowerCase();
+    const term = deferredEsunCatalogQuery.trim().toLowerCase();
     return esunMasters.filter((master) => {
       const stateMatch =
         esunCatalogFilter === "ALL"
@@ -360,15 +367,15 @@ export default function WishlistPage() {
               .includes(term);
       return stateMatch && textMatch;
     });
-  }, [esunCatalogFilter, esunCatalogQuery, esunMasters]);
+  }, [deferredEsunCatalogQuery, esunCatalogFilter, esunMasters]);
 
   const selectedEsunMaster = useMemo(() => {
-    const fromId = masters.find((master) => master.id === newEsunMasterId) ?? null;
+    const fromId = masterById.get(newEsunMasterId) ?? null;
     if (fromId) {
       return fromId;
     }
     return filteredEsunMasters[0] ?? null;
-  }, [filteredEsunMasters, masters, newEsunMasterId]);
+  }, [filteredEsunMasters, masterById, newEsunMasterId]);
 
   const currentDraft = useMemo(() => {
     if (createMode === "bambu") {
@@ -434,10 +441,19 @@ export default function WishlistPage() {
   }, [createMode, filteredEsunMasters, newEsunMasterId]);
 
   const wishlistSummary = useMemo(() => {
-    const wishlist = wishlistItems.filter((item) => item.status === "WISHLIST").length;
-    const onOrder = wishlistItems.filter((item) => item.status === "ON_ORDER").length;
-    const received = wishlistItems.filter((item) => item.status === "RECEIVED").length;
-    return { wishlist, onOrder, received };
+    return wishlistItems.reduce(
+      (summary, item) => {
+        if (item.status === "WISHLIST") {
+          summary.wishlist += 1;
+        } else if (item.status === "ON_ORDER") {
+          summary.onOrder += 1;
+        } else if (item.status === "RECEIVED") {
+          summary.received += 1;
+        }
+        return summary;
+      },
+      { wishlist: 0, onOrder: 0, received: 0 },
+    );
   }, [wishlistItems]);
 
   const visibleWishlistItems = useMemo(() => {
@@ -446,11 +462,6 @@ export default function WishlistPage() {
     }
     return wishlistItems.filter((item) => item.status === boardFilter);
   }, [boardFilter, wishlistItems]);
-
-  const linkedMasterById = useMemo(
-    () => new Map(masters.map((master) => [master.id, master])),
-    [masters],
-  );
 
   const activeCatalogCount = useMemo(() => {
     if (createMode === "bambu") {
@@ -1402,7 +1413,7 @@ export default function WishlistPage() {
 
           <div className="mt-4 space-y-4">
             {visibleWishlistItems.map((item) => {
-              const linkedMaster = item.master_id ? linkedMasterById.get(item.master_id) ?? null : null;
+              const linkedMaster = item.master_id ? masterById.get(item.master_id) ?? null : null;
               const swatchHex = linkedMaster?.hex_color ?? null;
               const itemTone = materialTone(item.material);
               return (

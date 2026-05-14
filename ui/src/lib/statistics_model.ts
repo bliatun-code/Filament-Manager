@@ -192,13 +192,16 @@ export function readBorrowerPopupPrefs(): BorrowerPopupPrefs {
 }
 
 export function deriveStatisticsTotals(printers: PrinterOverviewRow[]): StatisticsTotals {
-  const totalUsed = printers.reduce((sum, row) => sum + (row.usage.total_used_g || 0), 0);
-  const totalJobs = printers.reduce((sum, row) => sum + (row.usage.total_jobs || 0), 0);
-  const failedJobs = printers.reduce((sum, row) => sum + (row.usage.failed_jobs || 0), 0);
-  const activeSlots = printers.reduce(
-    (sum, row) => sum + summarizeEffectivePrinterSlots(row.slots).loadedSlots,
-    0,
-  );
+  let totalUsed = 0;
+  let totalJobs = 0;
+  let failedJobs = 0;
+  let activeSlots = 0;
+  for (const row of printers) {
+    totalUsed += row.usage.total_used_g || 0;
+    totalJobs += row.usage.total_jobs || 0;
+    failedJobs += row.usage.failed_jobs || 0;
+    activeSlots += summarizeEffectivePrinterSlots(row.slots).loadedSlots;
+  }
   return { totalUsed, totalJobs, failedJobs, activeSlots };
 }
 
@@ -269,21 +272,18 @@ export function deriveInventoryOverviewFromRows(
     }
   }
 
-  const totalConsumption30d = consumptionRows.reduce((sum, row) => sum + Math.max(0, row.used_grams), 0);
-  const ownedConsumption30d = consumptionRows.reduce(
-    (sum, row) =>
-      normalizeOwnershipType(row.ownership_type) === "BORROWED_IN"
-        ? sum
-        : sum + Math.max(0, row.used_grams),
-    0,
-  );
-  const borrowedInConsumption30d = consumptionRows.reduce(
-    (sum, row) =>
-      normalizeOwnershipType(row.ownership_type) === "BORROWED_IN"
-        ? sum + Math.max(0, row.used_grams)
-        : sum,
-    0,
-  );
+  let totalConsumption30d = 0;
+  let ownedConsumption30d = 0;
+  let borrowedInConsumption30d = 0;
+  for (const row of consumptionRows) {
+    const usedGrams = Math.max(0, row.used_grams);
+    totalConsumption30d += usedGrams;
+    if (normalizeOwnershipType(row.ownership_type) === "BORROWED_IN") {
+      borrowedInConsumption30d += usedGrams;
+    } else {
+      ownedConsumption30d += usedGrams;
+    }
+  }
 
   return {
     total_spools: spools.length,
@@ -401,13 +401,16 @@ export function filterActiveSlotRows(
 }
 
 export function countActiveSlotOwnerships(rows: ActiveSlotDisplayRow[]) {
-  return {
-    owned: rows.filter((row) => normalizeOwnershipType(row.slot.spool_ownership_type) === "OWNED")
-      .length,
-    borrowedIn: rows.filter(
-      (row) => normalizeOwnershipType(row.slot.spool_ownership_type) === "BORROWED_IN",
-    ).length,
-  };
+  let owned = 0;
+  let borrowedIn = 0;
+  for (const row of rows) {
+    if (normalizeOwnershipType(row.slot.spool_ownership_type) === "BORROWED_IN") {
+      borrowedIn += 1;
+    } else {
+      owned += 1;
+    }
+  }
+  return { owned, borrowedIn };
 }
 
 export function sortFailedPrinterRows(printers: PrinterOverviewRow[]): PrinterOverviewRow[] {

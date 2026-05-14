@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { AppModal } from "../components/app_modal";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { LoanOutModal } from "../components/loan_out_modal";
@@ -464,6 +464,7 @@ export default function InventoryPage({
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("ALL");
   const [vendorFilter, setVendorFilter] = useState("ALL");
@@ -527,6 +528,8 @@ export default function InventoryPage({
 
   const [esunCatalogQuery, setEsunCatalogQuery] = useState("");
   const [newEsunMasterId, setNewEsunMasterId] = useState("");
+  const deferredBambuCatalogQuery = useDeferredValue(bambuCatalogQuery);
+  const deferredEsunCatalogQuery = useDeferredValue(esunCatalogQuery);
 
   const [masterEditUnlocked, setMasterEditUnlocked] = useState(false);
   const [editMasterVendor, setEditMasterVendor] = useState("");
@@ -847,7 +850,7 @@ export default function InventoryPage({
   const filteredSpools = useMemo(
     () =>
       filterInventorySpools(spools, {
-        search,
+        search: deferredSearch,
         statusFilter,
         ownershipFilter,
         materialFilter,
@@ -858,7 +861,7 @@ export default function InventoryPage({
       lowStockOnly,
       materialFilter,
       ownershipFilter,
-      search,
+      deferredSearch,
       spools,
       statusFilter,
       vendorFilter,
@@ -875,9 +878,17 @@ export default function InventoryPage({
   ].filter(Boolean).length;
   const showAdvancedFilters = advancedFiltersOpen;
 
+  const spoolsById = useMemo(() => {
+    const map = new Map<string, InventorySpool>();
+    for (const spool of spools) {
+      map.set(spool.id, spool);
+    }
+    return map;
+  }, [spools]);
+
   const selectedSpool = useMemo(
-    () => spools.find((spool) => spool.id === selectedSpoolId) ?? null,
-    [selectedSpoolId, spools],
+    () => (selectedSpoolId ? spoolsById.get(selectedSpoolId) ?? null : null),
+    [selectedSpoolId, spoolsById],
   );
 
   const selectedSpoolResolvedTare = useMemo(
@@ -939,12 +950,19 @@ export default function InventoryPage({
     return rows;
   }, [printerOverview]);
 
+  const printerSlotBySpoolId = useMemo(() => {
+    const map = new Map<string, PrinterSlotOption>();
+    for (const slot of printerSlotOptions) {
+      if (slot.spoolId) {
+        map.set(slot.spoolId, slot);
+      }
+    }
+    return map;
+  }, [printerSlotOptions]);
+
   const selectedSpoolAssignedSlot = useMemo(
-    () =>
-      selectedSpool
-        ? printerSlotOptions.find((slot) => slot.spoolId === selectedSpool.id) ?? null
-        : null,
-    [printerSlotOptions, selectedSpool],
+    () => (selectedSpool ? printerSlotBySpoolId.get(selectedSpool.id) ?? null : null),
+    [printerSlotBySpoolId, selectedSpool],
   );
 
   const selectedSpoolRfidCaptureSlots = useMemo(() => {
@@ -1685,7 +1703,7 @@ export default function InventoryPage({
   );
 
   const filteredBambuMasters = useMemo(() => {
-    const term = bambuCatalogQuery.trim().toLowerCase();
+    const term = deferredBambuCatalogQuery.trim().toLowerCase();
     return bambuMasters.filter((master) => {
       const textMatch =
         term.length === 0
@@ -1695,7 +1713,7 @@ export default function InventoryPage({
               .includes(term);
       return textMatch;
     });
-  }, [bambuCatalogQuery, bambuMasters]);
+  }, [deferredBambuCatalogQuery, bambuMasters]);
 
   const selectedBambuMaster = useMemo(() => {
     const fromId =
@@ -1745,7 +1763,7 @@ export default function InventoryPage({
   );
 
   const filteredEsunMasters = useMemo(() => {
-    const term = esunCatalogQuery.trim().toLowerCase();
+    const term = deferredEsunCatalogQuery.trim().toLowerCase();
     return esunMasters.filter((master) => {
       const textMatch =
         term.length === 0
@@ -1755,7 +1773,7 @@ export default function InventoryPage({
               .includes(term);
       return textMatch;
     });
-  }, [esunCatalogQuery, esunMasters]);
+  }, [deferredEsunCatalogQuery, esunMasters]);
 
   const selectedEsunMaster = useMemo(() => {
     const fromId =
@@ -1800,15 +1818,22 @@ export default function InventoryPage({
     );
   }, [wishlistItems, wishlistQueueFilter]);
 
-  const wishlistQueueSummary = useMemo(
-    () => ({
-      all: wishlistItems.length,
-      wishlist: wishlistItems.filter((item) => item.status === "WISHLIST").length,
-      onOrder: wishlistItems.filter((item) => item.status === "ON_ORDER").length,
-      received: wishlistItems.filter((item) => item.status === "RECEIVED").length,
-    }),
-    [wishlistItems],
-  );
+  const wishlistQueueSummary = useMemo(() => {
+    return wishlistItems.reduce(
+      (summary, item) => {
+        summary.all += 1;
+        if (item.status === "WISHLIST") {
+          summary.wishlist += 1;
+        } else if (item.status === "ON_ORDER") {
+          summary.onOrder += 1;
+        } else if (item.status === "RECEIVED") {
+          summary.received += 1;
+        }
+        return summary;
+      },
+      { all: 0, wishlist: 0, onOrder: 0, received: 0 },
+    );
+  }, [wishlistItems]);
 
   async function handleCreateSpool() {
     if (!clientReadOnly && !ensureLocalWriteAllowed()) {

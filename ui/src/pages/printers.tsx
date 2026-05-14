@@ -195,16 +195,24 @@ export default function PrintersPage() {
     return true;
   }, [clientHostBaseUrl, clientHostWritePaired, clientLibraryId, clientReadOnly, t]);
 
+  const spoolsById = useMemo(() => {
+    const map = new Map<string, SpoolWithMasterRow>();
+    for (const row of spools) {
+      map.set(row.spool.id, row);
+    }
+    return map;
+  }, [spools]);
+
   const resolveSpoolTareWeightById = useCallback(
     (spoolId: string | null | undefined) => {
       const id = (spoolId ?? "").trim();
       if (!id) {
         return 0;
       }
-      const row = spools.find((candidate) => candidate.spool.id === id) ?? null;
+      const row = spoolsById.get(id) ?? null;
       return resolveSpoolTareWeightForRow(row);
     },
-    [spools],
+    [spoolsById],
   );
 
   const printerPageSummary = useMemo(() => {
@@ -223,6 +231,35 @@ export default function PrintersPage() {
   }, [printers]);
 
   const sortedSpools = useMemo(() => sortSpoolsAlphabetically(spools, locale), [locale, spools]);
+
+  const allowedSpoolOptionsBySlotSpoolId = useMemo(() => {
+    const map = new Map<string, SpoolWithMasterRow[]>();
+    map.set("", filterAllowedSpoolsForSlot(sortedSpools));
+    const activeSlotSpoolIds = new Set<string>();
+    for (const printer of printers) {
+      for (const slot of printer.slots) {
+        const spoolId = slot.spool_id?.trim();
+        if (spoolId) {
+          activeSlotSpoolIds.add(spoolId);
+        }
+      }
+    }
+    for (const spoolId of activeSlotSpoolIds) {
+      map.set(spoolId, filterAllowedSpoolsForSlot(sortedSpools, spoolId));
+    }
+    return map;
+  }, [printers, sortedSpools]);
+
+  const allowedSpoolOptionMapsBySlotSpoolId = useMemo(() => {
+    const map = new Map<string, Map<string, SpoolWithMasterRow>>();
+    for (const [slotSpoolId, options] of allowedSpoolOptionsBySlotSpoolId) {
+      map.set(
+        slotSpoolId,
+        new Map(options.map((option) => [option.spool.id, option])),
+      );
+    }
+    return map;
+  }, [allowedSpoolOptionsBySlotSpoolId]);
 
   const resolveLiveConnectionIndicator = useCallback(
     (
@@ -395,8 +432,25 @@ export default function PrintersPage() {
   }
 
   const allowedSpoolsForSlot = useCallback(
-    (slotSpoolId?: string | null) => filterAllowedSpoolsForSlot(sortedSpools, slotSpoolId),
-    [sortedSpools],
+    (slotSpoolId?: string | null) =>
+      allowedSpoolOptionsBySlotSpoolId.get(slotSpoolId?.trim() ?? "") ??
+      allowedSpoolOptionsBySlotSpoolId.get("") ??
+      [],
+    [allowedSpoolOptionsBySlotSpoolId],
+  );
+
+  const findAllowedSpoolForSlot = useCallback(
+    (slotSpoolId: string | null | undefined, targetSpoolId: string) => {
+      const normalizedTargetId = targetSpoolId.trim();
+      if (!normalizedTargetId) {
+        return null;
+      }
+      const optionMap =
+        allowedSpoolOptionMapsBySlotSpoolId.get(slotSpoolId?.trim() ?? "") ??
+        allowedSpoolOptionMapsBySlotSpoolId.get("");
+      return optionMap?.get(normalizedTargetId) ?? null;
+    },
+    [allowedSpoolOptionMapsBySlotSpoolId],
   );
 
   function getSlotDraft(slot: PrinterAmsSlotRow): SlotSwapDraft {
@@ -428,7 +482,7 @@ export default function PrintersPage() {
     if (!normalized) {
       return null;
     }
-    return spools.find((row) => row.spool.id === normalized) ?? null;
+    return spoolsById.get(normalized) ?? null;
   }
 
   function openRfidOverrideDialog(
@@ -609,8 +663,7 @@ export default function PrintersPage() {
       );
       return;
     }
-    const slotOptions = allowedSpoolsForSlot(slot.spool_id);
-    const row = slotOptions.find((item) => item.spool.id === draft.targetSpoolId);
+    const row = findAllowedSpoolForSlot(slot.spool_id, draft.targetSpoolId);
     if (!row) {
       setError(
         t(
@@ -876,6 +929,9 @@ export default function PrintersPage() {
       <div className="mt-6 space-y-5">
         {printers.map((printer) => {
           const hasMultiMaterial = hasConfiguredMultiMaterial(printer.slots);
+          const hasOpenDropdown = printer.slots.some(
+            (slot) => slot.slot_id === openDropdownSlotId,
+          );
           const configuredSetup = describeConfiguredPrinterSetup(
             t,
             printer.printer.model,
@@ -886,6 +942,20 @@ export default function PrintersPage() {
             printerLiveConfig,
             printer.slots,
           );
+          const printerCardStyle = printerBrandSurfaceStyle(
+            printer.printer.model,
+            "card",
+            resolvedTheme,
+          );
+          const printerMetricStyle = printerBrandSurfaceStyle(
+            printer.printer.model,
+            "compact",
+            resolvedTheme,
+          );
+          const slotInnerShadow =
+            resolvedTheme === "dark"
+              ? "inset 0 1px 0 rgba(255, 255, 255, 0.04)"
+              : "inset 0 1px 0 rgba(255, 255, 255, 0.45)";
           const usageMetrics = [
             {
               key: "jobs",
@@ -915,10 +985,8 @@ export default function PrintersPage() {
           return (
             <section
               key={printer.printer.id}
-              className={`surface-card relative ${
-                printer.slots.some((slot) => slot.slot_id === openDropdownSlotId) ? "z-40" : "z-0"
-              }`}
-              style={printerBrandSurfaceStyle(printer.printer.model, "card", resolvedTheme)}
+              className={`surface-card relative ${hasOpenDropdown ? "z-40" : "z-0"}`}
+              style={printerCardStyle}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
@@ -958,11 +1026,7 @@ export default function PrintersPage() {
                     <div
                       key={metric.key}
                       className="rounded-xl border px-2.5 py-2 shadow-sm dark:shadow-none"
-                      style={printerBrandSurfaceStyle(
-                        printer.printer.model,
-                        "compact",
-                        resolvedTheme,
-                      )}
+                      style={printerMetricStyle}
                     >
                       <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                         {metric.label}
@@ -979,10 +1043,13 @@ export default function PrintersPage() {
                 const { liveConfig, tray: liveTray } = findLiveTrayForSlot(printer.printer.id, slot);
                 const slotOptions = allowedSpoolsForSlot(slot.spool_id);
                 const draft = getSlotDraft(slot);
-                const filteredSlotOptions = filterSlotOptionsBySearch(slotOptions, draft.search);
+                const isDropdownOpen = openDropdownSlotId === slot.slot_id;
+                const filteredSlotOptions = isDropdownOpen
+                  ? filterSlotOptionsBySearch(slotOptions, draft.search)
+                  : [];
                 const selectedTargetSpool =
                   draft.targetSpoolId.length > 0
-                    ? slotOptions.find((row) => row.spool.id === draft.targetSpoolId) ?? null
+                    ? findAllowedSpoolForSlot(slot.spool_id, draft.targetSpoolId)
                     : null;
                 const slotDisplay = derivePrinterSlotDisplayState({
                   slot,
@@ -1007,11 +1074,6 @@ export default function PrintersPage() {
                   liveObservedAtLabel,
                   slotSwatchHex,
                 } = slotDisplay;
-                const isDropdownOpen = openDropdownSlotId === slot.slot_id;
-                const softInnerShadow =
-                  resolvedTheme === "dark"
-                    ? "inset 0 1px 0 rgba(255, 255, 255, 0.04)"
-                    : "inset 0 1px 0 rgba(255, 255, 255, 0.45)";
                 const slotSelectorStyle = slotSwatchHex
                   ? {
                       ...printerSwatchInteractiveInsetStyle(
@@ -1020,7 +1082,7 @@ export default function PrintersPage() {
                         selectedTargetSpool ? "selected" : "default",
                       ),
                       borderColor: "transparent",
-                      boxShadow: softInnerShadow,
+                      boxShadow: slotInnerShadow,
                     }
                   : undefined;
                 const slotCurrentRollStyle = slot.spool_id
@@ -1031,11 +1093,14 @@ export default function PrintersPage() {
                         "selected",
                       ),
                       borderColor: "transparent",
-                      boxShadow: softInnerShadow,
+                      boxShadow: slotInnerShadow,
                     }
                   : undefined;
                 const slotActionStyle = slotSwatchHex
                   ? printerSwatchActionButtonStyle(slotSwatchHex, resolvedTheme)
+                  : undefined;
+                const slotPanelStyle = slotSwatchHex
+                  ? printerSwatchSurfaceStyle(slotSwatchHex, "panel", resolvedTheme)
                   : undefined;
                 return (
                   <div
@@ -1043,11 +1108,7 @@ export default function PrintersPage() {
                     className={`surface-subtle relative flex h-full flex-col p-2.5 ${
                       isDropdownOpen ? "z-50" : "z-0"
                     }`}
-                    style={
-                      slotSwatchHex
-                        ? printerSwatchSurfaceStyle(slotSwatchHex, "panel", resolvedTheme)
-                        : undefined
-                    }
+                    style={slotPanelStyle}
                   >
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
                       {formatPrinterSlotLabelForModel(t, printer.printer.model, {
@@ -1101,11 +1162,7 @@ export default function PrintersPage() {
                       {isDropdownOpen ? (
                         <div
                           className="absolute left-0 right-0 z-30 mt-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-300/20 dark:border-slate-600 dark:bg-slate-900 dark:shadow-black/30"
-                          style={
-                            slotSwatchHex
-                              ? printerSwatchSurfaceStyle(slotSwatchHex, "panel", resolvedTheme)
-                              : undefined
-                          }
+                          style={slotPanelStyle}
                         >
                           <input
                             type="text"
