@@ -28,6 +28,12 @@ use super::database_import::{
     parse_inventory_spools_csv, parse_inventory_spools_json, InventoryImportRow,
     InventoryImportStats,
 };
+use super::database_library_sync_cache::{
+    save_library_sync_cached_loans as save_library_sync_cached_loan_rows,
+    save_library_sync_cached_printers as save_library_sync_cached_printer_rows,
+    save_library_sync_cached_snapshot as save_library_sync_cached_snapshot_row,
+    save_library_sync_cached_spools as save_library_sync_cached_spool_rows,
+};
 use super::database_locations::ensure_location as ensure_location_row;
 use super::database_printer_schema::{
     ensure_printer_external_slot_schema as ensure_printer_external_slot_schema_impl,
@@ -2867,52 +2873,28 @@ impl FilamentDatabase {
         &self,
         snapshot: &LibrarySyncCachedSnapshotRow,
     ) -> InventoryResult<()> {
-        let serialized = serde_json::to_string(snapshot)
-            .map_err(|error| InventoryError::Db(error.to_string()))?;
-        self.set_setting("library_sync_cached_snapshot_json", &serialized)?;
-        Ok(())
+        save_library_sync_cached_snapshot_row(&self.conn, snapshot)
     }
 
     pub fn save_library_sync_cached_spools(
         &self,
         rows: &[SpoolWithMasterRow],
     ) -> InventoryResult<()> {
-        let payload = LibrarySyncCachedSpoolListRow {
-            captured_at: self.current_timestamp()?,
-            rows: rows.to_vec(),
-        };
-        let serialized = serde_json::to_string(&payload)
-            .map_err(|error| InventoryError::Db(error.to_string()))?;
-        self.set_setting("library_sync_cached_spools_json", &serialized)?;
-        Ok(())
+        save_library_sync_cached_spool_rows(&self.conn, rows)
     }
 
     pub fn save_library_sync_cached_printers(
         &self,
         rows: &[PrinterOverviewRow],
     ) -> InventoryResult<()> {
-        let payload = LibrarySyncCachedPrinterOverviewRow {
-            captured_at: self.current_timestamp()?,
-            rows: rows.to_vec(),
-        };
-        let serialized = serde_json::to_string(&payload)
-            .map_err(|error| InventoryError::Db(error.to_string()))?;
-        self.set_setting("library_sync_cached_printers_json", &serialized)?;
-        Ok(())
+        save_library_sync_cached_printer_rows(&self.conn, rows)
     }
 
     pub fn save_library_sync_cached_loans(
         &self,
         rows: &[SpoolLoanDetailsRow],
     ) -> InventoryResult<()> {
-        let payload = LibrarySyncCachedLoanListRow {
-            captured_at: self.current_timestamp()?,
-            rows: rows.to_vec(),
-        };
-        let serialized = serde_json::to_string(&payload)
-            .map_err(|error| InventoryError::Db(error.to_string()))?;
-        self.set_setting("library_sync_cached_loans_json", &serialized)?;
-        Ok(())
+        save_library_sync_cached_loan_rows(&self.conn, rows)
     }
 
     pub fn current_timestamp(&self) -> InventoryResult<String> {

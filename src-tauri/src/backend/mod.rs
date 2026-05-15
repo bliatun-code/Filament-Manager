@@ -20,6 +20,8 @@ pub mod database_export;
 pub mod database_ids;
 #[path = "../../../src/backend/database_import.rs"]
 pub mod database_import;
+#[path = "../../../src/backend/database_library_sync_cache.rs"]
+pub mod database_library_sync_cache;
 #[path = "../../../src/backend/database_locations.rs"]
 pub mod database_locations;
 #[path = "../../../src/backend/database_printer_schema.rs"]
