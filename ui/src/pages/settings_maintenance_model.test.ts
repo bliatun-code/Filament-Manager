@@ -6,6 +6,7 @@ import {
   buildSettingsCatalogResetMessage,
   buildSettingsMaintenanceErrorMessage,
   buildSettingsResetConfirmMessage,
+  shouldArmSettingsResetAction,
 } from "./settings_maintenance_model";
 
 test("settings catalog reset message formats reset counts", () => {
@@ -38,6 +39,13 @@ test("settings reset confirm messages follow the requested action", () => {
     buildSettingsResetConfirmMessage("catalog", labels),
     labels.confirmResetCatalogsTapAgain,
   );
+});
+
+test("settings reset arm state only repeats the matching action", () => {
+  assert.equal(shouldArmSettingsResetAction(null, "APP"), true);
+  assert.equal(shouldArmSettingsResetAction("CATALOG", "APP"), true);
+  assert.equal(shouldArmSettingsResetAction("APP", "APP"), false);
+  assert.equal(shouldArmSettingsResetAction("CATALOG", "CATALOG"), false);
 });
 
 test("settings app reset success message returns stable copy", () => {

@@ -150,6 +150,7 @@ import {
   buildSettingsCatalogResetMessage,
   buildSettingsMaintenanceErrorMessage,
   buildSettingsResetConfirmMessage,
+  shouldArmSettingsResetAction,
 } from "./settings_maintenance_model";
 import {
   buildPrinterSlotsByPrinterId,
@@ -1733,7 +1734,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (!tauri || busy) {
       return;
     }
-    if (confirmResetAction !== "APP") {
+    if (shouldArmSettingsResetAction(confirmResetAction, "APP")) {
       setConfirmResetAction("APP");
       setError(null);
       setInfo(buildSettingsResetConfirmMessage("app", settingsMaintenanceResetMessageLabels()));
@@ -1765,7 +1766,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (!tauri || busy) {
       return;
     }
-    if (confirmResetAction !== "CATALOG") {
+    if (shouldArmSettingsResetAction(confirmResetAction, "CATALOG")) {
       setConfirmResetAction("CATALOG");
       setError(null);
       setInfo(buildSettingsResetConfirmMessage("catalog", settingsMaintenanceResetMessageLabels()));

@@ -8,6 +8,7 @@ export type SettingsCatalogResetMessageLabels = {
 };
 
 export type SettingsResetAction = "app" | "catalog";
+export type SettingsResetConfirmAction = "APP" | "CATALOG";
 
 export type SettingsMaintenanceResetMessageLabels = {
   appResetDone: string;
@@ -34,6 +35,13 @@ export function buildSettingsResetConfirmMessage(
   >,
 ): string {
   return action === "app" ? labels.confirmResetAppTapAgain : labels.confirmResetCatalogsTapAgain;
+}
+
+export function shouldArmSettingsResetAction(
+  current: SettingsResetConfirmAction | null,
+  target: SettingsResetConfirmAction,
+): boolean {
+  return current !== target;
 }
 
 export function buildSettingsAppResetSuccessMessage(
