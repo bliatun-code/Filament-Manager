@@ -107,6 +107,7 @@ import {
   resolveTrustedLanInterfaceAddressDraft,
 } from "./settings_companion_model";
 import {
+  buildLibrarySyncClientState,
   buildLibraryRoleChangeState,
   buildLibrarySyncVisibilityState,
   type LibrarySyncMode,
@@ -322,19 +323,21 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const backupValidationHasExtraTables = backupValidationState.hasExtraTables;
   const hasValidatedFullBackup = backupValidationState.hasValidatedFullBackup;
   const hasValidatedLatestFullBackup = backupValidationState.hasValidatedLatestFullBackup;
-  const librarySyncSavedMode = (librarySyncSettings?.mode as LibrarySyncMode | undefined) ?? "STANDALONE";
-  const settingsClientReadOnly = librarySyncSavedMode === "CLIENT";
-  const settingsClientHostBaseUrl = librarySyncSettings?.host_base_url ?? null;
-  const settingsClientLibraryId = librarySyncSettings?.library_id ?? null;
-  const settingsClientHostWritePaired = librarySyncSettings?.client_auth_paired ?? false;
-  const settingsClientHostNeedsRepair =
-    settingsClientHostWritePaired &&
-    Boolean(librarySyncValidation?.pairing_checked) &&
-    !librarySyncValidation?.pairing_valid;
-  const settingsClientHostPairingValid =
-    !settingsClientHostWritePaired ||
-    !librarySyncValidation?.pairing_checked ||
-    librarySyncValidation.pairing_valid;
+  const librarySyncClientState = buildLibrarySyncClientState({
+    mode: librarySyncSettings?.mode,
+    hostBaseUrl: librarySyncSettings?.host_base_url,
+    libraryId: librarySyncSettings?.library_id,
+    clientAuthPaired: librarySyncSettings?.client_auth_paired,
+    pairingChecked: librarySyncValidation?.pairing_checked,
+    pairingValid: librarySyncValidation?.pairing_valid,
+  });
+  const librarySyncSavedMode = librarySyncClientState.savedMode;
+  const settingsClientReadOnly = librarySyncClientState.readOnly;
+  const settingsClientHostBaseUrl = librarySyncClientState.hostBaseUrl;
+  const settingsClientLibraryId = librarySyncClientState.libraryId;
+  const settingsClientHostWritePaired = librarySyncClientState.hostWritePaired;
+  const settingsClientHostNeedsRepair = librarySyncClientState.hostNeedsRepair;
+  const settingsClientHostPairingValid = librarySyncClientState.hostPairingValid;
   const catalogState = useMemo(
     () =>
       buildSettingsCatalogState({

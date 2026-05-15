@@ -39,6 +39,44 @@ export type LibrarySyncVisibilityState = {
   clientHasSnapshot: boolean;
 };
 
+export type LibrarySyncClientState = {
+  savedMode: LibrarySyncMode;
+  readOnly: boolean;
+  hostBaseUrl: string | null;
+  libraryId: string | null;
+  hostWritePaired: boolean;
+  hostNeedsRepair: boolean;
+  hostPairingValid: boolean;
+};
+
+export function normalizeLibrarySyncMode(mode: string | null | undefined): LibrarySyncMode {
+  return mode === "HOST" || mode === "CLIENT" ? mode : "STANDALONE";
+}
+
+export function buildLibrarySyncClientState(input: {
+  mode: string | null | undefined;
+  hostBaseUrl: string | null | undefined;
+  libraryId: string | null | undefined;
+  clientAuthPaired: boolean | null | undefined;
+  pairingChecked: boolean | null | undefined;
+  pairingValid: boolean | null | undefined;
+}): LibrarySyncClientState {
+  const savedMode = normalizeLibrarySyncMode(input.mode);
+  const hostWritePaired = Boolean(input.clientAuthPaired);
+  const pairingChecked = Boolean(input.pairingChecked);
+  const pairingValid = input.pairingValid !== false;
+
+  return {
+    savedMode,
+    readOnly: savedMode === "CLIENT",
+    hostBaseUrl: input.hostBaseUrl ?? null,
+    libraryId: input.libraryId ?? null,
+    hostWritePaired,
+    hostNeedsRepair: hostWritePaired && pairingChecked && !pairingValid,
+    hostPairingValid: !hostWritePaired || !pairingChecked || pairingValid,
+  };
+}
+
 export function shouldShowLibraryWebappDetails(input: {
   draftMode: LibrarySyncMode;
   trustedLanEnabledDraft: boolean;

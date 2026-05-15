@@ -2,11 +2,63 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildLibrarySyncClientState,
   buildLibraryRoleChangeState,
   buildLibrarySyncMigrationModel,
   buildLibrarySyncVisibilityState,
+  normalizeLibrarySyncMode,
   shouldShowLibraryWebappDetails,
 } from "./settings_library_sync_model";
+
+test("normalizeLibrarySyncMode falls back for unknown persisted values", () => {
+  assert.equal(normalizeLibrarySyncMode("HOST"), "HOST");
+  assert.equal(normalizeLibrarySyncMode("CLIENT"), "CLIENT");
+  assert.equal(normalizeLibrarySyncMode("STANDALONE"), "STANDALONE");
+  assert.equal(normalizeLibrarySyncMode("legacy"), "STANDALONE");
+  assert.equal(normalizeLibrarySyncMode(null), "STANDALONE");
+});
+
+test("buildLibrarySyncClientState derives client write and repair state", () => {
+  assert.deepEqual(
+    buildLibrarySyncClientState({
+      mode: "CLIENT",
+      hostBaseUrl: "http://host.local",
+      libraryId: "library-1",
+      clientAuthPaired: true,
+      pairingChecked: true,
+      pairingValid: false,
+    }),
+    {
+      savedMode: "CLIENT",
+      readOnly: true,
+      hostBaseUrl: "http://host.local",
+      libraryId: "library-1",
+      hostWritePaired: true,
+      hostNeedsRepair: true,
+      hostPairingValid: false,
+    },
+  );
+
+  assert.deepEqual(
+    buildLibrarySyncClientState({
+      mode: "HOST",
+      hostBaseUrl: undefined,
+      libraryId: undefined,
+      clientAuthPaired: false,
+      pairingChecked: true,
+      pairingValid: false,
+    }),
+    {
+      savedMode: "HOST",
+      readOnly: false,
+      hostBaseUrl: null,
+      libraryId: null,
+      hostWritePaired: false,
+      hostNeedsRepair: false,
+      hostPairingValid: true,
+    },
+  );
+});
 
 test("buildLibrarySyncMigrationModel reports stable host handoff steps for an active host", () => {
   const model = buildLibrarySyncMigrationModel({
