@@ -42,6 +42,7 @@ import { useSettingsAppVersion } from "./use_settings_app_version";
 import { useSettingsCatalogRefreshResult } from "./use_settings_catalog_refresh_result";
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
 import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagnostics";
+import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
 import { useSettingsBackupFileInputs } from "./use_settings_backup_file_inputs";
 import { useSettingsBackupValidationState } from "./use_settings_backup_validation_state";
 import { useSettingsCatalogRefreshMaterials } from "./use_settings_catalog_refresh_materials";
@@ -401,21 +402,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
   useSettingsSilentReload({ reloadSettings, tauri });
 
-  function handleToggleBambuLiveDetails(printerId: string) {
-    setExpandedBambuDetailsPrinterId((currentExpanded) => {
-      const nextExpanded = currentExpanded === printerId ? null : printerId;
-      if (nextExpanded !== printerId) {
-        return nextExpanded;
-      }
-      ensureDiagnosticSession(printerId);
-
-      return nextExpanded;
+  const { handleToggleBambuLiveCapture, handleToggleBambuLiveDetails } =
+    useSettingsBambuLiveToggleActions({
+      ensureDiagnosticSession,
+      setExpandedBambuDetailsPrinterId,
+      toggleBambuLiveCapture,
     });
-  }
-
-  function handleToggleBambuLiveCapture(printerId: string, captureActive: boolean) {
-    toggleBambuLiveCapture(printerId, captureActive);
-  }
 
   const {
     loadTrustedLanCompanionStatus,
