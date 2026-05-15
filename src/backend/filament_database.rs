@@ -58,6 +58,7 @@ use super::database_settings::{
     delete_setting as delete_setting_row, get_setting as get_setting_row,
     set_setting as set_setting_row,
 };
+use super::database_sync_queue::enqueue_sync_action as enqueue_sync_action_row;
 use super::database_table_ops::delete_all_rows;
 use super::database_tables::should_import_backup_row;
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
@@ -3417,12 +3418,7 @@ impl FilamentDatabase {
         action_type: &str,
         payload_json: &str,
     ) -> InventoryResult<String> {
-        let id = new_id();
-        self.conn.execute(
-            "INSERT INTO sync_queue (id, action_type, payload_json) VALUES (?1, ?2, ?3)",
-            params![id, action_type, payload_json],
-        )?;
-        Ok(id)
+        enqueue_sync_action_row(&self.conn, action_type, payload_json)
     }
 }
 
