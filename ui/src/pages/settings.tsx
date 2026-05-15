@@ -7,6 +7,7 @@ import { buildTrustedLanCompanionModel } from "./settings_companion_model";
 import { SettingsCatalogTab } from "./settings_catalog_tab";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
 import { SettingsGeneralRoute } from "./settings_general_route";
+import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
 import { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_route";
 import { SettingsLibraryTab } from "./settings_library_tab";
 import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
@@ -767,6 +768,17 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     hasValidatedFullBackup,
     hasValidatedLatestFullBackup,
   });
+  const settingsGeneralRouteProps = buildSettingsGeneralRouteProps({
+    appVersion,
+    busy,
+    locale,
+    tauri,
+    themeMode,
+    t,
+    onLocaleSelection: handleLocaleSelection,
+    onPrintInventoryOverviewA4: handlePrintInventoryOverviewA4,
+    onThemeSelection: handleThemeSelection,
+  });
   return (
     <div className="page-shell">
       <SettingsPageHeader
@@ -839,19 +851,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           ),
 
           GENERAL: (
-          <SettingsGeneralRoute
-            tab={{
-              appVersion,
-              busy,
-              locale,
-              tauri,
-              themeMode,
-              t,
-              onLocaleSelection: handleLocaleSelection,
-              onPrintInventoryOverviewA4: () => void handlePrintInventoryOverviewA4(),
-              onThemeSelection: handleThemeSelection,
-            }}
-          />
+          <SettingsGeneralRoute {...settingsGeneralRouteProps} />
           ),
 
           LIBRARY: (
