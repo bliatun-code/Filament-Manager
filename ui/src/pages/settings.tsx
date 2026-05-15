@@ -173,6 +173,7 @@ import {
   buildSettingsPageDataModel,
   buildSettingsPageDesktopOnlyMessage,
   buildSettingsPageLoadErrorMessage,
+  buildSettingsPageTabButtons,
   buildSettingsPageTabLabels,
   buildSettingsPageTabs,
   normalizeSettingsInitialTab,
@@ -438,6 +439,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       return buildSettingsPageTabs(labels);
     },
     [settingsPageTabMessageLabels],
+  );
+  const settingsTabButtons = useMemo(
+    () => buildSettingsPageTabButtons(settingsTabs, activeTab),
+    [activeTab, settingsTabs],
   );
 
   const clearTransientInfoTimeout = useCallback(() => {
@@ -2697,16 +2702,16 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
       <div className="mt-6 rounded-lg border border-slate-300/50 bg-white/44 p-1.5 dark:border-slate-700/70 dark:bg-slate-950/24">
         <div className="flex flex-wrap gap-1.5">
-        {settingsTabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={tabButtonClass(activeTab === tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
+          {settingsTabButtons.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={tabButtonClass(tab.active)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 

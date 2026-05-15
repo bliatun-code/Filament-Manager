@@ -19,6 +19,9 @@ export type SettingsPageTabOption = {
   id: SettingsTabKey;
   label: string;
 };
+export type SettingsPageTabButton = SettingsPageTabOption & {
+  active: boolean;
+};
 
 export type SettingsPageDataModel = {
   bambuLiveIntegrations: SettingsPageData["bambuLiveIntegrations"];
@@ -71,6 +74,16 @@ export function buildSettingsPageTabs(labels: SettingsPageTabLabelMap): Settings
     { id: "CATALOG", label: labels.CATALOG },
     { id: "MAINTENANCE", label: labels.MAINTENANCE },
   ];
+}
+
+export function buildSettingsPageTabButtons(
+  tabs: SettingsPageTabOption[],
+  activeTab: SettingsTabKey,
+): SettingsPageTabButton[] {
+  return tabs.map((tab) => ({
+    ...tab,
+    active: tab.id === activeTab,
+  }));
 }
 
 export function normalizeSettingsInitialTab(initialTab: SettingsTabKey): SettingsTabKey {

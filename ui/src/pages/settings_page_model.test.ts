@@ -6,6 +6,7 @@ import {
   buildSettingsPageChromeLabels,
   buildSettingsPageDesktopOnlyMessage,
   buildSettingsPageLoadErrorMessage,
+  buildSettingsPageTabButtons,
   buildSettingsPageTabLabels,
   buildSettingsPageTabs,
   normalizeSettingsInitialTab,
@@ -77,6 +78,30 @@ test("settings page tabs keep the intended navigation order", () => {
       { id: "PRINTERS", label: "3D printers" },
       { id: "CATALOG", label: "Filament catalogue" },
       { id: "MAINTENANCE", label: "Program maintenance" },
+    ],
+  );
+});
+
+test("settings page tab buttons mark only the active tab", () => {
+  const tabs = buildSettingsPageTabs({
+    CATALOG: "Filament catalogue",
+    GENERAL: "General",
+    LIBRARY: "Library & web app",
+    MAINTENANCE: "Program maintenance",
+    PRINTERS: "3D printers",
+  });
+
+  assert.deepEqual(
+    buildSettingsPageTabButtons(tabs, "PRINTERS").map((tab) => ({
+      active: tab.active,
+      id: tab.id,
+    })),
+    [
+      { active: false, id: "GENERAL" },
+      { active: false, id: "LIBRARY" },
+      { active: true, id: "PRINTERS" },
+      { active: false, id: "CATALOG" },
+      { active: false, id: "MAINTENANCE" },
     ],
   );
 });
