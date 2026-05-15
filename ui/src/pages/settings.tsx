@@ -41,12 +41,7 @@ import {
   type TrustedLanPairedBrowser,
   type TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
-import {
-  getThemeMode,
-  onThemeModeChange,
-  setThemeMode,
-  type ThemeMode,
-} from "../lib/theme_mode";
+import type { ThemeMode } from "../lib/theme_mode";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { useI18n, type Locale } from "../lib/i18n";
 import { toErrorMessage } from "../lib/error_text";
@@ -113,6 +108,7 @@ import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";
 import { useSettingsAutoClearValue } from "./use_settings_auto_clear";
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
+import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import {
   buildSettingsInventoryOverviewPrintErrorMessage,
@@ -193,7 +189,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => getThemeMode());
+  const { themeMode, updateThemeMode } = useSettingsThemeMode();
   const appVersion = useSettingsAppVersion(tauri);
   const { activeTab, setActiveTab } = useSettingsActiveTab(initialTab);
   const [librarySyncSettings, setLibrarySyncSettings] = useState<LibrarySyncSettings | null>(null);
@@ -1384,13 +1380,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     };
   }, [trustedLanPairingLink]);
 
-  useEffect(() => {
-    const unlisten = onThemeModeChange((mode) => setThemeModeState(mode));
-    return () => {
-      unlisten();
-    };
-  }, []);
-
   useSettingsAutoClearValue(
     confirmDeletePrinterId,
     useCallback(() => setConfirmDeletePrinterId(null), []),
@@ -2349,8 +2338,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   }
 
   function handleThemeSelection(mode: ThemeMode) {
-    setThemeMode(mode);
-    setThemeModeState(mode);
+    updateThemeMode(mode);
     setInfo(buildSettingsThemeSelectionMessage(mode, settingsPreferenceMessageLabels()));
   }
 
