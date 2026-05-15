@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } f
 import type { SettingsTabKey } from "../App";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
-  createTrustedLanPairing,
   deleteBambuLiveIntegration,
   exportFullBackupJson,
   exportInventoryCsv,
@@ -12,8 +11,6 @@ import {
   printLabelPdf,
   refreshBambuCatalog,
   refreshEsunCatalog,
-  revokeAllTrustedLanPairedBrowsers,
-  revokeTrustedLanPairedBrowser,
   resetAppData,
   resetCatalogData,
   saveBambuLiveIntegration,
@@ -34,7 +31,6 @@ import { useI18n } from "../lib/i18n";
 import { toErrorMessage } from "../lib/error_text";
 import { downloadTextFile } from "../lib/download_file";
 import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/inventory_export";
-import { copyTextToClipboard } from "../lib/clipboard";
 import { SettingsGeneralTab } from "../components/settings_general_tab";
 import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
 import { SettingsMaintenanceTab } from "../components/settings_maintenance_tab";
@@ -50,12 +46,7 @@ import { createManagedPrinter, deleteManagedPrinter } from "../lib/printer_write
 import {
   resolvePrinterModelProfile,
 } from "../lib/printer_profiles";
-import {
-  buildTrustedLanActionErrorMessage,
-  buildTrustedLanActionMessage,
-  buildTrustedLanConfigMessage,
-  buildTrustedLanCompanionModel,
-} from "./settings_companion_model";
+import { buildTrustedLanCompanionModel } from "./settings_companion_model";
 import {
   buildLibrarySyncClientState,
   buildLibrarySyncRoleOptions,
@@ -97,6 +88,7 @@ import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
 import { useTrustedLanBrowserListModel } from "./use_trusted_lan_browser_list_model";
 import { useTrustedLanDraftSync } from "./use_trusted_lan_draft_sync";
+import { useTrustedLanPairingActions } from "./use_trusted_lan_pairing_actions";
 import { useTrustedLanStatusActions } from "./use_trusted_lan_status_actions";
 import { useTrustedLanRevokedVisibility } from "./use_trusted_lan_revoked_visibility";
 import {
@@ -1531,140 +1523,38 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     };
   }
 
-  async function handleSaveTrustedLanConfig() {
-    await persistTrustedLanConfig(
-      trustedLanEnabledDraft,
-      buildTrustedLanConfigMessage("networkSaved", trustedLanConfigMessageLabels()),
-    );
-  }
-
-  async function handleToggleTrustedLanEnabled(nextEnabled: boolean) {
-    if (!tauri || trustedLanCompanionModel.configActionDisabled) {
-      return;
-    }
-
-    const previousEnabled = trustedLanEnabledDraft;
-    setTrustedLanEnabledDraft(nextEnabled);
-    const saved = await persistTrustedLanConfig(
-      nextEnabled,
-      nextEnabled
-        ? buildTrustedLanConfigMessage("enabled", trustedLanConfigMessageLabels())
-        : buildTrustedLanConfigMessage("disabled", trustedLanConfigMessageLabels()),
-    );
-    if (!saved) {
-      setTrustedLanEnabledDraft(previousEnabled);
-    }
-  }
-
-  async function handleCreateTrustedLanPairingLink() {
-    if (trustedLanCompanionModel.pairActionDisabled) {
-      return;
-    }
-    setTrustedLanActionBusy(true);
-    setError(null);
-    try {
-      const browserLabel = trustedLanPairingBrowserLabelDraft.trim() || null;
-      const link = await createTrustedLanPairing(browserLabel);
-      setTrustedLanPairingLabel(browserLabel);
-      setTrustedLanPairingExpiresAtMs(Date.now() + link.expires_in_seconds * 1000);
-      setTrustedLanPairingLink(link.pairing_url);
-      await copyTextToClipboard(link.pairing_url);
-      setInfo(buildTrustedLanActionMessage("pairingCreated", trustedLanActionMessageLabels()));
-      await loadTrustedLanCompanionStatus();
-    } catch (pairError) {
-      console.error(pairError);
-      setError(
-        toErrorMessage(
-          pairError,
-          buildTrustedLanActionErrorMessage(
-            "createPairingFailed",
-            trustedLanActionMessageLabels(),
-          ),
-        ),
-      );
-    } finally {
-      setTrustedLanActionBusy(false);
-    }
-  }
-
-  async function handleCopyTrustedLanPairingLink() {
-    if (!trustedLanPairingLink) {
-      return;
-    }
-    setTrustedLanActionBusy(true);
-    setError(null);
-    try {
-      await copyTextToClipboard(trustedLanPairingLink);
-      setInfo(buildTrustedLanActionMessage("pairingCopied", trustedLanActionMessageLabels()));
-    } catch (copyError) {
-      console.error(copyError);
-      setError(
-        toErrorMessage(
-          copyError,
-          buildTrustedLanActionErrorMessage(
-            "copyPairingFailed",
-            trustedLanActionMessageLabels(),
-          ),
-        ),
-      );
-    } finally {
-      setTrustedLanActionBusy(false);
-    }
-  }
-
-  async function handleRevokeTrustedLanBrowser(browserId: string) {
-    setTrustedLanActionBusy(true);
-    setError(null);
-    try {
-      await revokeTrustedLanPairedBrowser(browserId);
-      await loadTrustedLanCompanionStatus();
-      setShowTrustedLanRevokedBrowsers(true);
-      setInfo(buildTrustedLanActionMessage("browserRevoked", trustedLanActionMessageLabels()));
-    } catch (revokeError) {
-      console.error(revokeError);
-      setError(
-        toErrorMessage(
-          revokeError,
-          buildTrustedLanActionErrorMessage(
-            "revokeBrowserFailed",
-            trustedLanActionMessageLabels(),
-          ),
-        ),
-      );
-    } finally {
-      setTrustedLanActionBusy(false);
-    }
-  }
-
-  async function handleRevokeAllTrustedLanBrowsers() {
-    setTrustedLanActionBusy(true);
-    setError(null);
-    try {
-      await revokeAllTrustedLanPairedBrowsers();
-      await loadTrustedLanCompanionStatus();
-      setShowTrustedLanRevokedBrowsers(true);
-      setInfo(buildTrustedLanActionMessage("allBrowsersRevoked", trustedLanActionMessageLabels()));
-    } catch (revokeError) {
-      console.error(revokeError);
-      setError(
-        toErrorMessage(
-          revokeError,
-          buildTrustedLanActionErrorMessage(
-            "revokeAllBrowsersFailed",
-            trustedLanActionMessageLabels(),
-          ),
-        ),
-      );
-    } finally {
-      setTrustedLanActionBusy(false);
-    }
-  }
-
   const trustedLanCompanionModel = buildTrustedLanCompanionModel({
     trustedLanStatus,
     statusLoading: trustedLanLoading,
     actionBusy: trustedLanActionBusy,
     t,
+  });
+  const {
+    handleCopyTrustedLanPairingLink,
+    handleCreateTrustedLanPairingLink,
+    handleRevokeAllTrustedLanBrowsers,
+    handleRevokeTrustedLanBrowser,
+    handleSaveTrustedLanConfig,
+    handleToggleTrustedLanEnabled,
+  } = useTrustedLanPairingActions({
+    configActionDisabled: trustedLanCompanionModel.configActionDisabled,
+    loadTrustedLanCompanionStatus,
+    pairActionDisabled: trustedLanCompanionModel.pairActionDisabled,
+    persistTrustedLanConfig,
+    setError,
+    setInfo,
+    setShowTrustedLanRevokedBrowsers,
+    setTrustedLanActionBusy,
+    setTrustedLanEnabledDraft,
+    setTrustedLanPairingExpiresAtMs,
+    setTrustedLanPairingLabel,
+    setTrustedLanPairingLink,
+    tauri,
+    trustedLanActionMessageLabels,
+    trustedLanConfigMessageLabels,
+    trustedLanEnabledDraft,
+    trustedLanPairingBrowserLabelDraft,
+    trustedLanPairingLink,
   });
   const librarySyncRoleOptions = buildLibrarySyncRoleOptions({
     STANDALONE: t("settings.librarySyncStandalone", "Standalone"),
