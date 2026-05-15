@@ -117,6 +117,7 @@ import {
 } from "./settings_catalog_model";
 import { SettingsCatalogRefreshPanel } from "./settings_catalog_refresh_panel";
 import { createSettingsBambuLiveCaptureSession } from "./settings_bambu_live_diagnostics_model";
+import { buildSettingsCatalogResetMessage } from "./settings_maintenance_model";
 import {
   buildPrinterSlotsByPrinterId,
   derivePrinterMultiConfig,
@@ -1666,12 +1667,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     try {
       const result = await resetCatalogData();
       setLastCatalogReset(result);
-      setInfo(
-        `${t("settings.catalogResetDone", "Catalog reset done")}. ${t(
-          "settings.removed",
-          "Removed",
-        )} ${result.removed_count}, ${t("settings.remaining", "remaining")} ${result.remaining_count}, ${t("settings.reactivated", "reactivated")} ${result.reactivated_count}.`,
-      );
+      setInfo(buildSettingsCatalogResetMessage(result, settingsCatalogResetMessageLabels()));
     } catch (resetError) {
       console.error(resetError);
       setError(
@@ -1683,6 +1679,15 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setBusy(false);
     }
+  }
+
+  function settingsCatalogResetMessageLabels() {
+    return {
+      catalogResetDone: t("settings.catalogResetDone", "Catalog reset done"),
+      reactivated: t("settings.reactivated", "reactivated"),
+      remaining: t("settings.remaining", "remaining"),
+      removed: t("settings.removed", "Removed"),
+    };
   }
 
   async function loadSettingsInventoryRows(): Promise<SpoolWithMasterRow[]> {
