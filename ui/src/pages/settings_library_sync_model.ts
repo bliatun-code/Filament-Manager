@@ -1,3 +1,5 @@
+import type { LibrarySyncSettings } from "../lib/tauri_client";
+
 export type LibrarySyncMode = "STANDALONE" | "HOST" | "CLIENT";
 
 export type LibrarySyncMigrationStepId =
@@ -74,6 +76,44 @@ export function buildLibrarySyncClientState(input: {
     hostWritePaired,
     hostNeedsRepair: hostWritePaired && pairingChecked && !pairingValid,
     hostPairingValid: !hostWritePaired || !pairingChecked || pairingValid,
+  };
+}
+
+export function buildLibrarySyncSaveSettingsInput(input: {
+  current: LibrarySyncSettings;
+  targetMode: LibrarySyncMode;
+  deviceName: string;
+  hostBaseUrlDraft: string;
+}): LibrarySyncSettings {
+  const clientMode = input.targetMode === "CLIENT";
+
+  return {
+    mode: input.targetMode,
+    device_name: input.deviceName,
+    library_id: input.current.library_id,
+    host_base_url: clientMode ? input.hostBaseUrlDraft : null,
+    host_device_name: clientMode ? input.current.host_device_name ?? null : null,
+    client_auth_paired: clientMode ? input.current.client_auth_paired ?? false : false,
+    client_auth_paired_at: clientMode ? input.current.client_auth_paired_at ?? null : null,
+    client_auth_expires_at: clientMode ? input.current.client_auth_expires_at ?? null : null,
+  };
+}
+
+export function buildLibrarySyncPairingSettingsInput(input: {
+  deviceName: string;
+  libraryId: string;
+  hostBaseUrl: string;
+  hostDeviceName: string | null | undefined;
+}): LibrarySyncSettings {
+  return {
+    mode: "CLIENT",
+    device_name: input.deviceName,
+    library_id: input.libraryId,
+    host_base_url: input.hostBaseUrl,
+    host_device_name: input.hostDeviceName ?? null,
+    client_auth_paired: false,
+    client_auth_paired_at: null,
+    client_auth_expires_at: null,
   };
 }
 

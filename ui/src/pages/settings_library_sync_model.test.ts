@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildLibrarySyncPairingSettingsInput,
+  buildLibrarySyncSaveSettingsInput,
   buildLibrarySyncClientState,
   buildLibraryRoleChangeState,
   buildLibrarySyncMigrationModel,
@@ -9,6 +11,21 @@ import {
   normalizeLibrarySyncMode,
   shouldShowLibraryWebappDetails,
 } from "./settings_library_sync_model";
+import type { LibrarySyncSettings } from "../lib/tauri_client";
+
+function librarySettings(overrides: Partial<LibrarySyncSettings> = {}): LibrarySyncSettings {
+  return {
+    mode: "CLIENT",
+    device_name: "Desk",
+    library_id: "library-1",
+    host_base_url: "http://host.local",
+    host_device_name: "Host",
+    client_auth_paired: true,
+    client_auth_paired_at: "2026-01-01T00:00:00Z",
+    client_auth_expires_at: "2026-02-01T00:00:00Z",
+    ...overrides,
+  };
+}
 
 test("normalizeLibrarySyncMode falls back for unknown persisted values", () => {
   assert.equal(normalizeLibrarySyncMode("HOST"), "HOST");
@@ -56,6 +73,67 @@ test("buildLibrarySyncClientState derives client write and repair state", () => 
       hostWritePaired: false,
       hostNeedsRepair: false,
       hostPairingValid: true,
+    },
+  );
+});
+
+test("buildLibrarySyncSaveSettingsInput preserves client auth only for client mode", () => {
+  assert.deepEqual(
+    buildLibrarySyncSaveSettingsInput({
+      current: librarySettings(),
+      targetMode: "CLIENT",
+      deviceName: "Client Desk",
+      hostBaseUrlDraft: "http://new-host.local",
+    }),
+    {
+      mode: "CLIENT",
+      device_name: "Client Desk",
+      library_id: "library-1",
+      host_base_url: "http://new-host.local",
+      host_device_name: "Host",
+      client_auth_paired: true,
+      client_auth_paired_at: "2026-01-01T00:00:00Z",
+      client_auth_expires_at: "2026-02-01T00:00:00Z",
+    },
+  );
+
+  assert.deepEqual(
+    buildLibrarySyncSaveSettingsInput({
+      current: librarySettings(),
+      targetMode: "HOST",
+      deviceName: "Host Desk",
+      hostBaseUrlDraft: "http://ignored.local",
+    }),
+    {
+      mode: "HOST",
+      device_name: "Host Desk",
+      library_id: "library-1",
+      host_base_url: null,
+      host_device_name: null,
+      client_auth_paired: false,
+      client_auth_paired_at: null,
+      client_auth_expires_at: null,
+    },
+  );
+});
+
+test("buildLibrarySyncPairingSettingsInput creates unpaired client handoff settings", () => {
+  assert.deepEqual(
+    buildLibrarySyncPairingSettingsInput({
+      deviceName: "Client Desk",
+      libraryId: "library-2",
+      hostBaseUrl: "http://host.local",
+      hostDeviceName: undefined,
+    }),
+    {
+      mode: "CLIENT",
+      device_name: "Client Desk",
+      library_id: "library-2",
+      host_base_url: "http://host.local",
+      host_device_name: null,
+      client_auth_paired: false,
+      client_auth_paired_at: null,
+      client_auth_expires_at: null,
     },
   );
 });

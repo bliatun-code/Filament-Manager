@@ -108,6 +108,8 @@ import {
 } from "./settings_companion_model";
 import {
   buildLibrarySyncClientState,
+  buildLibrarySyncPairingSettingsInput,
+  buildLibrarySyncSaveSettingsInput,
   buildLibraryRoleChangeState,
   buildLibrarySyncVisibilityState,
   type LibrarySyncMode,
@@ -868,18 +870,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         }
       }
 
-      const saved = await saveLibrarySyncSettings({
-        mode: nextMode,
-        device_name: librarySyncDeviceNameDraft,
-        library_id: librarySyncSettings.library_id,
-        host_base_url: nextMode === "CLIENT" ? librarySyncHostBaseUrlDraft : null,
-        host_device_name: nextMode === "CLIENT" ? librarySyncSettings.host_device_name ?? null : null,
-        client_auth_paired: nextMode === "CLIENT" ? librarySyncSettings.client_auth_paired ?? false : false,
-        client_auth_paired_at:
-          nextMode === "CLIENT" ? librarySyncSettings.client_auth_paired_at ?? null : null,
-        client_auth_expires_at:
-          nextMode === "CLIENT" ? librarySyncSettings.client_auth_expires_at ?? null : null,
-      });
+      const saved = await saveLibrarySyncSettings(
+        buildLibrarySyncSaveSettingsInput({
+          current: librarySyncSettings,
+          targetMode: nextMode,
+          deviceName: librarySyncDeviceNameDraft,
+          hostBaseUrlDraft: librarySyncHostBaseUrlDraft,
+        }),
+      );
 
       setLibrarySyncSettings(saved);
       setLibrarySyncModeDraft((saved.mode as LibrarySyncMode) ?? "STANDALONE");
@@ -1056,16 +1054,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       if (!validation.ok || !validation.library_id) {
         throw new Error(validation.message);
       }
-      await saveLibrarySyncSettings({
-        mode: "CLIENT",
-        device_name: librarySyncDeviceNameDraft,
-        library_id: validation.library_id,
-        host_base_url: validation.base_url,
-        host_device_name: validation.device_name ?? null,
-        client_auth_paired: false,
-        client_auth_paired_at: null,
-        client_auth_expires_at: null,
-      });
+      await saveLibrarySyncSettings(
+        buildLibrarySyncPairingSettingsInput({
+          deviceName: librarySyncDeviceNameDraft,
+          libraryId: validation.library_id,
+          hostBaseUrl: validation.base_url,
+          hostDeviceName: validation.device_name,
+        }),
+      );
       const saved = await pairLibrarySyncHost(
         validation.base_url,
         pairingInput,
