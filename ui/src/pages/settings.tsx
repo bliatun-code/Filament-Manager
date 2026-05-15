@@ -124,7 +124,11 @@ import {
 } from "./settings_catalog_model";
 import { SettingsCatalogRefreshPanel } from "./settings_catalog_refresh_panel";
 import { createSettingsBambuLiveCaptureSession } from "./settings_bambu_live_diagnostics_model";
-import { buildSettingsCatalogResetMessage } from "./settings_maintenance_model";
+import {
+  buildSettingsAppResetSuccessMessage,
+  buildSettingsCatalogResetMessage,
+  buildSettingsResetConfirmMessage,
+} from "./settings_maintenance_model";
 import {
   buildPrinterSlotsByPrinterId,
   buildSettingsPrinterConfirmDeleteMessage,
@@ -1631,12 +1635,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (confirmResetAction !== "APP") {
       setConfirmResetAction("APP");
       setError(null);
-      setInfo(
-        t(
-          "settings.confirmResetAppTapAgain",
-          "Click Reset app data again to confirm.",
-        ),
-      );
+      setInfo(buildSettingsResetConfirmMessage("app", settingsMaintenanceResetMessageLabels()));
       return;
     }
     setConfirmResetAction(null);
@@ -1647,7 +1646,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       await resetAppData();
       setLastCatalogReset(null);
       await reloadSettings();
-      setInfo(t("settings.resetDone", "App data reset completed."));
+      setInfo(buildSettingsAppResetSuccessMessage(settingsMaintenanceResetMessageLabels()));
     } catch (resetError) {
       console.error(resetError);
       setError(
@@ -1668,12 +1667,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (confirmResetAction !== "CATALOG") {
       setConfirmResetAction("CATALOG");
       setError(null);
-      setInfo(
-        t(
-          "settings.confirmResetCatalogsTapAgain",
-          "Click Reset catalogs again to confirm.",
-        ),
-      );
+      setInfo(buildSettingsResetConfirmMessage("catalog", settingsMaintenanceResetMessageLabels()));
       return;
     }
     setConfirmResetAction(null);
@@ -1703,6 +1697,20 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       reactivated: t("settings.reactivated", "reactivated"),
       remaining: t("settings.remaining", "remaining"),
       removed: t("settings.removed", "Removed"),
+    };
+  }
+
+  function settingsMaintenanceResetMessageLabels() {
+    return {
+      appResetDone: t("settings.resetDone", "App data reset completed."),
+      confirmResetAppTapAgain: t(
+        "settings.confirmResetAppTapAgain",
+        "Click Reset app data again to confirm.",
+      ),
+      confirmResetCatalogsTapAgain: t(
+        "settings.confirmResetCatalogsTapAgain",
+        "Click Reset catalogs again to confirm.",
+      ),
     };
   }
 

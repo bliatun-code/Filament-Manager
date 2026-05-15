@@ -7,9 +7,33 @@ export type SettingsCatalogResetMessageLabels = {
   removed: string;
 };
 
+export type SettingsResetAction = "app" | "catalog";
+
+export type SettingsMaintenanceResetMessageLabels = {
+  appResetDone: string;
+  confirmResetAppTapAgain: string;
+  confirmResetCatalogsTapAgain: string;
+};
+
 export function buildSettingsCatalogResetMessage(
   result: CatalogResetStats,
   labels: SettingsCatalogResetMessageLabels,
 ): string {
   return `${labels.catalogResetDone}. ${labels.removed} ${result.removed_count}, ${labels.remaining} ${result.remaining_count}, ${labels.reactivated} ${result.reactivated_count}.`;
+}
+
+export function buildSettingsResetConfirmMessage(
+  action: SettingsResetAction,
+  labels: Pick<
+    SettingsMaintenanceResetMessageLabels,
+    "confirmResetAppTapAgain" | "confirmResetCatalogsTapAgain"
+  >,
+): string {
+  return action === "app" ? labels.confirmResetAppTapAgain : labels.confirmResetCatalogsTapAgain;
+}
+
+export function buildSettingsAppResetSuccessMessage(
+  labels: Pick<SettingsMaintenanceResetMessageLabels, "appResetDone">,
+): string {
+  return labels.appResetDone;
 }
