@@ -66,11 +66,26 @@ export function buildSettingsSwatchDrafts(catalogMasters: MasterCatalogRow[]): R
   const drafts: Record<string, string> = {};
 
   for (const master of catalogMasters) {
-    const normalized = normalizeHexColor(master.hex_color, { uppercase: true });
-    drafts[master.id] = normalized ?? suggestHexFromColor(master);
+    drafts[master.id] = resolveSettingsSwatchHex({
+      master,
+      swatchDraftById: { [master.id]: master.hex_color ?? "" },
+    });
   }
 
   return drafts;
+}
+
+export function resolveSettingsSwatchHex({
+  master,
+  swatchDraftById,
+}: {
+  master: MasterCatalogRow;
+  swatchDraftById: Record<string, string>;
+}): string {
+  return (
+    normalizeHexColor(swatchDraftById[master.id], { uppercase: true }) ??
+    suggestHexFromColor(master)
+  );
 }
 
 function materialOptionsForMasters(masters: MasterCatalogRow[]): string[] {

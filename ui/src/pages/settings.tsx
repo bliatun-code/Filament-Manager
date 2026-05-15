@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import type { SettingsTabKey } from "../App";
-import {
-  normalizeHexColor,
-  suggestHexFromColor,
-} from "../lib/color_utils";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
   createTrustedLanPairing,
@@ -118,6 +114,7 @@ import { buildSettingsBackupValidationState } from "./settings_backup_model";
 import {
   buildSettingsCatalogState,
   buildSettingsSwatchDrafts,
+  resolveSettingsSwatchHex,
   type SettingsCatalogVendor,
 } from "./settings_catalog_model";
 import { createSettingsBambuLiveCaptureSession } from "./settings_bambu_live_diagnostics_model";
@@ -2133,8 +2130,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (!tauri || busy || swatchBusy) {
       return;
     }
-    const normalizedHex =
-      normalizeHexColor(swatchDraftById[master.id], { uppercase: true }) ?? suggestHexFromColor(master);
+    const normalizedHex = resolveSettingsSwatchHex({ master, swatchDraftById });
     if (!normalizedHex) {
       setError(
         t(
@@ -2206,8 +2202,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     let skipped = 0;
     try {
       for (const master of targets) {
-        const normalizedHex =
-          normalizeHexColor(swatchDraftById[master.id], { uppercase: true }) ?? suggestHexFromColor(master);
+        const normalizedHex = resolveSettingsSwatchHex({ master, swatchDraftById });
         if (!normalizedHex) {
           skipped += 1;
           continue;

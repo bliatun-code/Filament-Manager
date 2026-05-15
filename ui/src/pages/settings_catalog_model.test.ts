@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildSettingsCatalogState,
   buildSettingsSwatchDrafts,
+  resolveSettingsSwatchHex,
 } from "./settings_catalog_model";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 
@@ -86,4 +87,22 @@ test("settings swatch drafts normalize saved colors and suggest missing swatches
   assert.equal(drafts["short-hex"], "#ABC");
   assert.equal(drafts["named-color"], "#F97316");
   assert.match(drafts.unknown, /^#[0-9A-F]{6}$/);
+});
+
+test("settings swatch hex resolves draft values before fallback suggestions", () => {
+  const master = catalogMaster({
+    id: "draft",
+    hex_color: "",
+    color_name: "Orange",
+  });
+
+  assert.equal(
+    resolveSettingsSwatchHex({ master, swatchDraftById: { draft: "#abc" } }),
+    "#ABC",
+  );
+  assert.equal(
+    resolveSettingsSwatchHex({ master, swatchDraftById: { draft: "not-a-color" } }),
+    "#F97316",
+  );
+  assert.equal(resolveSettingsSwatchHex({ master, swatchDraftById: {} }), "#F97316");
 });
