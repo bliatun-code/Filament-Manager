@@ -7,6 +7,10 @@ export type SettingsInventoryPrintLabels = {
   unknown: string;
 };
 
+export type SettingsInventoryPrintMessageLabels = {
+  inventoryOverviewPrintDone: string;
+};
+
 export type SettingsInventoryPrintQrBuilder = (
   reference: string,
   options: {
@@ -52,6 +56,12 @@ export async function buildSettingsInventoryOverviewPrintRows(input: {
       };
     }),
   );
+}
+
+export function buildSettingsInventoryOverviewPrintSuccessMessage(
+  labels: SettingsInventoryPrintMessageLabels,
+): string {
+  return labels.inventoryOverviewPrintDone;
 }
 
 function compareSettingsInventoryPrintRows(

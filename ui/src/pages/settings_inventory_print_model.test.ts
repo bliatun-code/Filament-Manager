@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSettingsInventoryOverviewPrintRows } from "./settings_inventory_print_model";
+import {
+  buildSettingsInventoryOverviewPrintRows,
+  buildSettingsInventoryOverviewPrintSuccessMessage,
+} from "./settings_inventory_print_model";
 import type { MasterRow, SpoolRow, SpoolWithMasterRow } from "../lib/tauri_client";
 
 function row(
@@ -105,4 +108,13 @@ test("settings inventory overview print rows map borrowed and missing display fi
   assert.equal(rows[0].ownershipMarker, "Borrowed in");
   assert.equal(rows[0].material, "Unknown");
   assert.equal(rows[0].swatchHex, "#CBD5E1");
+});
+
+test("settings inventory overview print success message returns stable copy", () => {
+  assert.equal(
+    buildSettingsInventoryOverviewPrintSuccessMessage({
+      inventoryOverviewPrintDone: "A4 inventory overview PDF opened for printing.",
+    }),
+    "A4 inventory overview PDF opened for printing.",
+  );
 });

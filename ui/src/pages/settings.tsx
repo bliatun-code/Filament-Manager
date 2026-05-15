@@ -103,7 +103,10 @@ import {
 import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
-import { buildSettingsInventoryOverviewPrintRows } from "./settings_inventory_print_model";
+import {
+  buildSettingsInventoryOverviewPrintRows,
+  buildSettingsInventoryOverviewPrintSuccessMessage,
+} from "./settings_inventory_print_model";
 import {
   buildSettingsBackupExportSuccessMessage,
   buildSettingsBackupValidationState,
@@ -1882,9 +1885,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       });
       await printLabelPdf(pdfBase64, null, 1);
       setInfo(
-        t(
-          "settings.inventoryOverviewPrintDone",
-          "A4 inventory overview PDF opened for printing.",
+        buildSettingsInventoryOverviewPrintSuccessMessage(
+          settingsInventoryOverviewPrintMessageLabels(),
         ),
       );
     } catch (printError) {
@@ -1901,6 +1903,15 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setBusy(false);
     }
+  }
+
+  function settingsInventoryOverviewPrintMessageLabels() {
+    return {
+      inventoryOverviewPrintDone: t(
+        "settings.inventoryOverviewPrintDone",
+        "A4 inventory overview PDF opened for printing.",
+      ),
+    };
   }
 
   function handleOpenDataImport() {
