@@ -8,7 +8,6 @@ import {
   exportFullBackupJson,
   exportInventoryCsv,
   exportInventoryJson,
-  getAppVersion,
   getLibrarySyncSettings,
   pairLibrarySyncHost,
   importDataFile,
@@ -112,6 +111,7 @@ import {
 import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
+import { useSettingsAppVersion } from "./use_settings_app_version";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import {
   buildSettingsInventoryOverviewPrintErrorMessage,
@@ -195,7 +195,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => getThemeMode());
-  const [appVersion, setAppVersion] = useState<string | null>(null);
+  const appVersion = useSettingsAppVersion(tauri);
   const [activeTab, setActiveTab] = useState<SettingsTab>(
     normalizeSettingsInitialTab(initialTab),
   );
@@ -322,32 +322,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   useEffect(() => {
     setActiveTab(normalizeSettingsInitialTab(initialTab));
   }, [initialTab]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!tauri) {
-      setAppVersion("dev-web");
-      return () => {
-        cancelled = true;
-      };
-    }
-    (async () => {
-      try {
-        const version = await getAppVersion();
-        if (!cancelled) {
-          setAppVersion(version);
-        }
-      } catch (versionError) {
-        console.error(versionError);
-        if (!cancelled) {
-          setAppVersion(null);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tauri]);
 
   const sortedPrinters = useMemo(
     () => sortSettingsPrinters(printers, locale),
