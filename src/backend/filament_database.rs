@@ -14,6 +14,7 @@ use super::database_rows::{
     map_active_spool_loan_row, map_spool_loan_row, map_spool_row, map_spool_with_master_row,
     map_trusted_lan_paired_browser_row,
 };
+use super::database_schema::{ensure_no_foreign_key_violations, table_columns, table_has_column};
 use super::database_settings::{
     delete_setting as delete_setting_row, get_setting as get_setting_row,
     set_setting as set_setting_row,
@@ -1373,7 +1374,7 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_catalog_lifecycle_columns(&self) -> InventoryResult<()> {
-        if !self.table_has_column("filament_master_list", "is_discontinued")? {
+        if !table_has_column(&self.conn, "filament_master_list", "is_discontinued")? {
             self.conn.execute(
                 "ALTER TABLE filament_master_list
                  ADD COLUMN is_discontinued INTEGER NOT NULL DEFAULT 0",
@@ -1381,7 +1382,7 @@ impl FilamentDatabase {
             )?;
         }
 
-        if !self.table_has_column("filament_master_list", "discontinued_at")? {
+        if !table_has_column(&self.conn, "filament_master_list", "discontinued_at")? {
             self.conn.execute(
                 "ALTER TABLE filament_master_list
                  ADD COLUMN discontinued_at TEXT",
@@ -1393,7 +1394,7 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_spool_lifecycle_schema(&self) -> InventoryResult<()> {
-        if !self.table_has_column("filament_spools", "deleted_at")? {
+        if !table_has_column(&self.conn, "filament_spools", "deleted_at")? {
             self.conn.execute(
                 "ALTER TABLE filament_spools
                  ADD COLUMN deleted_at TEXT",
@@ -1426,7 +1427,7 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_spool_weight_schema(&self) -> InventoryResult<()> {
-        if !self.table_has_column("filament_spools", "spool_tare_weight_g")? {
+        if !table_has_column(&self.conn, "filament_spools", "spool_tare_weight_g")? {
             self.conn.execute(
                 "ALTER TABLE filament_spools
                  ADD COLUMN spool_tare_weight_g INTEGER",
@@ -1437,14 +1438,14 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_spool_identity_schema(&self) -> InventoryResult<()> {
-        if !self.table_has_column("filament_spools", "rfid_tag")? {
+        if !table_has_column(&self.conn, "filament_spools", "rfid_tag")? {
             self.conn.execute(
                 "ALTER TABLE filament_spools
                  ADD COLUMN rfid_tag TEXT",
                 [],
             )?;
         }
-        if !self.table_has_column("filament_spools", "rfid_observed_at")? {
+        if !table_has_column(&self.conn, "filament_spools", "rfid_observed_at")? {
             self.conn.execute(
                 "ALTER TABLE filament_spools
                  ADD COLUMN rfid_observed_at TEXT",
@@ -1455,7 +1456,7 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_spool_home_location_schema(&self) -> InventoryResult<()> {
-        if !self.table_has_column("filament_spools", "home_location_id")? {
+        if !table_has_column(&self.conn, "filament_spools", "home_location_id")? {
             self.conn.execute(
                 "ALTER TABLE filament_spools
                  ADD COLUMN home_location_id TEXT REFERENCES inventory_locations(id)",
@@ -1471,7 +1472,7 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_borrowed_in_schema(&self) -> InventoryResult<()> {
-        if !self.table_has_column("filament_spools", "ownership_type")? {
+        if !table_has_column(&self.conn, "filament_spools", "ownership_type")? {
             self.conn.execute(
                 "ALTER TABLE filament_spools
                  ADD COLUMN ownership_type TEXT NOT NULL DEFAULT 'OWNED'",
@@ -1479,7 +1480,7 @@ impl FilamentDatabase {
             )?;
         }
 
-        if !self.table_has_column("filament_spools", "owner_name")? {
+        if !table_has_column(&self.conn, "filament_spools", "owner_name")? {
             self.conn.execute(
                 "ALTER TABLE filament_spools
                  ADD COLUMN owner_name TEXT",
@@ -1487,7 +1488,7 @@ impl FilamentDatabase {
             )?;
         }
 
-        if !self.table_has_column("filament_spools", "owner_contact")? {
+        if !table_has_column(&self.conn, "filament_spools", "owner_contact")? {
             self.conn.execute(
                 "ALTER TABLE filament_spools
                  ADD COLUMN owner_contact TEXT",
@@ -1495,7 +1496,7 @@ impl FilamentDatabase {
             )?;
         }
 
-        if !self.table_has_column("filament_spools", "ownership_note")? {
+        if !table_has_column(&self.conn, "filament_spools", "ownership_note")? {
             self.conn.execute(
                 "ALTER TABLE filament_spools
                  ADD COLUMN ownership_note TEXT",
@@ -1503,7 +1504,7 @@ impl FilamentDatabase {
             )?;
         }
 
-        if !self.table_has_column("spool_loans", "loan_direction")? {
+        if !table_has_column(&self.conn, "spool_loans", "loan_direction")? {
             self.conn.execute(
                 "ALTER TABLE spool_loans
                  ADD COLUMN loan_direction TEXT NOT NULL DEFAULT 'OUTBOUND'",
@@ -1511,7 +1512,7 @@ impl FilamentDatabase {
             )?;
         }
 
-        if !self.table_has_column("spool_loans", "loan_status")? {
+        if !table_has_column(&self.conn, "spool_loans", "loan_status")? {
             self.conn.execute(
                 "ALTER TABLE spool_loans
                  ADD COLUMN loan_status TEXT NOT NULL DEFAULT 'ACTIVE'",
@@ -1519,7 +1520,7 @@ impl FilamentDatabase {
             )?;
         }
 
-        if !self.table_has_column("spool_loans", "counterparty_name")? {
+        if !table_has_column(&self.conn, "spool_loans", "counterparty_name")? {
             self.conn.execute(
                 "ALTER TABLE spool_loans
                  ADD COLUMN counterparty_name TEXT",
@@ -1527,7 +1528,7 @@ impl FilamentDatabase {
             )?;
         }
 
-        if !self.table_has_column("spool_loans", "counterparty_contact")? {
+        if !table_has_column(&self.conn, "spool_loans", "counterparty_contact")? {
             self.conn.execute(
                 "ALTER TABLE spool_loans
                  ADD COLUMN counterparty_contact TEXT",
@@ -1535,7 +1536,7 @@ impl FilamentDatabase {
             )?;
         }
 
-        if !self.table_has_column("spool_loans", "counterparty_note")? {
+        if !table_has_column(&self.conn, "spool_loans", "counterparty_note")? {
             self.conn.execute(
                 "ALTER TABLE spool_loans
                  ADD COLUMN counterparty_note TEXT",
@@ -1639,14 +1640,14 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_printer_slot_rfid_override_schema(&self) -> InventoryResult<()> {
-        if !self.table_has_column("ams_slots", "rfid_override_tray_uuid")? {
+        if !table_has_column(&self.conn, "ams_slots", "rfid_override_tray_uuid")? {
             self.conn.execute(
                 "ALTER TABLE ams_slots
                  ADD COLUMN rfid_override_tray_uuid TEXT",
                 [],
             )?;
         }
-        if !self.table_has_column("ams_slots", "rfid_override_color_hex")? {
+        if !table_has_column(&self.conn, "ams_slots", "rfid_override_color_hex")? {
             self.conn.execute(
                 "ALTER TABLE ams_slots
                  ADD COLUMN rfid_override_color_hex TEXT",
@@ -1657,7 +1658,7 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_printer_slot_live_cache_schema(&self) -> InventoryResult<()> {
-        if !self.table_has_column("ams_slots", "live_cache_cleared_at")? {
+        if !table_has_column(&self.conn, "ams_slots", "live_cache_cleared_at")? {
             self.conn.execute(
                 "ALTER TABLE ams_slots
                  ADD COLUMN live_cache_cleared_at TEXT",
@@ -3810,7 +3811,7 @@ impl FilamentDatabase {
                 self.conn.execute(&format!("DELETE FROM {table}"), [])?;
             }
 
-            self.ensure_no_foreign_key_violations("App-state reset")?;
+            ensure_no_foreign_key_violations(&self.conn, "App-state reset")?;
 
             Ok(())
         })();
@@ -3997,7 +3998,7 @@ impl FilamentDatabase {
                 }
             }
 
-            self.ensure_no_foreign_key_violations("Full backup import")?;
+            ensure_no_foreign_key_violations(&self.conn, "Full backup import")?;
 
             Ok(())
         })();
@@ -4072,7 +4073,7 @@ impl FilamentDatabase {
         if row.is_empty() {
             return Ok(());
         }
-        let allowed_columns = self.table_columns(table)?;
+        let allowed_columns = table_columns(&self.conn, table)?;
         let columns: Vec<String> = row
             .keys()
             .filter(|column| allowed_columns.contains(*column))
@@ -4129,38 +4130,6 @@ impl FilamentDatabase {
             params![id, action_type, payload_json],
         )?;
         Ok(id)
-    }
-}
-
-impl FilamentDatabase {
-    fn table_columns(&self, table: &str) -> InventoryResult<HashSet<String>> {
-        let mut stmt = self
-            .conn
-            .prepare(&format!("PRAGMA table_info({})", table))?;
-        let mut rows = stmt.query([])?;
-        let mut columns = HashSet::new();
-        while let Some(row) = rows.next()? {
-            let name: String = row.get(1)?;
-            columns.insert(name);
-        }
-        Ok(columns)
-    }
-
-    fn table_has_column(&self, table: &str, column: &str) -> InventoryResult<bool> {
-        Ok(self.table_columns(table)?.contains(column))
-    }
-
-    fn ensure_no_foreign_key_violations(&self, context: &str) -> InventoryResult<()> {
-        let mut statement = self.conn.prepare("PRAGMA foreign_key_check")?;
-        let mut rows = statement.query([])?;
-        if let Some(row) = rows.next()? {
-            let table: String = row.get(0)?;
-            let parent_table: String = row.get(2)?;
-            return Err(InventoryError::Db(format!(
-                "{context} would leave a foreign key violation in `{table}` referencing `{parent_table}`"
-            )));
-        }
-        Ok(())
     }
 }
 

@@ -10,6 +10,8 @@ pub mod database_import;
 pub mod database_result;
 #[path = "../../../src/backend/database_rows.rs"]
 pub mod database_rows;
+#[path = "../../../src/backend/database_schema.rs"]
+pub mod database_schema;
 #[path = "../../../src/backend/database_settings.rs"]
 pub mod database_settings;
 #[path = "../../../src/backend/database_tables.rs"]
