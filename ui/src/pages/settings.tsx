@@ -29,11 +29,9 @@ import { useSettingsCatalogRefreshResult } from "./use_settings_catalog_refresh_
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
 import { useSettingsCatalogRefreshState } from "./use_settings_catalog_refresh_state";
 import { useSettingsCatalogDerivedState } from "./use_settings_catalog_derived_state";
-import { useSettingsCatalogMessages } from "./use_settings_catalog_messages";
 import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagnostics";
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
 import { useSettingsBackupFileInputs } from "./use_settings_backup_file_inputs";
-import { useSettingsBackupMessages } from "./use_settings_backup_messages";
 import { useSettingsBackupValidationFlags } from "./use_settings_backup_validation_flags";
 import { useSettingsBackupValidationState } from "./use_settings_backup_validation_state";
 import { useSettingsCatalogRefreshMaterials } from "./use_settings_catalog_refresh_materials";
@@ -42,7 +40,6 @@ import { useSettingsPrinterEditDraft } from "./use_settings_printer_edit_draft";
 import { useSettingsPrinterActions } from "./use_settings_printer_actions";
 import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_confirm";
 import { useSettingsPrinterDerivedState } from "./use_settings_printer_derived_state";
-import { useSettingsPrinterMessages } from "./use_settings_printer_messages";
 import { useSettingsResetConfirm } from "./use_settings_reset_confirm";
 import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
 import { useSettingsSwatchDrafts } from "./use_settings_swatch_drafts";
@@ -53,17 +50,13 @@ import { useSettingsPageReload } from "./use_settings_page_reload";
 import { useSettingsPageTabs } from "./use_settings_page_tabs";
 import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
 import { useSettingsMaintenanceActions } from "./use_settings_maintenance_actions";
-import { useSettingsMaintenanceMessages } from "./use_settings_maintenance_messages";
 import { useSettingsBackupExportActions } from "./use_settings_backup_export_actions";
 import { useSettingsBackupFileActions } from "./use_settings_backup_file_actions";
 import { useSettingsInventoryPrintAction } from "./use_settings_inventory_print_action";
-import { useSettingsInventoryPrintMessages } from "./use_settings_inventory_print_messages";
 import { useSettingsInitialLoad } from "./use_settings_initial_load";
 import { useSettingsSwatchActions } from "./use_settings_swatch_actions";
-import { useSettingsSwatchMessages } from "./use_settings_swatch_messages";
 import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
-import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_messages";
 import { useSettingsLibrarySyncActions } from "./use_settings_library_sync_actions";
 import { useSettingsLibraryChrome } from "./use_settings_library_chrome";
 import { useSettingsLibraryClientState } from "./use_settings_library_client_state";
@@ -72,11 +65,11 @@ import { useSettingsLibraryVisibility } from "./use_settings_library_visibility"
 import { useSettingsLibraryRoleChange } from "./use_settings_library_role_change";
 import { useSettingsLibraryRoleChangeState } from "./use_settings_library_role_change_state";
 import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";
-import { useSettingsTrustedLanMessages } from "./use_settings_trusted_lan_messages";
 import { useSettingsSilentReload } from "./use_settings_silent_reload";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useSettingsTrustedLanState } from "./use_settings_trusted_lan_state";
+import { useSettingsMessageLabels } from "./use_settings_message_labels";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
 import { useTrustedLanBrowserListModel } from "./use_trusted_lan_browser_list_model";
 import { useTrustedLanDraftSync } from "./use_trusted_lan_draft_sync";
@@ -128,22 +121,23 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setLibrarySyncValidation,
     setLibrarySyncValidationBusy,
   } = useSettingsLibrarySyncState();
+  const messageLabels = useSettingsMessageLabels(t);
   const {
     librarySyncActionMessageLabels,
     librarySyncErrorMessageLabels,
     librarySyncPairingMessageLabels,
-  } = useSettingsLibrarySyncMessages(t);
+  } = messageLabels.librarySync;
   const {
     trustedLanActionMessageLabels,
     trustedLanConfigMessageLabels,
     trustedLanLoadMessageLabels,
     trustedLanValidationMessageLabels,
-  } = useSettingsTrustedLanMessages(t);
-  const { settingsPrinterMessageLabels } = useSettingsPrinterMessages(t);
+  } = messageLabels.trustedLan;
+  const { settingsPrinterMessageLabels } = messageLabels.printer;
   const {
     settingsCatalogResetMessageLabels,
     settingsMaintenanceResetMessageLabels,
-  } = useSettingsMaintenanceMessages(t);
+  } = messageLabels.maintenance;
   const {
     backupValidationState,
     clearBackupValidation,
@@ -161,21 +155,21 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsBackupValidationMessageLabels,
     settingsImportMessageLabels,
     settingsInventoryExportMessageLabels,
-  } = useSettingsBackupMessages(t);
+  } = messageLabels.backup;
   const {
     settingsInventoryOverviewPrintMessageLabels,
     settingsInventoryOverviewPrintPdfLabels,
     settingsInventoryPrintLabels,
-  } = useSettingsInventoryPrintMessages(t);
+  } = messageLabels.inventoryPrint;
   const {
     settingsCatalogRefreshMessageLabels,
     settingsCatalogRefreshSummaryLabels,
-  } = useSettingsCatalogMessages(t);
+  } = messageLabels.catalog;
   const {
     settingsSwatchBulkMessageLabels,
     settingsSwatchErrorMessageLabels,
     settingsSwatchSavedMessageLabels,
-  } = useSettingsSwatchMessages(t);
+  } = messageLabels.swatch;
   const {
     showTrustedLanNetworkEditor,
     showTrustedLanNetworkSummary,
