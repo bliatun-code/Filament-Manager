@@ -118,6 +118,7 @@ import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_va
 import { useSettingsTrustedLanMessages } from "./use_settings_trusted_lan_messages";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
+import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
 import {
   buildSettingsInventoryOverviewPrintErrorMessage,
@@ -1112,46 +1113,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     tauri,
   ]);
 
-  useEffect(() => {
-    if (
-      !tauri ||
-      activeTab !== "LIBRARY" ||
-      !trustedLanStatus?.enabled ||
-      trustedLanActionBusy
-    ) {
-      return;
-    }
-
-    const pollMs = trustedLanPairingLink ? 1500 : 5000;
-    let cancelled = false;
-
-    const poll = async () => {
-      if (cancelled) {
-        return;
-      }
-      await refreshTrustedLanPairedBrowsers({
-        announceNewPairing: Boolean(trustedLanPairingLink),
-        suppressErrors: true,
-      });
-    };
-
-    void poll();
-    const timer = window.setInterval(() => {
-      void poll();
-    }, pollMs);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [
+  useTrustedLanBrowserPolling({
     activeTab,
     refreshTrustedLanPairedBrowsers,
     tauri,
     trustedLanActionBusy,
     trustedLanPairingLink,
-    trustedLanStatus?.enabled,
-  ]);
+    trustedLanStatusEnabled: Boolean(trustedLanStatus?.enabled),
+  });
 
   useSettingsPrinterDeleteConfirm({
     confirmDeletePrinterId,
