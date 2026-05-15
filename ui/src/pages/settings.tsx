@@ -3,8 +3,6 @@ import type { SettingsTabKey } from "../App";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
   isTauri,
-  refreshBambuCatalog,
-  refreshEsunCatalog,
   updateMasterCatalogEntry,
   type BambuLiveIntegrationEntry,
   type CatalogResetStats,
@@ -18,7 +16,6 @@ import {
 } from "../lib/tauri_client";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { useI18n } from "../lib/i18n";
-import { toErrorMessage } from "../lib/error_text";
 import { SettingsGeneralTab } from "../components/settings_general_tab";
 import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
 import { SettingsMaintenanceTab } from "../components/settings_maintenance_tab";
@@ -50,6 +47,7 @@ import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagn
 import { useSettingsBackupFileInputs } from "./use_settings_backup_file_inputs";
 import { useSettingsBackupValidationState } from "./use_settings_backup_validation_state";
 import { useSettingsCatalogRefreshMaterials } from "./use_settings_catalog_refresh_materials";
+import { useSettingsCatalogRefreshActions } from "./use_settings_catalog_refresh_actions";
 import { useSettingsPrinterEditDraft } from "./use_settings_printer_edit_draft";
 import { useSettingsPrinterActions } from "./use_settings_printer_actions";
 import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_confirm";
@@ -88,10 +86,6 @@ import {
 } from "./use_trusted_lan_network_state";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
 import {
-  buildSettingsCatalogRefreshSuccessMessage,
-  buildSettingsCatalogRefreshFallbackErrorMessage,
-  buildSettingsCatalogRefreshPreparingMessage,
-  buildSettingsCatalogRefreshZeroImportMessage,
   buildSettingsCatalogState,
   buildSettingsNoMissingSwatchesMessage,
   buildSettingsSwatchBulkConfirmMessage,
@@ -99,7 +93,6 @@ import {
   buildSettingsSwatchErrorMessage,
   buildSettingsSwatchSavedMessage,
   resolveSettingsSwatchHex,
-  type SettingsCatalogVendor,
 } from "./settings_catalog_model";
 import { SettingsCatalogRefreshPanel } from "./settings_catalog_refresh_panel";
 import {
@@ -108,7 +101,6 @@ import {
 } from "./settings_printer_model";
 
 type ResetConfirmAction = SettingsResetConfirmAction;
-type CatalogVendor = SettingsCatalogVendor;
 type SettingsPageProps = {
   initialTab?: SettingsTabKey;
 };
@@ -832,56 +824,26 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     };
   }
 
-  async function handleRefreshVendorCatalog(vendor: CatalogVendor) {
-    if (!tauri || busy || swatchBusy || catalogRefreshBusy) {
-      return;
-    }
-    const materialTypes = getCatalogRefreshMaterials(vendor);
-    setCatalogRefreshVendor(vendor);
-    setCatalogRefreshPhase("PREPARE");
-    setCatalogRefreshProgressMessage(
-      buildSettingsCatalogRefreshPreparingMessage(vendor, settingsCatalogRefreshMessageLabels()),
-    );
-    setCatalogRefreshStartedAt(Date.now());
-    setCatalogRefreshBusy(true);
-    beginCatalogRefreshResult();
-    setError(null);
-    setInfo(null);
-    try {
-      const summary =
-        vendor === "Bambu"
-          ? await refreshBambuCatalog(materialTypes)
-          : await refreshEsunCatalog(materialTypes);
-      completeCatalogRefreshResult(summary);
-      await reloadSettings();
-      if (summary.imported === 0) {
-        setError(
-          buildSettingsCatalogRefreshZeroImportMessage(
-            vendor,
-            settingsCatalogRefreshMessageLabels(),
-          ),
-        );
-      } else {
-        setInfo(
-          buildSettingsCatalogRefreshSuccessMessage(summary, settingsCatalogRefreshSummaryLabels()),
-        );
-      }
-    } catch (refreshError) {
-      console.error(refreshError);
-      const fallbackMessage = buildSettingsCatalogRefreshFallbackErrorMessage(
-        vendor,
-        settingsCatalogRefreshMessageLabels(),
-      );
-      const message = toErrorMessage(refreshError, fallbackMessage);
-      failCatalogRefreshResult(message);
-      setError(
-        message,
-      );
-    } finally {
-      setCatalogRefreshBusy(false);
-      setCatalogRefreshStartedAt(null);
-    }
-  }
+  const { handleRefreshVendorCatalog } = useSettingsCatalogRefreshActions({
+    beginCatalogRefreshResult,
+    busy,
+    catalogRefreshBusy,
+    completeCatalogRefreshResult,
+    failCatalogRefreshResult,
+    getCatalogRefreshMaterials,
+    reloadSettings,
+    setCatalogRefreshBusy,
+    setCatalogRefreshPhase,
+    setCatalogRefreshProgressMessage,
+    setCatalogRefreshStartedAt,
+    setCatalogRefreshVendor,
+    setError,
+    setInfo,
+    settingsCatalogRefreshMessageLabels,
+    settingsCatalogRefreshSummaryLabels,
+    swatchBusy,
+    tauri,
+  });
 
   function settingsCatalogRefreshMessageLabels() {
     return {
