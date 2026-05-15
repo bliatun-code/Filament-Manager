@@ -116,6 +116,7 @@ import {
   buildSettingsInventoryOverviewPrintPdfLabels,
   buildSettingsInventoryOverviewPrintRows,
   buildSettingsInventoryOverviewPrintSuccessMessage,
+  buildSettingsInventoryPrintLabels,
 } from "./settings_inventory_print_model";
 import {
   buildSettingsBackupErrorMessage,
@@ -1986,10 +1987,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         rows: allRows,
         locale,
         companionShellUrl,
-        labels: {
-          borrowedIn: t("inventory.borrowedIn", "Borrowed in"),
-          unknown: t("common.unknown", "Unknown"),
-        },
+        labels: buildSettingsInventoryPrintLabels(settingsInventoryPrintLabels()),
         buildFilamentQrPayload,
         buildFilamentLabelQrDataUrl,
       });
@@ -2029,6 +2027,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         "settings.inventoryOverviewPrintDone",
         "A4 inventory overview PDF opened for printing.",
       ),
+    };
+  }
+
+  function settingsInventoryPrintLabels() {
+    return {
+      borrowedIn: t("inventory.borrowedIn", "Borrowed in"),
+      unknown: t("common.unknown", "Unknown"),
     };
   }
 

@@ -64,6 +64,12 @@ export async function buildSettingsInventoryOverviewPrintRows(input: {
   );
 }
 
+export function buildSettingsInventoryPrintLabels(
+  labels: SettingsInventoryPrintLabels,
+): SettingsInventoryPrintLabels {
+  return labels;
+}
+
 export function buildSettingsInventoryOverviewPrintSuccessMessage(
   labels: SettingsInventoryPrintMessageLabels,
 ): string {

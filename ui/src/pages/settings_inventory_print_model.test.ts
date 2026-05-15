@@ -5,6 +5,7 @@ import {
   buildSettingsInventoryOverviewPrintPdfLabels,
   buildSettingsInventoryOverviewPrintRows,
   buildSettingsInventoryOverviewPrintSuccessMessage,
+  buildSettingsInventoryPrintLabels,
 } from "./settings_inventory_print_model";
 import type { MasterRow, SpoolRow, SpoolWithMasterRow } from "../lib/tauri_client";
 
@@ -110,6 +111,15 @@ test("settings inventory overview print rows map borrowed and missing display fi
   assert.equal(rows[0].ownershipMarker, "Borrowed in");
   assert.equal(rows[0].material, "Unknown");
   assert.equal(rows[0].swatchHex, "#CBD5E1");
+});
+
+test("settings inventory print labels preserve row fallback copy", () => {
+  const labels = {
+    borrowedIn: "Borrowed in",
+    unknown: "Unknown",
+  };
+
+  assert.deepEqual(buildSettingsInventoryPrintLabels(labels), labels);
 });
 
 test("settings inventory overview print success message returns stable copy", () => {
