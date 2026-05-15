@@ -11,6 +11,7 @@ import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
 import { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_route";
 import { SettingsLibraryTab } from "./settings_library_tab";
 import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
+import { buildSettingsMaintenanceRouteProps } from "./settings_maintenance_route_props";
 import { SettingsPageHeader } from "./settings_page_header";
 import { SettingsPrintersRoute } from "./settings_printers_route";
 import { SettingsRouteOutlet } from "./settings_route_outlet";
@@ -779,6 +780,31 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     onPrintInventoryOverviewA4: handlePrintInventoryOverviewA4,
     onThemeSelection: handleThemeSelection,
   });
+  const settingsMaintenanceRouteProps = buildSettingsMaintenanceRouteProps({
+    backupImportInputRef,
+    backupValidateInputRef,
+    backupValidationHasExtraTables,
+    backupValidationHasMissingTables,
+    backupValidationHasWarnings,
+    busy,
+    catalogCount: catalogMasters.length,
+    confirmResetAction,
+    lastBackupValidation,
+    lastCatalogReset,
+    missingSwatchCount: missingSwatchMasters.length,
+    printerCount: printers.length,
+    tauri,
+    t,
+    onExportFullBackup: handleExportFullBackup,
+    onExportInventoryCsv: handleExportInventoryCsv,
+    onExportInventoryJson: handleExportInventoryJson,
+    onImportDataFile: handleImportDataFile,
+    onOpenBackupValidate: handleOpenBackupValidate,
+    onOpenDataImport: handleOpenDataImport,
+    onResetAppData: handleResetAppData,
+    onResetCatalogs: handleResetCatalogs,
+    onValidateBackupFile: handleValidateBackupFile,
+  });
   return (
     <div className="page-shell">
       <SettingsPageHeader
@@ -1015,33 +1041,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           ),
 
           MAINTENANCE: (
-          <SettingsMaintenanceRoute
-            tab={{
-              backupImportInputRef,
-              backupValidateInputRef,
-              backupValidationHasExtraTables,
-              backupValidationHasMissingTables,
-              backupValidationHasWarnings,
-              busy,
-              catalogCount: catalogMasters.length,
-              confirmResetAction,
-              lastBackupValidation,
-              lastCatalogReset,
-              missingSwatchCount: missingSwatchMasters.length,
-              printerCount: printers.length,
-              tauri,
-              t,
-              onExportFullBackup: () => void handleExportFullBackup(),
-              onExportInventoryCsv: () => void handleExportInventoryCsv(),
-              onExportInventoryJson: () => void handleExportInventoryJson(),
-              onImportDataFile: (event) => void handleImportDataFile(event),
-              onOpenBackupValidate: handleOpenBackupValidate,
-              onOpenDataImport: handleOpenDataImport,
-              onResetAppData: () => void handleResetAppData(),
-              onResetCatalogs: () => void handleResetCatalogs(),
-              onValidateBackupFile: (event) => void handleValidateBackupFile(event),
-            }}
-          />
+          <SettingsMaintenanceRoute {...settingsMaintenanceRouteProps} />
           ),
         }}
       />
