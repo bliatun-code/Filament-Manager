@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 pub use super::database_backup::BackupValidationStats;
 use super::database_backup::{parse_full_backup_content, validate_full_backup_content};
@@ -12,6 +11,7 @@ use super::database_import::{
 };
 use super::database_tables::should_import_backup_row;
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
+use super::database_text::{escape_csv, escape_json, normalize_optional_text};
 use super::database_values::{json_value_to_sql, sqlite_value_to_json};
 use super::statistics::InventoryOverview;
 use super::vendor_lookup::normalize_esun_color_name_for_catalog;
@@ -4422,30 +4422,6 @@ fn default_library_sync_device_name() -> String {
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| "This device".to_string())
-}
-
-fn escape_csv(value: &str) -> String {
-    if value.contains(',') || value.contains('"') || value.contains('\n') {
-        format!("\"{}\"", value.replace('"', "\"\""))
-    } else {
-        value.to_string()
-    }
-}
-
-fn escape_json(value: &str) -> String {
-    value
-        .replace('\\', "\\\\")
-        .replace('\"', "\\\"")
-        .replace('\n', "\\n")
-        .replace('\r', "\\r")
-        .replace('\t', "\\t")
-}
-
-fn normalize_optional_text(value: Option<&str>) -> Option<String> {
-    value
-        .map(str::trim)
-        .filter(|text| !text.is_empty())
-        .map(|text| text.to_string())
 }
 
 fn normalize_loan_direction_filter(raw: Option<&str>) -> String {

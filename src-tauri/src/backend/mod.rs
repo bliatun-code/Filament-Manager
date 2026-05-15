@@ -8,6 +8,8 @@ pub mod database_ids;
 pub mod database_import;
 #[path = "../../../src/backend/database_tables.rs"]
 pub mod database_tables;
+#[path = "../../../src/backend/database_text.rs"]
+pub mod database_text;
 #[path = "../../../src/backend/database_values.rs"]
 pub mod database_values;
 #[path = "../../../src/backend/filament_database.rs"]
