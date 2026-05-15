@@ -65,6 +65,7 @@ import { useSettingsMaintenanceActions } from "./use_settings_maintenance_action
 import { useSettingsBackupExportActions } from "./use_settings_backup_export_actions";
 import { useSettingsBackupFileActions } from "./use_settings_backup_file_actions";
 import { useSettingsInventoryPrintAction } from "./use_settings_inventory_print_action";
+import { useSettingsInventoryPrintMessages } from "./use_settings_inventory_print_messages";
 import { useSettingsSwatchActions } from "./use_settings_swatch_actions";
 import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
@@ -167,6 +168,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsImportMessageLabels,
     settingsInventoryExportMessageLabels,
   } = useSettingsBackupMessages(t);
+  const {
+    settingsInventoryOverviewPrintMessageLabels,
+    settingsInventoryOverviewPrintPdfLabels,
+    settingsInventoryPrintLabels,
+  } = useSettingsInventoryPrintMessages(t);
   const [trustedLanStatus, setTrustedLanStatus] = useState<TrustedLanCompanionStatus | null>(
     null,
   );
@@ -701,40 +707,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     tauri,
     trustedLanStatus,
   });
-
-  function settingsInventoryOverviewPrintMessageLabels() {
-    return {
-      inventoryOverviewPrintFailed: t(
-        "settings.error.inventoryOverviewPrint",
-        "Failed to print inventory overview.",
-      ),
-      inventoryOverviewPrintDone: t(
-        "settings.inventoryOverviewPrintDone",
-        "A4 inventory overview PDF opened for printing.",
-      ),
-    };
-  }
-
-  function settingsInventoryPrintLabels() {
-    return {
-      borrowedIn: t("inventory.borrowedIn", "Borrowed in"),
-      unknown: t("common.unknown", "Unknown"),
-    };
-  }
-
-  function settingsInventoryOverviewPrintPdfLabels() {
-    return {
-      title: t("settings.inventoryOverviewPrintTitle", "In-stock filament overview"),
-      generatedAt: t("settings.inventoryOverviewPrintGeneratedAt", "Generated"),
-      groupMaterial: t("settings.inventoryOverviewPrintGroupMaterial", "Material group"),
-      empty: t("settings.inventoryOverviewPrintEmpty", "No filament in stock."),
-      vendor: t("settings.inventoryOverviewPrintVendor", "Vendor"),
-      material: t("settings.inventoryOverviewPrintMaterial", "Material"),
-      filament: t("settings.inventoryOverviewPrintFilament", "Filament"),
-      homeLocation: t("inventory.homeLocationLabel", "Home location"),
-      reference: t("settings.inventoryOverviewPrintReference", "Reference"),
-    };
-  }
 
   function handleOpenDataImport() {
     openDataImport();
