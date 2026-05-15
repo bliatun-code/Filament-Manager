@@ -63,7 +63,6 @@ import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/invent
 import {
   clampInt,
   extractBaseUrlFromPairingInput,
-  formatDiagnosticJson,
   formatSettingsDateTime,
   isFullBackupValidationFormat,
   parseNonNegativeInt,
@@ -81,6 +80,7 @@ import { SettingsMetricTile } from "../components/settings_ui";
 import { SettingsBambuLiveCaptureChartPanel } from "../components/settings_bambu_live_capture_chart_panel";
 import { SettingsBambuLiveCapturedFieldsPanel } from "../components/settings_bambu_live_captured_fields_panel";
 import { SettingsBambuLiveDiagnosticsSummary } from "../components/settings_bambu_live_diagnostics_summary";
+import { SettingsBambuLiveRawPayloadPanel } from "../components/settings_bambu_live_raw_payload_panel";
 import { SettingsBambuLiveTrayCards } from "../components/settings_bambu_live_tray_cards";
 import { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_lan_browsers_panel";
 import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_lan_pairing_panel";
@@ -2900,45 +2900,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                 }
                                 sortedFieldCount={sortedDiagnosticFields.length}
                               />
-                              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                                <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
-                                  {t("settings.bambuLiveRawPayload", "Latest raw live payload")}
-                                </div>
-                                <button
-                                  type="button"
-                                  className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200"
-                                  onClick={async () => {
-                                    try {
-                                      await copyTextToClipboard(
-                                        formatDiagnosticJson(observedState.raw_payload_json),
-                                      );
-                                      setInfo(
-                                        t(
-                                          "settings.bambuLiveRawPayloadCopied",
-                                          "Raw live payload copied.",
-                                        ),
-                                      );
-                                    } catch (copyError) {
-                                      console.error(copyError);
-                                      setError(
-                                        toErrorMessage(
-                                          copyError,
-                                          t(
-                                            "settings.error.copyBambuLiveRawPayload",
-                                            "Failed to copy raw live payload.",
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  }}
-                                  disabled={!observedState.raw_payload_json}
-                                >
-                                  {t("settings.bambuLiveCopyRawPayload", "Copy payload")}
-                                </button>
-                              </div>
-                              <pre className="mt-2 max-h-80 overflow-auto rounded-lg border border-slate-200 bg-slate-950 px-3 py-3 text-[11px] leading-5 text-emerald-200 dark:border-slate-700">
-{formatDiagnosticJson(observedState.raw_payload_json)}
-                              </pre>
+                              <SettingsBambuLiveRawPayloadPanel
+                                onCopyError={setError}
+                                onCopySuccess={setInfo}
+                                rawPayload={observedState.raw_payload_json}
+                              />
                             </div>
                           </div>
                         ) : (
