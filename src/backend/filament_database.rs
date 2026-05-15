@@ -49,14 +49,18 @@ use super::database_printer_schema::{
     ensure_printer_slot_rfid_override_schema as ensure_printer_slot_rfid_override_schema_impl,
 };
 use super::database_result::require_rows;
-use super::database_rows::{
-    map_active_spool_loan_row, map_spool_loan_row, map_spool_row, map_spool_with_master_row,
-};
+use super::database_rows::{map_active_spool_loan_row, map_spool_loan_row};
 use super::database_schema::{ensure_no_foreign_key_violations, table_columns};
 use super::database_schema_setup::apply_schema_migrations;
 use super::database_settings::{
     delete_setting as delete_setting_row, get_setting as get_setting_row,
     set_setting as set_setting_row,
+};
+use super::database_spool_queries::{
+    get_spool_by_id as get_spool_by_id_row, get_spool_by_qr as get_spool_by_qr_row,
+    get_spool_with_master_by_id as get_spool_with_master_by_id_row,
+    list_low_stock_spools as list_low_stock_spool_rows,
+    list_spools_with_master as list_spools_with_master_rows,
 };
 use super::database_sync_queue::enqueue_sync_action as enqueue_sync_action_row;
 use super::database_table_ops::delete_all_rows;
@@ -1074,51 +1078,18 @@ impl FilamentDatabase {
     }
 
     pub fn get_spool_by_qr(&self, qr_code: &str) -> InventoryResult<Option<SpoolRow>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT id, master_id, qr_code, status, ownership_type, owner_name, owner_contact,
-                    rfid_tag, rfid_observed_at, ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
-                    location_id, home_location_id, purchase_date, purchase_price, batch_code, last_used_at
-             FROM filament_spools
-             WHERE qr_code = ?1 AND deleted_at IS NULL",
-        )?;
-        let row = stmt.query_row(params![qr_code], map_spool_row).optional()?;
-        Ok(row)
+        get_spool_by_qr_row(&self.conn, qr_code)
     }
 
     pub fn get_spool_by_id(&self, spool_id: &str) -> InventoryResult<Option<SpoolRow>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT id, master_id, qr_code, status, ownership_type, owner_name, owner_contact,
-                    rfid_tag, rfid_observed_at, ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
-                    location_id, home_location_id, purchase_date, purchase_price, batch_code, last_used_at
-             FROM filament_spools
-             WHERE id = ?1
-             LIMIT 1",
-        )?;
-        let row = stmt
-            .query_row(params![spool_id], map_spool_row)
-            .optional()?;
-        Ok(row)
+        get_spool_by_id_row(&self.conn, spool_id)
     }
 
     pub fn get_spool_with_master_by_id(
         &self,
         spool_id: &str,
     ) -> InventoryResult<Option<SpoolWithMasterRow>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT s.id, s.master_id, s.qr_code, s.status, s.ownership_type, s.owner_name,
-                    s.owner_contact, s.rfid_tag, s.rfid_observed_at, s.ownership_note, s.initial_weight_g, s.current_weight_g,
-                    s.remaining_g, s.spool_tare_weight_g, s.location_id, s.home_location_id, s.purchase_date,
-                    s.purchase_price, s.batch_code, s.last_used_at, m.id, m.material,
-                    m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor
-             FROM filament_spools s
-             JOIN filament_master_list m ON m.id = s.master_id
-             WHERE s.id = ?1 AND s.deleted_at IS NULL
-             LIMIT 1",
-        )?;
-        let row = stmt
-            .query_row(params![spool_id], map_spool_with_master_row)
-            .optional()?;
-        Ok(row)
+        get_spool_with_master_by_id_row(&self.conn, spool_id)
     }
 
     pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {
@@ -1515,46 +1486,11 @@ impl FilamentDatabase {
         limit: i64,
         offset: i64,
     ) -> InventoryResult<Vec<SpoolWithMasterRow>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT s.id, s.master_id, s.qr_code, s.status, s.ownership_type, s.owner_name,
-                    s.owner_contact, s.rfid_tag, s.rfid_observed_at, s.ownership_note, s.initial_weight_g, s.current_weight_g,
-                    s.remaining_g, s.spool_tare_weight_g, s.location_id, s.home_location_id, s.purchase_date,
-                    s.purchase_price, s.batch_code, s.last_used_at, m.id, m.material,
-                    m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor
-             FROM filament_spools s
-             JOIN filament_master_list m ON m.id = s.master_id
-             WHERE s.deleted_at IS NULL
-             ORDER BY s.updated_at DESC
-             LIMIT ?1 OFFSET ?2",
-        )?;
-
-        let rows = stmt.query_map(params![limit, offset], map_spool_with_master_row)?;
-
-        let mut results = Vec::new();
-        for row in rows {
-            results.push(row?);
-        }
-        Ok(results)
+        list_spools_with_master_rows(&self.conn, limit, offset)
     }
 
     pub fn list_low_stock_spools(&self, threshold: i64) -> InventoryResult<Vec<SpoolRow>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT id, master_id, qr_code, status, ownership_type, owner_name, owner_contact,
-                    rfid_tag, rfid_observed_at, ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
-                    location_id, home_location_id, purchase_date, purchase_price, batch_code, last_used_at
-             FROM filament_spools
-             WHERE deleted_at IS NULL
-               AND remaining_g IS NOT NULL
-               AND remaining_g > 0
-               AND remaining_g <= ?1
-               AND status NOT IN ('EMPTY', 'LOST')",
-        )?;
-        let rows = stmt.query_map(params![threshold], map_spool_row)?;
-        let mut results = Vec::new();
-        for row in rows {
-            results.push(row?);
-        }
-        Ok(results)
+        list_low_stock_spool_rows(&self.conn, threshold)
     }
 
     pub fn list_wishlist_items(&self, limit: i64) -> InventoryResult<Vec<WishlistItemRow>> {
