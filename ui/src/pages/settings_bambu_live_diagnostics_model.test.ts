@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildSettingsBambuLiveDiagnosticMetricCards,
+  buildSettingsBambuLiveDiagnosticGroups,
   buildSettingsBambuLiveFallbackSummaryParts,
   buildSettingsBambuLiveDiagnosticsModel,
   buildSettingsBambuLiveObservedSummaryParts,
@@ -108,6 +109,24 @@ function createSpoolRow(overrides: Partial<SpoolWithMasterRow> = {}): SpoolWithM
       vendor: "Bambu",
       ...overrides.master,
     },
+  };
+}
+
+function createDiagnosticField(
+  overrides: Partial<DiagnosticCaptureField>,
+): DiagnosticCaptureField {
+  return {
+    avgChangeIntervalMs: null,
+    avgReceiveIntervalMs: null,
+    changeCount: 1,
+    firstSeenAt: "2026-05-15T10:00:00Z",
+    lastChangedAt: "2026-05-15T10:00:00Z",
+    lastSeenAt: "2026-05-15T10:00:00Z",
+    path: "ams.ams[0].tray[0].tray_uuid",
+    receiveCount: 1,
+    recentValues: [],
+    valueText: "ABC123",
+    ...overrides,
   };
 }
 
@@ -269,21 +288,6 @@ test("Bambu live diagnostic metric cards format dates and counters", () => {
 });
 
 test("Bambu live signal quality buckets keep localized labels and descriptions", () => {
-  const createDiagnosticField = (
-    overrides: Partial<DiagnosticCaptureField>,
-  ): DiagnosticCaptureField => ({
-    avgChangeIntervalMs: null,
-    avgReceiveIntervalMs: null,
-    changeCount: 1,
-    firstSeenAt: "2026-05-15T10:00:00Z",
-    lastChangedAt: "2026-05-15T10:00:00Z",
-    lastSeenAt: "2026-05-15T10:00:00Z",
-    path: "ams.ams[0].tray[0].tray_uuid",
-    receiveCount: 1,
-    recentValues: [],
-    valueText: "ABC123",
-    ...overrides,
-  });
   const buckets = buildSettingsBambuLiveSignalQualityBuckets(
     [
       createDiagnosticField({ path: "ams.ams[0].tray[0].tray_uuid" }),
@@ -318,5 +322,42 @@ test("Bambu live signal quality buckets keep localized labels and descriptions",
   assert.deepEqual(
     buckets.map((bucket) => bucket.fields.length),
     [1, 1, 1],
+  );
+});
+
+test("Bambu live diagnostic groups apply filters, sorting and labels together", () => {
+  const { diagnosticGroups, sortedDiagnosticFields } = buildSettingsBambuLiveDiagnosticGroups({
+    diagnosticFields: [
+      createDiagnosticField({
+        changeCount: 3,
+        lastSeenAt: "2026-05-15T10:03:00Z",
+        path: "mc_percent",
+        valueText: "44",
+      }),
+      createDiagnosticField({
+        changeCount: 1,
+        lastSeenAt: "2026-05-15T10:01:00Z",
+        path: "ams.ams[0].humidity",
+        valueText: "3",
+      }),
+      createDiagnosticField({
+        changeCount: 2,
+        lastSeenAt: "2026-05-15T10:02:00Z",
+        path: "ams.ams[0].tray[0].tray_uuid",
+        valueText: "ABC123",
+      }),
+    ],
+    diagnosticFilter: "changed",
+    diagnosticSort: "last_seen_desc",
+    t,
+  });
+
+  assert.deepEqual(
+    sortedDiagnosticFields.map((field) => field.path),
+    ["mc_percent", "ams.ams[0].tray[0].tray_uuid"],
+  );
+  assert.deepEqual(
+    diagnosticGroups.map((group) => group.label),
+    ["Print & status", "Tray & chip"],
   );
 });

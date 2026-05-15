@@ -188,6 +188,39 @@ export function buildSettingsBambuLiveSignalQualityBuckets(
   });
 }
 
+export function buildSettingsBambuLiveDiagnosticGroups({
+  diagnosticFields,
+  diagnosticFilter,
+  diagnosticSort,
+  t,
+}: {
+  diagnosticFields: DiagnosticCaptureSession["fields"];
+  diagnosticFilter: DiagnosticFilterKey;
+  diagnosticSort: DiagnosticSortKey;
+  t: TranslateFn;
+}) {
+  const filteredDiagnosticFields = filterDiagnosticFields(diagnosticFields, diagnosticFilter);
+  const sortedDiagnosticFields = sortDiagnosticFields(filteredDiagnosticFields, diagnosticSort);
+  const diagnosticGroups: Array<DiagnosticFieldGroup & { label: string }> = groupDiagnosticFields(
+    sortedDiagnosticFields,
+  ).map((group) => ({
+    ...group,
+    label:
+      group.key === "print"
+        ? t("settings.bambuLiveGroupPrint", "Print & status")
+        : group.key === "ams"
+          ? t("settings.bambuLiveGroupAms", "AMS")
+          : group.key === "tray"
+            ? t("settings.bambuLiveGroupTray", "Tray & chip")
+            : t("settings.bambuLiveGroupOther", "Other"),
+  }));
+
+  return {
+    diagnosticGroups,
+    sortedDiagnosticFields,
+  };
+}
+
 export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticFilter,
   diagnosticSession,
@@ -226,21 +259,12 @@ export function buildSettingsBambuLiveDiagnosticsModel({
   const signalQualityBuckets = buildSettingsBambuLiveSignalQualityBuckets(diagnosticFields, t);
   const fallbackSummaryParts = buildSettingsBambuLiveFallbackSummaryParts(diagnosticFields, t);
   const observedSummaryParts = buildSettingsBambuLiveObservedSummaryParts(observedState, t);
-  const filteredDiagnosticFields = filterDiagnosticFields(diagnosticFields, diagnosticFilter);
-  const sortedDiagnosticFields = sortDiagnosticFields(filteredDiagnosticFields, diagnosticSort);
-  const diagnosticGroups: Array<DiagnosticFieldGroup & { label: string }> = groupDiagnosticFields(
-    sortedDiagnosticFields,
-  ).map((group) => ({
-    ...group,
-    label:
-      group.key === "print"
-        ? t("settings.bambuLiveGroupPrint", "Print & status")
-        : group.key === "ams"
-          ? t("settings.bambuLiveGroupAms", "AMS")
-          : group.key === "tray"
-            ? t("settings.bambuLiveGroupTray", "Tray & chip")
-            : t("settings.bambuLiveGroupOther", "Other"),
-  }));
+  const { diagnosticGroups, sortedDiagnosticFields } = buildSettingsBambuLiveDiagnosticGroups({
+    diagnosticFields,
+    diagnosticFilter,
+    diagnosticSort,
+    t,
+  });
   const reviewTrayCount = countReviewDiagnosticTrays(observedState?.trays ?? []);
   const diagnosticMetricCards = buildSettingsBambuLiveDiagnosticMetricCards({
     captureSessionLastSeenAt,
