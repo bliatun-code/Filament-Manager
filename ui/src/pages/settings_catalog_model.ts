@@ -170,6 +170,17 @@ export type SettingsSwatchSavedMessageLabels = {
   swatchSaved: string;
 };
 
+export type SettingsSwatchErrorMessageKey = "invalidSwatchHex" | "saveSwatchFailed";
+
+export type SettingsSwatchErrorMessageLabels = Record<SettingsSwatchErrorMessageKey, string>;
+
+export function buildSettingsSwatchErrorMessage(
+  key: SettingsSwatchErrorMessageKey,
+  labels: SettingsSwatchErrorMessageLabels,
+): string {
+  return labels[key];
+}
+
 export function buildSettingsSwatchSavedMessage(
   filamentTitle: string,
   labels: SettingsSwatchSavedMessageLabels,

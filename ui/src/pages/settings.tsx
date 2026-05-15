@@ -132,6 +132,7 @@ import {
   buildSettingsSwatchBulkConfirmMessage,
   buildSettingsSwatchBulkResultMessage,
   buildSettingsSwatchDrafts,
+  buildSettingsSwatchErrorMessage,
   buildSettingsSwatchSavedMessage,
   resolveSettingsSwatchHex,
   toggleSettingsCatalogRefreshMaterial,
@@ -2287,6 +2288,19 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     };
   }
 
+  function settingsSwatchErrorMessageLabels() {
+    return {
+      invalidSwatchHex: t(
+        "settings.error.invalidSwatchHex",
+        "Invalid swatch hex value. Use #RGB or #RRGGBB.",
+      ),
+      saveSwatchFailed: t(
+        "settings.error.saveSwatch",
+        "Failed to save swatch for selected filament.",
+      ),
+    };
+  }
+
   async function handleSaveMissingSwatch(master: MasterCatalogRow) {
     if (!tauri || busy || swatchBusy) {
       return;
@@ -2294,10 +2308,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     const normalizedHex = resolveSettingsSwatchHex({ master, swatchDraftById });
     if (!normalizedHex) {
       setError(
-        t(
-          "settings.error.invalidSwatchHex",
-          "Invalid swatch hex value. Use #RGB or #RRGGBB.",
-        ),
+        buildSettingsSwatchErrorMessage("invalidSwatchHex", settingsSwatchErrorMessageLabels()),
       );
       return;
     }
@@ -2325,7 +2336,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } catch (saveError) {
       console.error(saveError);
       setError(
-        t("settings.error.saveSwatch", "Failed to save swatch for selected filament."),
+        buildSettingsSwatchErrorMessage("saveSwatchFailed", settingsSwatchErrorMessageLabels()),
       );
     } finally {
       setSwatchBusy(false);

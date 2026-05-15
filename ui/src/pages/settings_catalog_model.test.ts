@@ -10,6 +10,7 @@ import {
   buildSettingsSwatchBulkResultMessage,
   buildSettingsSwatchBulkConfirmMessage,
   buildSettingsSwatchDrafts,
+  buildSettingsSwatchErrorMessage,
   buildSettingsSwatchSavedMessage,
   resolveSettingsSwatchHex,
   settingsCatalogRefreshSummaryGridClass,
@@ -278,5 +279,21 @@ test("settings swatch single-action messages return stable copy", () => {
   assert.equal(
     buildSettingsSwatchBulkConfirmMessage(bulkLabels),
     bulkLabels.confirmBulkSwatchTapAgain,
+  );
+});
+
+test("settings swatch error messages return stable fallback copy", () => {
+  const labels = {
+    invalidSwatchHex: "Invalid swatch hex value. Use #RGB or #RRGGBB.",
+    saveSwatchFailed: "Failed to save swatch for selected filament.",
+  };
+
+  assert.equal(
+    buildSettingsSwatchErrorMessage("invalidSwatchHex", labels),
+    labels.invalidSwatchHex,
+  );
+  assert.equal(
+    buildSettingsSwatchErrorMessage("saveSwatchFailed", labels),
+    labels.saveSwatchFailed,
   );
 });
