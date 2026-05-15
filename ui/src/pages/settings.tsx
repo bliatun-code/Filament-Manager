@@ -73,8 +73,6 @@ import {
   buildTrustedLanNoPrivateInterfaceMessage,
   findNewTrustedLanActiveBrowserIds,
   buildTrustedLanPairedBrowserListModel,
-  isTrustedLanNetworkDraftDirty,
-  resolveTrustedLanInterfaceAddressDraft,
 } from "./settings_companion_model";
 import {
   buildLibrarySyncActionMessage,
@@ -119,6 +117,10 @@ import { useSettingsTrustedLanMessages } from "./use_settings_trusted_lan_messag
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
+import {
+  resolveTrustedLanInterfaceAddressDraft,
+  useTrustedLanNetworkState,
+} from "./use_trusted_lan_network_state";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
 import {
   buildSettingsInventoryOverviewPrintErrorMessage,
@@ -439,22 +441,16 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   );
   const activeTrustedLanPairedBrowsers = trustedLanPairedBrowserListModel.activeRows;
   const revokedTrustedLanPairedBrowsers = trustedLanPairedBrowserListModel.revokedRows;
-  const trustedLanSelectedInterfaceOption = useMemo(
-    () =>
-      trustedLanInterfaces.find((value) => value.address === trustedLanInterfaceAddressDraft) ??
-      null,
-    [trustedLanInterfaceAddressDraft, trustedLanInterfaces],
-  );
-  const trustedLanHasPrivateInterfaces = trustedLanInterfaces.length > 0;
-  const trustedLanNetworkDirty = useMemo(
-    () =>
-      isTrustedLanNetworkDraftDirty({
-        interfaceAddressDraft: trustedLanInterfaceAddressDraft,
-        portDraft: trustedLanPortDraft,
-        trustedLanStatus,
-      }),
-    [trustedLanInterfaceAddressDraft, trustedLanPortDraft, trustedLanStatus],
-  );
+  const {
+    trustedLanHasPrivateInterfaces,
+    trustedLanNetworkDirty,
+    trustedLanSelectedInterfaceOption,
+  } = useTrustedLanNetworkState({
+    trustedLanInterfaceAddressDraft,
+    trustedLanInterfaces,
+    trustedLanPortDraft,
+    trustedLanStatus,
+  });
 
   useEffect(() => {
     if (revokedTrustedLanPairedBrowsers.length === 0) {
