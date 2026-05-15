@@ -73,7 +73,7 @@ import { SettingsGeneralTab } from "../components/settings_general_tab";
 import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
 import { SettingsMaintenanceTab } from "../components/settings_maintenance_tab";
 import { SettingsMissingSwatchesPanel } from "../components/settings_missing_swatches_panel";
-import { SettingsPrinterCard } from "../components/settings_printer_card";
+import { SettingsPrintersTab } from "../components/settings_printers_tab";
 import { SettingsMetricTile } from "../components/settings_ui";
 import { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_lan_browsers_panel";
 import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_lan_pairing_panel";
@@ -112,10 +112,7 @@ import {
   buildLibraryRoleChangeState,
   type LibrarySyncMode,
 } from "./settings_library_sync_model";
-import {
-  buildSettingsBambuLiveDiagnosticsModel,
-  createSettingsBambuLiveCaptureSession,
-} from "./settings_bambu_live_diagnostics_model";
+import { createSettingsBambuLiveCaptureSession } from "./settings_bambu_live_diagnostics_model";
 import {
   buildPrinterSlotsByPrinterId,
   derivePrinterMultiConfig,
@@ -2609,108 +2606,53 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
       <div className="mt-4 grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]">
         {activeTab === "PRINTERS" ? (
-          <section className="surface-card xl:col-span-2">
-            <div className="section-eyebrow">
-              {t("nav.printers", "Printers")}
-            </div>
-
-            <div className="mt-5 space-y-2">
-              {loading ? (
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
-                  {t("common.loadingPrinters", "Loading printers...")}
-                </div>
-              ) : null}
-              {!loading && printers.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
-                  {t("printers.noPrinters", "No printers configured yet. Use Add printer to create one.")}
-                </div>
-              ) : null}
-              {sortedPrinters.map((printer) => {
-                const printerSlots = printerSlotsByPrinterId.get(printer.id) ?? [];
-                const liveConfig = bambuLiveIntegrations[printer.id] ?? null;
-                const diagnosticSession = diagnosticCaptureByPrinterId[printer.id] ?? null;
-                const captureActive = diagnosticCaptureActiveByPrinterId[printer.id] ?? false;
-                const diagnosticSort = diagnosticSortByPrinterId[printer.id] ?? "path";
-                const diagnosticFilter = diagnosticFilterByPrinterId[printer.id] ?? "all";
-                const bambuDiagnostics = buildSettingsBambuLiveDiagnosticsModel({
-                  diagnosticFilter,
-                  diagnosticSession,
-                  diagnosticSort,
-                  formatDateTime: (value) => formatSettingsDateTime(value, locale),
-                  liveConfig,
-                  selectedChartFieldPath: diagnosticChartFieldByPrinterId[printer.id],
-                  spoolRows,
-                  t,
-                });
-                const isEditing = editPrinterId === printer.id;
-                return (
-                  <SettingsPrinterCard
-                    key={printer.id}
-                    bambuDiagnostics={bambuDiagnostics}
-                    captureActive={captureActive}
-                    confirmDelete={confirmDeletePrinterId === printer.id}
-                    diagnosticFilter={diagnosticFilter}
-                    diagnosticSession={diagnosticSession}
-                    diagnosticSort={diagnosticSort}
-                    editBambuLiveAccessCode={editBambuLiveAccessCode}
-                    editBambuLiveEnabled={editBambuLiveEnabled}
-                    editBambuLiveHost={editBambuLiveHost}
-                    editBambuLivePrinterSerial={editBambuLivePrinterSerial}
-                    editModel={editPrinterModel}
-                    editModelProfile={editModelProfile}
-                    editName={editPrinterName}
-                    editSlotsPerUnit={editSlotsPerUnit}
-                    editUnits={editAmsUnits}
-                    expanded={expandedBambuDetailsPrinterId === printer.id}
-                    isEditing={isEditing}
-                    liveConfig={liveConfig}
-                    printer={printer}
-                    printerSlots={printerSlots}
-                    settingsClientReadOnly={settingsClientReadOnly}
-                    busy={busy}
-                    tauri={tauri}
-                    onBambuLiveAccessCodeChange={setEditBambuLiveAccessCode}
-                    onBambuLiveEnabledChange={setEditBambuLiveEnabled}
-                    onBambuLiveHostChange={setEditBambuLiveHost}
-                    onBambuLivePrinterSerialChange={setEditBambuLivePrinterSerial}
-                    onCancelEdit={handleCancelEditPrinter}
-                    onCopyError={setError}
-                    onCopySuccess={setInfo}
-                    onDiagnosticFilterChange={(filter) =>
-                      setDiagnosticFilterByPrinterId((current) => ({
-                        ...current,
-                        [printer.id]: filter,
-                      }))
-                    }
-                    onDiagnosticSortChange={(sort) =>
-                      setDiagnosticSortByPrinterId((current) => ({
-                        ...current,
-                        [printer.id]: sort,
-                      }))
-                    }
-                    onEditModelChange={setEditPrinterModel}
-                    onEditNameChange={setEditPrinterName}
-                    onEditSlotsPerUnitChange={setEditSlotsPerUnit}
-                    onEditUnitsChange={setEditAmsUnits}
-                    onRemove={() => void handleDeletePrinter(printer)}
-                    onSaveEdit={() => void handleSavePrinterReconfigure()}
-                    onSelectedChartFieldChange={(fieldPath) =>
-                      setDiagnosticChartFieldByPrinterId((current) => ({
-                        ...current,
-                        [printer.id]: fieldPath,
-                      }))
-                    }
-                    onStartEdit={() => handleStartEditPrinter(printer)}
-                    onToggleCapture={() =>
-                      handleToggleBambuLiveCapture(printer.id, captureActive)
-                    }
-                    onToggleDetails={() => handleToggleBambuLiveDetails(printer.id)}
-                  />
-                );
-              })}
-            </div>
-
-          </section>
+          <SettingsPrintersTab
+            bambuLiveIntegrations={bambuLiveIntegrations}
+            busy={busy}
+            confirmDeletePrinterId={confirmDeletePrinterId}
+            diagnosticCaptureActiveByPrinterId={diagnosticCaptureActiveByPrinterId}
+            diagnosticCaptureByPrinterId={diagnosticCaptureByPrinterId}
+            diagnosticChartFieldByPrinterId={diagnosticChartFieldByPrinterId}
+            diagnosticFilterByPrinterId={diagnosticFilterByPrinterId}
+            diagnosticSortByPrinterId={diagnosticSortByPrinterId}
+            editAmsUnits={editAmsUnits}
+            editBambuLiveAccessCode={editBambuLiveAccessCode}
+            editBambuLiveEnabled={editBambuLiveEnabled}
+            editBambuLiveHost={editBambuLiveHost}
+            editBambuLivePrinterSerial={editBambuLivePrinterSerial}
+            editModelProfile={editModelProfile}
+            editPrinterId={editPrinterId}
+            editPrinterModel={editPrinterModel}
+            editPrinterName={editPrinterName}
+            editSlotsPerUnit={editSlotsPerUnit}
+            expandedBambuDetailsPrinterId={expandedBambuDetailsPrinterId}
+            loading={loading}
+            printerSlotsByPrinterId={printerSlotsByPrinterId}
+            printers={printers}
+            settingsClientReadOnly={settingsClientReadOnly}
+            sortedPrinters={sortedPrinters}
+            spoolRows={spoolRows}
+            tauri={tauri}
+            onBambuLiveAccessCodeChange={setEditBambuLiveAccessCode}
+            onBambuLiveEnabledChange={setEditBambuLiveEnabled}
+            onBambuLiveHostChange={setEditBambuLiveHost}
+            onBambuLivePrinterSerialChange={setEditBambuLivePrinterSerial}
+            onCancelEditPrinter={handleCancelEditPrinter}
+            onCopyError={setError}
+            onCopySuccess={setInfo}
+            onDeletePrinter={(printer) => void handleDeletePrinter(printer)}
+            onDiagnosticChartFieldChange={setDiagnosticChartFieldByPrinterId}
+            onDiagnosticFilterChange={setDiagnosticFilterByPrinterId}
+            onDiagnosticSortChange={setDiagnosticSortByPrinterId}
+            onEditAmsUnitsChange={setEditAmsUnits}
+            onEditPrinterModelChange={setEditPrinterModel}
+            onEditPrinterNameChange={setEditPrinterName}
+            onEditSlotsPerUnitChange={setEditSlotsPerUnit}
+            onSavePrinterReconfigure={() => void handleSavePrinterReconfigure()}
+            onStartEditPrinter={handleStartEditPrinter}
+            onToggleBambuLiveCapture={handleToggleBambuLiveCapture}
+            onToggleBambuLiveDetails={handleToggleBambuLiveDetails}
+          />
         ) : null}
 
         {activeTab === "GENERAL" ? (
