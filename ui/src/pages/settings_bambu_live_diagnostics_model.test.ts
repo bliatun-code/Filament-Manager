@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildSettingsBambuLiveFallbackSummaryParts,
   buildSettingsBambuLiveDiagnosticsModel,
+  buildSettingsBambuLiveObservedSummaryParts,
   createSettingsBambuLiveCaptureSession,
 } from "./settings_bambu_live_diagnostics_model";
 import { updateDiagnosticCaptureSessionFromPayload } from "../lib/diagnostic_capture";
@@ -193,4 +195,28 @@ test("buildSettingsBambuLiveDiagnosticsModel falls back to first chart field and
   });
 
   assert.equal(populatedModel.selectedDiagnosticChartField, populatedModel.diagnosticChartFields[0].path);
+});
+
+test("Bambu live summary builders keep display order and omit missing values", () => {
+  const liveConfig = createLiveConfig();
+
+  assert.deepEqual(
+    buildSettingsBambuLiveObservedSummaryParts(liveConfig.observed_state ?? null, t),
+    ["42%", "18 min", "Tray 1", "AMS humidity 3"],
+  );
+  assert.deepEqual(buildSettingsBambuLiveObservedSummaryParts(null, t), []);
+
+  const diagnosticSession = updateDiagnosticCaptureSessionFromPayload({
+    session: null,
+    rawPayload: {
+      ams: { humidity: "2" },
+      mc_percent: 55,
+    },
+    observedAt: "2026-05-15T10:03:00Z",
+  });
+
+  assert.deepEqual(
+    buildSettingsBambuLiveFallbackSummaryParts(diagnosticSession?.fields ?? [], t),
+    ["55%"],
+  );
 });

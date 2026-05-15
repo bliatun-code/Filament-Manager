@@ -24,7 +24,11 @@ import {
   buildInventoryMatchResult,
   translateObservedMatchNote,
 } from "../lib/inventory_match";
-import type { BambuLiveIntegrationSettings, SpoolWithMasterRow } from "../lib/tauri_client";
+import type {
+  BambuLiveIntegrationSettings,
+  BambuLiveObservedState,
+  SpoolWithMasterRow,
+} from "../lib/tauri_client";
 
 type TranslateFn = (key: string, fallback: string) => string;
 type FormatDateTimeFn = (value: string) => string;
@@ -39,6 +43,66 @@ type BuildSettingsBambuLiveDiagnosticsModelInput = {
   spoolRows: SpoolWithMasterRow[];
   t: TranslateFn;
 };
+
+type SettingsBambuLiveSummarySource = {
+  activeTrayIndex?: number | null;
+  amsHumidityIndex?: number | null;
+  progressPercent?: number | null;
+  remainingMinutes?: number | null;
+};
+
+function buildSettingsBambuLiveSummaryParts(
+  source: SettingsBambuLiveSummarySource,
+  t: TranslateFn,
+): string[] {
+  const parts: string[] = [];
+  if (source.progressPercent != null) {
+    parts.push(`${source.progressPercent}%`);
+  }
+  if (source.remainingMinutes != null) {
+    parts.push(`${source.remainingMinutes} min`);
+  }
+  if (source.activeTrayIndex != null) {
+    parts.push(`${t("settings.bambuLiveSummaryTray", "Tray")} ${source.activeTrayIndex}`);
+  }
+  if (source.amsHumidityIndex != null) {
+    parts.push(
+      `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${source.amsHumidityIndex}`,
+    );
+  }
+  return parts;
+}
+
+export function buildSettingsBambuLiveFallbackSummaryParts(
+  diagnosticFields: DiagnosticCaptureSession["fields"],
+  t: TranslateFn,
+): string[] {
+  const fallbackSummary = buildDiagnosticFallbackSummary(diagnosticFields);
+  return buildSettingsBambuLiveSummaryParts(
+    {
+      activeTrayIndex: fallbackSummary.activeTrayIndex,
+      amsHumidityIndex: fallbackSummary.amsHumidityIndex,
+      progressPercent: fallbackSummary.progressPercent,
+      remainingMinutes: fallbackSummary.remainingMinutes,
+    },
+    t,
+  );
+}
+
+export function buildSettingsBambuLiveObservedSummaryParts(
+  observedState: BambuLiveObservedState | null,
+  t: TranslateFn,
+): string[] {
+  return buildSettingsBambuLiveSummaryParts(
+    {
+      activeTrayIndex: observedState?.active_tray_index,
+      amsHumidityIndex: observedState?.ams_humidity_index,
+      progressPercent: observedState?.progress_percent,
+      remainingMinutes: observedState?.remaining_minutes,
+    },
+    t,
+  );
+}
 
 export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticFilter,
@@ -105,27 +169,8 @@ export function buildSettingsBambuLiveDiagnosticsModel({
       label: t("settings.bambuLiveSignalContinuous", "Continuous telemetry"),
     };
   });
-  const fallbackSummary = buildDiagnosticFallbackSummary(diagnosticFields);
-  const fallbackSummaryParts = [
-    fallbackSummary.progressPercent != null ? `${fallbackSummary.progressPercent}%` : null,
-    fallbackSummary.remainingMinutes != null ? `${fallbackSummary.remainingMinutes} min` : null,
-    fallbackSummary.activeTrayIndex != null
-      ? `${t("settings.bambuLiveSummaryTray", "Tray")} ${fallbackSummary.activeTrayIndex}`
-      : null,
-    fallbackSummary.amsHumidityIndex != null
-      ? `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${fallbackSummary.amsHumidityIndex}`
-      : null,
-  ].filter(Boolean);
-  const observedSummaryParts = [
-    observedState?.progress_percent != null ? `${observedState.progress_percent}%` : null,
-    observedState?.remaining_minutes != null ? `${observedState.remaining_minutes} min` : null,
-    observedState?.active_tray_index != null
-      ? `${t("settings.bambuLiveSummaryTray", "Tray")} ${observedState.active_tray_index}`
-      : null,
-    observedState?.ams_humidity_index != null
-      ? `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${observedState.ams_humidity_index}`
-      : null,
-  ].filter(Boolean);
+  const fallbackSummaryParts = buildSettingsBambuLiveFallbackSummaryParts(diagnosticFields, t);
+  const observedSummaryParts = buildSettingsBambuLiveObservedSummaryParts(observedState, t);
   const filteredDiagnosticFields = filterDiagnosticFields(diagnosticFields, diagnosticFilter);
   const sortedDiagnosticFields = sortDiagnosticFields(filteredDiagnosticFields, diagnosticSort);
   const diagnosticGroups: Array<DiagnosticFieldGroup & { label: string }> = groupDiagnosticFields(
