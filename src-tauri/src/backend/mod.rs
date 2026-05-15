@@ -42,6 +42,8 @@ pub mod database_time;
 pub mod database_trusted_lan_schema;
 #[path = "../../../src/backend/database_values.rs"]
 pub mod database_values;
+#[path = "../../../src/backend/database_wishlist.rs"]
+pub mod database_wishlist;
 #[path = "../../../src/backend/filament_database.rs"]
 pub mod filament_database;
 #[path = "../../../src/backend/inventory_engine.rs"]
