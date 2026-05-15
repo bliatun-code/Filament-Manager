@@ -9,6 +9,7 @@ use super::database_import::{
     parse_inventory_spools_csv, parse_inventory_spools_json, InventoryImportRow,
     InventoryImportStats,
 };
+use super::database_result::require_rows;
 use super::database_rows::{
     map_active_spool_loan_row, map_spool_loan_row, map_spool_row, map_spool_with_master_row,
     map_trusted_lan_paired_browser_row,
@@ -22,7 +23,7 @@ use super::loan_defaults::normalize_loan_direction_filter;
 use super::spool_defaults::normalize_spool_status;
 use super::statistics::InventoryOverview;
 use super::vendor_lookup::normalize_esun_color_name_for_catalog;
-use rusqlite::{params, Connection, OptionalExtension, Row};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -4311,14 +4312,6 @@ impl FilamentDatabase {
                 Err(error)
             }
         }
-    }
-}
-
-fn require_rows(affected: usize) -> InventoryResult<()> {
-    if affected == 0 {
-        Err(InventoryError::NotFound)
-    } else {
-        Ok(())
     }
 }
 
