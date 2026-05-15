@@ -49,64 +49,61 @@ export type SettingsPrinterEditActions = {
   onUnitsChange: (value: string) => void;
 };
 
-type SettingsPrinterCardProps = {
-  bambuDiagnostics: SettingsBambuLiveDiagnosticsModel;
+export type SettingsPrinterLiveDiagnosticsState = {
   captureActive: boolean;
-  confirmDelete: boolean;
   diagnosticFilter: DiagnosticFilterKey;
   diagnosticSession: DiagnosticCaptureSession | null;
   diagnosticSort: DiagnosticSortKey;
-  editActions: SettingsPrinterEditActions;
-  editDraft: SettingsPrinterEditDraft;
-  expanded: boolean;
-  isEditing: boolean;
   liveConfig: BambuLiveIntegrationSettings | null;
-  printer: PrinterRow;
-  printerSlots: PrinterAmsSlotRow[];
-  settingsClientReadOnly: boolean;
-  busy: boolean;
-  tauri: boolean;
+  model: SettingsBambuLiveDiagnosticsModel;
+};
+
+export type SettingsPrinterLiveDiagnosticsActions = {
   onCopyError: (message: string) => void;
   onCopySuccess: (message: string) => void;
   onDiagnosticFilterChange: (filter: DiagnosticFilterKey) => void;
   onDiagnosticSortChange: (sort: DiagnosticSortKey) => void;
-  onRemove: () => void;
   onSelectedChartFieldChange: (fieldPath: string) => void;
   onToggleCapture: () => void;
   onToggleDetails: () => void;
 };
 
+type SettingsPrinterCardProps = {
+  confirmDelete: boolean;
+  editActions: SettingsPrinterEditActions;
+  editDraft: SettingsPrinterEditDraft;
+  expanded: boolean;
+  isEditing: boolean;
+  liveDiagnostics: SettingsPrinterLiveDiagnosticsState;
+  liveDiagnosticsActions: SettingsPrinterLiveDiagnosticsActions;
+  printer: PrinterRow;
+  printerSlots: PrinterAmsSlotRow[];
+  settingsClientReadOnly: boolean;
+  busy: boolean;
+  tauri: boolean;
+  onRemove: () => void;
+};
+
 export function SettingsPrinterCard({
-  bambuDiagnostics,
-  captureActive,
   confirmDelete,
-  diagnosticFilter,
-  diagnosticSession,
-  diagnosticSort,
   editActions,
   editDraft,
   expanded,
   isEditing,
-  liveConfig,
+  liveDiagnostics,
+  liveDiagnosticsActions,
   printer,
   printerSlots,
   settingsClientReadOnly,
   busy,
   tauri,
-  onCopyError,
-  onCopySuccess,
-  onDiagnosticFilterChange,
-  onDiagnosticSortChange,
   onRemove,
-  onSelectedChartFieldChange,
-  onToggleCapture,
-  onToggleDetails,
 }: SettingsPrinterCardProps) {
   const { t } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const hasMultiMaterial = hasConfiguredMultiMaterial(printerSlots);
   const configuredSetup = describeConfiguredPrinterSetup(t, printer.model, printerSlots);
-  const { reviewTrayCount } = bambuDiagnostics;
+  const { reviewTrayCount } = liveDiagnostics.model;
 
   return (
     <div
@@ -117,33 +114,33 @@ export function SettingsPrinterCard({
         busy={busy}
         configuredSetup={configuredSetup}
         confirmDelete={confirmDelete}
-        hasLiveIntegration={Boolean(liveConfig?.enabled)}
+        hasLiveIntegration={Boolean(liveDiagnostics.liveConfig?.enabled)}
         hasMultiMaterial={hasMultiMaterial}
         isEditing={isEditing}
         isExpanded={expanded}
         onRemove={onRemove}
-        onToggleDetails={onToggleDetails}
+        onToggleDetails={liveDiagnosticsActions.onToggleDetails}
         onToggleEdit={isEditing ? editActions.onCancel : editActions.onStart}
         printer={printer}
         reviewTrayCount={reviewTrayCount}
         tauri={tauri}
       />
 
-      {expanded && liveConfig?.enabled ? (
+      {expanded && liveDiagnostics.liveConfig?.enabled ? (
         <SettingsBambuLiveObservedDetailsPanel
-          captureActive={captureActive}
-          diagnosticFilter={diagnosticFilter}
-          diagnosticSession={diagnosticSession}
-          diagnosticSort={diagnosticSort}
+          captureActive={liveDiagnostics.captureActive}
+          diagnosticFilter={liveDiagnostics.diagnosticFilter}
+          diagnosticSession={liveDiagnostics.diagnosticSession}
+          diagnosticSort={liveDiagnostics.diagnosticSort}
           downloadName={`${printer.name.replace(/\s+/g, "-").toLowerCase()}-live-capture.csv`}
-          liveConfig={liveConfig}
-          model={bambuDiagnostics}
-          onCopyError={onCopyError}
-          onCopySuccess={onCopySuccess}
-          onDiagnosticFilterChange={onDiagnosticFilterChange}
-          onDiagnosticSortChange={onDiagnosticSortChange}
-          onSelectedChartFieldChange={onSelectedChartFieldChange}
-          onToggleCapture={onToggleCapture}
+          liveConfig={liveDiagnostics.liveConfig}
+          model={liveDiagnostics.model}
+          onCopyError={liveDiagnosticsActions.onCopyError}
+          onCopySuccess={liveDiagnosticsActions.onCopySuccess}
+          onDiagnosticFilterChange={liveDiagnosticsActions.onDiagnosticFilterChange}
+          onDiagnosticSortChange={liveDiagnosticsActions.onDiagnosticSortChange}
+          onSelectedChartFieldChange={liveDiagnosticsActions.onSelectedChartFieldChange}
+          onToggleCapture={liveDiagnosticsActions.onToggleCapture}
           printerId={printer.id}
         />
       ) : null}

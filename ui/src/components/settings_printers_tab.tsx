@@ -23,6 +23,8 @@ import {
   SettingsPrinterCard,
   type SettingsPrinterEditActions,
   type SettingsPrinterEditDraft,
+  type SettingsPrinterLiveDiagnosticsActions,
+  type SettingsPrinterLiveDiagnosticsState,
 } from "./settings_printer_card";
 
 type SettingsPrintersTabProps = {
@@ -132,19 +134,6 @@ export function SettingsPrintersTab({
     slotsPerUnit: editSlotsPerUnit,
     units: editAmsUnits,
   };
-  const editActions: SettingsPrinterEditActions = {
-    onBambuLiveAccessCodeChange,
-    onBambuLiveEnabledChange,
-    onBambuLiveHostChange,
-    onBambuLivePrinterSerialChange,
-    onCancel: onCancelEditPrinter,
-    onModelChange: onEditPrinterModelChange,
-    onNameChange: onEditPrinterNameChange,
-    onSave: onSavePrinterReconfigure,
-    onSlotsPerUnitChange: onEditSlotsPerUnitChange,
-    onStart: () => undefined,
-    onUnitsChange: onEditAmsUnitsChange,
-  };
 
   return (
     <section className="surface-card xl:col-span-2">
@@ -181,52 +170,65 @@ export function SettingsPrintersTab({
             t,
           });
           const isEditing = editPrinterId === printer.id;
+          const editActions: SettingsPrinterEditActions = {
+            onBambuLiveAccessCodeChange,
+            onBambuLiveEnabledChange,
+            onBambuLiveHostChange,
+            onBambuLivePrinterSerialChange,
+            onCancel: onCancelEditPrinter,
+            onModelChange: onEditPrinterModelChange,
+            onNameChange: onEditPrinterNameChange,
+            onSave: onSavePrinterReconfigure,
+            onSlotsPerUnitChange: onEditSlotsPerUnitChange,
+            onStart: () => onStartEditPrinter(printer),
+            onUnitsChange: onEditAmsUnitsChange,
+          };
+          const liveDiagnostics: SettingsPrinterLiveDiagnosticsState = {
+            captureActive,
+            diagnosticFilter,
+            diagnosticSession,
+            diagnosticSort,
+            liveConfig,
+            model: bambuDiagnostics,
+          };
+          const liveDiagnosticsActions: SettingsPrinterLiveDiagnosticsActions = {
+            onCopyError,
+            onCopySuccess,
+            onDiagnosticFilterChange: (filter) =>
+              onDiagnosticFilterChange((current) => ({
+                ...current,
+                [printer.id]: filter,
+              })),
+            onDiagnosticSortChange: (sort) =>
+              onDiagnosticSortChange((current) => ({
+                ...current,
+                [printer.id]: sort,
+              })),
+            onSelectedChartFieldChange: (fieldPath) =>
+              onDiagnosticChartFieldChange((current) => ({
+                ...current,
+                [printer.id]: fieldPath,
+              })),
+            onToggleCapture: () => onToggleBambuLiveCapture(printer.id, captureActive),
+            onToggleDetails: () => onToggleBambuLiveDetails(printer.id),
+          };
 
           return (
             <SettingsPrinterCard
               key={printer.id}
-              bambuDiagnostics={bambuDiagnostics}
-              captureActive={captureActive}
               confirmDelete={confirmDeletePrinterId === printer.id}
-              diagnosticFilter={diagnosticFilter}
-              diagnosticSession={diagnosticSession}
-              diagnosticSort={diagnosticSort}
-              editActions={{
-                ...editActions,
-                onStart: () => onStartEditPrinter(printer),
-              }}
+              editActions={editActions}
               editDraft={editDraft}
               expanded={expandedBambuDetailsPrinterId === printer.id}
               isEditing={isEditing}
-              liveConfig={liveConfig}
+              liveDiagnostics={liveDiagnostics}
+              liveDiagnosticsActions={liveDiagnosticsActions}
               printer={printer}
               printerSlots={printerSlots}
               settingsClientReadOnly={settingsClientReadOnly}
               busy={busy}
               tauri={tauri}
-              onCopyError={onCopyError}
-              onCopySuccess={onCopySuccess}
-              onDiagnosticFilterChange={(filter) =>
-                onDiagnosticFilterChange((current) => ({
-                  ...current,
-                  [printer.id]: filter,
-                }))
-              }
-              onDiagnosticSortChange={(sort) =>
-                onDiagnosticSortChange((current) => ({
-                  ...current,
-                  [printer.id]: sort,
-                }))
-              }
               onRemove={() => onDeletePrinter(printer)}
-              onSelectedChartFieldChange={(fieldPath) =>
-                onDiagnosticChartFieldChange((current) => ({
-                  ...current,
-                  [printer.id]: fieldPath,
-                }))
-              }
-              onToggleCapture={() => onToggleBambuLiveCapture(printer.id, captureActive)}
-              onToggleDetails={() => onToggleBambuLiveDetails(printer.id)}
             />
           );
         })}
