@@ -283,3 +283,7 @@ export function createSettingsBambuLiveCaptureSession(
 ): DiagnosticCaptureSession {
   return buildDiagnosticCaptureSession(liveConfig?.observed_state ?? null);
 }
+
+export type SettingsBambuLiveDiagnosticTrayCard = ReturnType<
+  typeof buildSettingsBambuLiveDiagnosticsModel
+>["diagnosticTrayCards"][number];
