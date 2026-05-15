@@ -118,6 +118,9 @@ import {
 } from "./settings_backup_model";
 import {
   buildSettingsCatalogRefreshSuccessMessage,
+  buildSettingsCatalogRefreshFallbackErrorMessage,
+  buildSettingsCatalogRefreshPreparingMessage,
+  buildSettingsCatalogRefreshZeroImportMessage,
   buildSettingsCatalogState,
   buildSettingsNoMissingSwatchesMessage,
   buildSettingsSwatchBulkConfirmMessage,
@@ -2092,9 +2095,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setCatalogRefreshVendor(vendor);
     setCatalogRefreshPhase("PREPARE");
     setCatalogRefreshProgressMessage(
-      vendor === "Bambu"
-        ? t("wishlist.refreshPreparingBambu", "Preparing Bambu catalog refresh...")
-        : t("wishlist.refreshPreparingEsun", "Preparing eSUN catalog refresh..."),
+      buildSettingsCatalogRefreshPreparingMessage(vendor, settingsCatalogRefreshMessageLabels()),
     );
     setCatalogRefreshStartedAt(Date.now());
     setCatalogRefreshBusy(true);
@@ -2112,15 +2113,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       await reloadSettings();
       if (summary.imported === 0) {
         setError(
-          vendor === "Bambu"
-            ? t(
-                "wishlist.error.zeroBambu",
-                "Refresh completed with 0 imported rows. The store may be rate-limited or changed.",
-              )
-            : t(
-                "wishlist.error.zeroEsun",
-                "eSUN refresh completed with 0 imported rows. Store format may have changed.",
-              ),
+          buildSettingsCatalogRefreshZeroImportMessage(
+            vendor,
+            settingsCatalogRefreshMessageLabels(),
+          ),
         );
       } else {
         setInfo(
@@ -2133,10 +2129,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       }
     } catch (refreshError) {
       console.error(refreshError);
-      const fallbackMessage =
-        vendor === "Bambu"
-          ? t("wishlist.error.refreshBambu", "Catalog refresh failed.")
-          : t("wishlist.error.refreshEsun", "eSUN catalog refresh failed.");
+      const fallbackMessage = buildSettingsCatalogRefreshFallbackErrorMessage(
+        vendor,
+        settingsCatalogRefreshMessageLabels(),
+      );
       const message = toErrorMessage(refreshError, fallbackMessage);
       setCatalogRefreshLog(message);
       setShowCatalogRefreshLog(true);
@@ -2147,6 +2143,29 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setCatalogRefreshBusy(false);
       setCatalogRefreshStartedAt(null);
     }
+  }
+
+  function settingsCatalogRefreshMessageLabels() {
+    return {
+      refreshBambuFailed: t("wishlist.error.refreshBambu", "Catalog refresh failed."),
+      refreshEsunFailed: t("wishlist.error.refreshEsun", "eSUN catalog refresh failed."),
+      refreshPreparingBambu: t(
+        "wishlist.refreshPreparingBambu",
+        "Preparing Bambu catalog refresh...",
+      ),
+      refreshPreparingEsun: t(
+        "wishlist.refreshPreparingEsun",
+        "Preparing eSUN catalog refresh...",
+      ),
+      zeroBambu: t(
+        "wishlist.error.zeroBambu",
+        "Refresh completed with 0 imported rows. The store may be rate-limited or changed.",
+      ),
+      zeroEsun: t(
+        "wishlist.error.zeroEsun",
+        "eSUN refresh completed with 0 imported rows. Store format may have changed.",
+      ),
+    };
   }
 
   async function handleSaveMissingSwatch(master: MasterCatalogRow) {

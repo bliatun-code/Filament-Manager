@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildSettingsCatalogRefreshSuccessMessage,
+  buildSettingsCatalogRefreshFallbackErrorMessage,
+  buildSettingsCatalogRefreshPreparingMessage,
+  buildSettingsCatalogRefreshZeroImportMessage,
   buildSettingsCatalogState,
   buildSettingsNoMissingSwatchesMessage,
   buildSettingsSwatchBulkResultMessage,
@@ -157,6 +160,37 @@ test("settings catalog refresh success message keeps the compact summary stable"
       discontinued: "Discontinued",
     }),
     "Imported 12 · Reactivated 2 · Discontinued 1",
+  );
+});
+
+test("settings catalog refresh vendor messages follow the selected vendor", () => {
+  const labels = {
+    refreshBambuFailed: "Catalog refresh failed.",
+    refreshEsunFailed: "eSUN catalog refresh failed.",
+    refreshPreparingBambu: "Preparing Bambu catalog refresh...",
+    refreshPreparingEsun: "Preparing eSUN catalog refresh...",
+    zeroBambu:
+      "Refresh completed with 0 imported rows. The store may be rate-limited or changed.",
+    zeroEsun: "eSUN refresh completed with 0 imported rows. Store format may have changed.",
+  };
+
+  assert.equal(
+    buildSettingsCatalogRefreshPreparingMessage("Bambu", labels),
+    labels.refreshPreparingBambu,
+  );
+  assert.equal(
+    buildSettingsCatalogRefreshPreparingMessage("eSUN", labels),
+    labels.refreshPreparingEsun,
+  );
+  assert.equal(buildSettingsCatalogRefreshZeroImportMessage("Bambu", labels), labels.zeroBambu);
+  assert.equal(buildSettingsCatalogRefreshZeroImportMessage("eSUN", labels), labels.zeroEsun);
+  assert.equal(
+    buildSettingsCatalogRefreshFallbackErrorMessage("Bambu", labels),
+    labels.refreshBambuFailed,
+  );
+  assert.equal(
+    buildSettingsCatalogRefreshFallbackErrorMessage("eSUN", labels),
+    labels.refreshEsunFailed,
   );
 });
 

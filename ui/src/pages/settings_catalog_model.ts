@@ -120,6 +120,36 @@ export function buildSettingsCatalogRefreshSuccessMessage(
   return `${labels.imported} ${summary.imported} · ${labels.reactivated} ${summary.reactivated_count} · ${labels.discontinued} ${summary.discontinued_count}`;
 }
 
+export type SettingsCatalogRefreshMessageLabels = {
+  refreshBambuFailed: string;
+  refreshEsunFailed: string;
+  refreshPreparingBambu: string;
+  refreshPreparingEsun: string;
+  zeroBambu: string;
+  zeroEsun: string;
+};
+
+export function buildSettingsCatalogRefreshPreparingMessage(
+  vendor: SettingsCatalogVendor,
+  labels: Pick<SettingsCatalogRefreshMessageLabels, "refreshPreparingBambu" | "refreshPreparingEsun">,
+): string {
+  return vendor === "Bambu" ? labels.refreshPreparingBambu : labels.refreshPreparingEsun;
+}
+
+export function buildSettingsCatalogRefreshZeroImportMessage(
+  vendor: SettingsCatalogVendor,
+  labels: Pick<SettingsCatalogRefreshMessageLabels, "zeroBambu" | "zeroEsun">,
+): string {
+  return vendor === "Bambu" ? labels.zeroBambu : labels.zeroEsun;
+}
+
+export function buildSettingsCatalogRefreshFallbackErrorMessage(
+  vendor: SettingsCatalogVendor,
+  labels: Pick<SettingsCatalogRefreshMessageLabels, "refreshBambuFailed" | "refreshEsunFailed">,
+): string {
+  return vendor === "Bambu" ? labels.refreshBambuFailed : labels.refreshEsunFailed;
+}
+
 export type SettingsSwatchBulkResult = {
   failed: number;
   skipped: number;
