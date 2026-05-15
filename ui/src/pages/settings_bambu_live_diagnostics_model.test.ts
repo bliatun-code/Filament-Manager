@@ -5,6 +5,7 @@ import {
   buildSettingsBambuLiveDiagnosticGroups,
   buildSettingsBambuLiveFallbackSummaryParts,
   buildSettingsBambuLiveDiagnosticsModel,
+  buildSettingsBambuLiveInventoryCandidateCards,
   buildSettingsBambuLiveInventoryMatchDescription,
   buildSettingsBambuLiveObservedSummaryParts,
   buildSettingsBambuLiveSignalQualityBuckets,
@@ -404,4 +405,78 @@ test("Bambu live inventory match descriptions stay explicit for each match state
     }),
     "No clear inventory match yet.",
   );
+});
+
+test("Bambu live inventory candidate cards format at most three candidates", () => {
+  const candidates = buildSettingsBambuLiveInventoryCandidateCards({
+    candidates: [
+      createSpoolRow(),
+      createSpoolRow({
+        master: {
+          id: "master-2",
+          material: "PLA",
+          filament_name: "PLA Matte",
+          color_name: "Black",
+          hex_color: "#111111",
+          default_weight: 1000,
+          vendor: "Bambu",
+        },
+        spool: {
+          id: "spool-2",
+          master_id: "master-2",
+          rfid_tag: "",
+          status: "IN_STOCK",
+        },
+      }),
+      createSpoolRow({
+        master: {
+          id: "master-3",
+          material: "PETG",
+          filament_name: "PETG Basic",
+          color_name: "Blue",
+          hex_color: "#0066FF",
+          default_weight: 1000,
+          vendor: "eSUN",
+        },
+        spool: {
+          id: "spool-3",
+          master_id: "master-3",
+          rfid_tag: "XYZ789",
+          status: "IN_STOCK",
+        },
+      }),
+      createSpoolRow({
+        master: {
+          id: "master-4",
+          material: "ABS",
+          filament_name: "ABS Basic",
+          color_name: "Grey",
+          hex_color: "#777777",
+          default_weight: 1000,
+          vendor: "Bambu",
+        },
+        spool: {
+          id: "spool-4",
+          master_id: "master-4",
+          rfid_tag: "IGNORED",
+          status: "IN_STOCK",
+        },
+      }),
+    ],
+    t,
+  });
+
+  assert.deepEqual(
+    candidates.map((candidate) => candidate.key),
+    ["spool-1", "spool-2", "spool-3"],
+  );
+  assert.deepEqual(
+    candidates.map((candidate) => candidate.title),
+    ["PLA Basic · Orange", "PLA Matte · Black", "PETG Basic · Blue"],
+  );
+  assert.deepEqual(
+    candidates.map((candidate) => candidate.subtitle),
+    ["RFID saved · spool-1", "No RFID saved · spool-2", "RFID saved · spool-3"],
+  );
+  assert.ok(candidates.every((candidate) => candidate.swatchColor));
 });

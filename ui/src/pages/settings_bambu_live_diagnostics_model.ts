@@ -258,6 +258,23 @@ export function buildSettingsBambuLiveInventoryMatchDescription({
   return t("settings.bambuLiveInventoryNoMatch", "No clear inventory match yet.");
 }
 
+export function buildSettingsBambuLiveInventoryCandidateCards({
+  candidates,
+  t,
+}: {
+  candidates: SpoolWithMasterRow[];
+  t: TranslateFn;
+}) {
+  return candidates.slice(0, 3).map((candidate) => ({
+    key: candidate.spool.id,
+    subtitle: candidate.spool.rfid_tag?.trim()
+      ? `${t("settings.bambuLiveCandidateRfidSaved", "RFID saved")} · ${candidate.spool.id}`
+      : `${t("settings.bambuLiveCandidateNoRfidSaved", "No RFID saved")} · ${candidate.spool.id}`,
+    swatchColor: toSwatchColor(candidate.master.hex_color),
+    title: `${candidate.master.filament_name} · ${candidate.master.color_name}`,
+  }));
+}
+
 export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticFilter,
   diagnosticSession,
@@ -344,14 +361,10 @@ export function buildSettingsBambuLiveDiagnosticsModel({
         inventoryMatch.kind === "metadata_multiple"
           ? `${inventoryMatch.candidates.length} ${t("settings.bambuLiveCandidateCount", "candidates")}`
           : null,
-      candidates: inventoryMatch.candidates.slice(0, 3).map((candidate) => ({
-        key: candidate.spool.id,
-        subtitle: candidate.spool.rfid_tag?.trim()
-          ? `${t("settings.bambuLiveCandidateRfidSaved", "RFID saved")} · ${candidate.spool.id}`
-          : `${t("settings.bambuLiveCandidateNoRfidSaved", "No RFID saved")} · ${candidate.spool.id}`,
-        swatchColor: toSwatchColor(candidate.master.hex_color),
-        title: `${candidate.master.filament_name} · ${candidate.master.color_name}`,
-      })),
+      candidates: buildSettingsBambuLiveInventoryCandidateCards({
+        candidates: inventoryMatch.candidates,
+        t,
+      }),
       detailText:
         [
           tray.filament_type,
