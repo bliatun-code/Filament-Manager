@@ -113,6 +113,7 @@ import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
 import { useSettingsSwatchDrafts } from "./use_settings_swatch_drafts";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
+import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
 import {
   buildSettingsInventoryOverviewPrintErrorMessage,
   buildSettingsInventoryOverviewPrintPdfLabels,
@@ -241,11 +242,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [trustedLanPairingExpiresAtMs, setTrustedLanPairingExpiresAtMs] = useState<number | null>(
     null,
   );
-  const [trustedLanPairingQrDataUrl, setTrustedLanPairingQrDataUrl] = useState<string | null>(
-    null,
-  );
-  const [trustedLanPairingQrBusy, setTrustedLanPairingQrBusy] = useState(false);
-  const [trustedLanPairingQrUnavailable, setTrustedLanPairingQrUnavailable] = useState(false);
+  const {
+    pairingQrBusy: trustedLanPairingQrBusy,
+    pairingQrDataUrl: trustedLanPairingQrDataUrl,
+    pairingQrUnavailable: trustedLanPairingQrUnavailable,
+  } = useTrustedLanPairingQr(trustedLanPairingLink);
   const [showTrustedLanRevokedBrowsers, setShowTrustedLanRevokedBrowsers] = useState(false);
   const trustedLanPairedBrowsersRef = useRef<TrustedLanPairedBrowser[]>([]);
   const trustedLanPairedBrowsersRefreshInFlightRef = useRef(false);
@@ -1275,48 +1276,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanPairingLink,
     trustedLanStatus?.enabled,
   ]);
-
-  useEffect(() => {
-    if (!trustedLanPairingLink) {
-      setTrustedLanPairingQrDataUrl(null);
-      setTrustedLanPairingQrBusy(false);
-      setTrustedLanPairingQrUnavailable(false);
-      return;
-    }
-
-    let cancelled = false;
-    setTrustedLanPairingQrDataUrl(null);
-    setTrustedLanPairingQrBusy(true);
-    setTrustedLanPairingQrUnavailable(false);
-
-    void import("../lib/trusted_lan_pairing_qr")
-      .then(({ buildTrustedLanPairingQrDataUrl }) =>
-        buildTrustedLanPairingQrDataUrl(trustedLanPairingLink),
-      )
-      .then((dataUrl) => {
-        if (cancelled) {
-          return;
-        }
-        setTrustedLanPairingQrDataUrl(dataUrl);
-      })
-      .catch((qrError) => {
-        console.error(qrError);
-        if (cancelled) {
-          return;
-        }
-        setTrustedLanPairingQrUnavailable(true);
-      })
-      .finally(() => {
-        if (cancelled) {
-          return;
-        }
-        setTrustedLanPairingQrBusy(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [trustedLanPairingLink]);
 
   useSettingsPrinterDeleteConfirm({
     confirmDeletePrinterId,
