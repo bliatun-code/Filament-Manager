@@ -14,6 +14,7 @@ import { buildSettingsLibraryClientPanelProps } from "./settings_library_client_
 import { buildSettingsLibraryRolePanelProps } from "./settings_library_role_panel_props";
 import { buildSettingsLibraryServerPanelProps } from "./settings_library_server_panel_props";
 import { buildSettingsLibraryPairingPanelProps } from "./settings_library_pairing_panel_props";
+import { buildSettingsLibraryRouteProps } from "./settings_library_route_props";
 import { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_route";
 import { SettingsLibraryTab } from "./settings_library_tab";
 import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
@@ -1002,6 +1003,18 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     onRenewClientAuth: handleRenewLibrarySyncClientAuth,
     onToggleAdvanced: () => setShowLibraryClientAdvanced((value) => !value),
   });
+  const settingsLibraryRouteProps = buildSettingsLibraryRouteProps({
+    browsersPanel: settingsLibraryBrowsersPanelProps,
+    clientPanel: settingsLibraryClientPanelProps,
+    libraryRolePanel: settingsLibraryRolePanelProps,
+    pairingPanel: settingsLibraryPairingPanelProps,
+    serverPanel: settingsLibraryServerPanelProps,
+    showClientPanel: librarySyncModeDraft === "CLIENT",
+    showHostPanels: librarySyncModeDraft !== "CLIENT",
+    showServerPanel: librarySyncModeDraft !== "CLIENT" && libraryVisibility.showWebappDetails,
+    title: librarySyncTabLabels.title,
+    webappControl: settingsLibraryWebappControlProps,
+  });
   return (
     <div className="page-shell">
       <SettingsPageHeader
@@ -1030,32 +1043,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           ),
 
           LIBRARY: (
-          <SettingsLibraryTab
-            browsersPanel={{
-              ...settingsLibraryBrowsersPanelProps,
-            }}
-            clientPanel={{
-              ...settingsLibraryClientPanelProps,
-            }}
-            libraryRolePanel={{
-              ...settingsLibraryRolePanelProps,
-            }}
-            pairingPanel={{
-              ...settingsLibraryPairingPanelProps,
-            }}
-            serverPanel={{
-              ...settingsLibraryServerPanelProps,
-            }}
-            showClientPanel={librarySyncModeDraft === "CLIENT"}
-            showHostPanels={librarySyncModeDraft !== "CLIENT"}
-            showServerPanel={
-              librarySyncModeDraft !== "CLIENT" && libraryVisibility.showWebappDetails
-            }
-            title={librarySyncTabLabels.title}
-            webappControl={{
-              ...settingsLibraryWebappControlProps,
-            }}
-          />
+          <SettingsLibraryTab {...settingsLibraryRouteProps} />
           ),
 
           CATALOG: (
