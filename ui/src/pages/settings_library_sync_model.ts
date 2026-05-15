@@ -51,8 +51,25 @@ export type LibrarySyncClientState = {
   hostPairingValid: boolean;
 };
 
+export type LibrarySyncActionMessageKey =
+  | "clientAuthCleared"
+  | "clientPaired"
+  | "hostCheckPassed"
+  | "renewPairing"
+  | "settingsSaved"
+  | "snapshotRefreshed";
+
+export type LibrarySyncActionMessageLabels = Record<LibrarySyncActionMessageKey, string>;
+
 export function normalizeLibrarySyncMode(mode: string | null | undefined): LibrarySyncMode {
   return mode === "HOST" || mode === "CLIENT" ? mode : "STANDALONE";
+}
+
+export function buildLibrarySyncActionMessage(
+  action: LibrarySyncActionMessageKey,
+  labels: LibrarySyncActionMessageLabels,
+): string {
+  return labels[action];
 }
 
 export function buildLibrarySyncClientState(input: {

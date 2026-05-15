@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildLibrarySyncActionMessage,
   buildLibrarySyncPairingSettingsInput,
   buildLibrarySyncSaveSettingsInput,
   buildLibrarySyncClientState,
@@ -33,6 +34,30 @@ test("normalizeLibrarySyncMode falls back for unknown persisted values", () => {
   assert.equal(normalizeLibrarySyncMode("STANDALONE"), "STANDALONE");
   assert.equal(normalizeLibrarySyncMode("legacy"), "STANDALONE");
   assert.equal(normalizeLibrarySyncMode(null), "STANDALONE");
+});
+
+test("buildLibrarySyncActionMessage returns stable action feedback copy", () => {
+  const labels = {
+    clientAuthCleared: "Desktop client pairing was removed from this device.",
+    clientPaired: "Desktop client paired successfully and is now using the detected host.",
+    hostCheckPassed: "Host check passed.",
+    renewPairing: "Saved pairing was cleared. Paste a fresh pairing link from the host to continue.",
+    settingsSaved: "Library role settings saved.",
+    snapshotRefreshed: "Host snapshot refreshed.",
+  };
+
+  assert.equal(buildLibrarySyncActionMessage("settingsSaved", labels), labels.settingsSaved);
+  assert.equal(buildLibrarySyncActionMessage("hostCheckPassed", labels), labels.hostCheckPassed);
+  assert.equal(buildLibrarySyncActionMessage("clientPaired", labels), labels.clientPaired);
+  assert.equal(
+    buildLibrarySyncActionMessage("clientAuthCleared", labels),
+    labels.clientAuthCleared,
+  );
+  assert.equal(buildLibrarySyncActionMessage("renewPairing", labels), labels.renewPairing);
+  assert.equal(
+    buildLibrarySyncActionMessage("snapshotRefreshed", labels),
+    labels.snapshotRefreshed,
+  );
 });
 
 test("buildLibrarySyncClientState derives client write and repair state", () => {

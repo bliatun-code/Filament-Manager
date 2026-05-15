@@ -93,6 +93,7 @@ import {
   resolveTrustedLanInterfaceAddressDraft,
 } from "./settings_companion_model";
 import {
+  buildLibrarySyncActionMessage,
   buildLibrarySyncClientState,
   buildLibrarySyncPairingSettingsInput,
   buildLibrarySyncSaveSettingsInput,
@@ -846,6 +847,24 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     void loadTrustedLanCompanionStatus();
   }, [loadTrustedLanCompanionStatus, reloadSettings, tauri]);
 
+  const librarySyncActionMessageLabels = useCallback(() => ({
+    clientAuthCleared: t(
+      "settings.librarySyncClientAuthCleared",
+      "Desktop client pairing was removed from this device.",
+    ),
+    clientPaired: t(
+      "settings.librarySyncClientPaired",
+      "Desktop client paired successfully and is now using the detected host.",
+    ),
+    hostCheckPassed: t("settings.librarySyncHostCheckOk", "Host check passed."),
+    renewPairing: t(
+      "settings.librarySyncRenewPairingInfo",
+      "Saved pairing was cleared. Paste a fresh pairing link from the host to continue.",
+    ),
+    settingsSaved: t("settings.librarySyncSaved", "Library role settings saved."),
+    snapshotRefreshed: t("settings.librarySyncSnapshotRefreshed", "Host snapshot refreshed."),
+  }), [t]);
+
   const handleSaveLibrarySyncSettings = useCallback(async (nextMode = librarySyncModeDraft) => {
     if (!tauri || !librarySyncSettings) {
       return false;
@@ -906,12 +925,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         setLibrarySyncValidation(null);
         setLibrarySyncSnapshot(null);
       }
-      setInfo(
-        t(
-          "settings.librarySyncSaved",
-          "Library role settings saved.",
-        ),
-      );
+      setInfo(buildLibrarySyncActionMessage("settingsSaved", librarySyncActionMessageLabels()));
       return true;
     } catch (saveError) {
       console.error(saveError);
@@ -928,6 +942,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   }, [
     librarySyncDeviceNameDraft,
     librarySyncHostBaseUrlDraft,
+    librarySyncActionMessageLabels,
     librarySyncModeDraft,
     librarySyncSettings,
     persistTrustedLanConfig,
@@ -1027,7 +1042,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         if (result.pairing_checked && !result.pairing_valid) {
           return;
         }
-        showTransientInfo(t("settings.librarySyncHostCheckOk", "Host check passed."));
+        showTransientInfo(
+          buildLibrarySyncActionMessage("hostCheckPassed", librarySyncActionMessageLabels()),
+        );
       }
     } catch (validationError) {
       console.error(validationError);
@@ -1045,6 +1062,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     librarySyncSettings,
     settingsClientHostBaseUrl,
     showTransientInfo,
+    librarySyncActionMessageLabels,
     t,
     tauri,
   ]);
@@ -1090,12 +1108,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setLibrarySyncDeviceNameDraft(saved.device_name ?? librarySyncDeviceNameDraft);
       setLibrarySyncHostBaseUrlDraft(saved.host_base_url ?? validation.base_url);
       setLibrarySyncPairingDraft("");
-      setInfo(
-        t(
-          "settings.librarySyncClientPaired",
-          "Desktop client paired successfully and is now using the detected host.",
-        ),
-      );
+      setInfo(buildLibrarySyncActionMessage("clientPaired", librarySyncActionMessageLabels()));
     } catch (pairError) {
       console.error(pairError);
       if (validation) {
@@ -1123,7 +1136,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setLibrarySyncBusy(false);
     }
-  }, [librarySyncDeviceNameDraft, librarySyncPairingDraft, t, tauri]);
+  }, [librarySyncActionMessageLabels, librarySyncDeviceNameDraft, librarySyncPairingDraft, t, tauri]);
 
   const handleClearLibrarySyncClientAuth = useCallback(async () => {
     if (!tauri || librarySyncBusy) {
@@ -1136,12 +1149,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       const cleared = await clearLibrarySyncClientAuth();
       setLibrarySyncSettings(cleared);
       setLibrarySyncPairingDraft("");
-      setInfo(
-        t(
-          "settings.librarySyncClientAuthCleared",
-          "Desktop client pairing was removed from this device.",
-        ),
-      );
+      setInfo(buildLibrarySyncActionMessage("clientAuthCleared", librarySyncActionMessageLabels()));
     } catch (clearError) {
       console.error(clearError);
       setError(
@@ -1156,7 +1164,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setLibrarySyncBusy(false);
     }
-  }, [librarySyncBusy, t, tauri]);
+  }, [librarySyncActionMessageLabels, librarySyncBusy, t, tauri]);
 
   const handleRenewLibrarySyncClientAuth = useCallback(async () => {
     if (!tauri || librarySyncBusy) {
@@ -1170,12 +1178,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setLibrarySyncSettings(cleared);
       setLibrarySyncValidation(null);
       setLibrarySyncPairingDraft("");
-      setInfo(
-        t(
-          "settings.librarySyncRenewPairingInfo",
-          "Saved pairing was cleared. Paste a fresh pairing link from the host to continue.",
-        ),
-      );
+      setInfo(buildLibrarySyncActionMessage("renewPairing", librarySyncActionMessageLabels()));
     } catch (clearError) {
       console.error(clearError);
       setError(
@@ -1190,7 +1193,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setLibrarySyncBusy(false);
     }
-  }, [librarySyncBusy, t, tauri]);
+  }, [librarySyncActionMessageLabels, librarySyncBusy, t, tauri]);
 
   useEffect(() => {
     if (activeTab !== "LIBRARY") {
@@ -1249,9 +1252,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       );
       setLibrarySyncSettings(refreshed.syncSettings);
       setLibrarySyncSnapshot(refreshed.snapshot);
-      setInfo(
-        t("settings.librarySyncSnapshotRefreshed", "Host snapshot refreshed."),
-      );
+      setInfo(buildLibrarySyncActionMessage("snapshotRefreshed", librarySyncActionMessageLabels()));
     } catch (snapshotError) {
       console.error(snapshotError);
       setError(
@@ -1263,7 +1264,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setLibrarySyncSnapshotBusy(false);
     }
-  }, [librarySyncHostBaseUrlDraft, librarySyncSettings, t, tauri]);
+  }, [librarySyncActionMessageLabels, librarySyncHostBaseUrlDraft, librarySyncSettings, t, tauri]);
 
   useEffect(() => {
     if (
