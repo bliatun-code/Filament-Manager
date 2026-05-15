@@ -3,11 +3,11 @@ import {
   isTauri,
 } from "../lib/tauri_client";
 import { useI18n } from "../lib/i18n";
-import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
 import { SettingsCatalogTab } from "./settings_catalog_tab";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
 import { SettingsGeneralRoute } from "./settings_general_route";
+import { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_route";
 import { SettingsLibraryTab } from "./settings_library_tab";
 import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
 import { SettingsPageHeader } from "./settings_page_header";
@@ -1041,23 +1041,25 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           />
         ) : null}
       </div>
-      <SettingsLibraryRoleModal
-        busy={busy}
-        lastFullBackupExportedAt={lastFullBackupExportedAt}
-        lastFullBackupImportedAt={lastFullBackupImportedAt}
-        lastFullBackupValidatedAt={lastFullBackupValidatedAt}
-        libraryRoleConfirmArmed={libraryRoleConfirmArmed}
-        librarySyncBusy={librarySyncBusy}
-        librarySyncSettings={librarySyncSettings}
-        locale={locale}
-        roleChangeState={roleChangeState}
-        tauri={tauri}
-        t={t}
-        onClose={closeLibraryRoleChangeModal}
-        onConfirm={() => void handleConfirmLibraryRoleChange()}
-        onExportFullBackup={() => void handleExportFullBackup()}
-        onOpenBackupValidate={handleOpenBackupValidate}
-        onOpenDataImport={handleOpenDataImport}
+      <SettingsLibraryRoleModalRoute
+        modal={{
+          busy,
+          lastFullBackupExportedAt,
+          lastFullBackupImportedAt,
+          lastFullBackupValidatedAt,
+          libraryRoleConfirmArmed,
+          librarySyncBusy,
+          librarySyncSettings,
+          locale,
+          roleChangeState,
+          tauri,
+          t,
+          onClose: closeLibraryRoleChangeModal,
+          onConfirm: () => void handleConfirmLibraryRoleChange(),
+          onExportFullBackup: () => void handleExportFullBackup(),
+          onOpenBackupValidate: handleOpenBackupValidate,
+          onOpenDataImport: handleOpenDataImport,
+        }}
       />
     </div>
   );
