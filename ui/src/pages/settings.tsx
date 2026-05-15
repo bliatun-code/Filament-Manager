@@ -24,15 +24,12 @@ import { SettingsRouteOutlet } from "./settings_route_outlet";
 import { SettingsTabNav } from "./settings_tab_nav";
 import { useSettingsFeedbackState } from "./use_settings_feedback_state";
 import { useSettingsCatalogSectionState } from "./use_settings_catalog_section_state";
-import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagnostics";
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
 import { useSettingsBackupFileInputs } from "./use_settings_backup_file_inputs";
 import { useSettingsBackupValidationSummary } from "./use_settings_backup_validation_summary";
 import { useSettingsCatalogRefreshActions } from "./use_settings_catalog_refresh_actions";
-import { useSettingsPrinterEditDraft } from "./use_settings_printer_edit_draft";
 import { useSettingsPrinterActions } from "./use_settings_printer_actions";
-import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_confirm";
-import { useSettingsPrinterDerivedState } from "./use_settings_printer_derived_state";
+import { useSettingsPrinterSectionState } from "./use_settings_printer_section_state";
 import { useSettingsResetConfirm } from "./use_settings_reset_confirm";
 import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
 import { useSettingsPageDataState } from "./use_settings_page_data_state";
@@ -274,16 +271,29 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   });
   const {
     cancelPrinterEdit,
+    confirmDeletePrinterId,
+    diagnosticCaptureActiveByPrinterId,
+    diagnosticCaptureByPrinterId,
+    diagnosticChartFieldByPrinterId,
+    diagnosticFilterByPrinterId,
+    diagnosticSortByPrinterId,
     editAmsUnits,
     editBambuLiveAccessCode,
     editBambuLiveEnabled,
     editBambuLiveHost,
     editBambuLivePrinterSerial,
+    editModelProfile,
     editPrinterId,
     editPrinterModel,
     editPrinterName,
     editSlotsPerUnit,
+    ensureDiagnosticSession,
     expandedBambuDetailsPrinterId,
+    printerSlotsByPrinterId,
+    setConfirmDeletePrinterId,
+    setDiagnosticChartFieldByPrinterId,
+    setDiagnosticFilterByPrinterId,
+    setDiagnosticSortByPrinterId,
     setEditAmsUnits,
     setEditBambuLiveAccessCode,
     setEditBambuLiveEnabled,
@@ -293,29 +303,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setEditPrinterName,
     setEditSlotsPerUnit,
     setExpandedBambuDetailsPrinterId,
-    startPrinterEdit,
-  } = useSettingsPrinterEditDraft();
-  const {
-    diagnosticCaptureActiveByPrinterId,
-    diagnosticCaptureByPrinterId,
-    diagnosticChartFieldByPrinterId,
-    diagnosticFilterByPrinterId,
-    diagnosticSortByPrinterId,
-    ensureDiagnosticSession,
-    setDiagnosticChartFieldByPrinterId,
-    setDiagnosticFilterByPrinterId,
-    setDiagnosticSortByPrinterId,
-    toggleBambuLiveCapture,
-  } = useSettingsBambuLiveDiagnostics({
-    bambuLiveIntegrations,
-    expandedBambuDetailsPrinterId,
-  });
-  const {
-    editModelProfile,
-    printerSlotsByPrinterId,
     sortedPrinters,
-  } = useSettingsPrinterDerivedState({
-    editPrinterModel,
+    startPrinterEdit,
+    toggleBambuLiveCapture,
+  } = useSettingsPrinterSectionState({
+    bambuLiveIntegrations,
     locale,
     printerOverview,
     printers,
@@ -500,9 +492,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanPairingLink,
     trustedLanStatusEnabled: Boolean(trustedLanStatus?.enabled),
   });
-
-  const { confirmDeletePrinterId, setConfirmDeletePrinterId } =
-    useSettingsPrinterDeleteConfirm({ printers });
 
   const { clearConfirmResetAction, confirmResetAction, setConfirmResetAction } =
     useSettingsResetConfirm();
