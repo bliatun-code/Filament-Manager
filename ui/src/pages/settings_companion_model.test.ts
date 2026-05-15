@@ -6,6 +6,7 @@ import {
   buildTrustedLanActionMessage,
   buildTrustedLanConfigMessage,
   buildTrustedLanCompanionModel,
+  buildTrustedLanNoPrivateInterfaceMessage,
   findNewTrustedLanActiveBrowserIds,
   buildTrustedLanPairedBrowserListModel,
   isTrustedLanNetworkDraftDirty,
@@ -418,4 +419,13 @@ test("buildTrustedLanConfigMessage returns stable configuration feedback copy", 
   assert.equal(buildTrustedLanConfigMessage("networkSaved", labels), labels.networkSaved);
   assert.equal(buildTrustedLanConfigMessage("starting", labels), labels.starting);
   assert.equal(buildTrustedLanConfigMessage("enabledPending", labels), labels.enabledPending);
+});
+
+test("buildTrustedLanNoPrivateInterfaceMessage returns stable validation copy", () => {
+  assert.equal(
+    buildTrustedLanNoPrivateInterfaceMessage({
+      noPrivateInterface: "Pick a private interface before turning on the web app server.",
+    }),
+    "Pick a private interface before turning on the web app server.",
+  );
 });

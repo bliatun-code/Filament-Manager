@@ -88,6 +88,7 @@ import {
   buildTrustedLanActionMessage,
   buildTrustedLanConfigMessage,
   buildTrustedLanCompanionModel,
+  buildTrustedLanNoPrivateInterfaceMessage,
   findNewTrustedLanActiveBrowserIds,
   buildTrustedLanPairedBrowserListModel,
   isTrustedLanNetworkDraftDirty,
@@ -771,6 +772,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     starting: t("settings.trustedLanStartingInfo", "Starting web app server..."),
   }), [t]);
 
+  const trustedLanValidationMessageLabels = useCallback(() => ({
+    noPrivateInterface: t(
+      "settings.error.trustedLanNoInterface",
+      "Pick a private interface before turning on the web app server.",
+    ),
+  }), [t]);
+
   const persistTrustedLanConfig = useCallback(
     async (nextEnabled: boolean, successMessage: string): Promise<boolean> => {
       if (!tauri) {
@@ -778,12 +786,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       }
 
       if (nextEnabled && !trustedLanSelectedInterfaceOption) {
-        setError(
-          t(
-            "settings.error.trustedLanNoInterface",
-            "Pick a private interface before turning on the web app server.",
-          ),
-        );
+        setError(buildTrustedLanNoPrivateInterfaceMessage(trustedLanValidationMessageLabels()));
         return false;
       }
 
@@ -850,6 +853,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       trustedLanInterfaces,
       trustedLanPortDraft,
       trustedLanSelectedInterfaceOption,
+      trustedLanValidationMessageLabels,
     ],
   );
 
@@ -890,12 +894,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       if (nextMode === "HOST") {
         const fallbackInterface = trustedLanSelectedInterfaceOption ?? trustedLanInterfaces[0] ?? null;
         if (!fallbackInterface) {
-          setError(
-            t(
-              "settings.error.trustedLanNoInterface",
-              "Pick a private interface before turning on the web app server.",
-            ),
-          );
+          setError(buildTrustedLanNoPrivateInterfaceMessage(trustedLanValidationMessageLabels()));
           return false;
         }
         if (!trustedLanSelectedInterfaceOption) {
@@ -966,6 +965,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanInterfaces,
     trustedLanSelectedInterfaceOption,
     trustedLanStatus?.enabled,
+    trustedLanValidationMessageLabels,
   ]);
 
   const closeLibraryRoleChangeModal = useCallback(() => {

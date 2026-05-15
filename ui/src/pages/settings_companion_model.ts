@@ -69,6 +69,10 @@ export type TrustedLanConfigMessageKey =
 
 export type TrustedLanConfigMessageLabels = Record<TrustedLanConfigMessageKey, string>;
 
+export type TrustedLanValidationMessageLabels = {
+  noPrivateInterface: string;
+};
+
 type BuildTrustedLanPairedBrowserListInput = {
   browsers: TrustedLanPairedBrowser[];
   locale: Locale;
@@ -198,6 +202,12 @@ export function buildTrustedLanConfigMessage(
   labels: TrustedLanConfigMessageLabels,
 ): string {
   return labels[action];
+}
+
+export function buildTrustedLanNoPrivateInterfaceMessage(
+  labels: TrustedLanValidationMessageLabels,
+): string {
+  return labels.noPrivateInterface;
 }
 
 export function resolveTrustedLanInterfaceAddressDraft(
