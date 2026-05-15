@@ -11,6 +11,7 @@ import {
   buildSettingsBambuLiveObservedRfid,
   buildSettingsBambuLiveObservedSummaryParts,
   buildSettingsBambuLiveSignalQualityBuckets,
+  buildSettingsBambuLiveTrayLabels,
   buildSettingsBambuLiveTrayReviewState,
   buildSettingsBambuLiveTrayDisplayText,
   createSettingsBambuLiveCaptureSession,
@@ -635,6 +636,36 @@ test("Bambu live tray review state suppresses review while reading AMS", () => {
       hasReview: false,
       matchNote: "exact",
       reviewTitle: "exact",
+    },
+  );
+});
+
+test("Bambu live tray labels keep stable ids and optional RFID text", () => {
+  assert.deepEqual(
+    buildSettingsBambuLiveTrayLabels({
+      observedRfid: "ABC123",
+      t,
+      tray: createObservedTray({ tray_index: 2 }),
+    }),
+    {
+      key: "live-tray-2",
+      mqttTrayLabel: "MQTT tray 2",
+      observedRfidLabel: "Observed: ABC123",
+      slotLabel: "Slot 3",
+    },
+  );
+
+  assert.deepEqual(
+    buildSettingsBambuLiveTrayLabels({
+      observedRfid: null,
+      t,
+      tray: createObservedTray({ tray_index: 0 }),
+    }),
+    {
+      key: "live-tray-0",
+      mqttTrayLabel: "MQTT tray 0",
+      observedRfidLabel: null,
+      slotLabel: "Slot 1",
     },
   );
 });

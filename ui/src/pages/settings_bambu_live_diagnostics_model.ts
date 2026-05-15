@@ -351,6 +351,25 @@ export function buildSettingsBambuLiveTrayReviewState({
   };
 }
 
+export function buildSettingsBambuLiveTrayLabels({
+  observedRfid,
+  t,
+  tray,
+}: {
+  observedRfid: string | null;
+  t: TranslateFn;
+  tray: BambuLiveObservedTray;
+}) {
+  return {
+    key: `live-tray-${tray.tray_index}`,
+    mqttTrayLabel: `${t("settings.bambuLiveMqttTrayLabel", "MQTT tray")} ${tray.tray_index}`,
+    observedRfidLabel: observedRfid
+      ? `${t("settings.bambuLiveObservedPrefix", "Observed")}: ${observedRfid}`
+      : null,
+    slotLabel: `${t("settings.bambuLiveSlotLabel", "Slot")} ${tray.tray_index + 1}`,
+  };
+}
+
 export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticFilter,
   diagnosticSession,
@@ -435,6 +454,11 @@ export function buildSettingsBambuLiveDiagnosticsModel({
       t,
       tray,
     });
+    const { key, mqttTrayLabel, observedRfidLabel, slotLabel } = buildSettingsBambuLiveTrayLabels({
+      observedRfid,
+      t,
+      tray,
+    });
 
     return {
       candidateCountText:
@@ -448,18 +472,16 @@ export function buildSettingsBambuLiveDiagnosticsModel({
       detailText,
       hasMoreCandidates: inventoryMatch.candidates.length > 3,
       hasReview,
-      key: `live-tray-${tray.tray_index}`,
+      key,
       matchDescription,
       matchKind: inventoryMatch.kind,
       matchLabel,
       matchNote,
       matchSwatchColor,
-      mqttTrayLabel: `${t("settings.bambuLiveMqttTrayLabel", "MQTT tray")} ${tray.tray_index}`,
-      observedRfidLabel: observedRfid
-        ? `${t("settings.bambuLiveObservedPrefix", "Observed")}: ${observedRfid}`
-        : null,
+      mqttTrayLabel,
+      observedRfidLabel,
       reviewTitle,
-      slotLabel: `${t("settings.bambuLiveSlotLabel", "Slot")} ${tray.tray_index + 1}`,
+      slotLabel,
       statusText,
     };
   });
