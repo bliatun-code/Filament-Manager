@@ -305,6 +305,27 @@ export function buildSettingsBambuLiveTrayDisplayText({
   };
 }
 
+export function buildSettingsBambuLiveInventoryMatchPresentation({
+  capturedTraySnapshot,
+  primaryInventoryMatch,
+  t,
+  tray,
+}: {
+  capturedTraySnapshot: DiagnosticTraySnapshot | null;
+  primaryInventoryMatch: SpoolWithMasterRow | null;
+  t: TranslateFn;
+  tray: BambuLiveObservedTray;
+}) {
+  return {
+    matchLabel: primaryInventoryMatch
+      ? `${primaryInventoryMatch.master.filament_name} · ${primaryInventoryMatch.master.color_name}`
+      : t("settings.bambuLiveNoInventoryMatch", "No clear inventory match"),
+    matchSwatchColor: primaryInventoryMatch
+      ? toSwatchColor(primaryInventoryMatch.master.hex_color)
+      : toSwatchColor(tray.color_hex ?? capturedTraySnapshot?.colorHex),
+  };
+}
+
 export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticFilter,
   diagnosticSession,
@@ -383,6 +404,12 @@ export function buildSettingsBambuLiveDiagnosticsModel({
       t,
     });
     const { detailText, statusText } = buildSettingsBambuLiveTrayDisplayText({ t, tray });
+    const { matchLabel, matchSwatchColor } = buildSettingsBambuLiveInventoryMatchPresentation({
+      capturedTraySnapshot,
+      primaryInventoryMatch,
+      t,
+      tray,
+    });
 
     return {
       candidateCountText:
@@ -399,16 +426,12 @@ export function buildSettingsBambuLiveDiagnosticsModel({
       key: `live-tray-${tray.tray_index}`,
       matchDescription,
       matchKind: inventoryMatch.kind,
-      matchLabel: primaryInventoryMatch
-        ? `${primaryInventoryMatch.master.filament_name} · ${primaryInventoryMatch.master.color_name}`
-        : t("settings.bambuLiveNoInventoryMatch", "No clear inventory match"),
+      matchLabel,
       matchNote:
         tray.match_note && !amsReadInProgress
           ? translateObservedMatchNote(tray.match_note, (key, fallback) => t(key, fallback ?? ""))
           : null,
-      matchSwatchColor: primaryInventoryMatch
-        ? toSwatchColor(primaryInventoryMatch.master.hex_color)
-        : toSwatchColor(tray.color_hex ?? capturedTraySnapshot?.colorHex),
+      matchSwatchColor,
       mqttTrayLabel: `${t("settings.bambuLiveMqttTrayLabel", "MQTT tray")} ${tray.tray_index}`,
       observedRfidLabel: observedRfid
         ? `${t("settings.bambuLiveObservedPrefix", "Observed")}: ${observedRfid}`

@@ -7,6 +7,7 @@ import {
   buildSettingsBambuLiveDiagnosticsModel,
   buildSettingsBambuLiveInventoryCandidateCards,
   buildSettingsBambuLiveInventoryMatchDescription,
+  buildSettingsBambuLiveInventoryMatchPresentation,
   buildSettingsBambuLiveObservedRfid,
   buildSettingsBambuLiveObservedSummaryParts,
   buildSettingsBambuLiveSignalQualityBuckets,
@@ -556,5 +557,33 @@ test("Bambu live tray display text prefers names, material, and empty fallbacks"
       tray: createObservedTray({ loaded: false, filament_name: "PLA Basic" }),
     }),
     { detailText: "PLA · 77%", statusText: "Empty / unknown" },
+  );
+});
+
+test("Bambu live inventory match presentation prefers inventory label and swatch", () => {
+  assert.deepEqual(
+    buildSettingsBambuLiveInventoryMatchPresentation({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({ colorHex: "#00AAFF" }),
+      primaryInventoryMatch: createSpoolRow(),
+      t,
+      tray: createObservedTray({ color_hex: "#111111" }),
+    }),
+    {
+      matchLabel: "PLA Basic · Orange",
+      matchSwatchColor: "#FFAA00",
+    },
+  );
+
+  assert.deepEqual(
+    buildSettingsBambuLiveInventoryMatchPresentation({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({ colorHex: "#00AAFF" }),
+      primaryInventoryMatch: null,
+      t,
+      tray: createObservedTray({ color_hex: null }),
+    }),
+    {
+      matchLabel: "No clear inventory match",
+      matchSwatchColor: "#00AAFF",
+    },
   );
 });
