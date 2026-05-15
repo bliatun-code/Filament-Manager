@@ -52,6 +52,14 @@ export type TrustedLanPairedBrowserListModel = {
   revokedRows: TrustedLanPairedBrowserRowModel[];
 };
 
+export type TrustedLanActionMessageKey =
+  | "allBrowsersRevoked"
+  | "browserRevoked"
+  | "pairingCopied"
+  | "pairingCreated";
+
+export type TrustedLanActionMessageLabels = Record<TrustedLanActionMessageKey, string>;
+
 type BuildTrustedLanPairedBrowserListInput = {
   browsers: TrustedLanPairedBrowser[];
   locale: Locale;
@@ -167,6 +175,13 @@ export function findNewTrustedLanActiveBrowserIds(
   return nextBrowsers
     .filter((browser) => !browser.revoked_at && !previousActiveIds.has(browser.id))
     .map((browser) => browser.id);
+}
+
+export function buildTrustedLanActionMessage(
+  action: TrustedLanActionMessageKey,
+  labels: TrustedLanActionMessageLabels,
+): string {
+  return labels[action];
 }
 
 export function resolveTrustedLanInterfaceAddressDraft(

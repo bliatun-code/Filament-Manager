@@ -85,6 +85,7 @@ import {
   resolvePrinterModelProfile,
 } from "../lib/printer_profiles";
 import {
+  buildTrustedLanActionMessage,
   buildTrustedLanCompanionModel,
   findNewTrustedLanActiveBrowserIds,
   buildTrustedLanPairedBrowserListModel,
@@ -2274,12 +2275,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setTrustedLanPairingExpiresAtMs(Date.now() + link.expires_in_seconds * 1000);
       setTrustedLanPairingLink(link.pairing_url);
       await copyTextToClipboard(link.pairing_url);
-      setInfo(
-        t(
-          "settings.trustedLanPairingCreated",
-          "Trusted-LAN pairing link created and copied.",
-        ),
-      );
+      setInfo(buildTrustedLanActionMessage("pairingCreated", trustedLanActionMessageLabels()));
       await loadTrustedLanCompanionStatus();
     } catch (pairError) {
       console.error(pairError);
@@ -2305,12 +2301,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setError(null);
     try {
       await copyTextToClipboard(trustedLanPairingLink);
-      setInfo(
-        t(
-          "settings.trustedLanPairingCopied",
-          "Trusted-LAN pairing link copied.",
-        ),
-      );
+      setInfo(buildTrustedLanActionMessage("pairingCopied", trustedLanActionMessageLabels()));
     } catch (copyError) {
       console.error(copyError);
       setError(
@@ -2334,12 +2325,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       await revokeTrustedLanPairedBrowser(browserId);
       await loadTrustedLanCompanionStatus();
       setShowTrustedLanRevokedBrowsers(true);
-      setInfo(
-        t(
-          "settings.trustedLanBrowserRevoked",
-          "Trusted-LAN browser revoked.",
-        ),
-      );
+      setInfo(buildTrustedLanActionMessage("browserRevoked", trustedLanActionMessageLabels()));
     } catch (revokeError) {
       console.error(revokeError);
       setError(
@@ -2363,12 +2349,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       await revokeAllTrustedLanPairedBrowsers();
       await loadTrustedLanCompanionStatus();
       setShowTrustedLanRevokedBrowsers(true);
-      setInfo(
-        t(
-          "settings.trustedLanAllBrowsersRevoked",
-          "All trusted-LAN browsers revoked.",
-        ),
-      );
+      setInfo(buildTrustedLanActionMessage("allBrowsersRevoked", trustedLanActionMessageLabels()));
     } catch (revokeError) {
       console.error(revokeError);
       setError(
@@ -2383,6 +2364,21 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setTrustedLanActionBusy(false);
     }
+  }
+
+  function trustedLanActionMessageLabels() {
+    return {
+      allBrowsersRevoked: t(
+        "settings.trustedLanAllBrowsersRevoked",
+        "All trusted-LAN browsers revoked.",
+      ),
+      browserRevoked: t("settings.trustedLanBrowserRevoked", "Trusted-LAN browser revoked."),
+      pairingCopied: t("settings.trustedLanPairingCopied", "Trusted-LAN pairing link copied."),
+      pairingCreated: t(
+        "settings.trustedLanPairingCreated",
+        "Trusted-LAN pairing link created and copied.",
+      ),
+    };
   }
 
   const trustedLanCompanionModel = buildTrustedLanCompanionModel({

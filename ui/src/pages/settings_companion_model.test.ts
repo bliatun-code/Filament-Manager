@@ -3,6 +3,7 @@ import test from "node:test";
 
 import type { TrustedLanCompanionStatus } from "../lib/tauri_client";
 import {
+  buildTrustedLanActionMessage,
   buildTrustedLanCompanionModel,
   findNewTrustedLanActiveBrowserIds,
   buildTrustedLanPairedBrowserListModel,
@@ -383,4 +384,21 @@ test("findNewTrustedLanActiveBrowserIds detects newly paired browsers only", () 
   );
 
   assert.deepEqual(ids, ["new-active"]);
+});
+
+test("buildTrustedLanActionMessage returns stable action feedback copy", () => {
+  const labels = {
+    allBrowsersRevoked: "All trusted-LAN browsers revoked.",
+    browserRevoked: "Trusted-LAN browser revoked.",
+    pairingCopied: "Trusted-LAN pairing link copied.",
+    pairingCreated: "Trusted-LAN pairing link created and copied.",
+  };
+
+  assert.equal(buildTrustedLanActionMessage("pairingCreated", labels), labels.pairingCreated);
+  assert.equal(buildTrustedLanActionMessage("pairingCopied", labels), labels.pairingCopied);
+  assert.equal(buildTrustedLanActionMessage("browserRevoked", labels), labels.browserRevoked);
+  assert.equal(
+    buildTrustedLanActionMessage("allBrowsersRevoked", labels),
+    labels.allBrowsersRevoked,
+  );
 });
