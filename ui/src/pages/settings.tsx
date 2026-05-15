@@ -102,6 +102,7 @@ import { useSettingsAppVersion } from "./use_settings_app_version";
 import { useSettingsCatalogRefreshResult } from "./use_settings_catalog_refresh_result";
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
 import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagnostics";
+import { useSettingsCatalogRefreshMaterials } from "./use_settings_catalog_refresh_materials";
 import { useSettingsPrinterEditDraft } from "./use_settings_printer_edit_draft";
 import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_confirm";
 import {
@@ -140,7 +141,6 @@ import {
   buildSettingsSwatchErrorMessage,
   buildSettingsSwatchSavedMessage,
   resolveSettingsSwatchHex,
-  toggleSettingsCatalogRefreshMaterial,
   type SettingsCatalogVendor,
 } from "./settings_catalog_model";
 import { SettingsCatalogRefreshPanel } from "./settings_catalog_refresh_panel";
@@ -251,9 +251,15 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [swatchVendorFilter, setSwatchVendorFilter] = useState("ALL");
   const [swatchBusy, setSwatchBusy] = useState(false);
   const [confirmBulkSwatch, setConfirmBulkSwatch] = useState(false);
-  const [catalogVendor, setCatalogVendor] = useState<CatalogVendor>("Bambu");
-  const [bambuRefreshMaterials, setBambuRefreshMaterials] = useState<string[]>([]);
-  const [esunRefreshMaterials, setEsunRefreshMaterials] = useState<string[]>([]);
+  const {
+    bambuRefreshMaterials,
+    catalogVendor,
+    clearCatalogRefreshMaterials,
+    esunRefreshMaterials,
+    getCatalogRefreshMaterials,
+    setCatalogVendor,
+    toggleCatalogRefreshMaterial,
+  } = useSettingsCatalogRefreshMaterials();
   const [catalogRefreshBusy, setCatalogRefreshBusy] = useState(false);
   const {
     beginCatalogRefreshResult,
@@ -1996,24 +2002,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     }));
   }
 
-  function toggleCatalogRefreshMaterial(vendor: CatalogVendor, material: string) {
-    const setter = vendor === "Bambu" ? setBambuRefreshMaterials : setEsunRefreshMaterials;
-    setter((previous) => toggleSettingsCatalogRefreshMaterial(previous, material));
-  }
-
-  function clearCatalogRefreshMaterials(vendor: CatalogVendor) {
-    if (vendor === "Bambu") {
-      setBambuRefreshMaterials([]);
-      return;
-    }
-    setEsunRefreshMaterials([]);
-  }
-
   async function handleRefreshVendorCatalog(vendor: CatalogVendor) {
     if (!tauri || busy || swatchBusy || catalogRefreshBusy) {
       return;
     }
-    const materialTypes = vendor === "Bambu" ? bambuRefreshMaterials : esunRefreshMaterials;
+    const materialTypes = getCatalogRefreshMaterials(vendor);
     setCatalogRefreshVendor(vendor);
     setCatalogRefreshPhase("PREPARE");
     setCatalogRefreshProgressMessage(
