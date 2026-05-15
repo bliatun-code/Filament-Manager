@@ -2645,19 +2645,16 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 const diagnosticFilter = diagnosticFilterByPrinterId[printer.id] ?? "all";
                 const {
                   amsReadInProgress,
-                  captureSessionLastSeenAt,
-                  captureSessionSeededAt,
-                  captureSessionStartedAt,
                   captureTrayByIndex,
-                  changedFieldCount,
                   diagnosticChartFields,
                   diagnosticChartPoints,
                   diagnosticFields,
                   diagnosticGroups,
+                  diagnosticMetricCards,
                   displayTrays,
                   fallbackSummaryParts,
-                  identityFieldCount,
                   observedState,
+                  observedSummaryParts,
                   reviewTrayCount,
                   selectedDiagnosticChartField,
                   signalQualityBuckets,
@@ -2666,6 +2663,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                   diagnosticFilter,
                   diagnosticSession,
                   diagnosticSort,
+                  formatDateTime: (value) => formatSettingsDateTime(value, locale),
                   liveConfig,
                   selectedChartFieldPath: diagnosticChartFieldByPrinterId[printer.id],
                   t,
@@ -2776,22 +2774,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                             </div>
                             <div>
                               {t("settings.bambuLiveObservedSummary", "Observed summary")}:{" "}
-                              {[
-                                observedState.progress_percent != null
-                                  ? `${observedState.progress_percent}%`
-                                  : null,
-                                observedState.remaining_minutes != null
-                                  ? `${observedState.remaining_minutes} min`
-                                  : null,
-                                observedState.active_tray_index != null
-                                  ? `${t("settings.bambuLiveSummaryTray", "Tray")} ${observedState.active_tray_index}`
-                                  : null,
-                                observedState.ams_humidity_index != null
-                                  ? `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${observedState.ams_humidity_index}`
-                                  : null,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ") ||
+                              {observedSummaryParts.join(" · ") ||
                                 fallbackSummaryParts.join(" · ") ||
                                 "—"}
                             </div>
@@ -3039,52 +3022,19 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                 </div>
                               </div>
                               <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
-                                <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60">
-                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                    {t("settings.bambuLiveCaptureStarted", "Capture started")}
+                                {diagnosticMetricCards.map((metric) => (
+                                  <div
+                                    key={`${printer.id}-${metric.key}`}
+                                    className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60"
+                                  >
+                                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                                      {metric.label}
+                                    </div>
+                                    <div className="mt-1 text-[11px] text-slate-700 dark:text-slate-200">
+                                      {metric.value}
+                                    </div>
                                   </div>
-                                  <div className="mt-1 text-[11px] text-slate-700 dark:text-slate-200">
-                                    {captureSessionStartedAt
-                                      ? formatSettingsDateTime(captureSessionStartedAt, locale)
-                                      : "—"}
-                                  </div>
-                                </div>
-                                <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60">
-                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                    {t("settings.bambuLiveCaptureLastUpdate", "Last captured")}
-                                  </div>
-                                  <div className="mt-1 text-[11px] text-slate-700 dark:text-slate-200">
-                                    {captureSessionLastSeenAt
-                                      ? formatSettingsDateTime(captureSessionLastSeenAt, locale)
-                                      : "—"}
-                                  </div>
-                                </div>
-                                <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60">
-                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                    {t("settings.bambuLiveCaptureSeededFrom", "Seeded from live state")}
-                                  </div>
-                                  <div className="mt-1 text-[11px] text-slate-700 dark:text-slate-200">
-                                    {captureSessionSeededAt
-                                      ? formatSettingsDateTime(captureSessionSeededAt, locale)
-                                      : "—"}
-                                  </div>
-                                </div>
-                                <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60">
-                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                    {t("settings.bambuLiveChangedFields", "Changed fields")}
-                                  </div>
-                                  <div className="mt-1 text-[11px] text-slate-700 dark:text-slate-200">
-                                    {changedFieldCount}
-                                  </div>
-                                </div>
-                                <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60">
-                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                    {t("settings.bambuLiveIdentitySignals", "Identity signals")}
-                                  </div>
-                                  <div className="mt-1 text-[11px] text-slate-700 dark:text-slate-200">
-                                    {identityFieldCount}
-                                  </div>
-                                </div>
+                                ))}
                               </div>
                               {signalQualityBuckets.length > 0 ? (
                                 <div className="mt-3 grid grid-cols-1 gap-2 xl:grid-cols-3">
@@ -3094,27 +3044,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                       className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60"
                                     >
                                       <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                        {bucket.label === "Stable metadata"
-                                          ? t("settings.bambuLiveSignalStable", "Stable metadata")
-                                          : bucket.label === "Event-driven identity"
-                                            ? t("settings.bambuLiveSignalEventDriven", "Event-driven identity")
-                                            : t("settings.bambuLiveSignalContinuous", "Continuous telemetry")}
+                                        {bucket.label}
                                       </div>
                                       <div className="mt-1 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
-                                        {bucket.label === "Stable metadata"
-                                          ? t(
-                                              "settings.bambuLiveSignalStableDesc",
-                                              "Identity and tray metadata that appears stable when observed.",
-                                            )
-                                          : bucket.label === "Event-driven identity"
-                                            ? t(
-                                                "settings.bambuLiveSignalEventDrivenDesc",
-                                                "Fields that tend to appear or change around AMS read/sync events.",
-                                              )
-                                            : t(
-                                                "settings.bambuLiveSignalContinuousDesc",
-                                                "Fields that look like normal status/telemetry updates during operation.",
-                                              )}
+                                        {bucket.description}
                                       </div>
                                       <div className="mt-2 flex flex-wrap gap-1">
                                         {bucket.fields.slice(0, 6).map((field) => (

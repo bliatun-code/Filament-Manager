@@ -22,11 +22,13 @@ import {
 import type { BambuLiveIntegrationSettings } from "../lib/tauri_client";
 
 type TranslateFn = (key: string, fallback: string) => string;
+type FormatDateTimeFn = (value: string) => string;
 
 type BuildSettingsBambuLiveDiagnosticsModelInput = {
   diagnosticFilter: DiagnosticFilterKey;
   diagnosticSession: DiagnosticCaptureSession | null;
   diagnosticSort: DiagnosticSortKey;
+  formatDateTime: FormatDateTimeFn;
   liveConfig: BambuLiveIntegrationSettings | null;
   selectedChartFieldPath?: string | null;
   t: TranslateFn;
@@ -36,6 +38,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticFilter,
   diagnosticSession,
   diagnosticSort,
+  formatDateTime,
   liveConfig,
   selectedChartFieldPath,
   t,
@@ -65,7 +68,36 @@ export function buildSettingsBambuLiveDiagnosticsModel({
   const changedFieldCount = countChangedDiagnosticFields(diagnosticFields);
   const identityFieldCount = countDiagnosticIdentitySignals(diagnosticFields);
   const amsReadInProgress = isDiagnosticAmsReadInProgress(diagnosticFields);
-  const signalQualityBuckets = buildDiagnosticSignalQualityBuckets(diagnosticFields);
+  const signalQualityBuckets = buildDiagnosticSignalQualityBuckets(diagnosticFields).map((bucket) => {
+    if (bucket.label === "Stable metadata") {
+      return {
+        ...bucket,
+        description: t(
+          "settings.bambuLiveSignalStableDesc",
+          "Identity and tray metadata that appears stable when observed.",
+        ),
+        label: t("settings.bambuLiveSignalStable", "Stable metadata"),
+      };
+    }
+    if (bucket.label === "Event-driven identity") {
+      return {
+        ...bucket,
+        description: t(
+          "settings.bambuLiveSignalEventDrivenDesc",
+          "Fields that tend to appear or change around AMS read/sync events.",
+        ),
+        label: t("settings.bambuLiveSignalEventDriven", "Event-driven identity"),
+      };
+    }
+    return {
+      ...bucket,
+      description: t(
+        "settings.bambuLiveSignalContinuousDesc",
+        "Fields that look like normal status/telemetry updates during operation.",
+      ),
+      label: t("settings.bambuLiveSignalContinuous", "Continuous telemetry"),
+    };
+  });
   const fallbackSummary = buildDiagnosticFallbackSummary(diagnosticFields);
   const fallbackSummaryParts = [
     fallbackSummary.progressPercent != null ? `${fallbackSummary.progressPercent}%` : null,
@@ -75,6 +107,16 @@ export function buildSettingsBambuLiveDiagnosticsModel({
       : null,
     fallbackSummary.amsHumidityIndex != null
       ? `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${fallbackSummary.amsHumidityIndex}`
+      : null,
+  ].filter(Boolean);
+  const observedSummaryParts = [
+    observedState?.progress_percent != null ? `${observedState.progress_percent}%` : null,
+    observedState?.remaining_minutes != null ? `${observedState.remaining_minutes} min` : null,
+    observedState?.active_tray_index != null
+      ? `${t("settings.bambuLiveSummaryTray", "Tray")} ${observedState.active_tray_index}`
+      : null,
+    observedState?.ams_humidity_index != null
+      ? `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${observedState.ams_humidity_index}`
       : null,
   ].filter(Boolean);
   const filteredDiagnosticFields = filterDiagnosticFields(diagnosticFields, diagnosticFilter);
@@ -93,6 +135,33 @@ export function buildSettingsBambuLiveDiagnosticsModel({
             : t("settings.bambuLiveGroupOther", "Other"),
   }));
   const reviewTrayCount = countReviewDiagnosticTrays(observedState?.trays ?? []);
+  const diagnosticMetricCards = [
+    {
+      key: "started",
+      label: t("settings.bambuLiveCaptureStarted", "Capture started"),
+      value: captureSessionStartedAt ? formatDateTime(captureSessionStartedAt) : "—",
+    },
+    {
+      key: "lastSeen",
+      label: t("settings.bambuLiveCaptureLastUpdate", "Last captured"),
+      value: captureSessionLastSeenAt ? formatDateTime(captureSessionLastSeenAt) : "—",
+    },
+    {
+      key: "seededFrom",
+      label: t("settings.bambuLiveCaptureSeededFrom", "Seeded from live state"),
+      value: captureSessionSeededAt ? formatDateTime(captureSessionSeededAt) : "—",
+    },
+    {
+      key: "changedFields",
+      label: t("settings.bambuLiveChangedFields", "Changed fields"),
+      value: String(changedFieldCount),
+    },
+    {
+      key: "identitySignals",
+      label: t("settings.bambuLiveIdentitySignals", "Identity signals"),
+      value: String(identityFieldCount),
+    },
+  ];
 
   return {
     amsReadInProgress,
@@ -105,10 +174,12 @@ export function buildSettingsBambuLiveDiagnosticsModel({
     diagnosticChartPoints,
     diagnosticFields,
     diagnosticGroups,
+    diagnosticMetricCards,
     displayTrays,
     fallbackSummaryParts,
     identityFieldCount,
     observedState,
+    observedSummaryParts,
     reviewTrayCount,
     selectedDiagnosticChartField,
     signalQualityBuckets,

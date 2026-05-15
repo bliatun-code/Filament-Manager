@@ -8,6 +8,7 @@ import { updateDiagnosticCaptureSessionFromPayload } from "../lib/diagnostic_cap
 import type { BambuLiveIntegrationSettings } from "../lib/tauri_client";
 
 const t = (_key: string, fallback: string) => fallback;
+const formatDateTime = (value: string) => `formatted:${value}`;
 
 function createLiveConfig(): BambuLiveIntegrationSettings {
   return {
@@ -92,6 +93,7 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
     diagnosticFilter: "all",
     diagnosticSession,
     diagnosticSort: "path",
+    formatDateTime,
     liveConfig,
     selectedChartFieldPath: "mc_percent",
     t,
@@ -103,9 +105,22 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
   assert.ok(model.diagnosticChartPoints.length > 0);
   assert.equal(model.displayTrays.length, 1);
   assert.equal(model.captureTrayByIndex.get(0)?.trayUuid, "ABC123");
+  assert.deepEqual(model.observedSummaryParts, ["42%", "18 min", "Tray 1", "AMS humidity 3"]);
   assert.deepEqual(model.fallbackSummaryParts, ["43%", "17 min"]);
+  assert.deepEqual(
+    model.diagnosticMetricCards.map((metric) => metric.label),
+    [
+      "Capture started",
+      "Last captured",
+      "Seeded from live state",
+      "Changed fields",
+      "Identity signals",
+    ],
+  );
+  assert.match(model.diagnosticMetricCards[0].value, /^formatted:/);
   assert.equal(model.reviewTrayCount, 1);
   assert.ok(model.diagnosticGroups.some((group) => group.key === "ams"));
+  assert.ok(model.signalQualityBuckets.every((bucket) => bucket.label && bucket.description));
 });
 
 test("buildSettingsBambuLiveDiagnosticsModel falls back to first chart field and empty state safely", () => {
@@ -113,6 +128,7 @@ test("buildSettingsBambuLiveDiagnosticsModel falls back to first chart field and
     diagnosticFilter: "changed",
     diagnosticSession: null,
     diagnosticSort: "change_count",
+    formatDateTime,
     liveConfig: null,
     selectedChartFieldPath: "missing",
     t,
@@ -120,7 +136,11 @@ test("buildSettingsBambuLiveDiagnosticsModel falls back to first chart field and
 
   assert.equal(emptyModel.observedState, null);
   assert.equal(emptyModel.selectedDiagnosticChartField, null);
+  assert.deepEqual(emptyModel.observedSummaryParts, []);
   assert.deepEqual(emptyModel.fallbackSummaryParts, []);
+  assert.equal(emptyModel.diagnosticMetricCards.length, 5);
+  assert.equal(emptyModel.diagnosticMetricCards[0].value, "—");
+  assert.equal(emptyModel.diagnosticMetricCards[3].value, "0");
   assert.equal(emptyModel.reviewTrayCount, 0);
   assert.deepEqual(emptyModel.diagnosticGroups, []);
 
@@ -137,6 +157,7 @@ test("buildSettingsBambuLiveDiagnosticsModel falls back to first chart field and
     diagnosticFilter: "all",
     diagnosticSession,
     diagnosticSort: "path",
+    formatDateTime,
     liveConfig,
     selectedChartFieldPath: "missing",
     t,
