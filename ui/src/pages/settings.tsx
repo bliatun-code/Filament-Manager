@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import type { SettingsTabKey } from "../App";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
@@ -41,7 +41,6 @@ import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_l
 import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_lan_server_panel";
 import { tabButtonClass } from "../lib/settings_ui_classes";
 import { loadAllSpoolRows } from "../lib/spool_data_source";
-import { loadSettingsPageData } from "../lib/settings_data_source";
 import { createManagedPrinter, deleteManagedPrinter } from "../lib/printer_writes";
 import {
   resolvePrinterModelProfile,
@@ -74,6 +73,7 @@ import {
 import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
 import { useSettingsSwatchDrafts } from "./use_settings_swatch_drafts";
 import { useSettingsPageChrome } from "./use_settings_page_chrome";
+import { useSettingsPageReload } from "./use_settings_page_reload";
 import { useSettingsPageTabs } from "./use_settings_page_tabs";
 import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
@@ -143,10 +143,6 @@ import {
   preparePrinterReconfigure,
   sortSettingsPrinters,
 } from "./settings_printer_model";
-import {
-  buildSettingsPageDataModel,
-  buildSettingsPageLoadErrorMessage,
-} from "./settings_page_model";
 
 type ResetConfirmAction = SettingsResetConfirmAction;
 type CatalogVendor = SettingsCatalogVendor;
@@ -246,7 +242,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [showTrustedLanRevokedBrowsers, setShowTrustedLanRevokedBrowsers] = useState(false);
   const trustedLanPairedBrowsersRef = useRef<TrustedLanPairedBrowser[]>([]);
   const trustedLanPairedBrowsersRefreshInFlightRef = useRef(false);
-  const silentReloadInFlightRef = useRef(false);
 
   const [printers, setPrinters] = useState<PrinterRow[]>([]);
   const [printerOverview, setPrinterOverview] = useState<PrinterOverviewRow[]>([]);
@@ -437,64 +432,24 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setTrustedLanPortDraft,
   });
 
-  const reloadSettings = useCallback(async (options?: { silent?: boolean }) => {
-    if (!tauri) {
-      return;
-    }
-    if (options?.silent && silentReloadInFlightRef.current) {
-      return;
-    }
-    if (options?.silent) {
-      silentReloadInFlightRef.current = true;
-    }
-    if (!options?.silent) {
-      setLoading(true);
-    }
-    try {
-      const pageData = buildSettingsPageDataModel(
-        await loadSettingsPageData({
-          onHostLoadError: (loadError) => {
-            console.warn(
-              "Settings host printer overview unavailable, using cached snapshot.",
-              loadError,
-            );
-          },
-        }),
-      );
-      setPrinters(pageData.printers);
-      setPrinterOverview(pageData.printerOverview);
-      setSpoolRows(pageData.spoolRows);
-      setBambuLiveIntegrations(pageData.bambuLiveIntegrations);
-      setCatalogMasters(pageData.catalogRows);
-      setLibrarySyncSettings(pageData.librarySyncSettings);
-      setLibrarySyncModeDraft(pageData.librarySyncModeDraft);
-      setLibrarySyncDeviceNameDraft(pageData.librarySyncDeviceNameDraft);
-      setLibrarySyncHostBaseUrlDraft(pageData.librarySyncHostBaseUrlDraft);
-      setLibrarySyncValidation(null);
-      setLibrarySyncSnapshot(pageData.librarySyncSettings.cached_snapshot ?? null);
-      setSwatchDraftById(pageData.swatchDraftById);
-    } catch (loadError) {
-      console.error(loadError);
-      setError(buildSettingsPageLoadErrorMessage(settingsPageMessageLabels()));
-    } finally {
-      if (options?.silent) {
-        silentReloadInFlightRef.current = false;
-      }
-      if (!options?.silent) {
-        setLoading(false);
-      }
-    }
-  }, [
+  const reloadSettings = useSettingsPageReload({
+    setBambuLiveIntegrations,
+    setCatalogMasters,
+    setError,
     setLibrarySyncDeviceNameDraft,
     setLibrarySyncHostBaseUrlDraft,
     setLibrarySyncModeDraft,
     setLibrarySyncSettings,
     setLibrarySyncSnapshot,
     setLibrarySyncValidation,
+    setLoading,
+    setPrinterOverview,
+    setPrinters,
+    setSpoolRows,
     setSwatchDraftById,
     settingsPageMessageLabels,
     tauri,
-  ]);
+  });
 
   useSettingsSilentReload({ reloadSettings, tauri });
 
