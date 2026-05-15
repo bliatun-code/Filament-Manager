@@ -109,6 +109,7 @@ import {
 } from "./settings_inventory_print_model";
 import {
   buildSettingsBackupExportSuccessMessage,
+  buildSettingsBackupValidationSuccessMessage,
   buildSettingsBackupValidationState,
   buildSettingsImportSuccessMessage,
   buildSettingsInventoryExportSuccessMessage,
@@ -2028,7 +2029,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       if (isFullBackupValidationFormat(summary.format)) {
         setLastFullBackupValidatedAt(new Date().toISOString());
       }
-      setInfo(t("settings.backupValidationDone", "Backup validation completed."));
+      setInfo(buildSettingsBackupValidationSuccessMessage(settingsBackupValidationMessageLabels()));
     } catch (validationError) {
       console.error(validationError);
       setError(
@@ -2040,6 +2041,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setBusy(false);
     }
+  }
+
+  function settingsBackupValidationMessageLabels() {
+    return {
+      backupValidationDone: t("settings.backupValidationDone", "Backup validation completed."),
+    };
   }
 
   function updateSwatchDraft(masterId: string, value: string) {

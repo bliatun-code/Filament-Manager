@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildSettingsBackupExportSuccessMessage,
+  buildSettingsBackupValidationSuccessMessage,
   buildSettingsBackupValidationState,
   buildSettingsImportSuccessMessage,
   buildSettingsInventoryExportSuccessMessage,
@@ -135,6 +136,15 @@ test("settings backup export success message includes auto validation guidance",
         "The exported backup was validated automatically and is ready to use in the guided role-change flow.",
     }),
     "Full backup exported (inventory, history and printers). The exported backup was validated automatically and is ready to use in the guided role-change flow.",
+  );
+});
+
+test("settings backup validation success message returns stable copy", () => {
+  assert.equal(
+    buildSettingsBackupValidationSuccessMessage({
+      backupValidationDone: "Backup validation completed.",
+    }),
+    "Backup validation completed.",
   );
 });
 

@@ -78,6 +78,10 @@ export type SettingsBackupExportMessageLabels = {
   librarySyncBackupAutoValidated: string;
 };
 
+export type SettingsBackupValidationMessageLabels = {
+  backupValidationDone: string;
+};
+
 export type SettingsInventoryExportFormat = "csv" | "json";
 
 export type SettingsInventoryExportMessageLabels = {
@@ -89,6 +93,12 @@ export function buildSettingsBackupExportSuccessMessage(
   labels: SettingsBackupExportMessageLabels,
 ): string {
   return `${labels.backupExported} ${labels.librarySyncBackupAutoValidated}`;
+}
+
+export function buildSettingsBackupValidationSuccessMessage(
+  labels: SettingsBackupValidationMessageLabels,
+): string {
+  return labels.backupValidationDone;
 }
 
 export function buildSettingsInventoryExportSuccessMessage(
