@@ -6,6 +6,8 @@ pub mod database_backup;
 pub mod database_import;
 #[path = "../../../src/backend/database_tables.rs"]
 pub mod database_tables;
+#[path = "../../../src/backend/database_values.rs"]
+pub mod database_values;
 #[path = "../../../src/backend/filament_database.rs"]
 pub mod filament_database;
 #[path = "../../../src/backend/inventory_engine.rs"]

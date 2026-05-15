@@ -11,9 +11,9 @@ use super::database_import::{
 };
 use super::database_tables::should_import_backup_row;
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
+use super::database_values::{json_value_to_sql, sqlite_value_to_json};
 use super::statistics::InventoryOverview;
 use super::vendor_lookup::normalize_esun_color_name_for_catalog;
-use rusqlite::types::ValueRef;
 use rusqlite::{params, Connection, OptionalExtension, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -4357,44 +4357,6 @@ fn map_trusted_lan_paired_browser_row(
         last_origin: row.get(4)?,
         revoked_at: row.get(5)?,
     })
-}
-
-fn sqlite_value_to_json(value: ValueRef<'_>) -> Value {
-    match value {
-        ValueRef::Null => Value::Null,
-        ValueRef::Integer(number) => Value::from(number),
-        ValueRef::Real(number) => {
-            serde_json::Number::from_f64(number).map_or(Value::Null, Value::Number)
-        }
-        ValueRef::Text(text) => Value::String(String::from_utf8_lossy(text).to_string()),
-        ValueRef::Blob(blob) => Value::String(bytes_to_hex(blob)),
-    }
-}
-
-fn json_value_to_sql(value: &Value) -> rusqlite::types::Value {
-    match value {
-        Value::Null => rusqlite::types::Value::Null,
-        Value::Bool(boolean) => rusqlite::types::Value::Integer(if *boolean { 1 } else { 0 }),
-        Value::Number(number) => {
-            if let Some(integer) = number.as_i64() {
-                rusqlite::types::Value::Integer(integer)
-            } else if let Some(float) = number.as_f64() {
-                rusqlite::types::Value::Real(float)
-            } else {
-                rusqlite::types::Value::Null
-            }
-        }
-        Value::String(text) => rusqlite::types::Value::Text(text.clone()),
-        Value::Array(_) | Value::Object(_) => rusqlite::types::Value::Text(value.to_string()),
-    }
-}
-
-fn bytes_to_hex(bytes: &[u8]) -> String {
-    let mut output = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        output.push_str(&format!("{:02x}", byte));
-    }
-    output
 }
 
 fn map_spool_loan_row(row: &Row<'_>) -> Result<SpoolLoanRow, rusqlite::Error> {
