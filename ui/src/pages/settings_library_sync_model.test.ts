@@ -82,6 +82,7 @@ test("buildLibrarySyncErrorMessage returns stable operation fallback copy", () =
   const labels = {
     clearClientAuthFailed: "Failed to remove the saved desktop client pairing.",
     hostCheckFailed: "Failed to check the configured host.",
+    settingsSaveFailed: "Failed to save library role settings.",
     snapshotFailed: "Failed to fetch host snapshot.",
   };
 
@@ -89,6 +90,10 @@ test("buildLibrarySyncErrorMessage returns stable operation fallback copy", () =
   assert.equal(
     buildLibrarySyncErrorMessage("clearClientAuthFailed", labels),
     labels.clearClientAuthFailed,
+  );
+  assert.equal(
+    buildLibrarySyncErrorMessage("settingsSaveFailed", labels),
+    labels.settingsSaveFailed,
   );
   assert.equal(buildLibrarySyncErrorMessage("snapshotFailed", labels), labels.snapshotFailed);
 });

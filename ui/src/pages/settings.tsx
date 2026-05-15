@@ -933,6 +933,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       "settings.error.librarySyncHostCheck",
       "Failed to check the configured host.",
     ),
+    settingsSaveFailed: t(
+      "settings.error.librarySyncSave",
+      "Failed to save library role settings.",
+    ),
     snapshotFailed: t(
       "settings.error.librarySyncSnapshot",
       "Failed to fetch host snapshot.",
@@ -1001,7 +1005,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           saveError,
-          t("settings.error.librarySyncSave", "Failed to save library role settings."),
+          buildLibrarySyncErrorMessage("settingsSaveFailed", librarySyncErrorMessageLabels()),
         ),
       );
       return false;
@@ -1014,8 +1018,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     librarySyncActionMessageLabels,
     librarySyncModeDraft,
     librarySyncSettings,
+    librarySyncErrorMessageLabels,
     persistTrustedLanConfig,
-    t,
     tauri,
     trustedLanConfigMessageLabels,
     trustedLanInterfaces,

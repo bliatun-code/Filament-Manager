@@ -71,6 +71,7 @@ export type LibrarySyncPairingMessageLabels = Record<LibrarySyncPairingMessageKe
 export type LibrarySyncErrorMessageKey =
   | "clearClientAuthFailed"
   | "hostCheckFailed"
+  | "settingsSaveFailed"
   | "snapshotFailed";
 
 export type LibrarySyncErrorMessageLabels = Record<LibrarySyncErrorMessageKey, string>;
