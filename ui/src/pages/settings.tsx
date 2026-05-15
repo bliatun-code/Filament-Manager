@@ -51,6 +51,7 @@ import {
 } from "./use_settings_reset_confirm";
 import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
 import { useSettingsSwatchDrafts } from "./use_settings_swatch_drafts";
+import { useSettingsSwatchState } from "./use_settings_swatch_state";
 import { useSettingsPageChrome } from "./use_settings_page_chrome";
 import { useSettingsPageDataState } from "./use_settings_page_data_state";
 import { useSettingsPageReload } from "./use_settings_page_reload";
@@ -241,9 +242,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   } = useSettingsPageDataState(tauri);
   const { setSwatchDraftById, swatchDraftById, updateSwatchDraft } =
     useSettingsSwatchDrafts();
-  const [swatchVendorFilter, setSwatchVendorFilter] = useState("ALL");
-  const [swatchBusy, setSwatchBusy] = useState(false);
-  const [confirmBulkSwatch, setConfirmBulkSwatch] = useState(false);
+  const {
+    confirmBulkSwatch,
+    setConfirmBulkSwatch,
+    setSwatchBusy,
+    setSwatchVendorFilter,
+    swatchBusy,
+    swatchVendorFilter,
+  } = useSettingsSwatchState();
   const {
     bambuRefreshMaterials,
     catalogVendor,
