@@ -11,6 +11,7 @@ import { SettingsGeneralRoute } from "./settings_general_route";
 import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
 import { buildSettingsLibraryRolePanelProps } from "./settings_library_role_panel_props";
 import { buildSettingsLibraryServerPanelProps } from "./settings_library_server_panel_props";
+import { buildSettingsLibraryPairingPanelProps } from "./settings_library_pairing_panel_props";
 import { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_route";
 import { SettingsLibraryTab } from "./settings_library_tab";
 import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
@@ -945,6 +946,22 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     onToggleNetworkEditor: () => setShowTrustedLanNetworkEditor((value) => !value),
     onToggleNetworkSummary: () => setShowTrustedLanNetworkSummary((value) => !value),
   });
+  const settingsLibraryPairingPanelProps = buildSettingsLibraryPairingPanelProps({
+    actionBusy: trustedLanActionBusy,
+    browserLabelDraft: trustedLanPairingBrowserLabelDraft,
+    locale,
+    pairActionDisabled: trustedLanCompanionModel.pairActionDisabled,
+    pairingExpiresAtMs: trustedLanPairingExpiresAtMs,
+    pairingLabel: trustedLanPairingLabel,
+    pairingLink: trustedLanPairingLink,
+    pairingQrBusy: trustedLanPairingQrBusy,
+    pairingQrDataUrl: trustedLanPairingQrDataUrl,
+    pairingQrUnavailable: trustedLanPairingQrUnavailable,
+    t,
+    onBrowserLabelChange: setTrustedLanPairingBrowserLabelDraft,
+    onCopyPairingLink: handleCopyTrustedLanPairingLink,
+    onCreatePairingLink: handleCreateTrustedLanPairingLink,
+  });
   return (
     <div className="page-shell">
       <SettingsPageHeader
@@ -1017,20 +1034,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               ...settingsLibraryRolePanelProps,
             }}
             pairingPanel={{
-              actionBusy: trustedLanActionBusy,
-              browserLabelDraft: trustedLanPairingBrowserLabelDraft,
-              locale,
-              pairActionDisabled: trustedLanCompanionModel.pairActionDisabled,
-              pairingExpiresAtMs: trustedLanPairingExpiresAtMs,
-              pairingLabel: trustedLanPairingLabel,
-              pairingLink: trustedLanPairingLink,
-              pairingQrBusy: trustedLanPairingQrBusy,
-              pairingQrDataUrl: trustedLanPairingQrDataUrl,
-              pairingQrUnavailable: trustedLanPairingQrUnavailable,
-              t,
-              onBrowserLabelChange: setTrustedLanPairingBrowserLabelDraft,
-              onCopyPairingLink: () => void handleCopyTrustedLanPairingLink(),
-              onCreatePairingLink: () => void handleCreateTrustedLanPairingLink(),
+              ...settingsLibraryPairingPanelProps,
             }}
             serverPanel={{
               ...settingsLibraryServerPanelProps,
