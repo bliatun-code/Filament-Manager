@@ -1,6 +1,10 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { derivePrinterMultiConfig, isBambuLabPrinter } from "./settings_printer_model";
+import {
+  buildPrinterSlotsByPrinterId,
+  derivePrinterMultiConfig,
+  isBambuLabPrinter,
+} from "./settings_printer_model";
 import type { PrinterOverviewRow } from "../lib/tauri_client";
 
 function overviewRow(
@@ -44,6 +48,18 @@ test("derivePrinterMultiConfig counts only internal multi-material units", () =>
   });
 
   assert.deepEqual(config, { units: 2, slotsPerUnit: 2 });
+});
+
+test("buildPrinterSlotsByPrinterId indexes overview slots by printer id", () => {
+  const overview = overviewRow([
+    { ams_id: "ams-1", slot_id: "1" },
+    { ams_id: "ams-1", slot_id: "2" },
+  ]);
+
+  const slotsByPrinterId = buildPrinterSlotsByPrinterId([overview]);
+
+  assert.equal(slotsByPrinterId.get("printer-1"), overview.slots);
+  assert.equal(slotsByPrinterId.get("missing"), undefined);
 });
 
 test("derivePrinterMultiConfig falls back to model defaults without slots", () => {

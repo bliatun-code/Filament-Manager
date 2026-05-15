@@ -116,7 +116,10 @@ import {
   buildSettingsBambuLiveDiagnosticsModel,
   createSettingsBambuLiveCaptureSession,
 } from "./settings_bambu_live_diagnostics_model";
-import { derivePrinterMultiConfig } from "./settings_printer_model";
+import {
+  buildPrinterSlotsByPrinterId,
+  derivePrinterMultiConfig,
+} from "./settings_printer_model";
 
 type SettingsTab = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
 type ResetConfirmAction = "APP" | "CATALOG";
@@ -301,6 +304,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       return collator.compare(left.model, right.model);
     });
   }, [locale, printers]);
+  const printerSlotsByPrinterId = useMemo(
+    () => buildPrinterSlotsByPrinterId(printerOverview),
+    [printerOverview],
+  );
 
   const editModelProfile = useMemo(
     () => resolvePrinterModelProfile(editPrinterModel || ""),
@@ -2619,8 +2626,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 </div>
               ) : null}
               {sortedPrinters.map((printer) => {
-                const printerSlots =
-                  printerOverview.find((item) => item.printer.id === printer.id)?.slots ?? [];
+                const printerSlots = printerSlotsByPrinterId.get(printer.id) ?? [];
                 const liveConfig = bambuLiveIntegrations[printer.id] ?? null;
                 const diagnosticSession = diagnosticCaptureByPrinterId[printer.id] ?? null;
                 const captureActive = diagnosticCaptureActiveByPrinterId[printer.id] ?? false;

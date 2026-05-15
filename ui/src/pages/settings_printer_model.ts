@@ -1,4 +1,4 @@
-import type { PrinterOverviewRow } from "../lib/tauri_client";
+import type { PrinterAmsSlotRow, PrinterOverviewRow } from "../lib/tauri_client";
 import { isExternalSlotId, resolvePrinterModelProfile } from "../lib/printer_profiles";
 
 export type PrinterMultiMaterialConfig = {
@@ -6,13 +6,20 @@ export type PrinterMultiMaterialConfig = {
   slotsPerUnit: number;
 };
 
+export function buildPrinterSlotsByPrinterId(
+  printerOverview: PrinterOverviewRow[],
+): Map<string, PrinterAmsSlotRow[]> {
+  return new Map(
+    printerOverview.map((item) => [item.printer.id, item.slots]),
+  );
+}
+
 export function derivePrinterMultiConfig(input: {
   printerId: string;
   model: string;
   printerOverview: PrinterOverviewRow[];
 }): PrinterMultiMaterialConfig {
-  const slots =
-    input.printerOverview.find((item) => item.printer.id === input.printerId)?.slots ?? [];
+  const slots = buildPrinterSlotsByPrinterId(input.printerOverview).get(input.printerId) ?? [];
   const profile = resolvePrinterModelProfile(input.model);
   const slotCountByUnit = new Map<string, number>();
   for (const slot of slots) {
