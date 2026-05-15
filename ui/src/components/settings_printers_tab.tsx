@@ -19,7 +19,11 @@ import type {
 import {
   buildSettingsBambuLiveDiagnosticsModel,
 } from "../pages/settings_bambu_live_diagnostics_model";
-import { SettingsPrinterCard } from "./settings_printer_card";
+import {
+  SettingsPrinterCard,
+  type SettingsPrinterEditActions,
+  type SettingsPrinterEditDraft,
+} from "./settings_printer_card";
 
 type SettingsPrintersTabProps = {
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
@@ -117,6 +121,30 @@ export function SettingsPrintersTab({
   onToggleBambuLiveDetails,
 }: SettingsPrintersTabProps) {
   const { locale, t } = useI18n();
+  const editDraft: SettingsPrinterEditDraft = {
+    bambuLiveAccessCode: editBambuLiveAccessCode,
+    bambuLiveEnabled: editBambuLiveEnabled,
+    bambuLiveHost: editBambuLiveHost,
+    bambuLivePrinterSerial: editBambuLivePrinterSerial,
+    model: editPrinterModel,
+    modelProfile: editModelProfile,
+    name: editPrinterName,
+    slotsPerUnit: editSlotsPerUnit,
+    units: editAmsUnits,
+  };
+  const editActions: SettingsPrinterEditActions = {
+    onBambuLiveAccessCodeChange,
+    onBambuLiveEnabledChange,
+    onBambuLiveHostChange,
+    onBambuLivePrinterSerialChange,
+    onCancel: onCancelEditPrinter,
+    onModelChange: onEditPrinterModelChange,
+    onNameChange: onEditPrinterNameChange,
+    onSave: onSavePrinterReconfigure,
+    onSlotsPerUnitChange: onEditSlotsPerUnitChange,
+    onStart: () => undefined,
+    onUnitsChange: onEditAmsUnitsChange,
+  };
 
   return (
     <section className="surface-card xl:col-span-2">
@@ -163,15 +191,11 @@ export function SettingsPrintersTab({
               diagnosticFilter={diagnosticFilter}
               diagnosticSession={diagnosticSession}
               diagnosticSort={diagnosticSort}
-              editBambuLiveAccessCode={editBambuLiveAccessCode}
-              editBambuLiveEnabled={editBambuLiveEnabled}
-              editBambuLiveHost={editBambuLiveHost}
-              editBambuLivePrinterSerial={editBambuLivePrinterSerial}
-              editModel={editPrinterModel}
-              editModelProfile={editModelProfile}
-              editName={editPrinterName}
-              editSlotsPerUnit={editSlotsPerUnit}
-              editUnits={editAmsUnits}
+              editActions={{
+                ...editActions,
+                onStart: () => onStartEditPrinter(printer),
+              }}
+              editDraft={editDraft}
               expanded={expandedBambuDetailsPrinterId === printer.id}
               isEditing={isEditing}
               liveConfig={liveConfig}
@@ -180,11 +204,6 @@ export function SettingsPrintersTab({
               settingsClientReadOnly={settingsClientReadOnly}
               busy={busy}
               tauri={tauri}
-              onBambuLiveAccessCodeChange={onBambuLiveAccessCodeChange}
-              onBambuLiveEnabledChange={onBambuLiveEnabledChange}
-              onBambuLiveHostChange={onBambuLiveHostChange}
-              onBambuLivePrinterSerialChange={onBambuLivePrinterSerialChange}
-              onCancelEdit={onCancelEditPrinter}
               onCopyError={onCopyError}
               onCopySuccess={onCopySuccess}
               onDiagnosticFilterChange={(filter) =>
@@ -199,19 +218,13 @@ export function SettingsPrintersTab({
                   [printer.id]: sort,
                 }))
               }
-              onEditModelChange={onEditPrinterModelChange}
-              onEditNameChange={onEditPrinterNameChange}
-              onEditSlotsPerUnitChange={onEditSlotsPerUnitChange}
-              onEditUnitsChange={onEditAmsUnitsChange}
               onRemove={() => onDeletePrinter(printer)}
-              onSaveEdit={onSavePrinterReconfigure}
               onSelectedChartFieldChange={(fieldPath) =>
                 onDiagnosticChartFieldChange((current) => ({
                   ...current,
                   [printer.id]: fieldPath,
                 }))
               }
-              onStartEdit={() => onStartEditPrinter(printer)}
               onToggleCapture={() => onToggleBambuLiveCapture(printer.id, captureActive)}
               onToggleDetails={() => onToggleBambuLiveDetails(printer.id)}
             />

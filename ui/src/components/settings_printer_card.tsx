@@ -23,6 +23,32 @@ import { SettingsBambuLiveObservedDetailsPanel } from "./settings_bambu_live_obs
 import { SettingsPrinterCardHeader } from "./settings_printer_card_header";
 import { SettingsPrinterEditForm } from "./settings_printer_edit_form";
 
+export type SettingsPrinterEditDraft = {
+  bambuLiveAccessCode: string;
+  bambuLiveEnabled: boolean;
+  bambuLiveHost: string;
+  bambuLivePrinterSerial: string;
+  model: string;
+  modelProfile: PrinterModelProfile;
+  name: string;
+  slotsPerUnit: string;
+  units: string;
+};
+
+export type SettingsPrinterEditActions = {
+  onBambuLiveAccessCodeChange: (value: string) => void;
+  onBambuLiveEnabledChange: (value: boolean) => void;
+  onBambuLiveHostChange: (value: string) => void;
+  onBambuLivePrinterSerialChange: (value: string) => void;
+  onCancel: () => void;
+  onModelChange: (value: string) => void;
+  onNameChange: (value: string) => void;
+  onSave: () => void;
+  onSlotsPerUnitChange: (value: string) => void;
+  onStart: () => void;
+  onUnitsChange: (value: string) => void;
+};
+
 type SettingsPrinterCardProps = {
   bambuDiagnostics: SettingsBambuLiveDiagnosticsModel;
   captureActive: boolean;
@@ -30,15 +56,8 @@ type SettingsPrinterCardProps = {
   diagnosticFilter: DiagnosticFilterKey;
   diagnosticSession: DiagnosticCaptureSession | null;
   diagnosticSort: DiagnosticSortKey;
-  editBambuLiveAccessCode: string;
-  editBambuLiveEnabled: boolean;
-  editBambuLiveHost: string;
-  editBambuLivePrinterSerial: string;
-  editModel: string;
-  editModelProfile: PrinterModelProfile;
-  editName: string;
-  editSlotsPerUnit: string;
-  editUnits: string;
+  editActions: SettingsPrinterEditActions;
+  editDraft: SettingsPrinterEditDraft;
   expanded: boolean;
   isEditing: boolean;
   liveConfig: BambuLiveIntegrationSettings | null;
@@ -47,23 +66,12 @@ type SettingsPrinterCardProps = {
   settingsClientReadOnly: boolean;
   busy: boolean;
   tauri: boolean;
-  onBambuLiveAccessCodeChange: (value: string) => void;
-  onBambuLiveEnabledChange: (value: boolean) => void;
-  onBambuLiveHostChange: (value: string) => void;
-  onBambuLivePrinterSerialChange: (value: string) => void;
-  onCancelEdit: () => void;
   onCopyError: (message: string) => void;
   onCopySuccess: (message: string) => void;
   onDiagnosticFilterChange: (filter: DiagnosticFilterKey) => void;
   onDiagnosticSortChange: (sort: DiagnosticSortKey) => void;
-  onEditModelChange: (value: string) => void;
-  onEditNameChange: (value: string) => void;
-  onEditSlotsPerUnitChange: (value: string) => void;
-  onEditUnitsChange: (value: string) => void;
   onRemove: () => void;
-  onSaveEdit: () => void;
   onSelectedChartFieldChange: (fieldPath: string) => void;
-  onStartEdit: () => void;
   onToggleCapture: () => void;
   onToggleDetails: () => void;
 };
@@ -75,15 +83,8 @@ export function SettingsPrinterCard({
   diagnosticFilter,
   diagnosticSession,
   diagnosticSort,
-  editBambuLiveAccessCode,
-  editBambuLiveEnabled,
-  editBambuLiveHost,
-  editBambuLivePrinterSerial,
-  editModel,
-  editModelProfile,
-  editName,
-  editSlotsPerUnit,
-  editUnits,
+  editActions,
+  editDraft,
   expanded,
   isEditing,
   liveConfig,
@@ -92,23 +93,12 @@ export function SettingsPrinterCard({
   settingsClientReadOnly,
   busy,
   tauri,
-  onBambuLiveAccessCodeChange,
-  onBambuLiveEnabledChange,
-  onBambuLiveHostChange,
-  onBambuLivePrinterSerialChange,
-  onCancelEdit,
   onCopyError,
   onCopySuccess,
   onDiagnosticFilterChange,
   onDiagnosticSortChange,
-  onEditModelChange,
-  onEditNameChange,
-  onEditSlotsPerUnitChange,
-  onEditUnitsChange,
   onRemove,
-  onSaveEdit,
   onSelectedChartFieldChange,
-  onStartEdit,
   onToggleCapture,
   onToggleDetails,
 }: SettingsPrinterCardProps) {
@@ -133,7 +123,7 @@ export function SettingsPrinterCard({
         isExpanded={expanded}
         onRemove={onRemove}
         onToggleDetails={onToggleDetails}
-        onToggleEdit={isEditing ? onCancelEdit : onStartEdit}
+        onToggleEdit={isEditing ? editActions.onCancel : editActions.onStart}
         printer={printer}
         reviewTrayCount={reviewTrayCount}
         tauri={tauri}
@@ -160,36 +150,36 @@ export function SettingsPrinterCard({
 
       {isEditing ? (
         <SettingsPrinterEditForm
-          bambuLiveAccessCode={editBambuLiveAccessCode}
-          bambuLiveEnabled={editBambuLiveEnabled}
-          bambuLiveHost={editBambuLiveHost}
-          bambuLivePrinterSerial={editBambuLivePrinterSerial}
+          bambuLiveAccessCode={editDraft.bambuLiveAccessCode}
+          bambuLiveEnabled={editDraft.bambuLiveEnabled}
+          bambuLiveHost={editDraft.bambuLiveHost}
+          bambuLivePrinterSerial={editDraft.bambuLivePrinterSerial}
           busy={busy}
-          model={editModel}
-          modelProfile={editModelProfile}
-          name={editName}
+          model={editDraft.model}
+          modelProfile={editDraft.modelProfile}
+          name={editDraft.name}
           settingsClientReadOnly={settingsClientReadOnly}
-          slotsPerUnit={editSlotsPerUnit}
+          slotsPerUnit={editDraft.slotsPerUnit}
           supportsBambuLive={isBambuLabPrinter(printer.model)}
           tauri={tauri}
           t={t}
-          units={editUnits}
-          onBambuLiveAccessCodeChange={onBambuLiveAccessCodeChange}
-          onBambuLiveEnabledChange={onBambuLiveEnabledChange}
-          onBambuLiveHostChange={onBambuLiveHostChange}
-          onBambuLivePrinterSerialChange={onBambuLivePrinterSerialChange}
+          units={editDraft.units}
+          onBambuLiveAccessCodeChange={editActions.onBambuLiveAccessCodeChange}
+          onBambuLiveEnabledChange={editActions.onBambuLiveEnabledChange}
+          onBambuLiveHostChange={editActions.onBambuLiveHostChange}
+          onBambuLivePrinterSerialChange={editActions.onBambuLivePrinterSerialChange}
           onModelChange={(nextModel) => {
-            onEditModelChange(nextModel);
+            editActions.onModelChange(nextModel);
             const exactProfile = findPrinterModelProfileExact(nextModel);
             if (exactProfile) {
-              onEditUnitsChange(String(exactProfile.defaultUnits));
-              onEditSlotsPerUnitChange(String(exactProfile.defaultSlotsPerUnit));
+              editActions.onUnitsChange(String(exactProfile.defaultUnits));
+              editActions.onSlotsPerUnitChange(String(exactProfile.defaultSlotsPerUnit));
             }
           }}
-          onNameChange={onEditNameChange}
-          onSave={onSaveEdit}
-          onSlotsPerUnitChange={onEditSlotsPerUnitChange}
-          onUnitsChange={onEditUnitsChange}
+          onNameChange={editActions.onNameChange}
+          onSave={editActions.onSave}
+          onSlotsPerUnitChange={editActions.onSlotsPerUnitChange}
+          onUnitsChange={editActions.onUnitsChange}
         />
       ) : null}
     </div>
