@@ -24,6 +24,8 @@ pub mod database_result;
 pub mod database_rows;
 #[path = "../../../src/backend/database_schema.rs"]
 pub mod database_schema;
+#[path = "../../../src/backend/database_schema_setup.rs"]
+pub mod database_schema_setup;
 #[path = "../../../src/backend/database_settings.rs"]
 pub mod database_settings;
 #[path = "../../../src/backend/database_spool_schema.rs"]

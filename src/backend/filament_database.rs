@@ -26,15 +26,10 @@ use super::database_rows::{
     map_trusted_lan_paired_browser_row,
 };
 use super::database_schema::{ensure_no_foreign_key_violations, table_columns};
+use super::database_schema_setup::apply_schema_migrations;
 use super::database_settings::{
     delete_setting as delete_setting_row, get_setting as get_setting_row,
     set_setting as set_setting_row,
-};
-use super::database_spool_schema::{
-    ensure_spool_home_location_schema as ensure_spool_home_location_schema_impl,
-    ensure_spool_identity_schema as ensure_spool_identity_schema_impl,
-    ensure_spool_lifecycle_schema as ensure_spool_lifecycle_schema_impl,
-    ensure_spool_weight_schema as ensure_spool_weight_schema_impl,
 };
 use super::database_table_ops::delete_all_rows;
 use super::database_tables::should_import_backup_row;
@@ -485,18 +480,7 @@ impl FilamentDatabase {
     }
 
     pub fn apply_schema(&self) -> InventoryResult<()> {
-        self.conn.execute_batch(SCHEMA_SQL)?;
-        self.ensure_catalog_lifecycle_columns()?;
-        self.ensure_spool_lifecycle_schema()?;
-        self.ensure_spool_weight_schema()?;
-        self.ensure_spool_identity_schema()?;
-        self.ensure_spool_home_location_schema()?;
-        self.ensure_borrowed_in_schema()?;
-        self.ensure_printer_external_slot_schema()?;
-        self.ensure_printer_slot_rfid_override_schema()?;
-        self.ensure_printer_slot_live_cache_schema()?;
-        self.ensure_trusted_lan_schema()?;
-        Ok(())
+        apply_schema_migrations(&self.conn, SCHEMA_SQL)
     }
 
     pub fn list_master_catalog(
@@ -1369,22 +1353,6 @@ impl FilamentDatabase {
 
     pub fn ensure_catalog_lifecycle_columns(&self) -> InventoryResult<()> {
         ensure_catalog_lifecycle_columns_schema(&self.conn)
-    }
-
-    pub fn ensure_spool_lifecycle_schema(&self) -> InventoryResult<()> {
-        ensure_spool_lifecycle_schema_impl(&self.conn)
-    }
-
-    pub fn ensure_spool_weight_schema(&self) -> InventoryResult<()> {
-        ensure_spool_weight_schema_impl(&self.conn)
-    }
-
-    pub fn ensure_spool_identity_schema(&self) -> InventoryResult<()> {
-        ensure_spool_identity_schema_impl(&self.conn)
-    }
-
-    pub fn ensure_spool_home_location_schema(&self) -> InventoryResult<()> {
-        ensure_spool_home_location_schema_impl(&self.conn)
     }
 
     pub fn ensure_borrowed_in_schema(&self) -> InventoryResult<()> {
