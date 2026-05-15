@@ -12,6 +12,7 @@ import { SettingsLibraryTab } from "./settings_library_tab";
 import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
 import { SettingsPageHeader } from "./settings_page_header";
 import { SettingsPrintersRoute } from "./settings_printers_route";
+import { SettingsRouteOutlet } from "./settings_route_outlet";
 import { SettingsTabNav } from "./settings_tab_nav";
 import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";
@@ -782,8 +783,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
       <SettingsTabNav onTabChange={setActiveTab} tabs={settingsTabButtons} />
 
-      <div className="mt-4 grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]">
-        {activeTab === "PRINTERS" ? (
+      <SettingsRouteOutlet
+        activeTab={activeTab}
+        routes={{
+          PRINTERS: (
           <SettingsPrintersRoute
             tab={{
               bambuLiveIntegrations,
@@ -833,9 +836,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               onToggleBambuLiveDetails: handleToggleBambuLiveDetails,
             }}
           />
-        ) : null}
+          ),
 
-        {activeTab === "GENERAL" ? (
+          GENERAL: (
           <SettingsGeneralRoute
             tab={{
               appVersion,
@@ -849,9 +852,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               onThemeSelection: handleThemeSelection,
             }}
           />
-        ) : null}
+          ),
 
-        {activeTab === "LIBRARY" ? (
+          LIBRARY: (
           <SettingsLibraryTab
             browsersPanel={{
               activeBrowsers: activeTrustedLanPairedBrowsers,
@@ -957,9 +960,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 void handleToggleTrustedLanEnabled(nextEnabled),
             }}
           />
-        ) : null}
+          ),
 
-        {activeTab === "CATALOG" ? (
+          CATALOG: (
           <SettingsCatalogTab
             helpText={t(
               "settings.catalogTabHelp",
@@ -1009,9 +1012,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               onToggleCatalogRefreshMaterial: toggleCatalogRefreshMaterial,
             }}
           />
-        ) : null}
+          ),
 
-        {activeTab === "MAINTENANCE" ? (
+          MAINTENANCE: (
           <SettingsMaintenanceRoute
             tab={{
               backupImportInputRef,
@@ -1039,8 +1042,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               onValidateBackupFile: (event) => void handleValidateBackupFile(event),
             }}
           />
-        ) : null}
-      </div>
+          ),
+        }}
+      />
       <SettingsLibraryRoleModalRoute
         modal={{
           busy,
