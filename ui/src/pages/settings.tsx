@@ -36,7 +36,6 @@ import { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_
 import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_lan_pairing_panel";
 import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_lan_server_panel";
 import { tabButtonClass } from "../lib/settings_ui_classes";
-import { loadAllSpoolRows } from "../lib/spool_data_source";
 import {
   resolvePrinterModelProfile,
 } from "../lib/printer_profiles";
@@ -73,6 +72,7 @@ import { useSettingsPageReload } from "./use_settings_page_reload";
 import { useSettingsPageTabs } from "./use_settings_page_tabs";
 import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
 import { useSettingsMaintenanceActions } from "./use_settings_maintenance_actions";
+import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_messages";
 import { useSettingsLibrarySyncActions } from "./use_settings_library_sync_actions";
@@ -697,16 +697,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     };
   }
 
-  async function loadSettingsInventoryRows(): Promise<SpoolWithMasterRow[]> {
-    return loadAllSpoolRows(
-      {
-        clientReadOnly: settingsClientReadOnly,
-        clientHostBaseUrl: settingsClientHostBaseUrl,
-        clientLibraryId: settingsClientLibraryId,
-      },
-      200,
-    );
-  }
+  const loadSettingsInventoryRows = useSettingsInventoryRowsLoader({
+    settingsClientHostBaseUrl,
+    settingsClientLibraryId,
+    settingsClientReadOnly,
+  });
 
   async function handleExportFullBackup() {
     if (!tauri || busy) {
