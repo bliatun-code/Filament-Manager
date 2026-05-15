@@ -7,7 +7,9 @@ use super::database_alerts::{
     alert_exists_for_spool as alert_exists_for_spool_row, insert_alert as insert_alert_row,
 };
 pub use super::database_backup::BackupValidationStats;
-use super::database_backup::{parse_full_backup_content, validate_full_backup_content};
+use super::database_backup::{
+    export_full_backup_content, parse_full_backup_content, validate_full_backup_content,
+};
 use super::database_borrowed_schema::ensure_borrowed_in_schema as ensure_borrowed_in_schema_impl;
 use super::database_catalog_schema::ensure_catalog_lifecycle_columns as ensure_catalog_lifecycle_columns_schema;
 use super::database_connection::open_connection;
@@ -75,7 +77,7 @@ use super::database_trusted_lan::{
     touch_trusted_lan_paired_browser as touch_trusted_lan_paired_browser_row,
 };
 use super::database_trusted_lan_schema::ensure_trusted_lan_schema as ensure_trusted_lan_schema_impl;
-use super::database_values::{json_value_to_sql, sqlite_value_to_json};
+use super::database_values::json_value_to_sql;
 use super::database_wishlist::{
     delete_wishlist_item as delete_wishlist_item_row,
     insert_wishlist_item as insert_wishlist_item_row,
@@ -3279,28 +3281,7 @@ impl FilamentDatabase {
     }
 
     pub fn export_full_backup_json(&self) -> InventoryResult<String> {
-        let exported_at: String = self
-            .conn
-            .query_row("SELECT datetime('now')", [], |row| row.get(0))?;
-
-        let mut tables = Map::new();
-        for table in FULL_BACKUP_TABLES {
-            tables.insert(
-                table.to_string(),
-                Value::Array(self.export_table_rows(table)?),
-            );
-        }
-
-        let mut root = Map::new();
-        root.insert(
-            "format".to_string(),
-            Value::String("filament-manager-backup-v1".to_string()),
-        );
-        root.insert("exported_at".to_string(), Value::String(exported_at));
-        root.insert("tables".to_string(), Value::Object(tables));
-
-        serde_json::to_string_pretty(&Value::Object(root))
-            .map_err(|error| InventoryError::Db(error.to_string()))
+        export_full_backup_content(&self.conn)
     }
 
     pub fn validate_full_backup_json(
@@ -3429,28 +3410,6 @@ impl FilamentDatabase {
         self.conn
             .execute(&sql, rusqlite::params_from_iter(values.iter()))?;
         Ok(())
-    }
-
-    fn export_table_rows(&self, table: &str) -> InventoryResult<Vec<Value>> {
-        let query = format!("SELECT * FROM {table}");
-        let mut stmt = self.conn.prepare(&query)?;
-        let columns: Vec<String> = stmt
-            .column_names()
-            .iter()
-            .map(|name| (*name).to_string())
-            .collect();
-
-        let mut rows = stmt.query([])?;
-        let mut output = Vec::new();
-        while let Some(row) = rows.next()? {
-            let mut object = Map::new();
-            for (index, column_name) in columns.iter().enumerate() {
-                let value = row.get_ref(index)?;
-                object.insert(column_name.clone(), sqlite_value_to_json(value));
-            }
-            output.push(Value::Object(object));
-        }
-        Ok(output)
     }
 
     pub fn enqueue_sync_action(

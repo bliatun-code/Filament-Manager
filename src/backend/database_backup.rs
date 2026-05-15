@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use super::database_tables::FULL_BACKUP_TABLES;
+use super::database_values::sqlite_value_to_json;
 use super::filament_database::{InventoryError, InventoryResult};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -112,4 +113,49 @@ pub(crate) fn validate_full_backup_content(
         missing_tables,
         extra_tables,
     })
+}
+
+pub(crate) fn export_full_backup_content(conn: &rusqlite::Connection) -> InventoryResult<String> {
+    let exported_at: String = conn.query_row("SELECT datetime('now')", [], |row| row.get(0))?;
+
+    let mut tables = Map::new();
+    for table in FULL_BACKUP_TABLES {
+        tables.insert(
+            table.to_string(),
+            Value::Array(export_table_rows(conn, table)?),
+        );
+    }
+
+    let mut root = Map::new();
+    root.insert(
+        "format".to_string(),
+        Value::String("filament-manager-backup-v1".to_string()),
+    );
+    root.insert("exported_at".to_string(), Value::String(exported_at));
+    root.insert("tables".to_string(), Value::Object(tables));
+
+    serde_json::to_string_pretty(&Value::Object(root))
+        .map_err(|error| InventoryError::Db(error.to_string()))
+}
+
+fn export_table_rows(conn: &rusqlite::Connection, table: &str) -> InventoryResult<Vec<Value>> {
+    let query = format!("SELECT * FROM {table}");
+    let mut stmt = conn.prepare(&query)?;
+    let columns: Vec<String> = stmt
+        .column_names()
+        .iter()
+        .map(|name| (*name).to_string())
+        .collect();
+
+    let mut rows = stmt.query([])?;
+    let mut output = Vec::new();
+    while let Some(row) = rows.next()? {
+        let mut object = Map::new();
+        for (index, column_name) in columns.iter().enumerate() {
+            let value = row.get_ref(index)?;
+            object.insert(column_name.clone(), sqlite_value_to_json(value));
+        }
+        output.push(Value::Object(object));
+    }
+    Ok(output)
 }
