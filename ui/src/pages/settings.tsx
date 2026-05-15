@@ -70,11 +70,11 @@ import {
   waitForMs,
 } from "../lib/settings_utils";
 import { copyTextToClipboard } from "../lib/clipboard";
-import { PrinterModelPreview } from "../components/printer_model_preview";
 import { SettingsGeneralTab } from "../components/settings_general_tab";
 import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
 import { SettingsMaintenanceTab } from "../components/settings_maintenance_tab";
 import { SettingsMissingSwatchesPanel } from "../components/settings_missing_swatches_panel";
+import { SettingsPrinterCardHeader } from "../components/settings_printer_card_header";
 import { SettingsPrinterEditForm } from "../components/settings_printer_edit_form";
 import { SettingsMetricTile } from "../components/settings_ui";
 import { SettingsBambuLiveObservedDetailsPanel } from "../components/settings_bambu_live_observed_details_panel";
@@ -103,7 +103,6 @@ import {
   type DiagnosticSortKey,
 } from "../lib/diagnostic_capture";
 import {
-  describePrinterCapability,
   describeConfiguredPrinterSetup,
   findPrinterModelProfileExact,
   hasConfiguredMultiMaterial,
@@ -2659,77 +2658,27 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                     className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/50"
                     style={printerBrandSurfaceStyle(printer.model, "compact", resolvedTheme)}
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-3">
-                        <PrinterModelPreview
-                          model={printer.model}
-                          hasMultiMaterial={hasMultiMaterial}
-                          compact
-                        />
-                        <div className="text-sm text-slate-700 dark:text-slate-200">
-                          <span className="font-semibold text-slate-900 dark:text-slate-50">
-                            {printer.name}
-                          </span>{" "}
-                          {liveConfig?.enabled ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-sky-700 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-200">
-                              {t("settings.bambuLiveBadge", "Live")}
-                              {reviewTrayCount > 0 ? <span aria-hidden="true">!</span> : null}
-                            </span>
-                          ) : null}{" "}
-                          · {printer.model} ·{" "}
-                          {describePrinterCapability(t, printer.model, hasMultiMaterial)} ·{" "}
-                          {configuredSetup}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {liveConfig?.enabled ? (
-                          <button
-                            type="button"
-                            className="rounded border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200"
-                            onClick={() => handleToggleBambuLiveDetails(printer.id)}
-                            disabled={!tauri}
-                          >
-                            {expandedBambuDetailsPrinterId === printer.id
-                              ? t("settings.hideObservedDetails", "Hide observed details")
-                              : t("settings.showObservedDetails", "Show observed details & capture")}
-                          </button>
-                        ) : null}
-                        <button
-                          type="button"
-                          className={`rounded border px-2 py-1 text-xs font-semibold disabled:opacity-50 ${
-                            isEditing
-                              ? "border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-500 dark:bg-slate-700 dark:text-slate-100"
-                              : "border-slate-200 text-slate-700 dark:border-slate-500 dark:text-slate-200"
-                          }`}
-                          onClick={() => {
-                            if (isEditing) {
-                              handleCancelEditPrinter();
-                            } else {
-                              handleStartEditPrinter(printer);
-                            }
-                          }}
-                          disabled={!tauri || busy}
-                        >
-                          {isEditing
-                            ? t("common.close", "Close")
-                            : t("settings.reconfigure", "Reconfigure")}
-                        </button>
-                        <button
-                          type="button"
-                          className={`rounded border px-2 py-1 text-xs font-semibold disabled:opacity-50 ${
-                            confirmDeletePrinterId === printer.id
-                              ? "border-rose-500 bg-rose-600 text-white dark:border-rose-400 dark:bg-rose-500 dark:text-slate-900"
-                              : "border-rose-200 text-rose-700 dark:border-rose-500/50 dark:text-rose-300"
-                          }`}
-                          onClick={() => void handleDeletePrinter(printer)}
-                          disabled={!tauri || busy}
-                        >
-                          {confirmDeletePrinterId === printer.id
-                            ? t("settings.confirmRemove", "Confirm remove")
-                            : t("common.remove", "Remove")}
-                        </button>
-                      </div>
-                    </div>
+                    <SettingsPrinterCardHeader
+                      busy={busy}
+                      configuredSetup={configuredSetup}
+                      confirmDelete={confirmDeletePrinterId === printer.id}
+                      hasLiveIntegration={Boolean(liveConfig?.enabled)}
+                      hasMultiMaterial={hasMultiMaterial}
+                      isEditing={isEditing}
+                      isExpanded={expandedBambuDetailsPrinterId === printer.id}
+                      onRemove={() => void handleDeletePrinter(printer)}
+                      onToggleDetails={() => handleToggleBambuLiveDetails(printer.id)}
+                      onToggleEdit={() => {
+                        if (isEditing) {
+                          handleCancelEditPrinter();
+                        } else {
+                          handleStartEditPrinter(printer);
+                        }
+                      }}
+                      printer={printer}
+                      reviewTrayCount={reviewTrayCount}
+                      tauri={tauri}
+                    />
 
                     {expandedBambuDetailsPrinterId === printer.id && liveConfig?.enabled ? (
                       <SettingsBambuLiveObservedDetailsPanel
