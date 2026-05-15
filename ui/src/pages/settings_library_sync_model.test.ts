@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildLibraryRoleChangeState,
   buildLibrarySyncMigrationModel,
+  buildLibrarySyncVisibilityState,
   shouldShowLibraryWebappDetails,
 } from "./settings_library_sync_model";
 
@@ -125,4 +126,50 @@ test("shouldShowLibraryWebappDetails keeps webapp details visible for active con
   );
   assert.equal(shouldShowLibraryWebappDetails({ ...base, hasTrustedLanPairingLink: true }), true);
   assert.equal(shouldShowLibraryWebappDetails({ ...base, pairedBrowserCount: 1 }), true);
+});
+
+test("buildLibrarySyncVisibilityState groups library settings presentation flags", () => {
+  const base = {
+    draftMode: "STANDALONE" as const,
+    trustedLanEnabledDraft: false,
+    trustedLanStatusEnabled: false,
+    showTrustedLanNetworkEditor: false,
+    hasTrustedLanPairingLink: false,
+    pairedBrowserCount: 0,
+    lastCheckedAt: null,
+    lastReachableAt: null,
+    lastValidationMessage: null,
+    hasSnapshot: false,
+  };
+
+  assert.deepEqual(buildLibrarySyncVisibilityState(base), {
+    showDeviceFields: false,
+    showWebappDetails: false,
+    standaloneWebappEnabled: false,
+    clientHasStatusDetails: false,
+    clientHasSnapshot: false,
+  });
+
+  assert.deepEqual(
+    buildLibrarySyncVisibilityState({
+      ...base,
+      draftMode: "HOST",
+      trustedLanStatusEnabled: true,
+      lastValidationMessage: "Host unreachable",
+      hasSnapshot: true,
+    }),
+    {
+      showDeviceFields: true,
+      showWebappDetails: true,
+      standaloneWebappEnabled: false,
+      clientHasStatusDetails: true,
+      clientHasSnapshot: true,
+    },
+  );
+
+  assert.equal(
+    buildLibrarySyncVisibilityState({ ...base, trustedLanEnabledDraft: true })
+      .standaloneWebappEnabled,
+    true,
+  );
 });

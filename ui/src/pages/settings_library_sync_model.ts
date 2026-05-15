@@ -31,6 +31,14 @@ export type LibraryRoleChangeState = {
   ready: boolean;
 };
 
+export type LibrarySyncVisibilityState = {
+  showDeviceFields: boolean;
+  showWebappDetails: boolean;
+  standaloneWebappEnabled: boolean;
+  clientHasStatusDetails: boolean;
+  clientHasSnapshot: boolean;
+};
+
 export function shouldShowLibraryWebappDetails(input: {
   draftMode: LibrarySyncMode;
   trustedLanEnabledDraft: boolean;
@@ -47,6 +55,29 @@ export function shouldShowLibraryWebappDetails(input: {
     input.hasTrustedLanPairingLink ||
     input.pairedBrowserCount > 0
   );
+}
+
+export function buildLibrarySyncVisibilityState(input: {
+  draftMode: LibrarySyncMode;
+  trustedLanEnabledDraft: boolean;
+  trustedLanStatusEnabled: boolean;
+  showTrustedLanNetworkEditor: boolean;
+  hasTrustedLanPairingLink: boolean;
+  pairedBrowserCount: number;
+  lastCheckedAt: string | null | undefined;
+  lastReachableAt: string | null | undefined;
+  lastValidationMessage: string | null | undefined;
+  hasSnapshot: boolean;
+}): LibrarySyncVisibilityState {
+  return {
+    showDeviceFields: input.draftMode === "HOST",
+    showWebappDetails: shouldShowLibraryWebappDetails(input),
+    standaloneWebappEnabled: input.draftMode === "STANDALONE" && input.trustedLanEnabledDraft,
+    clientHasStatusDetails: Boolean(
+      input.lastCheckedAt || input.lastReachableAt || input.lastValidationMessage,
+    ),
+    clientHasSnapshot: input.hasSnapshot,
+  };
 }
 
 export function buildLibraryRoleChangeState(input: {

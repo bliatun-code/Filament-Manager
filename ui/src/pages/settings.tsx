@@ -110,7 +110,7 @@ import {
 } from "./settings_companion_model";
 import {
   buildLibraryRoleChangeState,
-  shouldShowLibraryWebappDetails,
+  buildLibrarySyncVisibilityState,
   type LibrarySyncMode,
 } from "./settings_library_sync_model";
 import { buildSettingsBackupValidationState } from "./settings_backup_model";
@@ -2463,22 +2463,18 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       label: t("settings.librarySyncClient", "Client"),
     },
   ];
-  const showLibraryDeviceFields = librarySyncModeDraft === "HOST";
-  const showLibraryWebappDetails = shouldShowLibraryWebappDetails({
+  const libraryVisibility = buildLibrarySyncVisibilityState({
     draftMode: librarySyncModeDraft,
     trustedLanEnabledDraft,
     trustedLanStatusEnabled: Boolean(trustedLanStatus?.enabled),
     showTrustedLanNetworkEditor,
     hasTrustedLanPairingLink: Boolean(trustedLanPairingLink),
     pairedBrowserCount: trustedLanPairedBrowsers.length,
+    lastCheckedAt: librarySyncSettings?.last_checked_at,
+    lastReachableAt: librarySyncSettings?.last_reachable_at,
+    lastValidationMessage: librarySyncSettings?.last_validation_message,
+    hasSnapshot: Boolean(librarySyncSnapshot),
   });
-  const standaloneWebappEnabled = librarySyncModeDraft === "STANDALONE" && trustedLanEnabledDraft;
-  const clientHasStatusDetails = Boolean(
-    librarySyncSettings?.last_checked_at ||
-      librarySyncSettings?.last_reachable_at ||
-      librarySyncSettings?.last_validation_message,
-  );
-  const clientHasSnapshot = Boolean(librarySyncSnapshot);
   const roleChangeState = buildLibraryRoleChangeState({
     target: pendingLibraryRoleTarget,
     savedMode: librarySyncSavedMode,
@@ -2687,7 +2683,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                   )}
                 </div>
 
-                {librarySyncModeDraft !== "CLIENT" && showLibraryWebappDetails ? (
+                {librarySyncModeDraft !== "CLIENT" && libraryVisibility.showWebappDetails ? (
                   <SettingsTrustedLanServerPanel
                     actionBusy={trustedLanActionBusy}
                     companionModel={trustedLanCompanionModel}
@@ -2714,7 +2710,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 {librarySyncModeDraft === "HOST" ? null : (
                   <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
                     {librarySyncModeDraft === "STANDALONE"
-                      ? standaloneWebappEnabled
+                      ? libraryVisibility.standaloneWebappEnabled
                         ? t(
                             "settings.librarySyncStandaloneWebappHint",
                             "This device keeps its own local library and is also serving the web app from here.",
@@ -2730,7 +2726,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                   </div>
                 )}
 
-                {showLibraryDeviceFields ? (
+                {libraryVisibility.showDeviceFields ? (
                   <div className="grid gap-4 md:grid-cols-2">
                     <label className="space-y-2">
                       <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
@@ -2956,7 +2952,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                               </button>
                             </div>
 
-                            {clientHasStatusDetails ? (
+                            {libraryVisibility.clientHasStatusDetails ? (
                               <div className="mt-4 grid gap-3 md:grid-cols-2">
                                 <SettingsMetricTile
                                   label={t("settings.librarySyncLastChecked", "Last checked")}
@@ -2984,7 +2980,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                             ) : null}
                           </div>
 
-                          {clientHasSnapshot ? (
+                          {libraryVisibility.clientHasSnapshot ? (
                             <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
                               <div className="flex items-center justify-between gap-3">
                                 <div className="font-semibold">
