@@ -16,6 +16,8 @@ pub mod database_values;
 pub mod filament_database;
 #[path = "../../../src/backend/inventory_engine.rs"]
 pub mod inventory_engine;
+#[path = "../../../src/backend/library_sync_defaults.rs"]
+pub mod library_sync_defaults;
 #[path = "../../../src/backend/statistics.rs"]
 pub mod statistics;
 #[path = "../../../src/backend/vendor_lookup.rs"]

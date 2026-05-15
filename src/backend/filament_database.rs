@@ -13,6 +13,7 @@ use super::database_tables::should_import_backup_row;
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
 use super::database_text::{escape_csv, escape_json, normalize_optional_text};
 use super::database_values::{json_value_to_sql, sqlite_value_to_json};
+use super::library_sync_defaults::{default_library_sync_device_name, normalize_library_sync_mode};
 use super::statistics::InventoryOverview;
 use super::vendor_lookup::normalize_esun_color_name_for_catalog;
 use rusqlite::{params, Connection, OptionalExtension, Row};
@@ -4400,28 +4401,6 @@ fn require_rows(affected: usize) -> InventoryResult<()> {
     } else {
         Ok(())
     }
-}
-
-fn normalize_library_sync_mode(raw: Option<&str>) -> String {
-    match raw
-        .unwrap_or("STANDALONE")
-        .trim()
-        .to_ascii_uppercase()
-        .as_str()
-    {
-        "HOST" => "HOST".to_string(),
-        "CLIENT" => "CLIENT".to_string(),
-        _ => "STANDALONE".to_string(),
-    }
-}
-
-fn default_library_sync_device_name() -> String {
-    std::env::var("COMPUTERNAME")
-        .ok()
-        .or_else(|| std::env::var("HOSTNAME").ok())
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| "This device".to_string())
 }
 
 fn normalize_loan_direction_filter(raw: Option<&str>) -> String {
