@@ -2,7 +2,6 @@ import type { SettingsTabKey } from "../App";
 import {
   isTauri,
 } from "../lib/tauri_client";
-import { FeedbackBanner } from "../components/feedback_banner";
 import { useI18n } from "../lib/i18n";
 import { SettingsGeneralTab } from "../components/settings_general_tab";
 import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
@@ -17,6 +16,7 @@ import { buildTrustedLanCompanionModel } from "./settings_companion_model";
 import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
+import { SettingsFeedbackStack } from "./settings_feedback_stack";
 import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";
 import { useSettingsFeedbackState } from "./use_settings_feedback_state";
@@ -780,22 +780,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         </div>
       </div>
 
-      {!tauri ? (
-        <FeedbackBanner tone="warning" className="mt-4">
-          {pageChromeLabels.desktopOnly}
-        </FeedbackBanner>
-      ) : null}
-
-      {error ? (
-        <FeedbackBanner tone="danger" className="mt-4">
-          {error}
-        </FeedbackBanner>
-      ) : null}
-      {info ? (
-        <FeedbackBanner tone="success" className="mt-4">
-          {info}
-        </FeedbackBanner>
-      ) : null}
+      <SettingsFeedbackStack
+        desktopOnlyMessage={pageChromeLabels.desktopOnly}
+        error={error}
+        info={info}
+        tauri={tauri}
+      />
 
       <div className="mt-6 rounded-lg border border-slate-300/50 bg-white/44 p-1.5 dark:border-slate-700/70 dark:bg-slate-950/24">
         <div className="flex flex-wrap gap-1.5">
