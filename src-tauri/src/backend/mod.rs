@@ -28,6 +28,8 @@ pub mod database_table_ops;
 pub mod database_tables;
 #[path = "../../../src/backend/database_text.rs"]
 pub mod database_text;
+#[path = "../../../src/backend/database_time.rs"]
+pub mod database_time;
 #[path = "../../../src/backend/database_trusted_lan_schema.rs"]
 pub mod database_trusted_lan_schema;
 #[path = "../../../src/backend/database_values.rs"]

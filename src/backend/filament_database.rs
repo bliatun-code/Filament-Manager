@@ -36,6 +36,9 @@ use super::database_table_ops::delete_all_rows;
 use super::database_tables::should_import_backup_row;
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
 use super::database_text::{escape_csv, escape_json, normalize_optional_text};
+use super::database_time::{
+    sqlite_datetime_shift as sqlite_datetime_shift_value, sqlite_now as sqlite_now_value,
+};
 use super::database_trusted_lan_schema::ensure_trusted_lan_schema as ensure_trusted_lan_schema_impl;
 use super::database_values::{json_value_to_sql, sqlite_value_to_json};
 use super::library_sync_defaults::{default_library_sync_device_name, normalize_library_sync_mode};
@@ -1373,19 +1376,11 @@ impl FilamentDatabase {
     }
 
     pub fn sqlite_now(&self) -> InventoryResult<String> {
-        let value = self
-            .conn
-            .query_row("SELECT datetime('now')", [], |row| row.get(0))?;
-        Ok(value)
+        sqlite_now_value(&self.conn)
     }
 
     pub fn sqlite_datetime_shift(&self, base: &str, modifier: &str) -> InventoryResult<String> {
-        let value =
-            self.conn
-                .query_row("SELECT datetime(?1, ?2)", params![base, modifier], |row| {
-                    row.get(0)
-                })?;
-        Ok(value)
+        sqlite_datetime_shift_value(&self.conn, base, modifier)
     }
 
     pub fn ensure_catalog_lifecycle_columns(&self) -> InventoryResult<()> {
@@ -3085,9 +3080,7 @@ impl FilamentDatabase {
     }
 
     pub fn current_timestamp(&self) -> InventoryResult<String> {
-        self.conn
-            .query_row("SELECT datetime('now')", [], |row| row.get::<_, String>(0))
-            .map_err(InventoryError::from)
+        sqlite_now_value(&self.conn)
     }
 
     pub fn create_trusted_lan_pairing(
