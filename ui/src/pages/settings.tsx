@@ -10,6 +10,7 @@ import { SettingsFeedbackStack } from "./settings_feedback_stack";
 import { SettingsGeneralRoute } from "./settings_general_route";
 import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
 import { buildSettingsLibraryBrowsersPanelProps } from "./settings_library_browsers_panel_props";
+import { buildSettingsLibraryClientPanelProps } from "./settings_library_client_panel_props";
 import { buildSettingsLibraryRolePanelProps } from "./settings_library_role_panel_props";
 import { buildSettingsLibraryServerPanelProps } from "./settings_library_server_panel_props";
 import { buildSettingsLibraryPairingPanelProps } from "./settings_library_pairing_panel_props";
@@ -974,6 +975,33 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     onRevokeBrowser: handleRevokeTrustedLanBrowser,
     onToggleRevokedBrowsers: () => setShowTrustedLanRevokedBrowsers((value) => !value),
   });
+  const settingsLibraryClientPanelProps = buildSettingsLibraryClientPanelProps({
+    librarySyncBusy,
+    librarySyncDeviceNameDraft,
+    librarySyncHostBaseUrlDraft,
+    librarySyncPairingDraft,
+    librarySyncSettings,
+    librarySyncSnapshot,
+    librarySyncSnapshotBusy,
+    librarySyncValidation,
+    librarySyncValidationBusy,
+    libraryVisibility,
+    locale,
+    settingsClientHostBaseUrl,
+    settingsClientHostNeedsRepair,
+    settingsClientHostPairingValid,
+    settingsClientHostWritePaired,
+    showLibraryClientAdvanced,
+    tauri,
+    t,
+    onClearClientAuth: handleClearLibrarySyncClientAuth,
+    onDeviceNameChange: setLibrarySyncDeviceNameDraft,
+    onFetchSnapshot: handleFetchLibrarySyncSnapshot,
+    onPairHost: handlePairLibrarySyncHost,
+    onPairingDraftChange: setLibrarySyncPairingDraft,
+    onRenewClientAuth: handleRenewLibrarySyncClientAuth,
+    onToggleAdvanced: () => setShowLibraryClientAdvanced((value) => !value),
+  });
   return (
     <div className="page-shell">
       <SettingsPageHeader
@@ -1007,31 +1035,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               ...settingsLibraryBrowsersPanelProps,
             }}
             clientPanel={{
-              librarySyncBusy,
-              librarySyncDeviceNameDraft,
-              librarySyncHostBaseUrlDraft,
-              librarySyncPairingDraft,
-              librarySyncSettings,
-              librarySyncSnapshot,
-              librarySyncSnapshotBusy,
-              librarySyncValidation,
-              librarySyncValidationBusy,
-              libraryVisibility,
-              locale,
-              settingsClientHostBaseUrl,
-              settingsClientHostNeedsRepair,
-              settingsClientHostPairingValid,
-              settingsClientHostWritePaired,
-              showLibraryClientAdvanced,
-              tauri,
-              t,
-              onClearClientAuth: () => void handleClearLibrarySyncClientAuth(),
-              onDeviceNameChange: setLibrarySyncDeviceNameDraft,
-              onFetchSnapshot: () => void handleFetchLibrarySyncSnapshot(),
-              onPairHost: () => void handlePairLibrarySyncHost(),
-              onPairingDraftChange: setLibrarySyncPairingDraft,
-              onRenewClientAuth: () => void handleRenewLibrarySyncClientAuth(),
-              onToggleAdvanced: () => setShowLibraryClientAdvanced((value) => !value),
+              ...settingsLibraryClientPanelProps,
             }}
             libraryRolePanel={{
               ...settingsLibraryRolePanelProps,
