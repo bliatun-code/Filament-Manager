@@ -108,6 +108,7 @@ import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";
 import { useSettingsAutoClearValue } from "./use_settings_auto_clear";
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
+import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_confirm";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import {
@@ -1380,20 +1381,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     };
   }, [trustedLanPairingLink]);
 
-  useSettingsAutoClearValue(
+  useSettingsPrinterDeleteConfirm({
     confirmDeletePrinterId,
-    useCallback(() => setConfirmDeletePrinterId(null), []),
-    6000,
-  );
-
-  useEffect(() => {
-    if (!confirmDeletePrinterId) {
-      return;
-    }
-    if (!printers.some((printer) => printer.id === confirmDeletePrinterId)) {
-      setConfirmDeletePrinterId(null);
-    }
-  }, [confirmDeletePrinterId, printers]);
+    printers,
+    setConfirmDeletePrinterId,
+  });
 
   useSettingsAutoClearValue(
     confirmResetAction,
