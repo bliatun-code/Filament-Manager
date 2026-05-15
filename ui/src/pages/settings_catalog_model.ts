@@ -3,7 +3,7 @@ import {
   normalizeHexColor,
   suggestHexFromColor,
 } from "../lib/color_utils";
-import type { MasterCatalogRow } from "../lib/tauri_client";
+import type { CatalogRefreshResult, MasterCatalogRow } from "../lib/tauri_client";
 
 export type SettingsCatalogVendor = "Bambu" | "eSUN";
 
@@ -86,6 +86,38 @@ export function resolveSettingsSwatchHex({
     normalizeHexColor(swatchDraftById[master.id], { uppercase: true }) ??
     suggestHexFromColor(master)
   );
+}
+
+export function toggleSettingsCatalogRefreshMaterial(
+  materials: string[],
+  material: string,
+): string[] {
+  return materials.includes(material)
+    ? materials.filter((item) => item !== material)
+    : [...materials, material];
+}
+
+export function settingsCatalogRefreshSummaryHasFetchDetails(
+  summary: CatalogRefreshResult,
+): boolean {
+  return summary.reused_cached_products != null || summary.detail_fetches != null;
+}
+
+export function settingsCatalogRefreshSummaryGridClass(summary: CatalogRefreshResult): string {
+  return settingsCatalogRefreshSummaryHasFetchDetails(summary)
+    ? "sm:grid-cols-2 xl:grid-cols-5"
+    : "sm:grid-cols-3";
+}
+
+export function buildSettingsCatalogRefreshSuccessMessage(
+  summary: CatalogRefreshResult,
+  labels: {
+    imported: string;
+    reactivated: string;
+    discontinued: string;
+  },
+): string {
+  return `${labels.imported} ${summary.imported} · ${labels.reactivated} ${summary.reactivated_count} · ${labels.discontinued} ${summary.discontinued_count}`;
 }
 
 function materialOptionsForMasters(masters: MasterCatalogRow[]): string[] {

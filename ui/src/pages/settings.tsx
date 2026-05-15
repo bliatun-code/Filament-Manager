@@ -112,9 +112,12 @@ import {
 } from "./settings_library_sync_model";
 import { buildSettingsBackupValidationState } from "./settings_backup_model";
 import {
+  buildSettingsCatalogRefreshSuccessMessage,
   buildSettingsCatalogState,
   buildSettingsSwatchDrafts,
   resolveSettingsSwatchHex,
+  settingsCatalogRefreshSummaryGridClass,
+  toggleSettingsCatalogRefreshMaterial,
   type SettingsCatalogVendor,
 } from "./settings_catalog_model";
 import { createSettingsBambuLiveCaptureSession } from "./settings_bambu_live_diagnostics_model";
@@ -2044,11 +2047,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
   function toggleCatalogRefreshMaterial(vendor: CatalogVendor, material: string) {
     const setter = vendor === "Bambu" ? setBambuRefreshMaterials : setEsunRefreshMaterials;
-    setter((previous) =>
-      previous.includes(material)
-        ? previous.filter((item) => item !== material)
-        : [...previous, material],
-    );
+    setter((previous) => toggleSettingsCatalogRefreshMaterial(previous, material));
   }
 
   function clearCatalogRefreshMaterials(vendor: CatalogVendor) {
@@ -2099,13 +2098,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         );
       } else {
         setInfo(
-          `${t("inventory.imported", "Imported")} ${summary.imported} · ${t(
-            "inventory.reactivated",
-            "Reactivated",
-          )} ${summary.reactivated_count} · ${t(
-            "inventory.discontinued",
-            "Discontinued",
-          )} ${summary.discontinued_count}`,
+          buildSettingsCatalogRefreshSuccessMessage(summary, {
+            imported: t("inventory.imported", "Imported"),
+            reactivated: t("inventory.reactivated", "Reactivated"),
+            discontinued: t("inventory.discontinued", "Discontinued"),
+          }),
         );
       }
     } catch (refreshError) {
@@ -3192,12 +3189,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 {catalogRefreshSummary ? (
                   <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/90 p-4 text-emerald-950 shadow-sm shadow-emerald-200/30 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-100 dark:shadow-none">
                     <div
-                      className={`grid gap-3 ${
-                        catalogRefreshSummary.reused_cached_products != null ||
-                        catalogRefreshSummary.detail_fetches != null
-                          ? "sm:grid-cols-2 xl:grid-cols-5"
-                          : "sm:grid-cols-3"
-                      }`}
+                      className={`grid gap-3 ${settingsCatalogRefreshSummaryGridClass(
+                        catalogRefreshSummary,
+                      )}`}
                     >
                       <SettingsMetricTile
                         label={t("inventory.imported", "Imported")}

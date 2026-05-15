@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildSettingsCatalogRefreshSuccessMessage,
   buildSettingsCatalogState,
   buildSettingsSwatchDrafts,
   resolveSettingsSwatchHex,
+  settingsCatalogRefreshSummaryGridClass,
+  settingsCatalogRefreshSummaryHasFetchDetails,
+  toggleSettingsCatalogRefreshMaterial,
 } from "./settings_catalog_model";
-import type { MasterCatalogRow } from "../lib/tauri_client";
+import type { CatalogRefreshResult, MasterCatalogRow } from "../lib/tauri_client";
 
 function catalogMaster(overrides: Partial<MasterCatalogRow>): MasterCatalogRow {
   return {
@@ -16,6 +20,16 @@ function catalogMaster(overrides: Partial<MasterCatalogRow>): MasterCatalogRow {
     hex_color: "#FFAA00",
     default_weight: 1000,
     vendor: "Bambu Lab",
+    ...overrides,
+  };
+}
+
+function refreshResult(overrides: Partial<CatalogRefreshResult> = {}): CatalogRefreshResult {
+  return {
+    imported: 12,
+    reactivated_count: 2,
+    discontinued_count: 1,
+    output: "",
     ...overrides,
   };
 }
@@ -105,4 +119,39 @@ test("settings swatch hex resolves draft values before fallback suggestions", ()
     "#F97316",
   );
   assert.equal(resolveSettingsSwatchHex({ master, swatchDraftById: {} }), "#F97316");
+});
+
+test("settings catalog material toggles are immutable and symmetric", () => {
+  const existing = ["ABS", "PLA"];
+
+  assert.deepEqual(toggleSettingsCatalogRefreshMaterial(existing, "PETG"), [
+    "ABS",
+    "PLA",
+    "PETG",
+  ]);
+  assert.deepEqual(toggleSettingsCatalogRefreshMaterial(existing, "ABS"), ["PLA"]);
+  assert.deepEqual(existing, ["ABS", "PLA"]);
+});
+
+test("settings catalog refresh summary presentation detects optional fetch details", () => {
+  const basic = refreshResult();
+  const withCache = refreshResult({ reused_cached_products: 4 });
+  const withFetches = refreshResult({ detail_fetches: 7 });
+
+  assert.equal(settingsCatalogRefreshSummaryHasFetchDetails(basic), false);
+  assert.equal(settingsCatalogRefreshSummaryGridClass(basic), "sm:grid-cols-3");
+  assert.equal(settingsCatalogRefreshSummaryHasFetchDetails(withCache), true);
+  assert.equal(settingsCatalogRefreshSummaryGridClass(withCache), "sm:grid-cols-2 xl:grid-cols-5");
+  assert.equal(settingsCatalogRefreshSummaryHasFetchDetails(withFetches), true);
+});
+
+test("settings catalog refresh success message keeps the compact summary stable", () => {
+  assert.equal(
+    buildSettingsCatalogRefreshSuccessMessage(refreshResult(), {
+      imported: "Imported",
+      reactivated: "Reactivated",
+      discontinued: "Discontinued",
+    }),
+    "Imported 12 · Reactivated 2 · Discontinued 1",
+  );
 });
