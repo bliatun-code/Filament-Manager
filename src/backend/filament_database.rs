@@ -39,6 +39,7 @@ use super::database_library_sync_cache::{
     save_library_sync_cached_snapshot as save_library_sync_cached_snapshot_row,
     save_library_sync_cached_spools as save_library_sync_cached_spool_rows,
 };
+use super::database_library_sync_validation::save_library_sync_validation_state as save_library_sync_validation_state_row;
 use super::database_locations::ensure_location as ensure_location_row;
 use super::database_printer_schema::{
     ensure_printer_external_slot_schema as ensure_printer_external_slot_schema_impl,
@@ -2797,25 +2798,7 @@ impl FilamentDatabase {
         message: Option<&str>,
         host_device_name: Option<&str>,
     ) -> InventoryResult<()> {
-        let now = self
-            .conn
-            .query_row("SELECT datetime('now')", [], |row| row.get::<_, String>(0))?;
-        self.set_setting("library_sync_last_checked_at", &now)?;
-        if reachable {
-            self.set_setting("library_sync_last_reachable_at", &now)?;
-        }
-        match message.map(str::trim).filter(|value| !value.is_empty()) {
-            Some(value) => self.set_setting("library_sync_last_validation_message", value)?,
-            None => self.delete_setting("library_sync_last_validation_message")?,
-        }
-        match host_device_name
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-        {
-            Some(value) => self.set_setting("library_sync_host_device_name", value)?,
-            None => self.delete_setting("library_sync_host_device_name")?,
-        }
-        Ok(())
+        save_library_sync_validation_state_row(&self.conn, reachable, message, host_device_name)
     }
 
     pub fn save_library_sync_client_auth_state(
