@@ -101,6 +101,7 @@ import {
 import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
+import { buildSettingsInventoryOverviewPrintRows } from "./settings_inventory_print_model";
 import { buildSettingsBackupValidationState } from "./settings_backup_model";
 import {
   buildSettingsCatalogRefreshSuccessMessage,
@@ -1816,26 +1817,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     try {
       const allRows = await loadSettingsInventoryRows();
 
-      const inStockRows = allRows
-        .filter((row) => {
-          const status = row.spool.status.trim().toUpperCase();
-          return status !== "EMPTY";
-        })
-        .sort((left, right) => {
-          const materialOrder = left.master.material.localeCompare(right.master.material, locale);
-          if (materialOrder !== 0) {
-            return materialOrder;
-          }
-          const filamentOrder = left.master.filament_name.localeCompare(
-            right.master.filament_name,
-            locale,
-          );
-          if (filamentOrder !== 0) {
-            return filamentOrder;
-          }
-          return left.master.color_name.localeCompare(right.master.color_name, locale);
-        });
-
       const [
         { buildFilamentQrPayload, resolvePreferredCompanionShellUrl },
         { buildFilamentLabelQrDataUrl },
@@ -1852,30 +1833,17 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         trustedLanShellUrl: trustedLanStatus?.shell_url ?? null,
       });
 
-      const printRows = await Promise.all(
-        inStockRows.map(async (row) => {
-          const qrReference = row.spool.id.trim();
-          const qrPayload = buildFilamentQrPayload(qrReference, {
-            mode: "companion",
-            companionShellUrl,
-          }).payload;
-          const qrDataUrl = await buildFilamentLabelQrDataUrl(qrPayload);
-          return {
-            reference: row.spool.id || t("common.unknown", "Unknown"),
-            vendor: row.master.vendor || t("common.unknown", "Unknown"),
-            ownershipMarker:
-              (row.spool.ownership_type ?? "OWNED").trim().toUpperCase() === "BORROWED_IN"
-                ? t("inventory.borrowedIn", "Borrowed in")
-                : null,
-            material: row.master.material || t("common.unknown", "Unknown"),
-            filamentName: row.master.filament_name || t("common.unknown", "Unknown"),
-            colorName: row.master.color_name || t("common.unknown", "Unknown"),
-            homeLocation: row.spool.home_location_id ?? null,
-            swatchHex: row.master.hex_color ?? "#CBD5E1",
-            qrDataUrl,
-          };
-        }),
-      );
+      const printRows = await buildSettingsInventoryOverviewPrintRows({
+        rows: allRows,
+        locale,
+        companionShellUrl,
+        labels: {
+          borrowedIn: t("inventory.borrowedIn", "Borrowed in"),
+          unknown: t("common.unknown", "Unknown"),
+        },
+        buildFilamentQrPayload,
+        buildFilamentLabelQrDataUrl,
+      });
 
       const pdfBase64 = await buildInventoryOverviewPrintPdfBase64(printRows, {
         title: t("settings.inventoryOverviewPrintTitle", "In-stock filament overview"),
