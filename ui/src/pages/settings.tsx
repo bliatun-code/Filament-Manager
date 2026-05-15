@@ -110,6 +110,7 @@ import {
   type SettingsResetConfirmAction,
 } from "./use_settings_reset_confirm";
 import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
+import { useSettingsSwatchDrafts } from "./use_settings_swatch_drafts";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import {
@@ -247,7 +248,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [printerOverview, setPrinterOverview] = useState<PrinterOverviewRow[]>([]);
   const [spoolRows, setSpoolRows] = useState<SpoolWithMasterRow[]>([]);
   const [catalogMasters, setCatalogMasters] = useState<MasterCatalogRow[]>([]);
-  const [swatchDraftById, setSwatchDraftById] = useState<Record<string, string>>({});
+  const { setSwatchDraftById, swatchDraftById, updateSwatchDraft } =
+    useSettingsSwatchDrafts();
   const [swatchVendorFilter, setSwatchVendorFilter] = useState("ALL");
   const [swatchBusy, setSwatchBusy] = useState(false);
   const [confirmBulkSwatch, setConfirmBulkSwatch] = useState(false);
@@ -539,7 +541,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         setLoading(false);
       }
     }
-  }, [settingsPageMessageLabels, tauri]);
+  }, [setSwatchDraftById, settingsPageMessageLabels, tauri]);
 
   useEffect(() => {
     if (!tauri) {
@@ -1993,13 +1995,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         "Failed to validate backup file.",
       ),
     };
-  }
-
-  function updateSwatchDraft(masterId: string, value: string) {
-    setSwatchDraftById((previous) => ({
-      ...previous,
-      [masterId]: value,
-    }));
   }
 
   async function handleRefreshVendorCatalog(vendor: CatalogVendor) {
