@@ -12,6 +12,8 @@ pub mod database_borrowed_schema;
 pub mod database_catalog_schema;
 #[path = "../../../src/backend/database_connection.rs"]
 pub mod database_connection;
+#[path = "../../../src/backend/database_events.rs"]
+pub mod database_events;
 #[path = "../../../src/backend/database_ids.rs"]
 pub mod database_ids;
 #[path = "../../../src/backend/database_import.rs"]
