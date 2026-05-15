@@ -413,6 +413,7 @@ test("buildTrustedLanConfigMessage returns stable configuration feedback copy", 
     enabled: "Web app server turned on.",
     enabledPending: "Web app server is starting. Refresh status if it takes a moment.",
     networkSaved: "Web app network settings saved.",
+    saveFailed: "Failed to save trusted-LAN companion settings.",
     starting: "Starting web app server...",
   };
 
@@ -421,6 +422,7 @@ test("buildTrustedLanConfigMessage returns stable configuration feedback copy", 
   assert.equal(buildTrustedLanConfigMessage("networkSaved", labels), labels.networkSaved);
   assert.equal(buildTrustedLanConfigMessage("starting", labels), labels.starting);
   assert.equal(buildTrustedLanConfigMessage("enabledPending", labels), labels.enabledPending);
+  assert.equal(buildTrustedLanConfigMessage("saveFailed", labels), labels.saveFailed);
 });
 
 test("buildTrustedLanActionErrorMessage returns stable action fallback copy", () => {

@@ -80,6 +80,7 @@ export type TrustedLanConfigMessageKey =
   | "enabled"
   | "enabledPending"
   | "networkSaved"
+  | "saveFailed"
   | "starting";
 
 export type TrustedLanConfigMessageLabels = Record<TrustedLanConfigMessageKey, string>;

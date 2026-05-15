@@ -795,6 +795,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       "Web app server is starting. Refresh status if it takes a moment.",
     ),
     networkSaved: t("settings.trustedLanNetworkSaved", "Web app network settings saved."),
+    saveFailed: t(
+      "settings.error.saveTrustedLanConfig",
+      "Failed to save trusted-LAN companion settings.",
+    ),
     starting: t("settings.trustedLanStartingInfo", "Starting web app server..."),
   }), [t]);
 
@@ -861,10 +865,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         setError(
           toErrorMessage(
             saveError,
-            t(
-              "settings.error.saveTrustedLanConfig",
-              "Failed to save trusted-LAN companion settings.",
-            ),
+            buildTrustedLanConfigMessage("saveFailed", trustedLanConfigMessageLabels()),
           ),
         );
         return false;
@@ -873,7 +874,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     [
       refreshTrustedLanStatusUntilSettled,
       syncTrustedLanDraftFromStatus,
-      t,
       tauri,
       trustedLanConfigMessageLabels,
       trustedLanInterfaces,
