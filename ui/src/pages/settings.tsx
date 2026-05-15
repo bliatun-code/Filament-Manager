@@ -113,6 +113,7 @@ import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_mess
 import { useSettingsLibraryRoleChange } from "./use_settings_library_role_change";
 import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";
 import { useSettingsTrustedLanMessages } from "./use_settings_trusted_lan_messages";
+import { useSettingsSilentReload } from "./use_settings_silent_reload";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
@@ -532,15 +533,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     tauri,
   ]);
 
-  useEffect(() => {
-    if (!tauri) {
-      return;
-    }
-    const timer = window.setInterval(() => {
-      void reloadSettings({ silent: true });
-    }, 15000);
-    return () => window.clearInterval(timer);
-  }, [reloadSettings, tauri]);
+  useSettingsSilentReload({ reloadSettings, tauri });
 
   function handleToggleBambuLiveDetails(printerId: string) {
     setExpandedBambuDetailsPrinterId((currentExpanded) => {
