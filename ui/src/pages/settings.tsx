@@ -28,7 +28,6 @@ import {
   validateFullBackupJson,
   type BackupValidationStats,
   type BambuLiveIntegrationEntry,
-  type CatalogRefreshResult,
   type CatalogResetStats,
   type LibrarySyncHostValidationResult,
   type LibrarySyncRemoteSnapshot,
@@ -106,7 +105,7 @@ import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";
-import { useSettingsAutoClearValue } from "./use_settings_auto_clear";
+import { useSettingsCatalogRefreshResult } from "./use_settings_catalog_refresh_result";
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
 import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_confirm";
 import {
@@ -263,6 +262,15 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [esunRefreshMaterials, setEsunRefreshMaterials] = useState<string[]>([]);
   const [catalogRefreshBusy, setCatalogRefreshBusy] = useState(false);
   const {
+    beginCatalogRefreshResult,
+    catalogRefreshLog,
+    catalogRefreshSummary,
+    completeCatalogRefreshResult,
+    failCatalogRefreshResult,
+    showCatalogRefreshLog,
+    toggleCatalogRefreshLog,
+  } = useSettingsCatalogRefreshResult();
+  const {
     catalogRefreshElapsedSeconds,
     catalogRefreshPhase,
     catalogRefreshProgressMessage,
@@ -275,10 +283,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     initialMessage: t("wishlist.refreshPreparing", "Preparing catalog refresh..."),
     tauri,
   });
-  const [catalogRefreshSummary, setCatalogRefreshSummary] =
-    useState<CatalogRefreshResult | null>(null);
-  const [catalogRefreshLog, setCatalogRefreshLog] = useState("");
-  const [showCatalogRefreshLog, setShowCatalogRefreshLog] = useState(false);
   const [lastCatalogReset, setLastCatalogReset] = useState<CatalogResetStats | null>(
     null,
   );
@@ -1404,12 +1408,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     visibleMissingSwatchCount: visibleMissingSwatchMasters.length,
   });
 
-  useSettingsAutoClearValue(
-    catalogRefreshSummary,
-    useCallback(() => setCatalogRefreshSummary(null), []),
-    20_000,
-  );
-
   function handleStartEditPrinter(printer: PrinterRow) {
     const config = derivePrinterMultiConfig({
       printerId: printer.id,
@@ -2112,8 +2110,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     );
     setCatalogRefreshStartedAt(Date.now());
     setCatalogRefreshBusy(true);
-    setCatalogRefreshSummary(null);
-    setCatalogRefreshLog("");
+    beginCatalogRefreshResult();
     setError(null);
     setInfo(null);
     try {
@@ -2121,8 +2118,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         vendor === "Bambu"
           ? await refreshBambuCatalog(materialTypes)
           : await refreshEsunCatalog(materialTypes);
-      setCatalogRefreshSummary(summary);
-      setCatalogRefreshLog(summary.output ?? "");
+      completeCatalogRefreshResult(summary);
       await reloadSettings();
       if (summary.imported === 0) {
         setError(
@@ -2143,8 +2139,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         settingsCatalogRefreshMessageLabels(),
       );
       const message = toErrorMessage(refreshError, fallbackMessage);
-      setCatalogRefreshLog(message);
-      setShowCatalogRefreshLog(true);
+      failCatalogRefreshResult(message);
       setError(
         message,
       );
@@ -2806,7 +2801,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               onClearCatalogRefreshMaterials={clearCatalogRefreshMaterials}
               onRefreshVendorCatalog={(vendor) => void handleRefreshVendorCatalog(vendor)}
               onSetCatalogVendor={setCatalogVendor}
-              onToggleCatalogRefreshLog={() => setShowCatalogRefreshLog((current) => !current)}
+              onToggleCatalogRefreshLog={toggleCatalogRefreshLog}
               onToggleCatalogRefreshMaterial={toggleCatalogRefreshMaterial}
             />
 
