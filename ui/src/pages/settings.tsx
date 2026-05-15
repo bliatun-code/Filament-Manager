@@ -4,7 +4,6 @@ import {
 } from "../lib/tauri_client";
 import { useI18n } from "../lib/i18n";
 import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
-import { SettingsPrintersTab } from "../components/settings_printers_tab";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
 import { SettingsCatalogTab } from "./settings_catalog_tab";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
@@ -12,6 +11,7 @@ import { SettingsGeneralRoute } from "./settings_general_route";
 import { SettingsLibraryTab } from "./settings_library_tab";
 import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
 import { SettingsPageHeader } from "./settings_page_header";
+import { SettingsPrintersRoute } from "./settings_printers_route";
 import { SettingsTabNav } from "./settings_tab_nav";
 import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";
@@ -784,52 +784,54 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
       <div className="mt-4 grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]">
         {activeTab === "PRINTERS" ? (
-          <SettingsPrintersTab
-            bambuLiveIntegrations={bambuLiveIntegrations}
-            busy={busy}
-            confirmDeletePrinterId={confirmDeletePrinterId}
-            diagnosticCaptureActiveByPrinterId={diagnosticCaptureActiveByPrinterId}
-            diagnosticCaptureByPrinterId={diagnosticCaptureByPrinterId}
-            diagnosticChartFieldByPrinterId={diagnosticChartFieldByPrinterId}
-            diagnosticFilterByPrinterId={diagnosticFilterByPrinterId}
-            diagnosticSortByPrinterId={diagnosticSortByPrinterId}
-            editAmsUnits={editAmsUnits}
-            editBambuLiveAccessCode={editBambuLiveAccessCode}
-            editBambuLiveEnabled={editBambuLiveEnabled}
-            editBambuLiveHost={editBambuLiveHost}
-            editBambuLivePrinterSerial={editBambuLivePrinterSerial}
-            editModelProfile={editModelProfile}
-            editPrinterId={editPrinterId}
-            editPrinterModel={editPrinterModel}
-            editPrinterName={editPrinterName}
-            editSlotsPerUnit={editSlotsPerUnit}
-            expandedBambuDetailsPrinterId={expandedBambuDetailsPrinterId}
-            loading={loading}
-            printerSlotsByPrinterId={printerSlotsByPrinterId}
-            printers={printers}
-            settingsClientReadOnly={settingsClientReadOnly}
-            sortedPrinters={sortedPrinters}
-            spoolRows={spoolRows}
-            tauri={tauri}
-            onBambuLiveAccessCodeChange={setEditBambuLiveAccessCode}
-            onBambuLiveEnabledChange={setEditBambuLiveEnabled}
-            onBambuLiveHostChange={setEditBambuLiveHost}
-            onBambuLivePrinterSerialChange={setEditBambuLivePrinterSerial}
-            onCancelEditPrinter={handleCancelEditPrinter}
-            onCopyError={setError}
-            onCopySuccess={setInfo}
-            onDeletePrinter={(printer) => void handleDeletePrinter(printer)}
-            onDiagnosticChartFieldChange={setDiagnosticChartFieldByPrinterId}
-            onDiagnosticFilterChange={setDiagnosticFilterByPrinterId}
-            onDiagnosticSortChange={setDiagnosticSortByPrinterId}
-            onEditAmsUnitsChange={setEditAmsUnits}
-            onEditPrinterModelChange={setEditPrinterModel}
-            onEditPrinterNameChange={setEditPrinterName}
-            onEditSlotsPerUnitChange={setEditSlotsPerUnit}
-            onSavePrinterReconfigure={() => void handleSavePrinterReconfigure()}
-            onStartEditPrinter={handleStartEditPrinter}
-            onToggleBambuLiveCapture={handleToggleBambuLiveCapture}
-            onToggleBambuLiveDetails={handleToggleBambuLiveDetails}
+          <SettingsPrintersRoute
+            tab={{
+              bambuLiveIntegrations,
+              busy,
+              confirmDeletePrinterId,
+              diagnosticCaptureActiveByPrinterId,
+              diagnosticCaptureByPrinterId,
+              diagnosticChartFieldByPrinterId,
+              diagnosticFilterByPrinterId,
+              diagnosticSortByPrinterId,
+              editAmsUnits,
+              editBambuLiveAccessCode,
+              editBambuLiveEnabled,
+              editBambuLiveHost,
+              editBambuLivePrinterSerial,
+              editModelProfile,
+              editPrinterId,
+              editPrinterModel,
+              editPrinterName,
+              editSlotsPerUnit,
+              expandedBambuDetailsPrinterId,
+              loading,
+              printerSlotsByPrinterId,
+              printers,
+              settingsClientReadOnly,
+              sortedPrinters,
+              spoolRows,
+              tauri,
+              onBambuLiveAccessCodeChange: setEditBambuLiveAccessCode,
+              onBambuLiveEnabledChange: setEditBambuLiveEnabled,
+              onBambuLiveHostChange: setEditBambuLiveHost,
+              onBambuLivePrinterSerialChange: setEditBambuLivePrinterSerial,
+              onCancelEditPrinter: handleCancelEditPrinter,
+              onCopyError: setError,
+              onCopySuccess: setInfo,
+              onDeletePrinter: (printer) => void handleDeletePrinter(printer),
+              onDiagnosticChartFieldChange: setDiagnosticChartFieldByPrinterId,
+              onDiagnosticFilterChange: setDiagnosticFilterByPrinterId,
+              onDiagnosticSortChange: setDiagnosticSortByPrinterId,
+              onEditAmsUnitsChange: setEditAmsUnits,
+              onEditPrinterModelChange: setEditPrinterModel,
+              onEditPrinterNameChange: setEditPrinterName,
+              onEditSlotsPerUnitChange: setEditSlotsPerUnit,
+              onSavePrinterReconfigure: () => void handleSavePrinterReconfigure(),
+              onStartEditPrinter: handleStartEditPrinter,
+              onToggleBambuLiveCapture: handleToggleBambuLiveCapture,
+              onToggleBambuLiveDetails: handleToggleBambuLiveDetails,
+            }}
           />
         ) : null}
 
