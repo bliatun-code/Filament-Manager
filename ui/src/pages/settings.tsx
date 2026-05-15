@@ -70,12 +70,7 @@ import { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_
 import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_lan_pairing_panel";
 import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_lan_server_panel";
 import {
-  settingsChoiceButtonClass,
   settingsLibraryRoleButtonClass,
-  settingsWebappStatusClass,
-  settingsWebappSwitchClass,
-  settingsWebappSwitchKnobClass,
-  settingsWebappSwitchTrackClass,
   tabButtonClass,
 } from "../lib/settings_ui_classes";
 import { loadAllSpoolRows } from "../lib/spool_data_source";
@@ -107,6 +102,7 @@ import {
   type LibrarySyncMode,
 } from "./settings_library_sync_model";
 import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
+import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 import { buildSettingsBackupValidationState } from "./settings_backup_model";
 import {
   buildSettingsCatalogRefreshSuccessMessage,
@@ -2596,57 +2592,18 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
-                    {t("settings.libraryWebappLabel", "Web app")}
-                  </div>
-                  {librarySyncModeDraft === "CLIENT" ? (
-                    <div className="flex flex-wrap gap-2">
-                      <span className={settingsChoiceButtonClass(true)}>
-                        {t("settings.libraryWebappRunsOnHost", "Runs on host")}
-                      </span>
-                    </div>
-                  ) : librarySyncModeDraft === "HOST" ? (
-                    <div className="flex flex-wrap gap-2">
-                      <span
-                        className={settingsWebappStatusClass(
-                          Boolean(trustedLanStatus?.enabled && trustedLanStatus?.running),
-                        )}
-                      >
-                        <span className="settings-webapp-status-dot" aria-hidden="true" />
-                        {trustedLanStatus?.enabled && trustedLanStatus?.running
-                          ? t("settings.libraryWebappRunning", "Running")
-                          : trustedLanActionBusy
-                            ? t("settings.trustedLanStatusStarting", "Starting...")
-                            : t("settings.trustedLanStateNeedsAttention", "Check")}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={trustedLanEnabledDraft}
-                        onClick={() => void handleToggleTrustedLanEnabled(!trustedLanEnabledDraft)}
-                        className={settingsWebappSwitchClass(trustedLanEnabledDraft)}
-                        disabled={
-                          !tauri ||
-                          trustedLanActionBusy ||
-                          (!trustedLanEnabledDraft && !trustedLanHasPrivateInterfaces)
-                        }
-                      >
-                        <span className={settingsWebappSwitchTrackClass(trustedLanEnabledDraft)} aria-hidden="true">
-                          <span className={settingsWebappSwitchKnobClass(trustedLanEnabledDraft)} />
-                        </span>
-                        <span>
-                          {trustedLanEnabledDraft
-                            ? t("settings.libraryWebappRunning", "Running")
-                            : t("common.off", "Off")}
-                        </span>
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <SettingsLibraryWebappControl
+                  librarySyncModeDraft={librarySyncModeDraft}
+                  tauri={tauri}
+                  trustedLanActionBusy={trustedLanActionBusy}
+                  trustedLanEnabledDraft={trustedLanEnabledDraft}
+                  trustedLanHasPrivateInterfaces={trustedLanHasPrivateInterfaces}
+                  trustedLanStatus={trustedLanStatus}
+                  t={t}
+                  onToggleTrustedLanEnabled={(nextEnabled) =>
+                    void handleToggleTrustedLanEnabled(nextEnabled)
+                  }
+                />
 
                 {librarySyncModeDraft !== "CLIENT" && libraryVisibility.showWebappDetails ? (
                   <SettingsTrustedLanServerPanel
