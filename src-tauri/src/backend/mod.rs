@@ -1,5 +1,7 @@
 #[path = "../../../src/backend/bambu_lookup.rs"]
 pub mod bambu_lookup;
+#[path = "../../../src/backend/database_backup.rs"]
+pub mod database_backup;
 #[path = "../../../src/backend/database_tables.rs"]
 pub mod database_tables;
 #[path = "../../../src/backend/filament_database.rs"]
