@@ -13,7 +13,11 @@ export type SettingsMaintenanceResetMessageLabels = {
   appResetDone: string;
   confirmResetAppTapAgain: string;
   confirmResetCatalogsTapAgain: string;
+  resetAppFailed: string;
+  resetCatalogsFailed: string;
 };
+
+export type SettingsMaintenanceErrorAction = "app" | "catalog";
 
 export function buildSettingsCatalogResetMessage(
   result: CatalogResetStats,
@@ -36,4 +40,11 @@ export function buildSettingsAppResetSuccessMessage(
   labels: Pick<SettingsMaintenanceResetMessageLabels, "appResetDone">,
 ): string {
   return labels.appResetDone;
+}
+
+export function buildSettingsMaintenanceErrorMessage(
+  action: SettingsMaintenanceErrorAction,
+  labels: Pick<SettingsMaintenanceResetMessageLabels, "resetAppFailed" | "resetCatalogsFailed">,
+): string {
+  return action === "app" ? labels.resetAppFailed : labels.resetCatalogsFailed;
 }

@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildSettingsAppResetSuccessMessage,
   buildSettingsCatalogResetMessage,
+  buildSettingsMaintenanceErrorMessage,
   buildSettingsResetConfirmMessage,
 } from "./settings_maintenance_model";
 
@@ -45,5 +46,18 @@ test("settings app reset success message returns stable copy", () => {
       appResetDone: "App data reset completed.",
     }),
     "App data reset completed.",
+  );
+});
+
+test("settings maintenance error messages follow the requested action", () => {
+  const labels = {
+    resetAppFailed: "Failed to reset app data.",
+    resetCatalogsFailed: "Failed to reset catalogs.",
+  };
+
+  assert.equal(buildSettingsMaintenanceErrorMessage("app", labels), labels.resetAppFailed);
+  assert.equal(
+    buildSettingsMaintenanceErrorMessage("catalog", labels),
+    labels.resetCatalogsFailed,
   );
 });

@@ -140,6 +140,7 @@ import { createSettingsBambuLiveCaptureSession } from "./settings_bambu_live_dia
 import {
   buildSettingsAppResetSuccessMessage,
   buildSettingsCatalogResetMessage,
+  buildSettingsMaintenanceErrorMessage,
   buildSettingsResetConfirmMessage,
 } from "./settings_maintenance_model";
 import {
@@ -1731,7 +1732,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           resetError,
-          t("settings.error.resetApp", "Failed to reset app data."),
+          buildSettingsMaintenanceErrorMessage("app", settingsMaintenanceResetMessageLabels()),
         ),
       );
     } finally {
@@ -1762,7 +1763,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           resetError,
-          t("settings.error.resetCatalogs", "Failed to reset catalogs."),
+          buildSettingsMaintenanceErrorMessage(
+            "catalog",
+            settingsMaintenanceResetMessageLabels(),
+          ),
         ),
       );
     } finally {
@@ -1790,6 +1794,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         "settings.confirmResetCatalogsTapAgain",
         "Click Reset catalogs again to confirm.",
       ),
+      resetAppFailed: t("settings.error.resetApp", "Failed to reset app data."),
+      resetCatalogsFailed: t("settings.error.resetCatalogs", "Failed to reset catalogs."),
     };
   }
 
