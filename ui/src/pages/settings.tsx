@@ -72,7 +72,6 @@ import {
   buildTrustedLanLoadMessage,
   buildTrustedLanNoPrivateInterfaceMessage,
   findNewTrustedLanActiveBrowserIds,
-  buildTrustedLanPairedBrowserListModel,
 } from "./settings_companion_model";
 import {
   buildLibrarySyncActionMessage,
@@ -117,6 +116,7 @@ import { useSettingsTrustedLanMessages } from "./use_settings_trusted_lan_messag
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
+import { useTrustedLanBrowserListModel } from "./use_trusted_lan_browser_list_model";
 import {
   resolveTrustedLanInterfaceAddressDraft,
   useTrustedLanNetworkState,
@@ -430,17 +430,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const activeCatalogRefreshMaterials = catalogState.activeCatalogRefreshMaterials;
   const activeCatalogMasterCount = catalogState.activeCatalogMasterCount;
   const visibleMissingSwatchVendorCount = catalogState.visibleMissingSwatchVendorCount;
-  const trustedLanPairedBrowserListModel = useMemo(
-    () =>
-      buildTrustedLanPairedBrowserListModel({
-        browsers: trustedLanPairedBrowsers,
-        locale,
-        t,
-      }),
-    [locale, t, trustedLanPairedBrowsers],
-  );
-  const activeTrustedLanPairedBrowsers = trustedLanPairedBrowserListModel.activeRows;
-  const revokedTrustedLanPairedBrowsers = trustedLanPairedBrowserListModel.revokedRows;
+  const {
+    activeTrustedLanPairedBrowsers,
+    revokedTrustedLanPairedBrowsers,
+  } = useTrustedLanBrowserListModel({
+    locale,
+    t,
+    trustedLanPairedBrowsers,
+  });
   const {
     trustedLanHasPrivateInterfaces,
     trustedLanNetworkDirty,
