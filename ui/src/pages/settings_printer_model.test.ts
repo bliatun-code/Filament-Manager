@@ -4,6 +4,7 @@ import {
   buildPrinterSlotsByPrinterId,
   buildSettingsPrinterConfirmDeleteMessage,
   buildSettingsPrinterRemovedMessage,
+  buildSettingsPrinterRequiredMessage,
   buildSettingsPrinterUpdatedMessage,
   derivePrinterMultiConfig,
   isBambuLabPrinter,
@@ -188,6 +189,12 @@ test("preparePrinterReconfigure validates missing printer and Bambu live fields"
 });
 
 test("settings printer messages quote the printer name consistently", () => {
+  assert.equal(
+    buildSettingsPrinterRequiredMessage({
+      printerRequired: "Printer name and model are required.",
+    }),
+    "Printer name and model are required.",
+  );
   assert.equal(
     buildSettingsPrinterConfirmDeleteMessage("X1 Carbon", {
       confirmDeleteTapAgain: "Click Remove again to confirm deleting printer",

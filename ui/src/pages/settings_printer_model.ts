@@ -142,9 +142,16 @@ export function preparePrinterReconfigure(input: {
 
 export type SettingsPrinterMessageLabels = {
   confirmDeleteTapAgain: string;
+  printerRequired: string;
   removedPrinter: string;
   updatedPrinter: string;
 };
+
+export function buildSettingsPrinterRequiredMessage(
+  labels: Pick<SettingsPrinterMessageLabels, "printerRequired">,
+): string {
+  return labels.printerRequired;
+}
 
 export function buildSettingsPrinterConfirmDeleteMessage(
   printerName: string,

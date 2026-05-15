@@ -142,6 +142,7 @@ import {
   buildPrinterSlotsByPrinterId,
   buildSettingsPrinterConfirmDeleteMessage,
   buildSettingsPrinterRemovedMessage,
+  buildSettingsPrinterRequiredMessage,
   buildSettingsPrinterUpdatedMessage,
   derivePrinterMultiConfig,
   preparePrinterReconfigure,
@@ -1531,7 +1532,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         );
         return;
       }
-      setError(t("settings.error.printerRequired", "Printer name and model are required."));
+      setError(buildSettingsPrinterRequiredMessage(settingsPrinterMessageLabels()));
       return;
     }
 
@@ -1573,9 +1574,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         }
       }
       await reloadSettings();
-      setInfo(buildSettingsPrinterUpdatedMessage(prepared.printer.name, {
-        updatedPrinter: t("settings.updatedPrinter", "Updated printer"),
-      }));
+      setInfo(
+        buildSettingsPrinterUpdatedMessage(prepared.printer.name, settingsPrinterMessageLabels()),
+      );
       handleCancelEditPrinter();
     } catch (updateError) {
       console.error(updateError);
@@ -1597,12 +1598,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (confirmDeletePrinterId !== printer.id) {
       setConfirmDeletePrinterId(printer.id);
       setError(null);
-      setInfo(buildSettingsPrinterConfirmDeleteMessage(printer.name, {
-        confirmDeleteTapAgain: t(
-          "settings.confirmDeleteTapAgain",
-          "Click Remove again to confirm deleting printer",
-        ),
-      }));
+      setInfo(
+        buildSettingsPrinterConfirmDeleteMessage(printer.name, settingsPrinterMessageLabels()),
+      );
       return;
     }
     setConfirmDeletePrinterId(null);
@@ -1631,9 +1629,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         await deleteManagedPrinter(printer.id);
       }
       await reloadSettings();
-      setInfo(buildSettingsPrinterRemovedMessage(printer.name, {
-        removedPrinter: t("settings.removedPrinter", "Removed printer"),
-      }));
+      setInfo(
+        buildSettingsPrinterRemovedMessage(printer.name, settingsPrinterMessageLabels()),
+      );
     } catch (deleteError) {
       console.error(deleteError);
       setError(
@@ -1645,6 +1643,18 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setBusy(false);
     }
+  }
+
+  function settingsPrinterMessageLabels() {
+    return {
+      confirmDeleteTapAgain: t(
+        "settings.confirmDeleteTapAgain",
+        "Click Remove again to confirm deleting printer",
+      ),
+      printerRequired: t("settings.error.printerRequired", "Printer name and model are required."),
+      removedPrinter: t("settings.removedPrinter", "Removed printer"),
+      updatedPrinter: t("settings.updatedPrinter", "Updated printer"),
+    };
   }
 
   async function handleResetAppData() {
