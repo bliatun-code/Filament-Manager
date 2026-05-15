@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildSettingsBackupErrorMessage,
   buildSettingsBackupExportSuccessMessage,
   buildSettingsBackupValidationSuccessMessage,
   buildSettingsBackupValidationState,
@@ -145,6 +146,31 @@ test("settings backup validation success message returns stable copy", () => {
       backupValidationDone: "Backup validation completed.",
     }),
     "Backup validation completed.",
+  );
+});
+
+test("settings backup error messages return stable fallback copy", () => {
+  const labels = {
+    exportBackupFailed: "Failed to export full backup.",
+    exportInventoryCsvFailed: "Failed to export inventory CSV.",
+    exportInventoryJsonFailed: "Failed to export inventory JSON.",
+    importDataFailed: "Failed to import selected file.",
+    validateBackupFailed: "Failed to validate backup file.",
+  };
+
+  assert.equal(buildSettingsBackupErrorMessage("exportBackupFailed", labels), labels.exportBackupFailed);
+  assert.equal(
+    buildSettingsBackupErrorMessage("exportInventoryCsvFailed", labels),
+    labels.exportInventoryCsvFailed,
+  );
+  assert.equal(
+    buildSettingsBackupErrorMessage("exportInventoryJsonFailed", labels),
+    labels.exportInventoryJsonFailed,
+  );
+  assert.equal(buildSettingsBackupErrorMessage("importDataFailed", labels), labels.importDataFailed);
+  assert.equal(
+    buildSettingsBackupErrorMessage("validateBackupFailed", labels),
+    labels.validateBackupFailed,
   );
 });
 

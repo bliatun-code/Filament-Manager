@@ -113,6 +113,7 @@ import {
   buildSettingsInventoryOverviewPrintSuccessMessage,
 } from "./settings_inventory_print_model";
 import {
+  buildSettingsBackupErrorMessage,
   buildSettingsBackupExportSuccessMessage,
   buildSettingsBackupValidationSuccessMessage,
   buildSettingsBackupValidationState,
@@ -1839,7 +1840,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           backupError,
-          t("settings.error.exportBackup", "Failed to export full backup."),
+          buildSettingsBackupErrorMessage("exportBackupFailed", settingsBackupErrorMessageLabels()),
         ),
       );
     } finally {
@@ -1872,7 +1873,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           exportError,
-          t("settings.error.exportInventoryCsv", "Failed to export inventory CSV."),
+          buildSettingsBackupErrorMessage(
+            "exportInventoryCsvFailed",
+            settingsBackupErrorMessageLabels(),
+          ),
         ),
       );
     } finally {
@@ -1905,7 +1909,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           exportError,
-          t("settings.error.exportInventoryJson", "Failed to export inventory JSON."),
+          buildSettingsBackupErrorMessage(
+            "exportInventoryJsonFailed",
+            settingsBackupErrorMessageLabels(),
+          ),
         ),
       );
     } finally {
@@ -2065,7 +2072,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           importError,
-          t("settings.error.importData", "Failed to import selected file."),
+          buildSettingsBackupErrorMessage("importDataFailed", settingsBackupErrorMessageLabels()),
         ),
       );
     } finally {
@@ -2112,7 +2119,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           validationError,
-          t("settings.error.validateBackup", "Failed to validate backup file."),
+          buildSettingsBackupErrorMessage(
+            "validateBackupFailed",
+            settingsBackupErrorMessageLabels(),
+          ),
         ),
       );
     } finally {
@@ -2123,6 +2133,25 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   function settingsBackupValidationMessageLabels() {
     return {
       backupValidationDone: t("settings.backupValidationDone", "Backup validation completed."),
+    };
+  }
+
+  function settingsBackupErrorMessageLabels() {
+    return {
+      exportBackupFailed: t("settings.error.exportBackup", "Failed to export full backup."),
+      exportInventoryCsvFailed: t(
+        "settings.error.exportInventoryCsv",
+        "Failed to export inventory CSV.",
+      ),
+      exportInventoryJsonFailed: t(
+        "settings.error.exportInventoryJson",
+        "Failed to export inventory JSON.",
+      ),
+      importDataFailed: t("settings.error.importData", "Failed to import selected file."),
+      validateBackupFailed: t(
+        "settings.error.validateBackup",
+        "Failed to validate backup file.",
+      ),
     };
   }
 

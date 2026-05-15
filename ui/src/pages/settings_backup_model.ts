@@ -89,6 +89,22 @@ export type SettingsInventoryExportMessageLabels = {
   inventoryJsonExported: string;
 };
 
+export type SettingsBackupErrorMessageKey =
+  | "exportBackupFailed"
+  | "exportInventoryCsvFailed"
+  | "exportInventoryJsonFailed"
+  | "importDataFailed"
+  | "validateBackupFailed";
+
+export type SettingsBackupErrorMessageLabels = Record<SettingsBackupErrorMessageKey, string>;
+
+export function buildSettingsBackupErrorMessage(
+  key: SettingsBackupErrorMessageKey,
+  labels: SettingsBackupErrorMessageLabels,
+): string {
+  return labels[key];
+}
+
 export function buildSettingsBackupExportSuccessMessage(
   labels: SettingsBackupExportMessageLabels,
 ): string {
