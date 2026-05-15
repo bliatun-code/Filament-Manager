@@ -11,6 +11,11 @@ use super::database_import::{
     parse_inventory_spools_csv, parse_inventory_spools_json, InventoryImportRow,
     InventoryImportStats,
 };
+use super::database_printer_schema::{
+    ensure_printer_external_slot_schema as ensure_printer_external_slot_schema_impl,
+    ensure_printer_slot_live_cache_schema as ensure_printer_slot_live_cache_schema_impl,
+    ensure_printer_slot_rfid_override_schema as ensure_printer_slot_rfid_override_schema_impl,
+};
 use super::database_result::require_rows;
 use super::database_rows::{
     map_active_spool_loan_row, map_spool_loan_row, map_spool_row, map_spool_with_master_row,
@@ -1407,71 +1412,15 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_printer_external_slot_schema(&self) -> InventoryResult<()> {
-        self.conn.execute(
-            "INSERT INTO ams_units (id, printer_id, slot_count, created_at, updated_at)
-             SELECT p.id || '_ext', p.id, 1, datetime('now'), datetime('now')
-             FROM printers p
-             WHERE NOT EXISTS (
-                SELECT 1
-                FROM ams_units u
-                WHERE u.id = p.id || '_ext'
-             )",
-            [],
-        )?;
-
-        self.conn.execute(
-            "UPDATE ams_units
-             SET slot_count = 1,
-                 updated_at = datetime('now')
-             WHERE id LIKE '%_ext'
-               AND slot_count != 1",
-            [],
-        )?;
-
-        self.conn.execute(
-            "INSERT INTO ams_slots (id, ams_id, slot_index)
-             SELECT u.id || '_slot_1', u.id, 1
-             FROM ams_units u
-             WHERE u.id LIKE '%_ext'
-               AND NOT EXISTS (
-                 SELECT 1
-                 FROM ams_slots s
-                 WHERE s.ams_id = u.id
-                   AND s.slot_index = 1
-               )",
-            [],
-        )?;
-
-        Ok(())
+        ensure_printer_external_slot_schema_impl(&self.conn)
     }
 
     pub fn ensure_printer_slot_rfid_override_schema(&self) -> InventoryResult<()> {
-        if !table_has_column(&self.conn, "ams_slots", "rfid_override_tray_uuid")? {
-            self.conn.execute(
-                "ALTER TABLE ams_slots
-                 ADD COLUMN rfid_override_tray_uuid TEXT",
-                [],
-            )?;
-        }
-        if !table_has_column(&self.conn, "ams_slots", "rfid_override_color_hex")? {
-            self.conn.execute(
-                "ALTER TABLE ams_slots
-                 ADD COLUMN rfid_override_color_hex TEXT",
-                [],
-            )?;
-        }
-        Ok(())
+        ensure_printer_slot_rfid_override_schema_impl(&self.conn)
     }
 
     pub fn ensure_printer_slot_live_cache_schema(&self) -> InventoryResult<()> {
-        if !table_has_column(&self.conn, "ams_slots", "live_cache_cleared_at")? {
-            self.conn.execute(
-                "ALTER TABLE ams_slots
-                 ADD COLUMN live_cache_cleared_at TEXT",
-                [],
-            )?;
-        }
-        Ok(())
+        ensure_printer_slot_live_cache_schema_impl(&self.conn)
     }
 
     pub fn ensure_trusted_lan_schema(&self) -> InventoryResult<()> {

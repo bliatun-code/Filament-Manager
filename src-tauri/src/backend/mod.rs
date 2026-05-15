@@ -10,6 +10,8 @@ pub mod database_catalog_schema;
 pub mod database_ids;
 #[path = "../../../src/backend/database_import.rs"]
 pub mod database_import;
+#[path = "../../../src/backend/database_printer_schema.rs"]
+pub mod database_printer_schema;
 #[path = "../../../src/backend/database_result.rs"]
 pub mod database_result;
 #[path = "../../../src/backend/database_rows.rs"]
