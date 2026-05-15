@@ -48,6 +48,10 @@ export type LibrarySyncRoleOption = {
 
 export type LibrarySyncRoleOptionLabels = Record<LibrarySyncMode, string>;
 
+export type LibrarySyncTabLabels = {
+  title: string;
+};
+
 export type LibrarySyncClientState = {
   savedMode: LibrarySyncMode;
   readOnly: boolean;
@@ -116,6 +120,10 @@ export function buildLibrarySyncRoleOptions(
     { mode: "HOST", label: labels.HOST },
     { mode: "CLIENT", label: labels.CLIENT },
   ];
+}
+
+export function buildLibrarySyncTabLabels(labels: LibrarySyncTabLabels): LibrarySyncTabLabels {
+  return labels;
 }
 
 export function buildLibrarySyncClientState(input: {

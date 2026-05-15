@@ -9,6 +9,7 @@ import {
   buildLibrarySyncRoleOptions,
   buildLibrarySyncSaveSettingsInput,
   buildLibrarySyncClientState,
+  buildLibrarySyncTabLabels,
   buildLibraryRoleChangeState,
   buildLibrarySyncMigrationModel,
   buildLibrarySyncVisibilityState,
@@ -111,6 +112,13 @@ test("buildLibrarySyncRoleOptions keeps role order and labels explicit", () => {
       { mode: "HOST", label: "Host" },
       { mode: "CLIENT", label: "Client" },
     ],
+  );
+});
+
+test("buildLibrarySyncTabLabels keeps library page chrome explicit", () => {
+  assert.deepEqual(
+    buildLibrarySyncTabLabels({ title: "Library and web app" }),
+    { title: "Library and web app" },
   );
 });
 

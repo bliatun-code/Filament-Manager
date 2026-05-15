@@ -104,6 +104,7 @@ import {
   buildLibrarySyncPairingSettingsInput,
   buildLibrarySyncRoleOptions,
   buildLibrarySyncSaveSettingsInput,
+  buildLibrarySyncTabLabels,
   buildLibraryRoleChangeState,
   buildLibrarySyncVisibilityState,
   type LibrarySyncMode,
@@ -2642,6 +2643,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     HOST: t("settings.librarySyncHost", "Host"),
     CLIENT: t("settings.librarySyncClient", "Client"),
   });
+  const librarySyncTabLabels = buildLibrarySyncTabLabels({
+    title: t("settings.libraryTabTitle", "Library and web app"),
+  });
   const libraryVisibility = buildLibrarySyncVisibilityState({
     draftMode: librarySyncModeDraft,
     trustedLanEnabledDraft,
@@ -2773,9 +2777,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         {activeTab === "LIBRARY" ? (
           <>
             <section className="surface-card xl:col-span-2 space-y-4">
-              <div className="section-eyebrow">
-                {t("settings.libraryTabTitle", "Library and web app")}
-              </div>
+              <div className="section-eyebrow">{librarySyncTabLabels.title}</div>
 
               <div className="surface-subtle space-y-5 p-4">
                 <SettingsLibraryRolePanel
