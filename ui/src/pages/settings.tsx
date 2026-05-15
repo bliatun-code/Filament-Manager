@@ -174,6 +174,7 @@ import {
   buildSettingsPageTabLabels,
   buildSettingsPageTabs,
   normalizeSettingsInitialTab,
+  resolveSettingsPagePrinters,
 } from "./settings_page_model";
 
 type SettingsTab = SettingsTabKey;
@@ -543,9 +544,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           console.warn("Settings host printer overview unavailable, using cached snapshot.", loadError);
         },
       });
-      setPrinters(
-        syncSettings.mode === "CLIENT" ? overviewRows.map((row) => row.printer) : snapshot.printers,
-      );
+      setPrinters(resolveSettingsPagePrinters({
+        overviewRows,
+        snapshot,
+        syncMode: syncSettings.mode,
+      }));
       setPrinterOverview(overviewRows);
       setSpoolRows(spoolRows);
       setBambuLiveIntegrations(bambuLiveIntegrations);

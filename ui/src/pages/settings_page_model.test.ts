@@ -8,6 +8,7 @@ import {
   buildSettingsPageTabLabels,
   buildSettingsPageTabs,
   normalizeSettingsInitialTab,
+  resolveSettingsPagePrinters,
 } from "./settings_page_model";
 
 test("settings page load error message returns stable fallback copy", () => {
@@ -77,4 +78,26 @@ test("settings initial tab normalizer preserves valid tab keys", () => {
   assert.equal(normalizeSettingsInitialTab("PRINTERS"), "PRINTERS");
   assert.equal(normalizeSettingsInitialTab("CATALOG"), "CATALOG");
   assert.equal(normalizeSettingsInitialTab("MAINTENANCE"), "MAINTENANCE");
+});
+
+test("settings page printers prefer host overview rows in client mode", () => {
+  const localPrinter = { id: "local" };
+  const hostPrinter = { id: "host" };
+
+  assert.deepEqual(
+    resolveSettingsPagePrinters({
+      overviewRows: [{ printer: hostPrinter }],
+      snapshot: { printers: [localPrinter] },
+      syncMode: "CLIENT",
+    }),
+    [hostPrinter],
+  );
+  assert.deepEqual(
+    resolveSettingsPagePrinters({
+      overviewRows: [{ printer: hostPrinter }],
+      snapshot: { printers: [localPrinter] },
+      syncMode: "HOST",
+    }),
+    [localPrinter],
+  );
 });

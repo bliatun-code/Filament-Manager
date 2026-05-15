@@ -16,6 +16,14 @@ export type SettingsPageTabOption = {
   label: string;
 };
 
+type SettingsPagePrinterSnapshot<Printer> = {
+  printers: Printer[];
+};
+
+type SettingsPagePrinterOverviewRow<Printer> = {
+  printer: Printer;
+};
+
 export function buildSettingsPageLoadErrorMessage(
   labels: Pick<SettingsPageMessageLabels, "loadFailed">,
 ): string {
@@ -50,4 +58,16 @@ export function buildSettingsPageTabs(labels: SettingsPageTabLabelMap): Settings
 
 export function normalizeSettingsInitialTab(initialTab: SettingsTabKey): SettingsTabKey {
   return initialTab;
+}
+
+export function resolveSettingsPagePrinters<Printer>({
+  overviewRows,
+  snapshot,
+  syncMode,
+}: {
+  overviewRows: Array<SettingsPagePrinterOverviewRow<Printer>>;
+  snapshot: SettingsPagePrinterSnapshot<Printer>;
+  syncMode: string | null | undefined;
+}): Printer[] {
+  return syncMode === "CLIENT" ? overviewRows.map((row) => row.printer) : snapshot.printers;
 }
