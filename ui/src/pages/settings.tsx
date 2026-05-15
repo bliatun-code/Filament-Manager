@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SettingsTabKey } from "../App";
 import {
   isTauri,
@@ -8,9 +8,6 @@ import {
   type PrinterOverviewRow,
   type PrinterRow,
   type SpoolWithMasterRow,
-  type TrustedLanInterfaceOption,
-  type TrustedLanPairedBrowser,
-  type TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { useI18n } from "../lib/i18n";
@@ -81,6 +78,7 @@ import { useSettingsTrustedLanMessages } from "./use_settings_trusted_lan_messag
 import { useSettingsSilentReload } from "./use_settings_silent_reload";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
+import { useSettingsTrustedLanState } from "./use_settings_trusted_lan_state";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
 import { useTrustedLanBrowserListModel } from "./use_trusted_lan_browser_list_model";
 import { useTrustedLanDraftSync } from "./use_trusted_lan_draft_sync";
@@ -191,37 +189,46 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsSwatchErrorMessageLabels,
     settingsSwatchSavedMessageLabels,
   } = useSettingsSwatchMessages(t);
-  const [trustedLanStatus, setTrustedLanStatus] = useState<TrustedLanCompanionStatus | null>(
-    null,
-  );
-  const [trustedLanInterfaces, setTrustedLanInterfaces] = useState<TrustedLanInterfaceOption[]>(
-    [],
-  );
-  const [trustedLanPairedBrowsers, setTrustedLanPairedBrowsers] = useState<
-    TrustedLanPairedBrowser[]
-  >([]);
-  const [trustedLanLoading, setTrustedLanLoading] = useState(tauri);
-  const [trustedLanActionBusy, setTrustedLanActionBusy] = useState(false);
-  const [trustedLanEnabledDraft, setTrustedLanEnabledDraft] = useState(false);
-  const [trustedLanInterfaceAddressDraft, setTrustedLanInterfaceAddressDraft] = useState("");
-  const [trustedLanPortDraft, setTrustedLanPortDraft] = useState("4278");
-  const [showTrustedLanNetworkSummary, setShowTrustedLanNetworkSummary] = useState(false);
-  const [showTrustedLanNetworkEditor, setShowTrustedLanNetworkEditor] = useState(false);
+  const {
+    showTrustedLanNetworkEditor,
+    showTrustedLanNetworkSummary,
+    showTrustedLanRevokedBrowsers,
+    setShowTrustedLanNetworkEditor,
+    setShowTrustedLanNetworkSummary,
+    setShowTrustedLanRevokedBrowsers,
+    setTrustedLanActionBusy,
+    setTrustedLanEnabledDraft,
+    setTrustedLanInterfaceAddressDraft,
+    setTrustedLanInterfaces,
+    setTrustedLanLoading,
+    setTrustedLanPairedBrowsers,
+    setTrustedLanPairingBrowserLabelDraft,
+    setTrustedLanPairingExpiresAtMs,
+    setTrustedLanPairingLabel,
+    setTrustedLanPairingLink,
+    setTrustedLanPortDraft,
+    setTrustedLanStatus,
+    trustedLanActionBusy,
+    trustedLanEnabledDraft,
+    trustedLanInterfaceAddressDraft,
+    trustedLanInterfaces,
+    trustedLanLoading,
+    trustedLanPairedBrowsers,
+    trustedLanPairedBrowsersRef,
+    trustedLanPairedBrowsersRefreshInFlightRef,
+    trustedLanPairingBrowserLabelDraft,
+    trustedLanPairingExpiresAtMs,
+    trustedLanPairingLabel,
+    trustedLanPairingLink,
+    trustedLanPortDraft,
+    trustedLanStatus,
+  } = useSettingsTrustedLanState(tauri);
   const [showLibraryClientAdvanced, setShowLibraryClientAdvanced] = useState(false);
-  const [trustedLanPairingBrowserLabelDraft, setTrustedLanPairingBrowserLabelDraft] = useState("");
-  const [trustedLanPairingLink, setTrustedLanPairingLink] = useState<string | null>(null);
-  const [trustedLanPairingLabel, setTrustedLanPairingLabel] = useState<string | null>(null);
-  const [trustedLanPairingExpiresAtMs, setTrustedLanPairingExpiresAtMs] = useState<number | null>(
-    null,
-  );
   const {
     pairingQrBusy: trustedLanPairingQrBusy,
     pairingQrDataUrl: trustedLanPairingQrDataUrl,
     pairingQrUnavailable: trustedLanPairingQrUnavailable,
   } = useTrustedLanPairingQr(trustedLanPairingLink);
-  const [showTrustedLanRevokedBrowsers, setShowTrustedLanRevokedBrowsers] = useState(false);
-  const trustedLanPairedBrowsersRef = useRef<TrustedLanPairedBrowser[]>([]);
-  const trustedLanPairedBrowsersRefreshInFlightRef = useRef(false);
 
   const [printers, setPrinters] = useState<PrinterRow[]>([]);
   const [printerOverview, setPrinterOverview] = useState<PrinterOverviewRow[]>([]);
@@ -404,7 +411,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
   useEffect(() => {
     trustedLanPairedBrowsersRef.current = trustedLanPairedBrowsers;
-  }, [trustedLanPairedBrowsers]);
+  }, [trustedLanPairedBrowsers, trustedLanPairedBrowsersRef]);
 
   const syncTrustedLanDraftFromStatus = useTrustedLanDraftSync({
     setTrustedLanEnabledDraft,
