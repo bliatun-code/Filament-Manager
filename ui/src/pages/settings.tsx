@@ -60,7 +60,6 @@ import {
 import { FeedbackBanner } from "../components/feedback_banner";
 import { useI18n, type Locale } from "../lib/i18n";
 import { toErrorMessage } from "../lib/error_text";
-import { SettingsBackupValidationSummary } from "../components/settings_backup_validation_summary";
 import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/inventory_export";
 import {
   buildInventoryMatchResult,
@@ -71,7 +70,6 @@ import {
   extractBaseUrlFromPairingInput,
   formatDiagnosticJson,
   formatSettingsDateTime,
-  formatTrustedLanPairingExpiry,
   isFullBackupValidationFormat,
   parseNonNegativeInt,
   parsePositiveInt,
@@ -82,7 +80,13 @@ import { PrinterModelPreview } from "../components/printer_model_preview";
 import { DiagnosticCaptureChart } from "../components/diagnostic_capture_chart";
 import { SettingsGeneralTab } from "../components/settings_general_tab";
 import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
+import { SettingsMaintenanceTab } from "../components/settings_maintenance_tab";
+import { SettingsMissingSwatchesPanel } from "../components/settings_missing_swatches_panel";
+import { SettingsPrinterEditForm } from "../components/settings_printer_edit_form";
 import { SettingsMetricTile } from "../components/settings_ui";
+import { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_lan_browsers_panel";
+import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_lan_pairing_panel";
+import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_lan_server_panel";
 import {
   chipButtonClass,
   settingsActionButtonClass,
@@ -127,8 +131,6 @@ import {
   describeConfiguredPrinterSetup,
   findPrinterModelProfileExact,
   hasConfiguredMultiMaterial,
-  multiMaterialSlotsInputLabel,
-  multiMaterialUnitsInputLabel,
   resolvePrinterModelProfile,
 } from "../lib/printer_profiles";
 import { printerBrandSurfaceStyle } from "../lib/printer_branding";
@@ -3469,143 +3471,39 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                     ) : null}
 
                     {isEditing ? (
-                      <div className="mt-3 space-y-4 border-t border-slate-200 pt-3 dark:border-slate-700">
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.2fr_1fr_110px_130px_auto]">
-                          <input
-                            type="text"
-                            value={editPrinterModel}
-                            onChange={(event) => {
-                              const nextModel = event.target.value;
-                              setEditPrinterModel(nextModel);
-                              const exactProfile = findPrinterModelProfileExact(nextModel);
-                              if (exactProfile) {
-                                setEditAmsUnits(String(exactProfile.defaultUnits));
-                                setEditSlotsPerUnit(String(exactProfile.defaultSlotsPerUnit));
-                              }
-                            }}
-                            list="printer-model-options"
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-                            placeholder={t("settings.printerModel", "Printer model")}
-                            disabled={!tauri || busy}
-                          />
-                          <input
-                            type="text"
-                            value={editPrinterName}
-                            onChange={(event) => setEditPrinterName(event.target.value)}
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-                            placeholder={t("settings.printerName", "Printer name")}
-                            disabled={!tauri || busy}
-                          />
-                          <input
-                            type="number"
-                            min={0}
-                            max={editModelProfile.maxUnits}
-                            value={editAmsUnits}
-                            onChange={(event) => setEditAmsUnits(event.target.value)}
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-                            title={multiMaterialUnitsInputLabel(t, editPrinterModel)}
-                            disabled={!tauri || busy || editModelProfile.maxUnits === 0}
-                          />
-                          <input
-                            type="number"
-                            min={1}
-                            max={editModelProfile.maxSlotsPerUnit}
-                            value={editSlotsPerUnit}
-                            onChange={(event) => setEditSlotsPerUnit(event.target.value)}
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-                            title={multiMaterialSlotsInputLabel(t, editPrinterModel)}
-                            disabled={!tauri || busy || editModelProfile.maxUnits === 0}
-                          />
-                          <button
-                            type="button"
-                            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
-                            onClick={() => void handleSavePrinterReconfigure()}
-                            disabled={!tauri || busy}
-                          >
-                            {t("settings.saveReconfigure", "Save changes")}
-                          </button>
-                        </div>
-
-	                        {isBambuLabPrinter(printer.model) ? (
-	                        <div className="rounded-lg border border-dashed border-slate-300 bg-white/80 p-3 dark:border-slate-600 dark:bg-slate-950/40">
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="space-y-1">
-                              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {t("settings.bambuLiveSection", "Live Bambu status (beta)")}
-                              </div>
-                              <div className="max-w-2xl text-xs leading-5 text-slate-600 dark:text-slate-400">
-                                {t(
-                                  "settings.bambuLiveHint",
-                                  "Optional local read-only integration for observing printer and AMS status while we evaluate which live fields are stable and valuable.",
-                                )}
-                              </div>
-                            </div>
-                            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
-                              <input
-                                type="checkbox"
-                                checked={editBambuLiveEnabled}
-                                onChange={(event) => setEditBambuLiveEnabled(event.target.checked)}
-                                disabled={!tauri || busy || settingsClientReadOnly}
-                              />
-                              {t("settings.enableBambuLive", "Enable live status")}
-                            </label>
-                          </div>
-
-                          {settingsClientReadOnly ? (
-                            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
-                              {t(
-                                "settings.bambuLiveStandaloneOnly",
-                                "Live Bambu status can only be configured on the host desktop in this phase.",
-                              )}
-                            </div>
-                          ) : null}
-
-                          {editBambuLiveEnabled ? (
-                            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-                              <input
-                                type="text"
-                                value={editBambuLiveHost}
-                                onChange={(event) => setEditBambuLiveHost(event.target.value)}
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-                                placeholder={t("settings.bambuLiveHost", "Printer host / IP")}
-                                disabled={!tauri || busy || settingsClientReadOnly}
-                              />
-                              <input
-                                type="password"
-                                value={editBambuLiveAccessCode}
-                                onChange={(event) => setEditBambuLiveAccessCode(event.target.value)}
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-                                placeholder={t("settings.bambuLiveAccessCode", "Access code")}
-                                disabled={!tauri || busy || settingsClientReadOnly}
-                              />
-                              <input
-                                type="text"
-                                value={editBambuLivePrinterSerial}
-                                onChange={(event) => setEditBambuLivePrinterSerial(event.target.value)}
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-                                placeholder={t("settings.bambuLivePrinterSerial", "Printer serial")}
-                                disabled={!tauri || busy || settingsClientReadOnly}
-                              />
-                            </div>
-                          ) : null}
-
-	                          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-	                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              {editBambuLiveEnabled
-                                ? t(
-                                    "settings.bambuLiveOptInNote",
-                                    "Credentials are stored locally on this desktop as part of the current experimental opt-in flow.",
-                                  )
-                                : t(
-                                    "settings.bambuLiveDisabledNote",
-                                    "Leave disabled to keep the current printer flow unchanged.",
-                                  )}
-	                            </div>
-	                          </div>
-	                        </div>
-	                        ) : null}
-	                      </div>
-	                    ) : null}
+                      <SettingsPrinterEditForm
+                        bambuLiveAccessCode={editBambuLiveAccessCode}
+                        bambuLiveEnabled={editBambuLiveEnabled}
+                        bambuLiveHost={editBambuLiveHost}
+                        bambuLivePrinterSerial={editBambuLivePrinterSerial}
+                        busy={busy}
+                        model={editPrinterModel}
+                        modelProfile={editModelProfile}
+                        name={editPrinterName}
+                        settingsClientReadOnly={settingsClientReadOnly}
+                        slotsPerUnit={editSlotsPerUnit}
+                        supportsBambuLive={isBambuLabPrinter(printer.model)}
+                        tauri={tauri}
+                        t={t}
+                        units={editAmsUnits}
+                        onBambuLiveAccessCodeChange={setEditBambuLiveAccessCode}
+                        onBambuLiveEnabledChange={setEditBambuLiveEnabled}
+                        onBambuLiveHostChange={setEditBambuLiveHost}
+                        onBambuLivePrinterSerialChange={setEditBambuLivePrinterSerial}
+                        onModelChange={(nextModel) => {
+                          setEditPrinterModel(nextModel);
+                          const exactProfile = findPrinterModelProfileExact(nextModel);
+                          if (exactProfile) {
+                            setEditAmsUnits(String(exactProfile.defaultUnits));
+                            setEditSlotsPerUnit(String(exactProfile.defaultSlotsPerUnit));
+                          }
+                        }}
+                        onNameChange={setEditPrinterName}
+                        onSave={() => void handleSavePrinterReconfigure()}
+                        onSlotsPerUnitChange={setEditSlotsPerUnit}
+                        onUnitsChange={setEditAmsUnits}
+                      />
+                    ) : null}
                   </div>
                 );
               })}
@@ -3717,141 +3615,27 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 </div>
 
                 {librarySyncModeDraft !== "CLIENT" && showLibraryWebappDetails ? (
-                  <div className="space-y-4 rounded-lg border border-slate-200/80 bg-white/70 px-4 py-4 dark:border-slate-700/70 dark:bg-slate-950/35">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="font-semibold text-slate-800 dark:text-slate-100">
-                          {t("settings.trustedLanServerTitle", "Web app server")}
-                        </div>
-                        <div className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                          {t(
-                            "settings.trustedLanCompactNetworkHint",
-                            "The web app runs on one selected private LAN interface. Open the network details only when you need them.",
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setShowTrustedLanNetworkSummary((value) => !value)}
-                          className={settingsActionButtonClass(
-                            showTrustedLanNetworkSummary ? "accent" : "neutral",
-                          )}
-                          disabled={!tauri || trustedLanActionBusy}
-                        >
-                          {showTrustedLanNetworkSummary
-                            ? t("settings.trustedLanHideNetworkSummary", "Hide network")
-                            : t("settings.trustedLanShowNetwork", "Show network")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowTrustedLanNetworkEditor((value) => !value)}
-                          className={settingsActionButtonClass(
-                            showTrustedLanNetworkEditor ? "accent" : "neutral",
-                          )}
-                          disabled={!tauri || trustedLanActionBusy}
-                        >
-                          {showTrustedLanNetworkEditor
-                            ? t("settings.trustedLanHideNetwork", "Hide network")
-                            : t("settings.trustedLanEditNetwork", "Edit network")}
-                        </button>
-                      </div>
-                    </div>
-
-                    {showTrustedLanNetworkSummary ? (
-                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
-                        <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-slate-700/70 dark:bg-slate-950/50">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                            {t("settings.trustedLanInterface", "Selected interface")}
-                          </div>
-                          <div className="mt-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                            {trustedLanCompanionModel.interfaceValue}
-                          </div>
-                        </div>
-                        <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-slate-700/70 dark:bg-slate-950/50">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                            {t("settings.trustedLanPort", "Port")}
-                          </div>
-                          <div className="mt-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                            :{trustedLanCompanionModel.portValue}
-                          </div>
-                        </div>
-                        <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 sm:col-span-2 dark:border-slate-700/70 dark:bg-slate-950/50">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                            {t("settings.trustedLanShellUrl", "LAN URL")}
-                          </div>
-                          <div className="mt-2 break-all text-sm font-medium text-slate-800 dark:text-slate-100">
-                            {trustedLanCompanionModel.shellUrlValue}
-                          </div>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {showTrustedLanNetworkEditor ? (
-                      <div className="rounded-lg border border-slate-200/80 bg-white/78 px-4 py-4 shadow-sm shadow-slate-200/20 dark:border-white/12 dark:bg-slate-950/35 dark:shadow-none">
-                        <div className="grid gap-4">
-                          <label className="block">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
-                              {t("settings.trustedLanInterfaceSelect", "Private interface")}
-                            </div>
-                            <select
-                              className="mt-2 w-full rounded-lg border border-slate-200 bg-white/85 px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
-                              value={trustedLanInterfaceAddressDraft}
-                              disabled={trustedLanCompanionModel.configActionDisabled}
-                              onChange={(event) => setTrustedLanInterfaceAddressDraft(event.target.value)}
-                            >
-                              {trustedLanInterfaces.length === 0 ? (
-                                <option value="">
-                                  {t(
-                                    "settings.trustedLanNoInterfaces",
-                                    "No private IPv4 interfaces detected",
-                                  )}
-                                </option>
-                              ) : null}
-                              {trustedLanInterfaces.map((option) => (
-                                <option key={`${option.name}-${option.address}`} value={option.address}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-
-                          <div className="grid gap-3 sm:grid-cols-[140px_auto] sm:items-end">
-                            <label className="block">
-                              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
-                                {t("settings.trustedLanPortInput", "Listener port")}
-                              </div>
-                              <input
-                                type="number"
-                                min={1}
-                                max={65535}
-                                className="mt-2 w-full rounded-lg border border-slate-200 bg-white/85 px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
-                                value={trustedLanPortDraft}
-                                disabled={trustedLanCompanionModel.configActionDisabled}
-                                onChange={(event) => setTrustedLanPortDraft(event.target.value)}
-                              />
-                            </label>
-
-                            <button
-                              type="button"
-                              className={settingsActionButtonClass("accent")}
-                              disabled={trustedLanCompanionModel.configActionDisabled || !trustedLanNetworkDirty}
-                              onClick={() => void handleSaveTrustedLanConfig()}
-                            >
-                              {t("settings.trustedLanSave", "Save network")}
-                            </button>
-                          </div>
-
-                          <div className="text-xs leading-5 text-slate-600 dark:text-slate-300">
-                            {t(
-                              "settings.trustedLanBindBody",
-                              "Binds to one explicit private interface. Never 0.0.0.0.",
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
+                  <SettingsTrustedLanServerPanel
+                    actionBusy={trustedLanActionBusy}
+                    companionModel={trustedLanCompanionModel}
+                    interfaceAddressDraft={trustedLanInterfaceAddressDraft}
+                    interfaces={trustedLanInterfaces}
+                    networkDirty={trustedLanNetworkDirty}
+                    portDraft={trustedLanPortDraft}
+                    showNetworkEditor={showTrustedLanNetworkEditor}
+                    showNetworkSummary={showTrustedLanNetworkSummary}
+                    tauri={tauri}
+                    t={t}
+                    onInterfaceAddressChange={setTrustedLanInterfaceAddressDraft}
+                    onPortChange={setTrustedLanPortDraft}
+                    onSaveNetwork={() => void handleSaveTrustedLanConfig()}
+                    onToggleNetworkEditor={() =>
+                      setShowTrustedLanNetworkEditor((value) => !value)
+                    }
+                    onToggleNetworkSummary={() =>
+                      setShowTrustedLanNetworkSummary((value) => !value)
+                    }
+                  />
                 ) : null}
 
                 {librarySyncModeDraft === "HOST" ? null : (
@@ -4179,316 +3963,38 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               </div>
 
               {librarySyncModeDraft !== "CLIENT" ? (
-              <div className="mt-4">
-                <div className="surface-subtle px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="font-semibold text-slate-800 dark:text-slate-100">
-                        {t("settings.trustedLanPairingTitle", "Browser pairing")}
-                      </div>
-                      <div className="mt-1 text-sm leading-6">
-                        {t(
-                          "settings.trustedLanPairingBody",
-                          "Create a short-lived link or QR for one browser.",
-                        )}
-                      </div>
-                      <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                        {t(
-                          "settings.trustedLanPairingNoteBody",
-                          "Browser-only access. This does not add any device-ingestion route.",
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={`mt-4 grid gap-4 ${trustedLanPairingLink ? "lg:grid-cols-[1fr_220px]" : ""}`}>
-                    <div className="rounded-lg border border-slate-200 bg-white/85 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/55">
-                      <label className="block">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                          {t("settings.trustedLanPairingLabelInput", "Browser label")}
-                        </div>
-                        <input
-                          type="text"
-                          className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
-                          value={trustedLanPairingBrowserLabelDraft}
-                          disabled={trustedLanCompanionModel.pairActionDisabled}
-                          onChange={(event) => setTrustedLanPairingBrowserLabelDraft(event.target.value)}
-                          placeholder={t(
-                            "settings.trustedLanPairingLabelPlaceholder",
-                            "iPad Safari, kitchen phone, workshop MacBook...",
-                          )}
-                        />
-                      </label>
-                      <div className="mt-3">
-                        <button
-                          type="button"
-                          className={settingsActionButtonClass("accent")}
-                          disabled={trustedLanCompanionModel.pairActionDisabled}
-                          onClick={() => void handleCreateTrustedLanPairingLink()}
-                        >
-                          {t("settings.trustedLanCreatePairing", "Create pairing link")}
-                        </button>
-                      </div>
-
-                      {trustedLanPairingLink ? (
-                        <>
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200">
-                              {t("settings.trustedLanPairingLabelMeta", "Browser label")}:{" "}
-                              {trustedLanPairingLabel ??
-                                t("settings.trustedLanPairingLabelEmpty", "No label")}
-                            </span>
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200">
-                              {t("settings.trustedLanPairingExpiresAt", "Expires at")}:{" "}
-                              {trustedLanPairingExpiresAtMs
-                                ? formatTrustedLanPairingExpiry(
-                                    trustedLanPairingExpiresAtMs,
-                                    locale,
-                                  )
-                                : t("common.loading", "Loading...")}
-                            </span>
-                          </div>
-
-                          <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                            {t("settings.trustedLanLatestPairing", "Latest pairing link")}
-                          </div>
-                          <div className="mt-2 break-all rounded-lg border border-slate-200 bg-slate-50/85 px-3 py-3 text-sm font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-900/55 dark:text-slate-100">
-                            {trustedLanPairingLink}
-                          </div>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              className={settingsActionButtonClass()}
-                              disabled={!trustedLanPairingLink || trustedLanActionBusy}
-                              onClick={() => void handleCopyTrustedLanPairingLink()}
-                            >
-                              {t("settings.trustedLanCopyPairing", "Copy pairing link")}
-                            </button>
-                          </div>
-                        </>
-                      ) : null}
-                    </div>
-
-                    {trustedLanPairingLink ? (
-                    <div className="rounded-lg border border-slate-200 bg-white/85 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/55">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                        {t("settings.trustedLanPairingQrTitle", "Pairing QR")}
-                      </div>
-                      <div className="mt-3 flex min-h-[208px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white/90 p-3 dark:border-slate-700 dark:bg-slate-950/70">
-                        {trustedLanPairingQrDataUrl ? (
-                          <img
-                            src={trustedLanPairingQrDataUrl}
-                            alt={t("settings.trustedLanPairingQrAlt", "Trusted-LAN pairing QR")}
-                            className="h-44 w-44 rounded-xl bg-white p-2 shadow-sm shadow-slate-200/60 dark:shadow-none"
-                          />
-                        ) : (
-                          <div className="max-w-[12rem] text-center text-xs leading-6 text-slate-500 dark:text-slate-400">
-                            {trustedLanPairingQrBusy
-                              ? t(
-                                  "settings.trustedLanPairingQrLoading",
-                                  "Building QR preview...",
-                                )
-                              : trustedLanPairingQrUnavailable
-                                ? t(
-                                    "settings.trustedLanPairingQrUnavailable",
-                                    "QR preview is unavailable in this build. The pairing link still works.",
-                                  )
-                                : t(
-                                    "settings.trustedLanPairingQrHint",
-                                    "Create a pairing link to generate a QR preview.",
-                                  )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-3 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                        {t(
-                          "settings.trustedLanPairingQrScanBody",
-                          "Scan with the browser you want to pair. The link stays short-lived and single-use.",
-                        )}
-                      </div>
-                    </div>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
+                <SettingsTrustedLanPairingPanel
+                  actionBusy={trustedLanActionBusy}
+                  browserLabelDraft={trustedLanPairingBrowserLabelDraft}
+                  locale={locale}
+                  pairActionDisabled={trustedLanCompanionModel.pairActionDisabled}
+                  pairingExpiresAtMs={trustedLanPairingExpiresAtMs}
+                  pairingLabel={trustedLanPairingLabel}
+                  pairingLink={trustedLanPairingLink}
+                  pairingQrBusy={trustedLanPairingQrBusy}
+                  pairingQrDataUrl={trustedLanPairingQrDataUrl}
+                  pairingQrUnavailable={trustedLanPairingQrUnavailable}
+                  t={t}
+                  onBrowserLabelChange={setTrustedLanPairingBrowserLabelDraft}
+                  onCopyPairingLink={() => void handleCopyTrustedLanPairingLink()}
+                  onCreatePairingLink={() => void handleCreateTrustedLanPairingLink()}
+                />
               ) : null}
 
               {librarySyncModeDraft !== "CLIENT" ? (
-              <div className="surface-subtle mt-4 px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="font-semibold text-slate-800 dark:text-slate-100">
-                      {t("settings.trustedLanBrowsersTitle", "Paired browsers")}
-                    </div>
-                    <div className="mt-1 text-sm leading-6">
-                      {t(
-                        "settings.trustedLanBrowsersBody",
-                        "Revoke a browser to stop future renewals and cut off its current sessions.",
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
-                      {activeTrustedLanPairedBrowsers.length}{" "}
-                      {t("settings.trustedLanActive", "Active")}
-                    </span>
-                    {revokedTrustedLanPairedBrowsers.length > 0 ? (
-                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-600 dark:bg-slate-950/60 dark:text-slate-200">
-                        {revokedTrustedLanPairedBrowsers.length}{" "}
-                        {t("settings.trustedLanRevoked", "Revoked")}
-                      </span>
-                    ) : null}
-                    <button
-                      type="button"
-                      className={settingsActionButtonClass()}
-                      disabled={
-                        trustedLanActionBusy || activeTrustedLanPairedBrowsers.length === 0
-                      }
-                      onClick={() => void handleRevokeAllTrustedLanBrowsers()}
-                    >
-                      {t("settings.trustedLanRevokeAll", "Revoke all")}
-                    </button>
-                  </div>
-                </div>
-
-                {trustedLanPairedBrowsers.length === 0 ? (
-                  <div className="mt-4 rounded-lg border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                    {t(
-                      "settings.trustedLanBrowsersEmpty",
-                      "No trusted-LAN browsers have been paired yet.",
-                    )}
-                  </div>
-                ) : (
-                  <div className="mt-4 space-y-4">
-                    {activeTrustedLanPairedBrowsers.length === 0 ? (
-                      <div className="rounded-lg border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                        {t(
-                          "settings.trustedLanNoActiveBrowsers",
-                          "No active browsers right now.",
-                        )}
-                      </div>
-                    ) : (
-                      <div className="grid gap-3">
-                        {activeTrustedLanPairedBrowsers.map((browser) => (
-                          <div
-                            key={browser.id}
-                            className="rounded-lg border border-slate-200 bg-white/90 px-4 py-3 shadow-sm shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-950/55 dark:shadow-none"
-                          >
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                              <div className="flex min-w-0 flex-1 items-start gap-3">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-sm font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
-                                  {browser.initials}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <div className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
-                                      {browser.displayName}
-                                    </div>
-                                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200">
-                                      {browser.statusLabel}
-                                    </span>
-                                  </div>
-                                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
-                                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 dark:border-slate-700 dark:bg-slate-900/60">
-                                      {browser.activityLabel}
-                                    </span>
-                                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 dark:border-slate-700 dark:bg-slate-900/60">
-                                      {browser.pairedLabel}
-                                    </span>
-                                    {browser.originLabel ? (
-                                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 dark:border-slate-700 dark:bg-slate-900/60">
-                                        {t("settings.trustedLanOrigin", "Origin")} {browser.originLabel}
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <button
-                                type="button"
-                                className={settingsActionButtonClass()}
-                                disabled={trustedLanActionBusy}
-                                onClick={() => void handleRevokeTrustedLanBrowser(browser.id)}
-                              >
-                                {t("settings.trustedLanRevoke", "Revoke")}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {revokedTrustedLanPairedBrowsers.length > 0 ? (
-                      <div className="rounded-lg border border-slate-200 bg-white/65 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/45">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <div className="font-semibold text-slate-800 dark:text-slate-100">
-                              {t("settings.trustedLanRevokedHistory", "Revoked history")}
-                            </div>
-                            <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                              {t(
-                                "settings.trustedLanRevokedHistoryBody",
-                                "Keep this tucked away unless you need to audit older browser access.",
-                              )}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            className={settingsActionButtonClass()}
-                            onClick={() =>
-                              setShowTrustedLanRevokedBrowsers((value) => !value)
-                            }
-                          >
-                            {showTrustedLanRevokedBrowsers
-                              ? t("settings.trustedLanHideRevoked", "Hide revoked")
-                              : t("settings.trustedLanShowRevoked", "Show revoked")}
-                          </button>
-                        </div>
-
-                        {showTrustedLanRevokedBrowsers ? (
-                          <div className="mt-3 grid gap-3">
-                            {revokedTrustedLanPairedBrowsers.map((browser) => (
-                              <div
-                                key={browser.id}
-                                className="rounded-lg border border-slate-200/80 bg-slate-50/85 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/55"
-                              >
-                                <div className="flex min-w-0 items-start gap-3">
-                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-300">
-                                    {browser.initials}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <div className="truncate text-sm font-semibold text-slate-700 dark:text-slate-100">
-                                        {browser.displayName}
-                                      </div>
-                                      <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                        {browser.statusLabel}
-                                      </span>
-                                    </div>
-                                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
-                                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-950/70">
-                                        {browser.activityLabel}
-                                      </span>
-                                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-950/70">
-                                        {browser.pairedLabel}
-                                      </span>
-                                      {browser.originLabel ? (
-                                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-950/70">
-                                          {t("settings.trustedLanOrigin", "Origin")} {browser.originLabel}
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                )}
-              </div>
+                <SettingsTrustedLanBrowsersPanel
+                  activeBrowsers={activeTrustedLanPairedBrowsers}
+                  actionBusy={trustedLanActionBusy}
+                  revokedBrowsers={revokedTrustedLanPairedBrowsers}
+                  showRevokedBrowsers={showTrustedLanRevokedBrowsers}
+                  t={t}
+                  totalBrowserCount={trustedLanPairedBrowsers.length}
+                  onRevokeAllBrowsers={() => void handleRevokeAllTrustedLanBrowsers()}
+                  onRevokeBrowser={(browserId) => void handleRevokeTrustedLanBrowser(browserId)}
+                  onToggleRevokedBrowsers={() =>
+                    setShowTrustedLanRevokedBrowsers((value) => !value)
+                  }
+                />
               ) : null}
             </section>
           </>
@@ -4707,381 +4213,54 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               </div>
             </div>
 
-            <div className="surface-subtle mt-6 overflow-hidden p-0">
-              <div className="border-b border-slate-200/80 px-5 py-5 dark:border-slate-700/80">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="max-w-3xl">
-                    <div className="section-eyebrow">
-                      {t("settings.swatchQuality", "Swatch quality")}
-                    </div>
-                    <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                      {t(
-                        "settings.swatchQualityHelp",
-                        "Review missing swatches here, then save manual fixes or fill the visible list in bulk.",
-                      )}
-                    </div>
-                  </div>
-                  <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-600 shadow-sm shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:shadow-none">
-                    {t("settings.missingSwatches", "Missing swatches")}:{" "}
-                    {missingSwatchMasters.length}
-                  </div>
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <SettingsMetricTile
-                    label={t("settings.missingSwatches", "Missing swatches")}
-                    value={missingSwatchMasters.length}
-                  />
-                  <SettingsMetricTile
-                    label={t("settings.visibleMissing", "Visible missing")}
-                    value={visibleMissingSwatchMasters.length}
-                  />
-                  <SettingsMetricTile
-                    label={t("inventory.vendorGroup", "Vendor")}
-                    value={visibleMissingSwatchVendorCount}
-                    hint={t("settings.missingSwatches", "Missing swatches")}
-                  />
-                </div>
-              </div>
-
-              <div className="p-5">
-                <div className="rounded-lg border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {swatchVendorOptions.map((vendor) => (
-                      <button
-                        key={vendor}
-                        type="button"
-                        onClick={() => setSwatchVendorFilter(vendor)}
-                        className={chipButtonClass(swatchVendorFilter === vendor)}
-                      >
-                        {vendor === "ALL" ? t("common.all", "All") : vendor}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      className={settingsActionButtonClass()}
-                      onClick={() => void reloadSettings()}
-                      disabled={!tauri || busy || swatchBusy || catalogRefreshBusy}
-                    >
-                      {t("common.refresh", "Refresh")}
-                    </button>
-                    <button
-                      type="button"
-                      className={settingsActionButtonClass("accent")}
-                      onClick={() => void handleBulkAutoFillMissingSwatches()}
-                      disabled={
-                        !tauri ||
-                        busy ||
-                        swatchBusy ||
-                        catalogRefreshBusy ||
-                        visibleMissingSwatchMasters.length === 0
-                      }
-                    >
-                      {swatchBusy
-                        ? t("settings.updatingSwatches", "Updating swatches...")
-                        : confirmBulkSwatch
-                          ? t("settings.confirmBulkSwatchAction", "Confirm auto-fill")
-                          : t(
-                              "settings.autofillVisibleSwatches",
-                              "Auto-fill visible missing swatches",
-                            )}
-                    </button>
-                  </div>
-                  {confirmBulkSwatch ? (
-                    <div className="mt-3 rounded-xl border border-indigo-200/80 bg-indigo-50/80 px-3 py-2 text-xs text-indigo-700 dark:border-indigo-400/30 dark:bg-indigo-500/10 dark:text-indigo-200">
-                      {t(
-                        "settings.confirmBulkSwatchTapAgain",
-                        "Click Auto-fill visible missing swatches again to confirm.",
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-
-                {visibleMissingSwatchMasters.length === 0 ? (
-                  <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-white/70 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
-                    {t("settings.noMissingSwatches", "No missing swatches to fill.")}
-                  </div>
-                ) : (
-                  <div className="mt-4 max-h-[460px] space-y-3 overflow-auto pr-1">
-                    {visibleMissingSwatchMasters.map((master) => {
-                      const draftHex = swatchDraftById[master.id] ?? suggestHexFromColor(master);
-                      const normalizedDraft =
-                        normalizeHexColor(draftHex, { uppercase: true }) ?? suggestHexFromColor(master);
-                      return (
-                        <div
-                          key={master.id}
-                          className="rounded-lg border border-slate-200 bg-white/80 p-3 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none"
-                        >
-                          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                            <div className="flex min-w-0 items-start gap-3">
-                              <span
-                                className="mt-0.5 h-11 w-11 shrink-0 rounded-lg border border-slate-200 shadow-inner dark:border-slate-700"
-                                style={{ backgroundColor: toSwatchColor(normalizedDraft) }}
-                                title={normalizedDraft}
-                              />
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                  {formatFilamentDisplayTitle(
-                                    master.material,
-                                    master.filament_name,
-                                    master.color_name,
-                                  )}
-                                </div>
-                                <div className="mt-1 truncate text-xs text-slate-600 dark:text-slate-300">
-                                  {master.vendor} · ID: {master.id}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="grid gap-2 sm:grid-cols-[120px_56px_auto] xl:min-w-[308px]">
-                              <input
-                                type="text"
-                                value={draftHex}
-                                onChange={(event) =>
-                                  updateSwatchDraft(master.id, event.target.value)
-                                }
-                                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-                                placeholder="#RRGGBB"
-                                disabled={!tauri || busy || swatchBusy || catalogRefreshBusy}
-                              />
-                              <input
-                                type="color"
-                                value={toSwatchColor(normalizedDraft)}
-                                onChange={(event) =>
-                                  updateSwatchDraft(master.id, event.target.value)
-                                }
-                                className="h-10 w-full rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-600 dark:bg-slate-900/70"
-                                disabled={!tauri || busy || swatchBusy || catalogRefreshBusy}
-                              />
-                              <button
-                                type="button"
-                                className={settingsActionButtonClass()}
-                                onClick={() => void handleSaveMissingSwatch(master)}
-                                disabled={!tauri || busy || swatchBusy || catalogRefreshBusy}
-                              >
-                                {t("common.save", "Save")}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
+            <SettingsMissingSwatchesPanel
+              busy={busy}
+              catalogRefreshBusy={catalogRefreshBusy}
+              confirmBulkSwatch={confirmBulkSwatch}
+              missingSwatchCount={missingSwatchMasters.length}
+              swatchBusy={swatchBusy}
+              swatchDraftById={swatchDraftById}
+              swatchVendorFilter={swatchVendorFilter}
+              swatchVendorOptions={swatchVendorOptions}
+              tauri={tauri}
+              t={t}
+              visibleMissingSwatchMasters={visibleMissingSwatchMasters}
+              visibleMissingSwatchVendorCount={visibleMissingSwatchVendorCount}
+              onBulkAutoFill={() => void handleBulkAutoFillMissingSwatches()}
+              onRefresh={() => void reloadSettings()}
+              onSaveMissingSwatch={(master) => void handleSaveMissingSwatch(master)}
+              onSwatchDraftChange={updateSwatchDraft}
+              onVendorFilterChange={setSwatchVendorFilter}
+            />
           </section>
         ) : null}
 
         {activeTab === "MAINTENANCE" ? (
-          <section className="surface-card xl:col-span-2">
-            <div className="section-eyebrow">
-              {t("settings.maintenance", "Maintenance")}
-            </div>
-            <div className="surface-subtle mt-4 overflow-hidden p-0">
-              <div className="border-b border-slate-200/80 px-5 py-5 dark:border-slate-700/80">
-                <div className="max-w-3xl">
-                    <div className="section-eyebrow">
-                      {t("settings.backupTitle", "Backup")}
-                    </div>
-                    <div className="mt-2 text-sm text-slate-700 dark:text-slate-300">
-                      {t(
-                        "settings.backupDescription",
-                        "Export a full JSON backup with inventory, history and configured printers.",
-                      )}
-                    </div>
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <SettingsMetricTile label={t("nav.printers", "Printers")} value={printers.length} />
-                  <SettingsMetricTile
-                    label={t("settings.totalCatalog", "Catalog")}
-                    value={catalogMasters.length}
-                  />
-                  <SettingsMetricTile
-                    label={t("settings.missingSwatches", "Missing swatches")}
-                    value={missingSwatchMasters.length}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 p-5 lg:grid-cols-[1.15fr_0.95fr]">
-                <div className="rounded-lg border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
-                  <div className="section-eyebrow">
-                    {t("settings.backupExportGroup", "Backup and export")}
-                  </div>
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      className={settingsActionButtonClass("accent")}
-                      onClick={() => void handleExportFullBackup()}
-                      disabled={!tauri || busy}
-                    >
-                      {t("settings.exportFullBackup", "Export full backup (JSON)")}
-                    </button>
-                    <button
-                      type="button"
-                      className={settingsActionButtonClass()}
-                      onClick={() => void handleExportInventoryCsv()}
-                      disabled={!tauri || busy}
-                    >
-                      {t("settings.exportInventoryCsv", "Export inventory CSV")}
-                    </button>
-                    <button
-                      type="button"
-                      className={settingsActionButtonClass()}
-                      onClick={() => void handleExportInventoryJson()}
-                      disabled={!tauri || busy}
-                    >
-                      {t("settings.exportInventoryJson", "Export inventory JSON")}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
-                  <div className="section-eyebrow">
-                    {t("settings.backupImportGroup", "Import and validation")}
-                  </div>
-                  <div className="mt-2 rounded-lg border border-dashed border-slate-200 bg-slate-50/90 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
-                    {t(
-                      "settings.noBackupValidationYet",
-                      "Validate a backup file here to see compatibility details before importing.",
-                    )}
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    <button
-                      type="button"
-                      className={`${settingsActionButtonClass()} w-full`}
-                      onClick={handleOpenDataImport}
-                      disabled={!tauri || busy}
-                    >
-                      {t("settings.importDataFile", "Import backup/data file")}
-                    </button>
-                    <button
-                      type="button"
-                      className={`${settingsActionButtonClass()} w-full`}
-                      onClick={handleOpenBackupValidate}
-                      disabled={!tauri || busy}
-                    >
-                      {t("settings.validateBackup", "Validate backup file")}
-                    </button>
-                  </div>
-
-                  {lastBackupValidation ? (
-                    <SettingsBackupValidationSummary
-                      hasExtraTables={backupValidationHasExtraTables}
-                      hasMissingTables={backupValidationHasMissingTables}
-                      hasWarnings={backupValidationHasWarnings}
-                      summary={lastBackupValidation}
-                      t={t}
-                    />
-                  ) : null}
-                </div>
-              </div>
-              <input
-                ref={backupImportInputRef}
-                type="file"
-                accept="application/json,.json,text/csv,.csv"
-                className="hidden"
-                onChange={(event) => void handleImportDataFile(event)}
-              />
-              <input
-                ref={backupValidateInputRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                onChange={(event) => void handleValidateBackupFile(event)}
-              />
-            </div>
-
-            <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-700">
-              <div className="section-eyebrow">
-                {t("settings.resetSectionTitle", "Reset and cleanup")}
-              </div>
-              <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="min-h-[250px] rounded-xl border border-amber-300 bg-amber-50/90 p-4 shadow-sm shadow-amber-200/30 dark:border-amber-500/40 dark:bg-amber-500/10 dark:shadow-none">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-amber-950 dark:text-amber-200">
-                    <span aria-hidden="true">⚠️</span>
-                    {t("settings.resetCatalogs", "Reset catalogs")}
-                  </div>
-                  <button
-                    type="button"
-                    className="mt-3 w-full rounded-xl border border-amber-400 bg-amber-200 px-4 py-2 text-sm font-semibold text-amber-950 shadow-sm shadow-amber-200/30 disabled:opacity-50 dark:border-amber-400/50 dark:bg-amber-500/20 dark:text-amber-100 dark:shadow-none"
-                    onClick={handleResetCatalogs}
-                    disabled={!tauri || busy}
-                  >
-                    {confirmResetAction === "CATALOG"
-                      ? t("settings.confirmResetCatalogsAction", "Confirm reset catalogs")
-                      : t("settings.resetCatalogs", "Reset catalogs")}
-                  </button>
-                  <ul className="mt-3 list-disc space-y-1 pl-5 text-xs leading-6 text-amber-900 dark:text-amber-100/90">
-                    <li>
-                      {t(
-                        "settings.resetCatalogsList1",
-                        "Keeps catalog entries linked to inventory rolls or wishlist items.",
-                      )}
-                    </li>
-                    <li>
-                      {t(
-                        "settings.resetCatalogsList2",
-                        "Removes only unused catalog entries.",
-                      )}
-                    </li>
-                    <li>
-                      {t(
-                        "settings.resetCatalogsList3",
-                        "Reactivates remaining discontinued catalog entries.",
-                      )}
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="min-h-[250px] rounded-xl border border-rose-300 bg-rose-50/90 p-4 shadow-sm shadow-rose-200/30 dark:border-rose-500/40 dark:bg-rose-500/10 dark:shadow-none">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-rose-950 dark:text-rose-200">
-                    <span aria-hidden="true">🧹</span>
-                    {t("settings.resetApp", "Reset app data")}
-                  </div>
-                  <button
-                    type="button"
-                    className="mt-3 w-full rounded-xl border border-rose-400 bg-rose-200 px-4 py-2 text-sm font-semibold text-rose-950 shadow-sm shadow-rose-200/30 disabled:opacity-50 dark:border-rose-400/50 dark:bg-rose-500/20 dark:text-rose-100 dark:shadow-none"
-                    onClick={handleResetAppData}
-                    disabled={!tauri || busy}
-                  >
-                    {confirmResetAction === "APP"
-                      ? t("settings.confirmResetAppAction", "Confirm reset app data")
-                      : t("settings.resetApp", "Reset app data")}
-                  </button>
-                  <ul className="mt-3 list-disc space-y-1 pl-5 text-xs leading-6 text-rose-900 dark:text-rose-100/90">
-                    <li>
-                      {t(
-                        "settings.resetAppList1",
-                        "Clears inventory rolls and roll lifecycle history.",
-                      )}
-                    </li>
-                    <li>
-                      {t(
-                        "settings.resetAppList2",
-                        "Clears printer mappings, print statistics and wishlist.",
-                      )}
-                    </li>
-                    <li>
-                      {t(
-                        "settings.resetAppList3",
-                        "Keeps master catalog entries and swatch data.",
-                      )}
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-            {lastCatalogReset ? (
-              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200">
-                {t("settings.removed", "Removed")}: {lastCatalogReset.removed_count} ·{" "}
-                {t("settings.remaining", "Remaining")}: {lastCatalogReset.remaining_count} ·{" "}
-                {t("settings.reactivated", "Reactivated")}: {lastCatalogReset.reactivated_count}
-              </div>
-            ) : null}
-          </section>
+          <SettingsMaintenanceTab
+            backupImportInputRef={backupImportInputRef}
+            backupValidateInputRef={backupValidateInputRef}
+            backupValidationHasExtraTables={backupValidationHasExtraTables}
+            backupValidationHasMissingTables={backupValidationHasMissingTables}
+            backupValidationHasWarnings={backupValidationHasWarnings}
+            busy={busy}
+            catalogCount={catalogMasters.length}
+            confirmResetAction={confirmResetAction}
+            lastBackupValidation={lastBackupValidation}
+            lastCatalogReset={lastCatalogReset}
+            missingSwatchCount={missingSwatchMasters.length}
+            printerCount={printers.length}
+            tauri={tauri}
+            t={t}
+            onExportFullBackup={() => void handleExportFullBackup()}
+            onExportInventoryCsv={() => void handleExportInventoryCsv()}
+            onExportInventoryJson={() => void handleExportInventoryJson()}
+            onImportDataFile={(event) => void handleImportDataFile(event)}
+            onOpenBackupValidate={handleOpenBackupValidate}
+            onOpenDataImport={handleOpenDataImport}
+            onResetAppData={() => void handleResetAppData()}
+            onResetCatalogs={() => void handleResetCatalogs()}
+            onValidateBackupFile={(event) => void handleValidateBackupFile(event)}
+          />
         ) : null}
       </div>
       <SettingsLibraryRoleModal
