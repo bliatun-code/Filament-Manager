@@ -111,6 +111,7 @@ import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";
+import { useSettingsAutoClearValue } from "./use_settings_auto_clear";
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import {
@@ -1390,15 +1391,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     };
   }, []);
 
-  useEffect(() => {
-    if (!confirmDeletePrinterId) {
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      setConfirmDeletePrinterId(null);
-    }, 6000);
-    return () => window.clearTimeout(timer);
-  }, [confirmDeletePrinterId]);
+  useSettingsAutoClearValue(
+    confirmDeletePrinterId,
+    useCallback(() => setConfirmDeletePrinterId(null), []),
+    6000,
+  );
 
   useEffect(() => {
     if (!confirmDeletePrinterId) {
@@ -1409,39 +1406,27 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     }
   }, [confirmDeletePrinterId, printers]);
 
-  useEffect(() => {
-    if (!confirmResetAction) {
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      setConfirmResetAction(null);
-    }, 7000);
-    return () => window.clearTimeout(timer);
-  }, [confirmResetAction]);
+  useSettingsAutoClearValue(
+    confirmResetAction,
+    useCallback(() => setConfirmResetAction(null), []),
+    7000,
+  );
 
-  useEffect(() => {
-    if (!confirmBulkSwatch) {
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      setConfirmBulkSwatch(false);
-    }, 7000);
-    return () => window.clearTimeout(timer);
-  }, [confirmBulkSwatch]);
+  useSettingsAutoClearValue(
+    confirmBulkSwatch,
+    useCallback(() => setConfirmBulkSwatch(false), []),
+    7000,
+  );
 
   useEffect(() => {
     setConfirmBulkSwatch(false);
   }, [swatchVendorFilter, visibleMissingSwatchMasters.length]);
 
-  useEffect(() => {
-    if (!catalogRefreshSummary) {
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      setCatalogRefreshSummary(null);
-    }, 20_000);
-    return () => window.clearTimeout(timer);
-  }, [catalogRefreshSummary]);
+  useSettingsAutoClearValue(
+    catalogRefreshSummary,
+    useCallback(() => setCatalogRefreshSummary(null), []),
+    20_000,
+  );
 
   function handleStartEditPrinter(printer: PrinterRow) {
     const config = derivePrinterMultiConfig({
