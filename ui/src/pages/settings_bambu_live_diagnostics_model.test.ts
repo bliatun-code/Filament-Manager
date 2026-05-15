@@ -5,6 +5,7 @@ import {
   buildSettingsBambuLiveDiagnosticGroups,
   buildSettingsBambuLiveFallbackSummaryParts,
   buildSettingsBambuLiveDiagnosticsModel,
+  buildSettingsBambuLiveInventoryMatchDescription,
   buildSettingsBambuLiveObservedSummaryParts,
   buildSettingsBambuLiveSignalQualityBuckets,
   createSettingsBambuLiveCaptureSession,
@@ -359,5 +360,48 @@ test("Bambu live diagnostic groups apply filters, sorting and labels together", 
   assert.deepEqual(
     diagnosticGroups.map((group) => group.label),
     ["Print & status", "Tray & chip"],
+  );
+});
+
+test("Bambu live inventory match descriptions stay explicit for each match state", () => {
+  assert.equal(
+    buildSettingsBambuLiveInventoryMatchDescription({
+      inventoryMatchKind: "rfid_exact",
+      observedRfid: "ABC123",
+      t,
+    }),
+    "Exact tray identity match against inventory.",
+  );
+  assert.equal(
+    buildSettingsBambuLiveInventoryMatchDescription({
+      inventoryMatchKind: "metadata_single",
+      observedRfid: null,
+      t,
+    }),
+    "Single likely inventory match from material/name/color.",
+  );
+  assert.equal(
+    buildSettingsBambuLiveInventoryMatchDescription({
+      inventoryMatchKind: "metadata_multiple",
+      observedRfid: null,
+      t,
+    }),
+    "Multiple inventory rolls could match this filament.",
+  );
+  assert.equal(
+    buildSettingsBambuLiveInventoryMatchDescription({
+      inventoryMatchKind: "none",
+      observedRfid: "ABC123",
+      t,
+    }),
+    "Observed tray identity did not match anything in inventory.",
+  );
+  assert.equal(
+    buildSettingsBambuLiveInventoryMatchDescription({
+      inventoryMatchKind: "none",
+      observedRfid: null,
+      t,
+    }),
+    "No clear inventory match yet.",
   );
 });

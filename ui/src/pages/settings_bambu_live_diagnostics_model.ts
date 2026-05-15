@@ -23,6 +23,7 @@ import { toSwatchColor } from "../lib/color_utils";
 import {
   buildInventoryMatchResult,
   translateObservedMatchNote,
+  type InventoryMatchResult,
 } from "../lib/inventory_match";
 import type {
   BambuLiveIntegrationSettings,
@@ -221,6 +222,42 @@ export function buildSettingsBambuLiveDiagnosticGroups({
   };
 }
 
+export function buildSettingsBambuLiveInventoryMatchDescription({
+  inventoryMatchKind,
+  observedRfid,
+  t,
+}: {
+  inventoryMatchKind: InventoryMatchResult["kind"];
+  observedRfid: string | null;
+  t: TranslateFn;
+}): string {
+  if (inventoryMatchKind === "rfid_exact") {
+    return t(
+      "settings.bambuLiveInventoryRfidMatch",
+      "Exact tray identity match against inventory.",
+    );
+  }
+  if (inventoryMatchKind === "metadata_single") {
+    return t(
+      "settings.bambuLiveInventoryLikelyMatch",
+      "Single likely inventory match from material/name/color.",
+    );
+  }
+  if (inventoryMatchKind === "metadata_multiple") {
+    return t(
+      "settings.bambuLiveInventoryMultipleMatches",
+      "Multiple inventory rolls could match this filament.",
+    );
+  }
+  if (observedRfid) {
+    return t(
+      "settings.bambuLiveInventoryNoRfidMatch",
+      "Observed tray identity did not match anything in inventory.",
+    );
+  }
+  return t("settings.bambuLiveInventoryNoMatch", "No clear inventory match yet.");
+}
+
 export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticFilter,
   diagnosticSession,
@@ -296,28 +333,11 @@ export function buildSettingsBambuLiveDiagnosticsModel({
       tray.match_status &&
       tray.match_status !== "clear_match" &&
       tray.match_status !== "unknown_from_printer";
-    const matchDescription =
-      inventoryMatch.kind === "rfid_exact"
-        ? t(
-            "settings.bambuLiveInventoryRfidMatch",
-            "Exact tray identity match against inventory.",
-          )
-        : inventoryMatch.kind === "metadata_single"
-          ? t(
-              "settings.bambuLiveInventoryLikelyMatch",
-              "Single likely inventory match from material/name/color.",
-            )
-          : inventoryMatch.kind === "metadata_multiple"
-            ? t(
-                "settings.bambuLiveInventoryMultipleMatches",
-                "Multiple inventory rolls could match this filament.",
-              )
-            : observedRfid
-              ? t(
-                  "settings.bambuLiveInventoryNoRfidMatch",
-                  "Observed tray identity did not match anything in inventory.",
-                )
-              : t("settings.bambuLiveInventoryNoMatch", "No clear inventory match yet.");
+    const matchDescription = buildSettingsBambuLiveInventoryMatchDescription({
+      inventoryMatchKind: inventoryMatch.kind,
+      observedRfid,
+      t,
+    });
 
     return {
       candidateCountText:
