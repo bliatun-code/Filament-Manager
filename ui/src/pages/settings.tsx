@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import type { SettingsTabKey } from "../App";
 import {
   isTauri,
@@ -31,6 +30,7 @@ import { useSettingsFeedbackState } from "./use_settings_feedback_state";
 import { useSettingsCatalogRefreshResult } from "./use_settings_catalog_refresh_result";
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
 import { useSettingsCatalogRefreshState } from "./use_settings_catalog_refresh_state";
+import { useSettingsCatalogDerivedState } from "./use_settings_catalog_derived_state";
 import { useSettingsCatalogMessages } from "./use_settings_catalog_messages";
 import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagnostics";
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
@@ -85,9 +85,6 @@ import {
   useTrustedLanNetworkState,
 } from "./use_trusted_lan_network_state";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
-import {
-  buildSettingsCatalogState,
-} from "./settings_catalog_model";
 import { SettingsCatalogRefreshPanel } from "./settings_catalog_refresh_panel";
 
 type SettingsPageProps = {
@@ -345,25 +342,21 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const settingsClientHostWritePaired = librarySyncClientState.hostWritePaired;
   const settingsClientHostNeedsRepair = librarySyncClientState.hostNeedsRepair;
   const settingsClientHostPairingValid = librarySyncClientState.hostPairingValid;
-  const catalogState = useMemo(
-    () =>
-      buildSettingsCatalogState({
-        bambuRefreshMaterials,
-        catalogMasters,
-        catalogVendor,
-        esunRefreshMaterials,
-        swatchVendorFilter,
-      }),
-    [
-      bambuRefreshMaterials,
-      catalogMasters,
-      catalogVendor,
-      esunRefreshMaterials,
-      swatchVendorFilter,
-    ],
-  );
-  const missingSwatchMasters = catalogState.missingSwatchMasters;
-  const visibleMissingSwatchMasters = catalogState.visibleMissingSwatchMasters;
+  const {
+    activeCatalogMasterCount,
+    activeCatalogMaterialOptions,
+    activeCatalogRefreshMaterials,
+    missingSwatchMasters,
+    swatchVendorOptions,
+    visibleMissingSwatchMasters,
+    visibleMissingSwatchVendorCount,
+  } = useSettingsCatalogDerivedState({
+    bambuRefreshMaterials,
+    catalogMasters,
+    catalogVendor,
+    esunRefreshMaterials,
+    swatchVendorFilter,
+  });
 
   const { settingsPageChromeLabels, settingsPageMessageLabels } = useSettingsPageChrome(t);
 
@@ -371,11 +364,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
   const { showTransientInfo } = useSettingsTransientInfo(setInfo);
 
-  const swatchVendorOptions = catalogState.swatchVendorOptions;
-  const activeCatalogMaterialOptions = catalogState.activeCatalogMaterialOptions;
-  const activeCatalogRefreshMaterials = catalogState.activeCatalogRefreshMaterials;
-  const activeCatalogMasterCount = catalogState.activeCatalogMasterCount;
-  const visibleMissingSwatchVendorCount = catalogState.visibleMissingSwatchVendorCount;
   const {
     activeTrustedLanPairedBrowsers,
     revokedTrustedLanPairedBrowsers,
