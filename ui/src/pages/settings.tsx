@@ -30,6 +30,7 @@ import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";
+import { useSettingsFeedbackState } from "./use_settings_feedback_state";
 import { useSettingsCatalogRefreshResult } from "./use_settings_catalog_refresh_result";
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
 import { useSettingsCatalogMessages } from "./use_settings_catalog_messages";
@@ -101,9 +102,7 @@ type SettingsPageProps = {
 export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPageProps) {
   const tauri = isTauri();
   const { locale, setLocale, t } = useI18n();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
+  const { busy, error, info, setBusy, setError, setInfo } = useSettingsFeedbackState();
   const { themeMode, updateThemeMode } = useSettingsThemeMode();
   const { handleLocaleSelection, handleThemeSelection } = useSettingsPreferenceActions({
     setInfo,
