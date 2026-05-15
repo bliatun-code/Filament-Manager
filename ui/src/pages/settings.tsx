@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import type { SettingsTabKey } from "../App";
 import {
-  isValidHexColor,
   normalizeHexColor,
   suggestHexFromColor,
 } from "../lib/color_utils";
@@ -113,6 +112,10 @@ import {
   type LibrarySyncMode,
 } from "./settings_library_sync_model";
 import { buildSettingsBackupValidationState } from "./settings_backup_model";
+import {
+  buildSettingsCatalogState,
+  type SettingsCatalogVendor,
+} from "./settings_catalog_model";
 import { createSettingsBambuLiveCaptureSession } from "./settings_bambu_live_diagnostics_model";
 import {
   buildPrinterSlotsByPrinterId,
@@ -121,7 +124,7 @@ import {
 
 type SettingsTab = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
 type ResetConfirmAction = "APP" | "CATALOG";
-type CatalogVendor = "Bambu" | "eSUN";
+type CatalogVendor = SettingsCatalogVendor;
 type SettingsPageProps = {
   initialTab?: SettingsTabKey;
 };
@@ -338,19 +341,25 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     !settingsClientHostWritePaired ||
     !librarySyncValidation?.pairing_checked ||
     librarySyncValidation.pairing_valid;
-  const missingSwatchMasters = useMemo(
-    () => catalogMasters.filter((master) => !isValidHexColor(master.hex_color)),
-    [catalogMasters],
+  const catalogState = useMemo(
+    () =>
+      buildSettingsCatalogState({
+        bambuRefreshMaterials,
+        catalogMasters,
+        catalogVendor,
+        esunRefreshMaterials,
+        swatchVendorFilter,
+      }),
+    [
+      bambuRefreshMaterials,
+      catalogMasters,
+      catalogVendor,
+      esunRefreshMaterials,
+      swatchVendorFilter,
+    ],
   );
-
-  const visibleMissingSwatchMasters = useMemo(() => {
-    if (swatchVendorFilter === "ALL") {
-      return missingSwatchMasters;
-    }
-    return missingSwatchMasters.filter(
-      (master) => master.vendor.toLowerCase() === swatchVendorFilter.toLowerCase(),
-    );
-  }, [missingSwatchMasters, swatchVendorFilter]);
+  const missingSwatchMasters = catalogState.missingSwatchMasters;
+  const visibleMissingSwatchMasters = catalogState.visibleMissingSwatchMasters;
 
   const settingsTabs = useMemo(
     () =>
@@ -401,67 +410,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
   useEffect(() => clearTransientInfoTimeout, [clearTransientInfoTimeout]);
 
-  const swatchVendorOptions = useMemo(() => {
-    const vendors = Array.from(
-      new Set(missingSwatchMasters.map((master) => master.vendor).filter(Boolean)),
-    ).sort((left, right) => left.localeCompare(right));
-    return ["ALL", ...vendors];
-  }, [missingSwatchMasters]);
-
-  const bambuCatalogMasters = useMemo(
-    () => catalogMasters.filter((master) => master.vendor.toLowerCase().includes("bambu")),
-    [catalogMasters],
-  );
-
-  const esunCatalogMasters = useMemo(
-    () => catalogMasters.filter((master) => master.vendor.toLowerCase().includes("esun")),
-    [catalogMasters],
-  );
-
-  const bambuCatalogMaterialOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          bambuCatalogMasters
-            .map((master) => master.material.trim())
-            .filter((value) => value.length > 0),
-        ),
-      ).sort((left, right) => left.localeCompare(right)),
-    [bambuCatalogMasters],
-  );
-
-  const esunCatalogMaterialOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          esunCatalogMasters
-            .map((master) => master.material.trim())
-            .filter((value) => value.length > 0),
-        ),
-      ).sort((left, right) => left.localeCompare(right)),
-    [esunCatalogMasters],
-  );
-
-  const activeCatalogMaterialOptions = useMemo(
-    () => (catalogVendor === "Bambu" ? bambuCatalogMaterialOptions : esunCatalogMaterialOptions),
-    [bambuCatalogMaterialOptions, catalogVendor, esunCatalogMaterialOptions],
-  );
-
-  const activeCatalogRefreshMaterials = useMemo(
-    () => (catalogVendor === "Bambu" ? bambuRefreshMaterials : esunRefreshMaterials),
-    [bambuRefreshMaterials, catalogVendor, esunRefreshMaterials],
-  );
-  const activeCatalogMasterCount = useMemo(
-    () => (catalogVendor === "Bambu" ? bambuCatalogMasters.length : esunCatalogMasters.length),
-    [bambuCatalogMasters, catalogVendor, esunCatalogMasters],
-  );
-  const visibleMissingSwatchVendorCount = useMemo(
-    () =>
-      Array.from(
-        new Set(visibleMissingSwatchMasters.map((master) => master.vendor).filter(Boolean)),
-      ).length,
-    [visibleMissingSwatchMasters],
-  );
+  const swatchVendorOptions = catalogState.swatchVendorOptions;
+  const activeCatalogMaterialOptions = catalogState.activeCatalogMaterialOptions;
+  const activeCatalogRefreshMaterials = catalogState.activeCatalogRefreshMaterials;
+  const activeCatalogMasterCount = catalogState.activeCatalogMasterCount;
+  const visibleMissingSwatchVendorCount = catalogState.visibleMissingSwatchVendorCount;
   const trustedLanPairedBrowserListModel = useMemo(
     () =>
       buildTrustedLanPairedBrowserListModel({
