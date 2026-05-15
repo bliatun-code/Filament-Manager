@@ -68,6 +68,13 @@ export type TrustedLanActionErrorMessageKey =
 
 export type TrustedLanActionErrorMessageLabels = Record<TrustedLanActionErrorMessageKey, string>;
 
+export type TrustedLanLoadMessageKey =
+  | "loadCompanionFailed"
+  | "newBrowserPaired"
+  | "refreshBrowsersFailed";
+
+export type TrustedLanLoadMessageLabels = Record<TrustedLanLoadMessageKey, string>;
+
 export type TrustedLanConfigMessageKey =
   | "disabled"
   | "enabled"
@@ -208,6 +215,13 @@ export function buildTrustedLanActionMessage(
 export function buildTrustedLanActionErrorMessage(
   action: TrustedLanActionErrorMessageKey,
   labels: TrustedLanActionErrorMessageLabels,
+): string {
+  return labels[action];
+}
+
+export function buildTrustedLanLoadMessage(
+  action: TrustedLanLoadMessageKey,
+  labels: TrustedLanLoadMessageLabels,
 ): string {
   return labels[action];
 }

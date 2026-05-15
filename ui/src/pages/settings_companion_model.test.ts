@@ -8,6 +8,7 @@ import {
   buildTrustedLanConfigMessage,
   buildTrustedLanCompanionModel,
   buildTrustedLanNoPrivateInterfaceMessage,
+  buildTrustedLanLoadMessage,
   findNewTrustedLanActiveBrowserIds,
   buildTrustedLanPairedBrowserListModel,
   isTrustedLanNetworkDraftDirty,
@@ -445,6 +446,24 @@ test("buildTrustedLanActionErrorMessage returns stable action fallback copy", ()
   assert.equal(
     buildTrustedLanActionErrorMessage("revokeAllBrowsersFailed", labels),
     labels.revokeAllBrowsersFailed,
+  );
+});
+
+test("buildTrustedLanLoadMessage returns stable load and refresh copy", () => {
+  const labels = {
+    loadCompanionFailed: "Failed to load trusted-LAN companion status.",
+    newBrowserPaired: "New paired browser connected.",
+    refreshBrowsersFailed: "Failed to refresh paired browsers.",
+  };
+
+  assert.equal(
+    buildTrustedLanLoadMessage("loadCompanionFailed", labels),
+    labels.loadCompanionFailed,
+  );
+  assert.equal(buildTrustedLanLoadMessage("newBrowserPaired", labels), labels.newBrowserPaired);
+  assert.equal(
+    buildTrustedLanLoadMessage("refreshBrowsersFailed", labels),
+    labels.refreshBrowsersFailed,
   );
 });
 

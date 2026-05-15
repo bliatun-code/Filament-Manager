@@ -89,6 +89,7 @@ import {
   buildTrustedLanActionMessage,
   buildTrustedLanConfigMessage,
   buildTrustedLanCompanionModel,
+  buildTrustedLanLoadMessage,
   buildTrustedLanNoPrivateInterfaceMessage,
   findNewTrustedLanActiveBrowserIds,
   buildTrustedLanPairedBrowserListModel,
@@ -651,6 +652,21 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     });
   }
 
+  const trustedLanLoadMessageLabels = useCallback(() => ({
+    loadCompanionFailed: t(
+      "settings.error.loadTrustedLanCompanion",
+      "Failed to load trusted-LAN companion status.",
+    ),
+    newBrowserPaired: t(
+      "settings.trustedLanBrowserPairedDetected",
+      "New paired browser connected.",
+    ),
+    refreshBrowsersFailed: t(
+      "settings.error.loadTrustedLanPairedBrowsers",
+      "Failed to refresh paired browsers.",
+    ),
+  }), [t]);
+
   const loadTrustedLanCompanionStatus = useCallback(async (): Promise<TrustedLanCompanionStatus | null> => {
     if (!tauri) {
       return null;
@@ -669,10 +685,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         setError(
           toErrorMessage(
             trustedLanData.statusError,
-            t(
-              "settings.error.loadTrustedLanCompanion",
-              "Failed to load trusted-LAN companion status.",
-            ),
+            buildTrustedLanLoadMessage("loadCompanionFailed", trustedLanLoadMessageLabels()),
           ),
         );
       }
@@ -694,17 +707,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           loadError,
-          t(
-            "settings.error.loadTrustedLanCompanion",
-            "Failed to load trusted-LAN companion status.",
-          ),
+          buildTrustedLanLoadMessage("loadCompanionFailed", trustedLanLoadMessageLabels()),
         ),
       );
       return null;
     } finally {
       setTrustedLanLoading(false);
     }
-  }, [syncTrustedLanDraftFromStatus, t, tauri]);
+  }, [syncTrustedLanDraftFromStatus, tauri, trustedLanLoadMessageLabels]);
 
   const refreshTrustedLanPairedBrowsers = useCallback(
     async (options?: { announceNewPairing?: boolean; suppressErrors?: boolean }) => {
@@ -720,12 +730,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         );
         setTrustedLanPairedBrowsers(nextBrowsers);
         if (options?.announceNewPairing && newActiveIds.length > 0) {
-          setInfo(
-            t(
-              "settings.trustedLanBrowserPairedDetected",
-              "New paired browser connected.",
-            ),
-          );
+          setInfo(buildTrustedLanLoadMessage("newBrowserPaired", trustedLanLoadMessageLabels()));
         }
       } catch (refreshError) {
         console.error(refreshError);
@@ -733,10 +738,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           setError(
             toErrorMessage(
               refreshError,
-              t(
-                "settings.error.loadTrustedLanPairedBrowsers",
-                "Failed to refresh paired browsers.",
-              ),
+              buildTrustedLanLoadMessage("refreshBrowsersFailed", trustedLanLoadMessageLabels()),
             ),
           );
         }
@@ -744,7 +746,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         trustedLanPairedBrowsersRefreshInFlightRef.current = false;
       }
     },
-    [t, tauri],
+    [tauri, trustedLanLoadMessageLabels],
   );
 
   const refreshTrustedLanStatusUntilSettled = useCallback(
