@@ -103,7 +103,6 @@ import { loadSettingsPageData, refreshLibrarySyncSnapshot } from "../lib/setting
 import { loadTrustedLanSettingsData } from "../lib/trusted_lan_data_source";
 import { createManagedPrinter, deleteManagedPrinter } from "../lib/printer_writes";
 import {
-  buildDiagnosticCaptureSession,
   exportDiagnosticCaptureSessionCsv,
   formatIntervalMs,
   updateDiagnosticCaptureSessionFromPayload,
@@ -129,7 +128,10 @@ import {
   buildLibraryRoleChangeState,
   type LibrarySyncMode,
 } from "./settings_library_sync_model";
-import { buildSettingsBambuLiveDiagnosticsModel } from "./settings_bambu_live_diagnostics_model";
+import {
+  buildSettingsBambuLiveDiagnosticsModel,
+  createSettingsBambuLiveCaptureSession,
+} from "./settings_bambu_live_diagnostics_model";
 import { derivePrinterMultiConfig, isBambuLabPrinter } from "./settings_printer_model";
 
 type SettingsTab = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
@@ -640,6 +642,70 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       return next;
     });
   }, [bambuLiveIntegrations, diagnosticCaptureActiveByPrinterId, expandedBambuDetailsPrinterId]);
+
+  function handleToggleBambuLiveDetails(printerId: string) {
+    setExpandedBambuDetailsPrinterId((currentExpanded) => {
+      const nextExpanded = currentExpanded === printerId ? null : printerId;
+      if (nextExpanded !== printerId) {
+        return nextExpanded;
+      }
+
+      const liveConfig = bambuLiveIntegrations[printerId] ?? null;
+      setDiagnosticCaptureByPrinterId((current) => {
+        if (current[printerId]) {
+          return current;
+        }
+        return {
+          ...current,
+          [printerId]: createSettingsBambuLiveCaptureSession(liveConfig),
+        };
+      });
+      setDiagnosticCaptureActiveByPrinterId((current) => ({
+        ...current,
+        [printerId]: current[printerId] ?? true,
+      }));
+      setDiagnosticSortByPrinterId((current) => ({
+        ...current,
+        [printerId]: current[printerId] ?? "path",
+      }));
+      setDiagnosticFilterByPrinterId((current) => ({
+        ...current,
+        [printerId]: current[printerId] ?? "all",
+      }));
+
+      return nextExpanded;
+    });
+  }
+
+  function handleToggleBambuLiveCapture(printerId: string, captureActive: boolean) {
+    if (captureActive) {
+      setDiagnosticCaptureActiveByPrinterId((current) => ({
+        ...current,
+        [printerId]: false,
+      }));
+      return;
+    }
+
+    const liveConfig = bambuLiveIntegrations[printerId] ?? null;
+    const nextSession = createSettingsBambuLiveCaptureSession(liveConfig);
+    setDiagnosticCaptureByPrinterId((current) => ({
+      ...current,
+      [printerId]: nextSession,
+    }));
+    setDiagnosticCaptureActiveByPrinterId((current) => ({
+      ...current,
+      [printerId]: true,
+    }));
+    setDiagnosticChartFieldByPrinterId((current) => {
+      if (!current[printerId]) {
+        return current;
+      }
+      return {
+        ...current,
+        [printerId]: "",
+      };
+    });
+  }
 
   const loadTrustedLanCompanionStatus = useCallback(async (): Promise<TrustedLanCompanionStatus | null> => {
     if (!tauri) {
@@ -2644,37 +2710,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                           <button
                             type="button"
                             className="rounded border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200"
-                            onClick={() => {
-                              setExpandedBambuDetailsPrinterId((currentExpanded) => {
-                                const nextExpanded = currentExpanded === printer.id ? null : printer.id;
-                                if (nextExpanded === printer.id) {
-                                  const observedState =
-                                    bambuLiveIntegrations[printer.id]?.observed_state ?? null;
-                                  setDiagnosticCaptureByPrinterId((current) => {
-                                    if (current[printer.id]) {
-                                      return current;
-                                    }
-                                    return {
-                                      ...current,
-                                      [printer.id]: buildDiagnosticCaptureSession(observedState),
-                                    };
-                                  });
-                                  setDiagnosticCaptureActiveByPrinterId((current) => ({
-                                    ...current,
-                                    [printer.id]: current[printer.id] ?? true,
-                                  }));
-                                  setDiagnosticSortByPrinterId((current) => ({
-                                    ...current,
-                                    [printer.id]: current[printer.id] ?? "path",
-                                  }));
-                                  setDiagnosticFilterByPrinterId((current) => ({
-                                    ...current,
-                                    [printer.id]: current[printer.id] ?? "all",
-                                  }));
-                                }
-                                return nextExpanded;
-                              });
-                            }}
+                            onClick={() => handleToggleBambuLiveDetails(printer.id)}
                             disabled={!tauri}
                           >
                             {expandedBambuDetailsPrinterId === printer.id
@@ -2799,35 +2835,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                       ? "border-amber-300 text-amber-700 dark:border-amber-500/40 dark:text-amber-200"
                                       : "border-sky-300 text-sky-700 dark:border-sky-500/40 dark:text-sky-200"
                                   }`}
-                                  onClick={() => {
-                                    if (captureActive) {
-                                      setDiagnosticCaptureActiveByPrinterId((current) => ({
-                                        ...current,
-                                        [printer.id]: false,
-                                      }));
-                                      return;
-                                    }
-                                    const nextObservedState =
-                                      bambuLiveIntegrations[printer.id]?.observed_state ?? null;
-                                    const nextSession = buildDiagnosticCaptureSession(nextObservedState);
-                                    setDiagnosticCaptureByPrinterId((current) => ({
-                                      ...current,
-                                      [printer.id]: nextSession,
-                                    }));
-                                    setDiagnosticCaptureActiveByPrinterId((current) => ({
-                                      ...current,
-                                      [printer.id]: true,
-                                    }));
-                                    setDiagnosticChartFieldByPrinterId((current) => {
-                                      if (!current[printer.id]) {
-                                        return current;
-                                      }
-                                      return {
-                                        ...current,
-                                        [printer.id]: "",
-                                      };
-                                    });
-                                  }}
+                                  onClick={() => handleToggleBambuLiveCapture(printer.id, captureActive)}
                                 >
                                   {captureActive
                                     ? t("settings.bambuLiveStopCapture", "Stop capture")
