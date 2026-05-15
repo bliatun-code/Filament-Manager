@@ -114,6 +114,7 @@ import { useSettingsPreferenceActions } from "./use_settings_preference_actions"
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_messages";
 import { useSettingsLibraryRoleChange } from "./use_settings_library_role_change";
+import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
@@ -262,7 +263,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [showTrustedLanRevokedBrowsers, setShowTrustedLanRevokedBrowsers] = useState(false);
   const trustedLanPairedBrowsersRef = useRef<TrustedLanPairedBrowser[]>([]);
   const trustedLanPairedBrowsersRefreshInFlightRef = useRef(false);
-  const librarySyncAutoValidationRef = useRef<string | null>(null);
   const silentReloadInFlightRef = useRef(false);
 
   const [printers, setPrinters] = useState<PrinterRow[]>([]);
@@ -1091,48 +1091,19 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     tauri,
   ]);
 
-  useEffect(() => {
-    if (activeTab !== "LIBRARY") {
-      librarySyncAutoValidationRef.current = null;
-      return;
-    }
-    if (
-      !tauri ||
-      loading ||
-      librarySyncBusy ||
-      librarySyncValidationBusy ||
-      librarySyncModeDraft !== "CLIENT" ||
-      !settingsClientHostWritePaired ||
-      !(settingsClientHostBaseUrl || librarySyncHostBaseUrlDraft.trim())
-    ) {
-      return;
-    }
-    const autoValidationKey = [
-      activeTab,
-      librarySyncModeDraft,
-      settingsClientHostBaseUrl ?? librarySyncHostBaseUrlDraft.trim(),
-      librarySyncSettings?.client_auth_paired_at ?? "",
-      librarySyncSettings?.client_auth_expires_at ?? "",
-    ].join("|");
-    if (librarySyncAutoValidationRef.current === autoValidationKey) {
-      return;
-    }
-    librarySyncAutoValidationRef.current = autoValidationKey;
-    void handleValidateLibrarySyncHost();
-  }, [
+  useSettingsLibraryAutoValidation({
     activeTab,
     handleValidateLibrarySyncHost,
     librarySyncBusy,
     librarySyncHostBaseUrlDraft,
     librarySyncModeDraft,
-    librarySyncSettings?.client_auth_expires_at,
-    librarySyncSettings?.client_auth_paired_at,
+    librarySyncSettings,
     librarySyncValidationBusy,
     loading,
     settingsClientHostBaseUrl,
     settingsClientHostWritePaired,
     tauri,
-  ]);
+  });
 
   const handleFetchLibrarySyncSnapshot = useCallback(async () => {
     if (!tauri || !librarySyncSettings) {
