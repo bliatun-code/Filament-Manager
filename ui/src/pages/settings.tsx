@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import type { SettingsTabKey } from "../App";
 import {
   isTauri,
@@ -67,6 +67,7 @@ import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_lo
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_messages";
 import { useSettingsLibrarySyncActions } from "./use_settings_library_sync_actions";
+import { useSettingsLibraryClientAdvanced } from "./use_settings_library_client_advanced";
 import { useSettingsLibraryRoleChange } from "./use_settings_library_role_change";
 import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";
 import { useSettingsTrustedLanMessages } from "./use_settings_trusted_lan_messages";
@@ -214,7 +215,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanPortDraft,
     trustedLanStatus,
   } = useSettingsTrustedLanState(tauri);
-  const [showLibraryClientAdvanced, setShowLibraryClientAdvanced] = useState(false);
+  const { setShowLibraryClientAdvanced, showLibraryClientAdvanced } =
+    useSettingsLibraryClientAdvanced();
   const {
     pairingQrBusy: trustedLanPairingQrBusy,
     pairingQrDataUrl: trustedLanPairingQrDataUrl,
