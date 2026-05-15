@@ -61,6 +61,13 @@ export type LibrarySyncActionMessageKey =
 
 export type LibrarySyncActionMessageLabels = Record<LibrarySyncActionMessageKey, string>;
 
+export type LibrarySyncPairingMessageKey =
+  | "pairHostFailed"
+  | "pairingInvalid"
+  | "pairingLinkRequired";
+
+export type LibrarySyncPairingMessageLabels = Record<LibrarySyncPairingMessageKey, string>;
+
 export function normalizeLibrarySyncMode(mode: string | null | undefined): LibrarySyncMode {
   return mode === "HOST" || mode === "CLIENT" ? mode : "STANDALONE";
 }
@@ -70,6 +77,13 @@ export function buildLibrarySyncActionMessage(
   labels: LibrarySyncActionMessageLabels,
 ): string {
   return labels[action];
+}
+
+export function buildLibrarySyncPairingMessage(
+  key: LibrarySyncPairingMessageKey,
+  labels: LibrarySyncPairingMessageLabels,
+): string {
+  return labels[key];
 }
 
 export function buildLibrarySyncClientState(input: {

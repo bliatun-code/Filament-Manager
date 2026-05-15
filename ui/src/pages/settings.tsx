@@ -97,6 +97,7 @@ import {
 import {
   buildLibrarySyncActionMessage,
   buildLibrarySyncClientState,
+  buildLibrarySyncPairingMessage,
   buildLibrarySyncPairingSettingsInput,
   buildLibrarySyncSaveSettingsInput,
   buildLibraryRoleChangeState,
@@ -883,6 +884,21 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     snapshotRefreshed: t("settings.librarySyncSnapshotRefreshed", "Host snapshot refreshed."),
   }), [t]);
 
+  const librarySyncPairingMessageLabels = useCallback(() => ({
+    pairHostFailed: t(
+      "settings.error.librarySyncPairHost",
+      "Failed to pair this desktop client with the host.",
+    ),
+    pairingInvalid: t(
+      "settings.librarySyncPairingInvalid",
+      "Invalid pairing link. Create a new pairing link on the host and try again.",
+    ),
+    pairingLinkRequired: t(
+      "settings.error.librarySyncPairingLinkRequired",
+      "Paste the full pairing link from the host so the client can detect the host automatically.",
+    ),
+  }), [t]);
+
   const handleSaveLibrarySyncSettings = useCallback(async (nextMode = librarySyncModeDraft) => {
     if (!tauri || !librarySyncSettings) {
       return false;
@@ -1088,9 +1104,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (!tauri || !pairingInput || !derivedBaseUrl) {
       if (tauri && pairingInput && !derivedBaseUrl) {
         setError(
-          t(
-            "settings.error.librarySyncPairingLinkRequired",
-            "Paste the full pairing link from the host so the client can detect the host automatically.",
+          buildLibrarySyncPairingMessage(
+            "pairingLinkRequired",
+            librarySyncPairingMessageLabels(),
           ),
         );
       }
@@ -1131,9 +1147,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           ...validation,
           ok: false,
           matches_library_id: false,
-          message: t(
-            "settings.librarySyncPairingInvalid",
-            "Invalid pairing link. Create a new pairing link on the host and try again.",
+          message: buildLibrarySyncPairingMessage(
+            "pairingInvalid",
+            librarySyncPairingMessageLabels(),
           ),
         });
         setError(null);
@@ -1141,9 +1157,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         setError(
           toErrorMessage(
             pairError,
-            t(
-              "settings.error.librarySyncPairHost",
-              "Failed to pair this desktop client with the host.",
+            buildLibrarySyncPairingMessage(
+              "pairHostFailed",
+              librarySyncPairingMessageLabels(),
             ),
           ),
         );
@@ -1151,7 +1167,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setLibrarySyncBusy(false);
     }
-  }, [librarySyncActionMessageLabels, librarySyncDeviceNameDraft, librarySyncPairingDraft, t, tauri]);
+  }, [
+    librarySyncActionMessageLabels,
+    librarySyncDeviceNameDraft,
+    librarySyncPairingDraft,
+    librarySyncPairingMessageLabels,
+    tauri,
+  ]);
 
   const handleClearLibrarySyncClientAuth = useCallback(async () => {
     if (!tauri || librarySyncBusy) {

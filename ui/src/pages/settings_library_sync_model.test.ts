@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildLibrarySyncActionMessage,
+  buildLibrarySyncPairingMessage,
   buildLibrarySyncPairingSettingsInput,
   buildLibrarySyncSaveSettingsInput,
   buildLibrarySyncClientState,
@@ -58,6 +59,22 @@ test("buildLibrarySyncActionMessage returns stable action feedback copy", () => 
     buildLibrarySyncActionMessage("snapshotRefreshed", labels),
     labels.snapshotRefreshed,
   );
+});
+
+test("buildLibrarySyncPairingMessage returns stable pairing feedback copy", () => {
+  const labels = {
+    pairHostFailed: "Failed to pair this desktop client with the host.",
+    pairingInvalid: "Invalid pairing link. Create a new pairing link on the host and try again.",
+    pairingLinkRequired:
+      "Paste the full pairing link from the host so the client can detect the host automatically.",
+  };
+
+  assert.equal(
+    buildLibrarySyncPairingMessage("pairingLinkRequired", labels),
+    labels.pairingLinkRequired,
+  );
+  assert.equal(buildLibrarySyncPairingMessage("pairingInvalid", labels), labels.pairingInvalid);
+  assert.equal(buildLibrarySyncPairingMessage("pairHostFailed", labels), labels.pairHostFailed);
 });
 
 test("buildLibrarySyncClientState derives client write and repair state", () => {
