@@ -10,8 +10,6 @@ import {
   printLabelPdf,
   refreshBambuCatalog,
   refreshEsunCatalog,
-  resetAppData,
-  resetCatalogData,
   updateMasterCatalogEntry,
   validateFullBackupJson,
   type BambuLiveIntegrationEntry,
@@ -74,6 +72,7 @@ import { useSettingsPageChrome } from "./use_settings_page_chrome";
 import { useSettingsPageReload } from "./use_settings_page_reload";
 import { useSettingsPageTabs } from "./use_settings_page_tabs";
 import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
+import { useSettingsMaintenanceActions } from "./use_settings_maintenance_actions";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_messages";
 import { useSettingsLibrarySyncActions } from "./use_settings_library_sync_actions";
@@ -124,13 +123,6 @@ import {
   type SettingsCatalogVendor,
 } from "./settings_catalog_model";
 import { SettingsCatalogRefreshPanel } from "./settings_catalog_refresh_panel";
-import {
-  buildSettingsAppResetSuccessMessage,
-  buildSettingsCatalogResetMessage,
-  buildSettingsMaintenanceErrorMessage,
-  buildSettingsResetConfirmMessage,
-  shouldArmSettingsResetAction,
-} from "./settings_maintenance_model";
 import {
   buildPrinterSlotsByPrinterId,
   sortSettingsPrinters,
@@ -665,71 +657,20 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     };
   }
 
-  async function handleResetAppData() {
-    if (!tauri || busy) {
-      return;
-    }
-    if (shouldArmSettingsResetAction(confirmResetAction, "APP")) {
-      setConfirmResetAction("APP");
-      setError(null);
-      setInfo(buildSettingsResetConfirmMessage("app", settingsMaintenanceResetMessageLabels()));
-      return;
-    }
-    clearConfirmResetAction();
-    setBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      await resetAppData();
-      setLastCatalogReset(null);
-      await reloadSettings();
-      setInfo(buildSettingsAppResetSuccessMessage(settingsMaintenanceResetMessageLabels()));
-    } catch (resetError) {
-      console.error(resetError);
-      setError(
-        toErrorMessage(
-          resetError,
-          buildSettingsMaintenanceErrorMessage("app", settingsMaintenanceResetMessageLabels()),
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleResetCatalogs() {
-    if (!tauri || busy) {
-      return;
-    }
-    if (shouldArmSettingsResetAction(confirmResetAction, "CATALOG")) {
-      setConfirmResetAction("CATALOG");
-      setError(null);
-      setInfo(buildSettingsResetConfirmMessage("catalog", settingsMaintenanceResetMessageLabels()));
-      return;
-    }
-    clearConfirmResetAction();
-    setBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      const result = await resetCatalogData();
-      setLastCatalogReset(result);
-      setInfo(buildSettingsCatalogResetMessage(result, settingsCatalogResetMessageLabels()));
-    } catch (resetError) {
-      console.error(resetError);
-      setError(
-        toErrorMessage(
-          resetError,
-          buildSettingsMaintenanceErrorMessage(
-            "catalog",
-            settingsMaintenanceResetMessageLabels(),
-          ),
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
+  const { handleResetAppData, handleResetCatalogs } = useSettingsMaintenanceActions({
+    busy,
+    clearConfirmResetAction,
+    confirmResetAction,
+    reloadSettings,
+    setBusy,
+    setConfirmResetAction,
+    setError,
+    setInfo,
+    setLastCatalogReset,
+    settingsCatalogResetMessageLabels,
+    settingsMaintenanceResetMessageLabels,
+    tauri,
+  });
 
   function settingsCatalogResetMessageLabels() {
     return {
