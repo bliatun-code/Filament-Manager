@@ -15,8 +15,6 @@ import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_la
 import { tabButtonClass } from "../lib/settings_ui_classes";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
 import {
-  buildLibrarySyncRoleOptions,
-  buildLibrarySyncTabLabels,
   buildLibraryRoleChangeState,
   buildLibrarySyncVisibilityState,
 } from "./settings_library_sync_model";
@@ -66,6 +64,7 @@ import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_lo
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_messages";
 import { useSettingsLibrarySyncActions } from "./use_settings_library_sync_actions";
+import { useSettingsLibraryChrome } from "./use_settings_library_chrome";
 import { useSettingsLibraryClientState } from "./use_settings_library_client_state";
 import { useSettingsLibraryClientAdvanced } from "./use_settings_library_client_advanced";
 import { useSettingsLibraryRoleChange } from "./use_settings_library_role_change";
@@ -755,14 +754,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanPairingBrowserLabelDraft,
     trustedLanPairingLink,
   });
-  const librarySyncRoleOptions = buildLibrarySyncRoleOptions({
-    STANDALONE: t("settings.librarySyncStandalone", "Standalone"),
-    HOST: t("settings.librarySyncHost", "Host"),
-    CLIENT: t("settings.librarySyncClient", "Client"),
-  });
-  const librarySyncTabLabels = buildLibrarySyncTabLabels({
-    title: t("settings.libraryTabTitle", "Library and web app"),
-  });
+  const { librarySyncRoleOptions, librarySyncTabLabels } = useSettingsLibraryChrome(t);
   const libraryVisibility = buildLibrarySyncVisibilityState({
     draftMode: librarySyncModeDraft,
     trustedLanEnabledDraft,
