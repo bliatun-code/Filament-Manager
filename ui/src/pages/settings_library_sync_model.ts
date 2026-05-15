@@ -68,6 +68,13 @@ export type LibrarySyncPairingMessageKey =
 
 export type LibrarySyncPairingMessageLabels = Record<LibrarySyncPairingMessageKey, string>;
 
+export type LibrarySyncErrorMessageKey =
+  | "clearClientAuthFailed"
+  | "hostCheckFailed"
+  | "snapshotFailed";
+
+export type LibrarySyncErrorMessageLabels = Record<LibrarySyncErrorMessageKey, string>;
+
 export function normalizeLibrarySyncMode(mode: string | null | undefined): LibrarySyncMode {
   return mode === "HOST" || mode === "CLIENT" ? mode : "STANDALONE";
 }
@@ -82,6 +89,13 @@ export function buildLibrarySyncActionMessage(
 export function buildLibrarySyncPairingMessage(
   key: LibrarySyncPairingMessageKey,
   labels: LibrarySyncPairingMessageLabels,
+): string {
+  return labels[key];
+}
+
+export function buildLibrarySyncErrorMessage(
+  key: LibrarySyncErrorMessageKey,
+  labels: LibrarySyncErrorMessageLabels,
 ): string {
   return labels[key];
 }

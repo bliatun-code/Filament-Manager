@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildLibrarySyncActionMessage,
+  buildLibrarySyncErrorMessage,
   buildLibrarySyncPairingMessage,
   buildLibrarySyncPairingSettingsInput,
   buildLibrarySyncSaveSettingsInput,
@@ -75,6 +76,21 @@ test("buildLibrarySyncPairingMessage returns stable pairing feedback copy", () =
   );
   assert.equal(buildLibrarySyncPairingMessage("pairingInvalid", labels), labels.pairingInvalid);
   assert.equal(buildLibrarySyncPairingMessage("pairHostFailed", labels), labels.pairHostFailed);
+});
+
+test("buildLibrarySyncErrorMessage returns stable operation fallback copy", () => {
+  const labels = {
+    clearClientAuthFailed: "Failed to remove the saved desktop client pairing.",
+    hostCheckFailed: "Failed to check the configured host.",
+    snapshotFailed: "Failed to fetch host snapshot.",
+  };
+
+  assert.equal(buildLibrarySyncErrorMessage("hostCheckFailed", labels), labels.hostCheckFailed);
+  assert.equal(
+    buildLibrarySyncErrorMessage("clearClientAuthFailed", labels),
+    labels.clearClientAuthFailed,
+  );
+  assert.equal(buildLibrarySyncErrorMessage("snapshotFailed", labels), labels.snapshotFailed);
 });
 
 test("buildLibrarySyncClientState derives client write and repair state", () => {

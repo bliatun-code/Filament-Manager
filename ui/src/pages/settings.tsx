@@ -97,6 +97,7 @@ import {
 import {
   buildLibrarySyncActionMessage,
   buildLibrarySyncClientState,
+  buildLibrarySyncErrorMessage,
   buildLibrarySyncPairingMessage,
   buildLibrarySyncPairingSettingsInput,
   buildLibrarySyncSaveSettingsInput,
@@ -899,6 +900,21 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     ),
   }), [t]);
 
+  const librarySyncErrorMessageLabels = useCallback(() => ({
+    clearClientAuthFailed: t(
+      "settings.error.librarySyncClearClientAuth",
+      "Failed to remove the saved desktop client pairing.",
+    ),
+    hostCheckFailed: t(
+      "settings.error.librarySyncHostCheck",
+      "Failed to check the configured host.",
+    ),
+    snapshotFailed: t(
+      "settings.error.librarySyncSnapshot",
+      "Failed to fetch host snapshot.",
+    ),
+  }), [t]);
+
   const handleSaveLibrarySyncSettings = useCallback(async (nextMode = librarySyncModeDraft) => {
     if (!tauri || !librarySyncSettings) {
       return false;
@@ -1082,7 +1098,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           validationError,
-          t("settings.error.librarySyncHostCheck", "Failed to check the configured host."),
+          buildLibrarySyncErrorMessage("hostCheckFailed", librarySyncErrorMessageLabels()),
         ),
       );
     } finally {
@@ -1094,7 +1110,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsClientHostBaseUrl,
     showTransientInfo,
     librarySyncActionMessageLabels,
-    t,
+    librarySyncErrorMessageLabels,
     tauri,
   ]);
 
@@ -1192,16 +1208,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           clearError,
-          t(
-            "settings.error.librarySyncClearClientAuth",
-            "Failed to remove the saved desktop client pairing.",
-          ),
+          buildLibrarySyncErrorMessage("clearClientAuthFailed", librarySyncErrorMessageLabels()),
         ),
       );
     } finally {
       setLibrarySyncBusy(false);
     }
-  }, [librarySyncActionMessageLabels, librarySyncBusy, t, tauri]);
+  }, [librarySyncActionMessageLabels, librarySyncBusy, librarySyncErrorMessageLabels, tauri]);
 
   const handleRenewLibrarySyncClientAuth = useCallback(async () => {
     if (!tauri || librarySyncBusy) {
@@ -1221,16 +1234,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           clearError,
-          t(
-            "settings.error.librarySyncClearClientAuth",
-            "Failed to remove the saved desktop client pairing.",
-          ),
+          buildLibrarySyncErrorMessage("clearClientAuthFailed", librarySyncErrorMessageLabels()),
         ),
       );
     } finally {
       setLibrarySyncBusy(false);
     }
-  }, [librarySyncActionMessageLabels, librarySyncBusy, t, tauri]);
+  }, [librarySyncActionMessageLabels, librarySyncBusy, librarySyncErrorMessageLabels, tauri]);
 
   useEffect(() => {
     if (activeTab !== "LIBRARY") {
@@ -1295,13 +1305,19 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           snapshotError,
-          t("settings.error.librarySyncSnapshot", "Failed to fetch host snapshot."),
+          buildLibrarySyncErrorMessage("snapshotFailed", librarySyncErrorMessageLabels()),
         ),
       );
     } finally {
       setLibrarySyncSnapshotBusy(false);
     }
-  }, [librarySyncActionMessageLabels, librarySyncHostBaseUrlDraft, librarySyncSettings, t, tauri]);
+  }, [
+    librarySyncActionMessageLabels,
+    librarySyncErrorMessageLabels,
+    librarySyncHostBaseUrlDraft,
+    librarySyncSettings,
+    tauri,
+  ]);
 
   useEffect(() => {
     if (
