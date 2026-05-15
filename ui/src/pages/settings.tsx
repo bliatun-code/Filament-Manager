@@ -111,6 +111,7 @@ import {
 import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
+import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import {
@@ -177,10 +178,8 @@ import {
   buildSettingsPageTabButtons,
   buildSettingsPageTabLabels,
   buildSettingsPageTabs,
-  normalizeSettingsInitialTab,
 } from "./settings_page_model";
 
-type SettingsTab = SettingsTabKey;
 type ResetConfirmAction = "APP" | "CATALOG";
 type CatalogVendor = SettingsCatalogVendor;
 type SettingsPageProps = {
@@ -196,9 +195,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [info, setInfo] = useState<string | null>(null);
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => getThemeMode());
   const appVersion = useSettingsAppVersion(tauri);
-  const [activeTab, setActiveTab] = useState<SettingsTab>(
-    normalizeSettingsInitialTab(initialTab),
-  );
+  const { activeTab, setActiveTab } = useSettingsActiveTab(initialTab);
   const [librarySyncSettings, setLibrarySyncSettings] = useState<LibrarySyncSettings | null>(null);
   const [librarySyncModeDraft, setLibrarySyncModeDraft] = useState<LibrarySyncMode>("STANDALONE");
   const [librarySyncDeviceNameDraft, setLibrarySyncDeviceNameDraft] = useState("");
@@ -318,10 +315,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [confirmResetAction, setConfirmResetAction] = useState<ResetConfirmAction | null>(null);
   const [lastBackupValidation, setLastBackupValidation] =
     useState<BackupValidationStats | null>(null);
-
-  useEffect(() => {
-    setActiveTab(normalizeSettingsInitialTab(initialTab));
-  }, [initialTab]);
 
   const sortedPrinters = useMemo(
     () => sortSettingsPrinters(printers, locale),
