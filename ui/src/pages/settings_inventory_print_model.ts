@@ -1,11 +1,16 @@
 import type { BuiltFilamentQrPayload } from "../lib/filament_qr_payload";
-import type { InventoryOverviewPrintRow } from "../lib/inventory_overview_print";
+import type {
+  InventoryOverviewPrintLabels,
+  InventoryOverviewPrintRow,
+} from "../lib/inventory_overview_print";
 import type { SpoolWithMasterRow } from "../lib/tauri_client";
 
 export type SettingsInventoryPrintLabels = {
   borrowedIn: string;
   unknown: string;
 };
+
+export type SettingsInventoryOverviewPrintPdfLabels = InventoryOverviewPrintLabels;
 
 export type SettingsInventoryPrintMessageLabels = {
   inventoryOverviewPrintFailed: string;
@@ -69,6 +74,12 @@ export function buildSettingsInventoryOverviewPrintErrorMessage(
   labels: SettingsInventoryPrintMessageLabels,
 ): string {
   return labels.inventoryOverviewPrintFailed;
+}
+
+export function buildSettingsInventoryOverviewPrintPdfLabels(
+  labels: SettingsInventoryOverviewPrintPdfLabels,
+): SettingsInventoryOverviewPrintPdfLabels {
+  return labels;
 }
 
 function compareSettingsInventoryPrintRows(

@@ -112,6 +112,7 @@ import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 import {
   buildSettingsInventoryOverviewPrintErrorMessage,
+  buildSettingsInventoryOverviewPrintPdfLabels,
   buildSettingsInventoryOverviewPrintRows,
   buildSettingsInventoryOverviewPrintSuccessMessage,
 } from "./settings_inventory_print_model";
@@ -1998,17 +1999,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         buildFilamentLabelQrDataUrl,
       });
 
-      const pdfBase64 = await buildInventoryOverviewPrintPdfBase64(printRows, {
-        title: t("settings.inventoryOverviewPrintTitle", "In-stock filament overview"),
-        generatedAt: t("settings.inventoryOverviewPrintGeneratedAt", "Generated"),
-        groupMaterial: t("settings.inventoryOverviewPrintGroupMaterial", "Material group"),
-        empty: t("settings.inventoryOverviewPrintEmpty", "No filament in stock."),
-        vendor: t("settings.inventoryOverviewPrintVendor", "Vendor"),
-        material: t("settings.inventoryOverviewPrintMaterial", "Material"),
-        filament: t("settings.inventoryOverviewPrintFilament", "Filament"),
-        homeLocation: t("inventory.homeLocationLabel", "Home location"),
-        reference: t("settings.inventoryOverviewPrintReference", "Reference"),
-      });
+      const pdfBase64 = await buildInventoryOverviewPrintPdfBase64(
+        printRows,
+        buildSettingsInventoryOverviewPrintPdfLabels(settingsInventoryOverviewPrintPdfLabels()),
+      );
       await printLabelPdf(pdfBase64, null, 1);
       setInfo(
         buildSettingsInventoryOverviewPrintSuccessMessage(
@@ -2040,6 +2034,20 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         "settings.inventoryOverviewPrintDone",
         "A4 inventory overview PDF opened for printing.",
       ),
+    };
+  }
+
+  function settingsInventoryOverviewPrintPdfLabels() {
+    return {
+      title: t("settings.inventoryOverviewPrintTitle", "In-stock filament overview"),
+      generatedAt: t("settings.inventoryOverviewPrintGeneratedAt", "Generated"),
+      groupMaterial: t("settings.inventoryOverviewPrintGroupMaterial", "Material group"),
+      empty: t("settings.inventoryOverviewPrintEmpty", "No filament in stock."),
+      vendor: t("settings.inventoryOverviewPrintVendor", "Vendor"),
+      material: t("settings.inventoryOverviewPrintMaterial", "Material"),
+      filament: t("settings.inventoryOverviewPrintFilament", "Filament"),
+      homeLocation: t("inventory.homeLocationLabel", "Home location"),
+      reference: t("settings.inventoryOverviewPrintReference", "Reference"),
     };
   }
 

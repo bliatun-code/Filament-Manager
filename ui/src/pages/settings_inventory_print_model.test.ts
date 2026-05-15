@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildSettingsInventoryOverviewPrintErrorMessage,
+  buildSettingsInventoryOverviewPrintPdfLabels,
   buildSettingsInventoryOverviewPrintRows,
   buildSettingsInventoryOverviewPrintSuccessMessage,
 } from "./settings_inventory_print_model";
@@ -125,4 +126,20 @@ test("settings inventory overview print success message returns stable copy", ()
     buildSettingsInventoryOverviewPrintErrorMessage(labels),
     labels.inventoryOverviewPrintFailed,
   );
+});
+
+test("settings inventory overview print PDF labels preserve the print contract", () => {
+  const labels = {
+    title: "In-stock filament overview",
+    generatedAt: "Generated",
+    groupMaterial: "Material group",
+    empty: "No filament in stock.",
+    vendor: "Vendor",
+    material: "Material",
+    filament: "Filament",
+    homeLocation: "Home location",
+    reference: "Reference",
+  };
+
+  assert.deepEqual(buildSettingsInventoryOverviewPrintPdfLabels(labels), labels);
 });
