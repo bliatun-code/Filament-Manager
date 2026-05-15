@@ -14,9 +14,6 @@ import { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_
 import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_lan_pairing_panel";
 import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_lan_server_panel";
 import { tabButtonClass } from "../lib/settings_ui_classes";
-import {
-  resolvePrinterModelProfile,
-} from "../lib/printer_profiles";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
 import {
   buildLibrarySyncClientState,
@@ -45,6 +42,7 @@ import { useSettingsCatalogRefreshActions } from "./use_settings_catalog_refresh
 import { useSettingsPrinterEditDraft } from "./use_settings_printer_edit_draft";
 import { useSettingsPrinterActions } from "./use_settings_printer_actions";
 import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_confirm";
+import { useSettingsPrinterDerivedState } from "./use_settings_printer_derived_state";
 import { useSettingsPrinterMessages } from "./use_settings_printer_messages";
 import { useSettingsResetConfirm } from "./use_settings_reset_confirm";
 import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
@@ -91,10 +89,6 @@ import {
   buildSettingsCatalogState,
 } from "./settings_catalog_model";
 import { SettingsCatalogRefreshPanel } from "./settings_catalog_refresh_panel";
-import {
-  buildPrinterSlotsByPrinterId,
-  sortSettingsPrinters,
-} from "./settings_printer_model";
 
 type SettingsPageProps = {
   initialTab?: SettingsTabKey;
@@ -321,19 +315,16 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     bambuLiveIntegrations,
     expandedBambuDetailsPrinterId,
   });
-  const sortedPrinters = useMemo(
-    () => sortSettingsPrinters(printers, locale),
-    [locale, printers],
-  );
-  const printerSlotsByPrinterId = useMemo(
-    () => buildPrinterSlotsByPrinterId(printerOverview),
-    [printerOverview],
-  );
-
-  const editModelProfile = useMemo(
-    () => resolvePrinterModelProfile(editPrinterModel || ""),
-    [editPrinterModel],
-  );
+  const {
+    editModelProfile,
+    printerSlotsByPrinterId,
+    sortedPrinters,
+  } = useSettingsPrinterDerivedState({
+    editPrinterModel,
+    locale,
+    printerOverview,
+    printers,
+  });
   const backupValidationHasWarnings = backupValidationState.hasWarnings;
   const backupValidationHasMissingTables = backupValidationState.hasMissingTables;
   const backupValidationHasExtraTables = backupValidationState.hasExtraTables;
