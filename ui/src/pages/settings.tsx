@@ -5,12 +5,12 @@ import {
 import { useI18n } from "../lib/i18n";
 import { SettingsGeneralTab } from "../components/settings_general_tab";
 import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
-import { SettingsMaintenanceTab } from "../components/settings_maintenance_tab";
 import { SettingsPrintersTab } from "../components/settings_printers_tab";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
 import { SettingsCatalogTab } from "./settings_catalog_tab";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
 import { SettingsLibraryTab } from "./settings_library_tab";
+import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
 import { SettingsPageHeader } from "./settings_page_header";
 import { SettingsTabNav } from "./settings_tab_nav";
 import { useSettingsActiveTab } from "./use_settings_active_tab";
@@ -1008,30 +1008,32 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         ) : null}
 
         {activeTab === "MAINTENANCE" ? (
-          <SettingsMaintenanceTab
-            backupImportInputRef={backupImportInputRef}
-            backupValidateInputRef={backupValidateInputRef}
-            backupValidationHasExtraTables={backupValidationHasExtraTables}
-            backupValidationHasMissingTables={backupValidationHasMissingTables}
-            backupValidationHasWarnings={backupValidationHasWarnings}
-            busy={busy}
-            catalogCount={catalogMasters.length}
-            confirmResetAction={confirmResetAction}
-            lastBackupValidation={lastBackupValidation}
-            lastCatalogReset={lastCatalogReset}
-            missingSwatchCount={missingSwatchMasters.length}
-            printerCount={printers.length}
-            tauri={tauri}
-            t={t}
-            onExportFullBackup={() => void handleExportFullBackup()}
-            onExportInventoryCsv={() => void handleExportInventoryCsv()}
-            onExportInventoryJson={() => void handleExportInventoryJson()}
-            onImportDataFile={(event) => void handleImportDataFile(event)}
-            onOpenBackupValidate={handleOpenBackupValidate}
-            onOpenDataImport={handleOpenDataImport}
-            onResetAppData={() => void handleResetAppData()}
-            onResetCatalogs={() => void handleResetCatalogs()}
-            onValidateBackupFile={(event) => void handleValidateBackupFile(event)}
+          <SettingsMaintenanceRoute
+            tab={{
+              backupImportInputRef,
+              backupValidateInputRef,
+              backupValidationHasExtraTables,
+              backupValidationHasMissingTables,
+              backupValidationHasWarnings,
+              busy,
+              catalogCount: catalogMasters.length,
+              confirmResetAction,
+              lastBackupValidation,
+              lastCatalogReset,
+              missingSwatchCount: missingSwatchMasters.length,
+              printerCount: printers.length,
+              tauri,
+              t,
+              onExportFullBackup: () => void handleExportFullBackup(),
+              onExportInventoryCsv: () => void handleExportInventoryCsv(),
+              onExportInventoryJson: () => void handleExportInventoryJson(),
+              onImportDataFile: (event) => void handleImportDataFile(event),
+              onOpenBackupValidate: handleOpenBackupValidate,
+              onOpenDataImport: handleOpenDataImport,
+              onResetAppData: () => void handleResetAppData(),
+              onResetCatalogs: () => void handleResetCatalogs(),
+              onValidateBackupFile: (event) => void handleValidateBackupFile(event),
+            }}
           />
         ) : null}
       </div>
