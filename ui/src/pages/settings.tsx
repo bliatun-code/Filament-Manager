@@ -69,10 +69,7 @@ import { SettingsPrintersTab } from "../components/settings_printers_tab";
 import { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_lan_browsers_panel";
 import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_lan_pairing_panel";
 import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_lan_server_panel";
-import {
-  settingsLibraryRoleButtonClass,
-  tabButtonClass,
-} from "../lib/settings_ui_classes";
+import { tabButtonClass } from "../lib/settings_ui_classes";
 import { loadAllSpoolRows } from "../lib/spool_data_source";
 import { loadSettingsPageData, refreshLibrarySyncSnapshot } from "../lib/settings_data_source";
 import { loadTrustedLanSettingsData } from "../lib/trusted_lan_data_source";
@@ -102,6 +99,7 @@ import {
   type LibrarySyncMode,
 } from "./settings_library_sync_model";
 import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
+import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 import { buildSettingsBackupValidationState } from "./settings_backup_model";
 import {
@@ -2564,33 +2562,18 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               </div>
 
               <div className="surface-subtle space-y-5 p-4">
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
-                    {t("settings.libraryRoleLabel", "Library role")}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {librarySyncRoleOptions.map((option) => (
-                      <button
-                        key={option.mode}
-                        type="button"
-                        onClick={() => handleRequestLibraryRoleChange(option.mode)}
-                        className={settingsLibraryRoleButtonClass(librarySyncModeDraft === option.mode)}
-                        disabled={!tauri || librarySyncBusy}
-                      >
-                        {librarySyncModeDraft === option.mode ? (
-                          <span className="settings-library-role-dot" aria-hidden="true" />
-                        ) : null}
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                    {t(
-                      "settings.librarySyncSaveHint",
-                      "Role changes open a guided flow. Nothing is saved until you confirm.",
-                    )}
-                  </div>
-                </div>
+                <SettingsLibraryRolePanel
+                  librarySyncBusy={librarySyncBusy}
+                  librarySyncDeviceNameDraft={librarySyncDeviceNameDraft}
+                  librarySyncModeDraft={librarySyncModeDraft}
+                  librarySyncRoleOptions={librarySyncRoleOptions}
+                  librarySyncSettings={librarySyncSettings}
+                  libraryVisibility={libraryVisibility}
+                  tauri={tauri}
+                  t={t}
+                  onDeviceNameChange={setLibrarySyncDeviceNameDraft}
+                  onRequestLibraryRoleChange={handleRequestLibraryRoleChange}
+                />
 
                 <SettingsLibraryWebappControl
                   librarySyncModeDraft={librarySyncModeDraft}
@@ -2627,52 +2610,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                       setShowTrustedLanNetworkSummary((value) => !value)
                     }
                   />
-                ) : null}
-
-                {librarySyncModeDraft === "HOST" ? null : (
-                  <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
-                    {librarySyncModeDraft === "STANDALONE"
-                      ? libraryVisibility.standaloneWebappEnabled
-                        ? t(
-                            "settings.librarySyncStandaloneWebappHint",
-                            "This device keeps its own local library and is also serving the web app from here.",
-                          )
-                        : t(
-                            "settings.librarySyncStandaloneHint",
-                            "This device keeps using its own local library only.",
-                          )
-                      : t(
-                          "settings.librarySyncClientHint",
-                          "This device connects to another host and keeps a read-only fallback cache when that host is unavailable.",
-                        )}
-                  </div>
-                )}
-
-                {libraryVisibility.showDeviceFields ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <label className="space-y-2">
-                      <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
-                        {t("settings.librarySyncDeviceName", "Device name")}
-                      </div>
-                      <input
-                        type="text"
-                        value={librarySyncDeviceNameDraft}
-                        onChange={(event) => setLibrarySyncDeviceNameDraft(event.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400/50 dark:focus:ring-indigo-500/20"
-                        placeholder={t("settings.librarySyncDeviceNamePlaceholder", "Workshop PC")}
-                        disabled={!tauri || librarySyncBusy}
-                      />
-                    </label>
-
-                    <div className="space-y-2">
-                      <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
-                        {t("settings.librarySyncLibraryId", "Library ID")}
-                      </div>
-                      <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200">
-                        {librarySyncSettings?.library_id || t("common.loading", "Loading...")}
-                      </div>
-                    </div>
-                  </div>
                 ) : null}
 
                 {librarySyncModeDraft === "CLIENT" ? (
