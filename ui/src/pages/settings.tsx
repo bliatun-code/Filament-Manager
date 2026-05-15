@@ -25,12 +25,11 @@ import { SettingsTabNav } from "./settings_tab_nav";
 import { useSettingsFeedbackState } from "./use_settings_feedback_state";
 import { useSettingsCatalogSectionState } from "./use_settings_catalog_section_state";
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
-import { useSettingsBackupFileInputs } from "./use_settings_backup_file_inputs";
+import { useSettingsBackupFileControls } from "./use_settings_backup_file_controls";
 import { useSettingsBackupValidationSummary } from "./use_settings_backup_validation_summary";
 import { useSettingsCatalogRefreshActions } from "./use_settings_catalog_refresh_actions";
 import { useSettingsPrinterActions } from "./use_settings_printer_actions";
 import { useSettingsPrinterSectionState } from "./use_settings_printer_section_state";
-import { useSettingsResetConfirm } from "./use_settings_reset_confirm";
 import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
 import { useSettingsPageDataState } from "./use_settings_page_data_state";
 import { useSettingsPageReload } from "./use_settings_page_reload";
@@ -501,16 +500,16 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanStatusEnabled: Boolean(trustedLanStatus?.enabled),
   });
 
-  const { clearConfirmResetAction, confirmResetAction, setConfirmResetAction } =
-    useSettingsResetConfirm();
   const {
     backupImportInputRef,
     backupValidateInputRef,
+    clearConfirmResetAction,
+    confirmResetAction,
     handleOpenBackupValidate,
     handleOpenDataImport,
-  } = useSettingsBackupFileInputs({
+    setConfirmResetAction,
+  } = useSettingsBackupFileControls({
     busy,
-    clearConfirmResetAction,
     tauri,
   });
 
