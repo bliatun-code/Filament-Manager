@@ -3,6 +3,9 @@ use std::collections::HashSet;
 use super::bambu_live_settings::{
     bambu_live_integration_setting_key, BAMBU_LIVE_INTEGRATION_SETTING_PREFIX,
 };
+use super::database_alerts::{
+    alert_exists_for_spool as alert_exists_for_spool_row, insert_alert as insert_alert_row,
+};
 pub use super::database_backup::BackupValidationStats;
 use super::database_backup::{parse_full_backup_content, validate_full_backup_content};
 use super::database_borrowed_schema::ensure_borrowed_in_schema as ensure_borrowed_in_schema_impl;
@@ -3488,11 +3491,7 @@ impl FilamentDatabase {
     }
 
     pub fn insert_alert(&self, alert_type: &str, payload_json: &str) -> InventoryResult<()> {
-        self.conn.execute(
-            "INSERT INTO alerts (id, type, payload_json) VALUES (?1, ?2, ?3)",
-            params![new_id(), alert_type, payload_json],
-        )?;
-        Ok(())
+        insert_alert_row(&self.conn, alert_type, payload_json)
     }
 
     pub fn alert_exists_for_spool(
@@ -3500,16 +3499,7 @@ impl FilamentDatabase {
         alert_type: &str,
         spool_id: &str,
     ) -> InventoryResult<bool> {
-        let pattern = format!("%\\\"spool_id\\\":\\\"{}\\\"%", spool_id);
-        let mut stmt = self.conn.prepare(
-            "SELECT 1 FROM alerts
-             WHERE type = ?1 AND resolved_at IS NULL AND payload_json LIKE ?2
-             LIMIT 1",
-        )?;
-        let row: Option<i64> = stmt
-            .query_row(params![alert_type, pattern], |row| row.get(0))
-            .optional()?;
-        Ok(row.is_some())
+        alert_exists_for_spool_row(&self.conn, alert_type, spool_id)
     }
 
     pub fn export_spools_csv(&self) -> InventoryResult<String> {

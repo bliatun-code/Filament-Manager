@@ -2,6 +2,8 @@
 pub mod bambu_live_settings;
 #[path = "../../../src/backend/bambu_lookup.rs"]
 pub mod bambu_lookup;
+#[path = "../../../src/backend/database_alerts.rs"]
+pub mod database_alerts;
 #[path = "../../../src/backend/database_backup.rs"]
 pub mod database_backup;
 #[path = "../../../src/backend/database_borrowed_schema.rs"]
