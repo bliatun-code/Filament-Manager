@@ -11,6 +11,7 @@ use super::database_import::{
     parse_inventory_spools_csv, parse_inventory_spools_json, InventoryImportRow,
     InventoryImportStats,
 };
+use super::database_locations::ensure_location as ensure_location_row;
 use super::database_printer_schema::{
     ensure_printer_external_slot_schema as ensure_printer_external_slot_schema_impl,
     ensure_printer_slot_live_cache_schema as ensure_printer_slot_live_cache_schema_impl,
@@ -1361,18 +1362,7 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_location(&self, name: &str) -> InventoryResult<String> {
-        let id = name.trim().to_string();
-        if id.is_empty() {
-            return Err(InventoryError::Db("location cannot be empty".to_string()));
-        }
-        self.conn.execute(
-            "INSERT INTO inventory_locations (id, name, type)
-             VALUES (?1, ?2, 'GENERIC')
-             ON CONFLICT(id) DO UPDATE SET
-                name = excluded.name",
-            params![id, name.trim()],
-        )?;
-        Ok(id)
+        ensure_location_row(&self.conn, name)
     }
 
     pub fn sqlite_now(&self) -> InventoryResult<String> {
