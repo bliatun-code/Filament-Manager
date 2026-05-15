@@ -110,6 +110,7 @@ import {
 import {
   buildSettingsCatalogRefreshSuccessMessage,
   buildSettingsCatalogState,
+  buildSettingsSwatchBulkResultMessage,
   buildSettingsSwatchDrafts,
   resolveSettingsSwatchHex,
   toggleSettingsCatalogRefreshMaterial,
@@ -2183,28 +2184,34 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       }
 
       await reloadSettings();
-      if (updated === 0) {
-        setError(
-          `${t(
-            "settings.swatchBulkNoneUpdated",
-            "No visible missing swatches could be auto-filled.",
-          )} ${t("settings.failed", "failed")} ${failed}${
-            skipped > 0 ? `, ${t("settings.skipped", "skipped")} ${skipped}` : ""
-          }.`,
-        );
+      const resultMessage = buildSettingsSwatchBulkResultMessage(
+        { failed, skipped, updated },
+        settingsSwatchBulkMessageLabels(),
+      );
+      if (resultMessage.kind === "error") {
+        setError(resultMessage.message);
         return;
       }
-      setInfo(
-        `${t("settings.swatchBulkDone", "Swatch bulk update completed")}: ${t(
-          "settings.updated",
-          "updated",
-        )} ${updated}${failed > 0 ? `, ${t("settings.failed", "failed")} ${failed}` : ""}${
-          skipped > 0 ? `, ${t("settings.skipped", "skipped")} ${skipped}` : ""
-        }.`,
-      );
+      setInfo(resultMessage.message);
     } finally {
       setSwatchBusy(false);
     }
+  }
+
+  function settingsSwatchBulkMessageLabels() {
+    return {
+      failed: t("settings.failed", "failed"),
+      noVisibleMissingSwatchesCouldBeAutoFilled: t(
+        "settings.swatchBulkNoneUpdated",
+        "No visible missing swatches could be auto-filled.",
+      ),
+      skipped: t("settings.skipped", "skipped"),
+      swatchBulkUpdateCompleted: t(
+        "settings.swatchBulkDone",
+        "Swatch bulk update completed",
+      ),
+      updated: t("settings.updated", "updated"),
+    };
   }
 
   function handleThemeSelection(mode: ThemeMode) {

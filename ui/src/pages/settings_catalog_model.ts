@@ -120,6 +120,41 @@ export function buildSettingsCatalogRefreshSuccessMessage(
   return `${labels.imported} ${summary.imported} · ${labels.reactivated} ${summary.reactivated_count} · ${labels.discontinued} ${summary.discontinued_count}`;
 }
 
+export type SettingsSwatchBulkResult = {
+  failed: number;
+  skipped: number;
+  updated: number;
+};
+
+export type SettingsSwatchBulkMessageLabels = {
+  failed: string;
+  noVisibleMissingSwatchesCouldBeAutoFilled: string;
+  skipped: string;
+  swatchBulkUpdateCompleted: string;
+  updated: string;
+};
+
+export function buildSettingsSwatchBulkResultMessage(
+  result: SettingsSwatchBulkResult,
+  labels: SettingsSwatchBulkMessageLabels,
+): { kind: "error" | "info"; message: string } {
+  const failedPart = `${labels.failed} ${result.failed}`;
+  const skippedPart = result.skipped > 0 ? `, ${labels.skipped} ${result.skipped}` : "";
+
+  if (result.updated === 0) {
+    return {
+      kind: "error",
+      message: `${labels.noVisibleMissingSwatchesCouldBeAutoFilled} ${failedPart}${skippedPart}.`,
+    };
+  }
+
+  const failureSuffix = result.failed > 0 ? `, ${failedPart}` : "";
+  return {
+    kind: "info",
+    message: `${labels.swatchBulkUpdateCompleted}: ${labels.updated} ${result.updated}${failureSuffix}${skippedPart}.`,
+  };
+}
+
 function materialOptionsForMasters(masters: MasterCatalogRow[]): string[] {
   return uniqueSortedStrings(
     masters.map((master) => master.material.trim()).filter((value) => value.length > 0),

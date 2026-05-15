@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildSettingsCatalogRefreshSuccessMessage,
   buildSettingsCatalogState,
+  buildSettingsSwatchBulkResultMessage,
   buildSettingsSwatchDrafts,
   resolveSettingsSwatchHex,
   settingsCatalogRefreshSummaryGridClass,
@@ -153,5 +154,63 @@ test("settings catalog refresh success message keeps the compact summary stable"
       discontinued: "Discontinued",
     }),
     "Imported 12 · Reactivated 2 · Discontinued 1",
+  );
+});
+
+test("settings swatch bulk result message reports no updated rows as an error", () => {
+  assert.deepEqual(
+    buildSettingsSwatchBulkResultMessage(
+      { failed: 2, skipped: 1, updated: 0 },
+      {
+        failed: "failed",
+        noVisibleMissingSwatchesCouldBeAutoFilled:
+          "No visible missing swatches could be auto-filled.",
+        skipped: "skipped",
+        swatchBulkUpdateCompleted: "Swatch bulk update completed",
+        updated: "updated",
+      },
+    ),
+    {
+      kind: "error",
+      message: "No visible missing swatches could be auto-filled. failed 2, skipped 1.",
+    },
+  );
+});
+
+test("settings swatch bulk result message reports successful updates with optional failures", () => {
+  assert.deepEqual(
+    buildSettingsSwatchBulkResultMessage(
+      { failed: 0, skipped: 0, updated: 5 },
+      {
+        failed: "failed",
+        noVisibleMissingSwatchesCouldBeAutoFilled:
+          "No visible missing swatches could be auto-filled.",
+        skipped: "skipped",
+        swatchBulkUpdateCompleted: "Swatch bulk update completed",
+        updated: "updated",
+      },
+    ),
+    {
+      kind: "info",
+      message: "Swatch bulk update completed: updated 5.",
+    },
+  );
+
+  assert.deepEqual(
+    buildSettingsSwatchBulkResultMessage(
+      { failed: 1, skipped: 2, updated: 5 },
+      {
+        failed: "failed",
+        noVisibleMissingSwatchesCouldBeAutoFilled:
+          "No visible missing swatches could be auto-filled.",
+        skipped: "skipped",
+        swatchBulkUpdateCompleted: "Swatch bulk update completed",
+        updated: "updated",
+      },
+    ),
+    {
+      kind: "info",
+      message: "Swatch bulk update completed: updated 5, failed 1, skipped 2.",
+    },
   );
 });
