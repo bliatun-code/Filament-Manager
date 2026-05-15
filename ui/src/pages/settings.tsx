@@ -113,6 +113,7 @@ import {
   useSettingsResetConfirm,
   type SettingsResetConfirmAction,
 } from "./use_settings_reset_confirm";
+import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import {
@@ -1396,15 +1397,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setConfirmResetAction,
   });
 
-  useSettingsAutoClearValue(
+  const { clearConfirmBulkSwatch } = useSettingsSwatchConfirm({
     confirmBulkSwatch,
-    useCallback(() => setConfirmBulkSwatch(false), []),
-    7000,
-  );
-
-  useEffect(() => {
-    setConfirmBulkSwatch(false);
-  }, [swatchVendorFilter, visibleMissingSwatchMasters.length]);
+    setConfirmBulkSwatch,
+    swatchVendorFilter,
+    visibleMissingSwatchCount: visibleMissingSwatchMasters.length,
+  });
 
   useSettingsAutoClearValue(
     catalogRefreshSummary,
@@ -2248,7 +2246,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     }
     const targets = visibleMissingSwatchMasters;
     if (targets.length === 0) {
-      setConfirmBulkSwatch(false);
+      clearConfirmBulkSwatch();
       setInfo(buildSettingsNoMissingSwatchesMessage(settingsSwatchBulkMessageLabels()));
       return;
     }
@@ -2258,7 +2256,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setInfo(buildSettingsSwatchBulkConfirmMessage(settingsSwatchBulkMessageLabels()));
       return;
     }
-    setConfirmBulkSwatch(false);
+    clearConfirmBulkSwatch();
     setSwatchBusy(true);
     setError(null);
     setInfo(null);
