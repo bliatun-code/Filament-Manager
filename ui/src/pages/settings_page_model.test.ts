@@ -6,6 +6,7 @@ import {
   buildSettingsPageDesktopOnlyMessage,
   buildSettingsPageLoadErrorMessage,
   buildSettingsPageTabLabels,
+  buildSettingsPageTabs,
 } from "./settings_page_model";
 
 test("settings page load error message returns stable fallback copy", () => {
@@ -48,4 +49,23 @@ test("settings page tab labels keep all primary tabs explicit", () => {
     MAINTENANCE: "Program maintenance",
     PRINTERS: "3D printers",
   });
+});
+
+test("settings page tabs keep the intended navigation order", () => {
+  assert.deepEqual(
+    buildSettingsPageTabs({
+      CATALOG: "Filament catalogue",
+      GENERAL: "General",
+      LIBRARY: "Library & web app",
+      MAINTENANCE: "Program maintenance",
+      PRINTERS: "3D printers",
+    }),
+    [
+      { id: "GENERAL", label: "General" },
+      { id: "LIBRARY", label: "Library & web app" },
+      { id: "PRINTERS", label: "3D printers" },
+      { id: "CATALOG", label: "Filament catalogue" },
+      { id: "MAINTENANCE", label: "Program maintenance" },
+    ],
+  );
 });

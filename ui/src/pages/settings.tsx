@@ -170,6 +170,7 @@ import {
   buildSettingsPageDesktopOnlyMessage,
   buildSettingsPageLoadErrorMessage,
   buildSettingsPageTabLabels,
+  buildSettingsPageTabs,
 } from "./settings_page_model";
 
 type SettingsTab = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
@@ -429,28 +430,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const settingsTabs = useMemo(
     () => {
       const labels = buildSettingsPageTabLabels(settingsPageTabMessageLabels());
-      return [
-        {
-          id: "GENERAL" as const,
-          label: labels.GENERAL,
-        },
-        {
-          id: "LIBRARY" as const,
-          label: labels.LIBRARY,
-        },
-        {
-          id: "PRINTERS" as const,
-          label: labels.PRINTERS,
-        },
-        {
-          id: "CATALOG" as const,
-          label: labels.CATALOG,
-        },
-        {
-          id: "MAINTENANCE" as const,
-          label: labels.MAINTENANCE,
-        },
-      ] satisfies Array<{ id: SettingsTab; label: string }>;
+      return buildSettingsPageTabs(labels);
     },
     [settingsPageTabMessageLabels],
   );

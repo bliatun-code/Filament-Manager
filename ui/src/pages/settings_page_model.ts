@@ -11,6 +11,10 @@ export type SettingsPageChromeLabels = {
 
 export type SettingsTabKey = "CATALOG" | "GENERAL" | "LIBRARY" | "MAINTENANCE" | "PRINTERS";
 export type SettingsPageTabLabelMap = Record<SettingsTabKey, string>;
+export type SettingsPageTabOption = {
+  id: SettingsTabKey;
+  label: string;
+};
 
 export function buildSettingsPageLoadErrorMessage(
   labels: Pick<SettingsPageMessageLabels, "loadFailed">,
@@ -32,4 +36,14 @@ export function buildSettingsPageDesktopOnlyMessage(
 
 export function buildSettingsPageTabLabels(labels: SettingsPageTabLabelMap): SettingsPageTabLabelMap {
   return labels;
+}
+
+export function buildSettingsPageTabs(labels: SettingsPageTabLabelMap): SettingsPageTabOption[] {
+  return [
+    { id: "GENERAL", label: labels.GENERAL },
+    { id: "LIBRARY", label: labels.LIBRARY },
+    { id: "PRINTERS", label: labels.PRINTERS },
+    { id: "CATALOG", label: labels.CATALOG },
+    { id: "MAINTENANCE", label: labels.MAINTENANCE },
+  ];
 }
