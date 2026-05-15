@@ -111,6 +111,7 @@ import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 import {
+  buildSettingsInventoryOverviewPrintErrorMessage,
   buildSettingsInventoryOverviewPrintRows,
   buildSettingsInventoryOverviewPrintSuccessMessage,
 } from "./settings_inventory_print_model";
@@ -2019,9 +2020,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           printError,
-          t(
-            "settings.error.inventoryOverviewPrint",
-            "Failed to print inventory overview.",
+          buildSettingsInventoryOverviewPrintErrorMessage(
+            settingsInventoryOverviewPrintMessageLabels(),
           ),
         ),
       );
@@ -2032,6 +2032,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
   function settingsInventoryOverviewPrintMessageLabels() {
     return {
+      inventoryOverviewPrintFailed: t(
+        "settings.error.inventoryOverviewPrint",
+        "Failed to print inventory overview.",
+      ),
       inventoryOverviewPrintDone: t(
         "settings.inventoryOverviewPrintDone",
         "A4 inventory overview PDF opened for printing.",

@@ -8,6 +8,7 @@ export type SettingsInventoryPrintLabels = {
 };
 
 export type SettingsInventoryPrintMessageLabels = {
+  inventoryOverviewPrintFailed: string;
   inventoryOverviewPrintDone: string;
 };
 
@@ -62,6 +63,12 @@ export function buildSettingsInventoryOverviewPrintSuccessMessage(
   labels: SettingsInventoryPrintMessageLabels,
 ): string {
   return labels.inventoryOverviewPrintDone;
+}
+
+export function buildSettingsInventoryOverviewPrintErrorMessage(
+  labels: SettingsInventoryPrintMessageLabels,
+): string {
+  return labels.inventoryOverviewPrintFailed;
 }
 
 function compareSettingsInventoryPrintRows(

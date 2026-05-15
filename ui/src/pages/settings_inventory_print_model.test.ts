@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildSettingsInventoryOverviewPrintErrorMessage,
   buildSettingsInventoryOverviewPrintRows,
   buildSettingsInventoryOverviewPrintSuccessMessage,
 } from "./settings_inventory_print_model";
@@ -111,10 +112,17 @@ test("settings inventory overview print rows map borrowed and missing display fi
 });
 
 test("settings inventory overview print success message returns stable copy", () => {
+  const labels = {
+    inventoryOverviewPrintDone: "A4 inventory overview PDF opened for printing.",
+    inventoryOverviewPrintFailed: "Failed to print inventory overview.",
+  };
+
   assert.equal(
-    buildSettingsInventoryOverviewPrintSuccessMessage({
-      inventoryOverviewPrintDone: "A4 inventory overview PDF opened for printing.",
-    }),
-    "A4 inventory overview PDF opened for printing.",
+    buildSettingsInventoryOverviewPrintSuccessMessage(labels),
+    labels.inventoryOverviewPrintDone,
+  );
+  assert.equal(
+    buildSettingsInventoryOverviewPrintErrorMessage(labels),
+    labels.inventoryOverviewPrintFailed,
   );
 });
