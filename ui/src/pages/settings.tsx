@@ -4,7 +4,6 @@ import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
   importDataFile,
   isTauri,
-  printLabelPdf,
   refreshBambuCatalog,
   refreshEsunCatalog,
   updateMasterCatalogEntry,
@@ -68,6 +67,7 @@ import { useSettingsPageTabs } from "./use_settings_page_tabs";
 import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
 import { useSettingsMaintenanceActions } from "./use_settings_maintenance_actions";
 import { useSettingsBackupExportActions } from "./use_settings_backup_export_actions";
+import { useSettingsInventoryPrintAction } from "./use_settings_inventory_print_action";
 import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_messages";
@@ -88,13 +88,6 @@ import {
   useTrustedLanNetworkState,
 } from "./use_trusted_lan_network_state";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
-import {
-  buildSettingsInventoryOverviewPrintErrorMessage,
-  buildSettingsInventoryOverviewPrintPdfLabels,
-  buildSettingsInventoryOverviewPrintRows,
-  buildSettingsInventoryOverviewPrintSuccessMessage,
-  buildSettingsInventoryPrintLabels,
-} from "./settings_inventory_print_model";
 import {
   buildSettingsBackupErrorMessage,
   buildSettingsBackupValidationSuccessMessage,
@@ -724,65 +717,21 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     };
   }
 
-  async function handlePrintInventoryOverviewA4() {
-    if (!tauri || busy) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      const allRows = await loadSettingsInventoryRows();
-
-      const [
-        { buildFilamentQrPayload, resolvePreferredCompanionShellUrl },
-        { buildFilamentLabelQrDataUrl },
-        { buildInventoryOverviewPrintPdfBase64 },
-      ] = await Promise.all([
-        import("../lib/filament_qr_payload"),
-        import("../lib/filament_label_print"),
-        import("../lib/inventory_overview_print"),
-      ]);
-
-      const companionShellUrl = resolvePreferredCompanionShellUrl({
-        clientReadOnly: settingsClientReadOnly,
-        clientHostBaseUrl: settingsClientHostBaseUrl,
-        trustedLanShellUrl: trustedLanStatus?.shell_url ?? null,
-      });
-
-      const printRows = await buildSettingsInventoryOverviewPrintRows({
-        rows: allRows,
-        locale,
-        companionShellUrl,
-        labels: buildSettingsInventoryPrintLabels(settingsInventoryPrintLabels()),
-        buildFilamentQrPayload,
-        buildFilamentLabelQrDataUrl,
-      });
-
-      const pdfBase64 = await buildInventoryOverviewPrintPdfBase64(
-        printRows,
-        buildSettingsInventoryOverviewPrintPdfLabels(settingsInventoryOverviewPrintPdfLabels()),
-      );
-      await printLabelPdf(pdfBase64, null, 1);
-      setInfo(
-        buildSettingsInventoryOverviewPrintSuccessMessage(
-          settingsInventoryOverviewPrintMessageLabels(),
-        ),
-      );
-    } catch (printError) {
-      console.error(printError);
-      setError(
-        toErrorMessage(
-          printError,
-          buildSettingsInventoryOverviewPrintErrorMessage(
-            settingsInventoryOverviewPrintMessageLabels(),
-          ),
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
+  const { handlePrintInventoryOverviewA4 } = useSettingsInventoryPrintAction({
+    busy,
+    loadSettingsInventoryRows,
+    locale,
+    setBusy,
+    setError,
+    setInfo,
+    settingsClientHostBaseUrl,
+    settingsClientReadOnly,
+    settingsInventoryOverviewPrintMessageLabels,
+    settingsInventoryOverviewPrintPdfLabels,
+    settingsInventoryPrintLabels,
+    tauri,
+    trustedLanStatus,
+  });
 
   function settingsInventoryOverviewPrintMessageLabels() {
     return {
