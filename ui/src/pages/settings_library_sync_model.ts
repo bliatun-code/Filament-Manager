@@ -16,6 +16,57 @@ export type LibrarySyncMigrationModel = {
   }>;
 };
 
+export type LibraryRoleChangeState = {
+  target: LibrarySyncMode | null;
+  fromClient: boolean;
+  toHost: boolean;
+  toClient: boolean;
+  toStandalone: boolean;
+  roleActuallyChanges: boolean;
+  leavingClient: boolean;
+  requiresExport: boolean;
+  requiresValidate: boolean;
+  requiresImport: boolean;
+  validateDone: boolean;
+  ready: boolean;
+};
+
+export function buildLibraryRoleChangeState(input: {
+  target: LibrarySyncMode | null;
+  savedMode: LibrarySyncMode;
+  hasExportedFullBackup: boolean;
+  hasImportedFullBackup: boolean;
+  hasValidatedFullBackup: boolean;
+  hasValidatedLatestFullBackup: boolean;
+}): LibraryRoleChangeState {
+  const roleActuallyChanges = Boolean(input.target) && input.target !== input.savedMode;
+  const leavingClient = input.savedMode === "CLIENT";
+  const requiresExport = roleActuallyChanges && !leavingClient;
+  const requiresValidate = requiresExport;
+  const requiresImport = false;
+  const validateDone = requiresExport
+    ? input.hasExportedFullBackup && input.hasValidatedFullBackup
+    : input.hasValidatedLatestFullBackup;
+
+  return {
+    target: input.target,
+    fromClient: input.savedMode === "CLIENT",
+    toHost: input.target === "HOST",
+    toClient: input.target === "CLIENT",
+    toStandalone: input.target === "STANDALONE",
+    roleActuallyChanges,
+    leavingClient,
+    requiresExport,
+    requiresValidate,
+    requiresImport,
+    validateDone,
+    ready:
+      (!requiresExport || input.hasExportedFullBackup) &&
+      (!requiresValidate || validateDone) &&
+      (!requiresImport || input.hasImportedFullBackup),
+  };
+}
+
 export function buildLibrarySyncMigrationModel(input: {
   draftMode: LibrarySyncMode;
   savedMode: LibrarySyncMode;

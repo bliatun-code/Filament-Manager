@@ -58,9 +58,9 @@ import {
   type ThemeMode,
 } from "../lib/theme_mode";
 import { FeedbackBanner } from "../components/feedback_banner";
-import { AppModal } from "../components/app_modal";
 import { useI18n, type Locale } from "../lib/i18n";
 import { toErrorMessage } from "../lib/error_text";
+import { SettingsBackupValidationSummary } from "../components/settings_backup_validation_summary";
 import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/inventory_export";
 import {
   buildInventoryMatchResult,
@@ -77,16 +77,28 @@ import {
   parsePositiveInt,
   waitForMs,
 } from "../lib/settings_utils";
-import { neutralChipClass } from "../lib/chip_styles";
 import { copyTextToClipboard } from "../lib/clipboard";
 import { PrinterModelPreview } from "../components/printer_model_preview";
 import { DiagnosticCaptureChart } from "../components/diagnostic_capture_chart";
+import { SettingsGeneralTab } from "../components/settings_general_tab";
+import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
+import { SettingsMetricTile } from "../components/settings_ui";
+import {
+  chipButtonClass,
+  settingsActionButtonClass,
+  settingsChoiceButtonClass,
+  settingsLibraryRoleButtonClass,
+  settingsWebappStatusClass,
+  settingsWebappSwitchClass,
+  settingsWebappSwitchKnobClass,
+  settingsWebappSwitchTrackClass,
+  tabButtonClass,
+} from "../lib/settings_ui_classes";
 import { loadAllSpoolRows } from "../lib/spool_data_source";
 import { loadSettingsPageData, refreshLibrarySyncSnapshot } from "../lib/settings_data_source";
 import { loadTrustedLanSettingsData } from "../lib/trusted_lan_data_source";
 import { createManagedPrinter, deleteManagedPrinter } from "../lib/printer_writes";
 import {
-  averageIntervalMs,
   buildDiagnosticDisplayTrays,
   buildDiagnosticCaptureSession,
   buildDiagnosticChartFieldOptions,
@@ -96,17 +108,15 @@ import {
   countChangedDiagnosticFields,
   countDiagnosticIdentitySignals,
   countReviewDiagnosticTrays,
-  diffMs,
   exportDiagnosticCaptureSessionCsv,
   extractDiagnosticTraySnapshots,
-  flattenDiagnosticFields,
   groupDiagnosticFields,
   isDiagnosticAmsReadInProgress,
   latestDiagnosticCaptureSeenAt,
   filterDiagnosticFields,
   formatIntervalMs,
-  pushRecentDiagnosticValue,
   sortDiagnosticFields,
+  updateDiagnosticCaptureSessionFromPayload,
   type DiagnosticCaptureSession,
   type DiagnosticFilterKey,
   type DiagnosticFieldGroup,
@@ -117,7 +127,6 @@ import {
   describeConfiguredPrinterSetup,
   findPrinterModelProfileExact,
   hasConfiguredMultiMaterial,
-  isExternalSlotId,
   multiMaterialSlotsInputLabel,
   multiMaterialUnitsInputLabel,
   resolvePrinterModelProfile,
@@ -130,8 +139,10 @@ import {
   resolveTrustedLanInterfaceAddressDraft,
 } from "./settings_companion_model";
 import {
+  buildLibraryRoleChangeState,
   type LibrarySyncMode,
 } from "./settings_library_sync_model";
+import { derivePrinterMultiConfig, isBambuLabPrinter } from "./settings_printer_model";
 
 type SettingsTab = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
 type ResetConfirmAction = "APP" | "CATALOG";
@@ -139,97 +150,6 @@ type CatalogVendor = "Bambu" | "eSUN";
 type SettingsPageProps = {
   initialTab?: SettingsTabKey;
 };
-
-function tabButtonClass(active: boolean): string {
-  if (active) {
-    return "rounded-lg border border-slate-300/80 bg-white/88 px-3.5 py-2 text-sm font-semibold text-slate-950 shadow-sm shadow-slate-300/20 outline-none transition focus-visible:border-sky-300/80 dark:border-slate-500/70 dark:bg-slate-800/86 dark:text-slate-50 dark:shadow-none";
-  }
-  return "rounded-lg border border-transparent px-3.5 py-2 text-sm font-semibold text-slate-600 outline-none transition hover:border-slate-300/70 hover:bg-white/66 hover:text-slate-900 focus-visible:border-sky-300/70 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-900/62 dark:hover:text-slate-50";
-}
-
-function chipButtonClass(active: boolean): string {
-  return neutralChipClass(active, "px-3 py-1 text-xs");
-}
-
-function settingsChoiceButtonClass(active: boolean, tone: "indigo" | "emerald" = "indigo"): string {
-  if (active) {
-    if (tone === "emerald") {
-      return "inline-flex items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50/85 px-3.5 py-2.5 text-sm font-semibold text-emerald-900 outline-none transition focus-visible:border-sky-300/80 dark:border-emerald-400/40 dark:bg-emerald-500/14 dark:text-emerald-100";
-    }
-    return "inline-flex items-center justify-center rounded-lg border border-indigo-300 bg-indigo-50/86 px-3.5 py-2.5 text-sm font-semibold text-indigo-900 outline-none transition focus-visible:border-sky-300/80 dark:border-indigo-400/40 dark:bg-indigo-500/14 dark:text-indigo-100";
-  }
-  return "inline-flex items-center justify-center rounded-lg border border-slate-300/80 bg-white/72 px-3.5 py-2.5 text-sm font-semibold text-slate-700 outline-none transition hover:bg-white focus-visible:border-sky-300/70 dark:border-slate-700 dark:bg-slate-950/42 dark:text-slate-200 dark:hover:bg-slate-900/72";
-}
-
-function settingsLibraryRoleButtonClass(active: boolean): string {
-  const activeClass = "settings-library-role-active";
-  const idleClass =
-    "border-slate-300/80 bg-white/72 text-slate-700 hover:bg-white dark:border-slate-700 dark:bg-slate-950/42 dark:text-slate-200 dark:hover:bg-slate-900/72";
-  return `inline-flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-sm font-semibold outline-none transition focus-visible:border-sky-300/80 disabled:opacity-70 ${active ? activeClass : idleClass}`;
-}
-
-function settingsWebappStatusClass(active: boolean): string {
-  return `inline-flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-sm font-semibold outline-none transition ${active ? "settings-webapp-status-active" : "settings-webapp-status-warn"}`;
-}
-
-function settingsWebappSwitchClass(active: boolean): string {
-  const activeClass = "settings-webapp-switch-active";
-  const idleClass =
-    "border-slate-300/80 bg-white/72 text-slate-700 hover:bg-white dark:border-slate-700 dark:bg-slate-950/42 dark:text-slate-200 dark:hover:bg-slate-900/72";
-  return `inline-flex items-center gap-3 rounded-full border px-3 py-2 text-sm font-semibold outline-none transition focus-visible:border-sky-300/80 disabled:opacity-70 ${active ? activeClass : idleClass}`;
-}
-
-function settingsWebappSwitchTrackClass(active: boolean): string {
-  return `relative h-7 w-12 rounded-full border transition ${
-    active
-      ? "settings-webapp-switch-track-active"
-      : "border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-800"
-  }`;
-}
-
-function settingsWebappSwitchKnobClass(active: boolean): string {
-  return `absolute top-1 h-5 w-5 rounded-full shadow-sm shadow-slate-900/30 transition ${
-    active ? "left-6" : "left-1"
-  } ${active ? "settings-webapp-switch-knob-active" : "bg-white dark:bg-slate-950"}`;
-}
-
-function settingsActionButtonClass(variant: "neutral" | "accent" = "neutral"): string {
-  const base =
-    "inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold outline-none transition focus-visible:border-sky-300/70 disabled:opacity-50";
-  if (variant === "accent") {
-    return `${base} border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-400/40 dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25`;
-  }
-  return `${base} border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-900/80`;
-}
-
-function SettingsMetricTile({
-  label,
-  value,
-  hint,
-  className = "",
-}: {
-  label: string;
-  value: string | number;
-  hint?: string;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`rounded-lg border border-slate-300/70 bg-white/58 px-4 py-3 dark:border-slate-700/72 dark:bg-slate-950/30 ${className}`.trim()}
-    >
-      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-        {label}
-      </div>
-      <div className="mt-2 break-words text-xl font-semibold leading-tight text-slate-900 dark:text-slate-100">
-        {value}
-      </div>
-      {hint ? (
-        <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">{hint}</div>
-      ) : null}
-    </div>
-  );
-}
-
 
 export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPageProps) {
   const tauri = isTauri();
@@ -718,121 +638,17 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (!observedState?.raw_payload_json) {
       return;
     }
-    const flattened = flattenDiagnosticFields(observedState.raw_payload_json);
-    if (flattened.length === 0) {
-      return;
-    }
     const observedAt = observedState.last_seen_at ?? new Date().toISOString();
     setDiagnosticCaptureByPrinterId((current) => {
-      const next = { ...current };
-      const existingSession = next[expandedBambuDetailsPrinterId] ?? buildDiagnosticCaptureSession(null);
-      const previousFields = new Map(
-        existingSession.fields.map((field) => [field.path, field]),
-      );
-      const nextSamples = [...existingSession.samples];
-      for (const { path, valueText } of flattened) {
-        const existing = previousFields.get(path);
-        if (!existing) {
-          previousFields.set(path, {
-            path,
-            valueText,
-            firstSeenAt: observedAt,
-            lastSeenAt: observedAt,
-            lastChangedAt: observedAt,
-            receiveCount: 1,
-            changeCount: 1,
-            avgReceiveIntervalMs: null,
-            avgChangeIntervalMs: null,
-            recentValues: [
-              {
-                valueText,
-                seenAt: observedAt,
-                changed: true,
-              },
-            ],
-          });
-          nextSamples.push({
-            fieldPath: path,
-            observedAt,
-            valueText,
-            changeKind: existingSession.seededFromObservedAt == null ? "first_seen" : "changed",
-          });
-          continue;
-        }
-        const receiveIntervalMs = diffMs(observedAt, existing.lastSeenAt);
-        if (existing.valueText === valueText) {
-          previousFields.set(path, {
-            ...existing,
-            lastSeenAt: observedAt,
-            receiveCount: existing.receiveCount + 1,
-            avgReceiveIntervalMs:
-              receiveIntervalMs == null
-                ? existing.avgReceiveIntervalMs
-                : averageIntervalMs(
-                    existing.avgReceiveIntervalMs,
-                    Math.max(0, existing.receiveCount - 1),
-                    receiveIntervalMs,
-                  ),
-            recentValues: pushRecentDiagnosticValue(existing.recentValues, {
-              valueText,
-              seenAt: observedAt,
-              changed: false,
-            }),
-          });
-          nextSamples.push({
-            fieldPath: path,
-            observedAt,
-            valueText,
-            changeKind: "refresh",
-          });
-          continue;
-        }
-        const changeIntervalMs = diffMs(observedAt, existing.lastChangedAt);
-        previousFields.set(path, {
-          path,
-          valueText,
-          firstSeenAt: existing.firstSeenAt,
-          lastSeenAt: observedAt,
-          lastChangedAt: observedAt,
-          receiveCount: existing.receiveCount + 1,
-          changeCount: existing.changeCount + 1,
-          avgReceiveIntervalMs:
-            receiveIntervalMs == null
-              ? existing.avgReceiveIntervalMs
-              : averageIntervalMs(
-                  existing.avgReceiveIntervalMs,
-                  Math.max(0, existing.receiveCount - 1),
-                  receiveIntervalMs,
-                ),
-          avgChangeIntervalMs:
-            changeIntervalMs == null
-              ? existing.avgChangeIntervalMs
-              : averageIntervalMs(
-                  existing.avgChangeIntervalMs,
-                  Math.max(0, existing.changeCount - 1),
-                  changeIntervalMs,
-                ),
-          recentValues: pushRecentDiagnosticValue(existing.recentValues, {
-            valueText,
-            seenAt: observedAt,
-            changed: true,
-          }),
-        });
-        nextSamples.push({
-          fieldPath: path,
-          observedAt,
-          valueText,
-          changeKind: "changed",
-        });
+      const updated = updateDiagnosticCaptureSessionFromPayload({
+        session: current[expandedBambuDetailsPrinterId],
+        rawPayload: observedState.raw_payload_json,
+        observedAt,
+      });
+      if (!updated) {
+        return current;
       }
-      next[expandedBambuDetailsPrinterId] = {
-        ...existingSession,
-        lastCapturedAt: observedAt,
-        fields: Array.from(previousFields.values()).sort((left, right) =>
-          left.path.localeCompare(right.path, undefined, { numeric: true, sensitivity: "base" }),
-        ),
-        samples: nextSamples,
-      };
+      const next = { ...current, [expandedBambuDetailsPrinterId]: updated };
       return next;
     });
   }, [bambuLiveIntegrations, diagnosticCaptureActiveByPrinterId, expandedBambuDetailsPrinterId]);
@@ -1173,22 +989,16 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       return;
     }
 
-    const roleActuallyChanges = pendingLibraryRoleTarget !== librarySyncSavedMode;
-    const leavingClient = librarySyncSavedMode === "CLIENT";
-    const requiresExport =
-      roleActuallyChanges && !leavingClient;
-    const requiresValidate = requiresExport;
-    const requiresImport = false;
-    const validateDone = requiresExport
-      ? Boolean(lastFullBackupExportedAt) && hasValidatedFullBackup
-      : hasValidatedLatestFullBackup;
+    const roleChangeState = buildLibraryRoleChangeState({
+      target: pendingLibraryRoleTarget,
+      savedMode: librarySyncSavedMode,
+      hasExportedFullBackup: Boolean(lastFullBackupExportedAt),
+      hasImportedFullBackup: Boolean(lastFullBackupImportedAt),
+      hasValidatedFullBackup,
+      hasValidatedLatestFullBackup,
+    });
 
-    const ready =
-      (!requiresExport || Boolean(lastFullBackupExportedAt)) &&
-      (!requiresValidate || validateDone) &&
-      (!requiresImport || Boolean(lastFullBackupImportedAt));
-
-    if (!ready) {
+    if (!roleChangeState.ready) {
       return;
     }
 
@@ -1665,33 +1475,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     return () => window.clearInterval(timer);
   }, [catalogRefreshBusy, catalogRefreshStartedAt]);
 
-  function derivePrinterMultiConfig(
-    printerId: string,
-    model: string,
-  ): { units: number; slotsPerUnit: number } {
-    const slots = printerOverview.find((item) => item.printer.id === printerId)?.slots ?? [];
-    const profile = resolvePrinterModelProfile(model);
-    const slotCountByUnit = new Map<string, number>();
-    for (const slot of slots) {
-      if (isExternalSlotId(slot.ams_id)) {
-        continue;
-      }
-      slotCountByUnit.set(slot.ams_id, (slotCountByUnit.get(slot.ams_id) ?? 0) + 1);
-    }
-    const units = slotCountByUnit.size;
-    const slotsPerUnit =
-      units > 0
-        ? Math.max(...Array.from(slotCountByUnit.values()))
-        : profile.defaultSlotsPerUnit;
-    return { units, slotsPerUnit };
-  }
-
-  function isBambuLabPrinter(model: string): boolean {
-    return model.trim().toLowerCase().startsWith("bambu lab");
-  }
-
   function handleStartEditPrinter(printer: PrinterRow) {
-    const config = derivePrinterMultiConfig(printer.id, printer.model);
+    const config = derivePrinterMultiConfig({
+      printerId: printer.id,
+      model: printer.model,
+      printerOverview,
+    });
     const liveConfig = bambuLiveIntegrations[printer.id];
     setEditPrinterId(printer.id);
     setEditPrinterModel(printer.model);
@@ -2719,25 +2508,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       librarySyncSettings?.last_validation_message,
   );
   const clientHasSnapshot = Boolean(librarySyncSnapshot);
-  const roleChangeTarget = pendingLibraryRoleTarget;
-  const roleChangeFromClient = librarySyncSavedMode === "CLIENT";
-  const roleChangeToHost = roleChangeTarget === "HOST";
-  const roleChangeToClient = roleChangeTarget === "CLIENT";
-  const roleChangeToStandalone = roleChangeTarget === "STANDALONE";
-  const roleChangeRequiresExport =
-    Boolean(roleChangeTarget) &&
-    roleChangeTarget !== librarySyncSavedMode &&
-    librarySyncSavedMode !== "CLIENT";
-  const roleChangeRequiresValidate = roleChangeRequiresExport;
-  const roleChangeRequiresImport = false;
-  const roleChangeValidateDone =
-    roleChangeRequiresExport
-      ? Boolean(lastFullBackupExportedAt) && hasValidatedFullBackup
-      : hasValidatedLatestFullBackup;
-  const roleChangeReady =
-    (!roleChangeRequiresExport || Boolean(lastFullBackupExportedAt)) &&
-    (!roleChangeRequiresValidate || roleChangeValidateDone) &&
-    (!roleChangeRequiresImport || Boolean(lastFullBackupImportedAt));
+  const roleChangeState = buildLibraryRoleChangeState({
+    target: pendingLibraryRoleTarget,
+    savedMode: librarySyncSavedMode,
+    hasExportedFullBackup: Boolean(lastFullBackupExportedAt),
+    hasImportedFullBackup: Boolean(lastFullBackupImportedAt),
+    hasValidatedFullBackup,
+    hasValidatedLatestFullBackup,
+  });
 
   return (
     <div className="page-shell">
@@ -3837,97 +3615,17 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         ) : null}
 
         {activeTab === "GENERAL" ? (
-          <>
-            <section className="surface-card space-y-3">
-              <div className="section-eyebrow">
-                {t("settings.program", "Program")}
-              </div>
-              <div className="text-sm text-slate-700 dark:text-slate-300">
-                {t("settings.version", "Version")}:{" "}
-                <span className="font-semibold text-slate-900 dark:text-slate-100">
-                  {appVersion?.trim() || t("common.unknown", "Unknown")}
-                </span>
-              </div>
-            </section>
-
-            <section className="surface-card space-y-4">
-              <div className="section-eyebrow">
-                {t("settings.appearance", "Appearance")}
-              </div>
-              <div className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {t("settings.autoHint", "Auto follows your system light/dark preference.")}
-              </div>
-              <div className="surface-subtle p-3">
-                <div className="flex flex-wrap gap-2">
-                  {(["auto", "light", "dark"] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => handleThemeSelection(mode)}
-                      className={chipButtonClass(themeMode === mode)}
-                    >
-                      {mode === "auto"
-                        ? t("settings.auto", "Auto (system)")
-                        : mode === "light"
-                          ? t("settings.light", "Light")
-                          : t("settings.dark", "Dark")}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            <section className="surface-card space-y-4">
-              <div className="section-eyebrow">
-                {t("settings.language", "Language")}
-              </div>
-              <div className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {t(
-                  "settings.languageHint",
-                  "Choose app language. More sections will be localized incrementally.",
-                )}
-              </div>
-              <div className="surface-subtle p-3">
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleLocaleSelection("nb")}
-                    className={chipButtonClass(locale === "nb")}
-                  >
-                    Norsk (bokmål)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleLocaleSelection("en")}
-                    className={chipButtonClass(locale === "en")}
-                  >
-                    English
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            <section className="surface-card space-y-4">
-              <div className="section-eyebrow">
-                {t("settings.inventoryOverviewPrint", "Inventory A4 overview")}
-              </div>
-              <div className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {t(
-                  "settings.inventoryOverviewPrintHint",
-                  "Print a material-sorted list with swatch, QR and filament details for all in-stock spools.",
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => void handlePrintInventoryOverviewA4()}
-                className={settingsActionButtonClass("accent")}
-                disabled={!tauri || busy}
-              >
-                {t("settings.inventoryOverviewPrintAction", "Print A4 inventory overview")}
-              </button>
-            </section>
-
-          </>
+          <SettingsGeneralTab
+            appVersion={appVersion}
+            busy={busy}
+            locale={locale}
+            tauri={tauri}
+            themeMode={themeMode}
+            t={t}
+            onLocaleSelection={handleLocaleSelection}
+            onPrintInventoryOverviewA4={() => void handlePrintInventoryOverviewA4()}
+            onThemeSelection={handleThemeSelection}
+          />
         ) : null}
 
         {activeTab === "LIBRARY" ? (
@@ -5270,75 +4968,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                   </div>
 
                   {lastBackupValidation ? (
-                    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/90 p-4 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-200">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="font-semibold">
-                          {t("settings.backupValidationSummary", "Backup validation summary")}
-                        </div>
-                        <span
-                          className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-                            backupValidationHasWarnings
-                              ? "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-400/50 dark:bg-amber-500/20 dark:text-amber-200"
-                              : "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/50 dark:bg-emerald-500/20 dark:text-emerald-200"
-                          }`}
-                        >
-                          {backupValidationHasWarnings
-                            ? t("settings.validationStatusWarn", "Has warnings")
-                            : t("settings.validationStatusOk", "Fully compatible")}
-                        </span>
-                      </div>
-                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                        <SettingsMetricTile
-                          label={t("settings.validationFormat", "Format")}
-                          value={lastBackupValidation.format}
-                          className="bg-white/80 dark:bg-slate-900/60"
-                        />
-                        <SettingsMetricTile
-                          label={t("settings.validationTables", "Tables")}
-                          value={`${lastBackupValidation.present_tables}/${lastBackupValidation.expected_tables}`}
-                          className="bg-white/80 dark:bg-slate-900/60"
-                        />
-                        <SettingsMetricTile
-                          label={t("settings.validationRows", "Rows")}
-                          value={lastBackupValidation.total_rows}
-                          className="bg-white/80 dark:bg-slate-900/60"
-                        />
-                      </div>
-                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                        <div
-                          className={`rounded-xl border px-3 py-3 ${
-                            backupValidationHasMissingTables
-                              ? "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/30 dark:bg-rose-500/10 dark:text-rose-200"
-                              : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-200"
-                          }`}
-                        >
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em]">
-                            {t("settings.validationMissingTables", "Missing tables")}
-                          </div>
-                          <div className="mt-1 text-xs leading-relaxed">
-                            {lastBackupValidation.missing_tables.length > 0
-                              ? lastBackupValidation.missing_tables.join(", ")
-                              : "0"}
-                          </div>
-                        </div>
-                        <div
-                          className={`rounded-xl border px-3 py-3 ${
-                            backupValidationHasExtraTables
-                              ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-200"
-                              : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-200"
-                          }`}
-                        >
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em]">
-                            {t("settings.validationExtraTables", "Extra tables")}
-                          </div>
-                          <div className="mt-1 text-xs leading-relaxed">
-                            {lastBackupValidation.extra_tables.length > 0
-                              ? lastBackupValidation.extra_tables.join(", ")
-                              : "0"}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <SettingsBackupValidationSummary
+                      hasExtraTables={backupValidationHasExtraTables}
+                      hasMissingTables={backupValidationHasMissingTables}
+                      hasWarnings={backupValidationHasWarnings}
+                      summary={lastBackupValidation}
+                      t={t}
+                    />
                   ) : null}
                 </div>
               </div>
@@ -5448,264 +5084,24 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           </section>
         ) : null}
       </div>
-      {roleChangeTarget ? (
-        <AppModal closeOnBackdrop onBackdropClose={closeLibraryRoleChangeModal}>
-          <div className="space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-                  {t("settings.libraryRoleLabel", "Library role")}
-                </div>
-                <div className="mt-1 text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-                  {roleChangeTarget === "HOST"
-                    ? t("settings.librarySyncConfirmSwitchToHost", "Switch to Host")
-                    : roleChangeTarget === "CLIENT"
-                      ? t("settings.librarySyncConfirmSwitchToClient", "Switch to Client")
-                      : t("settings.librarySyncConfirmSwitchToStandalone", "Switch to Standalone")}
-                </div>
-                <div className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                  {roleChangeFromClient && roleChangeToHost
-                    ? t(
-                        "settings.librarySyncHostHint",
-                        "This device is prepared to host the library for other desktop or browser clients.",
-                      )
-                    : roleChangeFromClient && roleChangeToStandalone
-                      ? t(
-                          "settings.librarySyncStandaloneHint",
-                          "This device keeps using its own local library only.",
-                        )
-                    : roleChangeTarget === "HOST"
-                      ? t(
-                          "settings.librarySyncHostHint",
-                          "This device is prepared to host the library for other desktop or browser clients.",
-                        )
-                      : roleChangeTarget === "CLIENT"
-                        ? t(
-                            "settings.librarySyncClientHint",
-                            "This device connects to another host and keeps a read-only fallback cache when that host is unavailable.",
-                          )
-                        : t(
-                          "settings.librarySyncStandaloneHint",
-                          "This device keeps using its own local library only.",
-                        )}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={closeLibraryRoleChangeModal}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white/85 text-[1.35rem] leading-none text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-800/60"
-              >
-                ×
-              </button>
-            </div>
-
-            {roleChangeFromClient && roleChangeToHost ? (
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-200">
-                {t(
-                  "settings.librarySyncRoleChangeClientToHostHint",
-                  "This client becomes its own host after the switch. If you later want to move library data from the current host, create a full backup there and import it later under Program maintenance on this device.",
-                )}
-              </div>
-            ) : null}
-
-            {roleChangeFromClient && roleChangeToStandalone ? (
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-200">
-                {locale === "nb"
-                  ? `Denne klienten forventer vanligvis at et vertsbibliotek er tilgjengelig. Du kan eksportere en full sikkerhetskopi på ${
-                      librarySyncSettings?.host_device_name || t("common.unknown", "Ukjent")
-                    } og importere den senere under Programvedlikehold hvis du vil fortsette lokalt.`
-                  : `This client normally expects a host library. You can export a full backup on ${
-                      librarySyncSettings?.host_device_name || t("common.unknown", "Unknown")
-                    } and import it later under Program maintenance if you want to continue locally.`}
-              </div>
-            ) : null}
-
-            {roleChangeToClient ? (
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-200">
-                {t(
-                  "settings.librarySyncRoleChangeClientHint",
-                  "Client mode expects a host connection. After switching, use Desktop client pairing to connect this device to the host you want to use.",
-                )}
-              </div>
-            ) : null}
-
-            {(roleChangeRequiresExport || roleChangeRequiresValidate || roleChangeRequiresImport) ? (
-              <div className="space-y-3">
-                {roleChangeRequiresExport ? (
-                  <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 dark:border-slate-700/70 dark:bg-slate-900/40">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <div className="font-semibold text-slate-900 dark:text-slate-100">
-                          {t("settings.exportFullBackup", "Export full backup (JSON)")}
-                        </div>
-                        <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                          {lastFullBackupExportedAt
-                            ? formatSettingsDateTime(lastFullBackupExportedAt, locale)
-                            : t(
-                                "settings.librarySyncMigrationStepExportHint",
-                                "Use the export button below before importing on the next machine.",
-                              )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            lastFullBackupExportedAt
-                              ? "border border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200"
-                              : "border border-slate-300 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
-                          }`}
-                        >
-                          {lastFullBackupExportedAt
-                            ? t("settings.librarySyncStepDone", "Done")
-                            : t("settings.librarySyncStepPending", "Pending")}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => void handleExportFullBackup()}
-                          className={settingsActionButtonClass("neutral")}
-                          disabled={!tauri || busy}
-                        >
-                          {t("settings.exportFullBackup", "Export full backup (JSON)")}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-
-                {roleChangeRequiresValidate ? (
-                  <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 dark:border-slate-700/70 dark:bg-slate-900/40">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <div className="font-semibold text-slate-900 dark:text-slate-100">
-                          {t("settings.validateBackup", "Validate backup file")}
-                        </div>
-                        <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                          {roleChangeValidateDone
-                            ? `${t(
-                                "settings.librarySyncRoleChangeAutoValidatedHint",
-                                "The latest exported backup was validated automatically in this guided flow.",
-                              )} ${formatSettingsDateTime(
-                                lastFullBackupValidatedAt || lastFullBackupExportedAt || "",
-                                locale,
-                              )}`
-                            : t(
-                                "settings.librarySyncRoleChangeValidateImportHint",
-                                "Validate the same backup here. That backup can be imported later under Program maintenance on the device that should continue with the library.",
-                              )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            roleChangeValidateDone
-                              ? "border border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200"
-                              : "border border-slate-300 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
-                          }`}
-                        >
-                          {roleChangeValidateDone
-                            ? t("settings.librarySyncStepDone", "Done")
-                            : t("settings.librarySyncStepPending", "Pending")}
-                        </span>
-                        {roleChangeValidateDone ? null : (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenBackupValidate()}
-                            className={settingsActionButtonClass("neutral")}
-                            disabled={!tauri || busy}
-                          >
-                            {t("settings.validateBackup", "Validate backup file")}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-
-                {roleChangeRequiresImport ? (
-                  <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 dark:border-slate-700/70 dark:bg-slate-900/40">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <div className="font-semibold text-slate-900 dark:text-slate-100">
-                          {t("settings.importDataFile", "Import backup/data file")}
-                        </div>
-                        <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                          {lastFullBackupImportedAt
-                            ? formatSettingsDateTime(lastFullBackupImportedAt, locale)
-                            : t(
-                                "settings.librarySyncMigrationStepImportHint",
-                                "Import the host backup here before this device takes over.",
-                              )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            lastFullBackupImportedAt
-                              ? "border border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200"
-                              : "border border-slate-300 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
-                          }`}
-                        >
-                          {lastFullBackupImportedAt
-                            ? t("settings.librarySyncStepDone", "Done")
-                            : t("settings.librarySyncStepPending", "Pending")}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDataImport()}
-                          className={settingsActionButtonClass("neutral")}
-                          disabled={!tauri || busy}
-                        >
-                          {t("settings.importDataFile", "Import backup/data file")}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-
-            {libraryRoleConfirmArmed ? (
-              <div className="rounded-xl border border-amber-300/80 bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-100">
-                {t(
-                  "settings.librarySyncConfirmArmedHint",
-                  "One more click confirms this role change.",
-                )}
-              </div>
-            ) : null}
-
-            <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200/80 pt-4 dark:border-slate-700/80">
-              <button
-                type="button"
-                onClick={closeLibraryRoleChangeModal}
-                className={settingsActionButtonClass("neutral")}
-                disabled={librarySyncBusy}
-              >
-                {t("common.close", "Close")}
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleConfirmLibraryRoleChange()}
-                className={`inline-flex items-center justify-center rounded-lg px-4 py-3 text-sm font-semibold shadow-sm transition disabled:opacity-50 ${
-                  libraryRoleConfirmArmed
-                    ? "border border-amber-300 bg-amber-500 text-slate-950 shadow-amber-900/20 hover:bg-amber-400 dark:border-amber-400/40 dark:bg-amber-400 dark:hover:bg-amber-300"
-                    : "border border-indigo-300 bg-indigo-500 text-white shadow-indigo-900/20 hover:bg-indigo-600 dark:border-indigo-400/40 dark:bg-indigo-400 dark:text-slate-950 dark:hover:bg-indigo-300"
-                }`}
-                disabled={!tauri || librarySyncBusy || !roleChangeReady}
-              >
-                {librarySyncBusy
-                  ? t("settings.librarySyncSaving", "Saving...")
-                  : libraryRoleConfirmArmed
-                    ? t("settings.librarySyncConfirmAgain", "Click again to confirm")
-                    : roleChangeTarget === "HOST"
-                      ? t("settings.librarySyncConfirmSwitchToHost", "Switch to Host")
-                      : roleChangeTarget === "CLIENT"
-                        ? t("settings.librarySyncConfirmSwitchToClient", "Switch to Client")
-                      : t("settings.librarySyncConfirmSwitchToStandalone", "Switch to Standalone")}
-              </button>
-            </div>
-          </div>
-        </AppModal>
-      ) : null}
+      <SettingsLibraryRoleModal
+        busy={busy}
+        lastFullBackupExportedAt={lastFullBackupExportedAt}
+        lastFullBackupImportedAt={lastFullBackupImportedAt}
+        lastFullBackupValidatedAt={lastFullBackupValidatedAt}
+        libraryRoleConfirmArmed={libraryRoleConfirmArmed}
+        librarySyncBusy={librarySyncBusy}
+        librarySyncSettings={librarySyncSettings}
+        locale={locale}
+        roleChangeState={roleChangeState}
+        tauri={tauri}
+        t={t}
+        onClose={closeLibraryRoleChangeModal}
+        onConfirm={() => void handleConfirmLibraryRoleChange()}
+        onExportFullBackup={() => void handleExportFullBackup()}
+        onOpenBackupValidate={handleOpenBackupValidate}
+        onOpenDataImport={handleOpenDataImport}
+      />
     </div>
   );
 }
