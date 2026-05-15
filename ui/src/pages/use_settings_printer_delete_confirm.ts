@@ -1,18 +1,18 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { PrinterRow } from "../lib/tauri_client";
 import { useSettingsAutoClearValue } from "./use_settings_auto_clear";
 
 type UseSettingsPrinterDeleteConfirmInput = {
-  confirmDeletePrinterId: string | null;
   printers: PrinterRow[];
-  setConfirmDeletePrinterId: (printerId: string | null) => void;
 };
 
 export function useSettingsPrinterDeleteConfirm({
-  confirmDeletePrinterId,
   printers,
-  setConfirmDeletePrinterId,
 }: UseSettingsPrinterDeleteConfirmInput) {
+  const [confirmDeletePrinterId, setConfirmDeletePrinterId] = useState<string | null>(
+    null,
+  );
+
   const clearConfirmDeletePrinter = useCallback(() => {
     setConfirmDeletePrinterId(null);
   }, [setConfirmDeletePrinterId]);
@@ -27,4 +27,9 @@ export function useSettingsPrinterDeleteConfirm({
       clearConfirmDeletePrinter();
     }
   }, [clearConfirmDeletePrinter, confirmDeletePrinterId, printers]);
+
+  return {
+    confirmDeletePrinterId,
+    setConfirmDeletePrinterId,
+  };
 }

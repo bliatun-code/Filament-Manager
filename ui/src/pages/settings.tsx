@@ -283,9 +283,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     initialMessage: t("wishlist.refreshPreparing", "Preparing catalog refresh..."),
     tauri,
   });
-  const [confirmDeletePrinterId, setConfirmDeletePrinterId] = useState<string | null>(
-    null,
-  );
   const {
     cancelPrinterEdit,
     editAmsUnits,
@@ -571,11 +568,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanStatusEnabled: Boolean(trustedLanStatus?.enabled),
   });
 
-  useSettingsPrinterDeleteConfirm({
-    confirmDeletePrinterId,
-    printers,
-    setConfirmDeletePrinterId,
-  });
+  const { confirmDeletePrinterId, setConfirmDeletePrinterId } =
+    useSettingsPrinterDeleteConfirm({ printers });
 
   const { clearConfirmResetAction } = useSettingsResetConfirm({
     confirmResetAction,
