@@ -9,7 +9,6 @@ import {
   exportInventoryJson,
   importDataFile,
   isTauri,
-  listTrustedLanPairedBrowsers,
   printLabelPdf,
   refreshBambuCatalog,
   refreshEsunCatalog,
@@ -18,7 +17,6 @@ import {
   resetAppData,
   resetCatalogData,
   saveBambuLiveIntegration,
-  updateTrustedLanCompanionConfig,
   updateMasterCatalogEntry,
   validateFullBackupJson,
   type BambuLiveIntegrationEntry,
@@ -36,10 +34,6 @@ import { useI18n } from "../lib/i18n";
 import { toErrorMessage } from "../lib/error_text";
 import { downloadTextFile } from "../lib/download_file";
 import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/inventory_export";
-import {
-  parsePositiveInt,
-  waitForMs,
-} from "../lib/settings_utils";
 import { copyTextToClipboard } from "../lib/clipboard";
 import { SettingsGeneralTab } from "../components/settings_general_tab";
 import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
@@ -52,7 +46,6 @@ import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_la
 import { tabButtonClass } from "../lib/settings_ui_classes";
 import { loadAllSpoolRows } from "../lib/spool_data_source";
 import { loadSettingsPageData } from "../lib/settings_data_source";
-import { loadTrustedLanSettingsData } from "../lib/trusted_lan_data_source";
 import { createManagedPrinter, deleteManagedPrinter } from "../lib/printer_writes";
 import {
   resolvePrinterModelProfile,
@@ -62,9 +55,6 @@ import {
   buildTrustedLanActionMessage,
   buildTrustedLanConfigMessage,
   buildTrustedLanCompanionModel,
-  buildTrustedLanLoadMessage,
-  buildTrustedLanNoPrivateInterfaceMessage,
-  findNewTrustedLanActiveBrowserIds,
 } from "./settings_companion_model";
 import {
   buildLibrarySyncClientState,
@@ -107,6 +97,7 @@ import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
 import { useTrustedLanBrowserListModel } from "./use_trusted_lan_browser_list_model";
 import { useTrustedLanDraftSync } from "./use_trusted_lan_draft_sync";
+import { useTrustedLanStatusActions } from "./use_trusted_lan_status_actions";
 import { useTrustedLanRevokedVisibility } from "./use_trusted_lan_revoked_visibility";
 import {
   useTrustedLanNetworkState,
@@ -531,181 +522,33 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     toggleBambuLiveCapture(printerId, captureActive);
   }
 
-  const loadTrustedLanCompanionStatus = useCallback(async (): Promise<TrustedLanCompanionStatus | null> => {
-    if (!tauri) {
-      return null;
-    }
-    setTrustedLanLoading(true);
-    try {
-      const trustedLanData = await loadTrustedLanSettingsData();
-
-      setTrustedLanStatus(trustedLanData.status);
-      setTrustedLanInterfaces(trustedLanData.interfaces);
-      setTrustedLanPairedBrowsers(trustedLanData.pairedBrowsers);
-      syncTrustedLanDraftFromStatus(trustedLanData.status, trustedLanData.interfaces);
-
-      if (trustedLanData.statusError) {
-        console.error(trustedLanData.statusError);
-        setError(
-          toErrorMessage(
-            trustedLanData.statusError,
-            buildTrustedLanLoadMessage("loadCompanionFailed", trustedLanLoadMessageLabels()),
-          ),
-        );
-      }
-
-      if (trustedLanData.interfacesError) {
-        console.error(trustedLanData.interfacesError);
-      }
-
-      if (trustedLanData.pairedBrowsersError) {
-        console.error(trustedLanData.pairedBrowsersError);
-      }
-
-      return trustedLanData.status;
-    } catch (loadError) {
-      console.error(loadError);
-      setTrustedLanStatus(null);
-      setTrustedLanInterfaces([]);
-      setTrustedLanPairedBrowsers([]);
-      setError(
-        toErrorMessage(
-          loadError,
-          buildTrustedLanLoadMessage("loadCompanionFailed", trustedLanLoadMessageLabels()),
-        ),
-      );
-      return null;
-    } finally {
-      setTrustedLanLoading(false);
-    }
-  }, [syncTrustedLanDraftFromStatus, tauri, trustedLanLoadMessageLabels]);
-
-  const refreshTrustedLanPairedBrowsers = useCallback(
-    async (options?: { announceNewPairing?: boolean; suppressErrors?: boolean }) => {
-      if (!tauri || trustedLanPairedBrowsersRefreshInFlightRef.current) {
-        return;
-      }
-      trustedLanPairedBrowsersRefreshInFlightRef.current = true;
-      try {
-        const nextBrowsers = await listTrustedLanPairedBrowsers();
-        const newActiveIds = findNewTrustedLanActiveBrowserIds(
-          trustedLanPairedBrowsersRef.current,
-          nextBrowsers,
-        );
-        setTrustedLanPairedBrowsers(nextBrowsers);
-        if (options?.announceNewPairing && newActiveIds.length > 0) {
-          setInfo(buildTrustedLanLoadMessage("newBrowserPaired", trustedLanLoadMessageLabels()));
-        }
-      } catch (refreshError) {
-        console.error(refreshError);
-        if (!options?.suppressErrors) {
-          setError(
-            toErrorMessage(
-              refreshError,
-              buildTrustedLanLoadMessage("refreshBrowsersFailed", trustedLanLoadMessageLabels()),
-            ),
-          );
-        }
-      } finally {
-        trustedLanPairedBrowsersRefreshInFlightRef.current = false;
-      }
-    },
-    [tauri, trustedLanLoadMessageLabels],
-  );
-
-  const refreshTrustedLanStatusUntilSettled = useCallback(
-    async (expectedEnabled: boolean): Promise<TrustedLanCompanionStatus | null> => {
-      let latest = await loadTrustedLanCompanionStatus();
-      if (!expectedEnabled) {
-        return latest;
-      }
-
-      for (let attempt = 0; attempt < 5; attempt += 1) {
-        if (latest?.enabled && latest.running && latest.shell_reachable) {
-          return latest;
-        }
-        await waitForMs(300);
-        latest = await loadTrustedLanCompanionStatus();
-      }
-
-      return latest;
-    },
-    [loadTrustedLanCompanionStatus],
-  );
-
-  const persistTrustedLanConfig = useCallback(
-    async (nextEnabled: boolean, successMessage: string): Promise<boolean> => {
-      if (!tauri) {
-        return false;
-      }
-
-      if (nextEnabled && !trustedLanSelectedInterfaceOption) {
-        setError(buildTrustedLanNoPrivateInterfaceMessage(trustedLanValidationMessageLabels()));
-        return false;
-      }
-
-      setTrustedLanActionBusy(true);
-      setError(null);
-      try {
-        const nextStatus = await updateTrustedLanCompanionConfig({
-          enabled: nextEnabled,
-          selected_interface_name: trustedLanSelectedInterfaceOption?.name ?? null,
-          selected_interface_address: trustedLanSelectedInterfaceOption?.address ?? null,
-          listen_port: parsePositiveInt(trustedLanPortDraft, 4278),
-        });
-        setTrustedLanStatus(nextStatus);
-        syncTrustedLanDraftFromStatus(nextStatus, trustedLanInterfaces);
-        setShowTrustedLanNetworkEditor(false);
-        setTrustedLanPairingLabel(null);
-        setTrustedLanPairingExpiresAtMs(null);
-        setTrustedLanPairingLink(null);
-        setInfo(
-          nextEnabled && !nextStatus.shell_reachable
-            ? buildTrustedLanConfigMessage("starting", trustedLanConfigMessageLabels())
-            : successMessage,
-        );
-        setTrustedLanActionBusy(false);
-
-        void refreshTrustedLanStatusUntilSettled(nextEnabled).then((refreshedStatus) => {
-          if (!nextEnabled) {
-            return;
-          }
-          if (
-            refreshedStatus?.enabled &&
-            refreshedStatus.running &&
-            refreshedStatus.shell_reachable
-          ) {
-            setInfo(successMessage);
-            return;
-          }
-          setInfo(
-            buildTrustedLanConfigMessage("enabledPending", trustedLanConfigMessageLabels()),
-          );
-        });
-        return true;
-      } catch (saveError) {
-        console.error(saveError);
-        setTrustedLanActionBusy(false);
-        setError(
-          toErrorMessage(
-            saveError,
-            buildTrustedLanConfigMessage("saveFailed", trustedLanConfigMessageLabels()),
-          ),
-        );
-        return false;
-      }
-    },
-    [
-      refreshTrustedLanStatusUntilSettled,
-      syncTrustedLanDraftFromStatus,
-      tauri,
-      trustedLanConfigMessageLabels,
-      trustedLanInterfaces,
-      trustedLanPortDraft,
-      trustedLanSelectedInterfaceOption,
-      trustedLanValidationMessageLabels,
-    ],
-  );
+  const {
+    loadTrustedLanCompanionStatus,
+    persistTrustedLanConfig,
+    refreshTrustedLanPairedBrowsers,
+  } = useTrustedLanStatusActions({
+    refreshInFlightRef: trustedLanPairedBrowsersRefreshInFlightRef,
+    setError,
+    setInfo,
+    setShowTrustedLanNetworkEditor,
+    setTrustedLanActionBusy,
+    setTrustedLanInterfaces,
+    setTrustedLanLoading,
+    setTrustedLanPairedBrowsers,
+    setTrustedLanPairingExpiresAtMs,
+    setTrustedLanPairingLabel,
+    setTrustedLanPairingLink,
+    setTrustedLanStatus,
+    syncTrustedLanDraftFromStatus,
+    tauri,
+    trustedLanConfigMessageLabels,
+    trustedLanInterfaces,
+    trustedLanLoadMessageLabels,
+    trustedLanPairedBrowsersRef,
+    trustedLanPortDraft,
+    trustedLanSelectedInterfaceOption,
+    trustedLanValidationMessageLabels,
+  });
 
   useEffect(() => {
     if (!tauri) {
