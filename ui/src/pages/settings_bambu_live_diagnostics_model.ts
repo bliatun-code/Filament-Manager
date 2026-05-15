@@ -18,6 +18,7 @@ import {
   type DiagnosticFieldGroup,
   type DiagnosticFilterKey,
   type DiagnosticSortKey,
+  type DiagnosticTraySnapshot,
 } from "../lib/diagnostic_capture";
 import { toSwatchColor } from "../lib/color_utils";
 import {
@@ -275,6 +276,13 @@ export function buildSettingsBambuLiveInventoryCandidateCards({
   }));
 }
 
+export function buildSettingsBambuLiveObservedRfid(
+  capturedTraySnapshot: DiagnosticTraySnapshot | null,
+): string | null {
+  const trayUuid = capturedTraySnapshot?.trayUuid?.trim() ?? "";
+  return trayUuid && !/^0+$/.test(trayUuid) ? trayUuid : null;
+}
+
 export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticFilter,
   diagnosticSession,
@@ -334,10 +342,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
       captureTrayByIndex.get(tray.tray_index) ??
       (tray.tray_index > 0 ? captureTrayByIndex.get(tray.tray_index - 1) : null) ??
       null;
-    const observedRfid =
-      capturedTraySnapshot?.trayUuid?.trim() && !/^0+$/.test(capturedTraySnapshot.trayUuid.trim())
-        ? capturedTraySnapshot.trayUuid.trim()
-        : null;
+    const observedRfid = buildSettingsBambuLiveObservedRfid(capturedTraySnapshot);
     const inventoryMatch = buildInventoryMatchResult(spoolRows, {
       rfid: observedRfid,
       material: tray.filament_type ?? capturedTraySnapshot?.filamentType ?? null,
