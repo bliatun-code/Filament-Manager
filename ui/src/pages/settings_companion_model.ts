@@ -4,6 +4,7 @@ import type {
   TrustedLanInterfaceOption,
   TrustedLanPairedBrowser,
 } from "../lib/tauri_client";
+import { parsePositiveInt } from "../lib/settings_utils";
 
 type TranslateFn = (key: string, fallback: string) => string;
 export type TrustedLanCompanionStatusTone = "live" | "idle" | "warn";
@@ -177,6 +178,23 @@ export function resolveTrustedLanInterfaceAddressDraft(
     return selectedAddress;
   }
   return interfaces[0]?.address ?? "";
+}
+
+export function isTrustedLanNetworkDraftDirty({
+  interfaceAddressDraft,
+  portDraft,
+  trustedLanStatus,
+}: {
+  interfaceAddressDraft: string;
+  portDraft: string;
+  trustedLanStatus: TrustedLanCompanionStatus | null;
+}): boolean {
+  const currentAddress = trustedLanStatus?.selected_interface_address?.trim() ?? "";
+  const currentPort = trustedLanStatus?.listen_port ?? 4278;
+  return (
+    interfaceAddressDraft !== currentAddress ||
+    parsePositiveInt(portDraft, 4278) !== currentPort
+  );
 }
 
 export function buildTrustedLanCompanionModel(

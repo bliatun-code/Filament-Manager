@@ -6,6 +6,7 @@ import {
   buildTrustedLanCompanionModel,
   findNewTrustedLanActiveBrowserIds,
   buildTrustedLanPairedBrowserListModel,
+  isTrustedLanNetworkDraftDirty,
   resolveTrustedLanInterfaceAddressDraft,
 } from "./settings_companion_model";
 
@@ -219,6 +220,46 @@ test("resolveTrustedLanInterfaceAddressDraft stays empty when no LAN interface i
   const draft = resolveTrustedLanInterfaceAddressDraft(createTrustedLanStatus(), []);
 
   assert.equal(draft, "");
+});
+
+test("isTrustedLanNetworkDraftDirty compares selected interface and parsed port", () => {
+  const status = createTrustedLanStatus({
+    listen_port: 4278,
+    selected_interface_address: "192.168.1.50",
+  });
+
+  assert.equal(
+    isTrustedLanNetworkDraftDirty({
+      interfaceAddressDraft: "192.168.1.50",
+      portDraft: "4278",
+      trustedLanStatus: status,
+    }),
+    false,
+  );
+  assert.equal(
+    isTrustedLanNetworkDraftDirty({
+      interfaceAddressDraft: "192.168.1.51",
+      portDraft: "4278",
+      trustedLanStatus: status,
+    }),
+    true,
+  );
+  assert.equal(
+    isTrustedLanNetworkDraftDirty({
+      interfaceAddressDraft: "192.168.1.50",
+      portDraft: "5000",
+      trustedLanStatus: status,
+    }),
+    true,
+  );
+  assert.equal(
+    isTrustedLanNetworkDraftDirty({
+      interfaceAddressDraft: "",
+      portDraft: "invalid",
+      trustedLanStatus: null,
+    }),
+    false,
+  );
 });
 
 test("buildTrustedLanPairedBrowserListModel keeps active browsers first and human-readable", () => {

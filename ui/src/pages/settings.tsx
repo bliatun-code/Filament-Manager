@@ -105,6 +105,7 @@ import {
   buildTrustedLanCompanionModel,
   findNewTrustedLanActiveBrowserIds,
   buildTrustedLanPairedBrowserListModel,
+  isTrustedLanNetworkDraftDirty,
   resolveTrustedLanInterfaceAddressDraft,
 } from "./settings_companion_model";
 import {
@@ -433,14 +434,15 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     [trustedLanInterfaceAddressDraft, trustedLanInterfaces],
   );
   const trustedLanHasPrivateInterfaces = trustedLanInterfaces.length > 0;
-  const trustedLanNetworkDirty = useMemo(() => {
-    const currentAddress = trustedLanStatus?.selected_interface_address?.trim() ?? "";
-    const currentPort = trustedLanStatus?.listen_port ?? 4278;
-    return (
-      trustedLanInterfaceAddressDraft !== currentAddress ||
-      parsePositiveInt(trustedLanPortDraft, 4278) !== currentPort
-    );
-  }, [trustedLanInterfaceAddressDraft, trustedLanPortDraft, trustedLanStatus]);
+  const trustedLanNetworkDirty = useMemo(
+    () =>
+      isTrustedLanNetworkDraftDirty({
+        interfaceAddressDraft: trustedLanInterfaceAddressDraft,
+        portDraft: trustedLanPortDraft,
+        trustedLanStatus,
+      }),
+    [trustedLanInterfaceAddressDraft, trustedLanPortDraft, trustedLanStatus],
+  );
 
   useEffect(() => {
     if (revokedTrustedLanPairedBrowsers.length === 0) {
