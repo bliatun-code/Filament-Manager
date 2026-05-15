@@ -38,9 +38,18 @@ const pageOrder: ReadonlyArray<PageKey> = [
   "settings",
 ];
 
+function initialPageFromUrl(): PageKey {
+  if (typeof window === "undefined") {
+    return "dashboard";
+  }
+  return new URLSearchParams(window.location.search).get("bfm_inventory_fixture") === "detail"
+    ? "inventory"
+    : "dashboard";
+}
+
 export default function App() {
   const { t } = useI18n();
-  const [activePage, setActivePage] = useState<PageKey>("dashboard");
+  const [activePage, setActivePage] = useState<PageKey>(() => initialPageFromUrl());
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">(() =>
     typeof document !== "undefined" && document.documentElement.classList.contains("dark")
       ? "dark"

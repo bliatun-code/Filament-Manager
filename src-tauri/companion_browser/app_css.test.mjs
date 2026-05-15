@@ -9,6 +9,25 @@ test("loaded printer slot cards keep their swatch surface treatment", () => {
   assert.match(css, /rgb\(var\(--swatch-rgb\) \/ calc\(var\(--swatch-surface-top\) \+ 0\.02\)\)/);
 });
 
+test("companion shell defines reusable status and panel surface tokens", () => {
+  const css = fs.readFileSync(new URL("./app.css", import.meta.url), "utf8");
+
+  assert.match(css, /--surface-panel: rgba\(255, 255, 255, 0\.94\);/);
+  assert.match(css, /--surface-panel: rgba\(17, 28, 45, 0\.9\);/);
+  assert.match(css, /--success-soft: rgba\(47, 111, 79, 0\.11\);/);
+  assert.match(css, /--danger-soft: rgba\(155, 62, 62, 0\.1\);/);
+  assert.match(css, /\.task-sheet\.add-filament-sheet \.task-sheet-header\s*\{[\s\S]*var\(--surface-panel\)/);
+});
+
+test("topbar status messages render as compact tonal banners", () => {
+  const css = fs.readFileSync(new URL("./app.css", import.meta.url), "utf8");
+
+  assert.match(css, /\.app-status-line\s*\{[\s\S]*display: inline-flex;[\s\S]*width: fit-content;/);
+  assert.match(css, /\.app-status-line\[data-tone="success"\]\s*\{[\s\S]*background: var\(--success-soft\);/);
+  assert.match(css, /\.app-status-line\[data-tone="error"\]\s*\{[\s\S]*background: var\(--danger-soft\);/);
+  assert.match(css, /\.detail-feedback-success\s*\{[\s\S]*background: var\(--success-soft\);/);
+});
+
 test("phone CSS keeps root headers secondary, task sheets scrollable, and modal close chrome quiet", () => {
   const css = fs.readFileSync(new URL("./app.css", import.meta.url), "utf8");
 
