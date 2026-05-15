@@ -4,6 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 pub use super::database_backup::BackupValidationStats;
 use super::database_backup::{parse_full_backup_content, validate_full_backup_content};
+use super::database_ids::new_id;
 pub use super::database_import::ImportDataStats;
 use super::database_import::{
     parse_inventory_spools_csv, parse_inventory_spools_json, InventoryImportRow,
@@ -4399,14 +4400,6 @@ fn require_rows(affected: usize) -> InventoryResult<()> {
     } else {
         Ok(())
     }
-}
-
-fn new_id() -> String {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    format!("id_{}", nanos)
 }
 
 fn normalize_library_sync_mode(raw: Option<&str>) -> String {
