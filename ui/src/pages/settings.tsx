@@ -118,6 +118,7 @@ import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
 import { useTrustedLanBrowserListModel } from "./use_trusted_lan_browser_list_model";
+import { useTrustedLanRevokedVisibility } from "./use_trusted_lan_revoked_visibility";
 import {
   resolveTrustedLanInterfaceAddressDraft,
   useTrustedLanNetworkState,
@@ -450,11 +451,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanStatus,
   });
 
-  useEffect(() => {
-    if (revokedTrustedLanPairedBrowsers.length === 0) {
-      setShowTrustedLanRevokedBrowsers(false);
-    }
-  }, [revokedTrustedLanPairedBrowsers.length]);
+  useTrustedLanRevokedVisibility({
+    revokedBrowserCount: revokedTrustedLanPairedBrowsers.length,
+    setShowTrustedLanRevokedBrowsers,
+  });
 
   useEffect(() => {
     trustedLanPairedBrowsersRef.current = trustedLanPairedBrowsers;
