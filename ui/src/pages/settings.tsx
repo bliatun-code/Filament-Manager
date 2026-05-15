@@ -107,7 +107,6 @@ import {
   buildLibrarySyncTabLabels,
   buildLibraryRoleChangeState,
   buildLibrarySyncVisibilityState,
-  normalizeLibrarySyncMode,
   type LibrarySyncMode,
 } from "./settings_library_sync_model";
 import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
@@ -138,7 +137,6 @@ import {
   buildSettingsNoMissingSwatchesMessage,
   buildSettingsSwatchBulkConfirmMessage,
   buildSettingsSwatchBulkResultMessage,
-  buildSettingsSwatchDrafts,
   buildSettingsSwatchErrorMessage,
   buildSettingsSwatchSavedMessage,
   resolveSettingsSwatchHex,
@@ -170,12 +168,12 @@ import {
 } from "./settings_preferences_model";
 import {
   buildSettingsPageChromeLabels,
+  buildSettingsPageDataModel,
   buildSettingsPageDesktopOnlyMessage,
   buildSettingsPageLoadErrorMessage,
   buildSettingsPageTabLabels,
   buildSettingsPageTabs,
   normalizeSettingsInitialTab,
-  resolveSettingsPagePrinters,
 } from "./settings_page_model";
 
 type SettingsTab = SettingsTabKey;
@@ -533,34 +531,28 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setLoading(true);
     }
     try {
-      const {
-        snapshot,
-        catalogRows,
-        syncSettings,
-        overviewRows,
-        spoolRows,
-        bambuLiveIntegrations,
-      } = await loadSettingsPageData({
-        onHostLoadError: (loadError) => {
-          console.warn("Settings host printer overview unavailable, using cached snapshot.", loadError);
-        },
-      });
-      setPrinters(resolveSettingsPagePrinters({
-        overviewRows,
-        snapshot,
-        syncMode: syncSettings.mode,
-      }));
-      setPrinterOverview(overviewRows);
-      setSpoolRows(spoolRows);
-      setBambuLiveIntegrations(bambuLiveIntegrations);
-      setCatalogMasters(catalogRows);
-      setLibrarySyncSettings(syncSettings);
-      setLibrarySyncModeDraft(normalizeLibrarySyncMode(syncSettings.mode));
-      setLibrarySyncDeviceNameDraft(syncSettings.device_name ?? "");
-      setLibrarySyncHostBaseUrlDraft(syncSettings.host_base_url ?? "");
+      const pageData = buildSettingsPageDataModel(
+        await loadSettingsPageData({
+          onHostLoadError: (loadError) => {
+            console.warn(
+              "Settings host printer overview unavailable, using cached snapshot.",
+              loadError,
+            );
+          },
+        }),
+      );
+      setPrinters(pageData.printers);
+      setPrinterOverview(pageData.printerOverview);
+      setSpoolRows(pageData.spoolRows);
+      setBambuLiveIntegrations(pageData.bambuLiveIntegrations);
+      setCatalogMasters(pageData.catalogRows);
+      setLibrarySyncSettings(pageData.librarySyncSettings);
+      setLibrarySyncModeDraft(pageData.librarySyncModeDraft);
+      setLibrarySyncDeviceNameDraft(pageData.librarySyncDeviceNameDraft);
+      setLibrarySyncHostBaseUrlDraft(pageData.librarySyncHostBaseUrlDraft);
       setLibrarySyncValidation(null);
-      setLibrarySyncSnapshot(syncSettings.cached_snapshot ?? null);
-      setSwatchDraftById(buildSettingsSwatchDrafts(catalogRows));
+      setLibrarySyncSnapshot(pageData.librarySyncSettings.cached_snapshot ?? null);
+      setSwatchDraftById(pageData.swatchDraftById);
     } catch (loadError) {
       console.error(loadError);
       setError(buildSettingsPageLoadErrorMessage(settingsPageMessageLabels()));

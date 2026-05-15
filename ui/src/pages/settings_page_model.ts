@@ -1,3 +1,7 @@
+import type { SettingsPageData } from "../lib/settings_data_source";
+import { buildSettingsSwatchDrafts } from "./settings_catalog_model";
+import { normalizeLibrarySyncMode, type LibrarySyncMode } from "./settings_library_sync_model";
+
 export type SettingsPageMessageLabels = {
   desktopOnly: string;
   loadFailed: string;
@@ -14,6 +18,19 @@ export type SettingsPageTabLabelMap = Record<SettingsTabKey, string>;
 export type SettingsPageTabOption = {
   id: SettingsTabKey;
   label: string;
+};
+
+export type SettingsPageDataModel = {
+  bambuLiveIntegrations: SettingsPageData["bambuLiveIntegrations"];
+  catalogRows: SettingsPageData["catalogRows"];
+  librarySyncDeviceNameDraft: string;
+  librarySyncHostBaseUrlDraft: string;
+  librarySyncModeDraft: LibrarySyncMode;
+  librarySyncSettings: SettingsPageData["syncSettings"];
+  printerOverview: SettingsPageData["overviewRows"];
+  printers: SettingsPageData["snapshot"]["printers"];
+  spoolRows: SettingsPageData["spoolRows"];
+  swatchDraftById: Record<string, string>;
 };
 
 type SettingsPagePrinterSnapshot<Printer> = {
@@ -70,4 +87,23 @@ export function resolveSettingsPagePrinters<Printer>({
   syncMode: string | null | undefined;
 }): Printer[] {
   return syncMode === "CLIENT" ? overviewRows.map((row) => row.printer) : snapshot.printers;
+}
+
+export function buildSettingsPageDataModel(data: SettingsPageData): SettingsPageDataModel {
+  return {
+    bambuLiveIntegrations: data.bambuLiveIntegrations,
+    catalogRows: data.catalogRows,
+    librarySyncDeviceNameDraft: data.syncSettings.device_name ?? "",
+    librarySyncHostBaseUrlDraft: data.syncSettings.host_base_url ?? "",
+    librarySyncModeDraft: normalizeLibrarySyncMode(data.syncSettings.mode),
+    librarySyncSettings: data.syncSettings,
+    printerOverview: data.overviewRows,
+    printers: resolveSettingsPagePrinters({
+      overviewRows: data.overviewRows,
+      snapshot: data.snapshot,
+      syncMode: data.syncSettings.mode,
+    }),
+    spoolRows: data.spoolRows,
+    swatchDraftById: buildSettingsSwatchDrafts(data.catalogRows),
+  };
 }

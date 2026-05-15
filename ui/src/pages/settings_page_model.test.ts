@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildSettingsPageDataModel,
   buildSettingsPageChromeLabels,
   buildSettingsPageDesktopOnlyMessage,
   buildSettingsPageLoadErrorMessage,
@@ -10,6 +11,14 @@ import {
   normalizeSettingsInitialTab,
   resolveSettingsPagePrinters,
 } from "./settings_page_model";
+import type {
+  LibrarySyncSettings,
+  MasterCatalogRow,
+  PrinterOverviewRow,
+  PrinterRow,
+  PrinterSettingsSnapshot,
+  SpoolWithMasterRow,
+} from "../lib/tauri_client";
 
 test("settings page load error message returns stable fallback copy", () => {
   const labels = {
@@ -100,4 +109,77 @@ test("settings page printers prefer host overview rows in client mode", () => {
     }),
     [localPrinter],
   );
+});
+
+test("settings page data model prepares reload state in one place", () => {
+  const localPrinter: PrinterRow = {
+    created_at: "2026-05-15T10:00:00Z",
+    id: "local",
+    model: "MK4",
+    name: "Local",
+    updated_at: "2026-05-15T10:00:00Z",
+  };
+  const hostPrinter: PrinterRow = {
+    created_at: "2026-05-15T10:00:00Z",
+    id: "host",
+    model: "X1C",
+    name: "Host",
+    updated_at: "2026-05-15T10:00:00Z",
+  };
+  const catalogRows: MasterCatalogRow[] = [
+    {
+      id: "master-1",
+      material: "PLA",
+      filament_name: "Basic",
+      color_name: "Black",
+      hex_color: "#111",
+      default_weight: 1000,
+      vendor: "Bambu",
+      is_discontinued: false,
+    },
+  ];
+  const snapshot: PrinterSettingsSnapshot = {
+    active_printer_id: null,
+    printers: [localPrinter],
+    printer_models: [],
+    bambu_live_integrations: [],
+  };
+  const syncSettings: LibrarySyncSettings = {
+    mode: "CLIENT",
+    device_name: "Desk",
+    library_id: "library-1",
+    host_base_url: "http://host.local",
+    host_device_name: "Host",
+    client_auth_paired: true,
+    client_auth_paired_at: null,
+    client_auth_expires_at: null,
+  };
+  const overviewRows: PrinterOverviewRow[] = [
+    {
+      printer: hostPrinter,
+      slots: [],
+      usage: {
+        failed_jobs: 0,
+        last_job_at: null,
+        successful_jobs: 0,
+        total_jobs: 0,
+        total_used_g: 0,
+      },
+    },
+  ];
+  const spoolRows: SpoolWithMasterRow[] = [];
+  const model = buildSettingsPageDataModel({
+    bambuLiveIntegrations: { host: { enabled: true } },
+    catalogRows,
+    overviewRows,
+    snapshot,
+    spoolRows,
+    syncSettings,
+  });
+
+  assert.deepEqual(model.printers, [hostPrinter]);
+  assert.equal(model.librarySyncModeDraft, "CLIENT");
+  assert.equal(model.librarySyncDeviceNameDraft, "Desk");
+  assert.equal(model.librarySyncHostBaseUrlDraft, "http://host.local");
+  assert.equal(model.swatchDraftById["master-1"], "#111");
 });
