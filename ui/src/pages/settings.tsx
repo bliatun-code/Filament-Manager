@@ -67,12 +67,6 @@ import { loadSettingsPageData, refreshLibrarySyncSnapshot } from "../lib/setting
 import { loadTrustedLanSettingsData } from "../lib/trusted_lan_data_source";
 import { createManagedPrinter, deleteManagedPrinter } from "../lib/printer_writes";
 import {
-  updateDiagnosticCaptureSessionFromPayload,
-  type DiagnosticCaptureSession,
-  type DiagnosticFilterKey,
-  type DiagnosticSortKey,
-} from "../lib/diagnostic_capture";
-import {
   resolvePrinterModelProfile,
 } from "../lib/printer_profiles";
 import {
@@ -107,6 +101,7 @@ import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";
 import { useSettingsCatalogRefreshResult } from "./use_settings_catalog_refresh_result";
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
+import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagnostics";
 import { useSettingsPrinterEditDraft } from "./use_settings_printer_edit_draft";
 import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_confirm";
 import {
@@ -149,7 +144,6 @@ import {
   type SettingsCatalogVendor,
 } from "./settings_catalog_model";
 import { SettingsCatalogRefreshPanel } from "./settings_catalog_refresh_panel";
-import { createSettingsBambuLiveCaptureSession } from "./settings_bambu_live_diagnostics_model";
 import {
   buildSettingsAppResetSuccessMessage,
   buildSettingsCatalogResetMessage,
@@ -316,21 +310,21 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setExpandedBambuDetailsPrinterId,
     startPrinterEdit,
   } = useSettingsPrinterEditDraft();
-  const [diagnosticCaptureByPrinterId, setDiagnosticCaptureByPrinterId] = useState<
-    Record<string, DiagnosticCaptureSession>
-  >({});
-  const [diagnosticCaptureActiveByPrinterId, setDiagnosticCaptureActiveByPrinterId] = useState<
-    Record<string, boolean>
-  >({});
-  const [diagnosticChartFieldByPrinterId, setDiagnosticChartFieldByPrinterId] = useState<
-    Record<string, string>
-  >({});
-  const [diagnosticSortByPrinterId, setDiagnosticSortByPrinterId] = useState<
-    Record<string, DiagnosticSortKey>
-  >({});
-  const [diagnosticFilterByPrinterId, setDiagnosticFilterByPrinterId] = useState<
-    Record<string, DiagnosticFilterKey>
-  >({});
+  const {
+    diagnosticCaptureActiveByPrinterId,
+    diagnosticCaptureByPrinterId,
+    diagnosticChartFieldByPrinterId,
+    diagnosticFilterByPrinterId,
+    diagnosticSortByPrinterId,
+    ensureDiagnosticSession,
+    setDiagnosticChartFieldByPrinterId,
+    setDiagnosticFilterByPrinterId,
+    setDiagnosticSortByPrinterId,
+    toggleBambuLiveCapture,
+  } = useSettingsBambuLiveDiagnostics({
+    bambuLiveIntegrations,
+    expandedBambuDetailsPrinterId,
+  });
   const backupImportInputRef = useRef<HTMLInputElement | null>(null);
   const backupValidateInputRef = useRef<HTMLInputElement | null>(null);
   const [confirmResetAction, setConfirmResetAction] = useState<ResetConfirmAction | null>(null);
@@ -551,94 +545,20 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     return () => window.clearInterval(timer);
   }, [reloadSettings, tauri]);
 
-  useEffect(() => {
-    if (!expandedBambuDetailsPrinterId) {
-      return;
-    }
-    if (!diagnosticCaptureActiveByPrinterId[expandedBambuDetailsPrinterId]) {
-      return;
-    }
-    const observedState = bambuLiveIntegrations[expandedBambuDetailsPrinterId]?.observed_state;
-    if (!observedState?.raw_payload_json) {
-      return;
-    }
-    const observedAt = observedState.last_seen_at ?? new Date().toISOString();
-    setDiagnosticCaptureByPrinterId((current) => {
-      const updated = updateDiagnosticCaptureSessionFromPayload({
-        session: current[expandedBambuDetailsPrinterId],
-        rawPayload: observedState.raw_payload_json,
-        observedAt,
-      });
-      if (!updated) {
-        return current;
-      }
-      const next = { ...current, [expandedBambuDetailsPrinterId]: updated };
-      return next;
-    });
-  }, [bambuLiveIntegrations, diagnosticCaptureActiveByPrinterId, expandedBambuDetailsPrinterId]);
-
   function handleToggleBambuLiveDetails(printerId: string) {
     setExpandedBambuDetailsPrinterId((currentExpanded) => {
       const nextExpanded = currentExpanded === printerId ? null : printerId;
       if (nextExpanded !== printerId) {
         return nextExpanded;
       }
-
-      const liveConfig = bambuLiveIntegrations[printerId] ?? null;
-      setDiagnosticCaptureByPrinterId((current) => {
-        if (current[printerId]) {
-          return current;
-        }
-        return {
-          ...current,
-          [printerId]: createSettingsBambuLiveCaptureSession(liveConfig),
-        };
-      });
-      setDiagnosticCaptureActiveByPrinterId((current) => ({
-        ...current,
-        [printerId]: current[printerId] ?? true,
-      }));
-      setDiagnosticSortByPrinterId((current) => ({
-        ...current,
-        [printerId]: current[printerId] ?? "path",
-      }));
-      setDiagnosticFilterByPrinterId((current) => ({
-        ...current,
-        [printerId]: current[printerId] ?? "all",
-      }));
+      ensureDiagnosticSession(printerId);
 
       return nextExpanded;
     });
   }
 
   function handleToggleBambuLiveCapture(printerId: string, captureActive: boolean) {
-    if (captureActive) {
-      setDiagnosticCaptureActiveByPrinterId((current) => ({
-        ...current,
-        [printerId]: false,
-      }));
-      return;
-    }
-
-    const liveConfig = bambuLiveIntegrations[printerId] ?? null;
-    const nextSession = createSettingsBambuLiveCaptureSession(liveConfig);
-    setDiagnosticCaptureByPrinterId((current) => ({
-      ...current,
-      [printerId]: nextSession,
-    }));
-    setDiagnosticCaptureActiveByPrinterId((current) => ({
-      ...current,
-      [printerId]: true,
-    }));
-    setDiagnosticChartFieldByPrinterId((current) => {
-      if (!current[printerId]) {
-        return current;
-      }
-      return {
-        ...current,
-        [printerId]: "",
-      };
-    });
+    toggleBambuLiveCapture(printerId, captureActive);
   }
 
   const trustedLanLoadMessageLabels = useCallback(() => ({
