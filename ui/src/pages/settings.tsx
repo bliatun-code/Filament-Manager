@@ -29,8 +29,6 @@ import {
   type BambuLiveIntegrationEntry,
   type CatalogResetStats,
   type LibrarySyncHostValidationResult,
-  type LibrarySyncRemoteSnapshot,
-  type LibrarySyncSettings,
   type MasterCatalogRow,
   type PrinterOverviewRow,
   type PrinterRow,
@@ -113,6 +111,7 @@ import { useSettingsSwatchDrafts } from "./use_settings_swatch_drafts";
 import { useSettingsPageChrome } from "./use_settings_page_chrome";
 import { useSettingsPageTabs } from "./use_settings_page_tabs";
 import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
+import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
@@ -191,19 +190,28 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   });
   const appVersion = useSettingsAppVersion(tauri);
   const { activeTab, setActiveTab } = useSettingsActiveTab(initialTab);
-  const [librarySyncSettings, setLibrarySyncSettings] = useState<LibrarySyncSettings | null>(null);
-  const [librarySyncModeDraft, setLibrarySyncModeDraft] = useState<LibrarySyncMode>("STANDALONE");
-  const [librarySyncDeviceNameDraft, setLibrarySyncDeviceNameDraft] = useState("");
-  const [librarySyncHostBaseUrlDraft, setLibrarySyncHostBaseUrlDraft] = useState("");
-  const [librarySyncPairingDraft, setLibrarySyncPairingDraft] = useState("");
-  const [librarySyncBusy, setLibrarySyncBusy] = useState(false);
-  const [librarySyncValidationBusy, setLibrarySyncValidationBusy] = useState(false);
-  const [librarySyncValidation, setLibrarySyncValidation] =
-    useState<LibrarySyncHostValidationResult | null>(null);
-  const [librarySyncSnapshotBusy, setLibrarySyncSnapshotBusy] = useState(false);
-  const [librarySyncSnapshot, setLibrarySyncSnapshot] = useState<LibrarySyncRemoteSnapshot | null>(
-    null,
-  );
+  const {
+    librarySyncBusy,
+    librarySyncDeviceNameDraft,
+    librarySyncHostBaseUrlDraft,
+    librarySyncModeDraft,
+    librarySyncPairingDraft,
+    librarySyncSettings,
+    librarySyncSnapshot,
+    librarySyncSnapshotBusy,
+    librarySyncValidation,
+    librarySyncValidationBusy,
+    setLibrarySyncBusy,
+    setLibrarySyncDeviceNameDraft,
+    setLibrarySyncHostBaseUrlDraft,
+    setLibrarySyncModeDraft,
+    setLibrarySyncPairingDraft,
+    setLibrarySyncSettings,
+    setLibrarySyncSnapshot,
+    setLibrarySyncSnapshotBusy,
+    setLibrarySyncValidation,
+    setLibrarySyncValidationBusy,
+  } = useSettingsLibrarySyncState();
   const {
     backupValidationState,
     clearBackupValidation,
@@ -506,7 +514,17 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         setLoading(false);
       }
     }
-  }, [setSwatchDraftById, settingsPageMessageLabels, tauri]);
+  }, [
+    setLibrarySyncDeviceNameDraft,
+    setLibrarySyncHostBaseUrlDraft,
+    setLibrarySyncModeDraft,
+    setLibrarySyncSettings,
+    setLibrarySyncSnapshot,
+    setLibrarySyncValidation,
+    setSwatchDraftById,
+    settingsPageMessageLabels,
+    tauri,
+  ]);
 
   useEffect(() => {
     if (!tauri) {
@@ -884,6 +902,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     librarySyncSettings,
     librarySyncErrorMessageLabels,
     persistTrustedLanConfig,
+    setLibrarySyncBusy,
+    setLibrarySyncDeviceNameDraft,
+    setLibrarySyncHostBaseUrlDraft,
+    setLibrarySyncModeDraft,
+    setLibrarySyncSettings,
+    setLibrarySyncSnapshot,
+    setLibrarySyncValidation,
     tauri,
     trustedLanConfigMessageLabels,
     trustedLanInterfaces,
@@ -897,7 +922,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setLibraryRoleConfirmArmed(false);
     setLibrarySyncModeDraft(librarySyncSavedMode);
     clearFullBackupProgress();
-  }, [clearFullBackupProgress, librarySyncSavedMode]);
+  }, [clearFullBackupProgress, librarySyncSavedMode, setLibrarySyncModeDraft]);
 
   const handleRequestLibraryRoleChange = useCallback((target: LibrarySyncMode) => {
     if (target === librarySyncSavedMode) {
@@ -911,7 +936,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setPendingLibraryRoleTarget(target);
     setLibraryRoleConfirmArmed(false);
     setLibrarySyncModeDraft(target);
-  }, [clearFullBackupProgress, librarySyncSavedMode]);
+  }, [clearFullBackupProgress, librarySyncSavedMode, setLibrarySyncModeDraft]);
 
   const handleConfirmLibraryRoleChange = useCallback(async () => {
     if (!pendingLibraryRoleTarget || librarySyncBusy) {
@@ -994,6 +1019,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     librarySyncHostBaseUrlDraft,
     librarySyncSettings,
     settingsClientHostBaseUrl,
+    setLibrarySyncSettings,
+    setLibrarySyncSnapshot,
+    setLibrarySyncValidation,
+    setLibrarySyncValidationBusy,
     showTransientInfo,
     librarySyncActionMessageLabels,
     librarySyncErrorMessageLabels,
@@ -1074,6 +1103,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     librarySyncDeviceNameDraft,
     librarySyncPairingDraft,
     librarySyncPairingMessageLabels,
+    setLibrarySyncBusy,
+    setLibrarySyncDeviceNameDraft,
+    setLibrarySyncHostBaseUrlDraft,
+    setLibrarySyncModeDraft,
+    setLibrarySyncPairingDraft,
+    setLibrarySyncSettings,
+    setLibrarySyncValidation,
     tauri,
   ]);
 
@@ -1100,7 +1136,15 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setLibrarySyncBusy(false);
     }
-  }, [librarySyncActionMessageLabels, librarySyncBusy, librarySyncErrorMessageLabels, tauri]);
+  }, [
+    librarySyncActionMessageLabels,
+    librarySyncBusy,
+    librarySyncErrorMessageLabels,
+    setLibrarySyncBusy,
+    setLibrarySyncPairingDraft,
+    setLibrarySyncSettings,
+    tauri,
+  ]);
 
   const handleRenewLibrarySyncClientAuth = useCallback(async () => {
     if (!tauri || librarySyncBusy) {
@@ -1126,7 +1170,16 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setLibrarySyncBusy(false);
     }
-  }, [librarySyncActionMessageLabels, librarySyncBusy, librarySyncErrorMessageLabels, tauri]);
+  }, [
+    librarySyncActionMessageLabels,
+    librarySyncBusy,
+    librarySyncErrorMessageLabels,
+    setLibrarySyncBusy,
+    setLibrarySyncPairingDraft,
+    setLibrarySyncSettings,
+    setLibrarySyncValidation,
+    tauri,
+  ]);
 
   useEffect(() => {
     if (activeTab !== "LIBRARY") {
@@ -1202,6 +1255,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     librarySyncErrorMessageLabels,
     librarySyncHostBaseUrlDraft,
     librarySyncSettings,
+    setLibrarySyncSettings,
+    setLibrarySyncSnapshot,
+    setLibrarySyncSnapshotBusy,
     tauri,
   ]);
 
