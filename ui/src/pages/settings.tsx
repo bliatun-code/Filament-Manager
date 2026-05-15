@@ -104,6 +104,7 @@ import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 import { buildSettingsInventoryOverviewPrintRows } from "./settings_inventory_print_model";
 import {
+  buildSettingsBackupExportSuccessMessage,
   buildSettingsBackupValidationState,
   buildSettingsImportSuccessMessage,
 } from "./settings_backup_model";
@@ -1728,15 +1729,16 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setLastFullBackupValidatedAt(
         isFullBackupValidationFormat(validationSummary.format) ? exportedAt : null,
       );
-      setInfo(
-        `${t(
+      setInfo(buildSettingsBackupExportSuccessMessage({
+        backupExported: t(
           "settings.backupExported",
           "Full backup exported (inventory, history and printers).",
-        )} ${t(
+        ),
+        librarySyncBackupAutoValidated: t(
           "settings.librarySyncBackupAutoValidated",
           "The exported backup was validated automatically and is ready to use in the guided role-change flow.",
-        )}`,
-      );
+        ),
+      }));
     } catch (backupError) {
       console.error(backupError);
       setError(

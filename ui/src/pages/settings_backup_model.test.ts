@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildSettingsBackupExportSuccessMessage,
   buildSettingsBackupValidationState,
   buildSettingsImportSuccessMessage,
   type SettingsImportMessageLabels,
@@ -122,6 +123,17 @@ test("settings import success message describes full backup imports", () => {
       result: importStats({ detected_format: "FULL_BACKUP", imported_count: 42 }),
     }),
     "Full backup imported successfully. Rows: 42. This device is now prepared as the next host. Review Library roles and save when ready to take over.",
+  );
+});
+
+test("settings backup export success message includes auto validation guidance", () => {
+  assert.equal(
+    buildSettingsBackupExportSuccessMessage({
+      backupExported: "Full backup exported (inventory, history and printers).",
+      librarySyncBackupAutoValidated:
+        "The exported backup was validated automatically and is ready to use in the guided role-change flow.",
+    }),
+    "Full backup exported (inventory, history and printers). The exported backup was validated automatically and is ready to use in the guided role-change flow.",
   );
 });
 

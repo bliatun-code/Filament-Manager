@@ -73,6 +73,17 @@ export type SettingsImportMessageLabels = {
   updated: string;
 };
 
+export type SettingsBackupExportMessageLabels = {
+  backupExported: string;
+  librarySyncBackupAutoValidated: string;
+};
+
+export function buildSettingsBackupExportSuccessMessage(
+  labels: SettingsBackupExportMessageLabels,
+): string {
+  return `${labels.backupExported} ${labels.librarySyncBackupAutoValidated}`;
+}
+
 export function buildSettingsImportSuccessMessage({
   importedOnClient,
   labels,
