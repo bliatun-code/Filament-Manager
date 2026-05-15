@@ -113,6 +113,7 @@ import { useSettingsPageTabs } from "./use_settings_page_tabs";
 import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_messages";
+import { useSettingsLibraryRoleChange } from "./use_settings_library_role_change";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
@@ -247,8 +248,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [showTrustedLanNetworkSummary, setShowTrustedLanNetworkSummary] = useState(false);
   const [showTrustedLanNetworkEditor, setShowTrustedLanNetworkEditor] = useState(false);
   const [showLibraryClientAdvanced, setShowLibraryClientAdvanced] = useState(false);
-  const [pendingLibraryRoleTarget, setPendingLibraryRoleTarget] = useState<LibrarySyncMode | null>(null);
-  const [libraryRoleConfirmArmed, setLibraryRoleConfirmArmed] = useState(false);
   const [trustedLanPairingBrowserLabelDraft, setTrustedLanPairingBrowserLabelDraft] = useState("");
   const [trustedLanPairingLink, setTrustedLanPairingLink] = useState<string | null>(null);
   const [trustedLanPairingLabel, setTrustedLanPairingLabel] = useState<string | null>(null);
@@ -871,66 +870,23 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanValidationMessageLabels,
   ]);
 
-  const closeLibraryRoleChangeModal = useCallback(() => {
-    setPendingLibraryRoleTarget(null);
-    setLibraryRoleConfirmArmed(false);
-    setLibrarySyncModeDraft(librarySyncSavedMode);
-    clearFullBackupProgress();
-  }, [clearFullBackupProgress, librarySyncSavedMode, setLibrarySyncModeDraft]);
-
-  const handleRequestLibraryRoleChange = useCallback((target: LibrarySyncMode) => {
-    if (target === librarySyncSavedMode) {
-      setPendingLibraryRoleTarget(null);
-      setLibraryRoleConfirmArmed(false);
-      setLibrarySyncModeDraft(target);
-      return;
-    }
-
-    clearFullBackupProgress();
-    setPendingLibraryRoleTarget(target);
-    setLibraryRoleConfirmArmed(false);
-    setLibrarySyncModeDraft(target);
-  }, [clearFullBackupProgress, librarySyncSavedMode, setLibrarySyncModeDraft]);
-
-  const handleConfirmLibraryRoleChange = useCallback(async () => {
-    if (!pendingLibraryRoleTarget || librarySyncBusy) {
-      return;
-    }
-
-    const roleChangeState = buildLibraryRoleChangeState({
-      target: pendingLibraryRoleTarget,
-      savedMode: librarySyncSavedMode,
-      hasExportedFullBackup: Boolean(lastFullBackupExportedAt),
-      hasImportedFullBackup: Boolean(lastFullBackupImportedAt),
-      hasValidatedFullBackup,
-      hasValidatedLatestFullBackup,
-    });
-
-    if (!roleChangeState.ready) {
-      return;
-    }
-
-    if (!libraryRoleConfirmArmed) {
-      setLibraryRoleConfirmArmed(true);
-      return;
-    }
-
-    const saved = await handleSaveLibrarySyncSettings(pendingLibraryRoleTarget);
-    if (saved) {
-      setPendingLibraryRoleTarget(null);
-      setLibraryRoleConfirmArmed(false);
-    }
-  }, [
+  const {
+    closeLibraryRoleChangeModal,
+    handleConfirmLibraryRoleChange,
+    handleRequestLibraryRoleChange,
+    libraryRoleConfirmArmed,
+    pendingLibraryRoleTarget,
+  } = useSettingsLibraryRoleChange({
+    clearFullBackupProgress,
     handleSaveLibrarySyncSettings,
     hasValidatedFullBackup,
     hasValidatedLatestFullBackup,
     lastFullBackupExportedAt,
     lastFullBackupImportedAt,
-    libraryRoleConfirmArmed,
     librarySyncBusy,
     librarySyncSavedMode,
-    pendingLibraryRoleTarget,
-  ]);
+    setLibrarySyncModeDraft,
+  });
 
   const handleValidateLibrarySyncHost = useCallback(async () => {
     const baseUrl = librarySyncHostBaseUrlDraft.trim() || settingsClientHostBaseUrl || "";
