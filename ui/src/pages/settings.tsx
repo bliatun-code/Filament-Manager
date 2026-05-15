@@ -33,6 +33,7 @@ import { useSettingsAppVersion } from "./use_settings_app_version";
 import { useSettingsFeedbackState } from "./use_settings_feedback_state";
 import { useSettingsCatalogRefreshResult } from "./use_settings_catalog_refresh_result";
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
+import { useSettingsCatalogRefreshState } from "./use_settings_catalog_refresh_state";
 import { useSettingsCatalogMessages } from "./use_settings_catalog_messages";
 import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagnostics";
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
@@ -259,7 +260,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setCatalogVendor,
     toggleCatalogRefreshMaterial,
   } = useSettingsCatalogRefreshMaterials();
-  const [catalogRefreshBusy, setCatalogRefreshBusy] = useState(false);
+  const { catalogRefreshBusy, setCatalogRefreshBusy } = useSettingsCatalogRefreshState();
   const {
     beginCatalogRefreshResult,
     catalogRefreshLog,
