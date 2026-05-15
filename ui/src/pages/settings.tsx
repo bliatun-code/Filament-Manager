@@ -106,9 +106,9 @@ import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
 import { useTrustedLanBrowserListModel } from "./use_trusted_lan_browser_list_model";
+import { useTrustedLanDraftSync } from "./use_trusted_lan_draft_sync";
 import { useTrustedLanRevokedVisibility } from "./use_trusted_lan_revoked_visibility";
 import {
-  resolveTrustedLanInterfaceAddressDraft,
   useTrustedLanNetworkState,
 } from "./use_trusted_lan_network_state";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
@@ -448,19 +448,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanPairedBrowsersRef.current = trustedLanPairedBrowsers;
   }, [trustedLanPairedBrowsers]);
 
-  const syncTrustedLanDraftFromStatus = useCallback(
-    (
-      status: TrustedLanCompanionStatus | null,
-      interfaces: TrustedLanInterfaceOption[] = [],
-    ) => {
-      setTrustedLanEnabledDraft(Boolean(status?.enabled));
-      setTrustedLanPortDraft(String(status?.listen_port ?? 4278));
-      setTrustedLanInterfaceAddressDraft(
-        resolveTrustedLanInterfaceAddressDraft(status, interfaces),
-      );
-    },
-    [],
-  );
+  const syncTrustedLanDraftFromStatus = useTrustedLanDraftSync({
+    setTrustedLanEnabledDraft,
+    setTrustedLanInterfaceAddressDraft,
+    setTrustedLanPortDraft,
+  });
 
   const reloadSettings = useCallback(async (options?: { silent?: boolean }) => {
     if (!tauri) {
