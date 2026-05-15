@@ -107,6 +107,7 @@ import {
   buildLibrarySyncTabLabels,
   buildLibraryRoleChangeState,
   buildLibrarySyncVisibilityState,
+  normalizeLibrarySyncMode,
   type LibrarySyncMode,
 } from "./settings_library_sync_model";
 import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
@@ -554,7 +555,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setBambuLiveIntegrations(bambuLiveIntegrations);
       setCatalogMasters(catalogRows);
       setLibrarySyncSettings(syncSettings);
-      setLibrarySyncModeDraft((syncSettings.mode as LibrarySyncMode) ?? "STANDALONE");
+      setLibrarySyncModeDraft(normalizeLibrarySyncMode(syncSettings.mode));
       setLibrarySyncDeviceNameDraft(syncSettings.device_name ?? "");
       setLibrarySyncHostBaseUrlDraft(syncSettings.host_base_url ?? "");
       setLibrarySyncValidation(null);
