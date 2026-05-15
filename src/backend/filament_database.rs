@@ -20,6 +20,12 @@ use super::database_settings::{
     delete_setting as delete_setting_row, get_setting as get_setting_row,
     set_setting as set_setting_row,
 };
+use super::database_spool_schema::{
+    ensure_spool_home_location_schema as ensure_spool_home_location_schema_impl,
+    ensure_spool_identity_schema as ensure_spool_identity_schema_impl,
+    ensure_spool_lifecycle_schema as ensure_spool_lifecycle_schema_impl,
+    ensure_spool_weight_schema as ensure_spool_weight_schema_impl,
+};
 use super::database_table_ops::delete_all_rows;
 use super::database_tables::should_import_backup_row;
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
@@ -1380,81 +1386,19 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_spool_lifecycle_schema(&self) -> InventoryResult<()> {
-        if !table_has_column(&self.conn, "filament_spools", "deleted_at")? {
-            self.conn.execute(
-                "ALTER TABLE filament_spools
-                 ADD COLUMN deleted_at TEXT",
-                [],
-            )?;
-        }
-
-        self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS spool_history_events (
-                id TEXT PRIMARY KEY,
-                spool_id TEXT NOT NULL,
-                event_type TEXT NOT NULL,
-                payload_json TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )",
-            [],
-        )?;
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_spool_history_spool_time
-             ON spool_history_events(spool_id, created_at)",
-            [],
-        )?;
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_spools_deleted_at
-             ON filament_spools(deleted_at)",
-            [],
-        )?;
-
-        Ok(())
+        ensure_spool_lifecycle_schema_impl(&self.conn)
     }
 
     pub fn ensure_spool_weight_schema(&self) -> InventoryResult<()> {
-        if !table_has_column(&self.conn, "filament_spools", "spool_tare_weight_g")? {
-            self.conn.execute(
-                "ALTER TABLE filament_spools
-                 ADD COLUMN spool_tare_weight_g INTEGER",
-                [],
-            )?;
-        }
-        Ok(())
+        ensure_spool_weight_schema_impl(&self.conn)
     }
 
     pub fn ensure_spool_identity_schema(&self) -> InventoryResult<()> {
-        if !table_has_column(&self.conn, "filament_spools", "rfid_tag")? {
-            self.conn.execute(
-                "ALTER TABLE filament_spools
-                 ADD COLUMN rfid_tag TEXT",
-                [],
-            )?;
-        }
-        if !table_has_column(&self.conn, "filament_spools", "rfid_observed_at")? {
-            self.conn.execute(
-                "ALTER TABLE filament_spools
-                 ADD COLUMN rfid_observed_at TEXT",
-                [],
-            )?;
-        }
-        Ok(())
+        ensure_spool_identity_schema_impl(&self.conn)
     }
 
     pub fn ensure_spool_home_location_schema(&self) -> InventoryResult<()> {
-        if !table_has_column(&self.conn, "filament_spools", "home_location_id")? {
-            self.conn.execute(
-                "ALTER TABLE filament_spools
-                 ADD COLUMN home_location_id TEXT REFERENCES inventory_locations(id)",
-                [],
-            )?;
-        }
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_spools_home_location
-             ON filament_spools(home_location_id)",
-            [],
-        )?;
-        Ok(())
+        ensure_spool_home_location_schema_impl(&self.conn)
     }
 
     pub fn ensure_borrowed_in_schema(&self) -> InventoryResult<()> {
