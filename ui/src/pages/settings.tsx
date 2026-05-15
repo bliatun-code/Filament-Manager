@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import type { SettingsTabKey } from "../App";
 import {
   isTauri,
@@ -79,6 +79,7 @@ import { useSettingsTrustedLanState } from "./use_settings_trusted_lan_state";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
 import { useTrustedLanBrowserListModel } from "./use_trusted_lan_browser_list_model";
 import { useTrustedLanDraftSync } from "./use_trusted_lan_draft_sync";
+import { useTrustedLanPairedBrowserRefSync } from "./use_trusted_lan_paired_browser_ref_sync";
 import { useTrustedLanPairingActions } from "./use_trusted_lan_pairing_actions";
 import { useTrustedLanStatusActions } from "./use_trusted_lan_status_actions";
 import { useTrustedLanRevokedVisibility } from "./use_trusted_lan_revoked_visibility";
@@ -408,9 +409,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setShowTrustedLanRevokedBrowsers,
   });
 
-  useEffect(() => {
-    trustedLanPairedBrowsersRef.current = trustedLanPairedBrowsers;
-  }, [trustedLanPairedBrowsers, trustedLanPairedBrowsersRef]);
+  useTrustedLanPairedBrowserRefSync({
+    trustedLanPairedBrowsers,
+    trustedLanPairedBrowsersRef,
+  });
 
   const syncTrustedLanDraftFromStatus = useTrustedLanDraftSync({
     setTrustedLanEnabledDraft,
