@@ -45,10 +45,8 @@ import { useSettingsSwatchActions } from "./use_settings_swatch_actions";
 import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncActions } from "./use_settings_library_sync_actions";
-import { useSettingsLibraryChrome } from "./use_settings_library_chrome";
-import { useSettingsLibraryClientState } from "./use_settings_library_client_state";
+import { useSettingsLibraryDerivedState } from "./use_settings_library_derived_state";
 import { useSettingsLibraryClientAdvanced } from "./use_settings_library_client_advanced";
-import { useSettingsLibraryVisibility } from "./use_settings_library_visibility";
 import { useSettingsLibraryRoleChange } from "./use_settings_library_role_change";
 import { useSettingsLibraryRoleChangeState } from "./use_settings_library_role_change_state";
 import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";
@@ -313,16 +311,27 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     printers,
   });
   const {
+    librarySyncRoleOptions,
     librarySyncSavedMode,
+    librarySyncTabLabels,
+    libraryVisibility,
     settingsClientHostBaseUrl,
     settingsClientHostNeedsRepair,
     settingsClientHostPairingValid,
     settingsClientHostWritePaired,
     settingsClientLibraryId,
     settingsClientReadOnly,
-  } = useSettingsLibraryClientState({
+  } = useSettingsLibraryDerivedState({
+    librarySyncModeDraft,
     librarySyncSettings,
+    librarySyncSnapshot,
     librarySyncValidation,
+    pairedBrowserCount: trustedLanPairedBrowsers.length,
+    showTrustedLanNetworkEditor,
+    t,
+    trustedLanEnabledDraft,
+    trustedLanPairingLink,
+    trustedLanStatusEnabled: Boolean(trustedLanStatus?.enabled),
   });
   const {
     activeTrustedLanPairedBrowsers,
@@ -699,17 +708,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanConfigMessageLabels,
     trustedLanEnabledDraft,
     trustedLanPairingBrowserLabelDraft,
-    trustedLanPairingLink,
-  });
-  const { librarySyncRoleOptions, librarySyncTabLabels } = useSettingsLibraryChrome(t);
-  const libraryVisibility = useSettingsLibraryVisibility({
-    librarySyncModeDraft,
-    librarySyncSettings,
-    librarySyncSnapshot,
-    pairedBrowserCount: trustedLanPairedBrowsers.length,
-    showTrustedLanNetworkEditor,
-    trustedLanEnabledDraft,
-    trustedLanStatusEnabled: Boolean(trustedLanStatus?.enabled),
     trustedLanPairingLink,
   });
   const roleChangeState = useSettingsLibraryRoleChangeState({
