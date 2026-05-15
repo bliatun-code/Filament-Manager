@@ -3,12 +3,12 @@ import {
   isTauri,
 } from "../lib/tauri_client";
 import { useI18n } from "../lib/i18n";
-import { SettingsGeneralTab } from "../components/settings_general_tab";
 import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
 import { SettingsPrintersTab } from "../components/settings_printers_tab";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
 import { SettingsCatalogTab } from "./settings_catalog_tab";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
+import { SettingsGeneralRoute } from "./settings_general_route";
 import { SettingsLibraryTab } from "./settings_library_tab";
 import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
 import { SettingsPageHeader } from "./settings_page_header";
@@ -834,16 +834,18 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         ) : null}
 
         {activeTab === "GENERAL" ? (
-          <SettingsGeneralTab
-            appVersion={appVersion}
-            busy={busy}
-            locale={locale}
-            tauri={tauri}
-            themeMode={themeMode}
-            t={t}
-            onLocaleSelection={handleLocaleSelection}
-            onPrintInventoryOverviewA4={() => void handlePrintInventoryOverviewA4()}
-            onThemeSelection={handleThemeSelection}
+          <SettingsGeneralRoute
+            tab={{
+              appVersion,
+              busy,
+              locale,
+              tauri,
+              themeMode,
+              t,
+              onLocaleSelection: handleLocaleSelection,
+              onPrintInventoryOverviewA4: () => void handlePrintInventoryOverviewA4(),
+              onThemeSelection: handleThemeSelection,
+            }}
           />
         ) : null}
 
