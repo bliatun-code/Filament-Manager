@@ -21,7 +21,7 @@ use super::database_rows::{
     map_active_spool_loan_row, map_spool_loan_row, map_spool_row, map_spool_with_master_row,
     map_trusted_lan_paired_browser_row,
 };
-use super::database_schema::{ensure_no_foreign_key_violations, table_columns, table_has_column};
+use super::database_schema::{ensure_no_foreign_key_violations, table_columns};
 use super::database_settings::{
     delete_setting as delete_setting_row, get_setting as get_setting_row,
     set_setting as set_setting_row,
@@ -36,6 +36,7 @@ use super::database_table_ops::delete_all_rows;
 use super::database_tables::should_import_backup_row;
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
 use super::database_text::{escape_csv, escape_json, normalize_optional_text};
+use super::database_trusted_lan_schema::ensure_trusted_lan_schema as ensure_trusted_lan_schema_impl;
 use super::database_values::{json_value_to_sql, sqlite_value_to_json};
 use super::library_sync_defaults::{default_library_sync_device_name, normalize_library_sync_mode};
 use super::loan_defaults::normalize_loan_direction_filter;
@@ -1424,40 +1425,7 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_trusted_lan_schema(&self) -> InventoryResult<()> {
-        self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS trusted_lan_pairings (
-                id TEXT PRIMARY KEY,
-                display_name TEXT,
-                pairing_token_hash TEXT NOT NULL UNIQUE,
-                created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                expires_at TEXT NOT NULL,
-                used_at TEXT
-            )",
-            [],
-        )?;
-        self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS trusted_lan_paired_browsers (
-                id TEXT PRIMARY KEY,
-                display_name TEXT,
-                device_token_hash TEXT NOT NULL UNIQUE,
-                paired_at TEXT NOT NULL DEFAULT (datetime('now')),
-                last_seen_at TEXT,
-                last_origin TEXT,
-                revoked_at TEXT
-            )",
-            [],
-        )?;
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_trusted_lan_pairings_expires
-             ON trusted_lan_pairings(expires_at, used_at)",
-            [],
-        )?;
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_trusted_lan_paired_browsers_active
-             ON trusted_lan_paired_browsers(revoked_at, paired_at)",
-            [],
-        )?;
-        Ok(())
+        ensure_trusted_lan_schema_impl(&self.conn)
     }
 
     pub fn apply_vendor_discontinued_rules(
