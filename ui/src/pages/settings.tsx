@@ -2240,11 +2240,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         );
       } else {
         setInfo(
-          buildSettingsCatalogRefreshSuccessMessage(summary, {
-            imported: t("inventory.imported", "Imported"),
-            reactivated: t("inventory.reactivated", "Reactivated"),
-            discontinued: t("inventory.discontinued", "Discontinued"),
-          }),
+          buildSettingsCatalogRefreshSuccessMessage(summary, settingsCatalogRefreshSummaryLabels()),
         );
       }
     } catch (refreshError) {
@@ -2285,6 +2281,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         "wishlist.error.zeroEsun",
         "eSUN refresh completed with 0 imported rows. Store format may have changed.",
       ),
+    };
+  }
+
+  function settingsCatalogRefreshSummaryLabels() {
+    return {
+      discontinued: t("inventory.discontinued", "Discontinued"),
+      imported: t("inventory.imported", "Imported"),
+      reactivated: t("inventory.reactivated", "Reactivated"),
     };
   }
 

@@ -109,13 +109,15 @@ export function settingsCatalogRefreshSummaryGridClass(summary: CatalogRefreshRe
     : "sm:grid-cols-3";
 }
 
+export type SettingsCatalogRefreshSummaryLabels = {
+  discontinued: string;
+  imported: string;
+  reactivated: string;
+};
+
 export function buildSettingsCatalogRefreshSuccessMessage(
   summary: CatalogRefreshResult,
-  labels: {
-    imported: string;
-    reactivated: string;
-    discontinued: string;
-  },
+  labels: SettingsCatalogRefreshSummaryLabels,
 ): string {
   return `${labels.imported} ${summary.imported} · ${labels.reactivated} ${summary.reactivated_count} · ${labels.discontinued} ${summary.discontinued_count}`;
 }
