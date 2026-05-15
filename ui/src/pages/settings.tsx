@@ -34,7 +34,7 @@ import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
 import { useSettingsPageDataState } from "./use_settings_page_data_state";
 import { useSettingsPageReload } from "./use_settings_page_reload";
 import { useSettingsPageShellState } from "./use_settings_page_shell_state";
-import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
+import { useSettingsPreferenceSection } from "./use_settings_preference_section";
 import { useSettingsMaintenanceActions } from "./use_settings_maintenance_actions";
 import { useSettingsBackupExportActions } from "./use_settings_backup_export_actions";
 import { useSettingsBackupFileActions } from "./use_settings_backup_file_actions";
@@ -49,7 +49,6 @@ import { useSettingsLibraryClientAdvanced } from "./use_settings_library_client_
 import { useSettingsLibraryRoleFlow } from "./use_settings_library_role_flow";
 import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";
 import { useSettingsSilentReload } from "./use_settings_silent_reload";
-import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTrustedLanState } from "./use_settings_trusted_lan_state";
 import { useSettingsMessageLabels } from "./use_settings_message_labels";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
@@ -67,12 +66,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const tauri = isTauri();
   const { locale, setLocale, t } = useI18n();
   const { busy, error, info, setBusy, setError, setInfo } = useSettingsFeedbackState();
-  const { themeMode, updateThemeMode } = useSettingsThemeMode();
-  const { handleLocaleSelection, handleThemeSelection } = useSettingsPreferenceActions({
+  const { handleLocaleSelection, handleThemeSelection, themeMode } = useSettingsPreferenceSection({
     setInfo,
     setLocale,
     t,
-    updateThemeMode,
   });
   const {
     activeTab,
