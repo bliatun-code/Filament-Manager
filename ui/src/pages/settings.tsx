@@ -102,6 +102,7 @@ import {
   buildLibrarySyncErrorMessage,
   buildLibrarySyncPairingMessage,
   buildLibrarySyncPairingSettingsInput,
+  buildLibrarySyncRoleOptions,
   buildLibrarySyncSaveSettingsInput,
   buildLibraryRoleChangeState,
   buildLibrarySyncVisibilityState,
@@ -2638,20 +2639,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     actionBusy: trustedLanActionBusy,
     t,
   });
-  const librarySyncRoleOptions = [
-    {
-      mode: "STANDALONE" as const,
-      label: t("settings.librarySyncStandalone", "Standalone"),
-    },
-    {
-      mode: "HOST" as const,
-      label: t("settings.librarySyncHost", "Host"),
-    },
-    {
-      mode: "CLIENT" as const,
-      label: t("settings.librarySyncClient", "Client"),
-    },
-  ];
+  const librarySyncRoleOptions = buildLibrarySyncRoleOptions({
+    STANDALONE: t("settings.librarySyncStandalone", "Standalone"),
+    HOST: t("settings.librarySyncHost", "Host"),
+    CLIENT: t("settings.librarySyncClient", "Client"),
+  });
   const libraryVisibility = buildLibrarySyncVisibilityState({
     draftMode: librarySyncModeDraft,
     trustedLanEnabledDraft,

@@ -41,6 +41,13 @@ export type LibrarySyncVisibilityState = {
   clientHasSnapshot: boolean;
 };
 
+export type LibrarySyncRoleOption = {
+  mode: LibrarySyncMode;
+  label: string;
+};
+
+export type LibrarySyncRoleOptionLabels = Record<LibrarySyncMode, string>;
+
 export type LibrarySyncClientState = {
   savedMode: LibrarySyncMode;
   readOnly: boolean;
@@ -99,6 +106,16 @@ export function buildLibrarySyncErrorMessage(
   labels: LibrarySyncErrorMessageLabels,
 ): string {
   return labels[key];
+}
+
+export function buildLibrarySyncRoleOptions(
+  labels: LibrarySyncRoleOptionLabels,
+): LibrarySyncRoleOption[] {
+  return [
+    { mode: "STANDALONE", label: labels.STANDALONE },
+    { mode: "HOST", label: labels.HOST },
+    { mode: "CLIENT", label: labels.CLIENT },
+  ];
 }
 
 export function buildLibrarySyncClientState(input: {

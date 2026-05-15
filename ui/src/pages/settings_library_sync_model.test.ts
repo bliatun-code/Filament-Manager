@@ -6,6 +6,7 @@ import {
   buildLibrarySyncErrorMessage,
   buildLibrarySyncPairingMessage,
   buildLibrarySyncPairingSettingsInput,
+  buildLibrarySyncRoleOptions,
   buildLibrarySyncSaveSettingsInput,
   buildLibrarySyncClientState,
   buildLibraryRoleChangeState,
@@ -96,6 +97,21 @@ test("buildLibrarySyncErrorMessage returns stable operation fallback copy", () =
     labels.settingsSaveFailed,
   );
   assert.equal(buildLibrarySyncErrorMessage("snapshotFailed", labels), labels.snapshotFailed);
+});
+
+test("buildLibrarySyncRoleOptions keeps role order and labels explicit", () => {
+  assert.deepEqual(
+    buildLibrarySyncRoleOptions({
+      STANDALONE: "Standalone",
+      HOST: "Host",
+      CLIENT: "Client",
+    }),
+    [
+      { mode: "STANDALONE", label: "Standalone" },
+      { mode: "HOST", label: "Host" },
+      { mode: "CLIENT", label: "Client" },
+    ],
+  );
 });
 
 test("buildLibrarySyncClientState derives client write and repair state", () => {
