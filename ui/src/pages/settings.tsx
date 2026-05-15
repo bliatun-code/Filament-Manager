@@ -109,6 +109,10 @@ import { useSettingsAppVersion } from "./use_settings_app_version";
 import { useSettingsAutoClearValue } from "./use_settings_auto_clear";
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
 import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_confirm";
+import {
+  useSettingsResetConfirm,
+  type SettingsResetConfirmAction,
+} from "./use_settings_reset_confirm";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import {
@@ -177,7 +181,7 @@ import {
   buildSettingsPageTabs,
 } from "./settings_page_model";
 
-type ResetConfirmAction = "APP" | "CATALOG";
+type ResetConfirmAction = SettingsResetConfirmAction;
 type CatalogVendor = SettingsCatalogVendor;
 type SettingsPageProps = {
   initialTab?: SettingsTabKey;
@@ -1387,11 +1391,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setConfirmDeletePrinterId,
   });
 
-  useSettingsAutoClearValue(
+  const { clearConfirmResetAction } = useSettingsResetConfirm({
     confirmResetAction,
-    useCallback(() => setConfirmResetAction(null), []),
-    7000,
-  );
+    setConfirmResetAction,
+  });
 
   useSettingsAutoClearValue(
     confirmBulkSwatch,
@@ -1616,7 +1619,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setInfo(buildSettingsResetConfirmMessage("app", settingsMaintenanceResetMessageLabels()));
       return;
     }
-    setConfirmResetAction(null);
+    clearConfirmResetAction();
     setBusy(true);
     setError(null);
     setInfo(null);
@@ -1648,7 +1651,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setInfo(buildSettingsResetConfirmMessage("catalog", settingsMaintenanceResetMessageLabels()));
       return;
     }
-    setConfirmResetAction(null);
+    clearConfirmResetAction();
     setBusy(true);
     setError(null);
     setInfo(null);
@@ -1929,7 +1932,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (!tauri || busy) {
       return;
     }
-    setConfirmResetAction(null);
+    clearConfirmResetAction();
     backupImportInputRef.current?.click();
   }
 
@@ -1937,7 +1940,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (!tauri || busy) {
       return;
     }
-    setConfirmResetAction(null);
+    clearConfirmResetAction();
     backupValidateInputRef.current?.click();
   }
 
@@ -1947,7 +1950,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (!file || !tauri || busy) {
       return;
     }
-    setConfirmResetAction(null);
+    clearConfirmResetAction();
     setBusy(true);
     setError(null);
     setInfo(null);
