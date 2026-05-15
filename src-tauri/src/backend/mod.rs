@@ -1,3 +1,5 @@
+#[path = "../../../src/backend/bambu_live_settings.rs"]
+pub mod bambu_live_settings;
 #[path = "../../../src/backend/bambu_lookup.rs"]
 pub mod bambu_lookup;
 #[path = "../../../src/backend/database_backup.rs"]

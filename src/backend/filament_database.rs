@@ -1,5 +1,8 @@
 use std::collections::HashSet;
 
+use super::bambu_live_settings::{
+    bambu_live_integration_setting_key, BAMBU_LIVE_INTEGRATION_SETTING_PREFIX,
+};
 pub use super::database_backup::BackupValidationStats;
 use super::database_backup::{parse_full_backup_content, validate_full_backup_content};
 use super::database_borrowed_schema::ensure_borrowed_in_schema as ensure_borrowed_in_schema_impl;
@@ -475,10 +478,6 @@ pub struct FilamentDatabase {
 }
 
 impl FilamentDatabase {
-    fn bambu_live_integration_setting_key(printer_id: &str) -> String {
-        format!("bambu_live_integration:{printer_id}")
-    }
-
     pub fn open(path: impl AsRef<std::path::Path>) -> InventoryResult<Self> {
         Ok(Self {
             conn: open_connection(path)?,
@@ -2541,8 +2540,7 @@ impl FilamentDatabase {
     }
 
     pub fn delete_printer(&self, printer_id: &str) -> InventoryResult<()> {
-        let bambu_live_integration_key =
-            Self::bambu_live_integration_setting_key(printer_id.trim());
+        let bambu_live_integration_key = bambu_live_integration_setting_key(printer_id.trim());
         let tx = self.conn.unchecked_transaction()?;
 
         {
@@ -2641,7 +2639,7 @@ impl FilamentDatabase {
         let payload =
             serde_json::to_string(config).map_err(|error| InventoryError::Db(error.to_string()))?;
         self.set_setting(
-            &Self::bambu_live_integration_setting_key(normalized_printer_id),
+            &bambu_live_integration_setting_key(normalized_printer_id),
             &payload,
         )
     }
@@ -2651,9 +2649,7 @@ impl FilamentDatabase {
         if normalized_printer_id.is_empty() {
             return Ok(());
         }
-        self.delete_setting(&Self::bambu_live_integration_setting_key(
-            normalized_printer_id,
-        ))
+        self.delete_setting(&bambu_live_integration_setting_key(normalized_printer_id))
     }
 
     pub fn list_bambu_live_integrations(
@@ -2662,10 +2658,10 @@ impl FilamentDatabase {
         let mut stmt = self.conn.prepare(
             "SELECT key, value
              FROM settings
-             WHERE key LIKE 'bambu_live_integration:%'
+             WHERE key LIKE ?1 || '%'
              ORDER BY key ASC",
         )?;
-        let rows = stmt.query_map([], |row| {
+        let rows = stmt.query_map(params![BAMBU_LIVE_INTEGRATION_SETTING_PREFIX], |row| {
             let key: String = row.get(0)?;
             let value: String = row.get(1)?;
             Ok((key, value))
@@ -2673,7 +2669,7 @@ impl FilamentDatabase {
         let mut entries = Vec::new();
         for row in rows {
             let (key, value) = row?;
-            let Some(printer_id) = key.strip_prefix("bambu_live_integration:") else {
+            let Some(printer_id) = key.strip_prefix(BAMBU_LIVE_INTEGRATION_SETTING_PREFIX) else {
                 continue;
             };
             let config = serde_json::from_str::<BambuLiveIntegrationRow>(&value)
