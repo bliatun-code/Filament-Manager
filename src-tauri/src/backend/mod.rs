@@ -14,6 +14,8 @@ pub mod database_rows;
 pub mod database_schema;
 #[path = "../../../src/backend/database_settings.rs"]
 pub mod database_settings;
+#[path = "../../../src/backend/database_table_ops.rs"]
+pub mod database_table_ops;
 #[path = "../../../src/backend/database_tables.rs"]
 pub mod database_tables;
 #[path = "../../../src/backend/database_text.rs"]

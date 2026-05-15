@@ -19,6 +19,7 @@ use super::database_settings::{
     delete_setting as delete_setting_row, get_setting as get_setting_row,
     set_setting as set_setting_row,
 };
+use super::database_table_ops::delete_all_rows;
 use super::database_tables::should_import_backup_row;
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
 use super::database_text::{escape_csv, escape_json, normalize_optional_text};
@@ -3807,9 +3808,7 @@ impl FilamentDatabase {
             .execute_batch("PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE;")?;
 
         let result: InventoryResult<()> = (|| {
-            for table in RESET_APP_STATE_TABLES {
-                self.conn.execute(&format!("DELETE FROM {table}"), [])?;
-            }
+            delete_all_rows(&self.conn, &RESET_APP_STATE_TABLES)?;
 
             ensure_no_foreign_key_violations(&self.conn, "App-state reset")?;
 
@@ -3981,9 +3980,7 @@ impl FilamentDatabase {
         self.conn
             .execute_batch("PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE;")?;
         let result: InventoryResult<()> = (|| {
-            for table in FULL_BACKUP_TABLES {
-                self.conn.execute(&format!("DELETE FROM {table}"), [])?;
-            }
+            delete_all_rows(&self.conn, &FULL_BACKUP_TABLES)?;
 
             for table in FULL_BACKUP_TABLES {
                 let Some(rows) = parsed.tables.get(table) else {
