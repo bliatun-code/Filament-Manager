@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SettingsTabKey } from "../App";
-import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
   isTauri,
-  updateMasterCatalogEntry,
   type BambuLiveIntegrationEntry,
   type CatalogResetStats,
   type MasterCatalogRow,
@@ -65,6 +63,7 @@ import { useSettingsMaintenanceActions } from "./use_settings_maintenance_action
 import { useSettingsBackupExportActions } from "./use_settings_backup_export_actions";
 import { useSettingsBackupFileActions } from "./use_settings_backup_file_actions";
 import { useSettingsInventoryPrintAction } from "./use_settings_inventory_print_action";
+import { useSettingsSwatchActions } from "./use_settings_swatch_actions";
 import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_messages";
@@ -87,12 +86,6 @@ import {
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
 import {
   buildSettingsCatalogState,
-  buildSettingsNoMissingSwatchesMessage,
-  buildSettingsSwatchBulkConfirmMessage,
-  buildSettingsSwatchBulkResultMessage,
-  buildSettingsSwatchErrorMessage,
-  buildSettingsSwatchSavedMessage,
-  resolveSettingsSwatchHex,
 } from "./settings_catalog_model";
 import { SettingsCatalogRefreshPanel } from "./settings_catalog_refresh_panel";
 import {
@@ -889,110 +882,24 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     };
   }
 
-  async function handleSaveMissingSwatch(master: MasterCatalogRow) {
-    if (!tauri || busy || swatchBusy) {
-      return;
-    }
-    const normalizedHex = resolveSettingsSwatchHex({ master, swatchDraftById });
-    if (!normalizedHex) {
-      setError(
-        buildSettingsSwatchErrorMessage("invalidSwatchHex", settingsSwatchErrorMessageLabels()),
-      );
-      return;
-    }
-    setSwatchBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      await updateMasterCatalogEntry({
-        master_id: master.id,
-        vendor: master.vendor,
-        material: master.material,
-        filament_name: master.filament_name,
-        color_name: master.color_name,
-        hex_color: normalizedHex,
-        product_url: master.product_url ?? null,
-        default_weight: master.default_weight,
-      });
-      setInfo(
-        buildSettingsSwatchSavedMessage(
-          formatFilamentDisplayTitle(master.material, master.filament_name, master.color_name),
-          settingsSwatchSavedMessageLabels(),
-        ),
-      );
-      await reloadSettings();
-    } catch (saveError) {
-      console.error(saveError);
-      setError(
-        buildSettingsSwatchErrorMessage("saveSwatchFailed", settingsSwatchErrorMessageLabels()),
-      );
-    } finally {
-      setSwatchBusy(false);
-    }
-  }
-
-  async function handleBulkAutoFillMissingSwatches() {
-    if (!tauri || busy || swatchBusy) {
-      return;
-    }
-    const targets = visibleMissingSwatchMasters;
-    if (targets.length === 0) {
-      clearConfirmBulkSwatch();
-      setInfo(buildSettingsNoMissingSwatchesMessage(settingsSwatchBulkMessageLabels()));
-      return;
-    }
-    if (!confirmBulkSwatch) {
-      setError(null);
-      setConfirmBulkSwatch(true);
-      setInfo(buildSettingsSwatchBulkConfirmMessage(settingsSwatchBulkMessageLabels()));
-      return;
-    }
-    clearConfirmBulkSwatch();
-    setSwatchBusy(true);
-    setError(null);
-    setInfo(null);
-    let updated = 0;
-    let failed = 0;
-    let skipped = 0;
-    try {
-      for (const master of targets) {
-        const normalizedHex = resolveSettingsSwatchHex({ master, swatchDraftById });
-        if (!normalizedHex) {
-          skipped += 1;
-          continue;
-        }
-        try {
-          await updateMasterCatalogEntry({
-            master_id: master.id,
-            vendor: master.vendor,
-            material: master.material,
-            filament_name: master.filament_name,
-            color_name: master.color_name,
-            hex_color: normalizedHex,
-            product_url: master.product_url ?? null,
-            default_weight: master.default_weight,
-          });
-          updated += 1;
-        } catch (bulkError) {
-          console.error(bulkError);
-          failed += 1;
-        }
-      }
-
-      await reloadSettings();
-      const resultMessage = buildSettingsSwatchBulkResultMessage(
-        { failed, skipped, updated },
-        settingsSwatchBulkMessageLabels(),
-      );
-      if (resultMessage.kind === "error") {
-        setError(resultMessage.message);
-        return;
-      }
-      setInfo(resultMessage.message);
-    } finally {
-      setSwatchBusy(false);
-    }
-  }
+  const { handleBulkAutoFillMissingSwatches, handleSaveMissingSwatch } =
+    useSettingsSwatchActions({
+      busy,
+      clearConfirmBulkSwatch,
+      confirmBulkSwatch,
+      reloadSettings,
+      setConfirmBulkSwatch,
+      setError,
+      setInfo,
+      setSwatchBusy,
+      settingsSwatchBulkMessageLabels,
+      settingsSwatchErrorMessageLabels,
+      settingsSwatchSavedMessageLabels,
+      swatchBusy,
+      swatchDraftById,
+      tauri,
+      visibleMissingSwatchMasters,
+    });
 
   function settingsSwatchBulkMessageLabels() {
     return {
