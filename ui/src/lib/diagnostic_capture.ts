@@ -283,6 +283,128 @@ export function buildDiagnosticCaptureSession(
   };
 }
 
+export function updateDiagnosticCaptureSessionFromPayload(input: {
+  session: DiagnosticCaptureSession | null | undefined;
+  rawPayload: unknown;
+  observedAt: string;
+}): DiagnosticCaptureSession | null {
+  const flattened = flattenDiagnosticFields(input.rawPayload);
+  if (flattened.length === 0) {
+    return null;
+  }
+
+  const existingSession = input.session ?? buildDiagnosticCaptureSession(null);
+  const previousFields = new Map(existingSession.fields.map((field) => [field.path, field]));
+  const nextSamples = [...existingSession.samples];
+
+  for (const { path, valueText } of flattened) {
+    const existing = previousFields.get(path);
+    if (!existing) {
+      previousFields.set(path, {
+        path,
+        valueText,
+        firstSeenAt: input.observedAt,
+        lastSeenAt: input.observedAt,
+        lastChangedAt: input.observedAt,
+        receiveCount: 1,
+        changeCount: 1,
+        avgReceiveIntervalMs: null,
+        avgChangeIntervalMs: null,
+        recentValues: [
+          {
+            valueText,
+            seenAt: input.observedAt,
+            changed: true,
+          },
+        ],
+      });
+      nextSamples.push({
+        fieldPath: path,
+        observedAt: input.observedAt,
+        valueText,
+        changeKind: existingSession.seededFromObservedAt == null ? "first_seen" : "changed",
+      });
+      continue;
+    }
+
+    const receiveIntervalMs = diffMs(input.observedAt, existing.lastSeenAt);
+    if (existing.valueText === valueText) {
+      previousFields.set(path, {
+        ...existing,
+        lastSeenAt: input.observedAt,
+        receiveCount: existing.receiveCount + 1,
+        avgReceiveIntervalMs:
+          receiveIntervalMs == null
+            ? existing.avgReceiveIntervalMs
+            : averageIntervalMs(
+                existing.avgReceiveIntervalMs,
+                Math.max(0, existing.receiveCount - 1),
+                receiveIntervalMs,
+              ),
+        recentValues: pushRecentDiagnosticValue(existing.recentValues, {
+          valueText,
+          seenAt: input.observedAt,
+          changed: false,
+        }),
+      });
+      nextSamples.push({
+        fieldPath: path,
+        observedAt: input.observedAt,
+        valueText,
+        changeKind: "refresh",
+      });
+      continue;
+    }
+
+    const changeIntervalMs = diffMs(input.observedAt, existing.lastChangedAt);
+    previousFields.set(path, {
+      path,
+      valueText,
+      firstSeenAt: existing.firstSeenAt,
+      lastSeenAt: input.observedAt,
+      lastChangedAt: input.observedAt,
+      receiveCount: existing.receiveCount + 1,
+      changeCount: existing.changeCount + 1,
+      avgReceiveIntervalMs:
+        receiveIntervalMs == null
+          ? existing.avgReceiveIntervalMs
+          : averageIntervalMs(
+              existing.avgReceiveIntervalMs,
+              Math.max(0, existing.receiveCount - 1),
+              receiveIntervalMs,
+            ),
+      avgChangeIntervalMs:
+        changeIntervalMs == null
+          ? existing.avgChangeIntervalMs
+          : averageIntervalMs(
+              existing.avgChangeIntervalMs,
+              Math.max(0, existing.changeCount - 1),
+              changeIntervalMs,
+            ),
+      recentValues: pushRecentDiagnosticValue(existing.recentValues, {
+        valueText,
+        seenAt: input.observedAt,
+        changed: true,
+      }),
+    });
+    nextSamples.push({
+      fieldPath: path,
+      observedAt: input.observedAt,
+      valueText,
+      changeKind: "changed",
+    });
+  }
+
+  return {
+    ...existingSession,
+    lastCapturedAt: input.observedAt,
+    fields: Array.from(previousFields.values()).sort((left, right) =>
+      left.path.localeCompare(right.path, undefined, { numeric: true, sensitivity: "base" }),
+    ),
+    samples: nextSamples,
+  };
+}
+
 export function classifyDiagnosticField(path: string): DiagnosticGroupKey {
   const normalized = path.trim().toLowerCase();
   if (!normalized) {
