@@ -41,6 +41,7 @@ import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";
 import { useSettingsCatalogRefreshResult } from "./use_settings_catalog_refresh_result";
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
+import { useSettingsCatalogMessages } from "./use_settings_catalog_messages";
 import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagnostics";
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
 import { useSettingsBackupFileInputs } from "./use_settings_backup_file_inputs";
@@ -180,6 +181,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsInventoryOverviewPrintPdfLabels,
     settingsInventoryPrintLabels,
   } = useSettingsInventoryPrintMessages(t);
+  const {
+    settingsCatalogRefreshMessageLabels,
+    settingsCatalogRefreshSummaryLabels,
+  } = useSettingsCatalogMessages(t);
   const [trustedLanStatus, setTrustedLanStatus] = useState<TrustedLanCompanionStatus | null>(
     null,
   );
@@ -719,37 +724,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     swatchBusy,
     tauri,
   });
-
-  function settingsCatalogRefreshMessageLabels() {
-    return {
-      refreshBambuFailed: t("wishlist.error.refreshBambu", "Catalog refresh failed."),
-      refreshEsunFailed: t("wishlist.error.refreshEsun", "eSUN catalog refresh failed."),
-      refreshPreparingBambu: t(
-        "wishlist.refreshPreparingBambu",
-        "Preparing Bambu catalog refresh...",
-      ),
-      refreshPreparingEsun: t(
-        "wishlist.refreshPreparingEsun",
-        "Preparing eSUN catalog refresh...",
-      ),
-      zeroBambu: t(
-        "wishlist.error.zeroBambu",
-        "Refresh completed with 0 imported rows. The store may be rate-limited or changed.",
-      ),
-      zeroEsun: t(
-        "wishlist.error.zeroEsun",
-        "eSUN refresh completed with 0 imported rows. Store format may have changed.",
-      ),
-    };
-  }
-
-  function settingsCatalogRefreshSummaryLabels() {
-    return {
-      discontinued: t("inventory.discontinued", "Discontinued"),
-      imported: t("inventory.imported", "Imported"),
-      reactivated: t("inventory.reactivated", "Reactivated"),
-    };
-  }
 
   function settingsSwatchErrorMessageLabels() {
     return {
