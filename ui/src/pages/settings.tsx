@@ -39,9 +39,8 @@ import {
   type TrustedLanPairedBrowser,
   type TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
-import type { ThemeMode } from "../lib/theme_mode";
 import { FeedbackBanner } from "../components/feedback_banner";
-import { useI18n, type Locale } from "../lib/i18n";
+import { useI18n } from "../lib/i18n";
 import { toErrorMessage } from "../lib/error_text";
 import { downloadTextFile } from "../lib/download_file";
 import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/inventory_export";
@@ -113,6 +112,7 @@ import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
 import { useSettingsSwatchDrafts } from "./use_settings_swatch_drafts";
 import { useSettingsPageChrome } from "./use_settings_page_chrome";
 import { useSettingsPageTabs } from "./use_settings_page_tabs";
+import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
@@ -165,10 +165,6 @@ import {
   sortSettingsPrinters,
 } from "./settings_printer_model";
 import {
-  buildSettingsLocaleSelectionMessage,
-  buildSettingsThemeSelectionMessage,
-} from "./settings_preferences_model";
-import {
   buildSettingsPageDataModel,
   buildSettingsPageLoadErrorMessage,
 } from "./settings_page_model";
@@ -187,6 +183,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const { themeMode, updateThemeMode } = useSettingsThemeMode();
+  const { handleLocaleSelection, handleThemeSelection } = useSettingsPreferenceActions({
+    setInfo,
+    setLocale,
+    t,
+    updateThemeMode,
+  });
   const appVersion = useSettingsAppVersion(tauri);
   const { activeTab, setActiveTab } = useSettingsActiveTab(initialTab);
   const [librarySyncSettings, setLibrarySyncSettings] = useState<LibrarySyncSettings | null>(null);
@@ -2131,24 +2133,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   function settingsSwatchSavedMessageLabels() {
     return {
       swatchSaved: t("settings.swatchSaved", "Saved swatch"),
-    };
-  }
-
-  function handleThemeSelection(mode: ThemeMode) {
-    updateThemeMode(mode);
-    setInfo(buildSettingsThemeSelectionMessage(mode, settingsPreferenceMessageLabels()));
-  }
-
-  function handleLocaleSelection(nextLocale: Locale) {
-    setLocale(nextLocale);
-    setInfo(buildSettingsLocaleSelectionMessage(nextLocale, settingsPreferenceMessageLabels()));
-  }
-
-  function settingsPreferenceMessageLabels() {
-    return {
-      languageSetEnglish: t("settings.langSetEn", "Language set to English."),
-      languageSetNorwegian: t("settings.langSetNb", "Language set to Norwegian."),
-      themeSetTo: t("settings.themeSetTo", "Theme mode set to"),
     };
   }
 
