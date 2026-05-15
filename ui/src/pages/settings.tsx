@@ -130,6 +130,10 @@ import {
   preparePrinterReconfigure,
   sortSettingsPrinters,
 } from "./settings_printer_model";
+import {
+  buildSettingsLocaleSelectionMessage,
+  buildSettingsThemeSelectionMessage,
+} from "./settings_preferences_model";
 
 type SettingsTab = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
 type ResetConfirmAction = "APP" | "CATALOG";
@@ -2225,16 +2229,20 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   function handleThemeSelection(mode: ThemeMode) {
     setThemeMode(mode);
     setThemeModeState(mode);
-    setInfo(`${t("settings.themeSetTo", "Theme mode set to")} ${mode}.`);
+    setInfo(buildSettingsThemeSelectionMessage(mode, settingsPreferenceMessageLabels()));
   }
 
   function handleLocaleSelection(nextLocale: Locale) {
     setLocale(nextLocale);
-    setInfo(
-      nextLocale === "nb"
-        ? t("settings.langSetNb", "Language set to Norwegian.")
-        : t("settings.langSetEn", "Language set to English."),
-    );
+    setInfo(buildSettingsLocaleSelectionMessage(nextLocale, settingsPreferenceMessageLabels()));
+  }
+
+  function settingsPreferenceMessageLabels() {
+    return {
+      languageSetEnglish: t("settings.langSetEn", "Language set to English."),
+      languageSetNorwegian: t("settings.langSetNb", "Language set to Norwegian."),
+      themeSetTo: t("settings.themeSetTo", "Theme mode set to"),
+    };
   }
 
   async function handleSaveTrustedLanConfig() {
