@@ -61,6 +61,7 @@ import { useSettingsBackupExportActions } from "./use_settings_backup_export_act
 import { useSettingsBackupFileActions } from "./use_settings_backup_file_actions";
 import { useSettingsInventoryPrintAction } from "./use_settings_inventory_print_action";
 import { useSettingsInventoryPrintMessages } from "./use_settings_inventory_print_messages";
+import { useSettingsInitialLoad } from "./use_settings_initial_load";
 import { useSettingsSwatchActions } from "./use_settings_swatch_actions";
 import { useSettingsSwatchMessages } from "./use_settings_swatch_messages";
 import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
@@ -473,13 +474,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanValidationMessageLabels,
   });
 
-  useEffect(() => {
-    if (!tauri) {
-      return;
-    }
-    void reloadSettings();
-    void loadTrustedLanCompanionStatus();
-  }, [loadTrustedLanCompanionStatus, reloadSettings, tauri]);
+  useSettingsInitialLoad({
+    loadTrustedLanCompanionStatus,
+    reloadSettings,
+    tauri,
+  });
 
   const {
     handleClearLibrarySyncClientAuth,
