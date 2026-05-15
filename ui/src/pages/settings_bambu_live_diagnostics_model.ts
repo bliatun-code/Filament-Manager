@@ -295,3 +295,7 @@ export type SettingsBambuLiveDiagnosticMetricCard = ReturnType<
 export type SettingsBambuLiveSignalQualityBucket = ReturnType<
   typeof buildSettingsBambuLiveDiagnosticsModel
 >["signalQualityBuckets"][number];
+
+export type SettingsBambuLiveDiagnosticGroup = ReturnType<
+  typeof buildSettingsBambuLiveDiagnosticsModel
+>["diagnosticGroups"][number];
