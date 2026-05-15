@@ -85,6 +85,7 @@ import {
   resolvePrinterModelProfile,
 } from "../lib/printer_profiles";
 import {
+  buildTrustedLanActionErrorMessage,
   buildTrustedLanActionMessage,
   buildTrustedLanConfigMessage,
   buildTrustedLanCompanionModel,
@@ -2461,9 +2462,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           pairError,
-          t(
-            "settings.error.createTrustedLanPairing",
-            "Failed to create a trusted-LAN pairing link.",
+          buildTrustedLanActionErrorMessage(
+            "createPairingFailed",
+            trustedLanActionMessageLabels(),
           ),
         ),
       );
@@ -2486,9 +2487,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           copyError,
-          t(
-            "settings.error.copyTrustedLanPairing",
-            "Failed to copy the trusted-LAN pairing link.",
+          buildTrustedLanActionErrorMessage(
+            "copyPairingFailed",
+            trustedLanActionMessageLabels(),
           ),
         ),
       );
@@ -2510,9 +2511,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           revokeError,
-          t(
-            "settings.error.revokeTrustedLanBrowser",
-            "Failed to revoke the trusted-LAN browser.",
+          buildTrustedLanActionErrorMessage(
+            "revokeBrowserFailed",
+            trustedLanActionMessageLabels(),
           ),
         ),
       );
@@ -2534,9 +2535,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           revokeError,
-          t(
-            "settings.error.revokeAllTrustedLanBrowsers",
-            "Failed to revoke trusted-LAN browsers.",
+          buildTrustedLanActionErrorMessage(
+            "revokeAllBrowsersFailed",
+            trustedLanActionMessageLabels(),
           ),
         ),
       );
@@ -2552,10 +2553,26 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         "All trusted-LAN browsers revoked.",
       ),
       browserRevoked: t("settings.trustedLanBrowserRevoked", "Trusted-LAN browser revoked."),
+      copyPairingFailed: t(
+        "settings.error.copyTrustedLanPairing",
+        "Failed to copy the trusted-LAN pairing link.",
+      ),
+      createPairingFailed: t(
+        "settings.error.createTrustedLanPairing",
+        "Failed to create a trusted-LAN pairing link.",
+      ),
       pairingCopied: t("settings.trustedLanPairingCopied", "Trusted-LAN pairing link copied."),
       pairingCreated: t(
         "settings.trustedLanPairingCreated",
         "Trusted-LAN pairing link created and copied.",
+      ),
+      revokeAllBrowsersFailed: t(
+        "settings.error.revokeAllTrustedLanBrowsers",
+        "Failed to revoke trusted-LAN browsers.",
+      ),
+      revokeBrowserFailed: t(
+        "settings.error.revokeTrustedLanBrowser",
+        "Failed to revoke the trusted-LAN browser.",
       ),
     };
   }

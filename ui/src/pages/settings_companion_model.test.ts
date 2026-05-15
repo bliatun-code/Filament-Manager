@@ -3,6 +3,7 @@ import test from "node:test";
 
 import type { TrustedLanCompanionStatus } from "../lib/tauri_client";
 import {
+  buildTrustedLanActionErrorMessage,
   buildTrustedLanActionMessage,
   buildTrustedLanConfigMessage,
   buildTrustedLanCompanionModel,
@@ -419,6 +420,32 @@ test("buildTrustedLanConfigMessage returns stable configuration feedback copy", 
   assert.equal(buildTrustedLanConfigMessage("networkSaved", labels), labels.networkSaved);
   assert.equal(buildTrustedLanConfigMessage("starting", labels), labels.starting);
   assert.equal(buildTrustedLanConfigMessage("enabledPending", labels), labels.enabledPending);
+});
+
+test("buildTrustedLanActionErrorMessage returns stable action fallback copy", () => {
+  const labels = {
+    copyPairingFailed: "Failed to copy the trusted-LAN pairing link.",
+    createPairingFailed: "Failed to create a trusted-LAN pairing link.",
+    revokeAllBrowsersFailed: "Failed to revoke trusted-LAN browsers.",
+    revokeBrowserFailed: "Failed to revoke the trusted-LAN browser.",
+  };
+
+  assert.equal(
+    buildTrustedLanActionErrorMessage("createPairingFailed", labels),
+    labels.createPairingFailed,
+  );
+  assert.equal(
+    buildTrustedLanActionErrorMessage("copyPairingFailed", labels),
+    labels.copyPairingFailed,
+  );
+  assert.equal(
+    buildTrustedLanActionErrorMessage("revokeBrowserFailed", labels),
+    labels.revokeBrowserFailed,
+  );
+  assert.equal(
+    buildTrustedLanActionErrorMessage("revokeAllBrowsersFailed", labels),
+    labels.revokeAllBrowsersFailed,
+  );
 });
 
 test("buildTrustedLanNoPrivateInterfaceMessage returns stable validation copy", () => {

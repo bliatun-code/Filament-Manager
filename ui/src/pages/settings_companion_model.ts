@@ -60,6 +60,14 @@ export type TrustedLanActionMessageKey =
 
 export type TrustedLanActionMessageLabels = Record<TrustedLanActionMessageKey, string>;
 
+export type TrustedLanActionErrorMessageKey =
+  | "copyPairingFailed"
+  | "createPairingFailed"
+  | "revokeAllBrowsersFailed"
+  | "revokeBrowserFailed";
+
+export type TrustedLanActionErrorMessageLabels = Record<TrustedLanActionErrorMessageKey, string>;
+
 export type TrustedLanConfigMessageKey =
   | "disabled"
   | "enabled"
@@ -193,6 +201,13 @@ export function findNewTrustedLanActiveBrowserIds(
 export function buildTrustedLanActionMessage(
   action: TrustedLanActionMessageKey,
   labels: TrustedLanActionMessageLabels,
+): string {
+  return labels[action];
+}
+
+export function buildTrustedLanActionErrorMessage(
+  action: TrustedLanActionErrorMessageKey,
+  labels: TrustedLanActionErrorMessageLabels,
 ): string {
   return labels[action];
 }
