@@ -44,6 +44,7 @@ import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refres
 import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagnostics";
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
 import { useSettingsBackupFileInputs } from "./use_settings_backup_file_inputs";
+import { useSettingsBackupMessages } from "./use_settings_backup_messages";
 import { useSettingsBackupValidationState } from "./use_settings_backup_validation_state";
 import { useSettingsCatalogRefreshMaterials } from "./use_settings_catalog_refresh_materials";
 import { useSettingsCatalogRefreshActions } from "./use_settings_catalog_refresh_actions";
@@ -160,6 +161,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     recordExportedBackupValidation,
     recordImportedFullBackup,
   } = useSettingsBackupValidationState();
+  const {
+    settingsBackupErrorMessageLabels,
+    settingsBackupValidationMessageLabels,
+    settingsImportMessageLabels,
+    settingsInventoryExportMessageLabels,
+  } = useSettingsBackupMessages(t);
   const [trustedLanStatus, setTrustedLanStatus] = useState<TrustedLanCompanionStatus | null>(
     null,
   );
@@ -679,13 +686,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     t,
   });
 
-  function settingsInventoryExportMessageLabels() {
-    return {
-      inventoryCsvExported: t("settings.inventoryCsvExported", "Inventory CSV exported."),
-      inventoryJsonExported: t("settings.inventoryJsonExported", "Inventory JSON exported."),
-    };
-  }
-
   const { handlePrintInventoryOverviewA4 } = useSettingsInventoryPrintAction({
     busy,
     loadSettingsInventoryRows,
@@ -766,48 +766,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsImportMessageLabels,
     tauri,
   });
-
-  function settingsImportMessageLabels() {
-    return {
-      backupImported: t("settings.backupImported", "Full backup imported successfully."),
-      created: t("settings.created", "created"),
-      importDetectedInventoryCsv: t("settings.importDetectedInventoryCsv", "Inventory CSV"),
-      importDetectedInventoryJson: t("settings.importDetectedInventoryJson", "Inventory JSON"),
-      importSource: t("settings.importSource", "Source"),
-      inventoryImportDone: t("settings.inventoryImportDone", "Inventory import completed."),
-      librarySyncImportedOnClientHint: t(
-        "settings.librarySyncImportedOnClientHint",
-        "This device is now prepared as the next host. Review Library roles and save when ready to take over.",
-      ),
-      rows: t("settings.validationRows", "Rows"),
-      updated: t("settings.updated", "updated"),
-    };
-  }
-
-  function settingsBackupValidationMessageLabels() {
-    return {
-      backupValidationDone: t("settings.backupValidationDone", "Backup validation completed."),
-    };
-  }
-
-  function settingsBackupErrorMessageLabels() {
-    return {
-      exportBackupFailed: t("settings.error.exportBackup", "Failed to export full backup."),
-      exportInventoryCsvFailed: t(
-        "settings.error.exportInventoryCsv",
-        "Failed to export inventory CSV.",
-      ),
-      exportInventoryJsonFailed: t(
-        "settings.error.exportInventoryJson",
-        "Failed to export inventory JSON.",
-      ),
-      importDataFailed: t("settings.error.importData", "Failed to import selected file."),
-      validateBackupFailed: t(
-        "settings.error.validateBackup",
-        "Failed to validate backup file.",
-      ),
-    };
-  }
 
   const { handleRefreshVendorCatalog } = useSettingsCatalogRefreshActions({
     beginCatalogRefreshResult,
