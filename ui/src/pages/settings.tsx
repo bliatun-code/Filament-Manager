@@ -36,6 +36,7 @@ import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagn
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
 import { useSettingsBackupFileInputs } from "./use_settings_backup_file_inputs";
 import { useSettingsBackupMessages } from "./use_settings_backup_messages";
+import { useSettingsBackupValidationFlags } from "./use_settings_backup_validation_flags";
 import { useSettingsBackupValidationState } from "./use_settings_backup_validation_state";
 import { useSettingsCatalogRefreshMaterials } from "./use_settings_catalog_refresh_materials";
 import { useSettingsCatalogRefreshActions } from "./use_settings_catalog_refresh_actions";
@@ -322,11 +323,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     printerOverview,
     printers,
   });
-  const backupValidationHasWarnings = backupValidationState.hasWarnings;
-  const backupValidationHasMissingTables = backupValidationState.hasMissingTables;
-  const backupValidationHasExtraTables = backupValidationState.hasExtraTables;
-  const hasValidatedFullBackup = backupValidationState.hasValidatedFullBackup;
-  const hasValidatedLatestFullBackup = backupValidationState.hasValidatedLatestFullBackup;
+  const {
+    backupValidationHasExtraTables,
+    backupValidationHasMissingTables,
+    backupValidationHasWarnings,
+    hasValidatedFullBackup,
+    hasValidatedLatestFullBackup,
+  } = useSettingsBackupValidationFlags(backupValidationState);
   const librarySyncClientState = buildLibrarySyncClientState({
     mode: librarySyncSettings?.mode,
     hostBaseUrl: librarySyncSettings?.host_base_url,
