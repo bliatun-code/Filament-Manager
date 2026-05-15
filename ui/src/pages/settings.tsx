@@ -5,6 +5,7 @@ import {
 import { useI18n } from "../lib/i18n";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
 import { SettingsCatalogTab } from "./settings_catalog_tab";
+import { buildSettingsCatalogRouteProps } from "./settings_catalog_route_props";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
 import { SettingsGeneralRoute } from "./settings_general_route";
 import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
@@ -805,6 +806,55 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     onResetCatalogs: handleResetCatalogs,
     onValidateBackupFile: handleValidateBackupFile,
   });
+  const settingsCatalogRouteProps = buildSettingsCatalogRouteProps({
+    helpText: t(
+      "settings.catalogTabHelp",
+      "Catalog updates are performed here. Inventory add-flow uses the local catalogue managed on this page.",
+    ),
+    missingSwatchesPanel: {
+      busy,
+      catalogRefreshBusy,
+      confirmBulkSwatch,
+      missingSwatchCount: missingSwatchMasters.length,
+      swatchBusy,
+      swatchDraftById,
+      swatchVendorFilter,
+      swatchVendorOptions,
+      tauri,
+      t,
+      visibleMissingSwatchMasters,
+      visibleMissingSwatchVendorCount,
+      onBulkAutoFill: handleBulkAutoFillMissingSwatches,
+      onRefresh: reloadSettings,
+      onSaveMissingSwatch: handleSaveMissingSwatch,
+      onSwatchDraftChange: updateSwatchDraft,
+      onVendorFilterChange: setSwatchVendorFilter,
+    },
+    refreshPanel: {
+      activeCatalogMasterCount,
+      activeCatalogMaterialOptions,
+      activeCatalogRefreshMaterials,
+      busy,
+      catalogCount: catalogMasters.length,
+      catalogRefreshBusy,
+      catalogRefreshElapsedSeconds,
+      catalogRefreshLog,
+      catalogRefreshPhase,
+      catalogRefreshProgressMessage,
+      catalogRefreshSummary,
+      catalogRefreshVendor,
+      catalogVendor,
+      showCatalogRefreshLog,
+      swatchBusy,
+      tauri,
+      t,
+      onClearCatalogRefreshMaterials: clearCatalogRefreshMaterials,
+      onRefreshVendorCatalog: handleRefreshVendorCatalog,
+      onSetCatalogVendor: setCatalogVendor,
+      onToggleCatalogRefreshLog: toggleCatalogRefreshLog,
+      onToggleCatalogRefreshMaterial: toggleCatalogRefreshMaterial,
+    },
+  });
   return (
     <div className="page-shell">
       <SettingsPageHeader
@@ -989,55 +1039,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           ),
 
           CATALOG: (
-          <SettingsCatalogTab
-            helpText={t(
-              "settings.catalogTabHelp",
-              "Catalog updates are performed here. Inventory add-flow uses the local catalogue managed on this page.",
-            )}
-            missingSwatchesPanel={{
-              busy,
-              catalogRefreshBusy,
-              confirmBulkSwatch,
-              missingSwatchCount: missingSwatchMasters.length,
-              swatchBusy,
-              swatchDraftById,
-              swatchVendorFilter,
-              swatchVendorOptions,
-              tauri,
-              t,
-              visibleMissingSwatchMasters,
-              visibleMissingSwatchVendorCount,
-              onBulkAutoFill: () => void handleBulkAutoFillMissingSwatches(),
-              onRefresh: () => void reloadSettings(),
-              onSaveMissingSwatch: (master) => void handleSaveMissingSwatch(master),
-              onSwatchDraftChange: updateSwatchDraft,
-              onVendorFilterChange: setSwatchVendorFilter,
-            }}
-            refreshPanel={{
-              activeCatalogMasterCount,
-              activeCatalogMaterialOptions,
-              activeCatalogRefreshMaterials,
-              busy,
-              catalogCount: catalogMasters.length,
-              catalogRefreshBusy,
-              catalogRefreshElapsedSeconds,
-              catalogRefreshLog,
-              catalogRefreshPhase,
-              catalogRefreshProgressMessage,
-              catalogRefreshSummary,
-              catalogRefreshVendor,
-              catalogVendor,
-              showCatalogRefreshLog,
-              swatchBusy,
-              tauri,
-              t,
-              onClearCatalogRefreshMaterials: clearCatalogRefreshMaterials,
-              onRefreshVendorCatalog: (vendor) => void handleRefreshVendorCatalog(vendor),
-              onSetCatalogVendor: setCatalogVendor,
-              onToggleCatalogRefreshLog: toggleCatalogRefreshLog,
-              onToggleCatalogRefreshMaterial: toggleCatalogRefreshMaterial,
-            }}
-          />
+          <SettingsCatalogTab {...settingsCatalogRouteProps} />
           ),
 
           MAINTENANCE: (
