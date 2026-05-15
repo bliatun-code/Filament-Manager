@@ -72,13 +72,13 @@ import {
 } from "../lib/settings_utils";
 import { copyTextToClipboard } from "../lib/clipboard";
 import { PrinterModelPreview } from "../components/printer_model_preview";
-import { DiagnosticCaptureChart } from "../components/diagnostic_capture_chart";
 import { SettingsGeneralTab } from "../components/settings_general_tab";
 import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
 import { SettingsMaintenanceTab } from "../components/settings_maintenance_tab";
 import { SettingsMissingSwatchesPanel } from "../components/settings_missing_swatches_panel";
 import { SettingsPrinterEditForm } from "../components/settings_printer_edit_form";
 import { SettingsMetricTile } from "../components/settings_ui";
+import { SettingsBambuLiveCaptureChartPanel } from "../components/settings_bambu_live_capture_chart_panel";
 import { SettingsBambuLiveDiagnosticsSummary } from "../components/settings_bambu_live_diagnostics_summary";
 import { SettingsBambuLiveTrayCards } from "../components/settings_bambu_live_tray_cards";
 import { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_lan_browsers_panel";
@@ -2870,61 +2870,17 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                 printerId={printer.id}
                                 signalQualityBuckets={signalQualityBuckets}
                               />
-                              <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-950/40">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <div>
-                                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                      {t("settings.bambuLiveChartTitle", "Capture chart")}
-                                    </div>
-                                    <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                                      {t(
-                                        "settings.bambuLiveChartHint",
-                                        "Choose a numeric field to plot only the values captured in this session.",
-                                      )}
-                                    </div>
-                                  </div>
-                                  <select
-                                    value={selectedDiagnosticChartField ?? ""}
-                                    onChange={(event) =>
-                                      setDiagnosticChartFieldByPrinterId((current) => ({
-                                        ...current,
-                                        [printer.id]: event.target.value,
-                                      }))
-                                    }
-                                    disabled={diagnosticChartFields.length === 0}
-                                    className="min-w-[260px] rounded border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
-                                  >
-                                    {diagnosticChartFields.length === 0 ? (
-                                      <option value="">
-                                        {t(
-                                          "settings.bambuLiveChartNoFields",
-                                          "No chart-ready numeric fields yet",
-                                        )}
-                                      </option>
-                                    ) : null}
-                                    {diagnosticChartFields.map((field) => (
-                                      <option key={`${printer.id}-${field.path}`} value={field.path}>
-                                        {field.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                                <div className="mt-3">
-                                  {selectedDiagnosticChartField ? (
-                                    <DiagnosticCaptureChart
-                                      fieldPath={selectedDiagnosticChartField}
-                                      points={diagnosticChartPoints}
-                                    />
-                                  ) : (
-                                    <div className="rounded-lg border border-dashed border-slate-200 px-3 py-3 text-[11px] text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                                      {t(
-                                        "settings.bambuLiveChartNoFields",
-                                        "No chart-ready numeric fields yet",
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
+                              <SettingsBambuLiveCaptureChartPanel
+                                chartFields={diagnosticChartFields}
+                                chartPoints={diagnosticChartPoints}
+                                onSelectedFieldChange={(fieldPath) =>
+                                  setDiagnosticChartFieldByPrinterId((current) => ({
+                                    ...current,
+                                    [printer.id]: fieldPath,
+                                  }))
+                                }
+                                selectedFieldPath={selectedDiagnosticChartField}
+                              />
                               <div className="mt-3 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
                                 {t("settings.bambuLiveCapturedTable", "Captured live fields")}
                               </div>
