@@ -4,10 +4,8 @@ import {
 } from "../lib/tauri_client";
 import { useI18n } from "../lib/i18n";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
-import { SettingsCatalogTab } from "./settings_catalog_tab";
 import { buildSettingsCatalogRouteProps } from "./settings_catalog_route_props";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
-import { SettingsGeneralRoute } from "./settings_general_route";
 import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
 import { buildSettingsLibraryBrowsersPanelProps } from "./settings_library_browsers_panel_props";
 import { buildSettingsLibraryClientPanelProps } from "./settings_library_client_panel_props";
@@ -17,13 +15,11 @@ import { buildSettingsLibraryPairingPanelProps } from "./settings_library_pairin
 import { buildSettingsLibraryRouteProps } from "./settings_library_route_props";
 import { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_route";
 import { buildSettingsLibraryRoleModalRouteProps } from "./settings_library_role_modal_route_props";
-import { SettingsLibraryTab } from "./settings_library_tab";
-import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
 import { buildSettingsMaintenanceRouteProps } from "./settings_maintenance_route_props";
 import { buildSettingsLibraryWebappControlProps } from "./settings_library_webapp_control_props";
 import { SettingsPageHeader } from "./settings_page_header";
-import { SettingsPrintersRoute } from "./settings_printers_route";
 import { buildSettingsPrintersRouteProps } from "./settings_printers_route_props";
+import { buildSettingsRouteMapProps } from "./settings_route_map_props";
 import { SettingsRouteOutlet } from "./settings_route_outlet";
 import { SettingsTabNav } from "./settings_tab_nav";
 import { useSettingsActiveTab } from "./use_settings_active_tab";
@@ -1034,6 +1030,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     onOpenBackupValidate: handleOpenBackupValidate,
     onOpenDataImport: handleOpenDataImport,
   });
+  const settingsRouteMap = buildSettingsRouteMapProps({
+    catalog: settingsCatalogRouteProps,
+    general: settingsGeneralRouteProps,
+    library: settingsLibraryRouteProps,
+    maintenance: settingsMaintenanceRouteProps,
+    printers: settingsPrintersRouteProps,
+  });
   return (
     <div className="page-shell">
       <SettingsPageHeader
@@ -1052,27 +1055,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
       <SettingsRouteOutlet
         activeTab={activeTab}
-        routes={{
-          PRINTERS: (
-          <SettingsPrintersRoute {...settingsPrintersRouteProps} />
-          ),
-
-          GENERAL: (
-          <SettingsGeneralRoute {...settingsGeneralRouteProps} />
-          ),
-
-          LIBRARY: (
-          <SettingsLibraryTab {...settingsLibraryRouteProps} />
-          ),
-
-          CATALOG: (
-          <SettingsCatalogTab {...settingsCatalogRouteProps} />
-          ),
-
-          MAINTENANCE: (
-          <SettingsMaintenanceRoute {...settingsMaintenanceRouteProps} />
-          ),
-        }}
+        routes={settingsRouteMap}
       />
       <SettingsLibraryRoleModalRoute {...settingsLibraryRoleModalRouteProps} />
     </div>
