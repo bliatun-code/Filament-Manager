@@ -1,9 +1,17 @@
 import { LOW_STOCK_GRAMS } from "./inventory_constants";
+import {
+  formatFilamentDisplayTitle,
+  formatSpoolReference,
+  normalizeDisplayToken as normalizeSharedDisplayToken,
+} from "./display_format";
 
 export type SpoolStatus = "IN_STOCK" | "ASSIGNED" | "BORROWED" | "EMPTY" | "LOST";
 export type StatusFilter = "ALL" | SpoolStatus;
 export type OwnershipType = "OWNED" | "BORROWED_IN";
 export type OwnershipFilter = "ALL" | OwnershipType;
+export type InventorySemanticTone = "neutral" | "info" | "success" | "warning" | "danger";
+
+type TranslateFn = (key: string, fallback?: string) => string;
 
 export type InventorySpool = {
   id: string;
@@ -60,9 +68,66 @@ export function normalizeOwnershipType(raw?: string | null): OwnershipType {
   return "OWNED";
 }
 
+export function formatInventoryStatusLabel(t: TranslateFn, statusRaw: string): string {
+  const status = normalizeStatus(statusRaw);
+  if (status === "IN_STOCK") {
+    return t("inventory.statusInStock", "In stock");
+  }
+  if (status === "ASSIGNED") {
+    return t("inventory.statusAssigned", "Assigned");
+  }
+  if (status === "BORROWED") {
+    return t("inventory.statusBorrowed", "Loaned out");
+  }
+  if (status === "EMPTY") {
+    return t("inventory.statusEmpty", "Empty");
+  }
+  return t("inventory.statusLost", "Lost");
+}
+
+export function inventoryStatusTone(statusRaw: string): InventorySemanticTone {
+  const status = normalizeStatus(statusRaw);
+  if (status === "IN_STOCK") {
+    return "success";
+  }
+  if (status === "ASSIGNED") {
+    return "info";
+  }
+  if (status === "BORROWED") {
+    return "warning";
+  }
+  if (status === "EMPTY") {
+    return "neutral";
+  }
+  return "danger";
+}
+
+export function formatInventoryOwnershipLabel(
+  t: TranslateFn,
+  ownershipRaw?: string | null,
+): string {
+  const ownership = normalizeOwnershipType(ownershipRaw);
+  return ownership === "BORROWED_IN"
+    ? t("inventory.borrowedIn", "Borrowed in")
+    : t("inventory.ownedByUs", "Owned");
+}
+
+export function inventoryOwnershipTone(ownershipRaw?: string | null): InventorySemanticTone {
+  const ownership = normalizeOwnershipType(ownershipRaw);
+  return ownership === "BORROWED_IN" ? "warning" : "neutral";
+}
+
+export function formatInventoryOwnershipSummary(t: TranslateFn, spool: InventorySpool): string {
+  if (spool.ownershipType === "BORROWED_IN") {
+    return spool.ownerName?.trim()
+      ? `${t("inventory.borrowedFrom", "Borrowed from")}: ${spool.ownerName.trim()}`
+      : t("inventory.borrowedIn", "Borrowed in");
+  }
+  return t("inventory.ownedByUsDetail", "Owned by us");
+}
+
 export function formatRollReference(spool: Pick<InventorySpool, "id">): string {
-  const normalizedId = spool.id.replace(/^spool_/, "");
-  return `#${normalizedId.slice(-6)}`;
+  return formatSpoolReference(spool.id);
 }
 
 export function formatMasterDisplayTitle(master: {
@@ -78,34 +143,7 @@ export function formatMasterDisplayTitle(master: {
 }
 
 export function normalizeDisplayToken(value?: string | null): string | null {
-  const trimmed = (value ?? "").trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function splitDisplayTokens(value?: string | null): string[] {
-  const normalized = normalizeDisplayToken(value);
-  if (!normalized) {
-    return [];
-  }
-  return normalized
-    .split("·")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0);
-}
-
-function tokenStartsWithToken(baseToken: string, nextToken: string): boolean {
-  const base = baseToken.trim().toLowerCase();
-  const next = nextToken.trim().toLowerCase();
-  if (!base || !next) {
-    return false;
-  }
-  return (
-    next === base ||
-    next.startsWith(`${base} `) ||
-    next.startsWith(`${base}-`) ||
-    next.startsWith(`${base}+`) ||
-    next.startsWith(`${base}/`)
-  );
+  return normalizeSharedDisplayToken(value);
 }
 
 export function formatInventoryDisplayTitle(
@@ -113,22 +151,7 @@ export function formatInventoryDisplayTitle(
   filamentRaw?: string | null,
   colorRaw?: string | null,
 ): string {
-  const tokens = [
-    ...splitDisplayTokens(materialRaw),
-    ...splitDisplayTokens(filamentRaw),
-    ...splitDisplayTokens(colorRaw),
-  ].filter((token, index, allTokens) => {
-    if (index === 0) {
-      return true;
-    }
-    return allTokens[index - 1].toLowerCase() !== token.toLowerCase();
-  });
-
-  if (tokens.length >= 2 && tokenStartsWithToken(tokens[0], tokens[1])) {
-    tokens.shift();
-  }
-
-  return tokens.length > 0 ? tokens.join(" · ") : "—";
+  return formatFilamentDisplayTitle(materialRaw, filamentRaw, colorRaw);
 }
 
 export function buildVendorOptions(spools: InventorySpool[]): string[] {
@@ -201,6 +224,24 @@ export function filterInventorySpools(
       searchMatch
     );
   });
+}
+
+export function spoolRemainingRatio(
+  spool: Pick<InventorySpool, "initialWeightGrams" | "remainingGrams">,
+): number {
+  const initial = Math.max(1, spool.initialWeightGrams || 0);
+  const remaining = Math.max(0, spool.remainingGrams ?? 0);
+  return Math.min(1, remaining / initial);
+}
+
+export function remainingBarClass(ratio: number): string {
+  if (ratio <= 0.2) {
+    return "bg-rose-500 dark:bg-rose-300";
+  }
+  if (ratio <= 0.45) {
+    return "bg-amber-500 dark:bg-amber-300";
+  }
+  return "bg-emerald-500 dark:bg-emerald-300";
 }
 
 export function groupInventorySpools(filteredSpools: InventorySpool[]): SpoolGroup[] {

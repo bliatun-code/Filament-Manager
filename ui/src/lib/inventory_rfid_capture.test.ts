@@ -2,10 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   assessRfidCaptureMatch,
+  buildRfidCaptureSlotSummaries,
+  buildSelectedRfidCaptureSnapshot,
+  filterRfidCaptureSlots,
   rfidCaptureMatchMeta,
+  selectRfidCaptureSlot,
+  supportsRfidCapture,
   type RfidCaptureSummary,
+  type RfidCapturePrinterSlotLike,
 } from "./inventory_rfid_capture";
 import type { InventorySpool } from "./inventory_list_model";
+import type { BambuLiveIntegrationSettings } from "./tauri_client";
 
 function createSpool(overrides: Partial<InventorySpool> = {}): InventorySpool {
   return {
@@ -27,6 +34,42 @@ function createSummary(overrides: Partial<RfidCaptureSummary> = {}): RfidCapture
   return {
     material: "pla cf",
     colorHex: "#2563EB",
+    ...overrides,
+  };
+}
+
+function createSlot(
+  overrides: Partial<RfidCapturePrinterSlotLike> = {},
+): RfidCapturePrinterSlotLike {
+  return {
+    printerId: "printer-a",
+    amsId: "ams_1",
+    slotId: "slot-a1",
+    slotIndex: 1,
+    liveObservedRfidTag: null,
+    liveTrayUuid: null,
+    liveChipId: null,
+    liveTrayInfoIdx: null,
+    liveTrayIdName: null,
+    liveFilamentType: null,
+    liveFilamentName: null,
+    liveColorHex: null,
+    liveTrayWeightG: null,
+    liveRemainingPercent: null,
+    liveLastIdentitySeenAt: null,
+    livePrinterLastSeenAt: null,
+    liveAmsReadDoneBits: null,
+    liveAmsBambuBits: null,
+    ...overrides,
+  };
+}
+
+function liveIntegration(
+  overrides: Partial<BambuLiveIntegrationSettings> = {},
+): BambuLiveIntegrationSettings {
+  return {
+    enabled: true,
+    observed_state: null,
     ...overrides,
   };
 }
@@ -55,4 +98,131 @@ test("rfidCaptureMatchMeta maps confidence to localized chip metadata", () => {
   const exact = rfidCaptureMatchMeta("EXACT", t);
   assert.equal(exact?.label, "inventory.rfidMatchExact:Sikker");
   assert.match(exact?.className ?? "", /emerald|green|success/);
+});
+
+test("filterRfidCaptureSlots prefers assigned-printer capture sources", () => {
+  const slots = [
+    createSlot({ printerId: "printer-a", slotId: "a-1" }),
+    createSlot({ printerId: "printer-b", slotId: "b-1" }),
+    createSlot({ printerId: "printer-b", slotId: "b-ext", amsId: "ams_1_ext" }),
+  ];
+
+  assert.deepEqual(
+    filterRfidCaptureSlots(slots, {
+      assignedSlot: slots[1],
+      clientReadOnly: false,
+      liveIntegrations: {
+        "printer-a": liveIntegration(),
+        "printer-b": liveIntegration(),
+      },
+    }).map((slot) => slot.slotId),
+    ["b-1"],
+  );
+});
+
+test("filterRfidCaptureSlots uses host-observed slot data in client read-only mode", () => {
+  const hostSlot = createSlot({
+    printerId: "printer-host",
+    slotId: "host-1",
+    liveObservedRfidTag: "RFID-1",
+  });
+  const emptySlot = createSlot({ printerId: "printer-host", slotId: "host-2" });
+
+  assert.deepEqual(
+    filterRfidCaptureSlots([emptySlot, hostSlot], {
+      assignedSlot: null,
+      clientReadOnly: true,
+      liveIntegrations: {},
+    }).map((slot) => slot.slotId),
+    ["host-1"],
+  );
+});
+
+test("selectRfidCaptureSlot honors explicit, assigned, and first-slot fallbacks", () => {
+  const slots = [
+    createSlot({ slotId: "slot-1" }),
+    createSlot({ slotId: "slot-2" }),
+  ];
+
+  assert.equal(selectRfidCaptureSlot(slots, { selectedSlotId: "slot-2" })?.slotId, "slot-2");
+  assert.equal(
+    selectRfidCaptureSlot(slots, { selectedSlotId: null, assignedSlot: slots[1] })?.slotId,
+    "slot-2",
+  );
+  assert.equal(selectRfidCaptureSlot(slots, { selectedSlotId: "missing" }), null);
+  assert.equal(selectRfidCaptureSlot(slots, { selectedSlotId: null })?.slotId, "slot-1");
+});
+
+test("supportsRfidCapture requires an available runtime and matching source mode", () => {
+  const hostSlot = createSlot({ liveTrayUuid: "tray-1" });
+
+  assert.equal(
+    supportsRfidCapture({
+      tauriAvailable: false,
+      captureSlotCount: 1,
+      clientReadOnly: true,
+      selectedSlot: hostSlot,
+    }),
+    false,
+  );
+  assert.equal(
+    supportsRfidCapture({
+      tauriAvailable: true,
+      captureSlotCount: 1,
+      clientReadOnly: true,
+      selectedSlot: hostSlot,
+    }),
+    true,
+  );
+  assert.equal(
+    supportsRfidCapture({
+      tauriAvailable: true,
+      captureSlotCount: 1,
+      clientReadOnly: false,
+      liveIntegration: liveIntegration({ enabled: false }),
+    }),
+    false,
+  );
+});
+
+test("RFID capture snapshot and slot summaries merge live and cached identity fields", () => {
+  const slot = createSlot({ slotId: "slot-1", slotIndex: 1 });
+  const integration = liveIntegration({
+    observed_state: {
+      online: true,
+      mqtt_connected: true,
+      last_seen_at: "2026-05-15T12:00:00.000Z",
+      ams_read_done_bits: "1",
+      ams_bambu_bits: "1",
+      trays: [
+        {
+          tray_index: 0,
+          loaded: true,
+          tray_uuid: "TRAY-LIVE",
+          filament_type: "PLA",
+          filament_name: "Basic",
+          color_hex: "#2563EB",
+          remaining_percent: 72,
+          remaining_grams: 720,
+          last_identity_seen_at: "2026-05-15T12:00:00.000Z",
+        },
+      ],
+    },
+  });
+
+  const snapshot = buildSelectedRfidCaptureSnapshot(slot, {
+    clientReadOnly: false,
+    liveIntegration: integration,
+  });
+  assert.equal(snapshot?.observedAt, "2026-05-15T12:00:00.000Z");
+
+  const summaries = buildRfidCaptureSlotSummaries([slot], {
+    clientReadOnly: false,
+    liveIntegrations: { "printer-a": integration },
+    fieldsBySlotId: {},
+  });
+
+  assert.equal(summaries["slot-1"].rfidTag, "TRAY-LIVE");
+  assert.equal(summaries["slot-1"].material, "PLA");
+  assert.equal(summaries["slot-1"].colorHex, "#2563EB");
 });

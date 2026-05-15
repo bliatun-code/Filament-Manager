@@ -1,0 +1,89 @@
+export type SegmentedChoiceOption<T extends string> = {
+  value: T;
+  label: string;
+  count?: number;
+};
+
+export type SegmentedChoiceRowProps<T extends string> = {
+  label?: string;
+  labelWidthClassName?: string;
+  options: ReadonlyArray<SegmentedChoiceOption<T>>;
+  value: T;
+  onChange: (value: T) => void;
+  className?: string;
+  optionSizeClassName?: string;
+  isOptionDisabled?: (option: SegmentedChoiceOption<T>) => boolean;
+};
+
+function segmentedChoiceGroupClass(className = ""): string {
+  return `inline-flex flex-wrap gap-1 rounded-2xl border border-slate-200/85 bg-white/72 p-1 shadow-sm shadow-slate-900/5 dark:border-slate-700 dark:bg-slate-950/55 dark:shadow-none ${className}`.trim();
+}
+
+function segmentedChoiceButtonClass(
+  active: boolean,
+  sizeClasses = "px-3 py-2 text-xs",
+): string {
+  return `inline-flex items-center gap-2 rounded-xl ${sizeClasses} font-semibold transition ${
+    active
+      ? "bg-slate-900 text-white shadow-sm shadow-slate-900/10 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none"
+      : "text-slate-600 hover:bg-white/85 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900/80 dark:hover:text-slate-100"
+  }`;
+}
+
+function segmentedChoiceCountClass(active: boolean): string {
+  return `rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+    active
+      ? "bg-white/15 text-white dark:bg-slate-900/15 dark:text-slate-900"
+      : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+  }`;
+}
+
+export function SegmentedChoiceRow<T extends string>({
+  label,
+  labelWidthClassName = "min-[920px]:w-24",
+  options,
+  value,
+  onChange,
+  className = "",
+  optionSizeClassName,
+  isOptionDisabled,
+}: SegmentedChoiceRowProps<T>) {
+  return (
+    <div
+      className={`flex flex-col gap-2.5 ${
+        label ? "min-[920px]:flex-row min-[920px]:items-center min-[920px]:gap-4" : ""
+      } ${className}`.trim()}
+    >
+      {label ? (
+        <div
+          className={`text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 ${labelWidthClassName} min-[920px]:shrink-0`}
+        >
+          {label}
+        </div>
+      ) : null}
+      <div className={segmentedChoiceGroupClass()}>
+        {options.map((option) => {
+          const active = option.value === value;
+          const disabled = isOptionDisabled?.(option) ?? false;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onChange(option.value)}
+              disabled={disabled}
+              className={`${segmentedChoiceButtonClass(
+                active,
+                optionSizeClassName,
+              )} disabled:cursor-not-allowed disabled:opacity-50`}
+            >
+              <span>{option.label}</span>
+              {typeof option.count === "number" ? (
+                <span className={segmentedChoiceCountClass(active)}>{option.count}</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

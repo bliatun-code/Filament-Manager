@@ -8,6 +8,7 @@ import {
   updateLibrarySyncHostWishlistItemStatus,
   updateWishlistItemStatus,
   type CreateWishlistItemInput,
+  type MasterCatalogRow,
   type UpdateWishlistStatusInput,
   type WishlistItemRow,
 } from "./tauri_client";
@@ -23,6 +24,36 @@ export type WishlistDataSourceOptions = {
   limit?: number;
 };
 
+export type WishlistStatus = "WISHLIST" | "ON_ORDER" | "RECEIVED";
+export type WishlistStatusFilter = "ALL" | WishlistStatus;
+
+export type WishlistQueueSummary = {
+  all: number;
+  wishlist: number;
+  onOrder: number;
+  received: number;
+};
+
+export type WishlistDraftSource = "bambu" | "esun" | "manual";
+
+export type WishlistDraftInput = {
+  source: WishlistDraftSource;
+  selectedBambuMaster?: MasterCatalogRow | null;
+  selectedEsunMaster?: MasterCatalogRow | null;
+  manualVendor?: string | null;
+  manualMaterial?: string | null;
+  manualFilamentName?: string | null;
+  manualColorName?: string | null;
+};
+
+export type WishlistDraft = {
+  master_id?: string | null;
+  vendor: string;
+  material: string;
+  filament_name: string;
+  color_name: string;
+};
+
 type WishlistDataSourceDependencies = {
   fetchHostWishlist?: typeof fetchLibrarySyncWishlistItems;
   listLocalWishlist?: typeof listWishlistItems;
@@ -36,6 +67,80 @@ type WishlistDataSourceDependencies = {
 
 const missingWishlistHostTargetMessage =
   "Client host base URL is required for wishlist host writes.";
+
+export function filterWishlistItems(
+  items: WishlistItemRow[],
+  statusFilter: WishlistStatusFilter,
+): WishlistItemRow[] {
+  return items.filter((item) => (statusFilter === "ALL" ? true : item.status === statusFilter));
+}
+
+export function summarizeWishlistQueue(items: WishlistItemRow[]): WishlistQueueSummary {
+  return items.reduce(
+    (summary, item) => {
+      summary.all += 1;
+      if (item.status === "WISHLIST") {
+        summary.wishlist += 1;
+      } else if (item.status === "ON_ORDER") {
+        summary.onOrder += 1;
+      } else if (item.status === "RECEIVED") {
+        summary.received += 1;
+      }
+      return summary;
+    },
+    { all: 0, wishlist: 0, onOrder: 0, received: 0 },
+  );
+}
+
+export function normalizeWishlistStatus(statusRaw: string): WishlistStatus {
+  if (statusRaw === "ON_ORDER" || statusRaw === "RECEIVED") {
+    return statusRaw;
+  }
+  return "WISHLIST";
+}
+
+export function buildWishlistDraft(input: WishlistDraftInput): WishlistDraft | null {
+  if (input.source === "bambu") {
+    const master = input.selectedBambuMaster;
+    if (!master) {
+      return null;
+    }
+    return {
+      master_id: master.id,
+      vendor: master.vendor,
+      material: master.material,
+      filament_name: master.filament_name,
+      color_name: master.color_name,
+    };
+  }
+
+  if (input.source === "esun") {
+    const master = input.selectedEsunMaster;
+    if (!master) {
+      return null;
+    }
+    return {
+      master_id: master.id,
+      vendor: master.vendor,
+      material: master.material,
+      filament_name: master.filament_name,
+      color_name: master.color_name,
+    };
+  }
+
+  const filamentName = (input.manualFilamentName ?? "").trim();
+  const colorName = (input.manualColorName ?? "").trim();
+  if (!filamentName || !colorName) {
+    return null;
+  }
+  return {
+    master_id: null,
+    vendor: (input.manualVendor ?? "").trim() || "Generic",
+    material: (input.manualMaterial ?? "").trim() || "PLA",
+    filament_name: filamentName,
+    color_name: colorName,
+  };
+}
 
 export async function loadWishlistItems(
   options: WishlistDataSourceOptions = {},

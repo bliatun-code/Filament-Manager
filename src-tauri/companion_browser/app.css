@@ -9,6 +9,7 @@
   --surface: rgba(246, 250, 255, 0.98);
   --surface-strong: rgba(255, 255, 255, 0.98);
   --surface-muted: rgba(224, 234, 246, 0.96);
+  --surface-panel: rgba(255, 255, 255, 0.94);
   --border: rgba(78, 98, 122, 0.34);
   --border-strong: rgba(55, 76, 101, 0.56);
   --text: #102235;
@@ -17,9 +18,15 @@
   --accent-contrast: #ffffff;
   --accent-soft: #dbe9f8;
   --success: #2f6f4f;
+  --success-soft: rgba(47, 111, 79, 0.11);
+  --success-border: rgba(47, 111, 79, 0.28);
+  --info-soft: rgba(23, 50, 77, 0.08);
+  --info-border: rgba(55, 76, 101, 0.24);
   --recovery-open-tint: rgba(47, 111, 79, 0.14);
   --recovery-open-border: rgba(47, 111, 79, 0.3);
   --danger: #9b3e3e;
+  --danger-soft: rgba(155, 62, 62, 0.1);
+  --danger-border: rgba(155, 62, 62, 0.28);
   --button-disabled-surface: linear-gradient(180deg, rgba(82, 99, 121, 0.78), rgba(63, 78, 99, 0.88));
   --button-disabled-surface-muted: rgba(226, 234, 243, 0.88);
   --button-disabled-text: rgba(255, 255, 255, 0.82);
@@ -62,6 +69,7 @@
   --surface: rgba(12, 21, 36, 0.88);
   --surface-strong: rgba(17, 28, 45, 0.96);
   --surface-muted: rgba(31, 43, 62, 0.78);
+  --surface-panel: rgba(17, 28, 45, 0.9);
   --border: rgba(127, 156, 187, 0.2);
   --border-strong: rgba(127, 156, 187, 0.34);
   --text: #f4f8fb;
@@ -70,9 +78,15 @@
   --accent-contrast: #102235;
   --accent-soft: rgba(73, 101, 133, 0.22);
   --success: #8fe0b3;
+  --success-soft: rgba(143, 224, 179, 0.12);
+  --success-border: rgba(143, 224, 179, 0.26);
+  --info-soft: rgba(127, 156, 187, 0.11);
+  --info-border: rgba(127, 156, 187, 0.22);
   --recovery-open-tint: rgba(143, 224, 179, 0.12);
   --recovery-open-border: rgba(143, 224, 179, 0.26);
   --danger: #f3a6a6;
+  --danger-soft: rgba(243, 166, 166, 0.11);
+  --danger-border: rgba(243, 166, 166, 0.24);
   --button-disabled-surface: linear-gradient(180deg, rgba(70, 88, 111, 0.86), rgba(41, 54, 74, 0.92));
   --button-disabled-surface-muted: rgba(36, 49, 70, 0.86);
   --button-disabled-text: rgba(231, 238, 245, 0.84);
@@ -110,6 +124,7 @@
     --surface: rgba(12, 21, 36, 0.88);
     --surface-strong: rgba(17, 28, 45, 0.96);
     --surface-muted: rgba(31, 43, 62, 0.78);
+    --surface-panel: rgba(17, 28, 45, 0.9);
     --border: rgba(127, 156, 187, 0.2);
     --border-strong: rgba(127, 156, 187, 0.34);
     --text: #f4f8fb;
@@ -118,9 +133,15 @@
     --accent-contrast: #102235;
     --accent-soft: rgba(73, 101, 133, 0.22);
     --success: #8fe0b3;
+    --success-soft: rgba(143, 224, 179, 0.12);
+    --success-border: rgba(143, 224, 179, 0.26);
+    --info-soft: rgba(127, 156, 187, 0.11);
+    --info-border: rgba(127, 156, 187, 0.22);
     --recovery-open-tint: rgba(143, 224, 179, 0.12);
     --recovery-open-border: rgba(143, 224, 179, 0.26);
     --danger: #f3a6a6;
+    --danger-soft: rgba(243, 166, 166, 0.11);
+    --danger-border: rgba(243, 166, 166, 0.24);
     --button-disabled-surface: linear-gradient(180deg, rgba(70, 88, 111, 0.86), rgba(41, 54, 74, 0.92));
     --button-disabled-surface-muted: rgba(36, 49, 70, 0.86);
     --button-disabled-text: rgba(231, 238, 245, 0.84);
@@ -1364,8 +1385,8 @@ a {
 }
 
 .detail-feedback-success {
-  border-color: rgba(47, 111, 79, 0.24);
-  background: rgba(47, 111, 79, 0.1);
+  border-color: var(--success-border);
+  background: var(--success-soft);
   color: var(--success);
 }
 
@@ -1500,6 +1521,7 @@ a {
 .status-line {
   min-height: 1.5rem;
   color: var(--text-muted);
+  line-height: 1.45;
 }
 
 .status-line[data-tone="error"] {
@@ -1508,6 +1530,38 @@ a {
 
 .status-line[data-tone="success"] {
   color: var(--success);
+}
+
+.status-line:not(:empty) {
+  overflow-wrap: anywhere;
+}
+
+.app-status-line {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 2.12rem;
+  border: 1px solid var(--info-border);
+  border-radius: var(--compact-card-radius);
+  background: var(--info-soft);
+  padding: 0.42rem 0.62rem;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.app-status-line[data-tone="success"] {
+  border-color: var(--success-border);
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.app-status-line[data-tone="error"] {
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .empty-card {

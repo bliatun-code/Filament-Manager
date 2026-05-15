@@ -1,0 +1,187 @@
+import { VendorBadge } from "./vendor_badge";
+import { neutralChipClass, semanticChipClass } from "../lib/chip_styles";
+import { toSwatchColor } from "../lib/color_utils";
+import { useI18n } from "../lib/i18n";
+import {
+  formatInventoryOwnershipSummary,
+  formatRollReference,
+  type InventorySemanticTone,
+  type InventorySpool,
+} from "../lib/inventory_list_model";
+import { formatCaptureTimestamp, formatObservedAge } from "../lib/inventory_rfid_capture";
+import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
+import { materialTone } from "../lib/material_theme";
+import type { ResolvedTheme } from "../lib/theme_mode";
+import { formatGrams } from "../lib/weight_display";
+
+type InventorySpoolDetailHeaderProps = {
+  displayTitle: string;
+  onClose: () => void;
+  ownershipLabel: string;
+  ownershipTone: InventorySemanticTone;
+  spool: InventorySpool;
+  statusLabel: string;
+  statusTone: InventorySemanticTone;
+};
+
+type InventorySpoolIdentityPanelProps = {
+  assignedSlot: { printerName: string } | null;
+  identityFreshnessMeta: { className: string; label: string };
+  locationValue: string;
+  resolvedTheme: ResolvedTheme;
+  spool: InventorySpool;
+};
+
+export function InventorySpoolDetailHeader({
+  displayTitle,
+  onClose,
+  ownershipLabel,
+  ownershipTone,
+  spool,
+  statusLabel,
+  statusTone,
+}: InventorySpoolDetailHeaderProps) {
+  const { t } = useI18n();
+  const swatchColor = toSwatchColor(spool.hexColor);
+  const currentMaterialTone = materialTone(spool.material);
+
+  return (
+    <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200/80 bg-white/88 px-4 py-4 backdrop-blur-xl sm:px-5 dark:border-slate-700/80 dark:bg-slate-950/88">
+      <div className="flex min-w-0 items-start gap-3.5">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/60 p-2 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/30 dark:shadow-none">
+          <span
+            className="h-full w-full rounded-xl border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
+            style={{
+              background: `linear-gradient(145deg, ${swatchColor} 0%, ${swatchColor}CC 58%, #0f172a33 100%)`,
+            }}
+          />
+        </div>
+        <div className="min-w-0">
+          <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+            {t("inventory.selectedRoll", "Selected roll")}
+          </div>
+          <div className="mt-1 truncate text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
+            {displayTitle}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <VendorBadge vendor={spool.vendor} compact />
+            <span
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${currentMaterialTone.badge} ${currentMaterialTone.badgeText}`}
+            >
+              {spool.material}
+            </span>
+            <span className={semanticChipClass(ownershipTone, "px-2.5 py-1 text-[11px]")}>
+              {ownershipLabel}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-start gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          <span className={semanticChipClass(statusTone, "px-3 py-1 text-xs")}>
+            {statusLabel}
+          </span>
+          <span className={neutralChipClass(true, "px-3 py-1 text-xs")}>
+            {formatGrams(spool.remainingGrams)}
+          </span>
+        </div>
+        <button
+          type="button"
+          aria-label={t("common.close", "Close")}
+          title={t("common.close", "Close")}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white/80 text-lg leading-none text-slate-700 shadow-sm shadow-slate-900/5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200 dark:shadow-black/30 dark:hover:bg-slate-800/70"
+          onClick={onClose}
+        >
+          &times;
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function InventorySpoolIdentityPanel({
+  assignedSlot,
+  identityFreshnessMeta,
+  locationValue,
+  resolvedTheme,
+  spool,
+}: InventorySpoolIdentityPanelProps) {
+  const { locale, t } = useI18n();
+
+  return (
+    <div
+      className="rounded-xl border border-slate-200 bg-slate-50 p-3.5"
+      style={inventorySwatchInsetStyle(spool.hexColor, resolvedTheme)}
+    >
+      <div className="grid gap-3 min-[760px]:grid-cols-2 2xl:grid-cols-3">
+        <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 min-[760px]:col-span-2 2xl:col-span-1 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+            {t("inventory.reference", "Reference")}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
+            {formatRollReference(spool)}
+            <span className={identityFreshnessMeta.className}>
+              {identityFreshnessMeta.label}
+            </span>
+          </div>
+          <div className="mt-1 break-all text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+            ID: {spool.id}
+          </div>
+          <div className="mt-1 break-all text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+            RFID: {spool.rfidTag?.trim() || "-"}
+          </div>
+          <div className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+            {t("inventory.lastAmsIdentitySeen", "Last AMS identity seen")}:{" "}
+            {spool.rfidObservedAt
+              ? `${formatCaptureTimestamp(spool.rfidObservedAt, locale)} (${formatObservedAge(
+                  spool.rfidObservedAt,
+                  locale,
+                )})`
+              : "-"}
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+            {assignedSlot
+              ? t("nav.printers", "Printers")
+              : t("inventory.location", "Location")}
+          </div>
+          <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
+            {locationValue}
+          </div>
+          {assignedSlot ? (
+            <div className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+              {t(
+                "inventory.assignmentManagedOnPrinters",
+                "Filament placement and slot assignment is managed on the Printers page.",
+              )}
+            </div>
+          ) : null}
+        </div>
+        <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+            {t("inventory.ownership", "Ownership")}
+          </div>
+          <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
+            {formatInventoryOwnershipSummary(t, spool)}
+          </div>
+          {spool.ownershipType === "BORROWED_IN" &&
+          (spool.ownerContact || spool.ownershipNote) ? (
+            <div className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+              {spool.ownerContact ? <div>{spool.ownerContact}</div> : null}
+              {spool.ownershipNote ? <div>{spool.ownershipNote}</div> : null}
+            </div>
+          ) : null}
+        </div>
+        <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+            {t("inventory.initialWeight", "Initial weight (g)")}
+          </div>
+          <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
+            {formatGrams(spool.initialWeightGrams)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

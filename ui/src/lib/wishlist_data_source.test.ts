@@ -2,12 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildWishlistDraft,
   createWishlistEntry,
   deleteWishlistEntry,
+  filterWishlistItems,
   loadWishlistItems,
+  normalizeWishlistStatus,
+  summarizeWishlistQueue,
   updateWishlistEntryStatus,
 } from "./wishlist_data_source";
-import type { CreateWishlistItemInput, WishlistItemRow } from "./tauri_client";
+import type { CreateWishlistItemInput, MasterCatalogRow, WishlistItemRow } from "./tauri_client";
 
 function wishlistItem(id: string): WishlistItemRow {
   return {
@@ -41,6 +45,112 @@ test("loadWishlistItems uses host wishlist in client mode", async () => {
 
   assert.deepEqual(calls, [{ baseUrl: "http://host", libraryId: "library-1", limit: 500 }]);
   assert.deepEqual(rows.map((row) => row.id), ["host-item"]);
+});
+
+test("filterWishlistItems applies the queue status filter", () => {
+  const wishlist = wishlistItem("wishlist");
+  const onOrder = { ...wishlistItem("order"), status: "ON_ORDER" };
+  const received = { ...wishlistItem("received"), status: "RECEIVED" };
+
+  assert.deepEqual(
+    filterWishlistItems([wishlist, onOrder, received], "ALL").map((item) => item.id),
+    ["wishlist", "order", "received"],
+  );
+  assert.deepEqual(
+    filterWishlistItems([wishlist, onOrder, received], "ON_ORDER").map((item) => item.id),
+    ["order"],
+  );
+});
+
+test("summarizeWishlistQueue counts known queue states", () => {
+  assert.deepEqual(
+    summarizeWishlistQueue([
+      wishlistItem("wishlist"),
+      { ...wishlistItem("order"), status: "ON_ORDER" },
+      { ...wishlistItem("received"), status: "RECEIVED" },
+      { ...wishlistItem("unknown"), status: "ARCHIVED" },
+    ]),
+    { all: 4, wishlist: 1, onOrder: 1, received: 1 },
+  );
+});
+
+test("normalizeWishlistStatus keeps known queue states and falls back to wishlist", () => {
+  assert.equal(normalizeWishlistStatus("WISHLIST"), "WISHLIST");
+  assert.equal(normalizeWishlistStatus("ON_ORDER"), "ON_ORDER");
+  assert.equal(normalizeWishlistStatus("RECEIVED"), "RECEIVED");
+  assert.equal(normalizeWishlistStatus("ARCHIVED"), "WISHLIST");
+});
+
+function catalogMaster(overrides: Partial<MasterCatalogRow> = {}): MasterCatalogRow {
+  return {
+    id: "master-1",
+    material: "PLA",
+    filament_name: "PLA Basic",
+    color_name: "Gray",
+    hex_color: "#808080",
+    product_url: null,
+    default_weight: 1000,
+    vendor: "Bambu",
+    is_discontinued: false,
+    discontinued_at: null,
+    ...overrides,
+  };
+}
+
+test("buildWishlistDraft maps selected catalog masters", () => {
+  assert.deepEqual(
+    buildWishlistDraft({
+      source: "bambu",
+      selectedBambuMaster: catalogMaster({ id: "bambu-1", vendor: "Bambu" }),
+    }),
+    {
+      master_id: "bambu-1",
+      vendor: "Bambu",
+      material: "PLA",
+      filament_name: "PLA Basic",
+      color_name: "Gray",
+    },
+  );
+  assert.deepEqual(
+    buildWishlistDraft({
+      source: "esun",
+      selectedEsunMaster: catalogMaster({ id: "esun-1", vendor: "eSUN" }),
+    }),
+    {
+      master_id: "esun-1",
+      vendor: "eSUN",
+      material: "PLA",
+      filament_name: "PLA Basic",
+      color_name: "Gray",
+    },
+  );
+});
+
+test("buildWishlistDraft maps manual details with defaults", () => {
+  assert.equal(
+    buildWishlistDraft({
+      source: "manual",
+      manualFilamentName: " ",
+      manualColorName: "Blue",
+    }),
+    null,
+  );
+  assert.deepEqual(
+    buildWishlistDraft({
+      source: "manual",
+      manualVendor: " ",
+      manualMaterial: " ",
+      manualFilamentName: " Tough ",
+      manualColorName: " Blue ",
+    }),
+    {
+      master_id: null,
+      vendor: "Generic",
+      material: "PLA",
+      filament_name: "Tough",
+      color_name: "Blue",
+    },
+  );
 });
 
 test("loadWishlistItems uses local wishlist outside client host mode", async () => {
