@@ -72,6 +72,14 @@ type BuildSettingsBambuLiveDiagnosticTrayCardInput = {
   tray: BambuLiveObservedTray;
 };
 
+type BuildSettingsBambuLiveDiagnosticTrayCardsInput = {
+  amsReadInProgress: boolean;
+  captureTrayByIndex: Map<number, DiagnosticTraySnapshot>;
+  displayTrays: BambuLiveObservedTray[];
+  spoolRows: SpoolWithMasterRow[];
+  t: TranslateFn;
+};
+
 function buildSettingsBambuLiveSummaryParts(
   source: SettingsBambuLiveSummarySource,
   t: TranslateFn,
@@ -456,6 +464,28 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
   };
 }
 
+export function buildSettingsBambuLiveDiagnosticTrayCards({
+  amsReadInProgress,
+  captureTrayByIndex,
+  displayTrays,
+  spoolRows,
+  t,
+}: BuildSettingsBambuLiveDiagnosticTrayCardsInput) {
+  return displayTrays.map((tray) => {
+    const capturedTraySnapshot = resolveSettingsBambuLiveCapturedTraySnapshot({
+      captureTrayByIndex,
+      tray,
+    });
+    return buildSettingsBambuLiveDiagnosticTrayCard({
+      amsReadInProgress,
+      capturedTraySnapshot,
+      spoolRows,
+      t,
+      tray,
+    });
+  });
+}
+
 export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticFilter,
   diagnosticSession,
@@ -510,18 +540,12 @@ export function buildSettingsBambuLiveDiagnosticsModel({
     identityFieldCount,
     t,
   });
-  const diagnosticTrayCards = displayTrays.map((tray) => {
-    const capturedTraySnapshot = resolveSettingsBambuLiveCapturedTraySnapshot({
-      captureTrayByIndex,
-      tray,
-    });
-    return buildSettingsBambuLiveDiagnosticTrayCard({
-      amsReadInProgress,
-      capturedTraySnapshot,
-      spoolRows,
-      t,
-      tray,
-    });
+  const diagnosticTrayCards = buildSettingsBambuLiveDiagnosticTrayCards({
+    amsReadInProgress,
+    captureTrayByIndex,
+    displayTrays,
+    spoolRows,
+    t,
   });
 
   return {

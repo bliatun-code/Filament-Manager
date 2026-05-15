@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildSettingsBambuLiveDiagnosticTrayCard,
+  buildSettingsBambuLiveDiagnosticTrayCards,
   buildSettingsBambuLiveDiagnosticMetricCards,
   buildSettingsBambuLiveDiagnosticGroups,
   buildSettingsBambuLiveFallbackSummaryParts,
@@ -748,5 +749,49 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
   assert.deepEqual(
     metadataCard.candidates.map((candidate) => candidate.key),
     ["spool-1", "spool-2", "spool-3"],
+  );
+});
+
+test("Bambu live diagnostic tray cards resolve snapshots per display tray", () => {
+  const trayCards = buildSettingsBambuLiveDiagnosticTrayCards({
+    amsReadInProgress: false,
+    captureTrayByIndex: new Map([
+      [0, createDiagnosticTraySnapshot({ trayIndex: 0, trayUuid: "ABC123" })],
+      [1, createDiagnosticTraySnapshot({ trayIndex: 1, trayUuid: "XYZ789" })],
+    ]),
+    displayTrays: [
+      createObservedTray({ tray_index: 0 }),
+      createObservedTray({ filament_name: "PETG Basic", tray_index: 1 }),
+    ],
+    spoolRows: [
+      createSpoolRow(),
+      createSpoolRow({
+        master: {
+          id: "master-2",
+          material: "PETG",
+          filament_name: "PETG Basic",
+          color_name: "Blue",
+          hex_color: "#0066FF",
+          default_weight: 1000,
+          vendor: "eSUN",
+        },
+        spool: {
+          id: "spool-2",
+          master_id: "master-2",
+          rfid_tag: "XYZ789",
+          status: "IN_STOCK",
+        },
+      }),
+    ],
+    t,
+  });
+
+  assert.deepEqual(
+    trayCards.map((card) => card.observedRfidLabel),
+    ["Observed: ABC123", "Observed: XYZ789"],
+  );
+  assert.deepEqual(
+    trayCards.map((card) => card.matchLabel),
+    ["PLA Basic · Orange", "PETG Basic · Blue"],
   );
 });
