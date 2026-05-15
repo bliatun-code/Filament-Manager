@@ -11,6 +11,7 @@ import {
   buildSettingsBambuLiveObservedRfid,
   buildSettingsBambuLiveObservedSummaryParts,
   buildSettingsBambuLiveSignalQualityBuckets,
+  buildSettingsBambuLiveTrayReviewState,
   buildSettingsBambuLiveTrayDisplayText,
   createSettingsBambuLiveCaptureSession,
 } from "./settings_bambu_live_diagnostics_model";
@@ -584,6 +585,56 @@ test("Bambu live inventory match presentation prefers inventory label and swatch
     {
       matchLabel: "No clear inventory match",
       matchSwatchColor: "#00AAFF",
+    },
+  );
+});
+
+test("Bambu live tray review state suppresses review while reading AMS", () => {
+  assert.deepEqual(
+    buildSettingsBambuLiveTrayReviewState({
+      amsReadInProgress: false,
+      t,
+      tray: createObservedTray({
+        match_note: "rfid_mismatch",
+        match_status: "rfid_mismatch",
+      }),
+    }),
+    {
+      hasReview: true,
+      matchNote: "rfid_mismatch",
+      reviewTitle: "rfid_mismatch",
+    },
+  );
+
+  assert.deepEqual(
+    buildSettingsBambuLiveTrayReviewState({
+      amsReadInProgress: true,
+      t,
+      tray: createObservedTray({
+        match_note: "rfid_mismatch",
+        match_status: "rfid_mismatch",
+      }),
+    }),
+    {
+      hasReview: false,
+      matchNote: null,
+      reviewTitle: "rfid_mismatch",
+    },
+  );
+
+  assert.deepEqual(
+    buildSettingsBambuLiveTrayReviewState({
+      amsReadInProgress: false,
+      t,
+      tray: createObservedTray({
+        match_note: "exact",
+        match_status: "clear_match",
+      }),
+    }),
+    {
+      hasReview: false,
+      matchNote: "exact",
+      reviewTitle: "exact",
     },
   );
 });

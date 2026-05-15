@@ -326,6 +326,31 @@ export function buildSettingsBambuLiveInventoryMatchPresentation({
   };
 }
 
+export function buildSettingsBambuLiveTrayReviewState({
+  amsReadInProgress,
+  t,
+  tray,
+}: {
+  amsReadInProgress: boolean;
+  t: TranslateFn;
+  tray: BambuLiveObservedTray;
+}) {
+  const hasReview =
+    !amsReadInProgress &&
+    tray.match_status &&
+    tray.match_status !== "clear_match" &&
+    tray.match_status !== "unknown_from_printer";
+
+  return {
+    hasReview: Boolean(hasReview),
+    matchNote:
+      tray.match_note && !amsReadInProgress
+        ? translateObservedMatchNote(tray.match_note, (key, fallback) => t(key, fallback ?? ""))
+        : null,
+    reviewTitle: tray.match_note ?? "",
+  };
+}
+
 export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticFilter,
   diagnosticSession,
@@ -393,11 +418,6 @@ export function buildSettingsBambuLiveDiagnosticsModel({
       colorHex: tray.color_hex ?? capturedTraySnapshot?.colorHex ?? null,
     });
     const primaryInventoryMatch = inventoryMatch.candidates[0] ?? null;
-    const hasReview =
-      !amsReadInProgress &&
-      tray.match_status &&
-      tray.match_status !== "clear_match" &&
-      tray.match_status !== "unknown_from_printer";
     const matchDescription = buildSettingsBambuLiveInventoryMatchDescription({
       inventoryMatchKind: inventoryMatch.kind,
       observedRfid,
@@ -407,6 +427,11 @@ export function buildSettingsBambuLiveDiagnosticsModel({
     const { matchLabel, matchSwatchColor } = buildSettingsBambuLiveInventoryMatchPresentation({
       capturedTraySnapshot,
       primaryInventoryMatch,
+      t,
+      tray,
+    });
+    const { hasReview, matchNote, reviewTitle } = buildSettingsBambuLiveTrayReviewState({
+      amsReadInProgress,
       t,
       tray,
     });
@@ -422,21 +447,18 @@ export function buildSettingsBambuLiveDiagnosticsModel({
       }),
       detailText,
       hasMoreCandidates: inventoryMatch.candidates.length > 3,
-      hasReview: Boolean(hasReview),
+      hasReview,
       key: `live-tray-${tray.tray_index}`,
       matchDescription,
       matchKind: inventoryMatch.kind,
       matchLabel,
-      matchNote:
-        tray.match_note && !amsReadInProgress
-          ? translateObservedMatchNote(tray.match_note, (key, fallback) => t(key, fallback ?? ""))
-          : null,
+      matchNote,
       matchSwatchColor,
       mqttTrayLabel: `${t("settings.bambuLiveMqttTrayLabel", "MQTT tray")} ${tray.tray_index}`,
       observedRfidLabel: observedRfid
         ? `${t("settings.bambuLiveObservedPrefix", "Observed")}: ${observedRfid}`
         : null,
-      reviewTitle: tray.match_note ?? "",
+      reviewTitle,
       slotLabel: `${t("settings.bambuLiveSlotLabel", "Slot")} ${tray.tray_index + 1}`,
       statusText,
     };
