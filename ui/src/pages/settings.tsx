@@ -47,8 +47,7 @@ import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncActions } from "./use_settings_library_sync_actions";
 import { useSettingsLibraryDerivedState } from "./use_settings_library_derived_state";
 import { useSettingsLibraryClientAdvanced } from "./use_settings_library_client_advanced";
-import { useSettingsLibraryRoleChange } from "./use_settings_library_role_change";
-import { useSettingsLibraryRoleChangeState } from "./use_settings_library_role_change_state";
+import { useSettingsLibraryRoleFlow } from "./use_settings_library_role_flow";
 import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";
 import { useSettingsSilentReload } from "./use_settings_silent_reload";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
@@ -466,8 +465,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     handleConfirmLibraryRoleChange,
     handleRequestLibraryRoleChange,
     libraryRoleConfirmArmed,
-    pendingLibraryRoleTarget,
-  } = useSettingsLibraryRoleChange({
+    roleChangeState,
+  } = useSettingsLibraryRoleFlow({
     clearFullBackupProgress,
     handleSaveLibrarySyncSettings,
     hasValidatedFullBackup,
@@ -709,14 +708,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanEnabledDraft,
     trustedLanPairingBrowserLabelDraft,
     trustedLanPairingLink,
-  });
-  const roleChangeState = useSettingsLibraryRoleChangeState({
-    pendingLibraryRoleTarget,
-    librarySyncSavedMode,
-    lastFullBackupExportedAt,
-    lastFullBackupImportedAt,
-    hasValidatedFullBackup,
-    hasValidatedLatestFullBackup,
   });
   const settingsGeneralRouteProps = buildSettingsGeneralRouteProps({
     appVersion,
