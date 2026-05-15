@@ -59,11 +59,9 @@ import { useI18n, type Locale } from "../lib/i18n";
 import { toErrorMessage } from "../lib/error_text";
 import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/inventory_export";
 import {
-  clampInt,
   extractBaseUrlFromPairingInput,
   formatSettingsDateTime,
   isFullBackupValidationFormat,
-  parseNonNegativeInt,
   parsePositiveInt,
   waitForMs,
 } from "../lib/settings_utils";
@@ -123,6 +121,7 @@ import { createSettingsBambuLiveCaptureSession } from "./settings_bambu_live_dia
 import {
   buildPrinterSlotsByPrinterId,
   derivePrinterMultiConfig,
+  preparePrinterReconfigure,
 } from "./settings_printer_model";
 
 type SettingsTab = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
@@ -1483,35 +1482,33 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       return;
     }
     const current = printers.find((printer) => printer.id === editPrinterId) ?? null;
-    const model = editPrinterModel.trim();
-    const name = editPrinterName.trim();
-    if (!current || !model || !name) {
+    const prepared = preparePrinterReconfigure({
+      currentExists: Boolean(current),
+      draft: {
+        id: editPrinterId,
+        model: editPrinterModel,
+        name: editPrinterName,
+        amsUnits: editAmsUnits,
+        slotsPerUnit: editSlotsPerUnit,
+        bambuLiveEnabled: editBambuLiveEnabled,
+        bambuLiveHost: editBambuLiveHost,
+        bambuLiveAccessCode: editBambuLiveAccessCode,
+        bambuLivePrinterSerial: editBambuLivePrinterSerial,
+      },
+    });
+    if (!prepared.ok) {
+      if (prepared.reason === "missing_bambu_live_fields") {
+        setError(
+          t(
+            "settings.error.bambuLiveFieldsRequired",
+            "Host, access code and printer serial are required when live Bambu status is enabled.",
+          ),
+        );
+        return;
+      }
       setError(t("settings.error.printerRequired", "Printer name and model are required."));
       return;
     }
-    if (
-      editBambuLiveEnabled &&
-      (!editBambuLiveHost.trim() || !editBambuLiveAccessCode.trim() || !editBambuLivePrinterSerial.trim())
-    ) {
-      setError(
-        t(
-          "settings.error.bambuLiveFieldsRequired",
-          "Host, access code and printer serial are required when live Bambu status is enabled.",
-        ),
-      );
-      return;
-    }
-    const profile = resolvePrinterModelProfile(model);
-    const units = clampInt(
-      parseNonNegativeInt(editAmsUnits, profile.defaultUnits),
-      0,
-      profile.maxUnits,
-    );
-    const slots = clampInt(
-      parsePositiveInt(editSlotsPerUnit, profile.defaultSlotsPerUnit),
-      1,
-      profile.maxSlotsPerUnit,
-    );
 
     setBusy(true);
     setError(null);
@@ -1529,13 +1526,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           return;
         }
         await createManagedPrinter(
-          {
-            id: editPrinterId,
-            model,
-            name,
-            ams_units: units,
-            slots_per_ams: slots,
-          },
+          prepared.printer,
           {
             clientReadOnly: true,
             clientHostBaseUrl: settingsClientHostBaseUrl,
@@ -1543,28 +1534,22 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           },
         );
       } else {
-        await createManagedPrinter({
-          id: editPrinterId,
-          model,
-          name,
-          ams_units: units,
-          slots_per_ams: slots,
-        });
-        if (editBambuLiveEnabled) {
+        await createManagedPrinter(prepared.printer);
+        if (prepared.bambuLive.enabled) {
           await saveBambuLiveIntegration({
-            printer_id: editPrinterId,
+            printer_id: prepared.printer.id,
             enabled: true,
-            host: editBambuLiveHost.trim() || null,
-            access_code: editBambuLiveAccessCode.trim() || null,
-            printer_serial: editBambuLivePrinterSerial.trim() || null,
+            host: prepared.bambuLive.host,
+            access_code: prepared.bambuLive.accessCode,
+            printer_serial: prepared.bambuLive.printerSerial,
           });
         } else {
-          await deleteBambuLiveIntegration(editPrinterId);
+          await deleteBambuLiveIntegration(prepared.printer.id);
         }
       }
       await reloadSettings();
       setInfo(
-        `${t("settings.updatedPrinter", "Updated printer")} "${name}".`,
+        `${t("settings.updatedPrinter", "Updated printer")} "${prepared.printer.name}".`,
       );
       handleCancelEditPrinter();
     } catch (updateError) {

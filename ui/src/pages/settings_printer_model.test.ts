@@ -4,6 +4,7 @@ import {
   buildPrinterSlotsByPrinterId,
   derivePrinterMultiConfig,
   isBambuLabPrinter,
+  preparePrinterReconfigure,
 } from "./settings_printer_model";
 import type { PrinterOverviewRow } from "../lib/tauri_client";
 
@@ -76,4 +77,77 @@ test("derivePrinterMultiConfig falls back to model defaults without slots", () =
 test("isBambuLabPrinter handles casing and whitespace", () => {
   assert.equal(isBambuLabPrinter(" Bambu Lab P1S "), true);
   assert.equal(isBambuLabPrinter("Prusa MK4"), false);
+});
+
+test("preparePrinterReconfigure trims required fields and clamps model-specific slots", () => {
+  const prepared = preparePrinterReconfigure({
+    currentExists: true,
+    draft: {
+      id: "printer-1",
+      model: " Bambu Lab A1 mini ",
+      name: "  A1 Mini  ",
+      amsUnits: "9",
+      slotsPerUnit: "12",
+      bambuLiveEnabled: true,
+      bambuLiveHost: " 192.168.1.20 ",
+      bambuLiveAccessCode: " 12345678 ",
+      bambuLivePrinterSerial: " 00M09 ",
+    },
+  });
+
+  assert.equal(prepared.ok, true);
+  if (!prepared.ok) {
+    return;
+  }
+  assert.deepEqual(prepared.printer, {
+    id: "printer-1",
+    model: "Bambu Lab A1 mini",
+    name: "A1 Mini",
+    ams_units: 1,
+    slots_per_ams: 4,
+  });
+  assert.deepEqual(prepared.bambuLive, {
+    enabled: true,
+    host: "192.168.1.20",
+    accessCode: "12345678",
+    printerSerial: "00M09",
+  });
+});
+
+test("preparePrinterReconfigure validates missing printer and Bambu live fields", () => {
+  assert.deepEqual(
+    preparePrinterReconfigure({
+      currentExists: false,
+      draft: {
+        id: "printer-1",
+        model: "Bambu Lab P1S",
+        name: "P1S",
+        amsUnits: "1",
+        slotsPerUnit: "4",
+        bambuLiveEnabled: false,
+        bambuLiveHost: "",
+        bambuLiveAccessCode: "",
+        bambuLivePrinterSerial: "",
+      },
+    }),
+    { ok: false, reason: "missing_printer" },
+  );
+
+  assert.deepEqual(
+    preparePrinterReconfigure({
+      currentExists: true,
+      draft: {
+        id: "printer-1",
+        model: "Bambu Lab P1S",
+        name: "P1S",
+        amsUnits: "1",
+        slotsPerUnit: "4",
+        bambuLiveEnabled: true,
+        bambuLiveHost: "192.168.1.20",
+        bambuLiveAccessCode: "",
+        bambuLivePrinterSerial: "00M09",
+      },
+    }),
+    { ok: false, reason: "missing_bambu_live_fields" },
+  );
 });
