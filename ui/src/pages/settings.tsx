@@ -15,6 +15,7 @@ import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
 import { buildSettingsMaintenanceRouteProps } from "./settings_maintenance_route_props";
 import { SettingsPageHeader } from "./settings_page_header";
 import { SettingsPrintersRoute } from "./settings_printers_route";
+import { buildSettingsPrintersRouteProps } from "./settings_printers_route_props";
 import { SettingsRouteOutlet } from "./settings_route_outlet";
 import { SettingsTabNav } from "./settings_tab_nav";
 import { useSettingsActiveTab } from "./use_settings_active_tab";
@@ -855,6 +856,53 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       onToggleCatalogRefreshMaterial: toggleCatalogRefreshMaterial,
     },
   });
+  const settingsPrintersRouteProps = buildSettingsPrintersRouteProps({
+    bambuLiveIntegrations,
+    busy,
+    confirmDeletePrinterId,
+    diagnosticCaptureActiveByPrinterId,
+    diagnosticCaptureByPrinterId,
+    diagnosticChartFieldByPrinterId,
+    diagnosticFilterByPrinterId,
+    diagnosticSortByPrinterId,
+    editAmsUnits,
+    editBambuLiveAccessCode,
+    editBambuLiveEnabled,
+    editBambuLiveHost,
+    editBambuLivePrinterSerial,
+    editModelProfile,
+    editPrinterId,
+    editPrinterModel,
+    editPrinterName,
+    editSlotsPerUnit,
+    expandedBambuDetailsPrinterId,
+    loading,
+    printerSlotsByPrinterId,
+    printers,
+    settingsClientReadOnly,
+    sortedPrinters,
+    spoolRows,
+    tauri,
+    onBambuLiveAccessCodeChange: setEditBambuLiveAccessCode,
+    onBambuLiveEnabledChange: setEditBambuLiveEnabled,
+    onBambuLiveHostChange: setEditBambuLiveHost,
+    onBambuLivePrinterSerialChange: setEditBambuLivePrinterSerial,
+    onCancelEditPrinter: handleCancelEditPrinter,
+    onCopyError: setError,
+    onCopySuccess: setInfo,
+    onDeletePrinter: handleDeletePrinter,
+    onDiagnosticChartFieldChange: setDiagnosticChartFieldByPrinterId,
+    onDiagnosticFilterChange: setDiagnosticFilterByPrinterId,
+    onDiagnosticSortChange: setDiagnosticSortByPrinterId,
+    onEditAmsUnitsChange: setEditAmsUnits,
+    onEditPrinterModelChange: setEditPrinterModel,
+    onEditPrinterNameChange: setEditPrinterName,
+    onEditSlotsPerUnitChange: setEditSlotsPerUnit,
+    onSavePrinterReconfigure: handleSavePrinterReconfigure,
+    onStartEditPrinter: handleStartEditPrinter,
+    onToggleBambuLiveCapture: handleToggleBambuLiveCapture,
+    onToggleBambuLiveDetails: handleToggleBambuLiveDetails,
+  });
   return (
     <div className="page-shell">
       <SettingsPageHeader
@@ -875,55 +923,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         activeTab={activeTab}
         routes={{
           PRINTERS: (
-          <SettingsPrintersRoute
-            tab={{
-              bambuLiveIntegrations,
-              busy,
-              confirmDeletePrinterId,
-              diagnosticCaptureActiveByPrinterId,
-              diagnosticCaptureByPrinterId,
-              diagnosticChartFieldByPrinterId,
-              diagnosticFilterByPrinterId,
-              diagnosticSortByPrinterId,
-              editAmsUnits,
-              editBambuLiveAccessCode,
-              editBambuLiveEnabled,
-              editBambuLiveHost,
-              editBambuLivePrinterSerial,
-              editModelProfile,
-              editPrinterId,
-              editPrinterModel,
-              editPrinterName,
-              editSlotsPerUnit,
-              expandedBambuDetailsPrinterId,
-              loading,
-              printerSlotsByPrinterId,
-              printers,
-              settingsClientReadOnly,
-              sortedPrinters,
-              spoolRows,
-              tauri,
-              onBambuLiveAccessCodeChange: setEditBambuLiveAccessCode,
-              onBambuLiveEnabledChange: setEditBambuLiveEnabled,
-              onBambuLiveHostChange: setEditBambuLiveHost,
-              onBambuLivePrinterSerialChange: setEditBambuLivePrinterSerial,
-              onCancelEditPrinter: handleCancelEditPrinter,
-              onCopyError: setError,
-              onCopySuccess: setInfo,
-              onDeletePrinter: (printer) => void handleDeletePrinter(printer),
-              onDiagnosticChartFieldChange: setDiagnosticChartFieldByPrinterId,
-              onDiagnosticFilterChange: setDiagnosticFilterByPrinterId,
-              onDiagnosticSortChange: setDiagnosticSortByPrinterId,
-              onEditAmsUnitsChange: setEditAmsUnits,
-              onEditPrinterModelChange: setEditPrinterModel,
-              onEditPrinterNameChange: setEditPrinterName,
-              onEditSlotsPerUnitChange: setEditSlotsPerUnit,
-              onSavePrinterReconfigure: () => void handleSavePrinterReconfigure(),
-              onStartEditPrinter: handleStartEditPrinter,
-              onToggleBambuLiveCapture: handleToggleBambuLiveCapture,
-              onToggleBambuLiveDetails: handleToggleBambuLiveDetails,
-            }}
-          />
+          <SettingsPrintersRoute {...settingsPrintersRouteProps} />
           ),
 
           GENERAL: (
