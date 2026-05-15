@@ -3,6 +3,7 @@ use std::path::Path;
 
 pub use super::database_backup::BackupValidationStats;
 use super::database_backup::{parse_full_backup_content, validate_full_backup_content};
+use super::database_borrowed_schema::ensure_borrowed_in_schema as ensure_borrowed_in_schema_impl;
 use super::database_catalog_schema::ensure_catalog_lifecycle_columns as ensure_catalog_lifecycle_columns_schema;
 use super::database_ids::new_id;
 pub use super::database_import::ImportDataStats;
@@ -1402,132 +1403,7 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_borrowed_in_schema(&self) -> InventoryResult<()> {
-        if !table_has_column(&self.conn, "filament_spools", "ownership_type")? {
-            self.conn.execute(
-                "ALTER TABLE filament_spools
-                 ADD COLUMN ownership_type TEXT NOT NULL DEFAULT 'OWNED'",
-                [],
-            )?;
-        }
-
-        if !table_has_column(&self.conn, "filament_spools", "owner_name")? {
-            self.conn.execute(
-                "ALTER TABLE filament_spools
-                 ADD COLUMN owner_name TEXT",
-                [],
-            )?;
-        }
-
-        if !table_has_column(&self.conn, "filament_spools", "owner_contact")? {
-            self.conn.execute(
-                "ALTER TABLE filament_spools
-                 ADD COLUMN owner_contact TEXT",
-                [],
-            )?;
-        }
-
-        if !table_has_column(&self.conn, "filament_spools", "ownership_note")? {
-            self.conn.execute(
-                "ALTER TABLE filament_spools
-                 ADD COLUMN ownership_note TEXT",
-                [],
-            )?;
-        }
-
-        if !table_has_column(&self.conn, "spool_loans", "loan_direction")? {
-            self.conn.execute(
-                "ALTER TABLE spool_loans
-                 ADD COLUMN loan_direction TEXT NOT NULL DEFAULT 'OUTBOUND'",
-                [],
-            )?;
-        }
-
-        if !table_has_column(&self.conn, "spool_loans", "loan_status")? {
-            self.conn.execute(
-                "ALTER TABLE spool_loans
-                 ADD COLUMN loan_status TEXT NOT NULL DEFAULT 'ACTIVE'",
-                [],
-            )?;
-        }
-
-        if !table_has_column(&self.conn, "spool_loans", "counterparty_name")? {
-            self.conn.execute(
-                "ALTER TABLE spool_loans
-                 ADD COLUMN counterparty_name TEXT",
-                [],
-            )?;
-        }
-
-        if !table_has_column(&self.conn, "spool_loans", "counterparty_contact")? {
-            self.conn.execute(
-                "ALTER TABLE spool_loans
-                 ADD COLUMN counterparty_contact TEXT",
-                [],
-            )?;
-        }
-
-        if !table_has_column(&self.conn, "spool_loans", "counterparty_note")? {
-            self.conn.execute(
-                "ALTER TABLE spool_loans
-                 ADD COLUMN counterparty_note TEXT",
-                [],
-            )?;
-        }
-
-        self.conn.execute(
-            "UPDATE filament_spools
-             SET ownership_type = 'OWNED'
-             WHERE ownership_type IS NULL
-                OR trim(ownership_type) = ''",
-            [],
-        )?;
-        self.conn.execute(
-            "UPDATE spool_loans
-             SET loan_direction = 'OUTBOUND'
-             WHERE loan_direction IS NULL
-                OR trim(loan_direction) = ''",
-            [],
-        )?;
-        self.conn.execute(
-            "UPDATE spool_loans
-             SET loan_status = 'RETURNED'
-             WHERE returned_at IS NOT NULL
-               AND (loan_status IS NULL
-                 OR trim(loan_status) = ''
-                 OR loan_status = 'ACTIVE')",
-            [],
-        )?;
-        self.conn.execute(
-            "UPDATE spool_loans
-             SET loan_status = 'ACTIVE'
-             WHERE loan_status IS NULL
-                OR trim(loan_status) = ''",
-            [],
-        )?;
-        self.conn.execute(
-            "UPDATE spool_loans
-             SET counterparty_name = borrower_name
-             WHERE (counterparty_name IS NULL OR trim(counterparty_name) = '')
-               AND trim(borrower_name) != ''",
-            [],
-        )?;
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_spools_ownership_type
-             ON filament_spools(ownership_type, status)",
-            [],
-        )?;
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_spool_loans_counterparty_time
-             ON spool_loans(counterparty_name, lent_at)",
-            [],
-        )?;
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_spool_loans_direction_status
-             ON spool_loans(loan_direction, loan_status, lent_at)",
-            [],
-        )?;
-
-        Ok(())
+        ensure_borrowed_in_schema_impl(&self.conn)
     }
 
     pub fn ensure_printer_external_slot_schema(&self) -> InventoryResult<()> {
