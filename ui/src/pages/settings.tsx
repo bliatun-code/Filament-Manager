@@ -16,6 +16,7 @@ import { buildSettingsLibraryServerPanelProps } from "./settings_library_server_
 import { buildSettingsLibraryPairingPanelProps } from "./settings_library_pairing_panel_props";
 import { buildSettingsLibraryRouteProps } from "./settings_library_route_props";
 import { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_route";
+import { buildSettingsLibraryRoleModalRouteProps } from "./settings_library_role_modal_route_props";
 import { SettingsLibraryTab } from "./settings_library_tab";
 import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
 import { buildSettingsMaintenanceRouteProps } from "./settings_maintenance_route_props";
@@ -1015,6 +1016,24 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     title: librarySyncTabLabels.title,
     webappControl: settingsLibraryWebappControlProps,
   });
+  const settingsLibraryRoleModalRouteProps = buildSettingsLibraryRoleModalRouteProps({
+    busy,
+    lastFullBackupExportedAt,
+    lastFullBackupImportedAt,
+    lastFullBackupValidatedAt,
+    libraryRoleConfirmArmed,
+    librarySyncBusy,
+    librarySyncSettings,
+    locale,
+    roleChangeState,
+    tauri,
+    t,
+    onClose: closeLibraryRoleChangeModal,
+    onConfirm: handleConfirmLibraryRoleChange,
+    onExportFullBackup: handleExportFullBackup,
+    onOpenBackupValidate: handleOpenBackupValidate,
+    onOpenDataImport: handleOpenDataImport,
+  });
   return (
     <div className="page-shell">
       <SettingsPageHeader
@@ -1055,26 +1074,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           ),
         }}
       />
-      <SettingsLibraryRoleModalRoute
-        modal={{
-          busy,
-          lastFullBackupExportedAt,
-          lastFullBackupImportedAt,
-          lastFullBackupValidatedAt,
-          libraryRoleConfirmArmed,
-          librarySyncBusy,
-          librarySyncSettings,
-          locale,
-          roleChangeState,
-          tauri,
-          t,
-          onClose: closeLibraryRoleChangeModal,
-          onConfirm: () => void handleConfirmLibraryRoleChange(),
-          onExportFullBackup: () => void handleExportFullBackup(),
-          onOpenBackupValidate: handleOpenBackupValidate,
-          onOpenDataImport: handleOpenDataImport,
-        }}
-      />
+      <SettingsLibraryRoleModalRoute {...settingsLibraryRoleModalRouteProps} />
     </div>
   );
 }
