@@ -28,6 +28,11 @@ use super::database_import::{
     parse_inventory_spools_csv, parse_inventory_spools_json, InventoryImportRow,
     InventoryImportStats,
 };
+use super::database_library_sync_auth::{
+    clear_library_sync_client_auth_state as clear_library_sync_client_auth_state_rows,
+    get_library_sync_client_auth_state as get_library_sync_client_auth_state_rows,
+    save_library_sync_client_auth_state as save_library_sync_client_auth_state_rows,
+};
 use super::database_library_sync_cache::{
     save_library_sync_cached_loans as save_library_sync_cached_loan_rows,
     save_library_sync_cached_printers as save_library_sync_cached_printer_rows,
@@ -85,7 +90,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-type LibrarySyncClientAuthState = (String, String, String, Option<String>);
+pub(crate) type LibrarySyncClientAuthState = (String, String, String, Option<String>);
 type MasterCatalogExistingRow = (
     String,
     String,
@@ -2820,53 +2825,23 @@ impl FilamentDatabase {
         csrf_token: &str,
         expires_at: Option<&str>,
     ) -> InventoryResult<()> {
-        let paired_at = self.current_timestamp()?;
-        self.set_setting("library_sync_client_session_id", session_id.trim())?;
-        self.set_setting("library_sync_client_device_token", device_token.trim())?;
-        self.set_setting("library_sync_client_csrf_token", csrf_token.trim())?;
-        self.set_setting("library_sync_client_auth_paired_at", &paired_at)?;
-        match expires_at.map(str::trim).filter(|value| !value.is_empty()) {
-            Some(value) => self.set_setting("library_sync_client_auth_expires_at", value)?,
-            None => self.delete_setting("library_sync_client_auth_expires_at")?,
-        }
-        Ok(())
+        save_library_sync_client_auth_state_rows(
+            &self.conn,
+            session_id,
+            device_token,
+            csrf_token,
+            expires_at,
+        )
     }
 
     pub fn clear_library_sync_client_auth_state(&self) -> InventoryResult<()> {
-        self.delete_setting("library_sync_client_session_id")?;
-        self.delete_setting("library_sync_client_device_token")?;
-        self.delete_setting("library_sync_client_csrf_token")?;
-        self.delete_setting("library_sync_client_auth_paired_at")?;
-        self.delete_setting("library_sync_client_auth_expires_at")?;
-        Ok(())
+        clear_library_sync_client_auth_state_rows(&self.conn)
     }
 
     pub fn get_library_sync_client_auth_state(
         &self,
     ) -> InventoryResult<Option<LibrarySyncClientAuthState>> {
-        let session_id = self
-            .get_setting("library_sync_client_session_id")?
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
-        let device_token = self
-            .get_setting("library_sync_client_device_token")?
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
-        let csrf_token = self
-            .get_setting("library_sync_client_csrf_token")?
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
-        let expires_at = self
-            .get_setting("library_sync_client_auth_expires_at")?
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
-
-        match (session_id, device_token, csrf_token) {
-            (Some(session_id), Some(device_token), Some(csrf_token)) => {
-                Ok(Some((session_id, device_token, csrf_token, expires_at)))
-            }
-            _ => Ok(None),
-        }
+        get_library_sync_client_auth_state_rows(&self.conn)
     }
 
     pub fn save_library_sync_cached_snapshot(
