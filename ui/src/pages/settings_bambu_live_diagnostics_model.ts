@@ -19,7 +19,12 @@ import {
   type DiagnosticFilterKey,
   type DiagnosticSortKey,
 } from "../lib/diagnostic_capture";
-import type { BambuLiveIntegrationSettings } from "../lib/tauri_client";
+import { toSwatchColor } from "../lib/color_utils";
+import {
+  buildInventoryMatchResult,
+  translateObservedMatchNote,
+} from "../lib/inventory_match";
+import type { BambuLiveIntegrationSettings, SpoolWithMasterRow } from "../lib/tauri_client";
 
 type TranslateFn = (key: string, fallback: string) => string;
 type FormatDateTimeFn = (value: string) => string;
@@ -31,6 +36,7 @@ type BuildSettingsBambuLiveDiagnosticsModelInput = {
   formatDateTime: FormatDateTimeFn;
   liveConfig: BambuLiveIntegrationSettings | null;
   selectedChartFieldPath?: string | null;
+  spoolRows: SpoolWithMasterRow[];
   t: TranslateFn;
 };
 
@@ -41,6 +47,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
   formatDateTime,
   liveConfig,
   selectedChartFieldPath,
+  spoolRows,
   t,
 }: BuildSettingsBambuLiveDiagnosticsModelInput) {
   const observedState = liveConfig?.observed_state ?? null;
@@ -162,6 +169,96 @@ export function buildSettingsBambuLiveDiagnosticsModel({
       value: String(identityFieldCount),
     },
   ];
+  const diagnosticTrayCards = displayTrays.map((tray) => {
+    const capturedTraySnapshot =
+      captureTrayByIndex.get(tray.tray_index) ??
+      (tray.tray_index > 0 ? captureTrayByIndex.get(tray.tray_index - 1) : null) ??
+      null;
+    const observedRfid =
+      capturedTraySnapshot?.trayUuid?.trim() && !/^0+$/.test(capturedTraySnapshot.trayUuid.trim())
+        ? capturedTraySnapshot.trayUuid.trim()
+        : null;
+    const inventoryMatch = buildInventoryMatchResult(spoolRows, {
+      rfid: observedRfid,
+      material: tray.filament_type ?? capturedTraySnapshot?.filamentType ?? null,
+      filamentName: tray.filament_name ?? capturedTraySnapshot?.filamentName ?? null,
+      colorHex: tray.color_hex ?? capturedTraySnapshot?.colorHex ?? null,
+    });
+    const primaryInventoryMatch = inventoryMatch.candidates[0] ?? null;
+    const hasReview =
+      !amsReadInProgress &&
+      tray.match_status &&
+      tray.match_status !== "clear_match" &&
+      tray.match_status !== "unknown_from_printer";
+    const matchDescription =
+      inventoryMatch.kind === "rfid_exact"
+        ? t(
+            "settings.bambuLiveInventoryRfidMatch",
+            "Exact tray identity match against inventory.",
+          )
+        : inventoryMatch.kind === "metadata_single"
+          ? t(
+              "settings.bambuLiveInventoryLikelyMatch",
+              "Single likely inventory match from material/name/color.",
+            )
+          : inventoryMatch.kind === "metadata_multiple"
+            ? t(
+                "settings.bambuLiveInventoryMultipleMatches",
+                "Multiple inventory rolls could match this filament.",
+              )
+            : observedRfid
+              ? t(
+                  "settings.bambuLiveInventoryNoRfidMatch",
+                  "Observed tray identity did not match anything in inventory.",
+                )
+              : t("settings.bambuLiveInventoryNoMatch", "No clear inventory match yet.");
+
+    return {
+      candidateCountText:
+        inventoryMatch.kind === "metadata_multiple"
+          ? `${inventoryMatch.candidates.length} ${t("settings.bambuLiveCandidateCount", "candidates")}`
+          : null,
+      candidates: inventoryMatch.candidates.slice(0, 3).map((candidate) => ({
+        key: candidate.spool.id,
+        subtitle: candidate.spool.rfid_tag?.trim()
+          ? `${t("settings.bambuLiveCandidateRfidSaved", "RFID saved")} · ${candidate.spool.id}`
+          : `${t("settings.bambuLiveCandidateNoRfidSaved", "No RFID saved")} · ${candidate.spool.id}`,
+        swatchColor: toSwatchColor(candidate.master.hex_color),
+        title: `${candidate.master.filament_name} · ${candidate.master.color_name}`,
+      })),
+      detailText:
+        [
+          tray.filament_type,
+          tray.remaining_percent != null ? `${tray.remaining_percent}%` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ") || "—",
+      hasMoreCandidates: inventoryMatch.candidates.length > 3,
+      hasReview: Boolean(hasReview),
+      key: `live-tray-${tray.tray_index}`,
+      matchDescription,
+      matchKind: inventoryMatch.kind,
+      matchLabel: primaryInventoryMatch
+        ? `${primaryInventoryMatch.master.filament_name} · ${primaryInventoryMatch.master.color_name}`
+        : t("settings.bambuLiveNoInventoryMatch", "No clear inventory match"),
+      matchNote:
+        tray.match_note && !amsReadInProgress
+          ? translateObservedMatchNote(tray.match_note, (key, fallback) => t(key, fallback ?? ""))
+          : null,
+      matchSwatchColor: primaryInventoryMatch
+        ? toSwatchColor(primaryInventoryMatch.master.hex_color)
+        : toSwatchColor(tray.color_hex ?? capturedTraySnapshot?.colorHex),
+      mqttTrayLabel: `${t("settings.bambuLiveMqttTrayLabel", "MQTT tray")} ${tray.tray_index}`,
+      observedRfidLabel: observedRfid
+        ? `${t("settings.bambuLiveObservedPrefix", "Observed")}: ${observedRfid}`
+        : null,
+      reviewTitle: tray.match_note ?? "",
+      slotLabel: `${t("settings.bambuLiveSlotLabel", "Slot")} ${tray.tray_index + 1}`,
+      statusText: tray.loaded
+        ? tray.filament_name || tray.filament_type || t("settings.bambuLiveTrayLoaded", "Loaded")
+        : t("settings.bambuLiveTrayEmptyUnknown", "Empty / unknown"),
+    };
+  });
 
   return {
     amsReadInProgress,
@@ -175,6 +272,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
     diagnosticFields,
     diagnosticGroups,
     diagnosticMetricCards,
+    diagnosticTrayCards,
     displayTrays,
     fallbackSummaryParts,
     identityFieldCount,

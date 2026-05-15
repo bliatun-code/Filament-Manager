@@ -4,7 +4,6 @@ import {
   isValidHexColor,
   normalizeHexColor,
   suggestHexFromColor,
-  toSwatchColor,
 } from "../lib/color_utils";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
@@ -61,10 +60,6 @@ import { FeedbackBanner } from "../components/feedback_banner";
 import { useI18n, type Locale } from "../lib/i18n";
 import { toErrorMessage } from "../lib/error_text";
 import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/inventory_export";
-import {
-  buildInventoryMatchResult,
-  translateObservedMatchNote,
-} from "../lib/inventory_match";
 import {
   clampInt,
   extractBaseUrlFromPairingInput,
@@ -2645,13 +2640,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 const diagnosticFilter = diagnosticFilterByPrinterId[printer.id] ?? "all";
                 const {
                   amsReadInProgress,
-                  captureTrayByIndex,
                   diagnosticChartFields,
                   diagnosticChartPoints,
                   diagnosticFields,
                   diagnosticGroups,
                   diagnosticMetricCards,
-                  displayTrays,
+                  diagnosticTrayCards,
                   fallbackSummaryParts,
                   observedState,
                   observedSummaryParts,
@@ -2666,6 +2660,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                   formatDateTime: (value) => formatSettingsDateTime(value, locale),
                   liveConfig,
                   selectedChartFieldPath: diagnosticChartFieldByPrinterId[printer.id],
+                  spoolRows,
                   t,
                 });
                 const hasMultiMaterial = hasConfiguredMultiMaterial(printerSlots);
@@ -2826,42 +2821,20 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                 </button>
                               </div>
                             </div>
-                            {displayTrays.length > 0 ? (
+                            {diagnosticTrayCards.length > 0 ? (
                               <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
-                                {displayTrays.map((tray) => {
-                                  const slotNumber = tray.tray_index + 1;
-                                  const capturedTraySnapshot =
-                                    captureTrayByIndex.get(tray.tray_index) ?? null;
-                                  const observedRfid =
-                                    capturedTraySnapshot?.trayUuid?.trim() &&
-                                    !/^0+$/.test(capturedTraySnapshot.trayUuid.trim())
-                                      ? capturedTraySnapshot.trayUuid.trim()
-                                      : null;
-                                  const inventoryMatch = buildInventoryMatchResult(spoolRows, {
-                                    rfid: observedRfid,
-                                    material: tray.filament_type ?? capturedTraySnapshot?.filamentType ?? null,
-                                    filamentName:
-                                      tray.filament_name ?? capturedTraySnapshot?.filamentName ?? null,
-                                    colorHex: tray.color_hex ?? capturedTraySnapshot?.colorHex ?? null,
-                                  });
-                                  const primaryInventoryMatch = inventoryMatch.candidates[0] ?? null;
-                                  const hasReview =
-                                    !amsReadInProgress &&
-                                    tray.match_status &&
-                                    tray.match_status !== "clear_match" &&
-                                    tray.match_status !== "unknown_from_printer";
-                                  return (
+                                {diagnosticTrayCards.map((tray) => (
                                     <div
-                                      key={`${printer.id}-live-tray-${tray.tray_index}`}
+                                      key={`${printer.id}-${tray.key}`}
                                       className="rounded-lg border border-slate-200 bg-white px-2 py-2 dark:border-slate-700 dark:bg-slate-950/50"
                                     >
                                       <div className="flex items-center justify-between gap-2">
                                         <div className="font-semibold text-slate-900 dark:text-slate-100">
-                                          {`${t("settings.bambuLiveSlotLabel", "Slot")} ${slotNumber}`}
+                                          {tray.slotLabel}
                                         </div>
-                                        {hasReview ? (
+                                        {tray.hasReview ? (
                                           <span
-                                            title={tray.match_note ?? ""}
+                                            title={tray.reviewTitle}
                                             className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-amber-300 bg-amber-50 px-1 text-[11px] font-bold text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"
                                           >
                                             !
@@ -2869,104 +2842,56 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                         ) : null}
                                       </div>
                                       <div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                        {`${t("settings.bambuLiveMqttTrayLabel", "MQTT tray")} ${tray.tray_index}`}
+                                        {tray.mqttTrayLabel}
                                       </div>
                                       <div className="mt-1 text-[11px] text-slate-600 dark:text-slate-300">
-                                        {tray.loaded
-                                          ? tray.filament_name ||
-                                            tray.filament_type ||
-                                            t("settings.bambuLiveTrayLoaded", "Loaded")
-                                          : t("settings.bambuLiveTrayEmptyUnknown", "Empty / unknown")}
+                                        {tray.statusText}
                                       </div>
                                       <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                                        {[
-                                          tray.filament_type,
-                                          tray.remaining_percent != null
-                                            ? `${tray.remaining_percent}%`
-                                            : null,
-                                        ]
-                                          .filter(Boolean)
-                                          .join(" · ") || "—"}
+                                        {tray.detailText}
                                       </div>
                                       <div className="mt-2 rounded-md border border-slate-200/80 bg-slate-50/80 px-2 py-1.5 text-[11px] leading-4 text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
                                         <div className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-200">
                                           <span
                                             className="h-3.5 w-3.5 rounded-sm border border-slate-300/80 dark:border-slate-600"
                                             style={{
-                                              backgroundColor: primaryInventoryMatch
-                                                ? toSwatchColor(primaryInventoryMatch.master.hex_color)
-                                                : toSwatchColor(tray.color_hex ?? capturedTraySnapshot?.colorHex),
+                                              backgroundColor: tray.matchSwatchColor,
                                             }}
                                           />
-                                          <span>
-                                            {primaryInventoryMatch
-                                              ? `${primaryInventoryMatch.master.filament_name} · ${primaryInventoryMatch.master.color_name}`
-                                              : t("settings.bambuLiveNoInventoryMatch", "No clear inventory match")}
-                                          </span>
+                                          <span>{tray.matchLabel}</span>
                                         </div>
-                                        <div className="mt-1">
-                                          {inventoryMatch.kind === "rfid_exact"
-                                            ? t(
-                                                "settings.bambuLiveInventoryRfidMatch",
-                                                "Exact tray identity match against inventory.",
-                                              )
-                                            : inventoryMatch.kind === "metadata_single"
-                                              ? t(
-                                                  "settings.bambuLiveInventoryLikelyMatch",
-                                                  "Single likely inventory match from material/name/color.",
-                                                )
-                                              : inventoryMatch.kind === "metadata_multiple"
-                                                ? t(
-                                                    "settings.bambuLiveInventoryMultipleMatches",
-                                                    "Multiple inventory rolls could match this filament.",
-                                                  )
-                                                : observedRfid
-                                                  ? t(
-                                                      "settings.bambuLiveInventoryNoRfidMatch",
-                                                      "Observed tray identity did not match anything in inventory.",
-                                                    )
-                                                  : t(
-                                                      "settings.bambuLiveInventoryNoMatch",
-                                                      "No clear inventory match yet.",
-                                                    )}
-                                        </div>
-                                        {(observedRfid || inventoryMatch.candidates.length > 1) ? (
+                                        <div className="mt-1">{tray.matchDescription}</div>
+                                        {(tray.observedRfidLabel || tray.candidateCountText) ? (
                                           <div className="mt-1 break-all text-[10px] text-slate-500 dark:text-slate-400">
-                                            {observedRfid
-                                              ? `${t("settings.bambuLiveObservedPrefix", "Observed")}: ${observedRfid}`
-                                              : null}
-                                            {observedRfid && inventoryMatch.kind === "metadata_multiple" ? " · " : null}
-                                            {inventoryMatch.kind === "metadata_multiple"
-                                              ? `${inventoryMatch.candidates.length} ${t("settings.bambuLiveCandidateCount", "candidates")}`
-                                              : null}
+                                            {tray.observedRfidLabel}
+                                            {tray.observedRfidLabel && tray.candidateCountText ? " · " : null}
+                                            {tray.candidateCountText}
                                           </div>
                                         ) : null}
-                                        {inventoryMatch.kind === "metadata_multiple" ? (
+                                        {tray.matchKind === "metadata_multiple" ? (
                                           <div className="mt-2 space-y-1.5">
-                                            {inventoryMatch.candidates.slice(0, 3).map((candidate) => (
+                                            {tray.candidates.map((candidate) => (
                                               <div
-                                                key={candidate.spool.id}
+                                                key={candidate.key}
                                                 className="flex items-center gap-2 rounded border border-slate-200/80 bg-white/70 px-2 py-1 dark:border-slate-700 dark:bg-slate-950/40"
                                               >
                                                 <span
                                                   className="h-3 w-3 rounded-sm border border-slate-300/80 dark:border-slate-600"
                                                   style={{
-                                                    backgroundColor: toSwatchColor(candidate.master.hex_color),
+                                                    backgroundColor: candidate.swatchColor,
                                                   }}
                                                 />
                                                 <div className="min-w-0 flex-1">
                                                   <div className="truncate text-[10px] font-medium text-slate-700 dark:text-slate-200">
-                                                    {candidate.master.filament_name} · {candidate.master.color_name}
+                                                    {candidate.title}
                                                   </div>
                                                   <div className="truncate text-[10px] text-slate-500 dark:text-slate-400">
-                                                    {candidate.spool.rfid_tag?.trim()
-                                                      ? `RFID saved · ${candidate.spool.id}`
-                                                      : `No RFID saved · ${candidate.spool.id}`}
+                                                    {candidate.subtitle}
                                                   </div>
                                                 </div>
                                               </div>
                                             ))}
-                                            {inventoryMatch.candidates.length > 3 ? (
+                                            {tray.hasMoreCandidates ? (
                                               <div className="text-[10px] text-slate-500 dark:text-slate-400">
                                                 {t(
                                                   "settings.bambuLiveMoreInventoryCandidates",
@@ -2977,14 +2902,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                           </div>
                                         ) : null}
                                       </div>
-                                      {tray.match_note && !amsReadInProgress ? (
+                                      {tray.matchNote ? (
                                         <div className="mt-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
-                                          {translateObservedMatchNote(tray.match_note, t)}
+                                          {tray.matchNote}
                                         </div>
                                       ) : null}
                                     </div>
-                                  );
-                                })}
+                                ))}
                               </div>
                             ) : null}
                             <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-950/50">

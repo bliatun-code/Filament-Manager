@@ -5,7 +5,7 @@ import {
   createSettingsBambuLiveCaptureSession,
 } from "./settings_bambu_live_diagnostics_model";
 import { updateDiagnosticCaptureSessionFromPayload } from "../lib/diagnostic_capture";
-import type { BambuLiveIntegrationSettings } from "../lib/tauri_client";
+import type { BambuLiveIntegrationSettings, SpoolWithMasterRow } from "../lib/tauri_client";
 
 const t = (_key: string, fallback: string) => fallback;
 const formatDateTime = (value: string) => `formatted:${value}`;
@@ -82,6 +82,28 @@ function createUpdatedPayload() {
   };
 }
 
+function createSpoolRow(overrides: Partial<SpoolWithMasterRow> = {}): SpoolWithMasterRow {
+  return {
+    spool: {
+      id: "spool-1",
+      master_id: "master-1",
+      rfid_tag: "ABC123",
+      status: "IN_STOCK",
+      ...overrides.spool,
+    },
+    master: {
+      id: "master-1",
+      material: "PLA",
+      filament_name: "PLA Basic",
+      color_name: "Orange",
+      hex_color: "#FFAA00",
+      default_weight: 1000,
+      vendor: "Bambu",
+      ...overrides.master,
+    },
+  };
+}
+
 test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary state", () => {
   const liveConfig = createLiveConfig();
   const diagnosticSession = updateDiagnosticCaptureSessionFromPayload({
@@ -96,6 +118,7 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
     formatDateTime,
     liveConfig,
     selectedChartFieldPath: "mc_percent",
+    spoolRows: [createSpoolRow()],
     t,
   });
 
@@ -105,6 +128,10 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
   assert.ok(model.diagnosticChartPoints.length > 0);
   assert.equal(model.displayTrays.length, 1);
   assert.equal(model.captureTrayByIndex.get(0)?.trayUuid, "ABC123");
+  assert.equal(model.diagnosticTrayCards[0].slotLabel, "Slot 2");
+  assert.equal(model.diagnosticTrayCards[0].matchKind, "rfid_exact");
+  assert.equal(model.diagnosticTrayCards[0].matchLabel, "PLA Basic · Orange");
+  assert.equal(model.diagnosticTrayCards[0].observedRfidLabel, "Observed: ABC123");
   assert.deepEqual(model.observedSummaryParts, ["42%", "18 min", "Tray 1", "AMS humidity 3"]);
   assert.deepEqual(model.fallbackSummaryParts, ["43%", "17 min"]);
   assert.deepEqual(
@@ -131,6 +158,7 @@ test("buildSettingsBambuLiveDiagnosticsModel falls back to first chart field and
     formatDateTime,
     liveConfig: null,
     selectedChartFieldPath: "missing",
+    spoolRows: [],
     t,
   });
 
@@ -138,6 +166,7 @@ test("buildSettingsBambuLiveDiagnosticsModel falls back to first chart field and
   assert.equal(emptyModel.selectedDiagnosticChartField, null);
   assert.deepEqual(emptyModel.observedSummaryParts, []);
   assert.deepEqual(emptyModel.fallbackSummaryParts, []);
+  assert.deepEqual(emptyModel.diagnosticTrayCards, []);
   assert.equal(emptyModel.diagnosticMetricCards.length, 5);
   assert.equal(emptyModel.diagnosticMetricCards[0].value, "—");
   assert.equal(emptyModel.diagnosticMetricCards[3].value, "0");
@@ -160,6 +189,7 @@ test("buildSettingsBambuLiveDiagnosticsModel falls back to first chart field and
     formatDateTime,
     liveConfig,
     selectedChartFieldPath: "missing",
+    spoolRows: [],
     t,
   });
 
