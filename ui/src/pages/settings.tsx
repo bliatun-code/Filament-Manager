@@ -53,6 +53,7 @@ import {
 import { FeedbackBanner } from "../components/feedback_banner";
 import { useI18n, type Locale } from "../lib/i18n";
 import { toErrorMessage } from "../lib/error_text";
+import { downloadTextFile } from "../lib/download_file";
 import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/inventory_export";
 import {
   extractBaseUrlFromPairingInput,
@@ -1679,16 +1680,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setBusy(false);
     }
-  }
-
-  function downloadTextFile(content: string, fileName: string, mimeType: string) {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = fileName;
-    anchor.click();
-    URL.revokeObjectURL(url);
   }
 
   async function loadSettingsInventoryRows(): Promise<SpoolWithMasterRow[]> {
