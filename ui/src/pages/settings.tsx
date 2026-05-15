@@ -22,8 +22,6 @@ import { buildSettingsPrintersRouteProps } from "./settings_printers_route_props
 import { buildSettingsRouteMapProps } from "./settings_route_map_props";
 import { SettingsRouteOutlet } from "./settings_route_outlet";
 import { SettingsTabNav } from "./settings_tab_nav";
-import { useSettingsActiveTab } from "./use_settings_active_tab";
-import { useSettingsAppVersion } from "./use_settings_app_version";
 import { useSettingsFeedbackState } from "./use_settings_feedback_state";
 import { useSettingsCatalogRefreshResult } from "./use_settings_catalog_refresh_result";
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
@@ -43,10 +41,9 @@ import { useSettingsResetConfirm } from "./use_settings_reset_confirm";
 import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
 import { useSettingsSwatchDrafts } from "./use_settings_swatch_drafts";
 import { useSettingsSwatchState } from "./use_settings_swatch_state";
-import { useSettingsPageChrome } from "./use_settings_page_chrome";
 import { useSettingsPageDataState } from "./use_settings_page_data_state";
 import { useSettingsPageReload } from "./use_settings_page_reload";
-import { useSettingsPageTabs } from "./use_settings_page_tabs";
+import { useSettingsPageShellState } from "./use_settings_page_shell_state";
 import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
 import { useSettingsMaintenanceActions } from "./use_settings_maintenance_actions";
 import { useSettingsBackupExportActions } from "./use_settings_backup_export_actions";
@@ -66,7 +63,6 @@ import { useSettingsLibraryRoleChangeState } from "./use_settings_library_role_c
 import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";
 import { useSettingsSilentReload } from "./use_settings_silent_reload";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
-import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useSettingsTrustedLanState } from "./use_settings_trusted_lan_state";
 import { useSettingsMessageLabels } from "./use_settings_message_labels";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
@@ -91,8 +87,20 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     t,
     updateThemeMode,
   });
-  const appVersion = useSettingsAppVersion(tauri);
-  const { activeTab, setActiveTab } = useSettingsActiveTab(initialTab);
+  const {
+    activeTab,
+    appVersion,
+    pageChromeLabels,
+    setActiveTab,
+    settingsPageMessageLabels,
+    settingsTabButtons,
+    showTransientInfo,
+  } = useSettingsPageShellState({
+    initialTab,
+    setInfo,
+    tauri,
+    t,
+  });
   const {
     librarySyncBusy,
     librarySyncDeviceNameDraft,
@@ -343,12 +351,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     esunRefreshMaterials,
     swatchVendorFilter,
   });
-
-  const { pageChromeLabels, settingsPageMessageLabels } = useSettingsPageChrome(t);
-
-  const { settingsTabButtons } = useSettingsPageTabs(activeTab, t);
-
-  const { showTransientInfo } = useSettingsTransientInfo(setInfo);
 
   const {
     activeTrustedLanPairedBrowsers,
