@@ -14,9 +14,6 @@ import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_l
 import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_lan_server_panel";
 import { tabButtonClass } from "../lib/settings_ui_classes";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
-import {
-  buildLibraryRoleChangeState,
-} from "./settings_library_sync_model";
 import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
@@ -68,6 +65,7 @@ import { useSettingsLibraryClientState } from "./use_settings_library_client_sta
 import { useSettingsLibraryClientAdvanced } from "./use_settings_library_client_advanced";
 import { useSettingsLibraryVisibility } from "./use_settings_library_visibility";
 import { useSettingsLibraryRoleChange } from "./use_settings_library_role_change";
+import { useSettingsLibraryRoleChangeState } from "./use_settings_library_role_change_state";
 import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";
 import { useSettingsTrustedLanMessages } from "./use_settings_trusted_lan_messages";
 import { useSettingsSilentReload } from "./use_settings_silent_reload";
@@ -765,11 +763,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanStatusEnabled: Boolean(trustedLanStatus?.enabled),
     trustedLanPairingLink,
   });
-  const roleChangeState = buildLibraryRoleChangeState({
-    target: pendingLibraryRoleTarget,
-    savedMode: librarySyncSavedMode,
-    hasExportedFullBackup: Boolean(lastFullBackupExportedAt),
-    hasImportedFullBackup: Boolean(lastFullBackupImportedAt),
+  const roleChangeState = useSettingsLibraryRoleChangeState({
+    pendingLibraryRoleTarget,
+    librarySyncSavedMode,
+    lastFullBackupExportedAt,
+    lastFullBackupImportedAt,
     hasValidatedFullBackup,
     hasValidatedLatestFullBackup,
   });
