@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildSettingsBambuLiveDiagnosticTrayCard,
   buildSettingsBambuLiveDiagnosticMetricCards,
   buildSettingsBambuLiveDiagnosticGroups,
   buildSettingsBambuLiveFallbackSummaryParts,
@@ -15,6 +16,7 @@ import {
   buildSettingsBambuLiveTrayReviewState,
   buildSettingsBambuLiveTrayDisplayText,
   createSettingsBambuLiveCaptureSession,
+  resolveSettingsBambuLiveCapturedTraySnapshot,
 } from "./settings_bambu_live_diagnostics_model";
 import {
   updateDiagnosticCaptureSessionFromPayload,
@@ -667,5 +669,84 @@ test("Bambu live tray labels keep stable ids and optional RFID text", () => {
       observedRfidLabel: null,
       slotLabel: "Slot 1",
     },
+  );
+});
+
+test("Bambu live captured tray snapshot prefers exact index before legacy fallback", () => {
+  const exactSnapshot = createDiagnosticTraySnapshot({ trayIndex: 1, trayUuid: "EXACT" });
+  const fallbackSnapshot = createDiagnosticTraySnapshot({ trayIndex: 0, trayUuid: "FALLBACK" });
+  const captureTrayByIndex = new Map([
+    [0, fallbackSnapshot],
+    [1, exactSnapshot],
+  ]);
+
+  assert.equal(
+    resolveSettingsBambuLiveCapturedTraySnapshot({
+      captureTrayByIndex,
+      tray: createObservedTray({ tray_index: 1 }),
+    }),
+    exactSnapshot,
+  );
+
+  assert.equal(
+    resolveSettingsBambuLiveCapturedTraySnapshot({
+      captureTrayByIndex: new Map([[0, fallbackSnapshot]]),
+      tray: createObservedTray({ tray_index: 1 }),
+    }),
+    fallbackSnapshot,
+  );
+
+  assert.equal(
+    resolveSettingsBambuLiveCapturedTraySnapshot({
+      captureTrayByIndex: new Map(),
+      tray: createObservedTray({ tray_index: 0 }),
+    }),
+    null,
+  );
+});
+
+test("Bambu live diagnostic tray card composes RFID match and metadata candidates", () => {
+  const exactCard = buildSettingsBambuLiveDiagnosticTrayCard({
+    amsReadInProgress: false,
+    capturedTraySnapshot: createDiagnosticTraySnapshot({ colorHex: "#00AAFF", trayUuid: "ABC123" }),
+    spoolRows: [createSpoolRow()],
+    t,
+    tray: createObservedTray({
+      color_hex: null,
+      match_note: "rfid_mismatch",
+      match_status: "rfid_mismatch",
+      tray_index: 1,
+    }),
+  });
+
+  assert.equal(exactCard.key, "live-tray-1");
+  assert.equal(exactCard.matchKind, "rfid_exact");
+  assert.equal(exactCard.matchLabel, "PLA Basic · Orange");
+  assert.equal(exactCard.matchSwatchColor, "#FFAA00");
+  assert.equal(exactCard.observedRfidLabel, "Observed: ABC123");
+  assert.equal(exactCard.hasReview, true);
+  assert.equal(exactCard.matchNote, "rfid_mismatch");
+
+  const metadataRows = [
+    createSpoolRow({ spool: { id: "spool-1", master_id: "master-1", rfid_tag: null, status: "IN_STOCK" } }),
+    createSpoolRow({ spool: { id: "spool-2", master_id: "master-1", rfid_tag: null, status: "IN_STOCK" } }),
+    createSpoolRow({ spool: { id: "spool-3", master_id: "master-1", rfid_tag: null, status: "IN_STOCK" } }),
+    createSpoolRow({ spool: { id: "spool-4", master_id: "master-1", rfid_tag: null, status: "IN_STOCK" } }),
+  ];
+  const metadataCard = buildSettingsBambuLiveDiagnosticTrayCard({
+    amsReadInProgress: false,
+    capturedTraySnapshot: null,
+    spoolRows: metadataRows,
+    t,
+    tray: createObservedTray({ tray_index: 2 }),
+  });
+
+  assert.equal(metadataCard.matchKind, "metadata_multiple");
+  assert.equal(metadataCard.candidateCountText, "4 candidates");
+  assert.equal(metadataCard.hasMoreCandidates, true);
+  assert.equal(metadataCard.candidates.length, 3);
+  assert.deepEqual(
+    metadataCard.candidates.map((candidate) => candidate.key),
+    ["spool-1", "spool-2", "spool-3"],
   );
 });

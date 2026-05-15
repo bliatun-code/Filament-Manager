@@ -64,6 +64,14 @@ type BuildSettingsBambuLiveDiagnosticMetricCardsInput = {
   t: TranslateFn;
 };
 
+type BuildSettingsBambuLiveDiagnosticTrayCardInput = {
+  amsReadInProgress: boolean;
+  capturedTraySnapshot: DiagnosticTraySnapshot | null;
+  spoolRows: SpoolWithMasterRow[];
+  t: TranslateFn;
+  tray: BambuLiveObservedTray;
+};
+
 function buildSettingsBambuLiveSummaryParts(
   source: SettingsBambuLiveSummarySource,
   t: TranslateFn,
@@ -370,6 +378,84 @@ export function buildSettingsBambuLiveTrayLabels({
   };
 }
 
+export function resolveSettingsBambuLiveCapturedTraySnapshot({
+  captureTrayByIndex,
+  tray,
+}: {
+  captureTrayByIndex: Map<number, DiagnosticTraySnapshot>;
+  tray: BambuLiveObservedTray;
+}): DiagnosticTraySnapshot | null {
+  return (
+    captureTrayByIndex.get(tray.tray_index) ??
+    (tray.tray_index > 0 ? captureTrayByIndex.get(tray.tray_index - 1) : null) ??
+    null
+  );
+}
+
+export function buildSettingsBambuLiveDiagnosticTrayCard({
+  amsReadInProgress,
+  capturedTraySnapshot,
+  spoolRows,
+  t,
+  tray,
+}: BuildSettingsBambuLiveDiagnosticTrayCardInput) {
+  const observedRfid = buildSettingsBambuLiveObservedRfid(capturedTraySnapshot);
+  const inventoryMatch = buildInventoryMatchResult(spoolRows, {
+    rfid: observedRfid,
+    material: tray.filament_type ?? capturedTraySnapshot?.filamentType ?? null,
+    filamentName: tray.filament_name ?? capturedTraySnapshot?.filamentName ?? null,
+    colorHex: tray.color_hex ?? capturedTraySnapshot?.colorHex ?? null,
+  });
+  const primaryInventoryMatch = inventoryMatch.candidates[0] ?? null;
+  const matchDescription = buildSettingsBambuLiveInventoryMatchDescription({
+    inventoryMatchKind: inventoryMatch.kind,
+    observedRfid,
+    t,
+  });
+  const { detailText, statusText } = buildSettingsBambuLiveTrayDisplayText({ t, tray });
+  const { matchLabel, matchSwatchColor } = buildSettingsBambuLiveInventoryMatchPresentation({
+    capturedTraySnapshot,
+    primaryInventoryMatch,
+    t,
+    tray,
+  });
+  const { hasReview, matchNote, reviewTitle } = buildSettingsBambuLiveTrayReviewState({
+    amsReadInProgress,
+    t,
+    tray,
+  });
+  const { key, mqttTrayLabel, observedRfidLabel, slotLabel } = buildSettingsBambuLiveTrayLabels({
+    observedRfid,
+    t,
+    tray,
+  });
+
+  return {
+    candidateCountText:
+      inventoryMatch.kind === "metadata_multiple"
+        ? `${inventoryMatch.candidates.length} ${t("settings.bambuLiveCandidateCount", "candidates")}`
+        : null,
+    candidates: buildSettingsBambuLiveInventoryCandidateCards({
+      candidates: inventoryMatch.candidates,
+      t,
+    }),
+    detailText,
+    hasMoreCandidates: inventoryMatch.candidates.length > 3,
+    hasReview,
+    key,
+    matchDescription,
+    matchKind: inventoryMatch.kind,
+    matchLabel,
+    matchNote,
+    matchSwatchColor,
+    mqttTrayLabel,
+    observedRfidLabel,
+    reviewTitle,
+    slotLabel,
+    statusText,
+  };
+}
+
 export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticFilter,
   diagnosticSession,
@@ -425,65 +511,17 @@ export function buildSettingsBambuLiveDiagnosticsModel({
     t,
   });
   const diagnosticTrayCards = displayTrays.map((tray) => {
-    const capturedTraySnapshot =
-      captureTrayByIndex.get(tray.tray_index) ??
-      (tray.tray_index > 0 ? captureTrayByIndex.get(tray.tray_index - 1) : null) ??
-      null;
-    const observedRfid = buildSettingsBambuLiveObservedRfid(capturedTraySnapshot);
-    const inventoryMatch = buildInventoryMatchResult(spoolRows, {
-      rfid: observedRfid,
-      material: tray.filament_type ?? capturedTraySnapshot?.filamentType ?? null,
-      filamentName: tray.filament_name ?? capturedTraySnapshot?.filamentName ?? null,
-      colorHex: tray.color_hex ?? capturedTraySnapshot?.colorHex ?? null,
-    });
-    const primaryInventoryMatch = inventoryMatch.candidates[0] ?? null;
-    const matchDescription = buildSettingsBambuLiveInventoryMatchDescription({
-      inventoryMatchKind: inventoryMatch.kind,
-      observedRfid,
-      t,
-    });
-    const { detailText, statusText } = buildSettingsBambuLiveTrayDisplayText({ t, tray });
-    const { matchLabel, matchSwatchColor } = buildSettingsBambuLiveInventoryMatchPresentation({
-      capturedTraySnapshot,
-      primaryInventoryMatch,
-      t,
+    const capturedTraySnapshot = resolveSettingsBambuLiveCapturedTraySnapshot({
+      captureTrayByIndex,
       tray,
     });
-    const { hasReview, matchNote, reviewTitle } = buildSettingsBambuLiveTrayReviewState({
+    return buildSettingsBambuLiveDiagnosticTrayCard({
       amsReadInProgress,
+      capturedTraySnapshot,
+      spoolRows,
       t,
       tray,
     });
-    const { key, mqttTrayLabel, observedRfidLabel, slotLabel } = buildSettingsBambuLiveTrayLabels({
-      observedRfid,
-      t,
-      tray,
-    });
-
-    return {
-      candidateCountText:
-        inventoryMatch.kind === "metadata_multiple"
-          ? `${inventoryMatch.candidates.length} ${t("settings.bambuLiveCandidateCount", "candidates")}`
-          : null,
-      candidates: buildSettingsBambuLiveInventoryCandidateCards({
-        candidates: inventoryMatch.candidates,
-        t,
-      }),
-      detailText,
-      hasMoreCandidates: inventoryMatch.candidates.length > 3,
-      hasReview,
-      key,
-      matchDescription,
-      matchKind: inventoryMatch.kind,
-      matchLabel,
-      matchNote,
-      matchSwatchColor,
-      mqttTrayLabel,
-      observedRfidLabel,
-      reviewTitle,
-      slotLabel,
-      statusText,
-    };
   });
 
   return {
