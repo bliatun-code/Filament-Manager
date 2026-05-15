@@ -102,6 +102,7 @@ import { useSettingsAppVersion } from "./use_settings_app_version";
 import { useSettingsCatalogRefreshResult } from "./use_settings_catalog_refresh_result";
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
 import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagnostics";
+import { useSettingsBackupFileInputs } from "./use_settings_backup_file_inputs";
 import { useSettingsCatalogRefreshMaterials } from "./use_settings_catalog_refresh_materials";
 import { useSettingsPrinterEditDraft } from "./use_settings_printer_edit_draft";
 import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_confirm";
@@ -333,8 +334,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     bambuLiveIntegrations,
     expandedBambuDetailsPrinterId,
   });
-  const backupImportInputRef = useRef<HTMLInputElement | null>(null);
-  const backupValidateInputRef = useRef<HTMLInputElement | null>(null);
   const [confirmResetAction, setConfirmResetAction] = useState<ResetConfirmAction | null>(null);
   const [lastBackupValidation, setLastBackupValidation] =
     useState<BackupValidationStats | null>(null);
@@ -1339,6 +1338,16 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     confirmResetAction,
     setConfirmResetAction,
   });
+  const {
+    backupImportInputRef,
+    backupValidateInputRef,
+    openBackupValidate,
+    openDataImport,
+  } = useSettingsBackupFileInputs({
+    busy,
+    clearConfirmResetAction,
+    tauri,
+  });
 
   const { clearConfirmBulkSwatch } = useSettingsSwatchConfirm({
     confirmBulkSwatch,
@@ -1844,19 +1853,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   }
 
   function handleOpenDataImport() {
-    if (!tauri || busy) {
-      return;
-    }
-    clearConfirmResetAction();
-    backupImportInputRef.current?.click();
+    openDataImport();
   }
 
   function handleOpenBackupValidate() {
-    if (!tauri || busy) {
-      return;
-    }
-    clearConfirmResetAction();
-    backupValidateInputRef.current?.click();
+    openBackupValidate();
   }
 
   async function handleImportDataFile(event: ChangeEvent<HTMLInputElement>) {
