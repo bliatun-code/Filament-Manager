@@ -126,8 +126,7 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
   assert.equal(model.selectedDiagnosticChartField, "mc_percent");
   assert.ok(model.diagnosticChartFields.some((field) => field.path === "mc_percent"));
   assert.ok(model.diagnosticChartPoints.length > 0);
-  assert.equal(model.displayTrays.length, 1);
-  assert.equal(model.captureTrayByIndex.get(0)?.trayUuid, "ABC123");
+  assert.equal(model.diagnosticTrayCards.length, 1);
   assert.equal(model.diagnosticTrayCards[0].slotLabel, "Slot 2");
   assert.equal(model.diagnosticTrayCards[0].matchKind, "rfid_exact");
   assert.equal(model.diagnosticTrayCards[0].matchLabel, "PLA Basic · Orange");
