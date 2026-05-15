@@ -16,7 +16,6 @@ import { tabButtonClass } from "../lib/settings_ui_classes";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
 import {
   buildLibraryRoleChangeState,
-  buildLibrarySyncVisibilityState,
 } from "./settings_library_sync_model";
 import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
@@ -67,6 +66,7 @@ import { useSettingsLibrarySyncActions } from "./use_settings_library_sync_actio
 import { useSettingsLibraryChrome } from "./use_settings_library_chrome";
 import { useSettingsLibraryClientState } from "./use_settings_library_client_state";
 import { useSettingsLibraryClientAdvanced } from "./use_settings_library_client_advanced";
+import { useSettingsLibraryVisibility } from "./use_settings_library_visibility";
 import { useSettingsLibraryRoleChange } from "./use_settings_library_role_change";
 import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";
 import { useSettingsTrustedLanMessages } from "./use_settings_trusted_lan_messages";
@@ -755,17 +755,15 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanPairingLink,
   });
   const { librarySyncRoleOptions, librarySyncTabLabels } = useSettingsLibraryChrome(t);
-  const libraryVisibility = buildLibrarySyncVisibilityState({
-    draftMode: librarySyncModeDraft,
+  const libraryVisibility = useSettingsLibraryVisibility({
+    librarySyncModeDraft,
+    librarySyncSettings,
+    librarySyncSnapshot,
+    pairedBrowserCount: trustedLanPairedBrowsers.length,
+    showTrustedLanNetworkEditor,
     trustedLanEnabledDraft,
     trustedLanStatusEnabled: Boolean(trustedLanStatus?.enabled),
-    showTrustedLanNetworkEditor,
-    hasTrustedLanPairingLink: Boolean(trustedLanPairingLink),
-    pairedBrowserCount: trustedLanPairedBrowsers.length,
-    lastCheckedAt: librarySyncSettings?.last_checked_at,
-    lastReachableAt: librarySyncSettings?.last_reachable_at,
-    lastValidationMessage: librarySyncSettings?.last_validation_message,
-    hasSnapshot: Boolean(librarySyncSnapshot),
+    trustedLanPairingLink,
   });
   const roleChangeState = buildLibraryRoleChangeState({
     target: pendingLibraryRoleTarget,
