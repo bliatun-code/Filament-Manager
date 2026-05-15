@@ -23,15 +23,11 @@ import { buildSettingsRouteMapProps } from "./settings_route_map_props";
 import { SettingsRouteOutlet } from "./settings_route_outlet";
 import { SettingsTabNav } from "./settings_tab_nav";
 import { useSettingsFeedbackState } from "./use_settings_feedback_state";
-import { useSettingsCatalogRefreshResult } from "./use_settings_catalog_refresh_result";
-import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
-import { useSettingsCatalogRefreshState } from "./use_settings_catalog_refresh_state";
-import { useSettingsCatalogDerivedState } from "./use_settings_catalog_derived_state";
+import { useSettingsCatalogSectionState } from "./use_settings_catalog_section_state";
 import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagnostics";
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
 import { useSettingsBackupFileInputs } from "./use_settings_backup_file_inputs";
 import { useSettingsBackupValidationSummary } from "./use_settings_backup_validation_summary";
-import { useSettingsCatalogRefreshMaterials } from "./use_settings_catalog_refresh_materials";
 import { useSettingsCatalogRefreshActions } from "./use_settings_catalog_refresh_actions";
 import { useSettingsPrinterEditDraft } from "./use_settings_printer_edit_draft";
 import { useSettingsPrinterActions } from "./use_settings_printer_actions";
@@ -39,8 +35,6 @@ import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_c
 import { useSettingsPrinterDerivedState } from "./use_settings_printer_derived_state";
 import { useSettingsResetConfirm } from "./use_settings_reset_confirm";
 import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
-import { useSettingsSwatchDrafts } from "./use_settings_swatch_drafts";
-import { useSettingsSwatchState } from "./use_settings_swatch_state";
 import { useSettingsPageDataState } from "./use_settings_page_data_state";
 import { useSettingsPageReload } from "./use_settings_page_reload";
 import { useSettingsPageShellState } from "./use_settings_page_shell_state";
@@ -234,47 +228,49 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setSpoolRows,
     spoolRows,
   } = useSettingsPageDataState(tauri);
-  const { setSwatchDraftById, swatchDraftById, updateSwatchDraft } =
-    useSettingsSwatchDrafts();
   const {
-    confirmBulkSwatch,
-    setConfirmBulkSwatch,
-    setSwatchBusy,
-    setSwatchVendorFilter,
-    swatchBusy,
-    swatchVendorFilter,
-  } = useSettingsSwatchState();
-  const {
-    bambuRefreshMaterials,
-    catalogVendor,
-    clearCatalogRefreshMaterials,
-    esunRefreshMaterials,
-    getCatalogRefreshMaterials,
-    setCatalogVendor,
-    toggleCatalogRefreshMaterial,
-  } = useSettingsCatalogRefreshMaterials();
-  const { catalogRefreshBusy, setCatalogRefreshBusy } = useSettingsCatalogRefreshState();
-  const {
+    activeCatalogMasterCount,
+    activeCatalogMaterialOptions,
+    activeCatalogRefreshMaterials,
     beginCatalogRefreshResult,
-    catalogRefreshLog,
-    catalogRefreshSummary,
-    completeCatalogRefreshResult,
-    failCatalogRefreshResult,
-    showCatalogRefreshLog,
-    toggleCatalogRefreshLog,
-  } = useSettingsCatalogRefreshResult();
-  const {
+    catalogRefreshBusy,
     catalogRefreshElapsedSeconds,
+    catalogRefreshLog,
     catalogRefreshPhase,
     catalogRefreshProgressMessage,
+    catalogRefreshSummary,
     catalogRefreshVendor,
+    catalogVendor,
+    clearCatalogRefreshMaterials,
+    completeCatalogRefreshResult,
+    confirmBulkSwatch,
+    failCatalogRefreshResult,
+    getCatalogRefreshMaterials,
+    missingSwatchMasters,
+    setCatalogRefreshBusy,
     setCatalogRefreshPhase,
     setCatalogRefreshProgressMessage,
     setCatalogRefreshStartedAt,
     setCatalogRefreshVendor,
-  } = useSettingsCatalogRefreshProgress({
-    initialMessage: t("wishlist.refreshPreparing", "Preparing catalog refresh..."),
+    setCatalogVendor,
+    setConfirmBulkSwatch,
+    setSwatchBusy,
+    setSwatchDraftById,
+    setSwatchVendorFilter,
+    showCatalogRefreshLog,
+    swatchBusy,
+    swatchDraftById,
+    swatchVendorFilter,
+    swatchVendorOptions,
+    toggleCatalogRefreshLog,
+    toggleCatalogRefreshMaterial,
+    updateSwatchDraft,
+    visibleMissingSwatchMasters,
+    visibleMissingSwatchVendorCount,
+  } = useSettingsCatalogSectionState({
+    catalogMasters,
     tauri,
+    t,
   });
   const {
     cancelPrinterEdit,
@@ -336,22 +332,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     librarySyncSettings,
     librarySyncValidation,
   });
-  const {
-    activeCatalogMasterCount,
-    activeCatalogMaterialOptions,
-    activeCatalogRefreshMaterials,
-    missingSwatchMasters,
-    swatchVendorOptions,
-    visibleMissingSwatchMasters,
-    visibleMissingSwatchVendorCount,
-  } = useSettingsCatalogDerivedState({
-    bambuRefreshMaterials,
-    catalogMasters,
-    catalogVendor,
-    esunRefreshMaterials,
-    swatchVendorFilter,
-  });
-
   const {
     activeTrustedLanPairedBrowsers,
     revokedTrustedLanPairedBrowsers,
