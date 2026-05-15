@@ -572,8 +572,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const {
     backupImportInputRef,
     backupValidateInputRef,
-    openBackupValidate,
-    openDataImport,
+    handleOpenBackupValidate,
+    handleOpenDataImport,
   } = useSettingsBackupFileInputs({
     busy,
     clearConfirmResetAction,
@@ -678,14 +678,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     tauri,
     trustedLanStatus,
   });
-
-  function handleOpenDataImport() {
-    openDataImport();
-  }
-
-  function handleOpenBackupValidate() {
-    openBackupValidate();
-  }
 
   const { handleImportDataFile, handleValidateBackupFile } = useSettingsBackupFileActions({
     busy,

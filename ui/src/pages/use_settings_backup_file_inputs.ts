@@ -33,6 +33,8 @@ export function useSettingsBackupFileInputs({
   return {
     backupImportInputRef,
     backupValidateInputRef,
+    handleOpenBackupValidate: openBackupValidate,
+    handleOpenDataImport: openDataImport,
     openBackupValidate,
     openDataImport,
   };
