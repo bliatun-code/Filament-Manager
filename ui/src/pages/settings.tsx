@@ -15,7 +15,6 @@ import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_la
 import { tabButtonClass } from "../lib/settings_ui_classes";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
 import {
-  buildLibrarySyncClientState,
   buildLibrarySyncRoleOptions,
   buildLibrarySyncTabLabels,
   buildLibraryRoleChangeState,
@@ -67,6 +66,7 @@ import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_lo
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_messages";
 import { useSettingsLibrarySyncActions } from "./use_settings_library_sync_actions";
+import { useSettingsLibraryClientState } from "./use_settings_library_client_state";
 import { useSettingsLibraryClientAdvanced } from "./use_settings_library_client_advanced";
 import { useSettingsLibraryRoleChange } from "./use_settings_library_role_change";
 import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";
@@ -330,21 +330,18 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     hasValidatedFullBackup,
     hasValidatedLatestFullBackup,
   } = useSettingsBackupValidationFlags(backupValidationState);
-  const librarySyncClientState = buildLibrarySyncClientState({
-    mode: librarySyncSettings?.mode,
-    hostBaseUrl: librarySyncSettings?.host_base_url,
-    libraryId: librarySyncSettings?.library_id,
-    clientAuthPaired: librarySyncSettings?.client_auth_paired,
-    pairingChecked: librarySyncValidation?.pairing_checked,
-    pairingValid: librarySyncValidation?.pairing_valid,
+  const {
+    librarySyncSavedMode,
+    settingsClientHostBaseUrl,
+    settingsClientHostNeedsRepair,
+    settingsClientHostPairingValid,
+    settingsClientHostWritePaired,
+    settingsClientLibraryId,
+    settingsClientReadOnly,
+  } = useSettingsLibraryClientState({
+    librarySyncSettings,
+    librarySyncValidation,
   });
-  const librarySyncSavedMode = librarySyncClientState.savedMode;
-  const settingsClientReadOnly = librarySyncClientState.readOnly;
-  const settingsClientHostBaseUrl = librarySyncClientState.hostBaseUrl;
-  const settingsClientLibraryId = librarySyncClientState.libraryId;
-  const settingsClientHostWritePaired = librarySyncClientState.hostWritePaired;
-  const settingsClientHostNeedsRepair = librarySyncClientState.hostNeedsRepair;
-  const settingsClientHostPairingValid = librarySyncClientState.hostPairingValid;
   const {
     activeCatalogMasterCount,
     activeCatalogMaterialOptions,
