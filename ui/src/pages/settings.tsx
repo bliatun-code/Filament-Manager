@@ -116,6 +116,7 @@ import {
 import { buildSettingsBackupValidationState } from "./settings_backup_model";
 import {
   buildSettingsCatalogState,
+  buildSettingsSwatchDrafts,
   type SettingsCatalogVendor,
 } from "./settings_catalog_model";
 import { createSettingsBambuLiveCaptureSession } from "./settings_bambu_live_diagnostics_model";
@@ -508,12 +509,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setLibrarySyncHostBaseUrlDraft(syncSettings.host_base_url ?? "");
       setLibrarySyncValidation(null);
       setLibrarySyncSnapshot(syncSettings.cached_snapshot ?? null);
-      const nextDrafts: Record<string, string> = {};
-      for (const master of catalogRows) {
-        const normalized = normalizeHexColor(master.hex_color, { uppercase: true });
-        nextDrafts[master.id] = normalized ?? suggestHexFromColor(master);
-      }
-      setSwatchDraftById(nextDrafts);
+      setSwatchDraftById(buildSettingsSwatchDrafts(catalogRows));
     } catch (loadError) {
       console.error(loadError);
       setError(t("settings.error.load", "Failed to load settings."));

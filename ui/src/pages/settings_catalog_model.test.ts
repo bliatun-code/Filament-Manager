@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSettingsCatalogState } from "./settings_catalog_model";
+import {
+  buildSettingsCatalogState,
+  buildSettingsSwatchDrafts,
+} from "./settings_catalog_model";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 
 function catalogMaster(overrides: Partial<MasterCatalogRow>): MasterCatalogRow {
@@ -71,4 +74,16 @@ test("settings catalog state tracks missing swatches and visible vendor count", 
   assert.equal(state.visibleMissingSwatchVendorCount, 1);
   assert.equal(state.activeCatalogMasterCount, 1);
   assert.deepEqual(state.activeCatalogRefreshMaterials, ["ABS"]);
+});
+
+test("settings swatch drafts normalize saved colors and suggest missing swatches", () => {
+  const drafts = buildSettingsSwatchDrafts([
+    catalogMaster({ id: "short-hex", hex_color: "#abc", color_name: "Blue" }),
+    catalogMaster({ id: "named-color", hex_color: "", color_name: "Orange" }),
+    catalogMaster({ id: "unknown", hex_color: "not-a-color", color_name: "Mystery Fog" }),
+  ]);
+
+  assert.equal(drafts["short-hex"], "#ABC");
+  assert.equal(drafts["named-color"], "#F97316");
+  assert.match(drafts.unknown, /^#[0-9A-F]{6}$/);
 });

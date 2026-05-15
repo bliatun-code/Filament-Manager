@@ -1,4 +1,8 @@
-import { isValidHexColor } from "../lib/color_utils";
+import {
+  isValidHexColor,
+  normalizeHexColor,
+  suggestHexFromColor,
+} from "../lib/color_utils";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 
 export type SettingsCatalogVendor = "Bambu" | "eSUN";
@@ -56,6 +60,17 @@ export function buildSettingsCatalogState({
       visibleMissingSwatchMasters.map((master) => master.vendor).filter(Boolean),
     ).length,
   };
+}
+
+export function buildSettingsSwatchDrafts(catalogMasters: MasterCatalogRow[]): Record<string, string> {
+  const drafts: Record<string, string> = {};
+
+  for (const master of catalogMasters) {
+    const normalized = normalizeHexColor(master.hex_color, { uppercase: true });
+    drafts[master.id] = normalized ?? suggestHexFromColor(master);
+  }
+
+  return drafts;
 }
 
 function materialOptionsForMasters(masters: MasterCatalogRow[]): string[] {
