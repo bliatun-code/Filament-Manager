@@ -51,6 +51,16 @@ type SettingsBambuLiveSummarySource = {
   remainingMinutes?: number | null;
 };
 
+type BuildSettingsBambuLiveDiagnosticMetricCardsInput = {
+  captureSessionLastSeenAt: string | null;
+  captureSessionSeededAt: string | null;
+  captureSessionStartedAt: string | null;
+  changedFieldCount: number;
+  formatDateTime: FormatDateTimeFn;
+  identityFieldCount: number;
+  t: TranslateFn;
+};
+
 function buildSettingsBambuLiveSummaryParts(
   source: SettingsBambuLiveSummarySource,
   t: TranslateFn,
@@ -102,6 +112,44 @@ export function buildSettingsBambuLiveObservedSummaryParts(
     },
     t,
   );
+}
+
+export function buildSettingsBambuLiveDiagnosticMetricCards({
+  captureSessionLastSeenAt,
+  captureSessionSeededAt,
+  captureSessionStartedAt,
+  changedFieldCount,
+  formatDateTime,
+  identityFieldCount,
+  t,
+}: BuildSettingsBambuLiveDiagnosticMetricCardsInput) {
+  return [
+    {
+      key: "started",
+      label: t("settings.bambuLiveCaptureStarted", "Capture started"),
+      value: captureSessionStartedAt ? formatDateTime(captureSessionStartedAt) : "—",
+    },
+    {
+      key: "lastSeen",
+      label: t("settings.bambuLiveCaptureLastUpdate", "Last captured"),
+      value: captureSessionLastSeenAt ? formatDateTime(captureSessionLastSeenAt) : "—",
+    },
+    {
+      key: "seededFrom",
+      label: t("settings.bambuLiveCaptureSeededFrom", "Seeded from live state"),
+      value: captureSessionSeededAt ? formatDateTime(captureSessionSeededAt) : "—",
+    },
+    {
+      key: "changedFields",
+      label: t("settings.bambuLiveChangedFields", "Changed fields"),
+      value: String(changedFieldCount),
+    },
+    {
+      key: "identitySignals",
+      label: t("settings.bambuLiveIdentitySignals", "Identity signals"),
+      value: String(identityFieldCount),
+    },
+  ];
 }
 
 export function buildSettingsBambuLiveDiagnosticsModel({
@@ -187,33 +235,15 @@ export function buildSettingsBambuLiveDiagnosticsModel({
             : t("settings.bambuLiveGroupOther", "Other"),
   }));
   const reviewTrayCount = countReviewDiagnosticTrays(observedState?.trays ?? []);
-  const diagnosticMetricCards = [
-    {
-      key: "started",
-      label: t("settings.bambuLiveCaptureStarted", "Capture started"),
-      value: captureSessionStartedAt ? formatDateTime(captureSessionStartedAt) : "—",
-    },
-    {
-      key: "lastSeen",
-      label: t("settings.bambuLiveCaptureLastUpdate", "Last captured"),
-      value: captureSessionLastSeenAt ? formatDateTime(captureSessionLastSeenAt) : "—",
-    },
-    {
-      key: "seededFrom",
-      label: t("settings.bambuLiveCaptureSeededFrom", "Seeded from live state"),
-      value: captureSessionSeededAt ? formatDateTime(captureSessionSeededAt) : "—",
-    },
-    {
-      key: "changedFields",
-      label: t("settings.bambuLiveChangedFields", "Changed fields"),
-      value: String(changedFieldCount),
-    },
-    {
-      key: "identitySignals",
-      label: t("settings.bambuLiveIdentitySignals", "Identity signals"),
-      value: String(identityFieldCount),
-    },
-  ];
+  const diagnosticMetricCards = buildSettingsBambuLiveDiagnosticMetricCards({
+    captureSessionLastSeenAt,
+    captureSessionSeededAt,
+    captureSessionStartedAt,
+    changedFieldCount,
+    formatDateTime,
+    identityFieldCount,
+    t,
+  });
   const diagnosticTrayCards = displayTrays.map((tray) => {
     const capturedTraySnapshot =
       captureTrayByIndex.get(tray.tray_index) ??

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildSettingsBambuLiveDiagnosticMetricCards,
   buildSettingsBambuLiveFallbackSummaryParts,
   buildSettingsBambuLiveDiagnosticsModel,
   buildSettingsBambuLiveObservedSummaryParts,
@@ -218,5 +219,47 @@ test("Bambu live summary builders keep display order and omit missing values", (
   assert.deepEqual(
     buildSettingsBambuLiveFallbackSummaryParts(diagnosticSession?.fields ?? [], t),
     ["55%"],
+  );
+});
+
+test("Bambu live diagnostic metric cards format dates and counters", () => {
+  const metricCards = buildSettingsBambuLiveDiagnosticMetricCards({
+    captureSessionLastSeenAt: "2026-05-15T10:02:00Z",
+    captureSessionSeededAt: "2026-05-15T10:00:00Z",
+    captureSessionStartedAt: "2026-05-15T09:59:00Z",
+    changedFieldCount: 4,
+    formatDateTime,
+    identityFieldCount: 2,
+    t,
+  });
+
+  assert.deepEqual(
+    metricCards.map((metric) => metric.key),
+    ["started", "lastSeen", "seededFrom", "changedFields", "identitySignals"],
+  );
+  assert.deepEqual(
+    metricCards.map((metric) => metric.value),
+    [
+      "formatted:2026-05-15T09:59:00Z",
+      "formatted:2026-05-15T10:02:00Z",
+      "formatted:2026-05-15T10:00:00Z",
+      "4",
+      "2",
+    ],
+  );
+
+  const emptyMetricCards = buildSettingsBambuLiveDiagnosticMetricCards({
+    captureSessionLastSeenAt: null,
+    captureSessionSeededAt: null,
+    captureSessionStartedAt: null,
+    changedFieldCount: 0,
+    formatDateTime,
+    identityFieldCount: 0,
+    t,
+  });
+
+  assert.deepEqual(
+    emptyMetricCards.map((metric) => metric.value),
+    ["—", "—", "—", "0", "0"],
   );
 });
