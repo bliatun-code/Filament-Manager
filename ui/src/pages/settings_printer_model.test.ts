@@ -2,6 +2,9 @@ import { strict as assert } from "node:assert";
 import test from "node:test";
 import {
   buildPrinterSlotsByPrinterId,
+  buildSettingsPrinterConfirmDeleteMessage,
+  buildSettingsPrinterRemovedMessage,
+  buildSettingsPrinterUpdatedMessage,
   derivePrinterMultiConfig,
   isBambuLabPrinter,
   preparePrinterReconfigure,
@@ -181,5 +184,26 @@ test("preparePrinterReconfigure validates missing printer and Bambu live fields"
       },
     }),
     { ok: false, reason: "missing_bambu_live_fields" },
+  );
+});
+
+test("settings printer messages quote the printer name consistently", () => {
+  assert.equal(
+    buildSettingsPrinterConfirmDeleteMessage("X1 Carbon", {
+      confirmDeleteTapAgain: "Click Remove again to confirm deleting printer",
+    }),
+    'Click Remove again to confirm deleting printer "X1 Carbon".',
+  );
+  assert.equal(
+    buildSettingsPrinterRemovedMessage("X1 Carbon", {
+      removedPrinter: "Removed printer",
+    }),
+    'Removed printer "X1 Carbon".',
+  );
+  assert.equal(
+    buildSettingsPrinterUpdatedMessage("X1 Carbon", {
+      updatedPrinter: "Updated printer",
+    }),
+    'Updated printer "X1 Carbon".',
   );
 });

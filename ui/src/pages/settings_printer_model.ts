@@ -139,3 +139,30 @@ export function preparePrinterReconfigure(input: {
     },
   };
 }
+
+export type SettingsPrinterMessageLabels = {
+  confirmDeleteTapAgain: string;
+  removedPrinter: string;
+  updatedPrinter: string;
+};
+
+export function buildSettingsPrinterConfirmDeleteMessage(
+  printerName: string,
+  labels: Pick<SettingsPrinterMessageLabels, "confirmDeleteTapAgain">,
+): string {
+  return `${labels.confirmDeleteTapAgain} "${printerName}".`;
+}
+
+export function buildSettingsPrinterRemovedMessage(
+  printerName: string,
+  labels: Pick<SettingsPrinterMessageLabels, "removedPrinter">,
+): string {
+  return `${labels.removedPrinter} "${printerName}".`;
+}
+
+export function buildSettingsPrinterUpdatedMessage(
+  printerName: string,
+  labels: Pick<SettingsPrinterMessageLabels, "updatedPrinter">,
+): string {
+  return `${labels.updatedPrinter} "${printerName}".`;
+}

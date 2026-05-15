@@ -121,6 +121,9 @@ import { createSettingsBambuLiveCaptureSession } from "./settings_bambu_live_dia
 import { buildSettingsCatalogResetMessage } from "./settings_maintenance_model";
 import {
   buildPrinterSlotsByPrinterId,
+  buildSettingsPrinterConfirmDeleteMessage,
+  buildSettingsPrinterRemovedMessage,
+  buildSettingsPrinterUpdatedMessage,
   derivePrinterMultiConfig,
   preparePrinterReconfigure,
   sortSettingsPrinters,
@@ -1537,9 +1540,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         }
       }
       await reloadSettings();
-      setInfo(
-        `${t("settings.updatedPrinter", "Updated printer")} "${prepared.printer.name}".`,
-      );
+      setInfo(buildSettingsPrinterUpdatedMessage(prepared.printer.name, {
+        updatedPrinter: t("settings.updatedPrinter", "Updated printer"),
+      }));
       handleCancelEditPrinter();
     } catch (updateError) {
       console.error(updateError);
@@ -1561,12 +1564,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (confirmDeletePrinterId !== printer.id) {
       setConfirmDeletePrinterId(printer.id);
       setError(null);
-      setInfo(
-        `${t(
+      setInfo(buildSettingsPrinterConfirmDeleteMessage(printer.name, {
+        confirmDeleteTapAgain: t(
           "settings.confirmDeleteTapAgain",
           "Click Remove again to confirm deleting printer",
-        )} "${printer.name}".`,
-      );
+        ),
+      }));
       return;
     }
     setConfirmDeletePrinterId(null);
@@ -1595,7 +1598,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         await deleteManagedPrinter(printer.id);
       }
       await reloadSettings();
-      setInfo(`${t("settings.removedPrinter", "Removed printer")} "${printer.name}".`);
+      setInfo(buildSettingsPrinterRemovedMessage(printer.name, {
+        removedPrinter: t("settings.removedPrinter", "Removed printer"),
+      }));
     } catch (deleteError) {
       console.error(deleteError);
       setError(
