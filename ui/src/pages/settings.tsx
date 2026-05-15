@@ -144,6 +144,7 @@ import {
 import {
   buildPrinterSlotsByPrinterId,
   buildSettingsPrinterConfirmDeleteMessage,
+  buildSettingsPrinterErrorMessage,
   buildSettingsPrinterRemovedMessage,
   buildSettingsPrinterRequiredMessage,
   buildSettingsPrinterUpdatedMessage,
@@ -1563,9 +1564,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     if (!prepared.ok) {
       if (prepared.reason === "missing_bambu_live_fields") {
         setError(
-          t(
-            "settings.error.bambuLiveFieldsRequired",
-            "Host, access code and printer serial are required when live Bambu status is enabled.",
+          buildSettingsPrinterErrorMessage(
+            "bambuLiveFieldsRequired",
+            settingsPrinterMessageLabels(),
           ),
         );
         return;
@@ -1581,9 +1582,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       if (settingsClientReadOnly) {
         if (!settingsClientHostBaseUrl || !settingsClientLibraryId || !settingsClientHostWritePaired) {
           setError(
-            t(
-              "settings.error.librarySyncPrinterWriteRequiresPairing",
-              "Pair this desktop client with the host before changing printers.",
+            buildSettingsPrinterErrorMessage(
+              "writeRequiresPairing",
+              settingsPrinterMessageLabels(),
             ),
           );
           setBusy(false);
@@ -1621,7 +1622,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           updateError,
-          t("settings.error.updatePrinter", "Failed to update printer."),
+          buildSettingsPrinterErrorMessage("updatePrinterFailed", settingsPrinterMessageLabels()),
         ),
       );
     } finally {
@@ -1650,9 +1651,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       if (settingsClientReadOnly) {
         if (!settingsClientHostBaseUrl || !settingsClientLibraryId || !settingsClientHostWritePaired) {
           setError(
-            t(
-              "settings.error.librarySyncPrinterWriteRequiresPairing",
-              "Pair this desktop client with the host before changing printers.",
+            buildSettingsPrinterErrorMessage(
+              "writeRequiresPairing",
+              settingsPrinterMessageLabels(),
             ),
           );
           setBusy(false);
@@ -1675,7 +1676,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setError(
         toErrorMessage(
           deleteError,
-          t("settings.error.deletePrinter", "Failed to delete printer."),
+          buildSettingsPrinterErrorMessage("deletePrinterFailed", settingsPrinterMessageLabels()),
         ),
       );
     } finally {
@@ -1685,13 +1686,23 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
   function settingsPrinterMessageLabels() {
     return {
+      bambuLiveFieldsRequired: t(
+        "settings.error.bambuLiveFieldsRequired",
+        "Host, access code and printer serial are required when live Bambu status is enabled.",
+      ),
       confirmDeleteTapAgain: t(
         "settings.confirmDeleteTapAgain",
         "Click Remove again to confirm deleting printer",
       ),
+      deletePrinterFailed: t("settings.error.deletePrinter", "Failed to delete printer."),
       printerRequired: t("settings.error.printerRequired", "Printer name and model are required."),
       removedPrinter: t("settings.removedPrinter", "Removed printer"),
+      updatePrinterFailed: t("settings.error.updatePrinter", "Failed to update printer."),
       updatedPrinter: t("settings.updatedPrinter", "Updated printer"),
+      writeRequiresPairing: t(
+        "settings.error.librarySyncPrinterWriteRequiresPairing",
+        "Pair this desktop client with the host before changing printers.",
+      ),
     };
   }
 

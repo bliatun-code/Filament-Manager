@@ -141,11 +141,28 @@ export function preparePrinterReconfigure(input: {
 }
 
 export type SettingsPrinterMessageLabels = {
+  bambuLiveFieldsRequired: string;
   confirmDeleteTapAgain: string;
+  deletePrinterFailed: string;
   printerRequired: string;
   removedPrinter: string;
+  updatePrinterFailed: string;
   updatedPrinter: string;
+  writeRequiresPairing: string;
 };
+
+export type SettingsPrinterErrorMessageKey =
+  | "bambuLiveFieldsRequired"
+  | "deletePrinterFailed"
+  | "updatePrinterFailed"
+  | "writeRequiresPairing";
+
+export function buildSettingsPrinterErrorMessage(
+  key: SettingsPrinterErrorMessageKey,
+  labels: Pick<SettingsPrinterMessageLabels, SettingsPrinterErrorMessageKey>,
+): string {
+  return labels[key];
+}
 
 export function buildSettingsPrinterRequiredMessage(
   labels: Pick<SettingsPrinterMessageLabels, "printerRequired">,

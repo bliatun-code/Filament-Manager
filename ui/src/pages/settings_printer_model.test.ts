@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildPrinterSlotsByPrinterId,
   buildSettingsPrinterConfirmDeleteMessage,
+  buildSettingsPrinterErrorMessage,
   buildSettingsPrinterRemovedMessage,
   buildSettingsPrinterRequiredMessage,
   buildSettingsPrinterUpdatedMessage,
@@ -189,6 +190,30 @@ test("preparePrinterReconfigure validates missing printer and Bambu live fields"
 });
 
 test("settings printer messages quote the printer name consistently", () => {
+  const errorLabels = {
+    bambuLiveFieldsRequired:
+      "Host, access code and printer serial are required when live Bambu status is enabled.",
+    deletePrinterFailed: "Failed to delete printer.",
+    updatePrinterFailed: "Failed to update printer.",
+    writeRequiresPairing: "Pair this desktop client with the host before changing printers.",
+  };
+
+  assert.equal(
+    buildSettingsPrinterErrorMessage("bambuLiveFieldsRequired", errorLabels),
+    errorLabels.bambuLiveFieldsRequired,
+  );
+  assert.equal(
+    buildSettingsPrinterErrorMessage("writeRequiresPairing", errorLabels),
+    errorLabels.writeRequiresPairing,
+  );
+  assert.equal(
+    buildSettingsPrinterErrorMessage("updatePrinterFailed", errorLabels),
+    errorLabels.updatePrinterFailed,
+  );
+  assert.equal(
+    buildSettingsPrinterErrorMessage("deletePrinterFailed", errorLabels),
+    errorLabels.deletePrinterFailed,
+  );
   assert.equal(
     buildSettingsPrinterRequiredMessage({
       printerRequired: "Printer name and model are required.",
