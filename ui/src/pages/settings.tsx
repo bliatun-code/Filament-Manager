@@ -32,8 +32,7 @@ import { useSettingsCatalogDerivedState } from "./use_settings_catalog_derived_s
 import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagnostics";
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
 import { useSettingsBackupFileInputs } from "./use_settings_backup_file_inputs";
-import { useSettingsBackupValidationFlags } from "./use_settings_backup_validation_flags";
-import { useSettingsBackupValidationState } from "./use_settings_backup_validation_state";
+import { useSettingsBackupValidationSummary } from "./use_settings_backup_validation_summary";
 import { useSettingsCatalogRefreshMaterials } from "./use_settings_catalog_refresh_materials";
 import { useSettingsCatalogRefreshActions } from "./use_settings_catalog_refresh_actions";
 import { useSettingsPrinterEditDraft } from "./use_settings_printer_edit_draft";
@@ -139,9 +138,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsMaintenanceResetMessageLabels,
   } = messageLabels.maintenance;
   const {
-    backupValidationState,
+    backupValidationHasExtraTables,
+    backupValidationHasMissingTables,
+    backupValidationHasWarnings,
     clearBackupValidation,
     clearFullBackupProgress,
+    hasValidatedFullBackup,
+    hasValidatedLatestFullBackup,
     lastBackupValidation,
     lastFullBackupExportedAt,
     lastFullBackupImportedAt,
@@ -149,7 +152,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     recordBackupValidation,
     recordExportedBackupValidation,
     recordImportedFullBackup,
-  } = useSettingsBackupValidationState();
+  } = useSettingsBackupValidationSummary();
   const {
     settingsBackupErrorMessageLabels,
     settingsBackupValidationMessageLabels,
@@ -318,13 +321,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     printerOverview,
     printers,
   });
-  const {
-    backupValidationHasExtraTables,
-    backupValidationHasMissingTables,
-    backupValidationHasWarnings,
-    hasValidatedFullBackup,
-    hasValidatedLatestFullBackup,
-  } = useSettingsBackupValidationFlags(backupValidationState);
   const {
     librarySyncSavedMode,
     settingsClientHostBaseUrl,
