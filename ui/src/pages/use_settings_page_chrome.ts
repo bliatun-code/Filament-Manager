@@ -23,7 +23,7 @@ export function useSettingsPageChrome(t: SettingsTranslator) {
   }), [settingsPageMessageLabels, t]);
 
   return {
-    settingsPageChromeLabels,
+    pageChromeLabels: settingsPageChromeLabels(),
     settingsPageMessageLabels,
   };
 }

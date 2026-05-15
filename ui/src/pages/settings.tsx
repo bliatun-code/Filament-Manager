@@ -355,7 +355,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     swatchVendorFilter,
   });
 
-  const { settingsPageChromeLabels, settingsPageMessageLabels } = useSettingsPageChrome(t);
+  const { pageChromeLabels, settingsPageMessageLabels } = useSettingsPageChrome(t);
 
   const { settingsTabButtons } = useSettingsPageTabs(activeTab, t);
 
@@ -771,8 +771,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     hasValidatedFullBackup,
     hasValidatedLatestFullBackup,
   });
-  const pageChromeLabels = settingsPageChromeLabels();
-
   return (
     <div className="page-shell">
       <div className="page-header">
