@@ -6,9 +6,9 @@ import { useI18n } from "../lib/i18n";
 import { SettingsGeneralTab } from "../components/settings_general_tab";
 import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
 import { SettingsMaintenanceTab } from "../components/settings_maintenance_tab";
-import { SettingsMissingSwatchesPanel } from "../components/settings_missing_swatches_panel";
 import { SettingsPrintersTab } from "../components/settings_printers_tab";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
+import { SettingsCatalogTab } from "./settings_catalog_tab";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
 import { SettingsLibraryTab } from "./settings_library_tab";
 import { SettingsPageHeader } from "./settings_page_header";
@@ -79,7 +79,6 @@ import {
   useTrustedLanNetworkState,
 } from "./use_trusted_lan_network_state";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
-import { SettingsCatalogRefreshPanel } from "./settings_catalog_refresh_panel";
 
 type SettingsPageProps = {
   initialTab?: SettingsTabKey;
@@ -957,59 +956,55 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         ) : null}
 
         {activeTab === "CATALOG" ? (
-          <section className="surface-card xl:col-span-2">
-            <div className="text-sm text-slate-700 dark:text-slate-300">
-              {t(
-                "settings.catalogTabHelp",
-                "Catalog updates are performed here. Inventory add-flow uses the local catalogue managed on this page.",
-              )}
-            </div>
-
-            <SettingsCatalogRefreshPanel
-              activeCatalogMasterCount={activeCatalogMasterCount}
-              activeCatalogMaterialOptions={activeCatalogMaterialOptions}
-              activeCatalogRefreshMaterials={activeCatalogRefreshMaterials}
-              busy={busy}
-              catalogCount={catalogMasters.length}
-              catalogRefreshBusy={catalogRefreshBusy}
-              catalogRefreshElapsedSeconds={catalogRefreshElapsedSeconds}
-              catalogRefreshLog={catalogRefreshLog}
-              catalogRefreshPhase={catalogRefreshPhase}
-              catalogRefreshProgressMessage={catalogRefreshProgressMessage}
-              catalogRefreshSummary={catalogRefreshSummary}
-              catalogRefreshVendor={catalogRefreshVendor}
-              catalogVendor={catalogVendor}
-              showCatalogRefreshLog={showCatalogRefreshLog}
-              swatchBusy={swatchBusy}
-              tauri={tauri}
-              t={t}
-              onClearCatalogRefreshMaterials={clearCatalogRefreshMaterials}
-              onRefreshVendorCatalog={(vendor) => void handleRefreshVendorCatalog(vendor)}
-              onSetCatalogVendor={setCatalogVendor}
-              onToggleCatalogRefreshLog={toggleCatalogRefreshLog}
-              onToggleCatalogRefreshMaterial={toggleCatalogRefreshMaterial}
-            />
-
-            <SettingsMissingSwatchesPanel
-              busy={busy}
-              catalogRefreshBusy={catalogRefreshBusy}
-              confirmBulkSwatch={confirmBulkSwatch}
-              missingSwatchCount={missingSwatchMasters.length}
-              swatchBusy={swatchBusy}
-              swatchDraftById={swatchDraftById}
-              swatchVendorFilter={swatchVendorFilter}
-              swatchVendorOptions={swatchVendorOptions}
-              tauri={tauri}
-              t={t}
-              visibleMissingSwatchMasters={visibleMissingSwatchMasters}
-              visibleMissingSwatchVendorCount={visibleMissingSwatchVendorCount}
-              onBulkAutoFill={() => void handleBulkAutoFillMissingSwatches()}
-              onRefresh={() => void reloadSettings()}
-              onSaveMissingSwatch={(master) => void handleSaveMissingSwatch(master)}
-              onSwatchDraftChange={updateSwatchDraft}
-              onVendorFilterChange={setSwatchVendorFilter}
-            />
-          </section>
+          <SettingsCatalogTab
+            helpText={t(
+              "settings.catalogTabHelp",
+              "Catalog updates are performed here. Inventory add-flow uses the local catalogue managed on this page.",
+            )}
+            missingSwatchesPanel={{
+              busy,
+              catalogRefreshBusy,
+              confirmBulkSwatch,
+              missingSwatchCount: missingSwatchMasters.length,
+              swatchBusy,
+              swatchDraftById,
+              swatchVendorFilter,
+              swatchVendorOptions,
+              tauri,
+              t,
+              visibleMissingSwatchMasters,
+              visibleMissingSwatchVendorCount,
+              onBulkAutoFill: () => void handleBulkAutoFillMissingSwatches(),
+              onRefresh: () => void reloadSettings(),
+              onSaveMissingSwatch: (master) => void handleSaveMissingSwatch(master),
+              onSwatchDraftChange: updateSwatchDraft,
+              onVendorFilterChange: setSwatchVendorFilter,
+            }}
+            refreshPanel={{
+              activeCatalogMasterCount,
+              activeCatalogMaterialOptions,
+              activeCatalogRefreshMaterials,
+              busy,
+              catalogCount: catalogMasters.length,
+              catalogRefreshBusy,
+              catalogRefreshElapsedSeconds,
+              catalogRefreshLog,
+              catalogRefreshPhase,
+              catalogRefreshProgressMessage,
+              catalogRefreshSummary,
+              catalogRefreshVendor,
+              catalogVendor,
+              showCatalogRefreshLog,
+              swatchBusy,
+              tauri,
+              t,
+              onClearCatalogRefreshMaterials: clearCatalogRefreshMaterials,
+              onRefreshVendorCatalog: (vendor) => void handleRefreshVendorCatalog(vendor),
+              onSetCatalogVendor: setCatalogVendor,
+              onToggleCatalogRefreshLog: toggleCatalogRefreshLog,
+              onToggleCatalogRefreshMaterial: toggleCatalogRefreshMaterial,
+            }}
+          />
         ) : null}
 
         {activeTab === "MAINTENANCE" ? (
