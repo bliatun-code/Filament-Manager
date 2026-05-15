@@ -26,7 +26,6 @@ import {
   updateMasterCatalogEntry,
   validateLibrarySyncHost,
   validateFullBackupJson,
-  type BackupValidationStats,
   type BambuLiveIntegrationEntry,
   type CatalogResetStats,
   type LibrarySyncHostValidationResult,
@@ -48,7 +47,6 @@ import { downloadTextFile } from "../lib/download_file";
 import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/inventory_export";
 import {
   extractBaseUrlFromPairingInput,
-  isFullBackupValidationFormat,
   parsePositiveInt,
   waitForMs,
 } from "../lib/settings_utils";
@@ -103,6 +101,7 @@ import { useSettingsCatalogRefreshResult } from "./use_settings_catalog_refresh_
 import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
 import { useSettingsBambuLiveDiagnostics } from "./use_settings_bambu_live_diagnostics";
 import { useSettingsBackupFileInputs } from "./use_settings_backup_file_inputs";
+import { useSettingsBackupValidationState } from "./use_settings_backup_validation_state";
 import { useSettingsCatalogRefreshMaterials } from "./use_settings_catalog_refresh_materials";
 import { useSettingsPrinterEditDraft } from "./use_settings_printer_edit_draft";
 import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_confirm";
@@ -125,7 +124,6 @@ import {
   buildSettingsBackupErrorMessage,
   buildSettingsBackupExportSuccessMessage,
   buildSettingsBackupValidationSuccessMessage,
-  buildSettingsBackupValidationState,
   buildSettingsImportSuccessMessage,
   buildSettingsInventoryExportSuccessMessage,
   resolveSettingsFullBackupImportedAt,
@@ -206,9 +204,18 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [librarySyncSnapshot, setLibrarySyncSnapshot] = useState<LibrarySyncRemoteSnapshot | null>(
     null,
   );
-  const [lastFullBackupExportedAt, setLastFullBackupExportedAt] = useState<string | null>(null);
-  const [lastFullBackupValidatedAt, setLastFullBackupValidatedAt] = useState<string | null>(null);
-  const [lastFullBackupImportedAt, setLastFullBackupImportedAt] = useState<string | null>(null);
+  const {
+    backupValidationState,
+    clearBackupValidation,
+    clearFullBackupProgress,
+    lastBackupValidation,
+    lastFullBackupExportedAt,
+    lastFullBackupImportedAt,
+    lastFullBackupValidatedAt,
+    recordBackupValidation,
+    recordExportedBackupValidation,
+    recordImportedFullBackup,
+  } = useSettingsBackupValidationState();
   const [trustedLanStatus, setTrustedLanStatus] = useState<TrustedLanCompanionStatus | null>(
     null,
   );
@@ -335,8 +342,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     expandedBambuDetailsPrinterId,
   });
   const [confirmResetAction, setConfirmResetAction] = useState<ResetConfirmAction | null>(null);
-  const [lastBackupValidation, setLastBackupValidation] =
-    useState<BackupValidationStats | null>(null);
 
   const sortedPrinters = useMemo(
     () => sortSettingsPrinters(printers, locale),
@@ -350,15 +355,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const editModelProfile = useMemo(
     () => resolvePrinterModelProfile(editPrinterModel || ""),
     [editPrinterModel],
-  );
-  const backupValidationState = useMemo(
-    () =>
-      buildSettingsBackupValidationState({
-        lastBackupValidation,
-        lastFullBackupExportedAt,
-        lastFullBackupValidatedAt,
-      }),
-    [lastBackupValidation, lastFullBackupExportedAt, lastFullBackupValidatedAt],
   );
   const backupValidationHasWarnings = backupValidationState.hasWarnings;
   const backupValidationHasMissingTables = backupValidationState.hasMissingTables;
@@ -930,11 +926,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setPendingLibraryRoleTarget(null);
     setLibraryRoleConfirmArmed(false);
     setLibrarySyncModeDraft(librarySyncSavedMode);
-    setLastFullBackupExportedAt(null);
-    setLastFullBackupValidatedAt(null);
-    setLastFullBackupImportedAt(null);
-    setLastBackupValidation(null);
-  }, [librarySyncSavedMode]);
+    clearFullBackupProgress();
+  }, [clearFullBackupProgress, librarySyncSavedMode]);
 
   const handleRequestLibraryRoleChange = useCallback((target: LibrarySyncMode) => {
     if (target === librarySyncSavedMode) {
@@ -944,14 +937,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       return;
     }
 
-    setLastFullBackupExportedAt(null);
-    setLastFullBackupValidatedAt(null);
-    setLastFullBackupImportedAt(null);
-    setLastBackupValidation(null);
+    clearFullBackupProgress();
     setPendingLibraryRoleTarget(target);
     setLibraryRoleConfirmArmed(false);
     setLibrarySyncModeDraft(target);
-  }, [librarySyncSavedMode]);
+  }, [clearFullBackupProgress, librarySyncSavedMode]);
 
   const handleConfirmLibraryRoleChange = useCallback(async () => {
     if (!pendingLibraryRoleTarget || librarySyncBusy) {
@@ -1651,11 +1641,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         "application/json;charset=utf-8",
       );
       const exportedAt = new Date().toISOString();
-      setLastFullBackupExportedAt(exportedAt);
-      setLastBackupValidation(validationSummary);
-      setLastFullBackupValidatedAt(
-        isFullBackupValidationFormat(validationSummary.format) ? exportedAt : null,
-      );
+      recordExportedBackupValidation(validationSummary, exportedAt);
       setInfo(buildSettingsBackupExportSuccessMessage({
         backupExported: t(
           "settings.backupExported",
@@ -1874,14 +1860,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       const content = await file.text();
       const result = await importDataFile(content);
       setLastCatalogReset(null);
-      setLastBackupValidation(null);
+      clearBackupValidation();
       await reloadSettings();
       const fullBackupImportedAt = resolveSettingsFullBackupImportedAt({
         detectedFormat: result.detected_format,
         importedAt: new Date().toISOString(),
       });
       if (fullBackupImportedAt) {
-        setLastFullBackupImportedAt(fullBackupImportedAt);
+        recordImportedFullBackup(fullBackupImportedAt);
         if (shouldPrepareImportedFullBackupAsHost({
           detectedFormat: result.detected_format,
           librarySyncMode: librarySyncModeDraft,
@@ -1952,10 +1938,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     try {
       const content = await file.text();
       const summary = await validateFullBackupJson(content);
-      setLastBackupValidation(summary);
-      if (isFullBackupValidationFormat(summary.format)) {
-        setLastFullBackupValidatedAt(new Date().toISOString());
-      }
+      recordBackupValidation(summary, new Date().toISOString());
       setInfo(buildSettingsBackupValidationSuccessMessage(settingsBackupValidationMessageLabels()));
     } catch (validationError) {
       console.error(validationError);
