@@ -171,9 +171,10 @@ import {
   buildSettingsPageLoadErrorMessage,
   buildSettingsPageTabLabels,
   buildSettingsPageTabs,
+  normalizeSettingsInitialTab,
 } from "./settings_page_model";
 
-type SettingsTab = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
+type SettingsTab = SettingsTabKey;
 type ResetConfirmAction = "APP" | "CATALOG";
 type CatalogVendor = SettingsCatalogVendor;
 type SettingsPageProps = {
@@ -190,7 +191,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => getThemeMode());
   const [appVersion, setAppVersion] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>(
-    initialTab === "LIBRARY" ? "LIBRARY" : initialTab,
+    normalizeSettingsInitialTab(initialTab),
   );
   const [librarySyncSettings, setLibrarySyncSettings] = useState<LibrarySyncSettings | null>(null);
   const [librarySyncModeDraft, setLibrarySyncModeDraft] = useState<LibrarySyncMode>("STANDALONE");
@@ -314,7 +315,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     useState<BackupValidationStats | null>(null);
 
   useEffect(() => {
-    setActiveTab(initialTab === "LIBRARY" ? "LIBRARY" : initialTab);
+    setActiveTab(normalizeSettingsInitialTab(initialTab));
   }, [initialTab]);
 
   useEffect(() => {

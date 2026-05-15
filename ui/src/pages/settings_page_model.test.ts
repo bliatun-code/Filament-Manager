@@ -7,6 +7,7 @@ import {
   buildSettingsPageLoadErrorMessage,
   buildSettingsPageTabLabels,
   buildSettingsPageTabs,
+  normalizeSettingsInitialTab,
 } from "./settings_page_model";
 
 test("settings page load error message returns stable fallback copy", () => {
@@ -68,4 +69,12 @@ test("settings page tabs keep the intended navigation order", () => {
       { id: "MAINTENANCE", label: "Program maintenance" },
     ],
   );
+});
+
+test("settings initial tab normalizer preserves valid tab keys", () => {
+  assert.equal(normalizeSettingsInitialTab("GENERAL"), "GENERAL");
+  assert.equal(normalizeSettingsInitialTab("LIBRARY"), "LIBRARY");
+  assert.equal(normalizeSettingsInitialTab("PRINTERS"), "PRINTERS");
+  assert.equal(normalizeSettingsInitialTab("CATALOG"), "CATALOG");
+  assert.equal(normalizeSettingsInitialTab("MAINTENANCE"), "MAINTENANCE");
 });

@@ -47,3 +47,7 @@ export function buildSettingsPageTabs(labels: SettingsPageTabLabelMap): Settings
     { id: "MAINTENANCE", label: labels.MAINTENANCE },
   ];
 }
+
+export function normalizeSettingsInitialTab(initialTab: SettingsTabKey): SettingsTabKey {
+  return initialTab;
+}
