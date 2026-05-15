@@ -46,10 +46,7 @@ import { useSettingsPrinterEditDraft } from "./use_settings_printer_edit_draft";
 import { useSettingsPrinterActions } from "./use_settings_printer_actions";
 import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_confirm";
 import { useSettingsPrinterMessages } from "./use_settings_printer_messages";
-import {
-  useSettingsResetConfirm,
-  type SettingsResetConfirmAction,
-} from "./use_settings_reset_confirm";
+import { useSettingsResetConfirm } from "./use_settings_reset_confirm";
 import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
 import { useSettingsSwatchDrafts } from "./use_settings_swatch_drafts";
 import { useSettingsSwatchState } from "./use_settings_swatch_state";
@@ -96,7 +93,6 @@ import {
   sortSettingsPrinters,
 } from "./settings_printer_model";
 
-type ResetConfirmAction = SettingsResetConfirmAction;
 type SettingsPageProps = {
   initialTab?: SettingsTabKey;
 };
@@ -321,8 +317,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     bambuLiveIntegrations,
     expandedBambuDetailsPrinterId,
   });
-  const [confirmResetAction, setConfirmResetAction] = useState<ResetConfirmAction | null>(null);
-
   const sortedPrinters = useMemo(
     () => sortSettingsPrinters(printers, locale),
     [locale, printers],
@@ -571,10 +565,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const { confirmDeletePrinterId, setConfirmDeletePrinterId } =
     useSettingsPrinterDeleteConfirm({ printers });
 
-  const { clearConfirmResetAction } = useSettingsResetConfirm({
-    confirmResetAction,
-    setConfirmResetAction,
-  });
+  const { clearConfirmResetAction, confirmResetAction, setConfirmResetAction } =
+    useSettingsResetConfirm();
   const {
     backupImportInputRef,
     backupValidateInputRef,
