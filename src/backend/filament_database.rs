@@ -37,7 +37,6 @@ use super::database_printer_schema::{
 use super::database_result::require_rows;
 use super::database_rows::{
     map_active_spool_loan_row, map_spool_loan_row, map_spool_row, map_spool_with_master_row,
-    map_trusted_lan_paired_browser_row,
 };
 use super::database_schema::{ensure_no_foreign_key_violations, table_columns};
 use super::database_schema_setup::apply_schema_migrations;
@@ -51,6 +50,17 @@ pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
 use super::database_text::normalize_optional_text;
 use super::database_time::{
     sqlite_datetime_shift as sqlite_datetime_shift_value, sqlite_now as sqlite_now_value,
+};
+use super::database_trusted_lan::{
+    consume_trusted_lan_pairing as consume_trusted_lan_pairing_row,
+    create_trusted_lan_paired_browser as create_trusted_lan_paired_browser_row,
+    create_trusted_lan_pairing as create_trusted_lan_pairing_row,
+    get_active_trusted_lan_paired_browser_by_device_token_hash as get_active_trusted_lan_paired_browser_by_device_token_hash_row,
+    get_trusted_lan_paired_browser_by_id as get_trusted_lan_paired_browser_by_id_row,
+    list_trusted_lan_paired_browsers as list_trusted_lan_paired_browser_rows,
+    revoke_all_trusted_lan_paired_browsers as revoke_all_trusted_lan_paired_browser_rows,
+    revoke_trusted_lan_paired_browser as revoke_trusted_lan_paired_browser_row,
+    touch_trusted_lan_paired_browser as touch_trusted_lan_paired_browser_row,
 };
 use super::database_trusted_lan_schema::ensure_trusted_lan_schema as ensure_trusted_lan_schema_impl;
 use super::database_values::{json_value_to_sql, sqlite_value_to_json};
@@ -2915,59 +2925,19 @@ impl FilamentDatabase {
         pairing_token_hash: &str,
         expires_in_seconds: u64,
     ) -> InventoryResult<String> {
-        let pairing_id = new_id();
-        let expiry_modifier = format!("+{} seconds", expires_in_seconds.max(1));
-        self.conn.execute(
-            "INSERT INTO trusted_lan_pairings (
-                id, display_name, pairing_token_hash, expires_at
-            ) VALUES (?1, ?2, ?3, datetime('now', ?4))",
-            params![
-                pairing_id,
-                display_name
-                    .map(str::trim)
-                    .filter(|value| !value.is_empty()),
-                pairing_token_hash.trim(),
-                expiry_modifier
-            ],
-        )?;
-        Ok(pairing_id)
+        create_trusted_lan_pairing_row(
+            &self.conn,
+            display_name,
+            pairing_token_hash,
+            expires_in_seconds,
+        )
     }
 
     pub fn consume_trusted_lan_pairing(
         &self,
         pairing_token_hash: &str,
     ) -> InventoryResult<Option<Option<String>>> {
-        let pairing = self
-            .conn
-            .query_row(
-                "SELECT id, display_name
-                 FROM trusted_lan_pairings
-                 WHERE pairing_token_hash = ?1
-                   AND used_at IS NULL
-                   AND expires_at >= datetime('now')
-                 LIMIT 1",
-                params![pairing_token_hash.trim()],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
-            )
-            .optional()?;
-
-        let Some((pairing_id, display_name)) = pairing else {
-            return Ok(None);
-        };
-
-        let updated = self.conn.execute(
-            "UPDATE trusted_lan_pairings
-             SET used_at = datetime('now')
-             WHERE id = ?1
-               AND used_at IS NULL
-               AND expires_at >= datetime('now')",
-            params![pairing_id],
-        )?;
-        if updated == 0 {
-            return Ok(None);
-        }
-
-        Ok(Some(display_name))
+        consume_trusted_lan_pairing_row(&self.conn, pairing_token_hash)
     }
 
     pub fn create_trusted_lan_paired_browser(
@@ -2976,79 +2946,35 @@ impl FilamentDatabase {
         device_token_hash: &str,
         last_origin: Option<&str>,
     ) -> InventoryResult<TrustedLanPairedBrowserRow> {
-        let browser_id = new_id();
-        self.conn.execute(
-            "INSERT INTO trusted_lan_paired_browsers (
-                id, display_name, device_token_hash, last_seen_at, last_origin
-            ) VALUES (?1, ?2, ?3, datetime('now'), ?4)",
-            params![
-                browser_id,
-                display_name
-                    .map(str::trim)
-                    .filter(|value| !value.is_empty()),
-                device_token_hash.trim(),
-                last_origin.map(str::trim).filter(|value| !value.is_empty())
-            ],
-        )?;
-        self.get_trusted_lan_paired_browser_by_id(&browser_id)
-            .and_then(|value| {
-                value.ok_or_else(|| {
-                    InventoryError::Db(
-                        "Failed to resolve trusted-LAN paired browser after insert".to_string(),
-                    )
-                })
-            })
+        create_trusted_lan_paired_browser_row(
+            &self.conn,
+            display_name,
+            device_token_hash,
+            last_origin,
+        )
     }
 
     pub fn get_trusted_lan_paired_browser_by_id(
         &self,
         browser_id: &str,
     ) -> InventoryResult<Option<TrustedLanPairedBrowserRow>> {
-        self.conn
-            .query_row(
-                "SELECT id, display_name, paired_at, last_seen_at, last_origin, revoked_at
-                 FROM trusted_lan_paired_browsers
-                 WHERE id = ?1
-                 LIMIT 1",
-                params![browser_id.trim()],
-                map_trusted_lan_paired_browser_row,
-            )
-            .optional()
-            .map_err(InventoryError::from)
+        get_trusted_lan_paired_browser_by_id_row(&self.conn, browser_id)
     }
 
     pub fn get_active_trusted_lan_paired_browser_by_device_token_hash(
         &self,
         device_token_hash: &str,
     ) -> InventoryResult<Option<TrustedLanPairedBrowserRow>> {
-        self.conn
-            .query_row(
-                "SELECT id, display_name, paired_at, last_seen_at, last_origin, revoked_at
-                 FROM trusted_lan_paired_browsers
-                 WHERE device_token_hash = ?1
-                   AND revoked_at IS NULL
-                 LIMIT 1",
-                params![device_token_hash.trim()],
-                map_trusted_lan_paired_browser_row,
-            )
-            .optional()
-            .map_err(InventoryError::from)
+        get_active_trusted_lan_paired_browser_by_device_token_hash_row(
+            &self.conn,
+            device_token_hash,
+        )
     }
 
     pub fn list_trusted_lan_paired_browsers(
         &self,
     ) -> InventoryResult<Vec<TrustedLanPairedBrowserRow>> {
-        let mut results = Vec::new();
-        let mut stmt = self.conn.prepare(
-            "SELECT id, display_name, paired_at, last_seen_at, last_origin, revoked_at
-             FROM trusted_lan_paired_browsers
-             ORDER BY revoked_at IS NULL DESC, COALESCE(last_seen_at, paired_at) DESC, paired_at DESC",
-        )?;
-        let rows = stmt.query_map([], map_trusted_lan_paired_browser_row)?;
-        for row in rows {
-            results.push(row?);
-        }
-        Ok(results)
+        list_trusted_lan_paired_browser_rows(&self.conn)
     }
 
     pub fn touch_trusted_lan_paired_browser(
@@ -3056,38 +2982,15 @@ impl FilamentDatabase {
         browser_id: &str,
         last_origin: Option<&str>,
     ) -> InventoryResult<()> {
-        let updated = self.conn.execute(
-            "UPDATE trusted_lan_paired_browsers
-             SET last_seen_at = datetime('now'),
-                 last_origin = COALESCE(?1, last_origin)
-             WHERE id = ?2
-               AND revoked_at IS NULL",
-            params![
-                last_origin.map(str::trim).filter(|value| !value.is_empty()),
-                browser_id.trim()
-            ],
-        )?;
-        require_rows(updated)
+        touch_trusted_lan_paired_browser_row(&self.conn, browser_id, last_origin)
     }
 
     pub fn revoke_trusted_lan_paired_browser(&self, browser_id: &str) -> InventoryResult<()> {
-        let updated = self.conn.execute(
-            "UPDATE trusted_lan_paired_browsers
-             SET revoked_at = COALESCE(revoked_at, datetime('now'))
-             WHERE id = ?1",
-            params![browser_id.trim()],
-        )?;
-        require_rows(updated)
+        revoke_trusted_lan_paired_browser_row(&self.conn, browser_id)
     }
 
     pub fn revoke_all_trusted_lan_paired_browsers(&self) -> InventoryResult<usize> {
-        let updated = self.conn.execute(
-            "UPDATE trusted_lan_paired_browsers
-             SET revoked_at = COALESCE(revoked_at, datetime('now'))
-             WHERE revoked_at IS NULL",
-            [],
-        )?;
-        Ok(updated)
+        revoke_all_trusted_lan_paired_browser_rows(&self.conn)
     }
 
     pub fn list_printer_overview(&self) -> InventoryResult<Vec<PrinterOverviewRow>> {

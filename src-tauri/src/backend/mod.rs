@@ -44,6 +44,8 @@ pub mod database_tables;
 pub mod database_text;
 #[path = "../../../src/backend/database_time.rs"]
 pub mod database_time;
+#[path = "../../../src/backend/database_trusted_lan.rs"]
+pub mod database_trusted_lan;
 #[path = "../../../src/backend/database_trusted_lan_schema.rs"]
 pub mod database_trusted_lan_schema;
 #[path = "../../../src/backend/database_values.rs"]
