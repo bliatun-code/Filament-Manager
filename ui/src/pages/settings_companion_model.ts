@@ -60,6 +60,15 @@ export type TrustedLanActionMessageKey =
 
 export type TrustedLanActionMessageLabels = Record<TrustedLanActionMessageKey, string>;
 
+export type TrustedLanConfigMessageKey =
+  | "disabled"
+  | "enabled"
+  | "enabledPending"
+  | "networkSaved"
+  | "starting";
+
+export type TrustedLanConfigMessageLabels = Record<TrustedLanConfigMessageKey, string>;
+
 type BuildTrustedLanPairedBrowserListInput = {
   browsers: TrustedLanPairedBrowser[];
   locale: Locale;
@@ -180,6 +189,13 @@ export function findNewTrustedLanActiveBrowserIds(
 export function buildTrustedLanActionMessage(
   action: TrustedLanActionMessageKey,
   labels: TrustedLanActionMessageLabels,
+): string {
+  return labels[action];
+}
+
+export function buildTrustedLanConfigMessage(
+  action: TrustedLanConfigMessageKey,
+  labels: TrustedLanConfigMessageLabels,
 ): string {
   return labels[action];
 }

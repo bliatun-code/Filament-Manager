@@ -4,6 +4,7 @@ import test from "node:test";
 import type { TrustedLanCompanionStatus } from "../lib/tauri_client";
 import {
   buildTrustedLanActionMessage,
+  buildTrustedLanConfigMessage,
   buildTrustedLanCompanionModel,
   findNewTrustedLanActiveBrowserIds,
   buildTrustedLanPairedBrowserListModel,
@@ -401,4 +402,20 @@ test("buildTrustedLanActionMessage returns stable action feedback copy", () => {
     buildTrustedLanActionMessage("allBrowsersRevoked", labels),
     labels.allBrowsersRevoked,
   );
+});
+
+test("buildTrustedLanConfigMessage returns stable configuration feedback copy", () => {
+  const labels = {
+    disabled: "Web app server turned off.",
+    enabled: "Web app server turned on.",
+    enabledPending: "Web app server is starting. Refresh status if it takes a moment.",
+    networkSaved: "Web app network settings saved.",
+    starting: "Starting web app server...",
+  };
+
+  assert.equal(buildTrustedLanConfigMessage("enabled", labels), labels.enabled);
+  assert.equal(buildTrustedLanConfigMessage("disabled", labels), labels.disabled);
+  assert.equal(buildTrustedLanConfigMessage("networkSaved", labels), labels.networkSaved);
+  assert.equal(buildTrustedLanConfigMessage("starting", labels), labels.starting);
+  assert.equal(buildTrustedLanConfigMessage("enabledPending", labels), labels.enabledPending);
 });

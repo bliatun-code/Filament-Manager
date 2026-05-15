@@ -86,6 +86,7 @@ import {
 } from "../lib/printer_profiles";
 import {
   buildTrustedLanActionMessage,
+  buildTrustedLanConfigMessage,
   buildTrustedLanCompanionModel,
   findNewTrustedLanActiveBrowserIds,
   buildTrustedLanPairedBrowserListModel,
@@ -755,6 +756,17 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     [loadTrustedLanCompanionStatus],
   );
 
+  const trustedLanConfigMessageLabels = useCallback(() => ({
+    disabled: t("settings.trustedLanDisabledInfo", "Web app server turned off."),
+    enabled: t("settings.trustedLanEnabledInfo", "Web app server turned on."),
+    enabledPending: t(
+      "settings.trustedLanEnabledPendingInfo",
+      "Web app server is starting. Refresh status if it takes a moment.",
+    ),
+    networkSaved: t("settings.trustedLanNetworkSaved", "Web app network settings saved."),
+    starting: t("settings.trustedLanStartingInfo", "Starting web app server..."),
+  }), [t]);
+
   const persistTrustedLanConfig = useCallback(
     async (nextEnabled: boolean, successMessage: string): Promise<boolean> => {
       if (!tauri) {
@@ -788,7 +800,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         setTrustedLanPairingLink(null);
         setInfo(
           nextEnabled && !nextStatus.shell_reachable
-            ? t("settings.trustedLanStartingInfo", "Starting web app server...")
+            ? buildTrustedLanConfigMessage("starting", trustedLanConfigMessageLabels())
             : successMessage,
         );
         setTrustedLanActionBusy(false);
@@ -806,10 +818,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
             return;
           }
           setInfo(
-            t(
-              "settings.trustedLanEnabledPendingInfo",
-              "Web app server is starting. Refresh status if it takes a moment.",
-            ),
+            buildTrustedLanConfigMessage("enabledPending", trustedLanConfigMessageLabels()),
           );
         });
         return true;
@@ -833,6 +842,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       syncTrustedLanDraftFromStatus,
       t,
       tauri,
+      trustedLanConfigMessageLabels,
       trustedLanInterfaces,
       trustedLanPortDraft,
       trustedLanSelectedInterfaceOption,
@@ -890,7 +900,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         setTrustedLanEnabledDraft(true);
         const hostEnabled = await persistTrustedLanConfig(
           true,
-          t("settings.trustedLanEnabledInfo", "Web app server turned on."),
+          buildTrustedLanConfigMessage("enabled", trustedLanConfigMessageLabels()),
         );
         if (!hostEnabled) {
           setTrustedLanEnabledDraft(Boolean(trustedLanStatus?.enabled));
@@ -900,7 +910,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         setTrustedLanEnabledDraft(false);
         const disabled = await persistTrustedLanConfig(
           false,
-          t("settings.trustedLanDisabledInfo", "Web app server turned off."),
+          buildTrustedLanConfigMessage("disabled", trustedLanConfigMessageLabels()),
         );
         if (!disabled) {
           setTrustedLanEnabledDraft(Boolean(trustedLanStatus?.enabled));
@@ -948,6 +958,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     persistTrustedLanConfig,
     t,
     tauri,
+    trustedLanConfigMessageLabels,
     trustedLanInterfaces,
     trustedLanSelectedInterfaceOption,
     trustedLanStatus?.enabled,
@@ -2295,7 +2306,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   async function handleSaveTrustedLanConfig() {
     await persistTrustedLanConfig(
       trustedLanEnabledDraft,
-      t("settings.trustedLanNetworkSaved", "Web app network settings saved."),
+      buildTrustedLanConfigMessage("networkSaved", trustedLanConfigMessageLabels()),
     );
   }
 
@@ -2309,8 +2320,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     const saved = await persistTrustedLanConfig(
       nextEnabled,
       nextEnabled
-        ? t("settings.trustedLanEnabledInfo", "Web app server turned on.")
-        : t("settings.trustedLanDisabledInfo", "Web app server turned off."),
+        ? buildTrustedLanConfigMessage("enabled", trustedLanConfigMessageLabels())
+        : buildTrustedLanConfigMessage("disabled", trustedLanConfigMessageLabels()),
     );
     if (!saved) {
       setTrustedLanEnabledDraft(previousEnabled);
