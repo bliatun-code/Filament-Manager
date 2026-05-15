@@ -11,12 +11,12 @@ import { SettingsPrintersTab } from "../components/settings_printers_tab";
 import { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_lan_browsers_panel";
 import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_lan_pairing_panel";
 import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_lan_server_panel";
-import { tabButtonClass } from "../lib/settings_ui_classes";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
 import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
+import { SettingsTabNav } from "./settings_tab_nav";
 import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";
 import { useSettingsFeedbackState } from "./use_settings_feedback_state";
@@ -787,20 +787,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         tauri={tauri}
       />
 
-      <div className="mt-6 rounded-lg border border-slate-300/50 bg-white/44 p-1.5 dark:border-slate-700/70 dark:bg-slate-950/24">
-        <div className="flex flex-wrap gap-1.5">
-          {settingsTabButtons.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={tabButtonClass(tab.active)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <SettingsTabNav onTabChange={setActiveTab} tabs={settingsTabButtons} />
 
       <div className="mt-4 grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]">
         {activeTab === "PRINTERS" ? (
