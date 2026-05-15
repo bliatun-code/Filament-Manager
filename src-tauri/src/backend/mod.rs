@@ -6,6 +6,8 @@ pub mod database_backup;
 pub mod database_borrowed_schema;
 #[path = "../../../src/backend/database_catalog_schema.rs"]
 pub mod database_catalog_schema;
+#[path = "../../../src/backend/database_connection.rs"]
+pub mod database_connection;
 #[path = "../../../src/backend/database_ids.rs"]
 pub mod database_ids;
 #[path = "../../../src/backend/database_import.rs"]

@@ -1,10 +1,10 @@
 use std::collections::HashSet;
-use std::path::Path;
 
 pub use super::database_backup::BackupValidationStats;
 use super::database_backup::{parse_full_backup_content, validate_full_backup_content};
 use super::database_borrowed_schema::ensure_borrowed_in_schema as ensure_borrowed_in_schema_impl;
 use super::database_catalog_schema::ensure_catalog_lifecycle_columns as ensure_catalog_lifecycle_columns_schema;
+use super::database_connection::open_connection;
 use super::database_ids::new_id;
 pub use super::database_import::ImportDataStats;
 use super::database_import::{
@@ -479,15 +479,10 @@ impl FilamentDatabase {
         format!("bambu_live_integration:{printer_id}")
     }
 
-    pub fn open(path: impl AsRef<Path>) -> InventoryResult<Self> {
-        let conn = Connection::open(path)?;
-        conn.busy_timeout(std::time::Duration::from_secs(5))?;
-        conn.execute_batch("PRAGMA foreign_keys = ON;")?;
-        #[cfg(target_os = "windows")]
-        conn.execute_batch(
-            "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA temp_store = MEMORY;",
-        )?;
-        Ok(Self { conn })
+    pub fn open(path: impl AsRef<std::path::Path>) -> InventoryResult<Self> {
+        Ok(Self {
+            conn: open_connection(path)?,
+        })
     }
 
     pub fn apply_schema(&self) -> InventoryResult<()> {
