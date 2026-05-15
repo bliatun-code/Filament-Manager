@@ -70,15 +70,10 @@ import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useSettingsTrustedLanState } from "./use_settings_trusted_lan_state";
 import { useSettingsMessageLabels } from "./use_settings_message_labels";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
-import { useTrustedLanBrowserListModel } from "./use_trusted_lan_browser_list_model";
+import { useSettingsTrustedLanDerivedState } from "./use_settings_trusted_lan_derived_state";
 import { useTrustedLanDraftSync } from "./use_trusted_lan_draft_sync";
-import { useTrustedLanPairedBrowserRefSync } from "./use_trusted_lan_paired_browser_ref_sync";
 import { useTrustedLanPairingActions } from "./use_trusted_lan_pairing_actions";
 import { useTrustedLanStatusActions } from "./use_trusted_lan_status_actions";
-import { useTrustedLanRevokedVisibility } from "./use_trusted_lan_revoked_visibility";
-import {
-  useTrustedLanNetworkState,
-} from "./use_trusted_lan_network_state";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
 
 type SettingsPageProps = {
@@ -358,30 +353,19 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const {
     activeTrustedLanPairedBrowsers,
     revokedTrustedLanPairedBrowsers,
-  } = useTrustedLanBrowserListModel({
-    locale,
-    t,
-    trustedLanPairedBrowsers,
-  });
-  const {
     trustedLanHasPrivateInterfaces,
     trustedLanNetworkDirty,
     trustedLanSelectedInterfaceOption,
-  } = useTrustedLanNetworkState({
+  } = useSettingsTrustedLanDerivedState({
+    locale,
+    setShowTrustedLanRevokedBrowsers,
+    t,
     trustedLanInterfaceAddressDraft,
     trustedLanInterfaces,
-    trustedLanPortDraft,
-    trustedLanStatus,
-  });
-
-  useTrustedLanRevokedVisibility({
-    revokedBrowserCount: revokedTrustedLanPairedBrowsers.length,
-    setShowTrustedLanRevokedBrowsers,
-  });
-
-  useTrustedLanPairedBrowserRefSync({
     trustedLanPairedBrowsers,
     trustedLanPairedBrowsersRef,
+    trustedLanPortDraft,
+    trustedLanStatus,
   });
 
   const syncTrustedLanDraftFromStatus = useTrustedLanDraftSync({
