@@ -5,6 +5,7 @@ import {
   type DiagnosticFilterKey,
   type DiagnosticSortKey,
 } from "../lib/diagnostic_capture";
+import { downloadTextFile } from "../lib/download_file";
 import { useI18n } from "../lib/i18n";
 import { formatSettingsDateTime } from "../lib/settings_utils";
 import type { SettingsBambuLiveDiagnosticGroup } from "../pages/settings_bambu_live_diagnostics_model";
@@ -37,13 +38,7 @@ export function SettingsBambuLiveCapturedFieldsPanel({
       return;
     }
     const csv = exportDiagnosticCaptureSessionCsv(diagnosticSession);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = downloadName;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    downloadTextFile(csv, downloadName, "text/csv;charset=utf-8");
   }
 
   return (
