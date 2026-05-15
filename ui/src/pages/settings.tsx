@@ -112,6 +112,7 @@ import {
   buildLibraryRoleChangeState,
   type LibrarySyncMode,
 } from "./settings_library_sync_model";
+import { buildSettingsBackupValidationState } from "./settings_backup_model";
 import { createSettingsBambuLiveCaptureSession } from "./settings_bambu_live_diagnostics_model";
 import {
   buildPrinterSlotsByPrinterId,
@@ -310,44 +311,20 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     () => resolvePrinterModelProfile(editPrinterModel || ""),
     [editPrinterModel],
   );
-  const backupValidationHasWarnings = useMemo(() => {
-    if (!lastBackupValidation) {
-      return false;
-    }
-    return (
-      lastBackupValidation.missing_tables.length > 0 ||
-      lastBackupValidation.extra_tables.length > 0
-    );
-  }, [lastBackupValidation]);
-  const backupValidationHasMissingTables = useMemo(
-    () => (lastBackupValidation?.missing_tables.length ?? 0) > 0,
-    [lastBackupValidation],
+  const backupValidationState = useMemo(
+    () =>
+      buildSettingsBackupValidationState({
+        lastBackupValidation,
+        lastFullBackupExportedAt,
+        lastFullBackupValidatedAt,
+      }),
+    [lastBackupValidation, lastFullBackupExportedAt, lastFullBackupValidatedAt],
   );
-  const backupValidationHasExtraTables = useMemo(
-    () => (lastBackupValidation?.extra_tables.length ?? 0) > 0,
-    [lastBackupValidation],
-  );
-  const hasValidatedFullBackup = useMemo(
-    () => isFullBackupValidationFormat(lastBackupValidation?.format),
-    [lastBackupValidation],
-  );
-  const hasValidatedLatestFullBackup = useMemo(() => {
-    if (!hasValidatedFullBackup) {
-      return false;
-    }
-    if (!lastFullBackupExportedAt) {
-      return true;
-    }
-    if (!lastFullBackupValidatedAt) {
-      return false;
-    }
-    const exportedAt = new Date(lastFullBackupExportedAt).getTime();
-    const validatedAt = new Date(lastFullBackupValidatedAt).getTime();
-    if (Number.isNaN(exportedAt) || Number.isNaN(validatedAt)) {
-      return false;
-    }
-    return validatedAt >= exportedAt;
-  }, [hasValidatedFullBackup, lastFullBackupExportedAt, lastFullBackupValidatedAt]);
+  const backupValidationHasWarnings = backupValidationState.hasWarnings;
+  const backupValidationHasMissingTables = backupValidationState.hasMissingTables;
+  const backupValidationHasExtraTables = backupValidationState.hasExtraTables;
+  const hasValidatedFullBackup = backupValidationState.hasValidatedFullBackup;
+  const hasValidatedLatestFullBackup = backupValidationState.hasValidatedLatestFullBackup;
   const librarySyncSavedMode = (librarySyncSettings?.mode as LibrarySyncMode | undefined) ?? "STANDALONE";
   const settingsClientReadOnly = librarySyncSavedMode === "CLIENT";
   const settingsClientHostBaseUrl = librarySyncSettings?.host_base_url ?? null;
