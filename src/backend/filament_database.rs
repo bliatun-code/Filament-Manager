@@ -2,6 +2,8 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use super::database_tables::should_import_backup_row;
+pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
 use super::statistics::InventoryOverview;
 use super::vendor_lookup::normalize_esun_color_name_for_catalog;
 use rusqlite::types::ValueRef;
@@ -42,52 +44,6 @@ pub struct MasterCatalogUpdateInput<'a> {
 }
 
 const SCHEMA_SQL: &str = include_str!("../database/schema.sql");
-const FULL_BACKUP_TABLES: [&str; 22] = [
-    "filament_master_list",
-    "filament_spools",
-    "spool_history_events",
-    "spool_loans",
-    "inventory_locations",
-    "printers",
-    "ams_units",
-    "ams_slots",
-    "print_jobs",
-    "printer_live_events",
-    "scales",
-    "weight_readings",
-    "scan_events",
-    "label_templates",
-    "label_print_jobs",
-    "purchase_recommendations",
-    "wishlist_items",
-    "alerts",
-    "settings",
-    "trusted_lan_pairings",
-    "trusted_lan_paired_browsers",
-    "sync_queue",
-];
-const RESET_APP_STATE_TABLES: [&str; 20] = [
-    "trusted_lan_pairings",
-    "trusted_lan_paired_browsers",
-    "label_print_jobs",
-    "weight_readings",
-    "scan_events",
-    "spool_history_events",
-    "spool_loans",
-    "print_jobs",
-    "printer_live_events",
-    "ams_slots",
-    "ams_units",
-    "filament_spools",
-    "inventory_locations",
-    "wishlist_items",
-    "alerts",
-    "sync_queue",
-    "scales",
-    "purchase_recommendations",
-    "settings",
-    "printers",
-];
 
 #[derive(Debug)]
 pub enum InventoryError {
@@ -4312,28 +4268,6 @@ fn parse_full_backup_content(content: &str) -> InventoryResult<ParsedFullBackup>
         format: format.to_string(),
         tables,
     })
-}
-
-fn should_import_backup_row(table: &str, row: &Map<String, Value>) -> bool {
-    match table {
-        "trusted_lan_pairings" | "trusted_lan_paired_browsers" | "sync_queue" => false,
-        "settings" => {
-            let Some(key) = row.get("key").and_then(Value::as_str).map(str::trim) else {
-                return false;
-            };
-            if key.starts_with("trusted_lan_") {
-                return false;
-            }
-            if key == "library_sync_library_id" {
-                return true;
-            }
-            if key.starts_with("library_sync_") {
-                return false;
-            }
-            true
-        }
-        _ => true,
-    }
 }
 
 #[derive(Clone, Debug)]
