@@ -10,6 +10,7 @@ import { SettingsFeedbackStack } from "./settings_feedback_stack";
 import { SettingsGeneralRoute } from "./settings_general_route";
 import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
 import { buildSettingsLibraryRolePanelProps } from "./settings_library_role_panel_props";
+import { buildSettingsLibraryServerPanelProps } from "./settings_library_server_panel_props";
 import { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_route";
 import { SettingsLibraryTab } from "./settings_library_tab";
 import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
@@ -927,6 +928,23 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     t,
     onToggleTrustedLanEnabled: handleToggleTrustedLanEnabled,
   });
+  const settingsLibraryServerPanelProps = buildSettingsLibraryServerPanelProps({
+    actionBusy: trustedLanActionBusy,
+    companionModel: trustedLanCompanionModel,
+    interfaceAddressDraft: trustedLanInterfaceAddressDraft,
+    interfaces: trustedLanInterfaces,
+    networkDirty: trustedLanNetworkDirty,
+    portDraft: trustedLanPortDraft,
+    showNetworkEditor: showTrustedLanNetworkEditor,
+    showNetworkSummary: showTrustedLanNetworkSummary,
+    tauri,
+    t,
+    onInterfaceAddressChange: setTrustedLanInterfaceAddressDraft,
+    onPortChange: setTrustedLanPortDraft,
+    onSaveNetwork: handleSaveTrustedLanConfig,
+    onToggleNetworkEditor: () => setShowTrustedLanNetworkEditor((value) => !value),
+    onToggleNetworkSummary: () => setShowTrustedLanNetworkSummary((value) => !value),
+  });
   return (
     <div className="page-shell">
       <SettingsPageHeader
@@ -1015,23 +1033,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               onCreatePairingLink: () => void handleCreateTrustedLanPairingLink(),
             }}
             serverPanel={{
-              actionBusy: trustedLanActionBusy,
-              companionModel: trustedLanCompanionModel,
-              interfaceAddressDraft: trustedLanInterfaceAddressDraft,
-              interfaces: trustedLanInterfaces,
-              networkDirty: trustedLanNetworkDirty,
-              portDraft: trustedLanPortDraft,
-              showNetworkEditor: showTrustedLanNetworkEditor,
-              showNetworkSummary: showTrustedLanNetworkSummary,
-              tauri,
-              t,
-              onInterfaceAddressChange: setTrustedLanInterfaceAddressDraft,
-              onPortChange: setTrustedLanPortDraft,
-              onSaveNetwork: () => void handleSaveTrustedLanConfig(),
-              onToggleNetworkEditor: () =>
-                setShowTrustedLanNetworkEditor((value) => !value),
-              onToggleNetworkSummary: () =>
-                setShowTrustedLanNetworkSummary((value) => !value),
+              ...settingsLibraryServerPanelProps,
             }}
             showClientPanel={librarySyncModeDraft === "CLIENT"}
             showHostPanels={librarySyncModeDraft !== "CLIENT"}
