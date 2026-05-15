@@ -5,9 +5,13 @@ import {
   buildSettingsBambuLiveFallbackSummaryParts,
   buildSettingsBambuLiveDiagnosticsModel,
   buildSettingsBambuLiveObservedSummaryParts,
+  buildSettingsBambuLiveSignalQualityBuckets,
   createSettingsBambuLiveCaptureSession,
 } from "./settings_bambu_live_diagnostics_model";
-import { updateDiagnosticCaptureSessionFromPayload } from "../lib/diagnostic_capture";
+import {
+  updateDiagnosticCaptureSessionFromPayload,
+  type DiagnosticCaptureField,
+} from "../lib/diagnostic_capture";
 import type { BambuLiveIntegrationSettings, SpoolWithMasterRow } from "../lib/tauri_client";
 
 const t = (_key: string, fallback: string) => fallback;
@@ -261,5 +265,58 @@ test("Bambu live diagnostic metric cards format dates and counters", () => {
   assert.deepEqual(
     emptyMetricCards.map((metric) => metric.value),
     ["—", "—", "—", "0", "0"],
+  );
+});
+
+test("Bambu live signal quality buckets keep localized labels and descriptions", () => {
+  const createDiagnosticField = (
+    overrides: Partial<DiagnosticCaptureField>,
+  ): DiagnosticCaptureField => ({
+    avgChangeIntervalMs: null,
+    avgReceiveIntervalMs: null,
+    changeCount: 1,
+    firstSeenAt: "2026-05-15T10:00:00Z",
+    lastChangedAt: "2026-05-15T10:00:00Z",
+    lastSeenAt: "2026-05-15T10:00:00Z",
+    path: "ams.ams[0].tray[0].tray_uuid",
+    receiveCount: 1,
+    recentValues: [],
+    valueText: "ABC123",
+    ...overrides,
+  });
+  const buckets = buildSettingsBambuLiveSignalQualityBuckets(
+    [
+      createDiagnosticField({ path: "ams.ams[0].tray[0].tray_uuid" }),
+      createDiagnosticField({
+        changeCount: 2,
+        path: "ams.tray_reading_bits",
+        valueText: "1000",
+      }),
+      createDiagnosticField({
+        avgReceiveIntervalMs: 4000,
+        changeCount: 3,
+        path: "mc_percent",
+        receiveCount: 3,
+        valueText: "55",
+      }),
+    ],
+    t,
+  );
+
+  assert.deepEqual(
+    buckets.map((bucket) => bucket.label),
+    ["Stable metadata", "Event-driven identity", "Continuous telemetry"],
+  );
+  assert.deepEqual(
+    buckets.map((bucket) => bucket.description),
+    [
+      "Identity and tray metadata that appears stable when observed.",
+      "Fields that tend to appear or change around AMS read/sync events.",
+      "Fields that look like normal status/telemetry updates during operation.",
+    ],
+  );
+  assert.deepEqual(
+    buckets.map((bucket) => bucket.fields.length),
+    [1, 1, 1],
   );
 });

@@ -152,6 +152,42 @@ export function buildSettingsBambuLiveDiagnosticMetricCards({
   ];
 }
 
+export function buildSettingsBambuLiveSignalQualityBuckets(
+  diagnosticFields: DiagnosticCaptureSession["fields"],
+  t: TranslateFn,
+) {
+  return buildDiagnosticSignalQualityBuckets(diagnosticFields).map((bucket) => {
+    if (bucket.label === "Stable metadata") {
+      return {
+        ...bucket,
+        description: t(
+          "settings.bambuLiveSignalStableDesc",
+          "Identity and tray metadata that appears stable when observed.",
+        ),
+        label: t("settings.bambuLiveSignalStable", "Stable metadata"),
+      };
+    }
+    if (bucket.label === "Event-driven identity") {
+      return {
+        ...bucket,
+        description: t(
+          "settings.bambuLiveSignalEventDrivenDesc",
+          "Fields that tend to appear or change around AMS read/sync events.",
+        ),
+        label: t("settings.bambuLiveSignalEventDriven", "Event-driven identity"),
+      };
+    }
+    return {
+      ...bucket,
+      description: t(
+        "settings.bambuLiveSignalContinuousDesc",
+        "Fields that look like normal status/telemetry updates during operation.",
+      ),
+      label: t("settings.bambuLiveSignalContinuous", "Continuous telemetry"),
+    };
+  });
+}
+
 export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticFilter,
   diagnosticSession,
@@ -187,36 +223,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
   const changedFieldCount = countChangedDiagnosticFields(diagnosticFields);
   const identityFieldCount = countDiagnosticIdentitySignals(diagnosticFields);
   const amsReadInProgress = isDiagnosticAmsReadInProgress(diagnosticFields);
-  const signalQualityBuckets = buildDiagnosticSignalQualityBuckets(diagnosticFields).map((bucket) => {
-    if (bucket.label === "Stable metadata") {
-      return {
-        ...bucket,
-        description: t(
-          "settings.bambuLiveSignalStableDesc",
-          "Identity and tray metadata that appears stable when observed.",
-        ),
-        label: t("settings.bambuLiveSignalStable", "Stable metadata"),
-      };
-    }
-    if (bucket.label === "Event-driven identity") {
-      return {
-        ...bucket,
-        description: t(
-          "settings.bambuLiveSignalEventDrivenDesc",
-          "Fields that tend to appear or change around AMS read/sync events.",
-        ),
-        label: t("settings.bambuLiveSignalEventDriven", "Event-driven identity"),
-      };
-    }
-    return {
-      ...bucket,
-      description: t(
-        "settings.bambuLiveSignalContinuousDesc",
-        "Fields that look like normal status/telemetry updates during operation.",
-      ),
-      label: t("settings.bambuLiveSignalContinuous", "Continuous telemetry"),
-    };
-  });
+  const signalQualityBuckets = buildSettingsBambuLiveSignalQualityBuckets(diagnosticFields, t);
   const fallbackSummaryParts = buildSettingsBambuLiveFallbackSummaryParts(diagnosticFields, t);
   const observedSummaryParts = buildSettingsBambuLiveObservedSummaryParts(observedState, t);
   const filteredDiagnosticFields = filterDiagnosticFields(diagnosticFields, diagnosticFilter);
