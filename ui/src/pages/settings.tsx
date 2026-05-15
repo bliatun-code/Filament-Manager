@@ -70,6 +70,7 @@ import { useSettingsBackupFileActions } from "./use_settings_backup_file_actions
 import { useSettingsInventoryPrintAction } from "./use_settings_inventory_print_action";
 import { useSettingsInventoryPrintMessages } from "./use_settings_inventory_print_messages";
 import { useSettingsSwatchActions } from "./use_settings_swatch_actions";
+import { useSettingsSwatchMessages } from "./use_settings_swatch_messages";
 import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_messages";
@@ -185,6 +186,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsCatalogRefreshMessageLabels,
     settingsCatalogRefreshSummaryLabels,
   } = useSettingsCatalogMessages(t);
+  const {
+    settingsSwatchBulkMessageLabels,
+    settingsSwatchErrorMessageLabels,
+    settingsSwatchSavedMessageLabels,
+  } = useSettingsSwatchMessages(t);
   const [trustedLanStatus, setTrustedLanStatus] = useState<TrustedLanCompanionStatus | null>(
     null,
   );
@@ -725,19 +731,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     tauri,
   });
 
-  function settingsSwatchErrorMessageLabels() {
-    return {
-      invalidSwatchHex: t(
-        "settings.error.invalidSwatchHex",
-        "Invalid swatch hex value. Use #RGB or #RRGGBB.",
-      ),
-      saveSwatchFailed: t(
-        "settings.error.saveSwatch",
-        "Failed to save swatch for selected filament.",
-      ),
-    };
-  }
-
   const { handleBulkAutoFillMissingSwatches, handleSaveMissingSwatch } =
     useSettingsSwatchActions({
       busy,
@@ -756,33 +749,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       tauri,
       visibleMissingSwatchMasters,
     });
-
-  function settingsSwatchBulkMessageLabels() {
-    return {
-      confirmBulkSwatchTapAgain: t(
-        "settings.confirmBulkSwatchTapAgain",
-        "Click Auto-fill visible missing swatches again to confirm.",
-      ),
-      failed: t("settings.failed", "failed"),
-      noMissingSwatches: t("settings.noMissingSwatches", "No missing swatches to fill."),
-      noVisibleMissingSwatchesCouldBeAutoFilled: t(
-        "settings.swatchBulkNoneUpdated",
-        "No visible missing swatches could be auto-filled.",
-      ),
-      skipped: t("settings.skipped", "skipped"),
-      swatchBulkUpdateCompleted: t(
-        "settings.swatchBulkDone",
-        "Swatch bulk update completed",
-      ),
-      updated: t("settings.updated", "updated"),
-    };
-  }
-
-  function settingsSwatchSavedMessageLabels() {
-    return {
-      swatchSaved: t("settings.swatchSaved", "Saved swatch"),
-    };
-  }
 
   const trustedLanCompanionModel = buildTrustedLanCompanionModel({
     trustedLanStatus,
