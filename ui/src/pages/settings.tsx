@@ -103,27 +103,12 @@ import { loadSettingsPageData, refreshLibrarySyncSnapshot } from "../lib/setting
 import { loadTrustedLanSettingsData } from "../lib/trusted_lan_data_source";
 import { createManagedPrinter, deleteManagedPrinter } from "../lib/printer_writes";
 import {
-  buildDiagnosticDisplayTrays,
   buildDiagnosticCaptureSession,
-  buildDiagnosticChartFieldOptions,
-  buildDiagnosticChartPoints,
-  buildDiagnosticFallbackSummary,
-  buildDiagnosticSignalQualityBuckets,
-  countChangedDiagnosticFields,
-  countDiagnosticIdentitySignals,
-  countReviewDiagnosticTrays,
   exportDiagnosticCaptureSessionCsv,
-  extractDiagnosticTraySnapshots,
-  groupDiagnosticFields,
-  isDiagnosticAmsReadInProgress,
-  latestDiagnosticCaptureSeenAt,
-  filterDiagnosticFields,
   formatIntervalMs,
-  sortDiagnosticFields,
   updateDiagnosticCaptureSessionFromPayload,
   type DiagnosticCaptureSession,
   type DiagnosticFilterKey,
-  type DiagnosticFieldGroup,
   type DiagnosticSortKey,
 } from "../lib/diagnostic_capture";
 import {
@@ -144,6 +129,7 @@ import {
   buildLibraryRoleChangeState,
   type LibrarySyncMode,
 } from "./settings_library_sync_model";
+import { buildSettingsBambuLiveDiagnosticsModel } from "./settings_bambu_live_diagnostics_model";
 import { derivePrinterMultiConfig, isBambuLabPrinter } from "./settings_printer_model";
 
 type SettingsTab = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
@@ -2587,65 +2573,37 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                 const printerSlots =
                   printerOverview.find((item) => item.printer.id === printer.id)?.slots ?? [];
                 const liveConfig = bambuLiveIntegrations[printer.id] ?? null;
-                const observedState = liveConfig?.observed_state ?? null;
                 const diagnosticSession = diagnosticCaptureByPrinterId[printer.id] ?? null;
                 const captureActive = diagnosticCaptureActiveByPrinterId[printer.id] ?? false;
-                const diagnosticFields = diagnosticSession?.fields ?? [];
                 const diagnosticSort = diagnosticSortByPrinterId[printer.id] ?? "path";
                 const diagnosticFilter = diagnosticFilterByPrinterId[printer.id] ?? "all";
-                const diagnosticChartFields = buildDiagnosticChartFieldOptions(diagnosticFields);
-                const selectedDiagnosticChartField =
-                  diagnosticChartFields.find(
-                    (option) => option.path === diagnosticChartFieldByPrinterId[printer.id],
-                  )?.path ??
-                  diagnosticChartFields[0]?.path ??
-                  null;
-                const diagnosticChartPoints = buildDiagnosticChartPoints(
-                  diagnosticSession,
-                  selectedDiagnosticChartField,
-                );
-                const captureTraySnapshots = extractDiagnosticTraySnapshots(diagnosticFields);
-                const captureTrayByIndex = new Map(
-                  captureTraySnapshots.map((tray) => [tray.trayIndex, tray]),
-                );
-                const displayTrays = buildDiagnosticDisplayTrays(observedState?.trays ?? [], diagnosticFields);
-                const captureSessionStartedAt = diagnosticSession?.startedAt ?? null;
-                const captureSessionSeededAt = diagnosticSession?.seededFromObservedAt ?? null;
-                const captureSessionLastSeenAt = latestDiagnosticCaptureSeenAt(
-                  diagnosticSession,
+                const {
+                  amsReadInProgress,
+                  captureSessionLastSeenAt,
+                  captureSessionSeededAt,
+                  captureSessionStartedAt,
+                  captureTrayByIndex,
+                  changedFieldCount,
+                  diagnosticChartFields,
+                  diagnosticChartPoints,
                   diagnosticFields,
-                );
-                const changedFieldCount = countChangedDiagnosticFields(diagnosticFields);
-                const identityFieldCount = countDiagnosticIdentitySignals(diagnosticFields);
-                const amsReadInProgress = isDiagnosticAmsReadInProgress(diagnosticFields);
-                const signalQualityBuckets = buildDiagnosticSignalQualityBuckets(diagnosticFields);
-                const fallbackSummary = buildDiagnosticFallbackSummary(diagnosticFields);
-                const fallbackSummaryParts = [
-                  fallbackSummary.progressPercent != null ? `${fallbackSummary.progressPercent}%` : null,
-                  fallbackSummary.remainingMinutes != null ? `${fallbackSummary.remainingMinutes} min` : null,
-                  fallbackSummary.activeTrayIndex != null
-                    ? `${t("settings.bambuLiveSummaryTray", "Tray")} ${fallbackSummary.activeTrayIndex}`
-                    : null,
-                  fallbackSummary.amsHumidityIndex != null
-                    ? `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${fallbackSummary.amsHumidityIndex}`
-                    : null,
-                ].filter(Boolean);
-                const filteredDiagnosticFields = filterDiagnosticFields(diagnosticFields, diagnosticFilter);
-                const sortedDiagnosticFields = sortDiagnosticFields(filteredDiagnosticFields, diagnosticSort);
-                const diagnosticGroups: Array<DiagnosticFieldGroup & { label: string }> = groupDiagnosticFields(
+                  diagnosticGroups,
+                  displayTrays,
+                  fallbackSummaryParts,
+                  identityFieldCount,
+                  observedState,
+                  reviewTrayCount,
+                  selectedDiagnosticChartField,
+                  signalQualityBuckets,
                   sortedDiagnosticFields,
-                ).map((group) => ({
-                  ...group,
-                  label:
-                    group.key === "print"
-                      ? t("settings.bambuLiveGroupPrint", "Print & status")
-                      : group.key === "ams"
-                        ? t("settings.bambuLiveGroupAms", "AMS")
-                        : group.key === "tray"
-                          ? t("settings.bambuLiveGroupTray", "Tray & chip")
-                          : t("settings.bambuLiveGroupOther", "Other"),
-                }));
-                const reviewTrayCount = countReviewDiagnosticTrays(observedState?.trays ?? []);
+                } = buildSettingsBambuLiveDiagnosticsModel({
+                  diagnosticFilter,
+                  diagnosticSession,
+                  diagnosticSort,
+                  liveConfig,
+                  selectedChartFieldPath: diagnosticChartFieldByPrinterId[printer.id],
+                  t,
+                });
                 const hasMultiMaterial = hasConfiguredMultiMaterial(printerSlots);
                 const configuredSetup = describeConfiguredPrinterSetup(
                   t,
