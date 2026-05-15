@@ -112,6 +112,7 @@ import {
 import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
+import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import {
   buildSettingsInventoryOverviewPrintErrorMessage,
   buildSettingsInventoryOverviewPrintPdfLabels,
@@ -248,7 +249,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const trustedLanPairedBrowsersRef = useRef<TrustedLanPairedBrowser[]>([]);
   const trustedLanPairedBrowsersRefreshInFlightRef = useRef(false);
   const librarySyncAutoValidationRef = useRef<string | null>(null);
-  const transientInfoTimeoutRef = useRef<number | null>(null);
   const silentReloadInFlightRef = useRef(false);
 
   const [printers, setPrinters] = useState<PrinterRow[]>([]);
@@ -445,27 +445,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     [activeTab, settingsTabs],
   );
 
-  const clearTransientInfoTimeout = useCallback(() => {
-    if (transientInfoTimeoutRef.current === null) {
-      return;
-    }
-    window.clearTimeout(transientInfoTimeoutRef.current);
-    transientInfoTimeoutRef.current = null;
-  }, []);
-
-  const showTransientInfo = useCallback(
-    (message: string, timeoutMs = 3500) => {
-      clearTransientInfoTimeout();
-      setInfo(message);
-      transientInfoTimeoutRef.current = window.setTimeout(() => {
-        setInfo((currentInfo) => (currentInfo === message ? null : currentInfo));
-        transientInfoTimeoutRef.current = null;
-      }, timeoutMs);
-    },
-    [clearTransientInfoTimeout],
-  );
-
-  useEffect(() => clearTransientInfoTimeout, [clearTransientInfoTimeout]);
+  const { showTransientInfo } = useSettingsTransientInfo(setInfo);
 
   const swatchVendorOptions = catalogState.swatchVendorOptions;
   const activeCatalogMaterialOptions = catalogState.activeCatalogMaterialOptions;
