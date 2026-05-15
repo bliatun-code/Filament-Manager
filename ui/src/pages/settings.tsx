@@ -8,14 +8,9 @@ import { SettingsLibraryRoleModal } from "../components/settings_library_role_mo
 import { SettingsMaintenanceTab } from "../components/settings_maintenance_tab";
 import { SettingsMissingSwatchesPanel } from "../components/settings_missing_swatches_panel";
 import { SettingsPrintersTab } from "../components/settings_printers_tab";
-import { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_lan_browsers_panel";
-import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_lan_pairing_panel";
-import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_lan_server_panel";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
-import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
-import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
-import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
+import { SettingsLibraryTab } from "./settings_library_tab";
 import { SettingsPageHeader } from "./settings_page_header";
 import { SettingsTabNav } from "./settings_tab_nav";
 import { useSettingsActiveTab } from "./use_settings_active_tab";
@@ -854,129 +849,111 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         ) : null}
 
         {activeTab === "LIBRARY" ? (
-          <>
-            <section className="surface-card xl:col-span-2 space-y-4">
-              <div className="section-eyebrow">{librarySyncTabLabels.title}</div>
-
-              <div className="surface-subtle space-y-5 p-4">
-                <SettingsLibraryRolePanel
-                  librarySyncBusy={librarySyncBusy}
-                  librarySyncDeviceNameDraft={librarySyncDeviceNameDraft}
-                  librarySyncModeDraft={librarySyncModeDraft}
-                  librarySyncRoleOptions={librarySyncRoleOptions}
-                  librarySyncSettings={librarySyncSettings}
-                  libraryVisibility={libraryVisibility}
-                  tauri={tauri}
-                  t={t}
-                  onDeviceNameChange={setLibrarySyncDeviceNameDraft}
-                  onRequestLibraryRoleChange={handleRequestLibraryRoleChange}
-                />
-
-                <SettingsLibraryWebappControl
-                  librarySyncModeDraft={librarySyncModeDraft}
-                  tauri={tauri}
-                  trustedLanActionBusy={trustedLanActionBusy}
-                  trustedLanEnabledDraft={trustedLanEnabledDraft}
-                  trustedLanHasPrivateInterfaces={trustedLanHasPrivateInterfaces}
-                  trustedLanStatus={trustedLanStatus}
-                  t={t}
-                  onToggleTrustedLanEnabled={(nextEnabled) =>
-                    void handleToggleTrustedLanEnabled(nextEnabled)
-                  }
-                />
-
-                {librarySyncModeDraft !== "CLIENT" && libraryVisibility.showWebappDetails ? (
-                  <SettingsTrustedLanServerPanel
-                    actionBusy={trustedLanActionBusy}
-                    companionModel={trustedLanCompanionModel}
-                    interfaceAddressDraft={trustedLanInterfaceAddressDraft}
-                    interfaces={trustedLanInterfaces}
-                    networkDirty={trustedLanNetworkDirty}
-                    portDraft={trustedLanPortDraft}
-                    showNetworkEditor={showTrustedLanNetworkEditor}
-                    showNetworkSummary={showTrustedLanNetworkSummary}
-                    tauri={tauri}
-                    t={t}
-                    onInterfaceAddressChange={setTrustedLanInterfaceAddressDraft}
-                    onPortChange={setTrustedLanPortDraft}
-                    onSaveNetwork={() => void handleSaveTrustedLanConfig()}
-                    onToggleNetworkEditor={() =>
-                      setShowTrustedLanNetworkEditor((value) => !value)
-                    }
-                    onToggleNetworkSummary={() =>
-                      setShowTrustedLanNetworkSummary((value) => !value)
-                    }
-                  />
-                ) : null}
-
-                {librarySyncModeDraft === "CLIENT" ? (
-                  <SettingsLibraryClientPanel
-                    librarySyncBusy={librarySyncBusy}
-                    librarySyncDeviceNameDraft={librarySyncDeviceNameDraft}
-                    librarySyncHostBaseUrlDraft={librarySyncHostBaseUrlDraft}
-                    librarySyncPairingDraft={librarySyncPairingDraft}
-                    librarySyncSettings={librarySyncSettings}
-                    librarySyncSnapshot={librarySyncSnapshot}
-                    librarySyncSnapshotBusy={librarySyncSnapshotBusy}
-                    librarySyncValidation={librarySyncValidation}
-                    librarySyncValidationBusy={librarySyncValidationBusy}
-                    libraryVisibility={libraryVisibility}
-                    locale={locale}
-                    settingsClientHostBaseUrl={settingsClientHostBaseUrl}
-                    settingsClientHostNeedsRepair={settingsClientHostNeedsRepair}
-                    settingsClientHostPairingValid={settingsClientHostPairingValid}
-                    settingsClientHostWritePaired={settingsClientHostWritePaired}
-                    showLibraryClientAdvanced={showLibraryClientAdvanced}
-                    tauri={tauri}
-                    t={t}
-                    onClearClientAuth={() => void handleClearLibrarySyncClientAuth()}
-                    onDeviceNameChange={setLibrarySyncDeviceNameDraft}
-                    onFetchSnapshot={() => void handleFetchLibrarySyncSnapshot()}
-                    onPairHost={() => void handlePairLibrarySyncHost()}
-                    onPairingDraftChange={setLibrarySyncPairingDraft}
-                    onRenewClientAuth={() => void handleRenewLibrarySyncClientAuth()}
-                    onToggleAdvanced={() => setShowLibraryClientAdvanced((value) => !value)}
-                  />
-                ) : null}
-
-              </div>
-
-              {librarySyncModeDraft !== "CLIENT" ? (
-                <SettingsTrustedLanPairingPanel
-                  actionBusy={trustedLanActionBusy}
-                  browserLabelDraft={trustedLanPairingBrowserLabelDraft}
-                  locale={locale}
-                  pairActionDisabled={trustedLanCompanionModel.pairActionDisabled}
-                  pairingExpiresAtMs={trustedLanPairingExpiresAtMs}
-                  pairingLabel={trustedLanPairingLabel}
-                  pairingLink={trustedLanPairingLink}
-                  pairingQrBusy={trustedLanPairingQrBusy}
-                  pairingQrDataUrl={trustedLanPairingQrDataUrl}
-                  pairingQrUnavailable={trustedLanPairingQrUnavailable}
-                  t={t}
-                  onBrowserLabelChange={setTrustedLanPairingBrowserLabelDraft}
-                  onCopyPairingLink={() => void handleCopyTrustedLanPairingLink()}
-                  onCreatePairingLink={() => void handleCreateTrustedLanPairingLink()}
-                />
-              ) : null}
-
-              {librarySyncModeDraft !== "CLIENT" ? (
-                <SettingsTrustedLanBrowsersPanel
-                  activeBrowsers={activeTrustedLanPairedBrowsers}
-                  actionBusy={trustedLanActionBusy}
-                  revokedBrowsers={revokedTrustedLanPairedBrowsers}
-                  showRevokedBrowsers={showTrustedLanRevokedBrowsers}
-                  t={t}
-                  totalBrowserCount={trustedLanPairedBrowsers.length}
-                  onRevokeAllBrowsers={() => void handleRevokeAllTrustedLanBrowsers()}
-                  onRevokeBrowser={(browserId) => void handleRevokeTrustedLanBrowser(browserId)}
-                  onToggleRevokedBrowsers={() =>
-                    setShowTrustedLanRevokedBrowsers((value) => !value)
-                  }
-                />
-              ) : null}
-            </section>
-          </>
+          <SettingsLibraryTab
+            browsersPanel={{
+              activeBrowsers: activeTrustedLanPairedBrowsers,
+              actionBusy: trustedLanActionBusy,
+              revokedBrowsers: revokedTrustedLanPairedBrowsers,
+              showRevokedBrowsers: showTrustedLanRevokedBrowsers,
+              t,
+              totalBrowserCount: trustedLanPairedBrowsers.length,
+              onRevokeAllBrowsers: () => void handleRevokeAllTrustedLanBrowsers(),
+              onRevokeBrowser: (browserId) => void handleRevokeTrustedLanBrowser(browserId),
+              onToggleRevokedBrowsers: () =>
+                setShowTrustedLanRevokedBrowsers((value) => !value),
+            }}
+            clientPanel={{
+              librarySyncBusy,
+              librarySyncDeviceNameDraft,
+              librarySyncHostBaseUrlDraft,
+              librarySyncPairingDraft,
+              librarySyncSettings,
+              librarySyncSnapshot,
+              librarySyncSnapshotBusy,
+              librarySyncValidation,
+              librarySyncValidationBusy,
+              libraryVisibility,
+              locale,
+              settingsClientHostBaseUrl,
+              settingsClientHostNeedsRepair,
+              settingsClientHostPairingValid,
+              settingsClientHostWritePaired,
+              showLibraryClientAdvanced,
+              tauri,
+              t,
+              onClearClientAuth: () => void handleClearLibrarySyncClientAuth(),
+              onDeviceNameChange: setLibrarySyncDeviceNameDraft,
+              onFetchSnapshot: () => void handleFetchLibrarySyncSnapshot(),
+              onPairHost: () => void handlePairLibrarySyncHost(),
+              onPairingDraftChange: setLibrarySyncPairingDraft,
+              onRenewClientAuth: () => void handleRenewLibrarySyncClientAuth(),
+              onToggleAdvanced: () => setShowLibraryClientAdvanced((value) => !value),
+            }}
+            libraryRolePanel={{
+              librarySyncBusy,
+              librarySyncDeviceNameDraft,
+              librarySyncModeDraft,
+              librarySyncRoleOptions,
+              librarySyncSettings,
+              libraryVisibility,
+              tauri,
+              t,
+              onDeviceNameChange: setLibrarySyncDeviceNameDraft,
+              onRequestLibraryRoleChange: handleRequestLibraryRoleChange,
+            }}
+            pairingPanel={{
+              actionBusy: trustedLanActionBusy,
+              browserLabelDraft: trustedLanPairingBrowserLabelDraft,
+              locale,
+              pairActionDisabled: trustedLanCompanionModel.pairActionDisabled,
+              pairingExpiresAtMs: trustedLanPairingExpiresAtMs,
+              pairingLabel: trustedLanPairingLabel,
+              pairingLink: trustedLanPairingLink,
+              pairingQrBusy: trustedLanPairingQrBusy,
+              pairingQrDataUrl: trustedLanPairingQrDataUrl,
+              pairingQrUnavailable: trustedLanPairingQrUnavailable,
+              t,
+              onBrowserLabelChange: setTrustedLanPairingBrowserLabelDraft,
+              onCopyPairingLink: () => void handleCopyTrustedLanPairingLink(),
+              onCreatePairingLink: () => void handleCreateTrustedLanPairingLink(),
+            }}
+            serverPanel={{
+              actionBusy: trustedLanActionBusy,
+              companionModel: trustedLanCompanionModel,
+              interfaceAddressDraft: trustedLanInterfaceAddressDraft,
+              interfaces: trustedLanInterfaces,
+              networkDirty: trustedLanNetworkDirty,
+              portDraft: trustedLanPortDraft,
+              showNetworkEditor: showTrustedLanNetworkEditor,
+              showNetworkSummary: showTrustedLanNetworkSummary,
+              tauri,
+              t,
+              onInterfaceAddressChange: setTrustedLanInterfaceAddressDraft,
+              onPortChange: setTrustedLanPortDraft,
+              onSaveNetwork: () => void handleSaveTrustedLanConfig(),
+              onToggleNetworkEditor: () =>
+                setShowTrustedLanNetworkEditor((value) => !value),
+              onToggleNetworkSummary: () =>
+                setShowTrustedLanNetworkSummary((value) => !value),
+            }}
+            showClientPanel={librarySyncModeDraft === "CLIENT"}
+            showHostPanels={librarySyncModeDraft !== "CLIENT"}
+            showServerPanel={
+              librarySyncModeDraft !== "CLIENT" && libraryVisibility.showWebappDetails
+            }
+            title={librarySyncTabLabels.title}
+            webappControl={{
+              librarySyncModeDraft,
+              tauri,
+              trustedLanActionBusy,
+              trustedLanEnabledDraft,
+              trustedLanHasPrivateInterfaces,
+              trustedLanStatus,
+              t,
+              onToggleTrustedLanEnabled: (nextEnabled) =>
+                void handleToggleTrustedLanEnabled(nextEnabled),
+            }}
+          />
         ) : null}
 
         {activeTab === "CATALOG" ? (
