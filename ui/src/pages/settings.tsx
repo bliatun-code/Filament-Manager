@@ -115,6 +115,7 @@ import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_messages";
 import { useSettingsLibraryRoleChange } from "./use_settings_library_role_change";
 import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";
+import { useSettingsTrustedLanMessages } from "./use_settings_trusted_lan_messages";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
@@ -220,6 +221,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     librarySyncErrorMessageLabels,
     librarySyncPairingMessageLabels,
   } = useSettingsLibrarySyncMessages(t);
+  const {
+    trustedLanActionMessageLabels,
+    trustedLanConfigMessageLabels,
+    trustedLanLoadMessageLabels,
+    trustedLanValidationMessageLabels,
+  } = useSettingsTrustedLanMessages(t);
   const {
     backupValidationState,
     clearBackupValidation,
@@ -557,21 +564,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     toggleBambuLiveCapture(printerId, captureActive);
   }
 
-  const trustedLanLoadMessageLabels = useCallback(() => ({
-    loadCompanionFailed: t(
-      "settings.error.loadTrustedLanCompanion",
-      "Failed to load trusted-LAN companion status.",
-    ),
-    newBrowserPaired: t(
-      "settings.trustedLanBrowserPairedDetected",
-      "New paired browser connected.",
-    ),
-    refreshBrowsersFailed: t(
-      "settings.error.loadTrustedLanPairedBrowsers",
-      "Failed to refresh paired browsers.",
-    ),
-  }), [t]);
-
   const loadTrustedLanCompanionStatus = useCallback(async (): Promise<TrustedLanCompanionStatus | null> => {
     if (!tauri) {
       return null;
@@ -673,28 +665,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     },
     [loadTrustedLanCompanionStatus],
   );
-
-  const trustedLanConfigMessageLabels = useCallback(() => ({
-    disabled: t("settings.trustedLanDisabledInfo", "Web app server turned off."),
-    enabled: t("settings.trustedLanEnabledInfo", "Web app server turned on."),
-    enabledPending: t(
-      "settings.trustedLanEnabledPendingInfo",
-      "Web app server is starting. Refresh status if it takes a moment.",
-    ),
-    networkSaved: t("settings.trustedLanNetworkSaved", "Web app network settings saved."),
-    saveFailed: t(
-      "settings.error.saveTrustedLanConfig",
-      "Failed to save trusted-LAN companion settings.",
-    ),
-    starting: t("settings.trustedLanStartingInfo", "Starting web app server..."),
-  }), [t]);
-
-  const trustedLanValidationMessageLabels = useCallback(() => ({
-    noPrivateInterface: t(
-      "settings.error.trustedLanNoInterface",
-      "Pick a private interface before turning on the web app server.",
-    ),
-  }), [t]);
 
   const persistTrustedLanConfig = useCallback(
     async (nextEnabled: boolean, successMessage: string): Promise<boolean> => {
@@ -2200,37 +2170,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setTrustedLanActionBusy(false);
     }
-  }
-
-  function trustedLanActionMessageLabels() {
-    return {
-      allBrowsersRevoked: t(
-        "settings.trustedLanAllBrowsersRevoked",
-        "All trusted-LAN browsers revoked.",
-      ),
-      browserRevoked: t("settings.trustedLanBrowserRevoked", "Trusted-LAN browser revoked."),
-      copyPairingFailed: t(
-        "settings.error.copyTrustedLanPairing",
-        "Failed to copy the trusted-LAN pairing link.",
-      ),
-      createPairingFailed: t(
-        "settings.error.createTrustedLanPairing",
-        "Failed to create a trusted-LAN pairing link.",
-      ),
-      pairingCopied: t("settings.trustedLanPairingCopied", "Trusted-LAN pairing link copied."),
-      pairingCreated: t(
-        "settings.trustedLanPairingCreated",
-        "Trusted-LAN pairing link created and copied.",
-      ),
-      revokeAllBrowsersFailed: t(
-        "settings.error.revokeAllTrustedLanBrowsers",
-        "Failed to revoke trusted-LAN browsers.",
-      ),
-      revokeBrowserFailed: t(
-        "settings.error.revokeTrustedLanBrowser",
-        "Failed to revoke the trusted-LAN browser.",
-      ),
-    };
   }
 
   const trustedLanCompanionModel = buildTrustedLanCompanionModel({
