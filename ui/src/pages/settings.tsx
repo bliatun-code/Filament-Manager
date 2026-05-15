@@ -9,6 +9,7 @@ import { buildSettingsCatalogRouteProps } from "./settings_catalog_route_props";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
 import { SettingsGeneralRoute } from "./settings_general_route";
 import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
+import { buildSettingsLibraryBrowsersPanelProps } from "./settings_library_browsers_panel_props";
 import { buildSettingsLibraryRolePanelProps } from "./settings_library_role_panel_props";
 import { buildSettingsLibraryServerPanelProps } from "./settings_library_server_panel_props";
 import { buildSettingsLibraryPairingPanelProps } from "./settings_library_pairing_panel_props";
@@ -962,6 +963,17 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     onCopyPairingLink: handleCopyTrustedLanPairingLink,
     onCreatePairingLink: handleCreateTrustedLanPairingLink,
   });
+  const settingsLibraryBrowsersPanelProps = buildSettingsLibraryBrowsersPanelProps({
+    activeBrowsers: activeTrustedLanPairedBrowsers,
+    actionBusy: trustedLanActionBusy,
+    revokedBrowsers: revokedTrustedLanPairedBrowsers,
+    showRevokedBrowsers: showTrustedLanRevokedBrowsers,
+    t,
+    totalBrowserCount: trustedLanPairedBrowsers.length,
+    onRevokeAllBrowsers: handleRevokeAllTrustedLanBrowsers,
+    onRevokeBrowser: handleRevokeTrustedLanBrowser,
+    onToggleRevokedBrowsers: () => setShowTrustedLanRevokedBrowsers((value) => !value),
+  });
   return (
     <div className="page-shell">
       <SettingsPageHeader
@@ -992,16 +1004,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           LIBRARY: (
           <SettingsLibraryTab
             browsersPanel={{
-              activeBrowsers: activeTrustedLanPairedBrowsers,
-              actionBusy: trustedLanActionBusy,
-              revokedBrowsers: revokedTrustedLanPairedBrowsers,
-              showRevokedBrowsers: showTrustedLanRevokedBrowsers,
-              t,
-              totalBrowserCount: trustedLanPairedBrowsers.length,
-              onRevokeAllBrowsers: () => void handleRevokeAllTrustedLanBrowsers(),
-              onRevokeBrowser: (browserId) => void handleRevokeTrustedLanBrowser(browserId),
-              onToggleRevokedBrowsers: () =>
-                setShowTrustedLanRevokedBrowsers((value) => !value),
+              ...settingsLibraryBrowsersPanelProps,
             }}
             clientPanel={{
               librarySyncBusy,
