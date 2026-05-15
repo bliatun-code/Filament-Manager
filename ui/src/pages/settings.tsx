@@ -126,6 +126,7 @@ import {
   buildSettingsBackupValidationState,
   buildSettingsImportSuccessMessage,
   buildSettingsInventoryExportSuccessMessage,
+  resolveSettingsFullBackupImportedAt,
   shouldPrepareImportedFullBackupAsHost,
 } from "./settings_backup_model";
 import {
@@ -2081,9 +2082,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setLastCatalogReset(null);
       setLastBackupValidation(null);
       await reloadSettings();
-      if (result.detected_format === "FULL_BACKUP") {
-        const importedAt = new Date().toISOString();
-        setLastFullBackupImportedAt(importedAt);
+      const fullBackupImportedAt = resolveSettingsFullBackupImportedAt({
+        detectedFormat: result.detected_format,
+        importedAt: new Date().toISOString(),
+      });
+      if (fullBackupImportedAt) {
+        setLastFullBackupImportedAt(fullBackupImportedAt);
         if (shouldPrepareImportedFullBackupAsHost({
           detectedFormat: result.detected_format,
           librarySyncMode: librarySyncModeDraft,

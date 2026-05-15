@@ -7,6 +7,7 @@ import {
   buildSettingsBackupValidationState,
   buildSettingsImportSuccessMessage,
   buildSettingsInventoryExportSuccessMessage,
+  resolveSettingsFullBackupImportedAt,
   shouldPrepareImportedFullBackupAsHost,
   type SettingsImportMessageLabels,
 } from "./settings_backup_model";
@@ -242,5 +243,22 @@ test("full backup import host handoff only applies to client role imports", () =
       librarySyncMode: "CLIENT",
     }),
     false,
+  );
+});
+
+test("full backup import timestamp is only recorded for full backups", () => {
+  assert.equal(
+    resolveSettingsFullBackupImportedAt({
+      detectedFormat: "FULL_BACKUP",
+      importedAt: "2026-05-15T10:00:00Z",
+    }),
+    "2026-05-15T10:00:00Z",
+  );
+  assert.equal(
+    resolveSettingsFullBackupImportedAt({
+      detectedFormat: "INVENTORY_JSON",
+      importedAt: "2026-05-15T10:00:00Z",
+    }),
+    null,
   );
 });

@@ -134,6 +134,16 @@ export function shouldPrepareImportedFullBackupAsHost({
   return detectedFormat === "FULL_BACKUP" && librarySyncMode === "CLIENT";
 }
 
+export function resolveSettingsFullBackupImportedAt({
+  detectedFormat,
+  importedAt,
+}: {
+  detectedFormat: ImportDataStats["detected_format"];
+  importedAt: string;
+}): string | null {
+  return detectedFormat === "FULL_BACKUP" ? importedAt : null;
+}
+
 export function buildSettingsImportSuccessMessage({
   importedOnClient,
   labels,
