@@ -79,6 +79,7 @@ import { SettingsMaintenanceTab } from "../components/settings_maintenance_tab";
 import { SettingsMissingSwatchesPanel } from "../components/settings_missing_swatches_panel";
 import { SettingsPrinterEditForm } from "../components/settings_printer_edit_form";
 import { SettingsMetricTile } from "../components/settings_ui";
+import { SettingsBambuLiveDiagnosticsSummary } from "../components/settings_bambu_live_diagnostics_summary";
 import { SettingsBambuLiveTrayCards } from "../components/settings_bambu_live_tray_cards";
 import { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_lan_browsers_panel";
 import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_lan_pairing_panel";
@@ -2864,54 +2865,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
                                   {diagnosticFields.length}
                                 </div>
                               </div>
-                              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
-                                {diagnosticMetricCards.map((metric) => (
-                                  <div
-                                    key={`${printer.id}-${metric.key}`}
-                                    className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60"
-                                  >
-                                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                      {metric.label}
-                                    </div>
-                                    <div className="mt-1 text-[11px] text-slate-700 dark:text-slate-200">
-                                      {metric.value}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                              {signalQualityBuckets.length > 0 ? (
-                                <div className="mt-3 grid grid-cols-1 gap-2 xl:grid-cols-3">
-                                  {signalQualityBuckets.map((bucket) => (
-                                    <div
-                                      key={`${printer.id}-${bucket.label}`}
-                                      className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60"
-                                    >
-                                      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                        {bucket.label}
-                                      </div>
-                                      <div className="mt-1 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
-                                        {bucket.description}
-                                      </div>
-                                      <div className="mt-2 flex flex-wrap gap-1">
-                                        {bucket.fields.slice(0, 6).map((field) => (
-                                          <span
-                                            key={`${printer.id}-${bucket.label}-${field.path}`}
-                                            className="inline-flex items-center rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] text-slate-600 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-300"
-                                            title={field.path}
-                                          >
-                                            {field.path}
-                                          </span>
-                                        ))}
-                                        {bucket.fields.length > 6 ? (
-                                          <span className="inline-flex items-center rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-500 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-400">
-                                            +{bucket.fields.length - 6}
-                                          </span>
-                                        ) : null}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : null}
+                              <SettingsBambuLiveDiagnosticsSummary
+                                metrics={diagnosticMetricCards}
+                                printerId={printer.id}
+                                signalQualityBuckets={signalQualityBuckets}
+                              />
                               <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-950/40">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                   <div>

@@ -287,3 +287,11 @@ export function createSettingsBambuLiveCaptureSession(
 export type SettingsBambuLiveDiagnosticTrayCard = ReturnType<
   typeof buildSettingsBambuLiveDiagnosticsModel
 >["diagnosticTrayCards"][number];
+
+export type SettingsBambuLiveDiagnosticMetricCard = ReturnType<
+  typeof buildSettingsBambuLiveDiagnosticsModel
+>["diagnosticMetricCards"][number];
+
+export type SettingsBambuLiveSignalQualityBucket = ReturnType<
+  typeof buildSettingsBambuLiveDiagnosticsModel
+>["signalQualityBuckets"][number];
