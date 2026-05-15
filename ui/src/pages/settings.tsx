@@ -16,6 +16,7 @@ import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
+import { SettingsPageHeader } from "./settings_page_header";
 import { SettingsTabNav } from "./settings_tab_nav";
 import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";
@@ -773,12 +774,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   });
   return (
     <div className="page-shell">
-      <div className="page-header">
-        <div className="page-header-copy">
-          <h1 className="page-title">{pageChromeLabels.title}</h1>
-          <div className="page-subtitle">{pageChromeLabels.subtitle}</div>
-        </div>
-      </div>
+      <SettingsPageHeader
+        subtitle={pageChromeLabels.subtitle}
+        title={pageChromeLabels.title}
+      />
 
       <SettingsFeedbackStack
         desktopOnlyMessage={pageChromeLabels.desktopOnly}
