@@ -22,14 +22,12 @@ import {
   resetCatalogData,
   saveBambuLiveIntegration,
   saveLibrarySyncSettings,
-  subscribeCatalogRefreshProgress,
   updateTrustedLanCompanionConfig,
   updateMasterCatalogEntry,
   validateLibrarySyncHost,
   validateFullBackupJson,
   type BackupValidationStats,
   type BambuLiveIntegrationEntry,
-  type CatalogRefreshProgressPayload,
   type CatalogRefreshResult,
   type CatalogResetStats,
   type LibrarySyncHostValidationResult,
@@ -113,6 +111,7 @@ import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";
+import { useSettingsCatalogRefreshProgress } from "./use_settings_catalog_refresh_progress";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import {
   buildSettingsInventoryOverviewPrintErrorMessage,
@@ -260,15 +259,19 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const [bambuRefreshMaterials, setBambuRefreshMaterials] = useState<string[]>([]);
   const [esunRefreshMaterials, setEsunRefreshMaterials] = useState<string[]>([]);
   const [catalogRefreshBusy, setCatalogRefreshBusy] = useState(false);
-  const [catalogRefreshVendor, setCatalogRefreshVendor] = useState<CatalogVendor>("Bambu");
-  const [catalogRefreshProgressMessage, setCatalogRefreshProgressMessage] = useState(
-    t("wishlist.refreshPreparing", "Preparing catalog refresh..."),
-  );
-  const [catalogRefreshPhase, setCatalogRefreshPhase] = useState("PREPARE");
-  const [catalogRefreshStartedAt, setCatalogRefreshStartedAt] = useState<number | null>(
-    null,
-  );
-  const [catalogRefreshElapsedSeconds, setCatalogRefreshElapsedSeconds] = useState(0);
+  const {
+    catalogRefreshElapsedSeconds,
+    catalogRefreshPhase,
+    catalogRefreshProgressMessage,
+    catalogRefreshVendor,
+    setCatalogRefreshPhase,
+    setCatalogRefreshProgressMessage,
+    setCatalogRefreshStartedAt,
+    setCatalogRefreshVendor,
+  } = useSettingsCatalogRefreshProgress({
+    initialMessage: t("wishlist.refreshPreparing", "Preparing catalog refresh..."),
+    tauri,
+  });
   const [catalogRefreshSummary, setCatalogRefreshSummary] =
     useState<CatalogRefreshResult | null>(null);
   const [catalogRefreshLog, setCatalogRefreshLog] = useState("");
@@ -1381,37 +1384,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   }, [trustedLanPairingLink]);
 
   useEffect(() => {
-    let disposed = false;
-    let unlisten: (() => void) | null = null;
-
-    if (!tauri) {
-      return;
-    }
-
-    void subscribeCatalogRefreshProgress((payload: CatalogRefreshProgressPayload) => {
-      if (disposed) {
-        return;
-      }
-      setCatalogRefreshVendor(payload.vendor === "eSUN" ? "eSUN" : "Bambu");
-      setCatalogRefreshPhase(payload.phase);
-      setCatalogRefreshProgressMessage(payload.message);
-    }).then((fn) => {
-      if (disposed) {
-        fn();
-        return;
-      }
-      unlisten = fn;
-    });
-
-    return () => {
-      disposed = true;
-      if (unlisten) {
-        unlisten();
-      }
-    };
-  }, [tauri]);
-
-  useEffect(() => {
     const unlisten = onThemeModeChange((mode) => setThemeModeState(mode));
     return () => {
       unlisten();
@@ -1470,21 +1442,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     }, 20_000);
     return () => window.clearTimeout(timer);
   }, [catalogRefreshSummary]);
-
-  useEffect(() => {
-    if (!catalogRefreshBusy || catalogRefreshStartedAt === null) {
-      setCatalogRefreshElapsedSeconds(0);
-      return;
-    }
-    const tick = () => {
-      setCatalogRefreshElapsedSeconds(
-        Math.max(0, Math.floor((Date.now() - catalogRefreshStartedAt) / 1000)),
-      );
-    };
-    tick();
-    const timer = window.setInterval(tick, 500);
-    return () => window.clearInterval(timer);
-  }, [catalogRefreshBusy, catalogRefreshStartedAt]);
 
   function handleStartEditPrinter(printer: PrinterRow) {
     const config = derivePrinterMultiConfig({
