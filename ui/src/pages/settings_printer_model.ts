@@ -2,6 +2,7 @@ import type {
   CreatePrinterInput,
   PrinterAmsSlotRow,
   PrinterOverviewRow,
+  PrinterRow,
 } from "../lib/tauri_client";
 import { isExternalSlotId, resolvePrinterModelProfile } from "../lib/printer_profiles";
 import { clampInt, parseNonNegativeInt, parsePositiveInt } from "../lib/settings_utils";
@@ -45,6 +46,20 @@ export function buildPrinterSlotsByPrinterId(
   return new Map(
     printerOverview.map((item) => [item.printer.id, item.slots]),
   );
+}
+
+export function sortSettingsPrinters(printers: PrinterRow[], locale: string): PrinterRow[] {
+  const collator = new Intl.Collator(locale, {
+    numeric: true,
+    sensitivity: "base",
+  });
+  return [...printers].sort((left, right) => {
+    const byName = collator.compare(left.name, right.name);
+    if (byName !== 0) {
+      return byName;
+    }
+    return collator.compare(left.model, right.model);
+  });
 }
 
 export function derivePrinterMultiConfig(input: {

@@ -122,6 +122,7 @@ import {
   buildPrinterSlotsByPrinterId,
   derivePrinterMultiConfig,
   preparePrinterReconfigure,
+  sortSettingsPrinters,
 } from "./settings_printer_model";
 
 type SettingsTab = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
@@ -294,19 +295,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     };
   }, [tauri]);
 
-  const sortedPrinters = useMemo(() => {
-    const collator = new Intl.Collator(locale, {
-      numeric: true,
-      sensitivity: "base",
-    });
-    return [...printers].sort((left, right) => {
-      const byName = collator.compare(left.name, right.name);
-      if (byName !== 0) {
-        return byName;
-      }
-      return collator.compare(left.model, right.model);
-    });
-  }, [locale, printers]);
+  const sortedPrinters = useMemo(
+    () => sortSettingsPrinters(printers, locale),
+    [locale, printers],
+  );
   const printerSlotsByPrinterId = useMemo(
     () => buildPrinterSlotsByPrinterId(printerOverview),
     [printerOverview],

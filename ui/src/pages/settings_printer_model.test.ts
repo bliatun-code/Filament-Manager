@@ -5,8 +5,20 @@ import {
   derivePrinterMultiConfig,
   isBambuLabPrinter,
   preparePrinterReconfigure,
+  sortSettingsPrinters,
 } from "./settings_printer_model";
-import type { PrinterOverviewRow } from "../lib/tauri_client";
+import type { PrinterOverviewRow, PrinterRow } from "../lib/tauri_client";
+
+function printer(overrides: Partial<PrinterRow>): PrinterRow {
+  return {
+    id: "printer-1",
+    name: "Printer",
+    model: "Bambu Lab X1 Carbon",
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+    ...overrides,
+  };
+}
 
 function overviewRow(
   slots: Array<{ ams_id: string; slot_id: string }>,
@@ -61,6 +73,26 @@ test("buildPrinterSlotsByPrinterId indexes overview slots by printer id", () => 
 
   assert.equal(slotsByPrinterId.get("printer-1"), overview.slots);
   assert.equal(slotsByPrinterId.get("missing"), undefined);
+});
+
+test("sortSettingsPrinters orders by name, then model, without mutating input", () => {
+  const printers = [
+    printer({ id: "printer-10", name: "Printer 10", model: "Prusa MK4" }),
+    printer({ id: "alpha-p1s", name: "Alpha", model: "Bambu Lab P1S" }),
+    printer({ id: "printer-2", name: "Printer 2", model: "Bambu Lab X1 Carbon" }),
+    printer({ id: "alpha-a1", name: "alpha", model: "Bambu Lab A1" }),
+  ];
+
+  const sorted = sortSettingsPrinters(printers, "nb-NO");
+
+  assert.deepEqual(
+    sorted.map((item) => item.id),
+    ["alpha-a1", "alpha-p1s", "printer-2", "printer-10"],
+  );
+  assert.deepEqual(
+    printers.map((item) => item.id),
+    ["printer-10", "alpha-p1s", "printer-2", "alpha-a1"],
+  );
 });
 
 test("derivePrinterMultiConfig falls back to model defaults without slots", () => {
