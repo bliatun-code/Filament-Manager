@@ -127,12 +127,37 @@ export type SettingsSwatchBulkResult = {
 };
 
 export type SettingsSwatchBulkMessageLabels = {
+  confirmBulkSwatchTapAgain: string;
   failed: string;
+  noMissingSwatches: string;
   noVisibleMissingSwatchesCouldBeAutoFilled: string;
   skipped: string;
   swatchBulkUpdateCompleted: string;
   updated: string;
 };
+
+export type SettingsSwatchSavedMessageLabels = {
+  swatchSaved: string;
+};
+
+export function buildSettingsSwatchSavedMessage(
+  filamentTitle: string,
+  labels: SettingsSwatchSavedMessageLabels,
+): string {
+  return `${labels.swatchSaved}: ${filamentTitle}`;
+}
+
+export function buildSettingsNoMissingSwatchesMessage(
+  labels: Pick<SettingsSwatchBulkMessageLabels, "noMissingSwatches">,
+): string {
+  return labels.noMissingSwatches;
+}
+
+export function buildSettingsSwatchBulkConfirmMessage(
+  labels: Pick<SettingsSwatchBulkMessageLabels, "confirmBulkSwatchTapAgain">,
+): string {
+  return labels.confirmBulkSwatchTapAgain;
+}
 
 export function buildSettingsSwatchBulkResultMessage(
   result: SettingsSwatchBulkResult,

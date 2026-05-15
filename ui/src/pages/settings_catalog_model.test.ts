@@ -3,8 +3,11 @@ import test from "node:test";
 import {
   buildSettingsCatalogRefreshSuccessMessage,
   buildSettingsCatalogState,
+  buildSettingsNoMissingSwatchesMessage,
   buildSettingsSwatchBulkResultMessage,
+  buildSettingsSwatchBulkConfirmMessage,
   buildSettingsSwatchDrafts,
+  buildSettingsSwatchSavedMessage,
   resolveSettingsSwatchHex,
   settingsCatalogRefreshSummaryGridClass,
   settingsCatalogRefreshSummaryHasFetchDetails,
@@ -162,7 +165,9 @@ test("settings swatch bulk result message reports no updated rows as an error", 
     buildSettingsSwatchBulkResultMessage(
       { failed: 2, skipped: 1, updated: 0 },
       {
+        confirmBulkSwatchTapAgain: "Click Auto-fill visible missing swatches again to confirm.",
         failed: "failed",
+        noMissingSwatches: "No missing swatches to fill.",
         noVisibleMissingSwatchesCouldBeAutoFilled:
           "No visible missing swatches could be auto-filled.",
         skipped: "skipped",
@@ -182,7 +187,9 @@ test("settings swatch bulk result message reports successful updates with option
     buildSettingsSwatchBulkResultMessage(
       { failed: 0, skipped: 0, updated: 5 },
       {
+        confirmBulkSwatchTapAgain: "Click Auto-fill visible missing swatches again to confirm.",
         failed: "failed",
+        noMissingSwatches: "No missing swatches to fill.",
         noVisibleMissingSwatchesCouldBeAutoFilled:
           "No visible missing swatches could be auto-filled.",
         skipped: "skipped",
@@ -200,7 +207,9 @@ test("settings swatch bulk result message reports successful updates with option
     buildSettingsSwatchBulkResultMessage(
       { failed: 1, skipped: 2, updated: 5 },
       {
+        confirmBulkSwatchTapAgain: "Click Auto-fill visible missing swatches again to confirm.",
         failed: "failed",
+        noMissingSwatches: "No missing swatches to fill.",
         noVisibleMissingSwatchesCouldBeAutoFilled:
           "No visible missing swatches could be auto-filled.",
         skipped: "skipped",
@@ -212,5 +221,28 @@ test("settings swatch bulk result message reports successful updates with option
       kind: "info",
       message: "Swatch bulk update completed: updated 5, failed 1, skipped 2.",
     },
+  );
+});
+
+test("settings swatch single-action messages return stable copy", () => {
+  const bulkLabels = {
+    confirmBulkSwatchTapAgain: "Click Auto-fill visible missing swatches again to confirm.",
+    failed: "failed",
+    noMissingSwatches: "No missing swatches to fill.",
+    noVisibleMissingSwatchesCouldBeAutoFilled:
+      "No visible missing swatches could be auto-filled.",
+    skipped: "skipped",
+    swatchBulkUpdateCompleted: "Swatch bulk update completed",
+    updated: "updated",
+  };
+
+  assert.equal(
+    buildSettingsSwatchSavedMessage("PLA Basic Black", { swatchSaved: "Saved swatch" }),
+    "Saved swatch: PLA Basic Black",
+  );
+  assert.equal(buildSettingsNoMissingSwatchesMessage(bulkLabels), bulkLabels.noMissingSwatches);
+  assert.equal(
+    buildSettingsSwatchBulkConfirmMessage(bulkLabels),
+    bulkLabels.confirmBulkSwatchTapAgain,
   );
 });

@@ -117,8 +117,11 @@ import {
 import {
   buildSettingsCatalogRefreshSuccessMessage,
   buildSettingsCatalogState,
+  buildSettingsNoMissingSwatchesMessage,
+  buildSettingsSwatchBulkConfirmMessage,
   buildSettingsSwatchBulkResultMessage,
   buildSettingsSwatchDrafts,
+  buildSettingsSwatchSavedMessage,
   resolveSettingsSwatchHex,
   toggleSettingsCatalogRefreshMaterial,
   type SettingsCatalogVendor,
@@ -2163,11 +2166,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         default_weight: master.default_weight,
       });
       setInfo(
-        `${t("settings.swatchSaved", "Saved swatch")}: ${formatFilamentDisplayTitle(
-          master.material,
-          master.filament_name,
-          master.color_name,
-        )}`,
+        buildSettingsSwatchSavedMessage(
+          formatFilamentDisplayTitle(master.material, master.filament_name, master.color_name),
+          settingsSwatchSavedMessageLabels(),
+        ),
       );
       await reloadSettings();
     } catch (saveError) {
@@ -2187,18 +2189,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     const targets = visibleMissingSwatchMasters;
     if (targets.length === 0) {
       setConfirmBulkSwatch(false);
-      setInfo(t("settings.noMissingSwatches", "No missing swatches to fill."));
+      setInfo(buildSettingsNoMissingSwatchesMessage(settingsSwatchBulkMessageLabels()));
       return;
     }
     if (!confirmBulkSwatch) {
       setError(null);
       setConfirmBulkSwatch(true);
-      setInfo(
-        t(
-          "settings.confirmBulkSwatchTapAgain",
-          "Click Auto-fill visible missing swatches again to confirm.",
-        ),
-      );
+      setInfo(buildSettingsSwatchBulkConfirmMessage(settingsSwatchBulkMessageLabels()));
       return;
     }
     setConfirmBulkSwatch(false);
@@ -2250,7 +2247,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
 
   function settingsSwatchBulkMessageLabels() {
     return {
+      confirmBulkSwatchTapAgain: t(
+        "settings.confirmBulkSwatchTapAgain",
+        "Click Auto-fill visible missing swatches again to confirm.",
+      ),
       failed: t("settings.failed", "failed"),
+      noMissingSwatches: t("settings.noMissingSwatches", "No missing swatches to fill."),
       noVisibleMissingSwatchesCouldBeAutoFilled: t(
         "settings.swatchBulkNoneUpdated",
         "No visible missing swatches could be auto-filled.",
@@ -2261,6 +2263,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         "Swatch bulk update completed",
       ),
       updated: t("settings.updated", "updated"),
+    };
+  }
+
+  function settingsSwatchSavedMessageLabels() {
+    return {
+      swatchSaved: t("settings.swatchSaved", "Saved swatch"),
     };
   }
 
