@@ -160,6 +160,10 @@ import {
   buildSettingsLocaleSelectionMessage,
   buildSettingsThemeSelectionMessage,
 } from "./settings_preferences_model";
+import {
+  buildSettingsPageLoadErrorMessage,
+  buildSettingsPageTabLabels,
+} from "./settings_page_model";
 
 type SettingsTab = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
 type ResetConfirmAction = "APP" | "CATALOG";
@@ -393,31 +397,45 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const missingSwatchMasters = catalogState.missingSwatchMasters;
   const visibleMissingSwatchMasters = catalogState.visibleMissingSwatchMasters;
 
+  const settingsPageMessageLabels = useCallback(() => ({
+    loadFailed: t("settings.error.load", "Failed to load settings."),
+  }), [t]);
+
+  const settingsPageTabMessageLabels = useCallback(() => ({
+    CATALOG: t("settings.tabCatalog", "Filament catalogue"),
+    GENERAL: t("settings.tabGeneral", "General"),
+    LIBRARY: t("settings.tabLibrary", "Library & web app"),
+    MAINTENANCE: t("settings.tabMaintenance", "Program maintenance"),
+    PRINTERS: t("settings.tabPrinters", "3D printers"),
+  }), [t]);
+
   const settingsTabs = useMemo(
-    () =>
-      [
+    () => {
+      const labels = buildSettingsPageTabLabels(settingsPageTabMessageLabels());
+      return [
         {
           id: "GENERAL" as const,
-          label: t("settings.tabGeneral", "General"),
+          label: labels.GENERAL,
         },
         {
           id: "LIBRARY" as const,
-          label: t("settings.tabLibrary", "Library & web app"),
+          label: labels.LIBRARY,
         },
         {
           id: "PRINTERS" as const,
-          label: t("settings.tabPrinters", "3D printers"),
+          label: labels.PRINTERS,
         },
         {
           id: "CATALOG" as const,
-          label: t("settings.tabCatalog", "Filament catalogue"),
+          label: labels.CATALOG,
         },
         {
           id: "MAINTENANCE" as const,
-          label: t("settings.tabMaintenance", "Program maintenance"),
+          label: labels.MAINTENANCE,
         },
-      ] satisfies Array<{ id: SettingsTab; label: string }>,
-    [t],
+      ] satisfies Array<{ id: SettingsTab; label: string }>;
+    },
+    [settingsPageTabMessageLabels],
   );
 
   const clearTransientInfoTimeout = useCallback(() => {
@@ -541,7 +559,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       setSwatchDraftById(buildSettingsSwatchDrafts(catalogRows));
     } catch (loadError) {
       console.error(loadError);
-      setError(t("settings.error.load", "Failed to load settings."));
+      setError(buildSettingsPageLoadErrorMessage(settingsPageMessageLabels()));
     } finally {
       if (options?.silent) {
         silentReloadInFlightRef.current = false;
@@ -550,7 +568,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         setLoading(false);
       }
     }
-  }, [t, tauri]);
+  }, [settingsPageMessageLabels, tauri]);
 
   useEffect(() => {
     if (!tauri) {
