@@ -18,6 +18,9 @@ use super::database_events::{
     list_spool_history_events as list_spool_history_event_rows,
     list_spool_usage_points as list_spool_usage_point_rows,
 };
+use super::database_export::{
+    export_spools_csv as export_spool_rows_csv, export_spools_json as export_spool_rows_json,
+};
 use super::database_ids::new_id;
 pub use super::database_import::ImportDataStats;
 use super::database_import::{
@@ -44,7 +47,7 @@ use super::database_settings::{
 use super::database_table_ops::delete_all_rows;
 use super::database_tables::should_import_backup_row;
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
-use super::database_text::{escape_csv, escape_json, normalize_optional_text};
+use super::database_text::{escape_csv, normalize_optional_text};
 use super::database_time::{
     sqlite_datetime_shift as sqlite_datetime_shift_value, sqlite_now as sqlite_now_value,
 };
@@ -3445,46 +3448,12 @@ impl FilamentDatabase {
 
     pub fn export_spools_csv(&self) -> InventoryResult<String> {
         let rows = self.list_spools_with_master(10_000, 0)?;
-        let mut output = String::from(
-            "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code\n",
-        );
-        for entry in rows {
-            output.push_str(&format!(
-                "{},{},{},{},{},{},{},{}\n",
-                escape_csv(&entry.spool.id),
-                escape_csv(&entry.master.material),
-                escape_csv(&entry.master.filament_name),
-                escape_csv(&entry.master.color_name),
-                escape_csv(&entry.spool.status),
-                entry.spool.remaining_g.unwrap_or(0),
-                escape_csv(entry.spool.location_id.as_deref().unwrap_or("")),
-                escape_csv(entry.spool.qr_code.as_deref().unwrap_or("")),
-            ));
-        }
-        Ok(output)
+        export_spool_rows_csv(&rows)
     }
 
     pub fn export_spools_json(&self) -> InventoryResult<String> {
         let rows = self.list_spools_with_master(10_000, 0)?;
-        let mut output = String::from("[");
-        for (index, entry) in rows.iter().enumerate() {
-            if index > 0 {
-                output.push(',');
-            }
-            output.push_str(&format!(
-                "{{\"spool_id\":\"{}\",\"material\":\"{}\",\"filament_name\":\"{}\",\"color_name\":\"{}\",\"status\":\"{}\",\"remaining_g\":{},\"location\":\"{}\",\"qr_code\":\"{}\"}}",
-                escape_json(&entry.spool.id),
-                escape_json(&entry.master.material),
-                escape_json(&entry.master.filament_name),
-                escape_json(&entry.master.color_name),
-                escape_json(&entry.spool.status),
-                entry.spool.remaining_g.unwrap_or(0),
-                escape_json(entry.spool.location_id.as_deref().unwrap_or("")),
-                escape_json(entry.spool.qr_code.as_deref().unwrap_or("")),
-            ));
-        }
-        output.push(']');
-        Ok(output)
+        export_spool_rows_json(&rows)
     }
 
     pub fn export_full_backup_json(&self) -> InventoryResult<String> {
