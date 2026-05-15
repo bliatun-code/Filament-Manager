@@ -111,6 +111,7 @@ import {
 } from "./use_settings_reset_confirm";
 import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
 import { useSettingsSwatchDrafts } from "./use_settings_swatch_drafts";
+import { useSettingsPageChrome } from "./use_settings_page_chrome";
 import { useSettingsPageTabs } from "./use_settings_page_tabs";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
@@ -168,9 +169,7 @@ import {
   buildSettingsThemeSelectionMessage,
 } from "./settings_preferences_model";
 import {
-  buildSettingsPageChromeLabels,
   buildSettingsPageDataModel,
-  buildSettingsPageDesktopOnlyMessage,
   buildSettingsPageLoadErrorMessage,
 } from "./settings_page_model";
 
@@ -395,19 +394,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const missingSwatchMasters = catalogState.missingSwatchMasters;
   const visibleMissingSwatchMasters = catalogState.visibleMissingSwatchMasters;
 
-  const settingsPageMessageLabels = useCallback(() => ({
-    desktopOnly: t("settings.desktopOnly", "Settings are only available in the desktop app build."),
-    loadFailed: t("settings.error.load", "Failed to load settings."),
-  }), [t]);
-
-  const settingsPageChromeLabels = useCallback(() => buildSettingsPageChromeLabels({
-    desktopOnly: buildSettingsPageDesktopOnlyMessage(settingsPageMessageLabels()),
-    subtitle: t(
-      "settings.subtitle",
-      "Configure trusted-LAN browser access, printers, catalogue updates and maintenance actions.",
-    ),
-    title: t("nav.settings", "Settings"),
-  }), [settingsPageMessageLabels, t]);
+  const { settingsPageChromeLabels, settingsPageMessageLabels } = useSettingsPageChrome(t);
 
   const { settingsTabButtons } = useSettingsPageTabs(activeTab, t);
 
