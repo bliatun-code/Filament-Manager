@@ -63,6 +63,7 @@ import { useSettingsPageReload } from "./use_settings_page_reload";
 import { useSettingsPageTabs } from "./use_settings_page_tabs";
 import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
 import { useSettingsMaintenanceActions } from "./use_settings_maintenance_actions";
+import { useSettingsMaintenanceMessages } from "./use_settings_maintenance_messages";
 import { useSettingsBackupExportActions } from "./use_settings_backup_export_actions";
 import { useSettingsBackupFileActions } from "./use_settings_backup_file_actions";
 import { useSettingsInventoryPrintAction } from "./use_settings_inventory_print_action";
@@ -152,6 +153,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanValidationMessageLabels,
   } = useSettingsTrustedLanMessages(t);
   const { settingsPrinterMessageLabels } = useSettingsPrinterMessages(t);
+  const {
+    settingsCatalogResetMessageLabels,
+    settingsMaintenanceResetMessageLabels,
+  } = useSettingsMaintenanceMessages(t);
   const {
     backupValidationState,
     clearBackupValidation,
@@ -620,31 +625,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsMaintenanceResetMessageLabels,
     tauri,
   });
-
-  function settingsCatalogResetMessageLabels() {
-    return {
-      catalogResetDone: t("settings.catalogResetDone", "Catalog reset done"),
-      reactivated: t("settings.reactivated", "reactivated"),
-      remaining: t("settings.remaining", "remaining"),
-      removed: t("settings.removed", "Removed"),
-    };
-  }
-
-  function settingsMaintenanceResetMessageLabels() {
-    return {
-      appResetDone: t("settings.resetDone", "App data reset completed."),
-      confirmResetAppTapAgain: t(
-        "settings.confirmResetAppTapAgain",
-        "Click Reset app data again to confirm.",
-      ),
-      confirmResetCatalogsTapAgain: t(
-        "settings.confirmResetCatalogsTapAgain",
-        "Click Reset catalogs again to confirm.",
-      ),
-      resetAppFailed: t("settings.error.resetApp", "Failed to reset app data."),
-      resetCatalogsFailed: t("settings.error.resetCatalogs", "Failed to reset catalogs."),
-    };
-  }
 
   const loadSettingsInventoryRows = useSettingsInventoryRowsLoader({
     settingsClientHostBaseUrl,
