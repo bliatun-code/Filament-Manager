@@ -2,9 +2,6 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import type { SettingsTabKey } from "../App";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
-  exportFullBackupJson,
-  exportInventoryCsv,
-  exportInventoryJson,
   importDataFile,
   isTauri,
   printLabelPdf,
@@ -25,8 +22,6 @@ import {
 import { FeedbackBanner } from "../components/feedback_banner";
 import { useI18n } from "../lib/i18n";
 import { toErrorMessage } from "../lib/error_text";
-import { downloadTextFile } from "../lib/download_file";
-import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/inventory_export";
 import { SettingsGeneralTab } from "../components/settings_general_tab";
 import { SettingsLibraryRoleModal } from "../components/settings_library_role_modal";
 import { SettingsMaintenanceTab } from "../components/settings_maintenance_tab";
@@ -72,6 +67,7 @@ import { useSettingsPageReload } from "./use_settings_page_reload";
 import { useSettingsPageTabs } from "./use_settings_page_tabs";
 import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
 import { useSettingsMaintenanceActions } from "./use_settings_maintenance_actions";
+import { useSettingsBackupExportActions } from "./use_settings_backup_export_actions";
 import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_messages";
@@ -101,10 +97,8 @@ import {
 } from "./settings_inventory_print_model";
 import {
   buildSettingsBackupErrorMessage,
-  buildSettingsBackupExportSuccessMessage,
   buildSettingsBackupValidationSuccessMessage,
   buildSettingsImportSuccessMessage,
-  buildSettingsInventoryExportSuccessMessage,
   resolveSettingsFullBackupImportedAt,
   shouldPrepareImportedFullBackupAsHost,
 } from "./settings_backup_model";
@@ -703,117 +697,25 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsClientReadOnly,
   });
 
-  async function handleExportFullBackup() {
-    if (!tauri || busy) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      const payload = await exportFullBackupJson();
-      const validationSummary = await validateFullBackupJson(payload.content);
-      downloadTextFile(
-        payload.content,
-        `filament-manager-backup-${Date.now()}.json`,
-        "application/json;charset=utf-8",
-      );
-      const exportedAt = new Date().toISOString();
-      recordExportedBackupValidation(validationSummary, exportedAt);
-      setInfo(buildSettingsBackupExportSuccessMessage({
-        backupExported: t(
-          "settings.backupExported",
-          "Full backup exported (inventory, history and printers).",
-        ),
-        librarySyncBackupAutoValidated: t(
-          "settings.librarySyncBackupAutoValidated",
-          "The exported backup was validated automatically and is ready to use in the guided role-change flow.",
-        ),
-      }));
-    } catch (backupError) {
-      console.error(backupError);
-      setError(
-        toErrorMessage(
-          backupError,
-          buildSettingsBackupErrorMessage("exportBackupFailed", settingsBackupErrorMessageLabels()),
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleExportInventoryCsv() {
-    if (!tauri || busy) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      const payload =
-        settingsClientReadOnly && settingsClientHostBaseUrl && settingsClientLibraryId
-          ? { content: buildInventoryExportCsv(await loadSettingsInventoryRows()) }
-          : await exportInventoryCsv();
-      downloadTextFile(
-        payload.content,
-        `filament-manager-inventory-${Date.now()}.csv`,
-        "text/csv;charset=utf-8",
-      );
-      setInfo(
-        buildSettingsInventoryExportSuccessMessage("csv", settingsInventoryExportMessageLabels()),
-      );
-    } catch (exportError) {
-      console.error(exportError);
-      setError(
-        toErrorMessage(
-          exportError,
-          buildSettingsBackupErrorMessage(
-            "exportInventoryCsvFailed",
-            settingsBackupErrorMessageLabels(),
-          ),
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleExportInventoryJson() {
-    if (!tauri || busy) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      const payload =
-        settingsClientReadOnly && settingsClientHostBaseUrl && settingsClientLibraryId
-          ? { content: buildInventoryExportJson(await loadSettingsInventoryRows()) }
-          : await exportInventoryJson();
-      downloadTextFile(
-        payload.content,
-        `filament-manager-inventory-${Date.now()}.json`,
-        "application/json;charset=utf-8",
-      );
-      setInfo(
-        buildSettingsInventoryExportSuccessMessage("json", settingsInventoryExportMessageLabels()),
-      );
-    } catch (exportError) {
-      console.error(exportError);
-      setError(
-        toErrorMessage(
-          exportError,
-          buildSettingsBackupErrorMessage(
-            "exportInventoryJsonFailed",
-            settingsBackupErrorMessageLabels(),
-          ),
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
+  const {
+    handleExportFullBackup,
+    handleExportInventoryCsv,
+    handleExportInventoryJson,
+  } = useSettingsBackupExportActions({
+    busy,
+    loadSettingsInventoryRows,
+    recordExportedBackupValidation,
+    setBusy,
+    setError,
+    setInfo,
+    settingsBackupErrorMessageLabels,
+    settingsClientHostBaseUrl,
+    settingsClientLibraryId,
+    settingsClientReadOnly,
+    settingsInventoryExportMessageLabels,
+    tauri,
+    t,
+  });
 
   function settingsInventoryExportMessageLabels() {
     return {
