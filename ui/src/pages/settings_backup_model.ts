@@ -1,4 +1,4 @@
-import type { BackupValidationStats } from "../lib/tauri_client";
+import type { BackupValidationStats, ImportDataStats } from "../lib/tauri_client";
 import { isFullBackupValidationFormat } from "../lib/settings_utils";
 
 export type SettingsBackupValidationState = {
@@ -59,4 +59,38 @@ function hasLatestFullBackupValidation({
     return false;
   }
   return validatedAt >= exportedAt;
+}
+
+export type SettingsImportMessageLabels = {
+  backupImported: string;
+  created: string;
+  importDetectedInventoryCsv: string;
+  importDetectedInventoryJson: string;
+  importSource: string;
+  inventoryImportDone: string;
+  librarySyncImportedOnClientHint: string;
+  rows: string;
+  updated: string;
+};
+
+export function buildSettingsImportSuccessMessage({
+  importedOnClient,
+  labels,
+  result,
+}: {
+  importedOnClient: boolean;
+  labels: SettingsImportMessageLabels;
+  result: ImportDataStats;
+}): string {
+  if (result.detected_format === "FULL_BACKUP") {
+    const clientHint = importedOnClient ? ` ${labels.librarySyncImportedOnClientHint}` : "";
+    return `${labels.backupImported} ${labels.rows}: ${result.imported_count}.${clientHint}`;
+  }
+
+  const sourceLabel =
+    result.detected_format === "INVENTORY_CSV"
+      ? labels.importDetectedInventoryCsv
+      : labels.importDetectedInventoryJson;
+
+  return `${labels.inventoryImportDone} ${labels.importSource}: ${sourceLabel}. ${labels.rows}: ${result.imported_count} (${labels.created} ${result.created_count}, ${labels.updated} ${result.updated_count}).`;
 }

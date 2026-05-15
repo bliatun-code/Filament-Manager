@@ -103,7 +103,10 @@ import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 import { buildSettingsInventoryOverviewPrintRows } from "./settings_inventory_print_model";
-import { buildSettingsBackupValidationState } from "./settings_backup_model";
+import {
+  buildSettingsBackupValidationState,
+  buildSettingsImportSuccessMessage,
+} from "./settings_backup_model";
 import {
   buildSettingsCatalogRefreshSuccessMessage,
   buildSettingsCatalogState,
@@ -1911,39 +1914,24 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
           setLibrarySyncValidation(null);
           setLibrarySyncSnapshot(null);
           setActiveTab("GENERAL");
-          setInfo(
-            `${t("settings.backupImported", "Full backup imported successfully.")} ${t(
-              "settings.validationRows",
-              "Rows",
-            )}: ${result.imported_count}. ${t(
-              "settings.librarySyncImportedOnClientHint",
-              "This device is now prepared as the next host. Review Library roles and save when ready to take over.",
-            )}`,
-          );
+          setInfo(buildSettingsImportSuccessMessage({
+            importedOnClient: true,
+            labels: settingsImportMessageLabels(),
+            result,
+          }));
           return;
         }
-        setInfo(
-          `${t("settings.backupImported", "Full backup imported successfully.")} ${t(
-            "settings.validationRows",
-            "Rows",
-          )}: ${result.imported_count}.`,
-        );
+        setInfo(buildSettingsImportSuccessMessage({
+          importedOnClient: false,
+          labels: settingsImportMessageLabels(),
+          result,
+        }));
       } else {
-        const sourceLabel =
-          result.detected_format === "INVENTORY_CSV"
-            ? t("settings.importDetectedInventoryCsv", "Inventory CSV")
-            : t("settings.importDetectedInventoryJson", "Inventory JSON");
-        setInfo(
-          `${t("settings.inventoryImportDone", "Inventory import completed.")} ${t(
-            "settings.importSource",
-            "Source",
-          )}: ${sourceLabel}. ${t("settings.validationRows", "Rows")}: ${
-            result.imported_count
-          } (${t("settings.created", "created")} ${result.created_count}, ${t(
-            "settings.updated",
-            "updated",
-          )} ${result.updated_count}).`,
-        );
+        setInfo(buildSettingsImportSuccessMessage({
+          importedOnClient: false,
+          labels: settingsImportMessageLabels(),
+          result,
+        }));
       }
     } catch (importError) {
       console.error(importError);
@@ -1956,6 +1944,23 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setBusy(false);
     }
+  }
+
+  function settingsImportMessageLabels() {
+    return {
+      backupImported: t("settings.backupImported", "Full backup imported successfully."),
+      created: t("settings.created", "created"),
+      importDetectedInventoryCsv: t("settings.importDetectedInventoryCsv", "Inventory CSV"),
+      importDetectedInventoryJson: t("settings.importDetectedInventoryJson", "Inventory JSON"),
+      importSource: t("settings.importSource", "Source"),
+      inventoryImportDone: t("settings.inventoryImportDone", "Inventory import completed."),
+      librarySyncImportedOnClientHint: t(
+        "settings.librarySyncImportedOnClientHint",
+        "This device is now prepared as the next host. Review Library roles and save when ready to take over.",
+      ),
+      rows: t("settings.validationRows", "Rows"),
+      updated: t("settings.updated", "updated"),
+    };
   }
 
   async function handleValidateBackupFile(event: ChangeEvent<HTMLInputElement>) {

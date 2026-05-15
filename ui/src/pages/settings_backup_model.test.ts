@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSettingsBackupValidationState } from "./settings_backup_model";
-import type { BackupValidationStats } from "../lib/tauri_client";
+import {
+  buildSettingsBackupValidationState,
+  buildSettingsImportSuccessMessage,
+  type SettingsImportMessageLabels,
+} from "./settings_backup_model";
+import type { BackupValidationStats, ImportDataStats } from "../lib/tauri_client";
 
 function backupValidation(overrides: Partial<BackupValidationStats> = {}): BackupValidationStats {
   return {
@@ -15,6 +19,29 @@ function backupValidation(overrides: Partial<BackupValidationStats> = {}): Backu
     ...overrides,
   };
 }
+
+function importStats(overrides: Partial<ImportDataStats> = {}): ImportDataStats {
+  return {
+    created_count: 2,
+    detected_format: "INVENTORY_CSV",
+    imported_count: 5,
+    updated_count: 3,
+    ...overrides,
+  };
+}
+
+const importLabels: SettingsImportMessageLabels = {
+  backupImported: "Full backup imported successfully.",
+  created: "created",
+  importDetectedInventoryCsv: "Inventory CSV",
+  importDetectedInventoryJson: "Inventory JSON",
+  importSource: "Source",
+  inventoryImportDone: "Inventory import completed.",
+  librarySyncImportedOnClientHint:
+    "This device is now prepared as the next host. Review Library roles and save when ready to take over.",
+  rows: "Rows",
+  updated: "updated",
+};
 
 test("settings backup validation state reports warnings and full backup format", () => {
   assert.deepEqual(
@@ -75,5 +102,55 @@ test("settings backup validation state requires validation after latest export",
       lastFullBackupValidatedAt: "2026-05-15T10:01:00Z",
     }).hasValidatedLatestFullBackup,
     false,
+  );
+});
+
+test("settings import success message describes full backup imports", () => {
+  assert.equal(
+    buildSettingsImportSuccessMessage({
+      importedOnClient: false,
+      labels: importLabels,
+      result: importStats({ detected_format: "FULL_BACKUP", imported_count: 42 }),
+    }),
+    "Full backup imported successfully. Rows: 42.",
+  );
+
+  assert.equal(
+    buildSettingsImportSuccessMessage({
+      importedOnClient: true,
+      labels: importLabels,
+      result: importStats({ detected_format: "FULL_BACKUP", imported_count: 42 }),
+    }),
+    "Full backup imported successfully. Rows: 42. This device is now prepared as the next host. Review Library roles and save when ready to take over.",
+  );
+});
+
+test("settings import success message describes inventory imports", () => {
+  assert.equal(
+    buildSettingsImportSuccessMessage({
+      importedOnClient: false,
+      labels: importLabels,
+      result: importStats({
+        created_count: 4,
+        detected_format: "INVENTORY_CSV",
+        imported_count: 6,
+        updated_count: 2,
+      }),
+    }),
+    "Inventory import completed. Source: Inventory CSV. Rows: 6 (created 4, updated 2).",
+  );
+
+  assert.equal(
+    buildSettingsImportSuccessMessage({
+      importedOnClient: false,
+      labels: importLabels,
+      result: importStats({
+        created_count: 1,
+        detected_format: "INVENTORY_JSON",
+        imported_count: 3,
+        updated_count: 2,
+      }),
+    }),
+    "Inventory import completed. Source: Inventory JSON. Rows: 3 (created 1, updated 2).",
   );
 });
