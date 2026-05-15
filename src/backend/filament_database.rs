@@ -14,6 +14,10 @@ use super::database_rows::{
     map_active_spool_loan_row, map_spool_loan_row, map_spool_row, map_spool_with_master_row,
     map_trusted_lan_paired_browser_row,
 };
+use super::database_settings::{
+    delete_setting as delete_setting_row, get_setting as get_setting_row,
+    set_setting as set_setting_row,
+};
 use super::database_tables::should_import_backup_row;
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
 use super::database_text::{escape_csv, escape_json, normalize_optional_text};
@@ -2908,31 +2912,15 @@ impl FilamentDatabase {
     }
 
     pub fn set_setting(&self, key: &str, value: &str) -> InventoryResult<()> {
-        self.conn.execute(
-            "INSERT INTO settings (key, value)
-             VALUES (?1, ?2)
-             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-            params![key, value],
-        )?;
-        Ok(())
+        set_setting_row(&self.conn, key, value)
     }
 
     pub fn delete_setting(&self, key: &str) -> InventoryResult<()> {
-        self.conn
-            .execute("DELETE FROM settings WHERE key = ?1", params![key])?;
-        Ok(())
+        delete_setting_row(&self.conn, key)
     }
 
     pub fn get_setting(&self, key: &str) -> InventoryResult<Option<String>> {
-        let value = self
-            .conn
-            .query_row(
-                "SELECT value FROM settings WHERE key = ?1 LIMIT 1",
-                params![key],
-                |row| row.get(0),
-            )
-            .optional()?;
-        Ok(value)
+        get_setting_row(&self.conn, key)
     }
 
     pub fn save_bambu_live_integration(
