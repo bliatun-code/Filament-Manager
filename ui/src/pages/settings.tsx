@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import type { SettingsTabKey } from "../App";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
-  deleteBambuLiveIntegration,
   exportFullBackupJson,
   exportInventoryCsv,
   exportInventoryJson,
@@ -13,7 +12,6 @@ import {
   refreshEsunCatalog,
   resetAppData,
   resetCatalogData,
-  saveBambuLiveIntegration,
   updateMasterCatalogEntry,
   validateFullBackupJson,
   type BambuLiveIntegrationEntry,
@@ -41,7 +39,6 @@ import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_l
 import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_lan_server_panel";
 import { tabButtonClass } from "../lib/settings_ui_classes";
 import { loadAllSpoolRows } from "../lib/spool_data_source";
-import { createManagedPrinter, deleteManagedPrinter } from "../lib/printer_writes";
 import {
   resolvePrinterModelProfile,
 } from "../lib/printer_profiles";
@@ -65,6 +62,7 @@ import { useSettingsBackupFileInputs } from "./use_settings_backup_file_inputs";
 import { useSettingsBackupValidationState } from "./use_settings_backup_validation_state";
 import { useSettingsCatalogRefreshMaterials } from "./use_settings_catalog_refresh_materials";
 import { useSettingsPrinterEditDraft } from "./use_settings_printer_edit_draft";
+import { useSettingsPrinterActions } from "./use_settings_printer_actions";
 import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_confirm";
 import {
   useSettingsResetConfirm,
@@ -135,12 +133,6 @@ import {
 } from "./settings_maintenance_model";
 import {
   buildPrinterSlotsByPrinterId,
-  buildSettingsPrinterConfirmDeleteMessage,
-  buildSettingsPrinterErrorMessage,
-  buildSettingsPrinterRemovedMessage,
-  buildSettingsPrinterRequiredMessage,
-  buildSettingsPrinterUpdatedMessage,
-  preparePrinterReconfigure,
   sortSettingsPrinters,
 } from "./settings_printer_model";
 
@@ -616,160 +608,40 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     visibleMissingSwatchCount: visibleMissingSwatchMasters.length,
   });
 
-  function handleStartEditPrinter(printer: PrinterRow) {
-    startPrinterEdit({
-      bambuLiveIntegrations,
-      printer,
-      printerOverview,
-    });
-    setConfirmDeletePrinterId(null);
-  }
-
-  function handleCancelEditPrinter() {
-    cancelPrinterEdit();
-  }
-
-  async function handleSavePrinterReconfigure() {
-    if (!tauri || busy || !editPrinterId) {
-      return;
-    }
-    const current = printers.find((printer) => printer.id === editPrinterId) ?? null;
-    const prepared = preparePrinterReconfigure({
-      currentExists: Boolean(current),
-      draft: {
-        id: editPrinterId,
-        model: editPrinterModel,
-        name: editPrinterName,
-        amsUnits: editAmsUnits,
-        slotsPerUnit: editSlotsPerUnit,
-        bambuLiveEnabled: editBambuLiveEnabled,
-        bambuLiveHost: editBambuLiveHost,
-        bambuLiveAccessCode: editBambuLiveAccessCode,
-        bambuLivePrinterSerial: editBambuLivePrinterSerial,
-      },
-    });
-    if (!prepared.ok) {
-      if (prepared.reason === "missing_bambu_live_fields") {
-        setError(
-          buildSettingsPrinterErrorMessage(
-            "bambuLiveFieldsRequired",
-            settingsPrinterMessageLabels(),
-          ),
-        );
-        return;
-      }
-      setError(buildSettingsPrinterRequiredMessage(settingsPrinterMessageLabels()));
-      return;
-    }
-
-    setBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      if (settingsClientReadOnly) {
-        if (!settingsClientHostBaseUrl || !settingsClientLibraryId || !settingsClientHostWritePaired) {
-          setError(
-            buildSettingsPrinterErrorMessage(
-              "writeRequiresPairing",
-              settingsPrinterMessageLabels(),
-            ),
-          );
-          setBusy(false);
-          return;
-        }
-        await createManagedPrinter(
-          prepared.printer,
-          {
-            clientReadOnly: true,
-            clientHostBaseUrl: settingsClientHostBaseUrl,
-            clientLibraryId: settingsClientLibraryId,
-          },
-        );
-      } else {
-        await createManagedPrinter(prepared.printer);
-        if (prepared.bambuLive.enabled) {
-          await saveBambuLiveIntegration({
-            printer_id: prepared.printer.id,
-            enabled: true,
-            host: prepared.bambuLive.host,
-            access_code: prepared.bambuLive.accessCode,
-            printer_serial: prepared.bambuLive.printerSerial,
-          });
-        } else {
-          await deleteBambuLiveIntegration(prepared.printer.id);
-        }
-      }
-      await reloadSettings();
-      setInfo(
-        buildSettingsPrinterUpdatedMessage(prepared.printer.name, settingsPrinterMessageLabels()),
-      );
-      handleCancelEditPrinter();
-    } catch (updateError) {
-      console.error(updateError);
-      setError(
-        toErrorMessage(
-          updateError,
-          buildSettingsPrinterErrorMessage("updatePrinterFailed", settingsPrinterMessageLabels()),
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleDeletePrinter(printer: PrinterRow) {
-    if (!tauri || busy) {
-      return;
-    }
-    if (confirmDeletePrinterId !== printer.id) {
-      setConfirmDeletePrinterId(printer.id);
-      setError(null);
-      setInfo(
-        buildSettingsPrinterConfirmDeleteMessage(printer.name, settingsPrinterMessageLabels()),
-      );
-      return;
-    }
-    setConfirmDeletePrinterId(null);
-
-    setBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      if (settingsClientReadOnly) {
-        if (!settingsClientHostBaseUrl || !settingsClientLibraryId || !settingsClientHostWritePaired) {
-          setError(
-            buildSettingsPrinterErrorMessage(
-              "writeRequiresPairing",
-              settingsPrinterMessageLabels(),
-            ),
-          );
-          setBusy(false);
-          return;
-        }
-        await deleteManagedPrinter(printer.id, {
-          clientReadOnly: true,
-          clientHostBaseUrl: settingsClientHostBaseUrl,
-          clientLibraryId: settingsClientLibraryId,
-        });
-      } else {
-        await deleteManagedPrinter(printer.id);
-      }
-      await reloadSettings();
-      setInfo(
-        buildSettingsPrinterRemovedMessage(printer.name, settingsPrinterMessageLabels()),
-      );
-    } catch (deleteError) {
-      console.error(deleteError);
-      setError(
-        toErrorMessage(
-          deleteError,
-          buildSettingsPrinterErrorMessage("deletePrinterFailed", settingsPrinterMessageLabels()),
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
+  const {
+    handleCancelEditPrinter,
+    handleDeletePrinter,
+    handleSavePrinterReconfigure,
+    handleStartEditPrinter,
+  } = useSettingsPrinterActions({
+    bambuLiveIntegrations,
+    busy,
+    cancelPrinterEdit,
+    confirmDeletePrinterId,
+    editAmsUnits,
+    editBambuLiveAccessCode,
+    editBambuLiveEnabled,
+    editBambuLiveHost,
+    editBambuLivePrinterSerial,
+    editPrinterId,
+    editPrinterModel,
+    editPrinterName,
+    editSlotsPerUnit,
+    printerOverview,
+    printers,
+    reloadSettings,
+    setBusy,
+    setConfirmDeletePrinterId,
+    setError,
+    setInfo,
+    settingsClientHostBaseUrl,
+    settingsClientHostWritePaired,
+    settingsClientLibraryId,
+    settingsClientReadOnly,
+    settingsPrinterMessageLabels,
+    startPrinterEdit,
+    tauri,
+  });
 
   function settingsPrinterMessageLabels() {
     return {
