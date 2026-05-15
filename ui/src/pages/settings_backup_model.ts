@@ -124,6 +124,16 @@ export function buildSettingsInventoryExportSuccessMessage(
   return format === "csv" ? labels.inventoryCsvExported : labels.inventoryJsonExported;
 }
 
+export function shouldPrepareImportedFullBackupAsHost({
+  detectedFormat,
+  librarySyncMode,
+}: {
+  detectedFormat: ImportDataStats["detected_format"];
+  librarySyncMode: string | null | undefined;
+}): boolean {
+  return detectedFormat === "FULL_BACKUP" && librarySyncMode === "CLIENT";
+}
+
 export function buildSettingsImportSuccessMessage({
   importedOnClient,
   labels,

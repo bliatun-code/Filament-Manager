@@ -123,6 +123,7 @@ import {
   buildSettingsBackupValidationState,
   buildSettingsImportSuccessMessage,
   buildSettingsInventoryExportSuccessMessage,
+  shouldPrepareImportedFullBackupAsHost,
 } from "./settings_backup_model";
 import {
   buildSettingsCatalogRefreshSuccessMessage,
@@ -2086,7 +2087,10 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       if (result.detected_format === "FULL_BACKUP") {
         const importedAt = new Date().toISOString();
         setLastFullBackupImportedAt(importedAt);
-        if (librarySyncModeDraft === "CLIENT") {
+        if (shouldPrepareImportedFullBackupAsHost({
+          detectedFormat: result.detected_format,
+          librarySyncMode: librarySyncModeDraft,
+        })) {
           setLibrarySyncModeDraft("HOST");
           setLibrarySyncHostBaseUrlDraft("");
           setLibrarySyncValidation(null);

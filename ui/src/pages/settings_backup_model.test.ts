@@ -7,6 +7,7 @@ import {
   buildSettingsBackupValidationState,
   buildSettingsImportSuccessMessage,
   buildSettingsInventoryExportSuccessMessage,
+  shouldPrepareImportedFullBackupAsHost,
   type SettingsImportMessageLabels,
 } from "./settings_backup_model";
 import type { BackupValidationStats, ImportDataStats } from "../lib/tauri_client";
@@ -217,5 +218,29 @@ test("settings import success message describes inventory imports", () => {
       }),
     }),
     "Inventory import completed. Source: Inventory JSON. Rows: 3 (created 1, updated 2).",
+  );
+});
+
+test("full backup import host handoff only applies to client role imports", () => {
+  assert.equal(
+    shouldPrepareImportedFullBackupAsHost({
+      detectedFormat: "FULL_BACKUP",
+      librarySyncMode: "CLIENT",
+    }),
+    true,
+  );
+  assert.equal(
+    shouldPrepareImportedFullBackupAsHost({
+      detectedFormat: "FULL_BACKUP",
+      librarySyncMode: "HOST",
+    }),
+    false,
+  );
+  assert.equal(
+    shouldPrepareImportedFullBackupAsHost({
+      detectedFormat: "INVENTORY_CSV",
+      librarySyncMode: "CLIENT",
+    }),
+    false,
   );
 });
