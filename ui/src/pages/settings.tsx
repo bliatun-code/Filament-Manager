@@ -14,6 +14,7 @@ import { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_rou
 import { SettingsLibraryTab } from "./settings_library_tab";
 import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
 import { buildSettingsMaintenanceRouteProps } from "./settings_maintenance_route_props";
+import { buildSettingsLibraryWebappControlProps } from "./settings_library_webapp_control_props";
 import { SettingsPageHeader } from "./settings_page_header";
 import { SettingsPrintersRoute } from "./settings_printers_route";
 import { buildSettingsPrintersRouteProps } from "./settings_printers_route_props";
@@ -916,6 +917,16 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     onDeviceNameChange: setLibrarySyncDeviceNameDraft,
     onRequestLibraryRoleChange: handleRequestLibraryRoleChange,
   });
+  const settingsLibraryWebappControlProps = buildSettingsLibraryWebappControlProps({
+    librarySyncModeDraft,
+    tauri,
+    trustedLanActionBusy,
+    trustedLanEnabledDraft,
+    trustedLanHasPrivateInterfaces,
+    trustedLanStatus,
+    t,
+    onToggleTrustedLanEnabled: handleToggleTrustedLanEnabled,
+  });
   return (
     <div className="page-shell">
       <SettingsPageHeader
@@ -1029,15 +1040,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
             }
             title={librarySyncTabLabels.title}
             webappControl={{
-              librarySyncModeDraft,
-              tauri,
-              trustedLanActionBusy,
-              trustedLanEnabledDraft,
-              trustedLanHasPrivateInterfaces,
-              trustedLanStatus,
-              t,
-              onToggleTrustedLanEnabled: (nextEnabled) =>
-                void handleToggleTrustedLanEnabled(nextEnabled),
+              ...settingsLibraryWebappControlProps,
             }}
           />
           ),
