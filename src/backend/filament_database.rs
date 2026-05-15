@@ -19,7 +19,8 @@ use super::database_events::{
     list_spool_usage_points as list_spool_usage_point_rows,
 };
 use super::database_export::{
-    export_spools_csv as export_spool_rows_csv, export_spools_json as export_spool_rows_json,
+    export_loans_csv as export_loan_rows_csv, export_spools_csv as export_spool_rows_csv,
+    export_spools_json as export_spool_rows_json,
 };
 use super::database_ids::new_id;
 pub use super::database_import::ImportDataStats;
@@ -47,7 +48,7 @@ use super::database_settings::{
 use super::database_table_ops::delete_all_rows;
 use super::database_tables::should_import_backup_row;
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
-use super::database_text::{escape_csv, normalize_optional_text};
+use super::database_text::normalize_optional_text;
 use super::database_time::{
     sqlite_datetime_shift as sqlite_datetime_shift_value, sqlite_now as sqlite_now_value,
 };
@@ -2210,29 +2211,7 @@ impl FilamentDatabase {
         direction: Option<&str>,
     ) -> InventoryResult<String> {
         let rows = self.list_spool_loans_for_direction(20_000, include_returned, direction)?;
-        let mut output = String::from(
-            "loan_id,spool_id,direction,counterparty,grams_out,lent_at,returned_at,returned_grams,consumed_grams,material,filament,color,vendor,status\n",
-        );
-        for row in rows {
-            output.push_str(&format!(
-                "{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
-                escape_csv(&row.loan.id),
-                escape_csv(&row.loan.spool_id),
-                escape_csv(&row.loan.loan_direction),
-                escape_csv(&row.loan.counterparty_name),
-                row.loan.grams_out,
-                escape_csv(&row.loan.lent_at),
-                escape_csv(row.loan.returned_at.as_deref().unwrap_or("")),
-                row.loan.returned_grams.unwrap_or(0),
-                row.loan.consumed_grams.unwrap_or(0),
-                escape_csv(row.material.as_deref().unwrap_or("")),
-                escape_csv(row.filament_name.as_deref().unwrap_or("")),
-                escape_csv(row.color_name.as_deref().unwrap_or("")),
-                escape_csv(row.vendor.as_deref().unwrap_or("")),
-                escape_csv(row.spool_status.as_deref().unwrap_or("")),
-            ));
-        }
-        Ok(output)
+        export_loan_rows_csv(&rows)
     }
 
     pub fn list_printers(&self) -> InventoryResult<Vec<PrinterRow>> {

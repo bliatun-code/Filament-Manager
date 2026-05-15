@@ -1,5 +1,5 @@
 use super::database_text::{escape_csv, escape_json};
-use super::filament_database::{InventoryResult, SpoolWithMasterRow};
+use super::filament_database::{InventoryResult, SpoolLoanDetailsRow, SpoolWithMasterRow};
 
 pub(crate) fn export_spools_csv(rows: &[SpoolWithMasterRow]) -> InventoryResult<String> {
     let mut output = String::from(
@@ -40,5 +40,31 @@ pub(crate) fn export_spools_json(rows: &[SpoolWithMasterRow]) -> InventoryResult
         ));
     }
     output.push(']');
+    Ok(output)
+}
+
+pub(crate) fn export_loans_csv(rows: &[SpoolLoanDetailsRow]) -> InventoryResult<String> {
+    let mut output = String::from(
+        "loan_id,spool_id,direction,counterparty,grams_out,lent_at,returned_at,returned_grams,consumed_grams,material,filament,color,vendor,status\n",
+    );
+    for row in rows {
+        output.push_str(&format!(
+            "{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
+            escape_csv(&row.loan.id),
+            escape_csv(&row.loan.spool_id),
+            escape_csv(&row.loan.loan_direction),
+            escape_csv(&row.loan.counterparty_name),
+            row.loan.grams_out,
+            escape_csv(&row.loan.lent_at),
+            escape_csv(row.loan.returned_at.as_deref().unwrap_or("")),
+            row.loan.returned_grams.unwrap_or(0),
+            row.loan.consumed_grams.unwrap_or(0),
+            escape_csv(row.material.as_deref().unwrap_or("")),
+            escape_csv(row.filament_name.as_deref().unwrap_or("")),
+            escape_csv(row.color_name.as_deref().unwrap_or("")),
+            escape_csv(row.vendor.as_deref().unwrap_or("")),
+            escape_csv(row.spool_status.as_deref().unwrap_or("")),
+        ));
+    }
     Ok(output)
 }
