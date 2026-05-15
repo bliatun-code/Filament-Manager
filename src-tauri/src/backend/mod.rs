@@ -20,6 +20,8 @@ pub mod inventory_engine;
 pub mod library_sync_defaults;
 #[path = "../../../src/backend/loan_defaults.rs"]
 pub mod loan_defaults;
+#[path = "../../../src/backend/spool_defaults.rs"]
+pub mod spool_defaults;
 #[path = "../../../src/backend/statistics.rs"]
 pub mod statistics;
 #[path = "../../../src/backend/vendor_lookup.rs"]

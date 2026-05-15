@@ -15,6 +15,7 @@ use super::database_text::{escape_csv, escape_json, normalize_optional_text};
 use super::database_values::{json_value_to_sql, sqlite_value_to_json};
 use super::library_sync_defaults::{default_library_sync_device_name, normalize_library_sync_mode};
 use super::loan_defaults::normalize_loan_direction_filter;
+use super::spool_defaults::normalize_spool_status;
 use super::statistics::InventoryOverview;
 use super::vendor_lookup::normalize_esun_color_name_for_catalog;
 use rusqlite::{params, Connection, OptionalExtension, Row};
@@ -4401,25 +4402,6 @@ fn require_rows(affected: usize) -> InventoryResult<()> {
         Err(InventoryError::NotFound)
     } else {
         Ok(())
-    }
-}
-
-fn normalize_spool_status(raw: Option<&str>) -> String {
-    let status = raw
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .unwrap_or("IN_STOCK")
-        .to_uppercase();
-    match status.as_str() {
-        "LOANED_OUT" | "BORROWED" | "LOANED" => "BORROWED".to_string(),
-        "IN_STOCK" | "IN_USE" | "ASSIGNED" | "EMPTY" | "ARCHIVED" | "LOST" | "DELETED" => {
-            if status == "IN_USE" {
-                "ASSIGNED".to_string()
-            } else {
-                status
-            }
-        }
-        _ => "IN_STOCK".to_string(),
     }
 }
 
