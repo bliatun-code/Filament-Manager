@@ -2,12 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { SettingsTabKey } from "../App";
 import {
   isTauri,
-  type BambuLiveIntegrationEntry,
-  type CatalogResetStats,
-  type MasterCatalogRow,
-  type PrinterOverviewRow,
-  type PrinterRow,
-  type SpoolWithMasterRow,
 } from "../lib/tauri_client";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { useI18n } from "../lib/i18n";
@@ -57,6 +51,7 @@ import {
 import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
 import { useSettingsSwatchDrafts } from "./use_settings_swatch_drafts";
 import { useSettingsPageChrome } from "./use_settings_page_chrome";
+import { useSettingsPageDataState } from "./use_settings_page_data_state";
 import { useSettingsPageReload } from "./use_settings_page_reload";
 import { useSettingsPageTabs } from "./use_settings_page_tabs";
 import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
@@ -106,7 +101,6 @@ type SettingsPageProps = {
 export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPageProps) {
   const tauri = isTauri();
   const { locale, setLocale, t } = useI18n();
-  const [loading, setLoading] = useState(tauri);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -230,10 +224,22 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     pairingQrUnavailable: trustedLanPairingQrUnavailable,
   } = useTrustedLanPairingQr(trustedLanPairingLink);
 
-  const [printers, setPrinters] = useState<PrinterRow[]>([]);
-  const [printerOverview, setPrinterOverview] = useState<PrinterOverviewRow[]>([]);
-  const [spoolRows, setSpoolRows] = useState<SpoolWithMasterRow[]>([]);
-  const [catalogMasters, setCatalogMasters] = useState<MasterCatalogRow[]>([]);
+  const {
+    bambuLiveIntegrations,
+    catalogMasters,
+    lastCatalogReset,
+    loading,
+    printerOverview,
+    printers,
+    setBambuLiveIntegrations,
+    setCatalogMasters,
+    setLastCatalogReset,
+    setLoading,
+    setPrinterOverview,
+    setPrinters,
+    setSpoolRows,
+    spoolRows,
+  } = useSettingsPageDataState(tauri);
   const { setSwatchDraftById, swatchDraftById, updateSwatchDraft } =
     useSettingsSwatchDrafts();
   const [swatchVendorFilter, setSwatchVendorFilter] = useState("ALL");
@@ -271,16 +277,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     initialMessage: t("wishlist.refreshPreparing", "Preparing catalog refresh..."),
     tauri,
   });
-  const [lastCatalogReset, setLastCatalogReset] = useState<CatalogResetStats | null>(
-    null,
-  );
-
   const [confirmDeletePrinterId, setConfirmDeletePrinterId] = useState<string | null>(
     null,
   );
-  const [bambuLiveIntegrations, setBambuLiveIntegrations] = useState<
-    Record<string, BambuLiveIntegrationEntry["config"]>
-  >({});
   const {
     cancelPrinterEdit,
     editAmsUnits,
