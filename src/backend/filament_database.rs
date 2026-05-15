@@ -14,6 +14,7 @@ pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
 use super::database_text::{escape_csv, escape_json, normalize_optional_text};
 use super::database_values::{json_value_to_sql, sqlite_value_to_json};
 use super::library_sync_defaults::{default_library_sync_device_name, normalize_library_sync_mode};
+use super::loan_defaults::normalize_loan_direction_filter;
 use super::statistics::InventoryOverview;
 use super::vendor_lookup::normalize_esun_color_name_for_catalog;
 use rusqlite::{params, Connection, OptionalExtension, Row};
@@ -4400,20 +4401,6 @@ fn require_rows(affected: usize) -> InventoryResult<()> {
         Err(InventoryError::NotFound)
     } else {
         Ok(())
-    }
-}
-
-fn normalize_loan_direction_filter(raw: Option<&str>) -> String {
-    let direction = raw
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .unwrap_or("OUTBOUND")
-        .to_uppercase()
-        .replace(['-', ' '], "_");
-    match direction.as_str() {
-        "ALL" => "ALL".to_string(),
-        "INBOUND" => "INBOUND".to_string(),
-        _ => "OUTBOUND".to_string(),
     }
 }
 
