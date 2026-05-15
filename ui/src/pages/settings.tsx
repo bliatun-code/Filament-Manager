@@ -51,6 +51,7 @@ import { useSettingsCatalogRefreshActions } from "./use_settings_catalog_refresh
 import { useSettingsPrinterEditDraft } from "./use_settings_printer_edit_draft";
 import { useSettingsPrinterActions } from "./use_settings_printer_actions";
 import { useSettingsPrinterDeleteConfirm } from "./use_settings_printer_delete_confirm";
+import { useSettingsPrinterMessages } from "./use_settings_printer_messages";
 import {
   useSettingsResetConfirm,
   type SettingsResetConfirmAction,
@@ -150,6 +151,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanLoadMessageLabels,
     trustedLanValidationMessageLabels,
   } = useSettingsTrustedLanMessages(t);
+  const { settingsPrinterMessageLabels } = useSettingsPrinterMessages(t);
   const {
     backupValidationState,
     clearBackupValidation,
@@ -603,28 +605,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     startPrinterEdit,
     tauri,
   });
-
-  function settingsPrinterMessageLabels() {
-    return {
-      bambuLiveFieldsRequired: t(
-        "settings.error.bambuLiveFieldsRequired",
-        "Host, access code and printer serial are required when live Bambu status is enabled.",
-      ),
-      confirmDeleteTapAgain: t(
-        "settings.confirmDeleteTapAgain",
-        "Click Remove again to confirm deleting printer",
-      ),
-      deletePrinterFailed: t("settings.error.deletePrinter", "Failed to delete printer."),
-      printerRequired: t("settings.error.printerRequired", "Printer name and model are required."),
-      removedPrinter: t("settings.removedPrinter", "Removed printer"),
-      updatePrinterFailed: t("settings.error.updatePrinter", "Failed to update printer."),
-      updatedPrinter: t("settings.updatedPrinter", "Updated printer"),
-      writeRequiresPairing: t(
-        "settings.error.librarySyncPrinterWriteRequiresPairing",
-        "Pair this desktop client with the host before changing printers.",
-      ),
-    };
-  }
 
   const { handleResetAppData, handleResetCatalogs } = useSettingsMaintenanceActions({
     busy,
