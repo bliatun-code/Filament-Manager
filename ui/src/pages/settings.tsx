@@ -112,6 +112,7 @@ import { useSettingsPageChrome } from "./use_settings_page_chrome";
 import { useSettingsPageTabs } from "./use_settings_page_tabs";
 import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
+import { useSettingsLibrarySyncMessages } from "./use_settings_library_sync_messages";
 import { useSettingsThemeMode } from "./use_settings_theme_mode";
 import { useSettingsTransientInfo } from "./use_settings_transient_info";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
@@ -212,6 +213,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setLibrarySyncValidation,
     setLibrarySyncValidationBusy,
   } = useSettingsLibrarySyncState();
+  const {
+    librarySyncActionMessageLabels,
+    librarySyncErrorMessageLabels,
+    librarySyncPairingMessageLabels,
+  } = useSettingsLibrarySyncMessages(t);
   const {
     backupValidationState,
     clearBackupValidation,
@@ -772,58 +778,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     void reloadSettings();
     void loadTrustedLanCompanionStatus();
   }, [loadTrustedLanCompanionStatus, reloadSettings, tauri]);
-
-  const librarySyncActionMessageLabels = useCallback(() => ({
-    clientAuthCleared: t(
-      "settings.librarySyncClientAuthCleared",
-      "Desktop client pairing was removed from this device.",
-    ),
-    clientPaired: t(
-      "settings.librarySyncClientPaired",
-      "Desktop client paired successfully and is now using the detected host.",
-    ),
-    hostCheckPassed: t("settings.librarySyncHostCheckOk", "Host check passed."),
-    renewPairing: t(
-      "settings.librarySyncRenewPairingInfo",
-      "Saved pairing was cleared. Paste a fresh pairing link from the host to continue.",
-    ),
-    settingsSaved: t("settings.librarySyncSaved", "Library role settings saved."),
-    snapshotRefreshed: t("settings.librarySyncSnapshotRefreshed", "Host snapshot refreshed."),
-  }), [t]);
-
-  const librarySyncPairingMessageLabels = useCallback(() => ({
-    pairHostFailed: t(
-      "settings.error.librarySyncPairHost",
-      "Failed to pair this desktop client with the host.",
-    ),
-    pairingInvalid: t(
-      "settings.librarySyncPairingInvalid",
-      "Invalid pairing link. Create a new pairing link on the host and try again.",
-    ),
-    pairingLinkRequired: t(
-      "settings.error.librarySyncPairingLinkRequired",
-      "Paste the full pairing link from the host so the client can detect the host automatically.",
-    ),
-  }), [t]);
-
-  const librarySyncErrorMessageLabels = useCallback(() => ({
-    clearClientAuthFailed: t(
-      "settings.error.librarySyncClearClientAuth",
-      "Failed to remove the saved desktop client pairing.",
-    ),
-    hostCheckFailed: t(
-      "settings.error.librarySyncHostCheck",
-      "Failed to check the configured host.",
-    ),
-    settingsSaveFailed: t(
-      "settings.error.librarySyncSave",
-      "Failed to save library role settings.",
-    ),
-    snapshotFailed: t(
-      "settings.error.librarySyncSnapshot",
-      "Failed to fetch host snapshot.",
-    ),
-  }), [t]);
 
   const handleSaveLibrarySyncSettings = useCallback(async (nextMode = librarySyncModeDraft) => {
     if (!tauri || !librarySyncSettings) {
