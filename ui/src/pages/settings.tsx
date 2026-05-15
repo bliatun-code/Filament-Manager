@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { SettingsTabKey } from "../App";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
-  importDataFile,
   isTauri,
   refreshBambuCatalog,
   refreshEsunCatalog,
   updateMasterCatalogEntry,
-  validateFullBackupJson,
   type BambuLiveIntegrationEntry,
   type CatalogResetStats,
   type MasterCatalogRow,
@@ -67,6 +65,7 @@ import { useSettingsPageTabs } from "./use_settings_page_tabs";
 import { useSettingsPreferenceActions } from "./use_settings_preference_actions";
 import { useSettingsMaintenanceActions } from "./use_settings_maintenance_actions";
 import { useSettingsBackupExportActions } from "./use_settings_backup_export_actions";
+import { useSettingsBackupFileActions } from "./use_settings_backup_file_actions";
 import { useSettingsInventoryPrintAction } from "./use_settings_inventory_print_action";
 import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
@@ -88,13 +87,6 @@ import {
   useTrustedLanNetworkState,
 } from "./use_trusted_lan_network_state";
 import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
-import {
-  buildSettingsBackupErrorMessage,
-  buildSettingsBackupValidationSuccessMessage,
-  buildSettingsImportSuccessMessage,
-  resolveSettingsFullBackupImportedAt,
-  shouldPrepareImportedFullBackupAsHost,
-} from "./settings_backup_model";
 import {
   buildSettingsCatalogRefreshSuccessMessage,
   buildSettingsCatalogRefreshFallbackErrorMessage,
@@ -775,68 +767,28 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     openBackupValidate();
   }
 
-  async function handleImportDataFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file || !tauri || busy) {
-      return;
-    }
-    clearConfirmResetAction();
-    setBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      const content = await file.text();
-      const result = await importDataFile(content);
-      setLastCatalogReset(null);
-      clearBackupValidation();
-      await reloadSettings();
-      const fullBackupImportedAt = resolveSettingsFullBackupImportedAt({
-        detectedFormat: result.detected_format,
-        importedAt: new Date().toISOString(),
-      });
-      if (fullBackupImportedAt) {
-        recordImportedFullBackup(fullBackupImportedAt);
-        if (shouldPrepareImportedFullBackupAsHost({
-          detectedFormat: result.detected_format,
-          librarySyncMode: librarySyncModeDraft,
-        })) {
-          setLibrarySyncModeDraft("HOST");
-          setLibrarySyncHostBaseUrlDraft("");
-          setLibrarySyncValidation(null);
-          setLibrarySyncSnapshot(null);
-          setActiveTab("GENERAL");
-          setInfo(buildSettingsImportSuccessMessage({
-            importedOnClient: true,
-            labels: settingsImportMessageLabels(),
-            result,
-          }));
-          return;
-        }
-        setInfo(buildSettingsImportSuccessMessage({
-          importedOnClient: false,
-          labels: settingsImportMessageLabels(),
-          result,
-        }));
-      } else {
-        setInfo(buildSettingsImportSuccessMessage({
-          importedOnClient: false,
-          labels: settingsImportMessageLabels(),
-          result,
-        }));
-      }
-    } catch (importError) {
-      console.error(importError);
-      setError(
-        toErrorMessage(
-          importError,
-          buildSettingsBackupErrorMessage("importDataFailed", settingsBackupErrorMessageLabels()),
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
+  const { handleImportDataFile, handleValidateBackupFile } = useSettingsBackupFileActions({
+    busy,
+    clearBackupValidation,
+    clearConfirmResetAction,
+    librarySyncModeDraft,
+    recordBackupValidation,
+    recordImportedFullBackup,
+    reloadSettings,
+    setActiveTab,
+    setBusy,
+    setError,
+    setInfo,
+    setLastCatalogReset,
+    setLibrarySyncHostBaseUrlDraft,
+    setLibrarySyncModeDraft,
+    setLibrarySyncSnapshot,
+    setLibrarySyncValidation,
+    settingsBackupErrorMessageLabels,
+    settingsBackupValidationMessageLabels,
+    settingsImportMessageLabels,
+    tauri,
+  });
 
   function settingsImportMessageLabels() {
     return {
@@ -853,36 +805,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
       rows: t("settings.validationRows", "Rows"),
       updated: t("settings.updated", "updated"),
     };
-  }
-
-  async function handleValidateBackupFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file || !tauri || busy) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      const content = await file.text();
-      const summary = await validateFullBackupJson(content);
-      recordBackupValidation(summary, new Date().toISOString());
-      setInfo(buildSettingsBackupValidationSuccessMessage(settingsBackupValidationMessageLabels()));
-    } catch (validationError) {
-      console.error(validationError);
-      setError(
-        toErrorMessage(
-          validationError,
-          buildSettingsBackupErrorMessage(
-            "validateBackupFailed",
-            settingsBackupErrorMessageLabels(),
-          ),
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
   }
 
   function settingsBackupValidationMessageLabels() {
