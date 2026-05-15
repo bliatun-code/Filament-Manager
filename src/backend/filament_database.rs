@@ -3,6 +3,7 @@ use std::path::Path;
 
 pub use super::database_backup::BackupValidationStats;
 use super::database_backup::{parse_full_backup_content, validate_full_backup_content};
+use super::database_catalog_schema::ensure_catalog_lifecycle_columns as ensure_catalog_lifecycle_columns_schema;
 use super::database_ids::new_id;
 pub use super::database_import::ImportDataStats;
 use super::database_import::{
@@ -1375,23 +1376,7 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_catalog_lifecycle_columns(&self) -> InventoryResult<()> {
-        if !table_has_column(&self.conn, "filament_master_list", "is_discontinued")? {
-            self.conn.execute(
-                "ALTER TABLE filament_master_list
-                 ADD COLUMN is_discontinued INTEGER NOT NULL DEFAULT 0",
-                [],
-            )?;
-        }
-
-        if !table_has_column(&self.conn, "filament_master_list", "discontinued_at")? {
-            self.conn.execute(
-                "ALTER TABLE filament_master_list
-                 ADD COLUMN discontinued_at TEXT",
-                [],
-            )?;
-        }
-
-        Ok(())
+        ensure_catalog_lifecycle_columns_schema(&self.conn)
     }
 
     pub fn ensure_spool_lifecycle_schema(&self) -> InventoryResult<()> {

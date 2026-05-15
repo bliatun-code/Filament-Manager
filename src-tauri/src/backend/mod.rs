@@ -2,6 +2,8 @@
 pub mod bambu_lookup;
 #[path = "../../../src/backend/database_backup.rs"]
 pub mod database_backup;
+#[path = "../../../src/backend/database_catalog_schema.rs"]
+pub mod database_catalog_schema;
 #[path = "../../../src/backend/database_ids.rs"]
 pub mod database_ids;
 #[path = "../../../src/backend/database_import.rs"]
