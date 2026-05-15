@@ -166,6 +166,8 @@ import {
   buildSettingsThemeSelectionMessage,
 } from "./settings_preferences_model";
 import {
+  buildSettingsPageChromeLabels,
+  buildSettingsPageDesktopOnlyMessage,
   buildSettingsPageLoadErrorMessage,
   buildSettingsPageTabLabels,
 } from "./settings_page_model";
@@ -403,8 +405,18 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const visibleMissingSwatchMasters = catalogState.visibleMissingSwatchMasters;
 
   const settingsPageMessageLabels = useCallback(() => ({
+    desktopOnly: t("settings.desktopOnly", "Settings are only available in the desktop app build."),
     loadFailed: t("settings.error.load", "Failed to load settings."),
   }), [t]);
+
+  const settingsPageChromeLabels = useCallback(() => buildSettingsPageChromeLabels({
+    desktopOnly: buildSettingsPageDesktopOnlyMessage(settingsPageMessageLabels()),
+    subtitle: t(
+      "settings.subtitle",
+      "Configure trusted-LAN browser access, printers, catalogue updates and maintenance actions.",
+    ),
+    title: t("nav.settings", "Settings"),
+  }), [settingsPageMessageLabels, t]);
 
   const settingsPageTabMessageLabels = useCallback(() => ({
     CATALOG: t("settings.tabCatalog", "Filament catalogue"),
@@ -2664,24 +2676,20 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     hasValidatedFullBackup,
     hasValidatedLatestFullBackup,
   });
+  const pageChromeLabels = settingsPageChromeLabels();
 
   return (
     <div className="page-shell">
       <div className="page-header">
         <div className="page-header-copy">
-          <h1 className="page-title">{t("nav.settings", "Settings")}</h1>
-          <div className="page-subtitle">
-            {t(
-              "settings.subtitle",
-              "Configure trusted-LAN browser access, printers, catalogue updates and maintenance actions.",
-            )}
-          </div>
+          <h1 className="page-title">{pageChromeLabels.title}</h1>
+          <div className="page-subtitle">{pageChromeLabels.subtitle}</div>
         </div>
       </div>
 
       {!tauri ? (
         <FeedbackBanner tone="warning" className="mt-4">
-          {t("settings.desktopOnly", "Settings are only available in the desktop app build.")}
+          {pageChromeLabels.desktopOnly}
         </FeedbackBanner>
       ) : null}
 
