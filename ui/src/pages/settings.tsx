@@ -110,6 +110,7 @@ import {
 } from "./settings_companion_model";
 import {
   buildLibraryRoleChangeState,
+  shouldShowLibraryWebappDetails,
   type LibrarySyncMode,
 } from "./settings_library_sync_model";
 import { buildSettingsBackupValidationState } from "./settings_backup_model";
@@ -2467,13 +2468,14 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     },
   ];
   const showLibraryDeviceFields = librarySyncModeDraft === "HOST";
-  const showLibraryWebappDetails =
-    librarySyncModeDraft === "HOST" ||
-    trustedLanEnabledDraft ||
-    Boolean(trustedLanStatus?.enabled) ||
-    showTrustedLanNetworkEditor ||
-    Boolean(trustedLanPairingLink) ||
-    trustedLanPairedBrowsers.length > 0;
+  const showLibraryWebappDetails = shouldShowLibraryWebappDetails({
+    draftMode: librarySyncModeDraft,
+    trustedLanEnabledDraft,
+    trustedLanStatusEnabled: Boolean(trustedLanStatus?.enabled),
+    showTrustedLanNetworkEditor,
+    hasTrustedLanPairingLink: Boolean(trustedLanPairingLink),
+    pairedBrowserCount: trustedLanPairedBrowsers.length,
+  });
   const standaloneWebappEnabled = librarySyncModeDraft === "STANDALONE" && trustedLanEnabledDraft;
   const clientHasStatusDetails = Boolean(
     librarySyncSettings?.last_checked_at ||

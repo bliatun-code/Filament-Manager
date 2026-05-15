@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildLibraryRoleChangeState,
   buildLibrarySyncMigrationModel,
+  shouldShowLibraryWebappDetails,
 } from "./settings_library_sync_model";
 
 test("buildLibrarySyncMigrationModel reports stable host handoff steps for an active host", () => {
@@ -102,4 +103,26 @@ test("buildLibraryRoleChangeState lets clients leave host mode without local exp
   assert.equal(state.toStandalone, true);
   assert.equal(state.requiresExport, false);
   assert.equal(state.ready, true);
+});
+
+test("shouldShowLibraryWebappDetails keeps webapp details visible for active contexts", () => {
+  const base = {
+    draftMode: "STANDALONE" as const,
+    trustedLanEnabledDraft: false,
+    trustedLanStatusEnabled: false,
+    showTrustedLanNetworkEditor: false,
+    hasTrustedLanPairingLink: false,
+    pairedBrowserCount: 0,
+  };
+
+  assert.equal(shouldShowLibraryWebappDetails(base), false);
+  assert.equal(shouldShowLibraryWebappDetails({ ...base, draftMode: "HOST" }), true);
+  assert.equal(shouldShowLibraryWebappDetails({ ...base, trustedLanEnabledDraft: true }), true);
+  assert.equal(shouldShowLibraryWebappDetails({ ...base, trustedLanStatusEnabled: true }), true);
+  assert.equal(
+    shouldShowLibraryWebappDetails({ ...base, showTrustedLanNetworkEditor: true }),
+    true,
+  );
+  assert.equal(shouldShowLibraryWebappDetails({ ...base, hasTrustedLanPairingLink: true }), true);
+  assert.equal(shouldShowLibraryWebappDetails({ ...base, pairedBrowserCount: 1 }), true);
 });

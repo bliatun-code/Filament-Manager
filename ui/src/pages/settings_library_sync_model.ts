@@ -31,6 +31,24 @@ export type LibraryRoleChangeState = {
   ready: boolean;
 };
 
+export function shouldShowLibraryWebappDetails(input: {
+  draftMode: LibrarySyncMode;
+  trustedLanEnabledDraft: boolean;
+  trustedLanStatusEnabled: boolean;
+  showTrustedLanNetworkEditor: boolean;
+  hasTrustedLanPairingLink: boolean;
+  pairedBrowserCount: number;
+}): boolean {
+  return (
+    input.draftMode === "HOST" ||
+    input.trustedLanEnabledDraft ||
+    input.trustedLanStatusEnabled ||
+    input.showTrustedLanNetworkEditor ||
+    input.hasTrustedLanPairingLink ||
+    input.pairedBrowserCount > 0
+  );
+}
+
 export function buildLibraryRoleChangeState(input: {
   target: LibrarySyncMode | null;
   savedMode: LibrarySyncMode;
