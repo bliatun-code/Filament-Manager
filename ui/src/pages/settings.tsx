@@ -108,6 +108,7 @@ import {
   buildSettingsBackupExportSuccessMessage,
   buildSettingsBackupValidationState,
   buildSettingsImportSuccessMessage,
+  buildSettingsInventoryExportSuccessMessage,
 } from "./settings_backup_model";
 import {
   buildSettingsCatalogRefreshSuccessMessage,
@@ -1774,7 +1775,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         `filament-manager-inventory-${Date.now()}.csv`,
         "text/csv;charset=utf-8",
       );
-      setInfo(t("settings.inventoryCsvExported", "Inventory CSV exported."));
+      setInfo(
+        buildSettingsInventoryExportSuccessMessage("csv", settingsInventoryExportMessageLabels()),
+      );
     } catch (exportError) {
       console.error(exportError);
       setError(
@@ -1805,7 +1808,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
         `filament-manager-inventory-${Date.now()}.json`,
         "application/json;charset=utf-8",
       );
-      setInfo(t("settings.inventoryJsonExported", "Inventory JSON exported."));
+      setInfo(
+        buildSettingsInventoryExportSuccessMessage("json", settingsInventoryExportMessageLabels()),
+      );
     } catch (exportError) {
       console.error(exportError);
       setError(
@@ -1817,6 +1822,13 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     } finally {
       setBusy(false);
     }
+  }
+
+  function settingsInventoryExportMessageLabels() {
+    return {
+      inventoryCsvExported: t("settings.inventoryCsvExported", "Inventory CSV exported."),
+      inventoryJsonExported: t("settings.inventoryJsonExported", "Inventory JSON exported."),
+    };
   }
 
   async function handlePrintInventoryOverviewA4() {

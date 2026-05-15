@@ -78,10 +78,24 @@ export type SettingsBackupExportMessageLabels = {
   librarySyncBackupAutoValidated: string;
 };
 
+export type SettingsInventoryExportFormat = "csv" | "json";
+
+export type SettingsInventoryExportMessageLabels = {
+  inventoryCsvExported: string;
+  inventoryJsonExported: string;
+};
+
 export function buildSettingsBackupExportSuccessMessage(
   labels: SettingsBackupExportMessageLabels,
 ): string {
   return `${labels.backupExported} ${labels.librarySyncBackupAutoValidated}`;
+}
+
+export function buildSettingsInventoryExportSuccessMessage(
+  format: SettingsInventoryExportFormat,
+  labels: SettingsInventoryExportMessageLabels,
+): string {
+  return format === "csv" ? labels.inventoryCsvExported : labels.inventoryJsonExported;
 }
 
 export function buildSettingsImportSuccessMessage({

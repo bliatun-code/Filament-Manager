@@ -4,6 +4,7 @@ import {
   buildSettingsBackupExportSuccessMessage,
   buildSettingsBackupValidationState,
   buildSettingsImportSuccessMessage,
+  buildSettingsInventoryExportSuccessMessage,
   type SettingsImportMessageLabels,
 } from "./settings_backup_model";
 import type { BackupValidationStats, ImportDataStats } from "../lib/tauri_client";
@@ -134,6 +135,22 @@ test("settings backup export success message includes auto validation guidance",
         "The exported backup was validated automatically and is ready to use in the guided role-change flow.",
     }),
     "Full backup exported (inventory, history and printers). The exported backup was validated automatically and is ready to use in the guided role-change flow.",
+  );
+});
+
+test("settings inventory export success message follows the selected format", () => {
+  const labels = {
+    inventoryCsvExported: "Inventory CSV exported.",
+    inventoryJsonExported: "Inventory JSON exported.",
+  };
+
+  assert.equal(
+    buildSettingsInventoryExportSuccessMessage("csv", labels),
+    labels.inventoryCsvExported,
+  );
+  assert.equal(
+    buildSettingsInventoryExportSuccessMessage("json", labels),
+    labels.inventoryJsonExported,
   );
 });
 
