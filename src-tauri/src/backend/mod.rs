@@ -6,6 +6,8 @@ pub mod database_backup;
 pub mod database_ids;
 #[path = "../../../src/backend/database_import.rs"]
 pub mod database_import;
+#[path = "../../../src/backend/database_rows.rs"]
+pub mod database_rows;
 #[path = "../../../src/backend/database_tables.rs"]
 pub mod database_tables;
 #[path = "../../../src/backend/database_text.rs"]
