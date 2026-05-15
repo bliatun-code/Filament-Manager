@@ -29,6 +29,7 @@ import {
 import type {
   BambuLiveIntegrationSettings,
   BambuLiveObservedState,
+  BambuLiveObservedTray,
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
 
@@ -283,6 +284,27 @@ export function buildSettingsBambuLiveObservedRfid(
   return trayUuid && !/^0+$/.test(trayUuid) ? trayUuid : null;
 }
 
+export function buildSettingsBambuLiveTrayDisplayText({
+  t,
+  tray,
+}: {
+  t: TranslateFn;
+  tray: BambuLiveObservedTray;
+}) {
+  return {
+    detailText:
+      [
+        tray.filament_type,
+        tray.remaining_percent != null ? `${tray.remaining_percent}%` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || "—",
+    statusText: tray.loaded
+      ? tray.filament_name || tray.filament_type || t("settings.bambuLiveTrayLoaded", "Loaded")
+      : t("settings.bambuLiveTrayEmptyUnknown", "Empty / unknown"),
+  };
+}
+
 export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticFilter,
   diagnosticSession,
@@ -360,6 +382,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
       observedRfid,
       t,
     });
+    const { detailText, statusText } = buildSettingsBambuLiveTrayDisplayText({ t, tray });
 
     return {
       candidateCountText:
@@ -370,13 +393,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
         candidates: inventoryMatch.candidates,
         t,
       }),
-      detailText:
-        [
-          tray.filament_type,
-          tray.remaining_percent != null ? `${tray.remaining_percent}%` : null,
-        ]
-          .filter(Boolean)
-          .join(" · ") || "—",
+      detailText,
       hasMoreCandidates: inventoryMatch.candidates.length > 3,
       hasReview: Boolean(hasReview),
       key: `live-tray-${tray.tray_index}`,
@@ -398,9 +415,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
         : null,
       reviewTitle: tray.match_note ?? "",
       slotLabel: `${t("settings.bambuLiveSlotLabel", "Slot")} ${tray.tray_index + 1}`,
-      statusText: tray.loaded
-        ? tray.filament_name || tray.filament_type || t("settings.bambuLiveTrayLoaded", "Loaded")
-        : t("settings.bambuLiveTrayEmptyUnknown", "Empty / unknown"),
+      statusText,
     };
   });
 

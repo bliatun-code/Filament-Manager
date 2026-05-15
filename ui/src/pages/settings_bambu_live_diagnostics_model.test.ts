@@ -10,6 +10,7 @@ import {
   buildSettingsBambuLiveObservedRfid,
   buildSettingsBambuLiveObservedSummaryParts,
   buildSettingsBambuLiveSignalQualityBuckets,
+  buildSettingsBambuLiveTrayDisplayText,
   createSettingsBambuLiveCaptureSession,
 } from "./settings_bambu_live_diagnostics_model";
 import {
@@ -17,7 +18,11 @@ import {
   type DiagnosticCaptureField,
   type DiagnosticTraySnapshot,
 } from "../lib/diagnostic_capture";
-import type { BambuLiveIntegrationSettings, SpoolWithMasterRow } from "../lib/tauri_client";
+import type {
+  BambuLiveIntegrationSettings,
+  BambuLiveObservedTray,
+  SpoolWithMasterRow,
+} from "../lib/tauri_client";
 
 const t = (_key: string, fallback: string) => fallback;
 const formatDateTime = (value: string) => `formatted:${value}`;
@@ -140,6 +145,20 @@ function createDiagnosticTraySnapshot(
   return {
     trayIndex: 1,
     loaded: true,
+    ...overrides,
+  };
+}
+
+function createObservedTray(overrides: Partial<BambuLiveObservedTray>): BambuLiveObservedTray {
+  return {
+    tray_index: 1,
+    loaded: true,
+    filament_type: "PLA",
+    filament_name: "PLA Basic",
+    color_hex: "#FFAA00",
+    remaining_percent: 77,
+    match_status: null,
+    match_note: null,
     ...overrides,
   };
 }
@@ -507,4 +526,35 @@ test("Bambu live observed RFID trims valid values and suppresses empty or zero-o
     null,
   );
   assert.equal(buildSettingsBambuLiveObservedRfid(null), null);
+});
+
+test("Bambu live tray display text prefers names, material, and empty fallbacks", () => {
+  assert.deepEqual(
+    buildSettingsBambuLiveTrayDisplayText({
+      t,
+      tray: createObservedTray({ filament_name: "PLA Basic", filament_type: "PLA", remaining_percent: 77 }),
+    }),
+    { detailText: "PLA · 77%", statusText: "PLA Basic" },
+  );
+  assert.deepEqual(
+    buildSettingsBambuLiveTrayDisplayText({
+      t,
+      tray: createObservedTray({ filament_name: null, filament_type: "PETG", remaining_percent: null }),
+    }),
+    { detailText: "PETG", statusText: "PETG" },
+  );
+  assert.deepEqual(
+    buildSettingsBambuLiveTrayDisplayText({
+      t,
+      tray: createObservedTray({ filament_name: null, filament_type: null, remaining_percent: null }),
+    }),
+    { detailText: "—", statusText: "Loaded" },
+  );
+  assert.deepEqual(
+    buildSettingsBambuLiveTrayDisplayText({
+      t,
+      tray: createObservedTray({ loaded: false, filament_name: "PLA Basic" }),
+    }),
+    { detailText: "PLA · 77%", statusText: "Empty / unknown" },
+  );
 });
