@@ -9,6 +9,7 @@ import { buildSettingsCatalogRouteProps } from "./settings_catalog_route_props";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
 import { SettingsGeneralRoute } from "./settings_general_route";
 import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
+import { buildSettingsLibraryRolePanelProps } from "./settings_library_role_panel_props";
 import { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_route";
 import { SettingsLibraryTab } from "./settings_library_tab";
 import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
@@ -903,6 +904,18 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     onToggleBambuLiveCapture: handleToggleBambuLiveCapture,
     onToggleBambuLiveDetails: handleToggleBambuLiveDetails,
   });
+  const settingsLibraryRolePanelProps = buildSettingsLibraryRolePanelProps({
+    librarySyncBusy,
+    librarySyncDeviceNameDraft,
+    librarySyncModeDraft,
+    librarySyncRoleOptions,
+    librarySyncSettings,
+    libraryVisibility,
+    tauri,
+    t,
+    onDeviceNameChange: setLibrarySyncDeviceNameDraft,
+    onRequestLibraryRoleChange: handleRequestLibraryRoleChange,
+  });
   return (
     <div className="page-shell">
       <SettingsPageHeader
@@ -972,16 +985,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
               onToggleAdvanced: () => setShowLibraryClientAdvanced((value) => !value),
             }}
             libraryRolePanel={{
-              librarySyncBusy,
-              librarySyncDeviceNameDraft,
-              librarySyncModeDraft,
-              librarySyncRoleOptions,
-              librarySyncSettings,
-              libraryVisibility,
-              tauri,
-              t,
-              onDeviceNameChange: setLibrarySyncDeviceNameDraft,
-              onRequestLibraryRoleChange: handleRequestLibraryRoleChange,
+              ...settingsLibraryRolePanelProps,
             }}
             pairingPanel={{
               actionBusy: trustedLanActionBusy,
