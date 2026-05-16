@@ -1057,13 +1057,10 @@ pub(crate) fn delete_library_sync_host_spool(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncDeleteSpoolInput,
 ) -> Result<(), String> {
-    let validation_input = ValidateLibrarySyncHostInput {
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
         base_url: input.base_url.clone(),
         expected_library_id: input.expected_library_id.clone(),
-    };
-    let (normalized_base_url, expected_library_id) =
-        normalize_library_sync_host_input(&validation_input)?;
-    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    })?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -1090,13 +1087,10 @@ pub(crate) fn purge_library_sync_host_spool(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncDeleteSpoolInput,
 ) -> Result<(), String> {
-    let validation_input = ValidateLibrarySyncHostInput {
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
         base_url: input.base_url.clone(),
         expected_library_id: input.expected_library_id.clone(),
-    };
-    let (normalized_base_url, expected_library_id) =
-        normalize_library_sync_host_input(&validation_input)?;
-    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    })?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
