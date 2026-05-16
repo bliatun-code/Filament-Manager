@@ -2,15 +2,13 @@ use super::database_alerts::{
     alert_exists_for_spool as alert_exists_for_spool_row, insert_alert as insert_alert_row,
 };
 pub use super::database_backup::BackupValidationStats;
-use super::database_backup::{
-    export_full_backup_content, parse_full_backup_content, validate_full_backup_content,
-};
+use super::database_backup::{export_full_backup_content, validate_full_backup_content};
+use super::database_backup_import::import_full_backup_content;
 use super::database_bambu_live_settings::{
     delete_bambu_live_integration as delete_bambu_live_integration_row,
     list_bambu_live_integrations as list_bambu_live_integration_rows,
     save_bambu_live_integration as save_bambu_live_integration_row,
 };
-use super::database_borrowed_schema::ensure_borrowed_in_schema as ensure_borrowed_in_schema_impl;
 use super::database_catalog_esun::normalize_esun_catalog_colors as normalize_esun_catalog_colors_rows;
 use super::database_catalog_lifecycle::apply_vendor_discontinued_rules as apply_vendor_discontinued_rules_row;
 use super::database_catalog_manual::upsert_manual_master as upsert_manual_master_row;
@@ -75,17 +73,11 @@ use super::database_printer_queries::{
     list_printer_overview as list_printer_overview_rows, list_printers as list_printer_rows,
     printer_exists as printer_exists_row,
 };
-use super::database_printer_schema::{
-    ensure_printer_external_slot_schema as ensure_printer_external_slot_schema_impl,
-    ensure_printer_slot_live_cache_schema as ensure_printer_slot_live_cache_schema_impl,
-    ensure_printer_slot_rfid_override_schema as ensure_printer_slot_rfid_override_schema_impl,
-};
 use super::database_printer_slot_assignment::assign_spool_to_ams_slot as assign_spool_to_ams_slot_row;
 use super::database_reset::{
     reset_app_state_data as reset_app_state_data_rows,
     reset_catalog_data as reset_catalog_data_rows,
 };
-use super::database_schema::{ensure_no_foreign_key_violations, table_columns};
 use super::database_schema_setup::apply_schema_migrations;
 use super::database_settings::{
     delete_setting as delete_setting_row, get_setting as get_setting_row,
@@ -115,8 +107,6 @@ use super::database_spool_updates::{
     update_spool_weight as update_spool_weight_row,
 };
 use super::database_sync_queue::enqueue_sync_action as enqueue_sync_action_row;
-use super::database_table_ops::delete_all_rows;
-use super::database_tables::should_import_backup_row;
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
 use super::database_text::normalize_optional_text;
 use super::database_time::{
@@ -133,12 +123,10 @@ use super::database_trusted_lan::{
     revoke_trusted_lan_paired_browser as revoke_trusted_lan_paired_browser_row,
     touch_trusted_lan_paired_browser as touch_trusted_lan_paired_browser_row,
 };
-use super::database_trusted_lan_schema::ensure_trusted_lan_schema as ensure_trusted_lan_schema_impl;
 use super::database_trusted_lan_settings::{
     get_trusted_lan_settings as get_trusted_lan_setting_rows,
     save_trusted_lan_settings as save_trusted_lan_setting_rows,
 };
-use super::database_values::json_value_to_sql;
 use super::database_wishlist::{
     delete_wishlist_item as delete_wishlist_item_row,
     insert_wishlist_item as insert_wishlist_item_row,
@@ -149,7 +137,7 @@ use super::spool_defaults::normalize_spool_status;
 use super::statistics::InventoryOverview;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 pub(crate) type LibrarySyncClientAuthState = (String, String, String, Option<String>);
 pub(crate) type MasterCatalogExistingRow = (
@@ -758,26 +746,6 @@ impl FilamentDatabase {
         ensure_catalog_lifecycle_columns_schema(&self.conn)
     }
 
-    pub fn ensure_borrowed_in_schema(&self) -> InventoryResult<()> {
-        ensure_borrowed_in_schema_impl(&self.conn)
-    }
-
-    pub fn ensure_printer_external_slot_schema(&self) -> InventoryResult<()> {
-        ensure_printer_external_slot_schema_impl(&self.conn)
-    }
-
-    pub fn ensure_printer_slot_rfid_override_schema(&self) -> InventoryResult<()> {
-        ensure_printer_slot_rfid_override_schema_impl(&self.conn)
-    }
-
-    pub fn ensure_printer_slot_live_cache_schema(&self) -> InventoryResult<()> {
-        ensure_printer_slot_live_cache_schema_impl(&self.conn)
-    }
-
-    pub fn ensure_trusted_lan_schema(&self) -> InventoryResult<()> {
-        ensure_trusted_lan_schema_impl(&self.conn)
-    }
-
     pub fn apply_vendor_discontinued_rules(
         &self,
         vendor: &str,
@@ -1299,55 +1267,7 @@ impl FilamentDatabase {
     }
 
     pub fn import_full_backup_json(&self, content: &str) -> InventoryResult<()> {
-        let parsed = parse_full_backup_content(content)?;
-
-        self.conn.execute_batch(SCHEMA_SQL)?;
-        self.conn
-            .execute_batch("PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE;")?;
-        let result: InventoryResult<()> = (|| {
-            delete_all_rows(&self.conn, &FULL_BACKUP_TABLES)?;
-
-            for table in FULL_BACKUP_TABLES {
-                let Some(rows) = parsed.tables.get(table) else {
-                    continue;
-                };
-
-                for row in rows {
-                    if !should_import_backup_row(table, row) {
-                        continue;
-                    }
-                    self.insert_backup_row(table, row)?;
-                }
-            }
-
-            ensure_no_foreign_key_violations(&self.conn, "Full backup import")?;
-
-            Ok(())
-        })();
-
-        match result {
-            Ok(()) => match self.conn.execute_batch("COMMIT") {
-                Ok(()) => {
-                    self.conn.execute_batch("PRAGMA foreign_keys = ON;")?;
-                    self.ensure_borrowed_in_schema()?;
-                    self.ensure_printer_external_slot_schema()?;
-                    self.ensure_printer_slot_rfid_override_schema()?;
-                    self.ensure_printer_slot_live_cache_schema()?;
-                    self.ensure_trusted_lan_schema()?;
-                    Ok(())
-                }
-                Err(error) => {
-                    let _ = self.conn.execute_batch("ROLLBACK");
-                    let _ = self.conn.execute_batch("PRAGMA foreign_keys = ON;");
-                    Err(error.into())
-                }
-            },
-            Err(error) => {
-                let _ = self.conn.execute_batch("ROLLBACK");
-                let _ = self.conn.execute_batch("PRAGMA foreign_keys = ON;");
-                Err(error)
-            }
-        }
+        import_full_backup_content(&self.conn, content, SCHEMA_SQL)
     }
 
     pub fn import_data_content(&self, content: &str) -> InventoryResult<ImportDataStats> {
@@ -1389,34 +1309,6 @@ impl FilamentDatabase {
         Err(InventoryError::Db(
             "Unsupported import format. Expected full backup JSON, inventory JSON array/object, or inventory CSV.".to_string(),
         ))
-    }
-
-    fn insert_backup_row(&self, table: &str, row: &Map<String, Value>) -> InventoryResult<()> {
-        if row.is_empty() {
-            return Ok(());
-        }
-        let allowed_columns = table_columns(&self.conn, table)?;
-        let columns: Vec<String> = row
-            .keys()
-            .filter(|column| allowed_columns.contains(*column))
-            .cloned()
-            .collect();
-        if columns.is_empty() {
-            return Ok(());
-        }
-        let placeholders = vec!["?"; columns.len()].join(", ");
-        let sql = format!(
-            "INSERT INTO {table} ({}) VALUES ({})",
-            columns.join(", "),
-            placeholders
-        );
-        let values: Vec<rusqlite::types::Value> = columns
-            .iter()
-            .map(|column| json_value_to_sql(row.get(column).unwrap_or(&Value::Null)))
-            .collect();
-        self.conn
-            .execute(&sql, rusqlite::params_from_iter(values.iter()))?;
-        Ok(())
     }
 
     pub fn enqueue_sync_action(
