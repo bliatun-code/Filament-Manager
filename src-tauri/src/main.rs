@@ -56,6 +56,7 @@ mod trusted_lan_commands;
 mod trusted_lan_health;
 mod trusted_lan_interfaces;
 mod trusted_lan_runtime_commands;
+mod trusted_lan_status_commands;
 
 use backend::filament_database::FilamentDatabase;
 use backend::inventory_engine::InventoryEngine;
@@ -161,7 +162,7 @@ fn main() {
             inventory_read_commands::list_wishlist_items,
             printer_settings_commands::get_printer_settings,
             printer_read_commands::list_printer_overview,
-            trusted_lan_commands::get_trusted_lan_companion_status,
+            trusted_lan_status_commands::get_trusted_lan_companion_status,
             trusted_lan_commands::list_trusted_lan_interfaces,
             trusted_lan_commands::update_trusted_lan_companion_config,
             trusted_lan_commands::create_trusted_lan_pairing,
