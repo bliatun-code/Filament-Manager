@@ -7,7 +7,7 @@ use super::database_events::{
 };
 use super::database_result::InventoryResult;
 use super::database_spool_models::{SpoolHistoryEventRow, SpoolUsagePointRow};
-use super::filament_database::FilamentDatabase;
+use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn ensure_scale(&self, scale_id: &str, name: &str, protocol: &str) -> InventoryResult<()> {

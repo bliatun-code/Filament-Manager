@@ -11,7 +11,7 @@ use super::database_import::{
 };
 use super::database_inventory_import_apply::import_inventory_spools_rows as import_inventory_spool_rows;
 use super::database_result::InventoryResult;
-use super::filament_database::FilamentDatabase;
+use super::database_core::FilamentDatabase;
 
 const SCHEMA_SQL: &str = include_str!("../database/schema.sql");
 

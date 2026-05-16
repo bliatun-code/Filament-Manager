@@ -19,7 +19,7 @@ use super::database_loan_return::{
 };
 use super::database_loan_update::update_active_inbound_spool_loan_counterparty as update_active_inbound_spool_loan_counterparty_row;
 use super::database_result::InventoryResult;
-use super::filament_database::FilamentDatabase;
+use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn update_active_inbound_spool_loan_counterparty(

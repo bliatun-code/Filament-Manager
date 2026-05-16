@@ -4,7 +4,7 @@ use super::database_reset::{
 };
 use super::database_reset_models::CatalogResetStats;
 use super::database_result::InventoryResult;
-use super::filament_database::FilamentDatabase;
+use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn reset_app_state_data(&self) -> InventoryResult<()> {

@@ -8,7 +8,7 @@ use super::database_spool_updates::{
     update_spool_tare_weight as update_spool_tare_weight_row,
     update_spool_weight as update_spool_weight_row,
 };
-use super::filament_database::FilamentDatabase;
+use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {

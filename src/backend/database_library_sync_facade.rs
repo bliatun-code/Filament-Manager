@@ -21,7 +21,7 @@ use super::database_loan_models::SpoolLoanDetailsRow;
 use super::database_printer_models::PrinterOverviewRow;
 use super::database_result::InventoryResult;
 use super::database_spool_models::SpoolWithMasterRow;
-use super::filament_database::FilamentDatabase;
+use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn get_library_sync_settings(&self) -> InventoryResult<LibrarySyncSettingsRow> {

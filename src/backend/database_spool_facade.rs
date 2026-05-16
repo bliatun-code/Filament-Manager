@@ -15,7 +15,7 @@ use super::database_spool_queries::{
     list_low_stock_spools as list_low_stock_spool_rows,
     list_spools_with_master as list_spools_with_master_rows,
 };
-use super::filament_database::FilamentDatabase;
+use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn insert_spool(&self, spool: &SpoolRow) -> InventoryResult<()> {

@@ -6,7 +6,7 @@ use super::database_wishlist::{
     update_wishlist_item_status as update_wishlist_item_status_row,
 };
 use super::database_wishlist_models::WishlistItemRow;
-use super::filament_database::FilamentDatabase;
+use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn list_wishlist_items(&self, limit: i64) -> InventoryResult<Vec<WishlistItemRow>> {

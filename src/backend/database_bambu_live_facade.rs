@@ -8,7 +8,7 @@ use super::database_bambu_live_settings::{
 use super::database_printer_live_events::insert_printer_live_event as insert_printer_live_event_row;
 use super::database_printer_models::{BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow};
 use super::database_result::InventoryResult;
-use super::filament_database::FilamentDatabase;
+use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn save_bambu_live_integration(

@@ -6,7 +6,7 @@ use super::database_sync_queue::enqueue_sync_action as enqueue_sync_action_row;
 use super::database_time::{
     sqlite_datetime_shift as sqlite_datetime_shift_value, sqlite_now as sqlite_now_value,
 };
-use super::filament_database::FilamentDatabase;
+use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn sqlite_now(&self) -> InventoryResult<String> {

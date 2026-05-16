@@ -6,7 +6,7 @@ use super::database_catalog_queries::list_master_catalog as list_master_catalog_
 use super::database_catalog_schema::ensure_catalog_lifecycle_columns as ensure_catalog_lifecycle_columns_schema;
 use super::database_catalog_update::update_master_catalog_entry as update_master_catalog_entry_row;
 use super::database_result::InventoryResult;
-use super::filament_database::FilamentDatabase;
+use super::database_core::FilamentDatabase;
 use super::filament_master_models::{
     CatalogLifecycleStats, EsunColorNormalizationStats, FilamentMasterCatalogRow,
 };
