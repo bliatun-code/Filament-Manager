@@ -247,6 +247,14 @@ fn prepare_library_sync_host_checked(
     Ok((normalized_base_url, expected_library_id))
 }
 
+fn prepare_library_sync_host_read(
+    input: &ValidateLibrarySyncHostInput,
+) -> Result<(String, CompanionHealthCheckResponse), String> {
+    let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(input)?;
+    let health = ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    Ok((normalized_base_url, health))
+}
+
 fn trimmed_non_empty(value: Option<&str>) -> Option<&str> {
     value.map(str::trim).filter(|entry| !entry.is_empty())
 }
@@ -349,13 +357,10 @@ pub(crate) fn fetch_library_sync_spools(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncSpoolListInput,
 ) -> Result<Vec<SpoolWithMasterRow>, String> {
-    let validation_input = ValidateLibrarySyncHostInput {
+    let (normalized_base_url, health) = prepare_library_sync_host_read(&ValidateLibrarySyncHostInput {
         base_url: input.base_url.clone(),
         expected_library_id: input.expected_library_id.clone(),
-    };
-    let (normalized_base_url, expected_library_id) =
-        normalize_library_sync_host_input(&validation_input)?;
-    let health = ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    })?;
     let limit = input.limit.unwrap_or(1200).clamp(1, 2_500);
     let offset = input.offset.unwrap_or(0).max(0);
     let rows: Vec<SpoolWithMasterRow> = fetch_library_sync_host_json(
