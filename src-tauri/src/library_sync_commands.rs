@@ -7,7 +7,8 @@ use crate::backend::database_library_sync_models::LibrarySyncCachedSnapshotRow;
 use crate::backend::statistics::FilamentConsumptionRow;
 use crate::library_sync_command_support::{
     normalize_library_sync_host_input, prepare_library_sync_host_checked,
-    prepare_library_sync_host_read, prepare_library_sync_host_write,
+    prepare_library_sync_host_read, prepare_library_sync_host_write, save_library_sync_success,
+    trimmed_non_empty,
 };
 use crate::library_sync_host_client::{
     ensure_library_sync_host_matches, extract_library_sync_pairing_token,
@@ -221,20 +222,6 @@ pub(crate) fn validate_library_sync_host(
         )
     })?;
     Ok(result)
-}
-
-fn trimmed_non_empty(value: Option<&str>) -> Option<&str> {
-    value.map(str::trim).filter(|entry| !entry.is_empty())
-}
-
-fn save_library_sync_success(
-    state: &tauri::State<'_, AppState>,
-    message: &str,
-    device_name: Option<&str>,
-) -> Result<(), String> {
-    with_inventory(state, |engine| {
-        engine.save_library_sync_validation_state(true, Some(message), device_name)
-    })
 }
 
 #[tauri::command]

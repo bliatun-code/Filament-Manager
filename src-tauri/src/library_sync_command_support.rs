@@ -1,6 +1,8 @@
-use crate::library_sync_models::ValidateLibrarySyncHostInput;
 use crate::library_sync_host_client::ensure_library_sync_host_matches;
+use crate::library_sync_models::ValidateLibrarySyncHostInput;
+use crate::state::AppState;
 use crate::trusted_lan_commands::CompanionHealthCheckResponse;
+use crate::with_inventory;
 
 pub(crate) fn normalize_library_sync_host_input(
     input: &ValidateLibrarySyncHostInput,
@@ -37,4 +39,18 @@ pub(crate) fn prepare_library_sync_host_read(
     let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(input)?;
     let health = ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
     Ok((normalized_base_url, health))
+}
+
+pub(crate) fn trimmed_non_empty(value: Option<&str>) -> Option<&str> {
+    value.map(str::trim).filter(|entry| !entry.is_empty())
+}
+
+pub(crate) fn save_library_sync_success(
+    state: &tauri::State<'_, AppState>,
+    message: &str,
+    device_name: Option<&str>,
+) -> Result<(), String> {
+    with_inventory(state, |engine| {
+        engine.save_library_sync_validation_state(true, Some(message), device_name)
+    })
 }
