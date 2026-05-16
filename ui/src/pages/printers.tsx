@@ -41,6 +41,7 @@ import { ModalHeader } from "../components/modal_chrome";
 import { modalPanelClassName } from "../components/modal_panel_class";
 import { PrinterModelPreview } from "../components/printer_model_preview";
 import { SaveOnlyModal } from "../components/save_only_modal";
+import { AddPrinterModal } from "../components/add_printer_modal";
 import { semanticChipClass } from "../lib/chip_styles";
 import {
   formatFilamentDisplayTitle,
@@ -68,8 +69,6 @@ import {
   formatPrinterSlotLabelForModel,
   hasConfiguredMultiMaterial,
   listSupportedPrinterModels,
-  multiMaterialSlotsInputLabel,
-  multiMaterialUnitsInputLabel,
 } from "../lib/printer_profiles";
 import { usePrinterPageData } from "./use_printer_page_data";
 import { usePrinterLibrarySyncState } from "./use_printer_library_sync_state";
@@ -1375,142 +1374,24 @@ export default function PrintersPage() {
       ) : null}
 
       {showAddPrinterModal ? (
-        <AppModal
-          closeOnBackdrop
-          onBackdropClose={closeAddPrinterModal}
-          panelClassName={modalPanelClassName("lg", "p-0")}
-        >
-          <div>
-            <ModalHeader
-              eyebrow={t("nav.printers", "Printers")}
-              title={t("settings.addPrinter", "Add printer")}
-              subtitle={t(
-                "settings.columnsHint",
-                "Choose model, name and multi-material capacity. EXT stays available automatically.",
-              )}
-              onClose={closeAddPrinterModal}
-              closeLabel={t("common.close", "Close")}
-              disabled={busy}
-              className="px-6 py-5"
-            />
-
-            <div className="space-y-4 px-6 py-6">
-              <div className="surface-card space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                    {t("settings.selectPrinterModel", "Select printer model")}
-                  </label>
-                  <select
-                    value={newPrinterModel}
-                    onChange={(event) => {
-                      const nextModel = event.target.value;
-                      selectPrinterModel(nextModel);
-                    }}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
-                    disabled={!tauri || busy || printerModels.length === 0}
-                  >
-                    <option value="">
-                      {t("settings.selectPrinterModel", "Select printer model")}
-                    </option>
-                    {printerModels.map((model) => (
-                      <option key={model} value={model}>
-                        {model}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                    {t("settings.printerName", "Printer name")}
-                  </label>
-                  <input
-                    type="text"
-                    value={newPrinterName}
-                    onChange={(event) => setNewPrinterName(event.target.value)}
-                    placeholder={t("settings.printerName", "Printer name")}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
-                    disabled={!tauri || busy}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                      {multiMaterialUnitsInputLabel(t, newPrinterModel || "")}
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={selectedModelProfile.maxUnits}
-                      value={newAmsUnits}
-                      onChange={(event) => setNewAmsUnits(event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
-                      title={multiMaterialUnitsInputLabel(t, newPrinterModel || "")}
-                      disabled={!tauri || busy || selectedModelProfile.maxUnits === 0}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                      {multiMaterialSlotsInputLabel(t, newPrinterModel || "")}
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={selectedModelProfile.maxSlotsPerUnit}
-                      value={newSlotsPerUnit}
-                      onChange={(event) => setNewSlotsPerUnit(event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
-                      title={multiMaterialSlotsInputLabel(t, newPrinterModel || "")}
-                      disabled={!tauri || busy || selectedModelProfile.maxUnits === 0}
-                    />
-                  </div>
-                </div>
-
-                <div
-                  className="surface-subtle flex items-center gap-3 p-3"
-                  style={printerBrandSurfaceStyle(
-                    newPrinterModel || null,
-                    "compact",
-                    resolvedTheme,
-                  )}
-                >
-                  <PrinterModelPreview
-                    model={newPrinterModel || "Printer"}
-                    hasMultiMaterial={newPrinterCapacity.hasMultiMaterial}
-                    compact
-                  />
-                  <div className="text-xs text-slate-600 dark:text-slate-300">
-                    {describePrinterCapability(
-                      t,
-                      newPrinterModel || "",
-                      newPrinterCapacity.hasMultiMaterial,
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100 dark:shadow-none dark:hover:bg-slate-800/70"
-                  onClick={closeAddPrinterModal}
-                  disabled={busy}
-                >
-                  {t("common.close", "Close")}
-                </button>
-                <button
-                  type="button"
-                  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-slate-300/30 transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white"
-                  onClick={() => void handleAddPrinter()}
-                  disabled={!tauri || busy || !newPrinterModel || !newPrinterName.trim()}
-                >
-                  {t("settings.addPrinter", "Add printer")}
-                </button>
-              </div>
-            </div>
-          </div>
-        </AppModal>
+        <AddPrinterModal
+          busy={busy}
+          tauri={tauri}
+          printerModels={printerModels}
+          resolvedTheme={resolvedTheme}
+          newPrinterModel={newPrinterModel}
+          newPrinterName={newPrinterName}
+          newAmsUnits={newAmsUnits}
+          newSlotsPerUnit={newSlotsPerUnit}
+          selectedModelProfile={selectedModelProfile}
+          newPrinterCapacity={newPrinterCapacity}
+          onClose={closeAddPrinterModal}
+          onSelectPrinterModel={selectPrinterModel}
+          onPrinterNameChange={setNewPrinterName}
+          onAmsUnitsChange={setNewAmsUnits}
+          onSlotsPerUnitChange={setNewSlotsPerUnit}
+          onAddPrinter={() => void handleAddPrinter()}
+        />
       ) : null}
     </div>
   );
