@@ -31,6 +31,7 @@ pub use super::database_import::ImportDataStats;
 use super::database_import::{
     import_data_content as import_data_content_rows, InventoryImportRow, InventoryImportStats,
 };
+use super::database_inventory_import_apply::import_inventory_spools_rows as import_inventory_spool_rows;
 use super::database_library_sync_auth::{
     clear_library_sync_client_auth_state as clear_library_sync_client_auth_state_rows,
     get_library_sync_client_auth_state as get_library_sync_client_auth_state_rows,
@@ -132,7 +133,6 @@ use super::database_wishlist::{
     list_wishlist_items as list_wishlist_item_rows,
     update_wishlist_item_status as update_wishlist_item_status_row,
 };
-use super::spool_defaults::normalize_spool_status;
 use super::statistics::InventoryOverview;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
@@ -1292,137 +1292,7 @@ impl FilamentDatabase {
         &self,
         rows: &[InventoryImportRow],
     ) -> InventoryResult<InventoryImportStats> {
-        if rows.is_empty() {
-            return Err(InventoryError::Db(
-                "Inventory import contains no spool rows".to_string(),
-            ));
-        }
-
-        self.conn.execute_batch("BEGIN IMMEDIATE;")?;
-        let result: InventoryResult<InventoryImportStats> = (|| {
-            let mut created_count = 0_i64;
-            let mut updated_count = 0_i64;
-
-            for (index, row) in rows.iter().enumerate() {
-                let spool_id = row.spool_id.trim();
-                let material = row.material.trim();
-                let filament_name = row.filament_name.trim();
-                let color_name = row.color_name.trim();
-
-                if spool_id.is_empty()
-                    || material.is_empty()
-                    || filament_name.is_empty()
-                    || color_name.is_empty()
-                {
-                    return Err(InventoryError::Db(format!(
-                        "Invalid inventory row at index {}: spool_id, material, filament_name and color_name are required",
-                        index
-                    )));
-                }
-
-                let remaining_g = row
-                    .remaining_g
-                    .or(row.current_weight_g)
-                    .or(row.initial_weight_g)
-                    .unwrap_or(1000)
-                    .max(0);
-                let current_weight_g = row.current_weight_g.unwrap_or(remaining_g).max(0);
-                let initial_weight_g = row
-                    .initial_weight_g
-                    .unwrap_or(remaining_g.max(current_weight_g).max(1000))
-                    .max(current_weight_g)
-                    .max(remaining_g)
-                    .max(1);
-                let status = normalize_spool_status(row.status.as_deref());
-                let location_id = match normalize_optional_text(row.location.as_deref()) {
-                    Some(location) => Some(self.ensure_location(&location)?),
-                    None => None,
-                };
-                let home_location_id = location_id.clone();
-                let qr_code = normalize_optional_text(row.qr_code.as_deref());
-                let vendor = normalize_optional_text(row.vendor.as_deref());
-                let master_id = self.upsert_manual_master(ManualMasterInput {
-                    material,
-                    filament_name,
-                    color_name,
-                    hex_color: None,
-                    product_url: None,
-                    vendor: vendor.as_deref(),
-                    default_weight: Some(initial_weight_g),
-                })?;
-
-                if self.get_spool_by_id(spool_id)?.is_some() {
-                    self.conn.execute(
-                        "UPDATE filament_spools
-                         SET master_id = ?1,
-                             qr_code = ?2,
-                             status = ?3,
-                             initial_weight_g = ?4,
-                             current_weight_g = ?5,
-                             remaining_g = ?6,
-                             spool_tare_weight_g = NULL,
-                             location_id = ?7,
-                             home_location_id = ?8,
-                             updated_at = datetime('now')
-                         WHERE id = ?9",
-                        params![
-                            master_id,
-                            qr_code,
-                            status,
-                            initial_weight_g,
-                            current_weight_g,
-                            remaining_g,
-                            location_id,
-                            location_id,
-                            spool_id
-                        ],
-                    )?;
-                    updated_count += 1;
-                } else {
-                    let spool = SpoolRow {
-                        id: spool_id.to_string(),
-                        master_id,
-                        qr_code,
-                        rfid_tag: None,
-                        rfid_observed_at: None,
-                        status,
-                        ownership_type: "OWNED".to_string(),
-                        owner_name: None,
-                        owner_contact: None,
-                        ownership_note: None,
-                        initial_weight_g: Some(initial_weight_g),
-                        current_weight_g: Some(current_weight_g),
-                        remaining_g: Some(remaining_g),
-                        spool_tare_weight_g: None,
-                        location_id,
-                        home_location_id,
-                        purchase_date: None,
-                        purchase_price: None,
-                        batch_code: None,
-                        last_used_at: None,
-                    };
-                    self.insert_spool(&spool)?;
-                    created_count += 1;
-                }
-            }
-
-            Ok(InventoryImportStats {
-                imported_count: i64::try_from(rows.len()).unwrap_or(0),
-                created_count,
-                updated_count,
-            })
-        })();
-
-        match result {
-            Ok(stats) => {
-                self.conn.execute_batch("COMMIT;")?;
-                Ok(stats)
-            }
-            Err(error) => {
-                let _ = self.conn.execute_batch("ROLLBACK;");
-                Err(error)
-            }
-        }
+        import_inventory_spool_rows(&self.conn, rows)
     }
 }
 

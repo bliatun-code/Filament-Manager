@@ -34,6 +34,8 @@ pub mod database_export;
 pub mod database_ids;
 #[path = "../../../src/backend/database_import.rs"]
 pub mod database_import;
+#[path = "../../../src/backend/database_inventory_import_apply.rs"]
+pub mod database_inventory_import_apply;
 #[path = "../../../src/backend/database_library_sync_auth.rs"]
 pub mod database_library_sync_auth;
 #[path = "../../../src/backend/database_library_sync_cache.rs"]
