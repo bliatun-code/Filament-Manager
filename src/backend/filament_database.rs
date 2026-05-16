@@ -13,6 +13,7 @@ pub use super::database_printer_models::{
     BambuLiveObservedTrayRow, PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow, PrinterUsageRow,
 };
 pub use super::database_reset_models::CatalogResetStats;
+#[allow(unused_imports)]
 pub use super::database_result::{InventoryError, InventoryResult};
 pub use super::database_spool_models::{
     SpoolHistoryEventRow, SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow,

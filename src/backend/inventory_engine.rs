@@ -1,10 +1,11 @@
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, BambuLiveIntegrationRow, BambuLiveObservedTrayRow, CatalogResetStats,
-    FilamentDatabase, InventoryError, InventoryResult, LibrarySyncCachedSnapshotRow,
-    LibrarySyncSettingsRow, LoanUsageByPersonRow, ManualMasterInput, MasterCatalogUpdateInput,
+    FilamentDatabase, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, LoanUsageByPersonRow,
+    ManualMasterInput, MasterCatalogUpdateInput,
     PrinterOverviewRow, PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow,
     SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow,
 };
+use crate::backend::database_result::{InventoryError, InventoryResult};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -800,7 +801,7 @@ impl InventoryEngine {
         let filament_name = input.filament_name.trim();
         let color_name = input.color_name.trim();
         if material.is_empty() || filament_name.is_empty() || color_name.is_empty() {
-            return Err(crate::backend::filament_database::InventoryError::Db(
+            return Err(InventoryError::Db(
                 "material, filament name and color are required".to_string(),
             ));
         }
@@ -1280,7 +1281,7 @@ impl InventoryEngine {
         payload: serde_json::Value,
     ) -> InventoryResult<()> {
         let payload_json = serde_json::to_string(&payload).map_err(|error| {
-            crate::backend::filament_database::InventoryError::Db(error.to_string())
+            InventoryError::Db(error.to_string())
         })?;
         self.db
             .insert_spool_history_event(spool_id, event_type, &payload_json)

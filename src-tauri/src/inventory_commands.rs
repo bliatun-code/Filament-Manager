@@ -1,9 +1,10 @@
 use crate::app_services::CompanionService;
 use crate::backend::filament_database::{
-    ActiveSpoolLoanRow, CatalogResetStats, FilamentMasterCatalogRow, InventoryError,
-    LoanUsageByPersonRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow,
-    SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow,
+    ActiveSpoolLoanRow, CatalogResetStats, FilamentMasterCatalogRow, LoanUsageByPersonRow,
+    SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow, SpoolUsagePointRow,
+    SpoolWithMasterRow, WishlistItemRow,
 };
+use crate::backend::database_result::InventoryError;
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreateSpoolInput, CreateWishlistItemInput, DeleteSpoolInput,
     LendSpoolInput, PurgeSpoolInput, ReturnSpoolLoanInput, ScanSource,

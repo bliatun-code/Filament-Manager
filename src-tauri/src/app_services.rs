@@ -1,9 +1,9 @@
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, BambuLiveIntegrationEntryRow, BambuLiveObservedTrayRow, FilamentDatabase,
-    FilamentMasterCatalogRow, InventoryError, InventoryResult, PrinterOverviewRow,
-    SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow, SpoolUsagePointRow,
-    SpoolWithMasterRow, WishlistItemRow,
+    FilamentMasterCatalogRow, PrinterOverviewRow, SpoolHistoryEventRow, SpoolLoanDetailsRow,
+    SpoolLoanRow, SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow,
 };
+use crate::backend::database_result::{InventoryError, InventoryResult};
 use crate::backend::inventory_engine::{
     AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
     CreateWishlistItemInput, DeleteSpoolInput, InventoryEngine, LendSpoolInput, PurgeSpoolInput,

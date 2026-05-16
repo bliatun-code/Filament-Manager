@@ -1,8 +1,8 @@
 use crate::app_services::CompanionService;
 use crate::backend::filament_database::{
-    BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow, InventoryError, PrinterOverviewRow,
-    PrinterRow,
+    BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow, PrinterOverviewRow, PrinterRow,
 };
+use crate::backend::database_result::InventoryError;
 use crate::backend::inventory_engine::{
     AssignPrinterSlotInput, CreatePrinterInput, RecordPrintUsageInput,
 };
@@ -74,7 +74,7 @@ pub(crate) fn save_bambu_live_integration(
             .into_iter()
             .any(|printer| printer.id == printer_id);
         if !exists {
-            return Err(crate::backend::filament_database::InventoryError::NotFound);
+            return Err(InventoryError::NotFound);
         }
         Ok(())
     })?;

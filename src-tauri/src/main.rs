@@ -285,7 +285,7 @@ fn resolve_windows_storage_dir(roaming_dir: PathBuf, local_dir: PathBuf) -> Path
 
 pub(crate) fn with_inventory<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>
 where
-    Func: FnOnce(InventoryEngine) -> backend::filament_database::InventoryResult<Output>,
+    Func: FnOnce(InventoryEngine) -> backend::database_result::InventoryResult<Output>,
 {
     let db = FilamentDatabase::open(&state.db_path).map_err(|error| error.to_string())?;
     let engine = InventoryEngine::new(db);
@@ -294,7 +294,7 @@ where
 
 pub(crate) fn with_db<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>
 where
-    Func: FnOnce(&FilamentDatabase) -> backend::filament_database::InventoryResult<Output>,
+    Func: FnOnce(&FilamentDatabase) -> backend::database_result::InventoryResult<Output>,
 {
     let db = FilamentDatabase::open(&state.db_path).map_err(|error| error.to_string())?;
     func(&db).map_err(|error| format!("{:?}", error))
