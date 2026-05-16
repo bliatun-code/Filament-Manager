@@ -57,6 +57,7 @@ mod trusted_lan_config_commands;
 mod trusted_lan_health;
 mod trusted_lan_interface_commands;
 mod trusted_lan_interfaces;
+mod trusted_lan_pairing_commands;
 mod trusted_lan_runtime_commands;
 mod trusted_lan_status_commands;
 
@@ -167,7 +168,7 @@ fn main() {
             trusted_lan_status_commands::get_trusted_lan_companion_status,
             trusted_lan_interface_commands::list_trusted_lan_interfaces,
             trusted_lan_config_commands::update_trusted_lan_companion_config,
-            trusted_lan_commands::create_trusted_lan_pairing,
+            trusted_lan_pairing_commands::create_trusted_lan_pairing,
             trusted_lan_commands::list_trusted_lan_paired_browsers,
             trusted_lan_commands::revoke_trusted_lan_paired_browser,
             trusted_lan_commands::revoke_all_trusted_lan_paired_browsers,
