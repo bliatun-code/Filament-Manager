@@ -260,6 +260,16 @@ fn trimmed_non_empty(value: Option<&str>) -> Option<&str> {
     value.map(str::trim).filter(|entry| !entry.is_empty())
 }
 
+fn save_library_sync_success(
+    state: &tauri::State<'_, AppState>,
+    message: &str,
+    device_name: Option<&str>,
+) -> Result<(), String> {
+    with_inventory(state, |engine| {
+        engine.save_library_sync_validation_state(true, Some(message), device_name)
+    })
+}
+
 #[tauri::command]
 pub(crate) fn fetch_library_sync_snapshot(
     state: tauri::State<'_, AppState>,
@@ -344,9 +354,7 @@ pub(crate) fn fetch_library_sync_spool_detail(
         ),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some("Host spool detail refreshed."), None)
-    })?;
+    save_library_sync_success(&state, "Host spool detail refreshed.", None)?;
 
     Ok(detail)
 }
