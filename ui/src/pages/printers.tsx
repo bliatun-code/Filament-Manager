@@ -5,6 +5,7 @@ import {
   type BambuLiveObservedTray,
   type PrinterOverviewRow,
   type PrinterAmsSlotRow,
+  type SpoolWithMasterRow,
 } from "../lib/tauri_client";
 import { createManagedPrinter } from "../lib/printer_writes";
 import { updateInventorySpoolRfidTag } from "../lib/spool_writes";
@@ -19,7 +20,6 @@ import {
   buildIncomingWeightPrompt,
   buildRfidOverridePrompt,
   buildSlotSwapDraft,
-  filterAllowedSpoolsForSlot,
   filterSlotOptionsBySearch,
   parseWeightInput,
   prepareMeasuredWeightUpdate,
