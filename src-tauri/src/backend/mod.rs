@@ -40,6 +40,8 @@ pub mod database_library_sync_validation;
 pub mod database_loan_create;
 #[path = "../../../src/backend/database_loan_queries.rs"]
 pub mod database_loan_queries;
+#[path = "../../../src/backend/database_loan_return.rs"]
+pub mod database_loan_return;
 #[path = "../../../src/backend/database_locations.rs"]
 pub mod database_locations;
 #[path = "../../../src/backend/database_print_jobs.rs"]

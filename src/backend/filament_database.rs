@@ -58,6 +58,10 @@ use super::database_loan_queries::{
     list_spool_loans_for_direction as list_spool_loans_for_direction_rows,
     spool_has_active_loan as spool_has_active_loan_row,
 };
+use super::database_loan_return::{
+    return_inbound_spool_loan as return_inbound_spool_loan_row,
+    return_spool_loan as return_spool_loan_row,
+};
 use super::database_locations::ensure_location as ensure_location_row;
 use super::database_print_jobs::insert_print_job as insert_print_job_row;
 use super::database_printer_queries::{
@@ -74,7 +78,6 @@ use super::database_reset::{
     reset_catalog_data as reset_catalog_data_rows,
 };
 use super::database_result::require_rows;
-use super::database_rows::map_spool_loan_row;
 use super::database_schema::{ensure_no_foreign_key_violations, table_columns};
 use super::database_schema_setup::apply_schema_migrations;
 use super::database_settings::{
@@ -907,104 +910,7 @@ impl FilamentDatabase {
         returned_grams: i64,
         return_note: Option<&str>,
     ) -> InventoryResult<SpoolLoanRow> {
-        let tx = self.conn.unchecked_transaction()?;
-        let current = tx
-            .query_row(
-                "SELECT id, spool_id, borrower_name,
-                        COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND') AS loan_direction,
-                        COALESCE(NULLIF(loan_status, ''), CASE
-                            WHEN returned_at IS NULL THEN 'ACTIVE'
-                            ELSE 'RETURNED'
-                        END) AS loan_status,
-                        COALESCE(NULLIF(counterparty_name, ''), borrower_name) AS counterparty_name,
-                        counterparty_contact, counterparty_note, grams_out, lent_note, lent_at,
-                        expected_return_at, returned_at, returned_grams, consumed_grams, return_note
-                 FROM spool_loans
-                 WHERE id = ?1
-                 LIMIT 1",
-                params![loan_id],
-                map_spool_loan_row,
-            )
-            .optional()?;
-
-        let loan = match current {
-            Some(value) => value,
-            None => return Err(InventoryError::NotFound),
-        };
-        if loan.returned_at.is_some() {
-            return Err(InventoryError::Db("loan already returned".to_string()));
-        }
-        if !loan.loan_direction.eq_ignore_ascii_case("OUTBOUND") {
-            return Err(InventoryError::Db(
-                "inbound loans require a dedicated return flow".to_string(),
-            ));
-        }
-
-        let safe_returned = returned_grams.max(0);
-        let consumed = (loan.grams_out - safe_returned).max(0);
-
-        tx.execute(
-            "UPDATE spool_loans
-             SET loan_status = 'RETURNED',
-                 returned_at = datetime('now'),
-                 returned_grams = ?2,
-                 consumed_grams = ?3,
-                 return_note = ?4
-             WHERE id = ?1",
-            params![loan_id, safe_returned, consumed, return_note],
-        )?;
-
-        let next_status = if safe_returned == 0 {
-            "EMPTY"
-        } else {
-            "IN_STOCK"
-        };
-        tx.execute(
-            "UPDATE filament_spools
-             SET status = ?2,
-                 location_id = NULL,
-                 current_weight_g = ?3,
-                 remaining_g = ?3,
-                 updated_at = datetime('now')
-             WHERE id = ?1 AND deleted_at IS NULL",
-            params![loan.spool_id, next_status, safe_returned],
-        )?;
-
-        tx.execute(
-            "INSERT INTO scales (id, name, protocol, created_at, updated_at)
-             VALUES ('loan-return', 'Loan Return', 'VIRTUAL', datetime('now'), datetime('now'))
-             ON CONFLICT(id) DO UPDATE SET
-                name = excluded.name,
-                protocol = excluded.protocol,
-                updated_at = datetime('now')",
-            [],
-        )?;
-
-        tx.execute(
-            "INSERT INTO weight_readings (id, scale_id, spool_id, grams, captured_at, source)
-             VALUES (?1, 'loan-return', ?2, ?3, datetime('now'), 'LOAN_RETURN')",
-            params![new_id(), loan.spool_id, safe_returned],
-        )?;
-
-        let updated = tx.query_row(
-            "SELECT id, spool_id, borrower_name,
-                    COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND') AS loan_direction,
-                    COALESCE(NULLIF(loan_status, ''), CASE
-                        WHEN returned_at IS NULL THEN 'ACTIVE'
-                        ELSE 'RETURNED'
-                    END) AS loan_status,
-                    COALESCE(NULLIF(counterparty_name, ''), borrower_name) AS counterparty_name,
-                    counterparty_contact, counterparty_note, grams_out, lent_note, lent_at,
-                    expected_return_at, returned_at, returned_grams, consumed_grams, return_note
-             FROM spool_loans
-             WHERE id = ?1
-             LIMIT 1",
-            params![loan_id],
-            map_spool_loan_row,
-        )?;
-
-        tx.commit()?;
-        Ok(updated)
+        return_spool_loan_row(&self.conn, loan_id, returned_grams, return_note)
     }
 
     pub fn return_inbound_spool_loan(
@@ -1013,112 +919,7 @@ impl FilamentDatabase {
         returned_grams: i64,
         return_note: Option<&str>,
     ) -> InventoryResult<SpoolLoanRow> {
-        let tx = self.conn.unchecked_transaction()?;
-        let current = tx
-            .query_row(
-                "SELECT id, spool_id, borrower_name,
-                        COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND') AS loan_direction,
-                        COALESCE(NULLIF(loan_status, ''), CASE
-                            WHEN returned_at IS NULL THEN 'ACTIVE'
-                            ELSE 'RETURNED'
-                        END) AS loan_status,
-                        COALESCE(NULLIF(counterparty_name, ''), borrower_name) AS counterparty_name,
-                        counterparty_contact, counterparty_note, grams_out, lent_note, lent_at,
-                        expected_return_at, returned_at, returned_grams, consumed_grams, return_note
-                 FROM spool_loans
-                 WHERE id = ?1
-                 LIMIT 1",
-                params![loan_id],
-                map_spool_loan_row,
-            )
-            .optional()?;
-
-        let loan = match current {
-            Some(value) => value,
-            None => return Err(InventoryError::NotFound),
-        };
-        if loan.returned_at.is_some() {
-            return Err(InventoryError::Db("loan already returned".to_string()));
-        }
-        if !loan.loan_direction.eq_ignore_ascii_case("INBOUND") {
-            return Err(InventoryError::Db(
-                "this flow only supports inbound loans".to_string(),
-            ));
-        }
-
-        let spool_exists: Option<i64> = tx
-            .query_row(
-                "SELECT 1
-                 FROM filament_spools
-                 WHERE id = ?1
-                   AND deleted_at IS NULL
-                 LIMIT 1",
-                params![loan.spool_id],
-                |row| row.get(0),
-            )
-            .optional()?;
-        if spool_exists.is_none() {
-            return Err(InventoryError::NotFound);
-        }
-
-        let safe_returned = returned_grams.max(0);
-        let consumed = (loan.grams_out - safe_returned).max(0);
-
-        tx.execute(
-            "UPDATE spool_loans
-             SET loan_status = 'RETURNED',
-                 returned_at = datetime('now'),
-                 returned_grams = ?2,
-                 consumed_grams = ?3,
-                 return_note = ?4
-             WHERE id = ?1",
-            params![
-                loan_id,
-                safe_returned,
-                consumed,
-                normalize_optional_text(return_note)
-            ],
-        )?;
-
-        tx.execute(
-            "UPDATE ams_slots
-             SET spool_id = NULL, last_seen_at = datetime('now')
-             WHERE spool_id = ?1",
-            params![loan.spool_id],
-        )?;
-
-        tx.execute(
-            "UPDATE filament_spools
-             SET status = 'DELETED',
-                 deleted_at = datetime('now'),
-                 location_id = NULL,
-                 current_weight_g = ?2,
-                 remaining_g = ?2,
-                 updated_at = datetime('now')
-             WHERE id = ?1
-               AND deleted_at IS NULL",
-            params![loan.spool_id, safe_returned],
-        )?;
-
-        let updated = tx.query_row(
-            "SELECT id, spool_id, borrower_name,
-                    COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND') AS loan_direction,
-                    COALESCE(NULLIF(loan_status, ''), CASE
-                        WHEN returned_at IS NULL THEN 'ACTIVE'
-                        ELSE 'RETURNED'
-                    END) AS loan_status,
-                    COALESCE(NULLIF(counterparty_name, ''), borrower_name) AS counterparty_name,
-                    counterparty_contact, counterparty_note, grams_out, lent_note, lent_at,
-                    expected_return_at, returned_at, returned_grams, consumed_grams, return_note
-             FROM spool_loans
-             WHERE id = ?1
-             LIMIT 1",
-            params![loan_id],
-            map_spool_loan_row,
-        )?;
-
-        tx.commit()?;
-        Ok(updated)
+        return_inbound_spool_loan_row(&self.conn, loan_id, returned_grams, return_note)
     }
 
     pub fn list_active_spool_loans(&self) -> InventoryResult<Vec<ActiveSpoolLoanRow>> {
