@@ -45,7 +45,6 @@ use super::database_loan_return::{
     return_spool_loan as return_spool_loan_row,
 };
 use super::database_loan_update::update_active_inbound_spool_loan_counterparty as update_active_inbound_spool_loan_counterparty_row;
-use super::database_locations::ensure_location as ensure_location_row;
 use super::database_print_jobs::insert_print_job as insert_print_job_row;
 pub use super::database_printer_models::{
     BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow, BambuLiveObservedStateRow,
@@ -62,22 +61,8 @@ use super::database_printer_slot_assignment::assign_spool_to_ams_slot as assign_
 pub use super::database_reset_models::CatalogResetStats;
 pub use super::database_result::{InventoryError, InventoryResult};
 use super::database_schema_setup::apply_schema_migrations;
-use super::database_spool_assignment::{
-    spool_assigned_to_printer as spool_assigned_to_printer_row,
-    spool_assigned_to_specific_printer as spool_assigned_to_specific_printer_row,
-};
-use super::database_spool_delete::{
-    purge_spool as purge_spool_row, soft_delete_spool as soft_delete_spool_row,
-};
-use super::database_spool_insert::insert_spool as insert_spool_row;
 pub use super::database_spool_models::{
     SpoolHistoryEventRow, SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow,
-};
-use super::database_spool_queries::{
-    get_spool_by_id as get_spool_by_id_row, get_spool_by_qr as get_spool_by_qr_row,
-    get_spool_with_master_by_id as get_spool_with_master_by_id_row,
-    list_low_stock_spools as list_low_stock_spool_rows,
-    list_spools_with_master as list_spools_with_master_rows,
 };
 use super::database_spool_updates::{
     set_spool_home_location as set_spool_home_location_row,
@@ -122,25 +107,6 @@ impl FilamentDatabase {
 
     pub(crate) fn connection(&self) -> &Connection {
         &self.conn
-    }
-
-    pub fn insert_spool(&self, spool: &SpoolRow) -> InventoryResult<()> {
-        insert_spool_row(&self.conn, spool)
-    }
-
-    pub fn get_spool_by_qr(&self, qr_code: &str) -> InventoryResult<Option<SpoolRow>> {
-        get_spool_by_qr_row(&self.conn, qr_code)
-    }
-
-    pub fn get_spool_by_id(&self, spool_id: &str) -> InventoryResult<Option<SpoolRow>> {
-        get_spool_by_id_row(&self.conn, spool_id)
-    }
-
-    pub fn get_spool_with_master_by_id(
-        &self,
-        spool_id: &str,
-    ) -> InventoryResult<Option<SpoolWithMasterRow>> {
-        get_spool_with_master_by_id_row(&self.conn, spool_id)
     }
 
     pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {
@@ -239,18 +205,6 @@ impl FilamentDatabase {
         )
     }
 
-    pub fn soft_delete_spool(&self, spool_id: &str) -> InventoryResult<()> {
-        soft_delete_spool_row(&self.conn, spool_id)
-    }
-
-    pub fn purge_spool(&self, spool_id: &str) -> InventoryResult<()> {
-        purge_spool_row(&self.conn, spool_id)
-    }
-
-    pub fn ensure_location(&self, name: &str) -> InventoryResult<String> {
-        ensure_location_row(&self.conn, name)
-    }
-
     pub fn sqlite_now(&self) -> InventoryResult<String> {
         sqlite_now_value(&self.conn)
     }
@@ -306,30 +260,6 @@ impl FilamentDatabase {
         limit: i64,
     ) -> InventoryResult<Vec<SpoolUsagePointRow>> {
         list_spool_usage_point_rows(&self.conn, spool_id, limit)
-    }
-
-    pub fn list_spools_with_master(
-        &self,
-        limit: i64,
-        offset: i64,
-    ) -> InventoryResult<Vec<SpoolWithMasterRow>> {
-        list_spools_with_master_rows(&self.conn, limit, offset)
-    }
-
-    pub fn list_low_stock_spools(&self, threshold: i64) -> InventoryResult<Vec<SpoolRow>> {
-        list_low_stock_spool_rows(&self.conn, threshold)
-    }
-
-    pub fn spool_assigned_to_printer(&self, spool_id: &str) -> InventoryResult<bool> {
-        spool_assigned_to_printer_row(&self.conn, spool_id)
-    }
-
-    pub fn spool_assigned_to_specific_printer(
-        &self,
-        spool_id: &str,
-        printer_id: &str,
-    ) -> InventoryResult<bool> {
-        spool_assigned_to_specific_printer_row(&self.conn, spool_id, printer_id)
     }
 
     pub fn create_spool_loan(

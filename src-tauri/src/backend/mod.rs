@@ -102,6 +102,8 @@ pub mod database_settings_facade;
 pub mod database_spool_assignment;
 #[path = "../../../src/backend/database_spool_delete.rs"]
 pub mod database_spool_delete;
+#[path = "../../../src/backend/database_spool_facade.rs"]
+pub mod database_spool_facade;
 #[path = "../../../src/backend/database_spool_insert.rs"]
 pub mod database_spool_insert;
 #[path = "../../../src/backend/database_spool_models.rs"]
