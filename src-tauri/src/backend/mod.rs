@@ -8,6 +8,8 @@ pub mod database_alerts;
 pub mod database_backup;
 #[path = "../../../src/backend/database_borrowed_schema.rs"]
 pub mod database_borrowed_schema;
+#[path = "../../../src/backend/database_catalog_esun.rs"]
+pub mod database_catalog_esun;
 #[path = "../../../src/backend/database_catalog_lifecycle.rs"]
 pub mod database_catalog_lifecycle;
 #[path = "../../../src/backend/database_catalog_manual.rs"]
