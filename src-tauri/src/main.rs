@@ -42,6 +42,7 @@ mod library_sync_validation_commands;
 mod library_sync_wishlist_write_commands;
 mod printer_command_support;
 mod printer_commands;
+mod printer_models;
 mod security;
 mod state;
 mod trusted_lan_commands;
