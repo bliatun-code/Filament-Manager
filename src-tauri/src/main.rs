@@ -54,6 +54,7 @@ mod security;
 mod state;
 mod trusted_lan_commands;
 mod trusted_lan_browser_read_commands;
+mod trusted_lan_browser_revoke_commands;
 mod trusted_lan_config_commands;
 mod trusted_lan_health;
 mod trusted_lan_interface_commands;
@@ -171,7 +172,7 @@ fn main() {
             trusted_lan_config_commands::update_trusted_lan_companion_config,
             trusted_lan_pairing_commands::create_trusted_lan_pairing,
             trusted_lan_browser_read_commands::list_trusted_lan_paired_browsers,
-            trusted_lan_commands::revoke_trusted_lan_paired_browser,
+            trusted_lan_browser_revoke_commands::revoke_trusted_lan_paired_browser,
             trusted_lan_commands::revoke_all_trusted_lan_paired_browsers,
             inventory_read_commands::list_master_catalog,
             catalog_commands::refresh_bambu_catalog,
