@@ -33,6 +33,56 @@ pub(crate) struct InventoryImportStats {
     pub(crate) updated_count: i64,
 }
 
+pub(crate) fn import_data_content<F, G, H>(
+    content: &str,
+    validate_full_backup: F,
+    import_full_backup: G,
+    import_inventory_rows: H,
+) -> InventoryResult<ImportDataStats>
+where
+    F: Fn(&str) -> InventoryResult<super::database_backup::BackupValidationStats>,
+    G: Fn(&str) -> InventoryResult<()>,
+    H: Fn(&[InventoryImportRow]) -> InventoryResult<InventoryImportStats>,
+{
+    let normalized = content.trim_start_matches('\u{feff}').trim();
+    if normalized.is_empty() {
+        return Err(InventoryError::Db("Import file is empty".to_string()));
+    }
+
+    if let Ok(validation) = validate_full_backup(normalized) {
+        import_full_backup(normalized)?;
+        return Ok(ImportDataStats {
+            detected_format: "FULL_BACKUP".to_string(),
+            imported_count: validation.total_rows,
+            created_count: 0,
+            updated_count: 0,
+        });
+    }
+
+    if let Ok(rows) = parse_inventory_spools_json(normalized) {
+        let stats = import_inventory_rows(&rows)?;
+        return Ok(import_stats("INVENTORY_JSON", stats));
+    }
+
+    if let Ok(rows) = parse_inventory_spools_csv(normalized) {
+        let stats = import_inventory_rows(&rows)?;
+        return Ok(import_stats("INVENTORY_CSV", stats));
+    }
+
+    Err(InventoryError::Db(
+        "Unsupported import format. Expected full backup JSON, inventory JSON array/object, or inventory CSV.".to_string(),
+    ))
+}
+
+fn import_stats(detected_format: &str, stats: InventoryImportStats) -> ImportDataStats {
+    ImportDataStats {
+        detected_format: detected_format.to_string(),
+        imported_count: stats.imported_count,
+        created_count: stats.created_count,
+        updated_count: stats.updated_count,
+    }
+}
+
 pub(crate) fn parse_inventory_spools_json(
     content: &str,
 ) -> InventoryResult<Vec<InventoryImportRow>> {

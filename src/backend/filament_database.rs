@@ -29,8 +29,7 @@ use super::database_export::{
 };
 pub use super::database_import::ImportDataStats;
 use super::database_import::{
-    parse_inventory_spools_csv, parse_inventory_spools_json, InventoryImportRow,
-    InventoryImportStats,
+    import_data_content as import_data_content_rows, InventoryImportRow, InventoryImportStats,
 };
 use super::database_library_sync_auth::{
     clear_library_sync_client_auth_state as clear_library_sync_client_auth_state_rows,
@@ -1271,44 +1270,12 @@ impl FilamentDatabase {
     }
 
     pub fn import_data_content(&self, content: &str) -> InventoryResult<ImportDataStats> {
-        let normalized = content.trim_start_matches('\u{feff}').trim();
-        if normalized.is_empty() {
-            return Err(InventoryError::Db("Import file is empty".to_string()));
-        }
-
-        if let Ok(validation) = self.validate_full_backup_json(normalized) {
-            self.import_full_backup_json(normalized)?;
-            return Ok(ImportDataStats {
-                detected_format: "FULL_BACKUP".to_string(),
-                imported_count: validation.total_rows,
-                created_count: 0,
-                updated_count: 0,
-            });
-        }
-
-        if let Ok(rows) = parse_inventory_spools_json(normalized) {
-            let stats = self.import_inventory_spools_rows(&rows)?;
-            return Ok(ImportDataStats {
-                detected_format: "INVENTORY_JSON".to_string(),
-                imported_count: stats.imported_count,
-                created_count: stats.created_count,
-                updated_count: stats.updated_count,
-            });
-        }
-
-        if let Ok(rows) = parse_inventory_spools_csv(normalized) {
-            let stats = self.import_inventory_spools_rows(&rows)?;
-            return Ok(ImportDataStats {
-                detected_format: "INVENTORY_CSV".to_string(),
-                imported_count: stats.imported_count,
-                created_count: stats.created_count,
-                updated_count: stats.updated_count,
-            });
-        }
-
-        Err(InventoryError::Db(
-            "Unsupported import format. Expected full backup JSON, inventory JSON array/object, or inventory CSV.".to_string(),
-        ))
+        import_data_content_rows(
+            content,
+            |normalized| self.validate_full_backup_json(normalized),
+            |normalized| self.import_full_backup_json(normalized),
+            |rows| self.import_inventory_spools_rows(rows),
+        )
     }
 
     pub fn enqueue_sync_action(
