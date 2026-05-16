@@ -1001,13 +1001,10 @@ pub(crate) fn update_library_sync_host_wishlist_item_status(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncUpdateWishlistStatusInput,
 ) -> Result<(), String> {
-    let validation_input = ValidateLibrarySyncHostInput {
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
         base_url: input.base_url.clone(),
         expected_library_id: input.expected_library_id.clone(),
-    };
-    let (normalized_base_url, expected_library_id) =
-        normalize_library_sync_host_input(&validation_input)?;
-    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    })?;
 
     let item_id = input.item_id.trim();
     if item_id.is_empty() {
@@ -1032,13 +1029,10 @@ pub(crate) fn delete_library_sync_host_wishlist_item(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncDeleteWishlistItemInput,
 ) -> Result<(), String> {
-    let validation_input = ValidateLibrarySyncHostInput {
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
         base_url: input.base_url.clone(),
         expected_library_id: input.expected_library_id.clone(),
-    };
-    let (normalized_base_url, expected_library_id) =
-        normalize_library_sync_host_input(&validation_input)?;
-    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    })?;
 
     let item_id = input.item_id.trim();
     if item_id.is_empty() {
