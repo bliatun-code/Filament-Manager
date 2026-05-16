@@ -1,23 +1,12 @@
-use crate::backend::filament_database::{
-    BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow, PrinterOverviewRow, PrinterRow,
-};
+use crate::backend::filament_database::{BambuLiveIntegrationRow, PrinterOverviewRow};
 use crate::backend::database_result::InventoryError;
 use crate::backend::inventory_engine::{
     AssignPrinterSlotInput, CreatePrinterInput, RecordPrintUsageInput,
 };
 use crate::printer_command_support::{companion_service, inventory_error_to_string};
-use crate::printer_models::supported_printer_models;
 use crate::state::AppState;
 use crate::{with_db, with_inventory};
 use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize)]
-pub(crate) struct PrinterSettingsSnapshot {
-    active_printer_id: Option<String>,
-    printers: Vec<PrinterRow>,
-    printer_models: Vec<String>,
-    bambu_live_integrations: Vec<BambuLiveIntegrationEntryRow>,
-}
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct SaveBambuLiveIntegrationInput {
@@ -26,21 +15,6 @@ pub(crate) struct SaveBambuLiveIntegrationInput {
     host: Option<String>,
     access_code: Option<String>,
     printer_serial: Option<String>,
-}
-
-#[tauri::command]
-pub(crate) fn get_printer_settings(
-    state: tauri::State<'_, AppState>,
-) -> Result<PrinterSettingsSnapshot, String> {
-    let bambu_live_integrations = with_db(&state, |db| db.list_bambu_live_integrations())?;
-    with_inventory(&state, |engine| {
-        Ok(PrinterSettingsSnapshot {
-            active_printer_id: engine.get_active_printer()?,
-            printers: engine.list_printers()?,
-            printer_models: supported_printer_models(),
-            bambu_live_integrations,
-        })
-    })
 }
 
 #[tauri::command]

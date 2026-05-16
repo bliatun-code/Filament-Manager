@@ -43,6 +43,7 @@ mod library_sync_wishlist_write_commands;
 mod printer_command_support;
 mod printer_commands;
 mod printer_models;
+mod printer_settings_commands;
 mod security;
 mod state;
 mod trusted_lan_commands;
@@ -148,7 +149,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             inventory_read_commands::list_spools,
             inventory_read_commands::list_wishlist_items,
-            printer_commands::get_printer_settings,
+            printer_settings_commands::get_printer_settings,
             printer_commands::list_printer_overview,
             trusted_lan_commands::get_trusted_lan_companion_status,
             trusted_lan_commands::list_trusted_lan_interfaces,

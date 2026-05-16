@@ -15,7 +15,7 @@ use crate::library_sync_models::{
     LibrarySyncCatalogListInput, LibrarySyncFilamentConsumptionInput, LibrarySyncSpoolDetailInput,
     LibrarySyncSpoolListInput, LibrarySyncWishlistListInput, ValidateLibrarySyncHostInput,
 };
-use crate::printer_commands::PrinterSettingsSnapshot;
+use crate::printer_settings_commands::PrinterSettingsSnapshot;
 use crate::state::AppState;
 use crate::with_inventory;
 
