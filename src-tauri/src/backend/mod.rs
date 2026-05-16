@@ -60,6 +60,8 @@ pub mod database_locations;
 pub mod database_print_jobs;
 #[path = "../../../src/backend/database_printer_live_events.rs"]
 pub mod database_printer_live_events;
+#[path = "../../../src/backend/database_printer_models.rs"]
+pub mod database_printer_models;
 #[path = "../../../src/backend/database_printer_mutations.rs"]
 pub mod database_printer_mutations;
 #[path = "../../../src/backend/database_printer_queries.rs"]
