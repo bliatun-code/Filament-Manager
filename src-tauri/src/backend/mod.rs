@@ -8,6 +8,8 @@ pub mod database_alerts;
 pub mod database_backup;
 #[path = "../../../src/backend/database_backup_import.rs"]
 pub mod database_backup_import;
+#[path = "../../../src/backend/database_bambu_live_facade.rs"]
+pub mod database_bambu_live_facade;
 #[path = "../../../src/backend/database_bambu_live_settings.rs"]
 pub mod database_bambu_live_settings;
 #[path = "../../../src/backend/database_borrowed_schema.rs"]
@@ -92,6 +94,8 @@ pub mod database_schema;
 pub mod database_schema_setup;
 #[path = "../../../src/backend/database_settings.rs"]
 pub mod database_settings;
+#[path = "../../../src/backend/database_settings_facade.rs"]
+pub mod database_settings_facade;
 #[path = "../../../src/backend/database_spool_assignment.rs"]
 pub mod database_spool_assignment;
 #[path = "../../../src/backend/database_spool_delete.rs"]

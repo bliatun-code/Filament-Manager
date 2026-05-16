@@ -4,11 +4,6 @@ use super::database_alerts::{
 pub use super::database_backup::BackupValidationStats;
 use super::database_backup::{export_full_backup_content, validate_full_backup_content};
 use super::database_backup_import::import_full_backup_content;
-use super::database_bambu_live_settings::{
-    delete_bambu_live_integration as delete_bambu_live_integration_row,
-    list_bambu_live_integrations as list_bambu_live_integration_rows,
-    save_bambu_live_integration as save_bambu_live_integration_row,
-};
 use super::database_catalog_esun::normalize_esun_catalog_colors as normalize_esun_catalog_colors_rows;
 pub use super::database_catalog_inputs::{ManualMasterInput, MasterCatalogUpdateInput};
 use super::database_catalog_lifecycle::apply_vendor_discontinued_rules as apply_vendor_discontinued_rules_row;
@@ -58,7 +53,6 @@ use super::database_loan_return::{
 use super::database_loan_update::update_active_inbound_spool_loan_counterparty as update_active_inbound_spool_loan_counterparty_row;
 use super::database_locations::ensure_location as ensure_location_row;
 use super::database_print_jobs::insert_print_job as insert_print_job_row;
-use super::database_printer_live_events::insert_printer_live_event as insert_printer_live_event_row;
 pub use super::database_printer_models::{
     BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow, BambuLiveObservedStateRow,
     BambuLiveObservedTrayRow, PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow, PrinterUsageRow,
@@ -74,10 +68,6 @@ use super::database_printer_slot_assignment::assign_spool_to_ams_slot as assign_
 pub use super::database_reset_models::CatalogResetStats;
 pub use super::database_result::{InventoryError, InventoryResult};
 use super::database_schema_setup::apply_schema_migrations;
-use super::database_settings::{
-    delete_setting as delete_setting_row, get_setting as get_setting_row,
-    set_setting as set_setting_row,
-};
 use super::database_spool_assignment::{
     spool_assigned_to_printer as spool_assigned_to_printer_row,
     spool_assigned_to_specific_printer as spool_assigned_to_specific_printer_row,
@@ -118,7 +108,6 @@ pub use super::filament_master_models::{
     FilamentMasterSummary,
 };
 use rusqlite::Connection;
-use serde_json::Value;
 
 const SCHEMA_SQL: &str = include_str!("../database/schema.sql");
 
@@ -519,45 +508,6 @@ impl FilamentDatabase {
 
     pub fn delete_printer(&self, printer_id: &str) -> InventoryResult<()> {
         delete_printer_row(&self.conn, printer_id)
-    }
-
-    pub fn set_setting(&self, key: &str, value: &str) -> InventoryResult<()> {
-        set_setting_row(&self.conn, key, value)
-    }
-
-    pub fn delete_setting(&self, key: &str) -> InventoryResult<()> {
-        delete_setting_row(&self.conn, key)
-    }
-
-    pub fn get_setting(&self, key: &str) -> InventoryResult<Option<String>> {
-        get_setting_row(&self.conn, key)
-    }
-
-    pub fn save_bambu_live_integration(
-        &self,
-        printer_id: &str,
-        config: &BambuLiveIntegrationRow,
-    ) -> InventoryResult<()> {
-        save_bambu_live_integration_row(&self.conn, printer_id, config)
-    }
-
-    pub fn delete_bambu_live_integration(&self, printer_id: &str) -> InventoryResult<()> {
-        delete_bambu_live_integration_row(&self.conn, printer_id)
-    }
-
-    pub fn list_bambu_live_integrations(
-        &self,
-    ) -> InventoryResult<Vec<BambuLiveIntegrationEntryRow>> {
-        list_bambu_live_integration_rows(&self.conn)
-    }
-
-    pub fn insert_printer_live_event(
-        &self,
-        printer_id: &str,
-        event_type: &str,
-        payload_json: &Value,
-    ) -> InventoryResult<()> {
-        insert_printer_live_event_row(&self.conn, printer_id, event_type, payload_json)
     }
 
     pub fn list_printer_overview(&self) -> InventoryResult<Vec<PrinterOverviewRow>> {
