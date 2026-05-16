@@ -60,50 +60,15 @@ import {
   type SpoolWithMasterRow,
   type SpoolLoanDetailsRow,
 } from "../lib/tauri_client";
+import {
+  statisticsFilterButtonClass,
+  statisticsFilterInputClass,
+  statisticsFilterSelectClass,
+} from "./statistics_view_helpers";
+import { StatisticsEmptyState, SummaryMetricTile } from "./statistics_ui";
 
 function loanPartyName(row: SpoolLoanDetailsRow): string {
   return (row.loan.counterparty_name ?? "").trim() || row.loan.borrower_name;
-}
-
-type MetricTone = "slate" | "sky" | "emerald" | "amber" | "rose";
-
-function metricTileClass(tone: MetricTone): string {
-  switch (tone) {
-    case "sky":
-      return "border-sky-200/80 bg-white/75 dark:border-sky-400/25 dark:bg-sky-500/10";
-    case "emerald":
-      return "border-emerald-200/80 bg-white/75 dark:border-emerald-400/25 dark:bg-emerald-500/10";
-    case "amber":
-      return "border-amber-200/80 bg-white/75 dark:border-amber-400/25 dark:bg-amber-500/10";
-    case "rose":
-      return "border-rose-200/80 bg-white/75 dark:border-rose-400/25 dark:bg-rose-500/10";
-    case "slate":
-    default:
-      return "border-slate-200/85 bg-white/80 dark:border-slate-700 dark:bg-slate-950/45";
-  }
-}
-
-function SummaryMetricTile({
-  label,
-  value,
-  tone = "slate",
-  className = "",
-}: {
-  label: string;
-  value: string;
-  tone?: MetricTone;
-  className?: string;
-}) {
-  return (
-    <div className={`rounded-lg border px-3 py-2 ${metricTileClass(tone)} ${className}`.trim()}>
-      <div className="text-[11px] uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-        {label}
-      </div>
-      <div key={value} className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-50">
-        {value}
-      </div>
-    </div>
-  );
 }
 
 export default function StatisticsPage() {
@@ -553,9 +518,9 @@ export default function StatisticsPage() {
           </div>
         ) : null}
         {!loading && printers.length === 0 ? (
-          <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-500 dark:text-slate-300">
+          <StatisticsEmptyState>
             {t("statistics.noPrinterActivity", "No printer activity available yet.")}
-          </div>
+          </StatisticsEmptyState>
         ) : null}
         <div className="mt-4 space-y-3">
           {printers.map((row) => (
@@ -646,7 +611,7 @@ export default function StatisticsPage() {
                   "statistics.searchFilamentPlaceholder",
                   "Search filament, color, vendor or owner",
                 )}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-100 dark:placeholder:text-slate-400 xl:col-span-2"
+                className={`${statisticsFilterInputClass} xl:col-span-2`}
               />
               <select
                 value={consumptionPrefs.vendorFilter}
@@ -656,7 +621,7 @@ export default function StatisticsPage() {
                     vendorFilter: event.target.value,
                   }))
                 }
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-100"
+                className={statisticsFilterSelectClass}
               >
                 {consumptionVendorOptions.map((option) => (
                   <option key={option} value={option}>
@@ -674,7 +639,7 @@ export default function StatisticsPage() {
                     materialFilter: event.target.value,
                   }))
                 }
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-100"
+                className={statisticsFilterSelectClass}
               >
                 {consumptionMaterialOptions.map((option) => (
                   <option key={option} value={option}>
@@ -692,7 +657,7 @@ export default function StatisticsPage() {
                     ownershipFilter: parseOwnershipFilter(event.target.value),
                   }))
                 }
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-100"
+                className={statisticsFilterSelectClass}
               >
                 <option value="ALL">
                   {`${t("inventory.ownershipGroup", "Ownership")}: ${t("common.all", "All")}`}
@@ -712,7 +677,7 @@ export default function StatisticsPage() {
                     sort: parseConsumptionSort(event.target.value),
                   }))
                 }
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-100"
+                className={statisticsFilterSelectClass}
               >
                 <option value="USED_DESC">{t("statistics.sortUsedDesc", "Most used")}</option>
                 <option value="USED_ASC">{t("statistics.sortUsedAsc", "Least used")}</option>
@@ -726,27 +691,27 @@ export default function StatisticsPage() {
                     ...DEFAULT_CONSUMPTION_PREFS,
                   })
                 }
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-100 dark:hover:bg-slate-900 md:col-span-2 xl:col-span-2"
+                className={`${statisticsFilterButtonClass} md:col-span-2 xl:col-span-2`}
               >
                 {t("statistics.resetFilters", "Reset filters")}
               </button>
             </div>
           ) : null}
           {!consumptionLoading && !consumptionError && consumptionRows.length === 0 ? (
-            <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-500 dark:text-slate-300">
+            <StatisticsEmptyState>
               {t(
                 "statistics.noFilamentBreakdown",
                 "No filament consumption has been logged yet.",
               )}
-            </div>
+            </StatisticsEmptyState>
           ) : null}
           {!consumptionLoading &&
           !consumptionError &&
           consumptionRows.length > 0 &&
           filteredConsumptionRows.length === 0 ? (
-            <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-500 dark:text-slate-300">
+            <StatisticsEmptyState>
               {t("statistics.noFilamentFilterMatch", "No rows match current filters.")}
-            </div>
+            </StatisticsEmptyState>
           ) : null}
           {!consumptionLoading && !consumptionError && filteredConsumptionRows.length > 0 ? (
             <div className="mt-4 max-h-[420px] space-y-3 overflow-auto pr-1">
@@ -842,9 +807,9 @@ export default function StatisticsPage() {
           </div>
         ) : null}
         {!loading && filteredLoanUsage.length === 0 ? (
-          <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-500 dark:text-slate-300">
+          <StatisticsEmptyState>
             {t("statistics.noLoanUsage", "No loan usage recorded yet.")}
-          </div>
+          </StatisticsEmptyState>
         ) : null}
         <div className="mt-4 space-y-3">
           {filteredLoanUsage.map((row) => (
@@ -922,9 +887,9 @@ export default function StatisticsPage() {
           </div>
         ) : null}
         {!loading && inboundLoanUsage.length === 0 ? (
-          <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-500 dark:text-slate-300">
+          <StatisticsEmptyState>
             {t("statistics.noInboundUsage", "No borrowed-in usage recorded yet.")}
-          </div>
+          </StatisticsEmptyState>
         ) : null}
         <div className="mt-4 space-y-3">
           {inboundLoanUsage.map((row) => (
@@ -1024,7 +989,7 @@ export default function StatisticsPage() {
                   "statistics.searchBorrowerFilamentPlaceholder",
                   "Search filament, color or vendor",
                 )}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-100 dark:placeholder:text-slate-400"
+                className={`w-full ${statisticsFilterInputClass}`}
               />
               <button
                 type="button"
@@ -1033,26 +998,26 @@ export default function StatisticsPage() {
                     ...DEFAULT_BORROWER_PREFS,
                   })
                 }
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-100 dark:hover:bg-slate-900 sm:w-auto"
+                className={`${statisticsFilterButtonClass} sm:w-auto`}
               >
                 {t("statistics.resetFilters", "Reset filters")}
               </button>
             </div>
           ) : null}
           {!borrowerLoading && !borrowerError && borrowerRows.length === 0 ? (
-            <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-500 dark:text-slate-300">
+            <StatisticsEmptyState>
               {borrowerModalDirection === "INBOUND"
                 ? t("statistics.noInboundBreakdown", "No borrowed-in owner usage recorded yet.")
                 : t("statistics.noBorrowerBreakdown", "No borrower usage recorded yet.")}
-            </div>
+            </StatisticsEmptyState>
           ) : null}
           {!borrowerLoading &&
           !borrowerError &&
           borrowerRows.length > 0 &&
           filteredBorrowerRows.length === 0 ? (
-            <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-500 dark:text-slate-300">
+            <StatisticsEmptyState>
               {t("statistics.noBorrowerFilterMatch", "No rows match current filters.")}
-            </div>
+            </StatisticsEmptyState>
           ) : null}
           {!borrowerLoading && !borrowerError && filteredBorrowerRows.length > 0 ? (
             <div className="mt-4 max-h-[420px] space-y-3 overflow-auto pr-1">
@@ -1132,9 +1097,9 @@ export default function StatisticsPage() {
 
           {metricModalKind === "LOGGED_JOBS" ? (
             loggedPrinterRows.length === 0 ? (
-              <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-500 dark:text-slate-300">
+              <StatisticsEmptyState>
                 {t("statistics.noLoggedJobsBreakdown", "No logged jobs yet.")}
-              </div>
+              </StatisticsEmptyState>
             ) : (
               <div className="mt-4 max-h-[420px] space-y-3 overflow-auto pr-1">
                 {loggedPrinterRows.map((row) => (
@@ -1167,9 +1132,9 @@ export default function StatisticsPage() {
 
           {metricModalKind === "FAILED_JOBS" ? (
             failedPrinterRows.length === 0 ? (
-              <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-500 dark:text-slate-300">
+              <StatisticsEmptyState>
                 {t("statistics.noFailedJobsBreakdown", "No failed jobs recorded.")}
-              </div>
+              </StatisticsEmptyState>
             ) : (
               <div className="mt-4 max-h-[420px] space-y-3 overflow-auto pr-1">
                 {failedPrinterRows.map((row) => {
@@ -1214,9 +1179,9 @@ export default function StatisticsPage() {
 
           {metricModalKind === "ACTIVE_SLOTS" ? (
             activeSlotRows.length === 0 ? (
-              <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-500 dark:text-slate-300">
+              <StatisticsEmptyState>
                 {t("statistics.noActiveSlotsBreakdown", "No loaded slots right now.")}
-              </div>
+              </StatisticsEmptyState>
             ) : (
               <>
                 <div className="surface-subtle mt-4 flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1225,7 +1190,7 @@ export default function StatisticsPage() {
                     onChange={(event) =>
                       setSlotOwnershipFilter(parseOwnershipFilter(event.target.value))
                     }
-                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-100"
+                    className={statisticsFilterSelectClass}
                   >
                     <option value="ALL">
                       {`${t("inventory.ownershipGroup", "Ownership")}: ${t("common.all", "All")}`}
@@ -1242,12 +1207,12 @@ export default function StatisticsPage() {
                   </div>
                 </div>
                 {filteredActiveSlotRows.length === 0 ? (
-                  <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-500 dark:text-slate-300">
+                  <StatisticsEmptyState>
                     {t(
                       "statistics.noActiveSlotFilterMatch",
                       "No loaded slots match the current ownership filter.",
                     )}
-                  </div>
+                  </StatisticsEmptyState>
                 ) : (
                   <div className="mt-4 max-h-[420px] space-y-3 overflow-auto pr-1">
                     {filteredActiveSlotRows.map((row) => (
