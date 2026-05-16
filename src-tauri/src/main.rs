@@ -16,6 +16,7 @@ mod companion_session;
 mod companion_state;
 mod document_commands;
 mod inventory_commands;
+mod library_sync_cache_commands;
 mod library_sync_command_support;
 mod library_sync_commands;
 mod library_sync_host_client;
@@ -159,13 +160,13 @@ fn main() {
             library_sync_commands::fetch_library_sync_spools,
             library_sync_commands::fetch_library_sync_catalog_masters,
             library_sync_commands::fetch_library_sync_wishlist_items,
-            library_sync_commands::fetch_cached_library_sync_spools,
+            library_sync_cache_commands::fetch_cached_library_sync_spools,
             library_sync_commands::fetch_library_sync_printer_overview,
             library_sync_commands::fetch_library_sync_printer_settings,
-            library_sync_commands::fetch_cached_library_sync_printer_overview,
+            library_sync_cache_commands::fetch_cached_library_sync_printer_overview,
             library_sync_commands::fetch_library_sync_loans,
             library_sync_commands::fetch_library_sync_filament_consumption,
-            library_sync_commands::fetch_cached_library_sync_loans,
+            library_sync_cache_commands::fetch_cached_library_sync_loans,
             library_sync_commands::pair_library_sync_host,
             library_sync_settings_commands::clear_library_sync_client_auth,
             library_sync_commands::create_library_sync_host_spool,

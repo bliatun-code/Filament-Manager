@@ -306,19 +306,6 @@ pub(crate) fn fetch_library_sync_spools(
 }
 
 #[tauri::command]
-pub(crate) fn fetch_cached_library_sync_spools(
-    state: tauri::State<'_, AppState>,
-) -> Result<Option<LibrarySyncCachedSpoolList>, String> {
-    let settings = with_inventory(&state, |engine| engine.get_library_sync_settings())?;
-    Ok(settings
-        .cached_spools
-        .map(|cached| LibrarySyncCachedSpoolList {
-            captured_at: cached.captured_at,
-            rows: cached.rows,
-        }))
-}
-
-#[tauri::command]
 pub(crate) fn fetch_library_sync_printer_overview(
     state: tauri::State<'_, AppState>,
     input: ValidateLibrarySyncHostInput,
@@ -355,19 +342,6 @@ pub(crate) fn fetch_library_sync_printer_settings(
     )?;
 
     Ok(snapshot)
-}
-
-#[tauri::command]
-pub(crate) fn fetch_cached_library_sync_printer_overview(
-    state: tauri::State<'_, AppState>,
-) -> Result<Option<LibrarySyncCachedPrinterOverview>, String> {
-    let settings = with_inventory(&state, |engine| engine.get_library_sync_settings())?;
-    Ok(settings
-        .cached_printers
-        .map(|cached| LibrarySyncCachedPrinterOverview {
-            captured_at: cached.captured_at,
-            rows: cached.rows,
-        }))
 }
 
 #[tauri::command]
@@ -479,19 +453,6 @@ pub(crate) fn fetch_library_sync_wishlist_items(
         ),
         Err(error) => Err(error),
     }
-}
-
-#[tauri::command]
-pub(crate) fn fetch_cached_library_sync_loans(
-    state: tauri::State<'_, AppState>,
-) -> Result<Option<LibrarySyncCachedLoanList>, String> {
-    let settings = with_inventory(&state, |engine| engine.get_library_sync_settings())?;
-    Ok(settings
-        .cached_loans
-        .map(|cached| LibrarySyncCachedLoanList {
-            captured_at: cached.captured_at,
-            rows: cached.rows,
-        }))
 }
 
 #[tauri::command]
