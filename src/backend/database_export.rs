@@ -1,7 +1,7 @@
 use rusqlite::Connection;
 
-use super::database_loan_queries::list_spool_loans_for_direction;
 use super::database_loan_models::SpoolLoanDetailsRow;
+use super::database_loan_queries::list_spool_loans_for_direction;
 use super::database_result::InventoryResult;
 use super::database_spool_models::SpoolWithMasterRow;
 use super::database_spool_queries::list_spools_with_master;

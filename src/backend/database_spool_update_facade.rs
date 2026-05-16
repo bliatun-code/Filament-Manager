@@ -1,3 +1,4 @@
+use super::database_core::FilamentDatabase;
 use super::database_result::InventoryResult;
 use super::database_spool_updates::{
     set_spool_home_location as set_spool_home_location_row,
@@ -8,7 +9,6 @@ use super::database_spool_updates::{
     update_spool_tare_weight as update_spool_tare_weight_row,
     update_spool_weight as update_spool_weight_row,
 };
-use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {

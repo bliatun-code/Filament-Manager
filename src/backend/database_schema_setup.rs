@@ -6,12 +6,12 @@ use super::database_printer_schema::{
     ensure_printer_external_slot_schema, ensure_printer_slot_live_cache_schema,
     ensure_printer_slot_rfid_override_schema,
 };
+use super::database_result::InventoryResult;
 use super::database_spool_schema::{
     ensure_spool_home_location_schema, ensure_spool_identity_schema, ensure_spool_lifecycle_schema,
     ensure_spool_weight_schema,
 };
 use super::database_trusted_lan_schema::ensure_trusted_lan_schema;
-use super::database_result::InventoryResult;
 
 pub(crate) fn apply_schema_migrations(conn: &Connection, schema_sql: &str) -> InventoryResult<()> {
     conn.execute_batch(schema_sql)?;

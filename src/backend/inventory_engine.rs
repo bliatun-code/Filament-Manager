@@ -1,11 +1,11 @@
+use crate::backend::database_result::{InventoryError, InventoryResult};
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, BambuLiveIntegrationRow, BambuLiveObservedTrayRow, CatalogResetStats,
     FilamentDatabase, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, LoanUsageByPersonRow,
-    ManualMasterInput, MasterCatalogUpdateInput,
-    PrinterOverviewRow, PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow,
-    SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow,
+    ManualMasterInput, MasterCatalogUpdateInput, PrinterOverviewRow, PrinterRow,
+    SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow, SpoolUsagePointRow,
+    SpoolWithMasterRow, WishlistItemRow,
 };
-use crate::backend::database_result::{InventoryError, InventoryResult};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -1280,9 +1280,8 @@ impl InventoryEngine {
         event_type: &str,
         payload: serde_json::Value,
     ) -> InventoryResult<()> {
-        let payload_json = serde_json::to_string(&payload).map_err(|error| {
-            InventoryError::Db(error.to_string())
-        })?;
+        let payload_json = serde_json::to_string(&payload)
+            .map_err(|error| InventoryError::Db(error.to_string()))?;
         self.db
             .insert_spool_history_event(spool_id, event_type, &payload_json)
     }

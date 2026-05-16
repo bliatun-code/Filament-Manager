@@ -1,9 +1,9 @@
+use super::database_core::FilamentDatabase;
 use super::database_result::InventoryResult;
 use super::database_settings::{
     delete_setting as delete_setting_row, get_setting as get_setting_row,
     set_setting as set_setting_row,
 };
-use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn set_setting(&self, key: &str, value: &str) -> InventoryResult<()> {

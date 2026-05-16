@@ -8,12 +8,12 @@ pub use super::database_library_sync_models::{
 pub use super::database_loan_models::{
     ActiveSpoolLoanRow, LoanUsageByPersonRow, SpoolLoanDetailsRow, SpoolLoanRow,
 };
+#[allow(unused_imports)]
+pub use super::database_printer_models::PrinterUsageRow;
 pub use super::database_printer_models::{
     BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow, BambuLiveObservedStateRow,
     BambuLiveObservedTrayRow, PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow,
 };
-#[allow(unused_imports)]
-pub use super::database_printer_models::PrinterUsageRow;
 pub use super::database_reset_models::CatalogResetStats;
 #[allow(unused_imports)]
 pub use super::database_result::{InventoryError, InventoryResult};
@@ -22,9 +22,7 @@ pub use super::database_spool_models::{
 };
 #[allow(unused_imports)]
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
-pub use super::database_trusted_lan_models::{
-    TrustedLanPairedBrowserRow, TrustedLanSettingsRow,
-};
+pub use super::database_trusted_lan_models::{TrustedLanPairedBrowserRow, TrustedLanSettingsRow};
 pub use super::database_wishlist_models::WishlistItemRow;
 #[allow(unused_imports)]
 pub use super::filament_master_models::{

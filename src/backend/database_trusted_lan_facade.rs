@@ -1,3 +1,4 @@
+use super::database_core::FilamentDatabase;
 use super::database_result::InventoryResult;
 use super::database_trusted_lan::{
     consume_trusted_lan_pairing as consume_trusted_lan_pairing_row,
@@ -15,7 +16,6 @@ use super::database_trusted_lan_settings::{
     get_trusted_lan_settings as get_trusted_lan_setting_rows,
     save_trusted_lan_settings as save_trusted_lan_setting_rows,
 };
-use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn get_trusted_lan_settings(&self) -> InventoryResult<TrustedLanSettingsRow> {

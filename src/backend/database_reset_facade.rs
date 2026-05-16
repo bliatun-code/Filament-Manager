@@ -1,10 +1,10 @@
+use super::database_core::FilamentDatabase;
 use super::database_reset::{
     reset_app_state_data as reset_app_state_data_rows,
     reset_catalog_data as reset_catalog_data_rows,
 };
 use super::database_reset_models::CatalogResetStats;
 use super::database_result::InventoryResult;
-use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn reset_app_state_data(&self) -> InventoryResult<()> {

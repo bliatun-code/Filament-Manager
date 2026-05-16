@@ -1,3 +1,4 @@
+use super::database_core::FilamentDatabase;
 use super::database_result::InventoryResult;
 use super::database_wishlist::{
     delete_wishlist_item as delete_wishlist_item_row,
@@ -6,7 +7,6 @@ use super::database_wishlist::{
     update_wishlist_item_status as update_wishlist_item_status_row,
 };
 use super::database_wishlist_models::WishlistItemRow;
-use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn list_wishlist_items(&self, limit: i64) -> InventoryResult<Vec<WishlistItemRow>> {

@@ -1,8 +1,8 @@
+use crate::backend::database_result::InventoryError;
 use crate::backend::filament_database::{
     BambuLiveObservedStateRow, BambuLiveObservedTrayRow, FilamentDatabase, PrinterOverviewRow,
     SpoolWithMasterRow,
 };
-use crate::backend::database_result::InventoryError;
 use serde_json::json;
 use time::{format_description::well_known::Rfc3339, Duration as TimeDuration, OffsetDateTime};
 

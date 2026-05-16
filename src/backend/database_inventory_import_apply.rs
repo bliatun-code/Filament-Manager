@@ -68,14 +68,16 @@ fn import_inventory_spools_rows_in_transaction(
         if get_spool_by_id(conn, normalized.spool_id)?.is_some() {
             update_imported_spool(
                 conn,
-                normalized.spool_id,
-                &master_id,
-                qr_code.as_deref(),
-                &normalized.status,
-                normalized.initial_weight_g,
-                normalized.current_weight_g,
-                normalized.remaining_g,
-                location_id.as_deref(),
+                ImportedSpoolUpdate {
+                    spool_id: normalized.spool_id,
+                    master_id: &master_id,
+                    qr_code: qr_code.as_deref(),
+                    status: &normalized.status,
+                    initial_weight_g: normalized.initial_weight_g,
+                    current_weight_g: normalized.current_weight_g,
+                    remaining_g: normalized.remaining_g,
+                    location_id: location_id.as_deref(),
+                },
             )?;
             updated_count += 1;
         } else {
@@ -117,15 +119,19 @@ fn import_inventory_spools_rows_in_transaction(
 
 fn update_imported_spool(
     conn: &Connection,
-    spool_id: &str,
-    master_id: &str,
-    qr_code: Option<&str>,
-    status: &str,
-    initial_weight_g: i64,
-    current_weight_g: i64,
-    remaining_g: i64,
-    location_id: Option<&str>,
+    update: ImportedSpoolUpdate<'_>,
 ) -> InventoryResult<()> {
+    let ImportedSpoolUpdate {
+        spool_id,
+        master_id,
+        qr_code,
+        status,
+        initial_weight_g,
+        current_weight_g,
+        remaining_g,
+        location_id,
+    } = update;
+
     conn.execute(
         "UPDATE filament_spools
          SET master_id = ?1,
@@ -152,6 +158,17 @@ fn update_imported_spool(
         ],
     )?;
     Ok(())
+}
+
+struct ImportedSpoolUpdate<'a> {
+    spool_id: &'a str,
+    master_id: &'a str,
+    qr_code: Option<&'a str>,
+    status: &'a str,
+    initial_weight_g: i64,
+    current_weight_g: i64,
+    remaining_g: i64,
+    location_id: Option<&'a str>,
 }
 
 fn normalize_import_row<'a>(

@@ -7,12 +7,12 @@ use super::database_printer_schema::{
     ensure_printer_external_slot_schema, ensure_printer_slot_live_cache_schema,
     ensure_printer_slot_rfid_override_schema,
 };
+use super::database_result::InventoryResult;
 use super::database_schema::{ensure_no_foreign_key_violations, table_columns};
 use super::database_table_ops::delete_all_rows;
 use super::database_tables::{should_import_backup_row, FULL_BACKUP_TABLES};
 use super::database_trusted_lan_schema::ensure_trusted_lan_schema;
 use super::database_values::json_value_to_sql;
-use super::database_result::InventoryResult;
 
 pub(crate) fn import_full_backup_content(
     conn: &Connection,
