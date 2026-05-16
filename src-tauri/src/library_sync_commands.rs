@@ -577,11 +577,10 @@ pub(crate) fn pair_library_sync_host(
     state: tauri::State<'_, AppState>,
     input: PairLibrarySyncHostInput,
 ) -> Result<LibrarySyncSettingsRow, String> {
-    let validation_input = ValidateLibrarySyncHostInput {
+    let (normalized_base_url, _) = normalize_library_sync_host_input(&ValidateLibrarySyncHostInput {
         base_url: input.base_url.clone(),
         expected_library_id: None,
-    };
-    let (normalized_base_url, _) = normalize_library_sync_host_input(&validation_input)?;
+    })?;
     let pairing_token = extract_library_sync_pairing_token(&input.pairing_token_or_url)
         .ok_or_else(|| "Pairing token or URL is required.".to_string())?;
 
