@@ -933,9 +933,7 @@ pub(crate) fn create_library_sync_host_wishlist_item(
         }),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some("Host wishlist item created."), None)
-    })?;
+    save_library_sync_success(&state, "Host wishlist item created.", None)?;
     Ok(())
 }
 
@@ -961,9 +959,7 @@ pub(crate) fn update_library_sync_host_wishlist_item_status(
         &serde_json::json!({ "status": input.status.trim() }),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some("Host wishlist item updated."), None)
-    })?;
+    save_library_sync_success(&state, "Host wishlist item updated.", None)?;
     Ok(())
 }
 
@@ -989,9 +985,7 @@ pub(crate) fn delete_library_sync_host_wishlist_item(
         &serde_json::json!({}),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some("Host wishlist item deleted."), None)
-    })?;
+    save_library_sync_success(&state, "Host wishlist item deleted.", None)?;
     Ok(())
 }
 
