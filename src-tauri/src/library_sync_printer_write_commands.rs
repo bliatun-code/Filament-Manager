@@ -1,10 +1,11 @@
 use crate::library_sync_command_support::{
-    prepare_library_sync_host_write, save_library_sync_success, trimmed_non_empty,
+    library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
+    trimmed_non_empty,
 };
 use crate::library_sync_host_client::perform_library_sync_host_write;
 use crate::library_sync_models::{
     LibrarySyncAssignPrinterSlotInput, LibrarySyncCreatePrinterInput,
-    LibrarySyncDeletePrinterInput, LibrarySyncRecordPrintUsageInput, ValidateLibrarySyncHostInput,
+    LibrarySyncDeletePrinterInput, LibrarySyncRecordPrintUsageInput,
 };
 use crate::state::AppState;
 
@@ -13,10 +14,8 @@ pub(crate) fn assign_library_sync_host_printer_slot(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncAssignPrinterSlotInput,
 ) -> Result<(), String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     let printer_id = input.printer_id.trim();
     let slot_id = input.slot_id.trim();
@@ -45,10 +44,8 @@ pub(crate) fn record_library_sync_host_print_usage(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncRecordPrintUsageInput,
 ) -> Result<(), String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     let printer_id = input.printer_id.trim();
     let spool_id = input.spool_id.trim();
@@ -79,10 +76,8 @@ pub(crate) fn create_library_sync_host_printer(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncCreatePrinterInput,
 ) -> Result<(), String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     let id = input.id.trim();
     let model = input.model.trim();
@@ -113,10 +108,8 @@ pub(crate) fn delete_library_sync_host_printer(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncDeletePrinterInput,
 ) -> Result<(), String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     let printer_id = input.printer_id.trim();
     if printer_id.is_empty() {

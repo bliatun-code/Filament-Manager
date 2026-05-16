@@ -1,10 +1,9 @@
 use crate::library_sync_command_support::{
-    prepare_library_sync_host_write, save_library_sync_success, trimmed_non_empty,
+    library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
+    trimmed_non_empty,
 };
 use crate::library_sync_host_client::perform_library_sync_host_write;
-use crate::library_sync_models::{
-    LibrarySyncLendSpoolInput, LibrarySyncReturnLoanInput, ValidateLibrarySyncHostInput,
-};
+use crate::library_sync_models::{LibrarySyncLendSpoolInput, LibrarySyncReturnLoanInput};
 use crate::state::AppState;
 
 #[tauri::command]
@@ -12,10 +11,8 @@ pub(crate) fn return_library_sync_host_loan(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncReturnLoanInput,
 ) -> Result<(), String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     let loan_id = input.loan_id.trim();
     if loan_id.is_empty() {
@@ -46,10 +43,8 @@ pub(crate) fn lend_library_sync_host_spool(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncLendSpoolInput,
 ) -> Result<(), String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
