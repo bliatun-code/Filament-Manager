@@ -80,6 +80,7 @@ use super::database_reset::{
     reset_app_state_data as reset_app_state_data_rows,
     reset_catalog_data as reset_catalog_data_rows,
 };
+pub use super::database_result::{InventoryError, InventoryResult};
 use super::database_schema_setup::apply_schema_migrations;
 use super::database_settings::{
     delete_setting as delete_setting_row, get_setting as get_setting_row,
@@ -172,33 +173,6 @@ pub struct MasterCatalogUpdateInput<'a> {
 }
 
 const SCHEMA_SQL: &str = include_str!("../database/schema.sql");
-
-#[derive(Debug)]
-pub enum InventoryError {
-    Db(String),
-    InvalidOperation(String),
-    NotFound,
-}
-
-pub type InventoryResult<T> = Result<T, InventoryError>;
-
-impl From<rusqlite::Error> for InventoryError {
-    fn from(error: rusqlite::Error) -> Self {
-        InventoryError::Db(error.to_string())
-    }
-}
-
-impl std::fmt::Display for InventoryError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            InventoryError::Db(message) => write!(f, "Database error: {message}"),
-            InventoryError::InvalidOperation(message) => write!(f, "{message}"),
-            InventoryError::NotFound => write!(f, "Record not found"),
-        }
-    }
-}
-
-impl std::error::Error for InventoryError {}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FilamentMasterSummary {
