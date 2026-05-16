@@ -427,13 +427,11 @@ pub(crate) fn fetch_library_sync_printer_settings(
     let snapshot: PrinterSettingsSnapshot =
         fetch_library_sync_host_json(&normalized_base_url, "/api/v1/library/printer-settings")?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(
-            true,
-            Some("Host printer settings refreshed."),
-            health.device_name.as_deref(),
-        )
-    })?;
+    save_library_sync_success(
+        &state,
+        "Host printer settings refreshed.",
+        health.device_name.as_deref(),
+    )?;
 
     Ok(snapshot)
 }
@@ -467,13 +465,13 @@ pub(crate) fn fetch_library_sync_loans(
     )?;
 
     with_inventory(&state, |engine| {
-        engine.save_library_sync_cached_loans(&rows)?;
-        engine.save_library_sync_validation_state(
-            true,
-            Some("Host loan list refreshed."),
-            health.device_name.as_deref(),
-        )
+        engine.save_library_sync_cached_loans(&rows)
     })?;
+    save_library_sync_success(
+        &state,
+        "Host loan list refreshed.",
+        health.device_name.as_deref(),
+    )?;
 
     Ok(rows)
 }
@@ -502,13 +500,11 @@ pub(crate) fn fetch_library_sync_filament_consumption(
             .as_str(),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(
-            true,
-            Some("Host filament consumption refreshed."),
-            health.device_name.as_deref(),
-        )
-    })?;
+    save_library_sync_success(
+        &state,
+        "Host filament consumption refreshed.",
+        health.device_name.as_deref(),
+    )?;
 
     Ok(rows)
 }
