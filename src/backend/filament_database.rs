@@ -27,5 +27,9 @@ pub use super::filament_master_models::{
     FilamentMasterSummary,
 };
 #[cfg(test)]
+#[path = "filament_database_architecture_tests.rs"]
+mod architecture_tests;
+
+#[cfg(test)]
 #[path = "filament_database_tests.rs"]
 mod tests;
