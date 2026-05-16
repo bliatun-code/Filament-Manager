@@ -22,6 +22,7 @@ mod inventory_danger_zone_commands;
 mod inventory_loan_commands;
 mod inventory_read_commands;
 mod inventory_update_commands;
+mod inventory_wishlist_commands;
 mod library_sync_cache_commands;
 mod library_sync_command_support;
 mod library_sync_danger_zone_commands;
@@ -214,8 +215,8 @@ fn main() {
             inventory_loan_commands::list_active_spool_loans,
             inventory_loan_commands::list_loan_usage_by_person,
             inventory_loan_commands::list_spool_loans,
-            inventory_commands::update_wishlist_item_status,
-            inventory_commands::delete_wishlist_item,
+            inventory_wishlist_commands::update_wishlist_item_status,
+            inventory_wishlist_commands::delete_wishlist_item,
             inventory_loan_commands::lend_spool,
             inventory_loan_commands::return_spool_loan,
             inventory_loan_commands::return_inbound_spool_loan,

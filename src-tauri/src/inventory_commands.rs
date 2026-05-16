@@ -1,9 +1,7 @@
 use crate::backend::filament_database::{
     CatalogResetStats, SpoolHistoryEventRow, SpoolUsagePointRow,
 };
-use crate::backend::inventory_engine::{
-    ScanSource, UpdateWishlistStatusInput,
-};
+use crate::backend::inventory_engine::ScanSource;
 use crate::backend::statistics::{FilamentConsumptionRow, InventoryOverview, MaterialUsageRow};
 use crate::inventory_command_support::{companion_service, inventory_error_to_string, ScanPayload};
 use crate::state::AppState;
@@ -43,22 +41,6 @@ pub(crate) fn list_spool_usage(
     companion_service(&state)
         .list_spool_usage(&spool_id, capped)
         .map_err(inventory_error_to_string)
-}
-
-#[tauri::command]
-pub(crate) fn update_wishlist_item_status(
-    state: tauri::State<'_, AppState>,
-    input: UpdateWishlistStatusInput,
-) -> Result<(), String> {
-    with_inventory(&state, |engine| engine.update_wishlist_item_status(input))
-}
-
-#[tauri::command]
-pub(crate) fn delete_wishlist_item(
-    state: tauri::State<'_, AppState>,
-    item_id: String,
-) -> Result<(), String> {
-    with_inventory(&state, |engine| engine.delete_wishlist_item(&item_id))
 }
 
 #[tauri::command]
