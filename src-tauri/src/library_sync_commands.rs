@@ -1013,9 +1013,7 @@ pub(crate) fn delete_library_sync_host_spool(
         }),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some("Host spool removed."), None)
-    })?;
+    save_library_sync_success(&state, "Host spool removed.", None)?;
     Ok(())
 }
 
@@ -1043,9 +1041,7 @@ pub(crate) fn purge_library_sync_host_spool(
         }),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some("Host spool purged."), None)
-    })?;
+    save_library_sync_success(&state, "Host spool purged.", None)?;
     Ok(())
 }
 
