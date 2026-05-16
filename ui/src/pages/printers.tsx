@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   isTauri,
   type BambuLiveIntegrationEntry,
@@ -74,6 +74,7 @@ import {
 import { usePrinterPageData } from "./use_printer_page_data";
 import { usePrinterLibrarySyncState } from "./use_printer_library_sync_state";
 import { useAddPrinterWorkflow } from "./use_add_printer_workflow";
+import { useSlotDropdownDismissal } from "./use_slot_dropdown_dismissal";
 
 export default function PrintersPage() {
   const { t, locale } = useI18n();
@@ -206,33 +207,7 @@ export default function PrintersPage() {
     [t],
   );
 
-  useEffect(() => {
-    if (!openDropdownSlotId) {
-      return;
-    }
-    const selector = `[data-slot-dropdown="${openDropdownSlotId}"]`;
-    const onMouseDown = (event: MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof Element)) {
-        return;
-      }
-      if (!target.closest(selector)) {
-        setOpenDropdownSlotId(null);
-      }
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpenDropdownSlotId(null);
-      }
-    };
-
-    document.addEventListener("mousedown", onMouseDown);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [openDropdownSlotId]);
+  useSlotDropdownDismissal({ openDropdownSlotId, setOpenDropdownSlotId });
 
   const {
     showAddPrinterModal,
