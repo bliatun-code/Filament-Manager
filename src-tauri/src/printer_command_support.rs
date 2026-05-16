@@ -1,0 +1,11 @@
+use crate::app_services::CompanionService;
+use crate::backend::database_result::InventoryError;
+use crate::state::AppState;
+
+pub(crate) fn companion_service(state: &AppState) -> CompanionService {
+    CompanionService::new(state.db_path.clone())
+}
+
+pub(crate) fn inventory_error_to_string(error: InventoryError) -> String {
+    format!("{error:?}")
+}

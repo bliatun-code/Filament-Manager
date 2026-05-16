@@ -4,6 +4,7 @@ import type {
   TrustedLanInterfaceOption,
   TrustedLanPairedBrowser,
 } from "../lib/tauri_client";
+import { parsePositiveInt } from "../lib/settings_utils";
 
 type TranslateFn = (key: string, fallback: string) => string;
 export type TrustedLanCompanionStatusTone = "live" | "idle" | "warn";
@@ -49,6 +50,43 @@ export type TrustedLanPairedBrowserRowModel = {
 export type TrustedLanPairedBrowserListModel = {
   activeRows: TrustedLanPairedBrowserRowModel[];
   revokedRows: TrustedLanPairedBrowserRowModel[];
+};
+
+export type TrustedLanActionMessageKey =
+  | "allBrowsersRevoked"
+  | "browserRevoked"
+  | "pairingCopied"
+  | "pairingCreated";
+
+export type TrustedLanActionMessageLabels = Record<TrustedLanActionMessageKey, string>;
+
+export type TrustedLanActionErrorMessageKey =
+  | "copyPairingFailed"
+  | "createPairingFailed"
+  | "revokeAllBrowsersFailed"
+  | "revokeBrowserFailed";
+
+export type TrustedLanActionErrorMessageLabels = Record<TrustedLanActionErrorMessageKey, string>;
+
+export type TrustedLanLoadMessageKey =
+  | "loadCompanionFailed"
+  | "newBrowserPaired"
+  | "refreshBrowsersFailed";
+
+export type TrustedLanLoadMessageLabels = Record<TrustedLanLoadMessageKey, string>;
+
+export type TrustedLanConfigMessageKey =
+  | "disabled"
+  | "enabled"
+  | "enabledPending"
+  | "networkSaved"
+  | "saveFailed"
+  | "starting";
+
+export type TrustedLanConfigMessageLabels = Record<TrustedLanConfigMessageKey, string>;
+
+export type TrustedLanValidationMessageLabels = {
+  noPrivateInterface: string;
 };
 
 type BuildTrustedLanPairedBrowserListInput = {
@@ -168,6 +206,40 @@ export function findNewTrustedLanActiveBrowserIds(
     .map((browser) => browser.id);
 }
 
+export function buildTrustedLanActionMessage(
+  action: TrustedLanActionMessageKey,
+  labels: TrustedLanActionMessageLabels,
+): string {
+  return labels[action];
+}
+
+export function buildTrustedLanActionErrorMessage(
+  action: TrustedLanActionErrorMessageKey,
+  labels: TrustedLanActionErrorMessageLabels,
+): string {
+  return labels[action];
+}
+
+export function buildTrustedLanLoadMessage(
+  action: TrustedLanLoadMessageKey,
+  labels: TrustedLanLoadMessageLabels,
+): string {
+  return labels[action];
+}
+
+export function buildTrustedLanConfigMessage(
+  action: TrustedLanConfigMessageKey,
+  labels: TrustedLanConfigMessageLabels,
+): string {
+  return labels[action];
+}
+
+export function buildTrustedLanNoPrivateInterfaceMessage(
+  labels: TrustedLanValidationMessageLabels,
+): string {
+  return labels.noPrivateInterface;
+}
+
 export function resolveTrustedLanInterfaceAddressDraft(
   trustedLanStatus: TrustedLanCompanionStatus | null,
   interfaces: TrustedLanInterfaceOption[],
@@ -177,6 +249,23 @@ export function resolveTrustedLanInterfaceAddressDraft(
     return selectedAddress;
   }
   return interfaces[0]?.address ?? "";
+}
+
+export function isTrustedLanNetworkDraftDirty({
+  interfaceAddressDraft,
+  portDraft,
+  trustedLanStatus,
+}: {
+  interfaceAddressDraft: string;
+  portDraft: string;
+  trustedLanStatus: TrustedLanCompanionStatus | null;
+}): boolean {
+  const currentAddress = trustedLanStatus?.selected_interface_address?.trim() ?? "";
+  const currentPort = trustedLanStatus?.listen_port ?? 4278;
+  return (
+    interfaceAddressDraft !== currentAddress ||
+    parsePositiveInt(portDraft, 4278) !== currentPort
+  );
 }
 
 export function buildTrustedLanCompanionModel(

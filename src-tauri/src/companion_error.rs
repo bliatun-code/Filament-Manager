@@ -1,4 +1,4 @@
-use crate::backend::filament_database::InventoryError;
+use crate::backend::database_result::InventoryError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;

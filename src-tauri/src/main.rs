@@ -15,14 +15,53 @@ mod companion_payload;
 mod companion_session;
 mod companion_state;
 mod document_commands;
-mod inventory_commands;
-mod library_sync_commands;
+mod inventory_activity_commands;
+mod inventory_command_support;
+mod inventory_create_commands;
+mod inventory_danger_zone_commands;
+mod inventory_loan_commands;
+mod inventory_maintenance_commands;
+mod inventory_read_commands;
+mod inventory_scan_commands;
+mod inventory_stats_commands;
+mod inventory_update_commands;
+mod inventory_wishlist_commands;
+mod library_sync_cache_commands;
+mod library_sync_command_support;
+mod library_sync_danger_zone_commands;
 mod library_sync_host_client;
+mod library_sync_loan_write_commands;
 mod library_sync_models;
-mod printer_commands;
+mod library_sync_pairing_commands;
+mod library_sync_printer_write_commands;
+mod library_sync_read_commands;
+mod library_sync_settings_commands;
+mod library_sync_snapshot_commands;
+mod library_sync_spool_write_commands;
+mod library_sync_validation_commands;
+mod library_sync_wishlist_write_commands;
+mod printer_active_commands;
+mod printer_bambu_live_commands;
+mod printer_command_support;
+mod printer_create_commands;
+mod printer_danger_zone_commands;
+mod printer_models;
+mod printer_read_commands;
+mod printer_settings_commands;
+mod printer_slot_write_commands;
+mod printer_usage_commands;
 mod security;
 mod state;
-mod trusted_lan_commands;
+mod trusted_lan_browser_read_commands;
+mod trusted_lan_browser_revoke_all_commands;
+mod trusted_lan_browser_revoke_commands;
+mod trusted_lan_config_commands;
+mod trusted_lan_health;
+mod trusted_lan_interface_commands;
+mod trusted_lan_interfaces;
+mod trusted_lan_pairing_commands;
+mod trusted_lan_runtime_commands;
+mod trusted_lan_status_commands;
 
 use backend::filament_database::FilamentDatabase;
 use backend::inventory_engine::InventoryEngine;
@@ -99,8 +138,9 @@ fn main() {
     tauri::Builder::default()
         .setup(|app| {
             let db_path = ensure_db(app)?;
-            let trusted_lan_runtime =
-                trusted_lan_commands::load_trusted_lan_runtime(db_path.to_string_lossy().as_ref())?;
+            let trusted_lan_runtime = trusted_lan_runtime_commands::load_trusted_lan_runtime(
+                db_path.to_string_lossy().as_ref(),
+            )?;
             let companion = state::CompanionRuntimeState::new(trusted_lan_runtime);
             let state = AppState {
                 db_path: db_path.to_string_lossy().to_string(),
@@ -123,102 +163,102 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            inventory_commands::list_spools,
-            inventory_commands::list_wishlist_items,
-            printer_commands::get_printer_settings,
-            printer_commands::list_printer_overview,
-            trusted_lan_commands::get_trusted_lan_companion_status,
-            trusted_lan_commands::list_trusted_lan_interfaces,
-            trusted_lan_commands::update_trusted_lan_companion_config,
-            trusted_lan_commands::create_trusted_lan_pairing,
-            trusted_lan_commands::list_trusted_lan_paired_browsers,
-            trusted_lan_commands::revoke_trusted_lan_paired_browser,
-            trusted_lan_commands::revoke_all_trusted_lan_paired_browsers,
-            inventory_commands::list_master_catalog,
+            inventory_read_commands::list_spools,
+            inventory_read_commands::list_wishlist_items,
+            printer_settings_commands::get_printer_settings,
+            printer_read_commands::list_printer_overview,
+            trusted_lan_status_commands::get_trusted_lan_companion_status,
+            trusted_lan_interface_commands::list_trusted_lan_interfaces,
+            trusted_lan_config_commands::update_trusted_lan_companion_config,
+            trusted_lan_pairing_commands::create_trusted_lan_pairing,
+            trusted_lan_browser_read_commands::list_trusted_lan_paired_browsers,
+            trusted_lan_browser_revoke_commands::revoke_trusted_lan_paired_browser,
+            trusted_lan_browser_revoke_all_commands::revoke_all_trusted_lan_paired_browsers,
+            inventory_read_commands::list_master_catalog,
             catalog_commands::refresh_bambu_catalog,
             catalog_commands::refresh_esun_catalog,
             catalog_commands::esun_search_filaments,
             catalog_commands::esun_fetch_product_detail,
-            inventory_commands::create_spool,
-            inventory_commands::create_wishlist_item,
-            inventory_commands::create_manual_spool,
-            printer_commands::create_printer,
-            printer_commands::save_bambu_live_integration,
-            printer_commands::delete_bambu_live_integration,
-            printer_commands::delete_printer,
-            printer_commands::set_active_printer,
+            inventory_create_commands::create_spool,
+            inventory_create_commands::create_wishlist_item,
+            inventory_create_commands::create_manual_spool,
+            printer_create_commands::create_printer,
+            printer_bambu_live_commands::save_bambu_live_integration,
+            printer_bambu_live_commands::delete_bambu_live_integration,
+            printer_danger_zone_commands::delete_printer,
+            printer_active_commands::set_active_printer,
             set_dock_icon_theme,
             get_app_version,
-            library_sync_commands::get_library_sync_settings,
-            library_sync_commands::save_library_sync_settings,
-            library_sync_commands::validate_library_sync_host,
-            library_sync_commands::fetch_library_sync_snapshot,
-            library_sync_commands::fetch_library_sync_spool_detail,
-            library_sync_commands::fetch_library_sync_spools,
-            library_sync_commands::fetch_library_sync_catalog_masters,
-            library_sync_commands::fetch_library_sync_wishlist_items,
-            library_sync_commands::fetch_cached_library_sync_spools,
-            library_sync_commands::fetch_library_sync_printer_overview,
-            library_sync_commands::fetch_library_sync_printer_settings,
-            library_sync_commands::fetch_cached_library_sync_printer_overview,
-            library_sync_commands::fetch_library_sync_loans,
-            library_sync_commands::fetch_library_sync_filament_consumption,
-            library_sync_commands::fetch_cached_library_sync_loans,
-            library_sync_commands::pair_library_sync_host,
-            library_sync_commands::clear_library_sync_client_auth,
-            library_sync_commands::create_library_sync_host_spool,
-            library_sync_commands::create_library_sync_host_wishlist_item,
-            library_sync_commands::create_library_sync_host_printer,
-            library_sync_commands::update_library_sync_host_wishlist_item_status,
-            library_sync_commands::delete_library_sync_host_wishlist_item,
-            library_sync_commands::delete_library_sync_host_spool,
-            library_sync_commands::delete_library_sync_host_printer,
-            library_sync_commands::purge_library_sync_host_spool,
-            library_sync_commands::update_library_sync_host_spool_weight,
-            library_sync_commands::update_library_sync_host_spool_tare_weight,
-            library_sync_commands::update_library_sync_host_spool_details,
-            library_sync_commands::update_library_sync_host_spool_rfid_tag,
-            library_sync_commands::assign_library_sync_host_printer_slot,
-            library_sync_commands::record_library_sync_host_print_usage,
-            library_sync_commands::return_library_sync_host_loan,
-            library_sync_commands::lend_library_sync_host_spool,
-            printer_commands::assign_printer_slot,
-            printer_commands::record_print_usage,
-            inventory_commands::update_spool_weight,
-            inventory_commands::update_spool_tare_weight,
-            inventory_commands::update_spool_status,
-            inventory_commands::update_spool_details,
-            inventory_commands::update_spool_rfid_tag,
-            inventory_commands::update_master_catalog_entry,
-            inventory_commands::delete_spool,
-            inventory_commands::purge_spool,
-            inventory_commands::list_spool_history,
-            inventory_commands::list_spool_usage,
-            inventory_commands::list_active_spool_loans,
-            inventory_commands::list_loan_usage_by_person,
-            inventory_commands::list_spool_loans,
-            inventory_commands::update_wishlist_item_status,
-            inventory_commands::delete_wishlist_item,
-            inventory_commands::lend_spool,
-            inventory_commands::return_spool_loan,
-            inventory_commands::return_inbound_spool_loan,
-            inventory_commands::export_loans_csv,
-            inventory_commands::assign_location,
-            inventory_commands::find_spool_by_qr,
-            inventory_commands::record_scan_event,
+            library_sync_settings_commands::get_library_sync_settings,
+            library_sync_settings_commands::save_library_sync_settings,
+            library_sync_validation_commands::validate_library_sync_host,
+            library_sync_snapshot_commands::fetch_library_sync_snapshot,
+            library_sync_read_commands::fetch_library_sync_spool_detail,
+            library_sync_read_commands::fetch_library_sync_spools,
+            library_sync_read_commands::fetch_library_sync_catalog_masters,
+            library_sync_read_commands::fetch_library_sync_wishlist_items,
+            library_sync_cache_commands::fetch_cached_library_sync_spools,
+            library_sync_read_commands::fetch_library_sync_printer_overview,
+            library_sync_read_commands::fetch_library_sync_printer_settings,
+            library_sync_cache_commands::fetch_cached_library_sync_printer_overview,
+            library_sync_read_commands::fetch_library_sync_loans,
+            library_sync_read_commands::fetch_library_sync_filament_consumption,
+            library_sync_cache_commands::fetch_cached_library_sync_loans,
+            library_sync_pairing_commands::pair_library_sync_host,
+            library_sync_settings_commands::clear_library_sync_client_auth,
+            library_sync_spool_write_commands::create_library_sync_host_spool,
+            library_sync_wishlist_write_commands::create_library_sync_host_wishlist_item,
+            library_sync_printer_write_commands::create_library_sync_host_printer,
+            library_sync_wishlist_write_commands::update_library_sync_host_wishlist_item_status,
+            library_sync_wishlist_write_commands::delete_library_sync_host_wishlist_item,
+            library_sync_danger_zone_commands::delete_library_sync_host_spool,
+            library_sync_printer_write_commands::delete_library_sync_host_printer,
+            library_sync_danger_zone_commands::purge_library_sync_host_spool,
+            library_sync_spool_write_commands::update_library_sync_host_spool_weight,
+            library_sync_spool_write_commands::update_library_sync_host_spool_tare_weight,
+            library_sync_spool_write_commands::update_library_sync_host_spool_details,
+            library_sync_spool_write_commands::update_library_sync_host_spool_rfid_tag,
+            library_sync_printer_write_commands::assign_library_sync_host_printer_slot,
+            library_sync_printer_write_commands::record_library_sync_host_print_usage,
+            library_sync_loan_write_commands::return_library_sync_host_loan,
+            library_sync_loan_write_commands::lend_library_sync_host_spool,
+            printer_slot_write_commands::assign_printer_slot,
+            printer_usage_commands::record_print_usage,
+            inventory_update_commands::update_spool_weight,
+            inventory_update_commands::update_spool_tare_weight,
+            inventory_update_commands::update_spool_status,
+            inventory_update_commands::update_spool_details,
+            inventory_update_commands::update_spool_rfid_tag,
+            inventory_update_commands::update_master_catalog_entry,
+            inventory_danger_zone_commands::delete_spool,
+            inventory_danger_zone_commands::purge_spool,
+            inventory_activity_commands::list_spool_history,
+            inventory_activity_commands::list_spool_usage,
+            inventory_loan_commands::list_active_spool_loans,
+            inventory_loan_commands::list_loan_usage_by_person,
+            inventory_loan_commands::list_spool_loans,
+            inventory_wishlist_commands::update_wishlist_item_status,
+            inventory_wishlist_commands::delete_wishlist_item,
+            inventory_loan_commands::lend_spool,
+            inventory_loan_commands::return_spool_loan,
+            inventory_loan_commands::return_inbound_spool_loan,
+            inventory_loan_commands::export_loans_csv,
+            inventory_update_commands::assign_location,
+            inventory_read_commands::find_spool_by_qr,
+            inventory_scan_commands::record_scan_event,
             document_commands::export_inventory_csv,
             document_commands::export_inventory_json,
             document_commands::export_full_backup_json,
             document_commands::import_full_backup_json,
             document_commands::import_data_file,
             document_commands::validate_full_backup_json,
-            inventory_commands::inventory_overview,
-            inventory_commands::reset_app_data,
-            inventory_commands::reset_catalog_data,
-            inventory_commands::top_materials,
-            inventory_commands::list_filament_consumption,
-            inventory_commands::check_low_stock,
-            inventory_commands::enqueue_sync_action,
+            inventory_stats_commands::inventory_overview,
+            inventory_maintenance_commands::reset_app_data,
+            inventory_maintenance_commands::reset_catalog_data,
+            inventory_stats_commands::top_materials,
+            inventory_stats_commands::list_filament_consumption,
+            inventory_maintenance_commands::check_low_stock,
+            inventory_maintenance_commands::enqueue_sync_action,
             document_commands::print_label_html,
             document_commands::print_label_pdf,
         ])
@@ -285,7 +325,7 @@ fn resolve_windows_storage_dir(roaming_dir: PathBuf, local_dir: PathBuf) -> Path
 
 pub(crate) fn with_inventory<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>
 where
-    Func: FnOnce(InventoryEngine) -> backend::filament_database::InventoryResult<Output>,
+    Func: FnOnce(InventoryEngine) -> backend::database_result::InventoryResult<Output>,
 {
     let db = FilamentDatabase::open(&state.db_path).map_err(|error| error.to_string())?;
     let engine = InventoryEngine::new(db);
@@ -294,7 +334,7 @@ where
 
 pub(crate) fn with_db<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>
 where
-    Func: FnOnce(&FilamentDatabase) -> backend::filament_database::InventoryResult<Output>,
+    Func: FnOnce(&FilamentDatabase) -> backend::database_result::InventoryResult<Output>,
 {
     let db = FilamentDatabase::open(&state.db_path).map_err(|error| error.to_string())?;
     func(&db).map_err(|error| format!("{:?}", error))

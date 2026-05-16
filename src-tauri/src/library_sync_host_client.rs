@@ -1,5 +1,5 @@
 use crate::state::AppState;
-use crate::trusted_lan_commands::CompanionHealthCheckResponse;
+use crate::trusted_lan_health::CompanionHealthCheckResponse;
 use crate::with_inventory;
 use reqwest::header::{CONTENT_TYPE, HOST, ORIGIN, SET_COOKIE};
 use serde::{de::DeserializeOwned, Deserialize};

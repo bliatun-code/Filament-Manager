@@ -3,9 +3,15 @@ import test from "node:test";
 
 import type { TrustedLanCompanionStatus } from "../lib/tauri_client";
 import {
+  buildTrustedLanActionErrorMessage,
+  buildTrustedLanActionMessage,
+  buildTrustedLanConfigMessage,
   buildTrustedLanCompanionModel,
+  buildTrustedLanNoPrivateInterfaceMessage,
+  buildTrustedLanLoadMessage,
   findNewTrustedLanActiveBrowserIds,
   buildTrustedLanPairedBrowserListModel,
+  isTrustedLanNetworkDraftDirty,
   resolveTrustedLanInterfaceAddressDraft,
 } from "./settings_companion_model";
 
@@ -221,6 +227,46 @@ test("resolveTrustedLanInterfaceAddressDraft stays empty when no LAN interface i
   assert.equal(draft, "");
 });
 
+test("isTrustedLanNetworkDraftDirty compares selected interface and parsed port", () => {
+  const status = createTrustedLanStatus({
+    listen_port: 4278,
+    selected_interface_address: "192.168.1.50",
+  });
+
+  assert.equal(
+    isTrustedLanNetworkDraftDirty({
+      interfaceAddressDraft: "192.168.1.50",
+      portDraft: "4278",
+      trustedLanStatus: status,
+    }),
+    false,
+  );
+  assert.equal(
+    isTrustedLanNetworkDraftDirty({
+      interfaceAddressDraft: "192.168.1.51",
+      portDraft: "4278",
+      trustedLanStatus: status,
+    }),
+    true,
+  );
+  assert.equal(
+    isTrustedLanNetworkDraftDirty({
+      interfaceAddressDraft: "192.168.1.50",
+      portDraft: "5000",
+      trustedLanStatus: status,
+    }),
+    true,
+  );
+  assert.equal(
+    isTrustedLanNetworkDraftDirty({
+      interfaceAddressDraft: "",
+      portDraft: "invalid",
+      trustedLanStatus: null,
+    }),
+    false,
+  );
+});
+
 test("buildTrustedLanPairedBrowserListModel keeps active browsers first and human-readable", () => {
   const model = buildTrustedLanPairedBrowserListModel({
     browsers: [
@@ -342,4 +388,92 @@ test("findNewTrustedLanActiveBrowserIds detects newly paired browsers only", () 
   );
 
   assert.deepEqual(ids, ["new-active"]);
+});
+
+test("buildTrustedLanActionMessage returns stable action feedback copy", () => {
+  const labels = {
+    allBrowsersRevoked: "All trusted-LAN browsers revoked.",
+    browserRevoked: "Trusted-LAN browser revoked.",
+    pairingCopied: "Trusted-LAN pairing link copied.",
+    pairingCreated: "Trusted-LAN pairing link created and copied.",
+  };
+
+  assert.equal(buildTrustedLanActionMessage("pairingCreated", labels), labels.pairingCreated);
+  assert.equal(buildTrustedLanActionMessage("pairingCopied", labels), labels.pairingCopied);
+  assert.equal(buildTrustedLanActionMessage("browserRevoked", labels), labels.browserRevoked);
+  assert.equal(
+    buildTrustedLanActionMessage("allBrowsersRevoked", labels),
+    labels.allBrowsersRevoked,
+  );
+});
+
+test("buildTrustedLanConfigMessage returns stable configuration feedback copy", () => {
+  const labels = {
+    disabled: "Web app server turned off.",
+    enabled: "Web app server turned on.",
+    enabledPending: "Web app server is starting. Refresh status if it takes a moment.",
+    networkSaved: "Web app network settings saved.",
+    saveFailed: "Failed to save trusted-LAN companion settings.",
+    starting: "Starting web app server...",
+  };
+
+  assert.equal(buildTrustedLanConfigMessage("enabled", labels), labels.enabled);
+  assert.equal(buildTrustedLanConfigMessage("disabled", labels), labels.disabled);
+  assert.equal(buildTrustedLanConfigMessage("networkSaved", labels), labels.networkSaved);
+  assert.equal(buildTrustedLanConfigMessage("starting", labels), labels.starting);
+  assert.equal(buildTrustedLanConfigMessage("enabledPending", labels), labels.enabledPending);
+  assert.equal(buildTrustedLanConfigMessage("saveFailed", labels), labels.saveFailed);
+});
+
+test("buildTrustedLanActionErrorMessage returns stable action fallback copy", () => {
+  const labels = {
+    copyPairingFailed: "Failed to copy the trusted-LAN pairing link.",
+    createPairingFailed: "Failed to create a trusted-LAN pairing link.",
+    revokeAllBrowsersFailed: "Failed to revoke trusted-LAN browsers.",
+    revokeBrowserFailed: "Failed to revoke the trusted-LAN browser.",
+  };
+
+  assert.equal(
+    buildTrustedLanActionErrorMessage("createPairingFailed", labels),
+    labels.createPairingFailed,
+  );
+  assert.equal(
+    buildTrustedLanActionErrorMessage("copyPairingFailed", labels),
+    labels.copyPairingFailed,
+  );
+  assert.equal(
+    buildTrustedLanActionErrorMessage("revokeBrowserFailed", labels),
+    labels.revokeBrowserFailed,
+  );
+  assert.equal(
+    buildTrustedLanActionErrorMessage("revokeAllBrowsersFailed", labels),
+    labels.revokeAllBrowsersFailed,
+  );
+});
+
+test("buildTrustedLanLoadMessage returns stable load and refresh copy", () => {
+  const labels = {
+    loadCompanionFailed: "Failed to load trusted-LAN companion status.",
+    newBrowserPaired: "New paired browser connected.",
+    refreshBrowsersFailed: "Failed to refresh paired browsers.",
+  };
+
+  assert.equal(
+    buildTrustedLanLoadMessage("loadCompanionFailed", labels),
+    labels.loadCompanionFailed,
+  );
+  assert.equal(buildTrustedLanLoadMessage("newBrowserPaired", labels), labels.newBrowserPaired);
+  assert.equal(
+    buildTrustedLanLoadMessage("refreshBrowsersFailed", labels),
+    labels.refreshBrowsersFailed,
+  );
+});
+
+test("buildTrustedLanNoPrivateInterfaceMessage returns stable validation copy", () => {
+  assert.equal(
+    buildTrustedLanNoPrivateInterfaceMessage({
+      noPrivateInterface: "Pick a private interface before turning on the web app server.",
+    }),
+    "Pick a private interface before turning on the web app server.",
+  );
 });

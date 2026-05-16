@@ -11,6 +11,7 @@ import { ModalHeader } from "../components/modal_chrome";
 import { modalPanelClassName } from "../components/modal_panel_class";
 import { VendorBadge } from "../components/vendor_badge";
 import { neutralChipClass, semanticChipClass } from "../lib/chip_styles";
+import { downloadTextFile } from "../lib/download_file";
 import { useI18n } from "../lib/i18n";
 import {
   compactLoanTimestamp,
@@ -181,13 +182,11 @@ export default function LoansPage() {
         true,
         directionFilter === "ALL" ? "ALL" : directionFilter,
       );
-      const blob = new Blob([payload.content], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `bambu-loans-${Date.now()}.csv`;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      downloadTextFile(
+        payload.content,
+        `bambu-loans-${Date.now()}.csv`,
+        "text/csv;charset=utf-8",
+      );
       setInfo(t("loans.csvExported", "Loan CSV exported."));
     } catch (exportError) {
       console.error(exportError);
