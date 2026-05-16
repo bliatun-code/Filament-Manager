@@ -20,6 +20,7 @@ mod library_sync_command_support;
 mod library_sync_commands;
 mod library_sync_host_client;
 mod library_sync_models;
+mod library_sync_settings_commands;
 mod printer_commands;
 mod security;
 mod state;
@@ -150,8 +151,8 @@ fn main() {
             printer_commands::set_active_printer,
             set_dock_icon_theme,
             get_app_version,
-            library_sync_commands::get_library_sync_settings,
-            library_sync_commands::save_library_sync_settings,
+            library_sync_settings_commands::get_library_sync_settings,
+            library_sync_settings_commands::save_library_sync_settings,
             library_sync_commands::validate_library_sync_host,
             library_sync_commands::fetch_library_sync_snapshot,
             library_sync_commands::fetch_library_sync_spool_detail,
