@@ -1,8 +1,18 @@
 import { AppModal } from "../components/app_modal";
+import { VendorBadge } from "../components/vendor_badge";
+import { neutralChipClass, semanticChipClass } from "../lib/chip_styles";
+import { toSwatchColor } from "../lib/color_utils";
 import type { I18nContextValue } from "../lib/i18n";
-import type { CatalogRefreshResult } from "../lib/tauri_client";
+import { materialTone } from "../lib/material_theme";
+import type { WishlistStatus } from "../lib/wishlist_data_source";
+import type {
+  CatalogRefreshResult,
+  MasterCatalogRow,
+  WishlistItemRow,
+} from "../lib/tauri_client";
 import {
   type RefreshLogCopyState,
+  statusBadgeClasses,
   wishlistSecondaryButtonClass,
   type WishlistRefreshVendor,
 } from "./wishlist_helpers";
@@ -229,5 +239,168 @@ export function WishlistRefreshSummaryPanel({
         </div>
       ) : null}
     </div>
+  );
+}
+
+export function WishlistBoardPanel({
+  allItemCount,
+  busy,
+  confirmDeleteWishlistId,
+  items,
+  loading,
+  masterById,
+  onDelete,
+  onStock,
+  onStatus,
+  tauri,
+  t,
+}: {
+  allItemCount: number;
+  busy: boolean;
+  confirmDeleteWishlistId: string | null;
+  items: WishlistItemRow[];
+  loading: boolean;
+  masterById: Map<string, MasterCatalogRow>;
+  onDelete: (itemId: string) => void;
+  onStock: (item: WishlistItemRow) => void;
+  onStatus: (itemId: string, status: WishlistStatus) => void;
+  tauri: boolean;
+  t: Translate;
+}) {
+  return (
+    <section className="surface-card">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="section-eyebrow">
+            {t("wishlist.board", "Wishlist board")}
+          </div>
+          <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            {t(
+              "wishlist.boardHint",
+              "Keep planned purchases moving from wishlist to stock here.",
+            )}
+          </div>
+        </div>
+        <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:shadow-none">
+          {items.length} / {allItemCount}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-500 dark:text-slate-300">
+          {t("wishlist.loading", "Loading wishlist...")}
+        </div>
+      ) : null}
+      {!loading && items.length === 0 ? (
+        <div className="surface-subtle mt-4 border-dashed p-5 text-sm text-slate-500 dark:text-slate-300">
+          {allItemCount === 0
+            ? t("wishlist.none", "No wishlist items yet.")
+            : t("wishlist.noneFiltered", "No items match the selected status filter.")}
+        </div>
+      ) : null}
+
+      <div className="mt-4 space-y-4">
+        {items.map((item) => {
+          const linkedMaster = item.master_id ? masterById.get(item.master_id) ?? null : null;
+          const swatchHex = linkedMaster?.hex_color ?? null;
+          const itemTone = materialTone(item.material);
+          return (
+            <div
+              key={item.id}
+              className={`rounded-2xl border p-4 shadow-sm shadow-slate-200/30 dark:shadow-none ${itemTone.card} ${itemTone.cardBorder}`}
+            >
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span
+                      className="h-14 w-14 shrink-0 rounded-2xl border border-white/70 shadow-inner shadow-white/30 dark:border-white/10 dark:shadow-black/30"
+                      style={{ backgroundColor: toSwatchColor(swatchHex) }}
+                    />
+                    <div className="min-w-0">
+                      <div className="break-words text-lg font-semibold text-slate-950 dark:text-slate-50">
+                        {item.material} · {item.filament_name} · {item.color_name}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <VendorBadge vendor={item.vendor} compact />
+                        <span className={statusBadgeClasses(item.status)}>
+                          {item.status === "WISHLIST"
+                            ? t("wishlist.statusWishlist", "Wishlist")
+                            : item.status === "ON_ORDER"
+                              ? t("wishlist.statusOnOrder", "On order")
+                              : t("wishlist.statusReceived", "Received")}
+                        </span>
+                        <span className={semanticChipClass("info", "px-2 py-1 text-[11px]")}>
+                          {t("wishlist.qty", "Qty")} {item.quantity}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
+                  <div className="rounded-2xl border border-slate-200 bg-white/75 px-4 py-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                      {t("wishlist.qty", "Qty")}
+                    </div>
+                    <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-50">
+                      {item.quantity}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white/75 px-4 py-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                      {t("wishlist.noteOptional", "Note (optional)")}
+                    </div>
+                    <div className="mt-2 leading-6 text-slate-700 dark:text-slate-300">
+                      {item.note?.trim() || "—"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={neutralChipClass(item.status === "WISHLIST", "px-3 py-1.5 text-xs")}
+                    onClick={() => onStatus(item.id, "WISHLIST")}
+                    disabled={!tauri || busy || item.status === "WISHLIST"}
+                  >
+                    {t("wishlist.statusWishlist", "Wishlist")}
+                  </button>
+                  <button
+                    type="button"
+                    className={neutralChipClass(item.status === "ON_ORDER", "px-3 py-1.5 text-xs")}
+                    onClick={() => onStatus(item.id, "ON_ORDER")}
+                    disabled={!tauri || busy || item.status === "ON_ORDER"}
+                  >
+                    {t("wishlist.statusOnOrder", "On order")}
+                  </button>
+                  <button
+                    type="button"
+                    className={semanticChipClass("success", "px-3 py-1.5 text-xs")}
+                    onClick={() => onStock(item)}
+                    disabled={!tauri || busy || item.status === "RECEIVED"}
+                  >
+                    {t("wishlist.addToStock", "Add to stock")}
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      confirmDeleteWishlistId === item.id
+                        ? semanticChipClass("danger", "px-3 py-1.5 text-xs")
+                        : "rounded-full border border-rose-300/70 bg-rose-50/60 px-3 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-50 dark:border-rose-600/50 dark:bg-rose-900/10 dark:text-rose-300"
+                    }
+                    onClick={() => onDelete(item.id)}
+                    disabled={!tauri || busy}
+                  >
+                    {confirmDeleteWishlistId === item.id
+                      ? t("wishlist.confirmRemoveAction", "Confirm remove")
+                      : t("common.remove", "Remove")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
