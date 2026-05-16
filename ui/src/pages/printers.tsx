@@ -40,8 +40,8 @@ import { FeedbackBanner } from "../components/feedback_banner";
 import { ModalHeader } from "../components/modal_chrome";
 import { modalPanelClassName } from "../components/modal_panel_class";
 import { PrinterModelPreview } from "../components/printer_model_preview";
-import { SaveOnlyModal } from "../components/save_only_modal";
 import { AddPrinterModal } from "../components/add_printer_modal";
+import { IncomingWeightModal } from "../components/incoming_weight_modal";
 import { semanticChipClass } from "../lib/chip_styles";
 import {
   formatFilamentDisplayTitle,
@@ -1206,61 +1206,15 @@ export default function PrintersPage() {
       </div>
 
       {incomingWeightPrompt ? (
-        <SaveOnlyModal
-          title={
-            incomingWeightPrompt.requiresIncomingWeight
-              ? t("printers.incomingWeightPromptTitle", "Set incoming roll weight")
-              : t("printers.outgoingWeightPromptTitle", "Set outgoing roll weight")
-          }
-          subtitle={formatFilamentDisplayTitle(
-            incomingWeightPrompt.targetMaterial,
-            incomingWeightPrompt.targetFilamentName,
-            incomingWeightPrompt.targetColorName,
-          )}
-          swatchColor={toSwatchColor(incomingWeightPrompt.targetHexColor)}
-          saveDisabled={busy}
+        <IncomingWeightModal
+          busy={busy}
+          prompt={incomingWeightPrompt}
+          incomingWeightValue={incomingWeightValue}
+          outgoingWeightValue={outgoingWeightValue}
+          onIncomingWeightChange={setIncomingWeightValue}
+          onOutgoingWeightChange={setOutgoingWeightValue}
           onSave={() => void confirmIncomingWeightDialog()}
-        >
-          <div className="space-y-3">
-            {incomingWeightPrompt.requiresOutgoingWeight ? (
-              <div>
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                  {t("printers.outgoingWeight", "Outgoing weight (g)")}
-                </label>
-                <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                  {formatFilamentDisplayTitle(
-                    incomingWeightPrompt.currentMaterial,
-                    incomingWeightPrompt.currentFilamentName,
-                    incomingWeightPrompt.currentColorName,
-                  )}
-                </div>
-                <input
-                  type="number"
-                  min={0}
-                  value={outgoingWeightValue}
-                  onChange={(event) => setOutgoingWeightValue(event.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
-                  autoFocus={!incomingWeightPrompt.requiresIncomingWeight}
-                />
-              </div>
-            ) : null}
-            {incomingWeightPrompt.requiresIncomingWeight ? (
-              <div>
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                  {t("printers.incomingWeightPromptLabel", "Measured weight (g)")}
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={incomingWeightValue}
-                  onChange={(event) => setIncomingWeightValue(event.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
-                  autoFocus
-                />
-              </div>
-            ) : null}
-          </div>
-        </SaveOnlyModal>
+        />
       ) : null}
 
       {rfidOverridePrompt ? (
