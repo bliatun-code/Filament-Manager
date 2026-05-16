@@ -42,6 +42,8 @@ pub mod database_inventory_import_apply;
 pub mod database_library_sync_auth;
 #[path = "../../../src/backend/database_library_sync_cache.rs"]
 pub mod database_library_sync_cache;
+#[path = "../../../src/backend/database_library_sync_facade.rs"]
+pub mod database_library_sync_facade;
 #[path = "../../../src/backend/database_library_sync_models.rs"]
 pub mod database_library_sync_models;
 #[path = "../../../src/backend/database_library_sync_settings.rs"]
