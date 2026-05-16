@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const repoRoot = resolve(".");
-const tauriClientPath = resolve(repoRoot, "ui", "src", "lib", "tauri_client.ts");
+const tauriClientDir = resolve(repoRoot, "ui", "src", "lib");
 const mainPath = resolve(repoRoot, "src-tauri", "src", "main.rs");
 
 const intentionalDesktopCommandGaps = new Map([
@@ -19,6 +19,28 @@ function collectTauriInvokes(source) {
     invokes.add(match[1]);
   }
   return invokes;
+}
+
+function collectTauriClientSources() {
+  return readdirSync(tauriClientDir)
+    .filter((fileName) => /^tauri(?:_.+)?_client\.ts$/.test(fileName))
+    .sort()
+    .map((fileName) => readFileSync(resolve(tauriClientDir, fileName), "utf8"));
+}
+
+function assertTauriClientBarrelStaysThin() {
+  const source = readFileSync(resolve(tauriClientDir, "tauri_client.ts"), "utf8");
+  const lines = source
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const nonBarrelLines = lines.filter((line) => !line.startsWith("export * from "));
+  if (lines.length > 30 || nonBarrelLines.length > 0) {
+    console.error(
+      "ui/src/lib/tauri_client.ts should stay a thin compatibility barrel. Put domain commands in tauri_*_client.ts files.",
+    );
+    process.exit(1);
+  }
 }
 
 function collectRegisteredCommands(source) {
@@ -56,7 +78,14 @@ function collectRegisteredCommands(source) {
   );
 }
 
-const invokes = collectTauriInvokes(readFileSync(tauriClientPath, "utf8"));
+assertTauriClientBarrelStaysThin();
+
+const invokes = collectTauriClientSources().reduce((allInvokes, source) => {
+  for (const command of collectTauriInvokes(source)) {
+    allInvokes.add(command);
+  }
+  return allInvokes;
+}, new Set());
 const registered = collectRegisteredCommands(readFileSync(mainPath, "utf8"));
 
 const missing = [...invokes].filter((command) => !registered.has(command)).sort();
@@ -72,7 +101,7 @@ if (missing.length > 0 || unexpectedUnused.length > 0) {
   }
 
   if (unexpectedUnused.length > 0) {
-    console.error("Registered Tauri commands not called by ui/src/lib/tauri_client.ts:");
+    console.error("Registered Tauri commands not called by ui/src/lib/tauri*_client.ts:");
     for (const command of unexpectedUnused) {
       console.error(`  - ${command}`);
     }
