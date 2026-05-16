@@ -398,8 +398,7 @@ pub(crate) fn fetch_library_sync_printer_overview(
     state: tauri::State<'_, AppState>,
     input: ValidateLibrarySyncHostInput,
 ) -> Result<Vec<PrinterOverviewRow>, String> {
-    let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(&input)?;
-    let health = ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    let (normalized_base_url, health) = prepare_library_sync_host_read(&input)?;
     let rows: Vec<PrinterOverviewRow> =
         fetch_library_sync_host_json(&normalized_base_url, "/api/v1/library/printers")?;
 
@@ -420,8 +419,7 @@ pub(crate) fn fetch_library_sync_printer_settings(
     state: tauri::State<'_, AppState>,
     input: ValidateLibrarySyncHostInput,
 ) -> Result<PrinterSettingsSnapshot, String> {
-    let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(&input)?;
-    let health = ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    let (normalized_base_url, health) = prepare_library_sync_host_read(&input)?;
     let snapshot: PrinterSettingsSnapshot =
         fetch_library_sync_host_json(&normalized_base_url, "/api/v1/library/printer-settings")?;
 
