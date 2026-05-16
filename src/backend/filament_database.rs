@@ -10,14 +10,17 @@ pub use super::database_loan_models::{
 };
 pub use super::database_printer_models::{
     BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow, BambuLiveObservedStateRow,
-    BambuLiveObservedTrayRow, PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow, PrinterUsageRow,
+    BambuLiveObservedTrayRow, PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow,
 };
+#[allow(unused_imports)]
+pub use super::database_printer_models::PrinterUsageRow;
 pub use super::database_reset_models::CatalogResetStats;
 #[allow(unused_imports)]
 pub use super::database_result::{InventoryError, InventoryResult};
 pub use super::database_spool_models::{
     SpoolHistoryEventRow, SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow,
 };
+#[allow(unused_imports)]
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
 pub use super::database_trusted_lan_models::{
     TrustedLanPairedBrowserRow, TrustedLanSettingsRow,
