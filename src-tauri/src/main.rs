@@ -15,8 +15,8 @@ mod companion_payload;
 mod companion_session;
 mod companion_state;
 mod document_commands;
+mod inventory_activity_commands;
 mod inventory_command_support;
-mod inventory_commands;
 mod inventory_create_commands;
 mod inventory_danger_zone_commands;
 mod inventory_loan_commands;
@@ -213,8 +213,8 @@ fn main() {
             inventory_update_commands::update_master_catalog_entry,
             inventory_danger_zone_commands::delete_spool,
             inventory_danger_zone_commands::purge_spool,
-            inventory_commands::list_spool_history,
-            inventory_commands::list_spool_usage,
+            inventory_activity_commands::list_spool_history,
+            inventory_activity_commands::list_spool_usage,
             inventory_loan_commands::list_active_spool_loans,
             inventory_loan_commands::list_loan_usage_by_person,
             inventory_loan_commands::list_spool_loans,

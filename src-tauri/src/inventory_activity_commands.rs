@@ -1,7 +1,6 @@
 use crate::backend::filament_database::{SpoolHistoryEventRow, SpoolUsagePointRow};
 use crate::inventory_command_support::{companion_service, inventory_error_to_string};
 use crate::state::AppState;
-use crate::with_inventory;
 
 #[tauri::command]
 pub(crate) fn list_spool_history(
