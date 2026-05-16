@@ -1,9 +1,9 @@
-use crate::backend::filament_database::{BambuLiveIntegrationRow, PrinterOverviewRow};
+use crate::backend::filament_database::BambuLiveIntegrationRow;
 use crate::backend::database_result::InventoryError;
 use crate::backend::inventory_engine::{
     AssignPrinterSlotInput, CreatePrinterInput, RecordPrintUsageInput,
 };
-use crate::printer_command_support::{companion_service, inventory_error_to_string};
+use crate::printer_command_support::companion_service;
 use crate::state::AppState;
 use crate::{with_db, with_inventory};
 use serde::{Deserialize, Serialize};
@@ -15,15 +15,6 @@ pub(crate) struct SaveBambuLiveIntegrationInput {
     host: Option<String>,
     access_code: Option<String>,
     printer_serial: Option<String>,
-}
-
-#[tauri::command]
-pub(crate) fn list_printer_overview(
-    state: tauri::State<'_, AppState>,
-) -> Result<Vec<PrinterOverviewRow>, String> {
-    companion_service(&state)
-        .list_printer_overview()
-        .map_err(inventory_error_to_string)
 }
 
 #[tauri::command]
