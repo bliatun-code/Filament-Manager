@@ -6,13 +6,6 @@ use super::database_backup::{export_full_backup_content, validate_full_backup_co
 use super::database_backup_import::import_full_backup_content;
 pub use super::database_catalog_inputs::{ManualMasterInput, MasterCatalogUpdateInput};
 use super::database_connection::open_connection;
-use super::database_events::{
-    ensure_scale as ensure_scale_row, insert_scan_event as insert_scan_event_row,
-    insert_spool_history_event as insert_spool_history_event_row,
-    insert_weight_reading as insert_weight_reading_row,
-    list_spool_history_events as list_spool_history_event_rows,
-    list_spool_usage_points as list_spool_usage_point_rows,
-};
 use super::database_export::{
     export_inventory_spools_csv as export_inventory_spool_rows_csv,
     export_inventory_spools_json as export_inventory_spool_rows_json,
@@ -122,55 +115,6 @@ impl FilamentDatabase {
 
     pub fn sqlite_datetime_shift(&self, base: &str, modifier: &str) -> InventoryResult<String> {
         sqlite_datetime_shift_value(&self.conn, base, modifier)
-    }
-
-    pub fn ensure_scale(&self, scale_id: &str, name: &str, protocol: &str) -> InventoryResult<()> {
-        ensure_scale_row(&self.conn, scale_id, name, protocol)
-    }
-
-    pub fn insert_weight_reading(
-        &self,
-        scale_id: &str,
-        spool_id: &str,
-        grams: i64,
-        source: &str,
-    ) -> InventoryResult<()> {
-        insert_weight_reading_row(&self.conn, scale_id, spool_id, grams, source)
-    }
-
-    pub fn insert_scan_event(
-        &self,
-        spool_id: Option<&str>,
-        qr_code: Option<&str>,
-        source: &str,
-        detected_color_hex: Option<&str>,
-    ) -> InventoryResult<()> {
-        insert_scan_event_row(&self.conn, spool_id, qr_code, source, detected_color_hex)
-    }
-
-    pub fn insert_spool_history_event(
-        &self,
-        spool_id: &str,
-        event_type: &str,
-        payload_json: &str,
-    ) -> InventoryResult<()> {
-        insert_spool_history_event_row(&self.conn, spool_id, event_type, payload_json)
-    }
-
-    pub fn list_spool_history_events(
-        &self,
-        spool_id: &str,
-        limit: i64,
-    ) -> InventoryResult<Vec<SpoolHistoryEventRow>> {
-        list_spool_history_event_rows(&self.conn, spool_id, limit)
-    }
-
-    pub fn list_spool_usage_points(
-        &self,
-        spool_id: &str,
-        limit: i64,
-    ) -> InventoryResult<Vec<SpoolUsagePointRow>> {
-        list_spool_usage_point_rows(&self.conn, spool_id, limit)
     }
 
     pub fn create_spool_loan(

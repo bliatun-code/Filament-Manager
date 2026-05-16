@@ -34,6 +34,8 @@ pub mod database_catalog_update;
 pub mod database_connection;
 #[path = "../../../src/backend/database_events.rs"]
 pub mod database_events;
+#[path = "../../../src/backend/database_events_facade.rs"]
+pub mod database_events_facade;
 #[path = "../../../src/backend/database_export.rs"]
 pub mod database_export;
 #[path = "../../../src/backend/database_ids.rs"]
