@@ -3,8 +3,7 @@ use crate::backend::filament_database::{
     SpoolLoanDetailsRow, SpoolLoanRow, SpoolUsagePointRow,
 };
 use crate::backend::inventory_engine::{
-    CreateManualSpoolInput, CreateSpoolInput, CreateWishlistItemInput, DeleteSpoolInput,
-    LendSpoolInput, PurgeSpoolInput, ReturnSpoolLoanInput, ScanSource,
+    DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, ReturnSpoolLoanInput, ScanSource,
     UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput, UpdateSpoolRfidTagInput,
     UpdateWishlistStatusInput, WeightSource,
 };
@@ -25,32 +24,6 @@ pub(crate) fn reset_catalog_data(
     state: tauri::State<'_, AppState>,
 ) -> Result<CatalogResetStats, String> {
     with_inventory(&state, |engine| engine.reset_catalogs())
-}
-
-#[tauri::command]
-pub(crate) fn create_spool(
-    state: tauri::State<'_, AppState>,
-    input: CreateSpoolInput,
-) -> Result<(), String> {
-    with_inventory(&state, |engine| engine.create_spool(input))
-}
-
-#[tauri::command]
-pub(crate) fn create_wishlist_item(
-    state: tauri::State<'_, AppState>,
-    input: CreateWishlistItemInput,
-) -> Result<(), String> {
-    with_inventory(&state, |engine| engine.create_wishlist_item(input))
-}
-
-#[tauri::command]
-pub(crate) fn create_manual_spool(
-    state: tauri::State<'_, AppState>,
-    input: CreateManualSpoolInput,
-) -> Result<(), String> {
-    companion_service(&state)
-        .create_manual_spool(input)
-        .map_err(inventory_error_to_string)
 }
 
 #[tauri::command]

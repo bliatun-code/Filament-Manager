@@ -17,6 +17,7 @@ mod companion_state;
 mod document_commands;
 mod inventory_command_support;
 mod inventory_commands;
+mod inventory_create_commands;
 mod inventory_read_commands;
 mod library_sync_cache_commands;
 mod library_sync_command_support;
@@ -152,9 +153,9 @@ fn main() {
             catalog_commands::refresh_esun_catalog,
             catalog_commands::esun_search_filaments,
             catalog_commands::esun_fetch_product_detail,
-            inventory_commands::create_spool,
-            inventory_commands::create_wishlist_item,
-            inventory_commands::create_manual_spool,
+            inventory_create_commands::create_spool,
+            inventory_create_commands::create_wishlist_item,
+            inventory_create_commands::create_manual_spool,
             printer_commands::create_printer,
             printer_commands::save_bambu_live_integration,
             printer_commands::delete_bambu_live_integration,
