@@ -22,6 +22,7 @@ mod inventory_danger_zone_commands;
 mod inventory_loan_commands;
 mod inventory_read_commands;
 mod inventory_scan_commands;
+mod inventory_stats_commands;
 mod inventory_update_commands;
 mod inventory_wishlist_commands;
 mod library_sync_cache_commands;
@@ -231,11 +232,11 @@ fn main() {
             document_commands::import_full_backup_json,
             document_commands::import_data_file,
             document_commands::validate_full_backup_json,
-            inventory_commands::inventory_overview,
+            inventory_stats_commands::inventory_overview,
             inventory_commands::reset_app_data,
             inventory_commands::reset_catalog_data,
-            inventory_commands::top_materials,
-            inventory_commands::list_filament_consumption,
+            inventory_stats_commands::top_materials,
+            inventory_stats_commands::list_filament_consumption,
             inventory_commands::check_low_stock,
             inventory_commands::enqueue_sync_action,
             document_commands::print_label_html,
