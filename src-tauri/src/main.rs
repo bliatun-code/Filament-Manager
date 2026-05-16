@@ -17,6 +17,7 @@ mod companion_state;
 mod document_commands;
 mod inventory_command_support;
 mod inventory_commands;
+mod inventory_read_commands;
 mod library_sync_cache_commands;
 mod library_sync_command_support;
 mod library_sync_danger_zone_commands;
@@ -135,8 +136,8 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            inventory_commands::list_spools,
-            inventory_commands::list_wishlist_items,
+            inventory_read_commands::list_spools,
+            inventory_read_commands::list_wishlist_items,
             printer_commands::get_printer_settings,
             printer_commands::list_printer_overview,
             trusted_lan_commands::get_trusted_lan_companion_status,
@@ -146,7 +147,7 @@ fn main() {
             trusted_lan_commands::list_trusted_lan_paired_browsers,
             trusted_lan_commands::revoke_trusted_lan_paired_browser,
             trusted_lan_commands::revoke_all_trusted_lan_paired_browsers,
-            inventory_commands::list_master_catalog,
+            inventory_read_commands::list_master_catalog,
             catalog_commands::refresh_bambu_catalog,
             catalog_commands::refresh_esun_catalog,
             catalog_commands::esun_search_filaments,
@@ -216,7 +217,7 @@ fn main() {
             inventory_commands::return_inbound_spool_loan,
             inventory_commands::export_loans_csv,
             inventory_commands::assign_location,
-            inventory_commands::find_spool_by_qr,
+            inventory_read_commands::find_spool_by_qr,
             inventory_commands::record_scan_event,
             document_commands::export_inventory_csv,
             document_commands::export_inventory_json,

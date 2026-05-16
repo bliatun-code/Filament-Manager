@@ -1,7 +1,6 @@
 use crate::backend::filament_database::{
-    ActiveSpoolLoanRow, CatalogResetStats, FilamentMasterCatalogRow, LoanUsageByPersonRow,
-    SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow, SpoolUsagePointRow,
-    SpoolWithMasterRow, WishlistItemRow,
+    ActiveSpoolLoanRow, CatalogResetStats, LoanUsageByPersonRow, SpoolHistoryEventRow,
+    SpoolLoanDetailsRow, SpoolLoanRow, SpoolUsagePointRow,
 };
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreateSpoolInput, CreateWishlistItemInput, DeleteSpoolInput,
@@ -14,27 +13,7 @@ use crate::inventory_command_support::{
     companion_service, inventory_error_to_string, ExportPayload, ScanPayload,
 };
 use crate::state::AppState;
-use crate::{with_db, with_inventory, with_stats};
-
-#[tauri::command]
-pub(crate) fn list_spools(
-    state: tauri::State<'_, AppState>,
-    limit: i64,
-    offset: i64,
-) -> Result<Vec<SpoolWithMasterRow>, String> {
-    companion_service(&state)
-        .list_spools(limit, offset)
-        .map_err(inventory_error_to_string)
-}
-
-#[tauri::command]
-pub(crate) fn list_wishlist_items(
-    state: tauri::State<'_, AppState>,
-    limit: Option<i64>,
-) -> Result<Vec<WishlistItemRow>, String> {
-    let capped = limit.unwrap_or(500).clamp(1, 2_000);
-    with_inventory(&state, |engine| engine.list_wishlist_items(capped))
-}
+use crate::{with_inventory, with_stats};
 
 #[tauri::command]
 pub(crate) fn reset_app_data(state: tauri::State<'_, AppState>) -> Result<(), String> {
@@ -46,17 +25,6 @@ pub(crate) fn reset_catalog_data(
     state: tauri::State<'_, AppState>,
 ) -> Result<CatalogResetStats, String> {
     with_inventory(&state, |engine| engine.reset_catalogs())
-}
-
-#[tauri::command]
-pub(crate) fn list_master_catalog(
-    state: tauri::State<'_, AppState>,
-    limit: i64,
-    search: Option<String>,
-) -> Result<Vec<FilamentMasterCatalogRow>, String> {
-    with_db(&state, |db| {
-        db.list_master_catalog(limit, search.as_deref())
-    })
 }
 
 #[tauri::command]
@@ -296,16 +264,6 @@ pub(crate) fn assign_location(
     with_inventory(&state, |engine| {
         engine.assign_location(&spool_id, location_id.as_deref())
     })
-}
-
-#[tauri::command]
-pub(crate) fn find_spool_by_qr(
-    state: tauri::State<'_, AppState>,
-    qr_code: String,
-) -> Result<Option<SpoolRow>, String> {
-    companion_service(&state)
-        .find_spool_row_by_qr_or_id(&qr_code)
-        .map_err(inventory_error_to_string)
 }
 
 #[tauri::command]
