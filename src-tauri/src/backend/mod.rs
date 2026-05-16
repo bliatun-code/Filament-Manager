@@ -36,6 +36,8 @@ pub mod database_import;
 pub mod database_library_sync_auth;
 #[path = "../../../src/backend/database_library_sync_cache.rs"]
 pub mod database_library_sync_cache;
+#[path = "../../../src/backend/database_library_sync_settings.rs"]
+pub mod database_library_sync_settings;
 #[path = "../../../src/backend/database_library_sync_validation.rs"]
 pub mod database_library_sync_validation;
 #[path = "../../../src/backend/database_loan_create.rs"]

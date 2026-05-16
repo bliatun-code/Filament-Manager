@@ -29,7 +29,6 @@ use super::database_export::{
     export_loans_csv as export_loan_rows_csv, export_spools_csv as export_spool_rows_csv,
     export_spools_json as export_spool_rows_json,
 };
-use super::database_ids::new_id;
 pub use super::database_import::ImportDataStats;
 use super::database_import::{
     parse_inventory_spools_csv, parse_inventory_spools_json, InventoryImportRow,
@@ -45,6 +44,10 @@ use super::database_library_sync_cache::{
     save_library_sync_cached_printers as save_library_sync_cached_printer_rows,
     save_library_sync_cached_snapshot as save_library_sync_cached_snapshot_row,
     save_library_sync_cached_spools as save_library_sync_cached_spool_rows,
+};
+use super::database_library_sync_settings::{
+    get_library_sync_settings as get_library_sync_setting_rows,
+    save_library_sync_settings as save_library_sync_setting_rows,
 };
 use super::database_library_sync_validation::save_library_sync_validation_state as save_library_sync_validation_state_row;
 use super::database_loan_create::{
@@ -141,7 +144,6 @@ use super::database_wishlist::{
     list_wishlist_items as list_wishlist_item_rows,
     update_wishlist_item_status as update_wishlist_item_status_row,
 };
-use super::library_sync_defaults::{default_library_sync_device_name, normalize_library_sync_mode};
 use super::spool_defaults::normalize_spool_status;
 use super::statistics::InventoryOverview;
 use rusqlite::{params, Connection, OptionalExtension};
@@ -1061,168 +1063,14 @@ impl FilamentDatabase {
     }
 
     pub fn get_library_sync_settings(&self) -> InventoryResult<LibrarySyncSettingsRow> {
-        let mode = normalize_library_sync_mode(self.get_setting("library_sync_mode")?.as_deref());
-        let device_name = self
-            .get_setting("library_sync_device_name")?
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty())
-            .unwrap_or_else(default_library_sync_device_name);
-
-        let library_id = self
-            .get_setting("library_sync_library_id")?
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| {
-                let next = new_id();
-                let _ = self.set_setting("library_sync_library_id", &next);
-                next
-            });
-
-        let host_base_url = self
-            .get_setting("library_sync_host_base_url")?
-            .map(|value| value.trim().trim_end_matches('/').to_string())
-            .filter(|value| !value.is_empty());
-        let host_device_name = self
-            .get_setting("library_sync_host_device_name")?
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
-        let client_session_id = self
-            .get_setting("library_sync_client_session_id")?
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
-        let client_auth_paired = client_session_id.is_some();
-        let client_auth_paired_at = self
-            .get_setting("library_sync_client_auth_paired_at")?
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
-        let client_auth_expires_at = self
-            .get_setting("library_sync_client_auth_expires_at")?
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
-        let last_checked_at = self
-            .get_setting("library_sync_last_checked_at")?
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
-        let last_reachable_at = self
-            .get_setting("library_sync_last_reachable_at")?
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
-        let last_validation_message = self
-            .get_setting("library_sync_last_validation_message")?
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
-        let cached_snapshot = self
-            .get_setting("library_sync_cached_snapshot_json")?
-            .and_then(|value| serde_json::from_str::<LibrarySyncCachedSnapshotRow>(&value).ok());
-        let cached_spools = self
-            .get_setting("library_sync_cached_spools_json")?
-            .and_then(|value| serde_json::from_str::<LibrarySyncCachedSpoolListRow>(&value).ok());
-        let cached_printers = self
-            .get_setting("library_sync_cached_printers_json")?
-            .and_then(|value| {
-                serde_json::from_str::<LibrarySyncCachedPrinterOverviewRow>(&value).ok()
-            });
-        let cached_loans = self
-            .get_setting("library_sync_cached_loans_json")?
-            .and_then(|value| serde_json::from_str::<LibrarySyncCachedLoanListRow>(&value).ok());
-
-        Ok(LibrarySyncSettingsRow {
-            mode,
-            device_name,
-            library_id,
-            host_base_url,
-            host_device_name,
-            client_auth_paired,
-            client_auth_paired_at,
-            client_auth_expires_at,
-            last_checked_at,
-            last_reachable_at,
-            last_validation_message,
-            cached_snapshot,
-            cached_spools,
-            cached_printers,
-            cached_loans,
-        })
+        get_library_sync_setting_rows(&self.conn)
     }
 
     pub fn save_library_sync_settings(
         &self,
         settings: &LibrarySyncSettingsRow,
     ) -> InventoryResult<LibrarySyncSettingsRow> {
-        let mode = normalize_library_sync_mode(Some(settings.mode.as_str()));
-        let device_name = settings
-            .device_name
-            .trim()
-            .to_string()
-            .chars()
-            .take(120)
-            .collect::<String>();
-        let safe_device_name = if device_name.is_empty() {
-            default_library_sync_device_name()
-        } else {
-            device_name
-        };
-        let library_id = settings
-            .library_id
-            .trim()
-            .to_string()
-            .chars()
-            .take(160)
-            .collect::<String>();
-        let safe_library_id = if library_id.is_empty() {
-            new_id()
-        } else {
-            library_id
-        };
-        let host_base_url = settings
-            .host_base_url
-            .as_deref()
-            .map(str::trim)
-            .map(|value| value.trim_end_matches('/'))
-            .filter(|value| !value.is_empty())
-            .map(|value| value.to_string());
-        let host_device_name = settings
-            .host_device_name
-            .as_deref()
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .map(|value| value.chars().take(120).collect::<String>());
-        let previous_host_base_url = self
-            .get_setting("library_sync_host_base_url")?
-            .map(|value| value.trim().trim_end_matches('/').to_string())
-            .filter(|value| !value.is_empty());
-
-        self.set_setting("library_sync_mode", &mode)?;
-        self.set_setting("library_sync_device_name", &safe_device_name)?;
-        self.set_setting("library_sync_library_id", &safe_library_id)?;
-
-        if mode == "CLIENT" {
-            let host_changed = previous_host_base_url != host_base_url;
-            match host_base_url.as_deref() {
-                Some(value) => self.set_setting("library_sync_host_base_url", value)?,
-                None => self.delete_setting("library_sync_host_base_url")?,
-            }
-            match host_device_name.as_deref() {
-                Some(value) => self.set_setting("library_sync_host_device_name", value)?,
-                None => self.delete_setting("library_sync_host_device_name")?,
-            }
-            if host_changed {
-                self.clear_library_sync_client_auth_state()?;
-            }
-        } else {
-            self.delete_setting("library_sync_host_base_url")?;
-            self.delete_setting("library_sync_host_device_name")?;
-            self.delete_setting("library_sync_last_checked_at")?;
-            self.delete_setting("library_sync_last_reachable_at")?;
-            self.delete_setting("library_sync_last_validation_message")?;
-            self.delete_setting("library_sync_cached_snapshot_json")?;
-            self.delete_setting("library_sync_cached_spools_json")?;
-            self.delete_setting("library_sync_cached_printers_json")?;
-            self.delete_setting("library_sync_cached_loans_json")?;
-            self.clear_library_sync_client_auth_state()?;
-        }
-
-        self.get_library_sync_settings()
+        save_library_sync_setting_rows(&self.conn, settings)
     }
 
     pub fn save_library_sync_validation_state(
