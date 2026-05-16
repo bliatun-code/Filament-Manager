@@ -56,6 +56,9 @@ use super::database_settings::{
     delete_setting as delete_setting_row, get_setting as get_setting_row,
     set_setting as set_setting_row,
 };
+use super::database_spool_delete::{
+    purge_spool as purge_spool_row, soft_delete_spool as soft_delete_spool_row,
+};
 use super::database_spool_queries::{
     get_spool_by_id as get_spool_by_id_row, get_spool_by_qr as get_spool_by_qr_row,
     get_spool_with_master_by_id as get_spool_with_master_by_id_row,
@@ -1209,107 +1212,11 @@ impl FilamentDatabase {
     }
 
     pub fn soft_delete_spool(&self, spool_id: &str) -> InventoryResult<()> {
-        let tx = self.conn.unchecked_transaction()?;
-        let active_loan_exists: Option<i64> = tx
-            .query_row(
-                "SELECT 1
-                 FROM spool_loans
-                 WHERE spool_id = ?1
-                   AND returned_at IS NULL
-                 LIMIT 1",
-                params![spool_id],
-                |row| row.get(0),
-            )
-            .optional()?;
-        if active_loan_exists.is_some() {
-            return Err(InventoryError::InvalidOperation(
-                "spool has an active loan; return it before deleting".to_string(),
-            ));
-        }
-
-        let affected = tx.execute(
-            "UPDATE filament_spools
-             SET deleted_at = datetime('now'),
-                 status = 'DELETED',
-                 location_id = NULL,
-                 updated_at = datetime('now')
-             WHERE id = ?1 AND deleted_at IS NULL",
-            params![spool_id],
-        )?;
-        require_rows(affected)?;
-        tx.execute(
-            "UPDATE ams_slots
-             SET spool_id = NULL,
-                 last_seen_at = datetime('now')
-             WHERE spool_id = ?1",
-            params![spool_id],
-        )?;
-        tx.commit()?;
-        Ok(())
+        soft_delete_spool_row(&self.conn, spool_id)
     }
 
     pub fn purge_spool(&self, spool_id: &str) -> InventoryResult<()> {
-        let tx = self.conn.unchecked_transaction()?;
-        let exists: Option<i64> = tx
-            .query_row(
-                "SELECT 1
-                 FROM filament_spools
-                 WHERE id = ?1
-                 LIMIT 1",
-                params![spool_id],
-                |row| row.get(0),
-            )
-            .optional()?;
-        if exists.is_none() {
-            return Err(InventoryError::NotFound);
-        }
-
-        tx.execute(
-            "UPDATE ams_slots
-             SET spool_id = NULL
-             WHERE spool_id = ?1",
-            params![spool_id],
-        )?;
-        tx.execute(
-            "DELETE FROM weight_readings
-             WHERE spool_id = ?1",
-            params![spool_id],
-        )?;
-        tx.execute(
-            "DELETE FROM spool_loans
-             WHERE spool_id = ?1",
-            params![spool_id],
-        )?;
-        tx.execute(
-            "DELETE FROM scan_events
-             WHERE spool_id = ?1",
-            params![spool_id],
-        )?;
-        tx.execute(
-            "DELETE FROM label_print_jobs
-             WHERE spool_id = ?1",
-            params![spool_id],
-        )?;
-        tx.execute(
-            "DELETE FROM print_jobs
-             WHERE spool_id = ?1",
-            params![spool_id],
-        )?;
-        tx.execute(
-            "DELETE FROM spool_history_events
-             WHERE spool_id = ?1",
-            params![spool_id],
-        )?;
-
-        let removed = tx.execute(
-            "DELETE FROM filament_spools
-             WHERE id = ?1",
-            params![spool_id],
-        )?;
-        require_rows(removed)?;
-
-        tx.commit()?;
-        Ok(())
+        purge_spool_row(&self.conn, spool_id)
     }
 
     pub fn ensure_location(&self, name: &str) -> InventoryResult<String> {
