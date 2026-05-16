@@ -14,6 +14,8 @@ pub mod database_bambu_live_facade;
 pub mod database_bambu_live_settings;
 #[path = "../../../src/backend/database_borrowed_schema.rs"]
 pub mod database_borrowed_schema;
+#[path = "../../../src/backend/database_catalog_facade.rs"]
+pub mod database_catalog_facade;
 #[path = "../../../src/backend/database_catalog_esun.rs"]
 pub mod database_catalog_esun;
 #[path = "../../../src/backend/database_catalog_inputs.rs"]

@@ -4,13 +4,7 @@ use super::database_alerts::{
 pub use super::database_backup::BackupValidationStats;
 use super::database_backup::{export_full_backup_content, validate_full_backup_content};
 use super::database_backup_import::import_full_backup_content;
-use super::database_catalog_esun::normalize_esun_catalog_colors as normalize_esun_catalog_colors_rows;
 pub use super::database_catalog_inputs::{ManualMasterInput, MasterCatalogUpdateInput};
-use super::database_catalog_lifecycle::apply_vendor_discontinued_rules as apply_vendor_discontinued_rules_row;
-use super::database_catalog_manual::upsert_manual_master as upsert_manual_master_row;
-use super::database_catalog_queries::list_master_catalog as list_master_catalog_rows;
-use super::database_catalog_schema::ensure_catalog_lifecycle_columns as ensure_catalog_lifecycle_columns_schema;
-use super::database_catalog_update::update_master_catalog_entry as update_master_catalog_entry_row;
 use super::database_connection::open_connection;
 use super::database_events::{
     ensure_scale as ensure_scale_row, insert_scan_event as insert_scan_event_row,
@@ -128,29 +122,6 @@ impl FilamentDatabase {
 
     pub(crate) fn connection(&self) -> &Connection {
         &self.conn
-    }
-
-    pub fn list_master_catalog(
-        &self,
-        limit: i64,
-        search: Option<&str>,
-    ) -> InventoryResult<Vec<FilamentMasterCatalogRow>> {
-        list_master_catalog_rows(&self.conn, limit, search)
-    }
-
-    pub fn upsert_manual_master(&self, input: ManualMasterInput<'_>) -> InventoryResult<String> {
-        upsert_manual_master_row(&self.conn, input)
-    }
-
-    pub fn normalize_esun_catalog_colors(&self) -> InventoryResult<EsunColorNormalizationStats> {
-        normalize_esun_catalog_colors_rows(&self.conn)
-    }
-
-    pub fn update_master_catalog_entry(
-        &self,
-        input: MasterCatalogUpdateInput<'_>,
-    ) -> InventoryResult<String> {
-        update_master_catalog_entry_row(&self.conn, input)
     }
 
     pub fn insert_spool(&self, spool: &SpoolRow) -> InventoryResult<()> {
@@ -286,25 +257,6 @@ impl FilamentDatabase {
 
     pub fn sqlite_datetime_shift(&self, base: &str, modifier: &str) -> InventoryResult<String> {
         sqlite_datetime_shift_value(&self.conn, base, modifier)
-    }
-
-    pub fn ensure_catalog_lifecycle_columns(&self) -> InventoryResult<()> {
-        ensure_catalog_lifecycle_columns_schema(&self.conn)
-    }
-
-    pub fn apply_vendor_discontinued_rules(
-        &self,
-        vendor: &str,
-        refresh_started_at: &str,
-    ) -> InventoryResult<CatalogLifecycleStats> {
-        apply_vendor_discontinued_rules_row(&self.conn, vendor, refresh_started_at)
-    }
-
-    pub fn apply_bambu_discontinued_rules(
-        &self,
-        refresh_started_at: &str,
-    ) -> InventoryResult<CatalogLifecycleStats> {
-        self.apply_vendor_discontinued_rules("Bambu", refresh_started_at)
     }
 
     pub fn ensure_scale(&self, scale_id: &str, name: &str, protocol: &str) -> InventoryResult<()> {
