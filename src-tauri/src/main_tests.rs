@@ -1,5 +1,5 @@
 use crate::backend::filament_database::{FilamentDatabase, TrustedLanSettingsRow};
-use crate::trusted_lan_commands::load_trusted_lan_runtime;
+use crate::trusted_lan_runtime_commands::load_trusted_lan_runtime;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 

@@ -55,6 +55,7 @@ mod state;
 mod trusted_lan_commands;
 mod trusted_lan_health;
 mod trusted_lan_interfaces;
+mod trusted_lan_runtime_commands;
 
 use backend::filament_database::FilamentDatabase;
 use backend::inventory_engine::InventoryEngine;
@@ -131,8 +132,9 @@ fn main() {
     tauri::Builder::default()
         .setup(|app| {
             let db_path = ensure_db(app)?;
-            let trusted_lan_runtime =
-                trusted_lan_commands::load_trusted_lan_runtime(db_path.to_string_lossy().as_ref())?;
+            let trusted_lan_runtime = trusted_lan_runtime_commands::load_trusted_lan_runtime(
+                db_path.to_string_lossy().as_ref(),
+            )?;
             let companion = state::CompanionRuntimeState::new(trusted_lan_runtime);
             let state = AppState {
                 db_path: db_path.to_string_lossy().to_string(),
