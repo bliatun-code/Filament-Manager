@@ -9,10 +9,15 @@ import {
 import { useI18n } from "../lib/i18n";
 import { materialTone } from "../lib/material_theme";
 import {
+  buildWishlistDraft,
   createWishlistEntry,
   deleteWishlistEntry,
+  filterWishlistItems,
   loadWishlistItems,
+  summarizeWishlistQueue,
   updateWishlistEntryStatus,
+  type WishlistStatus,
+  type WishlistStatusFilter as WishlistBoardFilter,
 } from "../lib/wishlist_data_source";
 import {
   createInventorySpoolFromMaster,
@@ -46,8 +51,6 @@ import {
 
 type CreateMode = "bambu" | "esun" | "manual";
 type CatalogFilter = "ALL" | "ACTIVE" | "DISCONTINUED";
-type WishlistStatus = "WISHLIST" | "ON_ORDER" | "RECEIVED";
-type WishlistBoardFilter = "ALL" | WishlistStatus;
 
 const catalogFilters: ReadonlyArray<CatalogFilter> = [
   "ALL",
@@ -327,42 +330,15 @@ export default function WishlistPage() {
   }, [filteredEsunMasters, masterById, newEsunMasterId]);
 
   const currentDraft = useMemo(() => {
-    if (createMode === "bambu") {
-      if (!selectedBambuMaster) {
-        return null;
-      }
-      return {
-        master_id: selectedBambuMaster.id,
-        vendor: selectedBambuMaster.vendor,
-        material: selectedBambuMaster.material,
-        filament_name: selectedBambuMaster.filament_name,
-        color_name: selectedBambuMaster.color_name,
-      };
-    }
-
-    if (createMode === "esun") {
-      if (!selectedEsunMaster) {
-        return null;
-      }
-      return {
-        master_id: selectedEsunMaster.id,
-        vendor: selectedEsunMaster.vendor,
-        material: selectedEsunMaster.material,
-        filament_name: selectedEsunMaster.filament_name,
-        color_name: selectedEsunMaster.color_name,
-      };
-    }
-
-    if (!manualFilamentName.trim() || !manualColorName.trim()) {
-      return null;
-    }
-    return {
-      master_id: null,
-      vendor: manualVendor.trim() || "Generic",
-      material: manualMaterial.trim() || "PLA",
-      filament_name: manualFilamentName.trim(),
-      color_name: manualColorName.trim(),
-    };
+    return buildWishlistDraft({
+      source: createMode,
+      selectedBambuMaster,
+      selectedEsunMaster,
+      manualVendor,
+      manualMaterial,
+      manualFilamentName,
+      manualColorName,
+    });
   }, [
     createMode,
     manualColorName,
@@ -390,26 +366,11 @@ export default function WishlistPage() {
   }, [createMode, filteredEsunMasters, newEsunMasterId]);
 
   const wishlistSummary = useMemo(() => {
-    return wishlistItems.reduce(
-      (summary, item) => {
-        if (item.status === "WISHLIST") {
-          summary.wishlist += 1;
-        } else if (item.status === "ON_ORDER") {
-          summary.onOrder += 1;
-        } else if (item.status === "RECEIVED") {
-          summary.received += 1;
-        }
-        return summary;
-      },
-      { wishlist: 0, onOrder: 0, received: 0 },
-    );
+    return summarizeWishlistQueue(wishlistItems);
   }, [wishlistItems]);
 
   const visibleWishlistItems = useMemo(() => {
-    if (boardFilter === "ALL") {
-      return wishlistItems;
-    }
-    return wishlistItems.filter((item) => item.status === boardFilter);
+    return filterWishlistItems(wishlistItems, boardFilter);
   }, [boardFilter, wishlistItems]);
 
   const activeCatalogCount = useMemo(() => {
@@ -571,23 +532,11 @@ export default function WishlistPage() {
     }
   }
 
-  function buildWishlistDraft():
-    | {
-        master_id?: string | null;
-        vendor: string;
-        material: string;
-        filament_name: string;
-        color_name: string;
-      }
-    | null {
-    return currentDraft;
-  }
-
   async function handleAddCurrentToWishlist() {
     if (!tauri || busy) {
       return;
     }
-    const draft = buildWishlistDraft();
+    const draft = currentDraft;
     if (!draft) {
       setError(
         t(
