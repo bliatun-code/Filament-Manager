@@ -12,7 +12,6 @@ import {
   type PrinterSnapshotSource,
 } from "../lib/printer_data_source";
 import { createManagedPrinter } from "../lib/printer_writes";
-import { loadLibrarySyncPageState } from "../lib/library_sync_state";
 import { updateInventorySpoolRfidTag } from "../lib/spool_writes";
 import {
   buildCreatePrinterInput,
@@ -85,6 +84,7 @@ import {
   resolvePrinterModelProfile,
   sortPrinterSlotsExtLast,
 } from "../lib/printer_profiles";
+import { usePrinterLibrarySyncState } from "./use_printer_library_sync_state";
 
 export default function PrintersPage() {
   const { t, locale } = useI18n();
@@ -99,12 +99,14 @@ export default function PrintersPage() {
   const [bambuLiveIntegrations, setBambuLiveIntegrations] = useState<
     Record<string, BambuLiveIntegrationEntry["config"]>
   >({});
-  const [clientReadOnly, setClientReadOnly] = useState(false);
-  const [clientHostWritePaired, setClientHostWritePaired] = useState(false);
-  const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
-  const [clientHostBaseUrl, setClientHostBaseUrl] = useState<string | null>(null);
-  const [clientLibraryId, setClientLibraryId] = useState<string | null>(null);
-  const [librarySyncReady, setLibrarySyncReady] = useState(!tauri);
+  const {
+    clientReadOnly,
+    clientHostWritePaired,
+    clientHostDeviceName,
+    clientHostBaseUrl,
+    clientLibraryId,
+    librarySyncReady,
+  } = usePrinterLibrarySyncState(tauri);
   const [clientPrinterSource, setClientPrinterSource] = useState<PrinterSnapshotSource>("LIVE");
   const [clientPrinterUpdatedAt, setClientPrinterUpdatedAt] = useState<string | null>(null);
   const [printerModels, setPrinterModels] = useState<string[]>([]);
@@ -133,35 +135,6 @@ export default function PrintersPage() {
     [newAmsUnits, newPrinterModel, newSlotsPerUnit],
   );
   const supportedPrinterModels = useMemo(() => listSupportedPrinterModels(), []);
-
-  useEffect(() => {
-    if (!tauri) {
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const syncState = await loadLibrarySyncPageState();
-        if (cancelled) {
-          return;
-        }
-        setClientReadOnly(syncState.clientReadOnly);
-        setClientHostWritePaired(syncState.clientHostWritePaired);
-        setClientHostDeviceName(syncState.clientHostDeviceName);
-        setClientHostBaseUrl(syncState.clientHostBaseUrl);
-        setClientLibraryId(syncState.clientLibraryId);
-      } catch (syncError) {
-        console.error(syncError);
-      } finally {
-        if (!cancelled) {
-          setLibrarySyncReady(true);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tauri]);
 
   const ensureLocalWriteAllowed = useCallback(() => {
     if (!clientReadOnly) {
