@@ -146,6 +146,7 @@ use super::database_wishlist::{
     list_wishlist_items as list_wishlist_item_rows,
     update_wishlist_item_status as update_wishlist_item_status_row,
 };
+pub use super::database_wishlist_models::WishlistItemRow;
 pub use super::filament_master_models::{
     CatalogLifecycleStats, EsunColorNormalizationStats, FilamentMasterCatalogRow,
     FilamentMasterSummary,
@@ -157,21 +158,6 @@ use serde_json::Value;
 
 pub(crate) type LibrarySyncClientAuthState = (String, String, String, Option<String>);
 const SCHEMA_SQL: &str = include_str!("../database/schema.sql");
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct WishlistItemRow {
-    pub id: String,
-    pub master_id: Option<String>,
-    pub material: String,
-    pub filament_name: String,
-    pub color_name: String,
-    pub vendor: String,
-    pub status: String,
-    pub quantity: i64,
-    pub note: Option<String>,
-    pub created_at: String,
-    pub updated_at: String,
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CatalogResetStats {

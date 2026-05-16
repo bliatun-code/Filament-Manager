@@ -118,6 +118,8 @@ pub mod database_trusted_lan_settings;
 pub mod database_values;
 #[path = "../../../src/backend/database_wishlist.rs"]
 pub mod database_wishlist;
+#[path = "../../../src/backend/database_wishlist_models.rs"]
+pub mod database_wishlist_models;
 #[path = "../../../src/backend/filament_database.rs"]
 pub mod filament_database;
 #[path = "../../../src/backend/filament_master_models.rs"]
