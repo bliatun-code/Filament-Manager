@@ -7,13 +7,7 @@ import {
   type PrinterAmsSlotRow,
   type SpoolWithMasterRow,
 } from "../lib/tauri_client";
-import { createManagedPrinter } from "../lib/printer_writes";
 import { updateInventorySpoolRfidTag } from "../lib/spool_writes";
-import {
-  buildCreatePrinterInput,
-  defaultPrinterFormCapacityForModel,
-  derivePrinterFormCapacity,
-} from "../lib/printer_form_model";
 import { derivePrinterSlotDisplayState } from "../lib/printer_slot_display";
 import {
   buildEmptySlotWeightPrompt,
@@ -76,10 +70,10 @@ import {
   listSupportedPrinterModels,
   multiMaterialSlotsInputLabel,
   multiMaterialUnitsInputLabel,
-  resolvePrinterModelProfile,
 } from "../lib/printer_profiles";
 import { usePrinterPageData } from "./use_printer_page_data";
 import { usePrinterLibrarySyncState } from "./use_printer_library_sync_state";
+import { useAddPrinterWorkflow } from "./use_add_printer_workflow";
 
 export default function PrintersPage() {
   const { t, locale } = useI18n();
@@ -96,11 +90,6 @@ export default function PrintersPage() {
     clientLibraryId,
     librarySyncReady,
   } = usePrinterLibrarySyncState(tauri);
-  const [showAddPrinterModal, setShowAddPrinterModal] = useState(false);
-  const [newPrinterModel, setNewPrinterModel] = useState("");
-  const [newPrinterName, setNewPrinterName] = useState("");
-  const [newAmsUnits, setNewAmsUnits] = useState("0");
-  const [newSlotsPerUnit, setNewSlotsPerUnit] = useState("4");
   const [slotDrafts, setSlotDrafts] = useState<Record<string, SlotSwapDraft>>({});
   const [openDropdownSlotId, setOpenDropdownSlotId] = useState<string | null>(null);
   const [incomingWeightPrompt, setIncomingWeightPrompt] = useState<IncomingWeightPrompt | null>(
@@ -110,14 +99,6 @@ export default function PrintersPage() {
   const [outgoingWeightValue, setOutgoingWeightValue] = useState("");
   const [rfidOverridePrompt, setRfidOverridePrompt] = useState<SlotRfidOverridePrompt | null>(
     null,
-  );
-  const selectedModelProfile = useMemo(
-    () => resolvePrinterModelProfile(newPrinterModel || ""),
-    [newPrinterModel],
-  );
-  const newPrinterCapacity = useMemo(
-    () => derivePrinterFormCapacity(newPrinterModel, newAmsUnits, newSlotsPerUnit),
-    [newAmsUnits, newPrinterModel, newSlotsPerUnit],
   );
   const supportedPrinterModels = useMemo(() => listSupportedPrinterModels(), []);
 
@@ -253,78 +234,34 @@ export default function PrintersPage() {
     };
   }, [openDropdownSlotId]);
 
-  function closeAddPrinterModal() {
-    if (busy) {
-      return;
-    }
-    setShowAddPrinterModal(false);
-  }
-
-  function openAddPrinterModal() {
-    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-      return;
-    }
-    if (clientReadOnly && !canUseClientHostWrite()) {
-      return;
-    }
-    setNewPrinterModel("");
-    setNewPrinterName("");
-    setNewAmsUnits("0");
-    setNewSlotsPerUnit("4");
-    setShowAddPrinterModal(true);
-    setError(null);
-    setInfo(null);
-  }
-
-  async function handleAddPrinter() {
-    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-      return;
-    }
-    if (clientReadOnly && !canUseClientHostWrite()) {
-      return;
-    }
-    if (!tauri || busy) {
-      return;
-    }
-    const model = newPrinterModel.trim();
-    const name = newPrinterName.trim();
-    if (!model || !name) {
-      setError(t("settings.error.printerRequired", "Printer name and model are required."));
-      return;
-    }
-
-    setBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      const printerId = `printer_${Date.now()}`;
-      const createInput = buildCreatePrinterInput(
-        printerId,
-        model,
-        name,
-        newAmsUnits,
-        newSlotsPerUnit,
-      );
-      await createManagedPrinter(createInput, {
-        clientReadOnly,
-        clientHostBaseUrl,
-        clientLibraryId,
-      });
-      setShowAddPrinterModal(false);
-      await reloadData();
-      setInfo(`${t("settings.addedPrinter", "Added printer")} "${name}".`);
-    } catch (createError) {
-      console.error(createError);
-      setError(
-        commandErrorText(
-          createError,
-          t("settings.error.addPrinter", "Failed to add printer."),
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
+  const {
+    showAddPrinterModal,
+    newPrinterModel,
+    newPrinterName,
+    newAmsUnits,
+    newSlotsPerUnit,
+    selectedModelProfile,
+    newPrinterCapacity,
+    setNewPrinterName,
+    setNewAmsUnits,
+    setNewSlotsPerUnit,
+    selectPrinterModel,
+    closeAddPrinterModal,
+    openAddPrinterModal,
+    handleAddPrinter,
+  } = useAddPrinterWorkflow({
+    busy,
+    tauri,
+    clientReadOnly,
+    clientHostBaseUrl,
+    clientLibraryId,
+    ensureLocalWriteAllowed,
+    canUseClientHostWrite,
+    reloadData,
+    setBusy,
+    setError,
+    setInfo,
+  });
 
   const allowedSpoolsForSlot = useCallback(
     (slotSpoolId?: string | null) =>
@@ -1492,12 +1429,7 @@ export default function PrintersPage() {
                     value={newPrinterModel}
                     onChange={(event) => {
                       const nextModel = event.target.value;
-                      setNewPrinterModel(nextModel);
-                      const nextDefaults = defaultPrinterFormCapacityForModel(nextModel);
-                      if (nextDefaults) {
-                        setNewAmsUnits(nextDefaults.amsUnits);
-                        setNewSlotsPerUnit(nextDefaults.slotsPerUnit);
-                      }
+                      selectPrinterModel(nextModel);
                     }}
                     className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
                     disabled={!tauri || busy || printerModels.length === 0}
