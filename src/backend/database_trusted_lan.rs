@@ -3,7 +3,8 @@ use rusqlite::{params, Connection, OptionalExtension};
 use super::database_ids::new_id;
 use super::database_result::require_rows;
 use super::database_rows::map_trusted_lan_paired_browser_row;
-use super::filament_database::{InventoryError, InventoryResult, TrustedLanPairedBrowserRow};
+use super::database_trusted_lan_models::TrustedLanPairedBrowserRow;
+use super::filament_database::{InventoryError, InventoryResult};
 
 pub(crate) fn create_trusted_lan_pairing(
     conn: &Connection,

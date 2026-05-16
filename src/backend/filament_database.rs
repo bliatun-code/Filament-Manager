@@ -141,6 +141,9 @@ use super::database_trusted_lan_settings::{
     get_trusted_lan_settings as get_trusted_lan_setting_rows,
     save_trusted_lan_settings as save_trusted_lan_setting_rows,
 };
+pub use super::database_trusted_lan_models::{
+    TrustedLanPairedBrowserRow, TrustedLanSettingsRow,
+};
 use super::database_wishlist::{
     delete_wishlist_item as delete_wishlist_item_row,
     insert_wishlist_item as insert_wishlist_item_row,
@@ -159,14 +162,6 @@ use serde_json::Value;
 
 pub(crate) type LibrarySyncClientAuthState = (String, String, String, Option<String>);
 const SCHEMA_SQL: &str = include_str!("../database/schema.sql");
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TrustedLanSettingsRow {
-    pub enabled: bool,
-    pub selected_interface_name: Option<String>,
-    pub selected_interface_address: Option<String>,
-    pub listen_port: u16,
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LibrarySyncSettingsRow {
@@ -217,16 +212,6 @@ pub struct LibrarySyncCachedPrinterOverviewRow {
 pub struct LibrarySyncCachedLoanListRow {
     pub captured_at: String,
     pub rows: Vec<SpoolLoanDetailsRow>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TrustedLanPairedBrowserRow {
-    pub id: String,
-    pub display_name: Option<String>,
-    pub paired_at: String,
-    pub last_seen_at: Option<String>,
-    pub last_origin: Option<String>,
-    pub revoked_at: Option<String>,
 }
 
 pub struct FilamentDatabase {

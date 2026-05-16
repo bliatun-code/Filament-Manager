@@ -1,8 +1,8 @@
 use rusqlite::Row;
 
+use super::database_trusted_lan_models::TrustedLanPairedBrowserRow;
 use super::filament_database::{
     ActiveSpoolLoanRow, FilamentMasterSummary, SpoolLoanRow, SpoolRow, SpoolWithMasterRow,
-    TrustedLanPairedBrowserRow,
 };
 
 pub(crate) fn map_spool_row(row: &Row<'_>) -> Result<SpoolRow, rusqlite::Error> {

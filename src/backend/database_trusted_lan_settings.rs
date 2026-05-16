@@ -1,7 +1,8 @@
 use rusqlite::Connection;
 
 use super::database_settings::{delete_setting, get_setting, set_setting};
-use super::filament_database::{InventoryResult, TrustedLanSettingsRow};
+use super::database_trusted_lan_models::TrustedLanSettingsRow;
+use super::filament_database::InventoryResult;
 
 const TRUSTED_LAN_ENABLED_KEY: &str = "trusted_lan_enabled";
 const TRUSTED_LAN_INTERFACE_NAME_KEY: &str = "trusted_lan_interface_name";
