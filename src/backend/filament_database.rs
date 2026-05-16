@@ -129,6 +129,10 @@ use super::database_trusted_lan::{
     touch_trusted_lan_paired_browser as touch_trusted_lan_paired_browser_row,
 };
 use super::database_trusted_lan_schema::ensure_trusted_lan_schema as ensure_trusted_lan_schema_impl;
+use super::database_trusted_lan_settings::{
+    get_trusted_lan_settings as get_trusted_lan_setting_rows,
+    save_trusted_lan_settings as save_trusted_lan_setting_rows,
+};
 use super::database_values::json_value_to_sql;
 use super::database_wishlist::{
     delete_wishlist_item as delete_wishlist_item_row,
@@ -1064,53 +1068,14 @@ impl FilamentDatabase {
     }
 
     pub fn get_trusted_lan_settings(&self) -> InventoryResult<TrustedLanSettingsRow> {
-        let enabled = self
-            .get_setting("trusted_lan_enabled")?
-            .map(|value| matches!(value.trim(), "1" | "true" | "TRUE" | "True"))
-            .unwrap_or(false);
-        let selected_interface_name = self.get_setting("trusted_lan_interface_name")?;
-        let selected_interface_address = self.get_setting("trusted_lan_interface_address")?;
-        let listen_port = self
-            .get_setting("trusted_lan_port")?
-            .and_then(|value| value.trim().parse::<u16>().ok())
-            .filter(|value| *value > 0)
-            .unwrap_or(4278);
-        Ok(TrustedLanSettingsRow {
-            enabled,
-            selected_interface_name,
-            selected_interface_address,
-            listen_port,
-        })
+        get_trusted_lan_setting_rows(&self.conn)
     }
 
     pub fn save_trusted_lan_settings(
         &self,
         settings: &TrustedLanSettingsRow,
     ) -> InventoryResult<()> {
-        self.set_setting(
-            "trusted_lan_enabled",
-            if settings.enabled { "1" } else { "0" },
-        )?;
-        self.set_setting("trusted_lan_port", &settings.listen_port.max(1).to_string())?;
-        match settings
-            .selected_interface_name
-            .as_deref()
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-        {
-            Some(value) => self.set_setting("trusted_lan_interface_name", value)?,
-            None => self.delete_setting("trusted_lan_interface_name")?,
-        }
-        match settings
-            .selected_interface_address
-            .as_deref()
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-        {
-            Some(value) => self.set_setting("trusted_lan_interface_address", value)?,
-            None => self.delete_setting("trusted_lan_interface_address")?,
-        }
-        Ok(())
+        save_trusted_lan_setting_rows(&self.conn, settings)
     }
 
     pub fn get_library_sync_settings(&self) -> InventoryResult<LibrarySyncSettingsRow> {

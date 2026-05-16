@@ -92,6 +92,8 @@ pub mod database_time;
 pub mod database_trusted_lan;
 #[path = "../../../src/backend/database_trusted_lan_schema.rs"]
 pub mod database_trusted_lan_schema;
+#[path = "../../../src/backend/database_trusted_lan_settings.rs"]
+pub mod database_trusted_lan_settings;
 #[path = "../../../src/backend/database_values.rs"]
 pub mod database_values;
 #[path = "../../../src/backend/database_wishlist.rs"]
