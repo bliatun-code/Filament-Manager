@@ -1,18 +1,11 @@
 use crate::app_services::CompanionService;
 use crate::backend::database_result::InventoryError;
 use crate::state::AppState;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 #[derive(Serialize)]
 pub(crate) struct ExportPayload {
     pub(crate) content: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub(crate) struct ScanPayload {
-    pub(crate) qr_code: Option<String>,
-    pub(crate) detected_color_hex: Option<String>,
-    pub(crate) source: Option<String>,
 }
 
 pub(crate) fn companion_service(state: &AppState) -> CompanionService {

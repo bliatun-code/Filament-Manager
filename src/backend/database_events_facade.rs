@@ -1,7 +1,6 @@
 use super::database_core::FilamentDatabase;
 use super::database_events::{
-    ensure_scale as ensure_scale_row, insert_scan_event as insert_scan_event_row,
-    insert_spool_history_event as insert_spool_history_event_row,
+    ensure_scale as ensure_scale_row, insert_spool_history_event as insert_spool_history_event_row,
     insert_weight_reading as insert_weight_reading_row,
     list_spool_history_events as list_spool_history_event_rows,
     list_spool_usage_points as list_spool_usage_point_rows,
@@ -22,22 +21,6 @@ impl FilamentDatabase {
         source: &str,
     ) -> InventoryResult<()> {
         insert_weight_reading_row(self.connection(), scale_id, spool_id, grams, source)
-    }
-
-    pub fn insert_scan_event(
-        &self,
-        spool_id: Option<&str>,
-        qr_code: Option<&str>,
-        source: &str,
-        detected_color_hex: Option<&str>,
-    ) -> InventoryResult<()> {
-        insert_scan_event_row(
-            self.connection(),
-            spool_id,
-            qr_code,
-            source,
-            detected_color_hex,
-        )
     }
 
     pub fn insert_spool_history_event(

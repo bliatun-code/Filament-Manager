@@ -13,7 +13,6 @@ use super::database_spool_models::{SpoolRow, SpoolWithMasterRow};
 use super::database_spool_queries::{
     get_spool_by_id as get_spool_by_id_row, get_spool_by_qr as get_spool_by_qr_row,
     get_spool_with_master_by_id as get_spool_with_master_by_id_row,
-    list_low_stock_spools as list_low_stock_spool_rows,
     list_spools_with_master as list_spools_with_master_rows,
 };
 
@@ -55,10 +54,6 @@ impl FilamentDatabase {
         offset: i64,
     ) -> InventoryResult<Vec<SpoolWithMasterRow>> {
         list_spools_with_master_rows(self.connection(), limit, offset)
-    }
-
-    pub fn list_low_stock_spools(&self, threshold: i64) -> InventoryResult<Vec<SpoolRow>> {
-        list_low_stock_spool_rows(self.connection(), threshold)
     }
 
     pub fn spool_assigned_to_printer(&self, spool_id: &str) -> InventoryResult<bool> {

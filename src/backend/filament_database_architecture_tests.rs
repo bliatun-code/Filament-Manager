@@ -13,7 +13,6 @@ const DATABASE_SPOOL_UPDATE_FACADE_SOURCE: &str = include_str!("database_spool_u
 const DATABASE_SYSTEM_FACADE_SOURCE: &str = include_str!("database_system_facade.rs");
 const DATABASE_TRUSTED_LAN_FACADE_SOURCE: &str = include_str!("database_trusted_lan_facade.rs");
 const DATABASE_WISHLIST_FACADE_SOURCE: &str = include_str!("database_wishlist_facade.rs");
-const DATABASE_ALERTS_SOURCE: &str = include_str!("database_alerts.rs");
 const DATABASE_BACKUP_SOURCE: &str = include_str!("database_backup.rs");
 const DATABASE_BACKUP_IMPORT_SOURCE: &str = include_str!("database_backup_import.rs");
 const DATABASE_BAMBU_LIVE_SETTINGS_SOURCE: &str = include_str!("database_bambu_live_settings.rs");
@@ -59,7 +58,6 @@ const DATABASE_SPOOL_INSERT_SOURCE: &str = include_str!("database_spool_insert.r
 const DATABASE_SPOOL_QUERIES_SOURCE: &str = include_str!("database_spool_queries.rs");
 const DATABASE_SPOOL_SCHEMA_SOURCE: &str = include_str!("database_spool_schema.rs");
 const DATABASE_SPOOL_UPDATES_SOURCE: &str = include_str!("database_spool_updates.rs");
-const DATABASE_SYNC_QUEUE_SOURCE: &str = include_str!("database_sync_queue.rs");
 const DATABASE_TABLE_OPS_SOURCE: &str = include_str!("database_table_ops.rs");
 const DATABASE_TIME_SOURCE: &str = include_str!("database_time.rs");
 const DATABASE_TRUSTED_LAN_SOURCE: &str = include_str!("database_trusted_lan.rs");
@@ -141,7 +139,6 @@ fn focused_facades_extend_database_core_directly() {
 #[test]
 fn low_level_database_modules_do_not_depend_on_compatibility_facade() {
     let database_sources = [
-        ("database_alerts.rs", DATABASE_ALERTS_SOURCE),
         ("database_backup.rs", DATABASE_BACKUP_SOURCE),
         ("database_backup_import.rs", DATABASE_BACKUP_IMPORT_SOURCE),
         (
@@ -225,7 +222,6 @@ fn low_level_database_modules_do_not_depend_on_compatibility_facade() {
         ("database_spool_queries.rs", DATABASE_SPOOL_QUERIES_SOURCE),
         ("database_spool_schema.rs", DATABASE_SPOOL_SCHEMA_SOURCE),
         ("database_spool_updates.rs", DATABASE_SPOOL_UPDATES_SOURCE),
-        ("database_sync_queue.rs", DATABASE_SYNC_QUEUE_SOURCE),
         ("database_table_ops.rs", DATABASE_TABLE_OPS_SOURCE),
         ("database_time.rs", DATABASE_TIME_SOURCE),
         ("database_trusted_lan.rs", DATABASE_TRUSTED_LAN_SOURCE),

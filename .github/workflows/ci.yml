@@ -40,11 +40,8 @@ jobs:
         working-directory: ui
         run: npm ci
 
-      - name: Run smoke
-        run: npm run smoke
-
-      - name: Run Rust tests
-        run: npm run test:rust
+      - name: Run full verification
+        run: npm run verify
 
   windows-smoke:
     name: Windows Smoke
@@ -73,8 +70,5 @@ jobs:
         working-directory: ui
         run: npm ci
 
-      - name: Run smoke
-        run: npm run smoke
-
-      - name: Run Rust tests
-        run: npm run test:rust
+      - name: Run full verification
+        run: npm run verify

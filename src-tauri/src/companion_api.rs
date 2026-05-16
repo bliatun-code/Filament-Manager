@@ -35,10 +35,9 @@ use crate::state::AppState;
 use axum::body::Body;
 use axum::extract::{Path, Query, State};
 use axum::http::{header::ORIGIN, HeaderMap, Request};
-use axum::middleware::{self, Next};
+use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
-use axum::routing::{get, post};
-use axum::{Json, Router};
+use axum::Json;
 
 pub const COMPANION_DEFAULT_PORT: u16 = 4278;
 
@@ -96,7 +95,7 @@ async fn run_companion_server(
     shutdown_rx: Option<tokio::sync::oneshot::Receiver<()>>,
 ) -> Result<(), String> {
     let runtime = state.runtime.clone();
-    let router = build_router(state);
+    let router = crate::companion_routes::build_router(state);
     let result = if let Some(shutdown_rx) = shutdown_rx {
         axum::serve(listener, router)
             .with_graceful_shutdown(async move {
@@ -114,115 +113,13 @@ async fn run_companion_server(
     })
 }
 
-fn build_router(state: CompanionApiState) -> Router {
-    let protected = Router::new()
-        .route("/inventory/spools", get(handle_list_spools))
-        .route("/catalog/masters", get(handle_list_catalog_masters))
-        .route("/loans", get(handle_list_spool_loans))
-        .route("/printers/overview", get(handle_list_printer_overview))
-        .route("/printers", post(handle_create_printer))
-        .route("/printers/{printer_id}/delete", post(handle_delete_printer))
-        .route("/printers/active", post(handle_set_active_printer))
-        .route("/loans/active", get(handle_list_active_spool_loans))
-        .route("/wishlist", get(handle_list_wishlist_items))
-        .route("/wishlist", post(handle_create_wishlist_item))
-        .route(
-            "/wishlist/{item_id}/status",
-            post(handle_update_wishlist_item_status),
-        )
-        .route(
-            "/wishlist/{item_id}/delete",
-            post(handle_delete_wishlist_item),
-        )
-        .route("/spools/by-qr", get(handle_find_spool_by_qr))
-        .route("/spools/owned", post(handle_create_owned_spool))
-        .route("/spools/manual", post(handle_create_owned_spool))
-        .route("/spools/borrowed-in", post(handle_create_borrowed_in_spool))
-        .route(
-            "/spools/{spool_id}/borrowed-in",
-            post(handle_update_borrowed_in_spool),
-        )
-        .route(
-            "/spools/{spool_id}/details",
-            post(handle_update_spool_details),
-        )
-        .route(
-            "/spools/{spool_id}/qr-image.svg",
-            get(handle_spool_qr_image_svg),
-        )
-        .route(
-            "/printers/{printer_id}/slots/{slot_id}/assignment",
-            post(handle_update_printer_slot_assignment),
-        )
-        .route(
-            "/printers/{printer_id}/spools/{spool_id}/usage",
-            post(handle_record_print_usage),
-        )
-        .route("/spools/{spool_id}", get(handle_get_spool_detail))
-        .route("/spools/{spool_id}/lend", post(handle_lend_spool))
-        .route(
-            "/spools/{spool_id}/weight",
-            post(handle_update_spool_weight),
-        )
-        .route(
-            "/spools/{spool_id}/tare-weight",
-            post(handle_update_spool_tare_weight),
-        )
-        .route(
-            "/spools/{spool_id}/rfid",
-            post(handle_update_spool_rfid_tag),
-        )
-        .route("/spools/{spool_id}/delete", post(handle_delete_spool))
-        .route("/spools/{spool_id}/purge", post(handle_purge_spool))
-        .route("/loans/{loan_id}/return", post(handle_return_spool_loan))
-        .route(
-            "/loans/{loan_id}/hand-back",
-            post(handle_hand_back_borrowed_in_spool),
-        )
-        .route_layer(middleware::from_fn_with_state(
-            state.clone(),
-            require_companion_session,
-        ))
-        .with_state(state.clone());
-
-    Router::new()
-        .route("/companion", get(handle_companion_shell))
-        .route("/companion/", get(handle_companion_shell))
-        .route("/companion/{asset}", get(handle_companion_asset))
-        .route("/api/v1/health", get(handle_health))
-        .route("/api/v1/library/snapshot", get(handle_library_snapshot))
-        .route("/api/v1/library/spools", get(handle_library_spools))
-        .route("/api/v1/library/printers", get(handle_library_printers))
-        .route(
-            "/api/v1/library/printer-settings",
-            get(handle_library_printer_settings),
-        )
-        .route("/api/v1/library/loans", get(handle_library_loans))
-        .route(
-            "/api/v1/library/statistics/filament-consumption",
-            get(handle_library_filament_consumption),
-        )
-        .route(
-            "/api/v1/library/catalog/masters",
-            get(handle_library_catalog_masters),
-        )
-        .route(
-            "/api/v1/library/wishlist",
-            get(handle_library_wishlist_items),
-        )
-        .route("/api/v1/auth/session", get(handle_session_status))
-        .route("/api/v1/auth/pair", post(handle_pair_session))
-        .route("/api/v1/auth/renew", post(handle_renew_session))
-        .route("/api/v1/qa/expire-session", post(handle_qa_expire_session))
-        .with_state(state)
-        .nest("/api/v1", protected)
-}
-
-async fn handle_companion_shell() -> Response {
+pub(super) async fn handle_companion_shell() -> Response {
     html_response(COMPANION_BROWSER_HTML)
 }
 
-async fn handle_companion_asset(Path(asset): Path<String>) -> Result<Response, CompanionApiError> {
+pub(super) async fn handle_companion_asset(
+    Path(asset): Path<String>,
+) -> Result<Response, CompanionApiError> {
     match companion_browser_asset(asset.as_str()) {
         Some(asset) => Ok(text_response(asset.content_type, asset.content)),
         None => match companion_browser_binary_asset(asset.as_str()) {
@@ -235,7 +132,7 @@ async fn handle_companion_asset(Path(asset): Path<String>) -> Result<Response, C
     }
 }
 
-async fn handle_health(
+pub(super) async fn handle_health(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Json<CompanionHealthResponse>, CompanionApiError> {
@@ -252,7 +149,7 @@ async fn handle_health(
     }))
 }
 
-async fn handle_library_snapshot(
+pub(super) async fn handle_library_snapshot(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Json<CompanionLibrarySnapshotResponse>, CompanionApiError> {
@@ -290,7 +187,7 @@ async fn handle_library_snapshot(
     }))
 }
 
-async fn handle_library_spools(
+pub(super) async fn handle_library_spools(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
     Query(query): Query<PaginationQuery>,
@@ -305,7 +202,7 @@ async fn handle_library_spools(
     Ok(Json(rows))
 }
 
-async fn handle_library_printers(
+pub(super) async fn handle_library_printers(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Json<Vec<PrinterOverviewRow>>, CompanionApiError> {
@@ -317,7 +214,7 @@ async fn handle_library_printers(
     Ok(Json(rows))
 }
 
-async fn handle_library_printer_settings(
+pub(super) async fn handle_library_printer_settings(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Json<CompanionPrinterSettingsResponse>, CompanionApiError> {
@@ -347,7 +244,7 @@ async fn handle_library_printer_settings(
     }))
 }
 
-async fn handle_library_loans(
+pub(super) async fn handle_library_loans(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
     Query(query): Query<LoanListQuery>,
@@ -368,7 +265,7 @@ async fn handle_library_loans(
     Ok(Json(rows))
 }
 
-async fn handle_library_filament_consumption(
+pub(super) async fn handle_library_filament_consumption(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
     Query(query): Query<FilamentConsumptionQuery>,
@@ -388,7 +285,7 @@ async fn handle_library_filament_consumption(
     Ok(Json(rows))
 }
 
-async fn handle_library_catalog_masters(
+pub(super) async fn handle_library_catalog_masters(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
     Query(query): Query<CatalogListQuery>,
@@ -402,7 +299,7 @@ async fn handle_library_catalog_masters(
     Ok(Json(rows))
 }
 
-async fn handle_library_wishlist_items(
+pub(super) async fn handle_library_wishlist_items(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
     Query(query): Query<PaginationQuery>,
@@ -424,7 +321,7 @@ fn read_library_sync_settings(
         .map_err(CompanionApiError::from)
 }
 
-async fn handle_session_status(
+pub(super) async fn handle_session_status(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Json<SessionStatusResponse>, CompanionApiError> {
@@ -452,7 +349,7 @@ async fn handle_session_status(
     }))
 }
 
-async fn handle_pair_session(
+pub(super) async fn handle_pair_session(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
     Json(payload): Json<PairSessionRequest>,
@@ -497,7 +394,7 @@ async fn handle_pair_session(
     )
 }
 
-async fn handle_renew_session(
+pub(super) async fn handle_renew_session(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Response, CompanionApiError> {
@@ -519,7 +416,7 @@ async fn handle_renew_session(
     )
 }
 
-async fn handle_qa_expire_session(
+pub(super) async fn handle_qa_expire_session(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
@@ -542,7 +439,7 @@ async fn handle_qa_expire_session(
     }))
 }
 
-async fn handle_list_spools(
+pub(super) async fn handle_list_spools(
     State(state): State<CompanionApiState>,
     Query(query): Query<PaginationQuery>,
 ) -> Result<Json<Vec<SpoolWithMasterRow>>, CompanionApiError> {
@@ -555,7 +452,7 @@ async fn handle_list_spools(
     Ok(Json(rows))
 }
 
-async fn handle_list_catalog_masters(
+pub(super) async fn handle_list_catalog_masters(
     State(state): State<CompanionApiState>,
     Query(query): Query<CatalogListQuery>,
 ) -> Result<Json<Vec<FilamentMasterCatalogRow>>, CompanionApiError> {
@@ -567,7 +464,7 @@ async fn handle_list_catalog_masters(
     Ok(Json(rows))
 }
 
-async fn handle_list_printer_overview(
+pub(super) async fn handle_list_printer_overview(
     State(state): State<CompanionApiState>,
 ) -> Result<Json<Vec<PrinterOverviewRow>>, CompanionApiError> {
     let rows = state
@@ -577,7 +474,7 @@ async fn handle_list_printer_overview(
     Ok(Json(rows))
 }
 
-async fn handle_create_printer(
+pub(super) async fn handle_create_printer(
     State(state): State<CompanionApiState>,
     Json(payload): Json<CreatePrinterInput>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
@@ -606,7 +503,7 @@ async fn handle_create_printer(
     }))
 }
 
-async fn handle_delete_printer(
+pub(super) async fn handle_delete_printer(
     State(state): State<CompanionApiState>,
     Path(printer_id): Path<String>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
@@ -628,7 +525,7 @@ async fn handle_delete_printer(
     }))
 }
 
-async fn handle_set_active_printer(
+pub(super) async fn handle_set_active_printer(
     State(state): State<CompanionApiState>,
     Json(payload): Json<SetActivePrinterRequest>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
@@ -649,7 +546,7 @@ async fn handle_set_active_printer(
     }))
 }
 
-async fn handle_list_spool_loans(
+pub(super) async fn handle_list_spool_loans(
     State(state): State<CompanionApiState>,
     Query(query): Query<LoanListQuery>,
 ) -> Result<Json<Vec<SpoolLoanDetailsRow>>, CompanionApiError> {
@@ -662,7 +559,7 @@ async fn handle_list_spool_loans(
     Ok(Json(rows))
 }
 
-async fn handle_list_active_spool_loans(
+pub(super) async fn handle_list_active_spool_loans(
     State(state): State<CompanionApiState>,
 ) -> Result<Json<Vec<ActiveSpoolLoanRow>>, CompanionApiError> {
     let rows = state
@@ -672,7 +569,7 @@ async fn handle_list_active_spool_loans(
     Ok(Json(rows))
 }
 
-async fn handle_list_wishlist_items(
+pub(super) async fn handle_list_wishlist_items(
     State(state): State<CompanionApiState>,
     Query(query): Query<PaginationQuery>,
 ) -> Result<Json<Vec<WishlistItemRow>>, CompanionApiError> {
@@ -684,7 +581,7 @@ async fn handle_list_wishlist_items(
     Ok(Json(rows))
 }
 
-async fn handle_find_spool_by_qr(
+pub(super) async fn handle_find_spool_by_qr(
     State(state): State<CompanionApiState>,
     Query(query): Query<QrLookupQuery>,
 ) -> Result<Json<SpoolWithMasterRow>, CompanionApiError> {
@@ -709,7 +606,7 @@ async fn handle_find_spool_by_qr(
     Ok(Json(spool))
 }
 
-async fn handle_create_owned_spool(
+pub(super) async fn handle_create_owned_spool(
     State(state): State<CompanionApiState>,
     Json(payload): Json<CreateOwnedSpoolRequest>,
 ) -> Result<Json<CreateSpoolResponse>, CompanionApiError> {
@@ -784,7 +681,7 @@ async fn handle_create_owned_spool(
     }))
 }
 
-async fn handle_create_borrowed_in_spool(
+pub(super) async fn handle_create_borrowed_in_spool(
     State(state): State<CompanionApiState>,
     Json(payload): Json<CreateBorrowedInSpoolRequest>,
 ) -> Result<Json<CreateSpoolResponse>, CompanionApiError> {
@@ -880,7 +777,7 @@ async fn handle_create_borrowed_in_spool(
     }))
 }
 
-async fn handle_create_wishlist_item(
+pub(super) async fn handle_create_wishlist_item(
     State(state): State<CompanionApiState>,
     Json(payload): Json<CreateWishlistItemRequest>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
@@ -945,7 +842,7 @@ async fn handle_create_wishlist_item(
     }))
 }
 
-async fn handle_update_wishlist_item_status(
+pub(super) async fn handle_update_wishlist_item_status(
     State(state): State<CompanionApiState>,
     Path(item_id): Path<String>,
     Json(payload): Json<UpdateWishlistItemStatusRequest>,
@@ -978,7 +875,7 @@ async fn handle_update_wishlist_item_status(
     }))
 }
 
-async fn handle_delete_wishlist_item(
+pub(super) async fn handle_delete_wishlist_item(
     State(state): State<CompanionApiState>,
     Path(item_id): Path<String>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
@@ -1000,7 +897,7 @@ async fn handle_delete_wishlist_item(
     }))
 }
 
-async fn handle_update_printer_slot_assignment(
+pub(super) async fn handle_update_printer_slot_assignment(
     State(state): State<CompanionApiState>,
     Path((printer_id, slot_id)): Path<(String, String)>,
     Json(payload): Json<UpdatePrinterSlotAssignmentRequest>,
@@ -1084,7 +981,7 @@ async fn handle_update_printer_slot_assignment(
     }))
 }
 
-async fn handle_record_print_usage(
+pub(super) async fn handle_record_print_usage(
     State(state): State<CompanionApiState>,
     Path((printer_id, spool_id)): Path<(String, String)>,
     Json(payload): Json<RecordPrintUsageRequest>,
@@ -1119,7 +1016,7 @@ async fn handle_record_print_usage(
     }))
 }
 
-async fn handle_update_borrowed_in_spool(
+pub(super) async fn handle_update_borrowed_in_spool(
     State(state): State<CompanionApiState>,
     Path(spool_id): Path<String>,
     Json(payload): Json<UpdateBorrowedInSpoolRequest>,
@@ -1154,7 +1051,7 @@ async fn handle_update_borrowed_in_spool(
     }))
 }
 
-async fn handle_update_spool_details(
+pub(super) async fn handle_update_spool_details(
     State(state): State<CompanionApiState>,
     Path(spool_id): Path<String>,
     Json(payload): Json<UpdateSpoolDetailsRequest>,
@@ -1229,7 +1126,7 @@ async fn handle_update_spool_details(
     }))
 }
 
-async fn handle_spool_qr_image_svg(
+pub(super) async fn handle_spool_qr_image_svg(
     State(state): State<CompanionApiState>,
     Path(spool_id): Path<String>,
 ) -> Result<Response, CompanionApiError> {
@@ -1251,7 +1148,7 @@ async fn handle_spool_qr_image_svg(
     Ok(string_response("image/svg+xml; charset=utf-8", svg))
 }
 
-async fn handle_get_spool_detail(
+pub(super) async fn handle_get_spool_detail(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
     Path(spool_id): Path<String>,
@@ -1272,7 +1169,7 @@ async fn handle_get_spool_detail(
     Ok(Json(detail))
 }
 
-async fn handle_lend_spool(
+pub(super) async fn handle_lend_spool(
     State(state): State<CompanionApiState>,
     Path(spool_id): Path<String>,
     Json(payload): Json<CreateSpoolLoanRequest>,
@@ -1344,7 +1241,7 @@ async fn handle_lend_spool(
     }))
 }
 
-async fn handle_return_spool_loan(
+pub(super) async fn handle_return_spool_loan(
     State(state): State<CompanionApiState>,
     Path(loan_id): Path<String>,
     Json(payload): Json<ReturnSpoolLoanRequest>,
@@ -1401,7 +1298,7 @@ async fn handle_return_spool_loan(
     }))
 }
 
-async fn handle_hand_back_borrowed_in_spool(
+pub(super) async fn handle_hand_back_borrowed_in_spool(
     State(state): State<CompanionApiState>,
     Path(loan_id): Path<String>,
     Json(payload): Json<ReturnSpoolLoanRequest>,
@@ -1434,7 +1331,7 @@ async fn handle_hand_back_borrowed_in_spool(
     }))
 }
 
-async fn handle_update_spool_weight(
+pub(super) async fn handle_update_spool_weight(
     State(state): State<CompanionApiState>,
     Path(spool_id): Path<String>,
     Json(payload): Json<UpdateWeightRequest>,
@@ -1456,7 +1353,7 @@ async fn handle_update_spool_weight(
     }))
 }
 
-async fn handle_update_spool_tare_weight(
+pub(super) async fn handle_update_spool_tare_weight(
     State(state): State<CompanionApiState>,
     Path(spool_id): Path<String>,
     Json(payload): Json<UpdateSpoolTareWeightRequest>,
@@ -1483,7 +1380,7 @@ async fn handle_update_spool_tare_weight(
     }))
 }
 
-async fn handle_update_spool_rfid_tag(
+pub(super) async fn handle_update_spool_rfid_tag(
     State(state): State<CompanionApiState>,
     Path(spool_id): Path<String>,
     Json(payload): Json<UpdateSpoolRfidTagRequest>,
@@ -1510,7 +1407,7 @@ async fn handle_update_spool_rfid_tag(
     }))
 }
 
-async fn handle_delete_spool(
+pub(super) async fn handle_delete_spool(
     State(state): State<CompanionApiState>,
     Path(spool_id): Path<String>,
     payload: Option<Json<DeleteSpoolRequest>>,
@@ -1536,7 +1433,7 @@ async fn handle_delete_spool(
     }))
 }
 
-async fn handle_purge_spool(
+pub(super) async fn handle_purge_spool(
     State(state): State<CompanionApiState>,
     Path(spool_id): Path<String>,
     payload: Option<Json<DeleteSpoolRequest>>,
@@ -1562,7 +1459,7 @@ async fn handle_purge_spool(
     }))
 }
 
-async fn require_companion_session(
+pub(super) async fn require_companion_session(
     State(state): State<CompanionApiState>,
     request: Request<Body>,
     next: Next,

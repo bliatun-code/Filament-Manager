@@ -27,21 +27,6 @@ impl WeightSource {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum ScanSource {
-    Desktop,
-    Mobile,
-}
-
-impl ScanSource {
-    fn as_str(&self) -> &'static str {
-        match self {
-            ScanSource::Desktop => "DESKTOP",
-            ScanSource::Mobile => "MOBILE",
-        }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CreateSpoolInput {
     pub id: String,
     pub master_id: String,
@@ -1233,45 +1218,8 @@ impl InventoryEngine {
             .export_loans_csv_for_direction(include_returned, direction)
     }
 
-    pub fn record_scan(
-        &self,
-        spool_id: Option<&str>,
-        qr_code: Option<&str>,
-        source: ScanSource,
-        detected_color_hex: Option<&str>,
-    ) -> InventoryResult<()> {
-        self.db
-            .insert_scan_event(spool_id, qr_code, source.as_str(), detected_color_hex)
-    }
-
     pub fn find_spool_by_qr(&self, qr_code: &str) -> InventoryResult<Option<SpoolRow>> {
         self.db.get_spool_by_qr(qr_code)
-    }
-
-    pub fn check_low_stock_alerts(&self, threshold: i64) -> InventoryResult<usize> {
-        let spools = self.db.list_low_stock_spools(threshold)?;
-        let mut created = 0;
-        for spool in spools {
-            if self.db.alert_exists_for_spool("LOW_FILAMENT", &spool.id)? {
-                continue;
-            }
-            let payload = format!(
-                "{{\"spool_id\":\"{}\",\"remaining_g\":{}}}",
-                spool.id,
-                spool.remaining_g.unwrap_or(0)
-            );
-            self.db.insert_alert("LOW_FILAMENT", &payload)?;
-            created += 1;
-        }
-        Ok(created)
-    }
-
-    pub fn enqueue_sync_action(
-        &self,
-        action_type: &str,
-        payload_json: &str,
-    ) -> InventoryResult<String> {
-        self.db.enqueue_sync_action(action_type, payload_json)
     }
 
     fn log_spool_event(

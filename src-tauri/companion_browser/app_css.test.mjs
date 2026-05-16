@@ -2,15 +2,29 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
+function readCssBundle(fileName = "./app.css", seen = new Set()) {
+  const fileUrl = new URL(fileName, import.meta.url);
+  const filePath = fileUrl.pathname;
+  if (seen.has(filePath)) {
+    return "";
+  }
+  seen.add(filePath);
+
+  const css = fs.readFileSync(fileUrl, "utf8");
+  return css.replace(/@import url\("\/companion\/([^"]+)"\);/g, (_match, importedFile) => {
+    return readCssBundle(`./${importedFile}`, seen);
+  });
+}
+
 test("loaded printer slot cards keep their swatch surface treatment", () => {
-  const css = fs.readFileSync(new URL("./app.css", import.meta.url), "utf8");
+  const css = readCssBundle();
 
   assert.match(css, /\.slot-card\.swatch-surface\s*\{/);
   assert.match(css, /rgb\(var\(--swatch-rgb\) \/ calc\(var\(--swatch-surface-top\) \+ 0\.02\)\)/);
 });
 
 test("companion shell defines reusable status and panel surface tokens", () => {
-  const css = fs.readFileSync(new URL("./app.css", import.meta.url), "utf8");
+  const css = readCssBundle();
 
   assert.match(css, /--surface-panel: rgba\(255, 255, 255, 0\.94\);/);
   assert.match(css, /--surface-panel: rgba\(17, 28, 45, 0\.9\);/);
@@ -20,7 +34,7 @@ test("companion shell defines reusable status and panel surface tokens", () => {
 });
 
 test("topbar status messages render as compact tonal banners", () => {
-  const css = fs.readFileSync(new URL("./app.css", import.meta.url), "utf8");
+  const css = readCssBundle();
 
   assert.match(css, /\.app-status-line\s*\{[\s\S]*display: inline-flex;[\s\S]*width: fit-content;/);
   assert.match(css, /\.app-status-line\[data-tone="success"\]\s*\{[\s\S]*background: var\(--success-soft\);/);
@@ -29,7 +43,7 @@ test("topbar status messages render as compact tonal banners", () => {
 });
 
 test("phone CSS keeps root headers secondary, task sheets scrollable, and modal close chrome quiet", () => {
-  const css = fs.readFileSync(new URL("./app.css", import.meta.url), "utf8");
+  const css = readCssBundle();
 
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.workflow-header\s*\{\s*display: none;/);
   assert.match(css, /\.add-spool-catalog-list,\s*\.add-spool-wishlist-list\s*\{[\s\S]*overflow: auto;/);

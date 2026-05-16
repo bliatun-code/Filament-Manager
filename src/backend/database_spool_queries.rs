@@ -84,26 +84,3 @@ pub(crate) fn list_spools_with_master(
     }
     Ok(results)
 }
-
-pub(crate) fn list_low_stock_spools(
-    conn: &Connection,
-    threshold: i64,
-) -> InventoryResult<Vec<SpoolRow>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, master_id, qr_code, status, ownership_type, owner_name, owner_contact,
-                rfid_tag, rfid_observed_at, ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
-                location_id, home_location_id, purchase_date, purchase_price, batch_code, last_used_at
-         FROM filament_spools
-         WHERE deleted_at IS NULL
-           AND remaining_g IS NOT NULL
-           AND remaining_g > 0
-           AND remaining_g <= ?1
-           AND status NOT IN ('EMPTY', 'LOST')",
-    )?;
-    let rows = stmt.query_map(params![threshold], map_spool_row)?;
-    let mut results = Vec::new();
-    for row in rows {
-        results.push(row?);
-    }
-    Ok(results)
-}
