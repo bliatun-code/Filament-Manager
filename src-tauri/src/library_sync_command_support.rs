@@ -19,6 +19,16 @@ pub(crate) fn normalize_library_sync_host_input(
     Ok((normalized_base_url, expected_library_id))
 }
 
+pub(crate) fn library_sync_host_input(
+    base_url: &str,
+    expected_library_id: Option<&str>,
+) -> ValidateLibrarySyncHostInput {
+    ValidateLibrarySyncHostInput {
+        base_url: base_url.to_string(),
+        expected_library_id: expected_library_id.map(str::to_string),
+    }
+}
+
 pub(crate) fn prepare_library_sync_host_write(
     input: &ValidateLibrarySyncHostInput,
 ) -> Result<(String, Option<&str>), String> {

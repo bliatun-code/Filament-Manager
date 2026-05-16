@@ -1,5 +1,6 @@
 use crate::library_sync_command_support::{
-    prepare_library_sync_host_write, save_library_sync_success, trimmed_non_empty,
+    library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
+    trimmed_non_empty,
 };
 use crate::library_sync_host_client::{
     perform_library_sync_host_write, perform_library_sync_host_write_and_parse,
@@ -7,7 +8,7 @@ use crate::library_sync_host_client::{
 use crate::library_sync_models::{
     LibrarySyncCreateSpoolInput, LibrarySyncCreateSpoolResponse,
     LibrarySyncUpdateSpoolDetailsInput, LibrarySyncUpdateSpoolRfidTagInput,
-    LibrarySyncWeightWriteInput, ValidateLibrarySyncHostInput,
+    LibrarySyncWeightWriteInput,
 };
 use crate::state::AppState;
 
@@ -16,10 +17,8 @@ pub(crate) fn update_library_sync_host_spool_weight(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncWeightWriteInput,
 ) -> Result<(), String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -42,10 +41,8 @@ pub(crate) fn update_library_sync_host_spool_tare_weight(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncWeightWriteInput,
 ) -> Result<(), String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -68,10 +65,8 @@ pub(crate) fn update_library_sync_host_spool_details(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncUpdateSpoolDetailsInput,
 ) -> Result<(), String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -101,10 +96,8 @@ pub(crate) fn update_library_sync_host_spool_rfid_tag(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncUpdateSpoolRfidTagInput,
 ) -> Result<(), String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -130,10 +123,8 @@ pub(crate) fn create_library_sync_host_spool(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncCreateSpoolInput,
 ) -> Result<String, String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     let path = if trimmed_non_empty(input.owner_name.as_deref()).is_some() {
         "/api/v1/spools/borrowed-in"
