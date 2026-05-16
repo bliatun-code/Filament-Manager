@@ -756,9 +756,7 @@ pub(crate) fn assign_library_sync_host_printer_slot(
         }),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some("Host printer slot updated."), None)
-    })?;
+    save_library_sync_success(&state, "Host printer slot updated.", None)?;
     Ok(())
 }
 
