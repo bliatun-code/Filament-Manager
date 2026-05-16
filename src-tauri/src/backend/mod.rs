@@ -28,6 +28,8 @@ pub mod database_library_sync_cache;
 pub mod database_library_sync_validation;
 #[path = "../../../src/backend/database_locations.rs"]
 pub mod database_locations;
+#[path = "../../../src/backend/database_printer_queries.rs"]
+pub mod database_printer_queries;
 #[path = "../../../src/backend/database_printer_schema.rs"]
 pub mod database_printer_schema;
 #[path = "../../../src/backend/database_result.rs"]
