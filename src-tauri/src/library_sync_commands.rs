@@ -241,6 +241,10 @@ fn prepare_library_sync_host_write(
     Ok((normalized_base_url, expected_library_id))
 }
 
+fn trimmed_non_empty(value: Option<&str>) -> Option<&str> {
+    value.map(str::trim).filter(|entry| !entry.is_empty())
+}
+
 #[tauri::command]
 pub(crate) fn fetch_library_sync_snapshot(
     state: tauri::State<'_, AppState>,
@@ -697,11 +701,11 @@ pub(crate) fn update_library_sync_host_spool_details(
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/details"),
         &serde_json::json!({
-            "qr_code": input.qr_code.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+            "qr_code": trimmed_non_empty(input.qr_code.as_deref()),
             "status": input.status.trim(),
-            "location": input.location.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+            "location": trimmed_non_empty(input.location.as_deref()),
             "home_location": input.home_location.as_ref().map(|value| {
-                value.as_deref().map(str::trim).filter(|entry| !entry.is_empty())
+                trimmed_non_empty(value.as_deref())
             }),
         }),
     )?;
@@ -732,16 +736,8 @@ pub(crate) fn update_library_sync_host_spool_rfid_tag(
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/rfid"),
         &serde_json::json!({
-            "rfid_tag": input
-                .rfid_tag
-                .as_deref()
-                .map(str::trim)
-                .filter(|value| !value.is_empty()),
-            "rfid_observed_at": input
-                .rfid_observed_at
-                .as_deref()
-                .map(str::trim)
-                .filter(|value| !value.is_empty()),
+            "rfid_tag": trimmed_non_empty(input.rfid_tag.as_deref()),
+            "rfid_observed_at": trimmed_non_empty(input.rfid_observed_at.as_deref()),
         }),
     )?;
 
@@ -772,17 +768,9 @@ pub(crate) fn assign_library_sync_host_printer_slot(
         &normalized_base_url,
         &format!("/api/v1/printers/{printer_id}/slots/{slot_id}/assignment"),
         &serde_json::json!({
-            "spool_id": input.spool_id.as_deref().map(str::trim).filter(|value| !value.is_empty()),
-            "rfid_override_tray_uuid": input
-                .rfid_override_tray_uuid
-                .as_deref()
-                .map(str::trim)
-                .filter(|value| !value.is_empty()),
-            "rfid_override_color_hex": input
-                .rfid_override_color_hex
-                .as_deref()
-                .map(str::trim)
-                .filter(|value| !value.is_empty()),
+            "spool_id": trimmed_non_empty(input.spool_id.as_deref()),
+            "rfid_override_tray_uuid": trimmed_non_empty(input.rfid_override_tray_uuid.as_deref()),
+            "rfid_override_color_hex": trimmed_non_empty(input.rfid_override_color_hex.as_deref()),
             "clear_live_cache_before_next_refresh": input.clear_live_cache_before_next_refresh.unwrap_or(false),
         }),
     )?;
@@ -818,7 +806,7 @@ pub(crate) fn record_library_sync_host_print_usage(
         &format!("/api/v1/printers/{printer_id}/spools/{spool_id}/usage"),
         &serde_json::json!({
             "grams": input.grams,
-            "job_name": input.job_name.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+            "job_name": trimmed_non_empty(input.job_name.as_deref()),
             "success": input.success.unwrap_or(true),
         }),
     )?;
@@ -855,7 +843,7 @@ pub(crate) fn return_library_sync_host_loan(
         &path,
         &serde_json::json!({
             "returned_grams": input.returned_grams.max(0),
-            "note": input.note.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+            "note": trimmed_non_empty(input.note.as_deref()),
         }),
     )?;
 
@@ -891,7 +879,7 @@ pub(crate) fn lend_library_sync_host_spool(
         &serde_json::json!({
             "borrower_name": borrower_name,
             "grams_out": input.grams_out.max(0),
-            "note": input.note.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+            "note": trimmed_non_empty(input.note.as_deref()),
         }),
     )?;
 
@@ -1072,7 +1060,7 @@ pub(crate) fn delete_library_sync_host_spool(
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/delete"),
         &serde_json::json!({
-            "reason": input.reason.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+            "reason": trimmed_non_empty(input.reason.as_deref()),
         }),
     )?;
 
@@ -1102,7 +1090,7 @@ pub(crate) fn purge_library_sync_host_spool(
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/purge"),
         &serde_json::json!({
-            "reason": input.reason.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+            "reason": trimmed_non_empty(input.reason.as_deref()),
         }),
     )?;
 
