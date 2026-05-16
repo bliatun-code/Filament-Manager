@@ -43,6 +43,7 @@ use super::database_library_sync_cache::{
 };
 use super::database_library_sync_validation::save_library_sync_validation_state as save_library_sync_validation_state_row;
 use super::database_locations::ensure_location as ensure_location_row;
+use super::database_print_jobs::insert_print_job as insert_print_job_row;
 use super::database_printer_queries::{
     list_printer_overview as list_printer_overview_rows, list_printers as list_printer_rows,
     printer_exists as printer_exists_row,
@@ -2811,21 +2812,14 @@ impl FilamentDatabase {
         material_used_g: i64,
         success: bool,
     ) -> InventoryResult<String> {
-        let id = new_id();
-        self.conn.execute(
-            "INSERT INTO print_jobs (
-                id, printer_id, spool_id, job_name, started_at, ended_at, material_used_g, success
-             ) VALUES (?1, ?2, ?3, ?4, datetime('now'), datetime('now'), ?5, ?6)",
-            params![
-                id,
-                printer_id,
-                spool_id,
-                job_name,
-                material_used_g,
-                if success { 1 } else { 0 }
-            ],
-        )?;
-        Ok(id)
+        insert_print_job_row(
+            &self.conn,
+            printer_id,
+            spool_id,
+            job_name,
+            material_used_g,
+            success,
+        )
     }
 
     pub fn reset_app_state_data(&self) -> InventoryResult<()> {
