@@ -1,16 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   isTauri,
   type BambuLiveIntegrationEntry,
   type BambuLiveObservedTray,
   type PrinterOverviewRow,
   type PrinterAmsSlotRow,
-  type SpoolWithMasterRow,
 } from "../lib/tauri_client";
-import {
-  loadPrinterPageData,
-  type PrinterSnapshotSource,
-} from "../lib/printer_data_source";
 import { createManagedPrinter } from "../lib/printer_writes";
 import { updateInventorySpoolRfidTag } from "../lib/spool_writes";
 import {
@@ -82,23 +77,17 @@ import {
   multiMaterialSlotsInputLabel,
   multiMaterialUnitsInputLabel,
   resolvePrinterModelProfile,
-  sortPrinterSlotsExtLast,
 } from "../lib/printer_profiles";
+import { usePrinterPageData } from "./use_printer_page_data";
 import { usePrinterLibrarySyncState } from "./use_printer_library_sync_state";
 
 export default function PrintersPage() {
   const { t, locale } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
-  const [loading, setLoading] = useState(tauri);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [printers, setPrinters] = useState<PrinterOverviewRow[]>([]);
-  const [spools, setSpools] = useState<SpoolWithMasterRow[]>([]);
-  const [bambuLiveIntegrations, setBambuLiveIntegrations] = useState<
-    Record<string, BambuLiveIntegrationEntry["config"]>
-  >({});
   const {
     clientReadOnly,
     clientHostWritePaired,
@@ -107,9 +96,6 @@ export default function PrintersPage() {
     clientLibraryId,
     librarySyncReady,
   } = usePrinterLibrarySyncState(tauri);
-  const [clientPrinterSource, setClientPrinterSource] = useState<PrinterSnapshotSource>("LIVE");
-  const [clientPrinterUpdatedAt, setClientPrinterUpdatedAt] = useState<string | null>(null);
-  const [printerModels, setPrinterModels] = useState<string[]>([]);
   const [showAddPrinterModal, setShowAddPrinterModal] = useState(false);
   const [newPrinterModel, setNewPrinterModel] = useState("");
   const [newPrinterName, setNewPrinterName] = useState("");
@@ -125,7 +111,6 @@ export default function PrintersPage() {
   const [rfidOverridePrompt, setRfidOverridePrompt] = useState<SlotRfidOverridePrompt | null>(
     null,
   );
-  const reloadInFlightRef = useRef(false);
   const selectedModelProfile = useMemo(
     () => resolvePrinterModelProfile(newPrinterModel || ""),
     [newPrinterModel],
@@ -135,6 +120,42 @@ export default function PrintersPage() {
     [newAmsUnits, newPrinterModel, newSlotsPerUnit],
   );
   const supportedPrinterModels = useMemo(() => listSupportedPrinterModels(), []);
+
+  const resetPrinterInteractionState = useCallback(() => {
+    setSlotDrafts({});
+    setOpenDropdownSlotId(null);
+    setIncomingWeightPrompt(null);
+    setIncomingWeightValue("");
+    setOutgoingWeightValue("");
+  }, []);
+
+  const handlePrinterLoadError = useCallback(
+    (loadError: unknown) => {
+      console.error(loadError);
+      setError(t("printers.error.load", "Failed to load printer overview."));
+    },
+    [t],
+  );
+
+  const {
+    loading,
+    printers,
+    spools,
+    bambuLiveIntegrations,
+    clientPrinterSource,
+    clientPrinterUpdatedAt,
+    printerModels,
+    reloadData,
+  } = usePrinterPageData({
+    tauri,
+    librarySyncReady,
+    clientReadOnly,
+    clientHostBaseUrl,
+    clientLibraryId,
+    supportedPrinterModels,
+    onLoadError: handlePrinterLoadError,
+    onInteractiveReload: resetPrinterInteractionState,
+  });
 
   const ensureLocalWriteAllowed = useCallback(() => {
     if (!clientReadOnly) {
@@ -203,67 +224,6 @@ export default function PrintersPage() {
     ) => buildLiveConnectionIndicator(liveConfig, slots, t),
     [t],
   );
-
-  const reloadData = useCallback(async (options?: { silent?: boolean }) => {
-    if (!tauri || reloadInFlightRef.current) {
-      return;
-    }
-    reloadInFlightRef.current = true;
-    if (!options?.silent) {
-      setLoading(true);
-    }
-    try {
-      const loaded = await loadPrinterPageData({
-        clientReadOnly,
-        clientHostBaseUrl,
-        clientLibraryId,
-        supportedPrinterModels,
-      });
-      setClientPrinterSource(loaded.source);
-      setClientPrinterUpdatedAt(loaded.updatedAt);
-      setPrinters(
-        loaded.printers.map((printer) => ({
-          ...printer,
-          slots: sortPrinterSlotsExtLast(printer.slots),
-        })),
-      );
-      setSpools(loaded.spools);
-      setBambuLiveIntegrations(loaded.bambuLiveIntegrations);
-      setPrinterModels(loaded.printerModels);
-      if (!options?.silent) {
-        setSlotDrafts({});
-        setOpenDropdownSlotId(null);
-        setIncomingWeightPrompt(null);
-        setIncomingWeightValue("");
-        setOutgoingWeightValue("");
-      }
-    } catch (loadError) {
-      console.error(loadError);
-      setError(t("printers.error.load", "Failed to load printer overview."));
-    } finally {
-      reloadInFlightRef.current = false;
-      if (!options?.silent) {
-        setLoading(false);
-      }
-    }
-  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, supportedPrinterModels, t, tauri]);
-
-  useEffect(() => {
-    if (!tauri || !librarySyncReady) {
-      return;
-    }
-    void reloadData();
-  }, [librarySyncReady, reloadData, tauri]);
-
-  useEffect(() => {
-    if (!tauri || !librarySyncReady) {
-      return;
-    }
-    const timer = window.setInterval(() => {
-      void reloadData({ silent: true });
-    }, 15000);
-    return () => window.clearInterval(timer);
-  }, [librarySyncReady, reloadData, tauri]);
 
   useEffect(() => {
     if (!openDropdownSlotId) {
