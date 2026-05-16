@@ -23,6 +23,7 @@ mod library_sync_host_client;
 mod library_sync_models;
 mod library_sync_pairing_commands;
 mod library_sync_settings_commands;
+mod library_sync_validation_commands;
 mod printer_commands;
 mod security;
 mod state;
@@ -155,7 +156,7 @@ fn main() {
             get_app_version,
             library_sync_settings_commands::get_library_sync_settings,
             library_sync_settings_commands::save_library_sync_settings,
-            library_sync_commands::validate_library_sync_host,
+            library_sync_validation_commands::validate_library_sync_host,
             library_sync_commands::fetch_library_sync_snapshot,
             library_sync_commands::fetch_library_sync_spool_detail,
             library_sync_commands::fetch_library_sync_spools,
