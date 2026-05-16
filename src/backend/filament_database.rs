@@ -1,12 +1,14 @@
-use super::bambu_live_settings::{
-    bambu_live_integration_setting_key, BAMBU_LIVE_INTEGRATION_SETTING_PREFIX,
-};
 use super::database_alerts::{
     alert_exists_for_spool as alert_exists_for_spool_row, insert_alert as insert_alert_row,
 };
 pub use super::database_backup::BackupValidationStats;
 use super::database_backup::{
     export_full_backup_content, parse_full_backup_content, validate_full_backup_content,
+};
+use super::database_bambu_live_settings::{
+    delete_bambu_live_integration as delete_bambu_live_integration_row,
+    list_bambu_live_integrations as list_bambu_live_integration_rows,
+    save_bambu_live_integration as save_bambu_live_integration_row,
 };
 use super::database_borrowed_schema::ensure_borrowed_in_schema as ensure_borrowed_in_schema_impl;
 use super::database_catalog_esun::normalize_esun_catalog_colors as normalize_esun_catalog_colors_rows;
@@ -1020,56 +1022,17 @@ impl FilamentDatabase {
         printer_id: &str,
         config: &BambuLiveIntegrationRow,
     ) -> InventoryResult<()> {
-        let normalized_printer_id = printer_id.trim();
-        if normalized_printer_id.is_empty() {
-            return Err(InventoryError::Db(
-                "printer id is required for Bambu live integration".to_string(),
-            ));
-        }
-        let payload =
-            serde_json::to_string(config).map_err(|error| InventoryError::Db(error.to_string()))?;
-        self.set_setting(
-            &bambu_live_integration_setting_key(normalized_printer_id),
-            &payload,
-        )
+        save_bambu_live_integration_row(&self.conn, printer_id, config)
     }
 
     pub fn delete_bambu_live_integration(&self, printer_id: &str) -> InventoryResult<()> {
-        let normalized_printer_id = printer_id.trim();
-        if normalized_printer_id.is_empty() {
-            return Ok(());
-        }
-        self.delete_setting(&bambu_live_integration_setting_key(normalized_printer_id))
+        delete_bambu_live_integration_row(&self.conn, printer_id)
     }
 
     pub fn list_bambu_live_integrations(
         &self,
     ) -> InventoryResult<Vec<BambuLiveIntegrationEntryRow>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT key, value
-             FROM settings
-             WHERE key LIKE ?1 || '%'
-             ORDER BY key ASC",
-        )?;
-        let rows = stmt.query_map(params![BAMBU_LIVE_INTEGRATION_SETTING_PREFIX], |row| {
-            let key: String = row.get(0)?;
-            let value: String = row.get(1)?;
-            Ok((key, value))
-        })?;
-        let mut entries = Vec::new();
-        for row in rows {
-            let (key, value) = row?;
-            let Some(printer_id) = key.strip_prefix(BAMBU_LIVE_INTEGRATION_SETTING_PREFIX) else {
-                continue;
-            };
-            let config = serde_json::from_str::<BambuLiveIntegrationRow>(&value)
-                .map_err(|error| InventoryError::Db(error.to_string()))?;
-            entries.push(BambuLiveIntegrationEntryRow {
-                printer_id: printer_id.to_string(),
-                config,
-            });
-        }
-        Ok(entries)
+        list_bambu_live_integration_rows(&self.conn)
     }
 
     pub fn insert_printer_live_event(
