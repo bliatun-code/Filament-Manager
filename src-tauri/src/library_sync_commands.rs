@@ -1075,9 +1075,7 @@ pub(crate) fn create_library_sync_host_printer(
         }),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some("Host printer saved."), None)
-    })?;
+    save_library_sync_success(&state, "Host printer saved.", None)?;
     Ok(())
 }
 
@@ -1103,8 +1101,6 @@ pub(crate) fn delete_library_sync_host_printer(
         &serde_json::json!({}),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some("Host printer deleted."), None)
-    })?;
+    save_library_sync_success(&state, "Host printer deleted.", None)?;
     Ok(())
 }
