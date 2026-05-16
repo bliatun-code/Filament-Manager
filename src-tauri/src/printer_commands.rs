@@ -1,8 +1,6 @@
 use crate::backend::filament_database::BambuLiveIntegrationRow;
 use crate::backend::database_result::InventoryError;
-use crate::backend::inventory_engine::{
-    AssignPrinterSlotInput, CreatePrinterInput, RecordPrintUsageInput,
-};
+use crate::backend::inventory_engine::{AssignPrinterSlotInput, RecordPrintUsageInput};
 use crate::printer_command_support::companion_service;
 use crate::state::AppState;
 use crate::{with_db, with_inventory};
@@ -15,14 +13,6 @@ pub(crate) struct SaveBambuLiveIntegrationInput {
     host: Option<String>,
     access_code: Option<String>,
     printer_serial: Option<String>,
-}
-
-#[tauri::command]
-pub(crate) fn create_printer(
-    state: tauri::State<'_, AppState>,
-    input: CreatePrinterInput,
-) -> Result<(), String> {
-    with_inventory(&state, |engine| engine.create_printer(input))
 }
 
 #[tauri::command]
