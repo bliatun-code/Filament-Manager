@@ -17,12 +17,9 @@ import {
   toSwatchColor,
 } from "../lib/printer_live_display";
 import {
-  describeConfiguredPrinterSetup,
-  describePrinterCapability,
   formatPrinterSlotLabelForModel,
   hasConfiguredMultiMaterial,
 } from "../lib/printer_profiles";
-import { buildPrinterUsageMetrics } from "../lib/printer_usage_metrics";
 import { derivePrinterSlotDisplayState } from "../lib/printer_slot_display";
 import {
   filterSlotOptionsBySearch,
@@ -37,7 +34,7 @@ import type {
   PrinterOverviewRow,
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
-import { PrinterModelPreview } from "./printer_model_preview";
+import { PrinterOverviewCardHeader } from "./printer_overview_card_header";
 
 type PrinterOverviewCardProps = {
   printer: PrinterOverviewRow;
@@ -98,11 +95,6 @@ export function PrinterOverviewCard({
   const { t, locale } = useI18n();
   const hasMultiMaterial = hasConfiguredMultiMaterial(printer.slots);
   const hasOpenDropdown = printer.slots.some((slot) => slot.slot_id === openDropdownSlotId);
-  const configuredSetup = describeConfiguredPrinterSetup(
-    t,
-    printer.printer.model,
-    printer.slots,
-  );
   const printerLiveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
   const liveConnectionIndicator = resolveLiveConnectionIndicator(
     printerLiveConfig,
@@ -114,65 +106,22 @@ export function PrinterOverviewCard({
     "card",
     resolvedTheme,
   );
-  const printerMetricStyle = printerBrandSurfaceStyle(
-    printer.printer.model,
-    "compact",
-    resolvedTheme,
-  );
   const slotInnerShadow =
     resolvedTheme === "dark"
       ? "inset 0 1px 0 rgba(255, 255, 255, 0.04)"
       : "inset 0 1px 0 rgba(255, 255, 255, 0.45)";
-  const usageMetrics = buildPrinterUsageMetrics(printer.usage, t);
 
   return (
     <section
       className={`surface-card relative ${hasOpenDropdown ? "z-40" : "z-0"}`}
       style={printerCardStyle}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <PrinterModelPreview model={printer.printer.model} hasMultiMaterial={hasMultiMaterial} />
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                {printer.printer.name}
-              </div>
-              {liveConnectionIndicator ? (
-                <span
-                  className={semanticChipClass(
-                    liveConnectionIndicator.tone,
-                    "px-2 py-0.5 text-[10px]",
-                  )}
-                >
-                  {liveConnectionIndicator.label}
-                </span>
-              ) : null}
-            </div>
-            <div className="text-sm text-slate-600 dark:text-slate-300">
-              {printer.printer.model} ·{" "}
-              {describePrinterCapability(t, printer.printer.model, hasMultiMaterial)} ·{" "}
-              {configuredSetup}
-            </div>
-          </div>
-        </div>
-        <div className="grid w-full grid-cols-2 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[20rem] min-[1080px]:grid-cols-4">
-          {usageMetrics.map((metric) => (
-            <div
-              key={metric.key}
-              className="rounded-xl border px-2.5 py-2 shadow-sm dark:shadow-none"
-              style={printerMetricStyle}
-            >
-              <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                {metric.label}
-              </div>
-              <div className={`mt-0.5 text-base font-semibold ${metric.valueClassName}`}>
-                {metric.value}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <PrinterOverviewCardHeader
+        printer={printer}
+        hasMultiMaterial={hasMultiMaterial}
+        liveConnectionIndicator={liveConnectionIndicator}
+        resolvedTheme={resolvedTheme}
+      />
       <div className="mt-3 grid grid-cols-1 gap-2.5 md:grid-cols-2">
         {printer.slots.map((slot) => {
           const { liveConfig, tray: liveTray } = resolveLiveTrayForSlot(
