@@ -21,6 +21,7 @@ mod inventory_create_commands;
 mod inventory_danger_zone_commands;
 mod inventory_loan_commands;
 mod inventory_read_commands;
+mod inventory_scan_commands;
 mod inventory_update_commands;
 mod inventory_wishlist_commands;
 mod library_sync_cache_commands;
@@ -223,7 +224,7 @@ fn main() {
             inventory_loan_commands::export_loans_csv,
             inventory_update_commands::assign_location,
             inventory_read_commands::find_spool_by_qr,
-            inventory_commands::record_scan_event,
+            inventory_scan_commands::record_scan_event,
             document_commands::export_inventory_csv,
             document_commands::export_inventory_json,
             document_commands::export_full_backup_json,

@@ -1,9 +1,8 @@
 use crate::backend::filament_database::{
     CatalogResetStats, SpoolHistoryEventRow, SpoolUsagePointRow,
 };
-use crate::backend::inventory_engine::ScanSource;
 use crate::backend::statistics::{FilamentConsumptionRow, InventoryOverview, MaterialUsageRow};
-use crate::inventory_command_support::{companion_service, inventory_error_to_string, ScanPayload};
+use crate::inventory_command_support::{companion_service, inventory_error_to_string};
 use crate::state::AppState;
 use crate::{with_inventory, with_stats};
 
@@ -41,25 +40,6 @@ pub(crate) fn list_spool_usage(
     companion_service(&state)
         .list_spool_usage(&spool_id, capped)
         .map_err(inventory_error_to_string)
-}
-
-#[tauri::command]
-pub(crate) fn record_scan_event(
-    state: tauri::State<'_, AppState>,
-    payload: ScanPayload,
-) -> Result<(), String> {
-    let source = match payload.source.as_deref() {
-        Some("MOBILE") => ScanSource::Mobile,
-        _ => ScanSource::Desktop,
-    };
-    with_inventory(&state, |engine| {
-        engine.record_scan(
-            None,
-            payload.qr_code.as_deref(),
-            source,
-            payload.detected_color_hex.as_deref(),
-        )
-    })
 }
 
 #[tauri::command]
