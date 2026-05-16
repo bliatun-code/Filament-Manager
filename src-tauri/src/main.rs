@@ -54,6 +54,7 @@ mod security;
 mod state;
 mod trusted_lan_commands;
 mod trusted_lan_health;
+mod trusted_lan_interface_commands;
 mod trusted_lan_interfaces;
 mod trusted_lan_runtime_commands;
 mod trusted_lan_status_commands;
@@ -163,7 +164,7 @@ fn main() {
             printer_settings_commands::get_printer_settings,
             printer_read_commands::list_printer_overview,
             trusted_lan_status_commands::get_trusted_lan_companion_status,
-            trusted_lan_commands::list_trusted_lan_interfaces,
+            trusted_lan_interface_commands::list_trusted_lan_interfaces,
             trusted_lan_commands::update_trusted_lan_companion_config,
             trusted_lan_commands::create_trusted_lan_pairing,
             trusted_lan_commands::list_trusted_lan_paired_browsers,

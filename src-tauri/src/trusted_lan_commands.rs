@@ -3,8 +3,7 @@ use crate::companion_api;
 use crate::security::hash_secret;
 use crate::state::{AppState, TrustedLanCompanionRuntimeSnapshot};
 use crate::trusted_lan_interfaces::{
-    ensure_private_trusted_lan_interface, list_private_trusted_lan_interfaces,
-    normalize_trusted_lan_interface_selection, TrustedLanInterfaceOption,
+    ensure_private_trusted_lan_interface, normalize_trusted_lan_interface_selection,
 };
 use crate::trusted_lan_status_commands::trusted_lan_server_status_snapshot;
 use crate::with_db;
@@ -24,11 +23,6 @@ pub(crate) struct UpdateTrustedLanCompanionConfigInput {
 pub(crate) struct TrustedLanPairingLink {
     pairing_url: String,
     expires_in_seconds: u64,
-}
-
-#[tauri::command]
-pub(crate) fn list_trusted_lan_interfaces() -> Result<Vec<TrustedLanInterfaceOption>, String> {
-    Ok(list_private_trusted_lan_interfaces())
 }
 
 #[tauri::command]
