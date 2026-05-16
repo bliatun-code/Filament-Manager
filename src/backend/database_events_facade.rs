@@ -1,3 +1,4 @@
+use super::database_core::FilamentDatabase;
 use super::database_events::{
     ensure_scale as ensure_scale_row, insert_scan_event as insert_scan_event_row,
     insert_spool_history_event as insert_spool_history_event_row,
@@ -7,7 +8,6 @@ use super::database_events::{
 };
 use super::database_result::InventoryResult;
 use super::database_spool_models::{SpoolHistoryEventRow, SpoolUsagePointRow};
-use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn ensure_scale(&self, scale_id: &str, name: &str, protocol: &str) -> InventoryResult<()> {

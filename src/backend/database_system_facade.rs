@@ -1,12 +1,12 @@
 use super::database_alerts::{
     alert_exists_for_spool as alert_exists_for_spool_row, insert_alert as insert_alert_row,
 };
+use super::database_core::FilamentDatabase;
 use super::database_result::InventoryResult;
 use super::database_sync_queue::enqueue_sync_action as enqueue_sync_action_row;
 use super::database_time::{
     sqlite_datetime_shift as sqlite_datetime_shift_value, sqlite_now as sqlite_now_value,
 };
-use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn sqlite_now(&self) -> InventoryResult<String> {

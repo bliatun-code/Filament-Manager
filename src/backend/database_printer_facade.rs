@@ -1,3 +1,4 @@
+use super::database_core::FilamentDatabase;
 use super::database_print_jobs::insert_print_job as insert_print_job_row;
 use super::database_printer_models::{PrinterOverviewRow, PrinterRow};
 use super::database_printer_mutations::{
@@ -9,7 +10,6 @@ use super::database_printer_queries::{
 };
 use super::database_printer_slot_assignment::assign_spool_to_ams_slot as assign_spool_to_ams_slot_row;
 use super::database_result::InventoryResult;
-use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn list_printers(&self) -> InventoryResult<Vec<PrinterRow>> {

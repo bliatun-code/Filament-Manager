@@ -64,8 +64,7 @@ const DATABASE_TABLE_OPS_SOURCE: &str = include_str!("database_table_ops.rs");
 const DATABASE_TIME_SOURCE: &str = include_str!("database_time.rs");
 const DATABASE_TRUSTED_LAN_SOURCE: &str = include_str!("database_trusted_lan.rs");
 const DATABASE_TRUSTED_LAN_SCHEMA_SOURCE: &str = include_str!("database_trusted_lan_schema.rs");
-const DATABASE_TRUSTED_LAN_SETTINGS_SOURCE: &str =
-    include_str!("database_trusted_lan_settings.rs");
+const DATABASE_TRUSTED_LAN_SETTINGS_SOURCE: &str = include_str!("database_trusted_lan_settings.rs");
 const DATABASE_WISHLIST_SOURCE: &str = include_str!("database_wishlist.rs");
 
 #[test]
@@ -107,7 +106,10 @@ fn focused_facades_extend_database_core_directly() {
         ("database_loan_facade.rs", DATABASE_LOAN_FACADE_SOURCE),
         ("database_printer_facade.rs", DATABASE_PRINTER_FACADE_SOURCE),
         ("database_reset_facade.rs", DATABASE_RESET_FACADE_SOURCE),
-        ("database_settings_facade.rs", DATABASE_SETTINGS_FACADE_SOURCE),
+        (
+            "database_settings_facade.rs",
+            DATABASE_SETTINGS_FACADE_SOURCE,
+        ),
         ("database_spool_facade.rs", DATABASE_SPOOL_FACADE_SOURCE),
         (
             "database_spool_update_facade.rs",
@@ -118,7 +120,10 @@ fn focused_facades_extend_database_core_directly() {
             "database_trusted_lan_facade.rs",
             DATABASE_TRUSTED_LAN_FACADE_SOURCE,
         ),
-        ("database_wishlist_facade.rs", DATABASE_WISHLIST_FACADE_SOURCE),
+        (
+            "database_wishlist_facade.rs",
+            DATABASE_WISHLIST_FACADE_SOURCE,
+        ),
     ];
 
     for (path, source) in facade_sources {
@@ -143,14 +148,20 @@ fn low_level_database_modules_do_not_depend_on_compatibility_facade() {
             "database_bambu_live_settings.rs",
             DATABASE_BAMBU_LIVE_SETTINGS_SOURCE,
         ),
-        ("database_borrowed_schema.rs", DATABASE_BORROWED_SCHEMA_SOURCE),
+        (
+            "database_borrowed_schema.rs",
+            DATABASE_BORROWED_SCHEMA_SOURCE,
+        ),
         ("database_catalog_esun.rs", DATABASE_CATALOG_ESUN_SOURCE),
         (
             "database_catalog_lifecycle.rs",
             DATABASE_CATALOG_LIFECYCLE_SOURCE,
         ),
         ("database_catalog_manual.rs", DATABASE_CATALOG_MANUAL_SOURCE),
-        ("database_catalog_queries.rs", DATABASE_CATALOG_QUERIES_SOURCE),
+        (
+            "database_catalog_queries.rs",
+            DATABASE_CATALOG_QUERIES_SOURCE,
+        ),
         ("database_catalog_schema.rs", DATABASE_CATALOG_SCHEMA_SOURCE),
         ("database_catalog_update.rs", DATABASE_CATALOG_UPDATE_SOURCE),
         ("database_connection.rs", DATABASE_CONNECTION_SOURCE),
@@ -161,7 +172,10 @@ fn low_level_database_modules_do_not_depend_on_compatibility_facade() {
             "database_inventory_import_apply.rs",
             DATABASE_INVENTORY_IMPORT_APPLY_SOURCE,
         ),
-        ("database_library_sync_auth.rs", DATABASE_LIBRARY_SYNC_AUTH_SOURCE),
+        (
+            "database_library_sync_auth.rs",
+            DATABASE_LIBRARY_SYNC_AUTH_SOURCE,
+        ),
         (
             "database_library_sync_cache.rs",
             DATABASE_LIBRARY_SYNC_CACHE_SOURCE,
@@ -184,8 +198,14 @@ fn low_level_database_modules_do_not_depend_on_compatibility_facade() {
             "database_printer_live_events.rs",
             DATABASE_PRINTER_LIVE_EVENTS_SOURCE,
         ),
-        ("database_printer_mutations.rs", DATABASE_PRINTER_MUTATIONS_SOURCE),
-        ("database_printer_queries.rs", DATABASE_PRINTER_QUERIES_SOURCE),
+        (
+            "database_printer_mutations.rs",
+            DATABASE_PRINTER_MUTATIONS_SOURCE,
+        ),
+        (
+            "database_printer_queries.rs",
+            DATABASE_PRINTER_QUERIES_SOURCE,
+        ),
         ("database_printer_schema.rs", DATABASE_PRINTER_SCHEMA_SOURCE),
         (
             "database_printer_slot_assignment.rs",
@@ -196,7 +216,10 @@ fn low_level_database_modules_do_not_depend_on_compatibility_facade() {
         ("database_schema.rs", DATABASE_SCHEMA_SOURCE),
         ("database_schema_setup.rs", DATABASE_SCHEMA_SETUP_SOURCE),
         ("database_settings.rs", DATABASE_SETTINGS_SOURCE),
-        ("database_spool_assignment.rs", DATABASE_SPOOL_ASSIGNMENT_SOURCE),
+        (
+            "database_spool_assignment.rs",
+            DATABASE_SPOOL_ASSIGNMENT_SOURCE,
+        ),
         ("database_spool_delete.rs", DATABASE_SPOOL_DELETE_SOURCE),
         ("database_spool_insert.rs", DATABASE_SPOOL_INSERT_SOURCE),
         ("database_spool_queries.rs", DATABASE_SPOOL_QUERIES_SOURCE),

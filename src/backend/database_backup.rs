@@ -3,9 +3,9 @@ use std::collections::{BTreeMap, HashSet};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+use super::database_result::{InventoryError, InventoryResult};
 use super::database_tables::FULL_BACKUP_TABLES;
 use super::database_values::sqlite_value_to_json;
-use super::database_result::{InventoryError, InventoryResult};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BackupValidationStats {

@@ -1,3 +1,4 @@
+use super::database_core::FilamentDatabase;
 use super::database_library_sync_auth::{
     clear_library_sync_client_auth_state as clear_library_sync_client_auth_state_rows,
     get_library_sync_client_auth_state as get_library_sync_client_auth_state_rows,
@@ -21,7 +22,6 @@ use super::database_loan_models::SpoolLoanDetailsRow;
 use super::database_printer_models::PrinterOverviewRow;
 use super::database_result::InventoryResult;
 use super::database_spool_models::SpoolWithMasterRow;
-use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn get_library_sync_settings(&self) -> InventoryResult<LibrarySyncSettingsRow> {

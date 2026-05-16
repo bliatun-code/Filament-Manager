@@ -1,3 +1,4 @@
+use super::database_core::FilamentDatabase;
 use super::database_export::export_loans_csv_for_direction as export_loan_rows_csv_for_direction;
 use super::database_loan_create::{
     create_inbound_spool_loan as create_inbound_spool_loan_row,
@@ -19,7 +20,6 @@ use super::database_loan_return::{
 };
 use super::database_loan_update::update_active_inbound_spool_loan_counterparty as update_active_inbound_spool_loan_counterparty_row;
 use super::database_result::InventoryResult;
-use super::database_core::FilamentDatabase;
 
 impl FilamentDatabase {
     pub fn update_active_inbound_spool_loan_counterparty(
@@ -129,12 +129,7 @@ impl FilamentDatabase {
         include_returned: bool,
         direction: Option<&str>,
     ) -> InventoryResult<Vec<SpoolLoanDetailsRow>> {
-        list_spool_loans_for_direction_rows(
-            self.connection(),
-            limit,
-            include_returned,
-            direction,
-        )
+        list_spool_loans_for_direction_rows(self.connection(), limit, include_returned, direction)
     }
 
     pub fn export_loans_csv(&self, include_returned: bool) -> InventoryResult<String> {

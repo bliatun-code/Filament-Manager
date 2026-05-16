@@ -59,7 +59,11 @@ pub(crate) fn fetch_library_sync_snapshot(
         })?;
         Ok(())
     })?;
-    save_library_sync_success(&state, "Host snapshot refreshed.", Some(&snapshot.device_name))?;
+    save_library_sync_success(
+        &state,
+        "Host snapshot refreshed.",
+        Some(&snapshot.device_name),
+    )?;
 
     Ok(snapshot)
 }
