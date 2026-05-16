@@ -2,11 +2,9 @@ import type { Dispatch, SetStateAction } from "react";
 import { useI18n } from "../lib/i18n";
 import {
   findLiveTrayForSlot as resolveLiveTrayForSlot,
-  printerSwatchActionButtonStyle,
-  printerSwatchInteractiveInsetStyle,
-  printerSwatchSurfaceStyle,
 } from "../lib/printer_live_display";
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
+import { buildPrinterSlotCardStyles } from "../lib/printer_slot_card_styles";
 import { derivePrinterSlotDisplayState } from "../lib/printer_slot_display";
 import { type SlotSwapDraft } from "../lib/printer_slot_model";
 import type { PrinterSnapshotSource } from "../lib/printer_data_source";
@@ -106,34 +104,17 @@ export function PrinterSlotCard({
     findSpoolById,
   });
   const { slotSwatchHex } = slotDisplay;
-  const slotInnerShadow =
-    resolvedTheme === "dark"
-      ? "inset 0 1px 0 rgba(255, 255, 255, 0.04)"
-      : "inset 0 1px 0 rgba(255, 255, 255, 0.45)";
-  const slotSelectorStyle = slotSwatchHex
-    ? {
-        ...printerSwatchInteractiveInsetStyle(
-          slotSwatchHex,
-          resolvedTheme,
-          selectedTargetSpool ? "selected" : "default",
-        ),
-        borderColor: "transparent",
-        boxShadow: slotInnerShadow,
-      }
-    : undefined;
-  const slotCurrentRollStyle = slot.spool_id
-    ? {
-        ...printerSwatchInteractiveInsetStyle(slotSwatchHex, resolvedTheme, "selected"),
-        borderColor: "transparent",
-        boxShadow: slotInnerShadow,
-      }
-    : undefined;
-  const slotActionStyle = slotSwatchHex
-    ? printerSwatchActionButtonStyle(slotSwatchHex, resolvedTheme)
-    : undefined;
-  const slotPanelStyle = slotSwatchHex
-    ? printerSwatchSurfaceStyle(slotSwatchHex, "panel", resolvedTheme)
-    : undefined;
+  const {
+    selectorStyle: slotSelectorStyle,
+    currentRollStyle: slotCurrentRollStyle,
+    actionStyle: slotActionStyle,
+    panelStyle: slotPanelStyle,
+  } = buildPrinterSlotCardStyles({
+    slotSwatchHex,
+    hasAssignedSpool: !!slot.spool_id,
+    hasSelectedTargetSpool: !!selectedTargetSpool,
+    resolvedTheme,
+  });
 
   return (
     <div
