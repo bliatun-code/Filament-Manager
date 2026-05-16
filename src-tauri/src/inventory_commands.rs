@@ -1,10 +1,8 @@
-use crate::app_services::CompanionService;
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, CatalogResetStats, FilamentMasterCatalogRow, LoanUsageByPersonRow,
     SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow, SpoolUsagePointRow,
     SpoolWithMasterRow, WishlistItemRow,
 };
-use crate::backend::database_result::InventoryError;
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreateSpoolInput, CreateWishlistItemInput, DeleteSpoolInput,
     LendSpoolInput, PurgeSpoolInput, ReturnSpoolLoanInput, ScanSource,
@@ -12,21 +10,11 @@ use crate::backend::inventory_engine::{
     UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::statistics::{FilamentConsumptionRow, InventoryOverview, MaterialUsageRow};
+use crate::inventory_command_support::{
+    companion_service, inventory_error_to_string, ExportPayload, ScanPayload,
+};
 use crate::state::AppState;
 use crate::{with_db, with_inventory, with_stats};
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize)]
-pub(crate) struct ExportPayload {
-    content: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub(crate) struct ScanPayload {
-    qr_code: Option<String>,
-    detected_color_hex: Option<String>,
-    source: Option<String>,
-}
 
 #[tauri::command]
 pub(crate) fn list_spools(
@@ -383,12 +371,4 @@ pub(crate) fn enqueue_sync_action(
     with_inventory(&state, |engine| {
         engine.enqueue_sync_action(&action_type, &payload_json)
     })
-}
-
-fn companion_service(state: &AppState) -> CompanionService {
-    CompanionService::new(state.db_path.clone())
-}
-
-fn inventory_error_to_string(error: InventoryError) -> String {
-    format!("{error:?}")
 }

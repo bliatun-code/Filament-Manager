@@ -15,6 +15,7 @@ mod companion_payload;
 mod companion_session;
 mod companion_state;
 mod document_commands;
+mod inventory_command_support;
 mod inventory_commands;
 mod library_sync_cache_commands;
 mod library_sync_command_support;
