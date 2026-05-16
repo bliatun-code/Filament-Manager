@@ -26,7 +26,7 @@ use super::database_events::{
 use super::database_export::{
     export_inventory_spools_csv as export_inventory_spool_rows_csv,
     export_inventory_spools_json as export_inventory_spool_rows_json,
-    export_loans_csv as export_loan_rows_csv,
+    export_loans_csv_for_direction as export_loan_rows_csv_for_direction,
 };
 pub use super::database_import::ImportDataStats;
 use super::database_import::{
@@ -928,7 +928,7 @@ impl FilamentDatabase {
     }
 
     pub fn export_loans_csv(&self, include_returned: bool) -> InventoryResult<String> {
-        self.export_loans_csv_for_direction(include_returned, Some("OUTBOUND"))
+        export_loan_rows_csv_for_direction(&self.conn, include_returned, Some("OUTBOUND"))
     }
 
     pub fn export_loans_csv_for_direction(
@@ -936,8 +936,7 @@ impl FilamentDatabase {
         include_returned: bool,
         direction: Option<&str>,
     ) -> InventoryResult<String> {
-        let rows = self.list_spool_loans_for_direction(20_000, include_returned, direction)?;
-        export_loan_rows_csv(&rows)
+        export_loan_rows_csv_for_direction(&self.conn, include_returned, direction)
     }
 
     pub fn list_printers(&self) -> InventoryResult<Vec<PrinterRow>> {
