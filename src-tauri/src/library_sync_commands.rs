@@ -904,21 +904,9 @@ pub(crate) fn create_library_sync_host_spool(
         expected_library_id: input.expected_library_id.clone(),
     })?;
 
-    let path = if input
-        .owner_name
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .is_some()
-    {
+    let path = if trimmed_non_empty(input.owner_name.as_deref()).is_some() {
         "/api/v1/spools/borrowed-in"
-    } else if input
-        .master_id
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .is_some()
-    {
+    } else if trimmed_non_empty(input.master_id.as_deref()).is_some() {
         "/api/v1/spools/owned"
     } else {
         "/api/v1/spools/manual"
@@ -929,17 +917,17 @@ pub(crate) fn create_library_sync_host_spool(
         &normalized_base_url,
         path,
         &serde_json::json!({
-            "master_id": input.master_id.as_deref().map(str::trim).filter(|value| !value.is_empty()),
-            "material": input.material.as_deref().map(str::trim).filter(|value| !value.is_empty()),
-            "filament_name": input.filament_name.as_deref().map(str::trim).filter(|value| !value.is_empty()),
-            "color_name": input.color_name.as_deref().map(str::trim).filter(|value| !value.is_empty()),
-            "vendor": input.vendor.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+            "master_id": trimmed_non_empty(input.master_id.as_deref()),
+            "material": trimmed_non_empty(input.material.as_deref()),
+            "filament_name": trimmed_non_empty(input.filament_name.as_deref()),
+            "color_name": trimmed_non_empty(input.color_name.as_deref()),
+            "vendor": trimmed_non_empty(input.vendor.as_deref()),
             "initial_weight_g": input.initial_weight_g,
-            "location": input.location.as_deref().map(str::trim).filter(|value| !value.is_empty()),
-            "hex_color": input.hex_color.as_deref().map(str::trim).filter(|value| !value.is_empty()),
-            "owner_name": input.owner_name.as_deref().map(str::trim).filter(|value| !value.is_empty()),
-            "owner_contact": input.owner_contact.as_deref().map(str::trim).filter(|value| !value.is_empty()),
-            "ownership_note": input.ownership_note.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+            "location": trimmed_non_empty(input.location.as_deref()),
+            "hex_color": trimmed_non_empty(input.hex_color.as_deref()),
+            "owner_name": trimmed_non_empty(input.owner_name.as_deref()),
+            "owner_contact": trimmed_non_empty(input.owner_contact.as_deref()),
+            "ownership_note": trimmed_non_empty(input.ownership_note.as_deref()),
         }),
     )?;
     if !response.ok {
@@ -968,13 +956,13 @@ pub(crate) fn create_library_sync_host_wishlist_item(
         &normalized_base_url,
         "/api/v1/wishlist",
         &serde_json::json!({
-            "master_id": input.master_id.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+            "master_id": trimmed_non_empty(input.master_id.as_deref()),
             "vendor": input.vendor.trim(),
             "material": input.material.trim(),
             "filament_name": input.filament_name.trim(),
             "color_name": input.color_name.trim(),
             "quantity": input.quantity,
-            "note": input.note.as_deref().map(str::trim).filter(|value| !value.is_empty()),
+            "note": trimmed_non_empty(input.note.as_deref()),
         }),
     )?;
 
