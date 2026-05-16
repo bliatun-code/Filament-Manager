@@ -22,6 +22,7 @@ import {
   formatPrinterSlotLabelForModel,
   hasConfiguredMultiMaterial,
 } from "../lib/printer_profiles";
+import { buildPrinterUsageMetrics } from "../lib/printer_usage_metrics";
 import { derivePrinterSlotDisplayState } from "../lib/printer_slot_display";
 import {
   filterSlotOptionsBySearch,
@@ -122,32 +123,7 @@ export function PrinterOverviewCard({
     resolvedTheme === "dark"
       ? "inset 0 1px 0 rgba(255, 255, 255, 0.04)"
       : "inset 0 1px 0 rgba(255, 255, 255, 0.45)";
-  const usageMetrics = [
-    {
-      key: "jobs",
-      label: t("printers.jobs", "Jobs"),
-      value: String(printer.usage.total_jobs),
-      valueClassName: "text-slate-900 dark:text-slate-50",
-    },
-    {
-      key: "success",
-      label: t("printers.success", "Success"),
-      value: String(printer.usage.successful_jobs),
-      valueClassName: "text-emerald-700 dark:text-emerald-200",
-    },
-    {
-      key: "failed",
-      label: t("printers.failed", "Failed"),
-      value: String(printer.usage.failed_jobs),
-      valueClassName: "text-rose-700 dark:text-rose-200",
-    },
-    {
-      key: "used",
-      label: t("printers.used", "Used"),
-      value: `${printer.usage.total_used_g} g`,
-      valueClassName: "text-amber-700 dark:text-amber-200",
-    },
-  ];
+  const usageMetrics = buildPrinterUsageMetrics(printer.usage, t);
 
   return (
     <section
