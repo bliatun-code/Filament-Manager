@@ -70,13 +70,13 @@ type MetricTone = "slate" | "sky" | "emerald" | "amber" | "rose";
 function metricTileClass(tone: MetricTone): string {
   switch (tone) {
     case "sky":
-      return "border-sky-200/85 bg-sky-50/80 dark:border-sky-400/25 dark:bg-sky-500/10";
+      return "border-sky-200/80 bg-white/75 dark:border-sky-400/25 dark:bg-sky-500/10";
     case "emerald":
-      return "border-emerald-200/85 bg-emerald-50/80 dark:border-emerald-400/25 dark:bg-emerald-500/10";
+      return "border-emerald-200/80 bg-white/75 dark:border-emerald-400/25 dark:bg-emerald-500/10";
     case "amber":
-      return "border-amber-200/85 bg-amber-50/80 dark:border-amber-400/25 dark:bg-amber-500/10";
+      return "border-amber-200/80 bg-white/75 dark:border-amber-400/25 dark:bg-amber-500/10";
     case "rose":
-      return "border-rose-200/85 bg-rose-50/80 dark:border-rose-400/25 dark:bg-rose-500/10";
+      return "border-rose-200/80 bg-white/75 dark:border-rose-400/25 dark:bg-rose-500/10";
     case "slate":
     default:
       return "border-slate-200/85 bg-white/80 dark:border-slate-700 dark:bg-slate-950/45";
@@ -429,7 +429,7 @@ export default function StatisticsPage() {
         </FeedbackBanner>
       ) : null}
 
-      <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="content-section grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title={t("statistics.totalConsumption", "Total Consumption")}
           value={gramsToKgText(totals.totalUsed)}
@@ -466,7 +466,7 @@ export default function StatisticsPage() {
         />
       </div>
 
-      <div className="mt-6 surface-card">
+      <div className="content-section surface-card">
         <div className="flex flex-wrap items-start gap-3">
           <div>
             <div className="section-eyebrow">
@@ -530,7 +530,7 @@ export default function StatisticsPage() {
         </div>
       </div>
 
-      <div className="mt-8 surface-card">
+      <div className="content-section surface-card">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="section-eyebrow">
@@ -543,7 +543,7 @@ export default function StatisticsPage() {
               )}
             </div>
           </div>
-          <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200 dark:shadow-none">
+          <div className="count-pill">
             {printers.length}
           </div>
         </div>
@@ -561,7 +561,7 @@ export default function StatisticsPage() {
           {printers.map((row) => (
             <div
               key={row.printer.id}
-              className="cursor-pointer rounded-2xl border p-4 text-sm transition hover:-translate-y-0.5"
+              className="cursor-pointer rounded-lg border p-3.5 text-sm transition hover:-translate-y-0.5"
               role="button"
               tabIndex={0}
               onClick={() => {
@@ -584,7 +584,7 @@ export default function StatisticsPage() {
                     {row.printer.model}
                   </div>
                 </div>
-                <div className="grid w-full grid-cols-2 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[18rem] min-[1080px]:grid-cols-3">
+                <div className="grid w-full grid-cols-3 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[18rem]">
                   <SummaryMetricTile
                     label={t("printers.jobs", "Jobs")}
                     value={row.usage.total_jobs.toString()}
@@ -599,7 +599,6 @@ export default function StatisticsPage() {
                     label={t("printers.failed", "Failed")}
                     value={row.usage.failed_jobs.toString()}
                     tone="rose"
-                    className="col-span-2 min-[1080px]:col-span-1"
                   />
                 </div>
               </div>

@@ -679,7 +679,7 @@ export default function PrintersPage() {
         </div>
       ) : null}
 
-      <div className="mt-6 space-y-5">
+      <div className="content-section space-y-4">
         {printers.map((printer) => (
           <PrinterOverviewCard
             key={printer.printer.id}

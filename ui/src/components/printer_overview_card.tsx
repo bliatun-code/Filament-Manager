@@ -90,7 +90,7 @@ export function PrinterOverviewCard({
   );
   return (
     <section
-      className={`surface-card relative ${hasOpenDropdown ? "z-40" : "z-0"}`}
+      className={`surface-card relative p-3.5 sm:p-4 ${hasOpenDropdown ? "z-40" : "z-0"}`}
       style={printerCardStyle}
     >
       <PrinterOverviewCardHeader
@@ -99,7 +99,7 @@ export function PrinterOverviewCard({
         liveConnectionIndicator={liveConnectionIndicator}
         resolvedTheme={resolvedTheme}
       />
-      <div className="mt-3 grid grid-cols-1 gap-2.5 md:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-2.5 lg:grid-cols-2">
         {printer.slots.map((slot) => (
           <PrinterSlotCard
             key={slot.slot_id}

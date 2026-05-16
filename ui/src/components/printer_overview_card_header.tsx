@@ -45,9 +45,9 @@ export function PrinterOverviewCardHeader({
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="flex items-start gap-3">
         <PrinterModelPreview model={printer.printer.model} hasMultiMaterial={hasMultiMaterial} />
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+            <div className="text-base font-semibold text-slate-900 dark:text-slate-50">
               {printer.printer.name}
             </div>
             {liveConnectionIndicator ? (
@@ -61,18 +61,18 @@ export function PrinterOverviewCardHeader({
               </span>
             ) : null}
           </div>
-          <div className="text-sm text-slate-600 dark:text-slate-300">
+          <div className="text-xs leading-5 text-slate-600 dark:text-slate-300">
             {printer.printer.model} ·{" "}
             {describePrinterCapability(t, printer.printer.model, hasMultiMaterial)} ·{" "}
             {configuredSetup}
           </div>
         </div>
       </div>
-      <div className="grid w-full grid-cols-2 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[20rem] min-[1080px]:grid-cols-4">
+      <div className="grid w-full grid-cols-4 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[18rem]">
         {usageMetrics.map((metric) => (
           <div
             key={metric.key}
-            className="rounded-xl border px-2.5 py-2 shadow-sm dark:shadow-none"
+            className="rounded-lg border px-2.5 py-2 shadow-sm dark:shadow-none"
             style={printerMetricStyle}
           >
             <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">

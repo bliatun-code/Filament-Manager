@@ -17,10 +17,10 @@ const accentMap: Record<NonNullable<StatCardProps["accent"]>, string> = {
 };
 
 const accentSurfaceMap: Record<NonNullable<StatCardProps["accent"]>, string> = {
-  emerald: "from-emerald-500/12 to-emerald-500/0 dark:from-emerald-300/10",
-  sky: "from-sky-500/12 to-sky-500/0 dark:from-sky-300/10",
-  amber: "from-amber-500/14 to-amber-500/0 dark:from-amber-300/10",
-  rose: "from-rose-500/12 to-rose-500/0 dark:from-rose-300/10",
+  emerald: "from-emerald-500/7 to-emerald-500/0 dark:from-emerald-300/10",
+  sky: "from-sky-500/7 to-sky-500/0 dark:from-sky-300/10",
+  amber: "from-amber-500/8 to-amber-500/0 dark:from-amber-300/10",
+  rose: "from-rose-500/7 to-rose-500/0 dark:from-rose-300/10",
 };
 
 const accentDotMap: Record<NonNullable<StatCardProps["accent"]>, string> = {
@@ -59,12 +59,12 @@ export function StatCard({
           : undefined
       }
     >
-      <div className={`pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${accentSurfaceMap[accent]}`} />
+      <div className={`pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b ${accentSurfaceMap[accent]}`} />
       <div className="relative flex items-center justify-between gap-3">
         <div className="section-eyebrow">{title}</div>
         <span className={`h-2.5 w-2.5 shrink-0 rounded-full shadow-[0_0_0_5px] ${accentDotMap[accent]}`} />
       </div>
-      <div className="relative mt-3 text-[1.85rem] font-semibold leading-none text-slate-950 dark:text-slate-50">{value}</div>
+      <div className="relative mt-3 text-[1.7rem] font-semibold leading-none text-slate-950 dark:text-slate-50">{value}</div>
       <div className="mt-2 flex items-end justify-between gap-3 text-sm text-slate-600 dark:text-slate-300">
         <span className="min-w-0 leading-5">{subtitle}</span>
         {trend ? (

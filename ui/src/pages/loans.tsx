@@ -296,7 +296,7 @@ export default function LoansPage() {
             )}
           </div>
         </div>
-        <div className="page-header-actions">
+        <div className="page-header-actions page-header-action-grid">
           <div className="page-header-tools">
             <button
               type="button"
@@ -323,63 +323,61 @@ export default function LoansPage() {
               {t("loans.exportCsv", "Export loans CSV")}
             </button>
           </div>
-          <div className="flex w-full flex-col gap-2 min-[920px]:items-end">
-            <input
-              type="search"
-              placeholder={t(
-                "loans.searchPlaceholder",
-                "Search person/material/spool id",
-              )}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="page-header-search"
-            />
-            <div className="page-header-filter-surface">
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-20">
-                    {t("loans.direction", "Direction")}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 min-[920px]:justify-end">
-                    {(["ALL", "OUTBOUND", "INBOUND"] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => setDirectionFilter(mode)}
-                        className={neutralChipClass(
-                          directionFilter === mode,
-                          "px-3.5 py-2 text-xs",
-                        )}
-                      >
-                        {mode === "ALL"
-                          ? t("common.all", "All")
-                          : mode === "OUTBOUND"
-                            ? t("loans.directionOutbound", "Loaned out")
-                            : t("loans.directionInbound", "Borrowed in")}
-                      </button>
-                    ))}
-                  </div>
+          <input
+            type="search"
+            placeholder={t(
+              "loans.searchPlaceholder",
+              "Search person/material/spool id",
+            )}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="page-header-search"
+          />
+          <div className="page-header-filter-surface">
+            <div className="grid gap-3 min-[720px]:grid-cols-2">
+              <div className="min-w-0">
+                <div className="section-eyebrow mb-1.5">
+                  {t("loans.direction", "Direction")}
                 </div>
-                <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-20">
-                    {t("inventory.status", "Status")}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 min-[920px]:justify-end">
-                    {(["ALL", "ACTIVE", "RETURNED"] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => setFilter(mode)}
-                        className={neutralChipClass(filter === mode, "px-3.5 py-2 text-xs")}
-                      >
-                        {mode === "ALL"
-                          ? t("common.all", "All")
-                          : mode === "ACTIVE"
-                            ? t("common.active", "Active")
-                            : t("loans.returned", "Returned")}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {(["ALL", "OUTBOUND", "INBOUND"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setDirectionFilter(mode)}
+                      className={neutralChipClass(
+                        directionFilter === mode,
+                        "px-3 py-1.5 text-xs",
+                      )}
+                    >
+                      {mode === "ALL"
+                        ? t("common.all", "All")
+                        : mode === "OUTBOUND"
+                          ? t("loans.directionOutbound", "Loaned out")
+                          : t("loans.directionInbound", "Borrowed in")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="min-w-0">
+                <div className="section-eyebrow mb-1.5">
+                  {t("inventory.status", "Status")}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {(["ALL", "ACTIVE", "RETURNED"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setFilter(mode)}
+                      className={neutralChipClass(filter === mode, "px-3 py-1.5 text-xs")}
+                    >
+                      {mode === "ALL"
+                        ? t("common.all", "All")
+                        : mode === "ACTIVE"
+                          ? t("common.active", "Active")
+                          : t("loans.returned", "Returned")}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -425,7 +423,7 @@ export default function LoansPage() {
         </FeedbackBanner>
       ) : null}
 
-      <div className="mt-6">
+      <div className="content-section">
         <section className="surface-card space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -439,7 +437,7 @@ export default function LoansPage() {
                 )}
               </div>
             </div>
-            <span className="rounded-full border border-slate-300 bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200 dark:shadow-none">
+            <span className="count-pill">
               {filteredLoans.length}
             </span>
           </div>
@@ -455,7 +453,7 @@ export default function LoansPage() {
             </div>
           ) : null}
 
-          <div className="grid grid-cols-1 items-start gap-3 min-[860px]:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid grid-cols-1 items-start gap-3 min-[760px]:grid-cols-2 xl:grid-cols-4">
             {filteredLoans.map((loan) => {
               const isActive = isLoanCurrentlyActive(loan);
               const loanDirection = normalizeLoanDirection(loan.loan.loan_direction);

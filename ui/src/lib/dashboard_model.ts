@@ -163,7 +163,7 @@ export function buildDashboardDerivedState(params: {
       subtitle: `${printerCount} ${t("dashboard.configured", "configured")}`,
       trend:
         printerCount > 0
-          ? t("dashboard.allConfiguredActive", "All configured printers are active")
+          ? ""
           : t("dashboard.noPrintersConfigured", "No printers configured"),
       accent: "emerald",
     },

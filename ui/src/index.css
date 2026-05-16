@@ -73,7 +73,7 @@
 
 @layer components {
   .page-shell {
-    @apply mx-auto min-h-screen w-full max-w-[1500px] px-5 py-6 text-slate-900 dark:text-slate-100 sm:px-7 lg:px-9;
+    @apply mx-auto min-h-screen w-full max-w-[1500px] px-5 py-5 text-slate-900 dark:text-slate-100 sm:px-7 lg:px-9;
   }
 
   .section-eyebrow {
@@ -121,6 +121,22 @@
       0 1px 0 rgba(255, 255, 255, 0.84) inset;
   }
 
+  .page-header-action-grid {
+    @apply grid w-full gap-3 min-[920px]:max-w-[39rem] min-[920px]:grid-cols-[minmax(16rem,1fr)_auto] min-[920px]:items-start;
+  }
+
+  .page-header-action-grid .page-header-tools {
+    @apply min-[920px]:order-2;
+  }
+
+  .page-header-action-grid .page-header-search {
+    @apply min-[920px]:order-3 min-[920px]:col-span-2 min-[920px]:w-full;
+  }
+
+  .page-header-action-grid .page-header-filter-surface {
+    @apply min-[920px]:order-4 min-[920px]:col-span-2 min-[920px]:w-full;
+  }
+
   html.dark .page-header-filter-surface {
     border-color: rgba(51, 65, 85, 0.7);
     background: rgba(15, 23, 42, 0.6);
@@ -135,7 +151,7 @@
 
   @media (min-width: 920px) {
     .page-header {
-      @apply flex-row items-start justify-between;
+      @apply flex-row items-start justify-between gap-8;
     }
 
     .page-header-actions {
@@ -210,6 +226,14 @@
     box-shadow:
       0 18px 38px -30px rgba(51, 65, 85, 0.36),
       0 1px 0 rgba(255, 255, 255, 0.88) inset;
+  }
+
+  .content-section {
+    @apply mt-5;
+  }
+
+  .count-pill {
+    @apply rounded-full border border-slate-300 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200 dark:shadow-none;
   }
 
   .surface-card-compact {
