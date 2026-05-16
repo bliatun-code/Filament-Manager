@@ -10,6 +10,7 @@ use super::database_bambu_live_settings::{
     save_bambu_live_integration as save_bambu_live_integration_row,
 };
 use super::database_catalog_esun::normalize_esun_catalog_colors as normalize_esun_catalog_colors_rows;
+pub use super::database_catalog_inputs::{ManualMasterInput, MasterCatalogUpdateInput};
 use super::database_catalog_lifecycle::apply_vendor_discontinued_rules as apply_vendor_discontinued_rules_row;
 use super::database_catalog_manual::upsert_manual_master as upsert_manual_master_row;
 use super::database_catalog_queries::list_master_catalog as list_master_catalog_rows;
@@ -141,37 +142,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub(crate) type LibrarySyncClientAuthState = (String, String, String, Option<String>);
-pub(crate) type MasterCatalogExistingRow = (
-    String,
-    String,
-    String,
-    Option<String>,
-    Option<String>,
-    i64,
-    String,
-);
-
-pub struct ManualMasterInput<'a> {
-    pub material: &'a str,
-    pub filament_name: &'a str,
-    pub color_name: &'a str,
-    pub hex_color: Option<&'a str>,
-    pub product_url: Option<&'a str>,
-    pub vendor: Option<&'a str>,
-    pub default_weight: Option<i64>,
-}
-
-pub struct MasterCatalogUpdateInput<'a> {
-    pub master_id: &'a str,
-    pub material: &'a str,
-    pub filament_name: &'a str,
-    pub color_name: &'a str,
-    pub hex_color: Option<&'a str>,
-    pub product_url: Option<&'a str>,
-    pub vendor: Option<&'a str>,
-    pub default_weight: Option<i64>,
-}
-
 const SCHEMA_SQL: &str = include_str!("../database/schema.sql");
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
