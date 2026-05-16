@@ -74,6 +74,8 @@ pub mod database_printer_schema;
 pub mod database_printer_slot_assignment;
 #[path = "../../../src/backend/database_reset.rs"]
 pub mod database_reset;
+#[path = "../../../src/backend/database_reset_models.rs"]
+pub mod database_reset_models;
 #[path = "../../../src/backend/database_result.rs"]
 pub mod database_result;
 #[path = "../../../src/backend/database_rows.rs"]

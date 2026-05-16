@@ -88,6 +88,7 @@ use super::database_reset::{
     reset_app_state_data as reset_app_state_data_rows,
     reset_catalog_data as reset_catalog_data_rows,
 };
+pub use super::database_reset_models::CatalogResetStats;
 pub use super::database_result::{InventoryError, InventoryResult};
 use super::database_schema_setup::apply_schema_migrations;
 use super::database_settings::{
@@ -158,13 +159,6 @@ use serde_json::Value;
 
 pub(crate) type LibrarySyncClientAuthState = (String, String, String, Option<String>);
 const SCHEMA_SQL: &str = include_str!("../database/schema.sql");
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct CatalogResetStats {
-    pub removed_count: i64,
-    pub remaining_count: i64,
-    pub reactivated_count: i64,
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TrustedLanSettingsRow {
