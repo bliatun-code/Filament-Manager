@@ -517,13 +517,10 @@ pub(crate) fn fetch_library_sync_catalog_masters(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncCatalogListInput,
 ) -> Result<Vec<FilamentMasterCatalogRow>, String> {
-    let validation_input = ValidateLibrarySyncHostInput {
+    let (normalized_base_url, _) = prepare_library_sync_host_checked(&ValidateLibrarySyncHostInput {
         base_url: input.base_url.clone(),
         expected_library_id: input.expected_library_id.clone(),
-    };
-    let (normalized_base_url, expected_library_id) =
-        normalize_library_sync_host_input(&validation_input)?;
-    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    })?;
 
     let limit = input.limit.unwrap_or(1_000).clamp(1, 5_000);
     let _search = input.search;
@@ -546,13 +543,10 @@ pub(crate) fn fetch_library_sync_wishlist_items(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncWishlistListInput,
 ) -> Result<Vec<WishlistItemRow>, String> {
-    let validation_input = ValidateLibrarySyncHostInput {
+    let (normalized_base_url, _) = prepare_library_sync_host_checked(&ValidateLibrarySyncHostInput {
         base_url: input.base_url.clone(),
         expected_library_id: input.expected_library_id.clone(),
-    };
-    let (normalized_base_url, expected_library_id) =
-        normalize_library_sync_host_input(&validation_input)?;
-    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    })?;
 
     let limit = input.limit.unwrap_or(500).clamp(1, 2_500);
     match fetch_library_sync_host_json(
