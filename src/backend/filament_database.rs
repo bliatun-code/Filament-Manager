@@ -47,6 +47,10 @@ use super::database_library_sync_cache::{
     save_library_sync_cached_spools as save_library_sync_cached_spool_rows,
 };
 use super::database_library_sync_validation::save_library_sync_validation_state as save_library_sync_validation_state_row;
+use super::database_loan_create::{
+    create_inbound_spool_loan as create_inbound_spool_loan_row,
+    create_spool_loan as create_spool_loan_row,
+};
 use super::database_loan_queries::{
     find_active_spool_loan_for_direction as find_active_spool_loan_for_direction_row,
     list_active_spool_loans as list_active_spool_loan_rows,
@@ -872,90 +876,7 @@ impl FilamentDatabase {
         grams_out: i64,
         lent_note: Option<&str>,
     ) -> InventoryResult<SpoolLoanRow> {
-        let borrower = borrower_name.trim();
-        if borrower.is_empty() {
-            return Err(InventoryError::Db("borrower name is required".to_string()));
-        }
-
-        let tx = self.conn.unchecked_transaction()?;
-        let spool_exists: Option<i64> = tx
-            .query_row(
-                "SELECT 1 FROM filament_spools WHERE id = ?1 AND deleted_at IS NULL LIMIT 1",
-                params![spool_id],
-                |row| row.get(0),
-            )
-            .optional()?;
-        if spool_exists.is_none() {
-            return Err(InventoryError::NotFound);
-        }
-
-        let already_loaned: Option<i64> = tx
-            .query_row(
-                "SELECT 1 FROM spool_loans WHERE spool_id = ?1 AND returned_at IS NULL LIMIT 1",
-                params![spool_id],
-                |row| row.get(0),
-            )
-            .optional()?;
-        if already_loaned.is_some() {
-            return Err(InventoryError::Db(
-                "this spool already has an active loan".to_string(),
-            ));
-        }
-
-        tx.execute(
-            "UPDATE ams_slots
-             SET spool_id = NULL, last_seen_at = datetime('now')
-             WHERE spool_id = ?1",
-            params![spool_id],
-        )?;
-
-        let loan_id = new_id();
-        tx.execute(
-            "INSERT INTO spool_loans (
-                id, spool_id, borrower_name, loan_direction, loan_status, counterparty_name,
-                counterparty_contact, counterparty_note, grams_out, lent_note, lent_at
-            ) VALUES (?1, ?2, ?3, 'OUTBOUND', 'ACTIVE', ?3, NULL, NULL, ?4, ?5, datetime('now'))",
-            params![loan_id, spool_id, borrower, grams_out.max(0), lent_note],
-        )?;
-
-        let location = format!("Loaned to: {borrower}");
-        tx.execute(
-            "INSERT INTO inventory_locations (id, name, type)
-             VALUES (?1, ?2, 'LOAN')
-             ON CONFLICT(id) DO UPDATE SET
-                name = excluded.name",
-            params![location, location],
-        )?;
-        tx.execute(
-            "UPDATE filament_spools
-             SET status = 'BORROWED',
-                 location_id = ?2,
-                 current_weight_g = ?3,
-                 remaining_g = ?3,
-                 updated_at = datetime('now')
-             WHERE id = ?1 AND deleted_at IS NULL",
-            params![spool_id, location, grams_out.max(0)],
-        )?;
-
-        let loan = tx.query_row(
-            "SELECT id, spool_id, borrower_name,
-                    COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND') AS loan_direction,
-                    COALESCE(NULLIF(loan_status, ''), CASE
-                        WHEN returned_at IS NULL THEN 'ACTIVE'
-                        ELSE 'RETURNED'
-                    END) AS loan_status,
-                    COALESCE(NULLIF(counterparty_name, ''), borrower_name) AS counterparty_name,
-                    counterparty_contact, counterparty_note, grams_out, lent_note, lent_at,
-                    expected_return_at, returned_at, returned_grams, consumed_grams, return_note
-             FROM spool_loans
-             WHERE id = ?1
-             LIMIT 1",
-            params![loan_id],
-            map_spool_loan_row,
-        )?;
-
-        tx.commit()?;
-        Ok(loan)
+        create_spool_loan_row(&self.conn, spool_id, borrower_name, grams_out, lent_note)
     }
 
     pub fn spool_has_active_loan(&self, spool_id: &str) -> InventoryResult<bool> {
@@ -970,73 +891,14 @@ impl FilamentDatabase {
         counterparty_note: Option<&str>,
         grams_out: i64,
     ) -> InventoryResult<SpoolLoanRow> {
-        let counterparty = counterparty_name.trim();
-        if counterparty.is_empty() {
-            return Err(InventoryError::Db(
-                "counterparty name is required".to_string(),
-            ));
-        }
-
-        let tx = self.conn.unchecked_transaction()?;
-        let spool_exists: Option<i64> = tx
-            .query_row(
-                "SELECT 1 FROM filament_spools WHERE id = ?1 AND deleted_at IS NULL LIMIT 1",
-                params![spool_id],
-                |row| row.get(0),
-            )
-            .optional()?;
-        if spool_exists.is_none() {
-            return Err(InventoryError::NotFound);
-        }
-
-        let already_loaned: Option<i64> = tx
-            .query_row(
-                "SELECT 1 FROM spool_loans WHERE spool_id = ?1 AND returned_at IS NULL LIMIT 1",
-                params![spool_id],
-                |row| row.get(0),
-            )
-            .optional()?;
-        if already_loaned.is_some() {
-            return Err(InventoryError::Db(
-                "this spool already has an active loan".to_string(),
-            ));
-        }
-
-        let loan_id = new_id();
-        tx.execute(
-            "INSERT INTO spool_loans (
-                id, spool_id, borrower_name, loan_direction, loan_status, counterparty_name,
-                counterparty_contact, counterparty_note, grams_out, lent_note, lent_at
-            ) VALUES (?1, ?2, ?3, 'INBOUND', 'ACTIVE', ?3, ?4, ?5, ?6, ?5, datetime('now'))",
-            params![
-                loan_id,
-                spool_id,
-                counterparty,
-                normalize_optional_text(counterparty_contact),
-                normalize_optional_text(counterparty_note),
-                grams_out.max(0)
-            ],
-        )?;
-
-        let loan = tx.query_row(
-            "SELECT id, spool_id, borrower_name,
-                    COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND') AS loan_direction,
-                    COALESCE(NULLIF(loan_status, ''), CASE
-                        WHEN returned_at IS NULL THEN 'ACTIVE'
-                        ELSE 'RETURNED'
-                    END) AS loan_status,
-                    COALESCE(NULLIF(counterparty_name, ''), borrower_name) AS counterparty_name,
-                    counterparty_contact, counterparty_note, grams_out, lent_note, lent_at,
-                    expected_return_at, returned_at, returned_grams, consumed_grams, return_note
-             FROM spool_loans
-             WHERE id = ?1
-             LIMIT 1",
-            params![loan_id],
-            map_spool_loan_row,
-        )?;
-
-        tx.commit()?;
-        Ok(loan)
+        create_inbound_spool_loan_row(
+            &self.conn,
+            spool_id,
+            counterparty_name,
+            counterparty_contact,
+            counterparty_note,
+            grams_out,
+        )
     }
 
     pub fn return_spool_loan(
