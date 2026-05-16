@@ -22,6 +22,7 @@ mod library_sync_commands;
 mod library_sync_host_client;
 mod library_sync_models;
 mod library_sync_pairing_commands;
+mod library_sync_printer_write_commands;
 mod library_sync_read_commands;
 mod library_sync_settings_commands;
 mod library_sync_snapshot_commands;
@@ -175,18 +176,18 @@ fn main() {
             library_sync_settings_commands::clear_library_sync_client_auth,
             library_sync_commands::create_library_sync_host_spool,
             library_sync_commands::create_library_sync_host_wishlist_item,
-            library_sync_commands::create_library_sync_host_printer,
+            library_sync_printer_write_commands::create_library_sync_host_printer,
             library_sync_commands::update_library_sync_host_wishlist_item_status,
             library_sync_commands::delete_library_sync_host_wishlist_item,
             library_sync_commands::delete_library_sync_host_spool,
-            library_sync_commands::delete_library_sync_host_printer,
+            library_sync_printer_write_commands::delete_library_sync_host_printer,
             library_sync_commands::purge_library_sync_host_spool,
             library_sync_commands::update_library_sync_host_spool_weight,
             library_sync_commands::update_library_sync_host_spool_tare_weight,
             library_sync_commands::update_library_sync_host_spool_details,
             library_sync_commands::update_library_sync_host_spool_rfid_tag,
-            library_sync_commands::assign_library_sync_host_printer_slot,
-            library_sync_commands::record_library_sync_host_print_usage,
+            library_sync_printer_write_commands::assign_library_sync_host_printer_slot,
+            library_sync_printer_write_commands::record_library_sync_host_print_usage,
             library_sync_commands::return_library_sync_host_loan,
             library_sync_commands::lend_library_sync_host_spool,
             printer_commands::assign_printer_slot,
