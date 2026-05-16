@@ -318,12 +318,9 @@ pub(crate) fn fetch_library_sync_snapshot(
             active_loans: snapshot.active_loans,
             printers: snapshot.printers,
         })?;
-        engine.save_library_sync_validation_state(
-            true,
-            Some("Host snapshot refreshed."),
-            Some(&snapshot.device_name),
-        )
+        Ok(())
     })?;
+    save_library_sync_success(&state, "Host snapshot refreshed.", Some(&snapshot.device_name))?;
 
     Ok(snapshot)
 }
@@ -376,13 +373,13 @@ pub(crate) fn fetch_library_sync_spools(
     )?;
 
     with_inventory(&state, |engine| {
-        engine.save_library_sync_cached_spools(&rows)?;
-        engine.save_library_sync_validation_state(
-            true,
-            Some("Host spool list refreshed."),
-            health.device_name.as_deref(),
-        )
+        engine.save_library_sync_cached_spools(&rows)
     })?;
+    save_library_sync_success(
+        &state,
+        "Host spool list refreshed.",
+        health.device_name.as_deref(),
+    )?;
 
     Ok(rows)
 }
@@ -410,13 +407,13 @@ pub(crate) fn fetch_library_sync_printer_overview(
         fetch_library_sync_host_json(&normalized_base_url, "/api/v1/library/printers")?;
 
     with_inventory(&state, |engine| {
-        engine.save_library_sync_cached_printers(&rows)?;
-        engine.save_library_sync_validation_state(
-            true,
-            Some("Host printer overview refreshed."),
-            health.device_name.as_deref(),
-        )
+        engine.save_library_sync_cached_printers(&rows)
     })?;
+    save_library_sync_success(
+        &state,
+        "Host printer overview refreshed.",
+        health.device_name.as_deref(),
+    )?;
 
     Ok(rows)
 }
