@@ -756,13 +756,10 @@ pub(crate) fn assign_library_sync_host_printer_slot(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncAssignPrinterSlotInput,
 ) -> Result<(), String> {
-    let validation_input = ValidateLibrarySyncHostInput {
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
         base_url: input.base_url.clone(),
         expected_library_id: input.expected_library_id.clone(),
-    };
-    let (normalized_base_url, expected_library_id) =
-        normalize_library_sync_host_input(&validation_input)?;
-    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    })?;
 
     let printer_id = input.printer_id.trim();
     let slot_id = input.slot_id.trim();
@@ -801,13 +798,10 @@ pub(crate) fn record_library_sync_host_print_usage(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncRecordPrintUsageInput,
 ) -> Result<(), String> {
-    let validation_input = ValidateLibrarySyncHostInput {
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
         base_url: input.base_url.clone(),
         expected_library_id: input.expected_library_id.clone(),
-    };
-    let (normalized_base_url, expected_library_id) =
-        normalize_library_sync_host_input(&validation_input)?;
-    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    })?;
 
     let printer_id = input.printer_id.trim();
     let spool_id = input.spool_id.trim();
