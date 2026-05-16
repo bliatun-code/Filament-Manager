@@ -824,9 +824,7 @@ pub(crate) fn return_library_sync_host_loan(
         }),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some("Host loan updated."), None)
-    })?;
+    save_library_sync_success(&state, "Host loan updated.", None)?;
     Ok(())
 }
 
@@ -860,13 +858,7 @@ pub(crate) fn lend_library_sync_host_spool(
         }),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(
-            true,
-            Some("Host loan-out write completed."),
-            None,
-        )
-    })?;
+    save_library_sync_success(&state, "Host loan-out write completed.", None)?;
 
     Ok(())
 }
