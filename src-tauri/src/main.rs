@@ -167,7 +167,7 @@ fn main() {
             library_sync_commands::fetch_library_sync_filament_consumption,
             library_sync_commands::fetch_cached_library_sync_loans,
             library_sync_commands::pair_library_sync_host,
-            library_sync_commands::clear_library_sync_client_auth,
+            library_sync_settings_commands::clear_library_sync_client_auth,
             library_sync_commands::create_library_sync_host_spool,
             library_sync_commands::create_library_sync_host_wishlist_item,
             library_sync_commands::create_library_sync_host_printer,

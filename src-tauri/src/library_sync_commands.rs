@@ -526,16 +526,6 @@ pub(crate) fn pair_library_sync_host(
 }
 
 #[tauri::command]
-pub(crate) fn clear_library_sync_client_auth(
-    state: tauri::State<'_, AppState>,
-) -> Result<LibrarySyncSettingsRow, String> {
-    with_inventory(&state, |engine| {
-        engine.clear_library_sync_client_auth_state()?;
-        engine.get_library_sync_settings()
-    })
-}
-
-#[tauri::command]
 pub(crate) fn update_library_sync_host_spool_weight(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncWeightWriteInput,
