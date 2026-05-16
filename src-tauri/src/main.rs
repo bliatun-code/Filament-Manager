@@ -19,6 +19,7 @@ mod inventory_command_support;
 mod inventory_commands;
 mod inventory_create_commands;
 mod inventory_danger_zone_commands;
+mod inventory_loan_commands;
 mod inventory_read_commands;
 mod inventory_update_commands;
 mod library_sync_cache_commands;
@@ -210,15 +211,15 @@ fn main() {
             inventory_danger_zone_commands::purge_spool,
             inventory_commands::list_spool_history,
             inventory_commands::list_spool_usage,
-            inventory_commands::list_active_spool_loans,
-            inventory_commands::list_loan_usage_by_person,
-            inventory_commands::list_spool_loans,
+            inventory_loan_commands::list_active_spool_loans,
+            inventory_loan_commands::list_loan_usage_by_person,
+            inventory_loan_commands::list_spool_loans,
             inventory_commands::update_wishlist_item_status,
             inventory_commands::delete_wishlist_item,
-            inventory_commands::lend_spool,
-            inventory_commands::return_spool_loan,
-            inventory_commands::return_inbound_spool_loan,
-            inventory_commands::export_loans_csv,
+            inventory_loan_commands::lend_spool,
+            inventory_loan_commands::return_spool_loan,
+            inventory_loan_commands::return_inbound_spool_loan,
+            inventory_loan_commands::export_loans_csv,
             inventory_update_commands::assign_location,
             inventory_read_commands::find_spool_by_qr,
             inventory_commands::record_scan_event,
