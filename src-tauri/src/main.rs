@@ -45,6 +45,7 @@ mod printer_bambu_live_commands;
 mod printer_command_support;
 mod printer_commands;
 mod printer_create_commands;
+mod printer_danger_zone_commands;
 mod printer_models;
 mod printer_read_commands;
 mod printer_settings_commands;
@@ -173,7 +174,7 @@ fn main() {
             printer_create_commands::create_printer,
             printer_bambu_live_commands::save_bambu_live_integration,
             printer_bambu_live_commands::delete_bambu_live_integration,
-            printer_commands::delete_printer,
+            printer_danger_zone_commands::delete_printer,
             printer_active_commands::set_active_printer,
             set_dock_icon_theme,
             get_app_version,
