@@ -275,7 +275,7 @@ async fn handle_library_snapshot(
         .len() as i64;
     let captured_at = FilamentDatabase::open(&state.db_path)
         .map_err(CompanionApiError::from)?
-        .current_timestamp()
+        .sqlite_now()
         .map_err(CompanionApiError::from)?;
 
     Ok(Json(CompanionLibrarySnapshotResponse {

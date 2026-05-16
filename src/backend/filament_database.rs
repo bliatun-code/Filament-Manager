@@ -1093,10 +1093,6 @@ impl FilamentDatabase {
         save_library_sync_cached_loan_rows(&self.conn, rows)
     }
 
-    pub fn current_timestamp(&self) -> InventoryResult<String> {
-        sqlite_now_value(&self.conn)
-    }
-
     pub fn create_trusted_lan_pairing(
         &self,
         display_name: Option<&str>,
