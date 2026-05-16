@@ -1,20 +1,10 @@
 use super::database_alerts::{
     alert_exists_for_spool as alert_exists_for_spool_row, insert_alert as insert_alert_row,
 };
-pub use super::database_backup::BackupValidationStats;
-use super::database_backup::{export_full_backup_content, validate_full_backup_content};
-use super::database_backup_import::import_full_backup_content;
+pub use super::database_backup_facade::BackupValidationStats;
 pub use super::database_catalog_inputs::{ManualMasterInput, MasterCatalogUpdateInput};
 use super::database_connection::open_connection;
-use super::database_export::{
-    export_inventory_spools_csv as export_inventory_spool_rows_csv,
-    export_inventory_spools_json as export_inventory_spool_rows_json,
-};
 pub use super::database_import::ImportDataStats;
-use super::database_import::{
-    import_data_content as import_data_content_rows, InventoryImportRow, InventoryImportStats,
-};
-use super::database_inventory_import_apply::import_inventory_spools_rows as import_inventory_spool_rows;
 pub use super::database_library_sync_models::{
     LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow,
 };
@@ -87,53 +77,12 @@ impl FilamentDatabase {
         alert_exists_for_spool_row(&self.conn, alert_type, spool_id)
     }
 
-    pub fn export_spools_csv(&self) -> InventoryResult<String> {
-        export_inventory_spool_rows_csv(&self.conn)
-    }
-
-    pub fn export_spools_json(&self) -> InventoryResult<String> {
-        export_inventory_spool_rows_json(&self.conn)
-    }
-
-    pub fn export_full_backup_json(&self) -> InventoryResult<String> {
-        export_full_backup_content(&self.conn)
-    }
-
-    pub fn validate_full_backup_json(
-        &self,
-        content: &str,
-    ) -> InventoryResult<BackupValidationStats> {
-        validate_full_backup_content(content)
-    }
-
-    pub fn import_full_backup_json(&self, content: &str) -> InventoryResult<()> {
-        import_full_backup_content(&self.conn, content, SCHEMA_SQL)
-    }
-
-    pub fn import_data_content(&self, content: &str) -> InventoryResult<ImportDataStats> {
-        import_data_content_rows(
-            content,
-            |normalized| self.validate_full_backup_json(normalized),
-            |normalized| self.import_full_backup_json(normalized),
-            |rows| self.import_inventory_spools_rows(rows),
-        )
-    }
-
     pub fn enqueue_sync_action(
         &self,
         action_type: &str,
         payload_json: &str,
     ) -> InventoryResult<String> {
         enqueue_sync_action_row(&self.conn, action_type, payload_json)
-    }
-}
-
-impl FilamentDatabase {
-    fn import_inventory_spools_rows(
-        &self,
-        rows: &[InventoryImportRow],
-    ) -> InventoryResult<InventoryImportStats> {
-        import_inventory_spool_rows(&self.conn, rows)
     }
 }
 

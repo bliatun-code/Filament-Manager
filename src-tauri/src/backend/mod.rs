@@ -6,6 +6,8 @@ pub mod bambu_lookup;
 pub mod database_alerts;
 #[path = "../../../src/backend/database_backup.rs"]
 pub mod database_backup;
+#[path = "../../../src/backend/database_backup_facade.rs"]
+pub mod database_backup_facade;
 #[path = "../../../src/backend/database_backup_import.rs"]
 pub mod database_backup_import;
 #[path = "../../../src/backend/database_bambu_live_facade.rs"]
