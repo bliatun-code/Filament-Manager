@@ -63,6 +63,7 @@ use super::database_loan_return::{
     return_inbound_spool_loan as return_inbound_spool_loan_row,
     return_spool_loan as return_spool_loan_row,
 };
+use super::database_loan_update::update_active_inbound_spool_loan_counterparty as update_active_inbound_spool_loan_counterparty_row;
 use super::database_locations::ensure_location as ensure_location_row;
 use super::database_print_jobs::insert_print_job as insert_print_job_row;
 use super::database_printer_live_events::insert_printer_live_event as insert_printer_live_event_row;
@@ -108,7 +109,6 @@ use super::database_spool_updates::{
 };
 use super::database_sync_queue::enqueue_sync_action as enqueue_sync_action_row;
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
-use super::database_text::normalize_optional_text;
 use super::database_time::{
     sqlite_datetime_shift as sqlite_datetime_shift_value, sqlite_now as sqlite_now_value,
 };
@@ -134,7 +134,7 @@ use super::database_wishlist::{
     update_wishlist_item_status as update_wishlist_item_status_row,
 };
 use super::statistics::InventoryOverview;
-use rusqlite::{params, Connection};
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -701,24 +701,13 @@ impl FilamentDatabase {
         counterparty_contact: Option<&str>,
         counterparty_note: Option<&str>,
     ) -> InventoryResult<()> {
-        self.conn.execute(
-            "UPDATE spool_loans
-             SET borrower_name = ?1,
-                 counterparty_name = ?1,
-                 counterparty_contact = ?2,
-                 counterparty_note = ?3,
-                 lent_note = ?3
-             WHERE spool_id = ?4
-               AND COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND') = 'INBOUND'
-               AND returned_at IS NULL",
-            params![
-                counterparty_name.trim(),
-                normalize_optional_text(counterparty_contact),
-                normalize_optional_text(counterparty_note),
-                spool_id
-            ],
-        )?;
-        Ok(())
+        update_active_inbound_spool_loan_counterparty_row(
+            &self.conn,
+            spool_id,
+            counterparty_name,
+            counterparty_contact,
+            counterparty_note,
+        )
     }
 
     pub fn soft_delete_spool(&self, spool_id: &str) -> InventoryResult<()> {
