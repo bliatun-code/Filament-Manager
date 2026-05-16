@@ -62,6 +62,15 @@ use super::database_spool_queries::{
     list_low_stock_spools as list_low_stock_spool_rows,
     list_spools_with_master as list_spools_with_master_rows,
 };
+use super::database_spool_updates::{
+    set_spool_home_location as set_spool_home_location_row,
+    set_spool_location as set_spool_location_row, update_spool_details as update_spool_details_row,
+    update_spool_ownership_metadata as update_spool_ownership_metadata_row,
+    update_spool_rfid_tag as update_spool_rfid_tag_row,
+    update_spool_status as update_spool_status_row,
+    update_spool_tare_weight as update_spool_tare_weight_row,
+    update_spool_weight as update_spool_weight_row,
+};
 use super::database_sync_queue::enqueue_sync_action as enqueue_sync_action_row;
 use super::database_table_ops::delete_all_rows;
 use super::database_tables::should_import_backup_row;
@@ -1093,13 +1102,7 @@ impl FilamentDatabase {
     }
 
     pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {
-        let affected = self.conn.execute(
-            "UPDATE filament_spools
-             SET status = ?1, updated_at = datetime('now')
-             WHERE id = ?2 AND deleted_at IS NULL",
-            params![status, spool_id],
-        )?;
-        require_rows(affected)
+        update_spool_status_row(&self.conn, spool_id, status)
     }
 
     pub fn update_spool_weight(
@@ -1108,13 +1111,7 @@ impl FilamentDatabase {
         current_weight_g: Option<i64>,
         remaining_g: Option<i64>,
     ) -> InventoryResult<()> {
-        let affected = self.conn.execute(
-            "UPDATE filament_spools
-             SET current_weight_g = ?1, remaining_g = ?2, updated_at = datetime('now')
-             WHERE id = ?3 AND deleted_at IS NULL",
-            params![current_weight_g, remaining_g, spool_id],
-        )?;
-        require_rows(affected)
+        update_spool_weight_row(&self.conn, spool_id, current_weight_g, remaining_g)
     }
 
     pub fn update_spool_tare_weight(
@@ -1122,13 +1119,7 @@ impl FilamentDatabase {
         spool_id: &str,
         spool_tare_weight_g: Option<i64>,
     ) -> InventoryResult<()> {
-        let affected = self.conn.execute(
-            "UPDATE filament_spools
-             SET spool_tare_weight_g = ?1, updated_at = datetime('now')
-             WHERE id = ?2 AND deleted_at IS NULL",
-            params![spool_tare_weight_g, spool_id],
-        )?;
-        require_rows(affected)
+        update_spool_tare_weight_row(&self.conn, spool_id, spool_tare_weight_g)
     }
 
     pub fn update_spool_rfid_tag(
@@ -1137,17 +1128,7 @@ impl FilamentDatabase {
         rfid_tag: Option<&str>,
         rfid_observed_at: Option<&str>,
     ) -> InventoryResult<()> {
-        let affected = self.conn.execute(
-            "UPDATE filament_spools
-             SET rfid_tag = ?1, rfid_observed_at = ?2, updated_at = datetime('now')
-             WHERE id = ?3 AND deleted_at IS NULL",
-            params![
-                normalize_optional_text(rfid_tag),
-                normalize_optional_text(rfid_observed_at),
-                spool_id
-            ],
-        )?;
-        require_rows(affected)
+        update_spool_rfid_tag_row(&self.conn, spool_id, rfid_tag, rfid_observed_at)
     }
 
     pub fn set_spool_location(
@@ -1155,13 +1136,7 @@ impl FilamentDatabase {
         spool_id: &str,
         location_id: Option<&str>,
     ) -> InventoryResult<()> {
-        let affected = self.conn.execute(
-            "UPDATE filament_spools
-             SET location_id = ?1, updated_at = datetime('now')
-             WHERE id = ?2 AND deleted_at IS NULL",
-            params![location_id, spool_id],
-        )?;
-        require_rows(affected)
+        set_spool_location_row(&self.conn, spool_id, location_id)
     }
 
     pub fn update_spool_details(
@@ -1172,17 +1147,14 @@ impl FilamentDatabase {
         location_id: Option<&str>,
         home_location_id: Option<&str>,
     ) -> InventoryResult<()> {
-        let affected = self.conn.execute(
-            "UPDATE filament_spools
-             SET qr_code = ?1,
-                 status = ?2,
-                 location_id = ?3,
-                 home_location_id = ?4,
-                 updated_at = datetime('now')
-             WHERE id = ?5 AND deleted_at IS NULL",
-            params![qr_code, status, location_id, home_location_id, spool_id],
-        )?;
-        require_rows(affected)
+        update_spool_details_row(
+            &self.conn,
+            spool_id,
+            qr_code,
+            status,
+            location_id,
+            home_location_id,
+        )
     }
 
     pub fn set_spool_home_location(
@@ -1190,13 +1162,7 @@ impl FilamentDatabase {
         spool_id: &str,
         home_location_id: Option<&str>,
     ) -> InventoryResult<()> {
-        let affected = self.conn.execute(
-            "UPDATE filament_spools
-             SET home_location_id = ?1, updated_at = datetime('now')
-             WHERE id = ?2 AND deleted_at IS NULL",
-            params![home_location_id, spool_id],
-        )?;
-        require_rows(affected)
+        set_spool_home_location_row(&self.conn, spool_id, home_location_id)
     }
 
     pub fn update_spool_ownership_metadata(
@@ -1206,22 +1172,13 @@ impl FilamentDatabase {
         owner_contact: Option<&str>,
         ownership_note: Option<&str>,
     ) -> InventoryResult<()> {
-        let affected = self.conn.execute(
-            "UPDATE filament_spools
-             SET owner_name = ?1,
-                 owner_contact = ?2,
-                 ownership_note = ?3,
-                 updated_at = datetime('now')
-             WHERE id = ?4
-               AND deleted_at IS NULL",
-            params![
-                normalize_optional_text(owner_name),
-                normalize_optional_text(owner_contact),
-                normalize_optional_text(ownership_note),
-                spool_id
-            ],
-        )?;
-        require_rows(affected)
+        update_spool_ownership_metadata_row(
+            &self.conn,
+            spool_id,
+            owner_name,
+            owner_contact,
+            ownership_note,
+        )
     }
 
     pub fn update_active_inbound_spool_loan_counterparty(
