@@ -5,7 +5,8 @@ use crate::backend::filament_database::{
 };
 use crate::backend::statistics::FilamentConsumptionRow;
 use crate::library_sync_command_support::{
-    prepare_library_sync_host_checked, prepare_library_sync_host_read, save_library_sync_success,
+    library_sync_host_input, prepare_library_sync_host_checked, prepare_library_sync_host_read,
+    save_library_sync_success,
 };
 use crate::library_sync_host_client::{
     fetch_library_sync_host_json, get_library_sync_host_json_authenticated,
@@ -23,10 +24,8 @@ pub(crate) fn fetch_library_sync_spool_detail(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncSpoolDetailInput,
 ) -> Result<CompanionSpoolDetail, String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_checked(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_checked(&host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -54,10 +53,8 @@ pub(crate) fn fetch_library_sync_spools(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncSpoolListInput,
 ) -> Result<Vec<SpoolWithMasterRow>, String> {
-    let (normalized_base_url, health) = prepare_library_sync_host_read(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, health) = prepare_library_sync_host_read(&host_input)?;
     let limit = input.limit.unwrap_or(1200).clamp(1, 2_500);
     let offset = input.offset.unwrap_or(0).max(0);
     let rows: Vec<SpoolWithMasterRow> = fetch_library_sync_host_json(
@@ -121,10 +118,8 @@ pub(crate) fn fetch_library_sync_loans(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncSpoolListInput,
 ) -> Result<Vec<SpoolLoanDetailsRow>, String> {
-    let (normalized_base_url, health) = prepare_library_sync_host_read(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, health) = prepare_library_sync_host_read(&host_input)?;
     let limit = input.limit.unwrap_or(2000).clamp(1, 2_500);
     let rows: Vec<SpoolLoanDetailsRow> = fetch_library_sync_host_json(
         &normalized_base_url,
@@ -148,10 +143,8 @@ pub(crate) fn fetch_library_sync_filament_consumption(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncFilamentConsumptionInput,
 ) -> Result<Vec<FilamentConsumptionRow>, String> {
-    let (normalized_base_url, health) = prepare_library_sync_host_read(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, health) = prepare_library_sync_host_read(&host_input)?;
     let limit = input.limit.unwrap_or(500).clamp(1, 2_000);
     let printer_id = input
         .printer_id
@@ -181,10 +174,8 @@ pub(crate) fn fetch_library_sync_catalog_masters(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncCatalogListInput,
 ) -> Result<Vec<FilamentMasterCatalogRow>, String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_checked(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_checked(&host_input)?;
 
     let limit = input.limit.unwrap_or(1_000).clamp(1, 5_000);
     let _search = input.search;
@@ -207,10 +198,8 @@ pub(crate) fn fetch_library_sync_wishlist_items(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncWishlistListInput,
 ) -> Result<Vec<WishlistItemRow>, String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_checked(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_checked(&host_input)?;
 
     let limit = input.limit.unwrap_or(500).clamp(1, 2_500);
     match fetch_library_sync_host_json(

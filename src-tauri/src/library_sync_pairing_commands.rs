@@ -1,10 +1,12 @@
 use crate::backend::filament_database::LibrarySyncSettingsRow;
-use crate::library_sync_command_support::normalize_library_sync_host_input;
+use crate::library_sync_command_support::{
+    library_sync_host_input, normalize_library_sync_host_input,
+};
 use crate::library_sync_host_client::{
     ensure_library_sync_host_matches, extract_library_sync_pairing_token,
     pair_library_sync_host_session,
 };
-use crate::library_sync_models::{PairLibrarySyncHostInput, ValidateLibrarySyncHostInput};
+use crate::library_sync_models::PairLibrarySyncHostInput;
 use crate::state::AppState;
 use crate::with_inventory;
 
@@ -13,10 +15,8 @@ pub(crate) fn pair_library_sync_host(
     state: tauri::State<'_, AppState>,
     input: PairLibrarySyncHostInput,
 ) -> Result<LibrarySyncSettingsRow, String> {
-    let (normalized_base_url, _) = normalize_library_sync_host_input(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: None,
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, None);
+    let (normalized_base_url, _) = normalize_library_sync_host_input(&host_input)?;
     let pairing_token = extract_library_sync_pairing_token(&input.pairing_token_or_url)
         .ok_or_else(|| "Pairing token or URL is required.".to_string())?;
 
