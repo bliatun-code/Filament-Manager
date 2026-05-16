@@ -5,9 +5,12 @@ import {
   buildWishlistDraft,
   createWishlistEntry,
   deleteWishlistEntry,
+  filterWishlistCatalogMasters,
   filterWishlistItems,
+  listWishlistCatalogMastersByVendor,
   loadWishlistItems,
   normalizeWishlistStatus,
+  selectWishlistCatalogMaster,
   summarizeWishlistQueue,
   updateWishlistEntryStatus,
 } from "./wishlist_data_source";
@@ -151,6 +154,64 @@ test("buildWishlistDraft maps manual details with defaults", () => {
       color_name: "Blue",
     },
   );
+});
+
+test("listWishlistCatalogMastersByVendor filters vendor and keeps active rows first", () => {
+  const masters = [
+    catalogMaster({
+      id: "discontinued-a",
+      color_name: "Amber",
+      is_discontinued: true,
+    }),
+    catalogMaster({
+      id: "active-z",
+      color_name: "Zinc",
+    }),
+    catalogMaster({
+      id: "other-vendor",
+      vendor: "Generic",
+    }),
+    catalogMaster({
+      id: "active-a",
+      color_name: "Aqua",
+    }),
+  ];
+
+  assert.deepEqual(
+    listWishlistCatalogMastersByVendor(masters, "bambu").map((master) => master.id),
+    ["active-a", "active-z", "discontinued-a"],
+  );
+});
+
+test("filterWishlistCatalogMasters applies state and search filters", () => {
+  const active = catalogMaster({ id: "active", color_name: "Blue" });
+  const discontinued = catalogMaster({
+    id: "discontinued",
+    color_name: "Red",
+    is_discontinued: true,
+  });
+
+  assert.deepEqual(
+    filterWishlistCatalogMasters([active, discontinued], "ACTIVE", "").map(
+      (master) => master.id,
+    ),
+    ["active"],
+  );
+  assert.deepEqual(
+    filterWishlistCatalogMasters([active, discontinued], "DISCONTINUED", "red").map(
+      (master) => master.id,
+    ),
+    ["discontinued"],
+  );
+});
+
+test("selectWishlistCatalogMaster prefers selected id and falls back to first row", () => {
+  const first = catalogMaster({ id: "first" });
+  const second = catalogMaster({ id: "second" });
+
+  assert.equal(selectWishlistCatalogMaster([first, second], "second")?.id, "second");
+  assert.equal(selectWishlistCatalogMaster([first, second], "missing")?.id, "first");
+  assert.equal(selectWishlistCatalogMaster([], "missing"), null);
 });
 
 test("loadWishlistItems uses local wishlist outside client host mode", async () => {

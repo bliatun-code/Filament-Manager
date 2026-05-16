@@ -12,10 +12,14 @@ import {
   buildWishlistDraft,
   createWishlistEntry,
   deleteWishlistEntry,
+  filterWishlistCatalogMasters,
   filterWishlistItems,
+  listWishlistCatalogMastersByVendor,
   loadWishlistItems,
+  selectWishlistCatalogMaster,
   summarizeWishlistQueue,
   updateWishlistEntryStatus,
+  type WishlistCatalogFilter as CatalogFilter,
   type WishlistStatus,
   type WishlistStatusFilter as WishlistBoardFilter,
 } from "../lib/wishlist_data_source";
@@ -50,7 +54,6 @@ import {
 } from "./wishlist_ui";
 
 type CreateMode = "bambu" | "esun" | "manual";
-type CatalogFilter = "ALL" | "ACTIVE" | "DISCONTINUED";
 
 const catalogFilters: ReadonlyArray<CatalogFilter> = [
   "ALL",
@@ -225,17 +228,7 @@ export default function WishlistPage() {
   }, [catalogRefreshBusy, refreshStartedAt]);
 
   const bambuMasters = useMemo(
-    () =>
-      masters
-        .filter((master) => master.vendor.toLowerCase().includes("bambu"))
-        .sort((left, right) => {
-          if (left.is_discontinued !== right.is_discontinued) {
-            return Number(left.is_discontinued) - Number(right.is_discontinued);
-          }
-          return `${left.material} ${left.filament_name} ${left.color_name}`.localeCompare(
-            `${right.material} ${right.filament_name} ${right.color_name}`,
-          );
-        }),
+    () => listWishlistCatalogMastersByVendor(masters, "bambu"),
     [masters],
   );
 
@@ -244,32 +237,19 @@ export default function WishlistPage() {
     [masters],
   );
 
-  const filteredBambuMasters = useMemo(() => {
-    const term = deferredBambuCatalogQuery.trim().toLowerCase();
-    return bambuMasters.filter((master) => {
-      const stateMatch =
-        bambuCatalogFilter === "ALL"
-          ? true
-          : bambuCatalogFilter === "ACTIVE"
-            ? !master.is_discontinued
-            : master.is_discontinued;
-      const textMatch =
-        term.length === 0
-          ? true
-          : `${master.material} ${master.filament_name} ${master.color_name}`
-              .toLowerCase()
-              .includes(term);
-      return stateMatch && textMatch;
-    });
-  }, [bambuCatalogFilter, deferredBambuCatalogQuery, bambuMasters]);
+  const filteredBambuMasters = useMemo(
+    () =>
+      filterWishlistCatalogMasters(
+        bambuMasters,
+        bambuCatalogFilter,
+        deferredBambuCatalogQuery,
+      ),
+    [bambuCatalogFilter, deferredBambuCatalogQuery, bambuMasters],
+  );
 
   const selectedBambuMaster = useMemo(() => {
-    const fromId = masterById.get(newBambuMasterId) ?? null;
-    if (fromId) {
-      return fromId;
-    }
-    return filteredBambuMasters[0] ?? null;
-  }, [filteredBambuMasters, masterById, newBambuMasterId]);
+    return selectWishlistCatalogMaster(filteredBambuMasters, newBambuMasterId);
+  }, [filteredBambuMasters, newBambuMasterId]);
 
   useEffect(() => {
     if (createMode !== "bambu") {
@@ -288,46 +268,23 @@ export default function WishlistPage() {
   }, [createMode, filteredBambuMasters, newBambuMasterId]);
 
   const esunMasters = useMemo(
-    () =>
-      masters
-        .filter((master) => master.vendor.toLowerCase().includes("esun"))
-        .sort((left, right) => {
-          if (left.is_discontinued !== right.is_discontinued) {
-            return Number(left.is_discontinued) - Number(right.is_discontinued);
-          }
-          return `${left.material} ${left.filament_name} ${left.color_name}`.localeCompare(
-            `${right.material} ${right.filament_name} ${right.color_name}`,
-          );
-        }),
+    () => listWishlistCatalogMastersByVendor(masters, "esun"),
     [masters],
   );
 
-  const filteredEsunMasters = useMemo(() => {
-    const term = deferredEsunCatalogQuery.trim().toLowerCase();
-    return esunMasters.filter((master) => {
-      const stateMatch =
-        esunCatalogFilter === "ALL"
-          ? true
-          : esunCatalogFilter === "ACTIVE"
-            ? !master.is_discontinued
-            : master.is_discontinued;
-      const textMatch =
-        term.length === 0
-          ? true
-          : `${master.material} ${master.filament_name} ${master.color_name}`
-              .toLowerCase()
-              .includes(term);
-      return stateMatch && textMatch;
-    });
-  }, [deferredEsunCatalogQuery, esunCatalogFilter, esunMasters]);
+  const filteredEsunMasters = useMemo(
+    () =>
+      filterWishlistCatalogMasters(
+        esunMasters,
+        esunCatalogFilter,
+        deferredEsunCatalogQuery,
+      ),
+    [deferredEsunCatalogQuery, esunCatalogFilter, esunMasters],
+  );
 
   const selectedEsunMaster = useMemo(() => {
-    const fromId = masterById.get(newEsunMasterId) ?? null;
-    if (fromId) {
-      return fromId;
-    }
-    return filteredEsunMasters[0] ?? null;
-  }, [filteredEsunMasters, masterById, newEsunMasterId]);
+    return selectWishlistCatalogMaster(filteredEsunMasters, newEsunMasterId);
+  }, [filteredEsunMasters, newEsunMasterId]);
 
   const currentDraft = useMemo(() => {
     return buildWishlistDraft({

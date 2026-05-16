@@ -26,6 +26,7 @@ export type WishlistDataSourceOptions = {
 
 export type WishlistStatus = "WISHLIST" | "ON_ORDER" | "RECEIVED";
 export type WishlistStatusFilter = "ALL" | WishlistStatus;
+export type WishlistCatalogFilter = "ALL" | "ACTIVE" | "DISCONTINUED";
 
 export type WishlistQueueSummary = {
   all: number;
@@ -97,6 +98,53 @@ export function normalizeWishlistStatus(statusRaw: string): WishlistStatus {
     return statusRaw;
   }
   return "WISHLIST";
+}
+
+export function listWishlistCatalogMastersByVendor(
+  masters: MasterCatalogRow[],
+  vendorNeedle: string,
+): MasterCatalogRow[] {
+  const normalizedVendor = vendorNeedle.trim().toLowerCase();
+  return masters
+    .filter((master) => master.vendor.toLowerCase().includes(normalizedVendor))
+    .sort((left, right) => {
+      if (left.is_discontinued !== right.is_discontinued) {
+        return Number(left.is_discontinued) - Number(right.is_discontinued);
+      }
+      return `${left.material} ${left.filament_name} ${left.color_name}`.localeCompare(
+        `${right.material} ${right.filament_name} ${right.color_name}`,
+      );
+    });
+}
+
+export function filterWishlistCatalogMasters(
+  masters: MasterCatalogRow[],
+  statusFilter: WishlistCatalogFilter,
+  query: string,
+): MasterCatalogRow[] {
+  const term = query.trim().toLowerCase();
+  return masters.filter((master) => {
+    const stateMatch =
+      statusFilter === "ALL"
+        ? true
+        : statusFilter === "ACTIVE"
+          ? !master.is_discontinued
+          : master.is_discontinued;
+    const textMatch =
+      term.length === 0
+        ? true
+        : `${master.material} ${master.filament_name} ${master.color_name}`
+            .toLowerCase()
+            .includes(term);
+    return stateMatch && textMatch;
+  });
+}
+
+export function selectWishlistCatalogMaster(
+  masters: MasterCatalogRow[],
+  selectedMasterId: string,
+): MasterCatalogRow | null {
+  return masters.find((master) => master.id === selectedMasterId) ?? masters[0] ?? null;
 }
 
 export function buildWishlistDraft(input: WishlistDraftInput): WishlistDraft | null {
