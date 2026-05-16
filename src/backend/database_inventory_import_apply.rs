@@ -4,10 +4,11 @@ use super::database_catalog_inputs::ManualMasterInput;
 use super::database_catalog_manual::upsert_manual_master;
 use super::database_import::{InventoryImportRow, InventoryImportStats};
 use super::database_locations::ensure_location;
+use super::database_result::{InventoryError, InventoryResult};
 use super::database_spool_insert::insert_spool;
+use super::database_spool_models::SpoolRow;
 use super::database_spool_queries::get_spool_by_id;
 use super::database_text::normalize_optional_text;
-use super::filament_database::{InventoryError, InventoryResult, SpoolRow};
 use super::spool_defaults::normalize_spool_status;
 
 pub(crate) fn import_inventory_spools_rows(

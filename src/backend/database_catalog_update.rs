@@ -1,7 +1,7 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
 use super::database_catalog_inputs::{MasterCatalogExistingRow, MasterCatalogUpdateInput};
-use super::filament_database::{InventoryError, InventoryResult};
+use super::database_result::{InventoryError, InventoryResult};
 
 pub(crate) fn update_master_catalog_entry(
     conn: &Connection,

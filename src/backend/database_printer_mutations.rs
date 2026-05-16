@@ -4,7 +4,7 @@ use rusqlite::{params, Connection};
 
 use super::bambu_live_settings::bambu_live_integration_setting_key;
 use super::database_result::require_rows;
-use super::filament_database::{InventoryError, InventoryResult};
+use super::database_result::{InventoryError, InventoryResult};
 
 pub(crate) fn upsert_printer_with_ams(
     conn: &Connection,

@@ -2,7 +2,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 use super::database_catalog_inputs::ManualMasterInput;
 use super::database_ids::new_id;
-use super::filament_database::{InventoryError, InventoryResult};
+use super::database_result::{InventoryError, InventoryResult};
 
 pub(crate) fn upsert_manual_master(
     conn: &Connection,

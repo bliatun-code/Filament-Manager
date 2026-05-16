@@ -1,7 +1,7 @@
 use rusqlite::Connection;
 
+use super::database_result::InventoryResult;
 use super::database_schema::table_has_column;
-use super::filament_database::InventoryResult;
 
 pub(crate) fn ensure_borrowed_in_schema(conn: &Connection) -> InventoryResult<()> {
     if !table_has_column(conn, "filament_spools", "ownership_type")? {

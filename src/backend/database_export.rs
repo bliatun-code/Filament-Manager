@@ -1,9 +1,11 @@
 use rusqlite::Connection;
 
 use super::database_loan_queries::list_spool_loans_for_direction;
+use super::database_loan_models::SpoolLoanDetailsRow;
+use super::database_result::InventoryResult;
+use super::database_spool_models::SpoolWithMasterRow;
 use super::database_spool_queries::list_spools_with_master;
 use super::database_text::{escape_csv, escape_json};
-use super::filament_database::{InventoryResult, SpoolLoanDetailsRow, SpoolWithMasterRow};
 
 pub(crate) fn export_inventory_spools_csv(conn: &Connection) -> InventoryResult<String> {
     let rows = list_spools_with_master(conn, 10_000, 0)?;

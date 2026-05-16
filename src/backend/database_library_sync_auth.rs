@@ -1,9 +1,9 @@
 use rusqlite::Connection;
 
 use super::database_library_sync_models::LibrarySyncClientAuthState;
+use super::database_result::InventoryResult;
 use super::database_settings::{delete_setting, get_setting, set_setting};
 use super::database_time::sqlite_now;
-use super::filament_database::InventoryResult;
 
 pub(crate) fn save_library_sync_client_auth_state(
     conn: &Connection,

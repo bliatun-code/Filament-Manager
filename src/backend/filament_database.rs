@@ -22,6 +22,7 @@ pub use super::database_trusted_lan_models::{
     TrustedLanPairedBrowserRow, TrustedLanSettingsRow,
 };
 pub use super::database_wishlist_models::WishlistItemRow;
+#[allow(unused_imports)]
 pub use super::filament_master_models::{
     CatalogLifecycleStats, EsunColorNormalizationStats, FilamentMasterCatalogRow,
     FilamentMasterSummary,

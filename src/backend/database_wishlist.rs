@@ -1,8 +1,7 @@
 use rusqlite::{params, Connection};
 
-use super::database_result::require_rows;
+use super::database_result::{require_rows, InventoryResult};
 use super::database_wishlist_models::WishlistItemRow;
-use super::filament_database::InventoryResult;
 
 pub(crate) fn list_wishlist_items(
     conn: &Connection,

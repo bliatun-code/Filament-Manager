@@ -6,8 +6,8 @@ use super::database_library_sync_models::{
     LibrarySyncCachedLoanListRow, LibrarySyncCachedPrinterOverviewRow,
     LibrarySyncCachedSnapshotRow, LibrarySyncCachedSpoolListRow, LibrarySyncSettingsRow,
 };
+use super::database_result::InventoryResult;
 use super::database_settings::{delete_setting, get_setting, set_setting};
-use super::filament_database::InventoryResult;
 use super::library_sync_defaults::{default_library_sync_device_name, normalize_library_sync_mode};
 
 pub(crate) fn get_library_sync_settings(

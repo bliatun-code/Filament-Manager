@@ -1,6 +1,7 @@
 use rusqlite::{params, Connection};
 
-use super::filament_database::{InventoryResult, SpoolRow};
+use super::database_result::InventoryResult;
+use super::database_spool_models::SpoolRow;
 
 pub(crate) fn insert_spool(conn: &Connection, spool: &SpoolRow) -> InventoryResult<()> {
     conn.execute(

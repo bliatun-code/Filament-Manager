@@ -1,6 +1,6 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
-use super::filament_database::InventoryResult;
+use super::database_result::InventoryResult;
 
 pub(crate) fn set_setting(conn: &Connection, key: &str, value: &str) -> InventoryResult<()> {
     conn.execute(

@@ -1,7 +1,8 @@
 use rusqlite::{params, Connection};
 
 use super::database_catalog_schema::ensure_catalog_lifecycle_columns;
-use super::filament_database::{CatalogLifecycleStats, InventoryResult};
+use super::database_result::InventoryResult;
+use super::filament_master_models::CatalogLifecycleStats;
 
 pub(crate) fn apply_vendor_discontinued_rules(
     conn: &Connection,

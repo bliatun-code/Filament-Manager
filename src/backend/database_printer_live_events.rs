@@ -2,7 +2,7 @@ use rusqlite::{params, Connection};
 use serde_json::Value;
 
 use super::database_ids::new_id;
-use super::filament_database::{InventoryError, InventoryResult};
+use super::database_result::{InventoryError, InventoryResult};
 
 pub(crate) fn insert_printer_live_event(
     conn: &Connection,

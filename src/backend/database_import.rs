@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::filament_database::{InventoryError, InventoryResult};
+use super::database_result::{InventoryError, InventoryResult};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ImportDataStats {

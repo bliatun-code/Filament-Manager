@@ -4,7 +4,7 @@ use super::database_schema::ensure_no_foreign_key_violations;
 use super::database_table_ops::delete_all_rows;
 use super::database_tables::RESET_APP_STATE_TABLES;
 use super::database_reset_models::CatalogResetStats;
-use super::filament_database::InventoryResult;
+use super::database_result::InventoryResult;
 
 pub(crate) fn reset_app_state_data(conn: &Connection) -> InventoryResult<()> {
     conn.execute_batch("PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE;")?;

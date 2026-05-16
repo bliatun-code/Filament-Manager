@@ -1,9 +1,9 @@
 use rusqlite::Row;
 
+use super::database_loan_models::{ActiveSpoolLoanRow, SpoolLoanRow};
+use super::database_spool_models::{SpoolRow, SpoolWithMasterRow};
 use super::database_trusted_lan_models::TrustedLanPairedBrowserRow;
-use super::filament_database::{
-    ActiveSpoolLoanRow, FilamentMasterSummary, SpoolLoanRow, SpoolRow, SpoolWithMasterRow,
-};
+use super::filament_master_models::FilamentMasterSummary;
 
 pub(crate) fn map_spool_row(row: &Row<'_>) -> Result<SpoolRow, rusqlite::Error> {
     Ok(SpoolRow {

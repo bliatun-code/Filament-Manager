@@ -1,10 +1,10 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
-use super::database_rows::map_active_spool_loan_row;
-use super::filament_database::{
-    ActiveSpoolLoanRow, InventoryError, InventoryResult, LoanUsageByPersonRow, SpoolLoanDetailsRow,
-    SpoolLoanRow,
+use super::database_loan_models::{
+    ActiveSpoolLoanRow, LoanUsageByPersonRow, SpoolLoanDetailsRow, SpoolLoanRow,
 };
+use super::database_result::{InventoryError, InventoryResult};
+use super::database_rows::map_active_spool_loan_row;
 use super::loan_defaults::normalize_loan_direction_filter;
 
 pub(crate) fn spool_has_active_loan(conn: &Connection, spool_id: &str) -> InventoryResult<bool> {

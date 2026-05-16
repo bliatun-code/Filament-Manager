@@ -2,7 +2,7 @@ use std::path::Path;
 
 use rusqlite::Connection;
 
-use super::filament_database::InventoryResult;
+use super::database_result::InventoryResult;
 
 pub(crate) fn open_connection(path: impl AsRef<Path>) -> InventoryResult<Connection> {
     let conn = Connection::open(path)?;

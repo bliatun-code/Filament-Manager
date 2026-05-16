@@ -11,7 +11,7 @@ use super::database_spool_schema::{
     ensure_spool_weight_schema,
 };
 use super::database_trusted_lan_schema::ensure_trusted_lan_schema;
-use super::filament_database::InventoryResult;
+use super::database_result::InventoryResult;
 
 pub(crate) fn apply_schema_migrations(conn: &Connection, schema_sql: &str) -> InventoryResult<()> {
     conn.execute_batch(schema_sql)?;

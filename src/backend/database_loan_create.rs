@@ -1,9 +1,10 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
 use super::database_ids::new_id;
+use super::database_loan_models::SpoolLoanRow;
+use super::database_result::{InventoryError, InventoryResult};
 use super::database_rows::map_spool_loan_row;
 use super::database_text::normalize_optional_text;
-use super::filament_database::{InventoryError, InventoryResult, SpoolLoanRow};
 
 pub(crate) fn create_spool_loan(
     conn: &Connection,

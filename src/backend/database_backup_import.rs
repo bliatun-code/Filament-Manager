@@ -12,7 +12,7 @@ use super::database_table_ops::delete_all_rows;
 use super::database_tables::{should_import_backup_row, FULL_BACKUP_TABLES};
 use super::database_trusted_lan_schema::ensure_trusted_lan_schema;
 use super::database_values::json_value_to_sql;
-use super::filament_database::InventoryResult;
+use super::database_result::InventoryResult;
 
 pub(crate) fn import_full_backup_content(
     conn: &Connection,

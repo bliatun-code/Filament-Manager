@@ -1,6 +1,7 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
-use super::filament_database::{EsunColorNormalizationStats, InventoryResult};
+use super::database_result::InventoryResult;
+use super::filament_master_models::EsunColorNormalizationStats;
 use super::vendor_lookup::normalize_esun_color_name_for_catalog;
 
 pub(crate) fn normalize_esun_catalog_colors(

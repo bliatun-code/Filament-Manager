@@ -1,8 +1,7 @@
 use rusqlite::{params, Connection};
 
-use super::database_result::require_rows;
+use super::database_result::{require_rows, InventoryResult};
 use super::database_text::normalize_optional_text;
-use super::filament_database::InventoryResult;
 
 pub(crate) fn update_spool_status(
     conn: &Connection,

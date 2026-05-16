@@ -1,7 +1,8 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
+use super::database_result::InventoryResult;
 use super::database_rows::{map_spool_row, map_spool_with_master_row};
-use super::filament_database::{InventoryResult, SpoolRow, SpoolWithMasterRow};
+use super::database_spool_models::{SpoolRow, SpoolWithMasterRow};
 
 pub(crate) fn get_spool_by_qr(
     conn: &Connection,

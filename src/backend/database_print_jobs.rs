@@ -1,7 +1,7 @@
 use rusqlite::{params, Connection};
 
 use super::database_ids::new_id;
-use super::filament_database::InventoryResult;
+use super::database_result::InventoryResult;
 
 pub(crate) fn insert_print_job(
     conn: &Connection,

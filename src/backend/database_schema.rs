@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use rusqlite::Connection;
 
-use super::filament_database::{InventoryError, InventoryResult};
+use super::database_result::{InventoryError, InventoryResult};
 
 pub(crate) fn table_columns(conn: &Connection, table: &str) -> InventoryResult<HashSet<String>> {
     let mut stmt = conn.prepare(&format!("PRAGMA table_info({})", table))?;

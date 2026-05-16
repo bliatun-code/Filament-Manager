@@ -1,6 +1,6 @@
 use rusqlite::{params, Connection};
 
-use super::filament_database::InventoryResult;
+use super::database_result::InventoryResult;
 
 pub(crate) fn sqlite_now(conn: &Connection) -> InventoryResult<String> {
     let value = conn.query_row("SELECT datetime('now')", [], |row| row.get(0))?;

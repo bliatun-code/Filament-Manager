@@ -1,6 +1,6 @@
 use rusqlite::Connection;
 
-use super::filament_database::InventoryResult;
+use super::database_result::InventoryResult;
 
 pub(crate) fn ensure_trusted_lan_schema(conn: &Connection) -> InventoryResult<()> {
     conn.execute(

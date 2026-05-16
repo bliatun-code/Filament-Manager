@@ -1,7 +1,7 @@
 use rusqlite::{params, Connection};
 
+use super::database_result::InventoryResult;
 use super::database_text::normalize_optional_text;
-use super::filament_database::InventoryResult;
 
 pub(crate) fn update_active_inbound_spool_loan_counterparty(
     conn: &Connection,

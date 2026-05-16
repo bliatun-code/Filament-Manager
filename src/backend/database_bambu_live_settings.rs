@@ -3,10 +3,9 @@ use rusqlite::{params, Connection};
 use super::bambu_live_settings::{
     bambu_live_integration_setting_key, BAMBU_LIVE_INTEGRATION_SETTING_PREFIX,
 };
+use super::database_printer_models::{BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow};
+use super::database_result::{InventoryError, InventoryResult};
 use super::database_settings::{delete_setting, set_setting};
-use super::filament_database::{
-    BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow, InventoryError, InventoryResult,
-};
 
 pub(crate) fn save_bambu_live_integration(
     conn: &Connection,

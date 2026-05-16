@@ -1,6 +1,6 @@
 use rusqlite::{params, Connection};
 
-use super::filament_database::{InventoryError, InventoryResult};
+use super::database_result::{InventoryError, InventoryResult};
 
 pub(crate) fn ensure_location(conn: &Connection, name: &str) -> InventoryResult<String> {
     let id = name.trim().to_string();

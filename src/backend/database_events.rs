@@ -2,7 +2,8 @@ use rusqlite::{params, Connection};
 use serde_json::Value;
 
 use super::database_ids::new_id;
-use super::filament_database::{InventoryResult, SpoolHistoryEventRow, SpoolUsagePointRow};
+use super::database_result::InventoryResult;
+use super::database_spool_models::{SpoolHistoryEventRow, SpoolUsagePointRow};
 
 pub(crate) fn ensure_scale(
     conn: &Connection,

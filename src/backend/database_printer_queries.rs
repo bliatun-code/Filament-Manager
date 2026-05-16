@@ -1,8 +1,9 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
-use super::filament_database::{
-    InventoryResult, PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow, PrinterUsageRow,
+use super::database_printer_models::{
+    PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow, PrinterUsageRow,
 };
+use super::database_result::InventoryResult;
 
 pub(crate) fn list_printers(conn: &Connection) -> InventoryResult<Vec<PrinterRow>> {
     let mut stmt = conn.prepare(

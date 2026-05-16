@@ -1,7 +1,7 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
+use super::database_result::{InventoryError, InventoryResult};
 use super::database_text::normalize_optional_text;
-use super::filament_database::{InventoryError, InventoryResult};
 
 pub(crate) fn assign_spool_to_ams_slot(
     conn: &Connection,

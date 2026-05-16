@@ -1,6 +1,7 @@
 use rusqlite::{params, Connection};
 
-use super::filament_database::{FilamentMasterCatalogRow, InventoryResult};
+use super::database_result::InventoryResult;
+use super::filament_master_models::FilamentMasterCatalogRow;
 
 pub(crate) fn list_master_catalog(
     conn: &Connection,
