@@ -18,7 +18,7 @@ mod document_commands;
 mod inventory_commands;
 mod library_sync_cache_commands;
 mod library_sync_command_support;
-mod library_sync_commands;
+mod library_sync_danger_zone_commands;
 mod library_sync_host_client;
 mod library_sync_loan_write_commands;
 mod library_sync_models;
@@ -182,9 +182,9 @@ fn main() {
             library_sync_printer_write_commands::create_library_sync_host_printer,
             library_sync_wishlist_write_commands::update_library_sync_host_wishlist_item_status,
             library_sync_wishlist_write_commands::delete_library_sync_host_wishlist_item,
-            library_sync_commands::delete_library_sync_host_spool,
+            library_sync_danger_zone_commands::delete_library_sync_host_spool,
             library_sync_printer_write_commands::delete_library_sync_host_printer,
-            library_sync_commands::purge_library_sync_host_spool,
+            library_sync_danger_zone_commands::purge_library_sync_host_spool,
             library_sync_spool_write_commands::update_library_sync_host_spool_weight,
             library_sync_spool_write_commands::update_library_sync_host_spool_tare_weight,
             library_sync_spool_write_commands::update_library_sync_host_spool_details,
