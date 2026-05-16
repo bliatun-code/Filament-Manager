@@ -29,7 +29,6 @@ import {
 import {
   buildAllowedSpoolOptionMapsBySlotSpoolId,
   buildAllowedSpoolOptionsBySlotSpoolId,
-  buildPrinterPageSummary,
   buildSpoolsById,
   resolveSpoolTareWeightById as resolveSpoolTareWeightFromMap,
 } from "../lib/printer_page_model";
@@ -162,8 +161,6 @@ export default function PrintersPage() {
       resolveSpoolTareWeightFromMap(spoolsById, spoolId),
     [spoolsById],
   );
-
-  const printerPageSummary = useMemo(() => buildPrinterPageSummary(printers), [printers]);
 
   const sortedSpools = useMemo(() => sortSpoolsAlphabetically(spools, locale), [locale, spools]);
 
@@ -622,27 +619,6 @@ export default function PrintersPage() {
         </div>
         <div className="page-header-actions">
           <div className="page-header-tools">
-            <div className="page-header-filter-surface grid min-w-[17rem] grid-cols-2 gap-2">
-              <div className="rounded-xl border border-slate-200/85 bg-white/85 px-3 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-950/45 dark:shadow-none">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                  {t("printers.configuredPrinters", "Configured printers")}
-                </div>
-                <div className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-50">
-                  {printerPageSummary.printerCount}
-                </div>
-              </div>
-              <div className="rounded-xl border border-slate-200/85 bg-white/85 px-3 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-950/45 dark:shadow-none">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                  {t("printers.loadedSlots", "Loaded slots")}
-                </div>
-                <div className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-50">
-                  {printerPageSummary.loadedSlots}
-                  <span className="ml-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                    / {printerPageSummary.totalSlots}
-                  </span>
-                </div>
-              </div>
-            </div>
             <button
               type="button"
               className="header-button-primary w-full min-[920px]:w-auto"

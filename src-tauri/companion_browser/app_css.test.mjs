@@ -26,7 +26,7 @@ test("loaded printer slot cards keep their swatch surface treatment", () => {
 test("companion shell defines reusable status and panel surface tokens", () => {
   const css = readCssBundle();
 
-  assert.match(css, /--surface-panel: rgba\(255, 255, 255, 0\.94\);/);
+  assert.match(css, /--surface-panel: rgba\(255, 255, 255, 0\.96\);/);
   assert.match(css, /--surface-panel: rgba\(17, 28, 45, 0\.9\);/);
   assert.match(css, /--success-soft: rgba\(47, 111, 79, 0\.11\);/);
   assert.match(css, /--danger-soft: rgba\(155, 62, 62, 0\.1\);/);
