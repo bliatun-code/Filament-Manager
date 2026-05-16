@@ -20,6 +20,7 @@ mod library_sync_cache_commands;
 mod library_sync_command_support;
 mod library_sync_commands;
 mod library_sync_host_client;
+mod library_sync_loan_write_commands;
 mod library_sync_models;
 mod library_sync_pairing_commands;
 mod library_sync_printer_write_commands;
@@ -188,8 +189,8 @@ fn main() {
             library_sync_commands::update_library_sync_host_spool_rfid_tag,
             library_sync_printer_write_commands::assign_library_sync_host_printer_slot,
             library_sync_printer_write_commands::record_library_sync_host_print_usage,
-            library_sync_commands::return_library_sync_host_loan,
-            library_sync_commands::lend_library_sync_host_spool,
+            library_sync_loan_write_commands::return_library_sync_host_loan,
+            library_sync_loan_write_commands::lend_library_sync_host_spool,
             printer_commands::assign_printer_slot,
             printer_commands::record_print_usage,
             inventory_commands::update_spool_weight,
