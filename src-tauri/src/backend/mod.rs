@@ -86,6 +86,8 @@ pub mod database_spool_assignment;
 pub mod database_spool_delete;
 #[path = "../../../src/backend/database_spool_insert.rs"]
 pub mod database_spool_insert;
+#[path = "../../../src/backend/database_spool_models.rs"]
+pub mod database_spool_models;
 #[path = "../../../src/backend/database_spool_queries.rs"]
 pub mod database_spool_queries;
 #[path = "../../../src/backend/database_spool_schema.rs"]
@@ -114,6 +116,8 @@ pub mod database_values;
 pub mod database_wishlist;
 #[path = "../../../src/backend/filament_database.rs"]
 pub mod filament_database;
+#[path = "../../../src/backend/filament_master_models.rs"]
+pub mod filament_master_models;
 #[path = "../../../src/backend/inventory_engine.rs"]
 pub mod inventory_engine;
 #[path = "../../../src/backend/library_sync_defaults.rs"]

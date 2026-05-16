@@ -95,6 +95,9 @@ use super::database_spool_delete::{
     purge_spool as purge_spool_row, soft_delete_spool as soft_delete_spool_row,
 };
 use super::database_spool_insert::insert_spool as insert_spool_row;
+pub use super::database_spool_models::{
+    SpoolHistoryEventRow, SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow,
+};
 use super::database_spool_queries::{
     get_spool_by_id as get_spool_by_id_row, get_spool_by_qr as get_spool_by_qr_row,
     get_spool_with_master_by_id as get_spool_with_master_by_id_row,
@@ -136,6 +139,10 @@ use super::database_wishlist::{
     list_wishlist_items as list_wishlist_item_rows,
     update_wishlist_item_status as update_wishlist_item_status_row,
 };
+pub use super::filament_master_models::{
+    CatalogLifecycleStats, EsunColorNormalizationStats, FilamentMasterCatalogRow,
+    FilamentMasterSummary,
+};
 use super::statistics::InventoryOverview;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
@@ -143,93 +150,6 @@ use serde_json::Value;
 
 pub(crate) type LibrarySyncClientAuthState = (String, String, String, Option<String>);
 const SCHEMA_SQL: &str = include_str!("../database/schema.sql");
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct FilamentMasterSummary {
-    pub id: String,
-    pub material: String,
-    pub filament_name: String,
-    pub color_name: String,
-    pub hex_color: Option<String>,
-    pub product_url: Option<String>,
-    pub default_weight: i64,
-    pub vendor: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct FilamentMasterCatalogRow {
-    pub id: String,
-    pub material: String,
-    pub filament_name: String,
-    pub color_name: String,
-    pub hex_color: Option<String>,
-    pub product_url: Option<String>,
-    pub default_weight: i64,
-    pub vendor: String,
-    pub last_seen_at: Option<String>,
-    pub is_discontinued: bool,
-    pub discontinued_at: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct CatalogLifecycleStats {
-    pub reactivated_count: i64,
-    pub discontinued_count: i64,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct EsunColorNormalizationStats {
-    pub scanned_count: i64,
-    pub normalized_count: i64,
-    pub merged_count: i64,
-    pub skipped_conflicts: i64,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SpoolRow {
-    pub id: String,
-    pub master_id: String,
-    pub qr_code: Option<String>,
-    pub rfid_tag: Option<String>,
-    pub rfid_observed_at: Option<String>,
-    pub status: String,
-    pub ownership_type: String,
-    pub owner_name: Option<String>,
-    pub owner_contact: Option<String>,
-    pub ownership_note: Option<String>,
-    pub initial_weight_g: Option<i64>,
-    pub current_weight_g: Option<i64>,
-    pub remaining_g: Option<i64>,
-    pub spool_tare_weight_g: Option<i64>,
-    pub location_id: Option<String>,
-    pub home_location_id: Option<String>,
-    pub purchase_date: Option<String>,
-    pub purchase_price: Option<f64>,
-    pub batch_code: Option<String>,
-    pub last_used_at: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SpoolWithMasterRow {
-    pub spool: SpoolRow,
-    pub master: FilamentMasterSummary,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SpoolHistoryEventRow {
-    pub id: String,
-    pub spool_id: String,
-    pub event_type: String,
-    pub payload_json: Value,
-    pub created_at: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SpoolUsagePointRow {
-    pub captured_at: String,
-    pub grams: i64,
-    pub source: String,
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WishlistItemRow {
