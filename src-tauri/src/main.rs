@@ -41,6 +41,7 @@ mod library_sync_spool_write_commands;
 mod library_sync_validation_commands;
 mod library_sync_wishlist_write_commands;
 mod printer_active_commands;
+mod printer_bambu_live_commands;
 mod printer_command_support;
 mod printer_commands;
 mod printer_create_commands;
@@ -170,8 +171,8 @@ fn main() {
             inventory_create_commands::create_wishlist_item,
             inventory_create_commands::create_manual_spool,
             printer_create_commands::create_printer,
-            printer_commands::save_bambu_live_integration,
-            printer_commands::delete_bambu_live_integration,
+            printer_bambu_live_commands::save_bambu_live_integration,
+            printer_bambu_live_commands::delete_bambu_live_integration,
             printer_commands::delete_printer,
             printer_active_commands::set_active_printer,
             set_dock_icon_theme,
