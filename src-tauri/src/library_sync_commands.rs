@@ -790,9 +790,7 @@ pub(crate) fn record_library_sync_host_print_usage(
         }),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some("Host print usage recorded."), None)
-    })?;
+    save_library_sync_success(&state, "Host print usage recorded.", None)?;
     Ok(())
 }
 
