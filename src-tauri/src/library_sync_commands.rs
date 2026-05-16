@@ -636,9 +636,7 @@ pub(crate) fn update_library_sync_host_spool_weight(
         &serde_json::json!({ "grams": input.grams.max(0) }),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some("Host spool weight updated."), None)
-    })?;
+    save_library_sync_success(&state, "Host spool weight updated.", None)?;
     Ok(())
 }
 
