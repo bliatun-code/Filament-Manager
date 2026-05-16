@@ -19,6 +19,7 @@ mod inventory_command_support;
 mod inventory_commands;
 mod inventory_create_commands;
 mod inventory_read_commands;
+mod inventory_update_commands;
 mod library_sync_cache_commands;
 mod library_sync_command_support;
 mod library_sync_danger_zone_commands;
@@ -198,12 +199,12 @@ fn main() {
             library_sync_loan_write_commands::lend_library_sync_host_spool,
             printer_commands::assign_printer_slot,
             printer_commands::record_print_usage,
-            inventory_commands::update_spool_weight,
-            inventory_commands::update_spool_tare_weight,
-            inventory_commands::update_spool_status,
-            inventory_commands::update_spool_details,
-            inventory_commands::update_spool_rfid_tag,
-            inventory_commands::update_master_catalog_entry,
+            inventory_update_commands::update_spool_weight,
+            inventory_update_commands::update_spool_tare_weight,
+            inventory_update_commands::update_spool_status,
+            inventory_update_commands::update_spool_details,
+            inventory_update_commands::update_spool_rfid_tag,
+            inventory_update_commands::update_master_catalog_entry,
             inventory_commands::delete_spool,
             inventory_commands::purge_spool,
             inventory_commands::list_spool_history,
@@ -217,7 +218,7 @@ fn main() {
             inventory_commands::return_spool_loan,
             inventory_commands::return_inbound_spool_loan,
             inventory_commands::export_loans_csv,
-            inventory_commands::assign_location,
+            inventory_update_commands::assign_location,
             inventory_read_commands::find_spool_by_qr,
             inventory_commands::record_scan_event,
             document_commands::export_inventory_csv,
