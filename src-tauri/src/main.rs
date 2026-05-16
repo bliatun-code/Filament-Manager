@@ -53,6 +53,7 @@ mod printer_usage_commands;
 mod security;
 mod state;
 mod trusted_lan_commands;
+mod trusted_lan_health;
 
 use backend::filament_database::FilamentDatabase;
 use backend::inventory_engine::InventoryEngine;

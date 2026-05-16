@@ -1,7 +1,7 @@
 use crate::library_sync_host_client::renew_library_sync_host_session;
 use crate::library_sync_models::{LibrarySyncHostValidationResult, ValidateLibrarySyncHostInput};
 use crate::state::AppState;
-use crate::trusted_lan_commands::CompanionHealthCheckResponse;
+use crate::trusted_lan_health::CompanionHealthCheckResponse;
 use crate::with_inventory;
 use std::time::Duration;
 

@@ -1,7 +1,7 @@
 use crate::library_sync_host_client::ensure_library_sync_host_matches;
 use crate::library_sync_models::ValidateLibrarySyncHostInput;
 use crate::state::AppState;
-use crate::trusted_lan_commands::CompanionHealthCheckResponse;
+use crate::trusted_lan_health::CompanionHealthCheckResponse;
 use crate::with_inventory;
 
 pub(crate) fn normalize_library_sync_host_input(
