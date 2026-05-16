@@ -3,6 +3,7 @@ use crate::backend::filament_database::{
     FilamentMasterCatalogRow, LibrarySyncSettingsRow, PrinterOverviewRow, SpoolLoanDetailsRow,
     SpoolWithMasterRow, WishlistItemRow,
 };
+use crate::backend::database_library_sync_models::LibrarySyncCachedSnapshotRow;
 use crate::backend::statistics::FilamentConsumptionRow;
 use crate::library_sync_host_client::{
     ensure_library_sync_host_matches, extract_library_sync_pairing_token,
@@ -264,7 +265,7 @@ pub(crate) fn fetch_library_sync_snapshot(
     state: tauri::State<'_, AppState>,
     input: ValidateLibrarySyncHostInput,
 ) -> Result<LibrarySyncRemoteSnapshot, String> {
-    let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(&input)?;
+    let (normalized_base_url, expected_library_id) = prepare_library_sync_host_checked(&input)?;
     let parsed: LibrarySyncSnapshotResponse =
         fetch_library_sync_host_json(&normalized_base_url, "/api/v1/library/snapshot")?;
 
@@ -295,20 +296,18 @@ pub(crate) fn fetch_library_sync_snapshot(
     };
 
     with_inventory(&state, |engine| {
-        engine.save_library_sync_cached_snapshot(
-            &crate::backend::filament_database::LibrarySyncCachedSnapshotRow {
-                captured_at: snapshot.captured_at.clone(),
-                library_id: snapshot.library_id.clone(),
-                device_name: snapshot.device_name.clone(),
-                sync_mode: snapshot.sync_mode.clone(),
-                inventory: snapshot.inventory.clone(),
-                total_spools: snapshot.total_spools,
-                in_use: snapshot.in_use,
-                low_stock: snapshot.low_stock,
-                active_loans: snapshot.active_loans,
-                printers: snapshot.printers,
-            },
-        )?;
+        engine.save_library_sync_cached_snapshot(&LibrarySyncCachedSnapshotRow {
+            captured_at: snapshot.captured_at.clone(),
+            library_id: snapshot.library_id.clone(),
+            device_name: snapshot.device_name.clone(),
+            sync_mode: snapshot.sync_mode.clone(),
+            inventory: snapshot.inventory.clone(),
+            total_spools: snapshot.total_spools,
+            in_use: snapshot.in_use,
+            low_stock: snapshot.low_stock,
+            active_loans: snapshot.active_loans,
+            printers: snapshot.printers,
+        })?;
         engine.save_library_sync_validation_state(
             true,
             Some("Host snapshot refreshed."),
