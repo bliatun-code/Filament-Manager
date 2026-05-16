@@ -1,7 +1,7 @@
 use crate::app_services::CompanionSpoolDetail;
 use crate::backend::filament_database::{
-    FilamentMasterCatalogRow, LibrarySyncSettingsRow, PrinterOverviewRow, SpoolLoanDetailsRow,
-    SpoolWithMasterRow, WishlistItemRow,
+    FilamentMasterCatalogRow, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
+    WishlistItemRow,
 };
 use crate::backend::database_library_sync_models::LibrarySyncCachedSnapshotRow;
 use crate::backend::statistics::FilamentConsumptionRow;
