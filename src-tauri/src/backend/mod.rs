@@ -58,6 +58,8 @@ pub mod database_library_sync_settings;
 pub mod database_library_sync_validation;
 #[path = "../../../src/backend/database_loan_create.rs"]
 pub mod database_loan_create;
+#[path = "../../../src/backend/database_loan_facade.rs"]
+pub mod database_loan_facade;
 #[path = "../../../src/backend/database_loan_models.rs"]
 pub mod database_loan_models;
 #[path = "../../../src/backend/database_loan_queries.rs"]
