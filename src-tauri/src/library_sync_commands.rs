@@ -454,13 +454,10 @@ pub(crate) fn fetch_library_sync_loans(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncSpoolListInput,
 ) -> Result<Vec<SpoolLoanDetailsRow>, String> {
-    let validation_input = ValidateLibrarySyncHostInput {
+    let (normalized_base_url, health) = prepare_library_sync_host_read(&ValidateLibrarySyncHostInput {
         base_url: input.base_url.clone(),
         expected_library_id: input.expected_library_id.clone(),
-    };
-    let (normalized_base_url, expected_library_id) =
-        normalize_library_sync_host_input(&validation_input)?;
-    let health = ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    })?;
     let limit = input.limit.unwrap_or(2000).clamp(1, 2_500);
     let rows: Vec<SpoolLoanDetailsRow> = fetch_library_sync_host_json(
         &normalized_base_url,
@@ -484,13 +481,10 @@ pub(crate) fn fetch_library_sync_filament_consumption(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncFilamentConsumptionInput,
 ) -> Result<Vec<FilamentConsumptionRow>, String> {
-    let validation_input = ValidateLibrarySyncHostInput {
+    let (normalized_base_url, health) = prepare_library_sync_host_read(&ValidateLibrarySyncHostInput {
         base_url: input.base_url.clone(),
         expected_library_id: input.expected_library_id.clone(),
-    };
-    let (normalized_base_url, expected_library_id) =
-        normalize_library_sync_host_input(&validation_input)?;
-    let health = ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    })?;
     let limit = input.limit.unwrap_or(500).clamp(1, 2_000);
     let printer_id = input
         .printer_id
