@@ -695,9 +695,7 @@ pub(crate) fn update_library_sync_host_spool_details(
         }),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some("Host spool details updated."), None)
-    })?;
+    save_library_sync_success(&state, "Host spool details updated.", None)?;
     Ok(())
 }
 
@@ -726,9 +724,7 @@ pub(crate) fn update_library_sync_host_spool_rfid_tag(
         }),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some("Host spool RFID updated."), None)
-    })?;
+    save_library_sync_success(&state, "Host spool RFID updated.", None)?;
     Ok(())
 }
 
