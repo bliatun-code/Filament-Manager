@@ -40,6 +40,7 @@ mod library_sync_snapshot_commands;
 mod library_sync_spool_write_commands;
 mod library_sync_validation_commands;
 mod library_sync_wishlist_write_commands;
+mod printer_command_support;
 mod printer_commands;
 mod security;
 mod state;

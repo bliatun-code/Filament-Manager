@@ -1,4 +1,3 @@
-use crate::app_services::CompanionService;
 use crate::backend::filament_database::{
     BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow, PrinterOverviewRow, PrinterRow,
 };
@@ -6,6 +5,7 @@ use crate::backend::database_result::InventoryError;
 use crate::backend::inventory_engine::{
     AssignPrinterSlotInput, CreatePrinterInput, RecordPrintUsageInput,
 };
+use crate::printer_command_support::{companion_service, inventory_error_to_string};
 use crate::state::AppState;
 use crate::{with_db, with_inventory};
 use serde::{Deserialize, Serialize};
@@ -202,12 +202,4 @@ fn supported_printer_models() -> Vec<String> {
     .into_iter()
     .map(String::from)
     .collect()
-}
-
-fn companion_service(state: &AppState) -> CompanionService {
-    CompanionService::new(state.db_path.clone())
-}
-
-fn inventory_error_to_string(error: InventoryError) -> String {
-    format!("{error:?}")
 }
