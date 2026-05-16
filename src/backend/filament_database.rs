@@ -24,8 +24,9 @@ use super::database_events::{
     list_spool_usage_points as list_spool_usage_point_rows,
 };
 use super::database_export::{
-    export_loans_csv as export_loan_rows_csv, export_spools_csv as export_spool_rows_csv,
-    export_spools_json as export_spool_rows_json,
+    export_inventory_spools_csv as export_inventory_spool_rows_csv,
+    export_inventory_spools_json as export_inventory_spool_rows_json,
+    export_loans_csv as export_loan_rows_csv,
 };
 pub use super::database_import::ImportDataStats;
 use super::database_import::{
@@ -1234,13 +1235,11 @@ impl FilamentDatabase {
     }
 
     pub fn export_spools_csv(&self) -> InventoryResult<String> {
-        let rows = self.list_spools_with_master(10_000, 0)?;
-        export_spool_rows_csv(&rows)
+        export_inventory_spool_rows_csv(&self.conn)
     }
 
     pub fn export_spools_json(&self) -> InventoryResult<String> {
-        let rows = self.list_spools_with_master(10_000, 0)?;
-        export_spool_rows_json(&rows)
+        export_inventory_spool_rows_json(&self.conn)
     }
 
     pub fn export_full_backup_json(&self) -> InventoryResult<String> {

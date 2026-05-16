@@ -1,5 +1,18 @@
+use rusqlite::Connection;
+
+use super::database_spool_queries::list_spools_with_master;
 use super::database_text::{escape_csv, escape_json};
 use super::filament_database::{InventoryResult, SpoolLoanDetailsRow, SpoolWithMasterRow};
+
+pub(crate) fn export_inventory_spools_csv(conn: &Connection) -> InventoryResult<String> {
+    let rows = list_spools_with_master(conn, 10_000, 0)?;
+    export_spools_csv(&rows)
+}
+
+pub(crate) fn export_inventory_spools_json(conn: &Connection) -> InventoryResult<String> {
+    let rows = list_spools_with_master(conn, 10_000, 0)?;
+    export_spools_json(&rows)
+}
 
 pub(crate) fn export_spools_csv(rows: &[SpoolWithMasterRow]) -> InventoryResult<String> {
     let mut output = String::from(
