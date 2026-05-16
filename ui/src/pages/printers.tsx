@@ -35,13 +35,11 @@ import {
   buildSpoolsById,
   resolveSpoolTareWeightById as resolveSpoolTareWeightFromMap,
 } from "../lib/printer_page_model";
-import { AppModal } from "../components/app_modal";
 import { FeedbackBanner } from "../components/feedback_banner";
-import { ModalHeader } from "../components/modal_chrome";
-import { modalPanelClassName } from "../components/modal_panel_class";
 import { PrinterModelPreview } from "../components/printer_model_preview";
 import { AddPrinterModal } from "../components/add_printer_modal";
 import { IncomingWeightModal } from "../components/incoming_weight_modal";
+import { RfidOverrideModal } from "../components/rfid_override_modal";
 import { semanticChipClass } from "../lib/chip_styles";
 import {
   formatFilamentDisplayTitle,
@@ -1218,113 +1216,13 @@ export default function PrintersPage() {
       ) : null}
 
       {rfidOverridePrompt ? (
-        <AppModal
-          closeOnBackdrop
-          onBackdropClose={() => {
-            if (!busy) {
-              setRfidOverridePrompt(null);
-            }
-          }}
-          panelClassName={modalPanelClassName("md", "p-0")}
-        >
-          <div>
-            <ModalHeader
-              eyebrow={t("inventory.rfidCaptureTitle", "RFID capture")}
-              title={t("printers.rfidOverridden", "RFID overridden")}
-              subtitle={`${rfidOverridePrompt.printerName} · ${formatPrinterSlotLabelForModel(t, rfidOverridePrompt.printerModel, {
-                ams_id: rfidOverridePrompt.slot.ams_id,
-                slot_index: rfidOverridePrompt.slot.slot_index,
-              })}`}
-              onClose={() => setRfidOverridePrompt(null)}
-              closeLabel={t("common.close", "Close")}
-              disabled={busy}
-              className="px-6 py-5"
-            />
-
-            <div className="space-y-4 px-6 py-6">
-              <div className="rounded-2xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-100">
-                {t(
-                  "printers.rfidOverrideDialogHint",
-                  "This slot is manually assigned while AMS still reports the same unregistered tray identity. Save it on the selected roll when you are ready.",
-                )}
-              </div>
-
-              <div className="surface-card space-y-3">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                  {formatFilamentDisplayTitle(
-                    rfidOverridePrompt.spool.master.material,
-                    rfidOverridePrompt.spool.master.filament_name,
-                    rfidOverridePrompt.spool.master.color_name,
-                  )}
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  {`${rfidOverridePrompt.spool.master.vendor} · ${formatSpoolReference(rfidOverridePrompt.spool.spool.id)}`}
-                </div>
-                <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                  <div>
-                    <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                      {t("inventory.rfidCurrentTag", "Saved RFID")}
-                    </dt>
-                    <dd className="mt-1 break-all font-mono text-slate-900 dark:text-slate-100">
-                      {rfidOverridePrompt.spool.spool.rfid_tag?.trim() || "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                      {t("inventory.rfidObservedTag", "Observed RFID")}
-                    </dt>
-                    <dd className="mt-1 break-all font-mono text-slate-900 dark:text-slate-100">
-                      {rfidOverridePrompt.liveTray.tray_uuid?.trim() || "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                      {t("inventory.rfidObservedColor", "Observed color")}
-                    </dt>
-                    <dd className="mt-1 flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                      <span
-                        className="h-5 w-5 rounded border border-slate-200 dark:border-slate-700"
-                        style={{ backgroundColor: toSwatchColor(rfidOverridePrompt.liveTray.color_hex) }}
-                      />
-                      <span className="font-mono">
-                        {rfidOverridePrompt.liveTray.color_hex?.trim() || "—"}
-                      </span>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                      {t("inventory.rfidLastSeen", "Last seen")}
-                    </dt>
-                    <dd className="mt-1 text-slate-900 dark:text-slate-100">
-                      {rfidOverridePrompt.observedAt
-                        ? formatDateTime(rfidOverridePrompt.observedAt, locale)
-                        : "—"}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-
-              <div className="flex flex-wrap justify-end gap-3">
-                <button
-                  type="button"
-                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-100"
-                  onClick={() => setRfidOverridePrompt(null)}
-                  disabled={busy}
-                >
-                  {t("common.cancel", "Cancel")}
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-sky-300 bg-sky-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:border-sky-400/40 dark:bg-sky-500"
-                  onClick={() => void handleSaveOverrideRfid()}
-                  disabled={!rfidOverridePrompt.liveTray.tray_uuid?.trim() || busy}
-                >
-                  {t("inventory.saveRfid", "Save RFID")}
-                </button>
-              </div>
-            </div>
-          </div>
-        </AppModal>
+        <RfidOverrideModal
+          busy={busy}
+          locale={locale}
+          prompt={rfidOverridePrompt}
+          onClose={() => setRfidOverridePrompt(null)}
+          onSave={() => void handleSaveOverrideRfid()}
+        />
       ) : null}
 
       {showAddPrinterModal ? (
