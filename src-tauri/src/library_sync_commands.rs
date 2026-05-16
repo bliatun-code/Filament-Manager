@@ -233,6 +233,14 @@ fn normalize_library_sync_host_input(
     Ok((normalized_base_url, expected_library_id))
 }
 
+fn prepare_library_sync_host_write(
+    input: &ValidateLibrarySyncHostInput,
+) -> Result<(String, Option<&str>), String> {
+    let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(input)?;
+    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    Ok((normalized_base_url, expected_library_id))
+}
+
 #[tauri::command]
 pub(crate) fn fetch_library_sync_snapshot(
     state: tauri::State<'_, AppState>,
@@ -614,13 +622,10 @@ pub(crate) fn update_library_sync_host_spool_weight(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncWeightWriteInput,
 ) -> Result<(), String> {
-    let validation_input = ValidateLibrarySyncHostInput {
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
         base_url: input.base_url.clone(),
         expected_library_id: input.expected_library_id.clone(),
-    };
-    let (normalized_base_url, expected_library_id) =
-        normalize_library_sync_host_input(&validation_input)?;
-    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    })?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -645,13 +650,10 @@ pub(crate) fn update_library_sync_host_spool_tare_weight(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncWeightWriteInput,
 ) -> Result<(), String> {
-    let validation_input = ValidateLibrarySyncHostInput {
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
         base_url: input.base_url.clone(),
         expected_library_id: input.expected_library_id.clone(),
-    };
-    let (normalized_base_url, expected_library_id) =
-        normalize_library_sync_host_input(&validation_input)?;
-    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    })?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
