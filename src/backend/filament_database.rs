@@ -64,15 +64,6 @@ use super::database_schema_setup::apply_schema_migrations;
 pub use super::database_spool_models::{
     SpoolHistoryEventRow, SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow,
 };
-use super::database_spool_updates::{
-    set_spool_home_location as set_spool_home_location_row,
-    set_spool_location as set_spool_location_row, update_spool_details as update_spool_details_row,
-    update_spool_ownership_metadata as update_spool_ownership_metadata_row,
-    update_spool_rfid_tag as update_spool_rfid_tag_row,
-    update_spool_status as update_spool_status_row,
-    update_spool_tare_weight as update_spool_tare_weight_row,
-    update_spool_weight as update_spool_weight_row,
-};
 use super::database_sync_queue::enqueue_sync_action as enqueue_sync_action_row;
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
 use super::database_time::{
@@ -107,86 +98,6 @@ impl FilamentDatabase {
 
     pub(crate) fn connection(&self) -> &Connection {
         &self.conn
-    }
-
-    pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {
-        update_spool_status_row(&self.conn, spool_id, status)
-    }
-
-    pub fn update_spool_weight(
-        &self,
-        spool_id: &str,
-        current_weight_g: Option<i64>,
-        remaining_g: Option<i64>,
-    ) -> InventoryResult<()> {
-        update_spool_weight_row(&self.conn, spool_id, current_weight_g, remaining_g)
-    }
-
-    pub fn update_spool_tare_weight(
-        &self,
-        spool_id: &str,
-        spool_tare_weight_g: Option<i64>,
-    ) -> InventoryResult<()> {
-        update_spool_tare_weight_row(&self.conn, spool_id, spool_tare_weight_g)
-    }
-
-    pub fn update_spool_rfid_tag(
-        &self,
-        spool_id: &str,
-        rfid_tag: Option<&str>,
-        rfid_observed_at: Option<&str>,
-    ) -> InventoryResult<()> {
-        update_spool_rfid_tag_row(&self.conn, spool_id, rfid_tag, rfid_observed_at)
-    }
-
-    pub fn set_spool_location(
-        &self,
-        spool_id: &str,
-        location_id: Option<&str>,
-    ) -> InventoryResult<()> {
-        set_spool_location_row(&self.conn, spool_id, location_id)
-    }
-
-    pub fn update_spool_details(
-        &self,
-        spool_id: &str,
-        qr_code: Option<&str>,
-        status: &str,
-        location_id: Option<&str>,
-        home_location_id: Option<&str>,
-    ) -> InventoryResult<()> {
-        update_spool_details_row(
-            &self.conn,
-            spool_id,
-            qr_code,
-            status,
-            location_id,
-            home_location_id,
-        )
-    }
-
-    pub fn set_spool_home_location(
-        &self,
-        spool_id: &str,
-        home_location_id: Option<&str>,
-    ) -> InventoryResult<()> {
-        set_spool_home_location_row(&self.conn, spool_id, home_location_id)
-    }
-
-    pub fn update_spool_ownership_metadata(
-        &self,
-        spool_id: &str,
-        owner_name: Option<&str>,
-        owner_contact: Option<&str>,
-        ownership_note: Option<&str>,
-    ) -> InventoryResult<()> {
-        update_spool_ownership_metadata_row(
-            &self.conn,
-            spool_id,
-            owner_name,
-            owner_contact,
-            ownership_note,
-        )
     }
 
     pub fn update_active_inbound_spool_loan_counterparty(

@@ -114,6 +114,8 @@ pub mod database_spool_queries;
 pub mod database_spool_schema;
 #[path = "../../../src/backend/database_spool_updates.rs"]
 pub mod database_spool_updates;
+#[path = "../../../src/backend/database_spool_update_facade.rs"]
+pub mod database_spool_update_facade;
 #[path = "../../../src/backend/database_sync_queue.rs"]
 pub mod database_sync_queue;
 #[path = "../../../src/backend/database_table_ops.rs"]
