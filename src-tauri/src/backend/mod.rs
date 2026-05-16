@@ -42,6 +42,8 @@ pub mod database_schema_setup;
 pub mod database_settings;
 #[path = "../../../src/backend/database_spool_delete.rs"]
 pub mod database_spool_delete;
+#[path = "../../../src/backend/database_spool_insert.rs"]
+pub mod database_spool_insert;
 #[path = "../../../src/backend/database_spool_queries.rs"]
 pub mod database_spool_queries;
 #[path = "../../../src/backend/database_spool_schema.rs"]

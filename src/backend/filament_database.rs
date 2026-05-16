@@ -59,6 +59,7 @@ use super::database_settings::{
 use super::database_spool_delete::{
     purge_spool as purge_spool_row, soft_delete_spool as soft_delete_spool_row,
 };
+use super::database_spool_insert::insert_spool as insert_spool_row;
 use super::database_spool_queries::{
     get_spool_by_id as get_spool_by_id_row, get_spool_by_qr as get_spool_by_qr_row,
     get_spool_with_master_by_id as get_spool_with_master_by_id_row,
@@ -1057,36 +1058,7 @@ impl FilamentDatabase {
     }
 
     pub fn insert_spool(&self, spool: &SpoolRow) -> InventoryResult<()> {
-        self.conn.execute(
-            "INSERT INTO filament_spools (
-                id, master_id, qr_code, rfid_tag, rfid_observed_at, status, ownership_type, owner_name, owner_contact,
-                ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
-                location_id, home_location_id, purchase_date, purchase_price, batch_code, last_used_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)",
-            params![
-                spool.id,
-                spool.master_id,
-                spool.qr_code,
-                spool.rfid_tag,
-                spool.rfid_observed_at,
-                spool.status,
-                spool.ownership_type,
-                spool.owner_name,
-                spool.owner_contact,
-                spool.ownership_note,
-                spool.initial_weight_g,
-                spool.current_weight_g,
-                spool.remaining_g,
-                spool.spool_tare_weight_g,
-                spool.location_id,
-                spool.home_location_id,
-                spool.purchase_date,
-                spool.purchase_price,
-                spool.batch_code,
-                spool.last_used_at
-            ],
-        )?;
-        Ok(())
+        insert_spool_row(&self.conn, spool)
     }
 
     pub fn get_spool_by_qr(&self, qr_code: &str) -> InventoryResult<Option<SpoolRow>> {
