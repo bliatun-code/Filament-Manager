@@ -18,6 +18,7 @@ mod document_commands;
 mod inventory_command_support;
 mod inventory_commands;
 mod inventory_create_commands;
+mod inventory_danger_zone_commands;
 mod inventory_read_commands;
 mod inventory_update_commands;
 mod library_sync_cache_commands;
@@ -205,8 +206,8 @@ fn main() {
             inventory_update_commands::update_spool_details,
             inventory_update_commands::update_spool_rfid_tag,
             inventory_update_commands::update_master_catalog_entry,
-            inventory_commands::delete_spool,
-            inventory_commands::purge_spool,
+            inventory_danger_zone_commands::delete_spool,
+            inventory_danger_zone_commands::purge_spool,
             inventory_commands::list_spool_history,
             inventory_commands::list_spool_usage,
             inventory_commands::list_active_spool_loans,

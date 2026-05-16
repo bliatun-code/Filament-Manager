@@ -3,8 +3,7 @@ use crate::backend::filament_database::{
     SpoolLoanDetailsRow, SpoolLoanRow, SpoolUsagePointRow,
 };
 use crate::backend::inventory_engine::{
-    DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, ReturnSpoolLoanInput, ScanSource,
-    UpdateWishlistStatusInput,
+    LendSpoolInput, ReturnSpoolLoanInput, ScanSource, UpdateWishlistStatusInput,
 };
 use crate::backend::statistics::{FilamentConsumptionRow, InventoryOverview, MaterialUsageRow};
 use crate::inventory_command_support::{
@@ -23,22 +22,6 @@ pub(crate) fn reset_catalog_data(
     state: tauri::State<'_, AppState>,
 ) -> Result<CatalogResetStats, String> {
     with_inventory(&state, |engine| engine.reset_catalogs())
-}
-
-#[tauri::command]
-pub(crate) fn delete_spool(
-    state: tauri::State<'_, AppState>,
-    input: DeleteSpoolInput,
-) -> Result<(), String> {
-    with_inventory(&state, |engine| engine.delete_spool(input))
-}
-
-#[tauri::command]
-pub(crate) fn purge_spool(
-    state: tauri::State<'_, AppState>,
-    input: PurgeSpoolInput,
-) -> Result<(), String> {
-    with_inventory(&state, |engine| engine.purge_spool(input))
 }
 
 #[tauri::command]
