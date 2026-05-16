@@ -40,6 +40,13 @@ import {
   writePreparedPrinterSlotAssignment,
   writeSpoolMeasuredWeight,
 } from "../lib/printer_slot_writes";
+import {
+  buildAllowedSpoolOptionMapsBySlotSpoolId,
+  buildAllowedSpoolOptionsBySlotSpoolId,
+  buildPrinterPageSummary,
+  buildSpoolsById,
+  resolveSpoolTareWeightById as resolveSpoolTareWeightFromMap,
+} from "../lib/printer_page_model";
 import { AppModal } from "../components/app_modal";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { ModalHeader } from "../components/modal_chrome";
@@ -77,7 +84,6 @@ import {
   multiMaterialUnitsInputLabel,
   resolvePrinterModelProfile,
   sortPrinterSlotsExtLast,
-  summarizeEffectivePrinterSlots,
 } from "../lib/printer_profiles";
 
 export default function PrintersPage() {
@@ -195,71 +201,27 @@ export default function PrintersPage() {
     return true;
   }, [clientHostBaseUrl, clientHostWritePaired, clientLibraryId, clientReadOnly, t]);
 
-  const spoolsById = useMemo(() => {
-    const map = new Map<string, SpoolWithMasterRow>();
-    for (const row of spools) {
-      map.set(row.spool.id, row);
-    }
-    return map;
-  }, [spools]);
+  const spoolsById = useMemo(() => buildSpoolsById(spools), [spools]);
 
   const resolveSpoolTareWeightById = useCallback(
-    (spoolId: string | null | undefined) => {
-      const id = (spoolId ?? "").trim();
-      if (!id) {
-        return 0;
-      }
-      const row = spoolsById.get(id) ?? null;
-      return resolveSpoolTareWeightForRow(row);
-    },
+    (spoolId: string | null | undefined) =>
+      resolveSpoolTareWeightFromMap(spoolsById, spoolId),
     [spoolsById],
   );
 
-  const printerPageSummary = useMemo(() => {
-    let loadedSlots = 0;
-    let totalSlots = 0;
-    for (const printer of printers) {
-      const summary = summarizeEffectivePrinterSlots(printer.slots);
-      totalSlots += summary.totalSlots;
-      loadedSlots += summary.loadedSlots;
-    }
-    return {
-      printerCount: printers.length,
-      loadedSlots,
-      totalSlots,
-    };
-  }, [printers]);
+  const printerPageSummary = useMemo(() => buildPrinterPageSummary(printers), [printers]);
 
   const sortedSpools = useMemo(() => sortSpoolsAlphabetically(spools, locale), [locale, spools]);
 
-  const allowedSpoolOptionsBySlotSpoolId = useMemo(() => {
-    const map = new Map<string, SpoolWithMasterRow[]>();
-    map.set("", filterAllowedSpoolsForSlot(sortedSpools));
-    const activeSlotSpoolIds = new Set<string>();
-    for (const printer of printers) {
-      for (const slot of printer.slots) {
-        const spoolId = slot.spool_id?.trim();
-        if (spoolId) {
-          activeSlotSpoolIds.add(spoolId);
-        }
-      }
-    }
-    for (const spoolId of activeSlotSpoolIds) {
-      map.set(spoolId, filterAllowedSpoolsForSlot(sortedSpools, spoolId));
-    }
-    return map;
-  }, [printers, sortedSpools]);
+  const allowedSpoolOptionsBySlotSpoolId = useMemo(
+    () => buildAllowedSpoolOptionsBySlotSpoolId(printers, sortedSpools),
+    [printers, sortedSpools],
+  );
 
-  const allowedSpoolOptionMapsBySlotSpoolId = useMemo(() => {
-    const map = new Map<string, Map<string, SpoolWithMasterRow>>();
-    for (const [slotSpoolId, options] of allowedSpoolOptionsBySlotSpoolId) {
-      map.set(
-        slotSpoolId,
-        new Map(options.map((option) => [option.spool.id, option])),
-      );
-    }
-    return map;
-  }, [allowedSpoolOptionsBySlotSpoolId]);
+  const allowedSpoolOptionMapsBySlotSpoolId = useMemo(
+    () => buildAllowedSpoolOptionMapsBySlotSpoolId(allowedSpoolOptionsBySlotSpoolId),
+    [allowedSpoolOptionsBySlotSpoolId],
+  );
 
   const resolveLiveConnectionIndicator = useCallback(
     (
