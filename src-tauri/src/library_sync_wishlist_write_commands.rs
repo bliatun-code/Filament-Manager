@@ -1,10 +1,11 @@
 use crate::library_sync_command_support::{
-    prepare_library_sync_host_write, save_library_sync_success, trimmed_non_empty,
+    library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
+    trimmed_non_empty,
 };
 use crate::library_sync_host_client::perform_library_sync_host_write;
 use crate::library_sync_models::{
     LibrarySyncCreateWishlistItemInput, LibrarySyncDeleteWishlistItemInput,
-    LibrarySyncUpdateWishlistStatusInput, ValidateLibrarySyncHostInput,
+    LibrarySyncUpdateWishlistStatusInput,
 };
 use crate::state::AppState;
 
@@ -13,10 +14,8 @@ pub(crate) fn create_library_sync_host_wishlist_item(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncCreateWishlistItemInput,
 ) -> Result<(), String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     perform_library_sync_host_write(
         &state,
@@ -42,10 +41,8 @@ pub(crate) fn update_library_sync_host_wishlist_item_status(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncUpdateWishlistStatusInput,
 ) -> Result<(), String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     let item_id = input.item_id.trim();
     if item_id.is_empty() {
@@ -68,10 +65,8 @@ pub(crate) fn delete_library_sync_host_wishlist_item(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncDeleteWishlistItemInput,
 ) -> Result<(), String> {
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&ValidateLibrarySyncHostInput {
-        base_url: input.base_url.clone(),
-        expected_library_id: input.expected_library_id.clone(),
-    })?;
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     let item_id = input.item_id.trim();
     if item_id.is_empty() {
