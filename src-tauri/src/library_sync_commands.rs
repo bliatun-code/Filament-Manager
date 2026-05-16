@@ -903,9 +903,7 @@ pub(crate) fn create_library_sync_host_spool(
         return Err(response.message);
     }
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_validation_state(true, Some(&response.message), None)
-    })?;
+    save_library_sync_success(&state, &response.message, None)?;
 
     Ok(response.spool_id)
 }
