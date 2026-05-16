@@ -1,4 +1,6 @@
 use crate::library_sync_models::ValidateLibrarySyncHostInput;
+use crate::library_sync_host_client::ensure_library_sync_host_matches;
+use crate::trusted_lan_commands::CompanionHealthCheckResponse;
 
 pub(crate) fn normalize_library_sync_host_input(
     input: &ValidateLibrarySyncHostInput,
@@ -13,4 +15,26 @@ pub(crate) fn normalize_library_sync_host_input(
         .map(str::trim)
         .filter(|value| !value.is_empty());
     Ok((normalized_base_url, expected_library_id))
+}
+
+pub(crate) fn prepare_library_sync_host_write(
+    input: &ValidateLibrarySyncHostInput,
+) -> Result<(String, Option<&str>), String> {
+    prepare_library_sync_host_checked(input)
+}
+
+pub(crate) fn prepare_library_sync_host_checked(
+    input: &ValidateLibrarySyncHostInput,
+) -> Result<(String, Option<&str>), String> {
+    let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(input)?;
+    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    Ok((normalized_base_url, expected_library_id))
+}
+
+pub(crate) fn prepare_library_sync_host_read(
+    input: &ValidateLibrarySyncHostInput,
+) -> Result<(String, CompanionHealthCheckResponse), String> {
+    let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(input)?;
+    let health = ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    Ok((normalized_base_url, health))
 }

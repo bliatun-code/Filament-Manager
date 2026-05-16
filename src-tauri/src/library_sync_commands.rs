@@ -5,7 +5,10 @@ use crate::backend::filament_database::{
 };
 use crate::backend::database_library_sync_models::LibrarySyncCachedSnapshotRow;
 use crate::backend::statistics::FilamentConsumptionRow;
-use crate::library_sync_command_support::normalize_library_sync_host_input;
+use crate::library_sync_command_support::{
+    normalize_library_sync_host_input, prepare_library_sync_host_checked,
+    prepare_library_sync_host_read, prepare_library_sync_host_write,
+};
 use crate::library_sync_host_client::{
     ensure_library_sync_host_matches, extract_library_sync_pairing_token,
     fetch_library_sync_host_json, get_library_sync_host_json_authenticated,
@@ -218,28 +221,6 @@ pub(crate) fn validate_library_sync_host(
         )
     })?;
     Ok(result)
-}
-
-fn prepare_library_sync_host_write(
-    input: &ValidateLibrarySyncHostInput,
-) -> Result<(String, Option<&str>), String> {
-    prepare_library_sync_host_checked(input)
-}
-
-fn prepare_library_sync_host_checked(
-    input: &ValidateLibrarySyncHostInput,
-) -> Result<(String, Option<&str>), String> {
-    let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(input)?;
-    ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
-    Ok((normalized_base_url, expected_library_id))
-}
-
-fn prepare_library_sync_host_read(
-    input: &ValidateLibrarySyncHostInput,
-) -> Result<(String, CompanionHealthCheckResponse), String> {
-    let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(input)?;
-    let health = ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
-    Ok((normalized_base_url, health))
 }
 
 fn trimmed_non_empty(value: Option<&str>) -> Option<&str> {
