@@ -71,10 +71,6 @@ use super::database_printer_queries::{
     printer_exists as printer_exists_row,
 };
 use super::database_printer_slot_assignment::assign_spool_to_ams_slot as assign_spool_to_ams_slot_row;
-use super::database_reset::{
-    reset_app_state_data as reset_app_state_data_rows,
-    reset_catalog_data as reset_catalog_data_rows,
-};
 pub use super::database_reset_models::CatalogResetStats;
 pub use super::database_result::{InventoryError, InventoryResult};
 use super::database_schema_setup::apply_schema_migrations;
@@ -115,12 +111,6 @@ use super::database_time::{
 };
 pub use super::database_trusted_lan_models::{
     TrustedLanPairedBrowserRow, TrustedLanSettingsRow,
-};
-use super::database_wishlist::{
-    delete_wishlist_item as delete_wishlist_item_row,
-    insert_wishlist_item as insert_wishlist_item_row,
-    list_wishlist_items as list_wishlist_item_rows,
-    update_wishlist_item_status as update_wishlist_item_status_row,
 };
 pub use super::database_wishlist_models::WishlistItemRow;
 pub use super::filament_master_models::{
@@ -389,22 +379,6 @@ impl FilamentDatabase {
         list_low_stock_spool_rows(&self.conn, threshold)
     }
 
-    pub fn list_wishlist_items(&self, limit: i64) -> InventoryResult<Vec<WishlistItemRow>> {
-        list_wishlist_item_rows(&self.conn, limit)
-    }
-
-    pub fn insert_wishlist_item(&self, item: &WishlistItemRow) -> InventoryResult<()> {
-        insert_wishlist_item_row(&self.conn, item)
-    }
-
-    pub fn update_wishlist_item_status(&self, item_id: &str, status: &str) -> InventoryResult<()> {
-        update_wishlist_item_status_row(&self.conn, item_id, status)
-    }
-
-    pub fn delete_wishlist_item(&self, item_id: &str) -> InventoryResult<()> {
-        delete_wishlist_item_row(&self.conn, item_id)
-    }
-
     pub fn spool_assigned_to_printer(&self, spool_id: &str) -> InventoryResult<bool> {
         spool_assigned_to_printer_row(&self.conn, spool_id)
     }
@@ -626,14 +600,6 @@ impl FilamentDatabase {
             material_used_g,
             success,
         )
-    }
-
-    pub fn reset_app_state_data(&self) -> InventoryResult<()> {
-        reset_app_state_data_rows(&self.conn)
-    }
-
-    pub fn reset_catalog_data(&self) -> InventoryResult<CatalogResetStats> {
-        reset_catalog_data_rows(&self.conn)
     }
 
     pub fn insert_alert(&self, alert_type: &str, payload_json: &str) -> InventoryResult<()> {

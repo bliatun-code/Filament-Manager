@@ -78,6 +78,8 @@ pub mod database_printer_schema;
 pub mod database_printer_slot_assignment;
 #[path = "../../../src/backend/database_reset.rs"]
 pub mod database_reset;
+#[path = "../../../src/backend/database_reset_facade.rs"]
+pub mod database_reset_facade;
 #[path = "../../../src/backend/database_reset_models.rs"]
 pub mod database_reset_models;
 #[path = "../../../src/backend/database_result.rs"]
@@ -128,6 +130,8 @@ pub mod database_trusted_lan_settings;
 pub mod database_values;
 #[path = "../../../src/backend/database_wishlist.rs"]
 pub mod database_wishlist;
+#[path = "../../../src/backend/database_wishlist_facade.rs"]
+pub mod database_wishlist_facade;
 #[path = "../../../src/backend/database_wishlist_models.rs"]
 pub mod database_wishlist_models;
 #[path = "../../../src/backend/filament_database.rs"]
