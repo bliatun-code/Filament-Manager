@@ -45,6 +45,10 @@ use super::database_library_sync_cache::{
     save_library_sync_cached_snapshot as save_library_sync_cached_snapshot_row,
     save_library_sync_cached_spools as save_library_sync_cached_spool_rows,
 };
+pub use super::database_library_sync_models::{
+    LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow,
+};
+pub(crate) use super::database_library_sync_models::LibrarySyncClientAuthState;
 use super::database_library_sync_settings::{
     get_library_sync_settings as get_library_sync_setting_rows,
     save_library_sync_settings as save_library_sync_setting_rows,
@@ -155,64 +159,10 @@ pub use super::filament_master_models::{
     CatalogLifecycleStats, EsunColorNormalizationStats, FilamentMasterCatalogRow,
     FilamentMasterSummary,
 };
-use super::statistics::InventoryOverview;
 use rusqlite::Connection;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-pub(crate) type LibrarySyncClientAuthState = (String, String, String, Option<String>);
 const SCHEMA_SQL: &str = include_str!("../database/schema.sql");
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct LibrarySyncSettingsRow {
-    pub mode: String,
-    pub device_name: String,
-    pub library_id: String,
-    pub host_base_url: Option<String>,
-    pub host_device_name: Option<String>,
-    pub client_auth_paired: bool,
-    pub client_auth_paired_at: Option<String>,
-    pub client_auth_expires_at: Option<String>,
-    pub last_checked_at: Option<String>,
-    pub last_reachable_at: Option<String>,
-    pub last_validation_message: Option<String>,
-    pub cached_snapshot: Option<LibrarySyncCachedSnapshotRow>,
-    pub cached_spools: Option<LibrarySyncCachedSpoolListRow>,
-    pub cached_printers: Option<LibrarySyncCachedPrinterOverviewRow>,
-    pub cached_loans: Option<LibrarySyncCachedLoanListRow>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct LibrarySyncCachedSnapshotRow {
-    pub captured_at: String,
-    pub library_id: String,
-    pub device_name: String,
-    pub sync_mode: String,
-    pub inventory: InventoryOverview,
-    pub total_spools: i64,
-    pub in_use: i64,
-    pub low_stock: i64,
-    pub active_loans: i64,
-    pub printers: i64,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct LibrarySyncCachedSpoolListRow {
-    pub captured_at: String,
-    pub rows: Vec<SpoolWithMasterRow>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct LibrarySyncCachedPrinterOverviewRow {
-    pub captured_at: String,
-    pub rows: Vec<PrinterOverviewRow>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct LibrarySyncCachedLoanListRow {
-    pub captured_at: String,
-    pub rows: Vec<SpoolLoanDetailsRow>,
-}
 
 pub struct FilamentDatabase {
     conn: Connection,

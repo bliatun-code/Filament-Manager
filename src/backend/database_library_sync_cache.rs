@@ -1,11 +1,13 @@
 use rusqlite::Connection;
 
+use super::database_library_sync_models::{
+    LibrarySyncCachedLoanListRow, LibrarySyncCachedPrinterOverviewRow,
+    LibrarySyncCachedSnapshotRow, LibrarySyncCachedSpoolListRow,
+};
 use super::database_settings::set_setting;
 use super::database_time::sqlite_now;
 use super::filament_database::{
-    InventoryError, InventoryResult, LibrarySyncCachedLoanListRow,
-    LibrarySyncCachedPrinterOverviewRow, LibrarySyncCachedSnapshotRow,
-    LibrarySyncCachedSpoolListRow, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
+    InventoryError, InventoryResult, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
 };
 
 pub(crate) fn save_library_sync_cached_snapshot(
