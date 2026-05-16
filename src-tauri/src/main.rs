@@ -49,6 +49,7 @@ mod printer_danger_zone_commands;
 mod printer_models;
 mod printer_read_commands;
 mod printer_settings_commands;
+mod printer_slot_write_commands;
 mod security;
 mod state;
 mod trusted_lan_commands;
@@ -211,7 +212,7 @@ fn main() {
             library_sync_printer_write_commands::record_library_sync_host_print_usage,
             library_sync_loan_write_commands::return_library_sync_host_loan,
             library_sync_loan_write_commands::lend_library_sync_host_spool,
-            printer_commands::assign_printer_slot,
+            printer_slot_write_commands::assign_printer_slot,
             printer_commands::record_print_usage,
             inventory_update_commands::update_spool_weight,
             inventory_update_commands::update_spool_tare_weight,
