@@ -1,68 +1,17 @@
-use crate::backend::filament_database::{TrustedLanPairedBrowserRow, TrustedLanSettingsRow};
+use crate::backend::filament_database::TrustedLanPairedBrowserRow;
 use crate::companion_api;
 use crate::security::hash_secret;
-use crate::state::{AppState, TrustedLanCompanionRuntimeSnapshot};
-use crate::trusted_lan_interfaces::{
-    ensure_private_trusted_lan_interface, normalize_trusted_lan_interface_selection,
-};
+use crate::state::AppState;
 use crate::trusted_lan_status_commands::trusted_lan_server_status_snapshot;
 use crate::with_db;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 const TRUSTED_LAN_PAIRING_MAX_AGE_SECONDS: u64 = 10 * 60;
-
-#[derive(Deserialize)]
-pub(crate) struct UpdateTrustedLanCompanionConfigInput {
-    enabled: bool,
-    selected_interface_name: Option<String>,
-    selected_interface_address: Option<String>,
-    listen_port: Option<u16>,
-}
 
 #[derive(Serialize)]
 pub(crate) struct TrustedLanPairingLink {
     pairing_url: String,
     expires_in_seconds: u64,
-}
-
-#[tauri::command]
-pub(crate) async fn update_trusted_lan_companion_config(
-    state: tauri::State<'_, AppState>,
-    input: UpdateTrustedLanCompanionConfigInput,
-) -> Result<TrustedLanCompanionRuntimeSnapshot, String> {
-    let selected_interface = normalize_trusted_lan_interface_selection(
-        input.selected_interface_name.as_deref(),
-        input.selected_interface_address.as_deref(),
-    );
-    if input.enabled && selected_interface.is_none() {
-        return Err(
-            "Select one private LAN interface before enabling trusted-LAN access.".to_string(),
-        );
-    }
-
-    if input.enabled {
-        if let Some((_, address)) = selected_interface.as_ref() {
-            ensure_private_trusted_lan_interface(address)?;
-        }
-    }
-
-    let settings = TrustedLanSettingsRow {
-        enabled: input.enabled,
-        selected_interface_name: selected_interface.as_ref().map(|value| value.0.clone()),
-        selected_interface_address: selected_interface.as_ref().map(|value| value.1.clone()),
-        listen_port: input
-            .listen_port
-            .filter(|value| *value > 0)
-            .unwrap_or(companion_api::COMPANION_DEFAULT_PORT),
-    };
-    with_db(&state, |db| db.save_trusted_lan_settings(&settings))?;
-    state.companion.trusted_lan.apply_config(
-        settings.enabled,
-        selected_interface,
-        settings.listen_port,
-    );
-    companion_api::reconcile_trusted_lan_server(state.inner().clone()).await?;
-    Ok(state.companion.trusted_lan.snapshot())
 }
 
 #[tauri::command]
