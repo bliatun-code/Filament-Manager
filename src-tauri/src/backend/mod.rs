@@ -34,6 +34,8 @@ pub mod database_print_jobs;
 pub mod database_printer_queries;
 #[path = "../../../src/backend/database_printer_schema.rs"]
 pub mod database_printer_schema;
+#[path = "../../../src/backend/database_reset.rs"]
+pub mod database_reset;
 #[path = "../../../src/backend/database_result.rs"]
 pub mod database_result;
 #[path = "../../../src/backend/database_rows.rs"]
