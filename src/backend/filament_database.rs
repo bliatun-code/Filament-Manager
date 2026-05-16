@@ -64,6 +64,7 @@ use super::database_loan_return::{
 };
 use super::database_locations::ensure_location as ensure_location_row;
 use super::database_print_jobs::insert_print_job as insert_print_job_row;
+use super::database_printer_live_events::insert_printer_live_event as insert_printer_live_event_row;
 use super::database_printer_mutations::{
     delete_printer as delete_printer_row, upsert_printer_with_ams as upsert_printer_with_ams_row,
 };
@@ -1045,26 +1046,7 @@ impl FilamentDatabase {
         event_type: &str,
         payload_json: &Value,
     ) -> InventoryResult<()> {
-        let normalized_printer_id = printer_id.trim();
-        let normalized_event_type = event_type.trim();
-        if normalized_printer_id.is_empty() || normalized_event_type.is_empty() {
-            return Err(InventoryError::Db(
-                "printer id and event type are required for printer live events".to_string(),
-            ));
-        }
-        let payload = serde_json::to_string(payload_json)
-            .map_err(|error| InventoryError::Db(error.to_string()))?;
-        self.conn.execute(
-            "INSERT INTO printer_live_events (id, printer_id, event_type, payload_json, created_at)
-             VALUES (?1, ?2, ?3, ?4, datetime('now'))",
-            params![
-                new_id(),
-                normalized_printer_id,
-                normalized_event_type,
-                payload
-            ],
-        )?;
-        Ok(())
+        insert_printer_live_event_row(&self.conn, printer_id, event_type, payload_json)
     }
 
     pub fn get_trusted_lan_settings(&self) -> InventoryResult<TrustedLanSettingsRow> {
