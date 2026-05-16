@@ -66,6 +66,10 @@ use super::database_settings::{
     delete_setting as delete_setting_row, get_setting as get_setting_row,
     set_setting as set_setting_row,
 };
+use super::database_spool_assignment::{
+    spool_assigned_to_printer as spool_assigned_to_printer_row,
+    spool_assigned_to_specific_printer as spool_assigned_to_specific_printer_row,
+};
 use super::database_spool_delete::{
     purge_spool as purge_spool_row, soft_delete_spool as soft_delete_spool_row,
 };
@@ -1330,20 +1334,7 @@ impl FilamentDatabase {
     }
 
     pub fn spool_assigned_to_printer(&self, spool_id: &str) -> InventoryResult<bool> {
-        let found: Option<i64> = self
-            .conn
-            .query_row(
-                "SELECT 1
-                 FROM ams_slots s
-                 JOIN ams_units u ON u.id = s.ams_id
-                 JOIN printers p ON p.id = u.printer_id
-                 WHERE s.spool_id = ?1
-                 LIMIT 1",
-                params![spool_id],
-                |row| row.get(0),
-            )
-            .optional()?;
-        Ok(found.is_some())
+        spool_assigned_to_printer_row(&self.conn, spool_id)
     }
 
     pub fn spool_assigned_to_specific_printer(
@@ -1351,20 +1342,7 @@ impl FilamentDatabase {
         spool_id: &str,
         printer_id: &str,
     ) -> InventoryResult<bool> {
-        let found: Option<i64> = self
-            .conn
-            .query_row(
-                "SELECT 1
-                 FROM ams_slots s
-                 JOIN ams_units u ON u.id = s.ams_id
-                 WHERE s.spool_id = ?1
-                   AND u.printer_id = ?2
-                 LIMIT 1",
-                params![spool_id, printer_id],
-                |row| row.get(0),
-            )
-            .optional()?;
-        Ok(found.is_some())
+        spool_assigned_to_specific_printer_row(&self.conn, spool_id, printer_id)
     }
 
     pub fn create_spool_loan(
