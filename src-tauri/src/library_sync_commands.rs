@@ -5,6 +5,7 @@ use crate::backend::filament_database::{
 };
 use crate::backend::database_library_sync_models::LibrarySyncCachedSnapshotRow;
 use crate::backend::statistics::FilamentConsumptionRow;
+use crate::library_sync_command_support::normalize_library_sync_host_input;
 use crate::library_sync_host_client::{
     ensure_library_sync_host_matches, extract_library_sync_pairing_token,
     fetch_library_sync_host_json, get_library_sync_host_json_authenticated,
@@ -217,21 +218,6 @@ pub(crate) fn validate_library_sync_host(
         )
     })?;
     Ok(result)
-}
-
-fn normalize_library_sync_host_input(
-    input: &ValidateLibrarySyncHostInput,
-) -> Result<(String, Option<&str>), String> {
-    let normalized_base_url = input.base_url.trim().trim_end_matches('/').to_string();
-    if normalized_base_url.is_empty() {
-        return Err("Host URL is required.".to_string());
-    }
-    let expected_library_id = input
-        .expected_library_id
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty());
-    Ok((normalized_base_url, expected_library_id))
 }
 
 fn prepare_library_sync_host_write(

@@ -16,6 +16,7 @@ mod companion_session;
 mod companion_state;
 mod document_commands;
 mod inventory_commands;
+mod library_sync_command_support;
 mod library_sync_commands;
 mod library_sync_host_client;
 mod library_sync_models;
