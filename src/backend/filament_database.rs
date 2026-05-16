@@ -11,6 +11,7 @@ use super::database_backup::{
     export_full_backup_content, parse_full_backup_content, validate_full_backup_content,
 };
 use super::database_borrowed_schema::ensure_borrowed_in_schema as ensure_borrowed_in_schema_impl;
+use super::database_catalog_lifecycle::apply_vendor_discontinued_rules as apply_vendor_discontinued_rules_row;
 use super::database_catalog_schema::ensure_catalog_lifecycle_columns as ensure_catalog_lifecycle_columns_schema;
 use super::database_connection::open_connection;
 use super::database_events::{
@@ -1241,33 +1242,7 @@ impl FilamentDatabase {
         vendor: &str,
         refresh_started_at: &str,
     ) -> InventoryResult<CatalogLifecycleStats> {
-        self.ensure_catalog_lifecycle_columns()?;
-
-        let reactivated = self.conn.execute(
-            "UPDATE filament_master_list
-             SET is_discontinued = 0,
-                 discontinued_at = NULL,
-                 updated_at = datetime('now')
-             WHERE vendor = ?2
-               AND last_seen_at IS NOT NULL
-               AND last_seen_at >= ?1",
-            params![refresh_started_at, vendor],
-        )? as i64;
-
-        let discontinued = self.conn.execute(
-            "UPDATE filament_master_list
-             SET is_discontinued = 1,
-                 discontinued_at = COALESCE(discontinued_at, datetime('now')),
-                 updated_at = datetime('now')
-             WHERE vendor = ?2
-               AND (last_seen_at IS NULL OR last_seen_at < ?1)",
-            params![refresh_started_at, vendor],
-        )? as i64;
-
-        Ok(CatalogLifecycleStats {
-            reactivated_count: reactivated,
-            discontinued_count: discontinued,
-        })
+        apply_vendor_discontinued_rules_row(&self.conn, vendor, refresh_started_at)
     }
 
     pub fn apply_bambu_discontinued_rules(
