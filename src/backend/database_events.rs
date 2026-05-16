@@ -38,21 +38,6 @@ pub(crate) fn insert_weight_reading(
     Ok(())
 }
 
-pub(crate) fn insert_scan_event(
-    conn: &Connection,
-    spool_id: Option<&str>,
-    qr_code: Option<&str>,
-    source: &str,
-    detected_color_hex: Option<&str>,
-) -> InventoryResult<()> {
-    conn.execute(
-        "INSERT INTO scan_events (id, spool_id, qr_code, source, detected_color_hex)
-         VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![new_id(), spool_id, qr_code, source, detected_color_hex],
-    )?;
-    Ok(())
-}
-
 pub(crate) fn insert_spool_history_event(
     conn: &Connection,
     spool_id: &str,

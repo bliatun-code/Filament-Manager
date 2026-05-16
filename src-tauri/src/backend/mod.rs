@@ -2,8 +2,6 @@
 pub mod bambu_live_settings;
 #[path = "../../../src/backend/bambu_lookup.rs"]
 pub mod bambu_lookup;
-#[path = "../../../src/backend/database_alerts.rs"]
-pub mod database_alerts;
 #[path = "../../../src/backend/database_backup.rs"]
 pub mod database_backup;
 #[path = "../../../src/backend/database_backup_facade.rs"]
@@ -126,8 +124,6 @@ pub mod database_spool_schema;
 pub mod database_spool_update_facade;
 #[path = "../../../src/backend/database_spool_updates.rs"]
 pub mod database_spool_updates;
-#[path = "../../../src/backend/database_sync_queue.rs"]
-pub mod database_sync_queue;
 #[path = "../../../src/backend/database_system_facade.rs"]
 pub mod database_system_facade;
 #[path = "../../../src/backend/database_table_ops.rs"]

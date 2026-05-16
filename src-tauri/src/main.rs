@@ -12,6 +12,7 @@ mod companion_error;
 mod companion_http;
 mod companion_models;
 mod companion_payload;
+mod companion_routes;
 mod companion_session;
 mod companion_state;
 mod document_commands;
@@ -22,7 +23,6 @@ mod inventory_danger_zone_commands;
 mod inventory_loan_commands;
 mod inventory_maintenance_commands;
 mod inventory_read_commands;
-mod inventory_scan_commands;
 mod inventory_stats_commands;
 mod inventory_update_commands;
 mod inventory_wishlist_commands;
@@ -245,7 +245,6 @@ fn main() {
             inventory_loan_commands::export_loans_csv,
             inventory_update_commands::assign_location,
             inventory_read_commands::find_spool_by_qr,
-            inventory_scan_commands::record_scan_event,
             document_commands::export_inventory_csv,
             document_commands::export_inventory_json,
             document_commands::export_full_backup_json,
@@ -257,8 +256,6 @@ fn main() {
             inventory_maintenance_commands::reset_catalog_data,
             inventory_stats_commands::top_materials,
             inventory_stats_commands::list_filament_consumption,
-            inventory_maintenance_commands::check_low_stock,
-            inventory_maintenance_commands::enqueue_sync_action,
             document_commands::print_label_html,
             document_commands::print_label_pdf,
         ])

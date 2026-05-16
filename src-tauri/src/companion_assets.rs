@@ -51,6 +51,7 @@ const COMPANION_BROWSER_SHELL_CHROME_JS: &str =
 const COMPANION_BROWSER_STORAGE_SHELL_JS: &str =
     include_str!("../companion_browser/storage_shell.js");
 const COMPANION_BROWSER_CSS: &str = include_str!("../companion_browser/app.css");
+const COMPANION_BROWSER_THEME_CSS: &str = include_str!("../companion_browser/theme.css");
 const COMPANION_ICON_LIGHT_PNG: &[u8] = include_bytes!("../icons/dock-light.png");
 const COMPANION_ICON_DARK_PNG: &[u8] = include_bytes!("../icons/dock-dark.png");
 
@@ -269,6 +270,13 @@ pub(crate) fn companion_browser_assets() -> &'static [(&'static str, CompanionBr
             CompanionBrowserAsset {
                 content_type: "text/css; charset=utf-8",
                 content: COMPANION_BROWSER_CSS,
+            },
+        ),
+        (
+            "theme.css",
+            CompanionBrowserAsset {
+                content_type: "text/css; charset=utf-8",
+                content: COMPANION_BROWSER_THEME_CSS,
             },
         ),
     ]

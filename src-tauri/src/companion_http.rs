@@ -14,7 +14,9 @@ pub(crate) fn require_allowed_host(
     runtime: &TrustedLanCompanionRuntime,
 ) -> Result<(), CompanionApiError> {
     let Some(host) = header_string(headers, HOST) else {
-        return Ok(());
+        return Err(CompanionApiError::Forbidden(
+            "Host header is required for the trusted-LAN companion API".to_string(),
+        ));
     };
 
     if is_allowed_host(host, runtime) {

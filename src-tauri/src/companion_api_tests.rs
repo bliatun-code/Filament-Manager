@@ -1,10 +1,11 @@
-use super::{build_router, companion_browser_assets, hash_secret, CompanionApiState};
+use super::{companion_browser_assets, hash_secret, CompanionApiState};
 use crate::app_services::CompanionService;
 use crate::backend::filament_database::{BambuLiveIntegrationRow, FilamentDatabase};
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, InventoryEngine, LendSpoolInput,
 };
 use crate::companion_http::COMPANION_CSRF_HEADER;
+use crate::companion_routes::build_router;
 use crate::companion_session::{COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_DEVICE_COOKIE};
 use crate::state::TrustedLanCompanionRuntime;
 use axum::body::{to_bytes, Body};
@@ -816,6 +817,18 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
             .await
             .map_err(|error| error.to_string())?;
         assert_eq!(localhost_health.status(), StatusCode::FORBIDDEN);
+
+        let missing_host_health = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/health")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(missing_host_health.status(), StatusCode::FORBIDDEN);
 
         let localhost_pair = router
             .clone()
