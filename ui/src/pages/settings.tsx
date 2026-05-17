@@ -13,20 +13,17 @@ import { buildSettingsLibraryRouteProps } from "./settings_library_route_props";
 import { buildSettingsLibraryRoleModalRouteProps } from "./settings_library_role_modal_route_props";
 import { buildSettingsLibraryWebappControlProps } from "./settings_library_webapp_control_props";
 import { SettingsPageLayout } from "./settings_page_layout";
-import { buildSettingsPrintersRouteProps } from "./settings_printers_route_props";
 import { buildSettingsRouteMapProps } from "./settings_route_map_props";
 import { useSettingsFeedbackState } from "./use_settings_feedback_state";
 import { useSettingsCatalogSection } from "./use_settings_catalog_section";
-import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
 import { useSettingsBackupValidationSummary } from "./use_settings_backup_validation_summary";
-import { useSettingsPrinterActions } from "./use_settings_printer_actions";
-import { useSettingsPrinterSectionState } from "./use_settings_printer_section_state";
 import { useSettingsPageDataState } from "./use_settings_page_data_state";
 import { useSettingsPageReload } from "./use_settings_page_reload";
 import { useSettingsPageShellState } from "./use_settings_page_shell_state";
 import { useSettingsPreferenceSection } from "./use_settings_preference_section";
 import { useSettingsInitialLoad } from "./use_settings_initial_load";
 import { useSettingsMaintenanceSection } from "./use_settings_maintenance_section";
+import { useSettingsPrintersSection } from "./use_settings_printers_section";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncActions } from "./use_settings_library_sync_actions";
 import { useSettingsLibraryDerivedState } from "./use_settings_library_derived_state";
@@ -210,49 +207,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     t,
   });
   const {
-    cancelPrinterEdit,
-    confirmDeletePrinterId,
-    diagnosticCaptureActiveByPrinterId,
-    diagnosticCaptureByPrinterId,
-    diagnosticChartFieldByPrinterId,
-    diagnosticFilterByPrinterId,
-    diagnosticSortByPrinterId,
-    editAmsUnits,
-    editBambuLiveAccessCode,
-    editBambuLiveEnabled,
-    editBambuLiveHost,
-    editBambuLivePrinterSerial,
-    editModelProfile,
-    editPrinterId,
-    editPrinterModel,
-    editPrinterName,
-    editSlotsPerUnit,
-    ensureDiagnosticSession,
-    expandedBambuDetailsPrinterId,
-    printerSlotsByPrinterId,
-    setConfirmDeletePrinterId,
-    setDiagnosticChartFieldByPrinterId,
-    setDiagnosticFilterByPrinterId,
-    setDiagnosticSortByPrinterId,
-    setEditAmsUnits,
-    setEditBambuLiveAccessCode,
-    setEditBambuLiveEnabled,
-    setEditBambuLiveHost,
-    setEditBambuLivePrinterSerial,
-    setEditPrinterModel,
-    setEditPrinterName,
-    setEditSlotsPerUnit,
-    setExpandedBambuDetailsPrinterId,
-    sortedPrinters,
-    startPrinterEdit,
-    toggleBambuLiveCapture,
-  } = useSettingsPrinterSectionState({
-    bambuLiveIntegrations,
-    locale,
-    printerOverview,
-    printers,
-  });
-  const {
     librarySyncRoleOptions,
     librarySyncSavedMode,
     librarySyncTabLabels,
@@ -322,13 +276,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   }, [reloadSettings]);
 
   useSettingsSilentReload({ reloadSettings, tauri });
-
-  const { handleToggleBambuLiveCapture, handleToggleBambuLiveDetails } =
-    useSettingsBambuLiveToggleActions({
-      ensureDiagnosticSession,
-      setExpandedBambuDetailsPrinterId,
-      toggleBambuLiveCapture,
-    });
 
   const {
     loadTrustedLanCompanionStatus,
@@ -496,30 +443,15 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanStatus,
   });
 
-  const {
-    handleCancelEditPrinter,
-    handleDeletePrinter,
-    handleSavePrinterReconfigure,
-    handleStartEditPrinter,
-  } = useSettingsPrinterActions({
+  const { settingsPrintersRouteProps } = useSettingsPrintersSection({
     bambuLiveIntegrations,
     busy,
-    cancelPrinterEdit,
-    confirmDeletePrinterId,
-    editAmsUnits,
-    editBambuLiveAccessCode,
-    editBambuLiveEnabled,
-    editBambuLiveHost,
-    editBambuLivePrinterSerial,
-    editPrinterId,
-    editPrinterModel,
-    editPrinterName,
-    editSlotsPerUnit,
+    loading,
+    locale,
     printerOverview,
     printers,
     reloadSettings,
     setBusy,
-    setConfirmDeletePrinterId,
     setError,
     setInfo,
     settingsClientHostBaseUrl,
@@ -527,7 +459,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsClientLibraryId,
     settingsClientReadOnly,
     settingsPrinterMessageLabels,
-    startPrinterEdit,
+    spoolRows,
     tauri,
   });
 
@@ -574,53 +506,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     onLocaleSelection: handleLocaleSelection,
     onPrintInventoryOverviewA4: handlePrintInventoryOverviewA4,
     onThemeSelection: handleThemeSelection,
-  });
-  const settingsPrintersRouteProps = buildSettingsPrintersRouteProps({
-    bambuLiveIntegrations,
-    busy,
-    confirmDeletePrinterId,
-    diagnosticCaptureActiveByPrinterId,
-    diagnosticCaptureByPrinterId,
-    diagnosticChartFieldByPrinterId,
-    diagnosticFilterByPrinterId,
-    diagnosticSortByPrinterId,
-    editAmsUnits,
-    editBambuLiveAccessCode,
-    editBambuLiveEnabled,
-    editBambuLiveHost,
-    editBambuLivePrinterSerial,
-    editModelProfile,
-    editPrinterId,
-    editPrinterModel,
-    editPrinterName,
-    editSlotsPerUnit,
-    expandedBambuDetailsPrinterId,
-    loading,
-    printerSlotsByPrinterId,
-    printers,
-    settingsClientReadOnly,
-    sortedPrinters,
-    spoolRows,
-    tauri,
-    onBambuLiveAccessCodeChange: setEditBambuLiveAccessCode,
-    onBambuLiveEnabledChange: setEditBambuLiveEnabled,
-    onBambuLiveHostChange: setEditBambuLiveHost,
-    onBambuLivePrinterSerialChange: setEditBambuLivePrinterSerial,
-    onCancelEditPrinter: handleCancelEditPrinter,
-    onCopyError: setError,
-    onCopySuccess: setInfo,
-    onDeletePrinter: handleDeletePrinter,
-    onDiagnosticChartFieldChange: setDiagnosticChartFieldByPrinterId,
-    onDiagnosticFilterChange: setDiagnosticFilterByPrinterId,
-    onDiagnosticSortChange: setDiagnosticSortByPrinterId,
-    onEditAmsUnitsChange: setEditAmsUnits,
-    onEditPrinterModelChange: setEditPrinterModel,
-    onEditPrinterNameChange: setEditPrinterName,
-    onEditSlotsPerUnitChange: setEditSlotsPerUnit,
-    onSavePrinterReconfigure: handleSavePrinterReconfigure,
-    onStartEditPrinter: handleStartEditPrinter,
-    onToggleBambuLiveCapture: handleToggleBambuLiveCapture,
-    onToggleBambuLiveDetails: handleToggleBambuLiveDetails,
   });
   const settingsLibraryRolePanelProps = buildSettingsLibraryRolePanelProps({
     librarySyncBusy,
