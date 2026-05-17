@@ -11,14 +11,17 @@ import {
 } from "../lib/display_format";
 import { swatchRgba, toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
-import { resolveSpoolTareWeight } from "../lib/spool_weight";
 import { useResolvedTheme, type ResolvedTheme } from "../lib/theme_mode";
-import { formatGrams as formatWeightGrams } from "../lib/weight_display";
 import { lendInventorySpool } from "../lib/loan_data_source";
 import {
   loadLoanableSpoolCandidates,
   type LoanableSpool,
 } from "../lib/loan_out_data_source";
+import {
+  formatLoanOutGrams,
+  toLoanedFilamentWeight,
+  toMeasuredTotalWeight,
+} from "../lib/loan_out_weight_model";
 import { isTauri } from "../lib/tauri_client";
 
 type LoanOutModalProps = {
@@ -124,22 +127,6 @@ function swatchInsetStyle(
       strength.shadow,
     )}, 0 3px 10px ${strength.ambientShadow}`,
   } as const;
-}
-
-function formatGrams(value?: number | null): string {
-  return formatWeightGrams(value, "zero");
-}
-
-function resolveLoanableSpoolTareWeight(spool: LoanableSpool): number {
-  return resolveSpoolTareWeight(spool.spoolTareWeightGrams, spool.vendor);
-}
-
-function toMeasuredTotalWeight(spool: LoanableSpool, filamentGrams?: number | null): number {
-  return Math.max(0, filamentGrams ?? 0) + resolveLoanableSpoolTareWeight(spool);
-}
-
-function toLoanedFilamentWeight(spool: LoanableSpool, measuredTotalGrams: number): number {
-  return Math.max(0, measuredTotalGrams - resolveLoanableSpoolTareWeight(spool));
 }
 
 const formInputClassName =
@@ -396,7 +383,7 @@ export function LoanOutModal({
                               <span className="font-mono" title={`#${spool.id}`}>
                                 {referenceLabel}
                               </span>
-                              <span>{formatGrams(spool.remainingGrams)}</span>
+                              <span>{formatLoanOutGrams(spool.remainingGrams)}</span>
                               <span className="truncate max-w-[11rem]" title={placementLabel}>
                                 {placementLabel}
                               </span>
@@ -474,7 +461,7 @@ export function LoanOutModal({
                             {t("inventory.remaining", "Remaining")}
                           </div>
                           <div className={detailValueClassName}>
-                            {formatGrams(selectedSpool.remainingGrams)}
+                            {formatLoanOutGrams(selectedSpool.remainingGrams)}
                           </div>
                         </div>
                         <div
@@ -520,7 +507,7 @@ export function LoanOutModal({
                         <div>
                           <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
                             {t("inventory.maxAvailable", "Max available")}:{" "}
-                            {formatGrams(
+                            {formatLoanOutGrams(
                               toMeasuredTotalWeight(selectedSpool, selectedSpool.remainingGrams),
                             )}
                           </label>
