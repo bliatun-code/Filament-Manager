@@ -7,6 +7,18 @@ import type { LibraryRoleChangeState } from "../pages/settings_library_sync_mode
 
 type TranslateFn = (key: string, fallback: string) => string;
 
+const roleNoticeClass =
+  "surface-subtle px-4 py-3 text-sm leading-6 text-slate-700 dark:text-slate-200";
+const migrationStepClass = "surface-subtle px-4 py-3";
+
+function migrationStepBadgeClass(done: boolean): string {
+  return `rounded-full px-3 py-1 text-xs font-semibold ${
+    done
+      ? "border border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200"
+      : "border border-slate-300 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
+  }`;
+}
+
 type SettingsLibraryRoleModalProps = {
   busy: boolean;
   lastFullBackupExportedAt: string | null;
@@ -102,7 +114,7 @@ export function SettingsLibraryRoleModal({
         </div>
 
         {roleChangeState.fromClient && roleChangeState.toHost ? (
-          <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-200">
+          <div className={roleNoticeClass}>
             {t(
               "settings.librarySyncRoleChangeClientToHostHint",
               "This client becomes its own host after the switch. If you later want to move library data from the current host, create a full backup there and import it later under Program maintenance on this device.",
@@ -111,7 +123,7 @@ export function SettingsLibraryRoleModal({
         ) : null}
 
         {roleChangeState.fromClient && roleChangeState.toStandalone ? (
-          <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-200">
+          <div className={roleNoticeClass}>
             {locale === "nb"
               ? `Denne klienten forventer vanligvis at et vertsbibliotek er tilgjengelig. Du kan eksportere en full sikkerhetskopi på ${
                   librarySyncSettings?.host_device_name || t("common.unknown", "Ukjent")
@@ -123,7 +135,7 @@ export function SettingsLibraryRoleModal({
         ) : null}
 
         {roleChangeState.toClient ? (
-          <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-200">
+          <div className={roleNoticeClass}>
             {t(
               "settings.librarySyncRoleChangeClientHint",
               "Client mode expects a host connection. After switching, use Desktop client pairing to connect this device to the host you want to use.",
@@ -136,7 +148,7 @@ export function SettingsLibraryRoleModal({
           roleChangeState.requiresImport) ? (
           <div className="space-y-3">
             {roleChangeState.requiresExport ? (
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 dark:border-slate-700/70 dark:bg-slate-900/40">
+              <div className={migrationStepClass}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="font-semibold text-slate-900 dark:text-slate-100">
@@ -152,13 +164,7 @@ export function SettingsLibraryRoleModal({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        lastFullBackupExportedAt
-                          ? "border border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200"
-                          : "border border-slate-300 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
-                      }`}
-                    >
+                    <span className={migrationStepBadgeClass(Boolean(lastFullBackupExportedAt))}>
                       {lastFullBackupExportedAt
                         ? t("settings.librarySyncStepDone", "Done")
                         : t("settings.librarySyncStepPending", "Pending")}
@@ -177,7 +183,7 @@ export function SettingsLibraryRoleModal({
             ) : null}
 
             {roleChangeState.requiresValidate ? (
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 dark:border-slate-700/70 dark:bg-slate-900/40">
+              <div className={migrationStepClass}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="font-semibold text-slate-900 dark:text-slate-100">
@@ -199,13 +205,7 @@ export function SettingsLibraryRoleModal({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        roleChangeState.validateDone
-                          ? "border border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200"
-                          : "border border-slate-300 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
-                      }`}
-                    >
+                    <span className={migrationStepBadgeClass(roleChangeState.validateDone)}>
                       {roleChangeState.validateDone
                         ? t("settings.librarySyncStepDone", "Done")
                         : t("settings.librarySyncStepPending", "Pending")}
@@ -226,7 +226,7 @@ export function SettingsLibraryRoleModal({
             ) : null}
 
             {roleChangeState.requiresImport ? (
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 dark:border-slate-700/70 dark:bg-slate-900/40">
+              <div className={migrationStepClass}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="font-semibold text-slate-900 dark:text-slate-100">
@@ -242,13 +242,7 @@ export function SettingsLibraryRoleModal({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        lastFullBackupImportedAt
-                          ? "border border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200"
-                          : "border border-slate-300 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
-                      }`}
-                    >
+                    <span className={migrationStepBadgeClass(Boolean(lastFullBackupImportedAt))}>
                       {lastFullBackupImportedAt
                         ? t("settings.librarySyncStepDone", "Done")
                         : t("settings.librarySyncStepPending", "Pending")}
