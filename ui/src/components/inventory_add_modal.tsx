@@ -2,6 +2,10 @@ import type { CSSProperties } from "react";
 import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
 import { InventoryCreateActionsPanel } from "./inventory_create_actions_panel";
+import {
+  inventoryModalOverlayClassName,
+  inventoryWideModalPanelClassName,
+} from "./inventory_modal_chrome";
 import { InventoryStockSourcePanel } from "./inventory_stock_source_panel";
 import { WishlistQueuePanel } from "./wishlist_queue_panel";
 import { useI18n } from "../lib/i18n";
@@ -140,8 +144,8 @@ export function InventoryAddModal({
     <AppModal
       closeOnBackdrop
       onBackdropClose={onClose}
-      overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6 backdrop-blur-md dark:bg-black/45"
-      panelClassName="flex max-h-[92vh] min-w-0 w-[min(100%,72rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 shadow-2xl shadow-slate-300/25 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/92 dark:shadow-black/45"
+      overlayClassName={inventoryModalOverlayClassName}
+      panelClassName={inventoryWideModalPanelClassName}
     >
       <>
         <div className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/88 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-950/88">
