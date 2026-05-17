@@ -43,6 +43,12 @@ type ActiveLoanRowsDependencies = {
   listLocalActiveLoans?: typeof listActiveSpoolLoans;
 };
 
+type LoanRowsPageDependencies = {
+  fetchHostLoans?: typeof fetchLibrarySyncLoans;
+  fetchCachedLoans?: typeof fetchCachedLibrarySyncLoans;
+  listLocalLoans?: typeof listSpoolLoans;
+};
+
 type LoanWriteTarget = {
   clientReadOnly?: boolean;
   clientHostBaseUrl?: string | null;
@@ -73,14 +79,18 @@ export async function loadActiveLoanRows(
 
 export async function loadLoanRowsPage(
   options: LoanDataSourceOptions,
+  dependencies: LoanRowsPageDependencies = {},
 ): Promise<LoanDataLoadResult> {
+  const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
+  const fetchCachedLoans = dependencies.fetchCachedLoans ?? fetchCachedLibrarySyncLoans;
+  const listLocalLoans = dependencies.listLocalLoans ?? listSpoolLoans;
   const { clientReadOnly, limit = 2000 } = options;
   const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
 
   if (hostTarget) {
     try {
-      const rows = await fetchLibrarySyncLoans(hostTarget.baseUrl, hostTarget.libraryId, limit);
-      const cached = await fetchCachedLibrarySyncLoans().catch(() => null);
+      const rows = await fetchHostLoans(hostTarget.baseUrl, hostTarget.libraryId, limit);
+      const cached = await fetchCachedLoans().catch(() => null);
       return {
         rows,
         source: "LIVE",
@@ -89,7 +99,7 @@ export async function loadLoanRowsPage(
       };
     } catch (loadError) {
       try {
-        const cached = await fetchCachedLibrarySyncLoans();
+        const cached = await fetchCachedLoans();
         if (cached) {
           return {
             rows: cached.rows,
@@ -112,7 +122,7 @@ export async function loadLoanRowsPage(
   }
 
   return {
-    rows: await listSpoolLoans(limit, true, "ALL"),
+    rows: await listLocalLoans(limit, true, "ALL"),
     source: "LIVE",
     updatedAt: null,
     usedFallback: false,
