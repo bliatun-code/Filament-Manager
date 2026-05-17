@@ -10,6 +10,11 @@ type SpoolMaintenancePanelBaseProps = {
   spoolHexColor?: string | null;
 };
 
+const inventoryMaintenanceInputClass =
+  "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100";
+const inventoryMaintenanceSaveButtonClass =
+  "rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-slate-300/30 transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white";
+
 type InventorySpoolTarePanelProps = SpoolMaintenancePanelBaseProps & {
   onChange: (value: string) => void;
   onSave: () => void;
@@ -59,13 +64,13 @@ export function InventorySpoolTarePanel({
           step={1}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="w-28 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100"
+          className={`w-28 ${inventoryMaintenanceInputClass}`}
           disabled={disabled}
         />
         <button
           type="button"
           onClick={onSave}
-          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-slate-300/30 transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white"
+          className={inventoryMaintenanceSaveButtonClass}
           disabled={disabled}
         >
           {t("common.save", "Save")}
@@ -100,13 +105,13 @@ export function InventorySpoolHomeLocationPanel({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={t("inventory.homeLocationOptional", "Home location (optional)")}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100"
+          className={`w-full ${inventoryMaintenanceInputClass}`}
           disabled={disabled}
         />
         <button
           type="button"
           onClick={onSave}
-          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-slate-300/30 transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white"
+          className={inventoryMaintenanceSaveButtonClass}
           disabled={disabled}
         >
           {t("common.save", "Save")}
