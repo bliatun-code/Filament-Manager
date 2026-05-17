@@ -27,6 +27,12 @@ function qrModeButtonClass(active: boolean): string {
   }`;
 }
 
+const qrRfidInfoBoxClassName =
+  "rounded-lg border border-slate-200/80 bg-white/80 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900/60";
+
+const qrRfidActionButtonClassName =
+  "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-100";
+
 export function InventorySpoolQrRfidPanel({
   companionAvailable,
   dataUrl,
@@ -92,14 +98,14 @@ export function InventorySpoolQrRfidPanel({
           />
         </div>
       ) : (
-        <div className="mt-3 rounded-lg border border-slate-200/80 bg-white/80 px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400">
+        <div className={`mt-3 text-slate-500 dark:text-slate-400 ${qrRfidInfoBoxClassName}`}>
           {loading
             ? t("common.loading", "Loading...")
             : t("inventory.error.printLabel", "Failed to generate label.")}
         </div>
       )}
       {target ? (
-        <div className="mt-3 rounded-lg border border-slate-200/80 bg-white/80 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+        <div className={`mt-3 text-slate-600 dark:text-slate-300 ${qrRfidInfoBoxClassName}`}>
           <div className="font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
             {t("inventory.qrTarget", "QR target")}
           </div>
@@ -122,7 +128,7 @@ export function InventorySpoolQrRfidPanel({
       <div className="mt-3">
         <button
           type="button"
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-100"
+          className={qrRfidActionButtonClassName}
           onClick={onPrintLabel}
           disabled={!runtimeAvailable}
         >
@@ -132,7 +138,7 @@ export function InventorySpoolQrRfidPanel({
       <div className="mt-2">
         <button
           type="button"
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-100"
+          className={qrRfidActionButtonClassName}
           onClick={onStartRfidCapture}
           disabled={!runtimeAvailable || !supportsRfidCapture}
         >
