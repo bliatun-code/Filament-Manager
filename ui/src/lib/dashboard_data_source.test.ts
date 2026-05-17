@@ -142,15 +142,25 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
       loadSyncSettings: async () =>
         syncSettings({
           mode: "CLIENT",
-          host_base_url: "http://host",
+          host_base_url: " http://host ",
+          library_id: " library-1 ",
           host_device_name: "Configured Host",
         }),
       loadTrustedLanStatus: async () => null,
-      validateHost: async () => validation({ device_name: "Validated Host" }),
-      fetchHostSnapshot: async () => snapshot("Live Host", { inventory: overview({ total_consumption_30d: 250 }) }),
+      validateHost: async (baseUrl, libraryId) => {
+        assert.equal(baseUrl, "http://host");
+        assert.equal(libraryId, "library-1");
+        return validation({ device_name: "Validated Host" });
+      },
+      fetchHostSnapshot: async (baseUrl, libraryId) => {
+        assert.equal(baseUrl, "http://host");
+        assert.equal(libraryId, "library-1");
+        return snapshot("Live Host", { inventory: overview({ total_consumption_30d: 250 }) });
+      },
       loadSpoolRows: async (options) => {
         assert.equal(options.clientReadOnly, true);
         assert.equal(options.clientHostBaseUrl, "http://host");
+        assert.equal(options.clientLibraryId, "library-1");
         return [];
       },
       fetchHostPrinterOverview: async () => [printerOverviewRow("printer-host")],
@@ -170,6 +180,44 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
   assert.equal(result.clientHostDisplayName, "Live Host");
   assert.equal(result.capturedAt, "2026-04-01 10:00:00");
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
+});
+
+test("loadDashboardData skips host calls for incomplete client targets and uses cache", async () => {
+  const cached = snapshot("Cached Host", {
+    captured_at: "2026-04-01 09:00:00",
+  });
+  const result = await loadDashboardData(
+    { previousClientHostNeedsRepair: false, t },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          library_id: " ",
+          cached_snapshot: cached,
+        }),
+      loadTrustedLanStatus: async () => null,
+      validateHost: async () => {
+        throw new Error("should not validate without a complete target");
+      },
+      fetchHostSnapshot: async () => {
+        throw new Error("should not fetch without a complete target");
+      },
+      loadInventoryOverview: async () => overview(),
+      listLocalPrinters: async () => [],
+      loadSpoolRows: async (options) => {
+        assert.equal(options.clientReadOnly, false);
+        return [];
+      },
+      listLocalLoans: async () => [],
+      listLocalWishlist: async () => [],
+      listLocalTopMaterials: async () => [],
+    },
+  );
+
+  assert.equal(result.syncSource, "client-cached");
+  assert.equal(result.clientHostDisplayName, "Cached Host");
+  assert.equal(result.capturedAt, "2026-04-01 09:00:00");
 });
 
 test("loadDashboardData falls back to cached client snapshot when host snapshot fails", async () => {

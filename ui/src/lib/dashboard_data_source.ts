@@ -20,6 +20,7 @@ import {
   type DashboardDerivedState,
 } from "./dashboard_model";
 import { loadAllSpoolRows } from "./spool_data_source";
+import { resolveClientHostTarget } from "./host_write_target";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -123,8 +124,14 @@ export async function loadDashboardData(
   let clientPrinterRows = syncSettings?.cached_printers?.rows ?? null;
   let clientLoanRows = syncSettings?.cached_loans?.rows ?? null;
   let clientWishlistRows: WishlistItemRow[] = [];
+  const clientHostTarget = clientMode
+    ? resolveClientHostTarget({
+        clientHostBaseUrl: syncSettings?.host_base_url,
+        clientLibraryId: syncSettings?.library_id,
+      })
+    : null;
 
-  if (clientMode && syncSettings?.host_base_url) {
+  if (clientHostTarget) {
     const [
       validationResult,
       snapshotResult,
@@ -133,16 +140,16 @@ export async function loadDashboardData(
       loansResult,
       wishlistResult,
     ] = await Promise.allSettled([
-      validateHost(syncSettings.host_base_url, syncSettings.library_id),
-      fetchHostSnapshot(syncSettings.host_base_url, syncSettings.library_id),
+      validateHost(clientHostTarget.baseUrl, clientHostTarget.libraryId),
+      fetchHostSnapshot(clientHostTarget.baseUrl, clientHostTarget.libraryId),
       loadSpoolRows({
         clientReadOnly: true,
-        clientHostBaseUrl: syncSettings.host_base_url,
-        clientLibraryId: syncSettings.library_id,
+        clientHostBaseUrl: clientHostTarget.baseUrl,
+        clientLibraryId: clientHostTarget.libraryId,
       }),
-      fetchHostPrinterOverview(syncSettings.host_base_url, syncSettings.library_id),
-      fetchHostLoans(syncSettings.host_base_url, syncSettings.library_id, 2000),
-      fetchHostWishlist(syncSettings.host_base_url, syncSettings.library_id, 500),
+      fetchHostPrinterOverview(clientHostTarget.baseUrl, clientHostTarget.libraryId),
+      fetchHostLoans(clientHostTarget.baseUrl, clientHostTarget.libraryId, 2000),
+      fetchHostWishlist(clientHostTarget.baseUrl, clientHostTarget.libraryId, 500),
     ]);
 
     if (validationResult.status === "fulfilled") {
