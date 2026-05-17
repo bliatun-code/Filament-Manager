@@ -15,23 +15,17 @@ import { useSettingsPageReload } from "./use_settings_page_reload";
 import { useSettingsPageShellState } from "./use_settings_page_shell_state";
 import { useSettingsPreferenceSection } from "./use_settings_preference_section";
 import { useSettingsInitialLoad } from "./use_settings_initial_load";
+import { useSettingsLibraryRuntime } from "./use_settings_library_runtime";
 import { useSettingsMaintenanceSection } from "./use_settings_maintenance_section";
 import { useSettingsPrintersSection } from "./use_settings_printers_section";
-import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncActions } from "./use_settings_library_sync_actions";
-import { useSettingsLibraryDerivedState } from "./use_settings_library_derived_state";
-import { useSettingsLibraryClientAdvanced } from "./use_settings_library_client_advanced";
 import { useSettingsLibraryRoleFlow } from "./use_settings_library_role_flow";
 import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";
 import { useSettingsSilentReload } from "./use_settings_silent_reload";
-import { useSettingsTrustedLanState } from "./use_settings_trusted_lan_state";
 import { useSettingsMessageGroups } from "./use_settings_message_groups";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
-import { useSettingsTrustedLanDerivedState } from "./use_settings_trusted_lan_derived_state";
-import { useTrustedLanDraftSync } from "./use_trusted_lan_draft_sync";
 import { useTrustedLanPairingActions } from "./use_trusted_lan_pairing_actions";
 import { useTrustedLanStatusActions } from "./use_trusted_lan_status_actions";
-import { useTrustedLanPairingQr } from "./use_trusted_lan_pairing_qr";
 
 type SettingsPageProps = {
   initialTab?: SettingsTabKey;
@@ -82,7 +76,64 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setLibrarySyncSnapshotBusy,
     setLibrarySyncValidation,
     setLibrarySyncValidationBusy,
-  } = useSettingsLibrarySyncState();
+    showTrustedLanNetworkEditor,
+    showTrustedLanNetworkSummary,
+    showTrustedLanRevokedBrowsers,
+    setShowLibraryClientAdvanced,
+    setShowTrustedLanNetworkEditor,
+    setShowTrustedLanNetworkSummary,
+    setShowTrustedLanRevokedBrowsers,
+    setTrustedLanActionBusy,
+    setTrustedLanEnabledDraft,
+    setTrustedLanInterfaceAddressDraft,
+    setTrustedLanInterfaces,
+    setTrustedLanLoading,
+    setTrustedLanPairedBrowsers,
+    setTrustedLanPairingBrowserLabelDraft,
+    setTrustedLanPairingExpiresAtMs,
+    setTrustedLanPairingLabel,
+    setTrustedLanPairingLink,
+    setTrustedLanPortDraft,
+    setTrustedLanStatus,
+    activeTrustedLanPairedBrowsers,
+    librarySyncRoleOptions,
+    librarySyncSavedMode,
+    librarySyncTabLabels,
+    libraryVisibility,
+    pairingQrBusy: trustedLanPairingQrBusy,
+    pairingQrDataUrl: trustedLanPairingQrDataUrl,
+    pairingQrUnavailable: trustedLanPairingQrUnavailable,
+    revokedTrustedLanPairedBrowsers,
+    settingsClientHostBaseUrl,
+    settingsClientHostNeedsRepair,
+    settingsClientHostPairingValid,
+    settingsClientHostWritePaired,
+    settingsClientLibraryId,
+    settingsClientReadOnly,
+    showLibraryClientAdvanced,
+    syncTrustedLanDraftFromStatus,
+    trustedLanActionBusy,
+    trustedLanEnabledDraft,
+    trustedLanHasPrivateInterfaces,
+    trustedLanInterfaceAddressDraft,
+    trustedLanInterfaces,
+    trustedLanLoading,
+    trustedLanNetworkDirty,
+    trustedLanPairedBrowsers,
+    trustedLanPairedBrowsersRef,
+    trustedLanPairedBrowsersRefreshInFlightRef,
+    trustedLanPairingBrowserLabelDraft,
+    trustedLanPairingExpiresAtMs,
+    trustedLanPairingLabel,
+    trustedLanPairingLink,
+    trustedLanPortDraft,
+    trustedLanSelectedInterfaceOption,
+    trustedLanStatus,
+  } = useSettingsLibraryRuntime({
+    locale,
+    tauri,
+    t,
+  });
   const {
     librarySyncActionMessageLabels,
     librarySyncErrorMessageLabels,
@@ -124,48 +175,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     recordImportedFullBackup,
   } = useSettingsBackupValidationSummary();
   const {
-    showTrustedLanNetworkEditor,
-    showTrustedLanNetworkSummary,
-    showTrustedLanRevokedBrowsers,
-    setShowTrustedLanNetworkEditor,
-    setShowTrustedLanNetworkSummary,
-    setShowTrustedLanRevokedBrowsers,
-    setTrustedLanActionBusy,
-    setTrustedLanEnabledDraft,
-    setTrustedLanInterfaceAddressDraft,
-    setTrustedLanInterfaces,
-    setTrustedLanLoading,
-    setTrustedLanPairedBrowsers,
-    setTrustedLanPairingBrowserLabelDraft,
-    setTrustedLanPairingExpiresAtMs,
-    setTrustedLanPairingLabel,
-    setTrustedLanPairingLink,
-    setTrustedLanPortDraft,
-    setTrustedLanStatus,
-    trustedLanActionBusy,
-    trustedLanEnabledDraft,
-    trustedLanInterfaceAddressDraft,
-    trustedLanInterfaces,
-    trustedLanLoading,
-    trustedLanPairedBrowsers,
-    trustedLanPairedBrowsersRef,
-    trustedLanPairedBrowsersRefreshInFlightRef,
-    trustedLanPairingBrowserLabelDraft,
-    trustedLanPairingExpiresAtMs,
-    trustedLanPairingLabel,
-    trustedLanPairingLink,
-    trustedLanPortDraft,
-    trustedLanStatus,
-  } = useSettingsTrustedLanState(tauri);
-  const { setShowLibraryClientAdvanced, showLibraryClientAdvanced } =
-    useSettingsLibraryClientAdvanced();
-  const {
-    pairingQrBusy: trustedLanPairingQrBusy,
-    pairingQrDataUrl: trustedLanPairingQrDataUrl,
-    pairingQrUnavailable: trustedLanPairingQrUnavailable,
-  } = useTrustedLanPairingQr(trustedLanPairingLink);
-
-  const {
     bambuLiveIntegrations,
     catalogMasters,
     lastCatalogReset,
@@ -199,53 +208,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     tauri,
     t,
   });
-  const {
-    librarySyncRoleOptions,
-    librarySyncSavedMode,
-    librarySyncTabLabels,
-    libraryVisibility,
-    settingsClientHostBaseUrl,
-    settingsClientHostNeedsRepair,
-    settingsClientHostPairingValid,
-    settingsClientHostWritePaired,
-    settingsClientLibraryId,
-    settingsClientReadOnly,
-  } = useSettingsLibraryDerivedState({
-    librarySyncModeDraft,
-    librarySyncSettings,
-    librarySyncSnapshot,
-    librarySyncValidation,
-    pairedBrowserCount: trustedLanPairedBrowsers.length,
-    showTrustedLanNetworkEditor,
-    t,
-    trustedLanEnabledDraft,
-    trustedLanPairingLink,
-    trustedLanStatusEnabled: Boolean(trustedLanStatus?.enabled),
-  });
-  const {
-    activeTrustedLanPairedBrowsers,
-    revokedTrustedLanPairedBrowsers,
-    trustedLanHasPrivateInterfaces,
-    trustedLanNetworkDirty,
-    trustedLanSelectedInterfaceOption,
-  } = useSettingsTrustedLanDerivedState({
-    locale,
-    setShowTrustedLanRevokedBrowsers,
-    t,
-    trustedLanInterfaceAddressDraft,
-    trustedLanInterfaces,
-    trustedLanPairedBrowsers,
-    trustedLanPairedBrowsersRef,
-    trustedLanPortDraft,
-    trustedLanStatus,
-  });
-
-  const syncTrustedLanDraftFromStatus = useTrustedLanDraftSync({
-    setTrustedLanEnabledDraft,
-    setTrustedLanInterfaceAddressDraft,
-    setTrustedLanPortDraft,
-  });
-
   const reloadSettings = useSettingsPageReload({
     setBambuLiveIntegrations,
     setCatalogMasters,
