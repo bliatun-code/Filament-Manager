@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { loadLibrarySyncPageState } from "../lib/library_sync_state";
 
-export type PrinterLibrarySyncState = {
+export type LibrarySyncUiState = {
   clientReadOnly: boolean;
   clientHostWritePaired: boolean;
   clientHostDeviceName: string | null;
@@ -11,7 +11,7 @@ export type PrinterLibrarySyncState = {
   librarySyncReady: boolean;
 };
 
-export function usePrinterLibrarySyncState(tauri: boolean): PrinterLibrarySyncState {
+export function useLibrarySyncState(tauri: boolean): LibrarySyncUiState {
   const [clientReadOnly, setClientReadOnly] = useState(false);
   const [clientHostWritePaired, setClientHostWritePaired] = useState(false);
   const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);

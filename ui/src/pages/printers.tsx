@@ -49,7 +49,7 @@ import {
   listSupportedPrinterModels,
 } from "../lib/printer_profiles";
 import { usePrinterPageData } from "./use_printer_page_data";
-import { usePrinterLibrarySyncState } from "./use_printer_library_sync_state";
+import { useLibrarySyncState } from "./use_library_sync_state";
 import { useAddPrinterWorkflow } from "./use_add_printer_workflow";
 import { useSlotDropdownDismissal } from "./use_slot_dropdown_dismissal";
 
@@ -67,7 +67,7 @@ export default function PrintersPage() {
     clientHostBaseUrl,
     clientLibraryId,
     librarySyncReady,
-  } = usePrinterLibrarySyncState(tauri);
+  } = useLibrarySyncState(tauri);
   const [slotDrafts, setSlotDrafts] = useState<Record<string, SlotSwapDraft>>({});
   const [openDropdownSlotId, setOpenDropdownSlotId] = useState<string | null>(null);
   const [incomingWeightPrompt, setIncomingWeightPrompt] = useState<IncomingWeightPrompt | null>(

@@ -32,8 +32,8 @@ import {
 } from "../lib/loan_display";
 import { isLoanCurrentlyActive } from "../lib/loan_state";
 import { loadLoanRowsPage, returnInventoryLoan } from "../lib/loan_data_source";
-import { loadLibrarySyncPageState } from "../lib/library_sync_state";
 import { useResolvedTheme } from "../lib/theme_mode";
+import { useLibrarySyncState } from "./use_library_sync_state";
 
 export default function LoansPage() {
   const { t, locale } = useI18n();
@@ -43,12 +43,14 @@ export default function LoansPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [clientReadOnly, setClientReadOnly] = useState(false);
-  const [clientHostWritePaired, setClientHostWritePaired] = useState(false);
-  const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
-  const [clientHostBaseUrl, setClientHostBaseUrl] = useState<string | null>(null);
-  const [clientLibraryId, setClientLibraryId] = useState<string | null>(null);
-  const [librarySyncReady, setLibrarySyncReady] = useState(!tauri);
+  const {
+    clientReadOnly,
+    clientHostWritePaired,
+    clientHostDeviceName,
+    clientHostBaseUrl,
+    clientLibraryId,
+    librarySyncReady,
+  } = useLibrarySyncState(tauri);
   const [clientLoanSource, setClientLoanSource] = useState<"LIVE" | "CACHED" | "OFFLINE">(
     "LIVE",
   );
@@ -62,35 +64,6 @@ export default function LoansPage() {
   const [returnModalLoan, setReturnModalLoan] = useState<SpoolLoanDetailsRow | null>(null);
   const [returnModalGrams, setReturnModalGrams] = useState("");
   const [returnModalNote, setReturnModalNote] = useState("");
-
-  useEffect(() => {
-    if (!tauri) {
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const nextState = await loadLibrarySyncPageState();
-        if (cancelled) {
-          return;
-        }
-        setClientReadOnly(nextState.clientReadOnly);
-        setClientHostWritePaired(nextState.clientHostWritePaired);
-        setClientHostDeviceName(nextState.clientHostDeviceName);
-        setClientHostBaseUrl(nextState.clientHostBaseUrl);
-        setClientLibraryId(nextState.clientLibraryId);
-      } catch (syncError) {
-        console.error(syncError);
-      } finally {
-        if (!cancelled) {
-          setLibrarySyncReady(true);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tauri]);
 
   const reload = useCallback(async () => {
     if (!tauri) {
