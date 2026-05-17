@@ -16,7 +16,7 @@ import {
 } from "./tauri_client";
 import { mapBambuLiveIntegrations } from "./printer_data_source";
 import { loadAllSpoolRows } from "./spool_data_source";
-import { resolveClientHostTarget } from "./host_write_target";
+import { requireClientHostWriteTarget, resolveClientHostTarget } from "./host_write_target";
 
 export type SettingsPageData = {
   snapshot: PrinterSettingsSnapshot;
@@ -47,6 +47,17 @@ export type LibrarySyncSnapshotRefreshResult = {
   snapshot: LibrarySyncRemoteSnapshot;
   syncSettings: LibrarySyncSettings;
 };
+
+function notifySettledErrors(
+  results: PromiseSettledResult<unknown>[],
+  onHostLoadError: (error: unknown) => void,
+) {
+  for (const result of results) {
+    if (result.status === "rejected") {
+      onHostLoadError(result.reason);
+    }
+  }
+}
 
 export async function loadSettingsPageData(
   dependencies: SettingsPageDataDependencies = {},
@@ -85,8 +96,8 @@ export async function loadSettingsPageData(
       clientLibraryId: syncSettings.library_id,
     });
     if (hostTarget) {
-      try {
-        const [hostOverviewRows, hostPrinterSettings, hostSpoolRows] = await Promise.all([
+      const [hostOverviewResult, hostPrinterSettingsResult, hostSpoolRowsResult] =
+        await Promise.allSettled([
           fetchHostPrinterOverview(hostTarget.baseUrl, hostTarget.libraryId),
           fetchHostPrinterSettings(hostTarget.baseUrl, hostTarget.libraryId),
           loadSpoolRows(
@@ -98,14 +109,26 @@ export async function loadSettingsPageData(
             5000,
           ),
         ]);
-        overviewRows = hostOverviewRows;
-        spoolRows = hostSpoolRows;
-        bambuLiveIntegrations = mapBambuLiveIntegrations(
-          hostPrinterSettings.bambu_live_integrations,
-        );
-      } catch (loadError) {
-        onHostLoadError(loadError);
+
+      notifySettledErrors(
+        [hostOverviewResult, hostPrinterSettingsResult, hostSpoolRowsResult],
+        onHostLoadError,
+      );
+
+      if (hostOverviewResult.status === "fulfilled") {
+        overviewRows = hostOverviewResult.value;
+      } else {
         overviewRows = cachedPrinterRows;
+      }
+
+      if (hostSpoolRowsResult.status === "fulfilled") {
+        spoolRows = hostSpoolRowsResult.value;
+      }
+
+      if (hostPrinterSettingsResult.status === "fulfilled") {
+        bambuLiveIntegrations = mapBambuLiveIntegrations(
+          hostPrinterSettingsResult.value.bambu_live_integrations,
+        );
       }
     } else {
       overviewRows = cachedPrinterRows;
@@ -131,8 +154,12 @@ export async function refreshLibrarySyncSnapshot(
 ): Promise<LibrarySyncSnapshotRefreshResult> {
   const fetchHostSnapshot = dependencies.fetchHostSnapshot ?? fetchLibrarySyncSnapshot;
   const loadSyncSettings = dependencies.loadSyncSettings ?? getLibrarySyncSettings;
+  const hostTarget = requireClientHostWriteTarget(
+    { clientHostBaseUrl: baseUrl, clientLibraryId: libraryId },
+    "Host snapshot requires a configured host and library id.",
+  );
 
-  const snapshot = await fetchHostSnapshot(baseUrl, libraryId);
+  const snapshot = await fetchHostSnapshot(hostTarget.baseUrl, hostTarget.libraryId);
   const syncSettings = await loadSyncSettings();
 
   return {

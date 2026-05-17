@@ -177,14 +177,47 @@ test("loadSettingsPageData falls back to cached client printers and local spools
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-cache"]);
   assert.equal(result.spoolRows, localSpoolRows);
+  assert.equal(result.bambuLiveIntegrations["printer-host"]?.enabled, true);
+});
+
+test("loadSettingsPageData keeps fulfilled host client data when one host endpoint fails", async () => {
+  const errors: unknown[] = [];
+
+  const result = await loadSettingsPageData({
+    loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
+    loadCatalogRows: async () => catalogRows,
+    loadSyncSettings: async () =>
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: "http://host",
+        library_id: "library-host",
+        cached_printers: {
+          captured_at: "2026-04-01 11:00:00",
+          rows: [printerOverviewRow("printer-cache")],
+        },
+      }),
+    loadSpoolRows: async (options) =>
+      options.clientReadOnly ? hostSpoolRows : localSpoolRows,
+    fetchHostPrinterOverview: async () => [printerOverviewRow("printer-host")],
+    fetchHostPrinterSettings: async () => {
+      throw new Error("settings endpoint unavailable");
+    },
+    onHostLoadError: (error) => {
+      errors.push(error);
+    },
+  });
+
+  assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-host"]);
+  assert.equal(result.spoolRows, hostSpoolRows);
   assert.equal(result.bambuLiveIntegrations["printer-local"]?.enabled, true);
+  assert.equal(errors.length, 1);
 });
 
 test("refreshLibrarySyncSnapshot returns the freshly cached sync snapshot", async () => {
   const fetchedSnapshot = remoteSnapshot({ device_name: "Fetched" });
   const cachedSnapshot = remoteSnapshot({ device_name: "Cached" });
 
-  const result = await refreshLibrarySyncSnapshot("http://host", "library-host", {
+  const result = await refreshLibrarySyncSnapshot(" http://host ", " library-host ", {
     fetchHostSnapshot: async (baseUrl, libraryId) => {
       assert.equal(baseUrl, "http://host");
       assert.equal(libraryId, "library-host");
@@ -218,4 +251,14 @@ test("refreshLibrarySyncSnapshot falls back to the fetched snapshot before cache
   });
 
   assert.equal(result.snapshot, fetchedSnapshot);
+});
+
+test("refreshLibrarySyncSnapshot rejects incomplete host targets before fetching", async () => {
+  await assert.rejects(
+    () =>
+      refreshLibrarySyncSnapshot("http://host", " ", {
+        fetchHostSnapshot: async () => remoteSnapshot(),
+      }),
+    /configured host and library id/,
+  );
 });
