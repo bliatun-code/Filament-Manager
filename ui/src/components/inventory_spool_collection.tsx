@@ -338,10 +338,25 @@ export function InventorySpoolCollection({
           })}
 
       {isEmpty ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-sm text-slate-500">
-          {loading
-            ? t("inventory.loading", "Loading spools...")
-            : t("inventory.noMatch", "No spools match current filters.")}
+        <div className="surface-subtle col-span-full border-dashed px-5 py-7">
+          <div className="flex max-w-xl items-start gap-3">
+            <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full border border-slate-300 bg-white shadow-[0_0_0_5px_rgba(148,163,184,0.12)] dark:border-slate-600 dark:bg-slate-800" />
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {loading
+                  ? t("inventory.loading", "Loading spools...")
+                  : t("inventory.noMatch", "No spools match current filters.")}
+              </div>
+              {!loading ? (
+                <div className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                  {t(
+                    "inventory.noMatchHint",
+                    "Try adjusting search, status, material or ownership filters.",
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
       ) : null}
     </div>

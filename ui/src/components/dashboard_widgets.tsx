@@ -137,9 +137,11 @@ type UsageChartProps = {
 };
 
 export function UsageChart({ title, value, caption, points, onClick }: UsageChartProps) {
+  const { t } = useI18n();
   const normalizedPoints = points.length >= 2 ? points : [0, 0];
   const minPoint = Math.min(...normalizedPoints);
   const maxPoint = Math.max(...normalizedPoints);
+  const isEmptyTrend = normalizedPoints.every((point) => point === 0);
   const chartWidth = 240;
   const chartHeight = 80;
   const padX = 8;
@@ -186,19 +188,42 @@ export function UsageChart({ title, value, caption, points, onClick }: UsageChar
           {value}
         </div>
       </div>
-      <div className="surface-subtle mt-4 h-32 w-full overflow-hidden p-2">
+      <div className="surface-subtle relative mt-4 h-32 w-full overflow-hidden p-2">
         <svg
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
           preserveAspectRatio="none"
           className="h-full w-full text-slate-800 dark:text-sky-300"
         >
+          <g className="text-slate-300/80 dark:text-slate-700/70">
+            {[20, 40, 60].map((lineY) => (
+              <line
+                key={lineY}
+                x1={padX}
+                x2={chartWidth - padX}
+                y1={lineY}
+                y2={lineY}
+                stroke="currentColor"
+                strokeWidth="1"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </g>
           <polyline
             fill="none"
             stroke="currentColor"
+            strokeDasharray={isEmptyTrend ? "7 6" : undefined}
+            strokeOpacity={isEmptyTrend ? 0.55 : 1}
             strokeWidth="3"
             points={polyline}
           />
         </svg>
+        {isEmptyTrend ? (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="rounded-full border border-slate-300/80 bg-white/82 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm shadow-slate-300/20 backdrop-blur dark:border-slate-600/80 dark:bg-slate-950/72 dark:text-slate-200 dark:shadow-none">
+              {t("dashboard.noUsageTrendYet", "No usage trend yet")}
+            </div>
+          </div>
+        ) : null}
       </div>
       <div className="mt-3 text-xs text-slate-600 dark:text-slate-300">{caption}</div>
     </div>
@@ -262,14 +287,25 @@ export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
       </div>
       <div className="mt-4 space-y-3">
         {items.map((item) => {
+          const isEmpty = item.id === "empty";
           const tone = activityToneMap[item.tone ?? "slate"];
           return (
             <div
               key={item.id}
-              className={`rounded-lg border px-4 py-3 ${tone.panel}`}
+              className={
+                isEmpty
+                  ? "surface-subtle border-dashed px-4 py-5"
+                  : `rounded-lg border px-4 py-3 ${tone.panel}`
+              }
             >
               <div className="flex gap-3">
-                <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${tone.dot}`} />
+                <span
+                  className={
+                    isEmpty
+                      ? "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full border border-slate-300 bg-white shadow-[0_0_0_5px_rgba(148,163,184,0.12)] dark:border-slate-600 dark:bg-slate-800"
+                      : `mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${tone.dot}`
+                  }
+                />
                 <div className="min-w-0">
                   <div className={`text-sm font-semibold ${tone.title}`}>{item.title}</div>
                   <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
