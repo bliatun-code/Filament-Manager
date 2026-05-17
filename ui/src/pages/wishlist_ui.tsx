@@ -449,7 +449,7 @@ export function WishlistAddPanel({
             </div>
           </div>
         ) : (
-          <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white/70 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+          <div className="surface-subtle mt-4 border-dashed px-4 py-5 text-sm text-slate-600 dark:text-slate-300">
             {createMode === "manual"
               ? t("wishlist.manualHint", "Use manual mode when the vendor catalog is missing the filament you need.")
               : t(
@@ -731,12 +731,12 @@ export function WishlistBoardPanel({
       </div>
 
       {loading ? (
-        <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-500 dark:text-slate-300">
+        <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-600 dark:text-slate-300">
           {t("wishlist.loading", "Loading wishlist...")}
         </div>
       ) : null}
       {!loading && items.length === 0 ? (
-        <div className="surface-subtle mt-4 border-dashed p-5 text-sm text-slate-500 dark:text-slate-300">
+        <div className="surface-subtle mt-4 border-dashed p-5 text-sm text-slate-600 dark:text-slate-300">
           {allItemCount === 0
             ? t("wishlist.none", "No wishlist items yet.")
             : t("wishlist.noneFiltered", "No items match the selected status filter.")}

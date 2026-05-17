@@ -102,17 +102,17 @@ export function WishlistQueuePanel({
       </div>
 
       {loading ? (
-        <div className="surface-subtle border-dashed px-4 py-3 text-xs text-slate-500 dark:text-slate-300">
+        <div className="surface-subtle border-dashed px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
           {t("wishlist.loading", "Loading wishlist...")}
         </div>
       ) : null}
       {!loading && items.length === 0 ? (
-        <div className="surface-subtle border-dashed px-4 py-3 text-xs text-slate-500 dark:text-slate-300">
+        <div className="surface-subtle border-dashed px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
           {t("wishlist.empty", "No wishlist items yet.")}
         </div>
       ) : null}
       {!loading && items.length > 0 && visibleItems.length === 0 ? (
-        <div className="surface-subtle border-dashed px-4 py-3 text-xs text-slate-500 dark:text-slate-300">
+        <div className="surface-subtle border-dashed px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
           {t("wishlist.noneFiltered", "No items match the selected status filter.")}
         </div>
       ) : null}

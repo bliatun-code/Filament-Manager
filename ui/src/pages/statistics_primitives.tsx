@@ -43,7 +43,7 @@ export function SummaryMetricTile({
 
 export function StatisticsEmptyState({ children }: { children: ReactNode }) {
   return (
-    <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-500 dark:text-slate-300">
+    <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-600 dark:text-slate-300">
       {children}
     </div>
   );
