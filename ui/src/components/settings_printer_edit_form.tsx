@@ -113,7 +113,7 @@ export function SettingsPrinterEditForm({
       </div>
 
       {supportsBambuLive ? (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-white/80 p-3 dark:border-slate-600 dark:bg-slate-950/40">
+        <div className="surface-subtle border-dashed p-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">

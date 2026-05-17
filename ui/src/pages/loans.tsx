@@ -448,7 +448,7 @@ export default function LoansPage() {
             </div>
           ) : null}
           {!loading && filteredLoans.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300/80 px-4 py-4 text-sm text-slate-600 dark:border-slate-700/80 dark:text-slate-400">
+            <div className="surface-subtle border-dashed px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
               {t("loans.noMatch", "No loans match current filter.")}
             </div>
           ) : null}

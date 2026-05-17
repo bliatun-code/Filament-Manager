@@ -127,7 +127,7 @@ export function SettingsTrustedLanPairingPanel({
               <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                 {t("settings.trustedLanPairingQrTitle", "Pairing QR")}
               </div>
-              <div className="mt-3 flex min-h-[208px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white/90 p-3 dark:border-slate-700 dark:bg-slate-950/70">
+              <div className="surface-subtle mt-3 flex min-h-[208px] items-center justify-center border-dashed p-3">
                 {pairingQrDataUrl ? (
                   <img
                     src={pairingQrDataUrl}
