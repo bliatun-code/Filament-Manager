@@ -1,0 +1,236 @@
+import { buildSettingsLibraryBrowsersPanelProps } from "./settings_library_browsers_panel_props";
+import { buildSettingsLibraryClientPanelProps } from "./settings_library_client_panel_props";
+import { buildSettingsLibraryPairingPanelProps } from "./settings_library_pairing_panel_props";
+import { buildSettingsLibraryRoleModalRouteProps } from "./settings_library_role_modal_route_props";
+import { buildSettingsLibraryRolePanelProps } from "./settings_library_role_panel_props";
+import { buildSettingsLibraryRouteProps } from "./settings_library_route_props";
+import { buildSettingsLibraryServerPanelProps } from "./settings_library_server_panel_props";
+import { buildSettingsLibraryWebappControlProps } from "./settings_library_webapp_control_props";
+
+type LibraryRouteScalars = {
+  showClientPanel: boolean;
+  showHostPanels: boolean;
+  showServerPanel: boolean;
+  title: string;
+};
+
+type BuildSettingsLibraryRouteBundleInput =
+  Parameters<typeof buildSettingsLibraryRolePanelProps>[0] &
+  Parameters<typeof buildSettingsLibraryWebappControlProps>[0] &
+  Parameters<typeof buildSettingsLibraryServerPanelProps>[0] &
+  Parameters<typeof buildSettingsLibraryPairingPanelProps>[0] &
+  Parameters<typeof buildSettingsLibraryBrowsersPanelProps>[0] &
+  Parameters<typeof buildSettingsLibraryClientPanelProps>[0] &
+  Parameters<typeof buildSettingsLibraryRoleModalRouteProps>[0] &
+  LibraryRouteScalars;
+
+export function buildSettingsLibraryRouteBundle({
+  actionBusy,
+  activeBrowsers,
+  browserLabelDraft,
+  busy,
+  companionModel,
+  interfaceAddressDraft,
+  interfaces,
+  lastFullBackupExportedAt,
+  lastFullBackupImportedAt,
+  lastFullBackupValidatedAt,
+  libraryRoleConfirmArmed,
+  librarySyncBusy,
+  librarySyncDeviceNameDraft,
+  librarySyncHostBaseUrlDraft,
+  librarySyncModeDraft,
+  librarySyncPairingDraft,
+  librarySyncRoleOptions,
+  librarySyncSettings,
+  librarySyncSnapshot,
+  librarySyncSnapshotBusy,
+  librarySyncValidation,
+  librarySyncValidationBusy,
+  libraryVisibility,
+  locale,
+  networkDirty,
+  pairActionDisabled,
+  pairingExpiresAtMs,
+  pairingLabel,
+  pairingLink,
+  pairingQrBusy,
+  pairingQrDataUrl,
+  pairingQrUnavailable,
+  portDraft,
+  revokedBrowsers,
+  roleChangeState,
+  showClientPanel,
+  showHostPanels,
+  showLibraryClientAdvanced,
+  showNetworkEditor,
+  showNetworkSummary,
+  showRevokedBrowsers,
+  showServerPanel,
+  settingsClientHostBaseUrl,
+  settingsClientHostNeedsRepair,
+  settingsClientHostPairingValid,
+  settingsClientHostWritePaired,
+  tauri,
+  t,
+  title,
+  totalBrowserCount,
+  trustedLanActionBusy,
+  trustedLanEnabledDraft,
+  trustedLanHasPrivateInterfaces,
+  trustedLanStatus,
+  onBrowserLabelChange,
+  onClearClientAuth,
+  onClose,
+  onConfirm,
+  onCopyPairingLink,
+  onCreatePairingLink,
+  onDeviceNameChange,
+  onExportFullBackup,
+  onFetchSnapshot,
+  onInterfaceAddressChange,
+  onOpenBackupValidate,
+  onOpenDataImport,
+  onPairHost,
+  onPairingDraftChange,
+  onPortChange,
+  onRenewClientAuth,
+  onRequestLibraryRoleChange,
+  onRevokeAllBrowsers,
+  onRevokeBrowser,
+  onSaveNetwork,
+  onToggleAdvanced,
+  onToggleNetworkEditor,
+  onToggleNetworkSummary,
+  onToggleRevokedBrowsers,
+  onToggleTrustedLanEnabled,
+}: BuildSettingsLibraryRouteBundleInput) {
+  const settingsLibraryRolePanelProps = buildSettingsLibraryRolePanelProps({
+    librarySyncBusy,
+    librarySyncDeviceNameDraft,
+    librarySyncModeDraft,
+    librarySyncRoleOptions,
+    librarySyncSettings,
+    libraryVisibility,
+    tauri,
+    t,
+    onDeviceNameChange,
+    onRequestLibraryRoleChange,
+  });
+  const settingsLibraryWebappControlProps = buildSettingsLibraryWebappControlProps({
+    librarySyncModeDraft,
+    tauri,
+    trustedLanActionBusy,
+    trustedLanEnabledDraft,
+    trustedLanHasPrivateInterfaces,
+    trustedLanStatus,
+    t,
+    onToggleTrustedLanEnabled,
+  });
+  const settingsLibraryServerPanelProps = buildSettingsLibraryServerPanelProps({
+    actionBusy,
+    companionModel,
+    interfaceAddressDraft,
+    interfaces,
+    networkDirty,
+    portDraft,
+    showNetworkEditor,
+    showNetworkSummary,
+    tauri,
+    t,
+    onInterfaceAddressChange,
+    onPortChange,
+    onSaveNetwork,
+    onToggleNetworkEditor,
+    onToggleNetworkSummary,
+  });
+  const settingsLibraryPairingPanelProps = buildSettingsLibraryPairingPanelProps({
+    actionBusy,
+    browserLabelDraft,
+    locale,
+    pairActionDisabled,
+    pairingExpiresAtMs,
+    pairingLabel,
+    pairingLink,
+    pairingQrBusy,
+    pairingQrDataUrl,
+    pairingQrUnavailable,
+    t,
+    onBrowserLabelChange,
+    onCopyPairingLink,
+    onCreatePairingLink,
+  });
+  const settingsLibraryBrowsersPanelProps = buildSettingsLibraryBrowsersPanelProps({
+    activeBrowsers,
+    actionBusy,
+    revokedBrowsers,
+    showRevokedBrowsers,
+    t,
+    totalBrowserCount,
+    onRevokeAllBrowsers,
+    onRevokeBrowser,
+    onToggleRevokedBrowsers,
+  });
+  const settingsLibraryClientPanelProps = buildSettingsLibraryClientPanelProps({
+    librarySyncBusy,
+    librarySyncDeviceNameDraft,
+    librarySyncHostBaseUrlDraft,
+    librarySyncPairingDraft,
+    librarySyncSettings,
+    librarySyncSnapshot,
+    librarySyncSnapshotBusy,
+    librarySyncValidation,
+    librarySyncValidationBusy,
+    libraryVisibility,
+    locale,
+    settingsClientHostBaseUrl,
+    settingsClientHostNeedsRepair,
+    settingsClientHostPairingValid,
+    settingsClientHostWritePaired,
+    showLibraryClientAdvanced,
+    tauri,
+    t,
+    onClearClientAuth,
+    onDeviceNameChange,
+    onFetchSnapshot,
+    onPairHost,
+    onPairingDraftChange,
+    onRenewClientAuth,
+    onToggleAdvanced,
+  });
+  const settingsLibraryRouteProps = buildSettingsLibraryRouteProps({
+    browsersPanel: settingsLibraryBrowsersPanelProps,
+    clientPanel: settingsLibraryClientPanelProps,
+    libraryRolePanel: settingsLibraryRolePanelProps,
+    pairingPanel: settingsLibraryPairingPanelProps,
+    serverPanel: settingsLibraryServerPanelProps,
+    showClientPanel,
+    showHostPanels,
+    showServerPanel,
+    title,
+    webappControl: settingsLibraryWebappControlProps,
+  });
+  const settingsLibraryRoleModalRouteProps = buildSettingsLibraryRoleModalRouteProps({
+    busy,
+    lastFullBackupExportedAt,
+    lastFullBackupImportedAt,
+    lastFullBackupValidatedAt,
+    libraryRoleConfirmArmed,
+    librarySyncBusy,
+    librarySyncSettings,
+    locale,
+    roleChangeState,
+    tauri,
+    t,
+    onClose,
+    onConfirm,
+    onExportFullBackup,
+    onOpenBackupValidate,
+    onOpenDataImport,
+  });
+
+  return {
+    settingsLibraryRoleModalRouteProps,
+    settingsLibraryRouteProps,
+  };
+}
