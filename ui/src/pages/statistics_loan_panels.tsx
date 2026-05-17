@@ -1,0 +1,194 @@
+import { neutralChipClass } from "../lib/chip_styles";
+import type { LoanUsageListFilter, TranslateFn } from "../lib/statistics_model";
+import type { LoanUsageByPersonRow } from "../lib/tauri_client";
+import { StatisticsEmptyState, SummaryMetricTile } from "./statistics_primitives";
+
+export function StatisticsOutboundLoanUsagePanel({
+  filteredLoanUsage,
+  loading,
+  loanUsageListFilter,
+  onOpenBorrower,
+  setLoanUsageListFilter,
+  t,
+}: {
+  filteredLoanUsage: LoanUsageByPersonRow[];
+  loading: boolean;
+  loanUsageListFilter: LoanUsageListFilter;
+  onOpenBorrower: (borrowerName: string) => void;
+  setLoanUsageListFilter: (filter: LoanUsageListFilter) => void;
+  t: TranslateFn;
+}) {
+  return (
+    <div className="mt-8 surface-card">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="section-eyebrow">
+            {t("statistics.borrowerUsage", "Loan usage by person")}
+          </div>
+          <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            {t(
+              "statistics.borrowerUsageHint",
+              "Open a borrower to see which filaments make up their loan usage.",
+            )}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            {(["ALL", "ACTIVE", "COMPLETED"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setLoanUsageListFilter(mode)}
+                className={neutralChipClass(loanUsageListFilter === mode, "px-3 py-1.5 text-xs")}
+              >
+                {mode === "ALL"
+                  ? t("common.all", "All")
+                  : mode === "ACTIVE"
+                    ? t("common.active", "Active")
+                    : t("statistics.completed", "Completed")}
+              </button>
+            ))}
+          </div>
+          <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200 dark:shadow-none">
+            {filteredLoanUsage.length}
+          </div>
+        </div>
+      </div>
+      {loading ? (
+        <div className="mt-4 text-sm text-slate-500">
+          {t("statistics.loadingLoan", "Loading loan usage...")}
+        </div>
+      ) : null}
+      {!loading && filteredLoanUsage.length === 0 ? (
+        <StatisticsEmptyState>
+          {t("statistics.noLoanUsage", "No loan usage recorded yet.")}
+        </StatisticsEmptyState>
+      ) : null}
+      <div className="mt-4 space-y-3">
+        {filteredLoanUsage.map((row) => (
+          <StatisticsLoanUsageRow
+            key={`${row.loan_direction}-${row.borrower_name}`}
+            onOpen={() => onOpenBorrower(row.borrower_name)}
+            row={row}
+            t={t}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function StatisticsInboundLoanUsagePanel({
+  inboundLoanUsage,
+  loading,
+  onOpenOwner,
+  t,
+}: {
+  inboundLoanUsage: LoanUsageByPersonRow[];
+  loading: boolean;
+  onOpenOwner: (ownerName: string) => void;
+  t: TranslateFn;
+}) {
+  return (
+    <div className="mt-8 surface-card">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="section-eyebrow">
+            {t("statistics.inboundUsage", "Borrowed-in usage by owner")}
+          </div>
+          <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            {t(
+              "statistics.inboundUsageHint",
+              "Open an owner to see which borrowed-in filaments make up their usage.",
+            )}
+          </div>
+        </div>
+        <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200 dark:shadow-none">
+          {inboundLoanUsage.length}
+        </div>
+      </div>
+      {loading ? (
+        <div className="mt-4 text-sm text-slate-500">
+          {t("statistics.loadingInboundUsage", "Loading borrowed-in usage...")}
+        </div>
+      ) : null}
+      {!loading && inboundLoanUsage.length === 0 ? (
+        <StatisticsEmptyState>
+          {t("statistics.noInboundUsage", "No borrowed-in usage recorded yet.")}
+        </StatisticsEmptyState>
+      ) : null}
+      <div className="mt-4 space-y-3">
+        {inboundLoanUsage.map((row) => (
+          <StatisticsLoanUsageRow
+            key={`${row.loan_direction}-${row.borrower_name}`}
+            onOpen={() => onOpenOwner(row.borrower_name)}
+            row={row}
+            t={t}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StatisticsLoanUsageRow({
+  onOpen,
+  row,
+  t,
+}: {
+  onOpen: () => void;
+  row: LoanUsageByPersonRow;
+  t: TranslateFn;
+}) {
+  return (
+    <div
+      className="cursor-pointer rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3 text-sm transition hover:-translate-y-0.5 dark:border-slate-700 dark:bg-slate-950/45"
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="font-semibold text-slate-900 dark:text-slate-50">
+            {row.borrower_name}
+          </div>
+          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            {row.loan_direction === "INBOUND"
+              ? t(
+                  "statistics.inboundBreakdownHint",
+                  "Borrowed-in totals across active and completed rolls.",
+                )
+              : t(
+                  "statistics.borrowerBreakdownHint",
+                  "Loan totals across active and completed rolls.",
+                )}
+          </div>
+        </div>
+        <div className="grid w-full grid-cols-2 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[18rem] min-[1080px]:grid-cols-3">
+          <SummaryMetricTile
+            label={t("printers.used", "Used")}
+            value={`${row.total_consumed_g} g`}
+            tone="amber"
+          />
+          <SummaryMetricTile
+            label={t("statistics.completed", "Completed")}
+            value={row.completed_loans.toString()}
+            tone="sky"
+          />
+          <SummaryMetricTile
+            label={t("common.active", "Active")}
+            value={row.active_loans.toString()}
+            tone="emerald"
+            className="col-span-2 min-[1080px]:col-span-1"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
