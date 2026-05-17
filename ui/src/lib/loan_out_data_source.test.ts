@@ -119,3 +119,29 @@ test("loadLoanableSpoolCandidates uses shared spool and printer data sources", a
 
   assert.deepEqual(candidates.map((spool) => spool.id), ["spool-b"]);
 });
+
+test("loadLoanableSpoolCandidates uses cached client spools when host target is incomplete", async () => {
+  const candidates = await loadLoanableSpoolCandidates(
+    { clientReadOnly: true, clientHostBaseUrl: " ", clientLibraryId: "library-1" },
+    {
+      loadSpoolRows: async () => {
+        throw new Error("host spools should not load without a complete target");
+      },
+      fetchCachedSpools: async () => ({
+        captured_at: "cached-at",
+        rows: [spoolRow("spool-cache"), spoolRow("spool-assigned")],
+      }),
+      loadPrinterOverview: async (options) => {
+        assert.equal(options.clientReadOnly, true);
+        return {
+          printers: printerOverview("spool-assigned"),
+          bambuLiveIntegrations: {},
+          source: "CACHED",
+          updatedAt: "cached-at",
+        };
+      },
+    },
+  );
+
+  assert.deepEqual(candidates.map((spool) => spool.id), ["spool-cache"]);
+});
