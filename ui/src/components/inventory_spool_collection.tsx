@@ -272,7 +272,7 @@ export function InventorySpoolCollection({
                     })}
 
                     {group.rolls.length > 3 ? (
-                      <div className="rounded-xl border border-dashed border-slate-200/80 px-3.5 py-2 text-[11px] font-medium text-slate-500 dark:border-slate-700/80 dark:text-slate-400">
+                      <div className="surface-subtle border-dashed px-3.5 py-2 text-[11px] font-medium text-slate-600 dark:text-slate-300">
                         + {group.rolls.length - 3} {t("inventory.moreRolls", "more roll(s)")}
                       </div>
                     ) : null}

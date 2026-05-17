@@ -158,13 +158,13 @@ export function SettingsTrustedLanBrowsersPanel({
       </div>
 
       {totalBrowserCount === 0 ? (
-        <div className="mt-4 rounded-lg border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+        <div className="surface-subtle mt-4 border-dashed px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
           {t("settings.trustedLanBrowsersEmpty", "No trusted-LAN browsers have been paired yet.")}
         </div>
       ) : (
         <div className="mt-4 space-y-4">
           {activeBrowsers.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            <div className="surface-subtle border-dashed px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
               {t("settings.trustedLanNoActiveBrowsers", "No active browsers right now.")}
             </div>
           ) : (
