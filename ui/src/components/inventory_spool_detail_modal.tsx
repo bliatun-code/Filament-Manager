@@ -1,4 +1,5 @@
 import { AppModal } from "./app_modal";
+import { inventoryDetailPanelClassName } from "./inventory_detail_panel_class";
 import { FeedbackBanner } from "./feedback_banner";
 import { InventoryCatalogMetadataPanel } from "./inventory_catalog_metadata_panel";
 import { InventoryDangerZonePanel } from "./inventory_danger_zone_panel";
@@ -181,7 +182,7 @@ export function InventorySpoolDetailModal({
         <div className="overflow-y-auto px-4 pb-4 pt-4 sm:p-5">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
             <div
-              className="rounded-lg border border-slate-300/70 p-5 shadow-sm shadow-slate-200/25 dark:border-slate-700/70 dark:shadow-none"
+              className={inventoryDetailPanelClassName}
               style={inventorySwatchPanelStyle(spool.hexColor, resolvedTheme)}
             >
               <div className="space-y-5 text-sm text-slate-700 dark:text-slate-200">
@@ -275,7 +276,7 @@ export function InventorySpoolDetailModal({
               />
 
               <div
-                className="rounded-lg border border-slate-300/70 p-5 shadow-sm shadow-slate-200/25 dark:border-slate-700/70 dark:shadow-none"
+                className={inventoryDetailPanelClassName}
                 style={inventorySwatchPanelStyle(spool.hexColor, resolvedTheme)}
               >
                 <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">

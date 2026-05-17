@@ -1,4 +1,5 @@
 import { useI18n } from "../lib/i18n";
+import { inventoryDetailPanelClassName } from "./inventory_detail_panel_class";
 import type { SpoolStatus } from "../lib/inventory_list_model";
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
@@ -27,9 +28,6 @@ type InventorySpoolLostStatusPanelProps = SpoolMaintenancePanelBaseProps & {
   status: SpoolStatus;
 };
 
-const panelClassName =
-  "rounded-lg border border-slate-300/70 p-5 shadow-sm shadow-slate-200/25 dark:border-slate-700/70 dark:shadow-none";
-
 export function InventorySpoolTarePanel({
   disabled,
   onChange,
@@ -42,7 +40,7 @@ export function InventorySpoolTarePanel({
 
   return (
     <div
-      className={panelClassName}
+      className={inventoryDetailPanelClassName}
       style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
       <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
@@ -90,7 +88,7 @@ export function InventorySpoolHomeLocationPanel({
 
   return (
     <div
-      className={panelClassName}
+      className={inventoryDetailPanelClassName}
       style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
       <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
@@ -137,7 +135,7 @@ export function InventorySpoolLostStatusPanel({
 
   return (
     <div
-      className={panelClassName}
+      className={inventoryDetailPanelClassName}
       style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
       <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">

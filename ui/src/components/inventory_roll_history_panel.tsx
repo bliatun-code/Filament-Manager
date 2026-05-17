@@ -1,5 +1,6 @@
 import { formatDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
+import { inventoryDetailPanelClassName } from "./inventory_detail_panel_class";
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { SpoolHistoryEventRow } from "../lib/tauri_client";
@@ -31,7 +32,7 @@ export function InventoryRollHistoryPanel({
 
   return (
     <div
-      className="rounded-lg border border-slate-300/70 p-5 shadow-sm shadow-slate-200/25 dark:border-slate-700/70 dark:shadow-none"
+      className={inventoryDetailPanelClassName}
       style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
       <div className="flex items-center justify-between gap-3">
