@@ -15,6 +15,7 @@ import {
 import {
   buildEmptySlotWeightPrompt,
   buildIncomingWeightPrompt,
+  buildMeasuredTotalWeightDraft,
   buildRfidOverridePrompt,
   buildSlotSwapDraft,
   parseWeightInput,
@@ -219,17 +220,13 @@ export function usePrinterSlotInteractions({
       const prompt = buildIncomingWeightPrompt(printerId, slot, row);
       setIncomingWeightPrompt(prompt);
       setIncomingWeightValue(
-        row.spool.remaining_g != null
-          ? String(Math.max(0, row.spool.remaining_g + resolveSpoolTareWeightForRow(row)))
-          : "",
+        buildMeasuredTotalWeightDraft(row.spool.remaining_g, resolveSpoolTareWeightForRow(row)),
       );
       setOutgoingWeightValue(
         prompt.requiresOutgoingWeight && slot.spool_remaining_g != null
-          ? String(
-              Math.max(
-                0,
-                slot.spool_remaining_g + resolveSpoolTareWeightById(slot.spool_id ?? null),
-              ),
+          ? buildMeasuredTotalWeightDraft(
+              slot.spool_remaining_g,
+              resolveSpoolTareWeightById(slot.spool_id ?? null),
             )
           : "",
       );
@@ -246,11 +243,9 @@ export function usePrinterSlotInteractions({
       setIncomingWeightValue("");
       setOutgoingWeightValue(
         slot.spool_remaining_g != null
-          ? String(
-              Math.max(
-                0,
-                slot.spool_remaining_g + resolveSpoolTareWeightById(slot.spool_id ?? null),
-              ),
+          ? buildMeasuredTotalWeightDraft(
+              slot.spool_remaining_g,
+              resolveSpoolTareWeightById(slot.spool_id ?? null),
             )
           : "",
       );

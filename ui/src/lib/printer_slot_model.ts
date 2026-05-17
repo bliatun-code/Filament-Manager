@@ -79,6 +79,15 @@ export function parseWeightInput(raw: string): number | null {
   return Math.round(parsed);
 }
 
+export function buildMeasuredTotalWeightDraft(
+  remainingGrams: number | null | undefined,
+  tareWeight: number,
+): string {
+  return remainingGrams != null
+    ? String(Math.max(0, remainingGrams + Math.max(0, Math.round(tareWeight))))
+    : "";
+}
+
 export function filterAllowedSpoolsForSlot(
   sortedSpools: SpoolWithMasterRow[],
   slotSpoolId?: string | null,
@@ -126,10 +135,10 @@ export function buildSlotSwapDraft(
   return {
     targetSpoolId: slot.spool_id ?? "",
     search: "",
-    outgoingWeight:
-      slot.spool_remaining_g != null
-        ? String(Math.max(0, slot.spool_remaining_g + resolveSpoolTareWeightById(slot.spool_id)))
-        : "",
+    outgoingWeight: buildMeasuredTotalWeightDraft(
+      slot.spool_remaining_g,
+      resolveSpoolTareWeightById(slot.spool_id),
+    ),
     incomingWeight: "",
   };
 }
