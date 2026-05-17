@@ -19,6 +19,7 @@ import type {
   PrinterAmsSlotRow,
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
+import { formInputChromeClassName } from "./form_control_class";
 
 type PrinterSlotPickerProps = {
   printerId: string;
@@ -119,7 +120,7 @@ export function PrinterSlotPicker({
               })
             }
             placeholder={t("printers.searchRolls", "Search rolls by name/vendor")}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
+            className={`w-full text-slate-700 ${formInputChromeClassName}`}
             disabled={!tauri || busy}
           />
           <div className="mt-2.5 max-h-64 space-y-1.5 overflow-y-auto rounded-xl border border-slate-200 p-2.5 dark:border-slate-600">
