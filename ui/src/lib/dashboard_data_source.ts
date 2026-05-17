@@ -166,10 +166,11 @@ export async function loadDashboardData(
       activeClientSnapshot = snapshotResult.value;
       clientSnapshotSource = "client-live";
       clientHostCompanionTone = clientHostNeedsRepair ? "warn" : "live";
-      clientHostDisplayName = snapshotResult.value.device_name ?? syncSettings.host_device_name ?? null;
+      clientHostDisplayName =
+        snapshotResult.value.device_name ?? syncSettings?.host_device_name ?? null;
     } else {
       onLoadError(snapshotResult.reason);
-      clientHostCompanionTone = syncSettings.host_base_url ? "warn" : "off";
+      clientHostCompanionTone = syncSettings?.host_base_url ? "warn" : "off";
     }
 
     if (spoolsResult.status === "fulfilled") {

@@ -31,8 +31,8 @@ export function useClientWriteGuards({
 }: ClientWriteGuardsInput) {
   const ensureLocalWriteAllowed = useCallback(() => {
     const result = resolveLocalWriteGuard(clientReadOnly);
-    if (result.messageKey) {
-      setInfoMessage(copy[result.messageKey]);
+    if (result.messageKey === "clientReadOnlyAction") {
+      setInfoMessage(copy.clientReadOnlyAction);
     }
     return result.allowed;
   }, [clientReadOnly, copy.clientReadOnlyAction, setInfoMessage]);
@@ -44,8 +44,10 @@ export function useClientWriteGuards({
       clientLibraryId,
       clientReadOnly,
     });
-    if (result.messageKey) {
-      setError(copy[result.messageKey]);
+    if (result.messageKey === "clientHostUnavailable") {
+      setError(copy.clientHostUnavailable);
+    } else if (result.messageKey === "clientWriteRequiresPairing") {
+      setError(copy.clientWriteRequiresPairing);
     }
     return result.allowed;
   }, [
