@@ -32,6 +32,16 @@ const catalogFilters: ReadonlyArray<CatalogFilter> = [
   "DISCONTINUED",
 ];
 
+const wishlistModalOverlayClassName: Record<40 | 50, string> = {
+  40: "fixed inset-0 z-40 flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-md dark:bg-black/55",
+  50: "fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-md dark:bg-black/55",
+};
+
+const wishlistModalPanelClassName = {
+  lg: "w-full max-w-lg rounded-3xl border border-slate-200/90 bg-white/95 p-5 shadow-2xl shadow-slate-300/25 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/92 dark:shadow-black/45",
+  xl: "w-full max-w-3xl rounded-3xl border border-slate-200/90 bg-white/95 p-5 shadow-2xl shadow-slate-300/25 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/92 dark:shadow-black/45",
+};
+
 export function WishlistMetricTile({
   label,
   value,
@@ -78,8 +88,8 @@ export function WishlistRefreshLogModal({
       zIndex={50}
       closeOnBackdrop
       onBackdropClose={onClose}
-      overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-md dark:bg-black/55"
-      panelClassName="w-full max-w-3xl rounded-3xl border border-slate-200/90 bg-white/95 p-5 shadow-2xl shadow-slate-300/25 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/92 dark:shadow-black/45"
+      overlayClassName={wishlistModalOverlayClassName[50]}
+      panelClassName={wishlistModalPanelClassName.xl}
     >
       <>
         <div className="flex items-center justify-between gap-3">
@@ -137,8 +147,8 @@ export function WishlistCatalogRefreshModal({
   return (
     <AppModal
       zIndex={40}
-      overlayClassName="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-md dark:bg-black/55"
-      panelClassName="w-full max-w-lg rounded-3xl border border-slate-200/90 bg-white/95 p-5 shadow-2xl shadow-slate-300/25 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/92 dark:shadow-black/45"
+      overlayClassName={wishlistModalOverlayClassName[40]}
+      panelClassName={wishlistModalPanelClassName.lg}
     >
       <>
         <div className="section-eyebrow">
