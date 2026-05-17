@@ -1,9 +1,7 @@
 import { AppModal } from "../components/app_modal";
-import { VendorBadge } from "../components/vendor_badge";
 import { neutralChipClass } from "../lib/chip_styles";
 import { toSwatchColor } from "../lib/color_utils";
 import type { I18nContextValue } from "../lib/i18n";
-import { materialTone } from "../lib/material_theme";
 import type {
   WishlistCatalogFilter as CatalogFilter,
   WishlistDraft,
@@ -16,13 +14,13 @@ import type {
 } from "../lib/tauri_client";
 import {
   type RefreshLogCopyState,
-  statusBadgeClasses,
   type WishlistCreateMode,
   wishlistInputClass,
   wishlistSecondaryButtonClass,
   wishlistSelectClass,
   type WishlistRefreshVendor,
 } from "./wishlist_helpers";
+import { WishlistCurrentSelectionCard } from "./wishlist_current_selection_card";
 import { WishlistItemCard } from "./wishlist_item_card";
 
 type Translate = I18nContextValue["t"];
@@ -432,43 +430,13 @@ export function WishlistAddPanel({
           </button>
         </div>
 
-        {currentDraft ? (
-          <div
-            className={`mt-4 rounded-2xl border p-4 ${materialTone(currentDraft.material).card} ${materialTone(currentDraft.material).cardBorder}`}
-          >
-            <div className="flex items-start gap-3">
-              <span
-                className="h-14 w-14 shrink-0 rounded-2xl border border-white/70 shadow-inner shadow-white/30 dark:border-white/10 dark:shadow-black/30"
-                style={{ backgroundColor: toSwatchColor(currentSelectionHex) }}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="section-eyebrow">
-                  {t("wishlist.currentSelection", "Current selection")}
-                </div>
-                <div className="mt-1 break-words text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
-                  {currentDraft.material} {currentDraft.filament_name} ({currentDraft.color_name})
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <VendorBadge vendor={currentDraft.vendor} compact />
-                  <span className={statusBadgeClasses(currentSelectionDiscontinued ? "ON_ORDER" : "WISHLIST")}>
-                    {currentSelectionDiscontinued
-                      ? t("wishlist.discontinued", "Discontinued")
-                      : t("wishlist.active", "Active")}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="surface-subtle mt-4 border-dashed px-4 py-5 text-sm text-slate-600 dark:text-slate-300">
-            {createMode === "manual"
-              ? t("wishlist.manualHint", "Use manual mode when the vendor catalog is missing the filament you need.")
-              : t(
-                  "wishlist.addHint",
-                  "Choose a catalog-backed filament or build a manual fallback, then send it into the wishlist flow below.",
-                )}
-          </div>
-        )}
+        <WishlistCurrentSelectionCard
+          createMode={createMode}
+          currentDraft={currentDraft}
+          currentSelectionDiscontinued={currentSelectionDiscontinued}
+          currentSelectionHex={currentSelectionHex}
+          t={t}
+        />
       </div>
 
       <div className="mt-5 space-y-4">
