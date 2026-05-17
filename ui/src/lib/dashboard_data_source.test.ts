@@ -11,6 +11,7 @@ import type {
   LibrarySyncRemoteSnapshot,
   LibrarySyncSettings,
   PrinterOverviewRow,
+  SpoolWithMasterRow,
 } from "./tauri_client";
 
 const t = (_key: string, fallback: string) => fallback;
@@ -79,6 +80,30 @@ function printerOverviewRow(id: string): PrinterOverviewRow {
       last_job_at: null,
     },
     slots: [],
+  };
+}
+
+function spoolWithMasterRow(id: string): SpoolWithMasterRow {
+  return {
+    spool: {
+      id,
+      master_id: "master-1",
+      status: "IN_STOCK",
+      remaining_g: 850,
+      current_weight_g: 850,
+      initial_weight_g: 1000,
+      location_id: "Shelf 1",
+    },
+    master: {
+      id: "master-1",
+      material: "PLA",
+      filament_name: "Basic",
+      color_name: "Gray",
+      hex_color: "#808080",
+      product_url: null,
+      default_weight: 1000,
+      vendor: "Bambu",
+    },
   };
 }
 
@@ -218,6 +243,58 @@ test("loadDashboardData skips host calls for incomplete client targets and uses 
   assert.equal(result.syncSource, "client-cached");
   assert.equal(result.clientHostDisplayName, "Cached Host");
   assert.equal(result.capturedAt, "2026-04-01 09:00:00");
+});
+
+test("loadDashboardData uses cached client rows without a cached snapshot", async () => {
+  const result = await loadDashboardData(
+    { previousClientHostNeedsRepair: false, t },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          library_id: " ",
+          cached_spools: {
+            captured_at: "2026-04-01 08:30:00",
+            rows: [spoolWithMasterRow("spool-cache")],
+          },
+          cached_printers: {
+            captured_at: "2026-04-01 08:35:00",
+            rows: [printerOverviewRow("printer-cache")],
+          },
+        }),
+      loadTrustedLanStatus: async () => null,
+      validateHost: async () => {
+        throw new Error("should not validate without a complete target");
+      },
+      fetchHostSnapshot: async () => {
+        throw new Error("should not fetch without a complete target");
+      },
+      loadInventoryOverview: async () => {
+        throw new Error("local overview should not load in client mode");
+      },
+      listLocalPrinters: async () => {
+        throw new Error("local printers should not load in client mode");
+      },
+      loadSpoolRows: async () => {
+        throw new Error("local spools should not load in client mode");
+      },
+      listLocalLoans: async () => {
+        throw new Error("local loans should not load in client mode");
+      },
+      listLocalWishlist: async () => {
+        throw new Error("local wishlist should not load in client mode");
+      },
+      listLocalTopMaterials: async () => {
+        throw new Error("local materials should not load in client mode");
+      },
+    },
+  );
+
+  assert.equal(result.syncSource, "client-cached");
+  assert.equal(result.capturedAt, "2026-04-01 08:30:00");
+  assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "1");
+  assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
 });
 
 test("loadDashboardData falls back to cached client snapshot when host snapshot fails", async () => {

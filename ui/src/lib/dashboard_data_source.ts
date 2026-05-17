@@ -19,6 +19,7 @@ import {
   buildDashboardDerivedState,
   type DashboardDerivedState,
 } from "./dashboard_model";
+import { deriveInventoryOverviewFromRows } from "./statistics_model";
 import { loadAllSpoolRows } from "./spool_data_source";
 import { resolveClientHostTarget } from "./host_write_target";
 
@@ -195,10 +196,18 @@ export async function loadDashboardData(
     }
   }
 
-  if (clientMode && activeClientSnapshot) {
+  const hasClientCachedRows =
+    (clientSpoolRows?.length ?? 0) > 0 ||
+    (clientPrinterRows?.length ?? 0) > 0 ||
+    (clientLoanRows?.length ?? 0) > 0 ||
+    clientWishlistRows.length > 0;
+  const clientOverview = activeClientSnapshot?.inventory ??
+    (hasClientCachedRows ? deriveInventoryOverviewFromRows(clientSpoolRows ?? [], []) : null);
+
+  if (clientMode && clientOverview) {
     return {
       derived: buildDashboardDerivedState({
-        overview: activeClientSnapshot.inventory,
+        overview: clientOverview,
         printers: clientPrinterRows ?? [],
         spoolRows: clientSpoolRows ?? [],
         loans: clientLoanRows ?? [],
@@ -212,7 +221,12 @@ export async function loadDashboardData(
       clientHostDisplayName,
       clientHostNeedsRepair,
       syncSource: clientSnapshotSource,
-      capturedAt: activeClientSnapshot.captured_at,
+      capturedAt:
+        activeClientSnapshot?.captured_at ??
+        syncSettings?.cached_spools?.captured_at ??
+        syncSettings?.cached_printers?.captured_at ??
+        syncSettings?.cached_loans?.captured_at ??
+        null,
     };
   }
 
