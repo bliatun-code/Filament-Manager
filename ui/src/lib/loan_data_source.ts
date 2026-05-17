@@ -89,6 +89,16 @@ export async function loadLoanRowsPage(
 
   if (clientReadOnly) {
     if (!hostTarget) {
+      const cached = await fetchCachedLoans().catch(() => null);
+      if (cached) {
+        return {
+          rows: cached.rows,
+          source: "CACHED",
+          updatedAt: cached.captured_at ?? null,
+          usedFallback: true,
+        };
+      }
+
       return {
         rows: [],
         source: "OFFLINE",

@@ -146,6 +146,29 @@ test("loadLoanRowsPage avoids local fallback when client host details are incomp
   });
 });
 
+test("loadLoanRowsPage uses cached loans when client host details are incomplete", async () => {
+  const result = await loadLoanRowsPage(
+    { clientReadOnly: true, clientHostBaseUrl: "", clientLibraryId: "library-1" },
+    {
+      fetchHostLoans: async () => {
+        throw new Error("host loans should not load without a complete target");
+      },
+      fetchCachedLoans: async () => ({
+        captured_at: "cached-at",
+        rows: [loanDetailsRow("cached-spool")],
+      }),
+      listLocalLoans: async () => {
+        throw new Error("local loans should not load in client mode");
+      },
+    },
+  );
+
+  assert.equal(result.source, "CACHED");
+  assert.equal(result.updatedAt, "cached-at");
+  assert.equal(result.usedFallback, true);
+  assert.deepEqual(result.rows.map((row) => row.loan.spool_id), ["cached-spool"]);
+});
+
 test("loadLoanRowsPage loads local rows outside client mode", async () => {
   const localCalls: Array<{ limit: number; includeReturned: boolean; direction?: string | null }> = [];
   const result = await loadLoanRowsPage(
