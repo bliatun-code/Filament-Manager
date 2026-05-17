@@ -131,6 +131,31 @@ test("loadPrinterOverviewData falls back to cached host overview", async () => {
   assert.deepEqual(result.bambuLiveIntegrations, {});
 });
 
+test("loadPrinterOverviewData uses cached rows when client host target is incomplete", async () => {
+  const result = await loadPrinterOverviewData(
+    { clientReadOnly: true, clientHostBaseUrl: " ", clientLibraryId: "library-1" },
+    {
+      fetchHostOverview: async () => {
+        throw new Error("host overview should not load without a complete target");
+      },
+      listLocalOverview: async () => {
+        throw new Error("local overview should not load in client mode");
+      },
+      loadLocalSettings: async () => {
+        throw new Error("local settings should not load in client mode");
+      },
+      fetchCachedOverview: async () => ({
+        captured_at: "2026-04-01 12:00:00",
+        rows: [printerOverviewRow("printer-cache")],
+      }),
+    },
+  );
+
+  assert.equal(result.source, "CACHED");
+  assert.equal(result.updatedAt, "2026-04-01 12:00:00");
+  assert.deepEqual(result.printers.map((entry) => entry.printer.id), ["printer-cache"]);
+});
+
 test("loadPrinterOverviewData reports offline when host and cache are unavailable", async () => {
   const result = await loadPrinterOverviewData(
     { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
@@ -149,6 +174,51 @@ test("loadPrinterOverviewData reports offline when host and cache are unavailabl
     source: "OFFLINE",
     updatedAt: null,
   });
+});
+
+test("loadPrinterPageData uses cached client data when host target is incomplete", async () => {
+  const result = await loadPrinterPageData(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "",
+      clientLibraryId: "library-1",
+      supportedPrinterModels: ["Generic"],
+    },
+    {
+      fetchHostOverview: async () => {
+        throw new Error("host overview should not load without a complete target");
+      },
+      fetchHostSettings: async () => {
+        throw new Error("host settings should not load without a complete target");
+      },
+      loadHostSpools: async () => {
+        throw new Error("host spools should not load without a complete target");
+      },
+      listLocalOverview: async () => {
+        throw new Error("local overview should not load in client mode");
+      },
+      loadLocalSpools: async () => {
+        throw new Error("local spools should not load in client mode");
+      },
+      loadLocalSettings: async () => {
+        throw new Error("local settings should not load in client mode");
+      },
+      fetchCachedOverview: async () => ({
+        captured_at: "2026-04-01 12:00:00",
+        rows: [printerOverviewRow("printer-cache")],
+      }),
+      fetchCachedSpools: async () => ({
+        captured_at: "2026-04-01 12:05:00",
+        rows: [spoolRow("cached-spool")],
+      }),
+    },
+  );
+
+  assert.equal(result.source, "CACHED");
+  assert.equal(result.updatedAt, "2026-04-01 12:00:00");
+  assert.deepEqual(result.printers.map((entry) => entry.printer.id), ["printer-cache"]);
+  assert.deepEqual(result.spools.map((entry) => entry.id), ["cached-spool"]);
+  assert.deepEqual(result.bambuLiveIntegrations, {});
 });
 
 test("loadPrinterPageData keeps fulfilled client spools when host overview fails", async () => {

@@ -95,7 +95,25 @@ export async function loadPrinterOverviewData(
   const onLoadError = dependencies.onLoadError ?? console.error;
   const hostTarget = options.clientReadOnly ? resolveClientHostTarget(options) : null;
 
-  if (hostTarget) {
+  if (options.clientReadOnly) {
+    if (!hostTarget) {
+      const cached = await fetchCachedOverview().catch(() => null);
+      if (cached?.rows) {
+        return {
+          printers: cached.rows,
+          bambuLiveIntegrations: {},
+          source: "CACHED",
+          updatedAt: cached.captured_at ?? null,
+        };
+      }
+
+      return {
+        printers: [],
+        bambuLiveIntegrations: {},
+        source: "OFFLINE",
+        updatedAt: null,
+      };
+    }
     try {
       return {
         printers: await fetchHostOverview(hostTarget.baseUrl, hostTarget.libraryId),
@@ -150,7 +168,34 @@ export async function loadPrinterPageData(
   const { clientReadOnly, clientHostBaseUrl, clientLibraryId, supportedPrinterModels } = options;
   const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
 
-  if (hostTarget) {
+  if (clientReadOnly) {
+    if (!hostTarget) {
+      const [cachedPrinters, cachedSpools] = await Promise.all([
+        fetchCachedOverview().catch(() => null),
+        fetchCachedSpools().catch(() => null),
+      ]);
+      const printers = cachedPrinters?.rows ?? [];
+      const spools = cachedSpools?.rows ?? [];
+      if (printers.length > 0 || spools.length > 0) {
+        return {
+          printers,
+          spools,
+          bambuLiveIntegrations: {},
+          printerModels: supportedPrinterModels,
+          source: "CACHED",
+          updatedAt: cachedPrinters?.captured_at ?? cachedSpools?.captured_at ?? null,
+        };
+      }
+
+      return {
+        printers: [],
+        spools: [],
+        bambuLiveIntegrations: {},
+        printerModels: supportedPrinterModels,
+        source: "OFFLINE",
+        updatedAt: null,
+      };
+    }
     const [overviewResult, spoolRowsResult, settingsResult, cachedPrinters, cachedSpools] =
       await Promise.all([
         fetchHostOverview(hostTarget.baseUrl, hostTarget.libraryId).then(
