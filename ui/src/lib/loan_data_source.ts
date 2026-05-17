@@ -87,7 +87,15 @@ export async function loadLoanRowsPage(
   const { clientReadOnly, limit = 2000 } = options;
   const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
 
-  if (hostTarget) {
+  if (clientReadOnly) {
+    if (!hostTarget) {
+      return {
+        rows: [],
+        source: "OFFLINE",
+        updatedAt: null,
+        usedFallback: true,
+      };
+    }
     try {
       const rows = await fetchHostLoans(hostTarget.baseUrl, hostTarget.libraryId, limit);
       const cached = await fetchCachedLoans().catch(() => null);
