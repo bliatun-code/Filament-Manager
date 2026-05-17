@@ -5,7 +5,6 @@ import { FeedbackBanner } from "../components/feedback_banner";
 import { ModalHeader } from "../components/modal_chrome";
 import { modalPanelClassName } from "../components/modal_panel_class";
 import { formatDateTime } from "../lib/date_time";
-import { formatFilamentDisplayTitle } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
 import {
   buildActiveSlotRows,
@@ -29,7 +28,6 @@ import {
   readConsumptionPopupPrefs,
   sortFailedPrinterRows,
   sortLoggedPrinterRows,
-  toSwatchColor,
   deriveInventoryOverviewFromRows,
   type BorrowerFilamentUsageRow,
   type BorrowerPopupPrefs,
@@ -64,6 +62,7 @@ import {
 } from "./statistics_view_helpers";
 import {
   StatisticsEmptyState,
+  StatisticsFilamentUsageRowCard,
   StatisticsInboundLoanUsagePanel,
   StatisticsMetricDetailModal,
   StatisticsOwnershipSnapshotPanel,
@@ -592,50 +591,33 @@ export default function StatisticsPage() {
           {!consumptionLoading && !consumptionError && filteredConsumptionRows.length > 0 ? (
             <div className="mt-4 max-h-[420px] space-y-3 overflow-auto pr-1">
               {filteredConsumptionRows.map((row, index) => (
-                <div
+                <StatisticsFilamentUsageRowCard
                   key={`${row.printer_id ?? "all"}-${row.material}-${row.filament_name}-${row.color_name}-${row.vendor}-${row.ownership_type}-${row.owner_name ?? ""}-${index}`}
-                  className="rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3 dark:border-slate-700 dark:bg-slate-950/45"
+                  colorName={row.color_name}
+                  filamentName={row.filament_name}
+                  material={row.material}
+                  metricsClassName="grid w-full grid-cols-2 gap-2 min-[960px]:w-auto min-[960px]:min-w-[12rem]"
+                  meta={
+                    <span
+                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${ownershipBadgeClass(row.ownership_type)}`}
+                    >
+                      {ownershipLabel(t, row.ownership_type, row.owner_name)}
+                    </span>
+                  }
+                  swatchColor={row.hex_color}
+                  vendor={row.vendor}
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="flex min-w-0 items-start gap-3">
-                      <span
-                        className="mt-0.5 h-5 w-5 flex-none rounded-md border border-slate-300/80 dark:border-slate-600"
-                        style={{ backgroundColor: toSwatchColor(row.hex_color) }}
-                      />
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
-                          {formatFilamentDisplayTitle(
-                            row.material,
-                            row.filament_name,
-                            row.color_name,
-                          )}
-                        </div>
-                        <div className="truncate text-xs text-slate-500 dark:text-slate-400">
-                          {row.vendor}
-                        </div>
-                        <div className="mt-2">
-                          <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${ownershipBadgeClass(row.ownership_type)}`}
-                          >
-                            {ownershipLabel(t, row.ownership_type, row.owner_name)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid w-full grid-cols-2 gap-2 min-[960px]:w-auto min-[960px]:min-w-[12rem]">
-                      <SummaryMetricTile
-                        label={t("printers.jobs", "Jobs")}
-                        value={row.jobs.toString()}
-                        tone="sky"
-                      />
-                      <SummaryMetricTile
-                        label={t("printers.used", "Used")}
-                        value={`${row.used_grams} g`}
-                        tone="amber"
-                      />
-                    </div>
-                  </div>
-                </div>
+                  <SummaryMetricTile
+                    label={t("printers.jobs", "Jobs")}
+                    value={row.jobs.toString()}
+                    tone="sky"
+                  />
+                  <SummaryMetricTile
+                    label={t("printers.used", "Used")}
+                    value={`${row.used_grams} g`}
+                    tone="amber"
+                  />
+                </StatisticsFilamentUsageRowCard>
               ))}
             </div>
           ) : null}
@@ -740,53 +722,36 @@ export default function StatisticsPage() {
           {!borrowerLoading && !borrowerError && filteredBorrowerRows.length > 0 ? (
             <div className="mt-4 max-h-[420px] space-y-3 overflow-auto pr-1">
               {filteredBorrowerRows.map((row, index) => (
-                <div
+                <StatisticsFilamentUsageRowCard
                   key={`${row.material}-${row.filamentName}-${row.colorName}-${row.vendor}-${index}`}
-                  className="rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3 dark:border-slate-700 dark:bg-slate-950/45"
+                  colorName={row.colorName}
+                  filamentName={row.filamentName}
+                  material={row.material}
+                  metricsClassName="grid w-full grid-cols-2 gap-2 min-[960px]:w-auto min-[960px]:min-w-[18rem] min-[960px]:grid-cols-3"
+                  swatchColor={row.hexColor}
+                  vendor={row.vendor}
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="flex min-w-0 items-start gap-3">
-                      <span
-                        className="mt-0.5 h-5 w-5 flex-none rounded-md border border-slate-300/80 dark:border-slate-600"
-                        style={{ backgroundColor: toSwatchColor(row.hexColor) }}
-                      />
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
-                          {formatFilamentDisplayTitle(
-                            row.material,
-                            row.filamentName,
-                            row.colorName,
-                          )}
-                        </div>
-                        <div className="truncate text-xs text-slate-500 dark:text-slate-400">
-                          {row.vendor}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid w-full grid-cols-2 gap-2 min-[960px]:w-auto min-[960px]:min-w-[18rem] min-[960px]:grid-cols-3">
-                      <SummaryMetricTile
-                        label={t("printers.used", "Used")}
-                        value={`${row.consumedGrams} g`}
-                        tone="amber"
-                      />
-                      <SummaryMetricTile
-                        label={
-                          borrowerModalDirection === "INBOUND"
-                            ? t("statistics.borrowedInShort", "In")
-                            : t("statistics.lentOutShort", "Out")
-                        }
-                        value={`${row.lentOutGrams} g`}
-                        tone="sky"
-                      />
-                      <SummaryMetricTile
-                        label={t("statistics.loansShort", "Loans")}
-                        value={`${row.loans} · ${row.activeLoans} ${t("common.active", "Active")}`}
-                        tone="slate"
-                        className="col-span-2 min-[960px]:col-span-1"
-                      />
-                    </div>
-                  </div>
-                </div>
+                  <SummaryMetricTile
+                    label={t("printers.used", "Used")}
+                    value={`${row.consumedGrams} g`}
+                    tone="amber"
+                  />
+                  <SummaryMetricTile
+                    label={
+                      borrowerModalDirection === "INBOUND"
+                        ? t("statistics.borrowedInShort", "In")
+                        : t("statistics.lentOutShort", "Out")
+                    }
+                    value={`${row.lentOutGrams} g`}
+                    tone="sky"
+                  />
+                  <SummaryMetricTile
+                    label={t("statistics.loansShort", "Loans")}
+                    value={`${row.loans} · ${row.activeLoans} ${t("common.active", "Active")}`}
+                    tone="slate"
+                    className="col-span-2 min-[960px]:col-span-1"
+                  />
+                </StatisticsFilamentUsageRowCard>
               ))}
             </div>
           ) : null}

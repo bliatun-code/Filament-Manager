@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { formatFilamentDisplayTitle } from "../lib/display_format";
+import { toSwatchColor } from "../lib/statistics_model";
 
 type MetricTone = "slate" | "sky" | "emerald" | "amber" | "rose";
 
@@ -45,6 +47,49 @@ export function StatisticsEmptyState({ children }: { children: ReactNode }) {
   return (
     <div className="surface-subtle mt-4 border-dashed p-4 text-sm text-slate-600 dark:text-slate-300">
       {children}
+    </div>
+  );
+}
+
+export function StatisticsFilamentUsageRowCard({
+  children,
+  colorName,
+  filamentName,
+  material,
+  meta,
+  metricsClassName,
+  swatchColor,
+  vendor,
+}: {
+  children: ReactNode;
+  colorName: string;
+  filamentName: string;
+  material: string;
+  meta?: ReactNode;
+  metricsClassName: string;
+  swatchColor?: string | null;
+  vendor: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3 dark:border-slate-700 dark:bg-slate-950/45">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span
+            className="mt-0.5 h-5 w-5 flex-none rounded-md border border-slate-300/80 dark:border-slate-600"
+            style={{ backgroundColor: toSwatchColor(swatchColor) }}
+          />
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
+              {formatFilamentDisplayTitle(material, filamentName, colorName)}
+            </div>
+            <div className="truncate text-xs text-slate-500 dark:text-slate-400">
+              {vendor}
+            </div>
+            {meta ? <div className="mt-2">{meta}</div> : null}
+          </div>
+        </div>
+        <div className={metricsClassName}>{children}</div>
+      </div>
     </div>
   );
 }

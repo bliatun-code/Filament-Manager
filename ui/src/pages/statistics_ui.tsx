@@ -7,4 +7,8 @@ export {
   StatisticsOwnershipSnapshotPanel,
   StatisticsPerPrinterUsagePanel,
 } from "./statistics_overview_panels";
-export { StatisticsEmptyState, SummaryMetricTile } from "./statistics_primitives";
+export {
+  StatisticsEmptyState,
+  StatisticsFilamentUsageRowCard,
+  SummaryMetricTile,
+} from "./statistics_primitives";
