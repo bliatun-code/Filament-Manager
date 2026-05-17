@@ -352,3 +352,46 @@ test("loadStatisticsData keeps partial client host data and cache when host call
     console.error = originalConsoleError;
   }
 });
+
+test("loadStatisticsData marks cached spool fallback as cached statistics", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    const result = await loadStatisticsData(
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: "http://host",
+        library_id: "library-1",
+        cached_spools: {
+          captured_at: "spool-cache",
+          rows: [spoolRow("cached-spool")],
+        },
+      }),
+      {
+        fetchHostSnapshot: async () => {
+          throw new Error("snapshot unavailable");
+        },
+        fetchHostPrinterOverview: async () => [printerRow("live-printer")],
+        fetchHostLoans: async () => [loanRow("live-loan")],
+        loadHostSpools: async () => {
+          throw new Error("host spools unavailable");
+        },
+        fetchHostConsumption: async () => [consumptionRow("live-consumption")],
+        fetchCachedPrinterOverview: async () => null,
+        fetchCachedLoans: async () => null,
+        fetchCachedSpools: async () => {
+          throw new Error("cached spools endpoint unavailable");
+        },
+      },
+    );
+
+    assert.equal(result.source, "CACHED");
+    assert.equal(result.updatedAt, "spool-cache");
+    assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["cached-spool"]);
+    assert.deepEqual(result.printers.map((row) => row.printer.id), ["live-printer"]);
+    assert.deepEqual(result.loanDetails.map((row) => row.loan.spool_id), ["live-loan"]);
+    assert.equal(result.overview?.total_spools, 1);
+  } finally {
+    console.error = originalConsoleError;
+  }
+});

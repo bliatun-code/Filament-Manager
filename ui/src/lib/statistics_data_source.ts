@@ -276,14 +276,18 @@ export async function loadStatisticsData(
     const resolvedLoans = loansResult.ok
       ? loansResult.value
       : cachedLoans?.rows ?? syncSettings.cached_loans?.rows ?? [];
-    const resolvedSpoolRows = spoolsResult.ok ? spoolsResult.value : cachedSpools?.rows ?? [];
+    const resolvedSpoolRows = spoolsResult.ok
+      ? spoolsResult.value
+      : cachedSpools?.rows ?? syncSettings.cached_spools?.rows ?? [];
     const resolvedConsumptionRows = consumptionResult.ok ? consumptionResult.value : [];
     const derivedOverview =
       resolvedSpoolRows.length > 0 || resolvedConsumptionRows.length > 0
         ? deriveInventoryOverviewFromRows(resolvedSpoolRows, resolvedConsumptionRows)
         : null;
     const resolvedOverview = derivedOverview ?? resolvedSnapshot?.inventory ?? null;
-    const hasLiveOverview = snapshotResult.ok || derivedOverview != null;
+    const hasLiveOverview =
+      snapshotResult.ok ||
+      (spoolsResult.ok && consumptionResult.ok && derivedOverview != null);
 
     if (resolvedOverview || resolvedPrinters.length > 0 || resolvedLoans.length > 0) {
       return {
@@ -304,7 +308,13 @@ export async function loadStatisticsData(
           syncSettings.cached_spools?.captured_at ??
           null,
         source:
-          hasLiveOverview && printersResult.ok && loansResult.ok ? "LIVE" : "CACHED",
+          hasLiveOverview &&
+          printersResult.ok &&
+          loansResult.ok &&
+          spoolsResult.ok &&
+          consumptionResult.ok
+            ? "LIVE"
+            : "CACHED",
       };
     }
 
