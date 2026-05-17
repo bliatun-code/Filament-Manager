@@ -9,6 +9,7 @@ import { printerBrandSurfaceStyle } from "../lib/printer_branding";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import { useI18n } from "../lib/i18n";
 import { AppModal } from "./app_modal";
+import { modalFormInputClassName } from "./form_control_class";
 import { ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { PrinterModelPreview } from "./printer_model_preview";
@@ -81,7 +82,7 @@ export function AddPrinterModal({
               <select
                 value={newPrinterModel}
                 onChange={(event) => onSelectPrinterModel(event.target.value)}
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
+                className={modalFormInputClassName}
                 disabled={!tauri || busy || printerModels.length === 0}
               >
                 <option value="">
@@ -104,7 +105,7 @@ export function AddPrinterModal({
                 value={newPrinterName}
                 onChange={(event) => onPrinterNameChange(event.target.value)}
                 placeholder={t("settings.printerName", "Printer name")}
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
+                className={modalFormInputClassName}
                 disabled={!tauri || busy}
               />
             </div>
@@ -120,7 +121,7 @@ export function AddPrinterModal({
                   max={selectedModelProfile.maxUnits}
                   value={newAmsUnits}
                   onChange={(event) => onAmsUnitsChange(event.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
+                  className={modalFormInputClassName}
                   title={multiMaterialUnitsInputLabel(t, newPrinterModel || "")}
                   disabled={!tauri || busy || selectedModelProfile.maxUnits === 0}
                 />
@@ -135,7 +136,7 @@ export function AddPrinterModal({
                   max={selectedModelProfile.maxSlotsPerUnit}
                   value={newSlotsPerUnit}
                   onChange={(event) => onSlotsPerUnitChange(event.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
+                  className={modalFormInputClassName}
                   title={multiMaterialSlotsInputLabel(t, newPrinterModel || "")}
                   disabled={!tauri || busy || selectedModelProfile.maxUnits === 0}
                 />

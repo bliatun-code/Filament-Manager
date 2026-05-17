@@ -2,6 +2,7 @@ import { formatFilamentDisplayTitle } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
 import { toSwatchColor } from "../lib/printer_live_display";
 import type { IncomingWeightPrompt } from "../lib/printer_slot_model";
+import { modalFormInputClassName } from "./form_control_class";
 import { SaveOnlyModal } from "./save_only_modal";
 
 type IncomingWeightModalProps = {
@@ -59,7 +60,7 @@ export function IncomingWeightModal({
               min={0}
               value={outgoingWeightValue}
               onChange={(event) => onOutgoingWeightChange(event.target.value)}
-              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
+              className={modalFormInputClassName}
               autoFocus={!prompt.requiresIncomingWeight}
             />
           </div>
@@ -74,7 +75,7 @@ export function IncomingWeightModal({
               min={0}
               value={incomingWeightValue}
               onChange={(event) => onIncomingWeightChange(event.target.value)}
-              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm shadow-slate-200/15 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:shadow-none"
+              className={modalFormInputClassName}
               autoFocus
             />
           </div>
