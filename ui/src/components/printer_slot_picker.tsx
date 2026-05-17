@@ -21,6 +21,19 @@ import type {
 } from "../lib/tauri_client";
 import { formInputChromeClassName } from "./form_control_class";
 
+const slotOptionSwatchClassName =
+  "h-4.5 w-4.5 shrink-0 rounded border border-slate-200 dark:border-slate-600";
+
+function slotOptionButtonClassName(selected: boolean, selectedExtraClassName = ""): string {
+  const selectedClasses =
+    `border border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-50 ${selectedExtraClassName}`.trim();
+  const idleClasses =
+    "border border-transparent text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/70";
+  return `flex w-full items-center justify-between gap-2.5 rounded-xl px-3 text-left text-sm ${
+    selected ? selectedClasses : idleClasses
+  }`;
+}
+
 type PrinterSlotPickerProps = {
   printerId: string;
   slot: PrinterAmsSlotRow;
@@ -126,11 +139,7 @@ export function PrinterSlotPicker({
           <div className="mt-2.5 max-h-64 space-y-1.5 overflow-y-auto rounded-xl border border-slate-200 p-2.5 dark:border-slate-600">
             <button
               type="button"
-              className={`flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2 text-left text-sm ${
-                draft.targetSpoolId === ""
-                  ? "border border-slate-300 bg-slate-100 font-semibold text-slate-900 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-50"
-                  : "border border-transparent text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/70"
-              }`}
+              className={`${slotOptionButtonClassName(draft.targetSpoolId === "", "font-semibold")} py-2`}
               onClick={() => {
                 setSlotDraft(slot.slot_id, {
                   ...draft,
@@ -151,7 +160,7 @@ export function PrinterSlotPicker({
             >
               <span className="flex min-w-0 items-center gap-2.5">
                 <span
-                  className="h-4.5 w-4.5 shrink-0 rounded border border-slate-200 dark:border-slate-600"
+                  className={slotOptionSwatchClassName}
                   style={{ backgroundColor: "#CBD5E1" }}
                 />
                 <span className="min-w-0">
@@ -173,11 +182,7 @@ export function PrinterSlotPicker({
                 <button
                   key={row.spool.id}
                   type="button"
-                  className={`flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-1.5 text-left text-sm ${
-                    draft.targetSpoolId === row.spool.id
-                      ? "border border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-50"
-                      : "border border-transparent text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/70"
-                  }`}
+                  className={`${slotOptionButtonClassName(draft.targetSpoolId === row.spool.id)} py-1.5`}
                   style={printerSwatchInteractiveInsetStyle(
                     row.master.hex_color,
                     resolvedTheme,
@@ -195,7 +200,7 @@ export function PrinterSlotPicker({
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
                     <span
-                      className="h-4.5 w-4.5 shrink-0 rounded border border-slate-200 dark:border-slate-600"
+                      className={slotOptionSwatchClassName}
                       style={{ backgroundColor: toSwatchColor(row.master.hex_color) }}
                     />
                     <span className="min-w-0">
