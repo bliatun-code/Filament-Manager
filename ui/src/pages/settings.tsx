@@ -11,7 +11,6 @@ import { buildSettingsLibraryServerPanelProps } from "./settings_library_server_
 import { buildSettingsLibraryPairingPanelProps } from "./settings_library_pairing_panel_props";
 import { buildSettingsLibraryRouteProps } from "./settings_library_route_props";
 import { buildSettingsLibraryRoleModalRouteProps } from "./settings_library_role_modal_route_props";
-import { buildSettingsMaintenanceRouteProps } from "./settings_maintenance_route_props";
 import { buildSettingsLibraryWebappControlProps } from "./settings_library_webapp_control_props";
 import { SettingsPageLayout } from "./settings_page_layout";
 import { buildSettingsPrintersRouteProps } from "./settings_printers_route_props";
@@ -19,7 +18,6 @@ import { buildSettingsRouteMapProps } from "./settings_route_map_props";
 import { useSettingsFeedbackState } from "./use_settings_feedback_state";
 import { useSettingsCatalogSection } from "./use_settings_catalog_section";
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
-import { useSettingsBackupFileControls } from "./use_settings_backup_file_controls";
 import { useSettingsBackupValidationSummary } from "./use_settings_backup_validation_summary";
 import { useSettingsPrinterActions } from "./use_settings_printer_actions";
 import { useSettingsPrinterSectionState } from "./use_settings_printer_section_state";
@@ -27,12 +25,8 @@ import { useSettingsPageDataState } from "./use_settings_page_data_state";
 import { useSettingsPageReload } from "./use_settings_page_reload";
 import { useSettingsPageShellState } from "./use_settings_page_shell_state";
 import { useSettingsPreferenceSection } from "./use_settings_preference_section";
-import { useSettingsMaintenanceActions } from "./use_settings_maintenance_actions";
-import { useSettingsBackupExportActions } from "./use_settings_backup_export_actions";
-import { useSettingsBackupFileActions } from "./use_settings_backup_file_actions";
-import { useSettingsInventoryPrintAction } from "./use_settings_inventory_print_action";
 import { useSettingsInitialLoad } from "./use_settings_initial_load";
-import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
+import { useSettingsMaintenanceSection } from "./use_settings_maintenance_section";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncActions } from "./use_settings_library_sync_actions";
 import { useSettingsLibraryDerivedState } from "./use_settings_library_derived_state";
@@ -454,16 +448,52 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   });
 
   const {
-    backupImportInputRef,
-    backupValidateInputRef,
-    clearConfirmResetAction,
-    confirmResetAction,
+    handleExportFullBackup,
     handleOpenBackupValidate,
     handleOpenDataImport,
-    setConfirmResetAction,
-  } = useSettingsBackupFileControls({
+    handlePrintInventoryOverviewA4,
+    settingsMaintenanceRouteProps,
+  } = useSettingsMaintenanceSection({
+    backupValidationHasExtraTables,
+    backupValidationHasMissingTables,
+    backupValidationHasWarnings,
     busy,
+    catalogCount: catalogMasters.length,
+    clearBackupValidation,
+    lastBackupValidation,
+    lastCatalogReset,
+    librarySyncModeDraft,
+    locale,
+    missingSwatchCount,
+    printerCount: printers.length,
+    recordBackupValidation,
+    recordExportedBackupValidation,
+    recordImportedFullBackup,
+    reloadSettings,
+    setActiveTab,
+    setBusy,
+    setError,
+    setInfo,
+    setLastCatalogReset,
+    setLibrarySyncHostBaseUrlDraft,
+    setLibrarySyncModeDraft,
+    setLibrarySyncSnapshot,
+    setLibrarySyncValidation,
+    settingsBackupErrorMessageLabels,
+    settingsBackupValidationMessageLabels,
+    settingsCatalogResetMessageLabels,
+    settingsClientHostBaseUrl,
+    settingsClientLibraryId,
+    settingsClientReadOnly,
+    settingsImportMessageLabels,
+    settingsInventoryExportMessageLabels,
+    settingsInventoryOverviewPrintMessageLabels,
+    settingsInventoryOverviewPrintPdfLabels,
+    settingsInventoryPrintLabels,
+    settingsMaintenanceResetMessageLabels,
     tauri,
+    t,
+    trustedLanStatus,
   });
 
   const {
@@ -498,86 +528,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsClientReadOnly,
     settingsPrinterMessageLabels,
     startPrinterEdit,
-    tauri,
-  });
-
-  const { handleResetAppData, handleResetCatalogs } = useSettingsMaintenanceActions({
-    busy,
-    clearConfirmResetAction,
-    confirmResetAction,
-    reloadSettings,
-    setBusy,
-    setConfirmResetAction,
-    setError,
-    setInfo,
-    setLastCatalogReset,
-    settingsCatalogResetMessageLabels,
-    settingsMaintenanceResetMessageLabels,
-    tauri,
-  });
-
-  const loadSettingsInventoryRows = useSettingsInventoryRowsLoader({
-    settingsClientHostBaseUrl,
-    settingsClientLibraryId,
-    settingsClientReadOnly,
-  });
-
-  const {
-    handleExportFullBackup,
-    handleExportInventoryCsv,
-    handleExportInventoryJson,
-  } = useSettingsBackupExportActions({
-    busy,
-    loadSettingsInventoryRows,
-    recordExportedBackupValidation,
-    setBusy,
-    setError,
-    setInfo,
-    settingsBackupErrorMessageLabels,
-    settingsClientHostBaseUrl,
-    settingsClientLibraryId,
-    settingsClientReadOnly,
-    settingsInventoryExportMessageLabels,
-    tauri,
-    t,
-  });
-
-  const { handlePrintInventoryOverviewA4 } = useSettingsInventoryPrintAction({
-    busy,
-    loadSettingsInventoryRows,
-    locale,
-    setBusy,
-    setError,
-    setInfo,
-    settingsClientHostBaseUrl,
-    settingsClientReadOnly,
-    settingsInventoryOverviewPrintMessageLabels,
-    settingsInventoryOverviewPrintPdfLabels,
-    settingsInventoryPrintLabels,
-    tauri,
-    trustedLanStatus,
-  });
-
-  const { handleImportDataFile, handleValidateBackupFile } = useSettingsBackupFileActions({
-    busy,
-    clearBackupValidation,
-    clearConfirmResetAction,
-    librarySyncModeDraft,
-    recordBackupValidation,
-    recordImportedFullBackup,
-    reloadSettings,
-    setActiveTab,
-    setBusy,
-    setError,
-    setInfo,
-    setLastCatalogReset,
-    setLibrarySyncHostBaseUrlDraft,
-    setLibrarySyncModeDraft,
-    setLibrarySyncSnapshot,
-    setLibrarySyncValidation,
-    settingsBackupErrorMessageLabels,
-    settingsBackupValidationMessageLabels,
-    settingsImportMessageLabels,
     tauri,
   });
 
@@ -624,31 +574,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     onLocaleSelection: handleLocaleSelection,
     onPrintInventoryOverviewA4: handlePrintInventoryOverviewA4,
     onThemeSelection: handleThemeSelection,
-  });
-  const settingsMaintenanceRouteProps = buildSettingsMaintenanceRouteProps({
-    backupImportInputRef,
-    backupValidateInputRef,
-    backupValidationHasExtraTables,
-    backupValidationHasMissingTables,
-    backupValidationHasWarnings,
-    busy,
-    catalogCount: catalogMasters.length,
-    confirmResetAction,
-    lastBackupValidation,
-    lastCatalogReset,
-    missingSwatchCount,
-    printerCount: printers.length,
-    tauri,
-    t,
-    onExportFullBackup: handleExportFullBackup,
-    onExportInventoryCsv: handleExportInventoryCsv,
-    onExportInventoryJson: handleExportInventoryJson,
-    onImportDataFile: handleImportDataFile,
-    onOpenBackupValidate: handleOpenBackupValidate,
-    onOpenDataImport: handleOpenDataImport,
-    onResetAppData: handleResetAppData,
-    onResetCatalogs: handleResetCatalogs,
-    onValidateBackupFile: handleValidateBackupFile,
   });
   const settingsPrintersRouteProps = buildSettingsPrintersRouteProps({
     bambuLiveIntegrations,
