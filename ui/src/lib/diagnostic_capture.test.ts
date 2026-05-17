@@ -2,6 +2,8 @@ import { strict as assert } from "node:assert";
 import test from "node:test";
 import {
   buildDiagnosticCaptureSession,
+  buildDiagnosticChartFieldOptions,
+  buildDiagnosticChartPoints,
   exportDiagnosticCaptureSessionCsv,
   updateDiagnosticCaptureSessionFromPayload,
 } from "./diagnostic_capture";
@@ -76,4 +78,48 @@ test("exportDiagnosticCaptureSessionCsv writes summary and sample rows with esca
   assert.match(csv, /field_summary,.*?,print,print\.note,,"line\nbreak"/);
   assert.match(csv, /field_summary,.*?,print,msg,,"hello, ""printer"""/);
   assert.match(csv, /sample_log,.*?,print,msg,2026-05-15T10:00:00Z,"hello, ""printer""",first_seen/);
+});
+
+test("diagnostic chart helpers select numeric changing telemetry", () => {
+  const session = buildDiagnosticCaptureSession(null);
+  const updated = updateDiagnosticCaptureSessionFromPayload({
+    session,
+    rawPayload: {
+      mc_percent: 10,
+      sequence_id: 123,
+      tag_uid: "abc",
+      nozzle_temp: "205",
+    },
+    observedAt: "2026-05-15T10:00:00Z",
+  });
+  assert.ok(updated);
+  const changed = updateDiagnosticCaptureSessionFromPayload({
+    session: updated,
+    rawPayload: {
+      mc_percent: 20,
+      sequence_id: 124,
+      tag_uid: "def",
+      nozzle_temp: "210",
+    },
+    observedAt: "2026-05-15T10:00:05Z",
+  });
+  assert.ok(changed);
+
+  const options = buildDiagnosticChartFieldOptions(changed.fields);
+  assert.deepEqual(
+    options.map((option) => option.path).sort(),
+    ["mc_percent", "nozzle_temp"],
+  );
+  assert.deepEqual(buildDiagnosticChartPoints(changed, "mc_percent"), [
+    {
+      observedAt: "2026-05-15T10:00:00Z",
+      value: 10,
+      valueText: "10",
+    },
+    {
+      observedAt: "2026-05-15T10:00:05Z",
+      value: 20,
+      valueText: "20",
+    },
+  ]);
 });
