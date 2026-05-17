@@ -1,22 +1,14 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { neutralChipClass } from "../lib/chip_styles";
-import {
-  loadCatalogMasters,
-  resolveCatalogSelectionDefaults,
-} from "../lib/catalog_data_source";
+import { loadCatalogMasters } from "../lib/catalog_data_source";
 import { useI18n } from "../lib/i18n";
 import {
-  buildWishlistDraft,
   createWishlistEntry,
   deleteWishlistEntry,
-  filterWishlistCatalogMasters,
   filterWishlistItems,
-  listWishlistCatalogMastersByVendor,
   loadWishlistItems,
-  selectWishlistCatalogMaster,
   summarizeWishlistQueue,
   updateWishlistEntryStatus,
-  type WishlistCatalogFilter as CatalogFilter,
   type WishlistStatus,
   type WishlistStatusFilter as WishlistBoardFilter,
 } from "../lib/wishlist_data_source";
@@ -29,8 +21,9 @@ import {
   type MasterCatalogRow,
   type WishlistItemRow,
 } from "../lib/tauri_client";
-import { formatUnknownError, type WishlistCreateMode } from "./wishlist_helpers";
+import { formatUnknownError } from "./wishlist_helpers";
 import { useWishlistCatalogRefresh } from "./use_wishlist_catalog_refresh";
+import { useWishlistCreateForm } from "./use_wishlist_create_form";
 import {
   WishlistAddPanel,
   WishlistBoardPanel,
@@ -54,25 +47,45 @@ export default function WishlistPage() {
     null,
   );
 
-  const [createMode, setCreateMode] = useState<WishlistCreateMode>("bambu");
-  const [bambuCatalogQuery, setBambuCatalogQuery] = useState("");
-  const [bambuCatalogFilter, setBambuCatalogFilter] =
-    useState<CatalogFilter>("ALL");
-  const [newBambuMasterId, setNewBambuMasterId] = useState("");
-  const [esunCatalogQuery, setEsunCatalogQuery] = useState("");
-  const [esunCatalogFilter, setEsunCatalogFilter] =
-    useState<CatalogFilter>("ALL");
-  const [newEsunMasterId, setNewEsunMasterId] = useState("");
-  const deferredBambuCatalogQuery = useDeferredValue(bambuCatalogQuery);
-  const deferredEsunCatalogQuery = useDeferredValue(esunCatalogQuery);
-  const [wishlistQuantity, setWishlistQuantity] = useState("1");
-  const [wishlistNote, setWishlistNote] = useState("");
-
-  const [manualVendor, setManualVendor] = useState("Generic");
-  const [manualMaterial, setManualMaterial] = useState("PLA");
-  const [manualFilamentName, setManualFilamentName] = useState("");
-  const [manualColorName, setManualColorName] = useState("");
-  const [manualHexColor, setManualHexColor] = useState("");
+  const {
+    activeCatalogCount,
+    activeCatalogMatches,
+    applyCatalogSelectionDefaults,
+    bambuCatalogFilter,
+    bambuCatalogQuery,
+    createMode,
+    currentDraft,
+    currentSelectionDiscontinued,
+    currentSelectionHex,
+    esunCatalogFilter,
+    esunCatalogQuery,
+    filteredBambuMasters,
+    filteredEsunMasters,
+    manualColorName,
+    manualFilamentName,
+    manualHexColor,
+    manualMaterial,
+    manualVendor,
+    newBambuMasterId,
+    newEsunMasterId,
+    selectedBambuMaster,
+    setBambuCatalogFilter,
+    setBambuCatalogQuery,
+    setCreateMode,
+    setEsunCatalogFilter,
+    setEsunCatalogQuery,
+    setManualColorName,
+    setManualFilamentName,
+    setManualHexColor,
+    setManualMaterial,
+    setManualVendor,
+    setNewBambuMasterId,
+    setNewEsunMasterId,
+    setWishlistNote,
+    setWishlistQuantity,
+    wishlistNote,
+    wishlistQuantity,
+  } = useWishlistCreateForm(masters);
 
   const reloadCatalog = useCallback(async () => {
     if (!tauri) {
@@ -81,14 +94,12 @@ export default function WishlistPage() {
     try {
       const rows = await loadCatalogMasters();
       setMasters(rows);
-      const defaults = resolveCatalogSelectionDefaults(rows);
-      setNewBambuMasterId((current) => current || defaults.bambuMasterId);
-      setNewEsunMasterId((current) => current || defaults.esunMasterId);
+      applyCatalogSelectionDefaults(rows);
     } catch (catalogError) {
       console.error(catalogError);
       setError(t("wishlist.error.loadCatalog", "Could not load master catalog."));
     }
-  }, [t, tauri]);
+  }, [applyCatalogSelectionDefaults, t, tauri]);
 
   const reloadWishlist = useCallback(async () => {
     if (!tauri) {
@@ -133,100 +144,10 @@ export default function WishlistPage() {
     }
   }, [confirmDeleteWishlistId, wishlistItems]);
 
-  const bambuMasters = useMemo(
-    () => listWishlistCatalogMastersByVendor(masters, "bambu"),
-    [masters],
-  );
-
   const masterById = useMemo(
     () => new Map(masters.map((master) => [master.id, master])),
     [masters],
   );
-
-  const filteredBambuMasters = useMemo(
-    () =>
-      filterWishlistCatalogMasters(
-        bambuMasters,
-        bambuCatalogFilter,
-        deferredBambuCatalogQuery,
-      ),
-    [bambuCatalogFilter, deferredBambuCatalogQuery, bambuMasters],
-  );
-
-  const selectedBambuMaster = useMemo(() => {
-    return selectWishlistCatalogMaster(filteredBambuMasters, newBambuMasterId);
-  }, [filteredBambuMasters, newBambuMasterId]);
-
-  useEffect(() => {
-    if (createMode !== "bambu") {
-      return;
-    }
-    if (filteredBambuMasters.length === 0) {
-      setNewBambuMasterId("");
-      return;
-    }
-    const exists = filteredBambuMasters.some(
-      (master) => master.id === newBambuMasterId,
-    );
-    if (!exists) {
-      setNewBambuMasterId(filteredBambuMasters[0].id);
-    }
-  }, [createMode, filteredBambuMasters, newBambuMasterId]);
-
-  const esunMasters = useMemo(
-    () => listWishlistCatalogMastersByVendor(masters, "esun"),
-    [masters],
-  );
-
-  const filteredEsunMasters = useMemo(
-    () =>
-      filterWishlistCatalogMasters(
-        esunMasters,
-        esunCatalogFilter,
-        deferredEsunCatalogQuery,
-      ),
-    [deferredEsunCatalogQuery, esunCatalogFilter, esunMasters],
-  );
-
-  const selectedEsunMaster = useMemo(() => {
-    return selectWishlistCatalogMaster(filteredEsunMasters, newEsunMasterId);
-  }, [filteredEsunMasters, newEsunMasterId]);
-
-  const currentDraft = useMemo(() => {
-    return buildWishlistDraft({
-      source: createMode,
-      selectedBambuMaster,
-      selectedEsunMaster,
-      manualVendor,
-      manualMaterial,
-      manualFilamentName,
-      manualColorName,
-    });
-  }, [
-    createMode,
-    manualColorName,
-    manualFilamentName,
-    manualMaterial,
-    manualVendor,
-    selectedBambuMaster,
-    selectedEsunMaster,
-  ]);
-
-  useEffect(() => {
-    if (createMode !== "esun") {
-      return;
-    }
-    if (filteredEsunMasters.length === 0) {
-      setNewEsunMasterId("");
-      return;
-    }
-    const exists = filteredEsunMasters.some(
-      (master) => master.id === newEsunMasterId,
-    );
-    if (!exists) {
-      setNewEsunMasterId(filteredEsunMasters[0].id);
-    }
-  }, [createMode, filteredEsunMasters, newEsunMasterId]);
 
   const wishlistSummary = useMemo(() => {
     return summarizeWishlistQueue(wishlistItems);
@@ -235,50 +156,6 @@ export default function WishlistPage() {
   const visibleWishlistItems = useMemo(() => {
     return filterWishlistItems(wishlistItems, boardFilter);
   }, [boardFilter, wishlistItems]);
-
-  const activeCatalogCount = useMemo(() => {
-    if (createMode === "bambu") {
-      return bambuMasters.length;
-    }
-    if (createMode === "esun") {
-      return esunMasters.length;
-    }
-    return masters.length;
-  }, [bambuMasters.length, createMode, esunMasters.length, masters.length]);
-
-  const activeCatalogMatches = useMemo(() => {
-    if (createMode === "bambu") {
-      return filteredBambuMasters.length;
-    }
-    if (createMode === "esun") {
-      return filteredEsunMasters.length;
-    }
-    return 0;
-  }, [createMode, filteredBambuMasters.length, filteredEsunMasters.length]);
-
-  const currentSelectionHex = useMemo(() => {
-    if (createMode === "bambu") {
-      return selectedBambuMaster?.hex_color ?? null;
-    }
-    if (createMode === "esun") {
-      return selectedEsunMaster?.hex_color ?? null;
-    }
-    return manualHexColor || null;
-  }, [createMode, manualHexColor, selectedBambuMaster?.hex_color, selectedEsunMaster?.hex_color]);
-
-  const currentSelectionDiscontinued = useMemo(() => {
-    if (createMode === "bambu") {
-      return selectedBambuMaster?.is_discontinued ?? false;
-    }
-    if (createMode === "esun") {
-      return selectedEsunMaster?.is_discontinued ?? false;
-    }
-    return false;
-  }, [
-    createMode,
-    selectedBambuMaster?.is_discontinued,
-    selectedEsunMaster?.is_discontinued,
-  ]);
 
   function toggleBoardFilter(next: WishlistBoardFilter) {
     setBoardFilter((current) => {
