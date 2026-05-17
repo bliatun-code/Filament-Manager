@@ -34,16 +34,12 @@ import {
 import {
   loadFilamentConsumptionBreakdown,
   loadLoanBreakdownRows,
-  loadStatisticsPageData,
 } from "../lib/statistics_data_source";
 import { useResolvedTheme } from "../lib/theme_mode";
 import {
   isTauri,
   type FilamentConsumptionRow,
-  type InventoryOverview,
-  type LoanUsageByPersonRow,
   type PrinterOverviewRow,
-  type SpoolWithMasterRow,
   type SpoolLoanDetailsRow,
 } from "../lib/tauri_client";
 import {
@@ -57,6 +53,7 @@ import {
   StatisticsBorrowerUsageModal,
   StatisticsConsumptionModal,
 } from "./statistics_usage_modals";
+import { useStatisticsPageData } from "./use_statistics_page_data";
 
 function loanPartyName(row: SpoolLoanDetailsRow): string {
   return (row.loan.counterparty_name ?? "").trim() || row.loan.borrower_name;
@@ -66,25 +63,23 @@ export default function StatisticsPage() {
   const { t, locale } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
-  const [overview, setOverview] = useState<InventoryOverview | null>(null);
-  const [printers, setPrinters] = useState<PrinterOverviewRow[]>([]);
-  const [spoolRows, setSpoolRows] = useState<SpoolWithMasterRow[]>([]);
-  const [overviewConsumptionRows, setOverviewConsumptionRows] = useState<FilamentConsumptionRow[]>(
-    [],
-  );
-  const [loanUsage, setLoanUsage] = useState<LoanUsageByPersonRow[]>([]);
-  const [inboundLoanUsage, setInboundLoanUsage] = useState<LoanUsageByPersonRow[]>([]);
-  const [loanDetails, setLoanDetails] = useState<SpoolLoanDetailsRow[]>([]);
-  const [loading, setLoading] = useState(tauri);
-  const [error, setError] = useState<string | null>(null);
-  const [clientReadOnly, setClientReadOnly] = useState(false);
-  const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
-  const [clientHostBaseUrl, setClientHostBaseUrl] = useState<string | null>(null);
-  const [clientLibraryId, setClientLibraryId] = useState<string | null>(null);
-  const [clientStatsSource, setClientStatsSource] = useState<"LIVE" | "CACHED" | "OFFLINE">(
-    "OFFLINE",
-  );
-  const [clientStatisticsUpdatedAt, setClientStatisticsUpdatedAt] = useState<string | null>(null);
+  const {
+    clientHostBaseUrl,
+    clientHostDeviceName,
+    clientLibraryId,
+    clientReadOnly,
+    clientStatisticsUpdatedAt,
+    clientStatsSource,
+    error,
+    inboundLoanUsage,
+    loading,
+    loanDetails,
+    loanUsage,
+    overview,
+    overviewConsumptionRows,
+    printers,
+    spoolRows,
+  } = useStatisticsPageData({ tauri, t });
   const [showConsumptionModal, setShowConsumptionModal] = useState(false);
   const [consumptionModalTitle, setConsumptionModalTitle] = useState("");
   const [consumptionRows, setConsumptionRows] = useState<FilamentConsumptionRow[]>([]);
@@ -155,49 +150,6 @@ export default function StatisticsPage() {
       // Ignore persistence errors.
     }
   }, [borrowerPrefs]);
-
-  const loadStatistics = useCallback(
-    async (options?: { silent?: boolean }) => {
-      if (!tauri) {
-        return;
-      }
-      if (!options?.silent) {
-        setLoading(true);
-      }
-      setError(null);
-      try {
-        const result = await loadStatisticsPageData();
-        const { syncState } = result;
-
-        setClientReadOnly(syncState.clientReadOnly);
-        setClientHostDeviceName(syncState.clientHostDeviceName);
-        setClientHostBaseUrl(syncState.clientHostBaseUrl);
-        setClientLibraryId(syncState.clientLibraryId);
-
-        setOverview(result.overview ? { ...result.overview } : null);
-        setPrinters(result.printers);
-        setSpoolRows([...result.spoolRows]);
-        setOverviewConsumptionRows([...result.consumptionRows]);
-        setLoanDetails(result.loanDetails);
-        setLoanUsage(result.loanUsage);
-        setInboundLoanUsage(result.inboundLoanUsage);
-        setClientStatisticsUpdatedAt(result.updatedAt);
-        setClientStatsSource(result.source);
-      } catch (loadError) {
-        console.error(loadError);
-        setError(t("statistics.error.load", "Failed to load statistics."));
-      } finally {
-        if (!options?.silent) {
-          setLoading(false);
-        }
-      }
-    },
-    [t, tauri],
-  );
-
-  useEffect(() => {
-    void loadStatistics();
-  }, [loadStatistics]);
 
   const totals = useMemo(() => deriveStatisticsTotals(printers), [printers]);
   const ownershipOverview = useMemo(() => {
