@@ -1,8 +1,8 @@
+import { useEffect, useRef } from "react";
 import type { SettingsTabKey } from "../App";
 import { isTauri } from "../lib/tauri_client";
 import { useI18n } from "../lib/i18n";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
-import { buildSettingsCatalogRouteProps } from "./settings_catalog_route_props";
 import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
 import { buildSettingsLibraryBrowsersPanelProps } from "./settings_library_browsers_panel_props";
 import { buildSettingsLibraryClientPanelProps } from "./settings_library_client_panel_props";
@@ -17,14 +17,12 @@ import { SettingsPageLayout } from "./settings_page_layout";
 import { buildSettingsPrintersRouteProps } from "./settings_printers_route_props";
 import { buildSettingsRouteMapProps } from "./settings_route_map_props";
 import { useSettingsFeedbackState } from "./use_settings_feedback_state";
-import { useSettingsCatalogSectionState } from "./use_settings_catalog_section_state";
+import { useSettingsCatalogSection } from "./use_settings_catalog_section";
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
 import { useSettingsBackupFileControls } from "./use_settings_backup_file_controls";
 import { useSettingsBackupValidationSummary } from "./use_settings_backup_validation_summary";
-import { useSettingsCatalogRefreshActions } from "./use_settings_catalog_refresh_actions";
 import { useSettingsPrinterActions } from "./use_settings_printer_actions";
 import { useSettingsPrinterSectionState } from "./use_settings_printer_section_state";
-import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
 import { useSettingsPageDataState } from "./use_settings_page_data_state";
 import { useSettingsPageReload } from "./use_settings_page_reload";
 import { useSettingsPageShellState } from "./use_settings_page_shell_state";
@@ -34,7 +32,6 @@ import { useSettingsBackupExportActions } from "./use_settings_backup_export_act
 import { useSettingsBackupFileActions } from "./use_settings_backup_file_actions";
 import { useSettingsInventoryPrintAction } from "./use_settings_inventory_print_action";
 import { useSettingsInitialLoad } from "./use_settings_initial_load";
-import { useSettingsSwatchActions } from "./use_settings_swatch_actions";
 import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
 import { useSettingsLibrarySyncState } from "./use_settings_library_sync_state";
 import { useSettingsLibrarySyncActions } from "./use_settings_library_sync_actions";
@@ -58,6 +55,7 @@ type SettingsPageProps = {
 
 export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPageProps) {
   const tauri = isTauri();
+  const reloadSettingsRef = useRef<() => Promise<void>>(async () => undefined);
   const { locale, setLocale, t } = useI18n();
   const { busy, error, info, setBusy, setError, setInfo } = useSettingsFeedbackState();
   const { handleLocaleSelection, handleThemeSelection, themeMode } = useSettingsPreferenceSection({
@@ -200,46 +198,20 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     spoolRows,
   } = useSettingsPageDataState(tauri);
   const {
-    activeCatalogMasterCount,
-    activeCatalogMaterialOptions,
-    activeCatalogRefreshMaterials,
-    beginCatalogRefreshResult,
-    catalogRefreshBusy,
-    catalogRefreshElapsedSeconds,
-    catalogRefreshLog,
-    catalogRefreshPhase,
-    catalogRefreshProgressMessage,
-    catalogRefreshSummary,
-    catalogRefreshVendor,
-    catalogVendor,
-    clearCatalogRefreshMaterials,
-    completeCatalogRefreshResult,
-    confirmBulkSwatch,
-    failCatalogRefreshResult,
-    getCatalogRefreshMaterials,
-    missingSwatchMasters,
-    setCatalogRefreshBusy,
-    setCatalogRefreshPhase,
-    setCatalogRefreshProgressMessage,
-    setCatalogRefreshStartedAt,
-    setCatalogRefreshVendor,
-    setCatalogVendor,
-    setConfirmBulkSwatch,
-    setSwatchBusy,
+    missingSwatchCount,
+    settingsCatalogRouteProps,
     setSwatchDraftById,
-    setSwatchVendorFilter,
-    showCatalogRefreshLog,
-    swatchBusy,
-    swatchDraftById,
-    swatchVendorFilter,
-    swatchVendorOptions,
-    toggleCatalogRefreshLog,
-    toggleCatalogRefreshMaterial,
-    updateSwatchDraft,
-    visibleMissingSwatchMasters,
-    visibleMissingSwatchVendorCount,
-  } = useSettingsCatalogSectionState({
+  } = useSettingsCatalogSection({
+    busy,
     catalogMasters,
+    reloadSettings: () => reloadSettingsRef.current(),
+    setError,
+    setInfo,
+    settingsCatalogRefreshMessageLabels,
+    settingsCatalogRefreshSummaryLabels,
+    settingsSwatchBulkMessageLabels,
+    settingsSwatchErrorMessageLabels,
+    settingsSwatchSavedMessageLabels,
     tauri,
     t,
   });
@@ -351,6 +323,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsPageMessageLabels,
     tauri,
   });
+  useEffect(() => {
+    reloadSettingsRef.current = reloadSettings;
+  }, [reloadSettings]);
 
   useSettingsSilentReload({ reloadSettings, tauri });
 
@@ -491,13 +466,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     tauri,
   });
 
-  const { clearConfirmBulkSwatch } = useSettingsSwatchConfirm({
-    confirmBulkSwatch,
-    setConfirmBulkSwatch,
-    swatchVendorFilter,
-    visibleMissingSwatchCount: visibleMissingSwatchMasters.length,
-  });
-
   const {
     handleCancelEditPrinter,
     handleDeletePrinter,
@@ -613,46 +581,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     tauri,
   });
 
-  const { handleRefreshVendorCatalog } = useSettingsCatalogRefreshActions({
-    beginCatalogRefreshResult,
-    busy,
-    catalogRefreshBusy,
-    completeCatalogRefreshResult,
-    failCatalogRefreshResult,
-    getCatalogRefreshMaterials,
-    reloadSettings,
-    setCatalogRefreshBusy,
-    setCatalogRefreshPhase,
-    setCatalogRefreshProgressMessage,
-    setCatalogRefreshStartedAt,
-    setCatalogRefreshVendor,
-    setError,
-    setInfo,
-    settingsCatalogRefreshMessageLabels,
-    settingsCatalogRefreshSummaryLabels,
-    swatchBusy,
-    tauri,
-  });
-
-  const { handleBulkAutoFillMissingSwatches, handleSaveMissingSwatch } =
-    useSettingsSwatchActions({
-      busy,
-      clearConfirmBulkSwatch,
-      confirmBulkSwatch,
-      reloadSettings,
-      setConfirmBulkSwatch,
-      setError,
-      setInfo,
-      setSwatchBusy,
-      settingsSwatchBulkMessageLabels,
-      settingsSwatchErrorMessageLabels,
-      settingsSwatchSavedMessageLabels,
-      swatchBusy,
-      swatchDraftById,
-      tauri,
-      visibleMissingSwatchMasters,
-    });
-
   const trustedLanCompanionModel = buildTrustedLanCompanionModel({
     trustedLanStatus,
     statusLoading: trustedLanLoading,
@@ -708,7 +636,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     confirmResetAction,
     lastBackupValidation,
     lastCatalogReset,
-    missingSwatchCount: missingSwatchMasters.length,
+    missingSwatchCount,
     printerCount: printers.length,
     tauri,
     t,
@@ -721,55 +649,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     onResetAppData: handleResetAppData,
     onResetCatalogs: handleResetCatalogs,
     onValidateBackupFile: handleValidateBackupFile,
-  });
-  const settingsCatalogRouteProps = buildSettingsCatalogRouteProps({
-    helpText: t(
-      "settings.catalogTabHelp",
-      "Catalog updates are performed here. Inventory add-flow uses the local catalogue managed on this page.",
-    ),
-    missingSwatchesPanel: {
-      busy,
-      catalogRefreshBusy,
-      confirmBulkSwatch,
-      missingSwatchCount: missingSwatchMasters.length,
-      swatchBusy,
-      swatchDraftById,
-      swatchVendorFilter,
-      swatchVendorOptions,
-      tauri,
-      t,
-      visibleMissingSwatchMasters,
-      visibleMissingSwatchVendorCount,
-      onBulkAutoFill: handleBulkAutoFillMissingSwatches,
-      onRefresh: reloadSettings,
-      onSaveMissingSwatch: handleSaveMissingSwatch,
-      onSwatchDraftChange: updateSwatchDraft,
-      onVendorFilterChange: setSwatchVendorFilter,
-    },
-    refreshPanel: {
-      activeCatalogMasterCount,
-      activeCatalogMaterialOptions,
-      activeCatalogRefreshMaterials,
-      busy,
-      catalogCount: catalogMasters.length,
-      catalogRefreshBusy,
-      catalogRefreshElapsedSeconds,
-      catalogRefreshLog,
-      catalogRefreshPhase,
-      catalogRefreshProgressMessage,
-      catalogRefreshSummary,
-      catalogRefreshVendor,
-      catalogVendor,
-      showCatalogRefreshLog,
-      swatchBusy,
-      tauri,
-      t,
-      onClearCatalogRefreshMaterials: clearCatalogRefreshMaterials,
-      onRefreshVendorCatalog: handleRefreshVendorCatalog,
-      onSetCatalogVendor: setCatalogVendor,
-      onToggleCatalogRefreshLog: toggleCatalogRefreshLog,
-      onToggleCatalogRefreshMaterial: toggleCatalogRefreshMaterial,
-    },
   });
   const settingsPrintersRouteProps = buildSettingsPrintersRouteProps({
     bambuLiveIntegrations,
