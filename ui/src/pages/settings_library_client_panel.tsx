@@ -11,6 +11,15 @@ import type { LibrarySyncVisibilityState } from "./settings_library_sync_model";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
+const libraryClientSectionClass =
+  "surface-subtle px-4 py-4 text-sm leading-6 text-slate-700 dark:text-slate-200";
+const libraryClientInputClass =
+  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400/50 dark:focus:ring-indigo-500/20";
+const libraryClientInfoClass =
+  "surface-subtle px-3 py-3 text-sm leading-6 text-slate-700 dark:text-slate-200";
+const libraryClientValueClass =
+  "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200";
+
 type SettingsLibraryClientPanelProps = {
   librarySyncBusy: boolean;
   librarySyncDeviceNameDraft: string;
@@ -68,7 +77,7 @@ export function SettingsLibraryClientPanel({
 }: SettingsLibraryClientPanelProps) {
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-4 dark:border-slate-700/70 dark:bg-slate-950/50">
+      <div className={libraryClientSectionClass}>
         <div className="font-semibold text-slate-900 dark:text-slate-100">
           {t("settings.librarySyncClientAuthTitle", "Desktop client pairing")}
         </div>
@@ -87,7 +96,7 @@ export function SettingsLibraryClientPanel({
               type="text"
               value={librarySyncDeviceNameDraft}
               onChange={(event) => onDeviceNameChange(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400/50 dark:focus:ring-indigo-500/20"
+              className={libraryClientInputClass}
               placeholder={t("settings.librarySyncDeviceNamePlaceholder", "Workshop PC")}
               disabled={!tauri || librarySyncBusy}
             />
@@ -103,7 +112,7 @@ export function SettingsLibraryClientPanel({
                 type="text"
                 value={librarySyncPairingDraft}
                 onChange={(event) => onPairingDraftChange(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400/50 dark:focus:ring-indigo-500/20"
+                className={libraryClientInputClass}
                 placeholder="http://192.168.86.25:4278/companion?pairing=..."
                 disabled={!tauri || librarySyncBusy}
               />
@@ -124,7 +133,7 @@ export function SettingsLibraryClientPanel({
           </>
         ) : (
           <>
-            <div className="mt-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-200">
+            <div className={`mt-3 ${libraryClientInfoClass}`}>
               <div className="font-semibold text-slate-800 dark:text-slate-100">
                 {t("settings.librarySyncCurrentHost", "Current host")}
               </div>
@@ -208,7 +217,7 @@ export function SettingsLibraryClientPanel({
         ) : null}
       </div>
 
-      <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-4 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+      <div className={libraryClientSectionClass}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="font-semibold text-slate-900 dark:text-slate-100">
@@ -235,13 +244,13 @@ export function SettingsLibraryClientPanel({
 
         {showLibraryClientAdvanced ? (
           <div className="mt-4 space-y-4">
-            <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-4 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+            <div className={libraryClientSectionClass}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
                     {t("settings.librarySyncLibraryId", "Library ID")}
                   </div>
-                  <div className="mt-2 break-all rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200">
+                  <div className={`mt-2 break-all ${libraryClientValueClass}`}>
                     {librarySyncSettings?.library_id || t("common.loading", "Loading...")}
                   </div>
                 </div>
@@ -285,14 +294,14 @@ export function SettingsLibraryClientPanel({
               ) : null}
 
               {librarySyncSettings?.last_validation_message ? (
-                <div className="mt-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-sm text-slate-600 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-300">
+                <div className="surface-subtle mt-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300">
                   {librarySyncSettings.last_validation_message}
                 </div>
               ) : null}
             </div>
 
             {libraryVisibility.clientHasSnapshot && librarySyncSnapshot ? (
-              <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+              <div className="surface-subtle px-4 py-3 text-sm leading-6 text-slate-700 dark:text-slate-200">
                 <div className="flex items-center justify-between gap-3">
                   <div className="font-semibold">
                     {t("settings.librarySyncCachedSnapshot", "Cached host snapshot")}
