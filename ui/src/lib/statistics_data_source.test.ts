@@ -4,12 +4,15 @@ import test from "node:test";
 import {
   loadFilamentConsumptionBreakdown,
   loadLoanBreakdownRows,
+  loadStatisticsData,
   loadStatisticsPageData,
 } from "./statistics_data_source";
 import type {
   FilamentConsumptionRow,
   LibrarySyncSettings,
+  PrinterOverviewRow,
   SpoolLoanDetailsRow,
+  SpoolWithMasterRow,
 } from "./tauri_client";
 
 function consumptionRow(id: string): FilamentConsumptionRow {
@@ -64,6 +67,48 @@ function syncSettings(overrides: Partial<LibrarySyncSettings> = {}): LibrarySync
     library_id: "library-1",
     client_auth_paired: false,
     ...overrides,
+  };
+}
+
+function spoolRow(id: string): SpoolWithMasterRow {
+  return {
+    spool: {
+      id,
+      master_id: `master-${id}`,
+      status: "IN_STOCK",
+      ownership_type: "OWNED",
+      remaining_g: 900,
+    },
+    master: {
+      id: `master-${id}`,
+      vendor: "Generic",
+      material: "PLA",
+      filament_name: `Basic ${id}`,
+      color_name: "Gray",
+      hex_color: "#808080",
+      product_url: null,
+      default_weight: 1000,
+    },
+  };
+}
+
+function printerRow(id: string): PrinterOverviewRow {
+  return {
+    printer: {
+      id,
+      name: "Printer",
+      model: "generic",
+      created_at: "2026-04-01 10:00:00",
+      updated_at: "2026-04-01 10:00:00",
+    },
+    usage: {
+      total_jobs: 0,
+      successful_jobs: 0,
+      failed_jobs: 0,
+      total_used_g: 0,
+      last_job_at: null,
+    },
+    slots: [],
   };
 }
 
@@ -160,4 +205,66 @@ test("loadStatisticsPageData loads sync settings once and returns derived sync s
   assert.equal(result.syncState.clientReadOnly, true);
   assert.equal(result.syncState.clientHostDeviceName, "Host");
   assert.equal(result.syncState.clientHostBaseUrl, "http://host");
+});
+
+test("loadStatisticsData keeps partial client host data and cache when host calls fail", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    const hostSpoolCalls: Array<{ clientHostBaseUrl?: string | null; clientLibraryId?: string | null }> = [];
+    const result = await loadStatisticsData(
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: " http://host ",
+        library_id: " library-1 ",
+      }),
+      {
+        fetchHostSnapshot: async () => {
+          throw new Error("snapshot unavailable");
+        },
+        fetchHostPrinterOverview: async () => {
+          throw new Error("printer overview unavailable");
+        },
+        fetchHostLoans: async () => {
+          throw new Error("loans unavailable");
+        },
+        loadHostSpools: async (options) => {
+          hostSpoolCalls.push({
+            clientHostBaseUrl: options.clientHostBaseUrl,
+            clientLibraryId: options.clientLibraryId,
+          });
+          return [spoolRow("spool-1")];
+        },
+        fetchHostConsumption: async (baseUrl, libraryId) => {
+          assert.equal(baseUrl, "http://host");
+          assert.equal(libraryId, "library-1");
+          return [consumptionRow("host-consumption")];
+        },
+        fetchCachedPrinterOverview: async () => ({
+          captured_at: "printer-cache",
+          rows: [printerRow("cached-printer")],
+        }),
+        fetchCachedLoans: async () => ({
+          captured_at: "loan-cache",
+          rows: [loanRow("cached-spool")],
+        }),
+        fetchCachedSpools: async () => null,
+      },
+    );
+
+    assert.deepEqual(hostSpoolCalls, [
+      { clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    ]);
+    assert.equal(result.source, "CACHED");
+    assert.equal(result.updatedAt, "printer-cache");
+    assert.equal(result.overview?.total_spools, 1);
+    assert.deepEqual(result.printers.map((row) => row.printer.id), ["cached-printer"]);
+    assert.deepEqual(result.loanDetails.map((row) => row.loan.spool_id), ["cached-spool"]);
+    assert.deepEqual(result.loanUsage.map((row) => row.borrower_name), ["Ada"]);
+    assert.deepEqual(result.consumptionRows.map((row) => row.filament_name), [
+      "host-consumption",
+    ]);
+  } finally {
+    console.error = originalConsoleError;
+  }
 });
