@@ -199,7 +199,10 @@ export async function loadWishlistItems(
   const { clientReadOnly = false, limit = 500 } = options;
   const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
 
-  if (hostTarget) {
+  if (clientReadOnly) {
+    if (!hostTarget) {
+      return [];
+    }
     return fetchHostWishlist(hostTarget.baseUrl, hostTarget.libraryId, limit);
   }
 

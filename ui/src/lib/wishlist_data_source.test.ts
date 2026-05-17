@@ -230,15 +230,20 @@ test("loadWishlistItems uses local wishlist outside client host mode", async () 
   assert.deepEqual(rows.map((row) => row.id), ["local-item"]);
 });
 
-test("loadWishlistItems falls back to local loading when client host details are incomplete", async () => {
+test("loadWishlistItems avoids local fallback when client host details are incomplete", async () => {
   const rows = await loadWishlistItems(
     { clientReadOnly: true, clientHostBaseUrl: "", clientLibraryId: "library-1" },
     {
-      listLocalWishlist: async () => [wishlistItem("local-fallback")],
+      fetchHostWishlist: async () => {
+        throw new Error("host wishlist should not load without a complete target");
+      },
+      listLocalWishlist: async () => {
+        throw new Error("local wishlist should not load in client mode");
+      },
     },
   );
 
-  assert.deepEqual(rows.map((row) => row.id), ["local-fallback"]);
+  assert.deepEqual(rows, []);
 });
 
 function wishlistInput(overrides: Partial<CreateWishlistItemInput> = {}): CreateWishlistItemInput {
