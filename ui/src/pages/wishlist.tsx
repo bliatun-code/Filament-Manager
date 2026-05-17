@@ -11,12 +11,8 @@ import { useWishlistBoardState } from "./use_wishlist_board_state";
 import { useWishlistCatalogRefresh } from "./use_wishlist_catalog_refresh";
 import { useWishlistCreateForm } from "./use_wishlist_create_form";
 import { useWishlistMutations } from "./use_wishlist_mutations";
-import {
-  WishlistAddPanel,
-  WishlistBoardPanel,
-  WishlistPageHeader,
-  WishlistSummaryMetrics,
-} from "./wishlist_ui";
+import { WishlistAddPanel } from "./wishlist_add_panel";
+import { WishlistBoardPanel, WishlistPageHeader, WishlistSummaryMetrics } from "./wishlist_ui";
 import {
   WishlistCatalogRefreshModal,
   WishlistRefreshLogModal,
