@@ -56,6 +56,18 @@ type PrinterOverviewDataSourceDependencies = {
   onLoadError?: (error: unknown) => void;
 };
 
+type PrinterPageDataSourceDependencies = {
+  fetchHostOverview?: typeof fetchLibrarySyncPrinterOverview;
+  fetchHostSettings?: typeof fetchLibrarySyncPrinterSettings;
+  fetchCachedOverview?: typeof fetchCachedLibrarySyncPrinterOverview;
+  fetchCachedSpools?: typeof fetchCachedLibrarySyncSpools;
+  loadHostSpools?: typeof loadSpoolRowsPage;
+  listLocalOverview?: typeof listPrinterOverview;
+  loadLocalSettings?: typeof getPrinterSettings;
+  loadLocalSpools?: typeof loadSpoolRowsPage;
+  onLoadError?: (error: unknown) => void;
+};
+
 export function mapBambuLiveIntegrations(
   entries: BambuLiveIntegrationEntry[] | null | undefined,
 ): Record<string, BambuLiveIntegrationEntry["config"]> {
@@ -123,15 +135,29 @@ export async function loadPrinterOverviewData(
 
 export async function loadPrinterPageData(
   options: PrinterDataSourceOptions,
+  dependencies: PrinterPageDataSourceDependencies = {},
 ): Promise<PrinterDataLoadResult> {
+  const fetchHostOverview = dependencies.fetchHostOverview ?? fetchLibrarySyncPrinterOverview;
+  const fetchHostSettings = dependencies.fetchHostSettings ?? fetchLibrarySyncPrinterSettings;
+  const fetchCachedOverview =
+    dependencies.fetchCachedOverview ?? fetchCachedLibrarySyncPrinterOverview;
+  const fetchCachedSpools = dependencies.fetchCachedSpools ?? fetchCachedLibrarySyncSpools;
+  const loadHostSpools = dependencies.loadHostSpools ?? loadSpoolRowsPage;
+  const listLocalOverview = dependencies.listLocalOverview ?? listPrinterOverview;
+  const loadLocalSettings = dependencies.loadLocalSettings ?? getPrinterSettings;
+  const loadLocalSpools = dependencies.loadLocalSpools ?? loadSpoolRowsPage;
+  const onLoadError = dependencies.onLoadError ?? console.error;
   const { clientReadOnly, clientHostBaseUrl, clientLibraryId, supportedPrinterModels } = options;
   const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
 
   if (hostTarget) {
-    try {
-      const [overview, spoolRows, settingsResult, cachedPrinters] = await Promise.all([
-        fetchLibrarySyncPrinterOverview(hostTarget.baseUrl, hostTarget.libraryId),
-        loadSpoolRowsPage(
+    const [overviewResult, spoolRowsResult, settingsResult, cachedPrinters, cachedSpools] =
+      await Promise.all([
+        fetchHostOverview(hostTarget.baseUrl, hostTarget.libraryId).then(
+          (value) => ({ ok: true as const, value }),
+          (error) => ({ ok: false as const, error }),
+        ),
+        loadHostSpools(
           {
             clientReadOnly,
             clientHostBaseUrl: hostTarget.baseUrl,
@@ -139,21 +165,35 @@ export async function loadPrinterPageData(
           },
           1200,
           0,
-        ),
-        fetchLibrarySyncPrinterSettings(hostTarget.baseUrl, hostTarget.libraryId).then(
+        ).then(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
-        fetchCachedLibrarySyncPrinterOverview().catch(() => null),
+        fetchHostSettings(hostTarget.baseUrl, hostTarget.libraryId).then(
+          (value) => ({ ok: true as const, value }),
+          (error) => ({ ok: false as const, error }),
+        ),
+        fetchCachedOverview().catch(() => null),
+        fetchCachedSpools().catch(() => null),
       ]);
 
-      if (!settingsResult.ok) {
-        console.error(settingsResult.error);
-      }
+    if (!overviewResult.ok) {
+      onLoadError(overviewResult.error);
+    }
+    if (!spoolRowsResult.ok) {
+      onLoadError(spoolRowsResult.error);
+    }
+    if (!settingsResult.ok) {
+      onLoadError(settingsResult.error);
+    }
 
+    const printers = overviewResult.ok ? overviewResult.value : cachedPrinters?.rows ?? [];
+    const spools = spoolRowsResult.ok ? spoolRowsResult.value : cachedSpools?.rows ?? [];
+
+    if (printers.length > 0 || spools.length > 0 || overviewResult.ok || spoolRowsResult.ok) {
       return {
-        printers: overview,
-        spools: spoolRows,
+        printers,
+        spools,
         bambuLiveIntegrations: mapBambuLiveIntegrations(
           settingsResult.ok ? settingsResult.value.bambu_live_integrations : [],
         ),
@@ -161,44 +201,24 @@ export async function loadPrinterPageData(
           settingsResult.ok ? settingsResult.value.printer_models : [],
           supportedPrinterModels,
         ),
-        source: "LIVE",
+        source: overviewResult.ok && spoolRowsResult.ok ? "LIVE" : "CACHED",
         updatedAt: cachedPrinters?.captured_at ?? null,
       };
-    } catch (loadError) {
-      console.error(loadError);
-      try {
-        const [cachedPrinters, cachedSpools] = await Promise.all([
-          fetchCachedLibrarySyncPrinterOverview(),
-          fetchCachedLibrarySyncSpools(),
-        ]);
-        if (cachedPrinters?.rows || cachedSpools?.rows) {
-          return {
-            printers: cachedPrinters?.rows ?? [],
-            spools: cachedSpools?.rows ?? [],
-            bambuLiveIntegrations: {},
-            printerModels: supportedPrinterModels,
-            source: "CACHED",
-            updatedAt: cachedPrinters?.captured_at ?? null,
-          };
-        }
-      } catch (cacheError) {
-        console.error(cacheError);
-      }
-
-      return {
-        printers: [],
-        spools: [],
-        bambuLiveIntegrations: {},
-        printerModels: supportedPrinterModels,
-        source: "OFFLINE",
-        updatedAt: null,
-      };
     }
+
+    return {
+      printers: [],
+      spools: [],
+      bambuLiveIntegrations: {},
+      printerModels: supportedPrinterModels,
+      source: "OFFLINE",
+      updatedAt: null,
+    };
   }
 
   const [overview, spoolRows, settings] = await Promise.all([
-    listPrinterOverview(),
-    loadSpoolRowsPage(
+    listLocalOverview(),
+    loadLocalSpools(
       {
         clientReadOnly,
         clientHostBaseUrl,
@@ -207,7 +227,7 @@ export async function loadPrinterPageData(
       1200,
       0,
     ),
-    getPrinterSettings(),
+    loadLocalSettings(),
   ]);
 
   return {
