@@ -23,9 +23,14 @@ pub(crate) fn library_sync_host_header_value(base_url: &str) -> Result<String, S
     let host = parsed
         .host_str()
         .ok_or_else(|| "Host URL is missing a hostname.".to_string())?;
+    let host_header = if host.contains(':') && !host.starts_with('[') {
+        format!("[{host}]")
+    } else {
+        host.to_string()
+    };
     match parsed.port() {
-        Some(port) => Ok(format!("{host}:{port}")),
-        None => Ok(host.to_string()),
+        Some(port) => Ok(format!("{host_header}:{port}")),
+        None => Ok(host_header),
     }
 }
 
@@ -424,5 +429,67 @@ pub(crate) fn build_library_sync_cookie_header(
         None
     } else {
         Some(parts.join("; "))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        build_library_sync_cookie_header, extract_cookie_value_from_set_cookie,
+        extract_library_sync_pairing_token, library_sync_host_header_value,
+    };
+
+    #[test]
+    fn host_header_value_keeps_ports_and_formats_ipv6_hosts() {
+        assert_eq!(
+            library_sync_host_header_value("http://192.168.1.10:4278").unwrap(),
+            "192.168.1.10:4278"
+        );
+        assert_eq!(
+            library_sync_host_header_value("http://host.local").unwrap(),
+            "host.local"
+        );
+        assert_eq!(
+            library_sync_host_header_value("http://[::1]:4278").unwrap(),
+            "[::1]:4278"
+        );
+    }
+
+    #[test]
+    fn pairing_token_accepts_raw_tokens_and_pairing_urls() {
+        assert_eq!(
+            extract_library_sync_pairing_token("http://192.168.1.10:4278/companion?pairing=abc123")
+                .as_deref(),
+            Some("abc123")
+        );
+        assert_eq!(
+            extract_library_sync_pairing_token(" raw-token ").as_deref(),
+            Some("raw-token")
+        );
+        assert_eq!(extract_library_sync_pairing_token(" "), None);
+    }
+
+    #[test]
+    fn cookie_helpers_trim_and_omit_empty_values() {
+        assert_eq!(
+            extract_cookie_value_from_set_cookie(
+                "bfm_companion_session = abc ; Path=/",
+                "bfm_companion_session"
+            ),
+            Some("abc".to_string())
+        );
+        assert_eq!(
+            extract_cookie_value_from_set_cookie(
+                "bfm_companion_session=abc; Path=/",
+                "bfm_companion_session"
+            )
+            .as_deref(),
+            Some("abc")
+        );
+        assert_eq!(
+            build_library_sync_cookie_header(Some(" session "), Some(" device ")).as_deref(),
+            Some("bfm_companion_session=session; bfm_trusted_lan_device=device")
+        );
+        assert_eq!(build_library_sync_cookie_header(Some(" "), None), None);
     }
 }
