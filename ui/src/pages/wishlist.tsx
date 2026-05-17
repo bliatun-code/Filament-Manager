@@ -15,10 +15,10 @@ import {
   WishlistAddPanel,
   WishlistBoardPanel,
   WishlistCatalogRefreshModal,
-  WishlistMetricTile,
   WishlistPageHeader,
   WishlistRefreshLogModal,
   WishlistRefreshSummaryPanel,
+  WishlistSummaryMetrics,
 } from "./wishlist_ui";
 
 export default function WishlistPage() {
@@ -220,31 +220,12 @@ export default function WishlistPage() {
         />
       ) : null}
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <WishlistMetricTile
-          label={t("wishlist.trackedItems", "Tracked items")}
-          value={wishlistItems.length}
-          hint={t("wishlist.workflow", "Workflow: Wishlist → On order → Add to stock.")}
-        />
-        <WishlistMetricTile
-          label={t("wishlist.statusWishlist", "Wishlist")}
-          value={wishlistSummary.wishlist}
-          hint={t("wishlist.addTitle", "Add wishlist entry")}
-          className={boardFilter === "WISHLIST" ? "border-slate-400/50" : ""}
-        />
-        <WishlistMetricTile
-          label={t("wishlist.statusOnOrder", "On order")}
-          value={wishlistSummary.onOrder}
-          hint={t("wishlist.boardHint", "Keep planned purchases moving from wishlist to stock here.")}
-          className={boardFilter === "ON_ORDER" ? "border-amber-300/60" : ""}
-        />
-        <WishlistMetricTile
-          label={t("wishlist.statusReceived", "Received")}
-          value={wishlistSummary.received}
-          hint={t("wishlist.addToStock", "Add to stock")}
-          className={boardFilter === "RECEIVED" ? "border-emerald-300/60" : ""}
-        />
-      </div>
+      <WishlistSummaryMetrics
+        boardFilter={boardFilter}
+        t={t}
+        wishlistItemCount={wishlistItems.length}
+        wishlistSummary={wishlistSummary}
+      />
 
       <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[1.02fr_1.18fr]">
         <WishlistAddPanel
