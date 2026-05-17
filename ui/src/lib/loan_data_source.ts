@@ -17,6 +17,7 @@ import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
 } from "./library_sync_state";
+import { isActiveOutboundLoan } from "./loan_state";
 import {
   requireClientHostWriteTarget,
   resolveClientHostTarget,
@@ -40,6 +41,7 @@ export type LoanDataLoadResult = {
 };
 
 type ActiveLoanRowsDependencies = {
+  fetchCachedLoans?: typeof fetchCachedLibrarySyncLoans;
   listLocalActiveLoans?: typeof listActiveSpoolLoans;
 };
 
@@ -65,12 +67,27 @@ type LoanWriteDependencies = {
 
 export const deriveLoanLibrarySyncState = deriveLibrarySyncPageState;
 
+function mapLoanDetailsToActiveRow(row: SpoolLoanDetailsRow): ActiveSpoolLoanRow {
+  return {
+    loan: row.loan,
+    spool_status: row.spool_status ?? "",
+    spool_remaining_g: row.spool_remaining_g ?? null,
+    material: row.material ?? "",
+    filament_name: row.filament_name ?? "",
+    color_name: row.color_name ?? "",
+    vendor: row.vendor ?? "",
+    hex_color: row.hex_color ?? null,
+  };
+}
+
 export async function loadActiveLoanRows(
   options: { clientReadOnly: boolean },
   dependencies: ActiveLoanRowsDependencies = {},
 ): Promise<ActiveSpoolLoanRow[]> {
   if (options.clientReadOnly) {
-    return [];
+    const fetchCachedLoans = dependencies.fetchCachedLoans ?? fetchCachedLibrarySyncLoans;
+    const cached = await fetchCachedLoans().catch(() => null);
+    return (cached?.rows ?? []).filter(isActiveOutboundLoan).map(mapLoanDetailsToActiveRow);
   }
 
   const listLocalActiveLoans = dependencies.listLocalActiveLoans ?? listActiveSpoolLoans;

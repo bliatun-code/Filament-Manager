@@ -64,6 +64,39 @@ test("loadActiveLoanRows returns no local active loans in client mode", async ()
   assert.deepEqual(rows, []);
 });
 
+test("loadActiveLoanRows reuses cached active outbound loans in client mode", async () => {
+  const rows = await loadActiveLoanRows(
+    { clientReadOnly: true },
+    {
+      fetchCachedLoans: async () => ({
+        captured_at: "cached-at",
+        rows: [
+          loanDetailsRow("active-outbound"),
+          {
+            ...loanDetailsRow("returned-outbound"),
+            loan: {
+              ...loanDetailsRow("returned-outbound").loan,
+              returned_at: "2026-04-02 10:00:00",
+            },
+          },
+          {
+            ...loanDetailsRow("active-inbound"),
+            loan: {
+              ...loanDetailsRow("active-inbound").loan,
+              loan_direction: "INBOUND",
+            },
+          },
+        ],
+      }),
+      listLocalActiveLoans: async () => {
+        throw new Error("local active loans should not load in client mode");
+      },
+    },
+  );
+
+  assert.deepEqual(rows.map((row) => row.loan.spool_id), ["active-outbound"]);
+});
+
 test("loadActiveLoanRows loads local active loans outside client mode", async () => {
   const rows = await loadActiveLoanRows(
     { clientReadOnly: false },
