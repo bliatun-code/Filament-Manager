@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { neutralChipClass } from "../lib/chip_styles";
 import { useI18n } from "../lib/i18n";
 import type { OwnershipFilter, StatusFilter } from "../lib/inventory_list_model";
@@ -20,6 +21,24 @@ const ownershipFilters: ReadonlyArray<OwnershipFilter> = [
   "OWNED",
   "BORROWED_IN",
 ];
+
+const advancedFilterLabelClassName =
+  "text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-24";
+
+function InventoryAdvancedFilterRow({
+  children,
+  label,
+}: {
+  children: ReactNode;
+  label: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
+      <div className={advancedFilterLabelClassName}>{label}</div>
+      {children}
+    </div>
+  );
+}
 
 type InventoryHeaderActionsProps = {
   lowStockOnly: boolean;
@@ -201,10 +220,7 @@ export function InventoryControlsPanel({
 
         {advancedFiltersOpen ? (
           <div className="mt-3 space-y-2 border-t border-slate-200/70 pt-3 dark:border-slate-700/70">
-            <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-24">
-                {t("inventory.viewGroup", "View")}
-              </div>
+            <InventoryAdvancedFilterRow label={t("inventory.viewGroup", "View")}>
               <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
@@ -221,11 +237,8 @@ export function InventoryControlsPanel({
                   {t("inventory.viewList", "List view")}
                 </button>
               </div>
-            </div>
-            <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-24">
-                {t("inventory.ownershipGroup", "Ownership")}
-              </div>
+            </InventoryAdvancedFilterRow>
+            <InventoryAdvancedFilterRow label={t("inventory.ownershipGroup", "Ownership")}>
               <div className="flex flex-wrap gap-1.5">
                 {ownershipFilters.map((ownership) => (
                   <button
@@ -241,11 +254,8 @@ export function InventoryControlsPanel({
                   </button>
                 ))}
               </div>
-            </div>
-            <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-24">
-                {t("inventory.vendorGroup", "Vendor")}
-              </div>
+            </InventoryAdvancedFilterRow>
+            <InventoryAdvancedFilterRow label={t("inventory.vendorGroup", "Vendor")}>
               <div className="flex flex-wrap gap-1.5">
                 {vendorOptions.map((vendor) => (
                   <button
@@ -258,11 +268,8 @@ export function InventoryControlsPanel({
                   </button>
                 ))}
               </div>
-            </div>
-            <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-24">
-                {t("inventory.materialGroup", "Material")}
-              </div>
+            </InventoryAdvancedFilterRow>
+            <InventoryAdvancedFilterRow label={t("inventory.materialGroup", "Material")}>
               <div className="flex flex-wrap items-center gap-1.5">
                 {materialOptions.map((material) => (
                   <button
@@ -283,7 +290,7 @@ export function InventoryControlsPanel({
                   </button>
                 ))}
               </div>
-            </div>
+            </InventoryAdvancedFilterRow>
           </div>
         ) : null}
       </div>
