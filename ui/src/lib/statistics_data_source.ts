@@ -165,7 +165,10 @@ export async function loadFilamentConsumptionBreakdown(
   const { clientReadOnly, printerId = null, limit = 500 } = options;
   const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
 
-  if (hostTarget) {
+  if (clientReadOnly) {
+    if (!hostTarget) {
+      return [];
+    }
     return fetchHostConsumption(hostTarget.baseUrl, hostTarget.libraryId, limit, printerId);
   }
 

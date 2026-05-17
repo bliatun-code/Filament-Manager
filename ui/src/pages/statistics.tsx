@@ -35,6 +35,7 @@ import {
   loadFilamentConsumptionBreakdown,
   loadLoanBreakdownRows,
 } from "../lib/statistics_data_source";
+import { resolveClientHostTarget } from "../lib/host_write_target";
 import { useResolvedTheme } from "../lib/theme_mode";
 import {
   isTauri,
@@ -166,8 +167,11 @@ export default function StatisticsPage() {
       const title = printer
         ? `${t("statistics.consumptionByFilament", "Consumption by filament")} · ${printer.printer.name}`
         : t("statistics.consumptionByFilament", "Consumption by filament");
+      const hostTarget = clientReadOnly
+        ? resolveClientHostTarget({ clientHostBaseUrl, clientLibraryId })
+        : null;
       if (clientReadOnly) {
-        if (!clientHostBaseUrl || !clientLibraryId) {
+        if (!hostTarget) {
           setConsumptionModalTitle(title);
           setShowConsumptionModal(true);
           setConsumptionLoading(false);
@@ -189,8 +193,8 @@ export default function StatisticsPage() {
       try {
         const rows = await loadFilamentConsumptionBreakdown({
           clientReadOnly,
-          clientHostBaseUrl,
-          clientLibraryId,
+          clientHostBaseUrl: hostTarget?.baseUrl ?? clientHostBaseUrl,
+          clientLibraryId: hostTarget?.libraryId ?? clientLibraryId,
           printerId,
         });
         setConsumptionRows(rows);

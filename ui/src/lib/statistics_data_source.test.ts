@@ -151,6 +151,22 @@ test("loadFilamentConsumptionBreakdown uses local consumption outside client hos
   assert.deepEqual(rows.map((row) => row.filament_name), ["local-spool"]);
 });
 
+test("loadFilamentConsumptionBreakdown avoids local fallback for incomplete client host details", async () => {
+  const rows = await loadFilamentConsumptionBreakdown(
+    { clientReadOnly: true, clientHostBaseUrl: " ", clientLibraryId: "library-1" },
+    {
+      fetchHostConsumption: async () => {
+        throw new Error("host consumption should not load without a complete target");
+      },
+      listLocalConsumption: async () => {
+        throw new Error("local consumption should not load in client mode");
+      },
+    },
+  );
+
+  assert.deepEqual(rows, []);
+});
+
 test("loadLoanBreakdownRows reuses cached client loan details", async () => {
   const cachedRows = [loanRow("client-spool")];
   const rows = await loadLoanBreakdownRows(
