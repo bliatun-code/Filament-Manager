@@ -168,8 +168,6 @@ export function useSettingsMaintenanceSection({
     setError,
     setInfo,
     settingsBackupErrorMessageLabels,
-    settingsClientHostBaseUrl,
-    settingsClientLibraryId,
     settingsClientReadOnly,
     settingsInventoryExportMessageLabels,
     tauri,
