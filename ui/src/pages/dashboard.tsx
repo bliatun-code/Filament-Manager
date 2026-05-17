@@ -1,55 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   ActivityTimeline,
   BadgePanel,
   StatCard,
   UsageChart,
-  type ActivityItem,
 } from "../components/dashboard_widgets";
-import {
-  isTauri,
-  type TrustedLanCompanionStatus,
-} from "../lib/tauri_client";
-import { parseDateTime } from "../lib/date_time";
-import { type DashboardGoalMetrics } from "../lib/dashboard_model";
 import { useI18n } from "../lib/i18n";
-import { loadDashboardData } from "../lib/dashboard_data_source";
+import { useDashboardPageData } from "./use_dashboard_page_data";
 import type { PageKey } from "../App";
-
-const defaultStats = [
-  {
-    id: "total",
-    title: "Total Spools",
-    value: "0",
-    subtitle: "Across all locations",
-    trend: "—",
-    accent: "sky" as const,
-  },
-  {
-    id: "activePrinters",
-    title: "Active Printers",
-    value: "0",
-    subtitle: "Slots online",
-    trend: "—",
-    accent: "emerald" as const,
-  },
-  {
-    id: "lowStock",
-    title: "Low Stock",
-    value: "0",
-    subtitle: "Below 20%",
-    trend: "—",
-    accent: "rose" as const,
-  },
-  {
-    id: "monthlyUsage",
-    title: "Monthly Usage",
-    value: "0 g",
-    subtitle: "Last 30 days",
-    trend: "—",
-    accent: "amber" as const,
-  },
-];
 
 function progressRatio(current: number, target: number): number {
   if (target <= 0) {
@@ -64,27 +22,27 @@ type DashboardPageProps = {
   onOpenCompanionSettings?: () => void;
 };
 
-const DASHBOARD_REFRESH_INTERVAL_MS = 4_000;
-const DASHBOARD_RETRY_DELAY_MS = 1_000;
-let cachedGoalMetrics: DashboardGoalMetrics | null = null;
-
 export default function DashboardPage({
   onNavigate,
   onOpenLowStock,
   onOpenCompanionSettings,
 }: DashboardPageProps) {
   const { t } = useI18n();
-  const tauri = isTauri();
-  const [goalMetrics, setGoalMetrics] = useState<DashboardGoalMetrics>(
-    () =>
-      cachedGoalMetrics ?? {
-        activeSpools: 0,
-        placedActiveSpools: 0,
-        totalJobs: 0,
-        totalSlots: 0,
-        loadedSlots: 0,
-      },
-  );
+  const {
+    activity,
+    clientHostCompanionTone,
+    clientHostDisplayName,
+    clientHostNeedsRepair,
+    companionStatus,
+    dashboardSyncMode,
+    goalMetrics,
+    health,
+    lastSyncLabel,
+    ownershipLowStock,
+    ownershipOnHand,
+    stats,
+    usagePoints,
+  } = useDashboardPageData(t);
   const badges = useMemo(() => {
     const jobGoal = 20;
     const locationProgress =
@@ -145,233 +103,6 @@ export default function DashboardPage({
       },
     ];
   }, [goalMetrics, t]);
-  const [stats, setStats] = useState(() =>
-    defaultStats.map((stat) => ({
-      ...stat,
-      title:
-        stat.id === "total"
-          ? t("dashboard.totalSpools", "Total Spools")
-          : stat.id === "activePrinters"
-            ? t("dashboard.activePrinters", "Active Printers")
-            : stat.id === "lowStock"
-              ? t("dashboard.lowStock", "Low Stock")
-              : t("dashboard.monthlyUsage", "Monthly Usage"),
-      subtitle:
-        stat.id === "total"
-          ? t("dashboard.totalSpoolsSubtitle", "Across all locations")
-          : stat.id === "activePrinters"
-            ? t("dashboard.amsOnline", "Slots online")
-            : stat.id === "lowStock"
-              ? t("dashboard.below20", "Below 20%")
-              : t("dashboard.last30", "Last 30 days"),
-    })),
-  );
-  const [activity, setActivity] = useState<ActivityItem[]>([
-    {
-      id: "empty",
-      title: t("dashboard.noRecentActivity", "No recent activity yet."),
-      detail: t(
-        "dashboard.activityEmptyHint",
-        "Loans, printer jobs, and other tracked activity will appear here.",
-      ),
-      tone: "slate",
-    },
-  ]);
-  const [usagePoints, setUsagePoints] = useState<number[]>([0, 0]);
-  const [ownershipLowStock, setOwnershipLowStock] = useState({
-    owned: 0,
-    borrowedIn: 0,
-  });
-  const [ownershipOnHand, setOwnershipOnHand] = useState({
-    total: 0,
-    owned: 0,
-    borrowedIn: 0,
-    inUse: 0,
-  });
-  const [health, setHealth] = useState({
-    score: 100,
-    headline: t("dashboard.noInventoryData", "No inventory data"),
-    detail: t("dashboard.addRollsForHealth", "Add rolls to start health tracking."),
-    metrics: [
-      {
-        id: "lowStock",
-        label: t("dashboard.lowStockShort", "low stock"),
-        value: "0",
-        tone: "rose" as const,
-      },
-      {
-        id: "loaned",
-        label: t("dashboard.loaned", "loaned"),
-        value: "0",
-        tone: "amber" as const,
-      },
-      {
-        id: "onOrder",
-        label: t("dashboard.onOrder", "on order"),
-        value: "0",
-        tone: "sky" as const,
-      },
-      {
-        id: "loaded",
-        label: t("dashboard.amsLoaded", "slots loaded"),
-        value: "0",
-        tone: "emerald" as const,
-      },
-    ],
-  });
-  const [lastSyncLabel, setLastSyncLabel] = useState(
-    t("dashboard.syncedFromDb", "Synced from local DB"),
-  );
-  const [companionStatus, setCompanionStatus] = useState<TrustedLanCompanionStatus | null>(null);
-  const [dashboardSyncMode, setDashboardSyncMode] = useState<string>("STANDALONE");
-  const [clientHostCompanionTone, setClientHostCompanionTone] = useState<"off" | "live" | "warn">(
-    "off",
-  );
-  const [clientHostDisplayName, setClientHostDisplayName] = useState<string | null>(null);
-  const [clientHostNeedsRepair, setClientHostNeedsRepair] = useState(false);
-
-  const refreshDashboard = useCallback(
-    async (cancelledRef?: { current: boolean }) => {
-      if (!tauri) {
-        return;
-      }
-      const loaded = await loadDashboardData({
-        previousClientHostNeedsRepair: clientHostNeedsRepair,
-        t,
-      });
-      if (cancelledRef?.current) {
-        return;
-      }
-
-      setDashboardSyncMode(loaded.syncMode);
-      setCompanionStatus(loaded.trustedLan);
-      setClientHostCompanionTone(loaded.clientHostCompanionTone);
-      setClientHostDisplayName(loaded.clientHostDisplayName);
-      setClientHostNeedsRepair(loaded.clientHostNeedsRepair);
-      setStats(loaded.derived.stats);
-      setActivity(loaded.derived.activity);
-      setUsagePoints(loaded.derived.usagePoints);
-      setOwnershipOnHand(loaded.derived.ownershipOnHand);
-      setOwnershipLowStock(loaded.derived.ownershipLowStock);
-      cachedGoalMetrics = loaded.derived.goalMetrics;
-      setGoalMetrics(cachedGoalMetrics);
-      setHealth(loaded.derived.health);
-
-      if (loaded.syncSource !== "local") {
-        const capturedAt = parseDateTime(loaded.capturedAt);
-        setLastSyncLabel(
-          `${t(
-            loaded.syncSource === "client-live"
-              ? "dashboard.clientSnapshotSyncedLive"
-              : "dashboard.clientSnapshotSyncedCached",
-            loaded.syncSource === "client-live" ? "Live host snapshot" : "Cached host snapshot",
-          )} ${
-            capturedAt
-              ? capturedAt.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : loaded.capturedAt
-          }`,
-        );
-        return;
-      }
-      setLastSyncLabel(
-        `${t("dashboard.synced", "Synced")} ${new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        })}`,
-      );
-    },
-    [clientHostNeedsRepair, tauri, t],
-  );
-
-  useEffect(() => {
-    if (!tauri) {
-      return;
-    }
-
-    const cancelledRef = { current: false };
-    let loading = false;
-    let retryTimeout: number | null = null;
-    const nativeUnlisteners: Array<() => void> = [];
-
-    const runRefresh = async () => {
-      if (loading || cancelledRef.current) {
-        return;
-      }
-      if (retryTimeout != null) {
-        window.clearTimeout(retryTimeout);
-        retryTimeout = null;
-      }
-      loading = true;
-      try {
-        await refreshDashboard(cancelledRef);
-      } catch (error) {
-        console.error(error);
-        if (!cancelledRef.current) {
-          retryTimeout = window.setTimeout(() => {
-            retryTimeout = null;
-            void runRefresh();
-          }, DASHBOARD_RETRY_DELAY_MS);
-        }
-      } finally {
-        loading = false;
-      }
-    };
-
-    const handleFocus = () => {
-      void runRefresh();
-    };
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void runRefresh();
-      }
-    };
-
-    void (async () => {
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        if (cancelledRef.current) {
-          return;
-        }
-        const appWindow = getCurrentWindow();
-        const unlistenFocusChanged = await appWindow.onFocusChanged(({ payload }) => {
-          if (payload) {
-            void runRefresh();
-          }
-        });
-        if (cancelledRef.current) {
-          unlistenFocusChanged();
-          return;
-        }
-        nativeUnlisteners.push(unlistenFocusChanged);
-
-      } catch (error) {
-        console.error(error);
-      }
-    })();
-
-    void runRefresh();
-    const interval = window.setInterval(() => {
-      void runRefresh();
-    }, DASHBOARD_REFRESH_INTERVAL_MS);
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      cancelledRef.current = true;
-      if (retryTimeout != null) {
-        window.clearTimeout(retryTimeout);
-      }
-      window.clearInterval(interval);
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      nativeUnlisteners.forEach((unlisten) => {
-        unlisten();
-      });
-    };
-  }, [refreshDashboard, tauri]);
 
   const companionTone = !companionStatus?.enabled
     ? "off"
