@@ -44,7 +44,7 @@ import { useSettingsLibraryRoleFlow } from "./use_settings_library_role_flow";
 import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";
 import { useSettingsSilentReload } from "./use_settings_silent_reload";
 import { useSettingsTrustedLanState } from "./use_settings_trusted_lan_state";
-import { useSettingsMessageLabels } from "./use_settings_message_labels";
+import { useSettingsMessageGroups } from "./use_settings_message_groups";
 import { useTrustedLanBrowserPolling } from "./use_trusted_lan_browser_polling";
 import { useSettingsTrustedLanDerivedState } from "./use_settings_trusted_lan_derived_state";
 import { useTrustedLanDraftSync } from "./use_trusted_lan_draft_sync";
@@ -101,23 +101,30 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setLibrarySyncValidation,
     setLibrarySyncValidationBusy,
   } = useSettingsLibrarySyncState();
-  const messageLabels = useSettingsMessageLabels(t);
   const {
     librarySyncActionMessageLabels,
     librarySyncErrorMessageLabels,
     librarySyncPairingMessageLabels,
-  } = messageLabels.librarySync;
-  const {
+    settingsBackupErrorMessageLabels,
+    settingsBackupValidationMessageLabels,
+    settingsCatalogRefreshMessageLabels,
+    settingsCatalogRefreshSummaryLabels,
+    settingsCatalogResetMessageLabels,
+    settingsImportMessageLabels,
+    settingsInventoryExportMessageLabels,
+    settingsInventoryOverviewPrintMessageLabels,
+    settingsInventoryOverviewPrintPdfLabels,
+    settingsInventoryPrintLabels,
+    settingsMaintenanceResetMessageLabels,
+    settingsPrinterMessageLabels,
+    settingsSwatchBulkMessageLabels,
+    settingsSwatchErrorMessageLabels,
+    settingsSwatchSavedMessageLabels,
     trustedLanActionMessageLabels,
     trustedLanConfigMessageLabels,
     trustedLanLoadMessageLabels,
     trustedLanValidationMessageLabels,
-  } = messageLabels.trustedLan;
-  const { settingsPrinterMessageLabels } = messageLabels.printer;
-  const {
-    settingsCatalogResetMessageLabels,
-    settingsMaintenanceResetMessageLabels,
-  } = messageLabels.maintenance;
+  } = useSettingsMessageGroups(t);
   const {
     backupValidationHasExtraTables,
     backupValidationHasMissingTables,
@@ -134,26 +141,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     recordExportedBackupValidation,
     recordImportedFullBackup,
   } = useSettingsBackupValidationSummary();
-  const {
-    settingsBackupErrorMessageLabels,
-    settingsBackupValidationMessageLabels,
-    settingsImportMessageLabels,
-    settingsInventoryExportMessageLabels,
-  } = messageLabels.backup;
-  const {
-    settingsInventoryOverviewPrintMessageLabels,
-    settingsInventoryOverviewPrintPdfLabels,
-    settingsInventoryPrintLabels,
-  } = messageLabels.inventoryPrint;
-  const {
-    settingsCatalogRefreshMessageLabels,
-    settingsCatalogRefreshSummaryLabels,
-  } = messageLabels.catalog;
-  const {
-    settingsSwatchBulkMessageLabels,
-    settingsSwatchErrorMessageLabels,
-    settingsSwatchSavedMessageLabels,
-  } = messageLabels.swatch;
   const {
     showTrustedLanNetworkEditor,
     showTrustedLanNetworkSummary,
