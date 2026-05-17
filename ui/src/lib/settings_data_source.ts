@@ -73,24 +73,20 @@ export async function loadSettingsPageData(
   const listLocalPrinterOverview = dependencies.listLocalPrinterOverview ?? listPrinterOverview;
   const onHostLoadError = dependencies.onHostLoadError ?? console.warn;
 
-  const [snapshot, catalogRows, syncSettings, localSpoolSnapshot] = await Promise.all([
+  const [snapshot, catalogRows, syncSettings] = await Promise.all([
     loadPrinterSettings(),
     loadCatalogRows(5000),
     loadSyncSettings(),
-    loadSpoolRows(
-      {
-        clientReadOnly: false,
-      },
-      5000,
-    ),
   ]);
 
   let overviewRows: PrinterOverviewRow[];
-  let spoolRows = localSpoolSnapshot;
+  let spoolRows: SpoolWithMasterRow[];
   let bambuLiveIntegrations = mapBambuLiveIntegrations(snapshot.bambu_live_integrations);
 
   if (syncSettings.mode === "CLIENT") {
     const cachedPrinterRows = syncSettings.cached_printers?.rows ?? [];
+    const cachedSpoolRows = syncSettings.cached_spools?.rows ?? [];
+    spoolRows = cachedSpoolRows;
     const hostTarget = resolveClientHostTarget({
       clientHostBaseUrl: syncSettings.host_base_url,
       clientLibraryId: syncSettings.library_id,
@@ -134,6 +130,12 @@ export async function loadSettingsPageData(
       overviewRows = cachedPrinterRows;
     }
   } else {
+    spoolRows = await loadSpoolRows(
+      {
+        clientReadOnly: false,
+      },
+      5000,
+    );
     overviewRows = await listLocalPrinterOverview();
   }
 

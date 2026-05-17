@@ -52,6 +52,28 @@ function printerSettingsSnapshot(printerId: string): PrinterSettingsSnapshot {
   };
 }
 
+function spoolWithMasterRow(id: string): SpoolWithMasterRow {
+  return {
+    spool: {
+      id,
+      master_id: "master-1",
+      status: "available",
+      initial_weight_g: 1000,
+      current_weight_g: 900,
+    },
+    master: {
+      id: "master-1",
+      material: "PLA",
+      filament_name: "Basic",
+      color_name: "Gray",
+      hex_color: "#808080",
+      product_url: null,
+      default_weight: 1000,
+      vendor: "Bambu",
+    },
+  };
+}
+
 function syncSettings(
   overrides: Partial<LibrarySyncSettings> = {},
 ): LibrarySyncSettings {
@@ -67,6 +89,7 @@ function syncSettings(
 const catalogRows: MasterCatalogRow[] = [];
 const localSpoolRows: SpoolWithMasterRow[] = [];
 const hostSpoolRows: SpoolWithMasterRow[] = [];
+const cachedSpoolRows: SpoolWithMasterRow[] = [spoolWithMasterRow("spool-cache")];
 
 function remoteSnapshot(
   overrides: Partial<LibrarySyncRemoteSnapshot> = {},
@@ -153,7 +176,7 @@ test("loadSettingsPageData prefers host overview, settings, and spools for clien
   assert.equal(result.bambuLiveIntegrations["printer-host"]?.enabled, true);
 });
 
-test("loadSettingsPageData falls back to cached client printers and local spools", async () => {
+test("loadSettingsPageData falls back to cached client printers and spools", async () => {
   const result = await loadSettingsPageData({
     loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
     loadCatalogRows: async () => catalogRows,
@@ -166,8 +189,15 @@ test("loadSettingsPageData falls back to cached client printers and local spools
           captured_at: "2026-04-01 11:00:00",
           rows: [printerOverviewRow("printer-cache")],
         },
+        cached_spools: {
+          captured_at: "2026-04-01 11:00:00",
+          rows: cachedSpoolRows,
+        },
       }),
-    loadSpoolRows: async () => localSpoolRows,
+    loadSpoolRows: async (options) => {
+      assert.equal(options.clientReadOnly, true);
+      throw new Error("host spools unavailable");
+    },
     fetchHostPrinterOverview: async () => {
       throw new Error("host unavailable");
     },
@@ -176,8 +206,42 @@ test("loadSettingsPageData falls back to cached client printers and local spools
   });
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-cache"]);
-  assert.equal(result.spoolRows, localSpoolRows);
+  assert.equal(result.spoolRows, cachedSpoolRows);
   assert.equal(result.bambuLiveIntegrations["printer-host"]?.enabled, true);
+});
+
+test("loadSettingsPageData avoids local spools when client host details are incomplete", async () => {
+  const result = await loadSettingsPageData({
+    loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
+    loadCatalogRows: async () => catalogRows,
+    loadSyncSettings: async () =>
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: " ",
+        library_id: "library-host",
+        cached_printers: {
+          captured_at: "2026-04-01 11:00:00",
+          rows: [printerOverviewRow("printer-cache")],
+        },
+        cached_spools: {
+          captured_at: "2026-04-01 11:00:00",
+          rows: cachedSpoolRows,
+        },
+      }),
+    loadSpoolRows: async () => {
+      throw new Error("local spools should not be loaded for client settings");
+    },
+    fetchHostPrinterOverview: async () => {
+      throw new Error("host should not be loaded without a complete target");
+    },
+    fetchHostPrinterSettings: async () => {
+      throw new Error("host should not be loaded without a complete target");
+    },
+  });
+
+  assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-cache"]);
+  assert.equal(result.spoolRows, cachedSpoolRows);
+  assert.equal(result.bambuLiveIntegrations["printer-local"]?.enabled, true);
 });
 
 test("loadSettingsPageData keeps fulfilled host client data when one host endpoint fails", async () => {
