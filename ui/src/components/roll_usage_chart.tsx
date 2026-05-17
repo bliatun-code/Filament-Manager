@@ -97,7 +97,7 @@ export function RollUsageChart({
 
   if (loading) {
     return (
-      <div className="mt-3 text-xs text-slate-500">
+      <div className="surface-subtle mt-3 border-dashed px-3 py-3 text-xs text-slate-600 dark:text-slate-300">
         {t("common.loading", "Loading...")}
       </div>
     );
@@ -105,7 +105,7 @@ export function RollUsageChart({
 
   if (!stats || chartPoints.length === 0) {
     return (
-      <div className="mt-3 text-xs text-slate-500">
+      <div className="surface-subtle mt-3 border-dashed px-3 py-3 text-xs text-slate-600 dark:text-slate-300">
         {t("chart.noSamples", "No weight samples yet.")}
       </div>
     );
@@ -115,10 +115,25 @@ export function RollUsageChart({
     <div className="mt-3 space-y-3">
       <svg
         viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        className="w-full rounded-xl border border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-700 dark:bg-slate-900/60 dark:text-sky-300"
+        className="w-full rounded-lg border border-slate-300/70 bg-white/70 text-slate-700 shadow-inner shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-950/40 dark:text-sky-300 dark:shadow-none"
         role="img"
         aria-label="Roll usage chart"
       >
+        {[0.25, 0.5, 0.75].map((ratio) => {
+          const y = CHART_PADDING + ratio * (CHART_HEIGHT - CHART_PADDING * 2);
+          return (
+            <line
+              key={ratio}
+              x1={CHART_PADDING}
+              y1={y}
+              x2={CHART_WIDTH - CHART_PADDING}
+              y2={y}
+              stroke="currentColor"
+              opacity="0.12"
+              strokeWidth="1"
+            />
+          );
+        })}
         <line
           x1={CHART_PADDING}
           y1={CHART_HEIGHT - CHART_PADDING}
@@ -154,18 +169,23 @@ export function RollUsageChart({
           />
         ) : null}
       </svg>
-      <div className="grid grid-cols-1 gap-1 text-xs text-slate-600">
+      <div className="grid grid-cols-1 gap-1 text-xs text-slate-600 dark:text-slate-300">
         <div>
           {t("chart.latest", "Latest")}:{" "}
-          <span className="font-semibold text-slate-800">{stats.last.remaining} g</span>{" "}
+          <span className="font-semibold text-slate-800 dark:text-slate-100">
+            {stats.last.remaining} g
+          </span>{" "}
           {t("inventory.remaining", "remaining")} ·{" "}
-          <span className="font-semibold text-slate-800">{stats.totalConsumed} g</span>{" "}
+          <span className="font-semibold text-slate-800 dark:text-slate-100">
+            {stats.totalConsumed} g
+          </span>{" "}
           {t("chart.totalConsumed", "consumed")}
-          at {toDisplayTime(stats.last.captured_at)}
+          {" "}
+          {t("chart.at", "at")} {toDisplayTime(stats.last.captured_at)}
         </div>
         <div>
           {t("chart.consumed", "Consumed over chart")}:{" "}
-          <span className="font-semibold text-slate-800">
+          <span className="font-semibold text-slate-800 dark:text-slate-100">
             {stats.consumedInWindow} g
           </span>
         </div>

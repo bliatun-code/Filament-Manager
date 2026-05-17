@@ -54,7 +54,7 @@ export function InventoryRollHistoryPanel({
             </div>
           ) : null}
           {!historyLoading && visibleHistoryRows.length === 0 ? (
-            <div className="text-xs text-slate-500">
+            <div className="surface-subtle border-dashed px-3 py-3 text-xs text-slate-600 dark:text-slate-300">
               {hasHiddenHistoryRows
                 ? t(
                     "inventory.noVisibleHistory",

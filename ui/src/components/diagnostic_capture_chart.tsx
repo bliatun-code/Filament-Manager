@@ -78,7 +78,7 @@ export function DiagnosticCaptureChart({
 
   if (!stats || chartPoints.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-slate-200 px-3 py-3 text-[11px] text-slate-500 dark:border-slate-700 dark:text-slate-400">
+      <div className="surface-subtle border-dashed px-3 py-3 text-[11px] text-slate-600 dark:text-slate-300">
         {t(
           "settings.bambuLiveChartNoSamples",
           "No numeric samples for the selected field yet.",
@@ -94,10 +94,25 @@ export function DiagnosticCaptureChart({
       </div>
       <svg
         viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        className="w-full rounded-lg border border-slate-200 bg-slate-50 text-sky-700 dark:border-slate-700 dark:bg-slate-950/40 dark:text-sky-300"
+        className="w-full rounded-lg border border-slate-300/70 bg-white/70 text-sky-700 shadow-inner shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-950/40 dark:text-sky-300 dark:shadow-none"
         role="img"
         aria-label={fieldPath}
       >
+        {[0.25, 0.5, 0.75].map((ratio) => {
+          const y = CHART_PADDING_Y + ratio * (CHART_HEIGHT - CHART_PADDING_Y * 2);
+          return (
+            <line
+              key={ratio}
+              x1={CHART_PADDING_X}
+              y1={y}
+              x2={CHART_WIDTH - CHART_PADDING_X}
+              y2={y}
+              stroke="currentColor"
+              opacity="0.12"
+              strokeWidth="1"
+            />
+          );
+        })}
         <line
           x1={CHART_PADDING_X}
           y1={CHART_HEIGHT - CHART_PADDING_Y}
