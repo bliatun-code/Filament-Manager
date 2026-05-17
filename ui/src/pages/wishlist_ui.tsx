@@ -17,19 +17,13 @@ import {
   type WishlistCreateMode,
   wishlistInputClass,
   wishlistSecondaryButtonClass,
-  wishlistSelectClass,
   type WishlistRefreshVendor,
 } from "./wishlist_helpers";
+import { WishlistCatalogPicker } from "./wishlist_catalog_picker";
 import { WishlistCurrentSelectionCard } from "./wishlist_current_selection_card";
 import { WishlistItemCard } from "./wishlist_item_card";
 
 type Translate = I18nContextValue["t"];
-
-const catalogFilters: ReadonlyArray<CatalogFilter> = [
-  "ALL",
-  "ACTIVE",
-  "DISCONTINUED",
-];
 
 const wishlistModalOverlayClassName: Record<40 | 50, string> = {
   40: "fixed inset-0 z-40 flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-md dark:bg-black/55",
@@ -441,113 +435,46 @@ export function WishlistAddPanel({
 
       <div className="mt-5 space-y-4">
         {createMode === "bambu" ? (
-          <div className="surface-subtle p-4">
-            <input
-              type="search"
-              value={bambuCatalogQuery}
-              onChange={(event) => setBambuCatalogQuery(event.target.value)}
-              placeholder={t("wishlist.searchBambu", "Search Bambu material/color")}
-              className={wishlistInputClass}
-              disabled={!tauri}
-            />
-            <div className="mt-3 flex flex-wrap gap-2">
-              {catalogFilters.map((filter) => (
-                <button
-                  key={filter}
-                  type="button"
-                  onClick={() => setBambuCatalogFilter(filter)}
-                  className={neutralChipClass(
-                    bambuCatalogFilter === filter,
-                    "px-3 py-1 text-[11px]",
-                  )}
-                >
-                  {filter === "ALL"
-                    ? t("common.all", "All")
-                    : filter === "ACTIVE"
-                      ? t("common.active", "Active")
-                      : t("common.discontinued", "Discontinued")}
-                </button>
-              ))}
-            </div>
-            <select
-              value={newBambuMasterId}
-              onChange={(event) => setNewBambuMasterId(event.target.value)}
-              className={`mt-3 ${wishlistSelectClass}`}
-              disabled={!tauri || filteredBambuMasters.length === 0}
-            >
-              {filteredBambuMasters.map((master) => (
-                <option key={master.id} value={master.id}>
-                  {master.material} · {master.filament_name} · {master.color_name}
-                  {master.is_discontinued
-                    ? ` · ${t("common.discontinued", "Discontinued")}`
-                    : ""}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className={`mt-3 w-full ${wishlistSecondaryButtonClass}`}
-              onClick={() => {
+          <WishlistCatalogPicker
+            catalogFilter={bambuCatalogFilter}
+            catalogQuery={bambuCatalogQuery}
+            filteredMasters={filteredBambuMasters}
+            missingAction={{
+              label: t(
+                "wishlist.addMissingBambuManual",
+                "Bambu filament missing? Add it manually",
+              ),
+              onClick: () => {
                 setCreateMode("manual");
                 setManualVendor("Bambu");
                 if (selectedBambuMaster) {
                   setManualMaterial(selectedBambuMaster.material);
                 }
-              }}
-            >
-              {t(
-                "wishlist.addMissingBambuManual",
-                "Bambu filament missing? Add it manually",
-              )}
-            </button>
-          </div>
+              },
+            }}
+            onCatalogFilterChange={setBambuCatalogFilter}
+            onCatalogQueryChange={setBambuCatalogQuery}
+            onMasterChange={setNewBambuMasterId}
+            selectedMasterId={newBambuMasterId}
+            tauri={tauri}
+            t={t}
+            vendor="bambu"
+          />
         ) : null}
 
         {createMode === "esun" ? (
-          <div className="surface-subtle p-4">
-            <input
-              type="search"
-              value={esunCatalogQuery}
-              onChange={(event) => setEsunCatalogQuery(event.target.value)}
-              placeholder={t("wishlist.searchEsun", "Search eSUN material/color")}
-              className={wishlistInputClass}
-              disabled={!tauri}
-            />
-            <div className="mt-3 flex flex-wrap gap-2">
-              {catalogFilters.map((filter) => (
-                <button
-                  key={filter}
-                  type="button"
-                  onClick={() => setEsunCatalogFilter(filter)}
-                  className={neutralChipClass(
-                    esunCatalogFilter === filter,
-                    "px-3 py-1 text-[11px]",
-                  )}
-                >
-                  {filter === "ALL"
-                    ? t("common.all", "All")
-                    : filter === "ACTIVE"
-                      ? t("common.active", "Active")
-                      : t("common.discontinued", "Discontinued")}
-                </button>
-              ))}
-            </div>
-            <select
-              value={newEsunMasterId}
-              onChange={(event) => setNewEsunMasterId(event.target.value)}
-              className={`mt-3 ${wishlistSelectClass}`}
-              disabled={!tauri || filteredEsunMasters.length === 0}
-            >
-              {filteredEsunMasters.map((master) => (
-                <option key={master.id} value={master.id}>
-                  {master.material} · {master.filament_name} · {master.color_name}
-                  {master.is_discontinued
-                    ? ` · ${t("common.discontinued", "Discontinued")}`
-                    : ""}
-                </option>
-              ))}
-            </select>
-          </div>
+          <WishlistCatalogPicker
+            catalogFilter={esunCatalogFilter}
+            catalogQuery={esunCatalogQuery}
+            filteredMasters={filteredEsunMasters}
+            onCatalogFilterChange={setEsunCatalogFilter}
+            onCatalogQueryChange={setEsunCatalogQuery}
+            onMasterChange={setNewEsunMasterId}
+            selectedMasterId={newEsunMasterId}
+            tauri={tauri}
+            t={t}
+            vendor="esun"
+          />
         ) : null}
 
         {createMode === "manual" ? (
