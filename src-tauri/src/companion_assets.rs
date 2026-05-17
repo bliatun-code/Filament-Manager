@@ -16,8 +16,14 @@ const COMPANION_BROWSER_INPUT_ROUTER_JS: &str =
     include_str!("../companion_browser/companion_input_router.js");
 const COMPANION_BROWSER_LOAN_STATE_JS: &str =
     include_str!("../companion_browser/companion_loan_state.js");
+const COMPANION_BROWSER_LOAN_MUTATIONS_JS: &str =
+    include_str!("../companion_browser/companion_loan_mutations.js");
+const COMPANION_BROWSER_MUTATION_HELPERS_JS: &str =
+    include_str!("../companion_browser/companion_mutation_helpers.js");
 const COMPANION_BROWSER_MUTATIONS_JS: &str =
     include_str!("../companion_browser/companion_mutations.js");
+const COMPANION_BROWSER_PRINTER_MUTATIONS_JS: &str =
+    include_str!("../companion_browser/companion_printer_mutations.js");
 const COMPANION_BROWSER_QR_PAYLOAD_JS: &str = include_str!("../companion_browser/qr_payload.js");
 const COMPANION_BROWSER_RENDER_FOCUS_JS: &str =
     include_str!("../companion_browser/companion_render_focus.js");
@@ -27,9 +33,15 @@ const COMPANION_BROWSER_SHELL_STATE_JS: &str =
     include_str!("../companion_browser/companion_shell_state.js");
 const COMPANION_BROWSER_SPOOL_WEIGHT_JS: &str =
     include_str!("../companion_browser/companion_spool_weight.js");
+const COMPANION_BROWSER_SPOOL_MUTATIONS_JS: &str =
+    include_str!("../companion_browser/companion_spool_mutations.js");
+const COMPANION_BROWSER_STOCK_MUTATIONS_JS: &str =
+    include_str!("../companion_browser/companion_stock_mutations.js");
 const COMPANION_BROWSER_SUBMIT_ROUTER_JS: &str =
     include_str!("../companion_browser/companion_submit_router.js");
 const COMPANION_BROWSER_THEME_JS: &str = include_str!("../companion_browser/companion_theme.js");
+const COMPANION_BROWSER_WISHLIST_MUTATIONS_JS: &str =
+    include_str!("../companion_browser/companion_wishlist_mutations.js");
 const COMPANION_BROWSER_DETAIL_CONTENT_JS: &str =
     include_str!("../companion_browser/detail_content.js");
 const COMPANION_BROWSER_COMPANION_LOGIC_JS: &str =
@@ -133,10 +145,31 @@ pub(crate) fn companion_browser_assets() -> &'static [(&'static str, CompanionBr
             },
         ),
         (
+            "companion_loan_mutations.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_LOAN_MUTATIONS_JS,
+            },
+        ),
+        (
+            "companion_mutation_helpers.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_MUTATION_HELPERS_JS,
+            },
+        ),
+        (
             "companion_mutations.js",
             CompanionBrowserAsset {
                 content_type: "application/javascript; charset=utf-8",
                 content: COMPANION_BROWSER_MUTATIONS_JS,
+            },
+        ),
+        (
+            "companion_printer_mutations.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_PRINTER_MUTATIONS_JS,
             },
         ),
         (
@@ -175,6 +208,20 @@ pub(crate) fn companion_browser_assets() -> &'static [(&'static str, CompanionBr
             },
         ),
         (
+            "companion_spool_mutations.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_SPOOL_MUTATIONS_JS,
+            },
+        ),
+        (
+            "companion_stock_mutations.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_STOCK_MUTATIONS_JS,
+            },
+        ),
+        (
             "companion_submit_router.js",
             CompanionBrowserAsset {
                 content_type: "application/javascript; charset=utf-8",
@@ -186,6 +233,13 @@ pub(crate) fn companion_browser_assets() -> &'static [(&'static str, CompanionBr
             CompanionBrowserAsset {
                 content_type: "application/javascript; charset=utf-8",
                 content: COMPANION_BROWSER_THEME_JS,
+            },
+        ),
+        (
+            "companion_wishlist_mutations.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_WISHLIST_MUTATIONS_JS,
             },
         ),
         (
