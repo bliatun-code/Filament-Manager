@@ -2,6 +2,7 @@ import type {
   TrustedLanCompanionModel,
 } from "../pages/settings_companion_model";
 import type { TrustedLanInterfaceOption } from "../lib/tauri_client";
+import { SettingsMetricTile } from "./settings_ui";
 import { settingsActionButtonClass } from "../lib/settings_ui_classes";
 
 type SettingsTrustedLanServerPanelProps = {
@@ -40,7 +41,7 @@ export function SettingsTrustedLanServerPanel({
   onToggleNetworkSummary,
 }: SettingsTrustedLanServerPanelProps) {
   return (
-    <div className="space-y-4 rounded-lg border border-slate-200/80 bg-white/70 px-4 py-4 dark:border-slate-700/70 dark:bg-slate-950/35">
+    <div className="surface-subtle space-y-4 px-4 py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="font-semibold text-slate-800 dark:text-slate-100">
@@ -79,35 +80,24 @@ export function SettingsTrustedLanServerPanel({
 
       {showNetworkSummary ? (
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
-          <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-slate-700/70 dark:bg-slate-950/50">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-              {t("settings.trustedLanInterface", "Selected interface")}
-            </div>
-            <div className="mt-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
-              {companionModel.interfaceValue}
-            </div>
-          </div>
-          <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-slate-700/70 dark:bg-slate-950/50">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-              {t("settings.trustedLanPort", "Port")}
-            </div>
-            <div className="mt-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
-              :{companionModel.portValue}
-            </div>
-          </div>
-          <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 sm:col-span-2 dark:border-slate-700/70 dark:bg-slate-950/50">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-              {t("settings.trustedLanShellUrl", "LAN URL")}
-            </div>
-            <div className="mt-2 break-all text-sm font-medium text-slate-800 dark:text-slate-100">
-              {companionModel.shellUrlValue}
-            </div>
-          </div>
+          <SettingsMetricTile
+            label={t("settings.trustedLanInterface", "Selected interface")}
+            value={companionModel.interfaceValue}
+          />
+          <SettingsMetricTile
+            label={t("settings.trustedLanPort", "Port")}
+            value={`:${companionModel.portValue}`}
+          />
+          <SettingsMetricTile
+            className="sm:col-span-2"
+            label={t("settings.trustedLanShellUrl", "LAN URL")}
+            value={companionModel.shellUrlValue}
+          />
         </div>
       ) : null}
 
       {showNetworkEditor ? (
-        <div className="rounded-lg border border-slate-200/80 bg-white/78 px-4 py-4 shadow-sm shadow-slate-200/20 dark:border-white/12 dark:bg-slate-950/35 dark:shadow-none">
+        <div className="surface-subtle px-4 py-4">
           <div className="grid gap-4">
             <label className="block">
               <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
