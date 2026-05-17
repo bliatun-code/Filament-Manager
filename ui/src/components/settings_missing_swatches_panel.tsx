@@ -130,7 +130,7 @@ export function SettingsMissingSwatchesPanel({
         </div>
 
         {visibleMissingSwatchMasters.length === 0 ? (
-          <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-white/70 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+          <div className="surface-subtle mt-4 border-dashed px-4 py-6 text-center text-sm text-slate-600 dark:text-slate-300">
             {t("settings.noMissingSwatches", "No missing swatches to fill.")}
           </div>
         ) : (

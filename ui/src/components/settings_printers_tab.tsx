@@ -143,12 +143,12 @@ export function SettingsPrintersTab({
 
       <div className="mt-5 space-y-2">
         {loading ? (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+          <div className="surface-subtle px-3 py-2 text-sm text-slate-600 dark:text-slate-300">
             {t("common.loadingPrinters", "Loading printers...")}
           </div>
         ) : null}
         {!loading && printers.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+          <div className="surface-subtle border-dashed px-3 py-3 text-sm text-slate-600 dark:text-slate-300">
             {t("printers.noPrinters", "No printers configured yet. Use Add printer to create one.")}
           </div>
         ) : null}

@@ -59,7 +59,7 @@ export function SettingsBambuLiveCaptureChartPanel({
         {selectedFieldPath ? (
           <DiagnosticCaptureChart fieldPath={selectedFieldPath} points={chartPoints} />
         ) : (
-          <div className="rounded-lg border border-dashed border-slate-200 px-3 py-3 text-[11px] text-slate-500 dark:border-slate-700 dark:text-slate-400">
+          <div className="surface-subtle border-dashed px-3 py-3 text-[11px] text-slate-600 dark:text-slate-300">
             {t("settings.bambuLiveChartNoFields", "No chart-ready numeric fields yet")}
           </div>
         )}

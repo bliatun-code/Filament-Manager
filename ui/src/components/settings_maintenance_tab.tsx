@@ -123,7 +123,7 @@ export function SettingsMaintenanceTab({
             <div className="section-eyebrow">
               {t("settings.backupImportGroup", "Import and validation")}
             </div>
-            <div className="mt-2 rounded-lg border border-dashed border-slate-200 bg-slate-50/90 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
+            <div className="surface-subtle mt-2 border-dashed px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
               {t(
                 "settings.noBackupValidationYet",
                 "Validate a backup file here to see compatibility details before importing.",
