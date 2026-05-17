@@ -1,0 +1,87 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  buildDashboardBadges,
+  buildDashboardCompanionPresentation,
+} from "./dashboard_model";
+
+const t = (_key: string, fallback: string) => fallback;
+
+test("buildDashboardBadges clamps progress and formats status copy", () => {
+  const badges = buildDashboardBadges({
+    goalMetrics: {
+      activeSpools: 4,
+      placedActiveSpools: 3,
+      totalJobs: 30,
+      totalSlots: 8,
+      loadedSlots: 2,
+    },
+    t,
+  });
+
+  assert.equal(badges[0]?.status, "3/4 active spools placed");
+  assert.equal(badges[0]?.progress, 0.75);
+  assert.equal(badges[1]?.status, "30 jobs logged");
+  assert.equal(badges[1]?.progress, 1);
+  assert.equal(badges[2]?.status, "2/8 slots loaded");
+  assert.equal(badges[2]?.progress, 0.25);
+});
+
+test("buildDashboardBadges handles empty location and slot goals", () => {
+  const badges = buildDashboardBadges({
+    goalMetrics: {
+      activeSpools: 0,
+      placedActiveSpools: 0,
+      totalJobs: 4,
+      totalSlots: 0,
+      loadedSlots: 0,
+    },
+    jobGoal: 10,
+    t,
+  });
+
+  assert.equal(badges[0]?.status, "No active spools yet.");
+  assert.equal(badges[0]?.progress, 0);
+  assert.equal(badges[1]?.status, "4/10 jobs logged");
+  assert.equal(badges[1]?.progress, 0.4);
+  assert.equal(badges[2]?.status, "No printer slots configured yet.");
+  assert.equal(badges[2]?.progress, 0);
+});
+
+test("buildDashboardCompanionPresentation labels standalone companion health", () => {
+  assert.deepEqual(
+    buildDashboardCompanionPresentation({
+      clientHostCompanionTone: "off",
+      clientHostDisplayName: null,
+      clientHostNeedsRepair: false,
+      companionStatus: {
+        enabled: true,
+        running: true,
+        shell_reachable: true,
+      },
+      dashboardSyncMode: "STANDALONE",
+      t,
+    }),
+    {
+      label: "Web app running",
+      tone: "live",
+    },
+  );
+});
+
+test("buildDashboardCompanionPresentation labels client host repair state", () => {
+  assert.deepEqual(
+    buildDashboardCompanionPresentation({
+      clientHostCompanionTone: "warn",
+      clientHostDisplayName: "Verksted-Mac",
+      clientHostNeedsRepair: true,
+      companionStatus: null,
+      dashboardSyncMode: "CLIENT",
+      t,
+    }),
+    {
+      label: "Re-pair required",
+      tone: "warn",
+    },
+  );
+});

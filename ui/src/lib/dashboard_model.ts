@@ -21,6 +21,14 @@ export type DashboardGoalMetrics = {
   loadedSlots: number;
 };
 
+export type DashboardBadge = {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  progress: number;
+};
+
 export type DashboardStat = {
   id: string;
   title: string;
@@ -61,6 +69,146 @@ export type DashboardDerivedState = {
   goalMetrics: DashboardGoalMetrics;
   health: DashboardHealth;
 };
+
+export type DashboardCompanionPresentationTone = "off" | "live" | "warn";
+
+type DashboardCompanionStatusInput = {
+  enabled?: boolean | null;
+  running?: boolean | null;
+  shell_reachable?: boolean | null;
+};
+
+function progressRatio(current: number, target: number): number {
+  if (target <= 0) {
+    return 0;
+  }
+  return Math.min(1, Math.max(0, current / target));
+}
+
+export function buildDashboardBadges(params: {
+  goalMetrics: DashboardGoalMetrics;
+  jobGoal?: number;
+  t: TranslateFn;
+}): DashboardBadge[] {
+  const { goalMetrics, t } = params;
+  const jobGoal = params.jobGoal ?? 20;
+  const locationProgress =
+    goalMetrics.activeSpools > 0
+      ? progressRatio(goalMetrics.placedActiveSpools, goalMetrics.activeSpools)
+      : 0;
+  const jobsProgress = progressRatio(Math.min(goalMetrics.totalJobs, jobGoal), jobGoal);
+  const slotsProgress =
+    goalMetrics.totalSlots > 0
+      ? progressRatio(goalMetrics.loadedSlots, goalMetrics.totalSlots)
+      : 0;
+
+  return [
+    {
+      id: "badge-location-coverage",
+      title: t("dashboard.badgeLocationCoverage", "Location coverage"),
+      status:
+        goalMetrics.activeSpools > 0
+          ? `${goalMetrics.placedActiveSpools}/${goalMetrics.activeSpools} ${t(
+              "dashboard.badgeActiveSpoolsPlaced",
+              "active spools placed",
+            )}`
+          : t("dashboard.badgeNoActiveSpools", "No active spools yet."),
+      description: t(
+        "dashboard.badgeLocationCoverageDesc",
+        "Keep every active spool assigned to a shelf, loan, or printer slot.",
+      ),
+      progress: locationProgress,
+    },
+    {
+      id: "badge-job-logging",
+      title: t("dashboard.badgeJobLogging", "Job logging"),
+      status:
+        goalMetrics.totalJobs > jobGoal
+          ? `${goalMetrics.totalJobs} ${t("dashboard.badgeJobsLogged", "jobs logged")}`
+          : `${goalMetrics.totalJobs}/${jobGoal} ${t("dashboard.badgeJobsLogged", "jobs logged")}`,
+      description: t(
+        "dashboard.badgeJobLoggingDesc",
+        "Log printer-linked jobs so consumption stays grounded in real usage.",
+      ),
+      progress: jobsProgress,
+    },
+    {
+      id: "badge-slotReadiness",
+      title: t("dashboard.badgeSlotReadiness", "Slot readiness"),
+      status:
+        goalMetrics.totalSlots > 0
+          ? `${goalMetrics.loadedSlots}/${goalMetrics.totalSlots} ${t(
+              "dashboard.badgeSlotsLoaded",
+              "slots loaded",
+            )}`
+          : t("dashboard.badgeNoPrinterSlots", "No printer slots configured yet."),
+      description: t(
+        "dashboard.badgeSlotReadinessDesc",
+        "Keep configured printer slots stocked with active spools.",
+      ),
+      progress: slotsProgress,
+    },
+  ];
+}
+
+export function buildDashboardCompanionPresentation(params: {
+  clientHostCompanionTone: DashboardCompanionPresentationTone;
+  clientHostDisplayName: string | null;
+  clientHostNeedsRepair: boolean;
+  dashboardSyncMode: string;
+  companionStatus: DashboardCompanionStatusInput | null;
+  t: TranslateFn;
+}): {
+  label: string;
+  tone: DashboardCompanionPresentationTone;
+} {
+  const {
+    clientHostCompanionTone,
+    clientHostDisplayName,
+    clientHostNeedsRepair,
+    companionStatus,
+    dashboardSyncMode,
+    t,
+  } = params;
+  const standaloneCompanionTone: DashboardCompanionPresentationTone = !companionStatus?.enabled
+    ? "off"
+    : companionStatus.running && companionStatus.shell_reachable
+      ? "live"
+      : "warn";
+  const tone = dashboardSyncMode === "CLIENT" ? clientHostCompanionTone : standaloneCompanionTone;
+  const hostName = clientHostDisplayName ?? t("dashboard.hostFallbackName", "host");
+  if (dashboardSyncMode === "CLIENT") {
+    if (tone === "off") {
+      return {
+        label: t("dashboard.hostCompanionOff", "Host disconnected"),
+        tone,
+      };
+    }
+    if (clientHostNeedsRepair) {
+      return {
+        label: t("settings.librarySyncClientAuthNeedsRepair", "Re-pair required"),
+        tone,
+      };
+    }
+    return {
+      label:
+        tone === "live"
+          ? `${t("dashboard.connectedToHost", "Connected to")} ${hostName}`
+          : `${t("dashboard.checkHostConnection", "Check connection to")} ${hostName}`,
+      tone,
+    };
+  }
+
+  return {
+    label:
+      tone === "off"
+        ? t("dashboard.companionOff", "Web app off")
+        : tone === "live"
+          ? t("dashboard.companionLive", "Web app running")
+          : t("dashboard.companionCheck", "Web app check"),
+    tone,
+  };
+}
 
 export function buildDashboardDerivedState(params: {
   overview: InventoryOverview;

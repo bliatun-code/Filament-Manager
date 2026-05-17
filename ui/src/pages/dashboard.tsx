@@ -5,6 +5,10 @@ import {
   StatCard,
   UsageChart,
 } from "../components/dashboard_widgets";
+import {
+  buildDashboardBadges,
+  buildDashboardCompanionPresentation,
+} from "../lib/dashboard_model";
 import { useI18n } from "../lib/i18n";
 import {
   InventoryHealthPanel,
@@ -12,13 +16,6 @@ import {
 } from "./dashboard_panels";
 import { useDashboardPageData } from "./use_dashboard_page_data";
 import type { PageKey } from "../App";
-
-function progressRatio(current: number, target: number): number {
-  if (target <= 0) {
-    return 0;
-  }
-  return Math.min(1, Math.max(0, current / target));
-}
 
 type DashboardPageProps = {
   onNavigate?: (page: PageKey) => void;
@@ -47,92 +44,33 @@ export default function DashboardPage({
     stats,
     usagePoints,
   } = useDashboardPageData(t);
-  const badges = useMemo(() => {
-    const jobGoal = 20;
-    const locationProgress =
-      goalMetrics.activeSpools > 0
-        ? progressRatio(goalMetrics.placedActiveSpools, goalMetrics.activeSpools)
-        : 0;
-    const jobsProgress = progressRatio(Math.min(goalMetrics.totalJobs, jobGoal), jobGoal);
-    const slotsProgress =
-      goalMetrics.totalSlots > 0
-        ? progressRatio(goalMetrics.loadedSlots, goalMetrics.totalSlots)
-        : 0;
-
-    return [
-      {
-        id: "badge-location-coverage",
-        title: t("dashboard.badgeLocationCoverage", "Location coverage"),
-        status:
-          goalMetrics.activeSpools > 0
-            ? `${goalMetrics.placedActiveSpools}/${goalMetrics.activeSpools} ${t(
-                "dashboard.badgeActiveSpoolsPlaced",
-                "active spools placed",
-              )}`
-            : t("dashboard.badgeNoActiveSpools", "No active spools yet."),
-        description: t(
-          "dashboard.badgeLocationCoverageDesc",
-          "Keep every active spool assigned to a shelf, loan, or printer slot.",
-        ),
-        progress: locationProgress,
-      },
-      {
-        id: "badge-job-logging",
-        title: t("dashboard.badgeJobLogging", "Job logging"),
-        status:
-          goalMetrics.totalJobs > jobGoal
-            ? `${goalMetrics.totalJobs} ${t("dashboard.badgeJobsLogged", "jobs logged")}`
-            : `${goalMetrics.totalJobs}/${jobGoal} ${t("dashboard.badgeJobsLogged", "jobs logged")}`,
-        description: t(
-          "dashboard.badgeJobLoggingDesc",
-          "Log printer-linked jobs so consumption stays grounded in real usage.",
-        ),
-        progress: jobsProgress,
-      },
-      {
-        id: "badge-slotReadiness",
-        title: t("dashboard.badgeSlotReadiness", "Slot readiness"),
-        status:
-          goalMetrics.totalSlots > 0
-            ? `${goalMetrics.loadedSlots}/${goalMetrics.totalSlots} ${t(
-                "dashboard.badgeSlotsLoaded",
-                "slots loaded",
-              )}`
-            : t("dashboard.badgeNoPrinterSlots", "No printer slots configured yet."),
-        description: t(
-          "dashboard.badgeSlotReadinessDesc",
-          "Keep configured printer slots stocked with active spools.",
-        ),
-        progress: slotsProgress,
-      },
-    ];
-  }, [goalMetrics, t]);
-
-  const companionTone = !companionStatus?.enabled
-    ? "off"
-    : companionStatus.running && companionStatus.shell_reachable
-      ? "live"
-      : "warn";
-  const effectiveCompanionTone =
-    dashboardSyncMode === "CLIENT" ? clientHostCompanionTone : companionTone;
-  const companionLabel =
-    dashboardSyncMode === "CLIENT"
-      ? effectiveCompanionTone === "off"
-        ? t("dashboard.hostCompanionOff", "Host disconnected")
-        : clientHostNeedsRepair
-          ? t("settings.librarySyncClientAuthNeedsRepair", "Re-pair required")
-          : effectiveCompanionTone === "live"
-          ? `${t("dashboard.connectedToHost", "Connected to")} ${clientHostDisplayName ?? t("dashboard.hostFallbackName", "host")}`
-          : `${t("dashboard.checkHostConnection", "Check connection to")} ${clientHostDisplayName ?? t("dashboard.hostFallbackName", "host")}`
-      : effectiveCompanionTone === "off"
-        ? t("dashboard.companionOff", "Web app off")
-        : effectiveCompanionTone === "live"
-          ? t("dashboard.companionLive", "Web app running")
-          : t("dashboard.companionCheck", "Web app check");
+  const badges = useMemo(
+    () => buildDashboardBadges({ goalMetrics, t }),
+    [goalMetrics, t],
+  );
+  const companionPresentation = useMemo(
+    () =>
+      buildDashboardCompanionPresentation({
+        clientHostCompanionTone,
+        clientHostDisplayName,
+        clientHostNeedsRepair,
+        companionStatus,
+        dashboardSyncMode,
+        t,
+      }),
+    [
+      clientHostCompanionTone,
+      clientHostDisplayName,
+      clientHostNeedsRepair,
+      companionStatus,
+      dashboardSyncMode,
+      t,
+    ],
+  );
   const companionDotClass =
-    effectiveCompanionTone === "live"
+    companionPresentation.tone === "live"
       ? "bg-emerald-400 shadow-[0_0_0_5px_rgba(52,211,153,0.14)]"
-      : effectiveCompanionTone === "warn"
+      : companionPresentation.tone === "warn"
         ? "bg-amber-400 shadow-[0_0_0_5px_rgba(251,191,36,0.14)]"
         : "bg-slate-400 shadow-[0_0_0_5px_rgba(148,163,184,0.12)]";
   const monthlyUsageValue = stats.find((stat) => stat.id === "monthlyUsage")?.value ?? "0 g";
@@ -157,7 +95,7 @@ export default function DashboardPage({
             title={t("dashboard.openCompanionSettings", "Open companion settings")}
           >
             <span className={`h-2.5 w-2.5 rounded-full ${companionDotClass}`} />
-            {companionLabel}
+            {companionPresentation.label}
           </button>
           <div className="rounded-lg border border-slate-300/70 bg-white/72 px-3 py-2 text-sm text-slate-600 shadow-sm shadow-slate-300/20 backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/60 dark:text-slate-300 dark:shadow-none">
             {lastSyncLabel}
