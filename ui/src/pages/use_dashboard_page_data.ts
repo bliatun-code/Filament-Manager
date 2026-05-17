@@ -170,20 +170,26 @@ export function useDashboardPageData(t: TranslateFn) {
 
       if (loaded.syncSource !== "local") {
         const capturedAt = parseDateTime(loaded.capturedAt);
+        const sourceLabel = t(
+          loaded.syncSource === "client-live"
+            ? "dashboard.clientSnapshotSyncedLive"
+            : loaded.syncSource === "client-cached"
+              ? "dashboard.clientSnapshotSyncedCached"
+              : "dashboard.clientSnapshotOffline",
+          loaded.syncSource === "client-live"
+            ? "Live host snapshot"
+            : loaded.syncSource === "client-cached"
+              ? "Cached host snapshot"
+              : "Host snapshot unavailable",
+        );
+        const timeLabel = capturedAt
+          ? capturedAt.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : loaded.capturedAt;
         setLastSyncLabel(
-          `${t(
-            loaded.syncSource === "client-live"
-              ? "dashboard.clientSnapshotSyncedLive"
-              : "dashboard.clientSnapshotSyncedCached",
-            loaded.syncSource === "client-live" ? "Live host snapshot" : "Cached host snapshot",
-          )} ${
-            capturedAt
-              ? capturedAt.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : loaded.capturedAt
-          }`,
+          timeLabel ? `${sourceLabel} ${timeLabel}` : sourceLabel,
         );
         return;
       }

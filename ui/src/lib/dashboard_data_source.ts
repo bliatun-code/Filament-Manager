@@ -26,7 +26,7 @@ import { resolveClientHostTarget } from "./host_write_target";
 type TranslateFn = (key: string, fallback: string) => string;
 
 export type DashboardCompanionTone = "off" | "live" | "warn";
-export type DashboardSyncSource = "local" | "client-live" | "client-cached";
+export type DashboardSyncSource = "local" | "client-live" | "client-cached" | "client-offline";
 
 export type DashboardDataLoadResult = {
   derived: DashboardDerivedState;
@@ -58,6 +58,23 @@ type DashboardDataDependencies = {
 
 function parseSyncMode(syncSettings: LibrarySyncSettings | null): string {
   return (syncSettings?.mode ?? "STANDALONE").trim().toUpperCase();
+}
+
+function emptyInventoryOverview() {
+  return {
+    total_spools: 0,
+    total_owned_spools: 0,
+    total_borrowed_in_spools: 0,
+    in_use: 0,
+    owned_in_use: 0,
+    borrowed_in_in_use: 0,
+    low_stock: 0,
+    owned_low_stock: 0,
+    borrowed_in_low_stock: 0,
+    total_consumption_30d: 0,
+    owned_consumption_30d: 0,
+    borrowed_in_consumption_30d: 0,
+  };
 }
 
 export function hasInvalidClientPairingMessage(message?: string | null): boolean {
@@ -204,10 +221,10 @@ export async function loadDashboardData(
   const clientOverview = activeClientSnapshot?.inventory ??
     (hasClientCachedRows ? deriveInventoryOverviewFromRows(clientSpoolRows ?? [], []) : null);
 
-  if (clientMode && clientOverview) {
+  if (clientMode) {
     return {
       derived: buildDashboardDerivedState({
-        overview: clientOverview,
+        overview: clientOverview ?? emptyInventoryOverview(),
         printers: clientPrinterRows ?? [],
         spoolRows: clientSpoolRows ?? [],
         loans: clientLoanRows ?? [],
@@ -220,7 +237,7 @@ export async function loadDashboardData(
       clientHostCompanionTone,
       clientHostDisplayName,
       clientHostNeedsRepair,
-      syncSource: clientSnapshotSource,
+      syncSource: clientOverview ? clientSnapshotSource : "client-offline",
       capturedAt:
         activeClientSnapshot?.captured_at ??
         syncSettings?.cached_spools?.captured_at ??

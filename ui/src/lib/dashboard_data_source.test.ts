@@ -297,6 +297,50 @@ test("loadDashboardData uses cached client rows without a cached snapshot", asyn
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
 });
 
+test("loadDashboardData stays client-offline without cache instead of loading local data", async () => {
+  const result = await loadDashboardData(
+    { previousClientHostNeedsRepair: false, t },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: " ",
+          library_id: "library-1",
+        }),
+      loadTrustedLanStatus: async () => null,
+      validateHost: async () => {
+        throw new Error("should not validate without a complete target");
+      },
+      fetchHostSnapshot: async () => {
+        throw new Error("should not fetch without a complete target");
+      },
+      loadInventoryOverview: async () => {
+        throw new Error("local overview should not load in client mode");
+      },
+      listLocalPrinters: async () => {
+        throw new Error("local printers should not load in client mode");
+      },
+      loadSpoolRows: async () => {
+        throw new Error("local spools should not load in client mode");
+      },
+      listLocalLoans: async () => {
+        throw new Error("local loans should not load in client mode");
+      },
+      listLocalWishlist: async () => {
+        throw new Error("local wishlist should not load in client mode");
+      },
+      listLocalTopMaterials: async () => {
+        throw new Error("local materials should not load in client mode");
+      },
+    },
+  );
+
+  assert.equal(result.syncSource, "client-offline");
+  assert.equal(result.capturedAt, null);
+  assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "0");
+  assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "0");
+});
+
 test("loadDashboardData falls back to cached client snapshot when host snapshot fails", async () => {
   const errors: unknown[] = [];
   const cached = snapshot("Cached Host", {
