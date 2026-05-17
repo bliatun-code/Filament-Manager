@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadAllSpoolRowsWithPageLoader } from "./spool_data_source";
+import { loadAllSpoolRowsWithPageLoader, loadSpoolRowsPage } from "./spool_data_source";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
 function row(id: string): SpoolWithMasterRow {
@@ -31,6 +31,71 @@ test("loadAllSpoolRowsWithPageLoader advances offsets until the final partial pa
     { limit: 2, offset: 2 },
   ]);
   assert.deepEqual(rows.map((entry) => entry.spool.id), ["spool-1", "spool-2", "spool-3"]);
+});
+
+test("loadSpoolRowsPage uses host spools in client mode", async () => {
+  const calls: Array<{ baseUrl: string; libraryId?: string | null; limit: number; offset: number }> = [];
+  const rows = await loadSpoolRowsPage(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: " http://host ",
+      clientLibraryId: " library-1 ",
+    },
+    25,
+    50,
+    {
+      fetchHostSpools: async (baseUrl, libraryId, limit, offset) => {
+        calls.push({ baseUrl, libraryId, limit, offset });
+        return [row("host-spool")];
+      },
+      listLocalSpools: async () => {
+        throw new Error("local spools should not load in client mode");
+      },
+    },
+  );
+
+  assert.deepEqual(calls, [
+    { baseUrl: "http://host", libraryId: "library-1", limit: 25, offset: 50 },
+  ]);
+  assert.deepEqual(rows.map((entry) => entry.spool.id), ["host-spool"]);
+});
+
+test("loadSpoolRowsPage rejects incomplete client host targets instead of reading local spools", async () => {
+  await assert.rejects(
+    () =>
+      loadSpoolRowsPage(
+        { clientReadOnly: true, clientHostBaseUrl: " ", clientLibraryId: "library-1" },
+        25,
+        0,
+        {
+          fetchHostSpools: async () => {
+            throw new Error("host spools should not load without a complete target");
+          },
+          listLocalSpools: async () => {
+            throw new Error("local spools should not load in client mode");
+          },
+        },
+      ),
+    /Host connection details/,
+  );
+});
+
+test("loadSpoolRowsPage uses local spools outside client mode", async () => {
+  const calls: Array<{ limit: number; offset: number }> = [];
+  const rows = await loadSpoolRowsPage(
+    { clientReadOnly: false },
+    30,
+    60,
+    {
+      listLocalSpools: async (limit, offset) => {
+        calls.push({ limit, offset });
+        return [row("local-spool")];
+      },
+    },
+  );
+
+  assert.deepEqual(calls, [{ limit: 30, offset: 60 }]);
+  assert.deepEqual(rows.map((entry) => entry.spool.id), ["local-spool"]);
 });
 
 test("loadAllSpoolRowsWithPageLoader rejects pagination that never finishes", async () => {

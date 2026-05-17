@@ -15,6 +15,10 @@ type SpoolRowsPageLoader = (
   limit: number,
   offset: number,
 ) => Promise<SpoolWithMasterRow[]>;
+type SpoolDataSourceDependencies = {
+  fetchHostSpools?: typeof fetchLibrarySyncSpools;
+  listLocalSpools?: typeof listSpools;
+};
 
 const MAX_LOAD_ALL_SPOOL_PAGES = 500;
 
@@ -22,12 +26,18 @@ export async function loadSpoolRowsPage(
   options: SpoolDataSourceOptions,
   limit = 1200,
   offset = 0,
+  dependencies: SpoolDataSourceDependencies = {},
 ): Promise<SpoolWithMasterRow[]> {
+  const fetchHostSpools = dependencies.fetchHostSpools ?? fetchLibrarySyncSpools;
+  const listLocalSpools = dependencies.listLocalSpools ?? listSpools;
   const hostTarget = options.clientReadOnly ? resolveClientHostTarget(options) : null;
-  if (hostTarget) {
-    return fetchLibrarySyncSpools(hostTarget.baseUrl, hostTarget.libraryId, limit, offset);
+  if (options.clientReadOnly) {
+    if (!hostTarget) {
+      throw new Error("Host connection details are missing for client inventory loading.");
+    }
+    return fetchHostSpools(hostTarget.baseUrl, hostTarget.libraryId, limit, offset);
   }
-  return listSpools(limit, offset);
+  return listLocalSpools(limit, offset);
 }
 
 export async function loadAllSpoolRows(
