@@ -45,6 +45,7 @@ import {
 } from "../lib/printer_live_display";
 import { sortSpoolsAlphabetically } from "../lib/spool_sort";
 import { useResolvedTheme } from "../lib/theme_mode";
+import { useClientWriteGuards } from "../lib/use_client_write_guards";
 import {
   listSupportedPrinterModels,
 } from "../lib/printer_profiles";
@@ -116,43 +117,28 @@ export default function PrintersPage() {
     onInteractiveReload: resetPrinterInteractionState,
   });
 
-  const ensureLocalWriteAllowed = useCallback(() => {
-    if (!clientReadOnly) {
-      return true;
-    }
-    setInfo(
-      t(
+  const { canUseClientHostWrite, ensureLocalWriteAllowed } = useClientWriteGuards({
+    clientHostBaseUrl,
+    clientHostWritePaired,
+    clientLibraryId,
+    clientReadOnly,
+    copy: {
+      clientReadOnlyAction: t(
         "printers.clientReadOnlyAction",
         "This device is connected as a client. Use the host for printer changes.",
       ),
-    );
-    return false;
-  }, [clientReadOnly, t]);
-
-  const canUseClientHostWrite = useCallback(() => {
-    if (!clientReadOnly) {
-      return false;
-    }
-    if (!clientHostBaseUrl || !clientLibraryId) {
-      setError(
-        t(
-          "printers.clientHostUnavailable",
-          "Host connection details are missing for this client device.",
-        ),
-      );
-      return false;
-    }
-    if (!clientHostWritePaired) {
-      setError(
-        t(
-          "printers.clientWriteRequiresPairing",
-          "Pair this desktop client with the host before running protected printer actions.",
-        ),
-      );
-      return false;
-    }
-    return true;
-  }, [clientHostBaseUrl, clientHostWritePaired, clientLibraryId, clientReadOnly, t]);
+      clientHostUnavailable: t(
+        "printers.clientHostUnavailable",
+        "Host connection details are missing for this client device.",
+      ),
+      clientWriteRequiresPairing: t(
+        "printers.clientWriteRequiresPairing",
+        "Pair this desktop client with the host before running protected printer actions.",
+      ),
+    },
+    setError,
+    setInfoMessage: setInfo,
+  });
 
   const spoolsById = useMemo(() => buildSpoolsById(spools), [spools]);
 

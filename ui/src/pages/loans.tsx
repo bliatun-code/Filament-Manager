@@ -33,6 +33,7 @@ import {
 import { isLoanCurrentlyActive } from "../lib/loan_state";
 import { loadLoanRowsPage, returnInventoryLoan } from "../lib/loan_data_source";
 import { useResolvedTheme } from "../lib/theme_mode";
+import { useClientWriteGuards } from "../lib/use_client_write_guards";
 import { useLibrarySyncState } from "./use_library_sync_state";
 
 export default function LoansPage() {
@@ -100,43 +101,28 @@ export default function LoansPage() {
     void reload();
   }, [librarySyncReady, reload, tauri]);
 
-  const ensureLocalWriteAllowed = useCallback(() => {
-    if (!clientReadOnly) {
-      return true;
-    }
-    setInfo(
-      t(
+  const { canUseClientHostWrite, ensureLocalWriteAllowed } = useClientWriteGuards({
+    clientHostBaseUrl,
+    clientHostWritePaired,
+    clientLibraryId,
+    clientReadOnly,
+    copy: {
+      clientReadOnlyAction: t(
         "loans.clientReadOnlyAction",
         "This device is connected as a client. Use the host for loan changes.",
       ),
-    );
-    return false;
-  }, [clientReadOnly, t]);
-
-  const canUseClientHostWrite = useCallback(() => {
-    if (!clientReadOnly) {
-      return false;
-    }
-    if (!clientHostBaseUrl || !clientLibraryId) {
-      setError(
-        t(
-          "loans.clientHostUnavailable",
-          "Host connection details are missing for this client device.",
-        ),
-      );
-      return false;
-    }
-    if (!clientHostWritePaired) {
-      setError(
-        t(
-          "loans.clientWriteRequiresPairing",
-          "Pair this desktop client with the host before running protected loan actions.",
-        ),
-      );
-      return false;
-    }
-    return true;
-  }, [clientHostBaseUrl, clientHostWritePaired, clientLibraryId, clientReadOnly, t]);
+      clientHostUnavailable: t(
+        "loans.clientHostUnavailable",
+        "Host connection details are missing for this client device.",
+      ),
+      clientWriteRequiresPairing: t(
+        "loans.clientWriteRequiresPairing",
+        "Pair this desktop client with the host before running protected loan actions.",
+      ),
+    },
+    setError,
+    setInfoMessage: setInfo,
+  });
 
   const filteredLoans = useMemo(
     () => filterLoans(loans, directionFilter, filter, deferredSearch),
