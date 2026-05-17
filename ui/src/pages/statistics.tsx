@@ -1,16 +1,11 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
-import { AppModal } from "../components/app_modal";
 import { StatCard } from "../components/dashboard_widgets";
 import { FeedbackBanner } from "../components/feedback_banner";
-import { ModalHeader } from "../components/modal_chrome";
-import { modalPanelClassName } from "../components/modal_panel_class";
 import { formatDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
 import {
   buildActiveSlotRows,
   countActiveSlotOwnerships,
-  DEFAULT_BORROWER_PREFS,
-  DEFAULT_CONSUMPTION_PREFS,
   filterActiveSlotRows,
   filterBorrowerRows,
   filterConsumptionRows,
@@ -20,10 +15,6 @@ import {
   listConsumptionMaterialOptions,
   listConsumptionVendorOptions,
   normalizeLoanDirection,
-  ownershipBadgeClass,
-  ownershipLabel,
-  parseConsumptionSort,
-  parseOwnershipFilter,
   readBorrowerPopupPrefs,
   readConsumptionPopupPrefs,
   sortFailedPrinterRows,
@@ -56,20 +47,16 @@ import {
   type SpoolLoanDetailsRow,
 } from "../lib/tauri_client";
 import {
-  statisticsFilterButtonClass,
-  statisticsFilterInputClass,
-  statisticsFilterSelectClass,
-} from "./statistics_view_helpers";
-import {
-  StatisticsEmptyState,
-  StatisticsFilamentUsageRowCard,
   StatisticsInboundLoanUsagePanel,
   StatisticsMetricDetailModal,
   StatisticsOwnershipSnapshotPanel,
   StatisticsOutboundLoanUsagePanel,
   StatisticsPerPrinterUsagePanel,
-  SummaryMetricTile,
 } from "./statistics_ui";
+import {
+  StatisticsBorrowerUsageModal,
+  StatisticsConsumptionModal,
+} from "./statistics_usage_modals";
 
 function loanPartyName(row: SpoolLoanDetailsRow): string {
   return (row.loan.counterparty_name ?? "").trim() || row.loan.borrower_name;
@@ -448,180 +435,19 @@ export default function StatisticsPage() {
       />
 
       {showConsumptionModal ? (
-        <AppModal
-          closeOnBackdrop
-          onBackdropClose={() => setShowConsumptionModal(false)}
-          panelClassName={modalPanelClassName("xl")}
-        >
-          <ModalHeader
-            eyebrow={t("nav.statistics", "Statistics")}
-            title={consumptionModalTitle}
-            onClose={() => setShowConsumptionModal(false)}
-            closeLabel={t("common.close", "Close")}
-            className="-mx-5 -mt-5"
-          />
-
-          {consumptionLoading ? (
-            <div className="mt-4 text-sm text-slate-500">
-              {t("statistics.loadingFilamentBreakdown", "Loading filament breakdown...")}
-            </div>
-          ) : null}
-          {consumptionError ? (
-            <FeedbackBanner tone="danger" className="mt-4">
-              {consumptionError}
-            </FeedbackBanner>
-          ) : null}
-          {!consumptionLoading && !consumptionError && consumptionRows.length > 0 ? (
-            <div className="surface-subtle mt-4 grid grid-cols-1 gap-2 p-3 md:grid-cols-2 xl:grid-cols-6">
-              <input
-                type="search"
-                value={consumptionPrefs.search}
-                onChange={(event) =>
-                  setConsumptionPrefs((current) => ({
-                    ...current,
-                    search: event.target.value,
-                  }))
-                }
-                placeholder={t(
-                  "statistics.searchFilamentPlaceholder",
-                  "Search filament, color, vendor or owner",
-                )}
-                className={`${statisticsFilterInputClass} xl:col-span-2`}
-              />
-              <select
-                value={consumptionPrefs.vendorFilter}
-                onChange={(event) =>
-                  setConsumptionPrefs((current) => ({
-                    ...current,
-                    vendorFilter: event.target.value,
-                  }))
-                }
-                className={statisticsFilterSelectClass}
-              >
-                {consumptionVendorOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option === "ALL"
-                      ? `${t("statistics.filterVendor", "Vendor")}: ${t("common.all", "All")}`
-                      : option}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={consumptionPrefs.materialFilter}
-                onChange={(event) =>
-                  setConsumptionPrefs((current) => ({
-                    ...current,
-                    materialFilter: event.target.value,
-                  }))
-                }
-                className={statisticsFilterSelectClass}
-              >
-                {consumptionMaterialOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option === "ALL"
-                      ? `${t("statistics.filterMaterial", "Material")}: ${t("common.all", "All")}`
-                      : option}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={consumptionPrefs.ownershipFilter}
-                onChange={(event) =>
-                  setConsumptionPrefs((current) => ({
-                    ...current,
-                    ownershipFilter: parseOwnershipFilter(event.target.value),
-                  }))
-                }
-                className={statisticsFilterSelectClass}
-              >
-                <option value="ALL">
-                  {`${t("inventory.ownershipGroup", "Ownership")}: ${t("common.all", "All")}`}
-                </option>
-                <option value="OWNED">
-                  {`${t("inventory.ownershipGroup", "Ownership")}: ${t("inventory.ownedByUs", "Owned")}`}
-                </option>
-                <option value="BORROWED_IN">
-                  {`${t("inventory.ownershipGroup", "Ownership")}: ${t("inventory.borrowedIn", "Borrowed in")}`}
-                </option>
-              </select>
-              <select
-                value={consumptionPrefs.sort}
-                onChange={(event) =>
-                  setConsumptionPrefs((current) => ({
-                    ...current,
-                    sort: parseConsumptionSort(event.target.value),
-                  }))
-                }
-                className={statisticsFilterSelectClass}
-              >
-                <option value="USED_DESC">{t("statistics.sortUsedDesc", "Most used")}</option>
-                <option value="USED_ASC">{t("statistics.sortUsedAsc", "Least used")}</option>
-                <option value="JOBS_DESC">{t("statistics.sortJobsDesc", "Most jobs")}</option>
-                <option value="NAME_ASC">{t("statistics.sortNameAsc", "Name (A-Z)")}</option>
-              </select>
-              <button
-                type="button"
-                onClick={() =>
-                  setConsumptionPrefs({
-                    ...DEFAULT_CONSUMPTION_PREFS,
-                  })
-                }
-                className={`${statisticsFilterButtonClass} md:col-span-2 xl:col-span-2`}
-              >
-                {t("statistics.resetFilters", "Reset filters")}
-              </button>
-            </div>
-          ) : null}
-          {!consumptionLoading && !consumptionError && consumptionRows.length === 0 ? (
-            <StatisticsEmptyState>
-              {t(
-                "statistics.noFilamentBreakdown",
-                "No filament consumption has been logged yet.",
-              )}
-            </StatisticsEmptyState>
-          ) : null}
-          {!consumptionLoading &&
-          !consumptionError &&
-          consumptionRows.length > 0 &&
-          filteredConsumptionRows.length === 0 ? (
-            <StatisticsEmptyState>
-              {t("statistics.noFilamentFilterMatch", "No rows match current filters.")}
-            </StatisticsEmptyState>
-          ) : null}
-          {!consumptionLoading && !consumptionError && filteredConsumptionRows.length > 0 ? (
-            <div className="mt-4 max-h-[420px] space-y-3 overflow-auto pr-1">
-              {filteredConsumptionRows.map((row, index) => (
-                <StatisticsFilamentUsageRowCard
-                  key={`${row.printer_id ?? "all"}-${row.material}-${row.filament_name}-${row.color_name}-${row.vendor}-${row.ownership_type}-${row.owner_name ?? ""}-${index}`}
-                  colorName={row.color_name}
-                  filamentName={row.filament_name}
-                  material={row.material}
-                  metricsClassName="grid w-full grid-cols-2 gap-2 min-[960px]:w-auto min-[960px]:min-w-[12rem]"
-                  meta={
-                    <span
-                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${ownershipBadgeClass(row.ownership_type)}`}
-                    >
-                      {ownershipLabel(t, row.ownership_type, row.owner_name)}
-                    </span>
-                  }
-                  swatchColor={row.hex_color}
-                  vendor={row.vendor}
-                >
-                  <SummaryMetricTile
-                    label={t("printers.jobs", "Jobs")}
-                    value={row.jobs.toString()}
-                    tone="sky"
-                  />
-                  <SummaryMetricTile
-                    label={t("printers.used", "Used")}
-                    value={`${row.used_grams} g`}
-                    tone="amber"
-                  />
-                </StatisticsFilamentUsageRowCard>
-              ))}
-            </div>
-          ) : null}
-        </AppModal>
+        <StatisticsConsumptionModal
+          consumptionError={consumptionError}
+          consumptionLoading={consumptionLoading}
+          consumptionMaterialOptions={consumptionMaterialOptions}
+          consumptionModalTitle={consumptionModalTitle}
+          consumptionPrefs={consumptionPrefs}
+          consumptionRows={consumptionRows}
+          consumptionVendorOptions={consumptionVendorOptions}
+          filteredConsumptionRows={filteredConsumptionRows}
+          onClose={() => setShowConsumptionModal(false)}
+          setConsumptionPrefs={setConsumptionPrefs}
+          t={t}
+        />
       ) : null}
 
       <StatisticsOutboundLoanUsagePanel
@@ -645,117 +471,18 @@ export default function StatisticsPage() {
       />
 
       {showBorrowerModal ? (
-        <AppModal
-          closeOnBackdrop
-          onBackdropClose={() => setShowBorrowerModal(false)}
-          panelClassName={modalPanelClassName("xl")}
-        >
-          <ModalHeader
-            eyebrow={
-              borrowerModalDirection === "INBOUND"
-                ? t("statistics.inboundUsage", "Borrowed-in usage by owner")
-                : t("statistics.borrowerUsage", "Loan usage by person")
-            }
-            title={borrowerModalTitle}
-            onClose={() => setShowBorrowerModal(false)}
-            closeLabel={t("common.close", "Close")}
-            className="-mx-5 -mt-5"
-          />
-
-          {borrowerLoading ? (
-            <div className="mt-4 text-sm text-slate-500">
-              {borrowerModalDirection === "INBOUND"
-                ? t("statistics.loadingInboundBreakdown", "Loading owner breakdown...")
-                : t("statistics.loadingBorrowerBreakdown", "Loading borrower breakdown...")}
-            </div>
-          ) : null}
-          {borrowerError ? (
-            <FeedbackBanner tone="danger" className="mt-4">
-              {borrowerError}
-            </FeedbackBanner>
-          ) : null}
-          {!borrowerLoading && !borrowerError && borrowerRows.length > 0 ? (
-            <div className="surface-subtle mt-4 flex flex-col gap-2 p-3 sm:flex-row">
-              <input
-                type="search"
-                value={borrowerPrefs.search}
-                onChange={(event) =>
-                  setBorrowerPrefs((current) => ({
-                    ...current,
-                    search: event.target.value,
-                  }))
-                }
-                placeholder={t(
-                  "statistics.searchBorrowerFilamentPlaceholder",
-                  "Search filament, color or vendor",
-                )}
-                className={`w-full ${statisticsFilterInputClass}`}
-              />
-              <button
-                type="button"
-                onClick={() =>
-                  setBorrowerPrefs({
-                    ...DEFAULT_BORROWER_PREFS,
-                  })
-                }
-                className={`${statisticsFilterButtonClass} sm:w-auto`}
-              >
-                {t("statistics.resetFilters", "Reset filters")}
-              </button>
-            </div>
-          ) : null}
-          {!borrowerLoading && !borrowerError && borrowerRows.length === 0 ? (
-            <StatisticsEmptyState>
-              {borrowerModalDirection === "INBOUND"
-                ? t("statistics.noInboundBreakdown", "No borrowed-in owner usage recorded yet.")
-                : t("statistics.noBorrowerBreakdown", "No borrower usage recorded yet.")}
-            </StatisticsEmptyState>
-          ) : null}
-          {!borrowerLoading &&
-          !borrowerError &&
-          borrowerRows.length > 0 &&
-          filteredBorrowerRows.length === 0 ? (
-            <StatisticsEmptyState>
-              {t("statistics.noBorrowerFilterMatch", "No rows match current filters.")}
-            </StatisticsEmptyState>
-          ) : null}
-          {!borrowerLoading && !borrowerError && filteredBorrowerRows.length > 0 ? (
-            <div className="mt-4 max-h-[420px] space-y-3 overflow-auto pr-1">
-              {filteredBorrowerRows.map((row, index) => (
-                <StatisticsFilamentUsageRowCard
-                  key={`${row.material}-${row.filamentName}-${row.colorName}-${row.vendor}-${index}`}
-                  colorName={row.colorName}
-                  filamentName={row.filamentName}
-                  material={row.material}
-                  metricsClassName="grid w-full grid-cols-2 gap-2 min-[960px]:w-auto min-[960px]:min-w-[18rem] min-[960px]:grid-cols-3"
-                  swatchColor={row.hexColor}
-                  vendor={row.vendor}
-                >
-                  <SummaryMetricTile
-                    label={t("printers.used", "Used")}
-                    value={`${row.consumedGrams} g`}
-                    tone="amber"
-                  />
-                  <SummaryMetricTile
-                    label={
-                      borrowerModalDirection === "INBOUND"
-                        ? t("statistics.borrowedInShort", "In")
-                        : t("statistics.lentOutShort", "Out")
-                    }
-                    value={`${row.lentOutGrams} g`}
-                    tone="sky"
-                  />
-                  <SummaryMetricTile
-                    label={t("statistics.loansShort", "Loans")}
-                    value={`${row.loans} · ${row.activeLoans} ${t("common.active", "Active")}`}
-                    tone="slate"
-                    className="col-span-2 min-[960px]:col-span-1"
-                  />
-                </StatisticsFilamentUsageRowCard>
-              ))}
-            </div>
-          ) : null}
-        </AppModal>
+        <StatisticsBorrowerUsageModal
+          borrowerError={borrowerError}
+          borrowerLoading={borrowerLoading}
+          borrowerModalDirection={borrowerModalDirection}
+          borrowerModalTitle={borrowerModalTitle}
+          borrowerPrefs={borrowerPrefs}
+          borrowerRows={borrowerRows}
+          filteredBorrowerRows={filteredBorrowerRows}
+          onClose={() => setShowBorrowerModal(false)}
+          setBorrowerPrefs={setBorrowerPrefs}
+          t={t}
+        />
       ) : null}
 
       {metricModalKind ? (
