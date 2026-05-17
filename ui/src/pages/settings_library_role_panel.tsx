@@ -1,4 +1,9 @@
-import { settingsLibraryRoleButtonClass } from "../lib/settings_ui_classes";
+import {
+  settingsInfoPanelClass,
+  settingsLibraryRoleButtonClass,
+  settingsTextInputClass,
+  settingsValueBoxClass,
+} from "../lib/settings_ui_classes";
 import type { LibrarySyncSettings } from "../lib/tauri_client";
 import type {
   LibrarySyncMode,
@@ -68,7 +73,7 @@ export function SettingsLibraryRolePanel({
       </div>
 
       {librarySyncModeDraft === "HOST" ? null : (
-        <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/70 dark:bg-slate-950/50 dark:text-slate-200">
+        <div className={settingsInfoPanelClass}>
           {librarySyncModeDraft === "STANDALONE"
             ? libraryVisibility.standaloneWebappEnabled
               ? t(
@@ -96,7 +101,7 @@ export function SettingsLibraryRolePanel({
               type="text"
               value={librarySyncDeviceNameDraft}
               onChange={(event) => onDeviceNameChange(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400/50 dark:focus:ring-indigo-500/20"
+              className={settingsTextInputClass}
               placeholder={t("settings.librarySyncDeviceNamePlaceholder", "Workshop PC")}
               disabled={!tauri || librarySyncBusy}
             />
@@ -106,7 +111,7 @@ export function SettingsLibraryRolePanel({
             <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
               {t("settings.librarySyncLibraryId", "Library ID")}
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200">
+            <div className={settingsValueBoxClass}>
               {librarySyncSettings?.library_id || t("common.loading", "Loading...")}
             </div>
           </div>

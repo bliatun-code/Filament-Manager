@@ -1,5 +1,20 @@
 import { neutralChipClass } from "./chip_styles";
 
+export const settingsSurfacePanelClass =
+  "surface-subtle px-4 py-4 text-sm leading-6 text-slate-700 dark:text-slate-200";
+
+export const settingsInfoPanelClass =
+  "surface-subtle px-4 py-3 text-sm leading-6 text-slate-700 dark:text-slate-200";
+
+export const settingsCompactInfoPanelClass =
+  "surface-subtle px-3 py-3 text-sm leading-6 text-slate-700 dark:text-slate-200";
+
+export const settingsTextInputClass =
+  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400/50 dark:focus:ring-indigo-500/20";
+
+export const settingsValueBoxClass =
+  "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200";
+
 export function tabButtonClass(active: boolean): string {
   if (active) {
     return "rounded-lg border border-slate-300/80 bg-white/88 px-3.5 py-2 text-sm font-semibold text-slate-950 shadow-sm shadow-slate-300/20 outline-none transition focus-visible:border-sky-300/80 dark:border-slate-500/70 dark:bg-slate-800/86 dark:text-slate-50 dark:shadow-none";

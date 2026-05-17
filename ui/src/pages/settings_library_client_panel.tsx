@@ -1,5 +1,11 @@
 import { SettingsMetricTile } from "../components/settings_ui";
-import { settingsActionButtonClass } from "../lib/settings_ui_classes";
+import {
+  settingsActionButtonClass,
+  settingsCompactInfoPanelClass,
+  settingsSurfacePanelClass,
+  settingsTextInputClass,
+  settingsValueBoxClass,
+} from "../lib/settings_ui_classes";
 import { formatSettingsDateTime } from "../lib/settings_utils";
 import type {
   LibrarySyncHostValidationResult,
@@ -10,15 +16,6 @@ import type { Locale } from "../lib/i18n";
 import type { LibrarySyncVisibilityState } from "./settings_library_sync_model";
 
 type TranslateFn = (key: string, fallback: string) => string;
-
-const libraryClientSectionClass =
-  "surface-subtle px-4 py-4 text-sm leading-6 text-slate-700 dark:text-slate-200";
-const libraryClientInputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400/50 dark:focus:ring-indigo-500/20";
-const libraryClientInfoClass =
-  "surface-subtle px-3 py-3 text-sm leading-6 text-slate-700 dark:text-slate-200";
-const libraryClientValueClass =
-  "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200";
 
 type SettingsLibraryClientPanelProps = {
   librarySyncBusy: boolean;
@@ -77,7 +74,7 @@ export function SettingsLibraryClientPanel({
 }: SettingsLibraryClientPanelProps) {
   return (
     <div className="space-y-4">
-      <div className={libraryClientSectionClass}>
+      <div className={settingsSurfacePanelClass}>
         <div className="font-semibold text-slate-900 dark:text-slate-100">
           {t("settings.librarySyncClientAuthTitle", "Desktop client pairing")}
         </div>
@@ -96,7 +93,7 @@ export function SettingsLibraryClientPanel({
               type="text"
               value={librarySyncDeviceNameDraft}
               onChange={(event) => onDeviceNameChange(event.target.value)}
-              className={libraryClientInputClass}
+              className={settingsTextInputClass}
               placeholder={t("settings.librarySyncDeviceNamePlaceholder", "Workshop PC")}
               disabled={!tauri || librarySyncBusy}
             />
@@ -112,7 +109,7 @@ export function SettingsLibraryClientPanel({
                 type="text"
                 value={librarySyncPairingDraft}
                 onChange={(event) => onPairingDraftChange(event.target.value)}
-                className={libraryClientInputClass}
+                className={settingsTextInputClass}
                 placeholder="http://192.168.86.25:4278/companion?pairing=..."
                 disabled={!tauri || librarySyncBusy}
               />
@@ -133,7 +130,7 @@ export function SettingsLibraryClientPanel({
           </>
         ) : (
           <>
-            <div className={`mt-3 ${libraryClientInfoClass}`}>
+            <div className={`mt-3 ${settingsCompactInfoPanelClass}`}>
               <div className="font-semibold text-slate-800 dark:text-slate-100">
                 {t("settings.librarySyncCurrentHost", "Current host")}
               </div>
@@ -217,7 +214,7 @@ export function SettingsLibraryClientPanel({
         ) : null}
       </div>
 
-      <div className={libraryClientSectionClass}>
+      <div className={settingsSurfacePanelClass}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="font-semibold text-slate-900 dark:text-slate-100">
@@ -244,13 +241,13 @@ export function SettingsLibraryClientPanel({
 
         {showLibraryClientAdvanced ? (
           <div className="mt-4 space-y-4">
-            <div className={libraryClientSectionClass}>
+            <div className={settingsSurfacePanelClass}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
                     {t("settings.librarySyncLibraryId", "Library ID")}
                   </div>
-                  <div className={`mt-2 break-all ${libraryClientValueClass}`}>
+                  <div className={`mt-2 break-all ${settingsValueBoxClass}`}>
                     {librarySyncSettings?.library_id || t("common.loading", "Loading...")}
                   </div>
                 </div>
