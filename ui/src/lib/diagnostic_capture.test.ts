@@ -4,6 +4,7 @@ import {
   buildDiagnosticCaptureSession,
   buildDiagnosticChartFieldOptions,
   buildDiagnosticChartPoints,
+  buildDiagnosticDisplayTrays,
   exportDiagnosticCaptureSessionCsv,
   updateDiagnosticCaptureSessionFromPayload,
 } from "./diagnostic_capture";
@@ -120,6 +121,45 @@ test("diagnostic chart helpers select numeric changing telemetry", () => {
       observedAt: "2026-05-15T10:00:05Z",
       value: 20,
       valueText: "20",
+    },
+  ]);
+});
+
+test("diagnostic tray helpers build fallback display trays", () => {
+  const session = updateDiagnosticCaptureSessionFromPayload({
+    session: null,
+    rawPayload: {
+      ams: {
+        ams: [
+          {
+            tray: [
+              {
+                tray_type: "PLA",
+                tray_sub_brands: "Basic",
+                tray_color: "336699FF",
+                remain: "87",
+                tag_uid: "tag-1",
+                tray_uuid: "uuid-1",
+              },
+            ],
+          },
+        ],
+      },
+    },
+    observedAt: "2026-05-15T10:00:00Z",
+  });
+
+  assert.ok(session);
+  assert.deepEqual(buildDiagnosticDisplayTrays([], session.fields), [
+    {
+      tray_index: 0,
+      loaded: true,
+      filament_type: "PLA",
+      filament_name: "Basic",
+      color_hex: "#336699",
+      remaining_percent: 87,
+      match_status: null,
+      match_note: "tag-1 · uuid-1",
     },
   ]);
 });
