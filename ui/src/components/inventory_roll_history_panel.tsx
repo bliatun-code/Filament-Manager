@@ -31,7 +31,7 @@ export function InventoryRollHistoryPanel({
 
   return (
     <div
-      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="rounded-lg border border-slate-300/70 p-5 shadow-sm shadow-slate-200/25 dark:border-slate-700/70 dark:shadow-none"
       style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
       <div className="flex items-center justify-between gap-3">
