@@ -13,7 +13,7 @@ import {
   type WishlistItemRow,
 } from "./tauri_client";
 import {
-  requireClientHostBaseTarget,
+  requireClientHostWriteTarget,
   resolveClientHostTarget,
 } from "./host_write_target";
 
@@ -67,7 +67,7 @@ type WishlistDataSourceDependencies = {
 };
 
 const missingWishlistHostTargetMessage =
-  "Client host base URL is required for wishlist host writes.";
+  "Host connection details are missing for this wishlist action.";
 
 export function filterWishlistItems(
   items: WishlistItemRow[],
@@ -216,7 +216,7 @@ export async function createWishlistEntry(
   const createLocalWishlistItem = dependencies.createLocalWishlistItem ?? createWishlistItem;
 
   if (options.clientReadOnly) {
-    const hostTarget = requireClientHostBaseTarget(
+    const hostTarget = requireClientHostWriteTarget(
       options,
       missingWishlistHostTargetMessage,
     );
@@ -238,7 +238,7 @@ export async function updateWishlistEntryStatus(
     dependencies.updateLocalWishlistItemStatus ?? updateWishlistItemStatus;
 
   if (options.clientReadOnly) {
-    const hostTarget = requireClientHostBaseTarget(
+    const hostTarget = requireClientHostWriteTarget(
       options,
       missingWishlistHostTargetMessage,
     );
@@ -259,7 +259,7 @@ export async function deleteWishlistEntry(
   const deleteLocalWishlistItem = dependencies.deleteLocalWishlistItem ?? deleteWishlistItem;
 
   if (options.clientReadOnly) {
-    const hostTarget = requireClientHostBaseTarget(
+    const hostTarget = requireClientHostWriteTarget(
       options,
       missingWishlistHostTargetMessage,
     );

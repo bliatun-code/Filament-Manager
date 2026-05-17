@@ -328,6 +328,23 @@ test("deleteWishlistEntry routes deletes to the host", async () => {
 test("wishlist host mutations reject missing client host details", async () => {
   await assert.rejects(
     () => createWishlistEntry(wishlistInput(), { clientReadOnly: true, clientHostBaseUrl: "" }),
-    /Client host base URL/,
+    /Host connection details/,
+  );
+  await assert.rejects(
+    () =>
+      updateWishlistEntryStatus(
+        { item_id: "wish-1", status: "RECEIVED" },
+        { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: " " },
+      ),
+    /Host connection details/,
+  );
+  await assert.rejects(
+    () =>
+      deleteWishlistEntry("wish-1", {
+        clientReadOnly: true,
+        clientHostBaseUrl: "http://host",
+        clientLibraryId: "",
+      }),
+    /Host connection details/,
   );
 });
