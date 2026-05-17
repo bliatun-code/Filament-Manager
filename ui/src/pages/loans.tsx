@@ -4,26 +4,16 @@ import {
   isTauri,
   type SpoolLoanDetailsRow,
 } from "../lib/tauri_client";
-import { AppModal } from "../components/app_modal";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { LoanHistoryCard } from "../components/loan_history_card";
 import { LoanOutModal } from "../components/loan_out_modal";
-import { ModalHeader } from "../components/modal_chrome";
-import { modalPanelClassName } from "../components/modal_panel_class";
-import { VendorBadge } from "../components/vendor_badge";
+import { LoanReturnModal } from "../components/loan_return_modal";
 import { neutralChipClass } from "../lib/chip_styles";
 import { downloadTextFile } from "../lib/download_file";
 import { useI18n } from "../lib/i18n";
 import {
-  compactLoanTitle,
   filterLoans,
   formatDateTime,
-  formatGrams,
-  formatLoanReference,
-  loanFactLabelClassName,
-  loanFactValueClassName,
-  loanSwatchPreviewStyle,
-  loanSwatchSurfaceStyle,
   normalizeLoanDirection,
   type LoanDirectionFilter,
   type LoanFilter,
@@ -32,13 +22,11 @@ import {
 } from "../lib/loan_display";
 import { isLoanCurrentlyActive } from "../lib/loan_state";
 import { loadLoanRowsPage, returnInventoryLoan } from "../lib/loan_data_source";
-import { useResolvedTheme } from "../lib/theme_mode";
 import { useClientWriteGuards } from "../lib/use_client_write_guards";
 import { useLibrarySyncState } from "./use_library_sync_state";
 
 export default function LoansPage() {
   const { t, locale } = useI18n();
-  const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
   const [loading, setLoading] = useState(tauri);
   const [busy, setBusy] = useState(false);
@@ -238,11 +226,6 @@ export default function LoansPage() {
     }
   }
 
-  const returnModalDirection = returnModalLoan
-    ? normalizeLoanDirection(returnModalLoan.loan.loan_direction)
-    : "OUTBOUND";
-  const returnModalInbound = returnModalDirection === "INBOUND";
-
   return (
     <div className="page-shell">
       <div className="page-header">
@@ -438,168 +421,16 @@ export default function LoansPage() {
         }}
       />
 
-      {returnModalLoan ? (
-        <AppModal
-          closeOnBackdrop
-          onBackdropClose={closeReturnModal}
-          panelClassName={modalPanelClassName("lg")}
-        >
-          <div className="space-y-4">
-            <ModalHeader
-              eyebrow={t("nav.loans", "Loans")}
-              title={
-                returnModalInbound
-                  ? t("loans.handBackDialogTitle", "Hand back borrowed-in spool")
-                  : t("loans.returnDialogTitle", "Return loaned roll")
-              }
-              subtitle={
-                returnModalInbound
-                  ? t(
-                      "loans.handBackDialogSubtitle",
-                      "Weigh it back in, add a note if needed, then remove it from active inventory.",
-                    )
-                  : t(
-                      "loans.returnDialogSubtitle",
-                      "Weigh it back in and add a note if needed.",
-                    )
-              }
-              onClose={closeReturnModal}
-              closeLabel={t("common.close", "Close")}
-              className="-mx-5 -mt-5"
-            />
-
-            <div
-              className="rounded-2xl border border-slate-300/80 px-3.5 py-3 text-xs text-slate-700 shadow-sm shadow-slate-300/20 dark:border-slate-700/80 dark:text-slate-300 dark:shadow-none"
-              style={loanSwatchSurfaceStyle(returnModalLoan.hex_color, "inset", resolvedTheme)}
-            >
-              <div className="flex items-start gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/60 p-2 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
-                  <span
-                    className="h-full w-full rounded-xl border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
-                    style={loanSwatchPreviewStyle(returnModalLoan.hex_color)}
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-slate-900 dark:text-slate-50">
-                    {compactLoanTitle(returnModalLoan, t("common.unknown", "Unknown"))}
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                    <VendorBadge
-                      vendor={returnModalLoan.vendor?.trim() || t("common.unknown", "Unknown")}
-                      compact
-                    />
-                    <span>
-                      {returnModalInbound
-                        ? t("inventory.borrowedFrom", "Borrowed from")
-                      : t("loans.borrower", "Borrower")}
-                      : {returnModalLoan.loan.counterparty_name ?? returnModalLoan.loan.borrower_name}
-                    </span>
-                  </div>
-                  <div
-                    className="mt-3 rounded-[1.05rem] border px-3.5 py-3"
-                    style={loanSwatchSurfaceStyle(
-                      returnModalLoan.hex_color,
-                      "inset",
-                      resolvedTheme,
-                    )}
-                  >
-                    <div className="grid grid-cols-[minmax(0,1.45fr)_minmax(108px,0.9fr)] gap-x-4 gap-y-3">
-                      <div className="min-w-0">
-                        <div className={loanFactLabelClassName}>
-                          {t("inventory.reference", "Reference")}
-                        </div>
-                        <div
-                          className={`${loanFactValueClassName} break-all font-mono`}
-                          title={`#${returnModalLoan.loan.spool_id}`}
-                        >
-                          {formatLoanReference(returnModalLoan.loan.spool_id)}
-                        </div>
-                      </div>
-                      <div>
-                        <div className={loanFactLabelClassName}>
-                          {returnModalInbound
-                            ? t("loans.startWeight", "Start")
-                            : t("loans.out", "Out")}
-                        </div>
-                        <div className={loanFactValueClassName}>
-                          {formatGrams(
-                            toMeasuredTotalWeight(returnModalLoan, returnModalLoan.loan.grams_out),
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {returnModalInbound ? (
-              <FeedbackBanner tone="warning" compact>
-                {t(
-                  "loans.handBackDialogHint",
-                  "Handing this back will remove the borrowed-in spool from active inventory but keep its loan history.",
-                )}
-              </FeedbackBanner>
-            ) : null}
-
-            <div>
-              <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                {returnModalInbound
-                  ? t(
-                      "loans.handBackDialogWeightLabel",
-                      "Weigh-in handed-back total weight incl. spool (g)",
-                    )
-                  : t(
-                      "loans.returnDialogWeightLabel",
-                      "Weigh-in returned total weight incl. spool (g)",
-                    )}
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={returnModalGrams}
-                onChange={(event) => setReturnModalGrams(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100"
-                autoFocus
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                {t("loans.returnNoteOptional", "Return note (optional)")}
-              </label>
-              <input
-                type="text"
-                value={returnModalNote}
-                onChange={(event) => setReturnModalNote(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100"
-                placeholder={t("loans.returnNoteOptional", "Return note (optional)")}
-              />
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={closeReturnModal}
-                disabled={busy}
-                className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm shadow-slate-300/25 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100 dark:shadow-none"
-              >
-                {t("common.close", "Close")}
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleConfirmReturnLoan()}
-                disabled={busy}
-                className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 shadow-sm shadow-emerald-200/25 disabled:opacity-50 dark:border-emerald-400/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:shadow-none"
-              >
-                {returnModalInbound
-                  ? t("loans.confirmHandBackAction", "Confirm hand-back")
-                  : t("loans.confirmReturnAction", "Confirm return")}
-              </button>
-            </div>
-          </div>
-        </AppModal>
-      ) : null}
+      <LoanReturnModal
+        busy={busy}
+        loan={returnModalLoan}
+        grams={returnModalGrams}
+        note={returnModalNote}
+        onClose={closeReturnModal}
+        onConfirm={handleConfirmReturnLoan}
+        onGramsChange={setReturnModalGrams}
+        onNoteChange={setReturnModalNote}
+      />
     </div>
   );
 }
