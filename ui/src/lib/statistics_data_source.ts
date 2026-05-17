@@ -94,7 +94,7 @@ type StatisticsDataDependencies = {
 export function deriveStatisticsLibrarySyncState(
   syncSettings: LibrarySyncSettings,
 ): StatisticsLibrarySyncState {
-  return deriveLibrarySyncPageState(syncSettings, { requireHostForClientReadOnly: true });
+  return deriveLibrarySyncPageState(syncSettings);
 }
 
 export function groupLoanUsageByPerson(
@@ -305,6 +305,49 @@ export async function loadStatisticsData(
           null,
         source:
           hasLiveOverview && printersResult.ok && loansResult.ok ? "LIVE" : "CACHED",
+      };
+    }
+
+    return {
+      overview: null,
+      printers: [],
+      spoolRows: [],
+      consumptionRows: [],
+      loanDetails: [],
+      loanUsage: [],
+      inboundLoanUsage: [],
+      updatedAt: null,
+      source: "OFFLINE",
+    };
+  }
+
+  if (syncState.clientReadOnly) {
+    const spoolRows = syncSettings.cached_spools?.rows ?? [];
+    const loanRows = syncSettings.cached_loans?.rows ?? [];
+    const overview =
+      syncSettings.cached_snapshot?.inventory ??
+      (spoolRows.length > 0 ? deriveInventoryOverviewFromRows(spoolRows, []) : null);
+    if (
+      overview ||
+      spoolRows.length > 0 ||
+      (syncSettings.cached_printers?.rows.length ?? 0) > 0 ||
+      loanRows.length > 0
+    ) {
+      return {
+        overview,
+        printers: syncSettings.cached_printers?.rows ?? [],
+        spoolRows,
+        consumptionRows: [],
+        loanDetails: loanRows,
+        loanUsage: groupLoanUsageByPerson(loanRows, "OUTBOUND"),
+        inboundLoanUsage: groupLoanUsageByPerson(loanRows, "INBOUND"),
+        updatedAt:
+          syncSettings.cached_snapshot?.captured_at ??
+          syncSettings.cached_printers?.captured_at ??
+          syncSettings.cached_loans?.captured_at ??
+          syncSettings.cached_spools?.captured_at ??
+          null,
+        source: "CACHED",
       };
     }
 

@@ -223,6 +223,74 @@ test("loadStatisticsPageData loads sync settings once and returns derived sync s
   assert.equal(result.syncState.clientHostBaseUrl, "http://host");
 });
 
+test("loadStatisticsPageData keeps incomplete client settings in client mode", async () => {
+  const result = await loadStatisticsPageData({
+    loadSyncSettings: async () =>
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: " ",
+        library_id: "library-1",
+      }),
+    loadData: async () => ({
+      overview: null,
+      printers: [],
+      spoolRows: [],
+      consumptionRows: [],
+      loanDetails: [],
+      loanUsage: [],
+      inboundLoanUsage: [],
+      updatedAt: null,
+      source: "OFFLINE",
+    }),
+  });
+
+  assert.equal(result.syncState.clientReadOnly, true);
+  assert.equal(result.syncState.clientHostBaseUrl, " ");
+});
+
+test("loadStatisticsData avoids local fallback when client host details are incomplete", async () => {
+  const result = await loadStatisticsData(
+    syncSettings({
+      mode: "CLIENT",
+      host_base_url: " ",
+      library_id: "library-1",
+      cached_spools: {
+        captured_at: "spool-cache",
+        rows: [spoolRow("cached-spool")],
+      },
+      cached_printers: {
+        captured_at: "printer-cache",
+        rows: [printerRow("cached-printer")],
+      },
+      cached_loans: {
+        captured_at: "loan-cache",
+        rows: [loanRow("cached-loan")],
+      },
+    }),
+    {
+      loadLocalSpools: async () => {
+        throw new Error("local spools should not load in client mode");
+      },
+      listLocalConsumption: async () => {
+        throw new Error("local consumption should not load in client mode");
+      },
+      listLocalPrinterOverview: async () => {
+        throw new Error("local printers should not load in client mode");
+      },
+      listLocalLoanUsageByPerson: async () => {
+        throw new Error("local loan usage should not load in client mode");
+      },
+    },
+  );
+
+  assert.equal(result.source, "CACHED");
+  assert.equal(result.updatedAt, "printer-cache");
+  assert.equal(result.overview?.total_spools, 1);
+  assert.deepEqual(result.printers.map((row) => row.printer.id), ["cached-printer"]);
+  assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["cached-spool"]);
+  assert.deepEqual(result.loanUsage.map((row) => row.borrower_name), ["Ada"]);
+});
+
 test("loadStatisticsData keeps partial client host data and cache when host calls fail", async () => {
   const originalConsoleError = console.error;
   console.error = () => {};
