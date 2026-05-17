@@ -36,31 +36,22 @@ test("deriveLibrarySyncPageState maps client sync settings for write-capable pag
   });
 });
 
-test("deriveLibrarySyncPageState can require complete host details for read-only client loading", () => {
-  const incompleteState = deriveLibrarySyncPageState(
+test("deriveLibrarySyncPageState keeps incomplete client settings in client mode", () => {
+  const state = deriveLibrarySyncPageState(
     syncSettings({
       mode: "CLIENT",
       host_base_url: null,
       library_id: "library-1",
     }),
-    { requireHostForClientReadOnly: true },
-  );
-  const completeState = deriveLibrarySyncPageState(
-    syncSettings({
-      mode: "CLIENT",
-      host_base_url: "http://host",
-      library_id: "library-1",
-    }),
-    { requireHostForClientReadOnly: true },
   );
 
-  assert.equal(incompleteState.clientReadOnly, false);
-  assert.equal(completeState.clientReadOnly, true);
+  assert.equal(state.clientReadOnly, true);
+  assert.equal(state.clientHostBaseUrl, null);
+  assert.equal(state.clientLibraryId, "library-1");
 });
 
 test("loadLibrarySyncPageState loads and maps sync settings", async () => {
   const state = await loadLibrarySyncPageState(
-    {},
     {
       loadSyncSettings: async () =>
         syncSettings({

@@ -11,21 +11,13 @@ export type LibrarySyncPageState = {
   clientLibraryId: string | null;
 };
 
-export type LibrarySyncPageStateOptions = {
-  requireHostForClientReadOnly?: boolean;
-};
-
 export function deriveLibrarySyncPageState(
   syncSettings: LibrarySyncSettings,
-  options: LibrarySyncPageStateOptions = {},
 ): LibrarySyncPageState {
   const isClientMode = syncSettings.mode === "CLIENT";
-  const hasHostDetails = Boolean(syncSettings.host_base_url) && Boolean(syncSettings.library_id);
 
   return {
-    clientReadOnly: options.requireHostForClientReadOnly
-      ? isClientMode && hasHostDetails
-      : isClientMode,
+    clientReadOnly: isClientMode,
     clientHostWritePaired: syncSettings.client_auth_paired ?? false,
     clientHostDeviceName: syncSettings.host_device_name ?? null,
     clientHostBaseUrl: syncSettings.host_base_url ?? null,
@@ -34,11 +26,10 @@ export function deriveLibrarySyncPageState(
 }
 
 export async function loadLibrarySyncPageState(
-  options: LibrarySyncPageStateOptions = {},
   dependencies: {
     loadSyncSettings?: typeof getLibrarySyncSettings;
   } = {},
 ): Promise<LibrarySyncPageState> {
   const loadSyncSettings = dependencies.loadSyncSettings ?? getLibrarySyncSettings;
-  return deriveLibrarySyncPageState(await loadSyncSettings(), options);
+  return deriveLibrarySyncPageState(await loadSyncSettings());
 }
