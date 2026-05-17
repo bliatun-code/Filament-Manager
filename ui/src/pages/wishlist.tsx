@@ -5,12 +5,9 @@ import { useI18n } from "../lib/i18n";
 import {
   createWishlistEntry,
   deleteWishlistEntry,
-  filterWishlistItems,
   loadWishlistItems,
-  summarizeWishlistQueue,
   updateWishlistEntryStatus,
   type WishlistStatus,
-  type WishlistStatusFilter as WishlistBoardFilter,
 } from "../lib/wishlist_data_source";
 import {
   createInventorySpoolFromMaster,
@@ -22,6 +19,7 @@ import {
   type WishlistItemRow,
 } from "../lib/tauri_client";
 import { formatUnknownError } from "./wishlist_helpers";
+import { useWishlistBoardState } from "./use_wishlist_board_state";
 import { useWishlistCatalogRefresh } from "./use_wishlist_catalog_refresh";
 import { useWishlistCreateForm } from "./use_wishlist_create_form";
 import {
@@ -42,10 +40,14 @@ export default function WishlistPage() {
 
   const [masters, setMasters] = useState<MasterCatalogRow[]>([]);
   const [wishlistItems, setWishlistItems] = useState<WishlistItemRow[]>([]);
-  const [boardFilter, setBoardFilter] = useState<WishlistBoardFilter>("WISHLIST");
-  const [confirmDeleteWishlistId, setConfirmDeleteWishlistId] = useState<string | null>(
-    null,
-  );
+  const {
+    boardFilter,
+    confirmDeleteWishlistId,
+    setConfirmDeleteWishlistId,
+    toggleBoardFilter,
+    visibleWishlistItems,
+    wishlistSummary,
+  } = useWishlistBoardState(wishlistItems);
 
   const {
     activeCatalogCount,
@@ -125,46 +127,10 @@ export default function WishlistPage() {
     void reloadWishlist();
   }, [reloadCatalog, reloadWishlist, tauri]);
 
-  useEffect(() => {
-    if (!confirmDeleteWishlistId) {
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      setConfirmDeleteWishlistId(null);
-    }, 5000);
-    return () => window.clearTimeout(timer);
-  }, [confirmDeleteWishlistId]);
-
-  useEffect(() => {
-    if (!confirmDeleteWishlistId) {
-      return;
-    }
-    if (!wishlistItems.some((item) => item.id === confirmDeleteWishlistId)) {
-      setConfirmDeleteWishlistId(null);
-    }
-  }, [confirmDeleteWishlistId, wishlistItems]);
-
   const masterById = useMemo(
     () => new Map(masters.map((master) => [master.id, master])),
     [masters],
   );
-
-  const wishlistSummary = useMemo(() => {
-    return summarizeWishlistQueue(wishlistItems);
-  }, [wishlistItems]);
-
-  const visibleWishlistItems = useMemo(() => {
-    return filterWishlistItems(wishlistItems, boardFilter);
-  }, [boardFilter, wishlistItems]);
-
-  function toggleBoardFilter(next: WishlistBoardFilter) {
-    setBoardFilter((current) => {
-      if (next === "ALL") {
-        return "ALL";
-      }
-      return current === next ? "ALL" : next;
-    });
-  }
 
   const {
     activeRefreshVendor,
