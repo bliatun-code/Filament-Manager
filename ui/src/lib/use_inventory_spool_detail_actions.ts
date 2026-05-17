@@ -16,6 +16,7 @@ import {
   recordPrintUsage,
   updateMasterCatalogEntry,
 } from "./tauri_client";
+import { buildMeasuredWeightUpdatePlan } from "./inventory_spool_weight_update_model";
 import type { InventoryPrinterSlotOption } from "./use_inventory_printer_slots";
 
 type InventoryDetailReloads = {
@@ -66,28 +67,26 @@ async function applyMeasuredWeightWithUsage(
   tareWeight: number,
   jobName?: string | null,
 ) {
-  const safeMeasuredTotal = Math.max(0, Math.round(measuredTotalWeight));
-  const safeTareWeight = Math.max(0, Math.round(tareWeight));
-  const measuredFilament = Math.max(0, safeMeasuredTotal - safeTareWeight);
-  if (previousRemaining != null && Number.isFinite(previousRemaining)) {
-    const baseline = Math.max(0, Math.round(previousRemaining));
-    const usedGrams = Math.max(0, baseline - measuredFilament);
-    if (usedGrams > 0) {
-      await recordPrintUsage({
-        printer_id: printerId,
-        spool_id: spoolId,
-        grams: usedGrams,
-        job_name: jobName?.trim() ? jobName.trim() : null,
-        success: true,
-      });
-      return;
-    }
-    if (measuredFilament !== baseline) {
-      await updateInventorySpoolWeight(spoolId, safeMeasuredTotal);
-    }
+  const plan = buildMeasuredWeightUpdatePlan({
+    previousRemaining,
+    measuredTotalWeight,
+    tareWeight,
+    jobName,
+  });
+  if (plan.kind === "usage") {
+    await recordPrintUsage({
+      printer_id: printerId,
+      spool_id: spoolId,
+      grams: plan.usedGrams,
+      job_name: plan.jobName,
+      success: true,
+    });
     return;
   }
-  await updateInventorySpoolWeight(spoolId, safeMeasuredTotal);
+  if (plan.kind === "weight") {
+    await updateInventorySpoolWeight(spoolId, plan.measuredTotalWeight);
+    return;
+  }
 }
 
 export function useInventorySpoolDetailActions({
