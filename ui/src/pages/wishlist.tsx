@@ -14,12 +14,14 @@ import { useWishlistMutations } from "./use_wishlist_mutations";
 import {
   WishlistAddPanel,
   WishlistBoardPanel,
-  WishlistCatalogRefreshModal,
   WishlistPageHeader,
-  WishlistRefreshLogModal,
-  WishlistRefreshSummaryPanel,
   WishlistSummaryMetrics,
 } from "./wishlist_ui";
+import {
+  WishlistCatalogRefreshModal,
+  WishlistRefreshLogModal,
+  WishlistRefreshSummaryPanel,
+} from "./wishlist_refresh_ui";
 
 export default function WishlistPage() {
   const { t } = useI18n();
