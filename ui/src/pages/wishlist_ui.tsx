@@ -6,6 +6,7 @@ import type {
   WishlistCatalogFilter as CatalogFilter,
   WishlistDraft,
   WishlistStatus,
+  WishlistStatusFilter as WishlistBoardFilter,
 } from "../lib/wishlist_data_source";
 import type {
   CatalogRefreshResult,
@@ -57,6 +58,130 @@ export function WishlistMetricTile({
       {hint ? (
         <div className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">{hint}</div>
       ) : null}
+    </div>
+  );
+}
+
+export function WishlistPageHeader({
+  activeRefreshVendor,
+  boardFilter,
+  busy,
+  catalogRefreshBusy,
+  createMode,
+  lastRefreshOutput,
+  onRefreshActiveCatalog,
+  onShowRefreshLog,
+  onToggleBoardFilter,
+  tauri,
+  t,
+  wishlistItemCount,
+  wishlistSummary,
+}: {
+  activeRefreshVendor: WishlistRefreshVendor;
+  boardFilter: WishlistBoardFilter;
+  busy: boolean;
+  catalogRefreshBusy: boolean;
+  createMode: WishlistCreateMode;
+  lastRefreshOutput: string;
+  onRefreshActiveCatalog: () => void | Promise<void>;
+  onShowRefreshLog: () => void;
+  onToggleBoardFilter: (filter: WishlistBoardFilter) => void;
+  tauri: boolean;
+  t: Translate;
+  wishlistItemCount: number;
+  wishlistSummary: {
+    onOrder: number;
+    received: number;
+    wishlist: number;
+  };
+}) {
+  return (
+    <div className="page-header">
+      <div className="page-header-copy">
+        <div className="section-eyebrow">
+          {t("wishlist.kicker", "Planning and ordering")}
+        </div>
+        <h1 className="page-title">{t("nav.wishlist", "Wishlist")}</h1>
+        <div className="page-subtitle">
+          {t(
+            "wishlist.subtitle",
+            "Plan purchases, refresh vendor catalogs, and move items from wishlist to stock.",
+          )}
+        </div>
+      </div>
+      <div className="page-header-actions">
+        <div className="page-header-tools">
+          <button
+            type="button"
+            className="header-button-secondary"
+            onClick={onShowRefreshLog}
+            disabled={!lastRefreshOutput.trim()}
+          >
+            {t("wishlist.viewRefreshLog", "View refresh log")}
+          </button>
+          <button
+            type="button"
+            className="header-button-primary"
+            onClick={() => void onRefreshActiveCatalog()}
+            disabled={!tauri || busy || catalogRefreshBusy}
+          >
+            {catalogRefreshBusy
+              ? `${t("wishlist.refreshing", "Refreshing")} ${activeRefreshVendor} ${t("wishlist.catalog", "catalog")}...`
+              : createMode === "esun"
+                ? t("wishlist.refreshEsun", "Refresh eSUN catalog")
+                : t("wishlist.refreshBambu", "Refresh Bambu catalog")}
+          </button>
+        </div>
+        <div className="page-header-filter-surface">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-20">
+              {t("wishlist.state", "State")}
+            </div>
+            <div className="flex flex-1 flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onToggleBoardFilter("ALL")}
+                className={neutralChipClass(
+                  boardFilter === "ALL",
+                  "px-3 py-1.5 text-xs",
+                )}
+              >
+                {t("common.all", "All")} · {wishlistItemCount}
+              </button>
+              <button
+                type="button"
+                onClick={() => onToggleBoardFilter("WISHLIST")}
+                className={neutralChipClass(
+                  boardFilter === "WISHLIST",
+                  "px-3 py-1.5 text-xs",
+                )}
+              >
+                {t("wishlist.statusWishlist", "Wishlist")} · {wishlistSummary.wishlist}
+              </button>
+              <button
+                type="button"
+                onClick={() => onToggleBoardFilter("ON_ORDER")}
+                className={neutralChipClass(
+                  boardFilter === "ON_ORDER",
+                  "px-3 py-1.5 text-xs",
+                )}
+              >
+                {t("wishlist.statusOnOrder", "On order")} · {wishlistSummary.onOrder}
+              </button>
+              <button
+                type="button"
+                onClick={() => onToggleBoardFilter("RECEIVED")}
+                className={neutralChipClass(
+                  boardFilter === "RECEIVED",
+                  "px-3 py-1.5 text-xs",
+                )}
+              >
+                {t("wishlist.statusReceived", "Received")} · {wishlistSummary.received}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

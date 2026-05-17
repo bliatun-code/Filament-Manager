@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { neutralChipClass } from "../lib/chip_styles";
 import { loadCatalogMasters } from "../lib/catalog_data_source";
 import { useI18n } from "../lib/i18n";
 import { loadWishlistItems } from "../lib/wishlist_data_source";
@@ -17,6 +16,7 @@ import {
   WishlistBoardPanel,
   WishlistCatalogRefreshModal,
   WishlistMetricTile,
+  WishlistPageHeader,
   WishlistRefreshLogModal,
   WishlistRefreshSummaryPanel,
 } from "./wishlist_ui";
@@ -188,81 +188,21 @@ export default function WishlistPage() {
         />
       ) : null}
 
-      <div className="page-header">
-        <div className="page-header-copy">
-          <div className="section-eyebrow">
-            {t("wishlist.kicker", "Planning and ordering")}
-          </div>
-          <h1 className="page-title">{t("nav.wishlist", "Wishlist")}</h1>
-          <div className="page-subtitle">
-            {t(
-              "wishlist.subtitle",
-              "Plan purchases, refresh vendor catalogs, and move items from wishlist to stock.",
-            )}
-          </div>
-        </div>
-        <div className="page-header-actions">
-          <div className="page-header-tools">
-            <button
-              type="button"
-              className="header-button-secondary"
-              onClick={() => setShowRefreshLog(true)}
-              disabled={!lastRefreshOutput.trim()}
-            >
-              {t("wishlist.viewRefreshLog", "View refresh log")}
-            </button>
-            <button
-              type="button"
-              className="header-button-primary"
-              onClick={handleRefreshActiveCatalog}
-              disabled={!tauri || busy || catalogRefreshBusy}
-            >
-              {catalogRefreshBusy
-                ? `${t("wishlist.refreshing", "Refreshing")} ${activeRefreshVendor} ${t("wishlist.catalog", "catalog")}...`
-                : createMode === "esun"
-                  ? t("wishlist.refreshEsun", "Refresh eSUN catalog")
-                  : t("wishlist.refreshBambu", "Refresh Bambu catalog")}
-            </button>
-          </div>
-          <div className="page-header-filter-surface">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-20">
-                {t("wishlist.state", "State")}
-              </div>
-              <div className="flex flex-1 flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => toggleBoardFilter("ALL")}
-                  className={neutralChipClass(boardFilter === "ALL", "px-3 py-1.5 text-xs")}
-                >
-                  {t("common.all", "All")} · {wishlistItems.length}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toggleBoardFilter("WISHLIST")}
-                  className={neutralChipClass(boardFilter === "WISHLIST", "px-3 py-1.5 text-xs")}
-                >
-                  {t("wishlist.statusWishlist", "Wishlist")} · {wishlistSummary.wishlist}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toggleBoardFilter("ON_ORDER")}
-                  className={neutralChipClass(boardFilter === "ON_ORDER", "px-3 py-1.5 text-xs")}
-                >
-                  {t("wishlist.statusOnOrder", "On order")} · {wishlistSummary.onOrder}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toggleBoardFilter("RECEIVED")}
-                  className={neutralChipClass(boardFilter === "RECEIVED", "px-3 py-1.5 text-xs")}
-                >
-                  {t("wishlist.statusReceived", "Received")} · {wishlistSummary.received}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <WishlistPageHeader
+        activeRefreshVendor={activeRefreshVendor}
+        boardFilter={boardFilter}
+        busy={busy}
+        catalogRefreshBusy={catalogRefreshBusy}
+        createMode={createMode}
+        lastRefreshOutput={lastRefreshOutput}
+        onRefreshActiveCatalog={handleRefreshActiveCatalog}
+        onShowRefreshLog={() => setShowRefreshLog(true)}
+        onToggleBoardFilter={toggleBoardFilter}
+        tauri={tauri}
+        t={t}
+        wishlistItemCount={wishlistItems.length}
+        wishlistSummary={wishlistSummary}
+      />
 
       {error ? (
         <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/15 dark:text-rose-200">
