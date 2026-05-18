@@ -6,6 +6,7 @@ import type {
   CatalogResetStats,
   LibrarySyncHostValidationResult,
   LibrarySyncRemoteSnapshot,
+  SpoolWithMasterRow,
   TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
 import type {
@@ -69,6 +70,7 @@ type UseSettingsMaintenanceSectionInput = {
   settingsClientHostBaseUrl: string | null;
   settingsClientLibraryId: string | null;
   settingsClientReadOnly: boolean;
+  settingsInventoryRows: SpoolWithMasterRow[];
   settingsImportMessageLabels: () => SettingsImportMessageLabels;
   settingsInventoryExportMessageLabels: () => SettingsInventoryExportMessageLabels;
   settingsInventoryOverviewPrintMessageLabels: () => SettingsInventoryPrintMessageLabels;
@@ -112,6 +114,7 @@ export function useSettingsMaintenanceSection({
   settingsClientHostBaseUrl,
   settingsClientLibraryId,
   settingsClientReadOnly,
+  settingsInventoryRows,
   settingsImportMessageLabels,
   settingsInventoryExportMessageLabels,
   settingsInventoryOverviewPrintMessageLabels,
@@ -151,6 +154,7 @@ export function useSettingsMaintenanceSection({
   });
 
   const loadSettingsInventoryRows = useSettingsInventoryRowsLoader({
+    fallbackRows: settingsInventoryRows,
     settingsClientHostBaseUrl,
     settingsClientLibraryId,
     settingsClientReadOnly,

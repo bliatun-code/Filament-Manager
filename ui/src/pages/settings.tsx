@@ -238,6 +238,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsClientHostBaseUrl,
     settingsClientLibraryId,
     settingsClientReadOnly,
+    settingsInventoryRows: spoolRows,
     settingsImportMessageLabels,
     settingsInventoryExportMessageLabels,
     settingsInventoryOverviewPrintMessageLabels,
