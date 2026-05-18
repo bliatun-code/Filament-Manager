@@ -334,9 +334,9 @@ export async function loadStatisticsData(
   if (syncState.clientReadOnly) {
     const spoolRows = syncSettings.cached_spools?.rows ?? [];
     const loanRows = syncSettings.cached_loans?.rows ?? [];
-    const overview =
-      syncSettings.cached_snapshot?.inventory ??
-      (spoolRows.length > 0 ? deriveInventoryOverviewFromRows(spoolRows, []) : null);
+    const spoolRowsOverview =
+      spoolRows.length > 0 ? deriveInventoryOverviewFromRows(spoolRows, []) : null;
+    const overview = spoolRowsOverview ?? syncSettings.cached_snapshot?.inventory ?? null;
     if (
       overview ||
       spoolRows.length > 0 ||

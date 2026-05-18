@@ -9,11 +9,30 @@ import {
 } from "./statistics_data_source";
 import type {
   FilamentConsumptionRow,
+  InventoryOverview,
   LibrarySyncSettings,
   PrinterOverviewRow,
   SpoolLoanDetailsRow,
   SpoolWithMasterRow,
 } from "./tauri_client";
+
+function overview(overrides: Partial<InventoryOverview> = {}): InventoryOverview {
+  return {
+    total_spools: 0,
+    total_owned_spools: 0,
+    total_borrowed_in_spools: 0,
+    in_use: 0,
+    owned_in_use: 0,
+    borrowed_in_in_use: 0,
+    low_stock: 0,
+    owned_low_stock: 0,
+    borrowed_in_low_stock: 0,
+    total_consumption_30d: 0,
+    owned_consumption_30d: 0,
+    borrowed_in_consumption_30d: 0,
+    ...overrides,
+  };
+}
 
 function consumptionRow(id: string): FilamentConsumptionRow {
   return {
@@ -289,6 +308,55 @@ test("loadStatisticsData avoids local fallback when client host details are inco
   assert.deepEqual(result.printers.map((row) => row.printer.id), ["cached-printer"]);
   assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["cached-spool"]);
   assert.deepEqual(result.loanUsage.map((row) => row.borrower_name), ["Ada"]);
+});
+
+test("loadStatisticsData prefers cached spool rows over stale snapshot totals", async () => {
+  const result = await loadStatisticsData(
+    syncSettings({
+      mode: "CLIENT",
+      host_base_url: " ",
+      library_id: "library-1",
+      cached_snapshot: {
+        captured_at: "snapshot-cache",
+        library_id: "library-1",
+        device_name: "Cached Host",
+        sync_mode: "HOST",
+        inventory: overview({
+          total_spools: 99,
+          total_owned_spools: 99,
+          low_stock: 99,
+          owned_low_stock: 99,
+        }),
+        total_spools: 99,
+        in_use: 0,
+        low_stock: 99,
+        active_loans: 0,
+        printers: 0,
+      },
+      cached_spools: {
+        captured_at: "spool-cache",
+        rows: [spoolRow("cached-spool")],
+      },
+    }),
+    {
+      loadLocalSpools: async () => {
+        throw new Error("local spools should not load in client mode");
+      },
+      listLocalConsumption: async () => {
+        throw new Error("local consumption should not load in client mode");
+      },
+      listLocalPrinterOverview: async () => {
+        throw new Error("local printers should not load in client mode");
+      },
+      listLocalLoanUsageByPerson: async () => {
+        throw new Error("local loan usage should not load in client mode");
+      },
+    },
+  );
+
+  assert.equal(result.source, "CACHED");
+  assert.equal(result.overview?.total_spools, 1);
+  assert.equal(result.overview?.low_stock, 0);
 });
 
 test("loadStatisticsData keeps partial client host data and cache when host calls fail", async () => {
