@@ -188,6 +188,12 @@ export default function LoansPage() {
       );
       return;
     }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
 
     setBusy(true);
     setError(null);
@@ -195,9 +201,6 @@ export default function LoansPage() {
     try {
       const loanDirection = normalizeLoanDirection(returnModalLoan.loan.loan_direction);
       const returnedFilamentGrams = toReturnedFilamentWeight(returnModalLoan, measuredTotalGrams);
-      if (clientReadOnly && !canUseClientHostWrite()) {
-        return;
-      }
       await returnInventoryLoan(
         {
           loan_id: returnModalLoan.loan.id,
