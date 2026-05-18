@@ -7,6 +7,7 @@ import {
   buildSettingsPrinterRemovedMessage,
   buildSettingsPrinterRequiredMessage,
   buildSettingsPrinterUpdatedMessage,
+  canUseSettingsPrinterWriteTarget,
   derivePrinterMultiConfig,
   isBambuLabPrinter,
   preparePrinterReconfigure,
@@ -237,5 +238,44 @@ test("settings printer messages quote the printer name consistently", () => {
       updatedPrinter: "Updated printer",
     }),
     'Updated printer "X1 Carbon".',
+  );
+});
+
+test("canUseSettingsPrinterWriteTarget blocks unpaired client writes only", () => {
+  assert.equal(
+    canUseSettingsPrinterWriteTarget({
+      settingsClientReadOnly: false,
+      settingsClientHostBaseUrl: null,
+      settingsClientHostWritePaired: false,
+      settingsClientLibraryId: null,
+    }),
+    true,
+  );
+  assert.equal(
+    canUseSettingsPrinterWriteTarget({
+      settingsClientReadOnly: true,
+      settingsClientHostBaseUrl: "http://host",
+      settingsClientHostWritePaired: true,
+      settingsClientLibraryId: "library-1",
+    }),
+    true,
+  );
+  assert.equal(
+    canUseSettingsPrinterWriteTarget({
+      settingsClientReadOnly: true,
+      settingsClientHostBaseUrl: "http://host",
+      settingsClientHostWritePaired: false,
+      settingsClientLibraryId: "library-1",
+    }),
+    false,
+  );
+  assert.equal(
+    canUseSettingsPrinterWriteTarget({
+      settingsClientReadOnly: true,
+      settingsClientHostBaseUrl: null,
+      settingsClientHostWritePaired: true,
+      settingsClientLibraryId: "library-1",
+    }),
+    false,
   );
 });

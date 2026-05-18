@@ -14,6 +14,7 @@ import {
   buildSettingsPrinterRemovedMessage,
   buildSettingsPrinterRequiredMessage,
   buildSettingsPrinterUpdatedMessage,
+  canUseSettingsPrinterWriteTarget,
   preparePrinterReconfigure,
   type SettingsPrinterMessageLabels,
 } from "./settings_printer_model";
@@ -127,21 +128,27 @@ export function useSettingsPrinterActions({
       return;
     }
 
+    const canWrite = canUseSettingsPrinterWriteTarget({
+      settingsClientReadOnly,
+      settingsClientHostBaseUrl,
+      settingsClientHostWritePaired,
+      settingsClientLibraryId,
+    });
+    if (!canWrite) {
+      setError(
+        buildSettingsPrinterErrorMessage(
+          "writeRequiresPairing",
+          settingsPrinterMessageLabels(),
+        ),
+      );
+      return;
+    }
+
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
       if (settingsClientReadOnly) {
-        if (!settingsClientHostBaseUrl || !settingsClientLibraryId || !settingsClientHostWritePaired) {
-          setError(
-            buildSettingsPrinterErrorMessage(
-              "writeRequiresPairing",
-              settingsPrinterMessageLabels(),
-            ),
-          );
-          setBusy(false);
-          return;
-        }
         await createManagedPrinter(
           prepared.printer,
           {
@@ -196,21 +203,27 @@ export function useSettingsPrinterActions({
     }
     setConfirmDeletePrinterId(null);
 
+    const canWrite = canUseSettingsPrinterWriteTarget({
+      settingsClientReadOnly,
+      settingsClientHostBaseUrl,
+      settingsClientHostWritePaired,
+      settingsClientLibraryId,
+    });
+    if (!canWrite) {
+      setError(
+        buildSettingsPrinterErrorMessage(
+          "writeRequiresPairing",
+          settingsPrinterMessageLabels(),
+        ),
+      );
+      return;
+    }
+
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
       if (settingsClientReadOnly) {
-        if (!settingsClientHostBaseUrl || !settingsClientLibraryId || !settingsClientHostWritePaired) {
-          setError(
-            buildSettingsPrinterErrorMessage(
-              "writeRequiresPairing",
-              settingsPrinterMessageLabels(),
-            ),
-          );
-          setBusy(false);
-          return;
-        }
         await deleteManagedPrinter(printer.id, {
           clientReadOnly: true,
           clientHostBaseUrl: settingsClientHostBaseUrl,
