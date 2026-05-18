@@ -227,6 +227,33 @@ test("loadInventorySpoolDetail loads client history and usage with one host deta
   assert.deepEqual(result.usagePoints.map((row) => row.job_id), ["job-1"]);
 });
 
+test("loadInventorySpoolDetail avoids local detail fallback when client host details are incomplete", async () => {
+  const result = await loadInventorySpoolDetail(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: " ",
+      clientLibraryId: "library-1",
+      spoolId: "spool-1",
+    },
+    {
+      fetchHostSpoolDetail: async () => {
+        throw new Error("host detail should not load without a complete target");
+      },
+      listLocalHistory: async () => {
+        throw new Error("local history should not load in client mode");
+      },
+      listLocalUsage: async () => {
+        throw new Error("local usage should not load in client mode");
+      },
+    },
+  );
+
+  assert.deepEqual(result, {
+    historyRows: [],
+    usagePoints: [],
+  });
+});
+
 test("loadInventorySpoolDetail loads local history and usage together outside client mode", async () => {
   const calls: string[] = [];
   const result = await loadInventorySpoolDetail(
