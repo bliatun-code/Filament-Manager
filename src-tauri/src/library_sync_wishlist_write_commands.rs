@@ -1,27 +1,14 @@
-use crate::backend::filament_database::WishlistItemRow;
+use crate::library_sync_cache_refresh::refresh_library_sync_wishlist_cache;
 use crate::library_sync_command_support::{
     library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
     trimmed_non_empty,
 };
-use crate::library_sync_host_client::{
-    get_library_sync_host_json_authenticated, perform_library_sync_host_write,
-};
+use crate::library_sync_host_client::perform_library_sync_host_write;
 use crate::library_sync_models::{
     LibrarySyncCreateWishlistItemInput, LibrarySyncDeleteWishlistItemInput,
     LibrarySyncUpdateWishlistStatusInput,
 };
 use crate::state::AppState;
-use crate::with_inventory;
-
-fn refresh_library_sync_wishlist_cache(state: &tauri::State<'_, AppState>, base_url: &str) {
-    let rows: Result<Vec<WishlistItemRow>, String> =
-        get_library_sync_host_json_authenticated(state, base_url, "/api/v1/wishlist?limit=500");
-    if let Ok(rows) = rows {
-        let _ = with_inventory(state, |engine| {
-            engine.save_library_sync_cached_wishlist(&rows)
-        });
-    }
-}
 
 #[tauri::command]
 pub(crate) fn create_library_sync_host_wishlist_item(

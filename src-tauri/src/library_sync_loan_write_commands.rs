@@ -1,3 +1,6 @@
+use crate::library_sync_cache_refresh::{
+    refresh_library_sync_loan_cache, refresh_library_sync_spool_cache,
+};
 use crate::library_sync_command_support::{
     library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
     trimmed_non_empty,
@@ -34,6 +37,8 @@ pub(crate) fn return_library_sync_host_loan(
         }),
     )?;
 
+    refresh_library_sync_loan_cache(&state, &normalized_base_url);
+    refresh_library_sync_spool_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, "Host loan updated.", None)?;
     Ok(())
 }
@@ -66,6 +71,8 @@ pub(crate) fn lend_library_sync_host_spool(
         }),
     )?;
 
+    refresh_library_sync_loan_cache(&state, &normalized_base_url);
+    refresh_library_sync_spool_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, "Host loan-out write completed.", None)?;
 
     Ok(())

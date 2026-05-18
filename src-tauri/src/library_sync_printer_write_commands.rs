@@ -1,3 +1,6 @@
+use crate::library_sync_cache_refresh::{
+    refresh_library_sync_printer_cache, refresh_library_sync_spool_cache,
+};
 use crate::library_sync_command_support::{
     library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
     trimmed_non_empty,
@@ -35,6 +38,8 @@ pub(crate) fn assign_library_sync_host_printer_slot(
         }),
     )?;
 
+    refresh_library_sync_printer_cache(&state, &normalized_base_url);
+    refresh_library_sync_spool_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, "Host printer slot updated.", None)?;
     Ok(())
 }
@@ -67,6 +72,8 @@ pub(crate) fn record_library_sync_host_print_usage(
         }),
     )?;
 
+    refresh_library_sync_printer_cache(&state, &normalized_base_url);
+    refresh_library_sync_spool_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, "Host print usage recorded.", None)?;
     Ok(())
 }
@@ -99,6 +106,7 @@ pub(crate) fn create_library_sync_host_printer(
         }),
     )?;
 
+    refresh_library_sync_printer_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, "Host printer saved.", None)?;
     Ok(())
 }
@@ -123,6 +131,7 @@ pub(crate) fn delete_library_sync_host_printer(
         &serde_json::json!({}),
     )?;
 
+    refresh_library_sync_printer_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, "Host printer deleted.", None)?;
     Ok(())
 }
