@@ -138,6 +138,12 @@ export function groupLoanUsageByPerson(
   });
 }
 
+function firstDefinedTimestamp(
+  ...values: Array<string | null | undefined>
+): string | null {
+  return values.find((value): value is string => !!value) ?? null;
+}
+
 export async function loadStatisticsPageData(
   dependencies: StatisticsPageDataDependencies = {},
 ): Promise<StatisticsPageDataLoadResult> {
@@ -290,6 +296,32 @@ export async function loadStatisticsData(
       (spoolsResult.ok && consumptionResult.ok && derivedOverview != null);
 
     if (resolvedOverview || resolvedPrinters.length > 0 || resolvedLoans.length > 0) {
+      const source =
+        hasLiveOverview &&
+        printersResult.ok &&
+        loansResult.ok &&
+        spoolsResult.ok &&
+        consumptionResult.ok
+          ? "LIVE"
+          : "CACHED";
+      const liveUpdatedAt = firstDefinedTimestamp(
+        resolvedSnapshot?.captured_at,
+        cachedPrinters?.captured_at,
+        syncSettings.cached_printers?.captured_at,
+        cachedLoans?.captured_at,
+        syncSettings.cached_loans?.captured_at,
+        cachedSpools?.captured_at,
+        syncSettings.cached_spools?.captured_at,
+      );
+      const fallbackUpdatedAt = firstDefinedTimestamp(
+        spoolsResult.ok ? null : cachedSpools?.captured_at,
+        spoolsResult.ok ? null : syncSettings.cached_spools?.captured_at,
+        printersResult.ok ? null : cachedPrinters?.captured_at,
+        printersResult.ok ? null : syncSettings.cached_printers?.captured_at,
+        loansResult.ok ? null : cachedLoans?.captured_at,
+        loansResult.ok ? null : syncSettings.cached_loans?.captured_at,
+        snapshotResult.ok || derivedOverview ? null : resolvedSnapshot?.captured_at,
+      );
       return {
         overview: resolvedOverview,
         printers: resolvedPrinters,
@@ -298,23 +330,8 @@ export async function loadStatisticsData(
         loanDetails: resolvedLoans,
         loanUsage: groupLoanUsageByPerson(resolvedLoans, "OUTBOUND"),
         inboundLoanUsage: groupLoanUsageByPerson(resolvedLoans, "INBOUND"),
-        updatedAt:
-          resolvedSnapshot?.captured_at ??
-          cachedPrinters?.captured_at ??
-          syncSettings.cached_printers?.captured_at ??
-          cachedLoans?.captured_at ??
-          syncSettings.cached_loans?.captured_at ??
-          cachedSpools?.captured_at ??
-          syncSettings.cached_spools?.captured_at ??
-          null,
-        source:
-          hasLiveOverview &&
-          printersResult.ok &&
-          loansResult.ok &&
-          spoolsResult.ok &&
-          consumptionResult.ok
-            ? "LIVE"
-            : "CACHED",
+        updatedAt: source === "LIVE" ? liveUpdatedAt : fallbackUpdatedAt ?? liveUpdatedAt,
+        source,
       };
     }
 

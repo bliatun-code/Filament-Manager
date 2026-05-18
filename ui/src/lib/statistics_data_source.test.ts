@@ -449,6 +449,53 @@ test("loadStatisticsData keeps partial client host data and cache when host call
   }
 });
 
+test("loadStatisticsData timestamps the fallback slice when snapshot is live", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    const result = await loadStatisticsData(
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: "http://host",
+        library_id: "library-1",
+      }),
+      {
+        fetchHostSnapshot: async () => ({
+          captured_at: "snapshot-live",
+          library_id: "library-1",
+          device_name: "Host",
+          sync_mode: "HOST",
+          inventory: overview({ total_spools: 1 }),
+          total_spools: 1,
+          in_use: 0,
+          low_stock: 0,
+          active_loans: 0,
+          printers: 1,
+        }),
+        fetchHostPrinterOverview: async () => {
+          throw new Error("printer overview unavailable");
+        },
+        fetchHostLoans: async () => [loanRow("live-loan")],
+        loadHostSpools: async () => [spoolRow("live-spool")],
+        fetchHostConsumption: async () => [consumptionRow("live-consumption")],
+        fetchCachedPrinterOverview: async () => ({
+          captured_at: "printer-cache",
+          rows: [printerRow("cached-printer")],
+        }),
+        fetchCachedLoans: async () => null,
+        fetchCachedSpools: async () => null,
+      },
+    );
+
+    assert.equal(result.source, "CACHED");
+    assert.equal(result.updatedAt, "printer-cache");
+    assert.deepEqual(result.printers.map((row) => row.printer.id), ["cached-printer"]);
+    assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["live-spool"]);
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
 test("loadStatisticsData marks cached spool fallback as cached statistics", async () => {
   const originalConsoleError = console.error;
   console.error = () => {};
