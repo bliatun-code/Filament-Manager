@@ -261,6 +261,39 @@ test("loadPrinterPageData keeps fulfilled client spools when host overview fails
   assert.equal(errors.length, 1);
 });
 
+test("loadPrinterPageData uses cached spool timestamp when spool data falls back", async () => {
+  const errors: unknown[] = [];
+  const result = await loadPrinterPageData(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      supportedPrinterModels: ["Generic"],
+    },
+    {
+      fetchHostOverview: async () => [printerOverviewRow("printer-host")],
+      loadHostSpools: async () => {
+        throw new Error("spools unavailable");
+      },
+      fetchHostSettings: async () => printerSettingsSnapshot("printer-host"),
+      fetchCachedOverview: async () => null,
+      fetchCachedSpools: async () => ({
+        captured_at: "2026-04-01 12:00:00",
+        rows: [spoolRow("cached-spool")],
+      }),
+      onLoadError: (error) => {
+        errors.push(error);
+      },
+    },
+  );
+
+  assert.equal(result.source, "CACHED");
+  assert.equal(result.updatedAt, "2026-04-01 12:00:00");
+  assert.deepEqual(result.printers.map((entry) => entry.printer.id), ["printer-host"]);
+  assert.deepEqual(result.spools.map((entry) => entry.id), ["cached-spool"]);
+  assert.equal(errors.length, 1);
+});
+
 test("loadPrinterPageData reports offline when host and cache are unavailable", async () => {
   const result = await loadPrinterPageData(
     {

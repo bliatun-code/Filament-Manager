@@ -247,7 +247,7 @@ export async function loadPrinterPageData(
           supportedPrinterModels,
         ),
         source: overviewResult.ok && spoolRowsResult.ok ? "LIVE" : "CACHED",
-        updatedAt: cachedPrinters?.captured_at ?? null,
+        updatedAt: cachedPrinters?.captured_at ?? cachedSpools?.captured_at ?? null,
       };
     }
 
