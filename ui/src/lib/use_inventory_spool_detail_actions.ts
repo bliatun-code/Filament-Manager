@@ -295,6 +295,9 @@ export function useInventorySpoolDetailActions({
     if (!tauriAvailable || !selectedSpool || manageBusy) {
       return;
     }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
     const location = selectedSpoolLocationDraft.trim();
     setManageBusy(true);
     setError(null);
@@ -383,6 +386,9 @@ export function useInventorySpoolDetailActions({
 
   async function handleToggleLostStatus() {
     if (!tauriAvailable || !selectedSpool || manageBusy) {
+      return;
+    }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
       return;
     }
     const nextStatus: SpoolStatus = selectedSpool.status === "LOST" ? "IN_STOCK" : "LOST";
@@ -486,6 +492,9 @@ export function useInventorySpoolDetailActions({
       setError(t("inventory.error.invalidWeight", "Weight value is invalid."));
       return;
     }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
     setConfirmDelete(false);
     setConfirmPurge(false);
     const safeGrams = Math.max(0, Math.round(grams));
@@ -558,6 +567,9 @@ export function useInventorySpoolDetailActions({
     const parsed = Number.parseInt(selectedSpoolTareDraft, 10);
     if (!Number.isFinite(parsed) || parsed < 0) {
       setError(t("inventory.error.invalidWeight", "Weight value is invalid."));
+      return;
+    }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
       return;
     }
     const safeGrams = Math.max(0, Math.round(parsed));
