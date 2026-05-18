@@ -327,6 +327,61 @@ test("loadDashboardData uses cached client rows without a cached snapshot", asyn
   );
 });
 
+test("loadDashboardData prefers cached client spool rows over stale snapshot totals", async () => {
+  const result = await loadDashboardData(
+    { previousClientHostNeedsRepair: false, t },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          library_id: " ",
+          cached_snapshot: snapshot("Cached Host", {
+            inventory: overview({
+              total_spools: 99,
+              total_owned_spools: 99,
+              low_stock: 99,
+              owned_low_stock: 99,
+            }),
+          }),
+          cached_spools: {
+            captured_at: "2026-04-01 08:30:00",
+            rows: [spoolWithMasterRow("spool-cache")],
+          },
+        }),
+      loadTrustedLanStatus: async () => null,
+      validateHost: async () => {
+        throw new Error("should not validate without a complete target");
+      },
+      fetchHostSnapshot: async () => {
+        throw new Error("should not fetch without a complete target");
+      },
+      loadInventoryOverview: async () => {
+        throw new Error("local overview should not load in client mode");
+      },
+      listLocalPrinters: async () => {
+        throw new Error("local printers should not load in client mode");
+      },
+      loadSpoolRows: async () => {
+        throw new Error("local spools should not load in client mode");
+      },
+      listLocalLoans: async () => {
+        throw new Error("local loans should not load in client mode");
+      },
+      listLocalWishlist: async () => {
+        throw new Error("local wishlist should not load in client mode");
+      },
+      listLocalTopMaterials: async () => {
+        throw new Error("local materials should not load in client mode");
+      },
+    },
+  );
+
+  assert.equal(result.syncSource, "client-cached");
+  assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "1");
+  assert.equal(result.derived.stats.find((stat) => stat.id === "lowStock")?.value, "0");
+});
+
 test("loadDashboardData stays client-offline without cache instead of loading local data", async () => {
   const result = await loadDashboardData(
     { previousClientHostNeedsRepair: false, t },

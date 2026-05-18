@@ -218,8 +218,11 @@ export async function loadDashboardData(
     (clientPrinterRows?.length ?? 0) > 0 ||
     (clientLoanRows?.length ?? 0) > 0 ||
     clientWishlistRows.length > 0;
-  const clientOverview = activeClientSnapshot?.inventory ??
-    (hasClientCachedRows ? deriveInventoryOverviewFromRows(clientSpoolRows ?? [], []) : null);
+  const clientRowsOverview =
+    (clientSpoolRows?.length ?? 0) > 0
+      ? deriveInventoryOverviewFromRows(clientSpoolRows ?? [], [])
+      : null;
+  const clientOverview = clientRowsOverview ?? activeClientSnapshot?.inventory ?? null;
 
   if (clientMode) {
     return {
@@ -237,7 +240,7 @@ export async function loadDashboardData(
       clientHostCompanionTone,
       clientHostDisplayName,
       clientHostNeedsRepair,
-      syncSource: clientOverview ? clientSnapshotSource : "client-offline",
+      syncSource: clientOverview || hasClientCachedRows ? clientSnapshotSource : "client-offline",
       capturedAt:
         activeClientSnapshot?.captured_at ??
         syncSettings?.cached_spools?.captured_at ??
