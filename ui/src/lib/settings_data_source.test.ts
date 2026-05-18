@@ -317,6 +317,31 @@ test("refreshLibrarySyncSnapshot falls back to the fetched snapshot before cache
   assert.equal(result.snapshot, fetchedSnapshot);
 });
 
+test("refreshLibrarySyncSnapshot ignores stale cached snapshots", async () => {
+  const fetchedSnapshot = remoteSnapshot({
+    captured_at: "2026-04-01 12:00:00",
+    device_name: "Fetched",
+  });
+  const staleCachedSnapshot = remoteSnapshot({
+    captured_at: "2026-04-01 11:00:00",
+    device_name: "Stale Cached",
+  });
+
+  const result = await refreshLibrarySyncSnapshot("http://host", "library-host", {
+    fetchHostSnapshot: async () => fetchedSnapshot,
+    loadSyncSettings: async () =>
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: "http://host",
+        library_id: "library-host",
+        cached_snapshot: staleCachedSnapshot,
+      }),
+  });
+
+  assert.equal(result.snapshot, fetchedSnapshot);
+  assert.equal(result.syncSettings.cached_snapshot, staleCachedSnapshot);
+});
+
 test("refreshLibrarySyncSnapshot rejects incomplete host targets before fetching", async () => {
   await assert.rejects(
     () =>

@@ -163,9 +163,14 @@ export async function refreshLibrarySyncSnapshot(
 
   const snapshot = await fetchHostSnapshot(hostTarget.baseUrl, hostTarget.libraryId);
   const syncSettings = await loadSyncSettings();
+  const cachedSnapshot = syncSettings.cached_snapshot ?? null;
+  const resolvedSnapshot =
+    cachedSnapshot?.captured_at && cachedSnapshot.captured_at >= snapshot.captured_at
+      ? cachedSnapshot
+      : snapshot;
 
   return {
-    snapshot: syncSettings.cached_snapshot ?? snapshot,
+    snapshot: resolvedSnapshot,
     syncSettings,
   };
 }
