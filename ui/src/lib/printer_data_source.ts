@@ -15,6 +15,7 @@ import {
   type LibrarySyncPageState,
 } from "./library_sync_state";
 import { resolveClientHostTarget } from "./host_write_target";
+import { firstDefinedTimestamp } from "./source_timestamps";
 
 export type PrinterSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
 export type PrinterLibrarySyncState = LibrarySyncPageState;
@@ -93,7 +94,7 @@ function resolveClientPrinterUpdatedAt({
   cachedSpoolsCapturedAt?: string | null;
 }): string | null {
   if (!overviewLive && !spoolsLive) {
-    return cachedOverviewCapturedAt ?? cachedSpoolsCapturedAt ?? null;
+    return firstDefinedTimestamp(cachedOverviewCapturedAt, cachedSpoolsCapturedAt);
   }
   if (!overviewLive) {
     return cachedOverviewCapturedAt ?? null;
@@ -101,7 +102,7 @@ function resolveClientPrinterUpdatedAt({
   if (!spoolsLive) {
     return cachedSpoolsCapturedAt ?? null;
   }
-  return cachedOverviewCapturedAt ?? cachedSpoolsCapturedAt ?? null;
+  return firstDefinedTimestamp(cachedOverviewCapturedAt, cachedSpoolsCapturedAt);
 }
 
 export const derivePrinterLibrarySyncState = deriveLibrarySyncPageState;

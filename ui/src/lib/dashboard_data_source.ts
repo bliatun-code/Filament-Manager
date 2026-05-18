@@ -22,6 +22,7 @@ import {
 import { deriveInventoryOverviewFromRows } from "./statistics_model";
 import { loadAllSpoolRows } from "./spool_data_source";
 import { resolveClientHostTarget } from "./host_write_target";
+import { firstDefinedTimestamp } from "./source_timestamps";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -80,12 +81,6 @@ function emptyInventoryOverview() {
 export function hasInvalidClientPairingMessage(message?: string | null): boolean {
   const normalized = (message ?? "").trim().toLowerCase();
   return normalized.includes("desktop client pairing is no longer valid");
-}
-
-function firstDefinedTimestamp(
-  ...values: Array<string | null | undefined>
-): string | null {
-  return values.find((value): value is string => !!value) ?? null;
 }
 
 export async function loadDashboardData(

@@ -27,6 +27,7 @@ import {
   type LibrarySyncPageState,
 } from "./library_sync_state";
 import { resolveClientHostTarget } from "./host_write_target";
+import { firstDefinedTimestamp } from "./source_timestamps";
 
 export type StatisticsSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
 export type StatisticsLibrarySyncState = LibrarySyncPageState;
@@ -136,12 +137,6 @@ export function groupLoanUsageByPerson(
     }
     return left.borrower_name.localeCompare(right.borrower_name);
   });
-}
-
-function firstDefinedTimestamp(
-  ...values: Array<string | null | undefined>
-): string | null {
-  return values.find((value): value is string => !!value) ?? null;
 }
 
 export async function loadStatisticsPageData(
