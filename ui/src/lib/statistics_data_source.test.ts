@@ -303,7 +303,7 @@ test("loadStatisticsData avoids local fallback when client host details are inco
   );
 
   assert.equal(result.source, "CACHED");
-  assert.equal(result.updatedAt, "printer-cache");
+  assert.equal(result.updatedAt, "spool-cache");
   assert.equal(result.overview?.total_spools, 1);
   assert.deepEqual(result.printers.map((row) => row.printer.id), ["cached-printer"]);
   assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["cached-spool"]);
@@ -355,6 +355,7 @@ test("loadStatisticsData prefers cached spool rows over stale snapshot totals", 
   );
 
   assert.equal(result.source, "CACHED");
+  assert.equal(result.updatedAt, "spool-cache");
   assert.equal(result.overview?.total_spools, 1);
   assert.equal(result.overview?.low_stock, 0);
 });

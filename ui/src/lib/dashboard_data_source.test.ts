@@ -337,6 +337,7 @@ test("loadDashboardData prefers cached client spool rows over stale snapshot tot
           host_base_url: "http://host",
           library_id: " ",
           cached_snapshot: snapshot("Cached Host", {
+            captured_at: "2026-04-01 08:00:00",
             inventory: overview({
               total_spools: 99,
               total_owned_spools: 99,
@@ -378,6 +379,7 @@ test("loadDashboardData prefers cached client spool rows over stale snapshot tot
   );
 
   assert.equal(result.syncSource, "client-cached");
+  assert.equal(result.capturedAt, "2026-04-01 08:30:00");
   assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "1");
   assert.equal(result.derived.stats.find((stat) => stat.id === "lowStock")?.value, "0");
 });

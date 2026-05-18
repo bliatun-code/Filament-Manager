@@ -223,6 +223,10 @@ export async function loadDashboardData(
       ? deriveInventoryOverviewFromRows(clientSpoolRows ?? [], [])
       : null;
   const clientOverview = clientRowsOverview ?? activeClientSnapshot?.inventory ?? null;
+  const clientRowsOverviewCapturedAt =
+    clientRowsOverview && !clientHostTarget
+      ? syncSettings?.cached_spools?.captured_at ?? null
+      : null;
 
   if (clientMode) {
     return {
@@ -242,6 +246,7 @@ export async function loadDashboardData(
       clientHostNeedsRepair,
       syncSource: clientOverview || hasClientCachedRows ? clientSnapshotSource : "client-offline",
       capturedAt:
+        clientRowsOverviewCapturedAt ??
         activeClientSnapshot?.captured_at ??
         syncSettings?.cached_spools?.captured_at ??
         syncSettings?.cached_printers?.captured_at ??

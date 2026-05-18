@@ -337,6 +337,8 @@ export async function loadStatisticsData(
     const spoolRowsOverview =
       spoolRows.length > 0 ? deriveInventoryOverviewFromRows(spoolRows, []) : null;
     const overview = spoolRowsOverview ?? syncSettings.cached_snapshot?.inventory ?? null;
+    const spoolRowsUpdatedAt =
+      spoolRowsOverview ? syncSettings.cached_spools?.captured_at ?? null : null;
     if (
       overview ||
       spoolRows.length > 0 ||
@@ -352,6 +354,7 @@ export async function loadStatisticsData(
         loanUsage: groupLoanUsageByPerson(loanRows, "OUTBOUND"),
         inboundLoanUsage: groupLoanUsageByPerson(loanRows, "INBOUND"),
         updatedAt:
+          spoolRowsUpdatedAt ??
           syncSettings.cached_snapshot?.captured_at ??
           syncSettings.cached_printers?.captured_at ??
           syncSettings.cached_loans?.captured_at ??
