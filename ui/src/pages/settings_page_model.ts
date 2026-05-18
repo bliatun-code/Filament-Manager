@@ -13,7 +13,15 @@ export type SettingsPageChromeLabels = {
   title: string;
 };
 
-export type SettingsTabKey = "CATALOG" | "GENERAL" | "LIBRARY" | "MAINTENANCE" | "PRINTERS";
+export const SETTINGS_PAGE_TAB_ORDER = [
+  "GENERAL",
+  "LIBRARY",
+  "PRINTERS",
+  "CATALOG",
+  "MAINTENANCE",
+] as const;
+
+export type SettingsTabKey = (typeof SETTINGS_PAGE_TAB_ORDER)[number];
 export type SettingsPageTabLabelMap = Record<SettingsTabKey, string>;
 export type SettingsPageTabOption = {
   id: SettingsTabKey;
@@ -67,13 +75,7 @@ export function buildSettingsPageTabLabels(labels: SettingsPageTabLabelMap): Set
 }
 
 export function buildSettingsPageTabs(labels: SettingsPageTabLabelMap): SettingsPageTabOption[] {
-  return [
-    { id: "GENERAL", label: labels.GENERAL },
-    { id: "LIBRARY", label: labels.LIBRARY },
-    { id: "PRINTERS", label: labels.PRINTERS },
-    { id: "CATALOG", label: labels.CATALOG },
-    { id: "MAINTENANCE", label: labels.MAINTENANCE },
-  ];
+  return SETTINGS_PAGE_TAB_ORDER.map((id) => ({ id, label: labels[id] }));
 }
 
 export function buildSettingsPageTabButtons(

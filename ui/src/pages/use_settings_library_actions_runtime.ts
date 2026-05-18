@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { SettingsTabKey } from "../App";
+import type { SettingsTabKey } from "./settings_page_model";
 import { buildTrustedLanCompanionModel } from "./settings_companion_model";
 import { useSettingsInitialLoad } from "./use_settings_initial_load";
 import { useSettingsLibraryAutoValidation } from "./use_settings_library_auto_validation";

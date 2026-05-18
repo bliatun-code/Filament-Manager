@@ -2,6 +2,7 @@ import { Suspense, lazy, startTransition, useEffect, useMemo, useState } from "r
 import { useI18n } from "./lib/i18n";
 import { getThemeMode, onThemeModeChange } from "./lib/theme_mode";
 import { isTauri, setDockIconTheme, setWindowTitle } from "./lib/tauri_client";
+import type { SettingsTabKey } from "./pages/settings_page_model";
 import brandIconDark from "./assets/logo_variants/logo-v3-10-dark-static.svg";
 import brandIconLight from "./assets/logo_variants/logo-v3-10-light-static.svg";
 
@@ -26,8 +27,6 @@ export type InventoryNavigationIntent =
       seq: number;
     }
   | null;
-
-export type SettingsTabKey = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
 
 const pageOrder: ReadonlyArray<PageKey> = [
   "dashboard",
