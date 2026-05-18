@@ -294,6 +294,38 @@ test("loadPrinterPageData uses cached spool timestamp when spool data falls back
   assert.equal(errors.length, 1);
 });
 
+test("loadPrinterPageData timestamps the cache piece actually used during partial fallback", async () => {
+  const result = await loadPrinterPageData(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      supportedPrinterModels: ["Generic"],
+    },
+    {
+      fetchHostOverview: async () => [printerOverviewRow("printer-host")],
+      loadHostSpools: async () => {
+        throw new Error("spools unavailable");
+      },
+      fetchHostSettings: async () => printerSettingsSnapshot("printer-host"),
+      fetchCachedOverview: async () => ({
+        captured_at: "printer-cache",
+        rows: [printerOverviewRow("unused-printer-cache")],
+      }),
+      fetchCachedSpools: async () => ({
+        captured_at: "spool-cache",
+        rows: [spoolRow("cached-spool")],
+      }),
+      onLoadError: () => {},
+    },
+  );
+
+  assert.equal(result.source, "CACHED");
+  assert.equal(result.updatedAt, "spool-cache");
+  assert.deepEqual(result.printers.map((entry) => entry.printer.id), ["printer-host"]);
+  assert.deepEqual(result.spools.map((entry) => entry.id), ["cached-spool"]);
+});
+
 test("loadPrinterPageData reports offline when host and cache are unavailable", async () => {
   const result = await loadPrinterPageData(
     {

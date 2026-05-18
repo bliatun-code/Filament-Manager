@@ -81,6 +81,29 @@ function resolvePrinterModels(
   return printerModels && printerModels.length > 0 ? printerModels : supportedPrinterModels;
 }
 
+function resolveClientPrinterUpdatedAt({
+  overviewLive,
+  spoolsLive,
+  cachedOverviewCapturedAt,
+  cachedSpoolsCapturedAt,
+}: {
+  overviewLive: boolean;
+  spoolsLive: boolean;
+  cachedOverviewCapturedAt?: string | null;
+  cachedSpoolsCapturedAt?: string | null;
+}): string | null {
+  if (!overviewLive && !spoolsLive) {
+    return cachedOverviewCapturedAt ?? cachedSpoolsCapturedAt ?? null;
+  }
+  if (!overviewLive) {
+    return cachedOverviewCapturedAt ?? null;
+  }
+  if (!spoolsLive) {
+    return cachedSpoolsCapturedAt ?? null;
+  }
+  return cachedOverviewCapturedAt ?? cachedSpoolsCapturedAt ?? null;
+}
+
 export const derivePrinterLibrarySyncState = deriveLibrarySyncPageState;
 
 export async function loadPrinterOverviewData(
@@ -247,7 +270,12 @@ export async function loadPrinterPageData(
           supportedPrinterModels,
         ),
         source: overviewResult.ok && spoolRowsResult.ok ? "LIVE" : "CACHED",
-        updatedAt: cachedPrinters?.captured_at ?? cachedSpools?.captured_at ?? null,
+        updatedAt: resolveClientPrinterUpdatedAt({
+          overviewLive: overviewResult.ok,
+          spoolsLive: spoolRowsResult.ok,
+          cachedOverviewCapturedAt: cachedPrinters?.captured_at,
+          cachedSpoolsCapturedAt: cachedSpools?.captured_at,
+        }),
       };
     }
 
