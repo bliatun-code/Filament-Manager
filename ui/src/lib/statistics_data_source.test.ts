@@ -360,6 +360,33 @@ test("loadStatisticsData prefers cached spool rows over stale snapshot totals", 
   assert.equal(result.overview?.low_stock, 0);
 });
 
+test("loadStatisticsData marks local statistics loads as live", async () => {
+  const result = await loadStatisticsData(
+    syncSettings(),
+    {
+      loadLocalSpools: async () => [spoolRow("local-spool")],
+      listLocalConsumption: async () => [consumptionRow("local-consumption")],
+      listLocalPrinterOverview: async () => [printerRow("local-printer")],
+      listLocalLoanUsageByPerson: async (_days, direction) => [
+        {
+          loan_direction: direction ?? "OUTBOUND",
+          borrower_name: direction === "INBOUND" ? "Borrower" : "Ada",
+          total_consumed_g: direction === "INBOUND" ? 5 : 10,
+          completed_loans: 1,
+          active_loans: 0,
+        },
+      ],
+    },
+  );
+
+  assert.equal(result.source, "LIVE");
+  assert.equal(result.updatedAt, null);
+  assert.equal(result.overview?.total_spools, 1);
+  assert.deepEqual(result.printers.map((row) => row.printer.id), ["local-printer"]);
+  assert.deepEqual(result.loanUsage.map((row) => row.borrower_name), ["Ada"]);
+  assert.deepEqual(result.inboundLoanUsage.map((row) => row.borrower_name), ["Borrower"]);
+});
+
 test("loadStatisticsData keeps partial client host data and cache when host calls fail", async () => {
   const originalConsoleError = console.error;
   console.error = () => {};

@@ -403,6 +403,6 @@ export async function loadStatisticsData(
     loanUsage: loanRows,
     inboundLoanUsage: inboundLoanRows,
     updatedAt: null,
-    source: "OFFLINE",
+    source: "LIVE",
   };
 }
