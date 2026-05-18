@@ -142,13 +142,17 @@ export function useInventoryPageData({
       return;
     }
     try {
-      const rows = await loadActiveLoanRows({ clientReadOnly });
+      const rows = await loadActiveLoanRows({
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+      });
       setActiveLoans(rows);
     } catch (loanError) {
       console.error(loanError);
       setActiveLoans([]);
     }
-  }, [clientReadOnly, tauriAvailable]);
+  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauriAvailable]);
 
   const reloadPrinterOverview = useCallback(async () => {
     if (!tauriAvailable) {

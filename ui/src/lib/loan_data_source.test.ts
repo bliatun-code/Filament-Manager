@@ -97,6 +97,74 @@ test("loadActiveLoanRows reuses cached active outbound loans in client mode", as
   assert.deepEqual(rows.map((row) => row.loan.spool_id), ["active-outbound"]);
 });
 
+test("loadActiveLoanRows uses live host loans when a client target is complete", async () => {
+  const calls: Array<{ baseUrl: string; libraryId?: string | null; limit: number }> = [];
+  const rows = await loadActiveLoanRows(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: " http://host ",
+      clientLibraryId: " library-1 ",
+      limit: 25,
+    },
+    {
+      fetchHostLoans: async (baseUrl, libraryId, limit) => {
+        calls.push({ baseUrl, libraryId, limit });
+        return [
+          loanDetailsRow("active-outbound"),
+          {
+            ...loanDetailsRow("active-inbound"),
+            loan: {
+              ...loanDetailsRow("active-inbound").loan,
+              loan_direction: "INBOUND",
+            },
+          },
+        ];
+      },
+      fetchCachedLoans: async () => {
+        throw new Error("cache should not load when live host loans succeed");
+      },
+      listLocalActiveLoans: async () => {
+        throw new Error("local active loans should not load in client mode");
+      },
+    },
+  );
+
+  assert.deepEqual(calls, [
+    { baseUrl: "http://host", libraryId: "library-1", limit: 25 },
+  ]);
+  assert.deepEqual(rows.map((row) => row.loan.spool_id), ["active-outbound"]);
+});
+
+test("loadActiveLoanRows falls back to cached client loans when live host loans fail", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    const rows = await loadActiveLoanRows(
+      {
+        clientReadOnly: true,
+        clientHostBaseUrl: "http://host",
+        clientLibraryId: "library-1",
+      },
+      {
+        fetchHostLoans: async () => {
+          throw new Error("host unavailable");
+        },
+        fetchCachedLoans: async () => ({
+          captured_at: "cached-at",
+          rows: [loanDetailsRow("cached-outbound")],
+        }),
+        listLocalActiveLoans: async () => {
+          throw new Error("local active loans should not load in client mode");
+        },
+      },
+    );
+
+    assert.deepEqual(rows.map((row) => row.loan.spool_id), ["cached-outbound"]);
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
 test("loadActiveLoanRows loads local active loans outside client mode", async () => {
   const rows = await loadActiveLoanRows(
     { clientReadOnly: false },

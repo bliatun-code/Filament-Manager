@@ -41,6 +41,7 @@ export type LoanDataLoadResult = {
 };
 
 type ActiveLoanRowsDependencies = {
+  fetchHostLoans?: typeof fetchLibrarySyncLoans;
   fetchCachedLoans?: typeof fetchCachedLibrarySyncLoans;
   listLocalActiveLoans?: typeof listActiveSpoolLoans;
 };
@@ -81,11 +82,30 @@ function mapLoanDetailsToActiveRow(row: SpoolLoanDetailsRow): ActiveSpoolLoanRow
 }
 
 export async function loadActiveLoanRows(
-  options: { clientReadOnly: boolean },
+  options: {
+    clientReadOnly: boolean;
+    clientHostBaseUrl?: string | null;
+    clientLibraryId?: string | null;
+    limit?: number;
+  },
   dependencies: ActiveLoanRowsDependencies = {},
 ): Promise<ActiveSpoolLoanRow[]> {
   if (options.clientReadOnly) {
+    const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
     const fetchCachedLoans = dependencies.fetchCachedLoans ?? fetchCachedLibrarySyncLoans;
+    const hostTarget = resolveClientHostTarget(options);
+    if (hostTarget) {
+      try {
+        const rows = await fetchHostLoans(
+          hostTarget.baseUrl,
+          hostTarget.libraryId,
+          options.limit ?? 2000,
+        );
+        return rows.filter(isActiveOutboundLoan).map(mapLoanDetailsToActiveRow);
+      } catch (loadError) {
+        console.error(loadError);
+      }
+    }
     const cached = await fetchCachedLoans().catch(() => null);
     return (cached?.rows ?? []).filter(isActiveOutboundLoan).map(mapLoanDetailsToActiveRow);
   }
