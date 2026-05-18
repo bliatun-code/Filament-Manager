@@ -82,6 +82,12 @@ export function hasInvalidClientPairingMessage(message?: string | null): boolean
   return normalized.includes("desktop client pairing is no longer valid");
 }
 
+function firstDefinedTimestamp(
+  ...values: Array<string | null | undefined>
+): string | null {
+  return values.find((value): value is string => !!value) ?? null;
+}
+
 export async function loadDashboardData(
   params: {
     previousClientHostNeedsRepair: boolean;
@@ -137,11 +143,15 @@ export async function loadDashboardData(
   }
 
   let activeClientSnapshot = cachedSnapshot;
-  let clientSnapshotSource: DashboardSyncSource = "client-cached";
   let clientSpoolRows = syncSettings?.cached_spools?.rows ?? null;
   let clientPrinterRows = syncSettings?.cached_printers?.rows ?? null;
   let clientLoanRows = syncSettings?.cached_loans?.rows ?? null;
   let clientWishlistRows: WishlistItemRow[] = syncSettings?.cached_wishlist?.rows ?? [];
+  let clientSnapshotLive = false;
+  let clientSpoolsLive = false;
+  let clientPrintersLive = false;
+  let clientLoansLive = false;
+  let clientWishlistLive = false;
   const clientHostTarget = clientMode
     ? resolveClientHostTarget({
         clientHostBaseUrl: syncSettings?.host_base_url,
@@ -182,7 +192,7 @@ export async function loadDashboardData(
 
     if (snapshotResult.status === "fulfilled") {
       activeClientSnapshot = snapshotResult.value;
-      clientSnapshotSource = "client-live";
+      clientSnapshotLive = true;
       clientHostCompanionTone = clientHostNeedsRepair ? "warn" : "live";
       clientHostDisplayName =
         snapshotResult.value.device_name ?? syncSettings?.host_device_name ?? null;
@@ -193,21 +203,25 @@ export async function loadDashboardData(
 
     if (spoolsResult.status === "fulfilled") {
       clientSpoolRows = spoolsResult.value;
+      clientSpoolsLive = true;
     } else {
       onLoadError(spoolsResult.reason);
     }
     if (printersResult.status === "fulfilled") {
       clientPrinterRows = printersResult.value;
+      clientPrintersLive = true;
     } else {
       onLoadError(printersResult.reason);
     }
     if (loansResult.status === "fulfilled") {
       clientLoanRows = loansResult.value;
+      clientLoansLive = true;
     } else {
       onLoadError(loansResult.reason);
     }
     if (wishlistResult.status === "fulfilled") {
       clientWishlistRows = wishlistResult.value;
+      clientWishlistLive = true;
     } else {
       onLoadError(wishlistResult.reason);
     }
@@ -229,6 +243,34 @@ export async function loadDashboardData(
       : null;
 
   if (clientMode) {
+    const hasClientData = !!clientOverview || hasClientCachedRows;
+    const allClientReadsLive =
+      !!clientHostTarget &&
+      clientSnapshotLive &&
+      clientSpoolsLive &&
+      clientPrintersLive &&
+      clientLoansLive &&
+      clientWishlistLive;
+    const syncSource: DashboardSyncSource = hasClientData
+      ? allClientReadsLive
+        ? "client-live"
+        : "client-cached"
+      : "client-offline";
+    const fallbackCapturedAt = firstDefinedTimestamp(
+      clientRowsOverviewCapturedAt,
+      clientSpoolsLive ? null : syncSettings?.cached_spools?.captured_at,
+      clientPrintersLive ? null : syncSettings?.cached_printers?.captured_at,
+      clientLoansLive ? null : syncSettings?.cached_loans?.captured_at,
+      clientWishlistLive ? null : syncSettings?.cached_wishlist?.captured_at,
+      clientSnapshotLive ? null : activeClientSnapshot?.captured_at,
+    );
+    const liveCapturedAt = firstDefinedTimestamp(
+      activeClientSnapshot?.captured_at,
+      syncSettings?.cached_spools?.captured_at,
+      syncSettings?.cached_printers?.captured_at,
+      syncSettings?.cached_loans?.captured_at,
+      syncSettings?.cached_wishlist?.captured_at,
+    );
     return {
       derived: buildDashboardDerivedState({
         overview: clientOverview ?? emptyInventoryOverview(),
@@ -244,15 +286,8 @@ export async function loadDashboardData(
       clientHostCompanionTone,
       clientHostDisplayName,
       clientHostNeedsRepair,
-      syncSource: clientOverview || hasClientCachedRows ? clientSnapshotSource : "client-offline",
-      capturedAt:
-        clientRowsOverviewCapturedAt ??
-        activeClientSnapshot?.captured_at ??
-        syncSettings?.cached_spools?.captured_at ??
-        syncSettings?.cached_printers?.captured_at ??
-        syncSettings?.cached_loans?.captured_at ??
-        syncSettings?.cached_wishlist?.captured_at ??
-        null,
+      syncSource,
+      capturedAt: syncSource === "client-live" ? liveCapturedAt : fallbackCapturedAt ?? liveCapturedAt,
     };
   }
 

@@ -229,6 +229,43 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
 });
 
+test("loadDashboardData marks partial client host reads as cached", async () => {
+  const errors: unknown[] = [];
+  const result = await loadDashboardData(
+    { previousClientHostNeedsRepair: false, t },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          library_id: "library-1",
+          cached_printers: {
+            captured_at: "printer-cache",
+            rows: [printerOverviewRow("printer-cache")],
+          },
+        }),
+      loadTrustedLanStatus: async () => null,
+      validateHost: async () => validation(),
+      fetchHostSnapshot: async () => snapshot("Live Host", { captured_at: "snapshot-live" }),
+      loadSpoolRows: async () => [],
+      fetchHostPrinterOverview: async () => {
+        throw new Error("printers unavailable");
+      },
+      fetchHostLoans: async () => [],
+      fetchHostWishlist: async () => [],
+      onLoadError: (error) => {
+        errors.push(error);
+      },
+    },
+  );
+
+  assert.equal(result.syncSource, "client-cached");
+  assert.equal(result.capturedAt, "printer-cache");
+  assert.equal(result.clientHostCompanionTone, "live");
+  assert.deepEqual(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
+  assert.equal(errors.length, 1);
+});
+
 test("loadDashboardData skips host calls for incomplete client targets and uses cache", async () => {
   const cached = snapshot("Cached Host", {
     captured_at: "2026-04-01 09:00:00",
