@@ -141,7 +141,7 @@ export async function loadDashboardData(
   let clientSpoolRows = syncSettings?.cached_spools?.rows ?? null;
   let clientPrinterRows = syncSettings?.cached_printers?.rows ?? null;
   let clientLoanRows = syncSettings?.cached_loans?.rows ?? null;
-  let clientWishlistRows: WishlistItemRow[] = [];
+  let clientWishlistRows: WishlistItemRow[] = syncSettings?.cached_wishlist?.rows ?? [];
   const clientHostTarget = clientMode
     ? resolveClientHostTarget({
         clientHostBaseUrl: syncSettings?.host_base_url,
@@ -243,6 +243,7 @@ export async function loadDashboardData(
         syncSettings?.cached_spools?.captured_at ??
         syncSettings?.cached_printers?.captured_at ??
         syncSettings?.cached_loans?.captured_at ??
+        syncSettings?.cached_wishlist?.captured_at ??
         null,
     };
   }

@@ -12,6 +12,7 @@ import type {
   LibrarySyncSettings,
   PrinterOverviewRow,
   SpoolWithMasterRow,
+  WishlistItemRow,
 } from "./tauri_client";
 
 const t = (_key: string, fallback: string) => fallback;
@@ -104,6 +105,27 @@ function spoolWithMasterRow(id: string): SpoolWithMasterRow {
       default_weight: 1000,
       vendor: "Bambu",
     },
+  };
+}
+
+function wishlistItem(id: string, overrides: Partial<WishlistItemRow> = {}): WishlistItemRow {
+  return {
+    id,
+    master_id: "master-1",
+    vendor: "Bambu",
+    material: "PLA",
+    filament_name: "Basic",
+    color_name: "Gray",
+    hex_color: "#808080",
+    desired_spools: 1,
+    quantity: 1,
+    priority: "NORMAL",
+    status: "WISHLIST",
+    notes: null,
+    source_url: null,
+    created_at: "2026-04-01 10:00:00",
+    updated_at: "2026-04-01 10:00:00",
+    ...overrides,
   };
 }
 
@@ -262,6 +284,10 @@ test("loadDashboardData uses cached client rows without a cached snapshot", asyn
             captured_at: "2026-04-01 08:35:00",
             rows: [printerOverviewRow("printer-cache")],
           },
+          cached_wishlist: {
+            captured_at: "2026-04-01 08:40:00",
+            rows: [wishlistItem("wishlist-cache", { status: "ON_ORDER", quantity: 2 })],
+          },
         }),
       loadTrustedLanStatus: async () => null,
       validateHost: async () => {
@@ -295,6 +321,10 @@ test("loadDashboardData uses cached client rows without a cached snapshot", asyn
   assert.equal(result.capturedAt, "2026-04-01 08:30:00");
   assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "1");
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
+  assert.equal(
+    result.derived.health.metrics.find((metric) => metric.id === "onOrder")?.value,
+    "2",
+  );
 });
 
 test("loadDashboardData stays client-offline without cache instead of loading local data", async () => {
@@ -358,6 +388,10 @@ test("loadDashboardData falls back to cached client snapshot when host snapshot 
             captured_at: cached.captured_at,
             rows: [printerOverviewRow("printer-cache")],
           },
+          cached_wishlist: {
+            captured_at: cached.captured_at,
+            rows: [wishlistItem("wishlist-cache", { status: "ON_ORDER" })],
+          },
         }),
       loadTrustedLanStatus: async () => null,
       validateHost: async () => validation(),
@@ -369,7 +403,9 @@ test("loadDashboardData falls back to cached client snapshot when host snapshot 
         throw new Error("printers unavailable");
       },
       fetchHostLoans: async () => [],
-      fetchHostWishlist: async () => [],
+      fetchHostWishlist: async () => {
+        throw new Error("wishlist unavailable");
+      },
       onLoadError: (error) => {
         errors.push(error);
       },
@@ -381,5 +417,9 @@ test("loadDashboardData falls back to cached client snapshot when host snapshot 
   assert.equal(result.clientHostDisplayName, "Host");
   assert.equal(result.capturedAt, "2026-04-01 09:00:00");
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
-  assert.equal(errors.length, 2);
+  assert.equal(
+    result.derived.health.metrics.find((metric) => metric.id === "onOrder")?.value,
+    "1",
+  );
+  assert.equal(errors.length, 3);
 });
