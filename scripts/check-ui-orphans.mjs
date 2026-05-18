@@ -1,65 +1,20 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { relative, resolve } from "node:path";
+import {
+  buildRelativeImportResolver,
+  collectImportSpecifiers,
+  collectUiSourceFiles,
+} from "./ui-source-utils.mjs";
 
 const repoRoot = resolve(".");
 const sourceRoot = resolve(repoRoot, "ui", "src");
-const sourceExtensions = [".ts", ".tsx"];
 const entryFiles = [
   resolve(sourceRoot, "main.tsx"),
   resolve(sourceRoot, "App.tsx"),
 ];
 
-function collectSourceFiles(directory) {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const entryPath = join(directory, entry.name);
-    if (entry.isDirectory()) {
-      return collectSourceFiles(entryPath);
-    }
-    if (!entry.isFile()) {
-      return [];
-    }
-    if (entry.name.endsWith(".test.ts") || entry.name.endsWith(".test.tsx")) {
-      return [];
-    }
-    if (entry.name.endsWith(".d.ts")) {
-      return [];
-    }
-    return sourceExtensions.some((extension) => entry.name.endsWith(extension)) ? [entryPath] : [];
-  });
-}
-
-function sourceFileKey(filePath) {
-  return filePath.replace(/\.(tsx|ts)$/, "");
-}
-
-function buildResolver(files) {
-  const byKey = new Map();
-  for (const file of files) {
-    const key = sourceFileKey(file);
-    byKey.set(key, file);
-    byKey.set(join(key, "index"), file);
-  }
-  return (fromFile, specifier) => {
-    if (!specifier.startsWith(".")) {
-      return null;
-    }
-    const base = resolve(join(fromFile, ".."), specifier);
-    return byKey.get(base) ?? null;
-  };
-}
-
-function collectImportSpecifiers(source) {
-  const specifiers = new Set();
-  const importPattern =
-    /(?:import|export)\s+(?:[^"'`;]+?\s+from\s+)?["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)/gms;
-  for (const match of source.matchAll(importPattern)) {
-    specifiers.add(match[1] ?? match[2]);
-  }
-  return specifiers;
-}
-
-const files = collectSourceFiles(sourceRoot);
-const resolveImport = buildResolver(files);
+const files = collectUiSourceFiles(sourceRoot);
+const resolveImport = buildRelativeImportResolver(files);
 const reachable = new Set();
 const pending = entryFiles.filter((file) => files.includes(file));
 
