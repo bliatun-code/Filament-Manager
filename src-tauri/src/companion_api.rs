@@ -552,9 +552,15 @@ pub(super) async fn handle_list_spool_loans(
 ) -> Result<Json<Vec<SpoolLoanDetailsRow>>, CompanionApiError> {
     let limit = query.limit.unwrap_or(250).clamp(1, 2_500);
     let include_returned = query.include_returned.unwrap_or(true);
+    let direction = query
+        .direction
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("OUTBOUND");
     let rows = state
         .service
-        .list_spool_loans(limit, include_returned, Some("OUTBOUND"))
+        .list_spool_loans(limit, include_returned, Some(direction))
         .map_err(CompanionApiError::from)?;
     Ok(Json(rows))
 }
