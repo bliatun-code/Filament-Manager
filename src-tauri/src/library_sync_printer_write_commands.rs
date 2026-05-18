@@ -132,6 +132,7 @@ pub(crate) fn delete_library_sync_host_printer(
     )?;
 
     refresh_library_sync_printer_cache(&state, &normalized_base_url);
+    refresh_library_sync_spool_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, "Host printer deleted.", None)?;
     Ok(())
 }
