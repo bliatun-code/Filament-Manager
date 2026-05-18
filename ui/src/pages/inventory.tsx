@@ -484,6 +484,7 @@ export default function InventoryPage({
     clientLibraryId,
     clientReadOnly,
     closeRfidCaptureModal,
+    ensureLocalWriteAllowed,
     manageBusy,
     openRfidCaptureModal,
     reloadPrinterOverview,
