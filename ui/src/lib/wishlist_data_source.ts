@@ -3,6 +3,7 @@ import {
   createWishlistItem,
   deleteLibrarySyncHostWishlistItem,
   deleteWishlistItem,
+  fetchCachedLibrarySyncWishlist,
   fetchLibrarySyncWishlistItems,
   listWishlistItems,
   updateLibrarySyncHostWishlistItemStatus,
@@ -56,6 +57,7 @@ export type WishlistDraft = {
 };
 
 type WishlistDataSourceDependencies = {
+  fetchCachedWishlist?: typeof fetchCachedLibrarySyncWishlist;
   fetchHostWishlist?: typeof fetchLibrarySyncWishlistItems;
   listLocalWishlist?: typeof listWishlistItems;
   createHostWishlistItem?: typeof createLibrarySyncHostWishlistItem;
@@ -194,6 +196,7 @@ export async function loadWishlistItems(
   options: WishlistDataSourceOptions = {},
   dependencies: WishlistDataSourceDependencies = {},
 ): Promise<WishlistItemRow[]> {
+  const fetchCachedWishlist = dependencies.fetchCachedWishlist ?? fetchCachedLibrarySyncWishlist;
   const fetchHostWishlist = dependencies.fetchHostWishlist ?? fetchLibrarySyncWishlistItems;
   const listLocalWishlist = dependencies.listLocalWishlist ?? listWishlistItems;
   const { clientReadOnly = false, limit = 500 } = options;
@@ -201,9 +204,18 @@ export async function loadWishlistItems(
 
   if (clientReadOnly) {
     if (!hostTarget) {
-      return [];
+      const cached = await fetchCachedWishlist().catch(() => null);
+      return cached?.rows ?? [];
     }
-    return fetchHostWishlist(hostTarget.baseUrl, hostTarget.libraryId, limit);
+    try {
+      return await fetchHostWishlist(hostTarget.baseUrl, hostTarget.libraryId, limit);
+    } catch (loadError) {
+      const cached = await fetchCachedWishlist().catch(() => null);
+      if (cached) {
+        return cached.rows;
+      }
+      throw loadError;
+    }
   }
 
   return listLocalWishlist(limit);

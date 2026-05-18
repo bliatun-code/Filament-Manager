@@ -994,6 +994,7 @@ fn library_sync_settings_default_and_persist_cleanly() {
                 cached_spools: None,
                 cached_printers: None,
                 cached_loans: None,
+                cached_wishlist: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1046,6 +1047,7 @@ fn library_sync_settings_default_and_persist_cleanly() {
                 cached_spools: None,
                 cached_printers: None,
                 cached_loans: None,
+                cached_wishlist: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1059,6 +1061,7 @@ fn library_sync_settings_default_and_persist_cleanly() {
         assert!(host_saved.cached_spools.is_none());
         assert!(host_saved.cached_printers.is_none());
         assert!(host_saved.cached_loans.is_none());
+        assert!(host_saved.cached_wishlist.is_none());
 
         Ok(())
     })();
@@ -1097,6 +1100,7 @@ fn library_sync_client_auth_clears_when_client_host_changes() {
             cached_spools: None,
             cached_printers: None,
             cached_loans: None,
+            cached_wishlist: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -1129,6 +1133,7 @@ fn library_sync_client_auth_clears_when_client_host_changes() {
                 cached_spools: None,
                 cached_printers: None,
                 cached_loans: None,
+                cached_wishlist: None,
             })
             .map_err(|error| error.to_string())?;
 

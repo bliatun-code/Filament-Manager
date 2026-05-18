@@ -204,6 +204,7 @@ fn main() {
             library_sync_read_commands::fetch_library_sync_loans,
             library_sync_read_commands::fetch_library_sync_filament_consumption,
             library_sync_cache_commands::fetch_cached_library_sync_loans,
+            library_sync_cache_commands::fetch_cached_library_sync_wishlist,
             library_sync_pairing_commands::pair_library_sync_host,
             library_sync_settings_commands::clear_library_sync_client_auth,
             library_sync_spool_write_commands::create_library_sync_host_spool,

@@ -1,5 +1,5 @@
 use crate::backend::filament_database::{
-    PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
+    PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::backend::statistics::InventoryOverview;
 use serde::{Deserialize, Serialize};
@@ -273,4 +273,10 @@ pub(crate) struct LibrarySyncCachedPrinterOverview {
 pub(crate) struct LibrarySyncCachedLoanList {
     pub(crate) captured_at: String,
     pub(crate) rows: Vec<SpoolLoanDetailsRow>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub(crate) struct LibrarySyncCachedWishlistList {
+    pub(crate) captured_at: String,
+    pub(crate) rows: Vec<WishlistItemRow>,
 }

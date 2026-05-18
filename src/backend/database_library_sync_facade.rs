@@ -9,6 +9,7 @@ use super::database_library_sync_cache::{
     save_library_sync_cached_printers as save_library_sync_cached_printer_rows,
     save_library_sync_cached_snapshot as save_library_sync_cached_snapshot_row,
     save_library_sync_cached_spools as save_library_sync_cached_spool_rows,
+    save_library_sync_cached_wishlist as save_library_sync_cached_wishlist_rows,
 };
 use super::database_library_sync_models::{
     LibrarySyncCachedSnapshotRow, LibrarySyncClientAuthState, LibrarySyncSettingsRow,
@@ -22,6 +23,7 @@ use super::database_loan_models::SpoolLoanDetailsRow;
 use super::database_printer_models::PrinterOverviewRow;
 use super::database_result::InventoryResult;
 use super::database_spool_models::SpoolWithMasterRow;
+use super::database_wishlist_models::WishlistItemRow;
 
 impl FilamentDatabase {
     pub fn get_library_sync_settings(&self) -> InventoryResult<LibrarySyncSettingsRow> {
@@ -101,5 +103,12 @@ impl FilamentDatabase {
         rows: &[SpoolLoanDetailsRow],
     ) -> InventoryResult<()> {
         save_library_sync_cached_loan_rows(self.connection(), rows)
+    }
+
+    pub fn save_library_sync_cached_wishlist(
+        &self,
+        rows: &[WishlistItemRow],
+    ) -> InventoryResult<()> {
+        save_library_sync_cached_wishlist_rows(self.connection(), rows)
     }
 }

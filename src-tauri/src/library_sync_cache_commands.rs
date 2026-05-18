@@ -1,5 +1,6 @@
 use crate::library_sync_models::{
     LibrarySyncCachedLoanList, LibrarySyncCachedPrinterOverview, LibrarySyncCachedSpoolList,
+    LibrarySyncCachedWishlistList,
 };
 use crate::state::AppState;
 use crate::with_inventory;
@@ -38,6 +39,19 @@ pub(crate) fn fetch_cached_library_sync_loans(
     Ok(settings
         .cached_loans
         .map(|cached| LibrarySyncCachedLoanList {
+            captured_at: cached.captured_at,
+            rows: cached.rows,
+        }))
+}
+
+#[tauri::command]
+pub(crate) fn fetch_cached_library_sync_wishlist(
+    state: tauri::State<'_, AppState>,
+) -> Result<Option<LibrarySyncCachedWishlistList>, String> {
+    let settings = with_inventory(&state, |engine| engine.get_library_sync_settings())?;
+    Ok(settings
+        .cached_wishlist
+        .map(|cached| LibrarySyncCachedWishlistList {
             captured_at: cached.captured_at,
             rows: cached.rows,
         }))

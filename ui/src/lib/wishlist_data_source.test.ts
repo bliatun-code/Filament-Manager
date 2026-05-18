@@ -234,6 +234,7 @@ test("loadWishlistItems avoids local fallback when client host details are incom
   const rows = await loadWishlistItems(
     { clientReadOnly: true, clientHostBaseUrl: "", clientLibraryId: "library-1" },
     {
+      fetchCachedWishlist: async () => null,
       fetchHostWishlist: async () => {
         throw new Error("host wishlist should not load without a complete target");
       },
@@ -244,6 +245,46 @@ test("loadWishlistItems avoids local fallback when client host details are incom
   );
 
   assert.deepEqual(rows, []);
+});
+
+test("loadWishlistItems uses cached wishlist when client host details are incomplete", async () => {
+  const rows = await loadWishlistItems(
+    { clientReadOnly: true, clientHostBaseUrl: "", clientLibraryId: "library-1" },
+    {
+      fetchCachedWishlist: async () => ({
+        captured_at: "cached-at",
+        rows: [wishlistItem("cached-item")],
+      }),
+      fetchHostWishlist: async () => {
+        throw new Error("host wishlist should not load without a complete target");
+      },
+      listLocalWishlist: async () => {
+        throw new Error("local wishlist should not load in client mode");
+      },
+    },
+  );
+
+  assert.deepEqual(rows.map((row) => row.id), ["cached-item"]);
+});
+
+test("loadWishlistItems falls back to cached wishlist when host load fails", async () => {
+  const rows = await loadWishlistItems(
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      fetchHostWishlist: async () => {
+        throw new Error("host wishlist unavailable");
+      },
+      fetchCachedWishlist: async () => ({
+        captured_at: "cached-at",
+        rows: [wishlistItem("cached-item")],
+      }),
+      listLocalWishlist: async () => {
+        throw new Error("local wishlist should not load in client mode");
+      },
+    },
+  );
+
+  assert.deepEqual(rows.map((row) => row.id), ["cached-item"]);
 });
 
 function wishlistInput(overrides: Partial<CreateWishlistItemInput> = {}): CreateWishlistItemInput {
