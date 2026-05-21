@@ -46,7 +46,7 @@ const versions = [
     requireMatch(
       "Cargo.lock bambu-filament-manager package version",
       cargoLock,
-      /\[\[package\]\]\nname = "bambu-filament-manager"\nversion = "([^"]+)"/,
+      /\[\[package\]\]\r?\nname = "bambu-filament-manager"\r?\nversion = "([^"]+)"/,
     ),
   ],
   ["Tauri config version", tauriConfig.version],
