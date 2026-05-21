@@ -91,6 +91,11 @@ pub(crate) fn purge_spool(conn: &Connection, spool_id: &str) -> InventoryResult<
         params![spool_id],
     )?;
     tx.execute(
+        "DELETE FROM printer_live_usage_session_spools
+         WHERE spool_id = ?1",
+        params![spool_id],
+    )?;
+    tx.execute(
         "DELETE FROM spool_history_events
          WHERE spool_id = ?1",
         params![spool_id],

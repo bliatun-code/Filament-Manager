@@ -9,6 +9,17 @@ use super::database_printer_queries::{
     printer_exists as printer_exists_row,
 };
 use super::database_printer_slot_assignment::assign_spool_to_ams_slot as assign_spool_to_ams_slot_row;
+use super::database_printer_usage_sessions::{
+    correct_live_usage_for_observed_weight_increase as correct_live_usage_for_observed_weight_increase_row,
+    finish_live_usage_session as finish_live_usage_session_row,
+    live_usage_session_has_spool_usage as live_usage_session_has_spool_usage_row,
+    live_usage_session_is_active as live_usage_session_is_active_row,
+    live_usage_session_spool_used_g as live_usage_session_spool_used_g_row,
+    record_live_usage_delta as record_live_usage_delta_row,
+    touch_live_usage_session as touch_live_usage_session_row, LiveUsageDeltaInput,
+    LiveUsageDeltaResult, LiveUsageObservedWeightCorrectionInput,
+    LiveUsageObservedWeightCorrectionResult, LiveUsageSessionInput,
+};
 use super::database_result::InventoryResult;
 
 impl FilamentDatabase {
@@ -82,5 +93,68 @@ impl FilamentDatabase {
             material_used_g,
             success,
         )
+    }
+
+    pub fn record_live_usage_delta(
+        &self,
+        input: LiveUsageDeltaInput<'_>,
+    ) -> InventoryResult<LiveUsageDeltaResult> {
+        record_live_usage_delta_row(self.connection(), input)
+    }
+
+    pub fn touch_live_usage_session(
+        &self,
+        input: LiveUsageSessionInput<'_>,
+    ) -> InventoryResult<String> {
+        touch_live_usage_session_row(self.connection(), input)
+    }
+
+    pub fn finish_live_usage_session(
+        &self,
+        printer_id: &str,
+        session_key: &str,
+        observed_at: Option<&str>,
+        success: bool,
+    ) -> InventoryResult<()> {
+        finish_live_usage_session_row(
+            self.connection(),
+            printer_id,
+            session_key,
+            observed_at,
+            success,
+        )
+    }
+
+    pub fn live_usage_session_is_active(
+        &self,
+        printer_id: &str,
+        session_key: &str,
+    ) -> InventoryResult<bool> {
+        live_usage_session_is_active_row(self.connection(), printer_id, session_key)
+    }
+
+    pub fn live_usage_session_has_spool_usage(
+        &self,
+        printer_id: &str,
+        session_key: &str,
+        spool_id: &str,
+    ) -> InventoryResult<bool> {
+        live_usage_session_has_spool_usage_row(self.connection(), printer_id, session_key, spool_id)
+    }
+
+    pub fn live_usage_session_spool_used_g(
+        &self,
+        printer_id: &str,
+        session_key: &str,
+        spool_id: &str,
+    ) -> InventoryResult<Option<i64>> {
+        live_usage_session_spool_used_g_row(self.connection(), printer_id, session_key, spool_id)
+    }
+
+    pub fn correct_live_usage_for_observed_weight_increase(
+        &self,
+        input: LiveUsageObservedWeightCorrectionInput<'_>,
+    ) -> InventoryResult<Option<LiveUsageObservedWeightCorrectionResult>> {
+        correct_live_usage_for_observed_weight_increase_row(self.connection(), input)
     }
 }

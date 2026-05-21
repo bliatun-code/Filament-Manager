@@ -418,6 +418,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       selectRollForHistory: "Select a roll to show lifecycle history.",
       historyEvent: {
         weightUpdated: "Weight updated",
+        weightCorrected: "Weight corrected",
+        correction: "Correction",
         statusUpdated: "Status updated",
         usedUp: "Marked empty",
         locationUpdated: "Location updated",
@@ -1766,6 +1768,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       selectRollForHistory: "Velg et filament for å vise livsløpshistorikk.",
       historyEvent: {
         weightUpdated: "Vekt oppdatert",
+        weightCorrected: "Vekt korrigert",
+        correction: "Korreksjon",
         statusUpdated: "Status oppdatert",
         usedUp: "Markert tom",
         locationUpdated: "Lokasjon oppdatert",

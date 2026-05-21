@@ -88,6 +88,8 @@ pub mod database_printer_queries;
 pub mod database_printer_schema;
 #[path = "../../../src/backend/database_printer_slot_assignment.rs"]
 pub mod database_printer_slot_assignment;
+#[path = "../../../src/backend/database_printer_usage_sessions.rs"]
+pub mod database_printer_usage_sessions;
 #[path = "../../../src/backend/database_reset.rs"]
 pub mod database_reset;
 #[path = "../../../src/backend/database_reset_facade.rs"]

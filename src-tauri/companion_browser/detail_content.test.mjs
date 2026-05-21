@@ -247,11 +247,15 @@ test("detail content localizes WEIGHT_UPDATED history labels in norwegian", () =
   const html = renderBody({
     locale: "nb",
     selectedDetail: createSelectedDetail({
-      history: [{ event_type: "WEIGHT_UPDATED", created_at: "2026-04-17T13:00:00Z" }],
+      history: [
+        { event_type: "WEIGHT_UPDATED", created_at: "2026-04-17T13:00:00Z" },
+        { event_type: "WEIGHT_CORRECTED", created_at: "2026-04-17T14:00:00Z" },
+      ],
     }),
   });
 
   assert.match(html, /Vekt oppdatert/);
+  assert.match(html, /Vekt korrigert/);
 });
 
 test("detail content localizes loan history and usage source labels in norwegian", () => {

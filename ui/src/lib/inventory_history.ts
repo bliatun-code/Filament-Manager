@@ -68,6 +68,9 @@ export function formatInventoryHistoryEventType(eventType: string, t: TranslateF
   if (eventType === "WEIGHT_UPDATED") {
     return t("inventory.historyEvent.weightUpdated", "Weight updated");
   }
+  if (eventType === "WEIGHT_CORRECTED") {
+    return t("inventory.historyEvent.weightCorrected", "Weight corrected");
+  }
   if (eventType === "STATUS_UPDATED") {
     return t("inventory.historyEvent.statusUpdated", "Status updated");
   }
@@ -120,10 +123,11 @@ export function formatInventoryHistoryEventDetails(
     const raw = historyPayloadText(event.payload_json);
     return raw || "—";
   }
-  if (event.event_type === "WEIGHT_UPDATED") {
+  if (event.event_type === "WEIGHT_UPDATED" || event.event_type === "WEIGHT_CORRECTED") {
     const grams = payloadNumber(payload, "grams");
     const previousGrams = payloadNumber(payload, "previous_grams");
     const remainingPercent = payloadNumber(payload, "remaining_percent");
+    const correctionGrams = payloadNumber(payload, "correction_grams");
     const source = payloadString(payload, "source");
     const gramsText = grams == null ? "—" : `${grams} g`;
     const details = [`${gramsText}`];
@@ -134,6 +138,9 @@ export function formatInventoryHistoryEventDetails(
     }
     if (source) {
       details.push(source.replace(/_/g, " "));
+    }
+    if (event.event_type === "WEIGHT_CORRECTED" && correctionGrams != null) {
+      details.push(`${t("inventory.historyEvent.correction", "Correction")}: ${correctionGrams} g`);
     }
     if (remainingPercent != null) {
       details.push(`${remainingPercent}%`);

@@ -91,6 +91,13 @@ export type BambuLiveObservedState = {
   mqtt_connected: boolean;
   progress_percent?: number | null;
   remaining_minutes?: number | null;
+  prepare_percent?: number | null;
+  print_stage?: number | null;
+  print_error_code?: number | null;
+  gcode_state?: string | null;
+  print_type?: string | null;
+  subtask_id?: string | null;
+  subtask_name?: string | null;
   active_tray_index?: number | null;
   nozzle_temp_c?: number | null;
   bed_temp_c?: number | null;

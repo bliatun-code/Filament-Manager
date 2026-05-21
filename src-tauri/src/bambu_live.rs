@@ -3,7 +3,10 @@ use crate::backend::filament_database::{
     BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow, BambuLiveObservedStateRow,
     BambuLiveObservedTrayRow, FilamentDatabase,
 };
-use crate::bambu_live_sync::{count_review_trays, enrich_with_match_status};
+use crate::bambu_live_sync::{
+    count_review_trays, enrich_with_match_status, is_credible_finished_print_state,
+    is_probable_completed_carried_print_state,
+};
 use crate::bambu_mqtt::{
     build_connect_packet, build_subscribe_packet, parse_publish_payload, read_mqtt_packet,
 };
@@ -18,6 +21,7 @@ use std::time::Duration;
 const BAMBU_MQTT_PORT: u16 = 8883;
 const OBSERVER_INTERVAL_SECS: u64 = 20;
 const MQTT_TIMEOUT_SECS: u64 = 8;
+const MQTT_BURST_SETTLE_MS: u64 = 1_200;
 
 pub async fn run_live_observer(state: AppState) {
     loop {
@@ -141,6 +145,13 @@ fn default_offline_state() -> BambuLiveObservedStateRow {
         mqtt_connected: false,
         progress_percent: None,
         remaining_minutes: None,
+        prepare_percent: None,
+        print_stage: None,
+        print_error_code: None,
+        gcode_state: None,
+        print_type: None,
+        subtask_id: None,
+        subtask_name: None,
         active_tray_index: None,
         nozzle_temp_c: None,
         bed_temp_c: None,
@@ -163,10 +174,21 @@ fn merge_idle_observation(
         return next;
     };
 
+    let drop_carried_job_identity = should_drop_carried_job_identity(previous, &next);
+
     next.last_seen_at = next.last_seen_at.or_else(|| previous.last_seen_at.clone());
     next.progress_percent = next.progress_percent.or(previous.progress_percent);
     next.remaining_minutes = next.remaining_minutes.or(previous.remaining_minutes);
-    next.active_tray_index = next.active_tray_index.or(previous.active_tray_index);
+    next.prepare_percent = next.prepare_percent.or(previous.prepare_percent);
+    next.print_stage = next.print_stage.or(previous.print_stage);
+    next.print_error_code = next.print_error_code.or(previous.print_error_code);
+    next.gcode_state = next.gcode_state.or_else(|| previous.gcode_state.clone());
+    next.print_type = next.print_type.or_else(|| previous.print_type.clone());
+    if !drop_carried_job_identity {
+        next.subtask_id = next.subtask_id.or_else(|| previous.subtask_id.clone());
+        next.subtask_name = next.subtask_name.or_else(|| previous.subtask_name.clone());
+        next.active_tray_index = next.active_tray_index.or(previous.active_tray_index);
+    }
     next.nozzle_temp_c = next.nozzle_temp_c.or(previous.nozzle_temp_c);
     next.bed_temp_c = next.bed_temp_c.or(previous.bed_temp_c);
     next.ams_humidity_index = next.ams_humidity_index.or(previous.ams_humidity_index);
@@ -188,6 +210,60 @@ fn merge_idle_observation(
         next.raw_status_note = previous.raw_status_note.clone();
     }
     next
+}
+
+fn should_drop_carried_job_identity(
+    previous: &BambuLiveObservedStateRow,
+    next: &BambuLiveObservedStateRow,
+) -> bool {
+    previous.subtask_id.is_some()
+        && previous_looks_near_complete(previous)
+        && next_looks_like_new_print_without_identity(next)
+}
+
+fn previous_looks_near_complete(previous: &BambuLiveObservedStateRow) -> bool {
+    matches!(
+        normalized_carried_print_state(previous.gcode_state.as_deref()).as_deref(),
+        Some("FINISH" | "FINISHED")
+    ) || previous
+        .progress_percent
+        .is_some_and(|progress| progress >= 95)
+        || previous
+            .remaining_minutes
+            .is_some_and(|minutes| (0..=2).contains(&minutes))
+}
+
+fn next_looks_like_new_print_without_identity(next: &BambuLiveObservedStateRow) -> bool {
+    !raw_payload_has_explicit_job_identity(next)
+        && (next.prepare_percent.is_some()
+            || next.progress_percent.is_some_and(|progress| progress <= 10)
+            || matches!(
+                normalized_carried_print_state(next.gcode_state.as_deref()).as_deref(),
+                Some("PREPARE" | "PREPARING" | "RUNNING" | "SLICING")
+            ))
+}
+
+fn normalized_carried_print_state(value: Option<&str>) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_ascii_uppercase())
+}
+
+fn raw_payload_has_explicit_job_identity(state: &BambuLiveObservedStateRow) -> bool {
+    if state
+        .subtask_id
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+    {
+        return true;
+    }
+    state
+        .raw_payload_json
+        .as_ref()
+        .and_then(|payload| payload.pointer("/_bfm_last_message/has_job_identity"))
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
 }
 
 fn merge_tray_snapshots(
@@ -284,10 +360,8 @@ fn log_state_changes(
         )?;
     }
 
-    let was_printing = previous
-        .map(|state| state.progress_percent.is_some() || state.remaining_minutes.is_some())
-        .unwrap_or(false);
-    let is_printing = next.progress_percent.is_some() || next.remaining_minutes.is_some();
+    let was_printing = previous.map(is_live_print_running).unwrap_or(false);
+    let is_printing = is_live_print_running(next);
     if !was_printing && is_printing {
         db.insert_printer_live_event(
             printer_id,
@@ -295,6 +369,13 @@ fn log_state_changes(
             &json!({
                 "progress_percent": next.progress_percent,
                 "remaining_minutes": next.remaining_minutes,
+                "prepare_percent": next.prepare_percent,
+                "print_stage": next.print_stage,
+                "print_error_code": next.print_error_code,
+                "gcode_state": next.gcode_state,
+                "print_type": next.print_type,
+                "subtask_id": next.subtask_id,
+                "subtask_name": next.subtask_name,
                 "active_tray_index": next.active_tray_index,
             }),
         )?;
@@ -304,6 +385,13 @@ fn log_state_changes(
             "LIVE_PRINT_FINISHED",
             &json!({
                 "last_seen_at": next.last_seen_at,
+                "prepare_percent": next.prepare_percent,
+                "print_stage": next.print_stage,
+                "print_error_code": next.print_error_code,
+                "gcode_state": next.gcode_state,
+                "print_type": next.print_type,
+                "subtask_id": next.subtask_id,
+                "subtask_name": next.subtask_name,
                 "active_tray_index": next.active_tray_index,
             }),
         )?;
@@ -333,6 +421,37 @@ fn log_state_changes(
     }
 
     Ok(())
+}
+
+pub(crate) fn is_live_print_running(state: &BambuLiveObservedStateRow) -> bool {
+    if is_probable_completed_carried_print_state(state) {
+        return false;
+    }
+
+    match normalized_gcode_state(state.gcode_state.as_deref()).as_deref() {
+        Some("RUNNING" | "PAUSE" | "PAUSED" | "PREPARE" | "PREPARING" | "SLICING") => true,
+        Some("FINISH" | "FINISHED") => {
+            !is_credible_finished_print_state(state)
+                && (state.progress_percent.is_some() || state.remaining_minutes.is_some())
+        }
+        Some("IDLE" | "FAILED" | "STOP" | "STOPPED" | "CANCELLED") => false,
+        _ if state
+            .print_type
+            .as_deref()
+            .map(str::trim)
+            .is_some_and(|value| value.eq_ignore_ascii_case("idle")) =>
+        {
+            false
+        }
+        _ => state.progress_percent.is_some() || state.remaining_minutes.is_some(),
+    }
+}
+
+fn normalized_gcode_state(value: Option<&str>) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_ascii_uppercase())
 }
 
 fn observe_printer_state(
@@ -386,13 +505,19 @@ fn observe_printer_state(
     let mut merged = default_offline_state();
     merged.online = true;
     merged.mqtt_connected = true;
+    let mut received_live_payload = false;
+    let mut supported_message_count = 0_i64;
+    let mut first_payload_at: Option<String> = None;
+    let mut last_payload_at: Option<String> = None;
 
     while started.elapsed() < Duration::from_secs(MQTT_TIMEOUT_SECS) {
         let (packet_type, payload) = match read_mqtt_packet(&mut stream) {
             Ok(packet) => packet,
             Err(error) if is_mqtt_read_timeout(&error) => {
-                merged.raw_status_note =
-                    Some("Connected, waiting for the next MQTT status burst.".to_string());
+                if !received_live_payload {
+                    merged.raw_status_note =
+                        Some("Connected, waiting for the next MQTT status burst.".to_string());
+                }
                 break;
             }
             Err(error) => return Err(error),
@@ -401,14 +526,26 @@ fn observe_printer_state(
             continue;
         }
         if let Some(message) = parse_publish_payload(&payload)? {
-            merge_print_payload(&mut merged, &message);
-            merged.last_seen_at = Some(now_iso_string());
-            if !merged.trays.is_empty()
-                || merged.progress_percent.is_some()
-                || merged.remaining_minutes.is_some()
-                || merged.nozzle_temp_c.is_some()
-            {
-                break;
+            let received_at = now_iso_string();
+            let previous_last_seen_at = merged.last_seen_at.clone();
+            merged.last_seen_at = Some(received_at.clone());
+            if merge_print_payload(&mut merged, &message) {
+                supported_message_count += 1;
+                if first_payload_at.is_none() {
+                    first_payload_at = Some(received_at.clone());
+                }
+                last_payload_at = Some(received_at);
+                if has_live_observation(&merged) && !received_live_payload {
+                    received_live_payload = true;
+                    stream
+                        .get_ref()
+                        .set_read_timeout(Some(Duration::from_millis(MQTT_BURST_SETTLE_MS)))
+                        .map_err(|error| {
+                            format!("failed to set MQTT burst settle timeout: {error}")
+                        })?;
+                }
+            } else {
+                merged.last_seen_at = previous_last_seen_at;
             }
         }
     }
@@ -417,7 +554,33 @@ fn observe_printer_state(
         merged.raw_status_note =
             Some("Connected, but no live MQTT status arrived during this poll.".to_string());
     }
+    annotate_capture_poll_metadata(
+        &mut merged,
+        supported_message_count,
+        first_payload_at.as_deref(),
+        last_payload_at.as_deref(),
+        started.elapsed().as_millis().min(i64::MAX as u128) as i64,
+    );
     Ok(merged)
+}
+
+fn has_live_observation(state: &BambuLiveObservedStateRow) -> bool {
+    !state.trays.is_empty()
+        || state.gcode_state.is_some()
+        || state.print_type.is_some()
+        || state.subtask_id.is_some()
+        || state.subtask_name.is_some()
+        || state.progress_percent.is_some()
+        || state.remaining_minutes.is_some()
+        || state.prepare_percent.is_some()
+        || state.print_stage.is_some()
+        || state.print_error_code.is_some()
+        || state.nozzle_temp_c.is_some()
+        || state.bed_temp_c.is_some()
+        || state.active_tray_index.is_some()
+        || state.ams_reading_bits.is_some()
+        || state.ams_read_done_bits.is_some()
+        || state.ams_bambu_bits.is_some()
 }
 
 fn is_mqtt_read_timeout(error: &str) -> bool {
@@ -426,21 +589,51 @@ fn is_mqtt_read_timeout(error: &str) -> bool {
         || error.contains("Resource temporarily unavailable")
 }
 
-fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) {
+fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) -> bool {
     let print = message.get("print").unwrap_or(message);
     let has_supported_live_fields = print.get("ams").is_some()
         || print.get("mc_percent").is_some()
         || print.get("mc_remaining_time").is_some()
+        || print.get("gcode_file_prepare_percent").is_some()
+        || print.get("mc_print_stage").is_some()
+        || print.get("print_error").is_some()
+        || print.get("gcode_state").is_some()
+        || print.get("print_type").is_some()
+        || print.get("subtask_id").is_some()
+        || print.get("subtask_name").is_some()
+        || message.get("subtask_id").is_some()
+        || message.get("subtask_name").is_some()
         || print.get("nozzle_temper").is_some()
         || print.get("bed_temper").is_some();
     if !has_supported_live_fields {
-        return;
+        return false;
     }
-
-    state.raw_payload_json = Some(print.clone());
 
     state.progress_percent = as_i64(print.get("mc_percent")).or(state.progress_percent);
     state.remaining_minutes = as_i64(print.get("mc_remaining_time")).or(state.remaining_minutes);
+    state.prepare_percent =
+        as_i64(print.get("gcode_file_prepare_percent")).or(state.prepare_percent);
+    state.print_stage = as_i64(print.get("mc_print_stage")).or(state.print_stage);
+    state.print_error_code = as_i64(print.get("print_error")).or(state.print_error_code);
+    state.gcode_state =
+        as_value_string(print.get("gcode_state")).or_else(|| state.gcode_state.clone());
+    state.print_type = first_value_string([
+        print.get("print_type"),
+        message.get("print_type"),
+        message.get("job_type"),
+    ])
+    .or_else(|| state.print_type.clone());
+    state.subtask_id = first_value_string([
+        print.get("subtask_id"),
+        message.get("subtask_id"),
+        message.get("project_id"),
+        message.get("task_id"),
+        message.get("job_id"),
+    ])
+    .or_else(|| state.subtask_id.clone());
+    state.subtask_name =
+        first_value_string([print.get("subtask_name"), message.get("subtask_name")])
+            .or_else(|| state.subtask_name.clone());
     state.active_tray_index = as_i64(print.pointer("/ams/tray_now")).or(state.active_tray_index);
     state.nozzle_temp_c = as_f64(print.get("nozzle_temper")).or(state.nozzle_temp_c);
     state.bed_temp_c = as_f64(print.get("bed_temper")).or(state.bed_temp_c);
@@ -467,6 +660,113 @@ fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) {
         }
         state.trays = merged_trays;
     }
+    merge_raw_payload_snapshot(state, print, message);
+    true
+}
+
+fn merge_raw_payload_snapshot(
+    state: &mut BambuLiveObservedStateRow,
+    print: &Value,
+    message: &Value,
+) {
+    let mut merged = state
+        .raw_payload_json
+        .take()
+        .unwrap_or_else(|| Value::Object(Map::new()));
+    merge_json_object(&mut merged, print);
+
+    if let Some(object) = merged.as_object_mut() {
+        object.insert(
+            "_bfm_job".to_string(),
+            json!({
+                "gcode_state": state.gcode_state.as_deref(),
+                "print_type": state.print_type.as_deref(),
+                "subtask_id": state.subtask_id.as_deref(),
+                "subtask_name": state.subtask_name.as_deref(),
+                "session_key": state.subtask_id.as_ref().map(|subtask_id| format!("subtask:{subtask_id}")),
+                "progress_percent": state.progress_percent,
+                "remaining_minutes": state.remaining_minutes,
+                "prepare_percent": state.prepare_percent,
+                "print_stage": state.print_stage,
+                "print_error_code": state.print_error_code,
+                "active_tray_index": state.active_tray_index,
+            }),
+        );
+        object.insert(
+            "_bfm_last_message".to_string(),
+            json!({
+                "sequence_id": first_value_string([print.get("sequence_id"), message.get("sequence_id")]),
+                "command": first_value_string([print.get("command"), message.get("command")]),
+                "msg": first_value_string([print.get("msg"), message.get("msg")]),
+                "has_ams": print.get("ams").is_some(),
+                "has_trays": print.pointer("/ams/ams/0/tray").is_some(),
+                "has_job_identity": state.subtask_id.is_some(),
+            }),
+        );
+    }
+    state.raw_payload_json = Some(merged);
+}
+
+fn merge_json_object(target: &mut Value, source: &Value) {
+    match (target, source) {
+        (Value::Object(target), Value::Object(source)) => {
+            for (key, source_value) in source {
+                if key.starts_with("_bfm_") {
+                    continue;
+                }
+                match target.get_mut(key) {
+                    Some(target_value) => merge_json_object(target_value, source_value),
+                    None => {
+                        target.insert(key.clone(), source_value.clone());
+                    }
+                }
+            }
+        }
+        (target, source) => {
+            *target = source.clone();
+        }
+    }
+}
+
+fn annotate_capture_poll_metadata(
+    state: &mut BambuLiveObservedStateRow,
+    supported_message_count: i64,
+    first_payload_at: Option<&str>,
+    last_payload_at: Option<&str>,
+    elapsed_ms: i64,
+) {
+    let Some(object) = state
+        .raw_payload_json
+        .as_mut()
+        .and_then(Value::as_object_mut)
+    else {
+        return;
+    };
+    let tray_count = state.trays.len();
+    let loaded_tray_count = state.trays.iter().filter(|tray| tray.loaded).count();
+    let tracked_weight_tray_count = state
+        .trays
+        .iter()
+        .filter(|tray| tray.remaining_grams.is_some())
+        .count();
+    object.insert(
+        "_bfm_capture".to_string(),
+        json!({
+            "schema": "bambu-live-capture-v2",
+            "snapshot_kind": "merged_mqtt_poll",
+            "poll_timeout_secs": MQTT_TIMEOUT_SECS,
+            "burst_settle_ms": MQTT_BURST_SETTLE_MS,
+            "poll_elapsed_ms": elapsed_ms,
+            "supported_message_count": supported_message_count,
+            "first_payload_at": first_payload_at,
+            "last_payload_at": last_payload_at,
+            "last_seen_at": state.last_seen_at.as_deref(),
+            "merged_tray_count": tray_count,
+            "loaded_tray_count": loaded_tray_count,
+            "tracked_weight_tray_count": tracked_weight_tray_count,
+            "note": "Supported MQTT publish payloads are merged into this diagnostic snapshot for capture/export.",
+        }),
+    );
 }
 
 fn merge_tray_payload(
@@ -710,6 +1010,25 @@ fn as_string(value: Option<&Value>) -> Option<String> {
         }
         _ => None,
     }
+}
+
+fn as_value_string(value: Option<&Value>) -> Option<String> {
+    match value {
+        Some(Value::String(raw)) => {
+            let trimmed = raw.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        }
+        Some(Value::Number(number)) => Some(number.to_string()),
+        _ => None,
+    }
+}
+
+fn first_value_string<const N: usize>(values: [Option<&Value>; N]) -> Option<String> {
+    values.into_iter().find_map(as_value_string)
 }
 
 fn normalize_color(value: Option<String>) -> Option<String> {
