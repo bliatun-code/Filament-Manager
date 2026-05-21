@@ -155,7 +155,7 @@ impl StatisticsEngine {
                 END), 0) AS borrowed_in_consumption_30d
              FROM usage_rows u
              LEFT JOIN filament_spools s ON s.id = u.spool_id
-             WHERE u.used_at >= datetime('now', '-30 days')",
+             WHERE datetime(u.used_at) >= datetime('now', '-30 days')",
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )?;
@@ -507,6 +507,228 @@ mod tests {
         if let Err(message) = result {
             panic!(
                 "inventory_overview_splits_owned_and_borrowed_in_metrics test failed: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn inventory_overview_normalizes_live_usage_timestamps_for_30_day_cutoff() {
+        let db_path = temp_db_path("live-usage-cutoff-normalized");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            let master_id = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Basic",
+                    color_name: "Red",
+                    hex_color: Some("#ff5544"),
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
+                .map_err(|error| error.to_string())?;
+
+            db.insert_spool(&SpoolRow {
+                id: "owned_1".to_string(),
+                master_id,
+                qr_code: None,
+                rfid_tag: None,
+                rfid_observed_at: None,
+                status: "IN_USE".to_string(),
+                ownership_type: "OWNED".to_string(),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                current_weight_g: Some(650),
+                remaining_g: Some(650),
+                spool_tare_weight_g: None,
+                location_id: None,
+                home_location_id: None,
+                purchase_date: None,
+                purchase_price: None,
+                batch_code: None,
+                last_used_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+            db.upsert_printer_with_ams("printer_1", "P1S", "P1S", 1, 4)
+                .map_err(|error| error.to_string())?;
+
+            db.record_live_usage_delta(LiveUsageDeltaInput {
+                printer_id: "printer_1",
+                session_key: "subtask:included-live",
+                job_name: Some("Included live job"),
+                print_type: Some("cloud"),
+                spool_id: "owned_1",
+                used_grams: 40,
+                observed_at: Some("2026-05-17T20:30:00Z"),
+                defer_initial_delta: false,
+            })
+            .map_err(|error| error.to_string())?;
+            db.connection()
+                .execute(
+                    "UPDATE printer_live_usage_sessions
+                     SET finished_at = datetime('now', '-1 day'),
+                         last_seen_at = datetime('now', '-1 day'),
+                         status = 'COMPLETED',
+                         success = 1
+                     WHERE session_key = 'subtask:included-live'",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
+
+            db.record_live_usage_delta(LiveUsageDeltaInput {
+                printer_id: "printer_1",
+                session_key: "subtask:cutoff-live",
+                job_name: Some("Cutoff live job"),
+                print_type: Some("cloud"),
+                spool_id: "owned_1",
+                used_grams: 90,
+                observed_at: Some("2026-05-17T20:30:00Z"),
+                defer_initial_delta: false,
+            })
+            .map_err(|error| error.to_string())?;
+            db.connection()
+                .execute(
+                    "UPDATE printer_live_usage_sessions
+                     SET finished_at = strftime('%Y-%m-%dT00:00:00Z', datetime('now', '-30 days')),
+                         last_seen_at = strftime('%Y-%m-%dT00:00:00Z', datetime('now', '-30 days')),
+                         status = 'COMPLETED',
+                         success = 1
+                     WHERE session_key = 'subtask:cutoff-live'",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
+
+            let stats = StatisticsEngine::open(&db_path).map_err(|error| error.to_string())?;
+            let overview = stats
+                .inventory_overview()
+                .map_err(|error| error.to_string())?;
+
+            assert_eq!(overview.total_consumption_30d, 40);
+            assert_eq!(overview.owned_consumption_30d, 40);
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "inventory_overview_normalizes_live_usage_timestamps_for_30_day_cutoff failed: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn printer_overview_normalizes_manual_and_live_timestamps_before_selecting_latest_job() {
+        let db_path = temp_db_path("printer-last-job-normalized");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            let master_id = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Basic",
+                    color_name: "Red",
+                    hex_color: Some("#ff5544"),
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
+                .map_err(|error| error.to_string())?;
+
+            db.insert_spool(&SpoolRow {
+                id: "owned_1".to_string(),
+                master_id,
+                qr_code: None,
+                rfid_tag: None,
+                rfid_observed_at: None,
+                status: "IN_USE".to_string(),
+                ownership_type: "OWNED".to_string(),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                current_weight_g: Some(650),
+                remaining_g: Some(650),
+                spool_tare_weight_g: None,
+                location_id: None,
+                home_location_id: None,
+                purchase_date: None,
+                purchase_price: None,
+                batch_code: None,
+                last_used_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+            db.upsert_printer_with_ams("printer_1", "P1S", "P1S", 1, 4)
+                .map_err(|error| error.to_string())?;
+            db.insert_print_job("printer_1", "owned_1", Some("Manual latest"), 50, true)
+                .map_err(|error| error.to_string())?;
+            db.connection()
+                .execute(
+                    "UPDATE print_jobs
+                     SET started_at = datetime('now', '-5 minutes'),
+                         ended_at = datetime('now')
+                     WHERE job_name = 'Manual latest'",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
+
+            db.record_live_usage_delta(LiveUsageDeltaInput {
+                printer_id: "printer_1",
+                session_key: "subtask:old-live",
+                job_name: Some("Older live job"),
+                print_type: Some("cloud"),
+                spool_id: "owned_1",
+                used_grams: 20,
+                observed_at: Some("2026-05-17T20:30:00Z"),
+                defer_initial_delta: false,
+            })
+            .map_err(|error| error.to_string())?;
+            db.connection()
+                .execute(
+                    "UPDATE printer_live_usage_sessions
+                     SET finished_at = strftime('%Y-%m-%dT00:00:00Z', datetime('now')),
+                         last_seen_at = strftime('%Y-%m-%dT00:00:00Z', datetime('now')),
+                         status = 'COMPLETED',
+                         success = 1
+                     WHERE session_key = 'subtask:old-live'",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
+
+            let manual_ended_at: String = db
+                .connection()
+                .query_row(
+                    "SELECT ended_at FROM print_jobs WHERE job_name = 'Manual latest'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            let overview = db
+                .list_printer_overview()
+                .map_err(|error| error.to_string())?;
+
+            assert_eq!(overview[0].usage.total_jobs, 2);
+            assert_eq!(
+                overview[0].usage.last_job_at.as_deref(),
+                Some(manual_ended_at.as_str())
+            );
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "printer_overview_normalizes_manual_and_live_timestamps_before_selecting_latest_job failed: {message}"
             );
         }
     }

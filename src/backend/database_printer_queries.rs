@@ -52,7 +52,7 @@ pub(crate) fn list_printer_overview(conn: &Connection) -> InventoryResult<Vec<Pr
                 COALESCE(SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END), 0) AS successful_jobs,
                 COALESCE(SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END), 0) AS failed_jobs,
                 COALESCE(SUM(material_used_g), 0) AS total_used_g,
-                MAX(ended_at) AS last_job_at
+                MAX(datetime(ended_at)) AS last_job_at
              FROM print_jobs
              WHERE printer_id = ?1",
             params![&printer.id],
@@ -72,7 +72,7 @@ pub(crate) fn list_printer_overview(conn: &Connection) -> InventoryResult<Vec<Pr
                 COALESCE(SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END), 0) AS successful_jobs,
                 COALESCE(SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END), 0) AS failed_jobs,
                 COALESCE(SUM(total_used_g), 0) AS total_used_g,
-                MAX(COALESCE(finished_at, last_seen_at)) AS last_job_at
+                MAX(datetime(COALESCE(finished_at, last_seen_at))) AS last_job_at
              FROM printer_live_usage_sessions
              WHERE printer_id = ?1",
             params![&printer.id],
