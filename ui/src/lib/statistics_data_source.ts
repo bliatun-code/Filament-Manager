@@ -27,6 +27,7 @@ import {
   type LibrarySyncPageState,
 } from "./library_sync_state";
 import { resolveClientHostTarget } from "./host_write_target";
+import { firstDefinedTimestamp } from "./source_timestamps";
 
 export type StatisticsSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
 export type StatisticsLibrarySyncState = LibrarySyncPageState;
@@ -76,10 +77,25 @@ type StatisticsPageDataDependencies = {
   loadData?: typeof loadStatisticsData;
 };
 
+type StatisticsDataDependencies = {
+  fetchHostSnapshot?: typeof fetchLibrarySyncSnapshot;
+  fetchHostPrinterOverview?: typeof fetchLibrarySyncPrinterOverview;
+  fetchHostLoans?: typeof fetchLibrarySyncLoans;
+  fetchHostConsumption?: typeof fetchLibrarySyncFilamentConsumption;
+  fetchCachedPrinterOverview?: typeof fetchCachedLibrarySyncPrinterOverview;
+  fetchCachedLoans?: typeof fetchCachedLibrarySyncLoans;
+  fetchCachedSpools?: typeof fetchCachedLibrarySyncSpools;
+  loadHostSpools?: typeof loadAllSpoolRows;
+  loadLocalSpools?: typeof loadAllSpoolRows;
+  listLocalConsumption?: typeof listFilamentConsumption;
+  listLocalLoanUsageByPerson?: typeof listLoanUsageByPerson;
+  listLocalPrinterOverview?: typeof listPrinterOverview;
+};
+
 export function deriveStatisticsLibrarySyncState(
   syncSettings: LibrarySyncSettings,
 ): StatisticsLibrarySyncState {
-  return deriveLibrarySyncPageState(syncSettings, { requireHostForClientReadOnly: true });
+  return deriveLibrarySyncPageState(syncSettings);
 }
 
 export function groupLoanUsageByPerson(
@@ -150,7 +166,10 @@ export async function loadFilamentConsumptionBreakdown(
   const { clientReadOnly, printerId = null, limit = 500 } = options;
   const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
 
-  if (hostTarget) {
+  if (clientReadOnly) {
+    if (!hostTarget) {
+      return [];
+    }
     return fetchHostConsumption(hostTarget.baseUrl, hostTarget.libraryId, limit, printerId);
   }
 
@@ -171,11 +190,23 @@ export async function loadLoanBreakdownRows(
 
 export async function loadStatisticsData(
   syncSettings: LibrarySyncSettings,
+  dependencies: StatisticsDataDependencies = {},
 ): Promise<StatisticsDataLoadResult> {
   const syncState = deriveStatisticsLibrarySyncState(syncSettings);
   const hostTarget = syncState.clientReadOnly ? resolveClientHostTarget(syncState) : null;
 
   if (hostTarget) {
+    const fetchHostSnapshot = dependencies.fetchHostSnapshot ?? fetchLibrarySyncSnapshot;
+    const fetchHostPrinterOverview =
+      dependencies.fetchHostPrinterOverview ?? fetchLibrarySyncPrinterOverview;
+    const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
+    const fetchHostConsumption =
+      dependencies.fetchHostConsumption ?? fetchLibrarySyncFilamentConsumption;
+    const fetchCachedPrinterOverview =
+      dependencies.fetchCachedPrinterOverview ?? fetchCachedLibrarySyncPrinterOverview;
+    const fetchCachedLoans = dependencies.fetchCachedLoans ?? fetchCachedLibrarySyncLoans;
+    const fetchCachedSpools = dependencies.fetchCachedSpools ?? fetchCachedLibrarySyncSpools;
+    const loadHostSpools = dependencies.loadHostSpools ?? loadAllSpoolRows;
     const [
       snapshotResult,
       printersResult,
@@ -187,19 +218,19 @@ export async function loadStatisticsData(
       cachedSpools,
     ] =
       await Promise.all([
-        fetchLibrarySyncSnapshot(hostTarget.baseUrl, hostTarget.libraryId).then(
+        fetchHostSnapshot(hostTarget.baseUrl, hostTarget.libraryId).then(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
-        fetchLibrarySyncPrinterOverview(hostTarget.baseUrl, hostTarget.libraryId).then(
+        fetchHostPrinterOverview(hostTarget.baseUrl, hostTarget.libraryId).then(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
-        fetchLibrarySyncLoans(hostTarget.baseUrl, hostTarget.libraryId).then(
+        fetchHostLoans(hostTarget.baseUrl, hostTarget.libraryId).then(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
-        loadAllSpoolRows({
+        loadHostSpools({
           clientReadOnly: true,
           clientHostBaseUrl: hostTarget.baseUrl,
           clientLibraryId: hostTarget.libraryId,
@@ -207,7 +238,7 @@ export async function loadStatisticsData(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
-        fetchLibrarySyncFilamentConsumption(
+        fetchHostConsumption(
           hostTarget.baseUrl,
           hostTarget.libraryId,
           500,
@@ -216,9 +247,9 @@ export async function loadStatisticsData(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
-        fetchCachedLibrarySyncPrinterOverview().catch(() => null),
-        fetchCachedLibrarySyncLoans().catch(() => null),
-        fetchCachedLibrarySyncSpools().catch(() => null),
+        fetchCachedPrinterOverview().catch(() => null),
+        fetchCachedLoans().catch(() => null),
+        fetchCachedSpools().catch(() => null),
       ]);
 
     if (!snapshotResult.ok) {
@@ -246,16 +277,46 @@ export async function loadStatisticsData(
     const resolvedLoans = loansResult.ok
       ? loansResult.value
       : cachedLoans?.rows ?? syncSettings.cached_loans?.rows ?? [];
-    const resolvedSpoolRows = spoolsResult.ok ? spoolsResult.value : cachedSpools?.rows ?? [];
+    const resolvedSpoolRows = spoolsResult.ok
+      ? spoolsResult.value
+      : cachedSpools?.rows ?? syncSettings.cached_spools?.rows ?? [];
     const resolvedConsumptionRows = consumptionResult.ok ? consumptionResult.value : [];
     const derivedOverview =
       resolvedSpoolRows.length > 0 || resolvedConsumptionRows.length > 0
         ? deriveInventoryOverviewFromRows(resolvedSpoolRows, resolvedConsumptionRows)
         : null;
     const resolvedOverview = derivedOverview ?? resolvedSnapshot?.inventory ?? null;
-    const hasLiveOverview = snapshotResult.ok || derivedOverview != null;
+    const hasLiveOverview =
+      snapshotResult.ok ||
+      (spoolsResult.ok && consumptionResult.ok && derivedOverview != null);
 
     if (resolvedOverview || resolvedPrinters.length > 0 || resolvedLoans.length > 0) {
+      const source =
+        hasLiveOverview &&
+        printersResult.ok &&
+        loansResult.ok &&
+        spoolsResult.ok &&
+        consumptionResult.ok
+          ? "LIVE"
+          : "CACHED";
+      const liveUpdatedAt = firstDefinedTimestamp(
+        resolvedSnapshot?.captured_at,
+        cachedPrinters?.captured_at,
+        syncSettings.cached_printers?.captured_at,
+        cachedLoans?.captured_at,
+        syncSettings.cached_loans?.captured_at,
+        cachedSpools?.captured_at,
+        syncSettings.cached_spools?.captured_at,
+      );
+      const fallbackUpdatedAt = firstDefinedTimestamp(
+        spoolsResult.ok ? null : cachedSpools?.captured_at,
+        spoolsResult.ok ? null : syncSettings.cached_spools?.captured_at,
+        printersResult.ok ? null : cachedPrinters?.captured_at,
+        printersResult.ok ? null : syncSettings.cached_printers?.captured_at,
+        loansResult.ok ? null : cachedLoans?.captured_at,
+        loansResult.ok ? null : syncSettings.cached_loans?.captured_at,
+        snapshotResult.ok || derivedOverview ? null : resolvedSnapshot?.captured_at,
+      );
       return {
         overview: resolvedOverview,
         printers: resolvedPrinters,
@@ -264,17 +325,8 @@ export async function loadStatisticsData(
         loanDetails: resolvedLoans,
         loanUsage: groupLoanUsageByPerson(resolvedLoans, "OUTBOUND"),
         inboundLoanUsage: groupLoanUsageByPerson(resolvedLoans, "INBOUND"),
-        updatedAt:
-          resolvedSnapshot?.captured_at ??
-          cachedPrinters?.captured_at ??
-          syncSettings.cached_printers?.captured_at ??
-          cachedLoans?.captured_at ??
-          syncSettings.cached_loans?.captured_at ??
-          cachedSpools?.captured_at ??
-          syncSettings.cached_spools?.captured_at ??
-          null,
-        source:
-          hasLiveOverview && printersResult.ok && loansResult.ok ? "LIVE" : "CACHED",
+        updatedAt: source === "LIVE" ? liveUpdatedAt : fallbackUpdatedAt ?? liveUpdatedAt,
+        source,
       };
     }
 
@@ -291,16 +343,67 @@ export async function loadStatisticsData(
     };
   }
 
+  if (syncState.clientReadOnly) {
+    const spoolRows = syncSettings.cached_spools?.rows ?? [];
+    const loanRows = syncSettings.cached_loans?.rows ?? [];
+    const spoolRowsOverview =
+      spoolRows.length > 0 ? deriveInventoryOverviewFromRows(spoolRows, []) : null;
+    const overview = spoolRowsOverview ?? syncSettings.cached_snapshot?.inventory ?? null;
+    const spoolRowsUpdatedAt =
+      spoolRowsOverview ? syncSettings.cached_spools?.captured_at ?? null : null;
+    if (
+      overview ||
+      spoolRows.length > 0 ||
+      (syncSettings.cached_printers?.rows.length ?? 0) > 0 ||
+      loanRows.length > 0
+    ) {
+      return {
+        overview,
+        printers: syncSettings.cached_printers?.rows ?? [],
+        spoolRows,
+        consumptionRows: [],
+        loanDetails: loanRows,
+        loanUsage: groupLoanUsageByPerson(loanRows, "OUTBOUND"),
+        inboundLoanUsage: groupLoanUsageByPerson(loanRows, "INBOUND"),
+        updatedAt:
+          spoolRowsUpdatedAt ??
+          syncSettings.cached_snapshot?.captured_at ??
+          syncSettings.cached_printers?.captured_at ??
+          syncSettings.cached_loans?.captured_at ??
+          syncSettings.cached_spools?.captured_at ??
+          null,
+        source: "CACHED",
+      };
+    }
+
+    return {
+      overview: null,
+      printers: [],
+      spoolRows: [],
+      consumptionRows: [],
+      loanDetails: [],
+      loanUsage: [],
+      inboundLoanUsage: [],
+      updatedAt: null,
+      source: "OFFLINE",
+    };
+  }
+
+  const loadLocalSpools = dependencies.loadLocalSpools ?? loadAllSpoolRows;
+  const listLocalConsumption = dependencies.listLocalConsumption ?? listFilamentConsumption;
+  const listLocalPrinterOverview = dependencies.listLocalPrinterOverview ?? listPrinterOverview;
+  const listLocalLoanUsageByPerson =
+    dependencies.listLocalLoanUsageByPerson ?? listLoanUsageByPerson;
   const [spoolRows, consumptionRows, printerRows, loanRows, inboundLoanRows] = await Promise.all([
-    loadAllSpoolRows({
+    loadLocalSpools({
       clientReadOnly: false,
       clientHostBaseUrl: null,
       clientLibraryId: null,
     }),
-    listFilamentConsumption(500, null),
-    listPrinterOverview(),
-    listLoanUsageByPerson(30, "OUTBOUND"),
-    listLoanUsageByPerson(30, "INBOUND"),
+    listLocalConsumption(500, null),
+    listLocalPrinterOverview(),
+    listLocalLoanUsageByPerson(30, "OUTBOUND"),
+    listLocalLoanUsageByPerson(30, "INBOUND"),
   ]);
 
   return {
@@ -312,6 +415,6 @@ export async function loadStatisticsData(
     loanUsage: loanRows,
     inboundLoanUsage: inboundLoanRows,
     updatedAt: null,
-    source: "OFFLINE",
+    source: "LIVE",
   };
 }

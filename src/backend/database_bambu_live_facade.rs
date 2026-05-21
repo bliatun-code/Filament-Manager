@@ -6,7 +6,10 @@ use super::database_bambu_live_settings::{
     save_bambu_live_integration as save_bambu_live_integration_row,
 };
 use super::database_core::FilamentDatabase;
-use super::database_printer_live_events::insert_printer_live_event as insert_printer_live_event_row;
+use super::database_printer_live_events::{
+    insert_printer_live_event as insert_printer_live_event_row,
+    insert_printer_live_event_unless_recent_duplicate as insert_printer_live_event_unless_recent_duplicate_row,
+};
 use super::database_printer_models::{BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow};
 use super::database_result::InventoryResult;
 
@@ -36,5 +39,23 @@ impl FilamentDatabase {
         payload_json: &Value,
     ) -> InventoryResult<()> {
         insert_printer_live_event_row(self.connection(), printer_id, event_type, payload_json)
+    }
+
+    pub fn insert_printer_live_event_unless_recent_duplicate(
+        &self,
+        printer_id: &str,
+        event_type: &str,
+        payload_json: &Value,
+        dedupe_key: &str,
+        dedupe_window_seconds: i64,
+    ) -> InventoryResult<bool> {
+        insert_printer_live_event_unless_recent_duplicate_row(
+            self.connection(),
+            printer_id,
+            event_type,
+            payload_json,
+            dedupe_key,
+            dedupe_window_seconds,
+        )
     }
 }

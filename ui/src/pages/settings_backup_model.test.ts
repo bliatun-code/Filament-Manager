@@ -7,6 +7,7 @@ import {
   buildSettingsBackupValidationState,
   buildSettingsImportSuccessMessage,
   buildSettingsInventoryExportSuccessMessage,
+  resolveSettingsInventoryExportSource,
   resolveSettingsFullBackupImportedAt,
   shouldPrepareImportedFullBackupAsHost,
   type SettingsImportMessageLabels,
@@ -190,6 +191,11 @@ test("settings inventory export success message follows the selected format", ()
     buildSettingsInventoryExportSuccessMessage("json", labels),
     labels.inventoryJsonExported,
   );
+});
+
+test("settings inventory export source uses loaded rows for client mode", () => {
+  assert.equal(resolveSettingsInventoryExportSource(true), "loadedRows");
+  assert.equal(resolveSettingsInventoryExportSource(false), "localCommand");
 });
 
 test("settings import success message describes inventory imports", () => {

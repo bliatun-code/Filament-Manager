@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  requireClientHostBaseTarget,
   requireClientHostWriteTarget,
   resolveClientHostTarget,
 } from "./host_write_target";
@@ -38,15 +37,5 @@ test("resolveClientHostTarget returns null until base URL and library id are com
       clientLibraryId: "",
     }),
     null,
-  );
-});
-
-test("requireClientHostBaseTarget allows optional library id for base-only writes", () => {
-  assert.deepEqual(
-    requireClientHostBaseTarget(
-      { clientHostBaseUrl: " http://host.local ", clientLibraryId: " " },
-      "missing host base",
-    ),
-    { baseUrl: "http://host.local", libraryId: null },
   );
 });

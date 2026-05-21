@@ -17,6 +17,7 @@ import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
 } from "./library_sync_state";
+import { isActiveOutboundLoan } from "./loan_state";
 import {
   requireClientHostWriteTarget,
   resolveClientHostTarget,
@@ -40,7 +41,15 @@ export type LoanDataLoadResult = {
 };
 
 type ActiveLoanRowsDependencies = {
+  fetchHostLoans?: typeof fetchLibrarySyncLoans;
+  fetchCachedLoans?: typeof fetchCachedLibrarySyncLoans;
   listLocalActiveLoans?: typeof listActiveSpoolLoans;
+};
+
+type LoanRowsPageDependencies = {
+  fetchHostLoans?: typeof fetchLibrarySyncLoans;
+  fetchCachedLoans?: typeof fetchCachedLibrarySyncLoans;
+  listLocalLoans?: typeof listSpoolLoans;
 };
 
 type LoanWriteTarget = {
@@ -59,12 +68,46 @@ type LoanWriteDependencies = {
 
 export const deriveLoanLibrarySyncState = deriveLibrarySyncPageState;
 
+function mapLoanDetailsToActiveRow(row: SpoolLoanDetailsRow): ActiveSpoolLoanRow {
+  return {
+    loan: row.loan,
+    spool_status: row.spool_status ?? "",
+    spool_remaining_g: row.spool_remaining_g ?? null,
+    material: row.material ?? "",
+    filament_name: row.filament_name ?? "",
+    color_name: row.color_name ?? "",
+    vendor: row.vendor ?? "",
+    hex_color: row.hex_color ?? null,
+  };
+}
+
 export async function loadActiveLoanRows(
-  options: { clientReadOnly: boolean },
+  options: {
+    clientReadOnly: boolean;
+    clientHostBaseUrl?: string | null;
+    clientLibraryId?: string | null;
+    limit?: number;
+  },
   dependencies: ActiveLoanRowsDependencies = {},
 ): Promise<ActiveSpoolLoanRow[]> {
   if (options.clientReadOnly) {
-    return [];
+    const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
+    const fetchCachedLoans = dependencies.fetchCachedLoans ?? fetchCachedLibrarySyncLoans;
+    const hostTarget = resolveClientHostTarget(options);
+    if (hostTarget) {
+      try {
+        const rows = await fetchHostLoans(
+          hostTarget.baseUrl,
+          hostTarget.libraryId,
+          options.limit ?? 2000,
+        );
+        return rows.filter(isActiveOutboundLoan).map(mapLoanDetailsToActiveRow);
+      } catch (loadError) {
+        console.error(loadError);
+      }
+    }
+    const cached = await fetchCachedLoans().catch(() => null);
+    return (cached?.rows ?? []).filter(isActiveOutboundLoan).map(mapLoanDetailsToActiveRow);
   }
 
   const listLocalActiveLoans = dependencies.listLocalActiveLoans ?? listActiveSpoolLoans;
@@ -73,14 +116,36 @@ export async function loadActiveLoanRows(
 
 export async function loadLoanRowsPage(
   options: LoanDataSourceOptions,
+  dependencies: LoanRowsPageDependencies = {},
 ): Promise<LoanDataLoadResult> {
+  const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
+  const fetchCachedLoans = dependencies.fetchCachedLoans ?? fetchCachedLibrarySyncLoans;
+  const listLocalLoans = dependencies.listLocalLoans ?? listSpoolLoans;
   const { clientReadOnly, limit = 2000 } = options;
   const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
 
-  if (hostTarget) {
+  if (clientReadOnly) {
+    if (!hostTarget) {
+      const cached = await fetchCachedLoans().catch(() => null);
+      if (cached) {
+        return {
+          rows: cached.rows,
+          source: "CACHED",
+          updatedAt: cached.captured_at ?? null,
+          usedFallback: true,
+        };
+      }
+
+      return {
+        rows: [],
+        source: "OFFLINE",
+        updatedAt: null,
+        usedFallback: true,
+      };
+    }
     try {
-      const rows = await fetchLibrarySyncLoans(hostTarget.baseUrl, hostTarget.libraryId, limit);
-      const cached = await fetchCachedLibrarySyncLoans().catch(() => null);
+      const rows = await fetchHostLoans(hostTarget.baseUrl, hostTarget.libraryId, limit);
+      const cached = await fetchCachedLoans().catch(() => null);
       return {
         rows,
         source: "LIVE",
@@ -89,7 +154,7 @@ export async function loadLoanRowsPage(
       };
     } catch (loadError) {
       try {
-        const cached = await fetchCachedLibrarySyncLoans();
+        const cached = await fetchCachedLoans();
         if (cached) {
           return {
             rows: cached.rows,
@@ -112,7 +177,7 @@ export async function loadLoanRowsPage(
   }
 
   return {
-    rows: await listSpoolLoans(limit, true, "ALL"),
+    rows: await listLocalLoans(limit, true, "ALL"),
     source: "LIVE",
     updatedAt: null,
     usedFallback: false,

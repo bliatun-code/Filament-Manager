@@ -131,20 +131,31 @@ impl StatisticsEngine {
             i64,
             i64,
         ) = self.conn.query_row(
-            "SELECT
-                COALESCE(SUM(material_used_g), 0) AS total_consumption_30d,
+            "WITH usage_rows AS (
+                SELECT p.spool_id, p.started_at AS used_at, p.material_used_g AS used_g
+                FROM print_jobs p
+                UNION ALL
+                SELECT us.spool_id,
+                       COALESCE(u.finished_at, u.last_seen_at, u.started_at) AS used_at,
+                       us.used_g
+                FROM printer_live_usage_session_spools us
+                JOIN printer_live_usage_sessions u ON u.id = us.session_id
+                WHERE u.total_used_g > 0
+             )
+             SELECT
+                COALESCE(SUM(used_g), 0) AS total_consumption_30d,
                 COALESCE(SUM(CASE
                     WHEN COALESCE(NULLIF(s.ownership_type, ''), 'OWNED') = 'OWNED'
                       OR s.id IS NULL
-                    THEN p.material_used_g ELSE 0
+                    THEN u.used_g ELSE 0
                 END), 0) AS owned_consumption_30d,
                 COALESCE(SUM(CASE
                     WHEN COALESCE(NULLIF(s.ownership_type, ''), 'OWNED') = 'BORROWED_IN'
-                    THEN p.material_used_g ELSE 0
+                    THEN u.used_g ELSE 0
                 END), 0) AS borrowed_in_consumption_30d
-             FROM print_jobs p
-             LEFT JOIN filament_spools s ON s.id = p.spool_id
-             WHERE p.started_at >= datetime('now', '-30 days')",
+             FROM usage_rows u
+             LEFT JOIN filament_spools s ON s.id = u.spool_id
+             WHERE u.used_at >= datetime('now', '-30 days')",
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )?;
@@ -167,9 +178,18 @@ impl StatisticsEngine {
 
     pub fn top_materials(&self, limit: i64) -> Result<Vec<MaterialUsageRow>, rusqlite::Error> {
         let mut stmt = self.conn.prepare(
-            "SELECT m.material, COALESCE(SUM(p.material_used_g), 0) AS used
-             FROM print_jobs p
-             LEFT JOIN filament_spools s ON p.spool_id = s.id
+            "WITH usage_rows AS (
+                SELECT p.spool_id, p.material_used_g AS used_g
+                FROM print_jobs p
+                UNION ALL
+                SELECT us.spool_id, us.used_g
+                FROM printer_live_usage_session_spools us
+                JOIN printer_live_usage_sessions u ON u.id = us.session_id
+                WHERE u.total_used_g > 0
+             )
+             SELECT m.material, COALESCE(SUM(u.used_g), 0) AS used
+             FROM usage_rows u
+             LEFT JOIN filament_spools s ON u.spool_id = s.id
              LEFT JOIN filament_master_list m ON s.master_id = m.id
              GROUP BY m.material
              ORDER BY used DESC
@@ -196,8 +216,23 @@ impl StatisticsEngine {
         printer_id: Option<&str>,
     ) -> Result<Vec<FilamentConsumptionRow>, rusqlite::Error> {
         let mut stmt = self.conn.prepare(
-            "SELECT
-                p.printer_id,
+            "WITH usage_rows AS (
+                SELECT p.id AS usage_job_id,
+                       p.printer_id,
+                       p.spool_id,
+                       p.material_used_g AS used_g
+                FROM print_jobs p
+                UNION ALL
+                SELECT u.id AS usage_job_id,
+                       u.printer_id,
+                       us.spool_id,
+                       us.used_g
+                FROM printer_live_usage_session_spools us
+                JOIN printer_live_usage_sessions u ON u.id = us.session_id
+                WHERE u.total_used_g > 0
+             )
+             SELECT
+                u.printer_id,
                 pr.name AS printer_name,
                 COALESCE(NULLIF(m.material, ''), 'Unknown') AS material,
                 COALESCE(NULLIF(m.filament_name, ''), 'Unknown') AS filament_name,
@@ -210,15 +245,15 @@ impl StatisticsEngine {
                     THEN COALESCE(NULLIF(s.owner_name, ''), '')
                     ELSE ''
                 END, '') AS owner_name,
-                COALESCE(SUM(p.material_used_g), 0) AS used_grams,
-                COUNT(*) AS jobs
-             FROM print_jobs p
-             LEFT JOIN printers pr ON pr.id = p.printer_id
-             LEFT JOIN filament_spools s ON p.spool_id = s.id
+                COALESCE(SUM(u.used_g), 0) AS used_grams,
+                COUNT(DISTINCT u.usage_job_id) AS jobs
+             FROM usage_rows u
+             LEFT JOIN printers pr ON pr.id = u.printer_id
+             LEFT JOIN filament_spools s ON u.spool_id = s.id
              LEFT JOIN filament_master_list m ON s.master_id = m.id
-             WHERE (?1 IS NULL OR p.printer_id = ?1)
+             WHERE (?1 IS NULL OR u.printer_id = ?1)
              GROUP BY
-               p.printer_id,
+               u.printer_id,
                pr.name,
                m.material,
                m.filament_name,
@@ -231,7 +266,7 @@ impl StatisticsEngine {
                    THEN COALESCE(NULLIF(s.owner_name, ''), '')
                    ELSE ''
                END
-             HAVING COALESCE(SUM(p.material_used_g), 0) > 0
+             HAVING COALESCE(SUM(u.used_g), 0) > 0
              ORDER BY used_grams DESC
              LIMIT ?2",
         )?;
@@ -263,6 +298,7 @@ impl StatisticsEngine {
 #[cfg(test)]
 mod tests {
     use super::StatisticsEngine;
+    use crate::backend::database_printer_usage_sessions::LiveUsageDeltaInput;
     use crate::backend::filament_database::{FilamentDatabase, ManualMasterInput, SpoolRow};
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -549,6 +585,17 @@ mod tests {
                 .map_err(|error| error.to_string())?;
             db.insert_print_job("printer_1", "borrowed_1", Some("Borrowed job"), 65, true)
                 .map_err(|error| error.to_string())?;
+            db.record_live_usage_delta(LiveUsageDeltaInput {
+                printer_id: "printer_1",
+                session_key: "subtask:live-owned",
+                job_name: Some("Live owned job"),
+                print_type: Some("cloud"),
+                spool_id: "owned_1",
+                used_grams: 30,
+                observed_at: Some("2026-05-17T20:30:00Z"),
+                defer_initial_delta: false,
+            })
+            .map_err(|error| error.to_string())?;
 
             let stats = StatisticsEngine::open(&db_path).map_err(|error| error.to_string())?;
             let rows = stats
@@ -562,8 +609,8 @@ mod tests {
                 .find(|row| row.ownership_type == "OWNED")
                 .ok_or_else(|| "missing owned filament consumption row".to_string())?;
             assert_eq!(owned.owner_name, None);
-            assert_eq!(owned.used_grams, 120);
-            assert_eq!(owned.jobs, 1);
+            assert_eq!(owned.used_grams, 150);
+            assert_eq!(owned.jobs, 2);
 
             let borrowed = rows
                 .iter()
@@ -580,6 +627,98 @@ mod tests {
         if let Err(message) = result {
             panic!(
                 "filament_consumption_keeps_owned_and_borrowed_in_rows_separate test failed: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn live_usage_can_defer_first_warmup_delta_until_session_has_a_baseline() {
+        let db_path = temp_db_path("live-usage-warmup-baseline");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            let master_id = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Matte",
+                    color_name: "Black",
+                    hex_color: Some("#111111"),
+                    product_url: None,
+                    vendor: Some("Bambu"),
+                    default_weight: Some(1000),
+                })
+                .map_err(|error| error.to_string())?;
+            db.insert_spool(&SpoolRow {
+                id: "spool_1".to_string(),
+                master_id,
+                qr_code: None,
+                rfid_tag: Some("tray-rfid-1".to_string()),
+                rfid_observed_at: None,
+                status: "IN_USE".to_string(),
+                ownership_type: "OWNED".to_string(),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                current_weight_g: Some(950),
+                remaining_g: Some(950),
+                spool_tare_weight_g: None,
+                location_id: None,
+                home_location_id: None,
+                purchase_date: None,
+                purchase_price: None,
+                batch_code: None,
+                last_used_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+            db.upsert_printer_with_ams("printer_1", "P1S", "Brutus", 1, 4)
+                .map_err(|error| error.to_string())?;
+
+            db.record_live_usage_delta(LiveUsageDeltaInput {
+                printer_id: "printer_1",
+                session_key: "subtask:958477605",
+                job_name: Some("P1S X1C P1P"),
+                print_type: Some("cloud"),
+                spool_id: "spool_1",
+                used_grams: 20,
+                observed_at: Some("2026-05-18T17:46:40Z"),
+                defer_initial_delta: true,
+            })
+            .map_err(|error| error.to_string())?;
+            assert_eq!(
+                db.list_printer_overview()
+                    .map_err(|error| error.to_string())?[0]
+                    .usage
+                    .total_used_g,
+                0
+            );
+
+            db.record_live_usage_delta(LiveUsageDeltaInput {
+                printer_id: "printer_1",
+                session_key: "subtask:958477605",
+                job_name: Some("P1S X1C P1P"),
+                print_type: Some("cloud"),
+                spool_id: "spool_1",
+                used_grams: 70,
+                observed_at: Some("2026-05-18T19:35:55Z"),
+                defer_initial_delta: true,
+            })
+            .map_err(|error| error.to_string())?;
+            let overview = db
+                .list_printer_overview()
+                .map_err(|error| error.to_string())?;
+            assert_eq!(overview[0].usage.total_used_g, 70);
+            assert_eq!(overview[0].usage.total_jobs, 1);
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "live_usage_can_defer_first_warmup_delta_until_session_has_a_baseline failed: {message}"
             );
         }
     }

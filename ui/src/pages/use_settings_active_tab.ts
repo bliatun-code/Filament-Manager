@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { SettingsTabKey } from "../App";
+import type { SettingsTabKey } from "./settings_page_model";
 import { normalizeSettingsInitialTab } from "./settings_page_model";
 
 export function useSettingsActiveTab(initialTab: SettingsTabKey) {

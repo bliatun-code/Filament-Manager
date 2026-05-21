@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { SettingsTabKey } from "../App";
+import type { SettingsTabKey } from "./settings_page_model";
 
 type SettingsRouteMap = Record<SettingsTabKey, ReactNode>;
 

@@ -1,7 +1,14 @@
 import { Suspense, lazy, startTransition, useEffect, useMemo, useState } from "react";
+import {
+  APP_PAGE_ORDER,
+  resolveInitialPageFromSearch,
+  type InventoryNavigationIntent,
+  type PageKey,
+} from "./lib/app_navigation_model";
 import { useI18n } from "./lib/i18n";
 import { getThemeMode, onThemeModeChange } from "./lib/theme_mode";
 import { isTauri, setDockIconTheme, setWindowTitle } from "./lib/tauri_client";
+import type { SettingsTabKey } from "./pages/settings_page_model";
 import brandIconDark from "./assets/logo_variants/logo-v3-10-dark-static.svg";
 import brandIconLight from "./assets/logo_variants/logo-v3-10-light-static.svg";
 
@@ -12,39 +19,11 @@ const PrintersPage = lazy(() => import("./pages/printers"));
 const SettingsPage = lazy(() => import("./pages/settings"));
 const StatisticsPage = lazy(() => import("./pages/statistics"));
 
-export type PageKey =
-  | "dashboard"
-  | "inventory"
-  | "loans"
-  | "printers"
-  | "statistics"
-  | "settings";
-
-export type InventoryNavigationIntent =
-  | {
-      kind: "LOW_STOCK";
-      seq: number;
-    }
-  | null;
-
-export type SettingsTabKey = "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
-
-const pageOrder: ReadonlyArray<PageKey> = [
-  "dashboard",
-  "inventory",
-  "loans",
-  "printers",
-  "statistics",
-  "settings",
-];
-
 function initialPageFromUrl(): PageKey {
   if (typeof window === "undefined") {
     return "dashboard";
   }
-  return new URLSearchParams(window.location.search).get("bfm_inventory_fixture") === "detail"
-    ? "inventory"
-    : "dashboard";
+  return resolveInitialPageFromSearch(window.location.search);
 }
 
 export default function App() {
@@ -88,7 +67,7 @@ export default function App() {
 
   const pages = useMemo(
     () =>
-      pageOrder.map((key) => ({
+      APP_PAGE_ORDER.map((key) => ({
         key,
         label: t(`nav.${key}`),
       })),

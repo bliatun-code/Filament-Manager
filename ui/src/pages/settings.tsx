@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { SettingsTabKey } from "../App";
+import type { SettingsTabKey } from "./settings_page_model";
 import { isTauri } from "../lib/tauri_client";
 import { useI18n } from "../lib/i18n";
 import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
@@ -238,6 +238,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsClientHostBaseUrl,
     settingsClientLibraryId,
     settingsClientReadOnly,
+    settingsInventoryRows: spoolRows,
     settingsImportMessageLabels,
     settingsInventoryExportMessageLabels,
     settingsInventoryOverviewPrintMessageLabels,

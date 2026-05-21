@@ -19,12 +19,15 @@ import {
   buildDashboardDerivedState,
   type DashboardDerivedState,
 } from "./dashboard_model";
+import { deriveInventoryOverviewFromRows } from "./statistics_model";
 import { loadAllSpoolRows } from "./spool_data_source";
+import { resolveClientHostTarget } from "./host_write_target";
+import { firstDefinedTimestamp } from "./source_timestamps";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
 export type DashboardCompanionTone = "off" | "live" | "warn";
-export type DashboardSyncSource = "local" | "client-live" | "client-cached";
+export type DashboardSyncSource = "local" | "client-live" | "client-cached" | "client-offline";
 
 export type DashboardDataLoadResult = {
   derived: DashboardDerivedState;
@@ -56,6 +59,23 @@ type DashboardDataDependencies = {
 
 function parseSyncMode(syncSettings: LibrarySyncSettings | null): string {
   return (syncSettings?.mode ?? "STANDALONE").trim().toUpperCase();
+}
+
+function emptyInventoryOverview() {
+  return {
+    total_spools: 0,
+    total_owned_spools: 0,
+    total_borrowed_in_spools: 0,
+    in_use: 0,
+    owned_in_use: 0,
+    borrowed_in_in_use: 0,
+    low_stock: 0,
+    owned_low_stock: 0,
+    borrowed_in_low_stock: 0,
+    total_consumption_30d: 0,
+    owned_consumption_30d: 0,
+    borrowed_in_consumption_30d: 0,
+  };
 }
 
 export function hasInvalidClientPairingMessage(message?: string | null): boolean {
@@ -118,13 +138,23 @@ export async function loadDashboardData(
   }
 
   let activeClientSnapshot = cachedSnapshot;
-  let clientSnapshotSource: DashboardSyncSource = "client-cached";
   let clientSpoolRows = syncSettings?.cached_spools?.rows ?? null;
   let clientPrinterRows = syncSettings?.cached_printers?.rows ?? null;
   let clientLoanRows = syncSettings?.cached_loans?.rows ?? null;
-  let clientWishlistRows: WishlistItemRow[] = [];
+  let clientWishlistRows: WishlistItemRow[] = syncSettings?.cached_wishlist?.rows ?? [];
+  let clientSnapshotLive = false;
+  let clientSpoolsLive = false;
+  let clientPrintersLive = false;
+  let clientLoansLive = false;
+  let clientWishlistLive = false;
+  const clientHostTarget = clientMode
+    ? resolveClientHostTarget({
+        clientHostBaseUrl: syncSettings?.host_base_url,
+        clientLibraryId: syncSettings?.library_id,
+      })
+    : null;
 
-  if (clientMode && syncSettings?.host_base_url) {
+  if (clientHostTarget) {
     const [
       validationResult,
       snapshotResult,
@@ -133,16 +163,16 @@ export async function loadDashboardData(
       loansResult,
       wishlistResult,
     ] = await Promise.allSettled([
-      validateHost(syncSettings.host_base_url, syncSettings.library_id),
-      fetchHostSnapshot(syncSettings.host_base_url, syncSettings.library_id),
+      validateHost(clientHostTarget.baseUrl, clientHostTarget.libraryId),
+      fetchHostSnapshot(clientHostTarget.baseUrl, clientHostTarget.libraryId),
       loadSpoolRows({
         clientReadOnly: true,
-        clientHostBaseUrl: syncSettings.host_base_url,
-        clientLibraryId: syncSettings.library_id,
+        clientHostBaseUrl: clientHostTarget.baseUrl,
+        clientLibraryId: clientHostTarget.libraryId,
       }),
-      fetchHostPrinterOverview(syncSettings.host_base_url, syncSettings.library_id),
-      fetchHostLoans(syncSettings.host_base_url, syncSettings.library_id, 2000),
-      fetchHostWishlist(syncSettings.host_base_url, syncSettings.library_id, 500),
+      fetchHostPrinterOverview(clientHostTarget.baseUrl, clientHostTarget.libraryId),
+      fetchHostLoans(clientHostTarget.baseUrl, clientHostTarget.libraryId, 2000),
+      fetchHostWishlist(clientHostTarget.baseUrl, clientHostTarget.libraryId, 500),
     ]);
 
     if (validationResult.status === "fulfilled") {
@@ -157,40 +187,88 @@ export async function loadDashboardData(
 
     if (snapshotResult.status === "fulfilled") {
       activeClientSnapshot = snapshotResult.value;
-      clientSnapshotSource = "client-live";
+      clientSnapshotLive = true;
       clientHostCompanionTone = clientHostNeedsRepair ? "warn" : "live";
-      clientHostDisplayName = snapshotResult.value.device_name ?? syncSettings.host_device_name ?? null;
+      clientHostDisplayName =
+        snapshotResult.value.device_name ?? syncSettings?.host_device_name ?? null;
     } else {
       onLoadError(snapshotResult.reason);
-      clientHostCompanionTone = syncSettings.host_base_url ? "warn" : "off";
+      clientHostCompanionTone = syncSettings?.host_base_url ? "warn" : "off";
     }
 
     if (spoolsResult.status === "fulfilled") {
       clientSpoolRows = spoolsResult.value;
+      clientSpoolsLive = true;
     } else {
       onLoadError(spoolsResult.reason);
     }
     if (printersResult.status === "fulfilled") {
       clientPrinterRows = printersResult.value;
+      clientPrintersLive = true;
     } else {
       onLoadError(printersResult.reason);
     }
     if (loansResult.status === "fulfilled") {
       clientLoanRows = loansResult.value;
+      clientLoansLive = true;
     } else {
       onLoadError(loansResult.reason);
     }
     if (wishlistResult.status === "fulfilled") {
       clientWishlistRows = wishlistResult.value;
+      clientWishlistLive = true;
     } else {
       onLoadError(wishlistResult.reason);
     }
   }
 
-  if (clientMode && activeClientSnapshot) {
+  const hasClientCachedRows =
+    (clientSpoolRows?.length ?? 0) > 0 ||
+    (clientPrinterRows?.length ?? 0) > 0 ||
+    (clientLoanRows?.length ?? 0) > 0 ||
+    clientWishlistRows.length > 0;
+  const clientRowsOverview =
+    (clientSpoolRows?.length ?? 0) > 0
+      ? deriveInventoryOverviewFromRows(clientSpoolRows ?? [], [])
+      : null;
+  const clientOverview = clientRowsOverview ?? activeClientSnapshot?.inventory ?? null;
+  const clientRowsOverviewCapturedAt =
+    clientRowsOverview && !clientHostTarget
+      ? syncSettings?.cached_spools?.captured_at ?? null
+      : null;
+
+  if (clientMode) {
+    const hasClientData = !!clientOverview || hasClientCachedRows;
+    const allClientReadsLive =
+      !!clientHostTarget &&
+      clientSnapshotLive &&
+      clientSpoolsLive &&
+      clientPrintersLive &&
+      clientLoansLive &&
+      clientWishlistLive;
+    const syncSource: DashboardSyncSource = hasClientData
+      ? allClientReadsLive
+        ? "client-live"
+        : "client-cached"
+      : "client-offline";
+    const fallbackCapturedAt = firstDefinedTimestamp(
+      clientRowsOverviewCapturedAt,
+      clientSpoolsLive ? null : syncSettings?.cached_spools?.captured_at,
+      clientPrintersLive ? null : syncSettings?.cached_printers?.captured_at,
+      clientLoansLive ? null : syncSettings?.cached_loans?.captured_at,
+      clientWishlistLive ? null : syncSettings?.cached_wishlist?.captured_at,
+      clientSnapshotLive ? null : activeClientSnapshot?.captured_at,
+    );
+    const liveCapturedAt = firstDefinedTimestamp(
+      activeClientSnapshot?.captured_at,
+      syncSettings?.cached_spools?.captured_at,
+      syncSettings?.cached_printers?.captured_at,
+      syncSettings?.cached_loans?.captured_at,
+      syncSettings?.cached_wishlist?.captured_at,
+    );
     return {
       derived: buildDashboardDerivedState({
-        overview: activeClientSnapshot.inventory,
+        overview: clientOverview ?? emptyInventoryOverview(),
         printers: clientPrinterRows ?? [],
         spoolRows: clientSpoolRows ?? [],
         loans: clientLoanRows ?? [],
@@ -203,8 +281,8 @@ export async function loadDashboardData(
       clientHostCompanionTone,
       clientHostDisplayName,
       clientHostNeedsRepair,
-      syncSource: clientSnapshotSource,
-      capturedAt: activeClientSnapshot.captured_at,
+      syncSource,
+      capturedAt: syncSource === "client-live" ? liveCapturedAt : fallbackCapturedAt ?? liveCapturedAt,
     };
   }
 

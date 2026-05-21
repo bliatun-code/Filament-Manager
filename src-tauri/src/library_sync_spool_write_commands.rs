@@ -1,3 +1,4 @@
+use crate::library_sync_cache_refresh::refresh_library_sync_spool_cache;
 use crate::library_sync_command_support::{
     library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
     trimmed_non_empty,
@@ -32,6 +33,7 @@ pub(crate) fn update_library_sync_host_spool_weight(
         &serde_json::json!({ "grams": input.grams.max(0) }),
     )?;
 
+    refresh_library_sync_spool_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, "Host spool weight updated.", None)?;
     Ok(())
 }
@@ -56,6 +58,7 @@ pub(crate) fn update_library_sync_host_spool_tare_weight(
         &serde_json::json!({ "grams": input.grams.max(0) }),
     )?;
 
+    refresh_library_sync_spool_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, "Host spool tare weight updated.", None)?;
     Ok(())
 }
@@ -87,6 +90,7 @@ pub(crate) fn update_library_sync_host_spool_details(
         }),
     )?;
 
+    refresh_library_sync_spool_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, "Host spool details updated.", None)?;
     Ok(())
 }
@@ -114,6 +118,7 @@ pub(crate) fn update_library_sync_host_spool_rfid_tag(
         }),
     )?;
 
+    refresh_library_sync_spool_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, "Host spool RFID updated.", None)?;
     Ok(())
 }
@@ -156,6 +161,7 @@ pub(crate) fn create_library_sync_host_spool(
         return Err(response.message);
     }
 
+    refresh_library_sync_spool_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, &response.message, None)?;
 
     Ok(response.spool_id)

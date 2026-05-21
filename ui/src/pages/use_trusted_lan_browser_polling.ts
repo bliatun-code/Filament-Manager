@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { SettingsTabKey } from "../App";
+import type { SettingsTabKey } from "./settings_page_model";
 
 type RefreshTrustedLanPairedBrowsers = (
   options?: { announceNewPairing?: boolean; suppressErrors?: boolean },

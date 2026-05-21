@@ -140,6 +140,22 @@ export function preparePrinterReconfigure(input: {
   };
 }
 
+export function canUseSettingsPrinterWriteTarget(input: {
+  settingsClientReadOnly: boolean;
+  settingsClientHostBaseUrl: string | null;
+  settingsClientHostWritePaired: boolean;
+  settingsClientLibraryId: string | null;
+}): boolean {
+  if (!input.settingsClientReadOnly) {
+    return true;
+  }
+  return Boolean(
+    input.settingsClientHostBaseUrl &&
+      input.settingsClientLibraryId &&
+      input.settingsClientHostWritePaired,
+  );
+}
+
 export type SettingsPrinterMessageLabels = {
   bambuLiveFieldsRequired: string;
   confirmDeleteTapAgain: string;

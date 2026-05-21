@@ -46,7 +46,7 @@ pub(crate) fn list_printer_overview(conn: &Connection) -> InventoryResult<Vec<Pr
     let mut output = Vec::with_capacity(printers.len());
 
     for printer in printers {
-        let usage = conn.query_row(
+        let manual_usage = conn.query_row(
             "SELECT
                 COUNT(*) AS total_jobs,
                 COALESCE(SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END), 0) AS successful_jobs,
@@ -66,6 +66,36 @@ pub(crate) fn list_printer_overview(conn: &Connection) -> InventoryResult<Vec<Pr
                 })
             },
         )?;
+        let live_usage = conn.query_row(
+            "SELECT
+                COUNT(*) AS total_jobs,
+                COALESCE(SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END), 0) AS successful_jobs,
+                COALESCE(SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END), 0) AS failed_jobs,
+                COALESCE(SUM(total_used_g), 0) AS total_used_g,
+                MAX(COALESCE(finished_at, last_seen_at)) AS last_job_at
+             FROM printer_live_usage_sessions
+             WHERE printer_id = ?1",
+            params![&printer.id],
+            |row| {
+                Ok(PrinterUsageRow {
+                    total_jobs: row.get(0)?,
+                    successful_jobs: row.get(1)?,
+                    failed_jobs: row.get(2)?,
+                    total_used_g: row.get(3)?,
+                    last_job_at: row.get(4)?,
+                })
+            },
+        )?;
+        let usage = PrinterUsageRow {
+            total_jobs: manual_usage.total_jobs + live_usage.total_jobs,
+            successful_jobs: manual_usage.successful_jobs + live_usage.successful_jobs,
+            failed_jobs: manual_usage.failed_jobs + live_usage.failed_jobs,
+            total_used_g: manual_usage.total_used_g + live_usage.total_used_g,
+            last_job_at: [manual_usage.last_job_at, live_usage.last_job_at]
+                .into_iter()
+                .flatten()
+                .max(),
+        };
 
         let mut stmt = conn.prepare(
             "SELECT

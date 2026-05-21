@@ -346,6 +346,7 @@ function formatHistoryEventLabel(value, locale = "en") {
   const eventKeys = {
     weight_update: "detail.eventWeightUpdate",
     weight_updated: "detail.eventWeightUpdate",
+    weight_corrected: "detail.eventWeightCorrected",
     tare_weight_updated: "detail.eventTareWeightUpdate",
     created: "detail.eventCreated",
     details_updated: "detail.eventDetailsUpdated",

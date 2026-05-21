@@ -160,6 +160,18 @@ pub(crate) fn delete_printer(conn: &Connection, printer_id: &str) -> InventoryRe
         params![printer_id],
     )?;
     tx.execute(
+        "DELETE FROM printer_live_usage_session_spools
+         WHERE session_id IN (
+            SELECT id FROM printer_live_usage_sessions WHERE printer_id = ?1
+         )",
+        params![printer_id],
+    )?;
+    tx.execute(
+        "DELETE FROM printer_live_usage_sessions
+         WHERE printer_id = ?1",
+        params![printer_id],
+    )?;
+    tx.execute(
         "DELETE FROM ams_slots
          WHERE ams_id IN (
             SELECT id FROM ams_units WHERE printer_id = ?1

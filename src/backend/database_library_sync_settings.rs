@@ -4,7 +4,8 @@ use super::database_ids::new_id;
 use super::database_library_sync_auth::clear_library_sync_client_auth_state;
 use super::database_library_sync_models::{
     LibrarySyncCachedLoanListRow, LibrarySyncCachedPrinterOverviewRow,
-    LibrarySyncCachedSnapshotRow, LibrarySyncCachedSpoolListRow, LibrarySyncSettingsRow,
+    LibrarySyncCachedSnapshotRow, LibrarySyncCachedSpoolListRow, LibrarySyncCachedWishlistListRow,
+    LibrarySyncSettingsRow,
 };
 use super::database_result::InventoryResult;
 use super::database_settings::{delete_setting, get_setting, set_setting};
@@ -47,6 +48,10 @@ pub(crate) fn get_library_sync_settings(
     )?;
     let cached_loans =
         cached_setting::<LibrarySyncCachedLoanListRow>(conn, "library_sync_cached_loans_json")?;
+    let cached_wishlist = cached_setting::<LibrarySyncCachedWishlistListRow>(
+        conn,
+        "library_sync_cached_wishlist_json",
+    )?;
 
     Ok(LibrarySyncSettingsRow {
         mode,
@@ -64,6 +69,7 @@ pub(crate) fn get_library_sync_settings(
         cached_spools,
         cached_printers,
         cached_loans,
+        cached_wishlist,
     })
 }
 
@@ -138,6 +144,7 @@ pub(crate) fn save_library_sync_settings(
         delete_setting(conn, "library_sync_cached_spools_json")?;
         delete_setting(conn, "library_sync_cached_printers_json")?;
         delete_setting(conn, "library_sync_cached_loans_json")?;
+        delete_setting(conn, "library_sync_cached_wishlist_json")?;
         clear_library_sync_client_auth_state(conn)?;
     }
 

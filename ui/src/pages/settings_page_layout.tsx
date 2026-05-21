@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import type { SettingsTabKey } from "../App";
+import type { SettingsTabKey } from "./settings_page_model";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
 import { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_route";
 import { SettingsPageHeader } from "./settings_page_header";

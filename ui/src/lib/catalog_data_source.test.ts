@@ -56,6 +56,22 @@ test("loadCatalogMasters uses local catalog outside client host mode", async () 
   assert.deepEqual(rows.map((row) => row.id), ["local-esun"]);
 });
 
+test("loadCatalogMasters avoids local catalog fallback when client host details are incomplete", async () => {
+  const rows = await loadCatalogMasters(
+    { clientReadOnly: true, clientHostBaseUrl: " ", clientLibraryId: "library-1" },
+    {
+      fetchHostCatalog: async () => {
+        throw new Error("host catalog should not load without a complete target");
+      },
+      listLocalCatalog: async () => {
+        throw new Error("local catalog should not load for client mode");
+      },
+    },
+  );
+
+  assert.deepEqual(rows, []);
+});
+
 test("resolveCatalogSelectionDefaults prefers vendor-specific first choices", () => {
   const defaults = resolveCatalogSelectionDefaults([
     catalogRow("generic-1", "Generic"),

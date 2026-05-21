@@ -295,13 +295,16 @@ export function useInventorySpoolDetailActions({
     if (!tauriAvailable || !selectedSpool || manageBusy) {
       return;
     }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
     const location = selectedSpoolLocationDraft.trim();
     setManageBusy(true);
     setError(null);
     try {
-      if (clientReadOnly && !canUseClientHostWrite()) {
-        return;
-      }
       await updateInventorySpoolDetails(
         {
           spool_id: selectedSpool.id,
@@ -385,13 +388,16 @@ export function useInventorySpoolDetailActions({
     if (!tauriAvailable || !selectedSpool || manageBusy) {
       return;
     }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
     const nextStatus: SpoolStatus = selectedSpool.status === "LOST" ? "IN_STOCK" : "LOST";
     setManageBusy(true);
     setError(null);
     try {
-      if (clientReadOnly && !canUseClientHostWrite()) {
-        return;
-      }
       if (clientReadOnly) {
         if (nextStatus === "LOST" && selectedSpoolAssignedSlot) {
           setError(
@@ -486,6 +492,12 @@ export function useInventorySpoolDetailActions({
       setError(t("inventory.error.invalidWeight", "Weight value is invalid."));
       return;
     }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
     setConfirmDelete(false);
     setConfirmPurge(false);
     const safeGrams = Math.max(0, Math.round(grams));
@@ -493,9 +505,6 @@ export function useInventorySpoolDetailActions({
     setError(null);
     try {
       if (clientReadOnly) {
-        if (!canUseClientHostWrite()) {
-          return;
-        }
         if (selectedSpoolAssignedSlot) {
           setError(
             t(
@@ -560,14 +569,17 @@ export function useInventorySpoolDetailActions({
       setError(t("inventory.error.invalidWeight", "Weight value is invalid."));
       return;
     }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
     const safeGrams = Math.max(0, Math.round(parsed));
     setManageBusy(true);
     setError(null);
     try {
       if (clientReadOnly) {
-        if (!canUseClientHostWrite()) {
-          return;
-        }
         await updateInventorySpoolTareWeight(selectedSpool.id, safeGrams, hostWriteTarget);
         await reloadSpools();
         setSelectedSpoolTareDraft(String(safeGrams));

@@ -286,6 +286,23 @@ fn extract_loan_statuses(body_text: &str) -> Result<Vec<String>, String> {
         .collect())
 }
 
+fn extract_loan_directions(body_text: &str) -> Result<Vec<String>, String> {
+    let parsed: serde_json::Value =
+        serde_json::from_str(body_text).map_err(|error| error.to_string())?;
+    let rows = parsed
+        .as_array()
+        .ok_or_else(|| "loan response was not an array".to_string())?;
+    Ok(rows
+        .iter()
+        .filter_map(|row| {
+            row.get("loan")
+                .and_then(|loan| loan.get("loan_direction"))
+                .and_then(|value| value.as_str())
+                .map(|value| value.to_string())
+        })
+        .collect())
+}
+
 fn extract_spool_id(body_text: &str) -> Result<String, String> {
     let parsed: serde_json::Value =
         serde_json::from_str(body_text).map_err(|error| error.to_string())?;
@@ -2048,6 +2065,49 @@ async fn companion_api_registers_borrowed_in_spool() {
         assert!(detail_text.contains("\"remaining_g\":860"));
         assert!(detail_text.contains("\"loan_direction\":\"INBOUND\""));
         assert!(detail_text.contains("\"location_id\":\"Borrowed Shelf\""));
+
+        let default_loans = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/loans?include_returned=true")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(default_loans.status(), StatusCode::OK);
+        let default_loans_body = to_bytes(default_loans.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let default_loans_text = String::from_utf8(default_loans_body.to_vec())
+            .map_err(|error| error.to_string())?;
+        assert!(extract_loan_directions(&default_loans_text)?.is_empty());
+
+        let all_loans = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/loans?include_returned=true&direction=ALL")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(all_loans.status(), StatusCode::OK);
+        let all_loans_body = to_bytes(all_loans.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let all_loans_text =
+            String::from_utf8(all_loans_body.to_vec()).map_err(|error| error.to_string())?;
+        assert_eq!(
+            extract_loan_directions(&all_loans_text)?,
+            vec!["INBOUND".to_string()]
+        );
 
         Ok::<(), String>(())
     }

@@ -15,6 +15,7 @@ import {
   buildSettingsBackupErrorMessage,
   buildSettingsBackupExportSuccessMessage,
   buildSettingsInventoryExportSuccessMessage,
+  resolveSettingsInventoryExportSource,
   type SettingsBackupErrorMessageLabels,
   type SettingsInventoryExportMessageLabels,
 } from "./settings_backup_model";
@@ -32,8 +33,6 @@ type UseSettingsBackupExportActionsInput = {
   setError: Dispatch<SetStateAction<string | null>>;
   setInfo: Dispatch<SetStateAction<string | null>>;
   settingsBackupErrorMessageLabels: () => SettingsBackupErrorMessageLabels;
-  settingsClientHostBaseUrl: string | null;
-  settingsClientLibraryId: string | null;
   settingsClientReadOnly: boolean;
   settingsInventoryExportMessageLabels: () => SettingsInventoryExportMessageLabels;
   tauri: boolean;
@@ -48,8 +47,6 @@ export function useSettingsBackupExportActions({
   setError,
   setInfo,
   settingsBackupErrorMessageLabels,
-  settingsClientHostBaseUrl,
-  settingsClientLibraryId,
   settingsClientReadOnly,
   settingsInventoryExportMessageLabels,
   tauri,
@@ -104,7 +101,7 @@ export function useSettingsBackupExportActions({
     setInfo(null);
     try {
       const payload =
-        settingsClientReadOnly && settingsClientHostBaseUrl && settingsClientLibraryId
+        resolveSettingsInventoryExportSource(settingsClientReadOnly) === "loadedRows"
           ? { content: buildInventoryExportCsv(await loadSettingsInventoryRows()) }
           : await exportInventoryCsv();
       downloadTextFile(
@@ -140,7 +137,7 @@ export function useSettingsBackupExportActions({
     setInfo(null);
     try {
       const payload =
-        settingsClientReadOnly && settingsClientHostBaseUrl && settingsClientLibraryId
+        resolveSettingsInventoryExportSource(settingsClientReadOnly) === "loadedRows"
           ? { content: buildInventoryExportJson(await loadSettingsInventoryRows()) }
           : await exportInventoryJson();
       downloadTextFile(

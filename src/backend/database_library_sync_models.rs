@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::database_loan_models::SpoolLoanDetailsRow;
 use super::database_printer_models::PrinterOverviewRow;
 use super::database_spool_models::SpoolWithMasterRow;
+use super::database_wishlist_models::WishlistItemRow;
 use super::statistics::InventoryOverview;
 
 pub(crate) type LibrarySyncClientAuthState = (String, String, String, Option<String>);
@@ -24,6 +25,7 @@ pub struct LibrarySyncSettingsRow {
     pub cached_spools: Option<LibrarySyncCachedSpoolListRow>,
     pub cached_printers: Option<LibrarySyncCachedPrinterOverviewRow>,
     pub cached_loans: Option<LibrarySyncCachedLoanListRow>,
+    pub cached_wishlist: Option<LibrarySyncCachedWishlistListRow>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -56,4 +58,10 @@ pub struct LibrarySyncCachedPrinterOverviewRow {
 pub struct LibrarySyncCachedLoanListRow {
     pub captured_at: String,
     pub rows: Vec<SpoolLoanDetailsRow>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LibrarySyncCachedWishlistListRow {
+    pub captured_at: String,
+    pub rows: Vec<WishlistItemRow>,
 }

@@ -1,4 +1,8 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
+import {
+  resolveClientHostWriteGuard,
+  resolveLocalWriteGuard,
+} from "./client_write_guard_model";
 
 type ClientWriteGuardCopy = {
   clientReadOnlyAction: string;
@@ -26,26 +30,26 @@ export function useClientWriteGuards({
   setInfoMessage,
 }: ClientWriteGuardsInput) {
   const ensureLocalWriteAllowed = useCallback(() => {
-    if (!clientReadOnly) {
-      return true;
+    const result = resolveLocalWriteGuard(clientReadOnly);
+    if (result.messageKey === "clientReadOnlyAction") {
+      setInfoMessage(copy.clientReadOnlyAction);
     }
-    setInfoMessage(copy.clientReadOnlyAction);
-    return false;
+    return result.allowed;
   }, [clientReadOnly, copy.clientReadOnlyAction, setInfoMessage]);
 
   const canUseClientHostWrite = useCallback(() => {
-    if (!clientReadOnly) {
-      return false;
-    }
-    if (!clientHostBaseUrl || !clientLibraryId) {
+    const result = resolveClientHostWriteGuard({
+      clientHostBaseUrl,
+      clientHostWritePaired,
+      clientLibraryId,
+      clientReadOnly,
+    });
+    if (result.messageKey === "clientHostUnavailable") {
       setError(copy.clientHostUnavailable);
-      return false;
-    }
-    if (!clientHostWritePaired) {
+    } else if (result.messageKey === "clientWriteRequiresPairing") {
       setError(copy.clientWriteRequiresPairing);
-      return false;
     }
-    return true;
+    return result.allowed;
   }, [
     clientHostBaseUrl,
     clientHostWritePaired,

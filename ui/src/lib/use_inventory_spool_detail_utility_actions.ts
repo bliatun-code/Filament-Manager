@@ -20,6 +20,7 @@ type InventorySpoolDetailUtilityActionsInput = {
   clientLibraryId: string | null;
   clientReadOnly: boolean;
   closeRfidCaptureModal: () => void;
+  ensureLocalWriteAllowed: () => boolean;
   manageBusy: boolean;
   openRfidCaptureModal: () => void;
   reloadPrinterOverview: () => Promise<void>;
@@ -49,6 +50,7 @@ export function useInventorySpoolDetailUtilityActions({
   clientLibraryId,
   clientReadOnly,
   closeRfidCaptureModal,
+  ensureLocalWriteAllowed,
   manageBusy,
   openRfidCaptureModal,
   reloadPrinterOverview,
@@ -145,6 +147,12 @@ export function useInventorySpoolDetailUtilityActions({
       );
       return;
     }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
 
     setManageBusy(true);
     setError(null);
@@ -153,9 +161,6 @@ export function useInventorySpoolDetailUtilityActions({
         rfidCaptureLastSeenAt ??
         selectedRfidCaptureLiveIntegration?.observed_state?.last_seen_at ??
         new Date().toISOString();
-      if (clientReadOnly && !canUseClientHostWrite()) {
-        return;
-      }
       await updateInventorySpoolRfidTag(
         {
           spool_id: selectedSpool.id,
@@ -182,6 +187,7 @@ export function useInventorySpoolDetailUtilityActions({
     clientLibraryId,
     clientReadOnly,
     closeRfidCaptureModal,
+    ensureLocalWriteAllowed,
     manageBusy,
     reloadSpoolDetail,
     reloadSpools,

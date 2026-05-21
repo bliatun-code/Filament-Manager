@@ -15,7 +15,7 @@ import {
   OwnershipSnapshotPanel,
 } from "./dashboard_panels";
 import { useDashboardPageData } from "./use_dashboard_page_data";
-import type { PageKey } from "../App";
+import type { PageKey } from "../lib/app_navigation_model";
 
 type DashboardPageProps = {
   onNavigate?: (page: PageKey) => void;

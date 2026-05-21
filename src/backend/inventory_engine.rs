@@ -251,6 +251,13 @@ impl InventoryEngine {
         self.db.save_library_sync_cached_loans(rows)
     }
 
+    pub fn save_library_sync_cached_wishlist(
+        &self,
+        rows: &[WishlistItemRow],
+    ) -> InventoryResult<()> {
+        self.db.save_library_sync_cached_wishlist(rows)
+    }
+
     pub fn save_library_sync_client_auth_state(
         &self,
         session_id: &str,

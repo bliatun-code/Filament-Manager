@@ -1,11 +1,12 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { SettingsTabKey } from "../App";
+import type { SettingsTabKey } from "./settings_page_model";
 import type { Locale } from "../lib/i18n";
 import type {
   BackupValidationStats,
   CatalogResetStats,
   LibrarySyncHostValidationResult,
   LibrarySyncRemoteSnapshot,
+  SpoolWithMasterRow,
   TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
 import type {
@@ -69,6 +70,7 @@ type UseSettingsMaintenanceSectionInput = {
   settingsClientHostBaseUrl: string | null;
   settingsClientLibraryId: string | null;
   settingsClientReadOnly: boolean;
+  settingsInventoryRows: SpoolWithMasterRow[];
   settingsImportMessageLabels: () => SettingsImportMessageLabels;
   settingsInventoryExportMessageLabels: () => SettingsInventoryExportMessageLabels;
   settingsInventoryOverviewPrintMessageLabels: () => SettingsInventoryPrintMessageLabels;
@@ -112,6 +114,7 @@ export function useSettingsMaintenanceSection({
   settingsClientHostBaseUrl,
   settingsClientLibraryId,
   settingsClientReadOnly,
+  settingsInventoryRows,
   settingsImportMessageLabels,
   settingsInventoryExportMessageLabels,
   settingsInventoryOverviewPrintMessageLabels,
@@ -151,6 +154,7 @@ export function useSettingsMaintenanceSection({
   });
 
   const loadSettingsInventoryRows = useSettingsInventoryRowsLoader({
+    fallbackRows: settingsInventoryRows,
     settingsClientHostBaseUrl,
     settingsClientLibraryId,
     settingsClientReadOnly,
@@ -168,8 +172,6 @@ export function useSettingsMaintenanceSection({
     setError,
     setInfo,
     settingsBackupErrorMessageLabels,
-    settingsClientHostBaseUrl,
-    settingsClientLibraryId,
     settingsClientReadOnly,
     settingsInventoryExportMessageLabels,
     tauri,

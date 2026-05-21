@@ -9,6 +9,7 @@ import {
   buildSettingsPageTabButtons,
   buildSettingsPageTabLabels,
   buildSettingsPageTabs,
+  SETTINGS_PAGE_TAB_ORDER,
   normalizeSettingsInitialTab,
   resolveSettingsPagePrinters,
 } from "./settings_page_model";
@@ -64,6 +65,14 @@ test("settings page tab labels keep all primary tabs explicit", () => {
 });
 
 test("settings page tabs keep the intended navigation order", () => {
+  assert.deepEqual(SETTINGS_PAGE_TAB_ORDER, [
+    "GENERAL",
+    "LIBRARY",
+    "PRINTERS",
+    "CATALOG",
+    "MAINTENANCE",
+  ]);
+
   assert.deepEqual(
     buildSettingsPageTabs({
       CATALOG: "Filament catalogue",

@@ -1,6 +1,6 @@
 use serde_json::{Map, Value};
 
-pub const FULL_BACKUP_TABLES: [&str; 22] = [
+pub const FULL_BACKUP_TABLES: [&str; 24] = [
     "filament_master_list",
     "filament_spools",
     "spool_history_events",
@@ -11,6 +11,8 @@ pub const FULL_BACKUP_TABLES: [&str; 22] = [
     "ams_slots",
     "print_jobs",
     "printer_live_events",
+    "printer_live_usage_sessions",
+    "printer_live_usage_session_spools",
     "scales",
     "weight_readings",
     "scan_events",
@@ -25,7 +27,7 @@ pub const FULL_BACKUP_TABLES: [&str; 22] = [
     "sync_queue",
 ];
 
-pub const RESET_APP_STATE_TABLES: [&str; 20] = [
+pub const RESET_APP_STATE_TABLES: [&str; 22] = [
     "trusted_lan_pairings",
     "trusted_lan_paired_browsers",
     "label_print_jobs",
@@ -35,6 +37,8 @@ pub const RESET_APP_STATE_TABLES: [&str; 20] = [
     "spool_loans",
     "print_jobs",
     "printer_live_events",
+    "printer_live_usage_session_spools",
+    "printer_live_usage_sessions",
     "ams_slots",
     "ams_units",
     "filament_spools",

@@ -47,6 +47,8 @@ const DATABASE_PRINTER_QUERIES_SOURCE: &str = include_str!("database_printer_que
 const DATABASE_PRINTER_SCHEMA_SOURCE: &str = include_str!("database_printer_schema.rs");
 const DATABASE_PRINTER_SLOT_ASSIGNMENT_SOURCE: &str =
     include_str!("database_printer_slot_assignment.rs");
+const DATABASE_PRINTER_USAGE_SESSIONS_SOURCE: &str =
+    include_str!("database_printer_usage_sessions.rs");
 const DATABASE_RESET_SOURCE: &str = include_str!("database_reset.rs");
 const DATABASE_ROWS_SOURCE: &str = include_str!("database_rows.rs");
 const DATABASE_SCHEMA_SOURCE: &str = include_str!("database_schema.rs");
@@ -207,6 +209,10 @@ fn low_level_database_modules_do_not_depend_on_compatibility_facade() {
         (
             "database_printer_slot_assignment.rs",
             DATABASE_PRINTER_SLOT_ASSIGNMENT_SOURCE,
+        ),
+        (
+            "database_printer_usage_sessions.rs",
+            DATABASE_PRINTER_USAGE_SESSIONS_SOURCE,
         ),
         ("database_reset.rs", DATABASE_RESET_SOURCE),
         ("database_rows.rs", DATABASE_ROWS_SOURCE),

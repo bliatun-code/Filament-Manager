@@ -202,16 +202,28 @@ pub(crate) fn fetch_library_sync_wishlist_items(
     let (normalized_base_url, _) = prepare_library_sync_host_checked(&host_input)?;
 
     let limit = input.limit.unwrap_or(500).clamp(1, 2_500);
-    match fetch_library_sync_host_json(
+    let primary_rows: Result<Vec<WishlistItemRow>, String> = fetch_library_sync_host_json(
         &normalized_base_url,
         &format!("/api/v1/library/wishlist?limit={limit}"),
-    ) {
-        Ok(rows) => Ok(rows),
-        Err(error) if error.contains("404") => get_library_sync_host_json_authenticated(
-            &state,
-            &normalized_base_url,
-            &format!("/api/v1/wishlist?limit={limit}"),
-        ),
+    );
+    match primary_rows {
+        Ok(rows) => {
+            with_inventory(&state, |engine| {
+                engine.save_library_sync_cached_wishlist(&rows)
+            })?;
+            Ok(rows)
+        }
+        Err(error) if error.contains("404") => {
+            let rows: Vec<WishlistItemRow> = get_library_sync_host_json_authenticated(
+                &state,
+                &normalized_base_url,
+                &format!("/api/v1/wishlist?limit={limit}"),
+            )?;
+            with_inventory(&state, |engine| {
+                engine.save_library_sync_cached_wishlist(&rows)
+            })?;
+            Ok(rows)
+        }
         Err(error) => Err(error),
     }
 }

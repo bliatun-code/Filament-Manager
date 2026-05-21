@@ -32,6 +32,7 @@ pub(crate) fn save_library_sync_settings(
             cached_spools: None,
             cached_printers: None,
             cached_loans: None,
+            cached_wishlist: None,
         })
     })
 }

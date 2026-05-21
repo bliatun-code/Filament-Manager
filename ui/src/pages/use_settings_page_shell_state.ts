@@ -1,4 +1,4 @@
-import type { SettingsTabKey } from "../App";
+import type { SettingsTabKey } from "./settings_page_model";
 import type { Dispatch, SetStateAction } from "react";
 import { useSettingsActiveTab } from "./use_settings_active_tab";
 import { useSettingsAppVersion } from "./use_settings_app_version";

@@ -3,6 +3,7 @@ import { InventoryPageWorkspace } from "../components/inventory_page_workspace";
 import { InventoryRfidCaptureModal } from "../components/inventory_rfid_capture_modal";
 import { InventorySpoolDetailModal } from "../components/inventory_spool_detail_modal";
 import { LoanOutModal } from "../components/loan_out_modal";
+import type { InventoryNavigationIntent } from "../lib/app_navigation_model";
 import { useI18n } from "../lib/i18n";
 import type { RfidCaptureField } from "../lib/inventory_rfid_capture";
 import {
@@ -32,10 +33,7 @@ import { useInventoryWriteGuards } from "../lib/use_inventory_write_guards";
 import { isTauri } from "../lib/tauri_client";
 
 type InventoryPageProps = {
-  navigationIntent?: {
-    kind: "LOW_STOCK";
-    seq: number;
-  } | null;
+  navigationIntent?: InventoryNavigationIntent;
   onConsumeNavigationIntent?: () => void;
 };
 
@@ -484,6 +482,7 @@ export default function InventoryPage({
     clientLibraryId,
     clientReadOnly,
     closeRfidCaptureModal,
+    ensureLocalWriteAllowed,
     manageBusy,
     openRfidCaptureModal,
     reloadPrinterOverview,

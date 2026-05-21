@@ -11,6 +11,8 @@ import type {
   LibrarySyncRemoteSnapshot,
   LibrarySyncSettings,
   PrinterOverviewRow,
+  SpoolWithMasterRow,
+  WishlistItemRow,
 } from "./tauri_client";
 
 const t = (_key: string, fallback: string) => fallback;
@@ -82,6 +84,51 @@ function printerOverviewRow(id: string): PrinterOverviewRow {
   };
 }
 
+function spoolWithMasterRow(id: string): SpoolWithMasterRow {
+  return {
+    spool: {
+      id,
+      master_id: "master-1",
+      status: "IN_STOCK",
+      remaining_g: 850,
+      current_weight_g: 850,
+      initial_weight_g: 1000,
+      location_id: "Shelf 1",
+    },
+    master: {
+      id: "master-1",
+      material: "PLA",
+      filament_name: "Basic",
+      color_name: "Gray",
+      hex_color: "#808080",
+      product_url: null,
+      default_weight: 1000,
+      vendor: "Bambu",
+    },
+  };
+}
+
+function wishlistItem(id: string, overrides: Partial<WishlistItemRow> = {}): WishlistItemRow {
+  return {
+    id,
+    master_id: "master-1",
+    vendor: "Bambu",
+    material: "PLA",
+    filament_name: "Basic",
+    color_name: "Gray",
+    hex_color: "#808080",
+    desired_spools: 1,
+    quantity: 1,
+    priority: "NORMAL",
+    status: "WISHLIST",
+    notes: null,
+    source_url: null,
+    created_at: "2026-04-01 10:00:00",
+    updated_at: "2026-04-01 10:00:00",
+    ...overrides,
+  };
+}
+
 function validation(
   overrides: Partial<LibrarySyncHostValidationResult> = {},
 ): LibrarySyncHostValidationResult {
@@ -142,15 +189,25 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
       loadSyncSettings: async () =>
         syncSettings({
           mode: "CLIENT",
-          host_base_url: "http://host",
+          host_base_url: " http://host ",
+          library_id: " library-1 ",
           host_device_name: "Configured Host",
         }),
       loadTrustedLanStatus: async () => null,
-      validateHost: async () => validation({ device_name: "Validated Host" }),
-      fetchHostSnapshot: async () => snapshot("Live Host", { inventory: overview({ total_consumption_30d: 250 }) }),
+      validateHost: async (baseUrl, libraryId) => {
+        assert.equal(baseUrl, "http://host");
+        assert.equal(libraryId, "library-1");
+        return validation({ device_name: "Validated Host" });
+      },
+      fetchHostSnapshot: async (baseUrl, libraryId) => {
+        assert.equal(baseUrl, "http://host");
+        assert.equal(libraryId, "library-1");
+        return snapshot("Live Host", { inventory: overview({ total_consumption_30d: 250 }) });
+      },
       loadSpoolRows: async (options) => {
         assert.equal(options.clientReadOnly, true);
         assert.equal(options.clientHostBaseUrl, "http://host");
+        assert.equal(options.clientLibraryId, "library-1");
         return [];
       },
       fetchHostPrinterOverview: async () => [printerOverviewRow("printer-host")],
@@ -172,6 +229,242 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
 });
 
+test("loadDashboardData marks partial client host reads as cached", async () => {
+  const errors: unknown[] = [];
+  const result = await loadDashboardData(
+    { previousClientHostNeedsRepair: false, t },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          library_id: "library-1",
+          cached_printers: {
+            captured_at: "printer-cache",
+            rows: [printerOverviewRow("printer-cache")],
+          },
+        }),
+      loadTrustedLanStatus: async () => null,
+      validateHost: async () => validation(),
+      fetchHostSnapshot: async () => snapshot("Live Host", { captured_at: "snapshot-live" }),
+      loadSpoolRows: async () => [],
+      fetchHostPrinterOverview: async () => {
+        throw new Error("printers unavailable");
+      },
+      fetchHostLoans: async () => [],
+      fetchHostWishlist: async () => [],
+      onLoadError: (error) => {
+        errors.push(error);
+      },
+    },
+  );
+
+  assert.equal(result.syncSource, "client-cached");
+  assert.equal(result.capturedAt, "printer-cache");
+  assert.equal(result.clientHostCompanionTone, "live");
+  assert.deepEqual(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
+  assert.equal(errors.length, 1);
+});
+
+test("loadDashboardData skips host calls for incomplete client targets and uses cache", async () => {
+  const cached = snapshot("Cached Host", {
+    captured_at: "2026-04-01 09:00:00",
+  });
+  const result = await loadDashboardData(
+    { previousClientHostNeedsRepair: false, t },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          library_id: " ",
+          cached_snapshot: cached,
+        }),
+      loadTrustedLanStatus: async () => null,
+      validateHost: async () => {
+        throw new Error("should not validate without a complete target");
+      },
+      fetchHostSnapshot: async () => {
+        throw new Error("should not fetch without a complete target");
+      },
+      loadInventoryOverview: async () => overview(),
+      listLocalPrinters: async () => [],
+      loadSpoolRows: async (options) => {
+        assert.equal(options.clientReadOnly, false);
+        return [];
+      },
+      listLocalLoans: async () => [],
+      listLocalWishlist: async () => [],
+      listLocalTopMaterials: async () => [],
+    },
+  );
+
+  assert.equal(result.syncSource, "client-cached");
+  assert.equal(result.clientHostDisplayName, "Cached Host");
+  assert.equal(result.capturedAt, "2026-04-01 09:00:00");
+});
+
+test("loadDashboardData uses cached client rows without a cached snapshot", async () => {
+  const result = await loadDashboardData(
+    { previousClientHostNeedsRepair: false, t },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          library_id: " ",
+          cached_spools: {
+            captured_at: "2026-04-01 08:30:00",
+            rows: [spoolWithMasterRow("spool-cache")],
+          },
+          cached_printers: {
+            captured_at: "2026-04-01 08:35:00",
+            rows: [printerOverviewRow("printer-cache")],
+          },
+          cached_wishlist: {
+            captured_at: "2026-04-01 08:40:00",
+            rows: [wishlistItem("wishlist-cache", { status: "ON_ORDER", quantity: 2 })],
+          },
+        }),
+      loadTrustedLanStatus: async () => null,
+      validateHost: async () => {
+        throw new Error("should not validate without a complete target");
+      },
+      fetchHostSnapshot: async () => {
+        throw new Error("should not fetch without a complete target");
+      },
+      loadInventoryOverview: async () => {
+        throw new Error("local overview should not load in client mode");
+      },
+      listLocalPrinters: async () => {
+        throw new Error("local printers should not load in client mode");
+      },
+      loadSpoolRows: async () => {
+        throw new Error("local spools should not load in client mode");
+      },
+      listLocalLoans: async () => {
+        throw new Error("local loans should not load in client mode");
+      },
+      listLocalWishlist: async () => {
+        throw new Error("local wishlist should not load in client mode");
+      },
+      listLocalTopMaterials: async () => {
+        throw new Error("local materials should not load in client mode");
+      },
+    },
+  );
+
+  assert.equal(result.syncSource, "client-cached");
+  assert.equal(result.capturedAt, "2026-04-01 08:30:00");
+  assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "1");
+  assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
+  assert.equal(
+    result.derived.health.metrics.find((metric) => metric.id === "onOrder")?.value,
+    "2",
+  );
+});
+
+test("loadDashboardData prefers cached client spool rows over stale snapshot totals", async () => {
+  const result = await loadDashboardData(
+    { previousClientHostNeedsRepair: false, t },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          library_id: " ",
+          cached_snapshot: snapshot("Cached Host", {
+            captured_at: "2026-04-01 08:00:00",
+            inventory: overview({
+              total_spools: 99,
+              total_owned_spools: 99,
+              low_stock: 99,
+              owned_low_stock: 99,
+            }),
+          }),
+          cached_spools: {
+            captured_at: "2026-04-01 08:30:00",
+            rows: [spoolWithMasterRow("spool-cache")],
+          },
+        }),
+      loadTrustedLanStatus: async () => null,
+      validateHost: async () => {
+        throw new Error("should not validate without a complete target");
+      },
+      fetchHostSnapshot: async () => {
+        throw new Error("should not fetch without a complete target");
+      },
+      loadInventoryOverview: async () => {
+        throw new Error("local overview should not load in client mode");
+      },
+      listLocalPrinters: async () => {
+        throw new Error("local printers should not load in client mode");
+      },
+      loadSpoolRows: async () => {
+        throw new Error("local spools should not load in client mode");
+      },
+      listLocalLoans: async () => {
+        throw new Error("local loans should not load in client mode");
+      },
+      listLocalWishlist: async () => {
+        throw new Error("local wishlist should not load in client mode");
+      },
+      listLocalTopMaterials: async () => {
+        throw new Error("local materials should not load in client mode");
+      },
+    },
+  );
+
+  assert.equal(result.syncSource, "client-cached");
+  assert.equal(result.capturedAt, "2026-04-01 08:30:00");
+  assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "1");
+  assert.equal(result.derived.stats.find((stat) => stat.id === "lowStock")?.value, "0");
+});
+
+test("loadDashboardData stays client-offline without cache instead of loading local data", async () => {
+  const result = await loadDashboardData(
+    { previousClientHostNeedsRepair: false, t },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: " ",
+          library_id: "library-1",
+        }),
+      loadTrustedLanStatus: async () => null,
+      validateHost: async () => {
+        throw new Error("should not validate without a complete target");
+      },
+      fetchHostSnapshot: async () => {
+        throw new Error("should not fetch without a complete target");
+      },
+      loadInventoryOverview: async () => {
+        throw new Error("local overview should not load in client mode");
+      },
+      listLocalPrinters: async () => {
+        throw new Error("local printers should not load in client mode");
+      },
+      loadSpoolRows: async () => {
+        throw new Error("local spools should not load in client mode");
+      },
+      listLocalLoans: async () => {
+        throw new Error("local loans should not load in client mode");
+      },
+      listLocalWishlist: async () => {
+        throw new Error("local wishlist should not load in client mode");
+      },
+      listLocalTopMaterials: async () => {
+        throw new Error("local materials should not load in client mode");
+      },
+    },
+  );
+
+  assert.equal(result.syncSource, "client-offline");
+  assert.equal(result.capturedAt, null);
+  assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "0");
+  assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "0");
+});
+
 test("loadDashboardData falls back to cached client snapshot when host snapshot fails", async () => {
   const errors: unknown[] = [];
   const cached = snapshot("Cached Host", {
@@ -189,6 +482,10 @@ test("loadDashboardData falls back to cached client snapshot when host snapshot 
             captured_at: cached.captured_at,
             rows: [printerOverviewRow("printer-cache")],
           },
+          cached_wishlist: {
+            captured_at: cached.captured_at,
+            rows: [wishlistItem("wishlist-cache", { status: "ON_ORDER" })],
+          },
         }),
       loadTrustedLanStatus: async () => null,
       validateHost: async () => validation(),
@@ -200,7 +497,9 @@ test("loadDashboardData falls back to cached client snapshot when host snapshot 
         throw new Error("printers unavailable");
       },
       fetchHostLoans: async () => [],
-      fetchHostWishlist: async () => [],
+      fetchHostWishlist: async () => {
+        throw new Error("wishlist unavailable");
+      },
       onLoadError: (error) => {
         errors.push(error);
       },
@@ -212,5 +511,9 @@ test("loadDashboardData falls back to cached client snapshot when host snapshot 
   assert.equal(result.clientHostDisplayName, "Host");
   assert.equal(result.capturedAt, "2026-04-01 09:00:00");
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
-  assert.equal(errors.length, 2);
+  assert.equal(
+    result.derived.health.metrics.find((metric) => metric.id === "onOrder")?.value,
+    "1",
+  );
+  assert.equal(errors.length, 3);
 });

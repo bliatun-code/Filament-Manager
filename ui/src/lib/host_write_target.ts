@@ -8,11 +8,6 @@ export type ClientHostWriteTarget = {
   libraryId: string;
 };
 
-export type ClientHostBaseTarget = {
-  baseUrl: string;
-  libraryId: string | null;
-};
-
 function normalizedText(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
@@ -42,20 +37,4 @@ export function resolveClientHostTarget(
   }
 
   return { baseUrl, libraryId };
-}
-
-export function requireClientHostBaseTarget(
-  target: ClientHostTargetInput,
-  errorMessage: string,
-): ClientHostBaseTarget {
-  const baseUrl = normalizedText(target.clientHostBaseUrl);
-
-  if (!baseUrl) {
-    throw new Error(errorMessage);
-  }
-
-  return {
-    baseUrl,
-    libraryId: normalizedText(target.clientLibraryId),
-  };
 }

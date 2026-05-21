@@ -89,6 +89,14 @@ export type SettingsInventoryExportMessageLabels = {
   inventoryJsonExported: string;
 };
 
+export type SettingsInventoryExportSource = "loadedRows" | "localCommand";
+
+export function resolveSettingsInventoryExportSource(
+  settingsClientReadOnly: boolean,
+): SettingsInventoryExportSource {
+  return settingsClientReadOnly ? "loadedRows" : "localCommand";
+}
+
 export type SettingsBackupErrorMessageKey =
   | "exportBackupFailed"
   | "exportInventoryCsvFailed"

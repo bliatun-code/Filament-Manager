@@ -129,6 +129,30 @@ CREATE TABLE IF NOT EXISTS printer_live_events (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS printer_live_usage_sessions (
+  id TEXT PRIMARY KEY,
+  printer_id TEXT NOT NULL REFERENCES printers(id),
+  session_key TEXT NOT NULL,
+  job_name TEXT,
+  print_type TEXT,
+  started_at TEXT NOT NULL,
+  last_seen_at TEXT NOT NULL,
+  finished_at TEXT,
+  status TEXT NOT NULL,
+  success INTEGER,
+  total_used_g INTEGER NOT NULL DEFAULT 0,
+  source TEXT NOT NULL DEFAULT 'BAMBU_LIVE',
+  UNIQUE(printer_id, session_key)
+);
+
+CREATE TABLE IF NOT EXISTS printer_live_usage_session_spools (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL REFERENCES printer_live_usage_sessions(id),
+  spool_id TEXT NOT NULL REFERENCES filament_spools(id),
+  used_g INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(session_id, spool_id)
+);
+
 CREATE TABLE IF NOT EXISTS scales (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

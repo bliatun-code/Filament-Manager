@@ -2,6 +2,7 @@ import { invoke } from "./tauri_invoke";
 import type { CompanionSpoolDetail, InventoryOverview, SpoolWithMasterRow } from "./tauri_inventory_client";
 import type { SpoolLoanDetailsRow } from "./tauri_loan_client";
 import type { PrinterOverviewRow, PrinterSettingsSnapshot } from "./tauri_printer_client";
+import type { WishlistItemRow } from "./tauri_wishlist_client";
 
 export type TrustedLanCompanionStatus = {
   enabled: boolean;
@@ -48,6 +49,7 @@ export type LibrarySyncSettings = {
   cached_spools?: LibrarySyncCachedSpoolList | null;
   cached_printers?: LibrarySyncCachedPrinterOverview | null;
   cached_loans?: LibrarySyncCachedLoanList | null;
+  cached_wishlist?: LibrarySyncCachedWishlistList | null;
 };
 
 export type LibrarySyncHostValidationResult = {
@@ -92,6 +94,11 @@ export type LibrarySyncCachedPrinterOverview = {
 export type LibrarySyncCachedLoanList = {
   captured_at: string;
   rows: SpoolLoanDetailsRow[];
+};
+
+export type LibrarySyncCachedWishlistList = {
+  captured_at: string;
+  rows: WishlistItemRow[];
 };
 
 export type TrustedLanPairingLink = {
@@ -229,6 +236,10 @@ export async function fetchLibrarySyncLoans(
 
 export async function fetchCachedLibrarySyncLoans() {
   return invoke<LibrarySyncCachedLoanList | null>("fetch_cached_library_sync_loans");
+}
+
+export async function fetchCachedLibrarySyncWishlist() {
+  return invoke<LibrarySyncCachedWishlistList | null>("fetch_cached_library_sync_wishlist");
 }
 
 export async function pairLibrarySyncHost(baseUrl: string, pairingTokenOrUrl: string) {

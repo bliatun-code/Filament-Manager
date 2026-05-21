@@ -36,6 +36,10 @@ export async function loadCatalogMasters(
     return fetchHostCatalog(hostTarget.baseUrl, hostTarget.libraryId, limit, search ?? null);
   }
 
+  if (clientReadOnly) {
+    return [];
+  }
+
   return listLocalCatalog(limit, search ?? undefined);
 }
 
