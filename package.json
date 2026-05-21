@@ -1,7 +1,7 @@
 {
   "name": "bambu-filament-manager",
   "private": true,
-  "version": "0.14.0",
+  "version": "0.15.0",
   "type": "module",
   "engines": {
     "node": ">=24 <25",
@@ -9,11 +9,12 @@
   },
   "scripts": {
     "doctor": "node ./scripts/doctor.mjs",
+    "check:version": "node ./scripts/check-version-consistency.mjs",
     "check:companion-routes": "node ./scripts/check-companion-routes.mjs",
     "check:tauri-invokes": "node ./scripts/check-tauri-invokes.mjs",
     "check:ui-architecture": "node ./scripts/check-ui-architecture.mjs",
     "check:ui-orphans": "node ./scripts/check-ui-orphans.mjs",
-    "check:contracts": "npm run check:tauri-invokes && npm run check:companion-routes && npm run check:ui-orphans && npm run check:ui-architecture",
+    "check:contracts": "npm run check:version && npm run check:tauri-invokes && npm run check:companion-routes && npm run check:ui-orphans && npm run check:ui-architecture",
     "lint:ui": "npm --prefix ./ui run lint",
     "fmt:rust": "cargo fmt --all -- --check",
     "test:companion": "node ./scripts/run-companion-tests.mjs",
@@ -32,7 +33,7 @@
     "better-sqlite3": "^12.10.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.1",
-    "tsx": "^4.21.0"
+    "@tauri-apps/cli": "^2.11.2",
+    "tsx": "^4.22.3"
   }
 }

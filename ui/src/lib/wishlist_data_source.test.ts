@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildWishlistDraft,
+  canStockWishlistItem,
   createWishlistEntry,
   deleteWishlistEntry,
   filterWishlistCatalogMasters,
@@ -82,6 +83,12 @@ test("normalizeWishlistStatus keeps known queue states and falls back to wishlis
   assert.equal(normalizeWishlistStatus("ON_ORDER"), "ON_ORDER");
   assert.equal(normalizeWishlistStatus("RECEIVED"), "RECEIVED");
   assert.equal(normalizeWishlistStatus("ARCHIVED"), "WISHLIST");
+});
+
+test("canStockWishlistItem rejects already received wishlist rows", () => {
+  assert.equal(canStockWishlistItem("WISHLIST"), true);
+  assert.equal(canStockWishlistItem("ON_ORDER"), true);
+  assert.equal(canStockWishlistItem("RECEIVED"), false);
 });
 
 function catalogMaster(overrides: Partial<MasterCatalogRow> = {}): MasterCatalogRow {

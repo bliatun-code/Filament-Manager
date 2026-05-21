@@ -8,6 +8,7 @@ import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { MasterCatalogRow, WishlistItemRow } from "../lib/tauri_client";
 import {
+  canStockWishlistItem,
   normalizeWishlistStatus,
   type WishlistQueueSummary,
   type WishlistStatus,
@@ -121,6 +122,7 @@ export function WishlistQueuePanel({
         {visibleItems.map((item) => {
           const itemHex = wishlistItemHex(item, catalogMasterById);
           const itemStatus = normalizeWishlistStatus(item.status);
+          const canStockItem = canStockWishlistItem(item.status);
           return (
             <div
               key={item.id}
@@ -183,14 +185,16 @@ export function WishlistQueuePanel({
                   ]}
                 />
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
-                    onClick={() => onStockItem(item)}
-                    disabled={!tauriAvailable || busy}
-                  >
-                    {t("inventory.stockRollNow", "Stock roll now")}
-                  </button>
+                  {canStockItem ? (
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
+                      onClick={() => onStockItem(item)}
+                      disabled={!tauriAvailable || busy}
+                    >
+                      {t("inventory.stockRollNow", "Stock roll now")}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white/80 px-3 py-2 text-[11px] font-semibold text-slate-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-200 dark:hover:bg-slate-900/80"

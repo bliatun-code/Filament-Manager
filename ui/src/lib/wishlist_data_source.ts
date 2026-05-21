@@ -102,6 +102,10 @@ export function normalizeWishlistStatus(statusRaw: string): WishlistStatus {
   return "WISHLIST";
 }
 
+export function canStockWishlistItem(statusRaw: string): boolean {
+  return normalizeWishlistStatus(statusRaw) !== "RECEIVED";
+}
+
 export function listWishlistCatalogMastersByVendor(
   masters: MasterCatalogRow[],
   vendorNeedle: string,

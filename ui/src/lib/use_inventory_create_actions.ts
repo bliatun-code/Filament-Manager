@@ -13,6 +13,7 @@ import type { useI18n } from "./i18n";
 import type { MasterCatalogRow, WishlistItemRow } from "./tauri_client";
 import {
   buildWishlistDraft,
+  canStockWishlistItem,
   createWishlistEntry,
   deleteWishlistEntry,
   updateWishlistEntryStatus,
@@ -298,6 +299,9 @@ export function useInventoryCreateActions({
   }
 
   async function handleStockFromWishlist(item: WishlistItemRow) {
+    if (!canStockWishlistItem(item.status)) {
+      return;
+    }
     if (!canStartWrite()) {
       return;
     }
