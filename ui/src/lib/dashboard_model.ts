@@ -357,11 +357,11 @@ export function buildDashboardDerivedState(params: {
     loadedSlots: effectiveSlotTotals.loadedSlots,
   };
 
-  const healthySpools = spoolRows.filter((row) => {
+  const healthySpools = onHandRows.filter((row) => {
     const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? row.spool.initial_weight_g ?? 0;
-    return row.spool.status !== "EMPTY" && row.spool.status !== "LOST" && remaining >= 200;
+    return remaining >= LOW_STOCK_GRAMS;
   }).length;
-  const healthScore = onHandTotal === 0 ? 100 : Math.round((healthySpools / onHandTotal) * 100);
+  const healthScore = onHandTotal === 0 ? 100 : Math.min(100, Math.round((healthySpools / onHandTotal) * 100));
   const health: DashboardHealth = {
     score: healthScore,
     headline:
