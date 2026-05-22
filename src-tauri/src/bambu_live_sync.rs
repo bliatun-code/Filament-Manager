@@ -1,6 +1,6 @@
 use crate::backend::database_printer_usage_sessions::{
-    LiveUsageDeltaInput, LiveUsageObservedWeightCorrectionInput, LiveUsageSessionInput,
-    LIVE_USAGE_PROVISIONAL_SESSION_KEY,
+    LiveUsageDeltaInput, LiveUsageDeltaResult, LiveUsageObservedWeightCorrectionInput,
+    LiveUsageRecentCompletedDeltaInput, LiveUsageSessionInput, LIVE_USAGE_PROVISIONAL_SESSION_KEY,
 };
 use crate::backend::database_result::InventoryError;
 use crate::backend::filament_database::{
@@ -25,6 +25,7 @@ const LIVE_WEIGHT_NEAR_FINISH_PROGRESS_PERCENT: i64 = 90;
 const LIVE_WEIGHT_NEAR_FINISH_MAX_REMAINING_MINUTES: i64 = 10;
 const LIVE_WEIGHT_NEAR_FINISH_SMALL_DROP_G: i64 = 10;
 const LIVE_WEIGHT_NEAR_FINISH_MIN_RECORDED_USAGE_G: i64 = 50;
+const LIVE_WEIGHT_RECENT_COMPLETED_TAIL_SYNC_SECS: i64 = 10 * 60;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum LiveWeightDecision {
@@ -701,18 +702,63 @@ fn sync_live_weight(
     db.update_spool_status(spool_id, next_status)?;
     db.ensure_scale("bambu-ams", "Bambu AMS", "VIRTUAL")?;
     db.insert_weight_reading("bambu-ams", spool_id, remaining_grams, "BAMBU_AMS")?;
+    let mut usage_attached_to_recent_completed_session = false;
     let usage_record = match (&decision, usage_context) {
         (LiveWeightDecision::AcceptDecrease { used_grams }, Some(context)) => {
-            Some(db.record_live_usage_delta(LiveUsageDeltaInput {
-                printer_id,
-                session_key: &context.session_key,
-                job_name: context.job_name.as_deref(),
-                print_type: context.print_type.as_deref(),
-                spool_id,
-                used_grams: *used_grams,
-                observed_at: context.observed_at.as_deref(),
-                defer_initial_delta: context.defer_initial_weight_delta(),
-            })?)
+            let use_recent_completed_session = context.looks_like_recent_completed_tail()
+                && !db.live_usage_session_is_active(printer_id, &context.session_key)?;
+            if use_recent_completed_session {
+                let record = record_recent_completed_live_usage_delta(
+                    db,
+                    RecentCompletedUsageDeltaInput {
+                        printer_id,
+                        session_key: Some(&context.session_key),
+                        spool_id,
+                        used_grams: *used_grams,
+                        observed_at: context.observed_at.as_deref(),
+                    },
+                )?;
+                usage_attached_to_recent_completed_session = record.is_some();
+                if let Some(record) = record {
+                    Some(record)
+                } else {
+                    Some(db.record_live_usage_delta(LiveUsageDeltaInput {
+                        printer_id,
+                        session_key: &context.session_key,
+                        job_name: context.job_name.as_deref(),
+                        print_type: context.print_type.as_deref(),
+                        spool_id,
+                        used_grams: *used_grams,
+                        observed_at: context.observed_at.as_deref(),
+                        defer_initial_delta: context.defer_initial_weight_delta(*used_grams),
+                    })?)
+                }
+            } else {
+                Some(db.record_live_usage_delta(LiveUsageDeltaInput {
+                    printer_id,
+                    session_key: &context.session_key,
+                    job_name: context.job_name.as_deref(),
+                    print_type: context.print_type.as_deref(),
+                    spool_id,
+                    used_grams: *used_grams,
+                    observed_at: context.observed_at.as_deref(),
+                    defer_initial_delta: context.defer_initial_weight_delta(*used_grams),
+                })?)
+            }
+        }
+        (LiveWeightDecision::AcceptDecrease { used_grams }, None) => {
+            let record = record_recent_completed_live_usage_delta(
+                db,
+                RecentCompletedUsageDeltaInput {
+                    printer_id,
+                    session_key: None,
+                    spool_id,
+                    used_grams: *used_grams,
+                    observed_at: tray.last_identity_seen_at.as_deref(),
+                },
+            )?;
+            usage_attached_to_recent_completed_session = record.is_some();
+            record
         }
         _ => None,
     };
@@ -729,6 +775,7 @@ fn sync_live_weight(
                 .as_ref()
                 .map(|record| record.deferred_initial_delta)
                 .unwrap_or(false),
+            "usage_attached_to_recent_completed_session": usage_attached_to_recent_completed_session,
             "usage_session_id": usage_record.as_ref().map(|record| record.session_id.as_str()),
             "usage_session_key": usage_context.map(|context| context.session_key.as_str()),
             "remaining_percent": tray.remaining_percent,
@@ -753,6 +800,7 @@ fn sync_live_weight(
                 .as_ref()
                 .map(|record| record.deferred_initial_delta)
                 .unwrap_or(false),
+            "usage_attached_to_recent_completed_session": usage_attached_to_recent_completed_session,
             "usage_session_id": usage_record.as_ref().map(|record| record.session_id.as_str()),
             "usage_session_key": usage_context.map(|context| context.session_key.as_str()),
             "job_name": usage_context.and_then(|context| context.job_name.as_deref()),
@@ -798,6 +846,28 @@ fn should_ignore_near_finish_small_decrease(
         .live_usage_session_spool_used_g(printer_id, &context.session_key, spool_id)?
         .unwrap_or(0);
     Ok(recorded_used_g >= LIVE_WEIGHT_NEAR_FINISH_MIN_RECORDED_USAGE_G)
+}
+
+struct RecentCompletedUsageDeltaInput<'a> {
+    printer_id: &'a str,
+    session_key: Option<&'a str>,
+    spool_id: &'a str,
+    used_grams: i64,
+    observed_at: Option<&'a str>,
+}
+
+fn record_recent_completed_live_usage_delta(
+    db: &FilamentDatabase,
+    input: RecentCompletedUsageDeltaInput<'_>,
+) -> Result<Option<LiveUsageDeltaResult>, InventoryError> {
+    db.record_recent_completed_live_usage_delta(LiveUsageRecentCompletedDeltaInput {
+        printer_id: input.printer_id,
+        session_key: input.session_key,
+        spool_id: input.spool_id,
+        used_grams: input.used_grams,
+        observed_at: input.observed_at,
+        max_age_seconds: LIVE_WEIGHT_RECENT_COMPLETED_TAIL_SYNC_SECS,
+    })
 }
 
 fn should_rebase_live_weight_before_usage(
@@ -1005,11 +1075,22 @@ struct LivePrintUsageContext {
 }
 
 impl LivePrintUsageContext {
-    fn defer_initial_weight_delta(&self) -> bool {
+    fn defer_initial_weight_delta(&self, used_grams: i64) -> bool {
         self.finished_success.is_none()
+            && used_grams > LIVE_WEIGHT_NEAR_FINISH_SMALL_DROP_G
             && self
                 .progress_percent
                 .is_some_and(|progress| progress <= LIVE_USAGE_WARMUP_PROGRESS_PERCENT)
+    }
+
+    fn looks_like_recent_completed_tail(&self) -> bool {
+        self.finished_success.is_none()
+            && self
+                .progress_percent
+                .is_some_and(|progress| progress >= LIVE_WEIGHT_NEAR_FINISH_PROGRESS_PERCENT)
+            && self.remaining_minutes.is_some_and(|minutes| {
+                (0..=LIVE_WEIGHT_NEAR_FINISH_MAX_REMAINING_MINUTES).contains(&minutes)
+            })
     }
 }
 

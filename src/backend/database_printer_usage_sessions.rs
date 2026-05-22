@@ -33,6 +33,15 @@ pub struct LiveUsageObservedWeightCorrectionInput<'a> {
     pub min_correction_grams: i64,
 }
 
+pub struct LiveUsageRecentCompletedDeltaInput<'a> {
+    pub printer_id: &'a str,
+    pub session_key: Option<&'a str>,
+    pub spool_id: &'a str,
+    pub used_grams: i64,
+    pub observed_at: Option<&'a str>,
+    pub max_age_seconds: i64,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct LiveUsageDeltaResult {
     pub session_id: String,
@@ -319,6 +328,82 @@ pub(crate) fn correct_live_usage_for_observed_weight_increase(
         previous_used_grams,
         corrected_used_grams,
         correction_grams,
+    }))
+}
+
+pub(crate) fn record_recent_completed_live_usage_delta(
+    conn: &Connection,
+    input: LiveUsageRecentCompletedDeltaInput<'_>,
+) -> InventoryResult<Option<LiveUsageDeltaResult>> {
+    if input.used_grams <= 0 {
+        return Ok(None);
+    }
+    let printer_id = normalize_required_text(input.printer_id, "printer id")?;
+    let spool_id = normalize_required_text(input.spool_id, "spool id")?;
+    let Some(observed_at) = normalized_optional_text(input.observed_at) else {
+        return Ok(None);
+    };
+    let max_age_seconds = input.max_age_seconds.max(0);
+    let session_key = input
+        .session_key
+        .map(|value| normalize_required_text(value, "session key"))
+        .transpose()?;
+    let session_key_prefix = session_key
+        .as_deref()
+        .map(live_usage_session_key_prefix)
+        .unwrap_or_default();
+
+    let Some((session_id, session_spool_id)) = conn
+        .query_row(
+            "SELECT sessions.id, session_spools.id
+             FROM printer_live_usage_sessions sessions
+             JOIN printer_live_usage_session_spools session_spools
+               ON session_spools.session_id = sessions.id
+              AND session_spools.spool_id = ?2
+             WHERE sessions.printer_id = ?1
+               AND sessions.status = 'COMPLETED'
+               AND sessions.success = 1
+               AND (?3 IS NULL OR sessions.session_key = ?3 OR sessions.session_key LIKE ?4 ESCAPE '\\')
+               AND unixepoch(?5) - unixepoch(COALESCE(sessions.finished_at, sessions.last_seen_at)) BETWEEN 0 AND ?6
+             ORDER BY unixepoch(COALESCE(sessions.finished_at, sessions.last_seen_at)) DESC,
+                      sessions.last_seen_at DESC,
+                      sessions.started_at DESC,
+                      sessions.id DESC
+             LIMIT 1",
+            params![
+                &printer_id,
+                &spool_id,
+                session_key.as_deref(),
+                &session_key_prefix,
+                &observed_at,
+                max_age_seconds,
+            ],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )
+        .optional()?
+    else {
+        return Ok(None);
+    };
+
+    let recorded_used_grams = input.used_grams.max(0);
+    conn.execute(
+        "UPDATE printer_live_usage_sessions
+         SET total_used_g = total_used_g + ?2,
+             last_seen_at = ?3
+         WHERE id = ?1",
+        params![&session_id, recorded_used_grams, &observed_at],
+    )?;
+    conn.execute(
+        "UPDATE printer_live_usage_session_spools
+         SET used_g = used_g + ?2
+         WHERE id = ?1",
+        params![session_spool_id, recorded_used_grams],
+    )?;
+
+    Ok(Some(LiveUsageDeltaResult {
+        session_id,
+        recorded_used_grams,
+        deferred_initial_delta: false,
     }))
 }
 

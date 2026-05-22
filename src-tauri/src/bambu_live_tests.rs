@@ -2417,6 +2417,276 @@ fn live_weight_sync_logs_recorded_usage_decision_for_warmup_delta() {
 }
 
 #[test]
+fn live_weight_sync_records_small_initial_running_delta() {
+    let db_path = temp_db_path("usage-small-initial-delta");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 1, 1)
+            .map_err(|error| error.to_string())?;
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PLA",
+                filament_name: "Matte",
+                color_name: "Charcoal",
+                hex_color: Some("#111111"),
+                product_url: None,
+                vendor: Some("Bambu"),
+                default_weight: Some(1000),
+            })
+            .map_err(|error| error.to_string())?;
+        db.insert_spool(&SpoolRow {
+            id: "spool_1".to_string(),
+            master_id,
+            qr_code: None,
+            rfid_tag: Some("tray-rfid-1".to_string()),
+            rfid_observed_at: None,
+            status: "IN_STOCK".to_string(),
+            ownership_type: "OWNED".to_string(),
+            owner_name: None,
+            owner_contact: None,
+            ownership_note: None,
+            initial_weight_g: Some(1000),
+            current_weight_g: Some(460),
+            remaining_g: Some(460),
+            spool_tare_weight_g: None,
+            location_id: None,
+            home_location_id: None,
+            purchase_date: None,
+            purchase_price: None,
+            batch_code: None,
+            last_used_at: None,
+        })
+        .map_err(|error| error.to_string())?;
+
+        let observed_at = super::now_iso_string();
+        let mut observed = super::default_offline_state();
+        observed.online = true;
+        observed.mqtt_connected = true;
+        observed.last_seen_at = Some(observed_at.clone());
+        observed.gcode_state = Some("RUNNING".to_string());
+        observed.print_type = Some("cloud".to_string());
+        observed.subtask_id = Some("966196804".to_string());
+        observed.subtask_name = Some("Single color, trashcan icon".to_string());
+        observed.progress_percent = Some(5);
+        observed.remaining_minutes = Some(208);
+        observed.trays = vec![BambuLiveObservedTrayRow {
+            tray_index: 0,
+            loaded: true,
+            filament_type: Some("PLA".to_string()),
+            filament_name: Some("Matte".to_string()),
+            color_hex: Some("#111111".to_string()),
+            tray_weight_g: Some(1000),
+            remaining_percent: Some(45),
+            remaining_grams: Some(450),
+            observed_rfid_tag: None,
+            tray_uuid: Some("tray-rfid-1".to_string()),
+            chip_id: None,
+            tray_info_idx: None,
+            tray_id_name: None,
+            last_identity_seen_at: Some(observed_at),
+            last_empty_seen_at: None,
+            empty_observation_count: Some(0),
+            matched_inventory_spool_id: None,
+            matched_inventory_mode: None,
+            match_status: None,
+            match_note: None,
+        }];
+
+        crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed)
+            .map_err(|error| error.to_string())?;
+
+        let (total_used_g, spool_used_g): (i64, i64) = db
+            .connection()
+            .query_row(
+                "SELECT sessions.total_used_g, session_spools.used_g
+                 FROM printer_live_usage_sessions sessions
+                 JOIN printer_live_usage_session_spools session_spools
+                   ON session_spools.session_id = sessions.id
+                 WHERE sessions.session_key = 'subtask:966196804'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(total_used_g, 10);
+        assert_eq!(spool_used_g, 10);
+
+        let payload_json: String = db
+            .connection()
+            .query_row(
+                "SELECT payload_json
+                 FROM printer_live_events
+                 WHERE event_type = 'LIVE_AUTO_WEIGHT_SYNC'
+                 LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let payload: Value =
+            serde_json::from_str(&payload_json).map_err(|error| error.to_string())?;
+        assert_eq!(
+            payload
+                .get("usage_deferred_initial_delta")
+                .and_then(Value::as_bool),
+            Some(false)
+        );
+        assert_eq!(
+            payload.get("usage_recorded_grams").and_then(Value::as_i64),
+            Some(10)
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("live_weight_sync_records_small_initial_running_delta failed: {message}");
+    }
+}
+
+#[test]
+fn enrich_with_match_status_attaches_tail_weight_sync_to_recent_completed_session() {
+    let db_path = temp_db_path("usage-tail-after-complete");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 1, 1)
+            .map_err(|error| error.to_string())?;
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PLA",
+                filament_name: "Matte",
+                color_name: "Charcoal",
+                hex_color: Some("#111111"),
+                product_url: None,
+                vendor: Some("Bambu"),
+                default_weight: Some(1000),
+            })
+            .map_err(|error| error.to_string())?;
+        db.insert_spool(&SpoolRow {
+            id: "spool_1".to_string(),
+            master_id,
+            qr_code: None,
+            rfid_tag: Some("tray-rfid-1".to_string()),
+            rfid_observed_at: None,
+            status: "ASSIGNED".to_string(),
+            ownership_type: "OWNED".to_string(),
+            owner_name: None,
+            owner_contact: None,
+            ownership_note: None,
+            initial_weight_g: Some(1000),
+            current_weight_g: Some(330),
+            remaining_g: Some(330),
+            spool_tare_weight_g: None,
+            location_id: None,
+            home_location_id: None,
+            purchase_date: None,
+            purchase_price: None,
+            batch_code: None,
+            last_used_at: None,
+        })
+        .map_err(|error| error.to_string())?;
+        let finished_at = super::now_iso_string();
+        db.record_live_usage_delta(
+            crate::backend::database_printer_usage_sessions::LiveUsageDeltaInput {
+                printer_id: "printer_1",
+                session_key: "subtask:966196804",
+                job_name: Some("Single color, trashcan icon"),
+                print_type: Some("cloud"),
+                spool_id: "spool_1",
+                used_grams: 130,
+                observed_at: Some(&finished_at),
+                defer_initial_delta: false,
+            },
+        )
+        .map_err(|error| error.to_string())?;
+        db.finish_live_usage_session("printer_1", "subtask:966196804", Some(&finished_at), true)
+            .map_err(|error| error.to_string())?;
+
+        let observed_at = super::now_iso_string();
+        let mut observed = super::default_offline_state();
+        observed.online = true;
+        observed.mqtt_connected = true;
+        observed.last_seen_at = Some(observed_at.clone());
+        observed.trays = vec![BambuLiveObservedTrayRow {
+            tray_index: 0,
+            loaded: true,
+            filament_type: Some("PLA".to_string()),
+            filament_name: Some("Matte".to_string()),
+            color_hex: Some("#111111".to_string()),
+            tray_weight_g: Some(1000),
+            remaining_percent: Some(32),
+            remaining_grams: Some(320),
+            observed_rfid_tag: None,
+            tray_uuid: Some("tray-rfid-1".to_string()),
+            chip_id: None,
+            tray_info_idx: None,
+            tray_id_name: None,
+            last_identity_seen_at: Some(observed_at),
+            last_empty_seen_at: None,
+            empty_observation_count: Some(0),
+            matched_inventory_spool_id: None,
+            matched_inventory_mode: None,
+            match_status: None,
+            match_note: None,
+        }];
+
+        crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed)
+            .map_err(|error| error.to_string())?;
+
+        let (session_count, total_used_g, spool_used_g): (i64, i64, i64) = db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*), COALESCE(SUM(sessions.total_used_g), 0), COALESCE(SUM(session_spools.used_g), 0)
+                 FROM printer_live_usage_sessions sessions
+                 JOIN printer_live_usage_session_spools session_spools
+                   ON session_spools.session_id = sessions.id
+                 WHERE sessions.session_key LIKE 'subtask:966196804%'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(session_count, 1);
+        assert_eq!(total_used_g, 140);
+        assert_eq!(spool_used_g, 140);
+
+        let payload_json: String = db
+            .connection()
+            .query_row(
+                "SELECT payload_json
+                 FROM printer_live_events
+                 WHERE event_type = 'LIVE_AUTO_WEIGHT_SYNC'
+                 ORDER BY created_at DESC
+                 LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let payload: Value =
+            serde_json::from_str(&payload_json).map_err(|error| error.to_string())?;
+        assert_eq!(
+            payload
+                .get("usage_attached_to_recent_completed_session")
+                .and_then(Value::as_bool),
+            Some(true)
+        );
+        assert_eq!(
+            payload.get("usage_recorded_grams").and_then(Value::as_i64),
+            Some(10)
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "enrich_with_match_status_attaches_tail_weight_sync_to_recent_completed_session failed: {message}"
+        );
+    }
+}
+
+#[test]
 fn repeated_live_weight_increases_are_deduped_in_live_events() {
     let db_path = temp_db_path("ignored-increase-dedupe");
     let result = (|| -> Result<(), String> {

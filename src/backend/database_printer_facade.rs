@@ -16,9 +16,11 @@ use super::database_printer_usage_sessions::{
     live_usage_session_is_active as live_usage_session_is_active_row,
     live_usage_session_spool_used_g as live_usage_session_spool_used_g_row,
     record_live_usage_delta as record_live_usage_delta_row,
+    record_recent_completed_live_usage_delta as record_recent_completed_live_usage_delta_row,
     touch_live_usage_session as touch_live_usage_session_row, LiveUsageDeltaInput,
     LiveUsageDeltaResult, LiveUsageObservedWeightCorrectionInput,
-    LiveUsageObservedWeightCorrectionResult, LiveUsageSessionInput,
+    LiveUsageObservedWeightCorrectionResult, LiveUsageRecentCompletedDeltaInput,
+    LiveUsageSessionInput,
 };
 use super::database_result::InventoryResult;
 
@@ -100,6 +102,13 @@ impl FilamentDatabase {
         input: LiveUsageDeltaInput<'_>,
     ) -> InventoryResult<LiveUsageDeltaResult> {
         record_live_usage_delta_row(self.connection(), input)
+    }
+
+    pub fn record_recent_completed_live_usage_delta(
+        &self,
+        input: LiveUsageRecentCompletedDeltaInput<'_>,
+    ) -> InventoryResult<Option<LiveUsageDeltaResult>> {
+        record_recent_completed_live_usage_delta_row(self.connection(), input)
     }
 
     pub fn touch_live_usage_session(
