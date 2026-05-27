@@ -140,7 +140,7 @@ impl StatisticsEngine {
                        us.used_g
                 FROM printer_live_usage_session_spools us
                 JOIN printer_live_usage_sessions u ON u.id = us.session_id
-                WHERE u.total_used_g > 0
+                WHERE us.used_g > 0
              )
              SELECT
                 COALESCE(SUM(used_g), 0) AS total_consumption_30d,
@@ -185,7 +185,7 @@ impl StatisticsEngine {
                 SELECT us.spool_id, us.used_g
                 FROM printer_live_usage_session_spools us
                 JOIN printer_live_usage_sessions u ON u.id = us.session_id
-                WHERE u.total_used_g > 0
+                WHERE us.used_g > 0
              )
              SELECT m.material, COALESCE(SUM(u.used_g), 0) AS used
              FROM usage_rows u
@@ -229,7 +229,7 @@ impl StatisticsEngine {
                        us.used_g
                 FROM printer_live_usage_session_spools us
                 JOIN printer_live_usage_sessions u ON u.id = us.session_id
-                WHERE u.total_used_g > 0
+                WHERE us.used_g > 0
              )
              SELECT
                 u.printer_id,
@@ -298,7 +298,9 @@ impl StatisticsEngine {
 #[cfg(test)]
 mod tests {
     use super::StatisticsEngine;
-    use crate::backend::database_printer_usage_sessions::LiveUsageDeltaInput;
+    use crate::backend::database_printer_usage_sessions::{
+        LiveUsageDeltaInput, LiveUsageSessionInput,
+    };
     use crate::backend::filament_database::{FilamentDatabase, ManualMasterInput, SpoolRow};
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -729,6 +731,126 @@ mod tests {
         if let Err(message) = result {
             panic!(
                 "printer_overview_normalizes_manual_and_live_timestamps_before_selecting_latest_job failed: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn printer_overview_counts_only_live_sessions_with_recorded_spool_usage() {
+        let db_path = temp_db_path("printer-live-jobs-with-usage-only");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            let master_id = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Basic",
+                    color_name: "Red",
+                    hex_color: Some("#ff5544"),
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
+                .map_err(|error| error.to_string())?;
+
+            db.insert_spool(&SpoolRow {
+                id: "owned_1".to_string(),
+                master_id,
+                qr_code: None,
+                rfid_tag: None,
+                rfid_observed_at: None,
+                status: "IN_USE".to_string(),
+                ownership_type: "OWNED".to_string(),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                current_weight_g: Some(650),
+                remaining_g: Some(650),
+                spool_tare_weight_g: None,
+                location_id: None,
+                home_location_id: None,
+                purchase_date: None,
+                purchase_price: None,
+                batch_code: None,
+                last_used_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+            db.upsert_printer_with_ams("printer_1", "P1S", "P1S", 1, 4)
+                .map_err(|error| error.to_string())?;
+            db.touch_live_usage_session(LiveUsageSessionInput {
+                printer_id: "printer_1",
+                session_key: "subtask:status-only",
+                job_name: Some("Status-only carried signal"),
+                print_type: Some("cloud"),
+                observed_at: Some("2026-05-27T21:41:23Z"),
+            })
+            .map_err(|error| error.to_string())?;
+            db.finish_live_usage_session(
+                "printer_1",
+                "subtask:status-only",
+                Some("2026-05-27T21:41:50Z"),
+                true,
+            )
+            .map_err(|error| error.to_string())?;
+
+            db.record_live_usage_delta(LiveUsageDeltaInput {
+                printer_id: "printer_1",
+                session_key: "subtask:deferred-zero",
+                job_name: Some("Deferred warmup signal"),
+                print_type: Some("cloud"),
+                spool_id: "owned_1",
+                used_grams: 20,
+                observed_at: Some("2026-05-27T21:42:16Z"),
+                defer_initial_delta: true,
+            })
+            .map_err(|error| error.to_string())?;
+            db.finish_live_usage_session(
+                "printer_1",
+                "subtask:deferred-zero",
+                Some("2026-05-27T21:42:41Z"),
+                true,
+            )
+            .map_err(|error| error.to_string())?;
+
+            db.record_live_usage_delta(LiveUsageDeltaInput {
+                printer_id: "printer_1",
+                session_key: "subtask:real-live-job",
+                job_name: Some("Real live job"),
+                print_type: Some("cloud"),
+                spool_id: "owned_1",
+                used_grams: 42,
+                observed_at: Some("2026-05-27T21:45:00Z"),
+                defer_initial_delta: false,
+            })
+            .map_err(|error| error.to_string())?;
+            db.finish_live_usage_session(
+                "printer_1",
+                "subtask:real-live-job",
+                Some("2026-05-27T21:55:00Z"),
+                true,
+            )
+            .map_err(|error| error.to_string())?;
+
+            let overview = db
+                .list_printer_overview()
+                .map_err(|error| error.to_string())?;
+
+            assert_eq!(overview[0].usage.total_jobs, 1);
+            assert_eq!(overview[0].usage.successful_jobs, 1);
+            assert_eq!(overview[0].usage.failed_jobs, 0);
+            assert_eq!(overview[0].usage.total_used_g, 42);
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "printer_overview_counts_only_live_sessions_with_recorded_spool_usage failed: {message}"
             );
         }
     }

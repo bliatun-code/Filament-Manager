@@ -13,6 +13,7 @@ use time::{format_description::well_known::Rfc3339, Duration as TimeDuration, Of
 
 const LIVE_WEIGHT_MIN_SANE_DROP_G: i64 = 80;
 const LIVE_WEIGHT_MAX_SANE_DROP_RATIO_DIVISOR: i64 = 10;
+const LIVE_WEIGHT_MAX_CONTEXTUAL_JOB_DROP_G: i64 = 200;
 const LIVE_USAGE_WARMUP_PROGRESS_PERCENT: i64 = 10;
 const LIVE_WEIGHT_IGNORED_DEDUPE_WINDOW_SECS: i64 = 15 * 60;
 const LIVE_WEIGHT_MIN_USAGE_CORRECTION_G: i64 = 20;
@@ -29,6 +30,8 @@ const LIVE_WEIGHT_NEAR_FINISH_MIN_RECORDED_USAGE_G: i64 = 50;
 const LIVE_WEIGHT_RECENT_COMPLETED_TAIL_SYNC_SECS: i64 = 10 * 60;
 const LIVE_NOZZLE_MIN_EXTRUSION_TEMP_C: f64 = 180.0;
 const LIVE_NOZZLE_PRINT_CAPABLE_TEMP_C: f64 = 200.0;
+const LIVE_USAGE_SIGNAL_FRESH_MAX_AGE_SECS: i64 = 3 * 60;
+const LIVE_USAGE_RECENT_PRINT_CAPABLE_NOZZLE_SECS: i64 = 2 * 60 * 60;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum LiveWeightDecision {
@@ -494,7 +497,10 @@ fn sync_live_weight(
         return Ok(());
     };
     let current = spool.current_weight_g.or(spool.remaining_g);
-    let decision = classify_live_weight_update(current, remaining_grams);
+    let decision = contextualize_live_weight_decision(
+        classify_live_weight_update(current, remaining_grams),
+        usage_context,
+    );
     match decision {
         LiveWeightDecision::IgnoreUnchanged => return Ok(()),
         LiveWeightDecision::IgnoreIncrease { increase_grams } => {
@@ -557,6 +563,10 @@ fn sync_live_weight(
                     "remaining_minutes": usage_context.and_then(|context| context.remaining_minutes),
                     "finished_success": usage_context.and_then(|context| context.finished_success),
                     "nozzle_temp_c": usage_context.and_then(|context| context.nozzle_temp_c),
+                    "nozzle_temp_fresh": usage_context.map(|context| context.nozzle_temp_fresh),
+                    "recent_print_capable_nozzle": usage_context.map(|context| context.recent_print_capable_nozzle),
+                    "progress_percent_fresh": usage_context.map(|context| context.progress_percent_fresh),
+                    "remaining_minutes_fresh": usage_context.map(|context| context.remaining_minutes_fresh),
                     "thermal_state": usage_context.and_then(|context| context.thermal_state_name()),
                 }),
                 &dedupe_key,
@@ -621,6 +631,10 @@ fn sync_live_weight(
                             "remaining_minutes": context.remaining_minutes,
                             "finished_success": context.finished_success,
                             "nozzle_temp_c": context.nozzle_temp_c,
+                            "nozzle_temp_fresh": context.nozzle_temp_fresh,
+                            "recent_print_capable_nozzle": context.recent_print_capable_nozzle,
+                            "progress_percent_fresh": context.progress_percent_fresh,
+                            "remaining_minutes_fresh": context.remaining_minutes_fresh,
                             "thermal_state": context.thermal_state_name(),
                             "tray_index": tray.tray_index,
                             "tray_uuid": tray.tray_uuid.as_deref(),
@@ -663,6 +677,10 @@ fn sync_live_weight(
                     "remaining_minutes": usage_context.and_then(|context| context.remaining_minutes),
                     "finished_success": usage_context.and_then(|context| context.finished_success),
                     "nozzle_temp_c": usage_context.and_then(|context| context.nozzle_temp_c),
+                    "nozzle_temp_fresh": usage_context.map(|context| context.nozzle_temp_fresh),
+                    "recent_print_capable_nozzle": usage_context.map(|context| context.recent_print_capable_nozzle),
+                    "progress_percent_fresh": usage_context.map(|context| context.progress_percent_fresh),
+                    "remaining_minutes_fresh": usage_context.map(|context| context.remaining_minutes_fresh),
                     "thermal_state": usage_context.and_then(|context| context.thermal_state_name()),
                 }),
             )?;
@@ -709,6 +727,10 @@ fn sync_live_weight(
                     "remaining_minutes": context.remaining_minutes,
                     "finished_success": context.finished_success,
                     "nozzle_temp_c": context.nozzle_temp_c,
+                    "nozzle_temp_fresh": context.nozzle_temp_fresh,
+                    "recent_print_capable_nozzle": context.recent_print_capable_nozzle,
+                    "progress_percent_fresh": context.progress_percent_fresh,
+                    "remaining_minutes_fresh": context.remaining_minutes_fresh,
                     "thermal_state": context.thermal_state_name(),
                 }),
                 &dedupe_key,
@@ -731,8 +753,8 @@ fn sync_live_weight(
     let mut usage_ignored_recent_completed_tail = false;
     let mut usage_ignored_cold_nozzle = false;
     let usage_record = match (&decision, usage_context) {
-        (LiveWeightDecision::AcceptDecrease { .. }, Some(context))
-            if context.nozzle_blocks_filament_usage() =>
+        (LiveWeightDecision::AcceptDecrease { used_grams }, Some(context))
+            if context.nozzle_blocks_weight_delta(*used_grams) =>
         {
             usage_ignored_cold_nozzle = true;
             None
@@ -813,6 +835,10 @@ fn sync_live_weight(
             "usage_session_id": usage_record.as_ref().map(|record| record.session_id.as_str()),
             "usage_session_key": usage_context.map(|context| context.session_key.as_str()),
             "nozzle_temp_c": usage_context.and_then(|context| context.nozzle_temp_c),
+            "nozzle_temp_fresh": usage_context.map(|context| context.nozzle_temp_fresh),
+            "recent_print_capable_nozzle": usage_context.map(|context| context.recent_print_capable_nozzle),
+            "progress_percent_fresh": usage_context.map(|context| context.progress_percent_fresh),
+            "remaining_minutes_fresh": usage_context.map(|context| context.remaining_minutes_fresh),
             "thermal_state": usage_context.and_then(|context| context.thermal_state_name()),
             "remaining_percent": tray.remaining_percent,
             "tray_weight_g": tray.tray_weight_g,
@@ -847,6 +873,10 @@ fn sync_live_weight(
             "remaining_minutes": usage_context.and_then(|context| context.remaining_minutes),
             "finished_success": usage_context.and_then(|context| context.finished_success),
             "nozzle_temp_c": usage_context.and_then(|context| context.nozzle_temp_c),
+            "nozzle_temp_fresh": usage_context.map(|context| context.nozzle_temp_fresh),
+            "recent_print_capable_nozzle": usage_context.map(|context| context.recent_print_capable_nozzle),
+            "progress_percent_fresh": usage_context.map(|context| context.progress_percent_fresh),
+            "remaining_minutes_fresh": usage_context.map(|context| context.remaining_minutes_fresh),
             "thermal_state": usage_context.and_then(|context| context.thermal_state_name()),
             "tray_index": tray.tray_index,
             "tray_uuid": tray.tray_uuid.as_deref(),
@@ -868,6 +898,9 @@ fn should_ignore_near_finish_small_decrease(
     context: &LivePrintUsageContext,
 ) -> Result<bool, InventoryError> {
     if used_grams <= 0 || used_grams > LIVE_WEIGHT_NEAR_FINISH_SMALL_DROP_G {
+        return Ok(false);
+    }
+    if !context.progress_percent_fresh || !context.remaining_minutes_fresh {
         return Ok(false);
     }
     if context
@@ -992,6 +1025,10 @@ fn rebase_live_weight_before_usage(
             "reason": "pre_usage_ams_rebase",
             "usage_session_key": input.usage_context.map(|context| context.session_key.as_str()),
             "nozzle_temp_c": input.usage_context.and_then(|context| context.nozzle_temp_c),
+            "nozzle_temp_fresh": input.usage_context.map(|context| context.nozzle_temp_fresh),
+            "recent_print_capable_nozzle": input.usage_context.map(|context| context.recent_print_capable_nozzle),
+            "progress_percent_fresh": input.usage_context.map(|context| context.progress_percent_fresh),
+            "remaining_minutes_fresh": input.usage_context.map(|context| context.remaining_minutes_fresh),
             "thermal_state": input.usage_context.and_then(|context| context.thermal_state_name()),
             "remaining_percent": input.tray.remaining_percent,
             "tray_weight_g": input.tray.tray_weight_g,
@@ -1018,6 +1055,10 @@ fn rebase_live_weight_before_usage(
             "remaining_minutes": input.usage_context.and_then(|context| context.remaining_minutes),
             "finished_success": input.usage_context.and_then(|context| context.finished_success),
             "nozzle_temp_c": input.usage_context.and_then(|context| context.nozzle_temp_c),
+            "nozzle_temp_fresh": input.usage_context.map(|context| context.nozzle_temp_fresh),
+            "recent_print_capable_nozzle": input.usage_context.map(|context| context.recent_print_capable_nozzle),
+            "progress_percent_fresh": input.usage_context.map(|context| context.progress_percent_fresh),
+            "remaining_minutes_fresh": input.usage_context.map(|context| context.remaining_minutes_fresh),
             "thermal_state": input.usage_context.and_then(|context| context.thermal_state_name()),
             "tray_index": input.tray.tray_index,
             "tray_uuid": input.tray.tray_uuid.as_deref(),
@@ -1063,6 +1104,24 @@ pub(crate) fn classify_live_weight_update(
 
 fn max_sane_live_weight_drop(current_grams: i64) -> i64 {
     LIVE_WEIGHT_MIN_SANE_DROP_G.max(current_grams / LIVE_WEIGHT_MAX_SANE_DROP_RATIO_DIVISOR)
+}
+
+fn contextualize_live_weight_decision(
+    decision: LiveWeightDecision,
+    usage_context: Option<&LivePrintUsageContext>,
+) -> LiveWeightDecision {
+    let LiveWeightDecision::RejectDropOutlier { drop_grams, .. } = decision else {
+        return decision;
+    };
+    if usage_context.is_some_and(|context| {
+        context.can_accept_contextual_job_drop()
+            && drop_grams <= LIVE_WEIGHT_MAX_CONTEXTUAL_JOB_DROP_G
+    }) {
+        return LiveWeightDecision::AcceptDecrease {
+            used_grams: drop_grams,
+        };
+    }
+    decision
 }
 
 fn live_weight_decision_name(decision: &LiveWeightDecision) -> &'static str {
@@ -1130,19 +1189,40 @@ struct LivePrintUsageContext {
     observed_at: Option<String>,
     finished_success: Option<bool>,
     nozzle_temp_c: Option<f64>,
+    nozzle_temp_fresh: bool,
+    recent_print_capable_nozzle: bool,
+    progress_percent_fresh: bool,
+    remaining_minutes_fresh: bool,
 }
 
 impl LivePrintUsageContext {
     fn nozzle_blocks_filament_usage(&self) -> bool {
-        self.nozzle_temp_c
-            .is_some_and(|temp| temp < LIVE_NOZZLE_MIN_EXTRUSION_TEMP_C)
+        self.finished_success != Some(true)
+            && self.nozzle_temp_fresh
+            && self
+                .nozzle_temp_c
+                .is_some_and(|temp| temp < LIVE_NOZZLE_MIN_EXTRUSION_TEMP_C)
     }
 
     fn should_track_running_usage_session(&self) -> bool {
         self.finished_success.is_none() && !self.nozzle_blocks_filament_usage()
     }
 
+    fn nozzle_blocks_weight_delta(&self, used_grams: i64) -> bool {
+        self.nozzle_blocks_filament_usage()
+            && !(self.recent_print_capable_nozzle && used_grams <= LIVE_WEIGHT_MIN_SANE_DROP_G)
+    }
+
+    fn can_accept_contextual_job_drop(&self) -> bool {
+        self.finished_success.is_none()
+            && self.session_key != LIVE_USAGE_PROVISIONAL_SESSION_KEY
+            && !self.nozzle_blocks_filament_usage()
+    }
+
     fn thermal_state_name(&self) -> Option<&'static str> {
+        if self.nozzle_temp_c.is_some() && !self.nozzle_temp_fresh {
+            return Some("stale");
+        }
         self.nozzle_temp_c.map(|temp| {
             if temp < LIVE_NOZZLE_MIN_EXTRUSION_TEMP_C {
                 "below_extrusion_temp"
@@ -1157,12 +1237,16 @@ impl LivePrintUsageContext {
     fn defer_initial_weight_delta(&self, used_grams: i64) -> bool {
         self.finished_success.is_none()
             && used_grams > LIVE_WEIGHT_NEAR_FINISH_SMALL_DROP_G
+            && self.progress_percent_fresh
             && self
                 .progress_percent
                 .is_some_and(|progress| progress <= LIVE_USAGE_WARMUP_PROGRESS_PERCENT)
     }
 
     fn is_near_finish_tail_signal(&self) -> bool {
+        if !self.progress_percent_fresh || !self.remaining_minutes_fresh {
+            return false;
+        }
         self.progress_percent
             .is_some_and(|progress| progress >= LIVE_WEIGHT_NEAR_FINISH_PROGRESS_PERCENT)
             && self.remaining_minutes.is_some_and(|minutes| {
@@ -1219,28 +1303,105 @@ fn live_print_usage_context(observed: &BambuLiveObservedStateRow) -> Option<Live
         observed_at: observed.last_seen_at.clone(),
         finished_success,
         nozzle_temp_c: observed.nozzle_temp_c,
+        nozzle_temp_fresh: observed.nozzle_temp_c.is_some()
+            && observed_field_is_fresh(observed, "nozzle_temper_at"),
+        recent_print_capable_nozzle: observed
+            .nozzle_temp_c
+            .is_some_and(|temp| temp >= LIVE_NOZZLE_PRINT_CAPABLE_TEMP_C)
+            || observed_recorded_field_is_recent(
+                observed,
+                "nozzle_print_capable_at",
+                LIVE_USAGE_RECENT_PRINT_CAPABLE_NOZZLE_SECS,
+            ),
+        progress_percent_fresh: observed.progress_percent.is_some()
+            && observed_field_is_fresh(observed, "progress_percent_at"),
+        remaining_minutes_fresh: observed.remaining_minutes.is_some()
+            && observed_field_is_fresh(observed, "remaining_minutes_at"),
     })
+}
+
+fn observed_field_is_fresh(observed: &BambuLiveObservedStateRow, field_key: &str) -> bool {
+    let Some(raw_payload) = observed.raw_payload_json.as_ref() else {
+        // Unit tests and legacy persisted observations may not have per-field timestamps.
+        return true;
+    };
+    let Some(observed_at) = parse_flexible_timestamp(observed.last_seen_at.as_deref()) else {
+        return false;
+    };
+    let Some(field_seen_at) = raw_payload
+        .pointer(&format!("/_bfm_observed_fields/{field_key}"))
+        .and_then(Value::as_str)
+        .and_then(|value| parse_flexible_timestamp(Some(value)))
+    else {
+        return false;
+    };
+    let age = observed_at - field_seen_at;
+    age >= TimeDuration::ZERO && age <= TimeDuration::seconds(LIVE_USAGE_SIGNAL_FRESH_MAX_AGE_SECS)
+}
+
+fn observed_recorded_field_is_recent(
+    observed: &BambuLiveObservedStateRow,
+    field_key: &str,
+    max_age_seconds: i64,
+) -> bool {
+    let Some(raw_payload) = observed.raw_payload_json.as_ref() else {
+        return false;
+    };
+    let Some(observed_at) = parse_flexible_timestamp(observed.last_seen_at.as_deref()) else {
+        return false;
+    };
+    let Some(field_seen_at) = raw_payload
+        .pointer(&format!("/_bfm_observed_fields/{field_key}"))
+        .and_then(Value::as_str)
+        .and_then(|value| parse_flexible_timestamp(Some(value)))
+    else {
+        return false;
+    };
+    let age = observed_at - field_seen_at;
+    age >= TimeDuration::ZERO && age <= TimeDuration::seconds(max_age_seconds)
 }
 
 fn has_anonymous_live_print_signal(observed: &BambuLiveObservedStateRow) -> bool {
     observed.gcode_state.as_deref().is_some_and(|state| {
         let state = state.trim();
-        !state.is_empty()
-    }) || observed.progress_percent.is_some()
-        || observed.remaining_minutes.is_some()
-        || observed.prepare_percent.is_some()
-        || observed.print_stage.is_some()
-        || observed.active_tray_index.is_some()
+        !state.is_empty() && observed_job_signal_is_current_or_legacy(observed, "gcode_state_at")
+    }) || (observed.progress_percent.is_some()
+        && observed_job_signal_is_current_or_legacy(observed, "progress_percent_at"))
+        || (observed.remaining_minutes.is_some()
+            && observed_job_signal_is_current_or_legacy(observed, "remaining_minutes_at"))
+        || (observed.prepare_percent.is_some()
+            && observed_job_signal_is_current_or_legacy(observed, "prepare_percent_at"))
+        || (observed.print_stage.is_some()
+            && observed_job_signal_is_current_or_legacy(observed, "print_stage_at"))
+        || (observed.active_tray_index.is_some()
+            && observed_job_signal_is_current_or_legacy(observed, "active_tray_index_at"))
+}
+
+fn observed_job_signal_is_current_or_legacy(
+    observed: &BambuLiveObservedStateRow,
+    field_key: &str,
+) -> bool {
+    observed.raw_payload_json.is_none() || observed_field_is_fresh(observed, field_key)
 }
 
 pub(crate) fn is_probable_completed_carried_print_state(
     observed: &BambuLiveObservedStateRow,
 ) -> bool {
+    if fresh_nozzle_can_extrude(observed) {
+        return false;
+    }
     has_carried_completion_progress(observed)
         && observed
             .raw_payload_json
             .as_ref()
             .is_some_and(raw_payload_has_no_current_job_fields)
+}
+
+fn fresh_nozzle_can_extrude(observed: &BambuLiveObservedStateRow) -> bool {
+    observed
+        .nozzle_temp_c
+        .is_some_and(|temp| temp >= LIVE_NOZZLE_MIN_EXTRUSION_TEMP_C)
+        && observed_field_is_fresh(observed, "nozzle_temper_at")
 }
 
 pub(crate) fn is_credible_finished_print_state(observed: &BambuLiveObservedStateRow) -> bool {

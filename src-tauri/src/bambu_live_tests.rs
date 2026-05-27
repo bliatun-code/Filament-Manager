@@ -489,7 +489,8 @@ fn merge_print_payload_keeps_diagnostic_job_and_burst_snapshot_fields() {
     let job_payload = serde_json::json!({
         "print": {
             "gcode_state": "RUNNING",
-            "mc_percent": 7
+            "mc_percent": 7,
+            "nozzle_temper": 220.0
         },
         "subtask_id": 958477605,
         "subtask_name": "P1S X1C P1P (Standard Model)"
@@ -538,6 +539,26 @@ fn merge_print_payload_keeps_diagnostic_job_and_burst_snapshot_fields() {
         raw.pointer("/_bfm_capture/supported_message_count")
             .and_then(Value::as_i64),
         Some(2)
+    );
+    assert_eq!(
+        raw.pointer("/_bfm_observed_fields/progress_percent_at")
+            .and_then(Value::as_str),
+        Some("2026-05-18T18:00:00Z")
+    );
+    assert_eq!(
+        raw.pointer("/_bfm_observed_fields/nozzle_print_capable_at")
+            .and_then(Value::as_str),
+        Some("2026-05-18T18:00:00Z")
+    );
+    assert_eq!(
+        raw.pointer("/_bfm_observed_fields/active_tray_index_at")
+            .and_then(Value::as_str),
+        Some("2026-05-18T18:00:00Z")
+    );
+    assert_eq!(
+        raw.pointer("/_bfm_last_message/has_progress")
+            .and_then(Value::as_bool),
+        Some(false)
     );
     assert_eq!(
         raw.pointer("/ams/ams/0/tray/0/remain")
@@ -727,6 +748,37 @@ fn live_print_running_treats_lost_job_with_low_remaining_as_finished() {
     }));
 
     assert!(!is_live_print_running(&state));
+}
+
+#[test]
+fn live_print_running_keeps_lost_job_with_hot_nozzle_running() {
+    let mut state = super::default_offline_state();
+    state.last_seen_at = Some("2026-05-27T21:42:16Z".to_string());
+    state.gcode_state = Some("RUNNING".to_string());
+    state.progress_percent = Some(92);
+    state.remaining_minutes = Some(5);
+    state.nozzle_temp_c = Some(219.96875);
+    state.subtask_id = Some("979752801".to_string());
+    state.raw_payload_json = Some(serde_json::json!({
+        "_bfm_observed_fields": {
+            "nozzle_temper_at": "2026-05-27T21:42:16Z"
+        },
+        "_bfm_job": {
+            "active_tray_index": null,
+            "gcode_state": null,
+            "print_type": null,
+            "progress_percent": null,
+            "prepare_percent": null,
+            "print_stage": null,
+            "print_error_code": null,
+            "remaining_minutes": null,
+            "session_key": null,
+            "subtask_id": null,
+            "subtask_name": null
+        }
+    }));
+
+    assert!(is_live_print_running(&state));
 }
 
 #[test]
@@ -962,6 +1014,13 @@ fn enrich_with_match_status_blocks_usage_accounting_when_nozzle_is_below_extrusi
         observed.progress_percent = Some(34);
         observed.remaining_minutes = Some(28);
         observed.nozzle_temp_c = Some(176.0);
+        observed.raw_payload_json = Some(serde_json::json!({
+            "_bfm_observed_fields": {
+                "progress_percent_at": observed_at,
+                "remaining_minutes_at": observed_at,
+                "nozzle_temper_at": observed_at
+            }
+        }));
         observed.trays = vec![BambuLiveObservedTrayRow {
             tray_index: 0,
             loaded: true,
@@ -1051,6 +1110,587 @@ fn enrich_with_match_status_blocks_usage_accounting_when_nozzle_is_below_extrusi
 }
 
 #[test]
+fn enrich_with_match_status_records_recent_hot_cold_nozzle_ams_lag() {
+    let db_path = temp_db_path("usage-recent-hot-cold-nozzle-lag");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 1, 1)
+            .map_err(|error| error.to_string())?;
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PLA",
+                filament_name: "Basic",
+                color_name: "Blue",
+                hex_color: Some("#3366FF"),
+                product_url: None,
+                vendor: Some("Bambu"),
+                default_weight: Some(1000),
+            })
+            .map_err(|error| error.to_string())?;
+        db.insert_spool(&SpoolRow {
+            id: "spool_1".to_string(),
+            master_id,
+            qr_code: None,
+            rfid_tag: Some("tray-rfid-3".to_string()),
+            rfid_observed_at: None,
+            status: "ASSIGNED".to_string(),
+            ownership_type: "OWNED".to_string(),
+            owner_name: None,
+            owner_contact: None,
+            ownership_note: None,
+            initial_weight_g: Some(1000),
+            current_weight_g: Some(980),
+            remaining_g: Some(980),
+            spool_tare_weight_g: None,
+            location_id: None,
+            home_location_id: None,
+            purchase_date: None,
+            purchase_price: None,
+            batch_code: None,
+            last_used_at: None,
+        })
+        .map_err(|error| error.to_string())?;
+
+        let observed_at = super::now_iso_string();
+        let mut observed = super::default_offline_state();
+        observed.online = true;
+        observed.mqtt_connected = true;
+        observed.last_seen_at = Some(observed_at.clone());
+        observed.gcode_state = Some("RUNNING".to_string());
+        observed.progress_percent = Some(20);
+        observed.remaining_minutes = Some(3);
+        observed.nozzle_temp_c = Some(122.0);
+        observed.raw_payload_json = Some(serde_json::json!({
+            "_bfm_observed_fields": {
+                "progress_percent_at": observed_at.clone(),
+                "remaining_minutes_at": observed_at.clone(),
+                "nozzle_temper_at": observed_at.clone(),
+                "nozzle_print_capable_at": observed_at.clone()
+            }
+        }));
+        observed.trays = vec![BambuLiveObservedTrayRow {
+            tray_index: 0,
+            loaded: true,
+            filament_type: Some("PLA".to_string()),
+            filament_name: Some("Basic".to_string()),
+            color_hex: Some("#3366FF".to_string()),
+            tray_weight_g: Some(1000),
+            remaining_percent: Some(93),
+            remaining_grams: Some(930),
+            observed_rfid_tag: None,
+            tray_uuid: Some("tray-rfid-3".to_string()),
+            chip_id: None,
+            tray_info_idx: None,
+            tray_id_name: None,
+            last_identity_seen_at: Some(observed_at),
+            last_empty_seen_at: None,
+            empty_observation_count: Some(0),
+            matched_inventory_spool_id: None,
+            matched_inventory_mode: None,
+            match_status: None,
+            match_note: None,
+        }];
+
+        crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed)
+            .map_err(|error| error.to_string())?;
+
+        let (total_used_g, spool_used_g): (i64, i64) = db
+            .connection()
+            .query_row(
+                "SELECT sessions.total_used_g, session_spools.used_g
+                 FROM printer_live_usage_sessions sessions
+                 JOIN printer_live_usage_session_spools session_spools
+                   ON session_spools.session_id = sessions.id
+                 WHERE sessions.session_key = 'active-print'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(total_used_g, 50);
+        assert_eq!(spool_used_g, 50);
+
+        let payload_json: String = db
+            .connection()
+            .query_row(
+                "SELECT payload_json
+                 FROM printer_live_events
+                 WHERE event_type = 'LIVE_AUTO_WEIGHT_SYNC'
+                 ORDER BY created_at DESC
+                 LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let payload: Value =
+            serde_json::from_str(&payload_json).map_err(|error| error.to_string())?;
+        assert_eq!(
+            payload
+                .get("usage_ignored_cold_nozzle")
+                .and_then(Value::as_bool),
+            Some(false)
+        );
+        assert_eq!(
+            payload
+                .get("recent_print_capable_nozzle")
+                .and_then(Value::as_bool),
+            Some(true)
+        );
+        assert_eq!(
+            payload.get("usage_recorded_grams").and_then(Value::as_i64),
+            Some(50)
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("enrich_with_match_status_records_recent_hot_cold_nozzle_ams_lag failed: {message}");
+    }
+}
+
+#[test]
+fn enrich_with_match_status_ignores_stale_anonymous_progress_for_usage_context() {
+    let db_path = temp_db_path("usage-stale-anonymous-progress");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 1, 1)
+            .map_err(|error| error.to_string())?;
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PLA",
+                filament_name: "Basic",
+                color_name: "Blue",
+                hex_color: Some("#3366FF"),
+                product_url: None,
+                vendor: Some("Bambu"),
+                default_weight: Some(1000),
+            })
+            .map_err(|error| error.to_string())?;
+        db.insert_spool(&SpoolRow {
+            id: "spool_1".to_string(),
+            master_id,
+            qr_code: None,
+            rfid_tag: Some("tray-rfid-3".to_string()),
+            rfid_observed_at: None,
+            status: "ASSIGNED".to_string(),
+            ownership_type: "OWNED".to_string(),
+            owner_name: None,
+            owner_contact: None,
+            ownership_note: None,
+            initial_weight_g: Some(1000),
+            current_weight_g: Some(980),
+            remaining_g: Some(980),
+            spool_tare_weight_g: None,
+            location_id: None,
+            home_location_id: None,
+            purchase_date: None,
+            purchase_price: None,
+            batch_code: None,
+            last_used_at: None,
+        })
+        .map_err(|error| error.to_string())?;
+
+        let observed_at = super::now_iso_string();
+        let stale_signal_at = "2026-05-21T23:25:43Z".to_string();
+        let mut observed = super::default_offline_state();
+        observed.online = true;
+        observed.mqtt_connected = true;
+        observed.last_seen_at = Some(observed_at.clone());
+        observed.progress_percent = Some(20);
+        observed.remaining_minutes = Some(3);
+        observed.nozzle_temp_c = Some(122.0);
+        observed.raw_payload_json = Some(serde_json::json!({
+            "_bfm_observed_fields": {
+                "progress_percent_at": stale_signal_at.clone(),
+                "remaining_minutes_at": stale_signal_at.clone(),
+                "nozzle_temper_at": stale_signal_at.clone(),
+                "nozzle_print_capable_at": stale_signal_at.clone()
+            }
+        }));
+        observed.trays = vec![BambuLiveObservedTrayRow {
+            tray_index: 0,
+            loaded: true,
+            filament_type: Some("PLA".to_string()),
+            filament_name: Some("Basic".to_string()),
+            color_hex: Some("#3366FF".to_string()),
+            tray_weight_g: Some(1000),
+            remaining_percent: Some(93),
+            remaining_grams: Some(930),
+            observed_rfid_tag: None,
+            tray_uuid: Some("tray-rfid-3".to_string()),
+            chip_id: None,
+            tray_info_idx: None,
+            tray_id_name: None,
+            last_identity_seen_at: Some(observed_at),
+            last_empty_seen_at: None,
+            empty_observation_count: Some(0),
+            matched_inventory_spool_id: None,
+            matched_inventory_mode: None,
+            match_status: None,
+            match_note: None,
+        }];
+
+        crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed)
+            .map_err(|error| error.to_string())?;
+
+        let session_count: i64 = db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM printer_live_usage_sessions",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(session_count, 0);
+
+        let current_weight_g: i64 = db
+            .connection()
+            .query_row(
+                "SELECT current_weight_g FROM filament_spools WHERE id = 'spool_1'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(current_weight_g, 930);
+
+        let payload_json: String = db
+            .connection()
+            .query_row(
+                "SELECT payload_json
+                 FROM printer_live_events
+                 WHERE event_type = 'LIVE_AUTO_WEIGHT_SYNC'
+                 ORDER BY created_at DESC
+                 LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let payload: Value =
+            serde_json::from_str(&payload_json).map_err(|error| error.to_string())?;
+        assert!(payload.get("usage_session_key").is_none_or(Value::is_null));
+        assert!(payload
+            .get("usage_recorded_grams")
+            .is_none_or(Value::is_null));
+        assert!(payload
+            .get("progress_percent_fresh")
+            .is_none_or(Value::is_null));
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "enrich_with_match_status_ignores_stale_anonymous_progress_for_usage_context failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn enrich_with_match_status_accepts_long_job_drop_when_cold_nozzle_signal_is_stale() {
+    let db_path = temp_db_path("usage-stale-cold-nozzle-long-job");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 1, 1)
+            .map_err(|error| error.to_string())?;
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PLA",
+                filament_name: "Matte",
+                color_name: "Charcoal",
+                hex_color: Some("#111111"),
+                product_url: None,
+                vendor: Some("Bambu"),
+                default_weight: Some(1000),
+            })
+            .map_err(|error| error.to_string())?;
+        db.insert_spool(&SpoolRow {
+            id: "spool_1".to_string(),
+            master_id,
+            qr_code: None,
+            rfid_tag: Some("tray-rfid-1".to_string()),
+            rfid_observed_at: None,
+            status: "ASSIGNED".to_string(),
+            ownership_type: "OWNED".to_string(),
+            owner_name: None,
+            owner_contact: None,
+            ownership_note: None,
+            initial_weight_g: Some(1000),
+            current_weight_g: Some(460),
+            remaining_g: Some(460),
+            spool_tare_weight_g: None,
+            location_id: None,
+            home_location_id: None,
+            purchase_date: None,
+            purchase_price: None,
+            batch_code: None,
+            last_used_at: None,
+        })
+        .map_err(|error| error.to_string())?;
+
+        let observed_at = super::now_iso_string();
+        let stale_signal_at = "2026-05-21T23:25:43Z".to_string();
+        let mut observed = super::default_offline_state();
+        observed.online = true;
+        observed.mqtt_connected = true;
+        observed.last_seen_at = Some(observed_at.clone());
+        observed.gcode_state = Some("RUNNING".to_string());
+        observed.print_type = Some("cloud".to_string());
+        observed.subtask_id = Some("966196804".to_string());
+        observed.subtask_name = Some("Long overnight print".to_string());
+        observed.progress_percent = Some(0);
+        observed.remaining_minutes = Some(208);
+        observed.nozzle_temp_c = Some(140.0);
+        observed.raw_payload_json = Some(serde_json::json!({
+            "_bfm_observed_fields": {
+                "progress_percent_at": stale_signal_at,
+                "remaining_minutes_at": stale_signal_at,
+                "nozzle_temper_at": stale_signal_at
+            }
+        }));
+        observed.trays = vec![BambuLiveObservedTrayRow {
+            tray_index: 0,
+            loaded: true,
+            filament_type: Some("PLA".to_string()),
+            filament_name: Some("Matte".to_string()),
+            color_hex: Some("#111111".to_string()),
+            tray_weight_g: Some(1000),
+            remaining_percent: Some(32),
+            remaining_grams: Some(320),
+            observed_rfid_tag: None,
+            tray_uuid: Some("tray-rfid-1".to_string()),
+            chip_id: None,
+            tray_info_idx: None,
+            tray_id_name: None,
+            last_identity_seen_at: Some(observed_at),
+            last_empty_seen_at: None,
+            empty_observation_count: Some(0),
+            matched_inventory_spool_id: None,
+            matched_inventory_mode: None,
+            match_status: None,
+            match_note: None,
+        }];
+
+        crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed)
+            .map_err(|error| error.to_string())?;
+
+        let (total_used_g, spool_used_g): (i64, i64) = db
+            .connection()
+            .query_row(
+                "SELECT sessions.total_used_g, session_spools.used_g
+                 FROM printer_live_usage_sessions sessions
+                 JOIN printer_live_usage_session_spools session_spools
+                   ON session_spools.session_id = sessions.id
+                 WHERE sessions.session_key = 'subtask:966196804'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(total_used_g, 140);
+        assert_eq!(spool_used_g, 140);
+
+        let payload_json: String = db
+            .connection()
+            .query_row(
+                "SELECT payload_json
+                 FROM printer_live_events
+                 WHERE event_type = 'LIVE_AUTO_WEIGHT_SYNC'
+                 ORDER BY created_at DESC
+                 LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let payload: Value =
+            serde_json::from_str(&payload_json).map_err(|error| error.to_string())?;
+        assert_eq!(
+            payload
+                .get("usage_ignored_cold_nozzle")
+                .and_then(Value::as_bool),
+            Some(false)
+        );
+        assert_eq!(
+            payload
+                .get("usage_deferred_initial_delta")
+                .and_then(Value::as_bool),
+            Some(false)
+        );
+        assert_eq!(
+            payload.get("usage_recorded_grams").and_then(Value::as_i64),
+            Some(140)
+        );
+        assert_eq!(
+            payload.get("thermal_state").and_then(Value::as_str),
+            Some("stale")
+        );
+        assert_eq!(
+            payload.get("nozzle_temp_fresh").and_then(Value::as_bool),
+            Some(false)
+        );
+        assert_eq!(
+            payload
+                .get("progress_percent_fresh")
+                .and_then(Value::as_bool),
+            Some(false)
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "enrich_with_match_status_accepts_long_job_drop_when_cold_nozzle_signal_is_stale failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn enrich_with_match_status_rejects_large_failed_job_ams_drop() {
+    let db_path = temp_db_path("usage-failed-job-large-drop");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 1, 1)
+            .map_err(|error| error.to_string())?;
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PLA",
+                filament_name: "Matte",
+                color_name: "Charcoal",
+                hex_color: Some("#111111"),
+                product_url: None,
+                vendor: Some("Bambu"),
+                default_weight: Some(1000),
+            })
+            .map_err(|error| error.to_string())?;
+        db.insert_spool(&SpoolRow {
+            id: "spool_1".to_string(),
+            master_id,
+            qr_code: None,
+            rfid_tag: Some("tray-rfid-1".to_string()),
+            rfid_observed_at: None,
+            status: "ASSIGNED".to_string(),
+            ownership_type: "OWNED".to_string(),
+            owner_name: None,
+            owner_contact: None,
+            ownership_note: None,
+            initial_weight_g: Some(1000),
+            current_weight_g: Some(840),
+            remaining_g: Some(840),
+            spool_tare_weight_g: None,
+            location_id: None,
+            home_location_id: None,
+            purchase_date: None,
+            purchase_price: None,
+            batch_code: None,
+            last_used_at: None,
+        })
+        .map_err(|error| error.to_string())?;
+
+        let observed_at = super::now_iso_string();
+        db.touch_live_usage_session(
+            crate::backend::database_printer_usage_sessions::LiveUsageSessionInput {
+                printer_id: "printer_1",
+                session_key: "subtask:failed-large-drop",
+                job_name: Some("Cancelled calibration"),
+                print_type: Some("cloud"),
+                observed_at: Some(&observed_at),
+            },
+        )
+        .map_err(|error| error.to_string())?;
+        let mut observed = super::default_offline_state();
+        observed.online = true;
+        observed.mqtt_connected = true;
+        observed.last_seen_at = Some(observed_at.clone());
+        observed.gcode_state = Some("FAILED".to_string());
+        observed.print_type = Some("cloud".to_string());
+        observed.subtask_id = Some("failed-large-drop".to_string());
+        observed.subtask_name = Some("Cancelled calibration".to_string());
+        observed.progress_percent = Some(56);
+        observed.remaining_minutes = Some(44);
+        observed.nozzle_temp_c = Some(220.0);
+        observed.raw_payload_json = Some(serde_json::json!({
+            "_bfm_observed_fields": {
+                "progress_percent_at": observed_at,
+                "remaining_minutes_at": observed_at,
+                "nozzle_temper_at": observed_at
+            }
+        }));
+        observed.trays = vec![BambuLiveObservedTrayRow {
+            tray_index: 0,
+            loaded: true,
+            filament_type: Some("PLA".to_string()),
+            filament_name: Some("Matte".to_string()),
+            color_hex: Some("#111111".to_string()),
+            tray_weight_g: Some(1000),
+            remaining_percent: Some(61),
+            remaining_grams: Some(610),
+            observed_rfid_tag: None,
+            tray_uuid: Some("tray-rfid-1".to_string()),
+            chip_id: None,
+            tray_info_idx: None,
+            tray_id_name: None,
+            last_identity_seen_at: Some(observed_at),
+            last_empty_seen_at: None,
+            empty_observation_count: Some(0),
+            matched_inventory_spool_id: None,
+            matched_inventory_mode: None,
+            match_status: None,
+            match_note: None,
+        }];
+
+        crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed)
+            .map_err(|error| error.to_string())?;
+
+        let current_weight_g: i64 = db
+            .connection()
+            .query_row(
+                "SELECT current_weight_g FROM filament_spools WHERE id = 'spool_1'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(current_weight_g, 840);
+
+        let payload_json: String = db
+            .connection()
+            .query_row(
+                "SELECT payload_json
+                 FROM printer_live_events
+                 WHERE event_type = 'LIVE_AUTO_WEIGHT_REJECTED'
+                 ORDER BY created_at DESC
+                 LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let payload: Value =
+            serde_json::from_str(&payload_json).map_err(|error| error.to_string())?;
+        assert_eq!(
+            payload.get("reason").and_then(Value::as_str),
+            Some("drop_outlier")
+        );
+        assert_eq!(payload.get("drop_grams").and_then(Value::as_i64), Some(230));
+        assert_eq!(
+            payload.get("finished_success").and_then(Value::as_bool),
+            Some(false)
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("enrich_with_match_status_rejects_large_failed_job_ams_drop failed: {message}");
+    }
+}
+
+#[test]
 fn enrich_with_match_status_tracks_live_session_without_weight_delta() {
     let db_path = temp_db_path("usage-session-without-weight-delta");
     let result = (|| -> Result<(), String> {
@@ -1100,8 +1740,8 @@ fn enrich_with_match_status_tracks_live_session_without_weight_delta() {
         let overview = db
             .list_printer_overview()
             .map_err(|error| error.to_string())?;
-        assert_eq!(overview[0].usage.total_jobs, 1);
-        assert_eq!(overview[0].usage.successful_jobs, 1);
+        assert_eq!(overview[0].usage.total_jobs, 0);
+        assert_eq!(overview[0].usage.successful_jobs, 0);
         assert_eq!(overview[0].usage.total_used_g, 0);
 
         let (status, success): (String, i64) = db
@@ -1125,6 +1765,104 @@ fn enrich_with_match_status_tracks_live_session_without_weight_delta() {
         panic!(
             "enrich_with_match_status_tracks_live_session_without_weight_delta failed: {message}"
         );
+    }
+}
+
+#[test]
+fn enrich_with_match_status_keeps_hot_lost_job_session_running() {
+    let db_path = temp_db_path("usage-hot-lost-job-stays-running");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 1, 4)
+            .map_err(|error| error.to_string())?;
+
+        let mut current_job = super::default_offline_state();
+        current_job.online = true;
+        current_job.mqtt_connected = true;
+        current_job.last_seen_at = Some("2026-05-27T21:41:23Z".to_string());
+        current_job.gcode_state = Some("RUNNING".to_string());
+        current_job.print_type = Some("cloud".to_string());
+        current_job.subtask_id = Some("979752801".to_string());
+        current_job.subtask_name = Some("0.2mm layer, 2 walls, 15% infill".to_string());
+        current_job.progress_percent = Some(92);
+        current_job.remaining_minutes = Some(7);
+        current_job.nozzle_temp_c = Some(219.96875);
+        current_job.raw_payload_json = Some(serde_json::json!({
+            "_bfm_observed_fields": {
+                "gcode_state_at": "2026-05-27T21:41:23Z",
+                "progress_percent_at": "2026-05-27T21:41:23Z",
+                "remaining_minutes_at": "2026-05-27T21:41:23Z",
+                "nozzle_temper_at": "2026-05-27T21:41:23Z",
+                "job_identity_at": "2026-05-27T21:41:23Z"
+            },
+            "_bfm_job": {
+                "gcode_state": "RUNNING",
+                "print_type": "cloud",
+                "progress_percent": 92,
+                "remaining_minutes": 7,
+                "session_key": "subtask:979752801",
+                "subtask_id": "979752801",
+                "subtask_name": "0.2mm layer, 2 walls, 15% infill"
+            }
+        }));
+        crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", current_job)
+            .map_err(|error| error.to_string())?;
+
+        let mut lost_job_fields = super::default_offline_state();
+        lost_job_fields.online = true;
+        lost_job_fields.mqtt_connected = true;
+        lost_job_fields.last_seen_at = Some("2026-05-27T21:42:16Z".to_string());
+        lost_job_fields.gcode_state = Some("RUNNING".to_string());
+        lost_job_fields.print_type = Some("cloud".to_string());
+        lost_job_fields.subtask_id = Some("979752801".to_string());
+        lost_job_fields.subtask_name = Some("0.2mm layer, 2 walls, 15% infill".to_string());
+        lost_job_fields.progress_percent = Some(92);
+        lost_job_fields.remaining_minutes = Some(5);
+        lost_job_fields.nozzle_temp_c = Some(219.96875);
+        lost_job_fields.raw_payload_json = Some(serde_json::json!({
+            "_bfm_observed_fields": {
+                "nozzle_temper_at": "2026-05-27T21:42:16Z"
+            },
+            "_bfm_job": {
+                "active_tray_index": null,
+                "gcode_state": null,
+                "print_type": null,
+                "progress_percent": null,
+                "prepare_percent": null,
+                "print_stage": null,
+                "print_error_code": null,
+                "remaining_minutes": null,
+                "session_key": null,
+                "subtask_id": null,
+                "subtask_name": null
+            }
+        }));
+        crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", lost_job_fields)
+            .map_err(|error| error.to_string())?;
+
+        let (session_count, running_count, completed_count): (i64, i64, i64) = db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*),
+                        COALESCE(SUM(CASE WHEN status = 'RUNNING' THEN 1 ELSE 0 END), 0),
+                        COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END), 0)
+                 FROM printer_live_usage_sessions
+                 WHERE session_key LIKE 'subtask:979752801%'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(session_count, 1);
+        assert_eq!(running_count, 1);
+        assert_eq!(completed_count, 0);
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("enrich_with_match_status_keeps_hot_lost_job_session_running failed: {message}");
     }
 }
 
@@ -2795,6 +3533,20 @@ fn enrich_with_match_status_attaches_tail_weight_sync_to_recent_completed_sessio
         observed.online = true;
         observed.mqtt_connected = true;
         observed.last_seen_at = Some(observed_at.clone());
+        observed.gcode_state = Some("FINISH".to_string());
+        observed.print_type = Some("cloud".to_string());
+        observed.subtask_id = Some("966196804".to_string());
+        observed.subtask_name = Some("Single color, trashcan icon".to_string());
+        observed.progress_percent = Some(100);
+        observed.remaining_minutes = Some(0);
+        observed.nozzle_temp_c = Some(60.0);
+        observed.raw_payload_json = Some(serde_json::json!({
+            "_bfm_observed_fields": {
+                "progress_percent_at": observed_at.clone(),
+                "remaining_minutes_at": observed_at.clone(),
+                "nozzle_temper_at": observed_at.clone()
+            }
+        }));
         observed.trays = vec![BambuLiveObservedTrayRow {
             tray_index: 0,
             loaded: true,
@@ -2809,7 +3561,7 @@ fn enrich_with_match_status_attaches_tail_weight_sync_to_recent_completed_sessio
             chip_id: None,
             tray_info_idx: None,
             tray_id_name: None,
-            last_identity_seen_at: Some(observed_at),
+            last_identity_seen_at: Some(observed_at.clone()),
             last_empty_seen_at: None,
             empty_observation_count: Some(0),
             matched_inventory_spool_id: None,
@@ -2860,6 +3612,16 @@ fn enrich_with_match_status_attaches_tail_weight_sync_to_recent_completed_sessio
         assert_eq!(
             payload.get("usage_recorded_grams").and_then(Value::as_i64),
             Some(10)
+        );
+        assert_eq!(
+            payload
+                .get("usage_ignored_cold_nozzle")
+                .and_then(Value::as_bool),
+            Some(false)
+        );
+        assert_eq!(
+            payload.get("thermal_state").and_then(Value::as_str),
+            Some("below_extrusion_temp")
         );
 
         Ok(())

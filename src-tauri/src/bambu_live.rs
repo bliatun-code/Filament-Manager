@@ -696,6 +696,84 @@ fn merge_raw_payload_snapshot(
                 "active_tray_index": state.active_tray_index,
             }),
         );
+        let mut observed_fields = object
+            .get("_bfm_observed_fields")
+            .cloned()
+            .unwrap_or_else(|| Value::Object(Map::new()));
+        if let Some(fields) = observed_fields.as_object_mut() {
+            record_observed_field_time(
+                fields,
+                "gcode_state_at",
+                print.get("gcode_state"),
+                state.last_seen_at.as_deref(),
+            );
+            record_observed_field_time(
+                fields,
+                "progress_percent_at",
+                print.get("mc_percent"),
+                state.last_seen_at.as_deref(),
+            );
+            record_observed_field_time(
+                fields,
+                "prepare_percent_at",
+                print.get("gcode_file_prepare_percent"),
+                state.last_seen_at.as_deref(),
+            );
+            record_observed_field_time(
+                fields,
+                "print_stage_at",
+                print.get("mc_print_stage"),
+                state.last_seen_at.as_deref(),
+            );
+            record_observed_field_time(
+                fields,
+                "remaining_minutes_at",
+                print.get("mc_remaining_time"),
+                state.last_seen_at.as_deref(),
+            );
+            record_observed_field_time(
+                fields,
+                "nozzle_temper_at",
+                print.get("nozzle_temper"),
+                state.last_seen_at.as_deref(),
+            );
+            if as_f64(print.get("nozzle_temper"))
+                .is_some_and(|temp| temp >= PRINT_CAPABLE_NOZZLE_TEMP_C)
+            {
+                fields.insert(
+                    "nozzle_print_capable_at".to_string(),
+                    state
+                        .last_seen_at
+                        .as_deref()
+                        .map(|value| Value::String(value.to_string()))
+                        .unwrap_or(Value::Null),
+                );
+            }
+            record_observed_field_time(
+                fields,
+                "active_tray_index_at",
+                print.pointer("/ams/tray_now"),
+                state.last_seen_at.as_deref(),
+            );
+            if print.get("subtask_id").is_some()
+                || message.get("subtask_id").is_some()
+                || message.get("project_id").is_some()
+                || message.get("task_id").is_some()
+                || message.get("job_id").is_some()
+                || print.get("subtask_name").is_some()
+                || message.get("subtask_name").is_some()
+            {
+                fields.insert(
+                    "job_identity_at".to_string(),
+                    state
+                        .last_seen_at
+                        .as_deref()
+                        .map(|value| Value::String(value.to_string()))
+                        .unwrap_or(Value::Null),
+                );
+            }
+        }
+        object.insert("_bfm_observed_fields".to_string(), observed_fields);
         object.insert(
             "_bfm_last_message".to_string(),
             json!({
@@ -705,10 +783,29 @@ fn merge_raw_payload_snapshot(
                 "has_ams": print.get("ams").is_some(),
                 "has_trays": print.pointer("/ams/ams/0/tray").is_some(),
                 "has_job_identity": state.subtask_id.is_some(),
+                "has_nozzle_temp": print.get("nozzle_temper").is_some(),
+                "has_progress": print.get("mc_percent").is_some(),
+                "has_remaining_time": print.get("mc_remaining_time").is_some(),
             }),
         );
     }
     state.raw_payload_json = Some(merged);
+}
+
+fn record_observed_field_time(
+    fields: &mut Map<String, Value>,
+    key: &str,
+    signal: Option<&Value>,
+    observed_at: Option<&str>,
+) {
+    if signal.is_some() {
+        fields.insert(
+            key.to_string(),
+            observed_at
+                .map(|value| Value::String(value.to_string()))
+                .unwrap_or(Value::Null),
+        );
+    }
 }
 
 fn merge_json_object(target: &mut Value, source: &Value) {
