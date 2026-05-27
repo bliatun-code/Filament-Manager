@@ -42,6 +42,13 @@ pub struct LiveUsageRecentCompletedDeltaInput<'a> {
     pub max_age_seconds: i64,
 }
 
+pub struct LiveUsageRecentCompletedSessionInput<'a> {
+    pub printer_id: &'a str,
+    pub session_key: &'a str,
+    pub observed_at: Option<&'a str>,
+    pub max_age_seconds: i64,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct LiveUsageDeltaResult {
     pub session_id: String,
@@ -228,6 +235,36 @@ pub(crate) fn live_usage_session_spool_used_g(
             |row| row.get(0),
         )
         .optional()?)
+}
+
+pub(crate) fn live_usage_session_recently_completed_successfully(
+    conn: &Connection,
+    input: LiveUsageRecentCompletedSessionInput<'_>,
+) -> InventoryResult<bool> {
+    let printer_id = normalize_required_text(input.printer_id, "printer id")?;
+    let session_key = normalize_required_text(input.session_key, "session key")?;
+    let Some(observed_at) = normalized_optional_text(input.observed_at) else {
+        return Ok(false);
+    };
+    let session_key_prefix = live_usage_session_key_prefix(&session_key);
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*)
+         FROM printer_live_usage_sessions
+         WHERE printer_id = ?1
+           AND status = 'COMPLETED'
+           AND success = 1
+           AND (session_key = ?2 OR session_key LIKE ?3 ESCAPE '\\')
+           AND unixepoch(?4) - unixepoch(COALESCE(finished_at, last_seen_at)) BETWEEN 0 AND ?5",
+        params![
+            &printer_id,
+            &session_key,
+            &session_key_prefix,
+            &observed_at,
+            input.max_age_seconds.max(0),
+        ],
+        |row| row.get(0),
+    )?;
+    Ok(count > 0)
 }
 
 pub(crate) fn correct_live_usage_for_observed_weight_increase(

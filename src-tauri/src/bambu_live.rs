@@ -22,6 +22,7 @@ const BAMBU_MQTT_PORT: u16 = 8883;
 const OBSERVER_INTERVAL_SECS: u64 = 20;
 const MQTT_TIMEOUT_SECS: u64 = 8;
 const MQTT_BURST_SETTLE_MS: u64 = 1_200;
+const PRINT_CAPABLE_NOZZLE_TEMP_C: f64 = 200.0;
 
 pub async fn run_live_observer(state: AppState) {
     loop {
@@ -237,6 +238,9 @@ fn next_looks_like_new_print_without_identity(next: &BambuLiveObservedStateRow) 
     !raw_payload_has_explicit_job_identity(next)
         && (next.prepare_percent.is_some()
             || next.progress_percent.is_some_and(|progress| progress <= 10)
+            || next
+                .nozzle_temp_c
+                .is_some_and(|temp| temp >= PRINT_CAPABLE_NOZZLE_TEMP_C)
             || matches!(
                 normalized_carried_print_state(next.gcode_state.as_deref()).as_deref(),
                 Some("PREPARE" | "PREPARING" | "RUNNING" | "SLICING")

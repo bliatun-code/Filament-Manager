@@ -14,13 +14,14 @@ use super::database_printer_usage_sessions::{
     finish_live_usage_session as finish_live_usage_session_row,
     live_usage_session_has_spool_usage as live_usage_session_has_spool_usage_row,
     live_usage_session_is_active as live_usage_session_is_active_row,
+    live_usage_session_recently_completed_successfully as live_usage_session_recently_completed_successfully_row,
     live_usage_session_spool_used_g as live_usage_session_spool_used_g_row,
     record_live_usage_delta as record_live_usage_delta_row,
     record_recent_completed_live_usage_delta as record_recent_completed_live_usage_delta_row,
     touch_live_usage_session as touch_live_usage_session_row, LiveUsageDeltaInput,
     LiveUsageDeltaResult, LiveUsageObservedWeightCorrectionInput,
     LiveUsageObservedWeightCorrectionResult, LiveUsageRecentCompletedDeltaInput,
-    LiveUsageSessionInput,
+    LiveUsageRecentCompletedSessionInput, LiveUsageSessionInput,
 };
 use super::database_result::InventoryResult;
 
@@ -158,6 +159,13 @@ impl FilamentDatabase {
         spool_id: &str,
     ) -> InventoryResult<Option<i64>> {
         live_usage_session_spool_used_g_row(self.connection(), printer_id, session_key, spool_id)
+    }
+
+    pub fn live_usage_session_recently_completed_successfully(
+        &self,
+        input: LiveUsageRecentCompletedSessionInput<'_>,
+    ) -> InventoryResult<bool> {
+        live_usage_session_recently_completed_successfully_row(self.connection(), input)
     }
 
     pub fn correct_live_usage_for_observed_weight_increase(

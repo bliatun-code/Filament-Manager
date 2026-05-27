@@ -1,6 +1,7 @@
 use crate::backend::database_printer_usage_sessions::{
     LiveUsageDeltaInput, LiveUsageDeltaResult, LiveUsageObservedWeightCorrectionInput,
-    LiveUsageRecentCompletedDeltaInput, LiveUsageSessionInput, LIVE_USAGE_PROVISIONAL_SESSION_KEY,
+    LiveUsageRecentCompletedDeltaInput, LiveUsageRecentCompletedSessionInput,
+    LiveUsageSessionInput, LIVE_USAGE_PROVISIONAL_SESSION_KEY,
 };
 use crate::backend::database_result::InventoryError;
 use crate::backend::filament_database::{
@@ -26,6 +27,8 @@ const LIVE_WEIGHT_NEAR_FINISH_MAX_REMAINING_MINUTES: i64 = 10;
 const LIVE_WEIGHT_NEAR_FINISH_SMALL_DROP_G: i64 = 10;
 const LIVE_WEIGHT_NEAR_FINISH_MIN_RECORDED_USAGE_G: i64 = 50;
 const LIVE_WEIGHT_RECENT_COMPLETED_TAIL_SYNC_SECS: i64 = 10 * 60;
+const LIVE_NOZZLE_MIN_EXTRUSION_TEMP_C: f64 = 180.0;
+const LIVE_NOZZLE_PRINT_CAPABLE_TEMP_C: f64 = 200.0;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum LiveWeightDecision {
@@ -75,8 +78,19 @@ pub(crate) fn enrich_with_match_status(
         apply_tray_match_status(tray, &overview, &all_spools);
     }
     let usage_context = live_print_usage_context(&observed);
+    let recent_completed_context = match usage_context.as_ref() {
+        Some(context) if context.should_use_recent_completed_session() => {
+            live_usage_session_recently_completed_successfully(db, &overview.printer.id, context)?
+        }
+        _ => false,
+    };
+    let stale_recent_completed_context = usage_context.as_ref().is_some_and(|context| {
+        context.finished_success.is_none()
+            && context.is_near_finish_tail_signal()
+            && recent_completed_context
+    });
     if let Some(context) = usage_context.as_ref() {
-        if context.finished_success.is_none() {
+        if context.should_track_running_usage_session() && !stale_recent_completed_context {
             db.touch_live_usage_session(LiveUsageSessionInput {
                 printer_id: &overview.printer.id,
                 session_key: &context.session_key,
@@ -87,9 +101,12 @@ pub(crate) fn enrich_with_match_status(
         }
     }
     let slot_usage_context = match usage_context.as_ref() {
-        Some(context) if context.finished_success.is_some() => db
-            .live_usage_session_is_active(&overview.printer.id, &context.session_key)?
-            .then_some(context),
+        Some(context) if context.finished_success.is_some() => {
+            let active =
+                db.live_usage_session_is_active(&overview.printer.id, &context.session_key)?;
+            (active || recent_completed_context).then_some(context)
+        }
+        Some(context) if stale_recent_completed_context => Some(context),
         other => other,
     };
     auto_sync_live_slots(db, &overview, &observed, slot_usage_context)?;
@@ -539,6 +556,8 @@ fn sync_live_weight(
                     "progress_percent": usage_context.and_then(|context| context.progress_percent),
                     "remaining_minutes": usage_context.and_then(|context| context.remaining_minutes),
                     "finished_success": usage_context.and_then(|context| context.finished_success),
+                    "nozzle_temp_c": usage_context.and_then(|context| context.nozzle_temp_c),
+                    "thermal_state": usage_context.and_then(|context| context.thermal_state_name()),
                 }),
                 &dedupe_key,
                 LIVE_WEIGHT_IGNORED_DEDUPE_WINDOW_SECS,
@@ -601,6 +620,8 @@ fn sync_live_weight(
                             "progress_percent": context.progress_percent,
                             "remaining_minutes": context.remaining_minutes,
                             "finished_success": context.finished_success,
+                            "nozzle_temp_c": context.nozzle_temp_c,
+                            "thermal_state": context.thermal_state_name(),
                             "tray_index": tray.tray_index,
                             "tray_uuid": tray.tray_uuid.as_deref(),
                             "match_status": tray.match_status.as_deref(),
@@ -641,6 +662,8 @@ fn sync_live_weight(
                     "progress_percent": usage_context.and_then(|context| context.progress_percent),
                     "remaining_minutes": usage_context.and_then(|context| context.remaining_minutes),
                     "finished_success": usage_context.and_then(|context| context.finished_success),
+                    "nozzle_temp_c": usage_context.and_then(|context| context.nozzle_temp_c),
+                    "thermal_state": usage_context.and_then(|context| context.thermal_state_name()),
                 }),
             )?;
             return Ok(());
@@ -685,6 +708,8 @@ fn sync_live_weight(
                     "progress_percent": context.progress_percent,
                     "remaining_minutes": context.remaining_minutes,
                     "finished_success": context.finished_success,
+                    "nozzle_temp_c": context.nozzle_temp_c,
+                    "thermal_state": context.thermal_state_name(),
                 }),
                 &dedupe_key,
                 LIVE_WEIGHT_IGNORED_DEDUPE_WINDOW_SECS,
@@ -703,36 +728,38 @@ fn sync_live_weight(
     db.ensure_scale("bambu-ams", "Bambu AMS", "VIRTUAL")?;
     db.insert_weight_reading("bambu-ams", spool_id, remaining_grams, "BAMBU_AMS")?;
     let mut usage_attached_to_recent_completed_session = false;
+    let mut usage_ignored_recent_completed_tail = false;
+    let mut usage_ignored_cold_nozzle = false;
     let usage_record = match (&decision, usage_context) {
+        (LiveWeightDecision::AcceptDecrease { .. }, Some(context))
+            if context.nozzle_blocks_filament_usage() =>
+        {
+            usage_ignored_cold_nozzle = true;
+            None
+        }
         (LiveWeightDecision::AcceptDecrease { used_grams }, Some(context)) => {
-            let use_recent_completed_session = context.looks_like_recent_completed_tail()
-                && !db.live_usage_session_is_active(printer_id, &context.session_key)?;
+            let active_session =
+                db.live_usage_session_is_active(printer_id, &context.session_key)?;
+            let use_recent_completed_session =
+                context.should_use_recent_completed_session() && !active_session;
             if use_recent_completed_session {
-                let record = record_recent_completed_live_usage_delta(
-                    db,
-                    RecentCompletedUsageDeltaInput {
-                        printer_id,
-                        session_key: Some(&context.session_key),
-                        spool_id,
-                        used_grams: *used_grams,
-                        observed_at: context.observed_at.as_deref(),
-                    },
-                )?;
-                usage_attached_to_recent_completed_session = record.is_some();
-                if let Some(record) = record {
-                    Some(record)
+                let record = if *used_grams <= LIVE_WEIGHT_NEAR_FINISH_SMALL_DROP_G {
+                    record_recent_completed_live_usage_delta(
+                        db,
+                        RecentCompletedUsageDeltaInput {
+                            printer_id,
+                            session_key: Some(&context.session_key),
+                            spool_id,
+                            used_grams: *used_grams,
+                            observed_at: context.observed_at.as_deref(),
+                        },
+                    )?
                 } else {
-                    Some(db.record_live_usage_delta(LiveUsageDeltaInput {
-                        printer_id,
-                        session_key: &context.session_key,
-                        job_name: context.job_name.as_deref(),
-                        print_type: context.print_type.as_deref(),
-                        spool_id,
-                        used_grams: *used_grams,
-                        observed_at: context.observed_at.as_deref(),
-                        defer_initial_delta: context.defer_initial_weight_delta(*used_grams),
-                    })?)
-                }
+                    None
+                };
+                usage_attached_to_recent_completed_session = record.is_some();
+                usage_ignored_recent_completed_tail = record.is_none();
+                record
             } else {
                 Some(db.record_live_usage_delta(LiveUsageDeltaInput {
                     printer_id,
@@ -747,17 +774,22 @@ fn sync_live_weight(
             }
         }
         (LiveWeightDecision::AcceptDecrease { used_grams }, None) => {
-            let record = record_recent_completed_live_usage_delta(
-                db,
-                RecentCompletedUsageDeltaInput {
-                    printer_id,
-                    session_key: None,
-                    spool_id,
-                    used_grams: *used_grams,
-                    observed_at: tray.last_identity_seen_at.as_deref(),
-                },
-            )?;
+            let record = if *used_grams <= LIVE_WEIGHT_NEAR_FINISH_SMALL_DROP_G {
+                record_recent_completed_live_usage_delta(
+                    db,
+                    RecentCompletedUsageDeltaInput {
+                        printer_id,
+                        session_key: None,
+                        spool_id,
+                        used_grams: *used_grams,
+                        observed_at: tray.last_identity_seen_at.as_deref(),
+                    },
+                )?
+            } else {
+                None
+            };
             usage_attached_to_recent_completed_session = record.is_some();
+            usage_ignored_recent_completed_tail = record.is_none();
             record
         }
         _ => None,
@@ -776,8 +808,12 @@ fn sync_live_weight(
                 .map(|record| record.deferred_initial_delta)
                 .unwrap_or(false),
             "usage_attached_to_recent_completed_session": usage_attached_to_recent_completed_session,
+            "usage_ignored_recent_completed_tail": usage_ignored_recent_completed_tail,
+            "usage_ignored_cold_nozzle": usage_ignored_cold_nozzle,
             "usage_session_id": usage_record.as_ref().map(|record| record.session_id.as_str()),
             "usage_session_key": usage_context.map(|context| context.session_key.as_str()),
+            "nozzle_temp_c": usage_context.and_then(|context| context.nozzle_temp_c),
+            "thermal_state": usage_context.and_then(|context| context.thermal_state_name()),
             "remaining_percent": tray.remaining_percent,
             "tray_weight_g": tray.tray_weight_g,
             "source": "BAMBU_AMS",
@@ -801,6 +837,8 @@ fn sync_live_weight(
                 .map(|record| record.deferred_initial_delta)
                 .unwrap_or(false),
             "usage_attached_to_recent_completed_session": usage_attached_to_recent_completed_session,
+            "usage_ignored_recent_completed_tail": usage_ignored_recent_completed_tail,
+            "usage_ignored_cold_nozzle": usage_ignored_cold_nozzle,
             "usage_session_id": usage_record.as_ref().map(|record| record.session_id.as_str()),
             "usage_session_key": usage_context.map(|context| context.session_key.as_str()),
             "job_name": usage_context.and_then(|context| context.job_name.as_deref()),
@@ -808,6 +846,8 @@ fn sync_live_weight(
             "progress_percent": usage_context.and_then(|context| context.progress_percent),
             "remaining_minutes": usage_context.and_then(|context| context.remaining_minutes),
             "finished_success": usage_context.and_then(|context| context.finished_success),
+            "nozzle_temp_c": usage_context.and_then(|context| context.nozzle_temp_c),
+            "thermal_state": usage_context.and_then(|context| context.thermal_state_name()),
             "tray_index": tray.tray_index,
             "tray_uuid": tray.tray_uuid.as_deref(),
             "match_status": tray.match_status.as_deref(),
@@ -866,6 +906,19 @@ fn record_recent_completed_live_usage_delta(
         spool_id: input.spool_id,
         used_grams: input.used_grams,
         observed_at: input.observed_at,
+        max_age_seconds: LIVE_WEIGHT_RECENT_COMPLETED_TAIL_SYNC_SECS,
+    })
+}
+
+fn live_usage_session_recently_completed_successfully(
+    db: &FilamentDatabase,
+    printer_id: &str,
+    context: &LivePrintUsageContext,
+) -> Result<bool, InventoryError> {
+    db.live_usage_session_recently_completed_successfully(LiveUsageRecentCompletedSessionInput {
+        printer_id,
+        session_key: &context.session_key,
+        observed_at: context.observed_at.as_deref(),
         max_age_seconds: LIVE_WEIGHT_RECENT_COMPLETED_TAIL_SYNC_SECS,
     })
 }
@@ -938,6 +991,8 @@ fn rebase_live_weight_before_usage(
             "accepted_decision": "pre_usage_rebase",
             "reason": "pre_usage_ams_rebase",
             "usage_session_key": input.usage_context.map(|context| context.session_key.as_str()),
+            "nozzle_temp_c": input.usage_context.and_then(|context| context.nozzle_temp_c),
+            "thermal_state": input.usage_context.and_then(|context| context.thermal_state_name()),
             "remaining_percent": input.tray.remaining_percent,
             "tray_weight_g": input.tray.tray_weight_g,
             "source": "BAMBU_AMS",
@@ -962,6 +1017,8 @@ fn rebase_live_weight_before_usage(
             "progress_percent": input.usage_context.and_then(|context| context.progress_percent),
             "remaining_minutes": input.usage_context.and_then(|context| context.remaining_minutes),
             "finished_success": input.usage_context.and_then(|context| context.finished_success),
+            "nozzle_temp_c": input.usage_context.and_then(|context| context.nozzle_temp_c),
+            "thermal_state": input.usage_context.and_then(|context| context.thermal_state_name()),
             "tray_index": input.tray.tray_index,
             "tray_uuid": input.tray.tray_uuid.as_deref(),
             "match_status": input.tray.match_status.as_deref(),
@@ -1072,9 +1129,31 @@ struct LivePrintUsageContext {
     remaining_minutes: Option<i64>,
     observed_at: Option<String>,
     finished_success: Option<bool>,
+    nozzle_temp_c: Option<f64>,
 }
 
 impl LivePrintUsageContext {
+    fn nozzle_blocks_filament_usage(&self) -> bool {
+        self.nozzle_temp_c
+            .is_some_and(|temp| temp < LIVE_NOZZLE_MIN_EXTRUSION_TEMP_C)
+    }
+
+    fn should_track_running_usage_session(&self) -> bool {
+        self.finished_success.is_none() && !self.nozzle_blocks_filament_usage()
+    }
+
+    fn thermal_state_name(&self) -> Option<&'static str> {
+        self.nozzle_temp_c.map(|temp| {
+            if temp < LIVE_NOZZLE_MIN_EXTRUSION_TEMP_C {
+                "below_extrusion_temp"
+            } else if temp >= LIVE_NOZZLE_PRINT_CAPABLE_TEMP_C {
+                "print_capable"
+            } else {
+                "transition"
+            }
+        })
+    }
+
     fn defer_initial_weight_delta(&self, used_grams: i64) -> bool {
         self.finished_success.is_none()
             && used_grams > LIVE_WEIGHT_NEAR_FINISH_SMALL_DROP_G
@@ -1083,14 +1162,16 @@ impl LivePrintUsageContext {
                 .is_some_and(|progress| progress <= LIVE_USAGE_WARMUP_PROGRESS_PERCENT)
     }
 
-    fn looks_like_recent_completed_tail(&self) -> bool {
-        self.finished_success.is_none()
-            && self
-                .progress_percent
-                .is_some_and(|progress| progress >= LIVE_WEIGHT_NEAR_FINISH_PROGRESS_PERCENT)
+    fn is_near_finish_tail_signal(&self) -> bool {
+        self.progress_percent
+            .is_some_and(|progress| progress >= LIVE_WEIGHT_NEAR_FINISH_PROGRESS_PERCENT)
             && self.remaining_minutes.is_some_and(|minutes| {
                 (0..=LIVE_WEIGHT_NEAR_FINISH_MAX_REMAINING_MINUTES).contains(&minutes)
             })
+    }
+
+    fn should_use_recent_completed_session(&self) -> bool {
+        self.finished_success == Some(true) || self.is_near_finish_tail_signal()
     }
 }
 
@@ -1137,6 +1218,7 @@ fn live_print_usage_context(observed: &BambuLiveObservedStateRow) -> Option<Live
         remaining_minutes: observed.remaining_minutes,
         observed_at: observed.last_seen_at.clone(),
         finished_success,
+        nozzle_temp_c: observed.nozzle_temp_c,
     })
 }
 
