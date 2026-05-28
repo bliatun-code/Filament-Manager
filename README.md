@@ -1,66 +1,242 @@
 # Filament Manager
 
-Desktop-first filament inventory project with:
-- Tauri backend (`src-tauri`)
-- TypeScript scraper (`src/scraper`)
-- React UI (`ui`)
+Filament Manager is a desktop-first inventory app for 3D printer filament. It
+tracks physical spools, loans, printer slots, filament usage, wishlist/order
+items, catalog data, and optional Bambu AMS live observations in one local
+library.
 
-## Stability Goals
+The app is built as a Tauri desktop application with a React UI and a Rust
+backend. It can run as a single local installation, as a host for other desktop
+clients, or as a local webapp/companion server for paired browsers on the same
+LAN.
 
-The project is configured to keep working when upstream dependencies change:
-- `better-sqlite3` is optional; scraper falls back to `sqlite3` CLI.
-- Auto-scrape detects working Bambu store/collection dynamically.
-- Scraper network calls use retries + timeout controls.
-- Local Tauri CLI is used via npm script (`npm run tauri`), avoiding `cargo tauri` install issues.
-- Tauri configuration is on v2 schema with explicit capabilities.
+## Documentation
+
+Start with the user guide for product behavior and workflows:
+
+- Norwegian: [docs/BRUKERVEILEDNING.md](docs/BRUKERVEILEDNING.md)
+- English: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+
+Release notes:
+
+- [v0.15.1](RELEASE_NOTES_v0.15.1.md)
+- [v0.15.0](RELEASE_NOTES_v0.15.0.md)
+- [v0.14.0](RELEASE_NOTES_v0.14.0.md)
+- [v0.13.0](RELEASE_NOTES_v0.13.0.md)
+- [v0.12.0](RELEASE_NOTES_v0.12.0.md)
+
+## Feature Overview
+
+- Inventory for owned and borrowed-in filament spools.
+- Add filament flow for Bambu, eSUN, generic/manual entries, and wishlist/order
+  planning.
+- Loan tracking for outgoing loans and borrowed-in spools, including returns and
+  CSV export.
+- Printer profiles for Bambu AMS, Prusa MMU3, Prusa XL toolheads, and
+  single-material printers.
+- Optional Bambu Live integration for local AMS slot observations, RFID matching,
+  estimated AMS weight, nozzle temperature, and print-session usage accounting.
+- QR/RFID support for robust spool lookup and safer automatic AMS matching.
+- Local companion/webapp for paired phones, tablets, and workshop browsers.
+- Host/client library mode for sharing one desktop-owned library with other
+  desktop installations.
+- Catalog refresh and maintenance for Bambu and eSUN filament data.
+- Backup, import/export, reset, and maintenance tools.
+
+## Repository Layout
+
+- `src-tauri/`: Tauri shell, Rust commands, companion server, Bambu live sync,
+  trusted-LAN, and desktop integration.
+- `src/backend/`: shared Rust backend modules used by the Tauri app.
+- `src/scraper/`: TypeScript catalog scraper utilities.
+- `ui/`: React desktop UI, UI models, tests, and styling.
+- `scripts/`: local validation, Tauri wrapper, and contract checks.
+- `docs/`: user-facing guides.
+- `.github/workflows/release-build.yml`: tag/manual workflow for macOS DMG and
+  Windows MSI artifacts.
 
 ## Requirements
 
 - Node.js `24.x`
 - npm `>=10`
-- Rust toolchain (for Tauri build)
-- Xcode app + Command Line Tools (macOS build)
-- `sqlite3` CLI recommended (required if `better-sqlite3` is unavailable)
+- Rust toolchain for Tauri builds
+- Xcode app + Command Line Tools for macOS builds
+- `sqlite3` CLI recommended for scraper fallback behavior
+
+The project uses the local Tauri CLI from npm dependencies through
+`npm run tauri`, so a global `cargo tauri` install is not required.
 
 ## Install
 
+Use clean installs when preparing CI/release-like work:
+
 ```bash
-nvm use || nvm install
-npm install
-cd ui && npm install
+npm ci
+npm --prefix ./ui ci
 ```
 
-## Windows Install
+For normal local development, `npm install` in both package roots is also fine:
 
-- Supported build path: Windows 11 + Tauri MSI
-- Recommended Node/npm baseline for development:
-  - Node `24.x` recommended
-  - npm `>=10`
-- Recommended Rust target:
-  - `x86_64-pc-windows-msvc`
-- Build/install flow:
+```bash
+npm install
+npm --prefix ./ui install
+```
+
+## Development
+
+Run the desktop app in Tauri dev mode:
+
+```bash
+npm run tauri -- dev
+```
+
+Run the frontend alone:
+
+```bash
+npm --prefix ./ui run dev
+```
+
+Run the health check:
+
+```bash
+npm run doctor
+```
+
+## Verification
+
+Full local verification:
+
+```bash
+npm run verify
+```
+
+What `verify` covers:
+
+- UI production build
+- UI lint
+- companion/webapp tests
+- React/UI model tests
+- Tauri invoke and companion route contract checks
+- UI reachability and architecture checks
+- version consistency checks
+- doctor/runtime checks
+- Rust formatting
+- Rust tests
+- Rust clippy with warnings denied
+
+Useful narrower checks:
+
+```bash
+npm run smoke
+npm run test:ui
+npm run test:companion
+npm run test:rust
+npm run check:contracts
+```
+
+Dependency/audit checks:
+
+```bash
+npm outdated
+npm --prefix ./ui outdated
+npm audit --audit-level=moderate
+npm --prefix ./ui audit --audit-level=moderate
+cargo update --dry-run --verbose
+```
+
+## Build
+
+Build the desktop app with the local Tauri CLI:
+
+```bash
+npm run tauri -- build
+```
+
+Build only a macOS DMG:
+
+```bash
+npm run tauri -- build --bundles dmg
+```
+
+Build only a Windows MSI on Windows:
 
 ```powershell
 npm ci
-npm --prefix ui ci
+npm --prefix ./ui ci
 npm run doctor
 npm run smoke
 npm run tauri -- build --bundles msi
 ```
 
-- MSI default install path:
-  - `C:\Users\<user>\AppData\Local\Filament Manager`
-- App data path:
-  - `C:\Users\<user>\AppData\Local\com.bambu.filament.manager`
+Windows MSI uses the per-user WiX template in `src-tauri/wix/per-user.wxs`.
 
-## macOS App Download
+## Release Status
 
-- Latest release (DMG): https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current release target: `v0.15.0`
+- Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
+- Current release target: `v0.15.1`
+- Version source of truth must stay aligned across:
+  - `package.json`
+  - `package-lock.json`
+  - `src-tauri/Cargo.toml`
+  - `Cargo.lock`
+  - `src-tauri/tauri.conf.json`
+  - this README release target
+
+The version guard is included in:
+
+```bash
+npm run check:version
+npm run verify
+```
+
+## GitHub Actions Release Artifacts
+
+The release workflow builds installer artifacts from tags and manual runs:
+
+- Workflow: `.github/workflows/release-build.yml`
+- Tag trigger: push tag matching `v*`, for example `v0.15.0`
+- Manual trigger: `workflow_dispatch` with `platform` set to `both`, `windows`,
+  or `macos`
+- Outputs:
+  - `filament-manager-macos-dmg-<tag>`
+  - `filament-manager-windows-msi-<tag>`
+
+Trigger from git:
+
+```bash
+git tag -a vX.Y.Z -m "vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+Download artifacts from a run:
+
+```bash
+gh run download <run-id> --dir release-artifacts/<tag>
+```
+
+Attach installers to the GitHub release:
+
+```bash
+gh release upload <tag> release-artifacts/<tag>/**/*.dmg release-artifacts/<tag>/**/*.msi --clobber
+```
+
+Manual single-platform build:
+
+1. Open GitHub -> `Actions` -> `Release Build Artifacts`.
+2. Click `Run workflow`.
+3. Choose `windows`, `macos`, or `both`.
+
+## Installers and App Data
+
+macOS:
+
+- Download DMG from the latest GitHub release.
+- App data path is typically
+  `~/Library/Application Support/com.bambu.filament.manager`.
 
 If macOS blocks first launch of an unsigned build downloaded from GitHub:
 
-1. Move app to `Applications` from the DMG.
+1. Move the app to `Applications` from the DMG.
 2. Try `Right click -> Open` once.
 3. If still blocked, run:
 
@@ -68,85 +244,27 @@ If macOS blocks first launch of an unsigned build downloaded from GitHub:
 xattr -dr com.apple.quarantine "/Applications/Filament Manager.app"
 ```
 
-## GitHub Actions Release Artifacts
+Windows:
 
-The repository includes a tag-triggered build workflow:
-- Workflow: `.github/workflows/release-build.yml`
-- Triggers:
-  - push tag matching `v*` (example: `v0.15.0`)
-  - manual run via `workflow_dispatch` with platform selection: `both`, `windows`, or `macos`
-- Outputs:
-  - macOS DMG artifact
-  - Windows MSI artifact
+- Supported installer path: Windows 11 + Tauri MSI.
+- MSI default install path:
+  `C:\Users\<user>\AppData\Local\Filament Manager`
+- App data path:
+  `C:\Users\<user>\AppData\Local\com.bambu.filament.manager`
+- The MSI is per-user and should not require Administrator privileges for the
+  default install path.
+- Uninstall removes installed app files but keeps local app data unless that data
+  is removed manually.
 
-How to trigger from git:
+## Catalog Scraping
 
-```bash
-git tag -a vX.Y.Z -m "vX.Y.Z"
-git push origin vX.Y.Z
-```
-
-How to download artifacts:
-1. Open GitHub repo -> `Actions` tab.
-2. Open the run named `Release Build Artifacts` for the tag.
-3. Download artifacts from the `Artifacts` section:
-   - `filament-manager-macos-dmg-<tag>`
-   - `filament-manager-windows-msi-<tag>`
-
-How to attach those installers to the GitHub release:
-
-```bash
-gh run download <run-id> --dir release-artifacts/<tag>
-gh release upload <tag> release-artifacts/<tag>/**/*.dmg release-artifacts/<tag>/**/*.msi --clobber
-```
-
-How to run manually for a single platform:
-1. Open GitHub repo -> `Actions` tab -> `Release Build Artifacts`.
-2. Click `Run workflow`.
-3. Choose `platform`:
-   - `windows` to build only the MSI
-   - `macos` to build only the DMG
-   - `both` to build both installers
-
-### Windows RC notes
-
-- Windows MSI is now packaged as a per-user install and does not require Administrator privileges for the default install path.
-- Installer path: `C:\Users\<user>\AppData\Local\Filament Manager`
-- App data path: `C:\Users\<user>\AppData\Local\com.bambu.filament.manager`
-- First-run on Windows creates the local SQLite database automatically.
-- Uninstall removes the installed app files but keeps local app data unless you remove it manually.
-
-### Windows troubleshooting
-
-- `npm run doctor` fails because `npm` or `npx` is not found:
-  - verify Node 24 or Node 20 is installed and reopen the terminal
-- `npm run smoke` fails in companion tests:
-  - run `npm ci`
-  - run `npm --prefix ui ci`
-- MSI install fails with permission errors:
-  - use the current per-user MSI from `target/release/bundle/msi`
-  - do not force install into `Program Files`
-- App starts but data appears empty:
-  - verify the app data directory exists at `C:\Users\<user>\AppData\Local\com.bambu.filament.manager`
-  - check whether `bambu.db` was created on first run
-- `sqlite3` CLI warning in `doctor`:
-  - this is not a blocker if `better-sqlite3` is available and `doctor` still reports `ok`
-
-## Health Check
-
-```bash
-npm run doctor
-```
-
-## Scraping
-
-Safe run (recommended):
+Safe Bambu catalog refresh from the scraper:
 
 ```bash
 BAMBU_DB_PATH=./data/bambu.db npm run scrape:auto:safe
 ```
 
-Manual run:
+Manual scraper run:
 
 ```bash
 BAMBU_BASE_URL=https://eu.store.bambulab.com \
@@ -156,48 +274,71 @@ npm run scrape
 ```
 
 Optional tuning:
+
 - `BAMBU_VERBOSE=1`
 - `BAMBU_FETCH_RETRIES=2`
 - `BAMBU_TIMEOUT_MS=20000`
 - `BAMBU_PRODUCT_DELAY_MS=200`
 
-## Catalog storage and lifecycle
+Catalog data is stored in SQLite in `filament_master_list`. The app can also
+refresh supported catalog data from the Settings UI. When Bambu refreshes find a
+known item again it is reactivated; older Bambu entries that disappear from the
+latest import can be kept as discontinued for historical inventory rules.
 
-- Catalog data is stored locally in SQLite (`filament_master_list`) in your configured `BAMBU_DB_PATH`.
-- The app now supports **Import / Refresh Bambu Catalog** directly from the Inventory page.
-- On refresh, Bambu items seen in the latest import are reactivated; older Bambu items are marked discontinued (kept in DB for historical inventory rules).
+## Data Model Notes
 
-## Roll lifecycle and history
+- Spool edits, status changes, weight updates, RFID updates, printer assignments,
+  loan events, live usage, deletions, and lifecycle changes are tracked in local
+  history.
+- Deleting a spool normally hides it from active inventory while preserving
+  history.
+- Permanent purge is available for cases where the spool and related records
+  should truly be removed.
+- Every printer gets an `EXT` slot so single-spool usage works even without a
+  multi-material system.
+- Bambu AMS weight is treated as an estimate, not as a physical scale reading;
+  live usage accounting is intentionally conservative.
 
-- Roll edits, weight updates, used-up transitions, and deletions are tracked in local history (`spool_history_events`).
-- Deleting a roll removes it from active inventory view (soft delete) but preserves history.
-- Permanent purge is available for a roll and removes the roll plus related weight, scan, print, and lifecycle history records.
-- Selected roll view includes a small usage diagram based on stored weight readings.
-- Inventory list groups identical filament/color entries into one card and summarizes total weight with per-roll lines.
+## Stability Goals
 
-## Add + wishlist workflow
+The project is configured to keep working when upstream dependencies change:
 
-- Inventory now separates **Manage inventory** and **Add to inventory** in one page.
-- Add mode includes a local DB-backed wishlist/order tracker (`wishlist_items`).
-- Wishlist entries can be moved to **On order**, then converted to stocked rolls with **Stock roll now**.
+- `better-sqlite3` is optional; scraper code can fall back to the `sqlite3` CLI.
+- Auto-scrape detects working Bambu store/collection paths dynamically.
+- Scraper network calls use retry and timeout controls.
+- Tauri configuration uses the v2 schema with explicit capabilities.
+- Local wrapper scripts keep CI and developer commands consistent.
 
-## Printer slot profiles
+## Troubleshooting
 
-- Every printer always gets one `EXT` slot, so single-roll usage works even with no multi-material system configured.
-- Bambu models use AMS profiles (`4` slots per AMS; configurable AMS unit count).
-- Prusa MMU3-compatible models use optional MMU3 profiles (`5` channels when enabled).
-- Prusa XL profiles use toolhead counts (`1`, `2`, or `5` toolheads).
-- Prusa MINI+ defaults to single-material (`EXT` only).
+`npm run doctor` fails because `npm` or `npx` is not found:
 
-## Tauri CLI
+- Verify Node 24 is installed.
+- Reopen the terminal after installing Node.
 
-Use local CLI from dependencies:
+`npm run smoke` fails in companion or UI tests:
 
-```bash
-npm run tauri -- --version
-npm run tauri -- info
-```
+- Run `npm ci`.
+- Run `npm --prefix ./ui ci`.
+- Re-run `npm run smoke`.
+
+Windows MSI install fails with permission errors:
+
+- Use the current per-user MSI from `target/release/bundle/msi`.
+- Do not force install into `Program Files`.
+
+App starts but data appears empty:
+
+- Check whether the expected app data directory exists.
+- Check whether `bambu.db` was created on first run.
+- If using Client mode, verify the host is reachable and pairing is valid.
+
+`sqlite3` CLI warning in `doctor`:
+
+- This is not a blocker when `better-sqlite3` is available and `doctor` reports
+  `ok`.
 
 ## Tauri Config Source of Truth
 
-- Use `src-tauri/tauri.conf.json` as the Tauri app config.
+Use `src-tauri/tauri.conf.json` as the primary Tauri app config. Windows-specific
+bundle overrides live in `src-tauri/tauri.windows.conf.json`.
