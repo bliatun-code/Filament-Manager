@@ -12,6 +12,7 @@ pub(crate) struct CatalogRefreshResult {
     imported: i64,
     detected_store: Option<String>,
     detected_collection: Option<String>,
+    discovered_materials: Option<Vec<String>>,
     reactivated_count: i64,
     discontinued_count: i64,
     reused_cached_products: Option<i64>,
@@ -84,6 +85,7 @@ pub(crate) async fn refresh_bambu_catalog(
             imported: 0,
             detected_store: None,
             detected_collection: None,
+            discovered_materials: None,
             reactivated_count: 0,
             discontinued_count: 0,
             reused_cached_products: None,
@@ -153,6 +155,7 @@ pub(crate) async fn refresh_esun_catalog(
             imported: 0,
             detected_store: None,
             detected_collection: None,
+            discovered_materials: None,
             reactivated_count: 0,
             discontinued_count: 0,
             reused_cached_products: None,
@@ -239,6 +242,7 @@ fn refresh_bambu_catalog_blocking(
                 imported: 0,
                 detected_store: None,
                 detected_collection: None,
+                discovered_materials: None,
                 reactivated_count: 0,
                 discontinued_count: 0,
                 reused_cached_products: None,
@@ -316,6 +320,12 @@ fn refresh_bambu_catalog_blocking(
     if !material_types.is_empty() {
         output.push_str(&format!("Material filter: {}\n", material_types.join(", ")));
     }
+    if !snapshot.discovered_materials.is_empty() {
+        output.push_str(&format!(
+            "Discovered materials: {}\n",
+            snapshot.discovered_materials.join(", ")
+        ));
+    }
     if snapshot.partial {
         output.push_str("Refresh quality: partial\n");
     }
@@ -385,6 +395,7 @@ fn refresh_bambu_catalog_blocking(
         imported,
         detected_store: Some(snapshot.detected_store),
         detected_collection: Some(snapshot.detected_collection),
+        discovered_materials: Some(snapshot.discovered_materials),
         reactivated_count,
         discontinued_count,
         reused_cached_products: Some(snapshot.reused_cached_products),
@@ -458,6 +469,7 @@ fn refresh_esun_catalog_blocking(
                 imported: 0,
                 detected_store: None,
                 detected_collection: None,
+                discovered_materials: None,
                 reactivated_count: 0,
                 discontinued_count: 0,
                 reused_cached_products: None,
@@ -590,6 +602,7 @@ fn refresh_esun_catalog_blocking(
         imported,
         detected_store: Some(snapshot.detected_store),
         detected_collection: Some(snapshot.detected_collection),
+        discovered_materials: None,
         reactivated_count,
         discontinued_count,
         reused_cached_products: Some(snapshot.reused_cached_products),

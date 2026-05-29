@@ -3,8 +3,9 @@ use std::collections::HashSet;
 use super::{
     append_known_entries_for_product_url, build_known_entry_lookup, dedupe_site_listing_candidates,
     esun_material_source_paths, esun_material_source_urls, extract_site_listing_candidates,
-    filter_product_urls_by_material_hints, matches_listing_candidate_material, EsunCatalogEntry,
-    EsunKnownCatalogEntry, EsunSiteListingCandidate, ESUN_FILTERED_DETAIL_FETCH_BUDGET,
+    filter_product_urls_by_material_hints, infer_material, matches_listing_candidate_material,
+    EsunCatalogEntry, EsunKnownCatalogEntry, EsunSiteListingCandidate,
+    ESUN_FILTERED_DETAIL_FETCH_BUDGET,
 };
 
 #[test]
@@ -21,6 +22,15 @@ fn esun_material_source_paths_map_core_materials_to_scoped_pages() {
         esun_material_source_paths("ABS"),
         &["/engineering-materials/"]
     );
+}
+
+#[test]
+fn infer_material_covers_supported_esun_refresh_filters() {
+    assert_eq!(infer_material("eSUN PLA+ Filament"), "PLA");
+    assert_eq!(infer_material("eSUN ePA12-CF Filament"), "PA12");
+    assert_eq!(infer_material("eSUN PAHT-CF Filament"), "PAHT");
+    assert_eq!(infer_material("eSUN PVA Water Soluble Filament"), "PVA");
+    assert_eq!(infer_material("eSUN HIPS Filament"), "HIPS");
 }
 
 #[test]

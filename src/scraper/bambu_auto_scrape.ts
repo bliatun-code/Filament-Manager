@@ -1,3 +1,5 @@
+import { pathToFileURL } from "node:url";
+
 import {
   DEFAULT_BASE_URLS,
   DEFAULT_COLLECTION_HANDLE,
@@ -353,6 +355,9 @@ async function main(): Promise<void> {
   if (result.productsDetailed > 0) {
     process.stdout.write(`Products detailed: ${result.productsDetailed}\n`);
   }
+  if (result.discoveredMaterials.length > 0) {
+    process.stdout.write(`Discovered materials: ${result.discoveredMaterials.join(", ")}\n`);
+  }
   if (result.antiBotBlocks > 0) {
     process.stdout.write(`Anti-bot blocks: ${result.antiBotBlocks}\n`);
   }
@@ -368,7 +373,12 @@ async function main(): Promise<void> {
   process.stdout.write(`Imported ${result.imported} entries.\n`);
 }
 
-main().catch((error) => {
-  process.stderr.write(`Auto-scrape failed: ${String(error)}\n`);
-  process.exit(1);
-});
+const isDirectRun =
+  process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
+
+if (isDirectRun) {
+  main().catch((error) => {
+    process.stderr.write(`Auto-scrape failed: ${String(error)}\n`);
+    process.exit(1);
+  });
+}

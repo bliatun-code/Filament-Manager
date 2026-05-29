@@ -60,14 +60,49 @@ test("settings catalog state groups vendor catalogs and material filters", () =>
     state.bambuCatalogMasters.map((master) => master.id),
     ["bambu-pla", "bambu-petg"],
   );
-  assert.deepEqual(state.bambuCatalogMaterialOptions, ["PETG", "PLA"]);
+  assert.deepEqual(state.bambuCatalogMaterialOptions, [
+    "ABS",
+    "ASA",
+    "PA6",
+    "PAHT",
+    "PC",
+    "PET",
+    "PETG",
+    "PLA",
+    "PPA",
+    "TPU",
+  ]);
   assert.deepEqual(
     state.esunCatalogMasters.map((master) => master.id),
     ["esun-abs"],
   );
-  assert.deepEqual(state.esunCatalogMaterialOptions, ["ABS"]);
+  assert.deepEqual(state.esunCatalogMaterialOptions, [
+    "ABS",
+    "ASA",
+    "HIPS",
+    "PA",
+    "PA12",
+    "PAHT",
+    "PC",
+    "PET",
+    "PETG",
+    "PLA",
+    "PVA",
+    "TPU",
+  ]);
   assert.equal(state.activeCatalogMasterCount, 2);
-  assert.deepEqual(state.activeCatalogMaterialOptions, ["PETG", "PLA"]);
+  assert.deepEqual(state.activeCatalogMaterialOptions, [
+    "ABS",
+    "ASA",
+    "PA6",
+    "PAHT",
+    "PC",
+    "PET",
+    "PETG",
+    "PLA",
+    "PPA",
+    "TPU",
+  ]);
   assert.deepEqual(state.activeCatalogRefreshMaterials, ["PLA"]);
 });
 

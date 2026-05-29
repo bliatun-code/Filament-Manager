@@ -82,6 +82,8 @@ export type ScrapeOptions = {
 type FetchResult = {
   baseUrl: string;
   products: ShopifyProduct[];
+  discoveredMaterials: string[];
+  productsDiscovered: number;
 };
 
 type ProductsPageResult = {
@@ -99,6 +101,7 @@ type ProductSummary = {
 type NextStoreResult = {
   baseUrl: string;
   entries: ColorEntry[];
+  discoveredMaterials: string[];
   warnings: string[];
   antiBotBlocks: number;
   productsDiscovered: number;
@@ -805,6 +808,7 @@ async function fetchAllProducts(
 ): Promise<FetchResult | null> {
   for (const baseUrl of baseUrls) {
     const products: ShopifyProduct[] = [];
+    const discoveredMaterialNames: string[] = [];
     let page = 1;
     let hasPageFailureSignals = false;
     let antiBotSeen = false;
@@ -830,16 +834,22 @@ async function fetchAllProducts(
         break;
       }
 
-      products.push(
-        ...pageResult.products.filter((product) =>
-          matchesMaterialFilter(inferMaterial(product.title), materialFilters)
-        ),
-      );
+      for (const product of pageResult.products) {
+        discoveredMaterialNames.push(product.title);
+        if (matchesMaterialFilter(inferMaterial(product.title), materialFilters)) {
+          products.push(product);
+        }
+      }
       page += 1;
     }
 
     if (products.length > 0 && !hasPageFailureSignals) {
-      return { baseUrl, products };
+      return {
+        baseUrl,
+        products,
+        discoveredMaterials: discoveredMaterialsFromNames(discoveredMaterialNames),
+        productsDiscovered: discoveredMaterialNames.length,
+      };
     }
     if (products.length > 0 && hasPageFailureSignals) {
       if (verbose) {
@@ -872,7 +882,7 @@ function buildFallbackEntry(product: ProductSummary, baseUrl: string): ColorEntr
     material: inferMaterial(product.name),
     filamentName: product.name,
     colorName: "Standard",
-    hexColor: estimateHex("Standard"),
+    hexColor: resolveBambuHex(product.name, "Standard"),
     imageUrl: normalizeMaybeUrl(product.mediaFiles?.[0] ?? null, baseUrl),
     productUrl: `${baseUrl}/products/${product.seoCode}`,
   };
@@ -913,6 +923,9 @@ async function fetchNextStoreEntries(
       }
       continue;
     }
+    const discoveredMaterials = discoveredMaterialsFromNames(
+      products.map((product) => product.name),
+    );
 
     const entries: ColorEntry[] = [];
     const warnings = new Set<string>();
@@ -975,7 +988,7 @@ async function fetchNextStoreEntries(
           material,
           filamentName: product.name,
           colorName: "Standard",
-          hexColor: estimateHex("Standard"),
+          hexColor: resolveBambuHex(product.name, "Standard"),
           imageUrl: normalizeMaybeUrl(product.mediaFiles?.[0] ?? null, baseUrl),
           productUrl,
         });
@@ -991,7 +1004,7 @@ async function fetchNextStoreEntries(
           material,
           filamentName: product.name,
           colorName: color.colorName,
-          hexColor: estimateHex(color.colorName),
+          hexColor: resolveBambuHex(product.name, color.colorName),
           imageUrl,
           productUrl,
         });
@@ -1009,6 +1022,7 @@ async function fetchNextStoreEntries(
       return {
         baseUrl,
         entries: uniqueEntries,
+        discoveredMaterials,
         warnings: warningList,
         antiBotBlocks,
         productsDiscovered: products.length,
@@ -1024,7 +1038,7 @@ async function fetchNextStoreEntries(
 function extractColors(product: ShopifyProduct, baseUrl: string): ColorEntry[] {
   const direct = parseTitleColor(product.title);
   if (direct) {
-    const hexColor = estimateHex(direct.colorName);
+    const hexColor = resolveBambuHex(direct.filamentName, direct.colorName);
     const imageUrl = selectImage(product, null);
     return [
       {
@@ -1055,7 +1069,7 @@ function extractColors(product: ShopifyProduct, baseUrl: string): ColorEntry[] {
       if (!colorName) {
         return null;
       }
-      const hexColor = estimateHex(colorName);
+      const hexColor = resolveBambuHex(filamentName, colorName);
       const imageUrl = selectImage(product, variant);
       return {
         material,
@@ -1093,6 +1107,7 @@ function inferMaterial(filamentName: string): string {
     [/^TPU\b/i, "TPU"],
     [/^PA6\b/i, "PA6"],
     [/^PAHT\b/i, "PAHT"],
+    [/^PPA\b/i, "PPA"],
     [/^PET\b/i, "PET"],
     [/^PC\b/i, "PC"],
     [/^ASA\b/i, "ASA"],
@@ -1126,6 +1141,81 @@ function matchesMaterialFilter(material: string, materialFilters: string[]): boo
     return true;
   }
   return materialFilters.includes(material.trim().toUpperCase());
+}
+
+function discoveredMaterialsFromNames(names: Iterable<string>): string[] {
+  return Array.from(new Set(Array.from(names, inferMaterial))).sort((left, right) =>
+    left.localeCompare(right),
+  );
+}
+
+type OfficialBambuHexCode = {
+  filament: string;
+  color: string;
+  hex: string;
+};
+
+const OFFICIAL_BAMBU_HEX_CODES = JSON.parse(
+  fs.readFileSync(new URL("../data/bambu_official_hex_codes.json", import.meta.url), "utf8"),
+) as OfficialBambuHexCode[];
+
+function officialKey(value: string): string {
+  return value
+    .replace(/\+/g, " plus ")
+    .replace(/[^a-z0-9]+/gi, "")
+    .toLowerCase()
+    .replace(/colour/g, "color");
+}
+
+function colorNameWithoutCode(colorName: string): string {
+  return colorName.trim().replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
+
+function officialColorKey(filamentName: string, colorName: string): string {
+  const filamentKey = officialKey(filamentName);
+  let color = stripLeadingLabel(colorNameWithoutCode(colorName), filamentName);
+  if (filamentKey === "plamatte") {
+    color = color.replace(/^matte\s+/i, "").trim();
+  }
+  return officialKey(color);
+}
+
+function stripLeadingLabel(value: string, label: string): string {
+  const trimmed = value.trim();
+  const normalizedLabel = label.trim();
+  if (
+    !normalizedLabel ||
+    trimmed.length <= normalizedLabel.length ||
+    trimmed.slice(0, normalizedLabel.length).toLowerCase() !== normalizedLabel.toLowerCase()
+  ) {
+    return trimmed;
+  }
+  const rest = trimmed
+    .slice(normalizedLabel.length)
+    .trimStart()
+    .replace(/^[-·:]\s*/, "")
+    .trimStart();
+  return rest || trimmed;
+}
+
+function officialFilamentKeyCandidates(filamentName: string): string[] {
+  const filamentKey = officialKey(filamentName);
+  if (filamentKey === "tpu85atpu90a") {
+    return [filamentKey, "tpu85a", "tpu90a"];
+  }
+  return [filamentKey];
+}
+
+function officialBambuHex(filamentName: string, colorName: string): string | null {
+  const filamentKeys = officialFilamentKeyCandidates(filamentName);
+  const colorKey = officialColorKey(filamentName, colorName);
+  return OFFICIAL_BAMBU_HEX_CODES.find(
+    ({ filament, color }) => filamentKeys.includes(filament) && color === colorKey,
+  )?.hex ?? null;
+}
+
+function resolveBambuHex(filamentName: string, colorName: string): string | null {
+  return officialBambuHex(filamentName, colorName) ?? estimateHex(colorName);
 }
 
 function estimateHex(colorName: string): string | null {
@@ -1195,6 +1285,7 @@ export async function runScrape(
   collectionHandle: string;
   warnings: string[];
   antiBotBlocks: number;
+  discoveredMaterials: string[];
   productsDiscovered: number;
   productsDetailed: number;
   partial: boolean;
@@ -1224,6 +1315,7 @@ export async function runScrape(
   let usedBaseUrl: string | undefined;
   let warnings: string[] = [];
   let antiBotBlocks = 0;
+  let discoveredMaterials: string[] = [];
   let productsDiscovered = 0;
   let productsDetailed = 0;
   let partial = false;
@@ -1237,6 +1329,8 @@ export async function runScrape(
 
   if (result) {
     usedBaseUrl = result.baseUrl;
+    discoveredMaterials = result.discoveredMaterials;
+    productsDiscovered = result.productsDiscovered;
     for (const product of result.products) {
       const colors = extractColors(product, result.baseUrl);
       for (const entry of colors) {
@@ -1255,6 +1349,7 @@ export async function runScrape(
       usedBaseUrl = nextResult.baseUrl;
       warnings = nextResult.warnings;
       antiBotBlocks = nextResult.antiBotBlocks;
+      discoveredMaterials = nextResult.discoveredMaterials;
       productsDiscovered = nextResult.productsDiscovered;
       productsDetailed = nextResult.productsDetailed;
       partial = nextResult.partial;
@@ -1274,6 +1369,7 @@ export async function runScrape(
     collectionHandle,
     warnings,
     antiBotBlocks,
+    discoveredMaterials,
     productsDiscovered,
     productsDetailed,
     partial,
@@ -1294,6 +1390,9 @@ if (isDirectRun) {
       }
       if (result.antiBotBlocks > 0) {
         process.stdout.write(`Anti-bot blocks: ${result.antiBotBlocks}\n`);
+      }
+      if (result.discoveredMaterials.length > 0) {
+        process.stdout.write(`Discovered materials: ${result.discoveredMaterials.join(", ")}\n`);
       }
       if (result.partial) {
         process.stdout.write("Refresh quality: partial\n");

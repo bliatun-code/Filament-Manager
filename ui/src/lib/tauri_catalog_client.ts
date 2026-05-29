@@ -56,6 +56,7 @@ export type CatalogRefreshResult = {
   imported: number;
   detected_store?: string | null;
   detected_collection?: string | null;
+  discovered_materials?: string[] | null;
   reactivated_count: number;
   discontinued_count: number;
   reused_cached_products?: number | null;

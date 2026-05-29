@@ -1171,6 +1171,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       catalogRefreshHelp:
         "Choose vendor and optionally limit the refresh to selected material families to reduce traffic and spread catalogue imports over time.",
       catalogAllTypes: "All types",
+      discoveredMaterials: "Discovered materials",
       refreshCurrentVendor: "Refresh current vendor catalog",
       hideRefreshLog: "Hide refresh log",
       swatchQuality: "Swatch quality",
@@ -2525,6 +2526,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       catalogRefreshHelp:
         "Velg leverandør og begrens eventuelt oppdateringen til utvalgte materialfamilier for å redusere trafikk og spre katalogimporter over tid.",
       catalogAllTypes: "Alle typer",
+      discoveredMaterials: "Oppdagede materialer",
       refreshCurrentVendor: "Oppdater valgt leverandørkatalog",
       hideRefreshLog: "Skjul oppdateringslogg",
       swatchQuality: "Swatch-kvalitet",

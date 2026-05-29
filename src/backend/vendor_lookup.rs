@@ -1602,6 +1602,8 @@ fn infer_material(title: &str) -> String {
         ("PA", "PA"),
         ("PET", "PET"),
         ("PC", "PC"),
+        ("PVA", "PVA"),
+        ("HIPS", "HIPS"),
     ];
     let upper = title.to_uppercase();
     for (needle, material) in rules {

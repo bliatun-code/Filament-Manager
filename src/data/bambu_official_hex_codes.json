@@ -1,0 +1,1072 @@
+[
+  {
+    "filament": "plabasic",
+    "color": "jadewhite",
+    "hex": "#FFFFFF"
+  },
+  {
+    "filament": "plabasic",
+    "color": "magenta",
+    "hex": "#EC008C"
+  },
+  {
+    "filament": "plabasic",
+    "color": "gold",
+    "hex": "#E4BD68"
+  },
+  {
+    "filament": "plabasic",
+    "color": "mistletoegreen",
+    "hex": "#3F8E43"
+  },
+  {
+    "filament": "plabasic",
+    "color": "red",
+    "hex": "#C12E1F"
+  },
+  {
+    "filament": "plabasic",
+    "color": "purple",
+    "hex": "#5E43B7"
+  },
+  {
+    "filament": "plabasic",
+    "color": "beige",
+    "hex": "#F7E6DE"
+  },
+  {
+    "filament": "plabasic",
+    "color": "pink",
+    "hex": "#F55A74"
+  },
+  {
+    "filament": "plabasic",
+    "color": "sunfloweryellow",
+    "hex": "#FEC600"
+  },
+  {
+    "filament": "plabasic",
+    "color": "bronze",
+    "hex": "#847D48"
+  },
+  {
+    "filament": "plabasic",
+    "color": "turquoise",
+    "hex": "#00B1B7"
+  },
+  {
+    "filament": "plabasic",
+    "color": "indigopurple",
+    "hex": "#482960"
+  },
+  {
+    "filament": "plabasic",
+    "color": "lightgray",
+    "hex": "#D1D3D5"
+  },
+  {
+    "filament": "plabasic",
+    "color": "hotpink",
+    "hex": "#F5547C"
+  },
+  {
+    "filament": "plabasic",
+    "color": "yellow",
+    "hex": "#F4EE2A"
+  },
+  {
+    "filament": "plabasic",
+    "color": "cocoabrown",
+    "hex": "#6F5034"
+  },
+  {
+    "filament": "plabasic",
+    "color": "cyan",
+    "hex": "#0086D6"
+  },
+  {
+    "filament": "plabasic",
+    "color": "bluegrey",
+    "hex": "#5B6579"
+  },
+  {
+    "filament": "plabasic",
+    "color": "silver",
+    "hex": "#A6A9AA"
+  },
+  {
+    "filament": "plabasic",
+    "color": "orange",
+    "hex": "#FF6A13"
+  },
+  {
+    "filament": "plabasic",
+    "color": "brightgreen",
+    "hex": "#BECF00"
+  },
+  {
+    "filament": "plabasic",
+    "color": "brown",
+    "hex": "#9D432C"
+  },
+  {
+    "filament": "plabasic",
+    "color": "blue",
+    "hex": "#0A2989"
+  },
+  {
+    "filament": "plabasic",
+    "color": "darkgray",
+    "hex": "#545454"
+  },
+  {
+    "filament": "plabasic",
+    "color": "gray",
+    "hex": "#8E9089"
+  },
+  {
+    "filament": "plabasic",
+    "color": "pumpkinorange",
+    "hex": "#FF9016"
+  },
+  {
+    "filament": "plabasic",
+    "color": "bambugreen",
+    "hex": "#00AE42"
+  },
+  {
+    "filament": "plabasic",
+    "color": "maroonred",
+    "hex": "#9D2235"
+  },
+  {
+    "filament": "plabasic",
+    "color": "cobaltblue",
+    "hex": "#0056B8"
+  },
+  {
+    "filament": "plabasic",
+    "color": "black",
+    "hex": "#000000"
+  },
+  {
+    "filament": "plamatte",
+    "color": "ivorywhite",
+    "hex": "#FFFFFF"
+  },
+  {
+    "filament": "plamatte",
+    "color": "bonewhite",
+    "hex": "#CBC6B8"
+  },
+  {
+    "filament": "plamatte",
+    "color": "deserttan",
+    "hex": "#E8DBB7"
+  },
+  {
+    "filament": "plamatte",
+    "color": "lattebrown",
+    "hex": "#D3B7A7"
+  },
+  {
+    "filament": "plamatte",
+    "color": "caramel",
+    "hex": "#AE835B"
+  },
+  {
+    "filament": "plamatte",
+    "color": "terracotta",
+    "hex": "#B15533"
+  },
+  {
+    "filament": "plamatte",
+    "color": "darkbrown",
+    "hex": "#7D6556"
+  },
+  {
+    "filament": "plamatte",
+    "color": "darkchocolate",
+    "hex": "#4D3324"
+  },
+  {
+    "filament": "plamatte",
+    "color": "lilacpurple",
+    "hex": "#AE96D4"
+  },
+  {
+    "filament": "plamatte",
+    "color": "sakurapink",
+    "hex": "#E8AFCF"
+  },
+  {
+    "filament": "plamatte",
+    "color": "mandarinorange",
+    "hex": "#F99963"
+  },
+  {
+    "filament": "plamatte",
+    "color": "lemonyellow",
+    "hex": "#F7D959"
+  },
+  {
+    "filament": "plamatte",
+    "color": "plum",
+    "hex": "#950051"
+  },
+  {
+    "filament": "plamatte",
+    "color": "scarletred",
+    "hex": "#DE4343"
+  },
+  {
+    "filament": "plamatte",
+    "color": "darkred",
+    "hex": "#BB3D43"
+  },
+  {
+    "filament": "plamatte",
+    "color": "darkgreen",
+    "hex": "#68724D"
+  },
+  {
+    "filament": "plamatte",
+    "color": "grassgreen",
+    "hex": "#61C680"
+  },
+  {
+    "filament": "plamatte",
+    "color": "applegreen",
+    "hex": "#C2E189"
+  },
+  {
+    "filament": "plamatte",
+    "color": "iceblue",
+    "hex": "#A3D8E1"
+  },
+  {
+    "filament": "plamatte",
+    "color": "skyblue",
+    "hex": "#56B7E6"
+  },
+  {
+    "filament": "plamatte",
+    "color": "marineblue",
+    "hex": "#0078BF"
+  },
+  {
+    "filament": "plamatte",
+    "color": "darkblue",
+    "hex": "#042F56"
+  },
+  {
+    "filament": "plamatte",
+    "color": "ashgray",
+    "hex": "#9B9EA0"
+  },
+  {
+    "filament": "plamatte",
+    "color": "nardogray",
+    "hex": "#757575"
+  },
+  {
+    "filament": "plamatte",
+    "color": "charcoal",
+    "hex": "#000000"
+  },
+  {
+    "filament": "platoughplus",
+    "color": "white",
+    "hex": "#FFFFFF"
+  },
+  {
+    "filament": "platoughplus",
+    "color": "gray",
+    "hex": "#AFB1AE"
+  },
+  {
+    "filament": "platoughplus",
+    "color": "black",
+    "hex": "#000000"
+  },
+  {
+    "filament": "platoughplus",
+    "color": "silver",
+    "hex": "#959698"
+  },
+  {
+    "filament": "platoughplus",
+    "color": "yellow",
+    "hex": "#F4D53F"
+  },
+  {
+    "filament": "platoughplus",
+    "color": "cyan",
+    "hex": "#009BD8"
+  },
+  {
+    "filament": "platoughplus",
+    "color": "orange",
+    "hex": "#DC3A27"
+  },
+  {
+    "filament": "petghf",
+    "color": "yellow",
+    "hex": "#FFD00B"
+  },
+  {
+    "filament": "petghf",
+    "color": "orange",
+    "hex": "#F75403"
+  },
+  {
+    "filament": "petghf",
+    "color": "green",
+    "hex": "#00AE42"
+  },
+  {
+    "filament": "petghf",
+    "color": "red",
+    "hex": "#EB3A3A"
+  },
+  {
+    "filament": "petghf",
+    "color": "blue",
+    "hex": "#002E96"
+  },
+  {
+    "filament": "petghf",
+    "color": "black",
+    "hex": "#000000"
+  },
+  {
+    "filament": "petghf",
+    "color": "white",
+    "hex": "#FFFFFF"
+  },
+  {
+    "filament": "petghf",
+    "color": "cream",
+    "hex": "#F9DFB9"
+  },
+  {
+    "filament": "petghf",
+    "color": "limegreen",
+    "hex": "#6EE53C"
+  },
+  {
+    "filament": "petghf",
+    "color": "forestgreen",
+    "hex": "#39541A"
+  },
+  {
+    "filament": "petghf",
+    "color": "lakeblue",
+    "hex": "#1F79E5"
+  },
+  {
+    "filament": "petghf",
+    "color": "peanutbrown",
+    "hex": "#875718"
+  },
+  {
+    "filament": "petghf",
+    "color": "gray",
+    "hex": "#ADB1B2"
+  },
+  {
+    "filament": "petghf",
+    "color": "darkgray",
+    "hex": "#515151"
+  },
+  {
+    "filament": "petgtranslucent",
+    "color": "translucentgray",
+    "hex": "#8E8E8E"
+  },
+  {
+    "filament": "petgtranslucent",
+    "color": "translucentlightblue",
+    "hex": "#61B0FF"
+  },
+  {
+    "filament": "petgtranslucent",
+    "color": "translucentolive",
+    "hex": "#748C45"
+  },
+  {
+    "filament": "petgtranslucent",
+    "color": "translucentbrown",
+    "hex": "#C9A381"
+  },
+  {
+    "filament": "petgtranslucent",
+    "color": "translucentteal",
+    "hex": "#77EDD7"
+  },
+  {
+    "filament": "petgtranslucent",
+    "color": "translucentorange",
+    "hex": "#FF911A"
+  },
+  {
+    "filament": "petgtranslucent",
+    "color": "translucentpurple",
+    "hex": "#D6ABFF"
+  },
+  {
+    "filament": "petgtranslucent",
+    "color": "translucentpink",
+    "hex": "#F9C1BD"
+  },
+  {
+    "filament": "asa",
+    "color": "white",
+    "hex": "#FFFAF2"
+  },
+  {
+    "filament": "asa",
+    "color": "gray",
+    "hex": "#8A949E"
+  },
+  {
+    "filament": "asa",
+    "color": "red",
+    "hex": "#E02928"
+  },
+  {
+    "filament": "asa",
+    "color": "green",
+    "hex": "#00A6A0"
+  },
+  {
+    "filament": "asa",
+    "color": "blue",
+    "hex": "#2140B4"
+  },
+  {
+    "filament": "asa",
+    "color": "black",
+    "hex": "#000000"
+  },
+  {
+    "filament": "asaaero",
+    "color": "white",
+    "hex": "#F5F1DD"
+  },
+  {
+    "filament": "absgf",
+    "color": "white",
+    "hex": "#FFFFFF"
+  },
+  {
+    "filament": "absgf",
+    "color": "gray",
+    "hex": "#C6C6C6"
+  },
+  {
+    "filament": "absgf",
+    "color": "yellow",
+    "hex": "#FFE133"
+  },
+  {
+    "filament": "absgf",
+    "color": "orange",
+    "hex": "#F48438"
+  },
+  {
+    "filament": "absgf",
+    "color": "red",
+    "hex": "#E83100"
+  },
+  {
+    "filament": "absgf",
+    "color": "green",
+    "hex": "#61BF36"
+  },
+  {
+    "filament": "absgf",
+    "color": "blue",
+    "hex": "#0C3B95"
+  },
+  {
+    "filament": "absgf",
+    "color": "black",
+    "hex": "#000000"
+  },
+  {
+    "filament": "tpuforams",
+    "color": "red",
+    "hex": "#ED0000"
+  },
+  {
+    "filament": "tpuforams",
+    "color": "yellow",
+    "hex": "#F9EF41"
+  },
+  {
+    "filament": "tpuforams",
+    "color": "blue",
+    "hex": "#5898DD"
+  },
+  {
+    "filament": "tpuforams",
+    "color": "neongreen",
+    "hex": "#90FF1A"
+  },
+  {
+    "filament": "tpuforams",
+    "color": "white",
+    "hex": "#FFFFFF"
+  },
+  {
+    "filament": "tpuforams",
+    "color": "gray",
+    "hex": "#939393"
+  },
+  {
+    "filament": "tpuforams",
+    "color": "black",
+    "hex": "#000000"
+  },
+  {
+    "filament": "tpu95ahf",
+    "color": "white",
+    "hex": "#FFFFFF"
+  },
+  {
+    "filament": "tpu95ahf",
+    "color": "yellow",
+    "hex": "#F3E600"
+  },
+  {
+    "filament": "tpu95ahf",
+    "color": "blue",
+    "hex": "#0072CE"
+  },
+  {
+    "filament": "tpu95ahf",
+    "color": "red",
+    "hex": "#C8102E"
+  },
+  {
+    "filament": "tpu95ahf",
+    "color": "gray",
+    "hex": "#898D8D"
+  },
+  {
+    "filament": "tpu95ahf",
+    "color": "black",
+    "hex": "#101820"
+  },
+  {
+    "filament": "pcfr",
+    "color": "white",
+    "hex": "#FFFFFF"
+  },
+  {
+    "filament": "pcfr",
+    "color": "gray",
+    "hex": "#A8A8AA"
+  },
+  {
+    "filament": "pcfr",
+    "color": "black",
+    "hex": "#000000"
+  },
+  {
+    "filament": "pa6gf",
+    "color": "white",
+    "hex": "#EAEAE4"
+  },
+  {
+    "filament": "pa6gf",
+    "color": "yellow",
+    "hex": "#FFCE00"
+  },
+  {
+    "filament": "pa6gf",
+    "color": "lime",
+    "hex": "#C5ED48"
+  },
+  {
+    "filament": "pa6gf",
+    "color": "blue",
+    "hex": "#75AED8"
+  },
+  {
+    "filament": "pa6gf",
+    "color": "orange",
+    "hex": "#FF4800"
+  },
+  {
+    "filament": "pa6gf",
+    "color": "brown",
+    "hex": "#5B492F"
+  },
+  {
+    "filament": "pa6gf",
+    "color": "gray",
+    "hex": "#353533"
+  },
+  {
+    "filament": "pa6gf",
+    "color": "black",
+    "hex": "#000000"
+  },
+  {
+    "filament": "plametal",
+    "color": "iridiumgoldmetallic",
+    "hex": "#B39B84"
+  },
+  {
+    "filament": "plametal",
+    "color": "copperbrownmetallic",
+    "hex": "#AA6443"
+  },
+  {
+    "filament": "plametal",
+    "color": "oxidegreenmetallic",
+    "hex": "#1D7C6A"
+  },
+  {
+    "filament": "plametal",
+    "color": "cobaltbluemetallic",
+    "hex": "#39699E"
+  },
+  {
+    "filament": "plametal",
+    "color": "irongraymetallic",
+    "hex": "#43403D"
+  },
+  {
+    "filament": "plaglow",
+    "color": "glowgreen",
+    "hex": "#A1FFAC"
+  },
+  {
+    "filament": "plaglow",
+    "color": "glowyellow",
+    "hex": "#F8FF80"
+  },
+  {
+    "filament": "plaglow",
+    "color": "glowpink",
+    "hex": "#F17B8F"
+  },
+  {
+    "filament": "plaglow",
+    "color": "glowblue",
+    "hex": "#7AC0E9"
+  },
+  {
+    "filament": "plaglow",
+    "color": "gloworange",
+    "hex": "#FF9D5B"
+  },
+  {
+    "filament": "plamarble",
+    "color": "whitemarble",
+    "hex": "#F7F3F0"
+  },
+  {
+    "filament": "plamarble",
+    "color": "redgranite",
+    "hex": "#AD4E38"
+  },
+  {
+    "filament": "plasparkle",
+    "color": "classicgoldsparkle",
+    "hex": "#CEA629"
+  },
+  {
+    "filament": "plasparkle",
+    "color": "slategraysparkle",
+    "hex": "#8E9089"
+  },
+  {
+    "filament": "plasparkle",
+    "color": "crimsonredsparkle",
+    "hex": "#792B36"
+  },
+  {
+    "filament": "plasparkle",
+    "color": "royalpurplesparkle",
+    "hex": "#483D8B"
+  },
+  {
+    "filament": "plasparkle",
+    "color": "alpinegreensparkle",
+    "hex": "#3F5443"
+  },
+  {
+    "filament": "plasparkle",
+    "color": "onyxblacksparkle",
+    "hex": "#2D2B28"
+  },
+  {
+    "filament": "plagalaxy",
+    "color": "brown",
+    "hex": "#684A43"
+  },
+  {
+    "filament": "plagalaxy",
+    "color": "green",
+    "hex": "#3B665E"
+  },
+  {
+    "filament": "plagalaxy",
+    "color": "nebulae",
+    "hex": "#424379"
+  },
+  {
+    "filament": "plagalaxy",
+    "color": "purple",
+    "hex": "#594177"
+  },
+  {
+    "filament": "plasilkplus",
+    "color": "gold",
+    "hex": "#F4A925"
+  },
+  {
+    "filament": "plasilkplus",
+    "color": "silver",
+    "hex": "#C8C8C8"
+  },
+  {
+    "filament": "plasilkplus",
+    "color": "titangray",
+    "hex": "#5F6367"
+  },
+  {
+    "filament": "plasilkplus",
+    "color": "blue",
+    "hex": "#008BDA"
+  },
+  {
+    "filament": "plasilkplus",
+    "color": "purple",
+    "hex": "#8671CB"
+  },
+  {
+    "filament": "plasilkplus",
+    "color": "candyred",
+    "hex": "#D02727"
+  },
+  {
+    "filament": "plasilkplus",
+    "color": "candygreen",
+    "hex": "#018814"
+  },
+  {
+    "filament": "plasilkplus",
+    "color": "rosegold",
+    "hex": "#BA9594"
+  },
+  {
+    "filament": "plasilkplus",
+    "color": "babyblue",
+    "hex": "#A8C6EE"
+  },
+  {
+    "filament": "plasilkplus",
+    "color": "pink",
+    "hex": "#F7ADA6"
+  },
+  {
+    "filament": "plasilkplus",
+    "color": "mint",
+    "hex": "#96DCB9"
+  },
+  {
+    "filament": "plasilkplus",
+    "color": "champagne",
+    "hex": "#F3CFB2"
+  },
+  {
+    "filament": "plasilkplus",
+    "color": "white",
+    "hex": "#FFFFFF"
+  },
+  {
+    "filament": "plabasicgradient",
+    "color": "arcticwhisper",
+    "hex": "#9CDBD9"
+  },
+  {
+    "filament": "plabasicgradient",
+    "color": "solarbreeze",
+    "hex": "#E94B3C"
+  },
+  {
+    "filament": "plabasicgradient",
+    "color": "oceantomeadow",
+    "hex": "#307FE2"
+  },
+  {
+    "filament": "plabasicgradient",
+    "color": "cottoncandycloud",
+    "hex": "#E7C1D5"
+  },
+  {
+    "filament": "plabasicgradient",
+    "color": "blueberrybubblegum",
+    "hex": "#6FCAEF"
+  },
+  {
+    "filament": "plabasicgradient",
+    "color": "mintlime",
+    "hex": "#B6FF43"
+  },
+  {
+    "filament": "plabasicgradient",
+    "color": "pinkcitrus",
+    "hex": "#F78F77"
+  },
+  {
+    "filament": "plabasicgradient",
+    "color": "duskglare",
+    "hex": "#ED9558"
+  },
+  {
+    "filament": "placf",
+    "color": "burgundyred",
+    "hex": "#951E23"
+  },
+  {
+    "filament": "placf",
+    "color": "irispurple",
+    "hex": "#69398E"
+  },
+  {
+    "filament": "placf",
+    "color": "matchagreen",
+    "hex": "#5C9748"
+  },
+  {
+    "filament": "placf",
+    "color": "jeansblue",
+    "hex": "#6E88BC"
+  },
+  {
+    "filament": "placf",
+    "color": "royalblue",
+    "hex": "#2842AD"
+  },
+  {
+    "filament": "placf",
+    "color": "lavagray",
+    "hex": "#4D5054"
+  },
+  {
+    "filament": "placf",
+    "color": "black",
+    "hex": "#000000"
+  },
+  {
+    "filament": "tpu90a",
+    "color": "black",
+    "hex": "#000000"
+  },
+  {
+    "filament": "tpu90a",
+    "color": "white",
+    "hex": "#FFFFEE"
+  },
+  {
+    "filament": "tpu90a",
+    "color": "grapejelly",
+    "hex": "#D6ABFF"
+  },
+  {
+    "filament": "tpu90a",
+    "color": "crystalblue",
+    "hex": "#7EB4E1"
+  },
+  {
+    "filament": "tpu90a",
+    "color": "cocoabrown",
+    "hex": "#5C4738"
+  },
+  {
+    "filament": "tpu90a",
+    "color": "quicksilver",
+    "hex": "#9EA2A2"
+  },
+  {
+    "filament": "tpu90a",
+    "color": "blaze",
+    "hex": "#F1AAA8"
+  },
+  {
+    "filament": "tpu90a",
+    "color": "frozen",
+    "hex": "#FFFFFF"
+  },
+  {
+    "filament": "tpu85a",
+    "color": "black",
+    "hex": "#000000"
+  },
+  {
+    "filament": "tpu85a",
+    "color": "lightcyan",
+    "hex": "#C3E2D6"
+  },
+  {
+    "filament": "tpu85a",
+    "color": "neonorange",
+    "hex": "#F68B1B"
+  },
+  {
+    "filament": "tpu85a",
+    "color": "flesh",
+    "hex": "#F3CFB2"
+  },
+  {
+    "filament": "tpu85a",
+    "color": "limegreen",
+    "hex": "#CDEA80"
+  },
+  {
+    "filament": "abs",
+    "color": "white",
+    "hex": "#FFFFFF"
+  },
+  {
+    "filament": "abs",
+    "color": "bambugreen",
+    "hex": "#00AE42"
+  },
+  {
+    "filament": "abs",
+    "color": "olive",
+    "hex": "#789D4A"
+  },
+  {
+    "filament": "abs",
+    "color": "azure",
+    "hex": "#489FDF"
+  },
+  {
+    "filament": "abs",
+    "color": "navyblue",
+    "hex": "#0C2340"
+  },
+  {
+    "filament": "abs",
+    "color": "blue",
+    "hex": "#0A2CA5"
+  },
+  {
+    "filament": "abs",
+    "color": "tangerineyellow",
+    "hex": "#FFC72C"
+  },
+  {
+    "filament": "abs",
+    "color": "orange",
+    "hex": "#FF6A13"
+  },
+  {
+    "filament": "abs",
+    "color": "red",
+    "hex": "#D32941"
+  },
+  {
+    "filament": "abs",
+    "color": "purple",
+    "hex": "#AF1685"
+  },
+  {
+    "filament": "abs",
+    "color": "silver",
+    "hex": "#87909A"
+  },
+  {
+    "filament": "abs",
+    "color": "black",
+    "hex": "#000000"
+  },
+  {
+    "filament": "petgcf",
+    "color": "brickred",
+    "hex": "#9F332A"
+  },
+  {
+    "filament": "petgcf",
+    "color": "violetpurple",
+    "hex": "#583061"
+  },
+  {
+    "filament": "petgcf",
+    "color": "indigoblue",
+    "hex": "#324585"
+  },
+  {
+    "filament": "petgcf",
+    "color": "malachitegreen",
+    "hex": "#16B08E"
+  },
+  {
+    "filament": "petgcf",
+    "color": "black",
+    "hex": "#000000"
+  },
+  {
+    "filament": "petgcf",
+    "color": "titangray",
+    "hex": "#565656"
+  },
+  {
+    "filament": "plasilkmulticolor",
+    "color": "mysticmagenta",
+    "hex": "#720062"
+  },
+  {
+    "filament": "plasilkmulticolor",
+    "color": "phantomblue",
+    "hex": "#00629B"
+  },
+  {
+    "filament": "plasilkmulticolor",
+    "color": "velveteclipse",
+    "hex": "#000000"
+  },
+  {
+    "filament": "plasilkmulticolor",
+    "color": "midnightblaze",
+    "hex": "#0047BB"
+  },
+  {
+    "filament": "plasilkmulticolor",
+    "color": "gildedrose",
+    "hex": "#FF9425"
+  },
+  {
+    "filament": "plasilkmulticolor",
+    "color": "bluehawaii",
+    "hex": "#60A4E8"
+  },
+  {
+    "filament": "plasilkmulticolor",
+    "color": "neoncity",
+    "hex": "#0047BB"
+  },
+  {
+    "filament": "plasilkmulticolor",
+    "color": "aurorapurple",
+    "hex": "#7F3696"
+  },
+  {
+    "filament": "plasilkmulticolor",
+    "color": "southbeach",
+    "hex": "#F772A4"
+  },
+  {
+    "filament": "plasilkmulticolor",
+    "color": "dawnradiance",
+    "hex": "#EC984C"
+  }
+]

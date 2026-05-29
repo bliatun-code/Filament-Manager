@@ -7,6 +7,34 @@ import type { CatalogRefreshResult, MasterCatalogRow } from "../lib/tauri_client
 
 export type SettingsCatalogVendor = "Bambu" | "eSUN";
 
+const DEFAULT_BAMBU_REFRESH_MATERIALS = [
+  "ABS",
+  "ASA",
+  "PA6",
+  "PAHT",
+  "PC",
+  "PET",
+  "PETG",
+  "PLA",
+  "PPA",
+  "TPU",
+];
+
+const DEFAULT_ESUN_REFRESH_MATERIALS = [
+  "ABS",
+  "ASA",
+  "HIPS",
+  "PA",
+  "PA12",
+  "PAHT",
+  "PC",
+  "PET",
+  "PETG",
+  "PLA",
+  "PVA",
+  "TPU",
+];
+
 export function buildSettingsCatalogState({
   bambuRefreshMaterials,
   catalogMasters,
@@ -39,8 +67,11 @@ export function buildSettingsCatalogState({
   const esunCatalogMasters = catalogMasters.filter((master) =>
     master.vendor.toLowerCase().includes("esun"),
   );
-  const bambuCatalogMaterialOptions = materialOptionsForMasters(bambuCatalogMasters);
-  const esunCatalogMaterialOptions = materialOptionsForMasters(esunCatalogMasters);
+  const bambuCatalogMaterialOptions = materialOptionsForVendor(
+    "Bambu",
+    bambuCatalogMasters,
+  );
+  const esunCatalogMaterialOptions = materialOptionsForVendor("eSUN", esunCatalogMasters);
 
   return {
     activeCatalogMasterCount:
@@ -223,9 +254,17 @@ export function buildSettingsSwatchBulkResultMessage(
   };
 }
 
-function materialOptionsForMasters(masters: MasterCatalogRow[]): string[] {
+function materialOptionsForVendor(
+  vendor: SettingsCatalogVendor,
+  masters: MasterCatalogRow[],
+): string[] {
+  const defaultMaterials =
+    vendor === "Bambu" ? DEFAULT_BAMBU_REFRESH_MATERIALS : DEFAULT_ESUN_REFRESH_MATERIALS;
   return uniqueSortedStrings(
-    masters.map((master) => master.material.trim()).filter((value) => value.length > 0),
+    [
+      ...defaultMaterials,
+      ...masters.map((master) => master.material.trim()).filter((value) => value.length > 0),
+    ],
   );
 }
 

@@ -1,14 +1,52 @@
 use super::{
     append_known_entries_for_product_url, build_known_entry_lookup, decode_js_string_literal,
-    extract_product_list, infer_material, normalize_material_filters, BambuCatalogEntry,
+    discovered_materials_from_names, extract_product_list, infer_material,
+    normalize_material_filters, official_bambu_hex_codes, resolve_bambu_hex, BambuCatalogEntry,
     BambuKnownCatalogEntry,
 };
+use std::collections::HashSet;
 
 #[test]
 fn infer_material_uses_prefixes() {
     assert_eq!(infer_material("PLA Basic"), "PLA");
     assert_eq!(infer_material("PA6-CF"), "PA6");
+    assert_eq!(infer_material("PPA-CF"), "PPA");
     assert_eq!(infer_material("Custom Blend"), "CUSTOM");
+}
+
+#[test]
+fn discovered_materials_from_bambu_product_names_are_sorted_and_complete() {
+    let values = discovered_materials_from_names(
+        [
+            "PLA Basic",
+            "PETG HF",
+            "ABS-GF",
+            "TPU for AMS",
+            "PA6-CF",
+            "PAHT-CF",
+            "PPA-CF",
+            "PET-CF",
+            "PC FR",
+            "ASA Aero",
+            "PLA Basic",
+        ]
+        .into_iter(),
+    );
+    assert_eq!(
+        values,
+        vec![
+            "ABS".to_string(),
+            "ASA".to_string(),
+            "PA6".to_string(),
+            "PAHT".to_string(),
+            "PC".to_string(),
+            "PET".to_string(),
+            "PETG".to_string(),
+            "PLA".to_string(),
+            "PPA".to_string(),
+            "TPU".to_string(),
+        ]
+    );
 }
 
 #[test]
@@ -19,6 +57,77 @@ fn normalize_material_filters_dedupes_values() {
         "petg".to_string(),
     ]));
     assert_eq!(values, vec!["PETG".to_string(), "PLA".to_string()]);
+}
+
+#[test]
+fn official_bambu_hex_table_has_unique_valid_entries() {
+    let entries = official_bambu_hex_codes();
+    assert_eq!(entries.len(), 214);
+
+    let mut seen = HashSet::new();
+    for entry in entries {
+        assert!(
+            seen.insert((entry.filament.as_str(), entry.color.as_str())),
+            "duplicate official Bambu hex entry for {} / {}",
+            entry.filament,
+            entry.color
+        );
+        assert!(
+            entry.hex.len() == 7
+                && entry.hex.starts_with('#')
+                && entry.hex[1..].chars().all(|ch| ch.is_ascii_hexdigit()),
+            "invalid official Bambu hex value {}",
+            entry.hex
+        );
+    }
+}
+
+#[test]
+fn resolve_bambu_hex_prefers_official_color_tables() {
+    assert_eq!(
+        resolve_bambu_hex("PLA Basic", "Beige (10201)").as_deref(),
+        Some("#F7E6DE")
+    );
+    assert_eq!(
+        resolve_bambu_hex("PLA Matte", "Matte Plum (11204)").as_deref(),
+        Some("#950051")
+    );
+    assert_eq!(
+        resolve_bambu_hex("PLA Tough+", "Cyan (12601)").as_deref(),
+        Some("#009BD8")
+    );
+    assert_eq!(
+        resolve_bambu_hex("PETG HF", "Lake Blue (33507)").as_deref(),
+        Some("#1F79E5")
+    );
+    assert_eq!(
+        resolve_bambu_hex("ABS", "ABS Azure (40601)").as_deref(),
+        Some("#489FDF")
+    );
+    assert_eq!(
+        resolve_bambu_hex("PLA Basic Gradient", "Ocean to Meadow (10902)").as_deref(),
+        Some("#307FE2")
+    );
+    assert_eq!(
+        resolve_bambu_hex("PLA Silk Multi-Colour", "Dawn Radiance (13912)").as_deref(),
+        Some("#EC984C")
+    );
+    assert_eq!(
+        resolve_bambu_hex("TPU 85A / TPU 90A", "Frozen (51900)").as_deref(),
+        Some("#FFFFFF")
+    );
+    assert_eq!(
+        resolve_bambu_hex("PETG-CF", "Titan Gray  (31101)").as_deref(),
+        Some("#565656")
+    );
+    assert_eq!(
+        resolve_bambu_hex("ABS", "Azure").as_deref(),
+        Some("#489FDF")
+    );
+    assert_eq!(
+        resolve_bambu_hex("ABS", "Unknown Azure").as_deref(),
+        Some("#1976d2")
+    );
 }
 
 #[test]

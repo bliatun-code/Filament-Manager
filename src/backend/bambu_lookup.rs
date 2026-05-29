@@ -4,6 +4,7 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::env;
+use std::sync::OnceLock;
 use std::thread;
 use std::time::Duration;
 
@@ -47,6 +48,7 @@ pub struct BambuCatalogRefreshSnapshot {
     pub entries: Vec<BambuCatalogEntry>,
     pub detected_store: String,
     pub detected_collection: String,
+    pub discovered_materials: Vec<String>,
     pub warnings: Vec<String>,
     pub anti_bot_blocks: i64,
     pub products_discovered: i64,
@@ -128,11 +130,14 @@ struct ProductsPageResult {
 struct FetchResult {
     base_url: String,
     products: Vec<ShopifyProduct>,
+    discovered_materials: Vec<String>,
+    products_discovered: i64,
 }
 
 struct NextStoreResult {
     base_url: String,
     entries: Vec<BambuCatalogEntry>,
+    discovered_materials: Vec<String>,
     warnings: Vec<String>,
     anti_bot_blocks: i64,
     products_discovered: i64,
@@ -163,9 +168,10 @@ pub fn refresh_bambu_catalog_snapshot(
             entries: dedupe_entries(entries),
             detected_store: result.base_url,
             detected_collection: detected.handle,
+            discovered_materials: result.discovered_materials,
             warnings: Vec::new(),
             anti_bot_blocks: 0,
-            products_discovered: 0,
+            products_discovered: result.products_discovered,
             products_detailed: 0,
             reused_cached_products: 0,
             detail_fetches: 0,
@@ -185,6 +191,7 @@ pub fn refresh_bambu_catalog_snapshot(
             entries: next_result.entries,
             detected_store: next_result.base_url,
             detected_collection: detected.handle,
+            discovered_materials: next_result.discovered_materials,
             warnings: next_result.warnings,
             anti_bot_blocks: next_result.anti_bot_blocks,
             products_discovered: next_result.products_discovered,
@@ -199,6 +206,7 @@ pub fn refresh_bambu_catalog_snapshot(
         entries: Vec::new(),
         detected_store: detected.base_url,
         detected_collection: detected.handle,
+        discovered_materials: Vec::new(),
         warnings: vec!["No products found for any base URL.".to_string()],
         anti_bot_blocks: 0,
         products_discovered: 0,
@@ -463,6 +471,13 @@ fn matches_material_filter(material: &str, filters: &[String]) -> bool {
             .any(|value| value == material.trim().to_uppercase().as_str())
 }
 
+fn discovered_materials_from_names<'a>(names: impl Iterator<Item = &'a str>) -> Vec<String> {
+    let mut materials: Vec<String> = names.map(infer_material).collect();
+    materials.sort();
+    materials.dedup();
+    materials
+}
+
 fn infer_material(filament_name: &str) -> String {
     let upper = filament_name.trim().to_uppercase();
     for (prefix, value) in [
@@ -472,6 +487,7 @@ fn infer_material(filament_name: &str) -> String {
         ("TPU", "TPU"),
         ("PA6", "PA6"),
         ("PAHT", "PAHT"),
+        ("PPA", "PPA"),
         ("PET", "PET"),
         ("PC", "PC"),
         ("ASA", "ASA"),
@@ -501,6 +517,109 @@ fn parse_title_color(title: &str) -> Option<(String, String, String)> {
     }
     let material = infer_material(filament_name);
     Some((material, filament_name.to_string(), color_name.to_string()))
+}
+
+const OFFICIAL_BAMBU_HEX_CODES_JSON: &str = include_str!("../data/bambu_official_hex_codes.json");
+
+#[derive(Debug, Deserialize)]
+struct OfficialBambuHexCode {
+    filament: String,
+    color: String,
+    hex: String,
+}
+
+static OFFICIAL_BAMBU_HEX_CODES: OnceLock<Vec<OfficialBambuHexCode>> = OnceLock::new();
+
+fn official_bambu_hex_codes() -> &'static [OfficialBambuHexCode] {
+    OFFICIAL_BAMBU_HEX_CODES
+        .get_or_init(|| {
+            serde_json::from_str(OFFICIAL_BAMBU_HEX_CODES_JSON)
+                .expect("official Bambu hex code table must be valid JSON")
+        })
+        .as_slice()
+}
+
+fn official_key(value: &str) -> String {
+    let key: String = value
+        .replace('+', " plus ")
+        .chars()
+        .filter(|ch| ch.is_ascii_alphanumeric())
+        .flat_map(|ch| ch.to_lowercase())
+        .collect();
+    key.replace("colour", "color")
+}
+
+fn color_name_without_code(color_name: &str) -> &str {
+    let trimmed = color_name.trim();
+    if trimmed.ends_with(')') {
+        if let Some((name, _code)) = trimmed.rsplit_once('(') {
+            return name.trim();
+        }
+    }
+    trimmed
+}
+
+fn official_color_key(filament_name: &str, color_name: &str) -> String {
+    let filament_key = official_key(filament_name);
+    let mut color = color_name_without_code(color_name).trim();
+    if let Some(rest) = strip_leading_label(color, filament_name) {
+        color = rest;
+    }
+    if filament_key == "plamatte" {
+        color = color
+            .strip_prefix("Matte ")
+            .or_else(|| color.strip_prefix("matte "))
+            .unwrap_or(color)
+            .trim();
+    }
+    official_key(color)
+}
+
+fn strip_leading_label<'a>(value: &'a str, label: &str) -> Option<&'a str> {
+    let trimmed = value.trim();
+    let label = label.trim();
+    if label.is_empty() || trimmed.len() <= label.len() {
+        return None;
+    }
+    let prefix = trimmed.get(..label.len())?;
+    if !prefix.eq_ignore_ascii_case(label) {
+        return None;
+    }
+    let rest = trimmed.get(label.len()..)?.trim_start();
+    let rest = rest
+        .strip_prefix(['-', '·', ':'])
+        .unwrap_or(rest)
+        .trim_start();
+    if rest.is_empty() {
+        None
+    } else {
+        Some(rest)
+    }
+}
+
+fn official_filament_key_candidates(filament_name: &str) -> Vec<String> {
+    let filament_key = official_key(filament_name);
+    let mut candidates = vec![filament_key.clone()];
+    if filament_key == "tpu85atpu90a" {
+        candidates.push("tpu85a".to_string());
+        candidates.push("tpu90a".to_string());
+    }
+    candidates
+}
+
+fn official_bambu_hex(filament_name: &str, color_name: &str) -> Option<String> {
+    let filament_keys = official_filament_key_candidates(filament_name);
+    let color_key = official_color_key(filament_name, color_name);
+    official_bambu_hex_codes()
+        .iter()
+        .find(|entry| {
+            filament_keys.iter().any(|key| key == &entry.filament) && entry.color == color_key
+        })
+        .map(|entry| entry.hex.clone())
+}
+
+fn resolve_bambu_hex(filament_name: &str, color_name: &str) -> Option<String> {
+    official_bambu_hex(filament_name, color_name).or_else(|| estimate_hex(color_name))
 }
 
 fn estimate_hex(color_name: &str) -> Option<String> {
@@ -578,11 +697,12 @@ fn build_product_url(base_url: &str, handle: &str, variant_id: Option<u64>) -> S
 
 fn extract_colors(product: &ShopifyProduct, base_url: &str) -> Vec<BambuCatalogEntry> {
     if let Some((material, filament_name, color_name)) = parse_title_color(&product.title) {
+        let hex_color = resolve_bambu_hex(&filament_name, &color_name);
         return vec![BambuCatalogEntry {
             material,
             filament_name,
             color_name: color_name.clone(),
-            hex_color: estimate_hex(&color_name),
+            hex_color,
             image_url: normalize_maybe_url(select_image(product, None).as_deref(), base_url),
             product_url: build_product_url(base_url, &product.handle, None),
             default_weight_g: DEFAULT_WEIGHT_G,
@@ -621,7 +741,7 @@ fn extract_colors(product: &ShopifyProduct, base_url: &str) -> Vec<BambuCatalogE
                 material: material.clone(),
                 filament_name: filament_name.clone(),
                 color_name: color_name.to_string(),
-                hex_color: estimate_hex(color_name),
+                hex_color: resolve_bambu_hex(&filament_name, color_name),
                 image_url: normalize_maybe_url(
                     select_image(product, Some(variant)).as_deref(),
                     base_url,
@@ -767,6 +887,7 @@ fn fetch_all_products(
     filters: &[String],
 ) -> Result<Option<FetchResult>, String> {
     let mut products = Vec::new();
+    let mut discovered_material_names = Vec::new();
     let mut page = 1usize;
     let mut has_page_failure_signals = false;
 
@@ -780,6 +901,7 @@ fn fetch_all_products(
         }
 
         for product in page_result.products {
+            discovered_material_names.push(product.title.clone());
             if matches_material_filter(&infer_material(&product.title), filters) {
                 products.push(product);
             }
@@ -799,6 +921,10 @@ fn fetch_all_products(
     Ok(Some(FetchResult {
         base_url: base_url.to_string(),
         products,
+        discovered_materials: discovered_materials_from_names(
+            discovered_material_names.iter().map(|name| name.as_str()),
+        ),
+        products_discovered: discovered_material_names.len() as i64,
     }))
 }
 
@@ -1119,7 +1245,7 @@ fn build_fallback_entry(product: &ProductSummary, base_url: &str) -> BambuCatalo
         material: infer_material(&product.name),
         filament_name: product.name.clone(),
         color_name: "Standard".to_string(),
-        hex_color: estimate_hex("Standard"),
+        hex_color: resolve_bambu_hex(&product.name, "Standard"),
         image_url: normalize_maybe_url(
             product.media_files.first().map(|value| value.as_str()),
             base_url,
@@ -1158,6 +1284,8 @@ fn fetch_next_store_entries(
     if products.is_empty() {
         return Ok(None);
     }
+    let discovered_materials =
+        discovered_materials_from_names(products.iter().map(|product| product.name.as_str()));
 
     let mut entries: Vec<BambuCatalogEntry> = Vec::new();
     let mut warnings: HashSet<String> = HashSet::new();
@@ -1244,7 +1372,7 @@ fn fetch_next_store_entries(
                 material,
                 filament_name: product.name.clone(),
                 color_name: "Standard".to_string(),
-                hex_color: estimate_hex("Standard"),
+                hex_color: resolve_bambu_hex(&product.name, "Standard"),
                 image_url: normalize_maybe_url(
                     product.media_files.first().map(|value| value.as_str()),
                     base_url,
@@ -1260,7 +1388,7 @@ fn fetch_next_store_entries(
                 material: material.clone(),
                 filament_name: product.name.clone(),
                 color_name: color.color_name.clone(),
-                hex_color: estimate_hex(&color.color_name),
+                hex_color: resolve_bambu_hex(&product.name, &color.color_name),
                 image_url: normalize_maybe_url(
                     color
                         .image_url
@@ -1280,6 +1408,7 @@ fn fetch_next_store_entries(
     Ok(Some(NextStoreResult {
         base_url: base_url.to_string(),
         entries: dedupe_entries(entries),
+        discovered_materials,
         warnings: warning_list,
         anti_bot_blocks,
         products_discovered: products.len() as i64,

@@ -237,6 +237,14 @@ export function SettingsCatalogRefreshPanel({
                   t("inventory.unknownCollection", "unknown collection")}
               </div>
             ) : null}
+            {catalogRefreshSummary.discovered_materials?.length ? (
+              <div className="mt-3 text-xs text-emerald-800 dark:text-emerald-200">
+                <span className="font-semibold">
+                  {t("settings.discoveredMaterials", "Discovered materials")}:
+                </span>{" "}
+                {catalogRefreshSummary.discovered_materials.join(", ")}
+              </div>
+            ) : null}
           </div>
         ) : null}
 
