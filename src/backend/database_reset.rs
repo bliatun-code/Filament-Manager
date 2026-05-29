@@ -1,5 +1,7 @@
 use rusqlite::Connection;
 
+use super::database_catalog_schema::ensure_catalog_seed_columns;
+use super::database_catalog_seed::apply_seed_catalog;
 use super::database_reset_models::CatalogResetStats;
 use super::database_result::InventoryResult;
 use super::database_schema::ensure_no_foreign_key_violations;
@@ -36,11 +38,13 @@ pub(crate) fn reset_app_state_data(conn: &Connection) -> InventoryResult<()> {
 }
 
 pub(crate) fn reset_catalog_data(conn: &Connection) -> InventoryResult<CatalogResetStats> {
+    ensure_catalog_seed_columns(conn)?;
     let tx = conn.unchecked_transaction()?;
 
     let removed_count = tx.execute(
         "DELETE FROM filament_master_list
-         WHERE id NOT IN (SELECT master_id FROM filament_spools)
+         WHERE catalog_source != 'seeded'
+           AND id NOT IN (SELECT master_id FROM filament_spools)
            AND id NOT IN (
              SELECT master_id FROM wishlist_items WHERE master_id IS NOT NULL
            )",
@@ -59,12 +63,12 @@ pub(crate) fn reset_catalog_data(conn: &Connection) -> InventoryResult<CatalogRe
         [],
     )? as i64;
 
+    tx.commit()?;
+    apply_seed_catalog(conn)?;
     let remaining_count: i64 =
-        tx.query_row("SELECT COUNT(*) FROM filament_master_list", [], |row| {
+        conn.query_row("SELECT COUNT(*) FROM filament_master_list", [], |row| {
             row.get(0)
         })?;
-
-    tx.commit()?;
     Ok(CatalogResetStats {
         removed_count,
         remaining_count,

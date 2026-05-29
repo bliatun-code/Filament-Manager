@@ -1,7 +1,7 @@
 import { VendorBadge } from "./vendor_badge";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { semanticChipClass } from "../lib/chip_styles";
-import { toSwatchColor } from "../lib/color_utils";
+import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import { formatInventoryDisplayTitle } from "../lib/inventory_list_model";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
@@ -133,7 +133,7 @@ export function WishlistQueuePanel({
                 <span
                   className="h-12 w-12 shrink-0 rounded-2xl border border-white/70 shadow-inner shadow-white/30 dark:border-white/10 dark:shadow-black/30"
                   style={{
-                    backgroundColor: toSwatchColor(itemHex),
+                    background: swatchCssBackground(itemHex),
                   }}
                 />
                 <div className="min-w-0 flex-1">

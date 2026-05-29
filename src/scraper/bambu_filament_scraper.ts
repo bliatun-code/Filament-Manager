@@ -1153,6 +1153,8 @@ type OfficialBambuHexCode = {
   filament: string;
   color: string;
   hex: string;
+  kind?: "multi" | "gradient";
+  colors?: string[];
 };
 
 const OFFICIAL_BAMBU_HEX_CODES = JSON.parse(
@@ -1209,9 +1211,16 @@ function officialFilamentKeyCandidates(filamentName: string): string[] {
 function officialBambuHex(filamentName: string, colorName: string): string | null {
   const filamentKeys = officialFilamentKeyCandidates(filamentName);
   const colorKey = officialColorKey(filamentName, colorName);
-  return OFFICIAL_BAMBU_HEX_CODES.find(
+  const entry = OFFICIAL_BAMBU_HEX_CODES.find(
     ({ filament, color }) => filamentKeys.includes(filament) && color === colorKey,
-  )?.hex ?? null;
+  );
+  if (!entry) {
+    return null;
+  }
+  if (entry.colors && entry.colors.length > 1) {
+    return `${entry.kind ?? "gradient"}(${entry.colors.join(",")})`;
+  }
+  return entry.hex;
 }
 
 function resolveBambuHex(filamentName: string, colorName: string): string | null {

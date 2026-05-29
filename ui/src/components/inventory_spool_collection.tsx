@@ -1,6 +1,6 @@
 import { VendorBadge } from "./vendor_badge";
 import { semanticChipClass } from "../lib/chip_styles";
-import { toSwatchColor } from "../lib/color_utils";
+import { swatchCssBackground } from "../lib/color_utils";
 import { formatPlacementLabel } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
 import {
@@ -135,9 +135,7 @@ export function InventorySpoolCollection({
                     <span
                       className="h-full w-full rounded-xl border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
                       style={{
-                        background: `linear-gradient(145deg, ${toSwatchColor(
-                          group.hexColor,
-                        )} 0%, ${toSwatchColor(group.hexColor)}CC 58%, #0f172a33 100%)`,
+                        background: swatchCssBackground(group.hexColor),
                       }}
                     />
                   </div>

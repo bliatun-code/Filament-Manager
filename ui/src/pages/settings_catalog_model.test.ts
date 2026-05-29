@@ -112,6 +112,11 @@ test("settings catalog state tracks missing swatches and visible vendor count", 
     catalogMasters: [
       catalogMaster({ id: "bambu-missing", hex_color: "", vendor: "Bambu Lab" }),
       catalogMaster({ id: "bambu-ok", hex_color: "#112233", vendor: "Bambu Lab" }),
+      catalogMaster({
+        id: "bambu-gradient",
+        hex_color: "gradient(#112233,#445566)",
+        vendor: "Bambu Lab",
+      }),
       catalogMaster({ id: "esun-missing", hex_color: "nope", vendor: "eSUN" }),
       catalogMaster({ id: "other-missing", hex_color: null, vendor: "Other" }),
     ],
@@ -156,6 +161,13 @@ test("settings swatch hex resolves draft values before fallback suggestions", ()
   assert.equal(
     resolveSettingsSwatchHex({ master, swatchDraftById: { draft: "#abc" } }),
     "#ABC",
+  );
+  assert.equal(
+    resolveSettingsSwatchHex({
+      master,
+      swatchDraftById: { draft: "gradient(#ec984c,#6cd4bc)" },
+    }),
+    "gradient(#EC984C,#6CD4BC)",
   );
   assert.equal(
     resolveSettingsSwatchHex({ master, swatchDraftById: { draft: "not-a-color" } }),

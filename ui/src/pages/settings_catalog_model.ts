@@ -1,6 +1,6 @@
 import {
-  isValidHexColor,
-  normalizeHexColor,
+  isValidSwatchColor,
+  normalizeSwatchValue,
   suggestHexFromColor,
 } from "../lib/color_utils";
 import type { CatalogRefreshResult, MasterCatalogRow } from "../lib/tauri_client";
@@ -49,7 +49,7 @@ export function buildSettingsCatalogState({
   swatchVendorFilter: string;
 }) {
   const missingSwatchMasters = catalogMasters.filter(
-    (master) => !isValidHexColor(master.hex_color),
+    (master) => !isValidSwatchColor(master.hex_color),
   );
   const visibleMissingSwatchMasters =
     swatchVendorFilter === "ALL"
@@ -114,7 +114,7 @@ export function resolveSettingsSwatchHex({
   swatchDraftById: Record<string, string>;
 }): string {
   return (
-    normalizeHexColor(swatchDraftById[master.id], { uppercase: true }) ??
+    normalizeSwatchValue(swatchDraftById[master.id], { uppercase: true }) ??
     suggestHexFromColor(master)
   );
 }

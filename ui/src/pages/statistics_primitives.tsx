@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
-import { toSwatchColor } from "../lib/statistics_model";
+import { swatchCssBackground } from "../lib/color_utils";
 
 type MetricTone = "slate" | "sky" | "emerald" | "amber" | "rose";
 
@@ -76,7 +76,7 @@ export function StatisticsFilamentUsageRowCard({
         <div className="flex min-w-0 items-start gap-3">
           <span
             className="mt-0.5 h-5 w-5 flex-none rounded-md border border-slate-300/80 dark:border-slate-600"
-            style={{ backgroundColor: toSwatchColor(swatchColor) }}
+            style={{ background: swatchCssBackground(swatchColor) }}
           />
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">

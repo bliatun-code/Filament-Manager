@@ -1,5 +1,5 @@
 import { semanticChipClass } from "./chip_styles";
-import { hexToRgb, toSwatchColor } from "./color_utils";
+import { hexToRgb, parseSwatchSpec, toSwatchColor } from "./color_utils";
 import type { InventorySpool } from "./inventory_list_model";
 import type { RfidCaptureSummary } from "./inventory_rfid_capture";
 
@@ -41,7 +41,16 @@ export function assessRfidCaptureMatch(
   if (toSwatchColor(observedHex).toUpperCase() === toSwatchColor(expectedHex).toUpperCase()) {
     return "EXACT";
   }
-  const distance = hexDistance(observedHex, expectedHex);
+  const expectedColors = parseSwatchSpec(expectedHex).colors;
+  const normalizedObservedHex = toSwatchColor(observedHex).toUpperCase();
+  if (expectedColors.some((color) => color.toUpperCase() === normalizedObservedHex)) {
+    return "EXACT";
+  }
+  const distance = Math.min(
+    ...expectedColors
+      .map((color) => hexDistance(observedHex, color))
+      .filter((value): value is number => value != null),
+  );
   if (distance != null && distance <= 48) {
     return "PARTIAL";
   }

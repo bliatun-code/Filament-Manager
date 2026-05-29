@@ -183,7 +183,7 @@ export function SettingsMaintenanceTab({
           <div className="min-h-[250px] rounded-xl border border-amber-300 bg-amber-50/90 p-4 shadow-sm shadow-amber-200/30 dark:border-amber-500/40 dark:bg-amber-500/10 dark:shadow-none">
             <div className="flex items-center gap-2 text-sm font-semibold text-amber-950 dark:text-amber-200">
               <span aria-hidden="true">!</span>
-              {t("settings.resetCatalogs", "Reset catalogs")}
+              {t("settings.resetCatalogs", "Repair catalog")}
             </div>
             <button
               type="button"
@@ -192,23 +192,23 @@ export function SettingsMaintenanceTab({
               disabled={!tauri || busy}
             >
               {confirmResetAction === "CATALOG"
-                ? t("settings.confirmResetCatalogsAction", "Confirm reset catalogs")
-                : t("settings.resetCatalogs", "Reset catalogs")}
+                ? t("settings.confirmResetCatalogsAction", "Confirm catalog repair")
+                : t("settings.resetCatalogs", "Repair catalog")}
             </button>
             <ul className="mt-3 list-disc space-y-1 pl-5 text-xs leading-6 text-amber-900 dark:text-amber-100/90">
               <li>
                 {t(
                   "settings.resetCatalogsList1",
-                  "Keeps catalog entries linked to inventory rolls or wishlist items.",
+                  "Keeps the bundled seed catalog and entries linked to inventory or wishlist.",
                 )}
               </li>
               <li>
-                {t("settings.resetCatalogsList2", "Removes only unused catalog entries.")}
+                {t("settings.resetCatalogsList2", "Removes only unused non-seeded catalog entries.")}
               </li>
               <li>
                 {t(
                   "settings.resetCatalogsList3",
-                  "Reactivates remaining discontinued catalog entries.",
+                  "Reimports missing seed entries and repairs catalog metadata.",
                 )}
               </li>
             </ul>

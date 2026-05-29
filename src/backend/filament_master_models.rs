@@ -34,6 +34,14 @@ pub struct CatalogLifecycleStats {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CatalogSeedStats {
+    pub scanned_count: i64,
+    pub inserted_count: i64,
+    pub updated_count: i64,
+    pub skipped_invalid_count: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EsunColorNormalizationStats {
     pub scanned_count: i64,
     pub normalized_count: i64,

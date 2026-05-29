@@ -1,4 +1,4 @@
-import { toSwatchColor } from "../lib/color_utils";
+import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import type { InventorySpool } from "../lib/inventory_list_model";
 import {
@@ -94,7 +94,7 @@ export function InventoryRfidCaptureHeader({
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <span
             className="h-5 w-5 rounded-md border border-slate-200 dark:border-slate-700"
-            style={{ backgroundColor: toSwatchColor(spoolHexColor) }}
+            style={{ background: swatchCssBackground(spoolHexColor) }}
           />
           <div className="text-lg font-semibold text-slate-900 dark:text-slate-50">
             {displayTitle}
@@ -163,7 +163,7 @@ export function InventoryRfidCaptureSlotPicker({
               <div className="flex items-center gap-2">
                 <span
                   className="h-4 w-4 shrink-0 rounded border border-slate-200 dark:border-slate-700"
-                  style={{ backgroundColor: toSwatchColor(slotSummary.colorHex ?? spool.hexColor) }}
+                  style={{ background: swatchCssBackground(slotSummary.colorHex ?? spool.hexColor) }}
                 />
                 <span>{label ?? `Slot ${slot.slotIndex}`}</span>
               </div>
@@ -225,7 +225,7 @@ export function InventoryRfidCaptureSummaryCards({
         <div className="mt-2 flex items-center gap-2 text-sm text-slate-900 dark:text-slate-100">
           <span
             className="h-5 w-5 rounded border border-slate-200 dark:border-slate-700"
-            style={{ backgroundColor: summary.colorHex ?? "#0F172A" }}
+            style={{ background: swatchCssBackground(summary.colorHex ?? "#0F172A") }}
           />
           <span className="font-mono">
             {summary.colorHex || summary.trayColorRaw || "—"}

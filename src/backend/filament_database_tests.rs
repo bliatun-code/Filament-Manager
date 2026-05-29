@@ -38,6 +38,119 @@ fn reset_app_state_table_list_tracks_all_backup_tables() {
 }
 
 #[test]
+fn apply_schema_seeds_sanitized_master_catalog() {
+    let db_path = temp_db_path("seed-catalog");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+
+        let seeded_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM filament_master_list WHERE catalog_source = 'seeded'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(seeded_count, 1314);
+
+        let vendor_counts: (i64, i64) = db
+            .conn
+            .query_row(
+                "SELECT
+                    SUM(CASE WHEN vendor = 'Bambu' THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN vendor = 'eSUN' THEN 1 ELSE 0 END)
+                 FROM filament_master_list",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(vendor_counts, (316, 991));
+
+        let unrelated_counts: (i64, i64, i64, i64) = db
+            .conn
+            .query_row(
+                "SELECT
+                    (SELECT COUNT(*) FROM filament_spools),
+                    (SELECT COUNT(*) FROM spool_loans),
+                    (SELECT COUNT(*) FROM printers),
+                    (SELECT COUNT(*) FROM trusted_lan_pairings)",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(unrelated_counts, (0, 0, 0, 0));
+
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let seeded_count_after_second_apply: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM filament_master_list WHERE catalog_source = 'seeded'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(seeded_count_after_second_apply, 1314);
+
+        Ok(())
+    })();
+
+    if let Err(error) = result {
+        panic!("apply_schema_seeds_sanitized_master_catalog failed: {error}");
+    }
+}
+
+#[test]
+fn reset_catalog_data_preserves_seeded_catalog_rows() {
+    let db_path = temp_db_path("seed-catalog-reset");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, vendor, catalog_source
+                 ) VALUES ('manual_unused', 'PLA', 'User Only', 'Purple', 'Manual', 'manual')",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+
+        let stats = db.reset_catalog_data().map_err(|error| error.to_string())?;
+
+        assert_eq!(stats.removed_count, 1);
+        assert_eq!(stats.remaining_count, 1314);
+
+        let seeded_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM filament_master_list WHERE catalog_source = 'seeded'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let manual_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM filament_master_list WHERE id = 'manual_unused'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(seeded_count, 1314);
+        assert_eq!(manual_count, 0);
+
+        Ok(())
+    })();
+
+    if let Err(error) = result {
+        panic!("reset_catalog_data_preserves_seeded_catalog_rows failed: {error}");
+    }
+}
+
+#[test]
 fn apply_schema_backfills_borrowed_in_groundwork_columns() {
     let db_path = temp_db_path("borrowed-in-schema");
 
@@ -242,6 +355,101 @@ fn apply_schema_backfills_borrowed_in_groundwork_columns() {
     if let Err(message) = result {
         panic!("apply_schema_backfills_borrowed_in_groundwork_columns test failed: {message}");
     }
+}
+
+#[test]
+fn apply_schema_backfills_official_bambu_composite_swatches_safely() {
+    let db_path = temp_db_path("bambu-composite-swatch-backfill");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+
+        for (vendor, filament_name, color_name, hex_color) in [
+            (
+                "Bambu Lab",
+                "PLA Silk Multi-Color",
+                "Dawn Radiance (13912)",
+                Some("#EC984C"),
+            ),
+            (
+                "Bambu Lab",
+                "PLA Silk Multi-Color",
+                "South Beach (13910)",
+                Some("#123456"),
+            ),
+            (
+                "Bambu Lab",
+                "PLA Silk Multi-Colour",
+                "Mystic Magenta (13900)",
+                None,
+            ),
+            (
+                "Manual",
+                "PLA Basic Gradient",
+                "Ocean to Meadow (10902)",
+                Some("#307FE2"),
+            ),
+        ] {
+            db.conn
+                .execute(
+                    "INSERT INTO filament_master_list (
+                        id, material, filament_name, color_name, hex_color,
+                        default_weight, vendor
+                     ) VALUES (
+                        'test_' || ?3 || '_' || ?4, 'PLA', ?3, ?4, ?2, 1000, ?1
+                     )
+                     ON CONFLICT(material, filament_name, color_name) DO UPDATE SET
+                        vendor = excluded.vendor,
+                        hex_color = excluded.hex_color",
+                    rusqlite::params![vendor, hex_color, filament_name, color_name],
+                )
+                .map_err(|error| error.to_string())?;
+        }
+
+        crate::backend::database_catalog_swatch_backfill::backfill_official_bambu_composite_swatches(
+            &db.conn,
+        )
+        .map_err(|error| error.to_string())?;
+
+        let read_hex = |filament_name: &str, color_name: &str| -> Result<Option<String>, String> {
+            db.conn
+                .query_row(
+                    "SELECT hex_color
+                     FROM filament_master_list
+                     WHERE filament_name = ?1 AND color_name = ?2
+                     LIMIT 1",
+                    [filament_name, color_name],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())
+        };
+
+        assert_eq!(
+            read_hex("PLA Silk Multi-Color", "Dawn Radiance (13912)")?.as_deref(),
+            Some("gradient(#EC984C,#6CD4BC,#A66EB9,#D87694)")
+        );
+        assert_eq!(
+            read_hex("PLA Silk Multi-Color", "South Beach (13910)")?.as_deref(),
+            Some("#123456")
+        );
+        assert_eq!(
+            read_hex("PLA Silk Multi-Colour", "Mystic Magenta (13900)")?.as_deref(),
+            Some("multi(#720062,#3A913F)")
+        );
+        assert_eq!(
+            read_hex("PLA Basic Gradient", "Ocean to Meadow (10902)")?.as_deref(),
+            Some("#307FE2")
+        );
+
+        Ok(())
+    })();
+
+    if let Err(message) = &result {
+        let _ = std::fs::remove_file(&db_path);
+        panic!("apply_schema_backfills_official_bambu_composite_swatches_safely test failed: {message}");
+    }
+    let _ = std::fs::remove_file(&db_path);
 }
 
 #[test]
@@ -939,7 +1147,16 @@ fn reset_app_state_clears_fk_graph_without_dropping_catalog_data() {
             .conn
             .query_row("SELECT COUNT(*) FROM label_templates", [], |row| row.get(0))
             .map_err(|error| error.to_string())?;
-        assert_eq!(master_count, 1);
+        assert_eq!(master_count, 1315);
+        let preserved_master_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM filament_master_list WHERE id = 'master_1'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(preserved_master_count, 1);
         assert_eq!(template_count, 1);
 
         let mut statement = db

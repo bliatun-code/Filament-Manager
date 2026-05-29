@@ -449,7 +449,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         unlockMetadataFirst: "Unlock metadata before editing catalog details.",
         masterFieldsRequired:
           "Vendor, material, filament name and color are required to save metadata.",
-        invalidHex: "Invalid swatch color. Use #RRGGBB.",
+        invalidHex:
+          "Invalid swatch color. Use #RRGGBB, multi(#RRGGBB,#RRGGBB) or gradient(#RRGGBB,#RRGGBB).",
         updateMetadata: "Failed to update roll metadata.",
         requireAmsForInUse: "Choose a printer slot before setting ASSIGNED.",
         incomingWeightRequired: "Enter incoming roll weight before saving slot changes.",
@@ -504,7 +505,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       materialPlaceholder: "Material (e.g. PLA)",
       filamentName: "Filament name",
       colorName: "Color name",
-      hexOptional: "Hex color (optional)",
+      hexOptional: "Swatch color (optional)",
       loading: "Loading wishlist...",
       empty: "No wishlist items yet.",
       noneFiltered: "No items match the selected status filter.",
@@ -1105,14 +1106,14 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       validateBackup: "Validate backup file",
       exportInventoryCsv: "Export inventory CSV",
       exportInventoryJson: "Export inventory JSON",
-      resetSectionTitle: "Reset and cleanup",
-      resetCatalogs: "Reset catalogs",
+      resetSectionTitle: "Repair and cleanup",
+      resetCatalogs: "Repair catalog",
       resetCatalogsHint:
-        "Removes catalog entries not linked to inventory or wishlist, and reactivates remaining discontinued catalog items.",
+        "Restores the bundled filament catalog, keeps historical vendor entries, and removes only unused non-seeded catalog rows.",
       resetCatalogsList1:
-        "Keeps catalog entries linked to inventory rolls or wishlist items.",
-      resetCatalogsList2: "Removes only unused catalog entries.",
-      resetCatalogsList3: "Reactivates remaining discontinued catalog entries.",
+        "Keeps the bundled seed catalog and entries linked to inventory or wishlist.",
+      resetCatalogsList2: "Removes only unused non-seeded catalog entries.",
+      resetCatalogsList3: "Reimports missing seed entries and repairs catalog metadata.",
       resetApp: "Reset app data",
       resetHint:
         "App reset clears inventory, statistics history, printer assignments, wishlist, and trusted-LAN paired browsers.",
@@ -1126,7 +1127,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       activeUpdated: "Active printer updated.",
       activeCleared: "Active printer cleared.",
       resetDone: "App data reset completed.",
-      catalogResetDone: "Catalog reset done",
+      catalogResetDone: "Catalog repair done",
       backupExported: "Full backup exported (inventory, history and printers).",
       librarySyncBackupAutoValidated:
         "The exported backup was validated automatically and is ready to use in the guided role-change flow.",
@@ -1166,11 +1167,11 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       remaining: "remaining",
       reactivated: "reactivated",
       catalogTabHelp:
-        "Catalog updates are performed here. Inventory add-flow uses the local catalogue managed on this page.",
+        "The app ships with a local seed catalog. Vendor updates add newly discovered products and refresh selected material families.",
       catalogRefreshTitle: "Vendor catalog updates",
       catalogRefreshHelp:
-        "Choose vendor and optionally limit the refresh to selected material families to reduce traffic and spread catalogue imports over time.",
-      catalogAllTypes: "All types",
+        "Choose vendor and refresh only the material families that need new products. A full vendor audit is slower and may mark unseen products as historical.",
+      catalogAllTypes: "Full vendor audit",
       discoveredMaterials: "Discovered materials",
       refreshCurrentVendor: "Refresh current vendor catalog",
       hideRefreshLog: "Hide refresh log",
@@ -1314,13 +1315,13 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       confirmDeleteTapAgain: "Click Remove again to confirm deleting printer",
       confirmRemove: "Confirm remove",
       confirmResetAppAction: "Confirm reset app data",
-      confirmResetCatalogsAction: "Confirm reset catalogs",
+      confirmResetCatalogsAction: "Confirm catalog repair",
       confirmResetAppTapAgain: "Click Reset app data again to confirm.",
-      confirmResetCatalogsTapAgain: "Click Reset catalogs again to confirm.",
+      confirmResetCatalogsTapAgain: "Click Repair catalog again to confirm.",
       confirmResetApp:
         "Reset app data?\n\nThis clears inventory, printer mappings, print history, wishlist, and trusted-LAN paired browsers. Catalog entries are kept.",
       confirmResetCatalogs:
-        "Reset all catalogs?\n\nUnlinked catalog entries are removed. Entries tied to inventory/wishlist are preserved.",
+        "Repair the catalog?\n\nThe bundled seed catalog is restored. Only unused non-seeded catalog entries are removed; inventory and wishlist references are preserved.",
       confirmImportBackup:
         "Import full backup now?\n\nThis will replace current inventory, history, configured printers and maintenance data.",
       error: {
@@ -1333,7 +1334,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         invalidSwatchHex: "Invalid swatch hex value. Use #RGB or #RRGGBB.",
         saveSwatch: "Failed to save swatch for selected filament.",
         resetApp: "Failed to reset app data.",
-        resetCatalogs: "Failed to reset catalogs.",
+        resetCatalogs: "Failed to repair catalog.",
         exportBackup: "Failed to export full backup.",
         importBackup: "Failed to import full backup.",
         importData: "Failed to import selected file.",
@@ -1800,7 +1801,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         unlockMetadataFirst: "Lås opp metadata før du redigerer katalogdetaljer.",
         masterFieldsRequired:
           "Leverandør, materiale, filamentnavn og farge er påkrevd for å lagre metadata.",
-        invalidHex: "Ugyldig swatch-farge. Bruk #RRGGBB.",
+        invalidHex:
+          "Ugyldig swatch-farge. Bruk #RRGGBB, multi(#RRGGBB,#RRGGBB) eller gradient(#RRGGBB,#RRGGBB).",
         updateMetadata: "Kunne ikke oppdatere filamentmetadata.",
         requireAmsForInUse: "Velg printer-spor før status settes til ASSIGNED.",
         incomingWeightRequired: "Oppgi innkommende rullvekt før du lagrer sporendringer.",
@@ -1855,7 +1857,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       materialPlaceholder: "Materiale (f.eks. PLA)",
       filamentName: "Filamentnavn",
       colorName: "Fargenavn",
-      hexOptional: "Hex-farge (valgfritt)",
+      hexOptional: "Swatch-farge (valgfritt)",
       loading: "Laster ønskeliste...",
       empty: "Ingen ønskelisteelementer ennå.",
       noneFiltered: "Ingen elementer matcher valgt filter.",
@@ -2460,14 +2462,14 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       validateBackup: "Valider sikkerhetskopi",
       exportInventoryCsv: "Eksporter lager CSV",
       exportInventoryJson: "Eksporter lager JSON",
-      resetSectionTitle: "Nullstilling og opprydding",
-      resetCatalogs: "Nullstill kataloger",
+      resetSectionTitle: "Reparasjon og opprydding",
+      resetCatalogs: "Reparer katalog",
       resetCatalogsHint:
-        "Rydder katalogen ved å fjerne ubrukte oppføringer og reaktivere relevante utgåtte oppføringer.",
+        "Gjenoppretter den innebygde filamentkatalogen, beholder historiske produsentoppføringer og fjerner kun ubrukte ikke-seedede rader.",
       resetCatalogsList1:
-        "Beholder oppføringer som er koblet til lager eller ønskeliste.",
-      resetCatalogsList2: "Fjerner kun oppføringer uten koblinger.",
-      resetCatalogsList3: "Reaktiverer relevante utgåtte oppføringer.",
+        "Beholder seed-katalogen og oppføringer koblet til lager eller ønskeliste.",
+      resetCatalogsList2: "Fjerner kun ubrukte ikke-seedede katalogoppføringer.",
+      resetCatalogsList3: "Importerer manglende seed-oppføringer og reparerer katalogmetadata.",
       resetApp: "Nullstill appdata",
       resetHint:
         "Nullstiller appens driftsdata, mens katalog og swatch-data beholdes.",
@@ -2481,7 +2483,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       activeUpdated: "Aktiv printer oppdatert.",
       activeCleared: "Aktiv printer fjernet.",
       resetDone: "Nullstilling av appdata fullført.",
-      catalogResetDone: "Katalognullstilling fullført",
+      catalogResetDone: "Katalogreparasjon fullført",
       backupExported: "Full sikkerhetskopi eksportert (lager, historikk og printere).",
       librarySyncBackupAutoValidated:
         "Den eksporterte sikkerhetskopien ble validert automatisk og er klar til bruk i den veiledede rollebytteflyten.",
@@ -2521,11 +2523,11 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       remaining: "gjenstår",
       reactivated: "reaktivert",
       catalogTabHelp:
-        "Katalogoppdateringer utføres her. Legg til-flyten i lager bruker den lokale katalogen som administreres på denne siden.",
+        "Appen leveres med en lokal seed-katalog. Leverandøroppdateringer legger til nye produkter og oppdaterer valgte materialfamilier.",
       catalogRefreshTitle: "Oppdatering av leverandørkatalog",
       catalogRefreshHelp:
-        "Velg leverandør og begrens eventuelt oppdateringen til utvalgte materialfamilier for å redusere trafikk og spre katalogimporter over tid.",
-      catalogAllTypes: "Alle typer",
+        "Velg leverandør og oppdater bare materialfamiliene som trenger nye produkter. Full leverandøraudit er tregere og kan merke produkter som ikke sees som historiske.",
+      catalogAllTypes: "Full leverandøraudit",
       discoveredMaterials: "Oppdagede materialer",
       refreshCurrentVendor: "Oppdater valgt leverandørkatalog",
       hideRefreshLog: "Skjul oppdateringslogg",
@@ -2669,13 +2671,13 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       confirmDeleteTapAgain: "Trykk Fjern igjen for å bekrefte sletting av printer",
       confirmRemove: "Bekreft sletting",
       confirmResetAppAction: "Bekreft nullstilling av appdata",
-      confirmResetCatalogsAction: "Bekreft nullstilling av kataloger",
+      confirmResetCatalogsAction: "Bekreft katalogreparasjon",
       confirmResetAppTapAgain: "Trykk Nullstill appdata igjen for å bekrefte.",
-      confirmResetCatalogsTapAgain: "Trykk Nullstill kataloger igjen for å bekrefte.",
+      confirmResetCatalogsTapAgain: "Trykk Reparer katalog igjen for å bekrefte.",
       confirmResetApp:
         "Nullstill appdata?\n\nDette sletter lager, printerkoblinger, print-historikk, ønskeliste og parede trusted-LAN-nettlesere. Katalogdata beholdes.",
       confirmResetCatalogs:
-        "Nullstill alle kataloger?\n\nUkoblede katalogelementer fjernes. Elementer knyttet til lager/ønskeliste beholdes.",
+        "Reparer katalogen?\n\nDen innebygde seed-katalogen gjenopprettes. Kun ubrukte ikke-seedede katalogoppføringer fjernes; lager og ønskeliste beholdes.",
       confirmImportBackup:
         "Importer full sikkerhetskopi nå?\n\nDette erstatter nåværende lager, historikk, konfigurerte printere og vedlikeholdsdata.",
       error: {
@@ -2688,7 +2690,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         invalidSwatchHex: "Ugyldig swatch-hex. Bruk #RGB eller #RRGGBB.",
         saveSwatch: "Kunne ikke lagre swatch for valgt filament.",
         resetApp: "Kunne ikke nullstille appdata.",
-        resetCatalogs: "Kunne ikke nullstille kataloger.",
+        resetCatalogs: "Kunne ikke reparere katalogen.",
         exportBackup: "Kunne ikke eksportere full sikkerhetskopi.",
         importBackup: "Kunne ikke importere full sikkerhetskopi.",
         importData: "Kunne ikke importere valgt fil.",

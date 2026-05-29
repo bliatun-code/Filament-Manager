@@ -1,4 +1,12 @@
 export const DEFAULT_SWATCH_COLOR = "#CBD5E1";
+const COMPOSITE_SWATCH_PATTERN = /^(multi|gradient)\((.*)\)$/i;
+
+export type SwatchKind = "solid" | "multi" | "gradient";
+
+export type SwatchSpec = {
+  kind: SwatchKind;
+  colors: string[];
+};
 
 export function normalizeHexColor(
   raw?: string | null,
@@ -24,8 +32,98 @@ export function isValidHexColor(raw?: string | null): boolean {
   return normalizeHexColor(raw) != null;
 }
 
+function normalizeSwatchColorList(
+  raw: string,
+  options: { uppercase?: boolean } = {},
+): string[] | null {
+  const parts = raw
+    .split(/[;,]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length < 2) {
+    return null;
+  }
+  const colors = parts.map((part) => normalizeHexColor(part, options));
+  if (colors.some((color) => color == null)) {
+    return null;
+  }
+  return colors as string[];
+}
+
+export function normalizeSwatchValue(
+  raw?: string | null,
+  options: { uppercase?: boolean } = {},
+): string | null {
+  const normalizedHex = normalizeHexColor(raw, options);
+  if (normalizedHex) {
+    return normalizedHex;
+  }
+
+  const value = (raw ?? "").trim();
+  if (!value) {
+    return null;
+  }
+
+  const compositeMatch = value.match(COMPOSITE_SWATCH_PATTERN);
+  if (compositeMatch) {
+    const kind = compositeMatch[1].toLowerCase() as Exclude<SwatchKind, "solid">;
+    const colors = normalizeSwatchColorList(compositeMatch[2], options);
+    return colors ? `${kind}(${colors.join(",")})` : null;
+  }
+
+  const colors = normalizeSwatchColorList(value, options);
+  return colors ? `gradient(${colors.join(",")})` : null;
+}
+
+export function isValidSwatchColor(raw?: string | null): boolean {
+  return normalizeSwatchValue(raw) != null;
+}
+
+export function parseSwatchSpec(raw?: string | null): SwatchSpec {
+  const normalized = normalizeSwatchValue(raw, { uppercase: true });
+  if (!normalized) {
+    return { kind: "solid", colors: [DEFAULT_SWATCH_COLOR] };
+  }
+  const compositeMatch = normalized.match(COMPOSITE_SWATCH_PATTERN);
+  if (compositeMatch) {
+    return {
+      kind: compositeMatch[1].toLowerCase() as Exclude<SwatchKind, "solid">,
+      colors: compositeMatch[2].split(","),
+    };
+  }
+  return { kind: "solid", colors: [normalized] };
+}
+
+export function primarySwatchColor(raw?: string | null): string {
+  return parseSwatchSpec(raw).colors[0] ?? DEFAULT_SWATCH_COLOR;
+}
+
+export function swatchCssBackground(raw?: string | null, angle = 145): string {
+  const spec = parseSwatchSpec(raw);
+  if (spec.kind === "solid" || spec.colors.length === 1) {
+    return spec.colors[0] ?? DEFAULT_SWATCH_COLOR;
+  }
+
+  if (spec.kind === "gradient") {
+    const maxIndex = spec.colors.length - 1;
+    const stops = spec.colors.map((color, index) => {
+      const position = maxIndex === 0 ? 0 : Math.round((index / maxIndex) * 100);
+      return `${color} ${position}%`;
+    });
+    return `linear-gradient(${angle}deg, ${stops.join(", ")})`;
+  }
+
+  const segmentSize = 100 / spec.colors.length;
+  const stops = spec.colors.flatMap((color, index) => {
+    const start = Math.round(segmentSize * index * 100) / 100;
+    const end = Math.round(segmentSize * (index + 1) * 100) / 100;
+    return [`${color} ${start}%`, `${color} ${end}%`];
+  });
+  return `linear-gradient(${angle}deg, ${stops.join(", ")})`;
+}
+
 export function toSwatchColor(raw?: string | null): string {
-  return normalizeHexColor(raw) ?? DEFAULT_SWATCH_COLOR;
+  return primarySwatchColor(raw);
 }
 
 export function hexToRgb(raw?: string | null): [number, number, number] | null {

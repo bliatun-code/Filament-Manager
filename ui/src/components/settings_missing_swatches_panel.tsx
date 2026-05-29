@@ -1,6 +1,7 @@
 import {
-  normalizeHexColor,
+  normalizeSwatchValue,
   suggestHexFromColor,
+  swatchCssBackground,
   toSwatchColor,
 } from "../lib/color_utils";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
@@ -138,7 +139,7 @@ export function SettingsMissingSwatchesPanel({
             {visibleMissingSwatchMasters.map((master) => {
               const draftHex = swatchDraftById[master.id] ?? suggestHexFromColor(master);
               const normalizedDraft =
-                normalizeHexColor(draftHex, { uppercase: true }) ?? suggestHexFromColor(master);
+                normalizeSwatchValue(draftHex, { uppercase: true }) ?? suggestHexFromColor(master);
 
               return (
                 <div
@@ -149,7 +150,7 @@ export function SettingsMissingSwatchesPanel({
                     <div className="flex min-w-0 items-start gap-3">
                       <span
                         className="mt-0.5 h-11 w-11 shrink-0 rounded-lg border border-slate-200 shadow-inner dark:border-slate-700"
-                        style={{ backgroundColor: toSwatchColor(normalizedDraft) }}
+                        style={{ background: swatchCssBackground(normalizedDraft) }}
                         title={normalizedDraft}
                       />
                       <div className="min-w-0">
@@ -172,7 +173,7 @@ export function SettingsMissingSwatchesPanel({
                         value={draftHex}
                         onChange={(event) => onSwatchDraftChange(master.id, event.target.value)}
                         className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-                        placeholder="#RRGGBB"
+                        placeholder="#RRGGBB / gradient(...) / multi(...)"
                         disabled={disabled}
                       />
                       <input

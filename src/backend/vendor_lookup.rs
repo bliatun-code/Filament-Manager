@@ -1265,7 +1265,7 @@ fn parse_product_colors(html: &str) -> Vec<EsunColorOption> {
                 .and_then(|map| map.get(&color_name))
                 .and_then(|entry| entry.get("color"))
                 .and_then(Value::as_str)
-                .and_then(normalize_hex);
+                .and_then(normalize_esun_swatch_value);
             output.push(EsunColorOption {
                 color_name,
                 hex_color,
@@ -1301,13 +1301,14 @@ fn parse_esun_site_product_colors(html: &str) -> Vec<EsunColorOption> {
         let color_name = extract_tag_content(block, "p")
             .map(|value| normalize_whitespace(&decode_html_entities(&strip_tags(&value))))
             .unwrap_or_default();
+        if is_esun_bundle_color_option(&color_name, block) {
+            continue;
+        }
         if color_name.is_empty() || !seen.insert(color_name.clone()) {
             continue;
         }
 
-        let hex_color = extract_inline_hex_color(block)
-            .or_else(|| extract_class_hex_color(block))
-            .and_then(|hex| normalize_hex(&hex));
+        let hex_color = extract_esun_swatch_color(block);
 
         output.push(EsunColorOption {
             color_name,
@@ -1413,11 +1414,16 @@ fn normalize_esun_color_name(raw: &str, material: &str, filament_name: &str) -> 
                 )
         })
         .to_string();
-    if cleaned.is_empty() {
+    let normalized = if cleaned.is_empty() {
         fallback
     } else {
         cleaned
-    }
+    };
+    normalize_esun_color_name_typos(&normalized)
+}
+
+fn normalize_esun_color_name_typos(value: &str) -> String {
+    value.replace("GREEH", "GREEN").replace("GRREN", "GREEN")
 }
 
 fn strip_prefix_ascii_case_insensitive(value: &str, prefix: &str) -> Option<String> {
@@ -1672,40 +1678,82 @@ fn normalize_hex(value: &str) -> Option<String> {
     }
 }
 
-fn extract_inline_hex_color(value: &str) -> Option<String> {
-    for marker in ["background-color:", "background:"] {
-        if let Some(marker_index) = value.find(marker) {
-            let rest = &value[marker_index + marker.len()..];
-            if let Some(hash_index) = rest.find('#') {
-                let hex_start = hash_index + 1;
-                let hex: String = rest[hex_start..]
-                    .chars()
-                    .take_while(|ch| ch.is_ascii_hexdigit())
-                    .take(6)
-                    .collect();
-                if hex.len() == 3 || hex.len() == 6 {
-                    return Some(format!("#{hex}"));
-                }
-            }
-        }
-    }
-    None
+fn normalize_esun_swatch_value(value: &str) -> Option<String> {
+    normalize_hex(value).or_else(|| format_esun_swatch_colors(extract_css_hex_tokens(value)))
 }
 
-fn extract_class_hex_color(value: &str) -> Option<String> {
-    let marker = "item-color-";
-    let marker_index = value.find(marker)?;
-    let start = marker_index + marker.len();
-    let hex: String = value[start..]
-        .chars()
-        .take_while(|ch| ch.is_ascii_hexdigit())
-        .take(6)
-        .collect();
-    if hex.len() == 3 || hex.len() == 6 {
-        Some(format!("#{hex}"))
-    } else {
-        None
+fn extract_esun_swatch_color(value: &str) -> Option<String> {
+    let inline_colors = extract_inline_hex_colors(value);
+    if !inline_colors.is_empty() {
+        return format_esun_swatch_colors(inline_colors);
     }
+    format_esun_swatch_colors(extract_class_hex_colors(value))
+}
+
+fn extract_inline_hex_colors(value: &str) -> Vec<String> {
+    let mut colors = Vec::new();
+    for marker in ["background-color:", "background:"] {
+        let mut cursor = 0usize;
+        while let Some(marker_index_rel) = value[cursor..].find(marker) {
+            let marker_index = cursor + marker_index_rel;
+            let rest = &value[marker_index + marker.len()..];
+            let fragment_end = rest
+                .find(['"', '\'', '<', '>'])
+                .unwrap_or(rest.len())
+                .min(160);
+            colors.extend(extract_css_hex_tokens(&rest[..fragment_end]));
+            cursor = marker_index + marker.len();
+        }
+    }
+    dedupe_hex_colors(colors)
+}
+
+fn extract_class_hex_colors(value: &str) -> Vec<String> {
+    let marker = "item-color-";
+    let mut colors = Vec::new();
+    let mut cursor = 0usize;
+    while let Some(marker_index_rel) = value[cursor..].find(marker) {
+        let start = cursor + marker_index_rel + marker.len();
+        let rest = &value[start..];
+        let fragment_end = rest
+            .find(['"', '\'', '<', '>', ' '])
+            .unwrap_or(rest.len())
+            .min(120);
+        colors.extend(extract_css_hex_tokens(&rest[..fragment_end]));
+        cursor = start;
+    }
+    dedupe_hex_colors(colors)
+}
+
+fn extract_css_hex_tokens(value: &str) -> Vec<String> {
+    value
+        .split(|ch: char| !(ch.is_ascii_hexdigit() || ch == '#'))
+        .filter_map(normalize_hex)
+        .collect()
+}
+
+fn format_esun_swatch_colors(colors: Vec<String>) -> Option<String> {
+    let colors = dedupe_hex_colors(colors);
+    match colors.len() {
+        0 => None,
+        1 => colors.into_iter().next(),
+        _ => Some(format!("multi({})", colors.join(","))),
+    }
+}
+
+fn dedupe_hex_colors(colors: Vec<String>) -> Vec<String> {
+    let mut seen = HashSet::new();
+    let mut deduped = Vec::new();
+    for color in colors {
+        if seen.insert(color.to_ascii_uppercase()) {
+            deduped.push(color);
+        }
+    }
+    deduped
+}
+
+fn is_esun_bundle_color_option(color_name: &str, block: &str) -> bool {
+    color_name.contains('+') || block.to_ascii_lowercase().contains("bundle-package")
 }
 
 fn normalize_url(url: &str) -> String {

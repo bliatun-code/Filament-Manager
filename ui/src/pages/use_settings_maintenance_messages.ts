@@ -5,7 +5,7 @@ type SettingsTranslator = ReturnType<typeof useI18n>["t"];
 
 export function useSettingsMaintenanceMessages(t: SettingsTranslator) {
   const settingsCatalogResetMessageLabels = useCallback(() => ({
-    catalogResetDone: t("settings.catalogResetDone", "Catalog reset done"),
+    catalogResetDone: t("settings.catalogResetDone", "Catalog repair done"),
     reactivated: t("settings.reactivated", "reactivated"),
     remaining: t("settings.remaining", "remaining"),
     removed: t("settings.removed", "Removed"),
@@ -19,10 +19,10 @@ export function useSettingsMaintenanceMessages(t: SettingsTranslator) {
     ),
     confirmResetCatalogsTapAgain: t(
       "settings.confirmResetCatalogsTapAgain",
-      "Click Reset catalogs again to confirm.",
+      "Click Repair catalog again to confirm.",
     ),
     resetAppFailed: t("settings.error.resetApp", "Failed to reset app data."),
-    resetCatalogsFailed: t("settings.error.resetCatalogs", "Failed to reset catalogs."),
+    resetCatalogsFailed: t("settings.error.resetCatalogs", "Failed to repair catalog."),
   }), [t]);
 
   return {

@@ -85,6 +85,23 @@ test("assessRfidCaptureMatch allows near color matches as partial", () => {
   );
 });
 
+test("assessRfidCaptureMatch checks all colors in composite swatches", () => {
+  assert.equal(
+    assessRfidCaptureMatch(
+      createSpool({ hexColor: "multi(#720062,#3A913F)" }),
+      createSummary({ colorHex: "#3A913F", material: "PLA-CF" }),
+    ),
+    "EXACT",
+  );
+  assert.equal(
+    assessRfidCaptureMatch(
+      createSpool({ hexColor: "gradient(#720062,#3A913F)" }),
+      createSummary({ colorHex: "#3A9142", material: "PLA-CF" }),
+    ),
+    "PARTIAL",
+  );
+});
+
 test("assessRfidCaptureMatch rejects missing material, material mismatches, and distant colors", () => {
   assert.equal(assessRfidCaptureMatch(null, createSummary()), "NONE");
   assert.equal(assessRfidCaptureMatch(createSpool(), createSummary({ material: null })), "NONE");

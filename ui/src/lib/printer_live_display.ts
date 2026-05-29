@@ -53,7 +53,7 @@ export function compareObservedTimestamps(
   return leftValue - rightValue;
 }
 
-export { toSwatchColor } from "./color_utils";
+export { swatchCssBackground, toSwatchColor } from "./color_utils";
 
 export function printerSwatchSurfaceStyle(
   raw: string | null | undefined,

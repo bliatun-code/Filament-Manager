@@ -526,6 +526,8 @@ struct OfficialBambuHexCode {
     filament: String,
     color: String,
     hex: String,
+    kind: Option<String>,
+    colors: Option<Vec<String>>,
 }
 
 static OFFICIAL_BAMBU_HEX_CODES: OnceLock<Vec<OfficialBambuHexCode>> = OnceLock::new();
@@ -615,7 +617,39 @@ fn official_bambu_hex(filament_name: &str, color_name: &str) -> Option<String> {
         .find(|entry| {
             filament_keys.iter().any(|key| key == &entry.filament) && entry.color == color_key
         })
-        .map(|entry| entry.hex.clone())
+        .map(official_bambu_swatch_value)
+}
+
+pub(crate) fn official_bambu_composite_swatch_update(
+    filament_name: &str,
+    color_name: &str,
+) -> Option<(String, String)> {
+    let filament_keys = official_filament_key_candidates(filament_name);
+    let color_key = official_color_key(filament_name, color_name);
+    official_bambu_hex_codes()
+        .iter()
+        .find(|entry| {
+            filament_keys.iter().any(|key| key == &entry.filament) && entry.color == color_key
+        })
+        .and_then(|entry| {
+            entry
+                .colors
+                .as_ref()
+                .filter(|colors| colors.len() > 1)
+                .map(|_| (entry.hex.clone(), official_bambu_swatch_value(entry)))
+        })
+}
+
+fn official_bambu_swatch_value(entry: &OfficialBambuHexCode) -> String {
+    let Some(colors) = entry.colors.as_ref().filter(|colors| colors.len() > 1) else {
+        return entry.hex.clone();
+    };
+    let kind = match entry.kind.as_deref() {
+        Some("multi") => "multi",
+        Some("gradient") => "gradient",
+        _ => "gradient",
+    };
+    format!("{kind}({})", colors.join(","))
 }
 
 fn resolve_bambu_hex(filament_name: &str, color_name: &str) -> Option<String> {

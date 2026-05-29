@@ -27,6 +27,7 @@
     "scrape:auto": "node ./node_modules/tsx/dist/cli.mjs src/scraper/bambu_auto_scrape.ts",
     "scrape:safe": "npm run doctor && npm run scrape",
     "scrape:auto:safe": "npm run doctor && npm run scrape:auto",
+    "catalog:seed:export": "node ./scripts/export-seed-catalog.mjs",
     "tauri": "node ./scripts/run-tauri.mjs"
   },
   "optionalDependencies": {

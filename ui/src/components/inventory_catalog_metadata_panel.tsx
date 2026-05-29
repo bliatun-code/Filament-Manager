@@ -1,4 +1,4 @@
-import { toSwatchColor } from "../lib/color_utils";
+import { swatchCssBackground, toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
@@ -126,7 +126,7 @@ export function InventoryCatalogMetadataPanel({
             />
             <span
               className="h-7 w-7 rounded border border-slate-200"
-              style={{ backgroundColor: toSwatchColor(hexColor) }}
+              style={{ background: swatchCssBackground(hexColor) }}
             />
           </div>
           <button

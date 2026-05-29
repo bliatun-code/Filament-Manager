@@ -98,6 +98,11 @@ pub(crate) fn update_master_catalog_entry(
                  product_url = COALESCE(?2, product_url),
                  default_weight = ?3,
                  vendor = ?4,
+                 catalog_user_edited = 1,
+                 catalog_source = CASE
+                     WHEN catalog_source = 'seeded' THEN 'seeded'
+                     ELSE 'manual'
+                 END,
                  is_discontinued = CASE WHEN ?4 = 'Bambu' THEN is_discontinued ELSE 0 END,
                  discontinued_at = CASE WHEN ?4 = 'Bambu' THEN discontinued_at ELSE NULL END,
                  last_seen_at = datetime('now'),
@@ -174,6 +179,11 @@ pub(crate) fn update_master_catalog_entry(
              product_url = ?5,
              default_weight = ?6,
              vendor = ?7,
+             catalog_user_edited = 1,
+             catalog_source = CASE
+                 WHEN catalog_source = 'seeded' THEN 'seeded'
+                 ELSE 'manual'
+             END,
              is_discontinued = CASE WHEN ?7 = 'Bambu' THEN is_discontinued ELSE 0 END,
              discontinued_at = CASE WHEN ?7 = 'Bambu' THEN discontinued_at ELSE NULL END,
              last_seen_at = datetime('now'),

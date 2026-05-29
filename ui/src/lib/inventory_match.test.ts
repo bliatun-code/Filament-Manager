@@ -86,6 +86,31 @@ test("buildInventoryMatchResult falls back to metadata matching", () => {
   assert.deepEqual(result.candidates.map((row) => row.spool.id), ["spool-2"]);
 });
 
+test("buildInventoryMatchResult matches observed RFID color against multi swatch colors", () => {
+  const result = buildInventoryMatchResult(
+    [
+      createRow("spool-1", {
+        material: "PLA",
+        filamentName: "PLA Silk Multi-Color",
+        hexColor: "multi(#720062,#3A913F)",
+      }),
+      createRow("spool-2", {
+        material: "PLA",
+        filamentName: "PLA Silk Multi-Color",
+        hexColor: "multi(#00629B,#000000)",
+      }),
+    ],
+    {
+      material: "PLA",
+      filamentName: "PLA Silk Multi-Color",
+      colorHex: "#3A913F",
+    },
+  );
+
+  assert.equal(result.kind, "metadata_single");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), ["spool-1"]);
+});
+
 test("buildInventoryMatchResult reports multiple metadata candidates", () => {
   const result = buildInventoryMatchResult(
     [createRow("spool-1"), createRow("spool-2")],

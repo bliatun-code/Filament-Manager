@@ -71,7 +71,7 @@ export function SettingsCatalogRefreshPanel({
             <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
               {t(
                 "settings.catalogRefreshHelp",
-                "Choose vendor and optionally limit the refresh to selected material families to reduce traffic and spread catalogue imports over time.",
+                "Choose vendor and refresh only the material families that need new products. A full vendor audit is slower and may mark unseen products as historical.",
               )}
             </div>
           </div>
@@ -88,7 +88,7 @@ export function SettingsCatalogRefreshPanel({
             hint={
               activeCatalogRefreshMaterials.length > 0
                 ? activeCatalogRefreshMaterials.join(", ")
-                : t("settings.catalogAllTypes", "All types")
+                : t("settings.catalogAllTypes", "Full vendor audit")
             }
           />
         </div>
@@ -125,7 +125,7 @@ export function SettingsCatalogRefreshPanel({
                   onClick={() => onClearCatalogRefreshMaterials(catalogVendor)}
                   className={chipButtonClass(activeCatalogRefreshMaterials.length === 0)}
                 >
-                  {t("settings.catalogAllTypes", "All types")}
+                  {t("settings.catalogAllTypes", "Full vendor audit")}
                 </button>
                 {activeCatalogMaterialOptions.map((material) => (
                   <button

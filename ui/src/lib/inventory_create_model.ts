@@ -1,4 +1,4 @@
-import { isValidHexColor, toSwatchColor } from "./color_utils";
+import { normalizeSwatchValue } from "./color_utils";
 import type { OwnershipType } from "./inventory_list_model";
 import type { CreateManualSpoolInput, CreateSpoolInput, MasterCatalogRow } from "./tauri_client";
 import { parsePositiveWeight } from "./weight_display";
@@ -43,7 +43,7 @@ export function currentCreateSwatchHexForMode(input: {
   selectedCatalogMaster?: MasterCatalogRow | null;
 }): string | null {
   if (input.mode === "manual") {
-    return isValidHexColor(input.manualHexColor) ? toSwatchColor(input.manualHexColor) : null;
+    return normalizeSwatchValue(input.manualHexColor, { uppercase: true });
   }
   return input.selectedCatalogMaster?.hex_color ?? null;
 }
@@ -195,9 +195,7 @@ export function buildInventoryCreateSpoolRequest(input: {
       material: (input.manualMaterial ?? "").trim() || "PLA",
       filament_name: filamentName,
       color_name: colorName,
-      hex_color: isValidHexColor(input.manualHexColor)
-        ? toSwatchColor(input.manualHexColor)
-        : null,
+      hex_color: normalizeSwatchValue(input.manualHexColor, { uppercase: true }),
       product_url: null,
       default_weight_g: initialWeight,
       qr_code: null,

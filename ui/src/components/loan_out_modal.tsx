@@ -9,7 +9,7 @@ import {
   formatPlacementLabel,
   formatSpoolReference,
 } from "../lib/display_format";
-import { toSwatchColor } from "../lib/color_utils";
+import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import { useResolvedTheme } from "../lib/theme_mode";
 import { lendInventorySpool } from "../lib/loan_data_source";
@@ -267,9 +267,7 @@ export function LoanOutModal({
                           <span
                             className="h-8 w-8 shrink-0 rounded-md border border-slate-200 dark:border-slate-600"
                             style={{
-                              background: `linear-gradient(145deg, ${toSwatchColor(
-                                spool.hexColor,
-                              )} 0%, ${toSwatchColor(spool.hexColor)}CC 60%, #0f172a26 100%)`,
+                              background: swatchCssBackground(spool.hexColor),
                             }}
                           />
                           <span className="min-w-0 flex-1">
@@ -322,11 +320,7 @@ export function LoanOutModal({
                           <span
                             className="h-full w-full rounded-xl border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
                             style={{
-                              background: `linear-gradient(145deg, ${toSwatchColor(
-                                selectedSpool.hexColor,
-                              )} 0%, ${toSwatchColor(
-                                selectedSpool.hexColor,
-                              )}CC 58%, #0f172a33 100%)`,
+                              background: swatchCssBackground(selectedSpool.hexColor),
                             }}
                           />
                         </span>

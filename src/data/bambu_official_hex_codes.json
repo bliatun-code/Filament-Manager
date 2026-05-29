@@ -792,42 +792,58 @@
   {
     "filament": "plabasicgradient",
     "color": "arcticwhisper",
-    "hex": "#9CDBD9"
+    "hex": "#9CDBD9",
+    "kind": "gradient",
+    "colors": ["#9CDBD9", "#FFFFFF"]
   },
   {
     "filament": "plabasicgradient",
     "color": "solarbreeze",
-    "hex": "#E94B3C"
+    "hex": "#E94B3C",
+    "kind": "gradient",
+    "colors": ["#E94B3C", "#FFFFFF"]
   },
   {
     "filament": "plabasicgradient",
     "color": "oceantomeadow",
-    "hex": "#307FE2"
+    "hex": "#307FE2",
+    "kind": "gradient",
+    "colors": ["#307FE2", "#54FF9B"]
   },
   {
     "filament": "plabasicgradient",
     "color": "cottoncandycloud",
-    "hex": "#E7C1D5"
+    "hex": "#E7C1D5",
+    "kind": "gradient",
+    "colors": ["#E7C1D5", "#8EC9E9"]
   },
   {
     "filament": "plabasicgradient",
     "color": "blueberrybubblegum",
-    "hex": "#6FCAEF"
+    "hex": "#6FCAEF",
+    "kind": "gradient",
+    "colors": ["#6FCAEF", "#8573DD"]
   },
   {
     "filament": "plabasicgradient",
     "color": "mintlime",
-    "hex": "#B6FF43"
+    "hex": "#B6FF43",
+    "kind": "gradient",
+    "colors": ["#B6FF43", "#4EC939"]
   },
   {
     "filament": "plabasicgradient",
     "color": "pinkcitrus",
-    "hex": "#F78F77"
+    "hex": "#F78F77",
+    "kind": "gradient",
+    "colors": ["#F78F77", "#E4505A"]
   },
   {
     "filament": "plabasicgradient",
     "color": "duskglare",
-    "hex": "#ED9558"
+    "hex": "#ED9558",
+    "kind": "gradient",
+    "colors": ["#ED9558", "#CE4406"]
   },
   {
     "filament": "placf",
@@ -1022,51 +1038,71 @@
   {
     "filament": "plasilkmulticolor",
     "color": "mysticmagenta",
-    "hex": "#720062"
+    "hex": "#720062",
+    "kind": "multi",
+    "colors": ["#720062", "#3A913F"]
   },
   {
     "filament": "plasilkmulticolor",
     "color": "phantomblue",
-    "hex": "#00629B"
+    "hex": "#00629B",
+    "kind": "multi",
+    "colors": ["#00629B", "#000000"]
   },
   {
     "filament": "plasilkmulticolor",
     "color": "velveteclipse",
-    "hex": "#000000"
+    "hex": "#000000",
+    "kind": "multi",
+    "colors": ["#000000", "#A34342"]
   },
   {
     "filament": "plasilkmulticolor",
     "color": "midnightblaze",
-    "hex": "#0047BB"
+    "hex": "#0047BB",
+    "kind": "multi",
+    "colors": ["#0047BB", "#7D1B49"]
   },
   {
     "filament": "plasilkmulticolor",
     "color": "gildedrose",
-    "hex": "#FF9425"
+    "hex": "#FF9425",
+    "kind": "multi",
+    "colors": ["#FF9425", "#FCA2BF"]
   },
   {
     "filament": "plasilkmulticolor",
     "color": "bluehawaii",
-    "hex": "#60A4E8"
+    "hex": "#60A4E8",
+    "kind": "multi",
+    "colors": ["#60A4E8", "#4CE4A0"]
   },
   {
     "filament": "plasilkmulticolor",
     "color": "neoncity",
-    "hex": "#0047BB"
+    "hex": "#0047BB",
+    "kind": "multi",
+    "colors": ["#0047BB", "#BB22A3"]
   },
   {
     "filament": "plasilkmulticolor",
     "color": "aurorapurple",
-    "hex": "#7F3696"
+    "hex": "#7F3696",
+    "kind": "gradient",
+    "colors": ["#7F3696", "#006EC9"]
   },
   {
     "filament": "plasilkmulticolor",
     "color": "southbeach",
-    "hex": "#F772A4"
+    "hex": "#F772A4",
+    "kind": "gradient",
+    "colors": ["#F772A4", "#00918B"]
   },
   {
     "filament": "plasilkmulticolor",
     "color": "dawnradiance",
-    "hex": "#EC984C"
+    "hex": "#EC984C",
+    "kind": "gradient",
+    "colors": ["#EC984C", "#6CD4BC", "#A66EB9", "#D87694"]
   }
 ]

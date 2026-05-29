@@ -46,7 +46,14 @@ test("currentCreateSwatchHexForMode normalizes manual hex and uses catalog swatc
       mode: "manual",
       manualHexColor: "abc",
     }),
-    "#abc",
+    "#ABC",
+  );
+  assert.equal(
+    currentCreateSwatchHexForMode({
+      mode: "manual",
+      manualHexColor: "multi(#720062, #3A913F)",
+    }),
+    "multi(#720062,#3A913F)",
   );
   assert.equal(
     currentCreateSwatchHexForMode({
@@ -191,7 +198,7 @@ test("buildInventoryCreateSpoolRequest builds manual create payloads with defaul
         material: "PLA",
         filament_name: "Tough",
         color_name: "Blue",
-        hex_color: "#2563eb",
+        hex_color: "#2563EB",
         product_url: null,
         default_weight_g: 1000,
         qr_code: null,

@@ -1,5 +1,4 @@
 import type { DiagnosticTraySnapshot } from "../lib/diagnostic_capture";
-import { toSwatchColor } from "../lib/color_utils";
 import {
   buildInventoryMatchResult,
   translateObservedMatchNote,
@@ -76,7 +75,7 @@ export function buildSettingsBambuLiveInventoryCandidateCards({
     subtitle: candidate.spool.rfid_tag?.trim()
       ? `${t("settings.bambuLiveCandidateRfidSaved", "RFID saved")} · ${candidate.spool.id}`
       : `${t("settings.bambuLiveCandidateNoRfidSaved", "No RFID saved")} · ${candidate.spool.id}`,
-    swatchColor: toSwatchColor(candidate.master.hex_color),
+    swatchColor: candidate.master.hex_color,
     title: `${candidate.master.filament_name} · ${candidate.master.color_name}`,
   }));
 }
@@ -125,8 +124,8 @@ export function buildSettingsBambuLiveInventoryMatchPresentation({
       ? `${primaryInventoryMatch.master.filament_name} · ${primaryInventoryMatch.master.color_name}`
       : t("settings.bambuLiveNoInventoryMatch", "No clear inventory match"),
     matchSwatchColor: primaryInventoryMatch
-      ? toSwatchColor(primaryInventoryMatch.master.hex_color)
-      : toSwatchColor(tray.color_hex ?? capturedTraySnapshot?.colorHex),
+      ? primaryInventoryMatch.master.hex_color
+      : tray.color_hex ?? capturedTraySnapshot?.colorHex,
   };
 }
 

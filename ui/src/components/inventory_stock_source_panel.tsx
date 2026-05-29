@@ -1,7 +1,7 @@
 import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { VendorBadge } from "./vendor_badge";
 import { neutralChipClass } from "../lib/chip_styles";
-import { toSwatchColor } from "../lib/color_utils";
+import { swatchCssBackground, toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import { formatMasterDisplayTitle } from "../lib/inventory_list_model";
 import { inventoryCatalogRowStyle } from "../lib/inventory_swatch_style";
@@ -134,9 +134,7 @@ export function InventoryStockSourcePanel({
                     <span
                       className="h-8 w-8 shrink-0 rounded-md border border-slate-200 dark:border-slate-600"
                       style={{
-                        background: `linear-gradient(145deg, ${toSwatchColor(
-                          master.hex_color,
-                        )} 0%, ${toSwatchColor(master.hex_color)}CC 60%, #0f172a26 100%)`,
+                        background: swatchCssBackground(master.hex_color),
                       }}
                     />
                     <span className="min-w-0">
@@ -268,7 +266,7 @@ export function InventoryStockSourcePanel({
               />
               <span
                 className="h-10 w-10 rounded-lg border border-slate-200 dark:border-slate-600"
-                style={{ backgroundColor: toSwatchColor(manualHexColor) }}
+                style={{ background: swatchCssBackground(manualHexColor) }}
               />
             </div>
           </div>

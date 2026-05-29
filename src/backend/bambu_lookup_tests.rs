@@ -79,6 +79,28 @@ fn official_bambu_hex_table_has_unique_valid_entries() {
             "invalid official Bambu hex value {}",
             entry.hex
         );
+        if let Some(kind) = entry.kind.as_deref() {
+            assert!(
+                kind == "multi" || kind == "gradient",
+                "invalid official Bambu swatch kind {}",
+                kind
+            );
+        }
+        if let Some(colors) = entry.colors.as_ref() {
+            assert!(
+                colors.len() > 1,
+                "official composite swatches need at least two colors"
+            );
+            for color in colors {
+                assert!(
+                    color.len() == 7
+                        && color.starts_with('#')
+                        && color[1..].chars().all(|ch| ch.is_ascii_hexdigit()),
+                    "invalid official Bambu composite color {}",
+                    color
+                );
+            }
+        }
     }
 }
 
@@ -106,11 +128,15 @@ fn resolve_bambu_hex_prefers_official_color_tables() {
     );
     assert_eq!(
         resolve_bambu_hex("PLA Basic Gradient", "Ocean to Meadow (10902)").as_deref(),
-        Some("#307FE2")
+        Some("gradient(#307FE2,#54FF9B)")
     );
     assert_eq!(
         resolve_bambu_hex("PLA Silk Multi-Colour", "Dawn Radiance (13912)").as_deref(),
-        Some("#EC984C")
+        Some("gradient(#EC984C,#6CD4BC,#A66EB9,#D87694)")
+    );
+    assert_eq!(
+        resolve_bambu_hex("PLA Silk Multi-Color", "Mystic Magenta (13900)").as_deref(),
+        Some("multi(#720062,#3A913F)")
     );
     assert_eq!(
         resolve_bambu_hex("TPU 85A / TPU 90A", "Frozen (51900)").as_deref(),

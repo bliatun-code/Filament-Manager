@@ -1525,7 +1525,7 @@ async fn companion_api_lists_catalog_and_wishlist_items() {
             .clone()
             .oneshot(
                 Request::builder()
-                    .uri("/api/v1/catalog/masters?limit=10")
+                    .uri("/api/v1/catalog/masters?limit=200&search=Basic")
                     .header("host", "127.0.0.1:4278")
                     .header("cookie", format!("bfm_companion_session={session_cookie}"))
                     .body(Body::empty())

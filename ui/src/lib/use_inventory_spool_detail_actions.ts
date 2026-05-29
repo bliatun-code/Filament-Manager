@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { isValidHexColor, toSwatchColor } from "./color_utils";
+import { isValidSwatchColor, normalizeSwatchValue } from "./color_utils";
 import { commandErrorText } from "./error_text";
 import type { useI18n } from "./i18n";
 import type { InventorySpool, SpoolStatus } from "./inventory_list_model";
@@ -165,16 +165,16 @@ export function useInventorySpoolDetailActions({
     }
 
     const rawHex = editMasterHexColor.trim();
-    if (rawHex && !isValidHexColor(rawHex)) {
+    if (rawHex && !isValidSwatchColor(rawHex)) {
       setError(
         t(
           "inventory.error.invalidHex",
-          "Invalid hex color. Use 3 or 6 hex digits (with or without #).",
+          "Invalid swatch. Use #RGB, #RRGGBB, multi(#RRGGBB,#RRGGBB) or gradient(#RRGGBB,#RRGGBB).",
         ),
       );
       return;
     }
-    const hexColor = rawHex ? toSwatchColor(rawHex) : null;
+    const hexColor = rawHex ? normalizeSwatchValue(rawHex, { uppercase: true }) : null;
 
     setManageBusy(true);
     setError(null);

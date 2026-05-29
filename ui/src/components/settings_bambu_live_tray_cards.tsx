@@ -1,4 +1,5 @@
 import type { SettingsBambuLiveDiagnosticTrayCard } from "../pages/settings_bambu_live_diagnostics_model";
+import { swatchCssBackground } from "../lib/color_utils";
 
 type SettingsBambuLiveTrayCardsProps = {
   moreCandidatesLabel: string;
@@ -48,7 +49,7 @@ export function SettingsBambuLiveTrayCards({
             <div className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-200">
               <span
                 className="h-3.5 w-3.5 rounded-sm border border-slate-300/80 dark:border-slate-600"
-                style={{ backgroundColor: tray.matchSwatchColor }}
+                style={{ background: swatchCssBackground(tray.matchSwatchColor) }}
               />
               <span>{tray.matchLabel}</span>
             </div>
@@ -69,7 +70,7 @@ export function SettingsBambuLiveTrayCards({
                   >
                     <span
                       className="h-3 w-3 rounded-sm border border-slate-300/80 dark:border-slate-600"
-                      style={{ backgroundColor: candidate.swatchColor }}
+                      style={{ background: swatchCssBackground(candidate.swatchColor) }}
                     />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[10px] font-medium text-slate-700 dark:text-slate-200">

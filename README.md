@@ -281,15 +281,24 @@ Optional tuning:
 - `BAMBU_PRODUCT_DELAY_MS=200`
 - `BAMBU_MATERIAL_TYPES=PLA,PETG` to refresh a smaller material slice
 
-Catalog data is stored in SQLite in `filament_master_list`. The app can also
-refresh supported catalog data from the Settings UI. Bambu refreshes discover
-the material families exposed by the current store and show them in the refresh
-summary, so larger catalog maintenance can be split into lower-traffic material
-runs. Bambu color swatches prefer the local official hex table before falling
-back to name-based color estimates. When Bambu refreshes find a known item again
-it is reactivated; older Bambu entries that disappear from the latest complete
-import can be kept as discontinued for historical inventory rules. Filtered
-material refreshes skip discontinued marking to avoid hiding untouched families.
+Catalog data is stored in SQLite in `filament_master_list`. The app ships with
+a sanitized seed catalog in `src/data/seed_filament_catalog.json` so old or
+currently unavailable manufacturer listings stay searchable when users add
+rolls they already own or find through resellers. The seed contains only master
+catalog metadata, never spool, loan, printer, RFID, location, or usage history.
+
+The Settings UI can still refresh supported Bambu and eSUN catalog data. The
+normal path is to refresh selected material families when new products appear;
+a full vendor audit is heavier and may mark products that are no longer visible
+at the manufacturer as historical/discontinued. Filtered material refreshes
+skip discontinued marking to avoid hiding untouched families. Bambu refreshes
+discover the material families exposed by the current store and show them in the
+refresh summary, so larger catalog maintenance can be split into lower-traffic
+material runs. Bambu color swatches prefer the local official hex table before
+falling back to name-based color estimates. Swatches remain backward compatible
+with single `#RRGGBB` values, and can also store `multi(#RRGGBB,#RRGGBB,...)`
+for hard segmented multi-colour rolls or `gradient(#RRGGBB,#RRGGBB,...)` for
+smooth transition rolls.
 
 ## Data Model Notes
 

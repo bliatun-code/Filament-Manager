@@ -28,6 +28,10 @@ pub mod database_catalog_manual;
 pub mod database_catalog_queries;
 #[path = "../../../src/backend/database_catalog_schema.rs"]
 pub mod database_catalog_schema;
+#[path = "../../../src/backend/database_catalog_seed.rs"]
+pub mod database_catalog_seed;
+#[path = "../../../src/backend/database_catalog_swatch_backfill.rs"]
+pub mod database_catalog_swatch_backfill;
 #[path = "../../../src/backend/database_catalog_update.rs"]
 pub mod database_catalog_update;
 #[path = "../../../src/backend/database_connection.rs"]

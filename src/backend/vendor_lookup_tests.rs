@@ -4,8 +4,8 @@ use super::{
     append_known_entries_for_product_url, build_known_entry_lookup, dedupe_site_listing_candidates,
     esun_material_source_paths, esun_material_source_urls, extract_site_listing_candidates,
     filter_product_urls_by_material_hints, infer_material, matches_listing_candidate_material,
-    EsunCatalogEntry, EsunKnownCatalogEntry, EsunSiteListingCandidate,
-    ESUN_FILTERED_DETAIL_FETCH_BUDGET,
+    normalize_esun_swatch_value, parse_esun_site_product_colors, EsunCatalogEntry,
+    EsunKnownCatalogEntry, EsunSiteListingCandidate, ESUN_FILTERED_DETAIL_FETCH_BUDGET,
 };
 
 #[test]
@@ -176,4 +176,68 @@ fn append_known_entries_for_product_url_skips_stale_cache_rows() {
 #[test]
 fn filtered_detail_fetch_budget_is_small_and_explicit() {
     assert_eq!(ESUN_FILTERED_DETAIL_FETCH_BUDGET, 18);
+}
+
+#[test]
+fn parse_esun_site_product_colors_preserves_magic_multi_color_swatches() {
+    let html = r##"
+        <label class="attr-color-item">
+          <p>GOLD PINK</p>
+          <a class="cloud-zoom-gallery item" href="https://cdnus.globalso.com/esun3d/PLA-Silk-Magic-GOLD-PINK.jpg">
+            <!--<span class="color-item-btn"><i class="item-btn-bg item-color-e68e5c;ec578e" style="background-color:#e68e5c;ec578e"></i></span>-->
+            <div class="color-columns">
+              <div style="background:#e68e5c;"></div>
+              <div style="background:#ec578e;"></div>
+            </div>
+          </a>
+        </label>
+    "##;
+
+    let colors = parse_esun_site_product_colors(html);
+
+    assert_eq!(colors.len(), 1);
+    assert_eq!(colors[0].color_name, "GOLD PINK");
+    assert_eq!(
+        colors[0].hex_color.as_deref(),
+        Some("multi(#E68E5C,#EC578E)")
+    );
+}
+
+#[test]
+fn parse_esun_site_product_colors_skips_magic_bundle_package_options() {
+    let html = r##"
+        <label class="attr-color-item">
+          <p>BLACK PURPLE+BLACK GOLD+BLACK GREEN+BLACK RED</p>
+          <a class="cloud-zoom-gallery item" href="https://cdnus.globalso.com/esun3d/PLA-silk-magic-Bundle-Package-BLACK-PURPLE+BLACK-GOLD+BLACK-GREEN+BLACK-RED-.jpg">
+            <div class="color-columns">
+              <div style="background:#361e40;"></div>
+              <div style="background:#552531;"></div>
+              <div style="background:#1a2e25;"></div>
+              <div style="background:#6c5e37;"></div>
+            </div>
+          </a>
+        </label>
+    "##;
+
+    assert!(parse_esun_site_product_colors(html).is_empty());
+}
+
+#[test]
+fn normalize_esun_swatch_value_accepts_semicolon_multi_color_values() {
+    assert_eq!(
+        normalize_esun_swatch_value("#e68e5c;ec578e").as_deref(),
+        Some("multi(#E68E5C,#EC578E)")
+    );
+}
+
+#[test]
+fn normalize_esun_color_name_repairs_known_magic_green_typos() {
+    assert_eq!(
+        super::normalize_esun_color_name_for_catalog("FUCHSIA GREEH", "PLA", "PLA-Silk Magic"),
+        "FUCHSIA GREEN"
+    );
+    assert_eq!(
+        super::normalize_esun_color_name_for_catalog("GRREN PURPLE", "PLA", "PLA-Silk Magic"),
+        "GREEN PURPLE"
+    );
 }

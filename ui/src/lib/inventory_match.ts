@@ -1,4 +1,4 @@
-import { normalizeHexColor } from "./color_utils";
+import { normalizeHexColor, normalizeSwatchValue, parseSwatchSpec } from "./color_utils";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
 export type InventoryMatchResult =
@@ -60,8 +60,11 @@ export function buildInventoryMatchResult(
     }
 
     if (observedHex) {
-      const rowHex = normalizeHexColor(row.master.hex_color, { uppercase: true });
-      if (rowHex && rowHex !== observedHex) {
+      const rowSwatch = normalizeSwatchValue(row.master.hex_color, { uppercase: true });
+      const rowColors = rowSwatch
+        ? parseSwatchSpec(rowSwatch).colors.map((color) => color.toUpperCase())
+        : [];
+      if (rowColors.length > 0 && !rowColors.includes(observedHex)) {
         return false;
       }
     }

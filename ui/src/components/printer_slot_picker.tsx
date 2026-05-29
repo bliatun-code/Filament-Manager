@@ -8,7 +8,7 @@ import { useI18n } from "../lib/i18n";
 import {
   formatGrams,
   printerSwatchInteractiveInsetStyle,
-  toSwatchColor,
+  swatchCssBackground,
 } from "../lib/printer_live_display";
 import {
   filterSlotOptionsBySearch,
@@ -96,7 +96,7 @@ export function PrinterSlotPicker({
         <span className="flex min-w-0 items-center gap-2">
           <span
             className="h-4.5 w-4.5 shrink-0 rounded border border-slate-500/20 shadow-inner shadow-black/10 dark:border-white/10 dark:shadow-black/20"
-            style={{ backgroundColor: toSwatchColor(slotSwatchHex) }}
+            style={{ background: swatchCssBackground(slotSwatchHex) }}
           />
           <span className="min-w-0">
             <span className="block truncate font-semibold">
@@ -201,7 +201,7 @@ export function PrinterSlotPicker({
                   <span className="flex min-w-0 items-center gap-2.5">
                     <span
                       className={slotOptionSwatchClassName}
-                      style={{ backgroundColor: toSwatchColor(row.master.hex_color) }}
+                      style={{ background: swatchCssBackground(row.master.hex_color) }}
                     />
                     <span className="min-w-0">
                       <span className="block truncate font-semibold leading-tight">

@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect } from "react";
 import { useI18n } from "../lib/i18n";
+import { swatchCssBackground } from "../lib/color_utils";
 import { AppModal } from "./app_modal";
 
 type SaveOnlyModalProps = {
@@ -15,7 +16,7 @@ type SaveOnlyModalProps = {
 
 function previewSwatchStyle(color: string) {
   return {
-    background: `linear-gradient(145deg, ${color} 0%, ${color}CC 58%, #0f172a33 100%)`,
+    background: swatchCssBackground(color),
   } as const;
 }
 

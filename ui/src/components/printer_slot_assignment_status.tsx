@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import { semanticChipClass } from "../lib/chip_styles";
 import { formatSpoolReference } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
-import { toSwatchColor } from "../lib/printer_live_display";
+import { swatchCssBackground } from "../lib/printer_live_display";
 import type { PrinterSlotDisplayState } from "../lib/printer_slot_display";
 import type {
   PrinterAmsSlotRow,
@@ -78,7 +78,7 @@ export function PrinterSlotAssignmentStatus({
       <div className="flex items-start gap-2">
         <span
           className="mt-0.5 h-4.5 w-4.5 shrink-0 rounded border border-slate-500/20 shadow-inner shadow-black/10 dark:border-white/10 dark:shadow-black/20"
-          style={{ backgroundColor: toSwatchColor(slotSwatchHex) }}
+          style={{ background: swatchCssBackground(slotSwatchHex) }}
         />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5 text-slate-600 dark:text-slate-300">

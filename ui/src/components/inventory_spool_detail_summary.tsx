@@ -1,6 +1,6 @@
 import { VendorBadge } from "./vendor_badge";
 import { neutralChipClass, semanticChipClass } from "../lib/chip_styles";
-import { toSwatchColor } from "../lib/color_utils";
+import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import {
   formatInventoryOwnershipSummary,
@@ -42,7 +42,6 @@ export function InventorySpoolDetailHeader({
   statusTone,
 }: InventorySpoolDetailHeaderProps) {
   const { t } = useI18n();
-  const swatchColor = toSwatchColor(spool.hexColor);
   const currentMaterialTone = materialTone(spool.material);
 
   return (
@@ -52,7 +51,7 @@ export function InventorySpoolDetailHeader({
           <span
             className="h-full w-full rounded-xl border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
             style={{
-              background: `linear-gradient(145deg, ${swatchColor} 0%, ${swatchColor}CC 58%, #0f172a33 100%)`,
+              background: swatchCssBackground(spool.hexColor),
             }}
           />
         </div>

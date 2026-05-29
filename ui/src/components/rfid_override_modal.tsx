@@ -2,7 +2,7 @@ import { formatFilamentDisplayTitle, formatSpoolReference } from "../lib/display
 import { useI18n, type Locale } from "../lib/i18n";
 import {
   formatDateTime,
-  toSwatchColor,
+  swatchCssBackground,
 } from "../lib/printer_live_display";
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
 import type { SlotRfidOverridePrompt } from "../lib/printer_slot_model";
@@ -94,7 +94,7 @@ export function RfidOverrideModal({
                 <dd className="mt-1 flex items-center gap-2 text-slate-900 dark:text-slate-100">
                   <span
                     className="h-5 w-5 rounded border border-slate-200 dark:border-slate-700"
-                    style={{ backgroundColor: toSwatchColor(prompt.liveTray.color_hex) }}
+                    style={{ background: swatchCssBackground(prompt.liveTray.color_hex) }}
                   />
                   <span className="font-mono">{prompt.liveTray.color_hex?.trim() || "-"}</span>
                 </dd>
