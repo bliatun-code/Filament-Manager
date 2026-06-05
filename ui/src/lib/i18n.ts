@@ -230,18 +230,12 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       assignedSlotLabel: "Assigned slot",
       qrCode: "QR code",
       qrLabel: "QR",
-      qrMode: "QR mode",
-      qrModePortable: "Portable",
-      qrModeCompanion: "Companion link",
+      qrCompanionLinkLabel: "Companion link",
       qrTarget: "QR target",
-      qrTargetPortableHint:
-        "This QR contains only the spool reference. It is mainly useful together with an in-app QR lookup flow rather than a normal phone camera.",
       qrTargetCompanionHint:
         "This QR opens the browser companion directly as long as the target URL is still reachable.",
       qrCompanionUnavailable:
-        "Companion link is unavailable right now. Start the Trusted-LAN companion on the active host to build a direct browser link; otherwise the fallback QR only contains the spool reference.",
-      saveQrCode: "Save QR code",
-      qrSaved: "QR code saved.",
+        "Companion link is unavailable right now. Start the Trusted-LAN companion on the active host to build a direct browser link.",
       assignmentManagedOnPrinters:
         "Filament placement and slot assignment is managed on the Printers page.",
       assignAmsSlot: "Assign to printer slot",
@@ -458,7 +452,6 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         outgoingWeightRequiredForUnassign:
           "Enter outgoing roll weight before removing this roll from slot.",
         saveRollChanges: "Failed to save roll changes.",
-        saveQrCode: "Failed to save QR code.",
         saveRfid: "Failed to save RFID tag.",
         assignFirst: "Assign roll to a printer slot first.",
         recordUsage: "Failed to record printer usage.",
@@ -921,7 +914,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       autoHint: "Auto follows your system light/dark preference.",
       companionTitle: "Local browser companion",
       companionHelp:
-        "Open the same-machine browser shell served by the desktop app. This stays limited to inventory overview, QR lookup/edit, manual borrowed-in registration/editing/hand-back, printer overview, outbound loan review/history with direct return, spool detail, narrow status/location updates, manual weight update, basic printer-slot assignment/clear, and selected-spool outbound loan creation while desktop remains the source of truth.",
+        "Open the same-machine browser shell served by the desktop app. This stays limited to inventory overview, direct spool links, manual borrowed-in registration/editing/hand-back, printer overview, outbound loan review/history with direct return, spool detail, narrow status/location updates, manual weight update, basic printer-slot assignment/clear, and selected-spool outbound loan creation while desktop remains the source of truth.",
       companionRefreshStatus: "Refresh status",
       companionCopyShellUrl: "Copy shell URL",
       companionCopyLaunchLink: "Copy launch link",
@@ -942,7 +935,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Browser flows go through the desktop-owned service/API boundary instead of touching SQLite directly.",
       companionScope: "Current browser scope",
       companionScopeValue:
-        "Inventory overview, QR lookup/edit, manual borrowed-in registration/editing/hand-back, printer overview, outbound loan review/history with direct return, spool detail, narrow status/location updates, manual weight update, basic printer-slot assignment/clear, and selected-spool outbound loan creation.",
+        "Inventory overview, direct spool links, manual borrowed-in registration/editing/hand-back, printer overview, outbound loan review/history with direct return, spool detail, narrow status/location updates, manual weight update, basic printer-slot assignment/clear, and selected-spool outbound loan creation.",
       companionBoundaries: "Desktop-first boundaries",
       companionBoundariesValue:
         "Catalog refresh, import/export/reset, occupied-slot replacement, and broader admin flows still stay in the desktop app for now.",
@@ -1581,18 +1574,12 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       assignedSlotLabel: "Tildelt spor",
       qrCode: "QR-kode",
       qrLabel: "QR",
-      qrMode: "QR-modus",
-      qrModePortable: "Portabel",
-      qrModeCompanion: "Kompanjonglenke",
+      qrCompanionLinkLabel: "Kompanjonglenke",
       qrTarget: "QR-mål",
-      qrTargetPortableHint:
-        "Denne QR-koden inneholder bare filamentreferansen. Den er i praksis mest nyttig sammen med en QR-oppslag-flyt i appen, ikke med vanlig mobilkamera.",
       qrTargetCompanionHint:
         "Denne QR-koden åpner nettleserkompanjongen direkte så lenge mål-URL-en fortsatt er tilgjengelig.",
       qrCompanionUnavailable:
-        "Kompanjonglenke er ikke tilgjengelig akkurat nå. Start Trusted-LAN-kompanjongen på den aktive verten for å bygge en direkte nettleserlenke; ellers inneholder fallback-QR-en bare filamentreferansen.",
-      saveQrCode: "Lagre QR-kode",
-      qrSaved: "QR-kode lagret.",
+        "Kompanjonglenke er ikke tilgjengelig akkurat nå. Start Trusted-LAN-kompanjongen på den aktive verten for å bygge en direkte nettleserlenke.",
       assignmentManagedOnPrinters:
         "Plassering av filament og sportildeling håndteres på Printere-siden.",
       assignAmsSlot: "Tildel til printer-spor",
@@ -1810,7 +1797,6 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         outgoingWeightRequiredForUnassign:
           "Oppgi utgående rullvekt før du tar denne rullen ut av sporet.",
         saveRollChanges: "Kunne ikke lagre rullendringer.",
-        saveQrCode: "Kunne ikke lagre QR-kode.",
         saveRfid: "Kunne ikke lagre RFID-identiteten.",
         assignFirst: "Tildel rullen til printer-spor først.",
         recordUsage: "Kunne ikke registrere printerforbruk.",
@@ -2277,7 +2263,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       autoHint: "Auto følger systemets lys/mørk-preferanse.",
       companionTitle: "Lokal nettleserkompanjong",
       companionHelp:
-        "Åpne samme-maskin-nettleserskallet som serveres av desktop-appen. Dette holder seg foreløpig til lageroversikt, QR-oppslag/redigering, manuell registrering/redigering/tilbakelevering av innlånte filamenter, printeroversikt, utlånsoversikt og historikk med direkte retur, filamentdetaljer, smale status-/lokasjonsoppdateringer, manuell vektoppdatering, grunnleggende printer-spor-tildeling/rydding og valgt-filament-utlån mens desktop fortsatt er kilden til sannhet.",
+        "Åpne samme-maskin-nettleserskallet som serveres av desktop-appen. Dette holder seg foreløpig til lageroversikt, direkte filamentlenker, manuell registrering/redigering/tilbakelevering av innlånte filamenter, printeroversikt, utlånsoversikt og historikk med direkte retur, filamentdetaljer, smale status-/lokasjonsoppdateringer, manuell vektoppdatering, grunnleggende printer-spor-tildeling/rydding og valgt-filament-utlån mens desktop fortsatt er kilden til sannhet.",
       companionRefreshStatus: "Oppdater status",
       companionCopyShellUrl: "Kopier skall-URL",
       companionCopyLaunchLink: "Kopier oppstartslenke",
@@ -2298,7 +2284,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Nettleserflyter går gjennom den desktop-eide tjeneste/API-grensen i stedet for å snakke direkte med SQLite.",
       companionScope: "Nåværende nettleseromfang",
       companionScopeValue:
-        "Lageroversikt, QR-oppslag/redigering, manuell registrering/redigering/tilbakelevering av innlånte filamenter, printeroversikt, utlånsoversikt og historikk med direkte retur, filamentdetaljer, smale status-/lokasjonsoppdateringer, manuell vektoppdatering, grunnleggende printer-spor-tildeling/rydding og valgt-filament-utlån.",
+        "Lageroversikt, direkte filamentlenker, manuell registrering/redigering/tilbakelevering av innlånte filamenter, printeroversikt, utlånsoversikt og historikk med direkte retur, filamentdetaljer, smale status-/lokasjonsoppdateringer, manuell vektoppdatering, grunnleggende printer-spor-tildeling/rydding og valgt-filament-utlån.",
       companionBoundaries: "Desktop-først-grenser",
       companionBoundariesValue:
         "Katalogoppdatering, import/eksport/reset, utskifting av opptatte spor og bredere adminflyter blir foreløpig i desktop-appen.",

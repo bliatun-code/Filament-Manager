@@ -262,9 +262,6 @@ export default function InventoryPage({
     companionShellUrl: selectedSpoolQrCompanionShellUrl,
     dataUrl: selectedSpoolQrDataUrl,
     loading: selectedSpoolQrLoading,
-    mode: selectedSpoolQrMode,
-    resolvedMode: selectedSpoolQrResolvedMode,
-    setMode: setSelectedSpoolQrMode,
     target: selectedSpoolQrTarget,
   } = useInventorySpoolQrArtifacts({
     clientHostBaseUrl,
@@ -493,7 +490,6 @@ export default function InventoryPage({
     selectedRfidCaptureLiveIntegration,
     selectedSpool,
     selectedSpoolAssignedSlot,
-    selectedSpoolQrMode,
     selectedSpoolRfidCaptureSlots,
     setError,
     setInfoMessage,
@@ -568,7 +564,6 @@ export default function InventoryPage({
         onChangeHexColor={setEditMasterHexColor}
         onChangeLocation={setSelectedSpoolLocationDraft}
         onChangeMaterial={setEditMasterMaterial}
-        onChangeQrMode={setSelectedSpoolQrMode}
         onChangeTare={setSelectedSpoolTareDraft}
         onChangeVendor={setEditMasterVendor}
         onClose={closeRollModal}
@@ -591,8 +586,6 @@ export default function InventoryPage({
         qrCompanionAvailable={selectedSpoolQrCompanionAvailable}
         qrDataUrl={selectedSpoolQrDataUrl}
         qrLoading={selectedSpoolQrLoading}
-        qrMode={selectedSpoolQrMode}
-        qrResolvedMode={selectedSpoolQrResolvedMode}
         qrTarget={selectedSpoolQrTarget}
         resolvedTheme={resolvedTheme}
         runtimeAvailable={tauri}

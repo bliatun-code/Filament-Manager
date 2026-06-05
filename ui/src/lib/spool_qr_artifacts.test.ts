@@ -65,7 +65,6 @@ test("buildSpoolQrArtifacts builds a companion QR artifact when a shell URL is a
   const artifact = await buildSpoolQrArtifacts(
     {
       spoolId: " spool_1 ",
-      mode: "companion",
       clientReadOnly: false,
     },
     {
@@ -75,7 +74,6 @@ test("buildSpoolQrArtifacts builds a companion QR artifact when a shell URL is a
   );
 
   assert.equal(artifact.qrReference, "spool_1");
-  assert.equal(artifact.qrMode, "companion");
   assert.equal(
     artifact.qrPayload,
     "http://192.168.1.20:4278/companion?spool_qr=v1%3Aspool_1",
@@ -85,23 +83,21 @@ test("buildSpoolQrArtifacts builds a companion QR artifact when a shell URL is a
   assert.equal(artifact.companionShellUrl, "http://192.168.1.20:4278/companion");
 });
 
-test("buildSpoolQrArtifacts falls back to portable QR when companion status is unavailable", async () => {
-  const artifact = await buildSpoolQrArtifacts(
-    {
-      spoolId: "spool_1",
-      mode: "companion",
-      clientReadOnly: false,
-    },
-    {
-      loadTrustedLanStatus: async () => {
-        throw new Error("trusted LAN unavailable");
-      },
-      buildQrDataUrl: async (payload) => `qr:${payload}`,
-    },
+test("buildSpoolQrArtifacts rejects QR artifacts when companion status is unavailable", async () => {
+  await assert.rejects(
+    () =>
+      buildSpoolQrArtifacts(
+        {
+          spoolId: "spool_1",
+          clientReadOnly: false,
+        },
+        {
+          loadTrustedLanStatus: async () => {
+            throw new Error("trusted LAN unavailable");
+          },
+          buildQrDataUrl: async (payload) => `qr:${payload}`,
+        },
+      ),
+    /Companion QR link is unavailable/,
   );
-
-  assert.equal(artifact.qrMode, "portable");
-  assert.equal(artifact.qrPayload, "v1:spool_1");
-  assert.equal(artifact.qrDataUrl, "qr:v1:spool_1");
-  assert.equal(artifact.companionShellUrl, null);
 });

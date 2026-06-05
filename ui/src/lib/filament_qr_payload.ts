@@ -10,10 +10,7 @@ export type ParsedFilamentQrPayload = {
   ref: string;
 };
 
-export type FilamentQrMode = "portable" | "companion";
-
 export type BuiltFilamentQrPayload = {
-  mode: FilamentQrMode;
   payload: string;
   target: string;
 };
@@ -92,10 +89,6 @@ export function parseFilamentQrPayload(
   return direct;
 }
 
-export function buildPortableSpoolQrPayload(ref: string): string {
-  return encodeVersionedFilamentQrRef(ref);
-}
-
 export function deriveCompanionShellUrl(
   baseUrl: string | null | undefined,
 ): string | null {
@@ -136,44 +129,25 @@ export function resolvePreferredCompanionShellUrl(options?: {
 export function buildFilamentQrPayload(
   ref: string,
   options?: {
-    mode?: FilamentQrMode;
     companionShellUrl?: string | null;
   },
 ): BuiltFilamentQrPayload {
-  const portablePayload = buildPortableSpoolQrPayload(ref);
-  const mode = options?.mode ?? "portable";
-  if (mode === "portable") {
-    return {
-      mode: "portable",
-      payload: portablePayload,
-      target: portablePayload,
-    };
-  }
-
+  const embeddedPayload = encodeVersionedFilamentQrRef(ref);
   const normalizedShellUrl = normalizeRef(options?.companionShellUrl);
   if (!normalizedShellUrl) {
-    return {
-      mode: "portable",
-      payload: portablePayload,
-      target: portablePayload,
-    };
+    throw new Error("Companion QR link is unavailable.");
   }
 
   try {
     const shellUrl = new URL(normalizedShellUrl);
-    shellUrl.searchParams.set("spool_qr", portablePayload);
+    shellUrl.searchParams.set("spool_qr", embeddedPayload);
     const target = shellUrl.toString();
     return {
-      mode: "companion",
       payload: target,
       target,
     };
   } catch {
-    return {
-      mode: "portable",
-      payload: portablePayload,
-      target: portablePayload,
-    };
+    throw new Error("Companion QR link is invalid.");
   }
 }
 
@@ -182,7 +156,6 @@ export function buildCompanionSpoolQrPayload(
   companionShellUrl?: string | null,
 ): string {
   return buildFilamentQrPayload(ref, {
-    mode: "companion",
     companionShellUrl,
   }).payload;
 }

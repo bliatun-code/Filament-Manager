@@ -2,7 +2,6 @@ import { buildFilamentLabelQrDataUrl } from "./filament_label_print";
 import {
   buildFilamentQrPayload,
   resolvePreferredCompanionShellUrl,
-  type FilamentQrMode,
 } from "./filament_qr_payload";
 import {
   getTrustedLanCompanionStatus,
@@ -16,7 +15,6 @@ type SpoolQrArtifactsDependencies = {
 
 export type SpoolQrArtifactsOptions = {
   spoolId: string;
-  mode?: FilamentQrMode;
   clientReadOnly?: boolean;
   clientHostBaseUrl?: string | null;
 };
@@ -25,7 +23,6 @@ export type SpoolQrArtifacts = {
   qrReference: string;
   qrPayload: string;
   qrDataUrl: string;
-  qrMode: FilamentQrMode;
   qrTarget: string;
   companionShellUrl: string | null;
 };
@@ -42,7 +39,7 @@ async function loadTrustedLanShellUrl(
 }
 
 export async function resolveSpoolQrCompanionShellUrl(
-  options: Omit<SpoolQrArtifactsOptions, "spoolId" | "mode"> = {},
+  options: Omit<SpoolQrArtifactsOptions, "spoolId"> = {},
   dependencies: SpoolQrArtifactsDependencies = {},
 ): Promise<string | null> {
   const loadTrustedLanStatus =
@@ -66,7 +63,6 @@ export async function buildSpoolQrArtifacts(
   const qrReference = options.spoolId.trim();
   const companionShellUrl = await resolveSpoolQrCompanionShellUrl(options, dependencies);
   const qr = buildFilamentQrPayload(qrReference, {
-    mode: options.mode ?? "companion",
     companionShellUrl,
   });
   const qrDataUrl = await buildQrDataUrl(qr.payload);
@@ -75,7 +71,6 @@ export async function buildSpoolQrArtifacts(
     qrReference,
     qrPayload: qr.payload,
     qrDataUrl,
-    qrMode: qr.mode,
     qrTarget: qr.target,
     companionShellUrl,
   };

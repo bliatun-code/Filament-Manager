@@ -20,7 +20,6 @@ export type SettingsInventoryPrintMessageLabels = {
 export type SettingsInventoryPrintQrBuilder = (
   reference: string,
   options: {
-    mode: "companion";
     companionShellUrl: string | null;
   },
 ) => BuiltFilamentQrPayload;
@@ -41,7 +40,6 @@ export async function buildSettingsInventoryOverviewPrintRows(input: {
     inStockRows.map(async (row) => {
       const qrReference = row.spool.id.trim();
       const qrPayload = input.buildFilamentQrPayload(qrReference, {
-        mode: "companion",
         companionShellUrl: input.companionShellUrl,
       }).payload;
       const qrDataUrl = await input.buildFilamentLabelQrDataUrl(qrPayload);

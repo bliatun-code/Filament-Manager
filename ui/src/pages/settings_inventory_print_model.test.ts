@@ -62,10 +62,9 @@ test("settings inventory overview print rows skip empty spools and sort by filam
     companionShellUrl: "http://host/companion",
     labels: { borrowedIn: "Borrowed in", unknown: "Unknown" },
     buildFilamentQrPayload: (reference, options) => {
-      assert.equal(options.mode, "companion");
       assert.equal(options.companionShellUrl, "http://host/companion");
       qrPayloads.push(reference);
-      return { mode: "companion", payload: `qr:${reference}`, target: reference };
+      return { payload: `qr:${reference}`, target: reference };
     },
     buildFilamentLabelQrDataUrl: async (payload) => `data:image/png;base64,${payload}`,
   });
@@ -96,12 +95,11 @@ test("settings inventory overview print rows map borrowed and missing display fi
       }),
     ],
     locale: "en",
-    companionShellUrl: null,
+    companionShellUrl: "http://host/companion",
     labels: { borrowedIn: "Borrowed in", unknown: "Unknown" },
-    buildFilamentQrPayload: (reference) => ({
-      mode: "portable",
+    buildFilamentQrPayload: (reference, options) => ({
       payload: `qr:${reference}`,
-      target: reference,
+      target: options.companionShellUrl ?? reference,
     }),
     buildFilamentLabelQrDataUrl: async (payload) => `data:image/png;base64,${payload}`,
   });

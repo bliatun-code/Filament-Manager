@@ -218,26 +218,26 @@ export function createCompanionSpoolMutations({
   async function submitQrLookup(qrCodeValue) {
     const parsedPayload = parseQrPayload(qrCodeValue);
     if (!parsedPayload?.ref) {
-      setStatus(tr("status.qrLookupRequired", "Enter a QR code before looking up a spool."), "error");
+      setStatus(tr("status.qrLookupRequired", "Open a valid spool link before loading a spool."), "error");
       render();
       return;
     }
     const qrCode = parsedPayload.ref;
 
     setBusy(true);
-    setStatus(tr("status.qrLookupSearching", "Looking up QR code..."), "default");
+    setStatus(tr("status.qrLookupSearching", "Opening spool link..."), "default");
     try {
       const spool = await fetchJson(`/api/v1/spools/by-qr?qr_code=${encodeURIComponent(qrCode)}`);
       const spoolId = String(spool?.spool?.id || "").trim();
       if (!spoolId) {
-        throw new Error(tr("status.qrLookupMissingSpoolId", "QR lookup returned no spool id"));
+        throw new Error(tr("status.qrLookupMissingSpoolId", "Spool link returned no spool id"));
       }
       state.activeRootFlow = "storage";
       state.activeTaskSheet = null;
-      setStatus(tr("status.qrLookupMatched", "QR code matched local spool."), "success");
+      setStatus(tr("status.qrLookupMatched", "Spool link opened."), "success");
       openSpoolDetail(spoolId, { rootFlow: "storage" });
     } catch (error) {
-      setStatus(error.message || tr("status.qrLookupFailed", "Failed to look up QR code."), "error");
+      setStatus(error.message || tr("status.qrLookupFailed", "Failed to open spool link."), "error");
       render();
     } finally {
       setBusy(false);

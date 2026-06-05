@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import type { FilamentQrMode } from "./filament_qr_payload";
 import type { InventorySpool } from "./inventory_list_model";
 import { buildSpoolQrArtifacts } from "./spool_qr_artifacts";
 
@@ -18,22 +17,12 @@ export function useInventorySpoolQrArtifacts({
 }: InventorySpoolQrArtifactsInput) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<FilamentQrMode>("companion");
-  const [resolvedMode, setResolvedMode] = useState<FilamentQrMode>("portable");
   const [target, setTarget] = useState<string | null>(null);
   const [companionShellUrl, setCompanionShellUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    setMode("companion");
-  }, [selectedSpool?.id]);
-
-  const buildArtifacts = useCallback(async (
-    spool: InventorySpool,
-    qrMode: FilamentQrMode = "companion",
-  ) => {
+  const buildArtifacts = useCallback(async (spool: InventorySpool) => {
     return buildSpoolQrArtifacts({
       spoolId: spool.id,
-      mode: qrMode,
       clientReadOnly,
       clientHostBaseUrl,
     });
@@ -43,7 +32,6 @@ export function useInventorySpoolQrArtifacts({
     if (!selectedSpool || !showRollModal) {
       setDataUrl(null);
       setLoading(false);
-      setResolvedMode("portable");
       setTarget(null);
       setCompanionShellUrl(null);
       return;
@@ -52,13 +40,12 @@ export function useInventorySpoolQrArtifacts({
     let cancelled = false;
     setLoading(true);
 
-    void buildArtifacts(selectedSpool, mode)
-      .then(({ qrDataUrl, qrMode, qrTarget, companionShellUrl: nextCompanionShellUrl }) => {
+    void buildArtifacts(selectedSpool)
+      .then(({ qrDataUrl, qrTarget, companionShellUrl: nextCompanionShellUrl }) => {
         if (cancelled) {
           return;
         }
         setDataUrl(qrDataUrl);
-        setResolvedMode(qrMode);
         setTarget(qrTarget);
         setCompanionShellUrl(nextCompanionShellUrl);
         setLoading(false);
@@ -69,7 +56,6 @@ export function useInventorySpoolQrArtifacts({
           return;
         }
         setDataUrl(null);
-        setResolvedMode("portable");
         setTarget(null);
         setCompanionShellUrl(null);
         setLoading(false);
@@ -78,16 +64,13 @@ export function useInventorySpoolQrArtifacts({
     return () => {
       cancelled = true;
     };
-  }, [buildArtifacts, mode, selectedSpool, showRollModal]);
+  }, [buildArtifacts, selectedSpool, showRollModal]);
 
   return {
     buildArtifacts,
     companionShellUrl,
     dataUrl,
     loading,
-    mode,
-    resolvedMode,
-    setMode,
     target,
   };
 }

@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 
 import {
   buildFilamentQrPayload,
-  buildPortableSpoolQrPayload,
   buildCompanionSpoolQrPayload,
   decodeFilamentQrPayload,
   deriveCompanionShellUrl,
@@ -40,26 +39,22 @@ test("buildCompanionSpoolQrPayload prefers companion deep-link when shell URL is
     buildCompanionSpoolQrPayload("QR-22", "http://192.168.1.50:4278/companion"),
     "http://192.168.1.50:4278/companion?spool_qr=v1%3AQR-22",
   );
-  assert.equal(buildCompanionSpoolQrPayload("QR-22", null), "v1:QR-22");
+  assert.throws(
+    () => buildCompanionSpoolQrPayload("QR-22", null),
+    /Companion QR link is unavailable/,
+  );
 });
 
-test("buildPortableSpoolQrPayload always returns the versioned token", () => {
-  assert.equal(buildPortableSpoolQrPayload("QR-22"), "v1:QR-22");
-});
-
-test("buildFilamentQrPayload returns mode and target for portable and companion payloads", () => {
-  assert.deepEqual(buildFilamentQrPayload("QR-22"), {
-    mode: "portable",
-    payload: "v1:QR-22",
-    target: "v1:QR-22",
-  });
+test("buildFilamentQrPayload returns only companion deep-link payloads", () => {
+  assert.throws(
+    () => buildFilamentQrPayload("QR-22"),
+    /Companion QR link is unavailable/,
+  );
   assert.deepEqual(
     buildFilamentQrPayload("QR-22", {
-      mode: "companion",
       companionShellUrl: "http://192.168.1.50:4278/companion",
     }),
     {
-      mode: "companion",
       payload: "http://192.168.1.50:4278/companion?spool_qr=v1%3AQR-22",
       target: "http://192.168.1.50:4278/companion?spool_qr=v1%3AQR-22",
     },

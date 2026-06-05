@@ -20,7 +20,6 @@ import {
 } from "./inventory_spool_maintenance_panels";
 import { RollUsageChart } from "./roll_usage_chart";
 import { WeightInput } from "./weight_input";
-import type { FilamentQrMode } from "../lib/filament_qr_payload";
 import { useI18n } from "../lib/i18n";
 import type { InventorySemanticTone, InventorySpool } from "../lib/inventory_list_model";
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
@@ -53,7 +52,6 @@ type InventorySpoolDetailModalProps = {
   onChangeHexColor: (value: string) => void;
   onChangeLocation: (value: string) => void;
   onChangeMaterial: (value: string) => void;
-  onChangeQrMode: (mode: FilamentQrMode) => void;
   onChangeTare: (value: string) => void;
   onChangeVendor: (value: string) => void;
   onClose: () => void;
@@ -76,8 +74,6 @@ type InventorySpoolDetailModalProps = {
   qrCompanionAvailable: boolean;
   qrDataUrl: string | null;
   qrLoading: boolean;
-  qrMode: FilamentQrMode;
-  qrResolvedMode: FilamentQrMode;
   qrTarget: string | null;
   resolvedTheme: ResolvedTheme;
   runtimeAvailable: boolean;
@@ -119,7 +115,6 @@ export function InventorySpoolDetailModal({
   onChangeHexColor,
   onChangeLocation,
   onChangeMaterial,
-  onChangeQrMode,
   onChangeTare,
   onChangeVendor,
   onClose,
@@ -142,8 +137,6 @@ export function InventorySpoolDetailModal({
   qrCompanionAvailable,
   qrDataUrl,
   qrLoading,
-  qrMode,
-  qrResolvedMode,
   qrTarget,
   resolvedTheme,
   runtimeAvailable,
@@ -211,11 +204,8 @@ export function InventorySpoolDetailModal({
                   companionAvailable={qrCompanionAvailable}
                   dataUrl={qrDataUrl}
                   loading={qrLoading}
-                  mode={qrMode}
-                  onModeChange={onChangeQrMode}
                   onPrintLabel={onPrintLabel}
                   onStartRfidCapture={onStartRfidCapture}
-                  resolvedMode={qrResolvedMode}
                   resolvedTheme={resolvedTheme}
                   runtimeAvailable={runtimeAvailable}
                   spoolHexColor={spool.hexColor}

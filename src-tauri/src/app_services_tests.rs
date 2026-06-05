@@ -254,7 +254,7 @@ fn companion_service_finds_spool_by_qr() {
         let matched = service
             .find_spool_by_qr("lookup-qr-1")
             .map_err(|error| error.to_string())?
-            .ok_or_else(|| "expected QR lookup to find spool".to_string())?;
+            .ok_or_else(|| "expected spool link lookup to find spool".to_string())?;
 
         assert_eq!(matched.spool.id, "spool_qr_1");
         assert_eq!(matched.spool.qr_code.as_deref(), Some("lookup-qr-1"));

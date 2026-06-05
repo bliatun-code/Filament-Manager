@@ -1,4 +1,3 @@
-import type { FilamentQrMode } from "../lib/filament_qr_payload";
 import { useI18n } from "../lib/i18n";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
@@ -7,25 +6,14 @@ type InventorySpoolQrRfidPanelProps = {
   companionAvailable: boolean;
   dataUrl: string | null;
   loading: boolean;
-  mode: FilamentQrMode;
-  onModeChange: (mode: FilamentQrMode) => void;
   onPrintLabel: () => void;
   onStartRfidCapture: () => void;
-  resolvedMode: FilamentQrMode;
   resolvedTheme: ResolvedTheme;
   runtimeAvailable: boolean;
   spoolHexColor?: string | null;
   supportsRfidCapture: boolean;
   target: string | null;
 };
-
-function qrModeButtonClass(active: boolean): string {
-  return `rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-    active
-      ? "border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-950"
-      : "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800/70"
-  }`;
-}
 
 const qrRfidInfoBoxClassName =
   "rounded-lg border border-slate-200/80 bg-white/80 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900/60";
@@ -37,11 +25,8 @@ export function InventorySpoolQrRfidPanel({
   companionAvailable,
   dataUrl,
   loading,
-  mode,
-  onModeChange,
   onPrintLabel,
   onStartRfidCapture,
-  resolvedMode,
   resolvedTheme,
   runtimeAvailable,
   spoolHexColor,
@@ -60,33 +45,8 @@ export function InventorySpoolQrRfidPanel({
       </div>
       <div className="mt-3">
         <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-          {t("inventory.qrMode", "QR mode")}
+          {t("inventory.qrCompanionLinkLabel", "Companion link")}
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            className={qrModeButtonClass(mode === "companion")}
-            onClick={() => onModeChange("companion")}
-            disabled={!companionAvailable}
-          >
-            {t("inventory.qrModeCompanion", "Companion link")}
-          </button>
-          <button
-            type="button"
-            className={qrModeButtonClass(mode === "portable")}
-            onClick={() => onModeChange("portable")}
-          >
-            {t("inventory.qrModePortable", "Portable")}
-          </button>
-        </div>
-        {!companionAvailable ? (
-          <div className="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-            {t(
-              "inventory.qrCompanionUnavailable",
-              "Companion link is unavailable right now. Start the Trusted-LAN companion on the active host to build a direct browser link.",
-            )}
-          </div>
-        ) : null}
       </div>
       {dataUrl ? (
         <div className="mt-3 flex justify-center">
@@ -101,7 +61,10 @@ export function InventorySpoolQrRfidPanel({
         <div className={`mt-3 text-slate-500 dark:text-slate-400 ${qrRfidInfoBoxClassName}`}>
           {loading
             ? t("common.loading", "Loading...")
-            : t("inventory.error.printLabel", "Failed to generate label.")}
+            : t(
+                "inventory.qrCompanionUnavailable",
+                "Companion link is unavailable right now. Start the Trusted-LAN companion on the active host to build a direct browser link.",
+              )}
         </div>
       )}
       {target ? (
@@ -113,15 +76,10 @@ export function InventorySpoolQrRfidPanel({
             {target}
           </div>
           <div className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-            {resolvedMode === "companion"
-              ? t(
-                  "inventory.qrTargetCompanionHint",
-                  "This QR opens the browser companion directly as long as the target URL is still reachable.",
-                )
-              : t(
-                  "inventory.qrTargetPortableHint",
-                  "This QR contains only the spool reference, which is more robust for small prints and host changes.",
-                )}
+            {t(
+              "inventory.qrTargetCompanionHint",
+              "This QR opens the browser companion directly as long as the target URL is still reachable.",
+            )}
           </div>
         </div>
       ) : null}
@@ -130,7 +88,7 @@ export function InventorySpoolQrRfidPanel({
           type="button"
           className={qrRfidActionButtonClassName}
           onClick={onPrintLabel}
-          disabled={!runtimeAvailable}
+          disabled={!runtimeAvailable || !companionAvailable || !dataUrl}
         >
           {t("inventory.printQr", "Print QR label")}
         </button>

@@ -1,7 +1,6 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { commandErrorText } from "./error_text";
 import { buildFilamentLabelHtml } from "./filament_label_print";
-import type { FilamentQrMode } from "./filament_qr_payload";
 import type { useI18n } from "./i18n";
 import type { InventorySpool } from "./inventory_list_model";
 import type { RfidCaptureSummary } from "./inventory_rfid_capture";
@@ -13,7 +12,6 @@ import type { InventoryPrinterSlotOption } from "./use_inventory_printer_slots";
 type InventorySpoolDetailUtilityActionsInput = {
   buildSelectedSpoolQrArtifacts: (
     spool: InventorySpool,
-    qrMode?: FilamentQrMode,
   ) => Promise<SpoolQrArtifacts>;
   canUseClientHostWrite: () => boolean;
   clientHostBaseUrl: string | null;
@@ -31,7 +29,6 @@ type InventorySpoolDetailUtilityActionsInput = {
   selectedRfidCaptureLiveIntegration: BambuLiveIntegrationSettings | null;
   selectedSpool: InventorySpool | null;
   selectedSpoolAssignedSlot: InventoryPrinterSlotOption | null;
-  selectedSpoolQrMode: FilamentQrMode;
   selectedSpoolRfidCaptureSlots: InventoryPrinterSlotOption[];
   setError: Dispatch<SetStateAction<string | null>>;
   setInfoMessage: Dispatch<SetStateAction<string | null>>;
@@ -61,7 +58,6 @@ export function useInventorySpoolDetailUtilityActions({
   selectedRfidCaptureLiveIntegration,
   selectedSpool,
   selectedSpoolAssignedSlot,
-  selectedSpoolQrMode,
   selectedSpoolRfidCaptureSlots,
   setError,
   setInfoMessage,
@@ -79,7 +75,6 @@ export function useInventorySpoolDetailUtilityActions({
     try {
       const { qrReference, qrPayload, qrDataUrl } = await buildSelectedSpoolQrArtifacts(
         selectedSpool,
-        selectedSpoolQrMode,
       );
       const html = buildFilamentLabelHtml({
         vendor: selectedSpool.vendor,
@@ -109,7 +104,6 @@ export function useInventorySpoolDetailUtilityActions({
   }, [
     buildSelectedSpoolQrArtifacts,
     selectedSpool,
-    selectedSpoolQrMode,
     setError,
     t,
     tauriAvailable,
