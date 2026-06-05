@@ -347,10 +347,18 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Capture AMS identity data, review it, and save the observed tray identity when it looks correct.",
       rfidHintNeedsLive:
         "RFID capture needs a printer with Live Bambu status enabled and at least one AMS slot available.",
-      rfidFresh: "Fresh",
-      rfidAged: "Aged",
-      rfidMissing: "Missing",
-      lastAmsIdentitySeen: "Last AMS identity seen",
+      rfidRegistered: "RFID registered",
+      rfidRegisteredHint:
+        "This RFID stays tied to the Bambu roll until the roll is used up or the saved RFID is overwritten. The AMS sighting only shows when the printer last reported this identity.",
+      rfidRegisteredUnseenHint:
+        "An RFID is saved on this roll, but AMS has not reported a sighting timestamp for it yet.",
+      rfidBambuUnregistered: "RFID not registered yet",
+      rfidBambuUnregisteredHint:
+        "Bambu rolls can be linked automatically by loading the roll in AMS and saving the observed tray identity.",
+      rfidUnsupportedVendor: "AMS RFID not available",
+      rfidUnsupportedVendorHint:
+        "AMS RFID identity is currently only exposed for Bambu rolls. Track this roll with QR, weight, location and printer assignment instead.",
+      lastAmsIdentitySeen: "Last AMS sighting",
       rfidMatchExact: "Exact",
       rfidMatchExactHint: "Material and HEX swatch match.",
       rfidMatchPartial: "Partial",
@@ -1692,10 +1700,18 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Fang AMS-identitetsdata, se over dem og lagre observert tray-identitet når den ser riktig ut.",
       rfidHintNeedsLive:
         "RFID-fangst trenger en printer med Live Bambu-status aktivert og minst ett tilgjengelig AMS-spor.",
-      rfidFresh: "Fersk",
-      rfidAged: "Eldre",
-      rfidMissing: "Mangler",
-      lastAmsIdentitySeen: "Sist sett AMS-identitet",
+      rfidRegistered: "RFID registrert",
+      rfidRegisteredHint:
+        "RFID-en er knyttet til denne Bambu-rullen til rullen er brukt opp eller lagret RFID overskrives. AMS-observasjonen viser bare når printeren sist rapporterte identiteten.",
+      rfidRegisteredUnseenHint:
+        "RFID er lagret på denne rullen, men AMS har ikke rapportert tidspunkt for siste observasjon ennå.",
+      rfidBambuUnregistered: "RFID ikke registrert ennå",
+      rfidBambuUnregisteredHint:
+        "Bambu-ruller kan kobles automatisk ved å legge rullen i AMS og lagre observert tray-identitet.",
+      rfidUnsupportedVendor: "AMS RFID ikke tilgjengelig",
+      rfidUnsupportedVendorHint:
+        "AMS RFID-identitet er foreløpig bare tilgjengelig for Bambu-ruller. Bruk QR, vekt, lokasjon og printertildeling for denne rullen.",
+      lastAmsIdentitySeen: "Sist sett i AMS",
       rfidMatchExact: "Sikker",
       rfidMatchExactHint: "Materiale og HEX-farge stemmer.",
       rfidMatchPartial: "Delvis",

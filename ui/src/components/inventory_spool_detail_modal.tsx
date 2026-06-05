@@ -39,7 +39,7 @@ type InventorySpoolDetailModalProps = {
   hasHiddenHistoryRows: boolean;
   hexColor: string;
   historyLoading: boolean;
-  identityFreshnessMeta: { className: string; label: string };
+  rfidBindingMeta: { className: string; hint: string; label: string };
   infoMessage: string | null;
   locationDraft: string;
   locationValue: string;
@@ -102,7 +102,7 @@ export function InventorySpoolDetailModal({
   hasHiddenHistoryRows,
   hexColor,
   historyLoading,
-  identityFreshnessMeta,
+  rfidBindingMeta,
   infoMessage,
   locationDraft,
   locationValue,
@@ -194,8 +194,8 @@ export function InventorySpoolDetailModal({
 
                 <InventorySpoolIdentityPanel
                   assignedSlot={assignedSlot}
-                  identityFreshnessMeta={identityFreshnessMeta}
                   locationValue={locationValue}
+                  rfidBindingMeta={rfidBindingMeta}
                   resolvedTheme={resolvedTheme}
                   spool={spool}
                 />

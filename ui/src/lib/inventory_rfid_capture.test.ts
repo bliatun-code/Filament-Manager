@@ -5,6 +5,9 @@ import {
   buildRfidCaptureSlotSummaries,
   buildSelectedRfidCaptureSnapshot,
   filterRfidCaptureSlots,
+  getRfidBindingState,
+  isBambuRfidVendor,
+  rfidBindingCopy,
   rfidCaptureMatchMeta,
   selectRfidCaptureSlot,
   supportsRfidCapture,
@@ -115,6 +118,35 @@ test("rfidCaptureMatchMeta maps confidence to localized chip metadata", () => {
   const exact = rfidCaptureMatchMeta("EXACT", t);
   assert.equal(exact?.label, "inventory.rfidMatchExact:Sikker");
   assert.match(exact?.className ?? "", /emerald|green|success/);
+});
+
+test("RFID binding state separates Bambu registration from unsupported vendors", () => {
+  assert.equal(isBambuRfidVendor("Bambu"), true);
+  assert.equal(isBambuRfidVendor("Bambu Lab"), true);
+  assert.equal(isBambuRfidVendor("eSUN"), false);
+  assert.equal(getRfidBindingState(null, null, "Bambu"), "BAMBU_UNREGISTERED");
+  assert.equal(getRfidBindingState(null, null, "eSUN"), "UNSUPPORTED_VENDOR");
+  assert.equal(getRfidBindingState("RFID-1", null, "Bambu"), "LINKED_UNSEEN");
+  assert.equal(
+    getRfidBindingState("RFID-1", "2026-06-05T01:00:00Z", "Bambu"),
+    "LINKED_SEEN",
+  );
+});
+
+test("rfidBindingCopy avoids freshness language for saved RFID identities", () => {
+  const t = (key: string, fallback: string) => `${key}:${fallback}`;
+  assert.equal(
+    rfidBindingCopy("BAMBU_UNREGISTERED", t).label,
+    "inventory.rfidBambuUnregistered:RFID not registered yet",
+  );
+  assert.equal(
+    rfidBindingCopy("UNSUPPORTED_VENDOR", t).label,
+    "inventory.rfidUnsupportedVendor:AMS RFID not available",
+  );
+  assert.equal(
+    rfidBindingCopy("LINKED_SEEN", t).label,
+    "inventory.rfidRegistered:RFID registered",
+  );
 });
 
 test("filterRfidCaptureSlots prefers assigned-printer capture sources", () => {

@@ -60,7 +60,11 @@ export type RfidObservedTraySnapshot = {
   fields: RfidCaptureField[];
 };
 
-export type IdentityFreshness = "FRESH" | "AGED" | "MISSING";
+export type RfidBindingState =
+  | "LINKED_SEEN"
+  | "LINKED_UNSEEN"
+  | "BAMBU_UNREGISTERED"
+  | "UNSUPPORTED_VENDOR";
 
 export type RfidCaptureHostSlotLike = {
   amsId: string;
@@ -101,19 +105,19 @@ export function formatCaptureTimestamp(raw: string, locale: Locale): string {
   }).format(parsed);
 }
 
-export function getIdentityFreshness(
+export function getRfidBindingState(
   rfidTag: string | null | undefined,
   observedAt: string | null | undefined,
-): IdentityFreshness {
-  if (!(rfidTag?.trim()) || !(observedAt?.trim())) {
-    return "MISSING";
+  vendor: string | null | undefined,
+): RfidBindingState {
+  if (rfidTag?.trim()) {
+    return observedAt?.trim() ? "LINKED_SEEN" : "LINKED_UNSEEN";
   }
-  const parsed = new Date(observedAt);
-  if (Number.isNaN(parsed.getTime())) {
-    return "AGED";
-  }
-  const ageMs = Date.now() - parsed.getTime();
-  return ageMs <= 1000 * 60 * 60 * 24 * 7 ? "FRESH" : "AGED";
+  return isBambuRfidVendor(vendor) ? "BAMBU_UNREGISTERED" : "UNSUPPORTED_VENDOR";
+}
+
+export function isBambuRfidVendor(vendor: string | null | undefined): boolean {
+  return vendor?.trim().toLowerCase().includes("bambu") ?? false;
 }
 
 export function formatObservedAge(raw: string | null | undefined, locale: Locale): string {
@@ -140,24 +144,45 @@ export function formatObservedAge(raw: string | null | undefined, locale: Locale
   return locale === "nb" ? `${diffDays} dager siden` : `${diffDays} days ago`;
 }
 
-export function identityFreshnessCopy(
-  freshness: IdentityFreshness,
+export function rfidBindingCopy(
+  state: RfidBindingState,
   t: (key: string, fallback: string) => string,
-): { label: string; className: string } {
-  switch (freshness) {
-    case "FRESH":
+): { label: string; hint: string; className: string } {
+  switch (state) {
+    case "LINKED_SEEN":
       return {
-        label: t("inventory.rfidFresh", "Fresh"),
+        label: t("inventory.rfidRegistered", "RFID registered"),
+        hint: t(
+          "inventory.rfidRegisteredHint",
+          "This RFID stays tied to the Bambu roll until the roll is used up or the saved RFID is overwritten. The AMS sighting only shows when the printer last reported this identity.",
+        ),
         className: semanticChipClass("success"),
       };
-    case "AGED":
+    case "LINKED_UNSEEN":
       return {
-        label: t("inventory.rfidAged", "Aged"),
+        label: t("inventory.rfidRegistered", "RFID registered"),
+        hint: t(
+          "inventory.rfidRegisteredUnseenHint",
+          "An RFID is saved on this roll, but AMS has not reported a sighting timestamp for it yet.",
+        ),
+        className: semanticChipClass("success"),
+      };
+    case "BAMBU_UNREGISTERED":
+      return {
+        label: t("inventory.rfidBambuUnregistered", "RFID not registered yet"),
+        hint: t(
+          "inventory.rfidBambuUnregisteredHint",
+          "Bambu rolls can be linked automatically by loading the roll in AMS and saving the observed tray identity.",
+        ),
         className: semanticChipClass("warning"),
       };
     default:
       return {
-        label: t("inventory.rfidMissing", "Missing"),
+        label: t("inventory.rfidUnsupportedVendor", "AMS RFID not available"),
+        hint: t(
+          "inventory.rfidUnsupportedVendorHint",
+          "AMS RFID identity is currently only exposed for Bambu rolls. Track this roll with QR, weight, location and printer assignment instead.",
+        ),
         className: neutralChipClass(false),
       };
   }

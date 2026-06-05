@@ -293,7 +293,7 @@ export default function InventoryPage({
     rfidCaptureSummary,
     selectedRfidCaptureLiveIntegration,
     selectedRfidCaptureSlot,
-    selectedSpoolIdentityFreshnessMeta,
+    selectedSpoolRfidBindingMeta,
     selectedSpoolRfidCaptureSlots,
     selectedSpoolRfidSlotLabel,
     selectedSpoolSupportsRfidCapture,
@@ -551,7 +551,6 @@ export default function InventoryPage({
         hasHiddenHistoryRows={hasHiddenHistoryRows}
         hexColor={editMasterHexColor}
         historyLoading={historyLoading}
-        identityFreshnessMeta={selectedSpoolIdentityFreshnessMeta}
         infoMessage={infoMessage}
         locationDraft={selectedSpoolLocationDraft}
         locationValue={selectedSpoolLocationValue}
@@ -587,6 +586,7 @@ export default function InventoryPage({
         qrDataUrl={selectedSpoolQrDataUrl}
         qrLoading={selectedSpoolQrLoading}
         qrTarget={selectedSpoolQrTarget}
+        rfidBindingMeta={selectedSpoolRfidBindingMeta}
         resolvedTheme={resolvedTheme}
         runtimeAvailable={tauri}
         showRollHistory={showRollHistory}

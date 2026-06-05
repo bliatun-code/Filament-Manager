@@ -26,8 +26,8 @@ type InventorySpoolDetailHeaderProps = {
 
 type InventorySpoolIdentityPanelProps = {
   assignedSlot: { printerName: string } | null;
-  identityFreshnessMeta: { className: string; label: string };
   locationValue: string;
+  rfidBindingMeta: { className: string; hint: string; label: string };
   resolvedTheme: ResolvedTheme;
   spool: InventorySpool;
 };
@@ -100,8 +100,8 @@ export function InventorySpoolDetailHeader({
 
 export function InventorySpoolIdentityPanel({
   assignedSlot,
-  identityFreshnessMeta,
   locationValue,
+  rfidBindingMeta,
   resolvedTheme,
   spool,
 }: InventorySpoolIdentityPanelProps) {
@@ -119,24 +119,25 @@ export function InventorySpoolIdentityPanel({
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
             {formatRollReference(spool)}
-            <span className={identityFreshnessMeta.className}>
-              {identityFreshnessMeta.label}
-            </span>
           </div>
           <div className="mt-1 break-all text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
             ID: {spool.id}
           </div>
-          <div className="mt-1 break-all text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-            RFID: {spool.rfidTag?.trim() || "-"}
+          <div className="mt-2 flex flex-wrap items-center gap-2 break-all text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+            <span>RFID: {spool.rfidTag?.trim() || "-"}</span>
+            <span className={rfidBindingMeta.className}>{rfidBindingMeta.label}</span>
           </div>
           <div className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-            {t("inventory.lastAmsIdentitySeen", "Last AMS identity seen")}:{" "}
+            {t("inventory.lastAmsIdentitySeen", "Last AMS sighting")}:{" "}
             {spool.rfidObservedAt
               ? `${formatCaptureTimestamp(spool.rfidObservedAt, locale)} (${formatObservedAge(
                   spool.rfidObservedAt,
                   locale,
                 )})`
               : "-"}
+          </div>
+          <div className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+            {rfidBindingMeta.hint}
           </div>
         </div>
         <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">

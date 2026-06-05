@@ -6,10 +6,10 @@ import {
   buildRfidCaptureSlotSummaries,
   buildSelectedRfidCaptureSnapshot,
   filterRfidCaptureSlots,
-  getIdentityFreshness,
-  identityFreshnessCopy,
+  getRfidBindingState,
   latestRfidCaptureSeenAt,
   mergeRfidCaptureFields,
+  rfidBindingCopy,
   rfidCaptureMatchMeta,
   resolveRfidCaptureLiveIntegration,
   selectRfidCaptureSlot,
@@ -73,14 +73,19 @@ export function useInventoryRfidCaptureViewModel({
     [bambuLiveIntegrations, clientReadOnly, selectedRfidCaptureSlot],
   );
 
-  const selectedSpoolIdentityFreshness = useMemo(
-    () => getIdentityFreshness(selectedSpool?.rfidTag, selectedSpool?.rfidObservedAt),
+  const selectedSpoolRfidBindingState = useMemo(
+    () =>
+      getRfidBindingState(
+        selectedSpool?.rfidTag,
+        selectedSpool?.rfidObservedAt,
+        selectedSpool?.vendor,
+      ),
     [selectedSpool],
   );
 
-  const selectedSpoolIdentityFreshnessMeta = useMemo(
-    () => identityFreshnessCopy(selectedSpoolIdentityFreshness, t),
-    [selectedSpoolIdentityFreshness, t],
+  const selectedSpoolRfidBindingMeta = useMemo(
+    () => rfidBindingCopy(selectedSpoolRfidBindingState, t),
+    [selectedSpoolRfidBindingState, t],
   );
 
   const selectedSpoolSupportsRfidCapture = useMemo(
@@ -180,7 +185,7 @@ export function useInventoryRfidCaptureViewModel({
     rfidCaptureSummary,
     selectedRfidCaptureLiveIntegration,
     selectedRfidCaptureSlot,
-    selectedSpoolIdentityFreshnessMeta,
+    selectedSpoolRfidBindingMeta,
     selectedSpoolRfidCaptureSlots,
     selectedSpoolRfidSlotLabel,
     selectedSpoolSupportsRfidCapture,
