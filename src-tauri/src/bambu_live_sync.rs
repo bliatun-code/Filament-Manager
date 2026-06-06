@@ -485,6 +485,29 @@ fn live_identity_text(value: Option<&str>) -> Option<&str> {
     value.map(str::trim).filter(|value| !value.is_empty())
 }
 
+fn live_tray_has_physical_roll_signal(tray: &BambuLiveObservedTrayRow) -> bool {
+    tray.loaded
+        || live_identity_text(tray.observed_rfid_tag.as_deref()).is_some()
+        || live_identity_text(tray.tray_uuid.as_deref()).is_some()
+        || live_identity_text(tray.chip_id.as_deref()).is_some()
+}
+
+fn live_weight_spool_status(remaining_grams: i64, tray: &BambuLiveObservedTrayRow) -> &'static str {
+    if remaining_grams == 0 && !live_tray_has_physical_roll_signal(tray) {
+        "EMPTY"
+    } else {
+        "ASSIGNED"
+    }
+}
+
+fn should_rebase_live_weight_from_loaded_zero(
+    current_grams: i64,
+    remaining_grams: i64,
+    tray: &BambuLiveObservedTrayRow,
+) -> bool {
+    current_grams == 0 && remaining_grams > 0 && live_tray_has_physical_roll_signal(tray)
+}
+
 fn sync_live_weight(
     db: &FilamentDatabase,
     printer_id: &str,
@@ -505,6 +528,24 @@ fn sync_live_weight(
         LiveWeightDecision::IgnoreUnchanged => return Ok(()),
         LiveWeightDecision::IgnoreIncrease { increase_grams } => {
             if let Some(current_grams) = current {
+                if should_rebase_live_weight_from_loaded_zero(current_grams, remaining_grams, tray)
+                {
+                    rebase_live_weight_from_observed_increase(
+                        db,
+                        LiveWeightRebaseInput {
+                            printer_id,
+                            spool_id,
+                            previous_grams: current_grams,
+                            remaining_grams,
+                            increase_grams,
+                            accepted_decision: "loaded_zero_rebase",
+                            reason: "live_loaded_zero_rebound",
+                            tray,
+                            usage_context,
+                        },
+                    )?;
+                    return Ok(());
+                }
                 if should_rebase_live_weight_before_usage(
                     db,
                     printer_id,
@@ -513,7 +554,7 @@ fn sync_live_weight(
                     remaining_grams,
                     usage_context,
                 )? {
-                    rebase_live_weight_before_usage(
+                    rebase_live_weight_from_observed_increase(
                         db,
                         LiveWeightRebaseInput {
                             printer_id,
@@ -521,6 +562,8 @@ fn sync_live_weight(
                             previous_grams: current_grams,
                             remaining_grams,
                             increase_grams,
+                            accepted_decision: "pre_usage_rebase",
+                            reason: "pre_usage_ams_rebase",
                             tray,
                             usage_context,
                         },
@@ -583,11 +626,7 @@ fn sync_live_weight(
                         min_correction_grams: LIVE_WEIGHT_MIN_USAGE_CORRECTION_G,
                     },
                 )? {
-                    let next_status = if remaining_grams == 0 {
-                        "EMPTY"
-                    } else {
-                        "ASSIGNED"
-                    };
+                    let next_status = live_weight_spool_status(remaining_grams, tray);
                     db.update_spool_weight(spool_id, Some(remaining_grams), Some(remaining_grams))?;
                     db.update_spool_status(spool_id, next_status)?;
                     db.ensure_scale("bambu-ams", "Bambu AMS", "VIRTUAL")?;
@@ -740,11 +779,7 @@ fn sync_live_weight(
         }
     }
 
-    let next_status = if remaining_grams == 0 {
-        "EMPTY"
-    } else {
-        "ASSIGNED"
-    };
+    let next_status = live_weight_spool_status(remaining_grams, tray);
     db.update_spool_weight(spool_id, Some(remaining_grams), Some(remaining_grams))?;
     db.update_spool_status(spool_id, next_status)?;
     db.ensure_scale("bambu-ams", "Bambu AMS", "VIRTUAL")?;
@@ -987,19 +1022,17 @@ struct LiveWeightRebaseInput<'a> {
     previous_grams: i64,
     remaining_grams: i64,
     increase_grams: i64,
+    accepted_decision: &'a str,
+    reason: &'a str,
     tray: &'a BambuLiveObservedTrayRow,
     usage_context: Option<&'a LivePrintUsageContext>,
 }
 
-fn rebase_live_weight_before_usage(
+fn rebase_live_weight_from_observed_increase(
     db: &FilamentDatabase,
     input: LiveWeightRebaseInput<'_>,
 ) -> Result<(), InventoryError> {
-    let next_status = if input.remaining_grams == 0 {
-        "EMPTY"
-    } else {
-        "ASSIGNED"
-    };
+    let next_status = live_weight_spool_status(input.remaining_grams, input.tray);
     db.update_spool_weight(
         input.spool_id,
         Some(input.remaining_grams),
@@ -1021,8 +1054,8 @@ fn rebase_live_weight_before_usage(
             "grams": input.remaining_grams,
             "previous_grams": input.previous_grams,
             "correction_grams": input.increase_grams,
-            "accepted_decision": "pre_usage_rebase",
-            "reason": "pre_usage_ams_rebase",
+            "accepted_decision": input.accepted_decision,
+            "reason": input.reason,
             "usage_session_key": input.usage_context.map(|context| context.session_key.as_str()),
             "nozzle_temp_c": input.usage_context.and_then(|context| context.nozzle_temp_c),
             "nozzle_temp_fresh": input.usage_context.map(|context| context.nozzle_temp_fresh),
@@ -1046,8 +1079,8 @@ fn rebase_live_weight_before_usage(
             "remaining_grams": input.remaining_grams,
             "previous_grams": input.previous_grams,
             "increase_grams": input.increase_grams,
-            "accepted_decision": "pre_usage_rebase",
-            "reason": "pre_usage_ams_rebase",
+            "accepted_decision": input.accepted_decision,
+            "reason": input.reason,
             "usage_session_key": input.usage_context.map(|context| context.session_key.as_str()),
             "job_name": input.usage_context.and_then(|context| context.job_name.as_deref()),
             "print_type": input.usage_context.and_then(|context| context.print_type.as_deref()),
