@@ -261,6 +261,47 @@ fn apply_tray_match_status_matches_configured_composite_swatch_color() {
 }
 
 #[test]
+fn apply_tray_match_status_matches_configured_semicolon_composite_swatch_color() {
+    let mut slot = make_slot();
+    slot.spool_material = Some("PETG".to_string());
+    slot.spool_hex_color = Some("Multi(#720062; #00FF00)".to_string());
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        tray_uuid: None,
+        observed_rfid_tag: None,
+        ..make_tray()
+    };
+
+    apply_tray_match_status(&mut tray, &overview, &[]);
+
+    assert_eq!(tray.match_status.as_deref(), Some("clear_match"));
+    assert_eq!(
+        tray.matched_inventory_mode.as_deref(),
+        Some("configured_metadata")
+    );
+    assert_eq!(tray.matched_inventory_spool_id.as_deref(), Some("spool_1"));
+}
+
+#[test]
+fn apply_tray_match_status_ignores_invalid_configured_composite_swatch_color() {
+    let mut slot = make_slot();
+    slot.spool_material = Some("PETG".to_string());
+    slot.spool_hex_color = Some("multi(#00FF00,not-a-color)".to_string());
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        tray_uuid: None,
+        observed_rfid_tag: None,
+        ..make_tray()
+    };
+
+    apply_tray_match_status(&mut tray, &overview, &[]);
+
+    assert_eq!(tray.match_status.as_deref(), Some("no_clear_match"));
+    assert_eq!(tray.matched_inventory_mode.as_deref(), None);
+    assert_eq!(tray.matched_inventory_spool_id.as_deref(), None);
+}
+
+#[test]
 fn apply_tray_match_status_matches_configured_short_bambu_series_name() {
     let mut slot = make_slot();
     slot.spool_filament_name = Some("PLA Basic".to_string());

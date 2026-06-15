@@ -1601,20 +1601,24 @@ fn parse_swatch_colors(value: Option<&str>) -> Option<Vec<String>> {
     if value.is_empty() {
         return None;
     }
-    if let Some(inner) = value
-        .strip_prefix("multi(")
-        .and_then(|inner| inner.strip_suffix(')'))
-        .or_else(|| {
-            value
-                .strip_prefix("gradient(")
-                .and_then(|inner| inner.strip_suffix(')'))
-        })
-    {
-        let colors: Vec<_> = inner
-            .split(',')
-            .filter_map(|color| normalize_hex_color(color))
+    let lower = value.to_ascii_lowercase();
+    let composite_inner = if lower.starts_with("multi(") && value.ends_with(')') {
+        Some(&value[6..value.len() - 1])
+    } else if lower.starts_with("gradient(") && value.ends_with(')') {
+        Some(&value[9..value.len() - 1])
+    } else {
+        None
+    };
+    if let Some(inner) = composite_inner {
+        let parts: Vec<_> = inner
+            .split(|character| character == ',' || character == ';')
+            .map(str::trim)
+            .filter(|part| !part.is_empty())
             .collect();
-        return (!colors.is_empty()).then_some(colors);
+        if parts.len() < 2 {
+            return None;
+        }
+        return parts.into_iter().map(normalize_hex_color).collect();
     }
     normalize_hex_color(value).map(|color| vec![color])
 }
