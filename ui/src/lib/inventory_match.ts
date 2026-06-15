@@ -153,7 +153,7 @@ export function translateObservedMatchNote(
     return null;
   }
   const presetSignalMatch = normalized.match(
-    /^(.*?)(?:\s+)?(?:AMS|Filament) preset signal (.+) was observed via tray_info_idx; this is a material\/preset hint, not a roll identity\.$/,
+    /^(.*?)(?:\s+)?(?:(?:AMS|Filament) preset signal|Filament settings preset) (.+) was observed via tray_info_idx; this is a material\/(?:preset|settings) hint, not a roll identity\.$/,
   );
   if (presetSignalMatch) {
     const baseNote = presetSignalMatch[1].trim();

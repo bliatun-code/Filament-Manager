@@ -484,7 +484,8 @@ fn apply_tray_match_status_mentions_tray_info_idx_as_preset_hint() {
     );
     assert!(note.contains("GFSA00_04"));
     assert!(note.contains("Bambu PLA Basic @BBL P1S 0.4 nozzle"));
-    assert!(note.contains("material/preset hint"));
+    assert!(note.contains("Filament settings preset"));
+    assert!(note.contains("material/settings hint"));
     assert!(note.contains("not a roll identity"));
 }
 
