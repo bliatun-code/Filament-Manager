@@ -36,6 +36,22 @@ export function normalizeCapturedHexColor(value: string | null | undefined): str
   return null;
 }
 
+export function decodeTrayExistBitsSlotPresence(
+  value: string | null | undefined,
+  slotIndex: number,
+): boolean | null {
+  const normalized = value?.trim().replace(/^0x/i, "") ?? "";
+  if (!normalized || !/^[0-9a-f]+$/i.test(normalized)) {
+    return null;
+  }
+  if (!Number.isFinite(slotIndex)) {
+    return null;
+  }
+  const bitIndex = Math.max(0, Math.trunc(slotIndex) - 1);
+  const mask = BigInt(`0x${normalized}`);
+  return ((mask >> BigInt(bitIndex)) & 1n) === 1n;
+}
+
 export function extractRfidCaptureFields(
   rawPayload: unknown,
   slotIndex: number,
@@ -79,6 +95,10 @@ export function summarizeRfidCapture(fields: RfidCaptureField[], slotIndex: numb
     trayWeightG: trayValue("tray_weight"),
     trayColorRaw: trayValue("tray_color"),
     trayExistBits: fieldMap.get("ams.tray_exist_bits")?.trim() || null,
+    trayPresentInAms: decodeTrayExistBitsSlotPresence(
+      fieldMap.get("ams.tray_exist_bits"),
+      slotIndex,
+    ),
     trayReadDoneBits: fieldMap.get("ams.tray_read_done_bits")?.trim() || null,
     trayIsBblBits: fieldMap.get("ams.tray_is_bbl_bits")?.trim() || null,
     amsRfidStatus: fieldMap.get("ams_rfid_status")?.trim() || null,

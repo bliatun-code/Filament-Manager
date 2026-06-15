@@ -306,6 +306,16 @@ export function InventoryRfidCaptureDiagnostics({
             mono
           />
           <RfidDetailRow
+            label={t("inventory.rfidAmsSlotPresence", "Selected slot presence")}
+            value={
+              summary.trayPresentInAms == null
+                ? null
+                : summary.trayPresentInAms
+                  ? t("inventory.rfidAmsSlotPresent", "Physically present")
+                  : t("inventory.rfidAmsSlotMissing", "Not physically present")
+            }
+          />
+          <RfidDetailRow
             label={t("inventory.rfidAmsReadDone", "AMS read done bits")}
             value={summary.trayReadDoneBits}
             mono

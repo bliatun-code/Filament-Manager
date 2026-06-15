@@ -22,6 +22,7 @@ export {
   supportsRfidCapture,
 } from "./inventory_rfid_selection";
 export {
+  decodeTrayExistBitsSlotPresence,
   extractRfidCaptureFields,
   flattenCaptureFields,
   normalizeCapturedHexColor,
@@ -51,6 +52,7 @@ export type RfidCaptureSummary = {
   trayWeightG?: string | null;
   trayColorRaw?: string | null;
   trayExistBits?: string | null;
+  trayPresentInAms?: boolean | null;
   trayReadDoneBits?: string | null;
   trayIsBblBits?: string | null;
   amsRfidStatus?: string | null;

@@ -4,6 +4,7 @@ import {
   assessRfidCaptureMatch,
   buildRfidCaptureSlotSummaries,
   buildSelectedRfidCaptureSnapshot,
+  decodeTrayExistBitsSlotPresence,
   filterRfidCaptureSlots,
   getRfidBindingState,
   isBambuRfidVendor,
@@ -285,6 +286,7 @@ test("RFID capture snapshot and slot summaries merge live and cached identity fi
   assert.equal(summaries["slot-1"].material, "PLA");
   assert.equal(summaries["slot-1"].colorHex, "#2563EB");
   assert.equal(summaries["slot-1"].trayExistBits, "1");
+  assert.equal(summaries["slot-1"].trayPresentInAms, true);
 });
 
 test("host RFID capture treats AMS slot presence bits as useful diagnostic data", () => {
@@ -306,4 +308,15 @@ test("host RFID capture treats AMS slot presence bits as useful diagnostic data"
     snapshot?.fields.find((field) => field.path === "ams.tray_exist_bits")?.valueText,
     "0100",
   );
+});
+
+test("decodeTrayExistBitsSlotPresence reads Bambu hex slot masks", () => {
+  assert.equal(decodeTrayExistBitsSlotPresence("e", 1), false);
+  assert.equal(decodeTrayExistBitsSlotPresence("e", 2), true);
+  assert.equal(decodeTrayExistBitsSlotPresence("e", 3), true);
+  assert.equal(decodeTrayExistBitsSlotPresence("0x3", 1), true);
+  assert.equal(decodeTrayExistBitsSlotPresence("0x3", 2), true);
+  assert.equal(decodeTrayExistBitsSlotPresence("0x3", 3), false);
+  assert.equal(decodeTrayExistBitsSlotPresence("not-hex", 1), null);
+  assert.equal(decodeTrayExistBitsSlotPresence(null, 1), null);
 });
