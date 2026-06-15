@@ -406,12 +406,17 @@ Når den er aktiv, kan programmet observere:
 - AMS-slot som er lastet eller tom
 - materiale, farge og leverandørdata som printeren rapporterer
 - RFID/tray-identitet når tilgjengelig
+- AMS-preset og filamentinnstillinger som `tray_info_idx`, `tray_id_name` og anbefalt nozzle-område når printeren sender dette
 - beregnet gjenværende vekt fra AMS
 - printerens jobbstatus
 - subtask/jobbid og navn når printeren sender dette
 - fremdrift og resterende tid
 - nozzle-temperatur
 - rå MQTT-data for diagnostikk/capture
+
+AMS-preset er ikke det samme som RFID. `tray_info_idx` og `tray_id_name` peker på en Bambu/Studio-materialprofil eller preset, ikke en fysisk rull. Programmet viser dette som diagnostikk og kan bruke det som svakt materialhint, men det skal ikke erstatte registrert RFID på rullen.
+
+Anbefalt nozzle-område fra preset er også diagnostikk. Det beskriver filamentprofilens temperaturvindu, mens live nozzle-temperatur beskriver hva printeren faktisk gjør akkurat nå.
 
 ### Automatisk sporvalg
 

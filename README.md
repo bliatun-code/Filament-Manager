@@ -35,7 +35,8 @@ Release notes:
 - Printer profiles for Bambu AMS, Prusa MMU3, Prusa XL toolheads, and
   single-material printers.
 - Optional Bambu Live integration for local AMS slot observations, RFID matching,
-  estimated AMS weight, nozzle temperature, and print-session usage accounting.
+  estimated AMS weight, Bambu preset diagnostics, nozzle temperature, and
+  print-session usage accounting.
 - QR/RFID support for robust spool lookup and safer automatic AMS matching.
 - Local companion/webapp for paired phones, tablets, and workshop browsers.
 - Host/client library mode for sharing one desktop-owned library with other
