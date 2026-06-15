@@ -35,6 +35,15 @@ test("parseBambuSettingsProfileName supports generic nozzle-only profiles", () =
 });
 
 test("parseBambuSettingsProfileName keeps unstructured names intact", () => {
+  assert.deepEqual(parseBambuSettingsProfileName("Bambu PLA Basic @base"), {
+    filamentProfile: "Bambu PLA Basic",
+    nozzleDiameterMm: null,
+    printerProfile: null,
+    rawName: "Bambu PLA Basic @base",
+  });
+  assert.deepEqual(formatBambuSettingsProfileNameParts("Bambu PLA Basic @base"), [
+    "Bambu PLA Basic",
+  ]);
   assert.deepEqual(parseBambuSettingsProfileName("Generic PLA"), {
     filamentProfile: "Generic PLA",
     nozzleDiameterMm: null,

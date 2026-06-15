@@ -32,6 +32,15 @@ export function parseBambuSettingsProfileName(
       rawName: normalized,
     };
   }
+  const baseProfileMatch = normalized.match(/^(.+?)\s+@base$/i);
+  if (baseProfileMatch) {
+    return {
+      filamentProfile: (baseProfileMatch[1] ?? "").trim(),
+      nozzleDiameterMm: null,
+      printerProfile: null,
+      rawName: normalized,
+    };
+  }
   return {
     filamentProfile: normalized,
     nozzleDiameterMm: null,
