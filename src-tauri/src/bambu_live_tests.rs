@@ -387,6 +387,26 @@ fn unknown_rfid_replacement_clears_on_new_unknown_identity_and_respects_override
 }
 
 #[test]
+fn unknown_rfid_replacement_keeps_override_for_configured_composite_swatch_color() {
+    let mut slot = make_slot();
+    slot.spool_hex_color = Some("multi(#00FF00,#FFFF00)".to_string());
+    slot.rfid_override_tray_uuid = Some("tray-uuid-unknown".to_string());
+    slot.rfid_override_color_hex = Some("#00FF00".to_string());
+    let tray = BambuLiveObservedTrayRow {
+        color_hex: Some("#FFFF00".to_string()),
+        match_status: Some("unknown_rfid".to_string()),
+        ..make_tray()
+    };
+
+    assert!(slot_override_matches_live_unknown(
+        &slot,
+        "tray-uuid-unknown",
+        "#FFFF00"
+    ));
+    assert!(!should_auto_clear_live_unknown_replacement(&tray, &slot));
+}
+
+#[test]
 fn unknown_rfid_replacement_does_not_clear_same_identity_or_missing_color_signal() {
     let mut slot = make_slot();
     let tray = BambuLiveObservedTrayRow {

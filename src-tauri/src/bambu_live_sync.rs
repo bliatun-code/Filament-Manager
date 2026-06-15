@@ -542,7 +542,8 @@ pub(crate) fn slot_override_matches_live_unknown(
         return false;
     };
     override_tray_uuid.eq_ignore_ascii_case(observed_tray_uuid)
-        && override_color_hex.eq_ignore_ascii_case(observed_color_hex)
+        && (override_color_hex.eq_ignore_ascii_case(observed_color_hex)
+            || live_color_matches_swatch(Some(observed_color_hex), slot.spool_hex_color.as_deref()))
 }
 
 fn live_identity_text(value: Option<&str>) -> Option<&str> {
