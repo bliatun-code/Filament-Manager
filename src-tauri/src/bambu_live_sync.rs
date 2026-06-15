@@ -212,8 +212,10 @@ pub(crate) fn apply_tray_match_status(
                 tray.filament_name.as_deref(),
                 slot.spool_filament_name.as_deref(),
             );
-            let color_match =
-                eq_ignore_case(tray.color_hex.as_deref(), slot.spool_hex_color.as_deref());
+            let color_match = live_color_matches_swatch(
+                tray.color_hex.as_deref(),
+                slot.spool_hex_color.as_deref(),
+            );
             let score = [material_match, name_match, color_match]
                 .into_iter()
                 .filter(|value| *value)
@@ -311,8 +313,10 @@ fn find_inventory_candidates<'a>(
                 tray.filament_name.as_deref(),
                 Some(&row.master.filament_name),
             );
-            let color_match =
-                eq_ignore_case(tray.color_hex.as_deref(), row.master.hex_color.as_deref());
+            let color_match = live_color_matches_swatch(
+                tray.color_hex.as_deref(),
+                row.master.hex_color.as_deref(),
+            );
             [material_match, name_match, color_match]
                 .into_iter()
                 .filter(|value| *value)
@@ -1564,6 +1568,53 @@ fn eq_ignore_case(left: Option<&str>, right: Option<&str>) -> bool {
         return false;
     };
     left.eq_ignore_ascii_case(right)
+}
+
+fn live_color_matches_swatch(observed: Option<&str>, candidate: Option<&str>) -> bool {
+    let Some(observed_colors) = parse_swatch_colors(observed) else {
+        return eq_ignore_case(observed, candidate);
+    };
+    let Some(candidate_colors) = parse_swatch_colors(candidate) else {
+        return eq_ignore_case(observed, candidate);
+    };
+    observed_colors
+        .iter()
+        .all(|observed_color| candidate_colors.contains(observed_color))
+}
+
+fn parse_swatch_colors(value: Option<&str>) -> Option<Vec<String>> {
+    let value = value?.trim();
+    if value.is_empty() {
+        return None;
+    }
+    if let Some(inner) = value
+        .strip_prefix("multi(")
+        .and_then(|inner| inner.strip_suffix(')'))
+        .or_else(|| {
+            value
+                .strip_prefix("gradient(")
+                .and_then(|inner| inner.strip_suffix(')'))
+        })
+    {
+        let colors: Vec<_> = inner
+            .split(',')
+            .filter_map(|color| normalize_hex_color(color))
+            .collect();
+        return (!colors.is_empty()).then_some(colors);
+    }
+    normalize_hex_color(value).map(|color| vec![color])
+}
+
+fn normalize_hex_color(value: &str) -> Option<String> {
+    let trimmed = value.trim().trim_start_matches('#');
+    let rgb = match trimmed.len() {
+        8 => &trimmed[..6],
+        6 => trimmed,
+        _ => return None,
+    };
+    rgb.chars()
+        .all(|value| value.is_ascii_hexdigit())
+        .then(|| format!("#{rgb}").to_uppercase())
 }
 
 fn identity_is_recent(raw: Option<&str>, max_age_minutes: i64) -> bool {

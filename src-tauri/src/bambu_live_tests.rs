@@ -239,6 +239,58 @@ fn apply_tray_match_status_uses_observed_ams_index_for_configured_slot() {
 }
 
 #[test]
+fn apply_tray_match_status_matches_configured_composite_swatch_color() {
+    let mut slot = make_slot();
+    slot.spool_material = Some("PETG".to_string());
+    slot.spool_hex_color = Some("multi(#720062,#00FF00)".to_string());
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        tray_uuid: None,
+        observed_rfid_tag: None,
+        ..make_tray()
+    };
+
+    apply_tray_match_status(&mut tray, &overview, &[]);
+
+    assert_eq!(tray.match_status.as_deref(), Some("clear_match"));
+    assert_eq!(
+        tray.matched_inventory_mode.as_deref(),
+        Some("configured_metadata")
+    );
+    assert_eq!(tray.matched_inventory_spool_id.as_deref(), Some("spool_1"));
+}
+
+#[test]
+fn apply_tray_match_status_matches_inventory_composite_swatch_candidate() {
+    let mut slot = make_slot();
+    slot.spool_id = None;
+    slot.spool_material = None;
+    slot.spool_filament_name = None;
+    slot.spool_hex_color = None;
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        tray_uuid: None,
+        observed_rfid_tag: None,
+        ..make_tray()
+    };
+    let mut candidate = make_inventory_spool("spool_multi", None);
+    candidate.master.filament_name = "PLA Silk Multi-Color".to_string();
+    candidate.master.hex_color = Some("gradient(#720062,#00FF00)".to_string());
+
+    apply_tray_match_status(&mut tray, &overview, &[candidate]);
+
+    assert_eq!(tray.match_status.as_deref(), Some("possible_match"));
+    assert_eq!(
+        tray.matched_inventory_mode.as_deref(),
+        Some("inventory_metadata")
+    );
+    assert_eq!(
+        tray.matched_inventory_spool_id.as_deref(),
+        Some("spool_multi")
+    );
+}
+
+#[test]
 fn apply_tray_match_status_mentions_tray_info_idx_as_preset_hint() {
     let slot = make_slot();
     let overview = make_overview(slot);
