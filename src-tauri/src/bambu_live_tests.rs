@@ -8,7 +8,7 @@ use crate::bambu_live_sync::{
     apply_tray_match_status, classify_live_weight_update, live_identity_is_blocked_by_manual_clear,
     should_auto_clear_live_color_replacement, should_auto_clear_live_slot,
     should_auto_clear_live_unknown_replacement, slot_override_matches_live_unknown,
-    LiveWeightDecision,
+    tray_exist_bits_slot_present, LiveWeightDecision,
 };
 use serde_json::Value;
 use std::io::Cursor;
@@ -398,13 +398,13 @@ fn id_only_tray_payload_marks_empty_and_clears_on_first_observation() {
         "id": "2"
     });
 
-    let merged = merge_tray_payload(Some(&previous), 2, &payload, "2026-04-16T15:14:10Z");
+    let merged = merge_tray_payload(Some(&previous), 2, &payload, "2026-04-16T15:14:10Z", None);
 
     assert!(!merged.loaded);
     assert!(merged.tray_uuid.is_none());
     assert!(merged.observed_rfid_tag.is_none());
     assert_eq!(merged.empty_observation_count, Some(1));
-    assert!(should_auto_clear_live_slot(&merged));
+    assert!(should_auto_clear_live_slot(&merged, None));
 }
 
 #[test]
@@ -414,11 +414,75 @@ fn id_only_tray_payload_clears_stale_live_metadata() {
         "id": "2"
     });
 
-    let merged = merge_tray_payload(Some(&previous), 2, &payload, "2026-04-16T15:14:10Z");
+    let merged = merge_tray_payload(Some(&previous), 2, &payload, "2026-04-16T15:14:10Z", None);
 
     assert!(merged.color_hex.is_none());
     assert!(merged.filament_type.is_none());
     assert!(merged.filament_name.is_none());
+}
+
+#[test]
+fn tray_exist_bits_reads_hex_slot_presence_bits() {
+    assert_eq!(tray_exist_bits_slot_present(Some("e"), 0), Some(false));
+    assert_eq!(tray_exist_bits_slot_present(Some("e"), 1), Some(true));
+    assert_eq!(tray_exist_bits_slot_present(Some("0x3"), 0), Some(true));
+    assert_eq!(tray_exist_bits_slot_present(Some("0x3"), 1), Some(true));
+    assert_eq!(tray_exist_bits_slot_present(Some("0x3"), 2), Some(false));
+    assert_eq!(tray_exist_bits_slot_present(Some("garbage"), 0), None);
+    assert_eq!(tray_exist_bits_slot_present(None, 0), None);
+}
+
+#[test]
+fn id_only_tray_payload_stays_loaded_when_exist_bits_say_present() {
+    let previous = make_tray();
+    let payload = serde_json::json!({
+        "id": "2"
+    });
+
+    let merged = merge_tray_payload(
+        Some(&previous),
+        2,
+        &payload,
+        "2026-04-16T15:14:10Z",
+        Some(true),
+    );
+
+    assert!(merged.loaded);
+    assert_eq!(merged.empty_observation_count, Some(0));
+    assert_eq!(merged.tray_uuid.as_deref(), Some("tray-uuid-unknown"));
+    assert_eq!(merged.color_hex.as_deref(), Some("#00FF00"));
+    assert!(!should_auto_clear_live_slot(&merged, Some(true)));
+}
+
+#[test]
+fn stale_tray_payload_clears_when_exist_bits_say_empty() {
+    let previous = make_tray();
+    let payload = serde_json::json!({
+        "id": "1",
+        "tray_type": "PLA",
+        "tray_sub_brands": "Basic",
+        "tray_color": "00FF00FF",
+        "tray_uuid": "tray-uuid-unknown",
+        "remain": 0
+    });
+
+    let merged = merge_tray_payload(
+        Some(&previous),
+        1,
+        &payload,
+        "2026-04-16T15:14:10Z",
+        Some(false),
+    );
+
+    assert!(!merged.loaded);
+    assert!(merged.tray_uuid.is_none());
+    assert!(merged.observed_rfid_tag.is_none());
+    assert_eq!(
+        merged.last_empty_seen_at.as_deref(),
+        Some("2026-04-16T15:14:10Z")
+    );
+    assert_eq!(merged.empty_observation_count, Some(1));
+    assert!(should_auto_clear_live_slot(&merged, Some(false)));
 }
 
 #[test]
@@ -1247,6 +1311,111 @@ fn enrich_with_match_status_keeps_live_loaded_zero_gram_roll_assigned() {
     if let Err(message) = result {
         panic!(
             "enrich_with_match_status_keeps_live_loaded_zero_gram_roll_assigned failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn enrich_with_match_status_keeps_present_bit_slot_assigned_on_empty_payload() {
+    let db_path = temp_db_path("present-bit-empty-payload-keeps-assigned");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 1, 1)
+            .map_err(|error| error.to_string())?;
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PLA",
+                filament_name: "Matte",
+                color_name: "Matte Charcoal",
+                hex_color: Some("#000000"),
+                product_url: None,
+                vendor: Some("Bambu"),
+                default_weight: Some(1000),
+            })
+            .map_err(|error| error.to_string())?;
+        db.insert_spool(&SpoolRow {
+            id: "spool_1".to_string(),
+            master_id,
+            qr_code: None,
+            rfid_tag: Some("tray-rfid-1".to_string()),
+            rfid_observed_at: None,
+            status: "ASSIGNED".to_string(),
+            ownership_type: "OWNED".to_string(),
+            owner_name: None,
+            owner_contact: None,
+            ownership_note: None,
+            initial_weight_g: Some(1000),
+            current_weight_g: Some(20),
+            remaining_g: Some(20),
+            spool_tare_weight_g: None,
+            location_id: None,
+            home_location_id: None,
+            purchase_date: None,
+            purchase_price: None,
+            batch_code: None,
+            last_used_at: None,
+        })
+        .map_err(|error| error.to_string())?;
+        db.assign_spool_to_ams_slot(
+            "printer_1",
+            "printer_1_ams_1_slot_1",
+            Some("spool_1"),
+            None,
+            None,
+            false,
+        )
+        .map_err(|error| error.to_string())?;
+
+        let observed_at = super::now_iso_string();
+        let mut observed = super::default_offline_state();
+        observed.online = true;
+        observed.mqtt_connected = true;
+        observed.last_seen_at = Some(observed_at.clone());
+        observed.ams_exist_bits = Some("1".to_string());
+        observed.trays = vec![BambuLiveObservedTrayRow {
+            tray_index: 0,
+            loaded: false,
+            filament_type: None,
+            filament_name: None,
+            color_hex: None,
+            tray_weight_g: None,
+            remaining_percent: None,
+            remaining_grams: None,
+            observed_rfid_tag: None,
+            tray_uuid: None,
+            chip_id: None,
+            tray_info_idx: None,
+            tray_id_name: None,
+            last_identity_seen_at: None,
+            last_empty_seen_at: Some(observed_at),
+            empty_observation_count: Some(1),
+            matched_inventory_spool_id: None,
+            matched_inventory_mode: None,
+            match_status: None,
+            match_note: None,
+        }];
+
+        crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed)
+            .map_err(|error| error.to_string())?;
+
+        let slot_spool_id: Option<String> = db
+            .connection()
+            .query_row(
+                "SELECT spool_id FROM ams_slots WHERE id = 'printer_1_ams_1_slot_1'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(slot_spool_id.as_deref(), Some("spool_1"));
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "enrich_with_match_status_keeps_present_bit_slot_assigned_on_empty_payload failed: {message}"
         );
     }
 }
@@ -4523,7 +4692,7 @@ fn merge_tray_payload_derives_remaining_grams_from_tray_weight() {
         "remain": 33
     });
 
-    let merged = merge_tray_payload(Some(&previous), 0, &payload, "2026-04-16T14:05:00Z");
+    let merged = merge_tray_payload(Some(&previous), 0, &payload, "2026-04-16T14:05:00Z", None);
 
     assert_eq!(merged.tray_weight_g, Some(250));
     assert_eq!(merged.remaining_percent, Some(33));
@@ -4539,7 +4708,7 @@ fn merge_tray_payload_clears_stale_rfid_identity_on_new_non_rfid_observation() {
         "tray_sub_brands": "eSUN PLA+"
     });
 
-    let merged = merge_tray_payload(Some(&previous), 0, &payload, "2026-04-16T14:00:00Z");
+    let merged = merge_tray_payload(Some(&previous), 0, &payload, "2026-04-16T14:00:00Z", None);
 
     assert!(merged.loaded);
     assert_eq!(merged.filament_name.as_deref(), Some("eSUN PLA+"));
@@ -4561,7 +4730,7 @@ fn merge_tray_payload_keeps_exact_rfid_identity_on_partial_same_metadata_update(
         "tray_color": "00FF00FF"
     });
 
-    let merged = merge_tray_payload(Some(&previous), 0, &payload, "2026-04-16T14:05:00Z");
+    let merged = merge_tray_payload(Some(&previous), 0, &payload, "2026-04-16T14:05:00Z", None);
 
     assert!(merged.loaded);
     assert_eq!(merged.tray_uuid.as_deref(), Some("tray-uuid-unknown"));

@@ -5,7 +5,7 @@ use crate::backend::filament_database::{
 };
 use crate::bambu_live_sync::{
     count_review_trays, enrich_with_match_status, is_credible_finished_print_state,
-    is_probable_completed_carried_print_state,
+    is_probable_completed_carried_print_state, tray_exist_bits_slot_present,
 };
 use crate::bambu_mqtt::{
     build_connect_packet, build_subscribe_packet, parse_publish_payload, read_mqtt_packet,
@@ -711,7 +711,15 @@ fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) -
         for tray in ams_trays {
             let tray_index = as_i64(tray.get("id")).unwrap_or_default();
             let previous = previous_by_index.get(&tray_index);
-            merged_trays.push(merge_tray_payload(previous, tray_index, tray, &observed_at));
+            let slot_present_from_exist_bits =
+                tray_exist_bits_slot_present(state.ams_exist_bits.as_deref(), tray_index);
+            merged_trays.push(merge_tray_payload(
+                previous,
+                tray_index,
+                tray,
+                &observed_at,
+                slot_present_from_exist_bits,
+            ));
         }
         state.trays = merged_trays;
     }
@@ -968,6 +976,7 @@ fn merge_tray_payload(
     tray_index: i64,
     tray: &Value,
     observed_at: &str,
+    slot_present_from_exist_bits: Option<bool>,
 ) -> BambuLiveObservedTrayRow {
     let substantive_fields = tray
         .as_object()
@@ -989,7 +998,10 @@ fn merge_tray_payload(
         || chip_id.is_some()
         || tray_info_idx.is_some()
         || tray_id_name.is_some();
-    let empty_observation = !substantive_fields && !has_live_observation_signal;
+    let present_by_exist_bits = slot_present_from_exist_bits == Some(true);
+    let empty_by_exist_bits = slot_present_from_exist_bits == Some(false);
+    let empty_observation = empty_by_exist_bits
+        || (!present_by_exist_bits && !substantive_fields && !has_live_observation_signal);
     let metadata_replacement_signal = previous.is_some()
         && substantive_tray_metadata_changed(
             previous,
@@ -1000,10 +1012,10 @@ fn merge_tray_payload(
     let should_reset_observed_identity = empty_observation || metadata_replacement_signal;
 
     let previous_loaded = previous.map(|value| value.loaded).unwrap_or(false);
-    let loaded = if substantive_fields || has_live_observation_signal {
-        true
-    } else if empty_observation {
+    let loaded = if empty_observation {
         false
+    } else if present_by_exist_bits || substantive_fields || has_live_observation_signal {
+        true
     } else {
         previous_loaded
     };
@@ -1011,58 +1023,85 @@ fn merge_tray_payload(
     BambuLiveObservedTrayRow {
         tray_index,
         loaded,
-        filament_type: if empty_observation {
+        filament_type: if empty_by_exist_bits {
+            None
+        } else if empty_observation {
             filament_type
         } else {
             filament_type.or_else(|| previous.and_then(|value| value.filament_type.clone()))
         },
-        filament_name: if empty_observation {
+        filament_name: if empty_by_exist_bits {
+            None
+        } else if empty_observation {
             filament_name
         } else {
             filament_name.or_else(|| previous.and_then(|value| value.filament_name.clone()))
         },
-        color_hex: if empty_observation {
+        color_hex: if empty_by_exist_bits {
+            None
+        } else if empty_observation {
             color_hex
         } else {
             color_hex.or_else(|| previous.and_then(|value| value.color_hex.clone()))
         },
-        tray_weight_g: if empty_observation {
+        tray_weight_g: if empty_by_exist_bits {
+            None
+        } else if empty_observation {
             tray_weight_g
         } else {
             tray_weight_g.or_else(|| previous.and_then(|value| value.tray_weight_g))
         },
-        remaining_percent: remaining_percent
-            .or_else(|| previous.and_then(|value| value.remaining_percent)),
-        remaining_grams: remaining_percent
-            .zip(tray_weight_g.or_else(|| previous.and_then(|value| value.tray_weight_g)))
-            .and_then(|(percent, tray_weight_g)| percent_to_grams(percent, tray_weight_g))
-            .or_else(|| previous.and_then(|value| value.remaining_grams)),
-        observed_rfid_tag: if should_reset_observed_identity {
+        remaining_percent: if empty_by_exist_bits {
+            None
+        } else {
+            remaining_percent.or_else(|| previous.and_then(|value| value.remaining_percent))
+        },
+        remaining_grams: if empty_by_exist_bits {
+            None
+        } else {
+            remaining_percent
+                .zip(tray_weight_g.or_else(|| previous.and_then(|value| value.tray_weight_g)))
+                .and_then(|(percent, tray_weight_g)| percent_to_grams(percent, tray_weight_g))
+                .or_else(|| previous.and_then(|value| value.remaining_grams))
+        },
+        observed_rfid_tag: if empty_by_exist_bits {
+            None
+        } else if should_reset_observed_identity {
             observed_rfid_tag
         } else {
             observed_rfid_tag.or_else(|| previous.and_then(|value| value.observed_rfid_tag.clone()))
         },
-        tray_uuid: if should_reset_observed_identity {
+        tray_uuid: if empty_by_exist_bits {
+            None
+        } else if should_reset_observed_identity {
             tray_uuid
         } else {
             tray_uuid.or_else(|| previous.and_then(|value| value.tray_uuid.clone()))
         },
-        chip_id: if should_reset_observed_identity {
+        chip_id: if empty_by_exist_bits {
+            None
+        } else if should_reset_observed_identity {
             chip_id
         } else {
             chip_id.or_else(|| previous.and_then(|value| value.chip_id.clone()))
         },
-        tray_info_idx: if should_reset_observed_identity {
+        tray_info_idx: if empty_by_exist_bits {
+            None
+        } else if should_reset_observed_identity {
             tray_info_idx
         } else {
             tray_info_idx.or_else(|| previous.and_then(|value| value.tray_info_idx.clone()))
         },
-        tray_id_name: if should_reset_observed_identity {
+        tray_id_name: if empty_by_exist_bits {
+            None
+        } else if should_reset_observed_identity {
             tray_id_name
         } else {
             tray_id_name.or_else(|| previous.and_then(|value| value.tray_id_name.clone()))
         },
-        last_identity_seen_at: if has_rfid_identity_signal {
+        last_identity_seen_at: if empty_by_exist_bits {
+            None
+        } else if has_rfid_identity_signal {
             Some(observed_at.to_string())
         } else if should_reset_observed_identity {
             None

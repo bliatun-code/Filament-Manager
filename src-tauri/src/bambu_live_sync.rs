@@ -33,6 +33,23 @@ const LIVE_NOZZLE_PRINT_CAPABLE_TEMP_C: f64 = 200.0;
 const LIVE_USAGE_SIGNAL_FRESH_MAX_AGE_SECS: i64 = 3 * 60;
 const LIVE_USAGE_RECENT_PRINT_CAPABLE_NOZZLE_SECS: i64 = 2 * 60 * 60;
 
+pub(crate) fn tray_exist_bits_slot_present(bits: Option<&str>, tray_index: i64) -> Option<bool> {
+    let bit_index = u32::try_from(tray_index).ok()?;
+    if bit_index >= u128::BITS {
+        return None;
+    }
+    let raw = bits?.trim();
+    if raw.is_empty() {
+        return None;
+    }
+    let normalized = raw
+        .strip_prefix("0x")
+        .or_else(|| raw.strip_prefix("0X"))
+        .unwrap_or(raw);
+    let mask = u128::from_str_radix(normalized, 16).ok()?;
+    Some(((mask >> bit_index) & 1) == 1)
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum LiveWeightDecision {
     IgnoreUnchanged,
@@ -319,7 +336,10 @@ fn auto_sync_live_slots(
             .iter()
             .find(|slot| !slot.ams_id.ends_with("_ext") && slot.slot_index == tray.tray_index + 1);
 
-        let auto_clear_empty_signal = should_auto_clear_live_slot(tray);
+        let slot_present_from_exist_bits =
+            tray_exist_bits_slot_present(observed.ams_exist_bits.as_deref(), tray.tray_index);
+        let auto_clear_empty_signal =
+            should_auto_clear_live_slot(tray, slot_present_from_exist_bits);
         let auto_clear_unknown_replacement = slot
             .map(|configured_slot| {
                 should_auto_clear_live_unknown_replacement(tray, configured_slot)
@@ -368,6 +388,8 @@ fn auto_sync_live_slots(
                                 tray.last_identity_seen_at.clone()
                             },
                             "empty_observation_count": tray.empty_observation_count,
+                            "tray_exist_bits": observed.ams_exist_bits.as_deref(),
+                            "slot_present_from_exist_bits": slot_present_from_exist_bits,
                         }),
                     )?;
                 }
@@ -430,7 +452,13 @@ fn auto_sync_live_slots(
     Ok(())
 }
 
-pub(crate) fn should_auto_clear_live_slot(tray: &BambuLiveObservedTrayRow) -> bool {
+pub(crate) fn should_auto_clear_live_slot(
+    tray: &BambuLiveObservedTrayRow,
+    slot_present_from_exist_bits: Option<bool>,
+) -> bool {
+    if slot_present_from_exist_bits == Some(true) {
+        return false;
+    }
     !tray.loaded
         && tray.observed_rfid_tag.is_none()
         && tray.tray_uuid.is_none()
