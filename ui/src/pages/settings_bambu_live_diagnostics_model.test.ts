@@ -300,7 +300,7 @@ test("Bambu live summary builders keep display order and omit missing values", (
   }
   assert.deepEqual(
     buildSettingsBambuLiveObservedSummaryParts(indexedLiveConfig.observed_state ?? null, t),
-    ["42%", "18 min", "AMS 2 · Tray 0", "AMS humidity 3", "Job state 4", "AMS status 3/1"],
+    ["42%", "18 min", "AMS 2 · Slot 1", "AMS humidity 3", "Job state 4", "AMS status 3/1"],
   );
 
   const diagnosticSession = updateDiagnosticCaptureSessionFromPayload({
@@ -328,7 +328,7 @@ test("Bambu live summary builders keep display order and omit missing values", (
   });
   assert.deepEqual(
     buildSettingsBambuLiveFallbackSummaryParts(indexedTraySession?.fields ?? [], t),
-    ["AMS 2 · Tray 0"],
+    ["AMS 2 · Slot 1"],
   );
 
   const externalLiveConfig = createLiveConfig();

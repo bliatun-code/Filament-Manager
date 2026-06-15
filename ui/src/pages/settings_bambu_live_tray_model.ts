@@ -304,10 +304,10 @@ export function formatSettingsBambuLiveSummaryTrayIndexLabel(
     return t("settings.bambuLiveSummarySecondaryExternalTray", "Secondary external tray");
   }
   if (typeof amsIndex === "number") {
-    return `${t("settings.bambuLiveAmsLabel", "AMS")} ${amsIndex + 1} · ${t(
-      "settings.bambuLiveSummaryTray",
-      "Tray",
-    )} ${trayIndex}`;
+    return `${t("settings.bambuLiveAmsLabel", "AMS")} ${amsIndex + 1} · ${formatSettingsBambuLiveSlotIndexLabel(
+      trayIndex,
+      t,
+    )}`;
   }
   return `${t("settings.bambuLiveSummaryTray", "Tray")} ${trayIndex}`;
 }
