@@ -423,7 +423,7 @@ test("Bambu live signal quality buckets keep localized labels and descriptions",
   assert.deepEqual(
     buckets.map((bucket) => bucket.description),
     [
-      "RFID, preset, material and tray metadata observed from AMS.",
+      "RFID, filament settings, material and tray metadata observed from AMS.",
       "AMS read and sync status fields that tend to appear around events.",
       "Fields that look like normal status/telemetry updates during operation.",
     ],
@@ -633,7 +633,7 @@ test("Bambu live preset signal label prefers live state and falls back to captur
         tray_info_idx: "LIVE_PRESET",
       }),
     }),
-    "Filament preset: LIVE_PRESET · Live preset",
+    "Filament settings preset: LIVE_PRESET · Live preset",
   );
 
   assert.equal(
@@ -645,7 +645,7 @@ test("Bambu live preset signal label prefers live state and falls back to captur
         tray_info_idx: "GFSA00_04",
       }),
     }),
-    "Filament preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle",
+    "Filament settings preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle",
   );
 
   assert.equal(
@@ -657,7 +657,7 @@ test("Bambu live preset signal label prefers live state and falls back to captur
       t,
       tray: createObservedTray({ tray_id_name: null, tray_info_idx: null }),
     }),
-    "Filament preset: CAPTURE_PRESET · Capture preset",
+    "Filament settings preset: CAPTURE_PRESET · Capture preset",
   );
 
   assert.equal(
@@ -990,7 +990,7 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
   assert.equal(exactCard.observedRfidLabel, "Observed: ABC123");
   assert.equal(
     exactCard.presetSignalLabel,
-    "Filament preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle",
+    "Filament settings preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle",
   );
   assert.equal(exactCard.nozzleRangeLabel, "Nozzle range: 190-240 C");
   assert.equal(exactCard.hasReview, true);

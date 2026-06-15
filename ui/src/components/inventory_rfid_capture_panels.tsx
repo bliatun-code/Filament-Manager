@@ -287,7 +287,7 @@ export function InventoryRfidCaptureDiagnostics({
             value={lastSlotDataAt ? formatCaptureTimestamp(lastSlotDataAt, locale) : null}
           />
           <RfidDetailRow
-            label={t("inventory.rfidPresetSignal", "Filament preset signal")}
+            label={t("inventory.rfidPresetSignal", "Filament settings preset")}
             value={summary.trayInfoIdx}
             code
           />

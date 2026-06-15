@@ -207,7 +207,7 @@ export function buildSettingsBambuLiveSignalQualityBuckets(
         ...bucket,
         description: t(
           "settings.bambuLiveSignalStableDesc",
-          "RFID, preset, material and tray metadata observed from AMS.",
+          "RFID, filament settings, material and tray metadata observed from AMS.",
         ),
         label: t("settings.bambuLiveSignalStable", "Stable AMS metadata"),
       };

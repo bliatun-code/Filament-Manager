@@ -377,7 +377,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       rfidPrinterLive: "Printer live",
       rfidLastSeen: "Last seen",
       rfidLastSlotData: "Last slot data",
-      rfidPresetSignal: "Filament preset signal",
+      rfidPresetSignal: "Filament settings preset",
       rfidPresetName: "Preset/material name",
       rfidActiveSource: "Active source",
       rfidAmsReadDone: "AMS read done bits",
@@ -1187,7 +1187,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       visibleMissing: "Visible missing",
       bambuLiveSignalStable: "Stable AMS metadata",
       bambuLiveSignalStableDesc:
-        "RFID, preset, material and tray metadata observed from AMS.",
+        "RFID, filament settings, material and tray metadata observed from AMS.",
       bambuLiveStatus: "Connection status",
       bambuLiveConnected: "Connected",
       bambuLiveDisconnected: "Not connected",
@@ -1219,7 +1219,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveMatchNoteUnknownIdentity:
         "AMS reported a tray identity that is not registered in inventory.",
       bambuLiveMatchNotePresetSignal:
-        "Filament preset signal: {preset}. This is a material/preset hint, not a roll identity.",
+        "Filament settings preset: {preset}. This is a material/settings hint, not a roll identity.",
       bambuLiveMatchNoteConfiguredMismatch:
         "Last known tray identity does not map cleanly to the currently configured spool.",
       bambuLiveMatchNoteNoStoredMatch:
@@ -1278,7 +1278,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveSummaryJobState: "Job state",
       bambuLiveSummaryAmsStatus: "AMS status",
       bambuLiveMoreInventoryCandidates: "More matching rolls exist in inventory.",
-      bambuLivePresetSignal: "Filament preset",
+      bambuLivePresetSignal: "Filament settings preset",
       bambuLiveNozzleRange: "Nozzle range",
       bambuLiveSignalEventDriven: "Event-driven AMS signals",
       bambuLiveSignalEventDrivenDesc:
@@ -1747,7 +1747,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       rfidPrinterLive: "Printer live",
       rfidLastSeen: "Sist sett",
       rfidLastSlotData: "Siste spordata",
-      rfidPresetSignal: "Filamentprofil-signal",
+      rfidPresetSignal: "Filamentinnstillingsprofil",
       rfidPresetName: "Preset-/materialnavn",
       rfidActiveSource: "Aktiv kilde",
       rfidAmsReadDone: "AMS ferdiglest-biter",
@@ -2561,7 +2561,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       visibleMissing: "Synlige mangler",
       bambuLiveSignalStable: "Stabil AMS-metadata",
       bambuLiveSignalStableDesc:
-        "RFID-, preset-, materiale- og spormetadata observert fra AMS.",
+        "RFID, filamentinnstillinger, materiale og spormetadata observert fra AMS.",
       bambuLiveStatus: "Tilkoblingsstatus",
       bambuLiveConnected: "Tilkoblet",
       bambuLiveDisconnected: "Ikke tilkoblet",
@@ -2593,7 +2593,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveMatchNoteUnknownIdentity:
         "AMS rapporterte en sporidentitet som ikke er registrert i lageret.",
       bambuLiveMatchNotePresetSignal:
-        "Filamentprofil-signal: {preset}. Dette er et materiale-/profilhint, ikke en rullidentitet.",
+        "Filamentinnstillingsprofil: {preset}. Dette er et materiale-/innstillingshint, ikke en rullidentitet.",
       bambuLiveMatchNoteConfiguredMismatch:
         "Sist kjente sporidentitet passer ikke tydelig med filamentet som er konfigurert i dette sporet.",
       bambuLiveMatchNoteNoStoredMatch:
@@ -2651,7 +2651,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveSummaryJobState: "Jobbstatus",
       bambuLiveSummaryAmsStatus: "AMS-status",
       bambuLiveMoreInventoryCandidates: "Det finnes flere matchende ruller i lageret.",
-      bambuLivePresetSignal: "Filamentprofil",
+      bambuLivePresetSignal: "Filamentinnstillingsprofil",
       bambuLiveNozzleRange: "Nozzle-område",
       bambuLiveSignalEventDriven: "Hendelsesstyrte AMS-signaler",
       bambuLiveSignalEventDrivenDesc:

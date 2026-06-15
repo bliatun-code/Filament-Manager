@@ -422,7 +422,7 @@ export function buildDiagnosticSignalQualityBuckets(
   return [
     {
       label: "Stable AMS metadata",
-      description: "RFID, preset, material and tray metadata observed from AMS.",
+      description: "RFID, filament settings, material and tray metadata observed from AMS.",
       fields: stableMetadata,
     },
     {

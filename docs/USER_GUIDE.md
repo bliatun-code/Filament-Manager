@@ -406,7 +406,7 @@ When active, the app can observe:
 - AMS slot loaded or empty state
 - material, color, and vendor data reported by the printer
 - RFID/tray identity when available
-- filament preset and filament-setting hints such as `tray_info_idx`, `tray_id_name`, and recommended nozzle range when the printer sends them
+- Bambu/Studio filament settings profile hints such as `tray_info_idx`, `tray_id_name`, and recommended nozzle range when the printer sends them
 - estimated remaining AMS weight
 - printer job state and AMS status codes when they appear in the MQTT stream
 - subtask/job id and name when the printer sends it
@@ -414,9 +414,9 @@ When active, the app can observe:
 - nozzle temperature
 - raw MQTT data for diagnostics/capture
 
-Filament preset data is not the same as RFID. `tray_info_idx` and `tray_id_name` point to a Bambu/Studio material profile or preset, not a physical spool. The app shows this for diagnostics and can treat it as a weak material hint, but it should not replace saved RFID on the spool.
+Bambu/Studio filament settings data is not the same as RFID. `tray_info_idx` and `tray_id_name` point to print settings for a material/profile, not a physical spool or a complete product catalog entry. The app shows this for diagnostics and can treat it as a weak material hint, but it should not replace saved RFID on the spool.
 
-Recommended nozzle range from a preset is also diagnostic data. It describes the filament profile's temperature window, while live nozzle temperature describes what the printer is actually doing right now.
+Recommended nozzle range from a settings profile is also diagnostic data. It describes the profile's temperature window, while live nozzle temperature describes what the printer is actually doing right now.
 
 `job_state` and `ams_status` are shown as diagnostic codes. They can help explain the printer's internal state, but they are not used by themselves to count jobs or record usage. Automatic usage still depends on a combination of job identity, `gcode_state`, progress, nozzle temperature, active AMS slot, and sane AMS weight changes.
 

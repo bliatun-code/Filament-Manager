@@ -161,7 +161,7 @@ export function translateObservedMatchNote(
     const presetSignal = presetSignalMatch[2].trim();
     const presetTranslation = t(
       "settings.bambuLiveMatchNotePresetSignal",
-      "Filament preset signal: {preset}. This is a material/preset hint, not a roll identity.",
+      "Filament settings preset: {preset}. This is a material/settings hint, not a roll identity.",
     ).replace("{preset}", presetSignal);
     return [baseTranslation, presetTranslation].filter(Boolean).join(" ");
   }
