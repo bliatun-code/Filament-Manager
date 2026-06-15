@@ -1579,9 +1579,62 @@ fn live_name_matches(left: Option<&str>, right: Option<&str>) -> bool {
     let Some(right) = right.map(str::trim).filter(|value| !value.is_empty()) else {
         return false;
     };
-    let left = left.to_ascii_lowercase();
-    let right = right.to_ascii_lowercase();
-    left == right || left.contains(&right) || right.contains(&left)
+    let left_tokens = live_name_tokens(left);
+    let right_tokens = live_name_tokens(right);
+    if left_tokens.is_empty() || right_tokens.is_empty() {
+        return false;
+    }
+    if left_tokens == right_tokens {
+        return live_name_has_distinctive_token(&left_tokens);
+    }
+    (live_name_has_distinctive_token(&left_tokens)
+        && live_name_tokens_contain_sequence(&right_tokens, &left_tokens))
+        || (live_name_has_distinctive_token(&right_tokens)
+            && live_name_tokens_contain_sequence(&left_tokens, &right_tokens))
+}
+
+fn live_name_tokens(value: &str) -> Vec<String> {
+    value
+        .split(|character: char| !(character.is_ascii_alphanumeric() || character == '+'))
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_ascii_lowercase())
+        .collect()
+}
+
+fn live_name_has_distinctive_token(tokens: &[String]) -> bool {
+    tokens.iter().any(|token| {
+        let compact = token.trim_matches('+');
+        compact.len() >= 2 && !live_name_token_is_material(compact)
+    })
+}
+
+fn live_name_token_is_material(token: &str) -> bool {
+    matches!(
+        token,
+        "pla"
+            | "petg"
+            | "abs"
+            | "asa"
+            | "tpu"
+            | "pc"
+            | "pa"
+            | "cpe"
+            | "hips"
+            | "pva"
+            | "pet"
+            | "pp"
+            | "pom"
+            | "support"
+    )
+}
+
+fn live_name_tokens_contain_sequence(haystack: &[String], needle: &[String]) -> bool {
+    !needle.is_empty()
+        && haystack.len() >= needle.len()
+        && haystack
+            .windows(needle.len())
+            .any(|window| window == needle)
 }
 
 fn live_color_matches_swatch(observed: Option<&str>, candidate: Option<&str>) -> bool {

@@ -326,6 +326,53 @@ fn apply_tray_match_status_matches_configured_short_bambu_series_name() {
 }
 
 #[test]
+fn apply_tray_match_status_ignores_generic_material_as_configured_name_match() {
+    let mut slot = make_slot();
+    slot.spool_filament_name = Some("PLA Basic".to_string());
+    slot.spool_hex_color = Some("#FF0000".to_string());
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        tray_uuid: None,
+        observed_rfid_tag: None,
+        filament_name: Some("PLA".to_string()),
+        color_hex: Some("#00FF00".to_string()),
+        ..make_tray()
+    };
+
+    apply_tray_match_status(&mut tray, &overview, &[]);
+
+    assert_eq!(tray.match_status.as_deref(), Some("no_clear_match"));
+    assert_eq!(tray.matched_inventory_mode.as_deref(), None);
+    assert_eq!(tray.matched_inventory_spool_id.as_deref(), None);
+}
+
+#[test]
+fn apply_tray_match_status_keeps_short_distinctive_configured_name_match() {
+    let mut slot = make_slot();
+    slot.spool_material = Some("PETG".to_string());
+    slot.spool_filament_name = Some("PETG HF".to_string());
+    slot.spool_hex_color = Some("#FF0000".to_string());
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        tray_uuid: None,
+        observed_rfid_tag: None,
+        filament_type: Some("PETG".to_string()),
+        filament_name: Some("HF".to_string()),
+        color_hex: Some("#00FF00".to_string()),
+        ..make_tray()
+    };
+
+    apply_tray_match_status(&mut tray, &overview, &[]);
+
+    assert_eq!(tray.match_status.as_deref(), Some("clear_match"));
+    assert_eq!(
+        tray.matched_inventory_mode.as_deref(),
+        Some("configured_metadata")
+    );
+    assert_eq!(tray.matched_inventory_spool_id.as_deref(), Some("spool_1"));
+}
+
+#[test]
 fn apply_tray_match_status_matches_inventory_composite_swatch_candidate() {
     let mut slot = make_slot();
     slot.spool_id = None;
@@ -385,6 +432,32 @@ fn apply_tray_match_status_matches_inventory_short_bambu_series_name() {
         tray.matched_inventory_spool_id.as_deref(),
         Some("spool_basic")
     );
+}
+
+#[test]
+fn apply_tray_match_status_ignores_generic_material_as_inventory_name_match() {
+    let mut slot = make_slot();
+    slot.spool_id = None;
+    slot.spool_material = None;
+    slot.spool_filament_name = None;
+    slot.spool_hex_color = None;
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        tray_uuid: None,
+        observed_rfid_tag: None,
+        filament_name: Some("PLA".to_string()),
+        color_hex: Some("#00FF00".to_string()),
+        ..make_tray()
+    };
+    let mut candidate = make_inventory_spool("spool_basic", None);
+    candidate.master.filament_name = "PLA Basic".to_string();
+    candidate.master.hex_color = Some("#FF0000".to_string());
+
+    apply_tray_match_status(&mut tray, &overview, &[candidate]);
+
+    assert_eq!(tray.match_status.as_deref(), Some("no_clear_match"));
+    assert_eq!(tray.matched_inventory_mode.as_deref(), None);
+    assert_eq!(tray.matched_inventory_spool_id.as_deref(), None);
 }
 
 #[test]
