@@ -24,7 +24,7 @@ type BuildSettingsBambuLiveDiagnosticTrayCardInput = {
 
 type BuildSettingsBambuLiveDiagnosticTrayCardsInput = {
   amsReadInProgress: boolean;
-  captureTrayByIndex: Map<string, DiagnosticTraySnapshot>;
+  captureTrayByKey: Map<string, DiagnosticTraySnapshot>;
   displayTrays: BambuLiveObservedTray[];
   spoolRows: SpoolWithMasterRow[];
   t: TranslateFn;
@@ -339,10 +339,10 @@ export function buildSettingsBambuLiveTrayLabels({
 }
 
 export function resolveSettingsBambuLiveCapturedTraySnapshot({
-  captureTrayByIndex,
+  captureTrayByKey,
   tray,
 }: {
-  captureTrayByIndex: Map<string, DiagnosticTraySnapshot>;
+  captureTrayByKey: Map<string, DiagnosticTraySnapshot>;
   tray: BambuLiveObservedTray;
 }): DiagnosticTraySnapshot | null {
   const exactKey = diagnosticTraySnapshotKey(tray.ams_index, tray.tray_index);
@@ -358,12 +358,12 @@ export function resolveSettingsBambuLiveCapturedTraySnapshot({
   const legacyPreviousKey =
     tray.tray_index > 0 ? diagnosticTraySnapshotKey(null, tray.tray_index - 1) : null;
   return (
-    captureTrayByIndex.get(exactKey) ??
-    (sameAmsPreviousKey ? captureTrayByIndex.get(sameAmsPreviousKey) : null) ??
-    (firstAmsKey ? captureTrayByIndex.get(firstAmsKey) : null) ??
-    (firstAmsPreviousKey ? captureTrayByIndex.get(firstAmsPreviousKey) : null) ??
-    captureTrayByIndex.get(legacyKey) ??
-    (legacyPreviousKey ? captureTrayByIndex.get(legacyPreviousKey) : null) ??
+    captureTrayByKey.get(exactKey) ??
+    (sameAmsPreviousKey ? captureTrayByKey.get(sameAmsPreviousKey) : null) ??
+    (firstAmsKey ? captureTrayByKey.get(firstAmsKey) : null) ??
+    (firstAmsPreviousKey ? captureTrayByKey.get(firstAmsPreviousKey) : null) ??
+    captureTrayByKey.get(legacyKey) ??
+    (legacyPreviousKey ? captureTrayByKey.get(legacyPreviousKey) : null) ??
     null
   );
 }
@@ -445,14 +445,14 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
 
 export function buildSettingsBambuLiveDiagnosticTrayCards({
   amsReadInProgress,
-  captureTrayByIndex,
+  captureTrayByKey,
   displayTrays,
   spoolRows,
   t,
 }: BuildSettingsBambuLiveDiagnosticTrayCardsInput) {
   return displayTrays.map((tray) => {
     const capturedTraySnapshot = resolveSettingsBambuLiveCapturedTraySnapshot({
-      captureTrayByIndex,
+      captureTrayByKey,
       tray,
     });
     return buildSettingsBambuLiveDiagnosticTrayCard({

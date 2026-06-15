@@ -891,14 +891,14 @@ test("Bambu live tray labels keep stable ids and optional RFID text", () => {
 test("Bambu live captured tray snapshot prefers exact index before legacy fallback", () => {
   const exactSnapshot = createDiagnosticTraySnapshot({ trayIndex: 1, trayUuid: "EXACT" });
   const fallbackSnapshot = createDiagnosticTraySnapshot({ trayIndex: 0, trayUuid: "FALLBACK" });
-  const captureTrayByIndex = new Map([
+  const captureTrayByKey = new Map([
     [diagnosticTraySnapshotKey(null, 0), fallbackSnapshot],
     [diagnosticTraySnapshotKey(null, 1), exactSnapshot],
   ]);
 
   assert.equal(
     resolveSettingsBambuLiveCapturedTraySnapshot({
-      captureTrayByIndex,
+      captureTrayByKey,
       tray: createObservedTray({ tray_index: 1 }),
     }),
     exactSnapshot,
@@ -906,7 +906,7 @@ test("Bambu live captured tray snapshot prefers exact index before legacy fallba
 
   assert.equal(
     resolveSettingsBambuLiveCapturedTraySnapshot({
-      captureTrayByIndex: new Map([[diagnosticTraySnapshotKey(null, 0), fallbackSnapshot]]),
+      captureTrayByKey: new Map([[diagnosticTraySnapshotKey(null, 0), fallbackSnapshot]]),
       tray: createObservedTray({ tray_index: 1 }),
     }),
     fallbackSnapshot,
@@ -914,7 +914,7 @@ test("Bambu live captured tray snapshot prefers exact index before legacy fallba
 
   assert.equal(
     resolveSettingsBambuLiveCapturedTraySnapshot({
-      captureTrayByIndex: new Map(),
+      captureTrayByKey: new Map(),
       tray: createObservedTray({ tray_index: 0 }),
     }),
     null,
@@ -940,7 +940,7 @@ test("Bambu live captured tray snapshot prefers exact AMS coordinates over same 
 
   assert.equal(
     resolveSettingsBambuLiveCapturedTraySnapshot({
-      captureTrayByIndex: new Map([
+      captureTrayByKey: new Map([
         [diagnosticTraySnapshotKey(null, 0), legacySnapshot],
         [diagnosticTraySnapshotKey(0, 0), ams1Snapshot],
         [diagnosticTraySnapshotKey(1, 0), ams2Snapshot],
@@ -952,7 +952,7 @@ test("Bambu live captured tray snapshot prefers exact AMS coordinates over same 
 
   assert.equal(
     resolveSettingsBambuLiveCapturedTraySnapshot({
-      captureTrayByIndex: new Map([
+      captureTrayByKey: new Map([
         [diagnosticTraySnapshotKey(null, 0), legacySnapshot],
         [diagnosticTraySnapshotKey(0, 0), ams1Snapshot],
       ]),
@@ -1023,7 +1023,7 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
 test("Bambu live diagnostic tray cards resolve snapshots per display tray", () => {
   const trayCards = buildSettingsBambuLiveDiagnosticTrayCards({
     amsReadInProgress: false,
-    captureTrayByIndex: new Map([
+    captureTrayByKey: new Map([
       [
         diagnosticTraySnapshotKey(null, 0),
         createDiagnosticTraySnapshot({ trayIndex: 0, trayUuid: "ABC123" }),

@@ -288,7 +288,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
     selectedDiagnosticChartField,
   );
   const captureTraySnapshots = extractDiagnosticTraySnapshots(diagnosticFields);
-  const captureTrayByIndex = new Map(
+  const captureTrayByKey = new Map(
     captureTraySnapshots.map((tray) => [
       diagnosticTraySnapshotKey(tray.amsIndex, tray.trayIndex),
       tray,
@@ -325,7 +325,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
   });
   const diagnosticTrayCards = buildSettingsBambuLiveDiagnosticTrayCards({
     amsReadInProgress,
-    captureTrayByIndex,
+    captureTrayByKey,
     displayTrays,
     spoolRows,
     t,
