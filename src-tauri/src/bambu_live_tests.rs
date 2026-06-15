@@ -62,6 +62,7 @@ fn make_slot() -> PrinterAmsSlotRow {
         live_is_active: None,
         live_printer_last_seen_at: None,
         live_mqtt_connected: None,
+        live_ams_exist_bits: None,
         live_ams_read_done_bits: None,
         live_ams_bambu_bits: None,
     }
@@ -565,6 +566,48 @@ fn merge_print_payload_accepts_passive_job_state_without_starting_print() {
     assert_eq!(state.job_state_code, Some(2));
     assert!(super::has_live_observation(&state));
     assert!(!is_live_print_running(&state));
+}
+
+#[test]
+fn merge_print_payload_captures_ams_exist_bits_as_passive_slot_presence() {
+    let mut state = super::default_offline_state();
+    state.last_seen_at = Some("2026-06-06T04:50:45Z".to_string());
+    let payload = serde_json::json!({
+        "print": {
+            "ams": {
+                "tray_exist_bits": "1011"
+            },
+            "sequence_id": "1031"
+        }
+    });
+
+    assert!(super::merge_print_payload(&mut state, &payload));
+
+    assert_eq!(state.ams_exist_bits.as_deref(), Some("1011"));
+    assert!(super::has_live_observation(&state));
+    assert!(!is_live_print_running(&state));
+    let raw = state
+        .raw_payload_json
+        .as_ref()
+        .expect("merged raw payload should be stored");
+    assert_eq!(
+        raw.pointer("/_bfm_observed_fields/ams_exist_bits_at")
+            .and_then(Value::as_str),
+        Some("2026-06-06T04:50:45Z")
+    );
+    assert_eq!(
+        raw.pointer("/_bfm_last_message/has_ams_exist_bits")
+            .and_then(Value::as_bool),
+        Some(true)
+    );
+
+    let progress_payload = serde_json::json!({
+        "print": {
+            "mc_percent": 12
+        }
+    });
+    assert!(super::merge_print_payload(&mut state, &progress_payload));
+    assert_eq!(state.ams_exist_bits.as_deref(), Some("1011"));
 }
 
 #[test]

@@ -78,6 +78,7 @@ export function summarizeRfidCapture(fields: RfidCaptureField[], slotIndex: numb
     colorHex: normalizeCapturedHexColor(trayValue("tray_color")),
     trayWeightG: trayValue("tray_weight"),
     trayColorRaw: trayValue("tray_color"),
+    trayExistBits: fieldMap.get("ams.tray_exist_bits")?.trim() || null,
     trayReadDoneBits: fieldMap.get("ams.tray_read_done_bits")?.trim() || null,
     trayIsBblBits: fieldMap.get("ams.tray_is_bbl_bits")?.trim() || null,
     amsRfidStatus: fieldMap.get("ams_rfid_status")?.trim() || null,

@@ -49,6 +49,7 @@ export function buildObservedTrayCaptureSnapshot(
     pushCaptureField(fields, observedAt, path, label, valueText);
 
   pushField("ams.ams[0].chip_id", "ams.ams[0].chip_id", tray.chip_id);
+  pushField("ams.tray_exist_bits", "ams.tray_exist_bits", observedState.ams_exist_bits);
   pushField("ams.tray_read_done_bits", "ams.tray_read_done_bits", observedState.ams_read_done_bits);
   pushField("ams.tray_is_bbl_bits", "ams.tray_is_bbl_bits", observedState.ams_bambu_bits);
 
@@ -78,6 +79,7 @@ export function buildObservedTrayCaptureSnapshotFromHostSlot(
     pushCaptureField(fields, observedAt, path, label, valueText);
 
   pushField("ams.ams[0].chip_id", "ams.ams[0].chip_id", slot.liveChipId);
+  pushField("ams.tray_exist_bits", "ams.tray_exist_bits", slot.liveAmsExistBits);
   pushField("ams.tray_read_done_bits", "ams.tray_read_done_bits", slot.liveAmsReadDoneBits);
   pushField("ams.tray_is_bbl_bits", "ams.tray_is_bbl_bits", slot.liveAmsBambuBits);
 
@@ -108,6 +110,7 @@ export function hasHostRfidCaptureData(slot: RfidCaptureHostSlotLike | null | un
       slot.liveFilamentType?.trim() ||
       slot.liveFilamentName?.trim() ||
       slot.liveColorHex?.trim() ||
+      slot.liveAmsExistBits?.trim() ||
       slot.liveLastIdentitySeenAt?.trim() ||
       slot.livePrinterLastSeenAt?.trim() ||
       slot.liveLoaded != null,

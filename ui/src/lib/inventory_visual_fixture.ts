@@ -199,6 +199,7 @@ export function buildInventoryDetailVisualFixture(
           live_last_identity_seen_at: observedAt,
           live_printer_last_seen_at: observedAt,
           live_mqtt_connected: true,
+          live_ams_exist_bits: "0010",
           live_ams_read_done_bits: "0010",
           live_ams_bambu_bits: "0010",
         },
@@ -265,6 +266,7 @@ export function buildInventoryDetailVisualFixture(
           active_tray_index: 1,
           progress_percent: 38,
           remaining_minutes: 47,
+          ams_exist_bits: "0010",
           ams_read_done_bits: "0010",
           ams_bambu_bits: "0010",
           trays: [

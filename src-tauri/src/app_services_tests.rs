@@ -658,6 +658,7 @@ fn companion_service_list_printer_overview_exposes_live_slot_snapshot() {
                     ams_humidity_index: None,
                     ams_temperature_c: None,
                     ams_reading_bits: None,
+                    ams_exist_bits: None,
                     ams_read_done_bits: None,
                     ams_bambu_bits: None,
                     ams_status_code: None,
@@ -770,6 +771,7 @@ fn companion_service_list_printer_overview_maps_bambu_external_live_tray() {
                     ams_humidity_index: None,
                     ams_temperature_c: None,
                     ams_reading_bits: None,
+                    ams_exist_bits: Some("0010".to_string()),
                     ams_read_done_bits: None,
                     ams_bambu_bits: None,
                     ams_status_code: None,
@@ -821,6 +823,7 @@ fn companion_service_list_printer_overview_maps_bambu_external_live_tray() {
         assert_eq!(slot.live_filament_name.as_deref(), Some("External spool"));
         assert_eq!(slot.live_color_hex.as_deref(), Some("#2255AA"));
         assert_eq!(slot.live_tray_info_idx.as_deref(), Some("EXTERNAL_PRESET"));
+        assert_eq!(slot.live_ams_exist_bits.as_deref(), Some("0010"));
         assert_eq!(
             slot.live_tray_id_name.as_deref(),
             Some("Bambu PLA Basic @BBL P1S 0.4 nozzle")

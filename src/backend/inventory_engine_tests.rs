@@ -563,6 +563,7 @@ fn assign_printer_slot_derives_unknown_live_rfid_override_on_host() {
                         ams_humidity_index: None,
                         ams_temperature_c: None,
                         ams_reading_bits: None,
+                        ams_exist_bits: None,
                         ams_read_done_bits: None,
                         ams_bambu_bits: None,
                         ams_status_code: None,

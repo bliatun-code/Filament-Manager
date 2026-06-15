@@ -56,6 +56,7 @@ pub struct PrinterAmsSlotRow {
     pub live_is_active: Option<bool>,
     pub live_printer_last_seen_at: Option<String>,
     pub live_mqtt_connected: Option<bool>,
+    pub live_ams_exist_bits: Option<String>,
     pub live_ams_read_done_bits: Option<String>,
     pub live_ams_bambu_bits: Option<String>,
 }
@@ -112,6 +113,7 @@ pub struct BambuLiveObservedStateRow {
     pub ams_humidity_index: Option<i64>,
     pub ams_temperature_c: Option<f64>,
     pub ams_reading_bits: Option<String>,
+    pub ams_exist_bits: Option<String>,
     pub ams_read_done_bits: Option<String>,
     pub ams_bambu_bits: Option<String>,
     pub ams_status_code: Option<i64>,

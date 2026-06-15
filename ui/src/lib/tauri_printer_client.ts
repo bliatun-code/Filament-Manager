@@ -52,6 +52,7 @@ export type PrinterAmsSlotRow = {
   live_is_active?: boolean | null;
   live_printer_last_seen_at?: string | null;
   live_mqtt_connected?: boolean | null;
+  live_ams_exist_bits?: string | null;
   live_ams_read_done_bits?: string | null;
   live_ams_bambu_bits?: string | null;
 };
@@ -105,6 +106,7 @@ export type BambuLiveObservedState = {
   ams_humidity_index?: number | null;
   ams_temperature_c?: number | null;
   ams_reading_bits?: string | null;
+  ams_exist_bits?: string | null;
   ams_read_done_bits?: string | null;
   ams_bambu_bits?: string | null;
   ams_status_code?: number | null;

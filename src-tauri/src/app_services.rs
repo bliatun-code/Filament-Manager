@@ -367,6 +367,7 @@ fn apply_live_tray_to_slot(
     slot.live_matched_inventory_mode = tray.and_then(|value| value.matched_inventory_mode.clone());
     slot.live_printer_last_seen_at = observed_state.and_then(|state| state.last_seen_at.clone());
     slot.live_mqtt_connected = observed_state.map(|state| state.mqtt_connected);
+    slot.live_ams_exist_bits = observed_state.and_then(|state| state.ams_exist_bits.clone());
     slot.live_ams_read_done_bits =
         observed_state.and_then(|state| state.ams_read_done_bits.clone());
     slot.live_ams_bambu_bits = observed_state.and_then(|state| state.ams_bambu_bits.clone());

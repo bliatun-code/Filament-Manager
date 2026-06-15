@@ -61,6 +61,7 @@ function createSlot(
     liveRemainingPercent: null,
     liveLastIdentitySeenAt: null,
     livePrinterLastSeenAt: null,
+    liveAmsExistBits: null,
     liveAmsReadDoneBits: null,
     liveAmsBambuBits: null,
     ...overrides,
@@ -241,6 +242,7 @@ test("RFID capture snapshot and slot summaries merge live and cached identity fi
       online: true,
       mqtt_connected: true,
       last_seen_at: "2026-05-15T12:00:00.000Z",
+      ams_exist_bits: "1",
       ams_read_done_bits: "1",
       ams_bambu_bits: "1",
       trays: [
@@ -266,6 +268,10 @@ test("RFID capture snapshot and slot summaries merge live and cached identity fi
     liveIntegration: integration,
   });
   assert.equal(snapshot?.observedAt, "2026-05-15T12:00:00.000Z");
+  assert.equal(
+    snapshot?.fields.find((field) => field.path === "ams.tray_exist_bits")?.valueText,
+    "1",
+  );
 
   const summaries = buildRfidCaptureSlotSummaries([slot], {
     clientReadOnly: false,
@@ -278,4 +284,26 @@ test("RFID capture snapshot and slot summaries merge live and cached identity fi
   assert.equal(summaries["slot-1"].trayIdName, "Bambu PLA Basic @BBL P1S 0.4 nozzle");
   assert.equal(summaries["slot-1"].material, "PLA");
   assert.equal(summaries["slot-1"].colorHex, "#2563EB");
+  assert.equal(summaries["slot-1"].trayExistBits, "1");
+});
+
+test("host RFID capture treats AMS slot presence bits as useful diagnostic data", () => {
+  const slot = createSlot({
+    liveAmsExistBits: "0100",
+    livePrinterLastSeenAt: "2026-06-06T04:50:45.000Z",
+  });
+
+  const slots = filterRfidCaptureSlots([slot], {
+    clientReadOnly: true,
+    liveIntegrations: {},
+  });
+  const snapshot = buildSelectedRfidCaptureSnapshot(slot, {
+    clientReadOnly: true,
+  });
+
+  assert.equal(slots.length, 1);
+  assert.equal(
+    snapshot?.fields.find((field) => field.path === "ams.tray_exist_bits")?.valueText,
+    "0100",
+  );
 });

@@ -51,6 +51,7 @@ export function useInventoryPrinterSlots(
           liveLastIdentitySeenAt: slot.live_last_identity_seen_at ?? null,
           livePrinterLastSeenAt: slot.live_printer_last_seen_at ?? null,
           liveMqttConnected: slot.live_mqtt_connected ?? null,
+          liveAmsExistBits: slot.live_ams_exist_bits ?? null,
           liveAmsReadDoneBits: slot.live_ams_read_done_bits ?? null,
           liveAmsBambuBits: slot.live_ams_bambu_bits ?? null,
         });

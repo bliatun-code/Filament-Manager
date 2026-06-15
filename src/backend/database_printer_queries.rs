@@ -171,6 +171,7 @@ pub(crate) fn list_printer_overview(conn: &Connection) -> InventoryResult<Vec<Pr
                 live_is_active: None,
                 live_printer_last_seen_at: None,
                 live_mqtt_connected: None,
+                live_ams_exist_bits: None,
                 live_ams_read_done_bits: None,
                 live_ams_bambu_bits: None,
             })

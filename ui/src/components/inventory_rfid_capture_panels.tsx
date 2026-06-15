@@ -301,6 +301,11 @@ export function InventoryRfidCaptureDiagnostics({
             value={slotLabel}
           />
           <RfidDetailRow
+            label={t("inventory.rfidAmsExistBits", "AMS slot present bits")}
+            value={summary.trayExistBits}
+            mono
+          />
+          <RfidDetailRow
             label={t("inventory.rfidAmsReadDone", "AMS read done bits")}
             value={summary.trayReadDoneBits}
             mono

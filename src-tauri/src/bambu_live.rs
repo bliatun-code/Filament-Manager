@@ -160,6 +160,7 @@ fn default_offline_state() -> BambuLiveObservedStateRow {
         ams_humidity_index: None,
         ams_temperature_c: None,
         ams_reading_bits: None,
+        ams_exist_bits: None,
         ams_read_done_bits: None,
         ams_bambu_bits: None,
         ams_status_code: None,
@@ -202,6 +203,9 @@ fn merge_idle_observation(
     next.ams_reading_bits = next
         .ams_reading_bits
         .or_else(|| previous.ams_reading_bits.clone());
+    next.ams_exist_bits = next
+        .ams_exist_bits
+        .or_else(|| previous.ams_exist_bits.clone());
     next.ams_read_done_bits = next
         .ams_read_done_bits
         .or_else(|| previous.ams_read_done_bits.clone());
@@ -600,6 +604,7 @@ fn has_live_observation(state: &BambuLiveObservedStateRow) -> bool {
         || state.bed_temp_c.is_some()
         || state.active_tray_index.is_some()
         || state.ams_reading_bits.is_some()
+        || state.ams_exist_bits.is_some()
         || state.ams_read_done_bits.is_some()
         || state.ams_bambu_bits.is_some()
         || state.ams_status_code.is_some()
@@ -640,7 +645,8 @@ fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) -
         || print.get("nozzle_temper").is_some()
         || print.get("bed_temper").is_some()
         || job_state_signal.is_some()
-        || ams_status_signal.is_some();
+        || ams_status_signal.is_some()
+        || print.pointer("/ams/tray_exist_bits").is_some();
     if !has_supported_live_fields {
         return false;
     }
@@ -677,9 +683,14 @@ fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) -
     state.ams_humidity_index =
         as_i64(print.pointer("/ams/ams/0/humidity")).or(state.ams_humidity_index);
     state.ams_temperature_c = as_f64(print.pointer("/ams/ams/0/temp")).or(state.ams_temperature_c);
-    state.ams_reading_bits = as_string(print.pointer("/ams/tray_reading_bits"));
-    state.ams_read_done_bits = as_string(print.pointer("/ams/tray_read_done_bits"));
-    state.ams_bambu_bits = as_string(print.pointer("/ams/tray_is_bbl_bits"));
+    state.ams_reading_bits = as_string(print.pointer("/ams/tray_reading_bits"))
+        .or_else(|| state.ams_reading_bits.clone());
+    state.ams_exist_bits =
+        as_string(print.pointer("/ams/tray_exist_bits")).or_else(|| state.ams_exist_bits.clone());
+    state.ams_read_done_bits = as_string(print.pointer("/ams/tray_read_done_bits"))
+        .or_else(|| state.ams_read_done_bits.clone());
+    state.ams_bambu_bits =
+        as_string(print.pointer("/ams/tray_is_bbl_bits")).or_else(|| state.ams_bambu_bits.clone());
     if let Some(status_code) = as_i64(ams_status_signal) {
         state.ams_status_code = Some(status_code);
         if let Some((status_main, status_sub)) = split_ams_status_code(status_code) {
@@ -824,6 +835,12 @@ fn merge_raw_payload_snapshot(
             );
             record_observed_field_time(
                 fields,
+                "ams_exist_bits_at",
+                print.pointer("/ams/tray_exist_bits"),
+                state.last_seen_at.as_deref(),
+            );
+            record_observed_field_time(
+                fields,
                 "ams_status_at",
                 ams_status_signal,
                 state.last_seen_at.as_deref(),
@@ -858,6 +875,7 @@ fn merge_raw_payload_snapshot(
                 "has_job_identity": state.subtask_id.is_some(),
                 "has_job_state": job_state_signal.is_some(),
                 "has_ams_status": ams_status_signal.is_some(),
+                "has_ams_exist_bits": print.pointer("/ams/tray_exist_bits").is_some(),
                 "has_nozzle_temp": print.get("nozzle_temper").is_some(),
                 "has_progress": print.get("mc_percent").is_some(),
                 "has_remaining_time": print.get("mc_remaining_time").is_some(),

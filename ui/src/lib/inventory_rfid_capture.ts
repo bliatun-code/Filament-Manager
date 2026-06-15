@@ -50,6 +50,7 @@ export type RfidCaptureSummary = {
   colorHex?: string | null;
   trayWeightG?: string | null;
   trayColorRaw?: string | null;
+  trayExistBits?: string | null;
   trayReadDoneBits?: string | null;
   trayIsBblBits?: string | null;
   amsRfidStatus?: string | null;
@@ -83,6 +84,7 @@ export type RfidCaptureHostSlotLike = {
   liveRemainingPercent?: number | null;
   liveLastIdentitySeenAt?: string | null;
   livePrinterLastSeenAt?: string | null;
+  liveAmsExistBits?: string | null;
   liveAmsReadDoneBits?: string | null;
   liveAmsBambuBits?: string | null;
 };
