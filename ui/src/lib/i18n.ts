@@ -1269,6 +1269,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveSummaryAmsHumidity: "AMS humidity",
       bambuLiveMoreInventoryCandidates: "More matching rolls exist in inventory.",
       bambuLivePresetSignal: "AMS preset",
+      bambuLiveNozzleRange: "Nozzle range",
       bambuLiveSignalEventDriven: "Event-driven AMS signals",
       bambuLiveSignalEventDrivenDesc:
         "AMS read and sync status fields that tend to appear around events.",
@@ -2631,6 +2632,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveSummaryAmsHumidity: "AMS-fuktighet",
       bambuLiveMoreInventoryCandidates: "Det finnes flere matchende ruller i lageret.",
       bambuLivePresetSignal: "AMS-preset",
+      bambuLiveNozzleRange: "Nozzle-område",
       bambuLiveSignalEventDriven: "Hendelsesstyrte AMS-signaler",
       bambuLiveSignalEventDrivenDesc:
         "AMS-lese- og synkstatusfelt som ofte dukker opp rundt hendelser.",

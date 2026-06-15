@@ -12,6 +12,14 @@ export function normalizeDiagnosticHexColor(value: string | null): string | null
   return null;
 }
 
+function parseDiagnosticNumber(value: string | null): number | null {
+  if (value == null) {
+    return null;
+  }
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function extractDiagnosticTraySnapshots(
   fields: DiagnosticCaptureField[],
 ): DiagnosticTraySnapshot[] {
@@ -64,6 +72,8 @@ export function extractDiagnosticTraySnapshots(
       trayUuid: fieldFor("tray_uuid")?.valueText ?? null,
       trayInfoIdx: fieldFor("tray_info_idx")?.valueText ?? null,
       trayIdName: fieldFor("tray_id_name")?.valueText ?? null,
+      nozzleTempMinC: parseDiagnosticNumber(fieldFor("nozzle_temp_min")?.valueText ?? null),
+      nozzleTempMaxC: parseDiagnosticNumber(fieldFor("nozzle_temp_max")?.valueText ?? null),
       lastSeenAt,
     };
   });

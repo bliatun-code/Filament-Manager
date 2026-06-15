@@ -59,6 +59,8 @@ export type DiagnosticTraySnapshot = {
   trayUuid?: string | null;
   trayInfoIdx?: string | null;
   trayIdName?: string | null;
+  nozzleTempMinC?: number | null;
+  nozzleTempMaxC?: number | null;
   lastSeenAt?: string | null;
 };
 
@@ -390,7 +392,7 @@ export function buildDiagnosticSignalQualityBuckets(
   const stableMetadata = fields.filter((field) => {
     const path = field.path.toLowerCase();
     return (
-      /(tag_uid|tray_uuid|chip_id|tray_info_idx|tray_id_name|tray_sub_brands|tray_type|tray_color)/.test(
+      /(tag_uid|tray_uuid|chip_id|tray_info_idx|tray_id_name|tray_sub_brands|tray_type|tray_color|nozzle_temp_min|nozzle_temp_max)/.test(
         path,
       ) &&
       field.changeCount <= 2

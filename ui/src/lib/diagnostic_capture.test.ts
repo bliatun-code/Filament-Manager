@@ -7,6 +7,7 @@ import {
   buildDiagnosticDisplayTrays,
   countDiagnosticIdentitySignals,
   exportDiagnosticCaptureSessionCsv,
+  extractDiagnosticTraySnapshots,
   updateDiagnosticCaptureSessionFromPayload,
 } from "./diagnostic_capture";
 
@@ -143,6 +144,8 @@ test("diagnostic tray helpers build fallback display trays", () => {
                 tray_uuid: "uuid-1",
                 tray_info_idx: "GFSA00_04",
                 tray_id_name: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
+                nozzle_temp_min: "190",
+                nozzle_temp_max: "240",
               },
             ],
           },
@@ -153,6 +156,9 @@ test("diagnostic tray helpers build fallback display trays", () => {
   });
 
   assert.ok(session);
+  const snapshots = extractDiagnosticTraySnapshots(session.fields);
+  assert.equal(snapshots[0]?.nozzleTempMinC, 190);
+  assert.equal(snapshots[0]?.nozzleTempMaxC, 240);
   assert.deepEqual(buildDiagnosticDisplayTrays([], session.fields), [
     {
       tray_index: 0,

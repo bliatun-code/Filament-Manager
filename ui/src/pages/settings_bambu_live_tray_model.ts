@@ -107,6 +107,38 @@ export function buildSettingsBambuLivePresetSignalLabel({
   return `${t("settings.bambuLivePresetSignal", "AMS preset")}: ${presetParts.join(" · ")}`;
 }
 
+function formatNozzleTemperature(value: number): string {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
+export function buildSettingsBambuLiveNozzleRangeLabel({
+  capturedTraySnapshot,
+  t,
+}: {
+  capturedTraySnapshot: DiagnosticTraySnapshot | null;
+  t: TranslateFn;
+}): string | null {
+  const min = capturedTraySnapshot?.nozzleTempMinC;
+  const max = capturedTraySnapshot?.nozzleTempMaxC;
+  const hasMin = min != null && Number.isFinite(min);
+  const hasMax = max != null && Number.isFinite(max);
+  if (!hasMin && !hasMax) {
+    return null;
+  }
+
+  const label = t("settings.bambuLiveNozzleRange", "Nozzle range");
+  if (hasMin && hasMax) {
+    return `${label}: ${formatNozzleTemperature(min)}-${formatNozzleTemperature(max)} C`;
+  }
+  if (hasMin) {
+    return `${label}: min ${formatNozzleTemperature(min)} C`;
+  }
+  if (hasMax && max != null) {
+    return `${label}: max ${formatNozzleTemperature(max)} C`;
+  }
+  return null;
+}
+
 export function buildSettingsBambuLiveTrayDisplayText({
   t,
   tray,
@@ -232,6 +264,10 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
     t,
     tray,
   });
+  const nozzleRangeLabel = buildSettingsBambuLiveNozzleRangeLabel({
+    capturedTraySnapshot,
+    t,
+  });
   const { detailText, statusText } = buildSettingsBambuLiveTrayDisplayText({ t, tray });
   const { matchLabel, matchSwatchColor } = buildSettingsBambuLiveInventoryMatchPresentation({
     capturedTraySnapshot,
@@ -269,6 +305,7 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
     matchNote,
     matchSwatchColor,
     mqttTrayLabel,
+    nozzleRangeLabel,
     observedRfidLabel,
     presetSignalLabel,
     reviewTitle,

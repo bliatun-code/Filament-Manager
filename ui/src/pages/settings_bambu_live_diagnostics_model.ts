@@ -31,6 +31,7 @@ export {
   buildSettingsBambuLiveInventoryCandidateCards,
   buildSettingsBambuLiveInventoryMatchDescription,
   buildSettingsBambuLiveInventoryMatchPresentation,
+  buildSettingsBambuLiveNozzleRangeLabel,
   buildSettingsBambuLiveObservedRfid,
   buildSettingsBambuLivePresetSignalLabel,
   buildSettingsBambuLiveTrayDisplayText,

@@ -10,6 +10,7 @@ import {
   buildSettingsBambuLiveInventoryCandidateCards,
   buildSettingsBambuLiveInventoryMatchDescription,
   buildSettingsBambuLiveInventoryMatchPresentation,
+  buildSettingsBambuLiveNozzleRangeLabel,
   buildSettingsBambuLiveObservedRfid,
   buildSettingsBambuLiveObservedSummaryParts,
   buildSettingsBambuLivePresetSignalLabel,
@@ -339,6 +340,7 @@ test("Bambu live signal quality buckets keep localized labels and descriptions",
   const buckets = buildSettingsBambuLiveSignalQualityBuckets(
     [
       createDiagnosticField({ path: "ams.ams[0].tray[0].tray_uuid" }),
+      createDiagnosticField({ path: "ams.ams[0].tray[0].nozzle_temp_max", valueText: "240" }),
       createDiagnosticField({
         changeCount: 2,
         path: "ams.tray_reading_bits",
@@ -369,7 +371,7 @@ test("Bambu live signal quality buckets keep localized labels and descriptions",
   );
   assert.deepEqual(
     buckets.map((bucket) => bucket.fields.length),
-    [1, 1, 1],
+    [2, 1, 1],
   );
 });
 
@@ -581,6 +583,43 @@ test("Bambu live preset signal label prefers live state and falls back to captur
   );
 });
 
+test("Bambu live nozzle range label formats captured filament settings", () => {
+  assert.equal(
+    buildSettingsBambuLiveNozzleRangeLabel({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({
+        nozzleTempMaxC: 240,
+        nozzleTempMinC: 190,
+      }),
+      t,
+    }),
+    "Nozzle range: 190-240 C",
+  );
+
+  assert.equal(
+    buildSettingsBambuLiveNozzleRangeLabel({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({ nozzleTempMinC: 215.5 }),
+      t,
+    }),
+    "Nozzle range: min 215.5 C",
+  );
+
+  assert.equal(
+    buildSettingsBambuLiveNozzleRangeLabel({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({ nozzleTempMaxC: 230 }),
+      t,
+    }),
+    "Nozzle range: max 230 C",
+  );
+
+  assert.equal(
+    buildSettingsBambuLiveNozzleRangeLabel({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({}),
+      t,
+    }),
+    null,
+  );
+});
+
 test("Bambu live tray display text prefers names, material, and empty fallbacks", () => {
   assert.deepEqual(
     buildSettingsBambuLiveTrayDisplayText({
@@ -758,6 +797,8 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
     amsReadInProgress: false,
     capturedTraySnapshot: createDiagnosticTraySnapshot({
       colorHex: "#00AAFF",
+      nozzleTempMaxC: 240,
+      nozzleTempMinC: 190,
       trayIdName: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
       trayInfoIdx: "GFSA00_04",
       trayUuid: "ABC123",
@@ -781,6 +822,7 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
     exactCard.presetSignalLabel,
     "AMS preset: GFSA00_04 · Bambu PLA Basic @BBL P1S 0.4 nozzle",
   );
+  assert.equal(exactCard.nozzleRangeLabel, "Nozzle range: 190-240 C");
   assert.equal(exactCard.hasReview, true);
   assert.equal(exactCard.matchNote, "rfid_mismatch");
 
