@@ -769,7 +769,7 @@ test("Bambu live tray labels keep stable ids and optional RFID text", () => {
       tray: createObservedTray({ tray_index: 2 }),
     }),
     {
-      key: "live-tray-2",
+      key: "live-tray-legacy-2",
       mqttTrayLabel: "MQTT tray 2",
       observedRfidLabel: "Observed: ABC123",
       slotLabel: "Slot 3",
@@ -783,7 +783,7 @@ test("Bambu live tray labels keep stable ids and optional RFID text", () => {
       tray: createObservedTray({ tray_index: 0 }),
     }),
     {
-      key: "live-tray-0",
+      key: "live-tray-legacy-0",
       mqttTrayLabel: "MQTT tray 0",
       observedRfidLabel: null,
       slotLabel: "Slot 1",
@@ -797,7 +797,7 @@ test("Bambu live tray labels keep stable ids and optional RFID text", () => {
       tray: createObservedTray({ tray_index: 255 }),
     }),
     {
-      key: "live-tray-255",
+      key: "live-tray-legacy-255",
       mqttTrayLabel: "MQTT external tray",
       observedRfidLabel: null,
       slotLabel: "External slot",
@@ -811,10 +811,24 @@ test("Bambu live tray labels keep stable ids and optional RFID text", () => {
       tray: createObservedTray({ tray_index: 254 }),
     }),
     {
-      key: "live-tray-254",
+      key: "live-tray-legacy-254",
       mqttTrayLabel: "MQTT secondary external tray",
       observedRfidLabel: null,
       slotLabel: "Secondary external slot",
+    },
+  );
+
+  assert.deepEqual(
+    buildSettingsBambuLiveTrayLabels({
+      observedRfid: null,
+      t,
+      tray: createObservedTray({ ams_index: 1, tray_index: 0 }),
+    }),
+    {
+      key: "live-tray-ams-1-0",
+      mqttTrayLabel: "MQTT tray 0",
+      observedRfidLabel: null,
+      slotLabel: "AMS 2 · Slot 1",
     },
   );
 });
@@ -873,7 +887,7 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
     }),
   });
 
-  assert.equal(exactCard.key, "live-tray-1");
+  assert.equal(exactCard.key, "live-tray-legacy-1");
   assert.equal(exactCard.matchKind, "rfid_exact");
   assert.equal(exactCard.matchLabel, "PLA Basic · Orange");
   assert.equal(exactCard.matchSwatchColor, "#FFAA00");

@@ -70,6 +70,8 @@ pub struct PrinterOverviewRow {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct BambuLiveObservedTrayRow {
+    #[serde(default)]
+    pub ams_index: Option<i64>,
     pub tray_index: i64,
     pub loaded: bool,
     pub filament_type: Option<String>,

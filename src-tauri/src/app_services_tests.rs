@@ -667,6 +667,7 @@ fn companion_service_list_printer_overview_exposes_live_slot_snapshot() {
                     raw_status_note: None,
                     raw_payload_json: None,
                     trays: vec![BambuLiveObservedTrayRow {
+                        ams_index: None,
                         tray_index: 0,
                         loaded: true,
                         filament_type: Some("PLA".to_string()),
@@ -780,6 +781,7 @@ fn companion_service_keeps_flat_bambu_live_tray_on_first_ams_only() {
                     raw_status_note: None,
                     raw_payload_json: None,
                     trays: vec![BambuLiveObservedTrayRow {
+                        ams_index: None,
                         tray_index: 0,
                         loaded: true,
                         filament_type: Some("PLA".to_string()),
@@ -840,6 +842,124 @@ fn companion_service_keeps_flat_bambu_live_tray_on_first_ams_only() {
 }
 
 #[test]
+fn companion_service_maps_indexed_bambu_live_tray_to_second_ams() {
+    let db_path = temp_db_path("printer-live-indexed-tray-second-ams");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        engine
+            .create_printer(CreatePrinterInput {
+                id: "printer_1".to_string(),
+                model: "Bambu X1C".to_string(),
+                name: "Bench Printer".to_string(),
+                ams_units: Some(2),
+                slots_per_ams: Some(4),
+            })
+            .map_err(|error| error.to_string())?;
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.save_bambu_live_integration(
+            "printer_1",
+            &BambuLiveIntegrationRow {
+                enabled: true,
+                host: Some("192.168.1.10".to_string()),
+                access_code: None,
+                printer_serial: Some("SERIAL-1".to_string()),
+                last_error: None,
+                observed_state: Some(BambuLiveObservedStateRow {
+                    online: true,
+                    last_seen_at: Some("2026-04-16T14:00:00Z".to_string()),
+                    mqtt_connected: true,
+                    progress_percent: Some(27),
+                    remaining_minutes: Some(18),
+                    prepare_percent: None,
+                    print_stage: None,
+                    print_error_code: None,
+                    job_state_code: None,
+                    gcode_state: Some("RUNNING".to_string()),
+                    print_type: Some("local".to_string()),
+                    subtask_id: Some("benchy-1".to_string()),
+                    subtask_name: Some("Benchy".to_string()),
+                    active_tray_index: None,
+                    nozzle_temp_c: None,
+                    bed_temp_c: None,
+                    ams_humidity_index: None,
+                    ams_temperature_c: None,
+                    ams_reading_bits: None,
+                    ams_exist_bits: None,
+                    ams_read_done_bits: None,
+                    ams_bambu_bits: None,
+                    ams_status_code: None,
+                    ams_status_main: None,
+                    ams_status_sub: None,
+                    raw_status_note: None,
+                    raw_payload_json: None,
+                    trays: vec![BambuLiveObservedTrayRow {
+                        ams_index: Some(1),
+                        tray_index: 0,
+                        loaded: true,
+                        filament_type: Some("PLA".to_string()),
+                        filament_name: Some("AMS 2 spool".to_string()),
+                        color_hex: Some("#FF0000".to_string()),
+                        tray_weight_g: Some(1000),
+                        remaining_percent: Some(82),
+                        remaining_grams: Some(820),
+                        observed_rfid_tag: None,
+                        tray_uuid: Some("tray-uuid-ams-2".to_string()),
+                        chip_id: None,
+                        tray_info_idx: None,
+                        tray_id_name: None,
+                        last_identity_seen_at: Some("2026-04-16T14:00:00Z".to_string()),
+                        last_empty_seen_at: None,
+                        empty_observation_count: Some(0),
+                        matched_inventory_spool_id: None,
+                        matched_inventory_mode: None,
+                        match_status: Some("unknown_rfid".to_string()),
+                        match_note: Some("RFID not registered".to_string()),
+                    }],
+                }),
+            },
+        )
+        .map_err(|error| error.to_string())?;
+
+        let service = CompanionService::new(db_path.to_string_lossy().to_string());
+        let overview = service
+            .list_printer_overview()
+            .map_err(|error| error.to_string())?;
+        let ams_1_slot_1 = overview[0]
+            .slots
+            .iter()
+            .find(|row| row.slot_id == "printer_1_ams_1_slot_1")
+            .ok_or_else(|| "missing AMS 1 slot".to_string())?;
+        let ams_2_slot_1 = overview[0]
+            .slots
+            .iter()
+            .find(|row| row.slot_id == "printer_1_ams_2_slot_1")
+            .ok_or_else(|| "missing AMS 2 slot".to_string())?;
+
+        assert!(ams_1_slot_1.live_tray_uuid.is_none());
+        assert_eq!(
+            ams_2_slot_1.live_tray_uuid.as_deref(),
+            Some("tray-uuid-ams-2")
+        );
+        assert_eq!(
+            ams_2_slot_1.live_filament_name.as_deref(),
+            Some("AMS 2 spool")
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("companion_service_maps_indexed_bambu_live_tray_to_second_ams failed: {message}");
+    }
+}
+
+#[test]
 fn companion_service_list_printer_overview_maps_bambu_external_live_tray() {
     let db_path = temp_db_path("printer-live-external-overview");
 
@@ -896,6 +1016,7 @@ fn companion_service_list_printer_overview_maps_bambu_external_live_tray() {
                     raw_status_note: None,
                     raw_payload_json: None,
                     trays: vec![BambuLiveObservedTrayRow {
+                        ams_index: None,
                         tray_index: 255,
                         loaded: true,
                         filament_type: Some("PLA".to_string()),

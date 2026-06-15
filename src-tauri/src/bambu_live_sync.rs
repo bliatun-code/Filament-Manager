@@ -8,7 +8,7 @@ use crate::backend::filament_database::{
     BambuLiveObservedStateRow, BambuLiveObservedTrayRow, FilamentDatabase, PrinterOverviewRow,
     SpoolWithMasterRow,
 };
-use crate::backend::printer_slot_live_mapping::flat_bambu_live_slot_matches_tray;
+use crate::backend::printer_slot_live_mapping::bambu_live_slot_matches_tray;
 use serde_json::{json, Value};
 use time::{format_description::well_known::Rfc3339, Duration as TimeDuration, OffsetDateTime};
 
@@ -187,7 +187,12 @@ pub(crate) fn apply_tray_match_status(
         .slots
         .iter()
         .filter(|slot| {
-            flat_bambu_live_slot_matches_tray(&slot.ams_id, slot.slot_index, tray.tray_index)
+            bambu_live_slot_matches_tray(
+                &slot.ams_id,
+                slot.slot_index,
+                tray.ams_index,
+                tray.tray_index,
+            )
         })
         .collect();
 
@@ -335,7 +340,12 @@ fn auto_sync_live_slots(
 
     for tray in &observed.trays {
         let slot = overview.slots.iter().find(|slot| {
-            flat_bambu_live_slot_matches_tray(&slot.ams_id, slot.slot_index, tray.tray_index)
+            bambu_live_slot_matches_tray(
+                &slot.ams_id,
+                slot.slot_index,
+                tray.ams_index,
+                tray.tray_index,
+            )
         });
 
         let slot_present_from_exist_bits =

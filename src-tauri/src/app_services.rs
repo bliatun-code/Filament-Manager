@@ -11,7 +11,7 @@ use crate::backend::inventory_engine::{
     UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::printer_slot_live_mapping::{
-    flat_bambu_live_slot_matches_tray, is_external_slot_id,
+    bambu_live_slot_matches_tray, flat_bambu_live_slot_matches_tray, is_external_slot_id,
 };
 use serde::{Deserialize, Serialize};
 
@@ -328,7 +328,12 @@ fn find_observed_tray_for_slot<'a>(
     }
 
     observed_state.trays.iter().find(|candidate| {
-        flat_bambu_live_slot_matches_tray(&slot.ams_id, slot.slot_index, candidate.tray_index)
+        bambu_live_slot_matches_tray(
+            &slot.ams_id,
+            slot.slot_index,
+            candidate.ams_index,
+            candidate.tray_index,
+        )
     })
 }
 

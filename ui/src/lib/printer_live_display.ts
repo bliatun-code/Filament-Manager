@@ -232,7 +232,20 @@ export function liveUnknownMatchesSlotOverride(
 }
 
 function isExternalSlot(slot: PrinterAmsSlotRow): boolean {
-  return (slot.ams_id ?? "").endsWith("_ext");
+  return (slot.ams_id ?? "").trim().toLowerCase().endsWith("_ext");
+}
+
+function parseInternalAmsUnitIndex(amsId: string | null | undefined): number | null {
+  const match = (amsId ?? "").trim().toLowerCase().match(/_ams_(\d+)$/);
+  if (!match) {
+    return null;
+  }
+  const value = Number.parseInt(match[1], 10);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function supportsFlatBambuLiveTray(slot: PrinterAmsSlotRow): boolean {
+  return !isExternalSlot(slot) && (parseInternalAmsUnitIndex(slot.ams_id) ?? 1) === 1;
 }
 
 export function isBambuExternalTrayIndex(trayIndex: number | null | undefined): boolean {
@@ -249,7 +262,25 @@ export function liveActiveTrayMatchesSlot(
   if (isExternalSlot(slot)) {
     return isBambuExternalTrayIndex(activeTrayIndex);
   }
-  return activeTrayIndex === slot.slot_index - 1;
+  return supportsFlatBambuLiveTray(slot) && activeTrayIndex === slot.slot_index - 1;
+}
+
+export function liveTrayMatchesSlot(
+  slot: PrinterAmsSlotRow | { ams_id?: string; amsId?: string; slot_index?: number; slotIndex?: number },
+  tray: Pick<BambuLiveObservedTray, "ams_index" | "tray_index">,
+): boolean {
+  const amsId = "ams_id" in slot ? slot.ams_id : slot.amsId;
+  const slotIndex = "slot_index" in slot ? slot.slot_index : slot.slotIndex;
+  if (slotIndex == null) {
+    return false;
+  }
+  if ((amsId ?? "").trim().toLowerCase().endsWith("_ext")) {
+    return isBambuExternalTrayIndex(tray.tray_index);
+  }
+  if (typeof tray.ams_index === "number") {
+    return parseInternalAmsUnitIndex(amsId) === tray.ams_index + 1 && slotIndex === tray.tray_index + 1;
+  }
+  return (parseInternalAmsUnitIndex(amsId) ?? 1) === 1 && slotIndex === tray.tray_index + 1;
 }
 
 function findBambuExternalLiveTray(
@@ -331,6 +362,7 @@ function slotLiveTrayFallback(
     ? BAMBU_PRIMARY_EXTERNAL_TRAY_INDEX
     : slot.slot_index - 1;
   return {
+    ams_index: isExternalSlot(slot) ? null : (parseInternalAmsUnitIndex(slot.ams_id) ?? 1) - 1,
     tray_index: trayIndex,
     loaded: slot.live_loaded ?? !!slot.live_tray_uuid,
     filament_type: slot.live_filament_type ?? null,
@@ -368,8 +400,7 @@ export function findLiveTrayForSlot(
   const tray = isExternalSlot(slot)
     ? findBambuExternalLiveTray(liveConfig?.observed_state?.trays) ??
       slotLiveTrayFallback(slot, clientReadOnly, clientPrinterSource)
-    : liveConfig?.observed_state?.trays.find(
-        (candidate) => candidate.tray_index === slot.slot_index - 1,
-      ) ?? slotLiveTrayFallback(slot, clientReadOnly, clientPrinterSource);
+    : liveConfig?.observed_state?.trays.find((candidate) => liveTrayMatchesSlot(slot, candidate)) ??
+      slotLiveTrayFallback(slot, clientReadOnly, clientPrinterSource);
   return { liveConfig, tray };
 }

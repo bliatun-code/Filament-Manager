@@ -70,6 +70,7 @@ fn make_slot() -> PrinterAmsSlotRow {
 
 fn make_tray() -> BambuLiveObservedTrayRow {
     BambuLiveObservedTrayRow {
+        ams_index: None,
         tray_index: 0,
         loaded: true,
         filament_type: Some("PLA".to_string()),
@@ -203,6 +204,38 @@ fn apply_tray_match_status_limits_flat_live_trays_to_first_ams() {
         tray.matched_inventory_mode.as_deref(),
         Some("inventory_metadata")
     );
+}
+
+#[test]
+fn apply_tray_match_status_uses_observed_ams_index_for_configured_slot() {
+    let mut ams_1_slot = make_slot();
+    ams_1_slot.spool_id = None;
+    ams_1_slot.spool_material = None;
+    ams_1_slot.spool_filament_name = None;
+    ams_1_slot.spool_hex_color = None;
+    let mut ams_2_slot = make_slot();
+    ams_2_slot.slot_id = "slot_ams_2".to_string();
+    ams_2_slot.ams_id = "printer_1_ams_2".to_string();
+    ams_2_slot.spool_id = Some("spool_2".to_string());
+    let overview = PrinterOverviewRow {
+        slots: vec![ams_1_slot, ams_2_slot],
+        ..make_overview(make_slot())
+    };
+    let mut tray = BambuLiveObservedTrayRow {
+        ams_index: Some(1),
+        tray_uuid: None,
+        observed_rfid_tag: None,
+        ..make_tray()
+    };
+
+    apply_tray_match_status(&mut tray, &overview, &[]);
+
+    assert_eq!(tray.match_status.as_deref(), Some("clear_match"));
+    assert_eq!(
+        tray.matched_inventory_mode.as_deref(),
+        Some("configured_metadata")
+    );
+    assert_eq!(tray.matched_inventory_spool_id.as_deref(), Some("spool_2"));
 }
 
 #[test]
@@ -433,7 +466,14 @@ fn id_only_tray_payload_marks_empty_and_clears_on_first_observation() {
         "id": "2"
     });
 
-    let merged = merge_tray_payload(Some(&previous), 2, &payload, "2026-04-16T15:14:10Z", None);
+    let merged = merge_tray_payload(
+        Some(&previous),
+        None,
+        2,
+        &payload,
+        "2026-04-16T15:14:10Z",
+        None,
+    );
 
     assert!(!merged.loaded);
     assert!(merged.tray_uuid.is_none());
@@ -449,7 +489,14 @@ fn id_only_tray_payload_clears_stale_live_metadata() {
         "id": "2"
     });
 
-    let merged = merge_tray_payload(Some(&previous), 2, &payload, "2026-04-16T15:14:10Z", None);
+    let merged = merge_tray_payload(
+        Some(&previous),
+        None,
+        2,
+        &payload,
+        "2026-04-16T15:14:10Z",
+        None,
+    );
 
     assert!(merged.color_hex.is_none());
     assert!(merged.filament_type.is_none());
@@ -476,6 +523,7 @@ fn id_only_tray_payload_stays_loaded_when_exist_bits_say_present() {
 
     let merged = merge_tray_payload(
         Some(&previous),
+        None,
         2,
         &payload,
         "2026-04-16T15:14:10Z",
@@ -503,6 +551,7 @@ fn stale_tray_payload_clears_when_exist_bits_say_empty() {
 
     let merged = merge_tray_payload(
         Some(&previous),
+        None,
         1,
         &payload,
         "2026-04-16T15:14:10Z",
@@ -561,6 +610,57 @@ fn merge_print_payload_accepts_top_level_ams_payload() {
         Some("F5993C11FBCC470BBACFCBA4344280B5")
     );
     assert_eq!(state.trays[1].tray_weight_g, Some(1000));
+}
+
+#[test]
+fn merge_print_payload_captures_trays_from_multiple_ams_units() {
+    let mut state = super::default_offline_state();
+    state.online = true;
+    state.mqtt_connected = true;
+    state.last_seen_at = Some("2026-04-16T17:29:03Z".to_string());
+    let payload = serde_json::json!({
+        "ams": {
+            "ams": [
+                {
+                    "id": "0",
+                    "tray": [
+                        {
+                            "id": "0",
+                            "tray_color": "00FF00FF",
+                            "tray_weight": "1000",
+                            "tray_type": "PLA",
+                            "tray_sub_brands": "PLA Basic",
+                            "tray_uuid": "AMS1TRAY1"
+                        }
+                    ]
+                },
+                {
+                    "id": "1",
+                    "tray_exist_bits": "1",
+                    "tray": [
+                        {
+                            "id": "0",
+                            "tray_color": "FF0000FF",
+                            "tray_weight": "1000",
+                            "tray_type": "PLA",
+                            "tray_sub_brands": "PLA Basic",
+                            "tray_uuid": "AMS2TRAY1"
+                        }
+                    ]
+                }
+            ]
+        }
+    });
+
+    super::merge_print_payload(&mut state, &payload);
+
+    assert_eq!(state.trays.len(), 2);
+    assert_eq!(state.trays[0].ams_index, Some(0));
+    assert_eq!(state.trays[0].tray_index, 0);
+    assert_eq!(state.trays[0].tray_uuid.as_deref(), Some("AMS1TRAY1"));
+    assert_eq!(state.trays[1].ams_index, Some(1));
+    assert_eq!(state.trays[1].tray_index, 0);
+    assert_eq!(state.trays[1].tray_uuid.as_deref(), Some("AMS2TRAY1"));
 }
 
 #[test]
@@ -1182,6 +1282,7 @@ fn enrich_with_match_status_records_live_usage_session_for_sane_decrease() {
         observed.subtask_id = Some("956276950".to_string());
         observed.subtask_name = Some("Test print".to_string());
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -1296,6 +1397,7 @@ fn enrich_with_match_status_keeps_live_loaded_zero_gram_roll_assigned() {
             }
         }));
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -1409,6 +1511,7 @@ fn enrich_with_match_status_keeps_present_bit_slot_assigned_on_empty_payload() {
         observed.last_seen_at = Some(observed_at.clone());
         observed.ams_exist_bits = Some("1".to_string());
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: false,
             filament_type: None,
@@ -1517,6 +1620,7 @@ fn enrich_with_match_status_recovers_loaded_zero_rebound_from_same_live_roll() {
             }
         }));
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -1654,6 +1758,7 @@ fn enrich_with_match_status_blocks_usage_accounting_when_nozzle_is_below_extrusi
             }
         }));
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -1802,6 +1907,7 @@ fn enrich_with_match_status_records_recent_hot_cold_nozzle_ams_lag() {
             }
         }));
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -1943,6 +2049,7 @@ fn enrich_with_match_status_ignores_stale_anonymous_progress_for_usage_context()
             }
         }));
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -2085,6 +2192,7 @@ fn enrich_with_match_status_accepts_long_job_drop_when_cold_nozzle_signal_is_sta
             }
         }));
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -2254,6 +2362,7 @@ fn enrich_with_match_status_rejects_large_failed_job_ams_drop() {
             }
         }));
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -2567,6 +2676,7 @@ fn enrich_with_match_status_corrects_live_usage_when_ams_rebounds() {
         observed.remaining_minutes = Some(0);
         observed.active_tray_index = Some(0);
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -2709,6 +2819,7 @@ fn enrich_with_match_status_keeps_stale_finish_job_running_and_preserves_usage_r
         observed.progress_percent = Some(11);
         observed.remaining_minutes = Some(55);
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 1,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -2902,6 +3013,7 @@ fn enrich_with_match_status_does_not_attach_stale_finished_job_to_weight_sync() 
         observed.progress_percent = Some(100);
         observed.remaining_minutes = Some(0);
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 2,
             loaded: true,
             filament_type: Some("PETG".to_string()),
@@ -3040,6 +3152,7 @@ fn enrich_with_match_status_preserves_long_print_usage_across_late_rebounds_and_
             observed.progress_percent = Some(progress_percent);
             observed.remaining_minutes = Some(80);
             observed.trays = vec![BambuLiveObservedTrayRow {
+                ams_index: None,
                 tray_index: 0,
                 loaded: true,
                 filament_type: Some("PLA".to_string()),
@@ -3567,6 +3680,7 @@ fn enrich_with_match_status_rebases_pre_usage_ams_rebound_before_counting_drop()
             observed.remaining_minutes = Some(0);
             observed.prepare_percent = Some(49);
             observed.trays = vec![BambuLiveObservedTrayRow {
+                ams_index: None,
                 tray_index: 0,
                 loaded: true,
                 filament_type: Some("PLA".to_string()),
@@ -3733,6 +3847,7 @@ fn enrich_with_match_status_promotes_unknown_print_session_and_corrects_late_reb
             observed.progress_percent = Some(progress_percent);
             observed.remaining_minutes = Some(54);
             observed.trays = vec![BambuLiveObservedTrayRow {
+                ams_index: None,
                 tray_index: 0,
                 loaded: true,
                 filament_type: Some("PLA".to_string()),
@@ -3904,6 +4019,7 @@ fn live_weight_sync_logs_recorded_usage_decision_for_warmup_delta() {
         observed.subtask_name = Some("P1S X1C P1P".to_string());
         observed.progress_percent = Some(6);
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -4028,6 +4144,7 @@ fn live_weight_sync_records_small_initial_running_delta() {
         observed.progress_percent = Some(5);
         observed.remaining_minutes = Some(208);
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -4180,6 +4297,7 @@ fn enrich_with_match_status_attaches_tail_weight_sync_to_recent_completed_sessio
             }
         }));
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -4338,6 +4456,7 @@ fn enrich_with_match_status_ignores_stale_near_finish_tail_after_completed_sessi
         observed.progress_percent = Some(93);
         observed.remaining_minutes = Some(5);
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -4479,6 +4598,7 @@ fn repeated_live_weight_increases_are_deduped_in_live_events() {
         observed.progress_percent = Some(87);
         observed.active_tray_index = Some(2);
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 2,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -4626,6 +4746,7 @@ fn enrich_with_match_status_ignores_small_near_finish_ams_drop_after_established
         observed.remaining_minutes = Some(6);
         observed.active_tray_index = Some(0);
         observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
             tray_index: 0,
             loaded: true,
             filament_type: Some("PLA".to_string()),
@@ -4727,7 +4848,14 @@ fn merge_tray_payload_derives_remaining_grams_from_tray_weight() {
         "remain": 33
     });
 
-    let merged = merge_tray_payload(Some(&previous), 0, &payload, "2026-04-16T14:05:00Z", None);
+    let merged = merge_tray_payload(
+        Some(&previous),
+        None,
+        0,
+        &payload,
+        "2026-04-16T14:05:00Z",
+        None,
+    );
 
     assert_eq!(merged.tray_weight_g, Some(250));
     assert_eq!(merged.remaining_percent, Some(33));
@@ -4743,7 +4871,14 @@ fn merge_tray_payload_clears_stale_rfid_identity_on_new_non_rfid_observation() {
         "tray_sub_brands": "eSUN PLA+"
     });
 
-    let merged = merge_tray_payload(Some(&previous), 0, &payload, "2026-04-16T14:00:00Z", None);
+    let merged = merge_tray_payload(
+        Some(&previous),
+        None,
+        0,
+        &payload,
+        "2026-04-16T14:00:00Z",
+        None,
+    );
 
     assert!(merged.loaded);
     assert_eq!(merged.filament_name.as_deref(), Some("eSUN PLA+"));
@@ -4765,7 +4900,14 @@ fn merge_tray_payload_keeps_exact_rfid_identity_on_partial_same_metadata_update(
         "tray_color": "00FF00FF"
     });
 
-    let merged = merge_tray_payload(Some(&previous), 0, &payload, "2026-04-16T14:05:00Z", None);
+    let merged = merge_tray_payload(
+        Some(&previous),
+        None,
+        0,
+        &payload,
+        "2026-04-16T14:05:00Z",
+        None,
+    );
 
     assert!(merged.loaded);
     assert_eq!(merged.tray_uuid.as_deref(), Some("tray-uuid-unknown"));

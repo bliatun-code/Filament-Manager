@@ -1,4 +1,5 @@
 import type { BambuLiveIntegrationSettings } from "./tauri_client";
+import { liveTrayMatchesSlot } from "./printer_live_display";
 import type {
   RfidCaptureField,
   RfidCaptureHostSlotLike,
@@ -32,13 +33,16 @@ function pushCaptureField(
 export function buildObservedTrayCaptureSnapshot(
   liveIntegration: BambuLiveIntegrationSettings | null | undefined,
   slotIndex: number,
+  amsId?: string | null,
 ): RfidObservedTraySnapshot | null {
   const observedState = liveIntegration?.observed_state;
   if (!observedState) {
     return null;
   }
   const trayZeroIndex = Math.max(0, slotIndex - 1);
-  const tray = observedState.trays.find((entry) => entry.tray_index === trayZeroIndex);
+  const tray = observedState.trays.find((entry) =>
+    liveTrayMatchesSlot({ amsId: amsId ?? undefined, slotIndex }, entry),
+  );
   if (!tray) {
     return null;
   }
@@ -53,7 +57,8 @@ export function buildObservedTrayCaptureSnapshot(
   pushField("ams.tray_read_done_bits", "ams.tray_read_done_bits", observedState.ams_read_done_bits);
   pushField("ams.tray_is_bbl_bits", "ams.tray_is_bbl_bits", observedState.ams_bambu_bits);
 
-  const trayPrefix = `ams.ams[0].tray[${trayZeroIndex}]`;
+  const amsIndex = tray.ams_index ?? 0;
+  const trayPrefix = `ams.ams[${amsIndex}].tray[${trayZeroIndex}]`;
   pushField(`${trayPrefix}.tag_uid`, "tag_uid", tray.observed_rfid_tag);
   pushField(`${trayPrefix}.tray_uuid`, "tray_uuid", tray.tray_uuid);
   pushField(`${trayPrefix}.tray_info_idx`, "tray_info_idx", tray.tray_info_idx);

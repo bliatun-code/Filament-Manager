@@ -572,6 +572,7 @@ fn assign_printer_slot_derives_unknown_live_rfid_override_on_host() {
                         raw_status_note: None,
                         raw_payload_json: None,
                         trays: vec![BambuLiveObservedTrayRow {
+                            ams_index: None,
                             tray_index: 0,
                             loaded: true,
                             filament_type: Some("PLA".to_string()),

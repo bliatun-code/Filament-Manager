@@ -101,7 +101,7 @@ export function buildSelectedRfidCaptureSnapshot(
   }
   return options.clientReadOnly
     ? buildObservedTrayCaptureSnapshotFromHostSlot(slot)
-    : buildObservedTrayCaptureSnapshot(options.liveIntegration ?? null, slot.slotIndex);
+    : buildObservedTrayCaptureSnapshot(options.liveIntegration ?? null, slot.slotIndex, slot.amsId);
 }
 
 export function buildRfidCaptureSlotSummaries<T extends RfidCapturePrinterSlotLike>(
@@ -119,6 +119,7 @@ export function buildRfidCaptureSlotSummaries<T extends RfidCapturePrinterSlotLi
       : buildObservedTrayCaptureSnapshot(
           options.liveIntegrations[slot.printerId] ?? null,
           slot.slotIndex,
+          slot.amsId,
         );
     const cachedFields = options.fieldsBySlotId[slot.slotId] ?? [];
     const mergedFields = mergeRfidCaptureFields(snapshot?.fields ?? [], cachedFields);
@@ -172,7 +173,7 @@ export function buildBaselineCaptureFieldsBySlotId(
       if (slot.ams_id.endsWith("_ext")) {
         continue;
       }
-      const snapshot = buildObservedTrayCaptureSnapshot(integration, slot.slot_index);
+      const snapshot = buildObservedTrayCaptureSnapshot(integration, slot.slot_index, slot.ams_id);
       if (snapshot?.fields.length) {
         next[slot.slot_id] = snapshot.fields;
       }

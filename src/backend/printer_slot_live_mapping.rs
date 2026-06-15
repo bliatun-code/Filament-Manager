@@ -17,11 +17,25 @@ pub fn flat_bambu_live_slot_matches_tray(ams_id: &str, slot_index: i64, tray_ind
     supports_flat_bambu_live_tray(ams_id) && slot_index == tray_index + 1
 }
 
+pub fn bambu_live_slot_matches_tray(
+    ams_id: &str,
+    slot_index: i64,
+    tray_ams_index: Option<i64>,
+    tray_index: i64,
+) -> bool {
+    if let Some(tray_ams_index) = tray_ams_index {
+        return parse_internal_ams_unit_index(ams_id)
+            .is_some_and(|unit_index| unit_index == tray_ams_index + 1)
+            && slot_index == tray_index + 1;
+    }
+    flat_bambu_live_slot_matches_tray(ams_id, slot_index, tray_index)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        flat_bambu_live_slot_matches_tray, is_external_slot_id, parse_internal_ams_unit_index,
-        supports_flat_bambu_live_tray,
+        bambu_live_slot_matches_tray, flat_bambu_live_slot_matches_tray, is_external_slot_id,
+        parse_internal_ams_unit_index, supports_flat_bambu_live_tray,
     };
 
     #[test]
@@ -35,5 +49,18 @@ mod tests {
         assert!(!supports_flat_bambu_live_tray("printer_1_ext"));
         assert!(flat_bambu_live_slot_matches_tray("printer_1_ams_1", 1, 0));
         assert!(!flat_bambu_live_slot_matches_tray("printer_1_ams_2", 1, 0));
+        assert!(bambu_live_slot_matches_tray(
+            "printer_1_ams_2",
+            1,
+            Some(1),
+            0
+        ));
+        assert!(!bambu_live_slot_matches_tray(
+            "printer_1_ams_1",
+            1,
+            Some(1),
+            0
+        ));
+        assert!(bambu_live_slot_matches_tray("printer_1_ams_1", 1, None, 0));
     }
 }

@@ -5,6 +5,7 @@ import {
   findLiveTrayForSlot,
   isBambuExternalTrayIndex,
   liveActiveTrayMatchesSlot,
+  liveTrayMatchesSlot,
   resolveLiveConnectionIndicator,
 } from "./printer_live_display";
 import type {
@@ -58,7 +59,20 @@ test("Bambu external tray indexes are treated as virtual external slots", () => 
   assert.equal(liveActiveTrayMatchesSlot(externalSlot, 254), true);
   assert.equal(liveActiveTrayMatchesSlot(externalSlot, 0), false);
   assert.equal(liveActiveTrayMatchesSlot(internalSlot, 0), true);
+  assert.equal(liveActiveTrayMatchesSlot(slot({ ams_id: "printer_ams_2" }), 0), false);
   assert.equal(liveActiveTrayMatchesSlot(internalSlot, 255), false);
+});
+
+test("live tray matching uses observed AMS index when available", () => {
+  const ams1Slot = slot({ ams_id: "printer_ams_1", slot_index: 1 });
+  const ams2Slot = slot({ ams_id: "printer_ams_2", slot_index: 1 });
+  const indexedAms2Tray = tray({ ams_index: 1, tray_index: 0 });
+  const legacyTray = tray({ tray_index: 0 });
+
+  assert.equal(liveTrayMatchesSlot(ams2Slot, indexedAms2Tray), true);
+  assert.equal(liveTrayMatchesSlot(ams1Slot, indexedAms2Tray), false);
+  assert.equal(liveTrayMatchesSlot(ams1Slot, legacyTray), true);
+  assert.equal(liveTrayMatchesSlot(ams2Slot, legacyTray), false);
 });
 
 test("findLiveTrayForSlot maps external slots to Bambu virtual trays", () => {
@@ -115,6 +129,7 @@ test("findLiveTrayForSlot can rebuild external live trays from host slot snapsho
   );
 
   assert.deepEqual(rebuiltTray, {
+    ams_index: null,
     tray_index: 255,
     loaded: true,
     filament_type: "PLA",
@@ -136,6 +151,37 @@ test("findLiveTrayForSlot can rebuild external live trays from host slot snapsho
     match_status: "unknown_from_printer",
     match_note: null,
   });
+});
+
+test("findLiveTrayForSlot maps indexed internal trays to their AMS unit", () => {
+  const ams1Slot = slot({ ams_id: "printer_ams_1", slot_index: 1 });
+  const ams2Slot = slot({ ams_id: "printer_ams_2", slot_index: 1 });
+  const ams2Tray = tray({
+    ams_index: 1,
+    tray_index: 0,
+    filament_name: "AMS 2 spool",
+  });
+
+  assert.equal(
+    findLiveTrayForSlot(
+      "printer-1",
+      ams1Slot,
+      { "printer-1": liveConfig([ams2Tray]) },
+      false,
+      "LIVE",
+    ).tray,
+    null,
+  );
+  assert.equal(
+    findLiveTrayForSlot(
+      "printer-1",
+      ams2Slot,
+      { "printer-1": liveConfig([ams2Tray]) },
+      false,
+      "LIVE",
+    ).tray,
+    ams2Tray,
+  );
 });
 
 test("live connection indicator can use external slot live snapshots", () => {

@@ -241,12 +241,19 @@ export function formatSettingsBambuLiveSlotIndexLabel(
 export function formatSettingsBambuLiveSummaryTrayIndexLabel(
   trayIndex: number,
   t: TranslateFn,
+  amsIndex?: number | null,
 ): string {
   if (trayIndex === BAMBU_LIVE_EXTERNAL_TRAY_INDEX) {
     return t("settings.bambuLiveSummaryExternalTray", "External tray");
   }
   if (trayIndex === BAMBU_LIVE_SECONDARY_EXTERNAL_TRAY_INDEX) {
     return t("settings.bambuLiveSummarySecondaryExternalTray", "Secondary external tray");
+  }
+  if (typeof amsIndex === "number") {
+    return `${t("settings.bambuLiveAmsLabel", "AMS")} ${amsIndex + 1} · ${t(
+      "settings.bambuLiveSummaryTray",
+      "Tray",
+    )} ${trayIndex}`;
   }
   return `${t("settings.bambuLiveSummaryTray", "Tray")} ${trayIndex}`;
 }
@@ -260,13 +267,20 @@ export function buildSettingsBambuLiveTrayLabels({
   t: TranslateFn;
   tray: BambuLiveObservedTray;
 }) {
+  const trayKeyPrefix = typeof tray.ams_index === "number" ? `ams-${tray.ams_index}` : "legacy";
   return {
-    key: `live-tray-${tray.tray_index}`,
+    key: `live-tray-${trayKeyPrefix}-${tray.tray_index}`,
     mqttTrayLabel: formatSettingsBambuLiveMqttTrayIndexLabel(tray.tray_index, t),
     observedRfidLabel: observedRfid
       ? `${t("settings.bambuLiveObservedPrefix", "Observed")}: ${observedRfid}`
       : null,
-    slotLabel: formatSettingsBambuLiveSlotIndexLabel(tray.tray_index, t),
+    slotLabel:
+      typeof tray.ams_index === "number"
+        ? `${t("settings.bambuLiveAmsLabel", "AMS")} ${tray.ams_index + 1} · ${formatSettingsBambuLiveSlotIndexLabel(
+            tray.tray_index,
+            t,
+          )}`
+        : formatSettingsBambuLiveSlotIndexLabel(tray.tray_index, t),
   };
 }
 

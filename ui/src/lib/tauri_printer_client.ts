@@ -64,6 +64,7 @@ export type PrinterOverviewRow = {
 };
 
 export type BambuLiveObservedTray = {
+  ams_index?: number | null;
   tray_index: number;
   loaded: boolean;
   filament_type?: string | null;

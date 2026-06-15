@@ -290,7 +290,12 @@ fn merge_tray_snapshots(
         return previous_trays.to_vec();
     }
 
-    let previous_by_index: HashMap<i64, &BambuLiveObservedTrayRow> = previous_trays
+    let previous_by_position: HashMap<(Option<i64>, i64), &BambuLiveObservedTrayRow> =
+        previous_trays
+            .iter()
+            .map(|tray| ((tray.ams_index, tray.tray_index), tray))
+            .collect();
+    let previous_legacy_by_index: HashMap<i64, &BambuLiveObservedTrayRow> = previous_trays
         .iter()
         .map(|tray| (tray.tray_index, tray))
         .collect();
@@ -298,12 +303,20 @@ fn merge_tray_snapshots(
     next_trays
         .iter()
         .map(|next| {
-            let Some(previous) = previous_by_index.get(&next.tray_index) else {
+            let previous = previous_by_position
+                .get(&(next.ams_index, next.tray_index))
+                .or_else(|| {
+                    (next.ams_index == Some(0))
+                        .then(|| previous_legacy_by_index.get(&next.tray_index))
+                        .flatten()
+                });
+            let Some(previous) = previous else {
                 return next.clone();
             };
             let carry_forward_observed_identity =
                 !next.loaded && next.empty_observation_count == previous.empty_observation_count;
             BambuLiveObservedTrayRow {
+                ams_index: next.ams_index,
                 tray_index: next.tray_index,
                 loaded: next.loaded,
                 filament_type: next
@@ -699,27 +712,49 @@ fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) -
         }
     }
 
-    if let Some(ams_trays) = print.pointer("/ams/ams/0/tray").and_then(Value::as_array) {
+    if let Some(ams_units) = print.pointer("/ams/ams").and_then(Value::as_array) {
         let observed_at = state.last_seen_at.clone().unwrap_or_else(now_iso_string);
-        let previous_by_index: HashMap<i64, BambuLiveObservedTrayRow> = state
+        let previous_by_position: HashMap<(Option<i64>, i64), BambuLiveObservedTrayRow> = state
             .trays
             .iter()
+            .cloned()
+            .map(|tray| ((tray.ams_index, tray.tray_index), tray))
+            .collect();
+        let previous_legacy_by_index: HashMap<i64, BambuLiveObservedTrayRow> = state
+            .trays
+            .iter()
+            .filter(|tray| tray.ams_index.is_none())
             .cloned()
             .map(|tray| (tray.tray_index, tray))
             .collect();
         let mut merged_trays = Vec::new();
-        for tray in ams_trays {
-            let tray_index = as_i64(tray.get("id")).unwrap_or_default();
-            let previous = previous_by_index.get(&tray_index);
-            let slot_present_from_exist_bits =
-                tray_exist_bits_slot_present(state.ams_exist_bits.as_deref(), tray_index);
-            merged_trays.push(merge_tray_payload(
-                previous,
-                tray_index,
-                tray,
-                &observed_at,
-                slot_present_from_exist_bits,
-            ));
+        for (ams_position, ams) in ams_units.iter().enumerate() {
+            let ams_index = as_i64(ams.get("id")).or_else(|| i64::try_from(ams_position).ok());
+            let slot_presence_bits =
+                as_string(ams.get("tray_exist_bits")).or_else(|| state.ams_exist_bits.clone());
+            let Some(ams_trays) = ams.get("tray").and_then(Value::as_array) else {
+                continue;
+            };
+            for tray in ams_trays {
+                let tray_index = as_i64(tray.get("id")).unwrap_or_default();
+                let previous = previous_by_position
+                    .get(&(ams_index, tray_index))
+                    .or_else(|| {
+                        (ams_index == Some(0))
+                            .then(|| previous_legacy_by_index.get(&tray_index))
+                            .flatten()
+                    });
+                let slot_present_from_exist_bits =
+                    tray_exist_bits_slot_present(slot_presence_bits.as_deref(), tray_index);
+                merged_trays.push(merge_tray_payload(
+                    previous,
+                    ams_index,
+                    tray_index,
+                    tray,
+                    &observed_at,
+                    slot_present_from_exist_bits,
+                ));
+            }
         }
         state.trays = merged_trays;
     }
@@ -973,6 +1008,7 @@ fn annotate_capture_poll_metadata(
 
 fn merge_tray_payload(
     previous: Option<&BambuLiveObservedTrayRow>,
+    ams_index: Option<i64>,
     tray_index: i64,
     tray: &Value,
     observed_at: &str,
@@ -1021,6 +1057,7 @@ fn merge_tray_payload(
     };
 
     BambuLiveObservedTrayRow {
+        ams_index,
         tray_index,
         loaded,
         filament_type: if empty_by_exist_bits {

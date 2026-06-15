@@ -6,6 +6,7 @@ use crate::backend::filament_database::{
     SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow, SpoolUsagePointRow,
     SpoolWithMasterRow, WishlistItemRow,
 };
+use crate::backend::printer_slot_live_mapping::bambu_live_slot_matches_tray;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -897,22 +898,30 @@ impl InventoryEngine {
             .find(|entry| entry.printer_id == printer_id)
             .map(|entry| entry.config);
 
-        Ok(integration
-            .as_ref()
-            .and_then(|config| self.find_live_unknown_override_for_slot(config, slot_index)))
+        Ok(integration.as_ref().and_then(|config| {
+            self.find_live_unknown_override_for_slot(config, slot_index, ams_id)
+        }))
     }
 
     fn find_live_unknown_override_for_slot(
         &self,
         config: &BambuLiveIntegrationRow,
         slot_index: i64,
+        ams_id: &str,
     ) -> Option<(String, String)> {
         let tray = config
             .observed_state
             .as_ref()?
             .trays
             .iter()
-            .find(|candidate| candidate.tray_index == slot_index - 1)?;
+            .find(|candidate| {
+                bambu_live_slot_matches_tray(
+                    ams_id,
+                    slot_index,
+                    candidate.ams_index,
+                    candidate.tray_index,
+                )
+            })?;
         self.live_unknown_override_from_tray(tray)
     }
 
