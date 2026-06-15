@@ -7,6 +7,7 @@ import {
   hexToRgb,
   isValidHexColor,
   isValidSwatchColor,
+  normalizeBambuStudioSwatchValue,
   normalizeHexColor,
   normalizeSwatchValue,
   parseSwatchSpec,
@@ -45,6 +46,41 @@ test("normalizeSwatchValue accepts multi and gradient swatches", () => {
   );
   assert.equal(isValidSwatchColor("gradient(#EC984C,#6CD4BC)"), true);
   assert.equal(isValidSwatchColor("multi(#EC984C,not-a-color)"), false);
+});
+
+test("normalizeBambuStudioSwatchValue maps colour types to app swatches", () => {
+  assert.equal(
+    normalizeBambuStudioSwatchValue({
+      filamentColour: "#EC984CFF",
+      filamentColourType: 0,
+      filamentMultiColour: "#EC984CFF; #6CD4BCFF; #A66EB9FF; #D87694FF",
+    }),
+    "gradient(#EC984C,#6CD4BC,#A66EB9,#D87694)",
+  );
+  assert.equal(
+    normalizeBambuStudioSwatchValue({
+      filamentColour: "#720062FF",
+      filamentColourType: "1",
+      filamentMultiColour: ["#720062FF", "#3A913FFF"],
+    }),
+    "multi(#720062,#3A913F)",
+  );
+  assert.equal(
+    normalizeBambuStudioSwatchValue({
+      filamentColour: "#F7E6DEFF",
+      filamentColourType: 2,
+      filamentMultiColour: "#111111FF,#222222FF",
+    }),
+    "#F7E6DE",
+  );
+  assert.equal(
+    normalizeBambuStudioSwatchValue({
+      filamentColour: null,
+      filamentColourType: 1,
+      filamentMultiColour: "#111111FF;#222222FF",
+    }),
+    "multi(#111111,#222222)",
+  );
 });
 
 test("swatch specs expose primary color and css backgrounds for composite swatches", () => {

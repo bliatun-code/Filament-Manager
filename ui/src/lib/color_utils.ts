@@ -8,6 +8,12 @@ export type SwatchSpec = {
   colors: string[];
 };
 
+export type BambuStudioSwatchInput = {
+  filamentColour?: unknown;
+  filamentColourType?: unknown;
+  filamentMultiColour?: unknown;
+};
+
 export function normalizeHexColor(
   raw?: string | null,
   options: { uppercase?: boolean } = {},
@@ -77,6 +83,57 @@ export function normalizeSwatchValue(
 
 export function isValidSwatchColor(raw?: string | null): boolean {
   return normalizeSwatchValue(raw) != null;
+}
+
+function normalizeBambuStudioHexColor(raw: unknown): string | null {
+  const value = String(raw ?? "").trim();
+  if (!value) {
+    return null;
+  }
+  const withoutHash = value.startsWith("#") ? value.slice(1) : value;
+  const alphaTrimmed = /^[0-9a-fA-F]{8}$/.test(withoutHash)
+    ? withoutHash.slice(0, 6)
+    : withoutHash;
+  return normalizeHexColor(alphaTrimmed, { uppercase: true });
+}
+
+function normalizeBambuStudioColorList(raw: unknown): string[] {
+  const values = Array.isArray(raw)
+    ? raw.flatMap((value) => String(value ?? "").split(/[;,]/))
+    : String(raw ?? "").split(/[;,]/);
+  return values
+    .map((value) => normalizeBambuStudioHexColor(value))
+    .filter((value): value is string => value != null);
+}
+
+function normalizeBambuStudioColourType(raw: unknown): "gradient" | "multi" | "single" {
+  const value = String(raw ?? "").trim();
+  if (value === "0") {
+    return "gradient";
+  }
+  if (value === "1") {
+    return "multi";
+  }
+  return "single";
+}
+
+export function normalizeBambuStudioSwatchValue({
+  filamentColour,
+  filamentColourType,
+  filamentMultiColour,
+}: BambuStudioSwatchInput): string | null {
+  const primary = normalizeBambuStudioHexColor(filamentColour);
+  const compositeColors = normalizeBambuStudioColorList(filamentMultiColour);
+  const colors =
+    compositeColors.length > 1 ? compositeColors : primary ? [primary] : compositeColors;
+  const colourType = normalizeBambuStudioColourType(filamentColourType);
+  if (colourType === "gradient" && colors.length > 1) {
+    return `gradient(${colors.join(",")})`;
+  }
+  if (colourType === "multi" && colors.length > 1) {
+    return `multi(${colors.join(",")})`;
+  }
+  return primary ?? colors[0] ?? null;
 }
 
 export function parseSwatchSpec(raw?: string | null): SwatchSpec {
