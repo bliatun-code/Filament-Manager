@@ -10,6 +10,9 @@ use crate::backend::inventory_engine::{
     RecordPrintUsageInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
     UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
 };
+use crate::backend::printer_slot_live_mapping::{
+    flat_bambu_live_slot_matches_tray, is_external_slot_id,
+};
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_SPOOL_HISTORY_LIMIT: i64 = 80;
@@ -304,7 +307,7 @@ fn enrich_printer_overview_with_live_slots(
 }
 
 fn slot_is_external(slot: &crate::backend::filament_database::PrinterAmsSlotRow) -> bool {
-    slot.ams_id.ends_with("_ext")
+    is_external_slot_id(&slot.ams_id)
 }
 
 fn find_observed_tray_for_slot<'a>(
@@ -324,10 +327,9 @@ fn find_observed_tray_for_slot<'a>(
             });
     }
 
-    observed_state
-        .trays
-        .iter()
-        .find(|candidate| candidate.tray_index == slot.slot_index - 1)
+    observed_state.trays.iter().find(|candidate| {
+        flat_bambu_live_slot_matches_tray(&slot.ams_id, slot.slot_index, candidate.tray_index)
+    })
 }
 
 fn live_active_tray_matches_slot(
@@ -340,7 +342,11 @@ fn live_active_tray_matches_slot(
             Some(BAMBU_PRIMARY_EXTERNAL_TRAY_INDEX | BAMBU_SECONDARY_EXTERNAL_TRAY_INDEX)
         );
     }
-    active_tray_index == Some(slot.slot_index - 1)
+    active_tray_index
+        .map(|tray_index| {
+            flat_bambu_live_slot_matches_tray(&slot.ams_id, slot.slot_index, tray_index)
+        })
+        .unwrap_or(false)
 }
 
 fn apply_live_tray_to_slot(

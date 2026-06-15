@@ -168,6 +168,8 @@ pub mod inventory_engine;
 pub mod library_sync_defaults;
 #[path = "../../../src/backend/loan_defaults.rs"]
 pub mod loan_defaults;
+#[path = "../../../src/backend/printer_slot_live_mapping.rs"]
+pub mod printer_slot_live_mapping;
 #[path = "../../../src/backend/spool_defaults.rs"]
 pub mod spool_defaults;
 #[path = "../../../src/backend/statistics.rs"]

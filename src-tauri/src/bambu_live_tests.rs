@@ -171,6 +171,41 @@ fn apply_tray_match_status_marks_loaded_unknown_rfid_even_with_metadata_match() 
 }
 
 #[test]
+fn apply_tray_match_status_limits_flat_live_trays_to_first_ams() {
+    let mut ams_1_slot = make_slot();
+    ams_1_slot.spool_id = None;
+    ams_1_slot.spool_material = None;
+    ams_1_slot.spool_filament_name = None;
+    ams_1_slot.spool_hex_color = None;
+    let mut ams_2_slot = make_slot();
+    ams_2_slot.slot_id = "slot_ams_2".to_string();
+    ams_2_slot.ams_id = "printer_1_ams_2".to_string();
+    ams_2_slot.spool_id = Some("spool_2".to_string());
+    let overview = PrinterOverviewRow {
+        slots: vec![ams_1_slot, ams_2_slot],
+        ..make_overview(make_slot())
+    };
+    let mut tray = BambuLiveObservedTrayRow {
+        tray_uuid: None,
+        observed_rfid_tag: None,
+        ..make_tray()
+    };
+
+    apply_tray_match_status(
+        &mut tray,
+        &overview,
+        &[make_inventory_spool("spool_1", None)],
+    );
+
+    assert_ne!(tray.match_status.as_deref(), Some("ambiguous"));
+    assert_eq!(tray.match_status.as_deref(), Some("possible_match"));
+    assert_eq!(
+        tray.matched_inventory_mode.as_deref(),
+        Some("inventory_metadata")
+    );
+}
+
+#[test]
 fn apply_tray_match_status_mentions_tray_info_idx_as_preset_hint() {
     let slot = make_slot();
     let overview = make_overview(slot);
