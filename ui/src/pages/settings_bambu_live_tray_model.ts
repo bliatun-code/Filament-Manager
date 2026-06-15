@@ -108,18 +108,27 @@ export function parseSettingsBambuLivePresetName(
     return null;
   }
   const match = normalized.match(/^(.+?)\s+@BBL\s+(.+?)(?:\s+(\d+(?:\.\d+)?)\s+nozzle)?$/i);
-  if (!match) {
+  if (match) {
     return {
-      filamentProfile: normalized,
-      nozzleDiameterMm: null,
+      filamentProfile: (match[1] ?? "").trim(),
+      nozzleDiameterMm: match[3]?.trim() || null,
+      printerProfile: (match[2] ?? "").trim() || null,
+      rawName: normalized,
+    };
+  }
+  const genericNozzleMatch = normalized.match(/^(.+?)\s+@(\d+(?:\.\d+)?)\s+nozzle$/i);
+  if (genericNozzleMatch) {
+    return {
+      filamentProfile: (genericNozzleMatch[1] ?? "").trim(),
+      nozzleDiameterMm: genericNozzleMatch[2]?.trim() || null,
       printerProfile: null,
       rawName: normalized,
     };
   }
   return {
-    filamentProfile: (match[1] ?? "").trim(),
-    nozzleDiameterMm: match[3]?.trim() || null,
-    printerProfile: (match[2] ?? "").trim() || null,
+    filamentProfile: normalized,
+    nozzleDiameterMm: null,
+    printerProfile: null,
     rawName: normalized,
   };
 }

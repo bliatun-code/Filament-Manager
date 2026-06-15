@@ -620,6 +620,12 @@ test("Bambu live preset signal label prefers live state and falls back to captur
     printerProfile: null,
     rawName: "Custom preset",
   });
+  assert.deepEqual(parseSettingsBambuLivePresetName("Generic PLA @0.2 nozzle"), {
+    filamentProfile: "Generic PLA",
+    nozzleDiameterMm: "0.2",
+    printerProfile: null,
+    rawName: "Generic PLA @0.2 nozzle",
+  });
 
   assert.equal(
     buildSettingsBambuLivePresetSignalLabel({
@@ -646,6 +652,18 @@ test("Bambu live preset signal label prefers live state and falls back to captur
       }),
     }),
     "Filament settings preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle",
+  );
+
+  assert.equal(
+    buildSettingsBambuLivePresetSignalLabel({
+      capturedTraySnapshot: null,
+      t,
+      tray: createObservedTray({
+        tray_id_name: "Generic PLA @0.2 nozzle",
+        tray_info_idx: "GENERIC_PLA_02",
+      }),
+    }),
+    "Filament settings preset: GENERIC_PLA_02 · Generic PLA · 0.2 mm nozzle",
   );
 
   assert.equal(
