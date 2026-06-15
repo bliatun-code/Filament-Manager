@@ -174,6 +174,10 @@ test("translateObservedMatchNote localizes known notes and preserves unknown not
     ),
     "settings.bambuLiveMatchNoteUnknownIdentity:AMS reported a tray identity that is not registered in inventory. settings.bambuLiveMatchNotePresetSignal:Filament preset signal: GFSA00_04. This is a material/preset hint, not a roll identity.",
   );
+  assert.equal(
+    translateObservedMatchNote("Multiple stored spools could match this live tray.", t),
+    "settings.bambuLiveMatchNoteMultipleStoredMatch:Multiple stored spools could match this live tray.",
+  );
   assert.equal(translateObservedMatchNote("Custom note", t), "Custom note");
   assert.equal(translateObservedMatchNote("  ", t), null);
 });

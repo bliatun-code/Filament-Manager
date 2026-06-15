@@ -149,6 +149,11 @@ export function translateObservedMatchNote(
         "settings.bambuLiveMatchNoteOneStoredMatch",
         "One likely stored spool matches this last known tray identity.",
       );
+    case "Multiple stored spools could match this live tray.":
+      return t(
+        "settings.bambuLiveMatchNoteMultipleStoredMatch",
+        "Multiple stored spools could match this live tray.",
+      );
     default:
       return normalized;
   }

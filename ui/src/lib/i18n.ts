@@ -1226,6 +1226,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "No clear stored spool matches this last known tray identity.",
       bambuLiveMatchNoteOneStoredMatch:
         "One likely stored spool matches this last known tray identity.",
+      bambuLiveMatchNoteMultipleStoredMatch:
+        "Multiple stored spools could match this live tray.",
       bambuLiveCapturedFieldCount: "Captured fields in this session",
       bambuLiveCaptureStarted: "Capture started",
       bambuLiveCaptureLastUpdate: "Last captured",
@@ -2598,6 +2600,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Ingen tydelig lagret rull matcher denne sist kjente sporidentiteten.",
       bambuLiveMatchNoteOneStoredMatch:
         "Én sannsynlig lagret rull matcher denne sist kjente sporidentiteten.",
+      bambuLiveMatchNoteMultipleStoredMatch:
+        "Flere lagrede ruller kan passe dette live-sporet.",
       bambuLiveCapturedFieldCount: "Fangede felt i denne sesjonen",
       bambuLiveCaptureStarted: "Innsamling startet",
       bambuLiveCaptureLastUpdate: "Sist fanget",
