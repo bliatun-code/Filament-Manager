@@ -303,6 +303,27 @@ test("Bambu live summary builders keep display order and omit missing values", (
     buildSettingsBambuLiveFallbackSummaryParts(diagnosticSession?.fields ?? [], t),
     ["55%"],
   );
+
+  const externalLiveConfig = createLiveConfig();
+  if (externalLiveConfig.observed_state) {
+    externalLiveConfig.observed_state.active_tray_index = 255;
+  }
+  assert.deepEqual(
+    buildSettingsBambuLiveObservedSummaryParts(externalLiveConfig.observed_state ?? null, t),
+    ["42%", "18 min", "External tray", "AMS humidity 3", "Job state 4", "AMS status 3/1"],
+  );
+
+  const externalTraySession = updateDiagnosticCaptureSessionFromPayload({
+    session: null,
+    rawPayload: {
+      tray_now: 254,
+    },
+    observedAt: "2026-05-15T10:04:00Z",
+  });
+  assert.deepEqual(
+    buildSettingsBambuLiveFallbackSummaryParts(externalTraySession?.fields ?? [], t),
+    ["Secondary external tray"],
+  );
 });
 
 test("Bambu live diagnostic metric cards format dates and counters", () => {
@@ -766,6 +787,34 @@ test("Bambu live tray labels keep stable ids and optional RFID text", () => {
       mqttTrayLabel: "MQTT tray 0",
       observedRfidLabel: null,
       slotLabel: "Slot 1",
+    },
+  );
+
+  assert.deepEqual(
+    buildSettingsBambuLiveTrayLabels({
+      observedRfid: null,
+      t,
+      tray: createObservedTray({ tray_index: 255 }),
+    }),
+    {
+      key: "live-tray-255",
+      mqttTrayLabel: "MQTT external tray",
+      observedRfidLabel: null,
+      slotLabel: "External slot",
+    },
+  );
+
+  assert.deepEqual(
+    buildSettingsBambuLiveTrayLabels({
+      observedRfid: null,
+      t,
+      tray: createObservedTray({ tray_index: 254 }),
+    }),
+    {
+      key: "live-tray-254",
+      mqttTrayLabel: "MQTT secondary external tray",
+      observedRfidLabel: null,
+      slotLabel: "Secondary external slot",
     },
   );
 });

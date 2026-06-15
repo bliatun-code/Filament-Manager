@@ -24,7 +24,10 @@ import type {
   BambuLiveObservedState,
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
-import { buildSettingsBambuLiveDiagnosticTrayCards } from "./settings_bambu_live_tray_model";
+import {
+  buildSettingsBambuLiveDiagnosticTrayCards,
+  formatSettingsBambuLiveSummaryTrayIndexLabel,
+} from "./settings_bambu_live_tray_model";
 export {
   buildSettingsBambuLiveDiagnosticTrayCard,
   buildSettingsBambuLiveDiagnosticTrayCards,
@@ -37,6 +40,9 @@ export {
   buildSettingsBambuLiveTrayDisplayText,
   buildSettingsBambuLiveTrayLabels,
   buildSettingsBambuLiveTrayReviewState,
+  formatSettingsBambuLiveMqttTrayIndexLabel,
+  formatSettingsBambuLiveSlotIndexLabel,
+  formatSettingsBambuLiveSummaryTrayIndexLabel,
   resolveSettingsBambuLiveCapturedTraySnapshot,
 } from "./settings_bambu_live_tray_model";
 
@@ -87,7 +93,7 @@ function buildSettingsBambuLiveSummaryParts(
     parts.push(`${source.remainingMinutes} min`);
   }
   if (source.activeTrayIndex != null) {
-    parts.push(`${t("settings.bambuLiveSummaryTray", "Tray")} ${source.activeTrayIndex}`);
+    parts.push(formatSettingsBambuLiveSummaryTrayIndexLabel(source.activeTrayIndex, t));
   }
   if (source.amsHumidityIndex != null) {
     parts.push(

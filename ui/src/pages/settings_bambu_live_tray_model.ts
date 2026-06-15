@@ -27,6 +27,9 @@ type BuildSettingsBambuLiveDiagnosticTrayCardsInput = {
   t: TranslateFn;
 };
 
+const BAMBU_LIVE_SECONDARY_EXTERNAL_TRAY_INDEX = 254;
+const BAMBU_LIVE_EXTERNAL_TRAY_INDEX = 255;
+
 export function buildSettingsBambuLiveInventoryMatchDescription({
   inventoryMatchKind,
   observedRfid,
@@ -206,6 +209,48 @@ export function buildSettingsBambuLiveTrayReviewState({
   };
 }
 
+export function formatSettingsBambuLiveMqttTrayIndexLabel(
+  trayIndex: number,
+  t: TranslateFn,
+): string {
+  if (trayIndex === BAMBU_LIVE_EXTERNAL_TRAY_INDEX) {
+    return t("settings.bambuLiveMqttExternalTrayLabel", "MQTT external tray");
+  }
+  if (trayIndex === BAMBU_LIVE_SECONDARY_EXTERNAL_TRAY_INDEX) {
+    return t(
+      "settings.bambuLiveMqttSecondaryExternalTrayLabel",
+      "MQTT secondary external tray",
+    );
+  }
+  return `${t("settings.bambuLiveMqttTrayLabel", "MQTT tray")} ${trayIndex}`;
+}
+
+export function formatSettingsBambuLiveSlotIndexLabel(
+  trayIndex: number,
+  t: TranslateFn,
+): string {
+  if (trayIndex === BAMBU_LIVE_EXTERNAL_TRAY_INDEX) {
+    return t("settings.bambuLiveExternalSlotLabel", "External slot");
+  }
+  if (trayIndex === BAMBU_LIVE_SECONDARY_EXTERNAL_TRAY_INDEX) {
+    return t("settings.bambuLiveSecondaryExternalSlotLabel", "Secondary external slot");
+  }
+  return `${t("settings.bambuLiveSlotLabel", "Slot")} ${trayIndex + 1}`;
+}
+
+export function formatSettingsBambuLiveSummaryTrayIndexLabel(
+  trayIndex: number,
+  t: TranslateFn,
+): string {
+  if (trayIndex === BAMBU_LIVE_EXTERNAL_TRAY_INDEX) {
+    return t("settings.bambuLiveSummaryExternalTray", "External tray");
+  }
+  if (trayIndex === BAMBU_LIVE_SECONDARY_EXTERNAL_TRAY_INDEX) {
+    return t("settings.bambuLiveSummarySecondaryExternalTray", "Secondary external tray");
+  }
+  return `${t("settings.bambuLiveSummaryTray", "Tray")} ${trayIndex}`;
+}
+
 export function buildSettingsBambuLiveTrayLabels({
   observedRfid,
   t,
@@ -217,11 +262,11 @@ export function buildSettingsBambuLiveTrayLabels({
 }) {
   return {
     key: `live-tray-${tray.tray_index}`,
-    mqttTrayLabel: `${t("settings.bambuLiveMqttTrayLabel", "MQTT tray")} ${tray.tray_index}`,
+    mqttTrayLabel: formatSettingsBambuLiveMqttTrayIndexLabel(tray.tray_index, t),
     observedRfidLabel: observedRfid
       ? `${t("settings.bambuLiveObservedPrefix", "Observed")}: ${observedRfid}`
       : null,
-    slotLabel: `${t("settings.bambuLiveSlotLabel", "Slot")} ${tray.tray_index + 1}`,
+    slotLabel: formatSettingsBambuLiveSlotIndexLabel(tray.tray_index, t),
   };
 }
 
