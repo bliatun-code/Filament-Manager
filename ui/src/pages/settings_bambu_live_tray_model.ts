@@ -93,6 +93,54 @@ export function buildSettingsBambuLiveObservedRfid(
   return trayUuid && !/^0+$/.test(trayUuid) ? trayUuid : null;
 }
 
+export type SettingsBambuLivePresetNameParts = {
+  filamentProfile: string;
+  nozzleDiameterMm: string | null;
+  printerProfile: string | null;
+  rawName: string;
+};
+
+export function parseSettingsBambuLivePresetName(
+  rawName: string | null | undefined,
+): SettingsBambuLivePresetNameParts | null {
+  const normalized = rawName?.trim() ?? "";
+  if (!normalized) {
+    return null;
+  }
+  const match = normalized.match(/^(.+?)\s+@BBL\s+(.+?)(?:\s+(\d+(?:\.\d+)?)\s+nozzle)?$/i);
+  if (!match) {
+    return {
+      filamentProfile: normalized,
+      nozzleDiameterMm: null,
+      printerProfile: null,
+      rawName: normalized,
+    };
+  }
+  return {
+    filamentProfile: (match[1] ?? "").trim(),
+    nozzleDiameterMm: match[3]?.trim() || null,
+    printerProfile: (match[2] ?? "").trim() || null,
+    rawName: normalized,
+  };
+}
+
+function formatSettingsBambuLivePresetNameParts(
+  rawName: string,
+  t: TranslateFn,
+): string[] {
+  const parsed = parseSettingsBambuLivePresetName(rawName);
+  if (!parsed) {
+    return [];
+  }
+  return [
+    parsed.filamentProfile,
+    parsed.printerProfile,
+    parsed.nozzleDiameterMm
+      ? `${parsed.nozzleDiameterMm} ${t("settings.bambuLivePresetNozzleSuffix", "mm nozzle")}`
+      : null,
+  ].filter((value): value is string => Boolean(value));
+}
+
 export function buildSettingsBambuLivePresetSignalLabel({
   capturedTraySnapshot,
   t,
@@ -106,7 +154,10 @@ export function buildSettingsBambuLivePresetSignalLabel({
     tray.tray_info_idx?.trim() || capturedTraySnapshot?.trayInfoIdx?.trim() || "";
   const trayIdName =
     tray.tray_id_name?.trim() || capturedTraySnapshot?.trayIdName?.trim() || "";
-  const presetParts = [trayInfoIdx, trayIdName].filter(Boolean);
+  const presetParts = [
+    trayInfoIdx,
+    ...(trayIdName ? formatSettingsBambuLivePresetNameParts(trayIdName, t) : []),
+  ].filter(Boolean);
   if (presetParts.length === 0) {
     return null;
   }

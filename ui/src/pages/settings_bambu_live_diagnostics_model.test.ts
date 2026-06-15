@@ -13,6 +13,7 @@ import {
   buildSettingsBambuLiveNozzleRangeLabel,
   buildSettingsBambuLiveObservedRfid,
   buildSettingsBambuLiveObservedSummaryParts,
+  parseSettingsBambuLivePresetName,
   buildSettingsBambuLivePresetSignalLabel,
   buildSettingsBambuLiveSignalQualityBuckets,
   buildSettingsBambuLiveTrayLabels,
@@ -604,6 +605,22 @@ test("Bambu live observed RFID trims valid values and suppresses empty or zero-o
 });
 
 test("Bambu live preset signal label prefers live state and falls back to capture snapshot", () => {
+  assert.deepEqual(
+    parseSettingsBambuLivePresetName("Bambu PLA Basic @BBL P1S 0.4 nozzle"),
+    {
+      filamentProfile: "Bambu PLA Basic",
+      nozzleDiameterMm: "0.4",
+      printerProfile: "P1S",
+      rawName: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
+    },
+  );
+  assert.deepEqual(parseSettingsBambuLivePresetName("Custom preset"), {
+    filamentProfile: "Custom preset",
+    nozzleDiameterMm: null,
+    printerProfile: null,
+    rawName: "Custom preset",
+  });
+
   assert.equal(
     buildSettingsBambuLivePresetSignalLabel({
       capturedTraySnapshot: createDiagnosticTraySnapshot({
@@ -617,6 +634,18 @@ test("Bambu live preset signal label prefers live state and falls back to captur
       }),
     }),
     "Filament preset: LIVE_PRESET · Live preset",
+  );
+
+  assert.equal(
+    buildSettingsBambuLivePresetSignalLabel({
+      capturedTraySnapshot: null,
+      t,
+      tray: createObservedTray({
+        tray_id_name: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
+        tray_info_idx: "GFSA00_04",
+      }),
+    }),
+    "Filament preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle",
   );
 
   assert.equal(
@@ -961,7 +990,7 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
   assert.equal(exactCard.observedRfidLabel, "Observed: ABC123");
   assert.equal(
     exactCard.presetSignalLabel,
-    "Filament preset: GFSA00_04 · Bambu PLA Basic @BBL P1S 0.4 nozzle",
+    "Filament preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle",
   );
   assert.equal(exactCard.nozzleRangeLabel, "Nozzle range: 190-240 C");
   assert.equal(exactCard.hasReview, true);
