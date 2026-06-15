@@ -377,7 +377,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       rfidPrinterLive: "Printer live",
       rfidLastSeen: "Last seen",
       rfidLastSlotData: "Last slot data",
-      rfidPresetSignal: "AMS preset signal",
+      rfidPresetSignal: "Filament preset signal",
       rfidPresetName: "Preset/material name",
       rfidActiveSource: "Active source",
       rfidAmsReadDone: "AMS read done bits",
@@ -1219,7 +1219,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveMatchNoteUnknownIdentity:
         "AMS reported a tray identity that is not registered in inventory.",
       bambuLiveMatchNotePresetSignal:
-        "AMS preset signal: {preset}. This is a material/preset hint, not a roll identity.",
+        "Filament preset signal: {preset}. This is a material/preset hint, not a roll identity.",
       bambuLiveMatchNoteConfiguredMismatch:
         "Last known tray identity does not map cleanly to the currently configured spool.",
       bambuLiveMatchNoteNoStoredMatch:
@@ -1276,7 +1276,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveSummaryJobState: "Job state",
       bambuLiveSummaryAmsStatus: "AMS status",
       bambuLiveMoreInventoryCandidates: "More matching rolls exist in inventory.",
-      bambuLivePresetSignal: "AMS preset",
+      bambuLivePresetSignal: "Filament preset",
       bambuLiveNozzleRange: "Nozzle range",
       bambuLiveSignalEventDriven: "Event-driven AMS signals",
       bambuLiveSignalEventDrivenDesc:
@@ -1745,7 +1745,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       rfidPrinterLive: "Printer live",
       rfidLastSeen: "Sist sett",
       rfidLastSlotData: "Siste spordata",
-      rfidPresetSignal: "AMS-preset-signal",
+      rfidPresetSignal: "Filamentprofil-signal",
       rfidPresetName: "Preset-/materialnavn",
       rfidActiveSource: "Aktiv kilde",
       rfidAmsReadDone: "AMS ferdiglest-biter",
@@ -2591,7 +2591,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveMatchNoteUnknownIdentity:
         "AMS rapporterte en sporidentitet som ikke er registrert i lageret.",
       bambuLiveMatchNotePresetSignal:
-        "AMS-preset-signal: {preset}. Dette er et materiale-/preset-hint, ikke en rullidentitet.",
+        "Filamentprofil-signal: {preset}. Dette er et materiale-/profilhint, ikke en rullidentitet.",
       bambuLiveMatchNoteConfiguredMismatch:
         "Sist kjente sporidentitet passer ikke tydelig med filamentet som er konfigurert i dette sporet.",
       bambuLiveMatchNoteNoStoredMatch:
@@ -2647,7 +2647,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveSummaryJobState: "Jobbstatus",
       bambuLiveSummaryAmsStatus: "AMS-status",
       bambuLiveMoreInventoryCandidates: "Det finnes flere matchende ruller i lageret.",
-      bambuLivePresetSignal: "AMS-preset",
+      bambuLivePresetSignal: "Filamentprofil",
       bambuLiveNozzleRange: "Nozzle-område",
       bambuLiveSignalEventDriven: "Hendelsesstyrte AMS-signaler",
       bambuLiveSignalEventDrivenDesc:

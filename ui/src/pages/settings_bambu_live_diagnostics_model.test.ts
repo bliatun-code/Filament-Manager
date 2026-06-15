@@ -590,7 +590,7 @@ test("Bambu live preset signal label prefers live state and falls back to captur
         tray_info_idx: "LIVE_PRESET",
       }),
     }),
-    "AMS preset: LIVE_PRESET · Live preset",
+    "Filament preset: LIVE_PRESET · Live preset",
   );
 
   assert.equal(
@@ -602,7 +602,7 @@ test("Bambu live preset signal label prefers live state and falls back to captur
       t,
       tray: createObservedTray({ tray_id_name: null, tray_info_idx: null }),
     }),
-    "AMS preset: CAPTURE_PRESET · Capture preset",
+    "Filament preset: CAPTURE_PRESET · Capture preset",
   );
 
   assert.equal(
@@ -880,7 +880,7 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
   assert.equal(exactCard.observedRfidLabel, "Observed: ABC123");
   assert.equal(
     exactCard.presetSignalLabel,
-    "AMS preset: GFSA00_04 · Bambu PLA Basic @BBL P1S 0.4 nozzle",
+    "Filament preset: GFSA00_04 · Bambu PLA Basic @BBL P1S 0.4 nozzle",
   );
   assert.equal(exactCard.nozzleRangeLabel, "Nozzle range: 190-240 C");
   assert.equal(exactCard.hasReview, true);

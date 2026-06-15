@@ -269,7 +269,7 @@ fn live_preset_signal_note(tray: &BambuLiveObservedTrayRow) -> Option<String> {
         None => tray_info_idx.to_string(),
     };
     Some(format!(
-        "AMS preset signal {preset_display} was observed via tray_info_idx; this is a material/preset hint, not a roll identity."
+        "Filament preset signal {preset_display} was observed via tray_info_idx; this is a material/preset hint, not a roll identity."
     ))
 }
 

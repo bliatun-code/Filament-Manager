@@ -132,10 +132,17 @@ test("translateObservedMatchNote localizes known notes and preserves unknown not
   );
   assert.equal(
     translateObservedMatchNote(
-      "AMS reported a tray identity that is not registered in inventory. AMS preset signal GFSA00_04 (Bambu PLA Basic @BBL P1S 0.4 nozzle) was observed via tray_info_idx; this is a material/preset hint, not a roll identity.",
+      "AMS reported a tray identity that is not registered in inventory. Filament preset signal GFSA00_04 (Bambu PLA Basic @BBL P1S 0.4 nozzle) was observed via tray_info_idx; this is a material/preset hint, not a roll identity.",
       t,
     ),
-    "settings.bambuLiveMatchNoteUnknownIdentity:AMS reported a tray identity that is not registered in inventory. settings.bambuLiveMatchNotePresetSignal:AMS preset signal: GFSA00_04 (Bambu PLA Basic @BBL P1S 0.4 nozzle). This is a material/preset hint, not a roll identity.",
+    "settings.bambuLiveMatchNoteUnknownIdentity:AMS reported a tray identity that is not registered in inventory. settings.bambuLiveMatchNotePresetSignal:Filament preset signal: GFSA00_04 (Bambu PLA Basic @BBL P1S 0.4 nozzle). This is a material/preset hint, not a roll identity.",
+  );
+  assert.equal(
+    translateObservedMatchNote(
+      "AMS reported a tray identity that is not registered in inventory. AMS preset signal GFSA00_04 was observed via tray_info_idx; this is a material/preset hint, not a roll identity.",
+      t,
+    ),
+    "settings.bambuLiveMatchNoteUnknownIdentity:AMS reported a tray identity that is not registered in inventory. settings.bambuLiveMatchNotePresetSignal:Filament preset signal: GFSA00_04. This is a material/preset hint, not a roll identity.",
   );
   assert.equal(translateObservedMatchNote("Custom note", t), "Custom note");
   assert.equal(translateObservedMatchNote("  ", t), null);

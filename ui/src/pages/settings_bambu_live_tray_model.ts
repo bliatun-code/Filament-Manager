@@ -107,7 +107,7 @@ export function buildSettingsBambuLivePresetSignalLabel({
   if (presetParts.length === 0) {
     return null;
   }
-  return `${t("settings.bambuLivePresetSignal", "AMS preset")}: ${presetParts.join(" · ")}`;
+  return `${t("settings.bambuLivePresetSignal", "Filament preset")}: ${presetParts.join(" · ")}`;
 }
 
 function formatNozzleTemperature(value: number): string {
