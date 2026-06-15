@@ -3,6 +3,7 @@ use crate::backend::filament_database::{
     BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow, BambuLiveObservedStateRow,
     BambuLiveObservedTrayRow, FilamentDatabase,
 };
+use crate::backend::printer_slot_live_mapping::decode_bambu_tray_coordinate;
 use crate::bambu_live_sync::{
     count_review_trays, enrich_with_match_status, is_credible_finished_print_state,
     is_probable_completed_carried_print_state, tray_exist_bits_slot_present,
@@ -154,6 +155,7 @@ fn default_offline_state() -> BambuLiveObservedStateRow {
         print_type: None,
         subtask_id: None,
         subtask_name: None,
+        active_ams_index: None,
         active_tray_index: None,
         nozzle_temp_c: None,
         bed_temp_c: None,
@@ -194,7 +196,10 @@ fn merge_idle_observation(
     if !drop_carried_job_identity {
         next.subtask_id = next.subtask_id.or_else(|| previous.subtask_id.clone());
         next.subtask_name = next.subtask_name.or_else(|| previous.subtask_name.clone());
-        next.active_tray_index = next.active_tray_index.or(previous.active_tray_index);
+        if next.active_tray_index.is_none() {
+            next.active_ams_index = previous.active_ams_index;
+            next.active_tray_index = previous.active_tray_index;
+        }
     }
     next.nozzle_temp_c = next.nozzle_temp_c.or(previous.nozzle_temp_c);
     next.bed_temp_c = next.bed_temp_c.or(previous.bed_temp_c);
@@ -406,6 +411,7 @@ fn log_state_changes(
                 "print_type": next.print_type,
                 "subtask_id": next.subtask_id,
                 "subtask_name": next.subtask_name,
+                "active_ams_index": next.active_ams_index,
                 "active_tray_index": next.active_tray_index,
                 "ams_status_code": next.ams_status_code,
                 "ams_status_main": next.ams_status_main,
@@ -426,6 +432,7 @@ fn log_state_changes(
                 "print_type": next.print_type,
                 "subtask_id": next.subtask_id,
                 "subtask_name": next.subtask_name,
+                "active_ams_index": next.active_ams_index,
                 "active_tray_index": next.active_tray_index,
                 "ams_status_code": next.ams_status_code,
                 "ams_status_main": next.ams_status_main,
@@ -434,13 +441,17 @@ fn log_state_changes(
         )?;
     }
 
-    let previous_tray = previous.and_then(|state| state.active_tray_index);
-    if previous_tray != next.active_tray_index {
+    let previous_tray = previous.map(|state| (state.active_ams_index, state.active_tray_index));
+    let next_tray = (next.active_ams_index, next.active_tray_index);
+    if previous_tray != Some(next_tray) {
         if let Some(active_tray_index) = next.active_tray_index {
             db.insert_printer_live_event(
                 printer_id,
                 "LIVE_ACTIVE_TRAY_CHANGED",
-                &json!({"active_tray_index": active_tray_index}),
+                &json!({
+                    "active_ams_index": next.active_ams_index,
+                    "active_tray_index": active_tray_index,
+                }),
             )?;
         }
     }
@@ -615,6 +626,7 @@ fn has_live_observation(state: &BambuLiveObservedStateRow) -> bool {
         || state.job_state_code.is_some()
         || state.nozzle_temp_c.is_some()
         || state.bed_temp_c.is_some()
+        || state.active_ams_index.is_some()
         || state.active_tray_index.is_some()
         || state.ams_reading_bits.is_some()
         || state.ams_exist_bits.is_some()
@@ -690,7 +702,11 @@ fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) -
     state.subtask_name =
         first_value_string([print.get("subtask_name"), message.get("subtask_name")])
             .or_else(|| state.subtask_name.clone());
-    state.active_tray_index = as_i64(print.pointer("/ams/tray_now")).or(state.active_tray_index);
+    if let Some(raw_tray_now) = as_i64(print.pointer("/ams/tray_now")) {
+        let (active_ams_index, active_tray_index) = decode_bambu_tray_coordinate(raw_tray_now);
+        state.active_ams_index = active_ams_index;
+        state.active_tray_index = active_tray_index;
+    }
     state.nozzle_temp_c = as_f64(print.get("nozzle_temper")).or(state.nozzle_temp_c);
     state.bed_temp_c = as_f64(print.get("bed_temper")).or(state.bed_temp_c);
     state.ams_humidity_index =
@@ -800,6 +816,7 @@ fn merge_raw_payload_snapshot(
                 "print_stage": state.print_stage,
                 "print_error_code": state.print_error_code,
                 "job_state_code": state.job_state_code,
+                "active_ams_index": state.active_ams_index,
                 "active_tray_index": state.active_tray_index,
             }),
         );

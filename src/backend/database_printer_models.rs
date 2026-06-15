@@ -109,6 +109,8 @@ pub struct BambuLiveObservedStateRow {
     pub print_type: Option<String>,
     pub subtask_id: Option<String>,
     pub subtask_name: Option<String>,
+    #[serde(default)]
+    pub active_ams_index: Option<i64>,
     pub active_tray_index: Option<i64>,
     pub nozzle_temp_c: Option<f64>,
     pub bed_temp_c: Option<f64>,

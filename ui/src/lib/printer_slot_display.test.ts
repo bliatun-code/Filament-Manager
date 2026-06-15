@@ -28,7 +28,10 @@ function tray(overrides: Partial<BambuLiveObservedTray> = {}): BambuLiveObserved
   };
 }
 
-function liveConfig(activeTrayIndex: number): BambuLiveIntegrationSettings {
+function liveConfig(
+  activeTrayIndex: number,
+  activeAmsIndex: number | null = null,
+): BambuLiveIntegrationSettings {
   return {
     enabled: true,
     observed_state: {
@@ -36,6 +39,7 @@ function liveConfig(activeTrayIndex: number): BambuLiveIntegrationSettings {
       mqtt_connected: true,
       last_seen_at: "2099-01-01T00:00:00Z",
       progress_percent: 34,
+      active_ams_index: activeAmsIndex,
       active_tray_index: activeTrayIndex,
       trays: [],
     },
@@ -75,6 +79,34 @@ test("derivePrinterSlotDisplayState keeps Bambu external active tray away from i
 
   assert.equal(state.liveSignalEnabled, true);
   assert.equal(state.liveSlotInUse, false);
+});
+
+test("derivePrinterSlotDisplayState uses packed AMS coordinates for active internal slots", () => {
+  const ams1State = derivePrinterSlotDisplayState({
+    slot: slot({ ams_id: "printer_ams_1", slot_index: 1 }),
+    liveConfig: liveConfig(0, 1),
+    liveTray: tray({ tray_index: 0, ams_index: 0 }),
+    selectedTargetSpool: null,
+    clientReadOnly: false,
+    clientPrinterSource: "LIVE",
+    locale: "en",
+    t,
+    findSpoolById: () => null,
+  });
+  const ams2State = derivePrinterSlotDisplayState({
+    slot: slot({ ams_id: "printer_ams_2", slot_index: 1 }),
+    liveConfig: liveConfig(0, 1),
+    liveTray: tray({ tray_index: 0, ams_index: 1 }),
+    selectedTargetSpool: null,
+    clientReadOnly: false,
+    clientPrinterSource: "LIVE",
+    locale: "en",
+    t,
+    findSpoolById: () => null,
+  });
+
+  assert.equal(ams1State.liveSlotInUse, false);
+  assert.equal(ams2State.liveSlotInUse, true);
 });
 
 test("derivePrinterSlotDisplayState can show external host snapshot as live in client mode", () => {

@@ -61,6 +61,7 @@ type BuildSettingsBambuLiveDiagnosticsModelInput = {
 };
 
 type SettingsBambuLiveSummarySource = {
+  activeAmsIndex?: number | null;
   activeTrayIndex?: number | null;
   amsHumidityIndex?: number | null;
   amsStatusCode?: number | null;
@@ -93,7 +94,13 @@ function buildSettingsBambuLiveSummaryParts(
     parts.push(`${source.remainingMinutes} min`);
   }
   if (source.activeTrayIndex != null) {
-    parts.push(formatSettingsBambuLiveSummaryTrayIndexLabel(source.activeTrayIndex, t));
+    parts.push(
+      formatSettingsBambuLiveSummaryTrayIndexLabel(
+        source.activeTrayIndex,
+        t,
+        source.activeAmsIndex,
+      ),
+    );
   }
   if (source.amsHumidityIndex != null) {
     parts.push(
@@ -121,6 +128,7 @@ export function buildSettingsBambuLiveFallbackSummaryParts(
   return buildSettingsBambuLiveSummaryParts(
     {
       activeTrayIndex: fallbackSummary.activeTrayIndex,
+      activeAmsIndex: fallbackSummary.activeAmsIndex,
       amsHumidityIndex: fallbackSummary.amsHumidityIndex,
       progressPercent: fallbackSummary.progressPercent,
       remainingMinutes: fallbackSummary.remainingMinutes,
@@ -136,6 +144,7 @@ export function buildSettingsBambuLiveObservedSummaryParts(
   return buildSettingsBambuLiveSummaryParts(
     {
       activeTrayIndex: observedState?.active_tray_index,
+      activeAmsIndex: observedState?.active_ams_index,
       amsHumidityIndex: observedState?.ams_humidity_index,
       amsStatusCode: observedState?.ams_status_code,
       amsStatusMain: observedState?.ams_status_main,

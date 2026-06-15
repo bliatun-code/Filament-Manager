@@ -557,6 +557,7 @@ fn assign_printer_slot_derives_unknown_live_rfid_override_on_host() {
                         print_type: None,
                         subtask_id: None,
                         subtask_name: None,
+                        active_ams_index: None,
                         active_tray_index: None,
                         nozzle_temp_c: None,
                         bed_temp_c: None,

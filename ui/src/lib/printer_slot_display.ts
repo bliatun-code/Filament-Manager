@@ -78,7 +78,11 @@ export function derivePrinterSlotDisplayState(options: {
     liveSignalEnabled &&
     liveIdentityFresh &&
     ((liveConfig?.enabled &&
-      liveActiveTrayMatchesSlot(slot, liveConfig.observed_state?.active_tray_index) &&
+      liveActiveTrayMatchesSlot(
+        slot,
+        liveConfig.observed_state?.active_tray_index,
+        liveConfig.observed_state?.active_ams_index,
+      ) &&
       (liveConfig.observed_state?.progress_percent != null ||
         liveConfig.observed_state?.remaining_minutes != null)) ||
       slot.live_is_active === true);

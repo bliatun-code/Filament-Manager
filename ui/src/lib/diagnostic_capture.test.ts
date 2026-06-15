@@ -4,8 +4,10 @@ import {
   buildDiagnosticCaptureSession,
   buildDiagnosticChartFieldOptions,
   buildDiagnosticChartPoints,
+  buildDiagnosticFallbackSummary,
   buildDiagnosticDisplayTrays,
   countDiagnosticIdentitySignals,
+  decodeBambuTrayCoordinate,
   exportDiagnosticCaptureSessionCsv,
   extractDiagnosticTraySnapshots,
   updateDiagnosticCaptureSessionFromPayload,
@@ -173,4 +175,35 @@ test("diagnostic tray helpers build fallback display trays", () => {
     },
   ]);
   assert.equal(countDiagnosticIdentitySignals(session.fields), 2);
+});
+
+test("diagnostic fallback decodes packed Bambu active tray coordinates", () => {
+  assert.deepEqual(decodeBambuTrayCoordinate(4), {
+    activeAmsIndex: 1,
+    activeTrayIndex: 0,
+  });
+  assert.deepEqual(decodeBambuTrayCoordinate(255), {
+    activeAmsIndex: null,
+    activeTrayIndex: 255,
+  });
+
+  const session = updateDiagnosticCaptureSessionFromPayload({
+    session: null,
+    rawPayload: {
+      ams: {
+        tray_now: 4,
+      },
+      mc_percent: 81,
+    },
+    observedAt: "2026-05-15T10:00:00Z",
+  });
+
+  assert.ok(session);
+  assert.deepEqual(buildDiagnosticFallbackSummary(session.fields), {
+    progressPercent: 81,
+    remainingMinutes: null,
+    activeAmsIndex: 1,
+    activeTrayIndex: 0,
+    amsHumidityIndex: null,
+  });
 });

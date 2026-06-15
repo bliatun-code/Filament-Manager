@@ -78,6 +78,7 @@ export type DiagnosticFieldGroup = {
 export type DiagnosticFallbackSummary = {
   progressPercent: number | null;
   remainingMinutes: number | null;
+  activeAmsIndex: number | null;
   activeTrayIndex: number | null;
   amsHumidityIndex: number | null;
 };
@@ -459,11 +460,31 @@ export function isDiagnosticAmsReadInProgress(fields: DiagnosticCaptureField[]):
   return Boolean(amsTrayReadingBits && amsTrayReadingBits.trim() && !/^0+$/i.test(amsTrayReadingBits.trim()));
 }
 
+export function decodeBambuTrayCoordinate(rawTrayIndex: number | null): {
+  activeAmsIndex: number | null;
+  activeTrayIndex: number | null;
+} {
+  if (rawTrayIndex == null) {
+    return { activeAmsIndex: null, activeTrayIndex: null };
+  }
+  if (rawTrayIndex === 255 || rawTrayIndex === 254) {
+    return { activeAmsIndex: null, activeTrayIndex: rawTrayIndex };
+  }
+  if (rawTrayIndex >= 0x80 && rawTrayIndex <= 0x87) {
+    return { activeAmsIndex: rawTrayIndex, activeTrayIndex: rawTrayIndex & 0x3 };
+  }
+  return { activeAmsIndex: rawTrayIndex >> 2, activeTrayIndex: rawTrayIndex & 0x3 };
+}
+
 export function buildDiagnosticFallbackSummary(fields: DiagnosticCaptureField[]): DiagnosticFallbackSummary {
+  const activeTrayCoordinate = decodeBambuTrayCoordinate(
+    diagnosticFieldNumber(fields, "ams.tray_now") ?? diagnosticFieldNumber(fields, "tray_now"),
+  );
   return {
     progressPercent: diagnosticFieldNumber(fields, "mc_percent"),
     remainingMinutes: diagnosticFieldNumber(fields, "mc_remaining_time"),
-    activeTrayIndex: diagnosticFieldNumber(fields, "ams.tray_now") ?? diagnosticFieldNumber(fields, "tray_now"),
+    activeAmsIndex: activeTrayCoordinate.activeAmsIndex,
+    activeTrayIndex: activeTrayCoordinate.activeTrayIndex,
     amsHumidityIndex:
       diagnosticFieldNumber(fields, "ams.ams[0].humidity") ?? diagnosticFieldNumber(fields, "humidity"),
   };

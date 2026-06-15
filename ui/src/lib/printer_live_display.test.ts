@@ -34,7 +34,10 @@ function tray(overrides: Partial<BambuLiveObservedTray> = {}): BambuLiveObserved
   };
 }
 
-function liveConfig(trays: BambuLiveObservedTray[]): BambuLiveIntegrationSettings {
+function liveConfig(
+  trays: BambuLiveObservedTray[],
+  activeAmsIndex: number | null = null,
+): BambuLiveIntegrationSettings {
   return {
     enabled: true,
     observed_state: {
@@ -42,6 +45,7 @@ function liveConfig(trays: BambuLiveObservedTray[]): BambuLiveIntegrationSetting
       mqtt_connected: true,
       last_seen_at: "2099-01-01T00:00:00Z",
       progress_percent: 42,
+      active_ams_index: activeAmsIndex,
       active_tray_index: 255,
       trays,
     },
@@ -61,6 +65,18 @@ test("Bambu external tray indexes are treated as virtual external slots", () => 
   assert.equal(liveActiveTrayMatchesSlot(internalSlot, 0), true);
   assert.equal(liveActiveTrayMatchesSlot(slot({ ams_id: "printer_ams_2" }), 0), false);
   assert.equal(liveActiveTrayMatchesSlot(internalSlot, 255), false);
+});
+
+test("Bambu active tray matching uses packed AMS coordinates when available", () => {
+  const ams1Slot = slot({ ams_id: "printer_ams_1", slot_index: 1 });
+  const ams2Slot = slot({ ams_id: "printer_ams_2", slot_index: 1 });
+  const ams2Slot2 = slot({ ams_id: "printer_ams_2", slot_index: 2 });
+
+  assert.equal(liveActiveTrayMatchesSlot(ams2Slot, 0, 1), true);
+  assert.equal(liveActiveTrayMatchesSlot(ams1Slot, 0, 1), false);
+  assert.equal(liveActiveTrayMatchesSlot(ams2Slot2, 0, 1), false);
+  assert.equal(liveActiveTrayMatchesSlot(ams1Slot, 0, null), true);
+  assert.equal(liveActiveTrayMatchesSlot(ams2Slot, 0, null), false);
 });
 
 test("live tray matching uses observed AMS index when available", () => {

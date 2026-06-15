@@ -577,6 +577,7 @@ fn merge_print_payload_accepts_top_level_ams_payload() {
     state.last_seen_at = Some("2026-04-16T17:29:03Z".to_string());
     let payload = serde_json::json!({
         "ams": {
+            "tray_now": "4",
             "ams": [
                 {
                     "id": "0",
@@ -604,6 +605,8 @@ fn merge_print_payload_accepts_top_level_ams_payload() {
 
     assert_eq!(state.bed_temp_c, Some(22.6875));
     assert_eq!(state.trays.len(), 2);
+    assert_eq!(state.active_ams_index, Some(1));
+    assert_eq!(state.active_tray_index, Some(0));
     assert!(!state.trays[0].loaded);
     assert_eq!(
         state.trays[1].tray_uuid.as_deref(),
@@ -620,6 +623,7 @@ fn merge_print_payload_captures_trays_from_multiple_ams_units() {
     state.last_seen_at = Some("2026-04-16T17:29:03Z".to_string());
     let payload = serde_json::json!({
         "ams": {
+            "tray_now": "4",
             "ams": [
                 {
                     "id": "0",
@@ -655,6 +659,8 @@ fn merge_print_payload_captures_trays_from_multiple_ams_units() {
     super::merge_print_payload(&mut state, &payload);
 
     assert_eq!(state.trays.len(), 2);
+    assert_eq!(state.active_ams_index, Some(1));
+    assert_eq!(state.active_tray_index, Some(0));
     assert_eq!(state.trays[0].ams_index, Some(0));
     assert_eq!(state.trays[0].tray_index, 0);
     assert_eq!(state.trays[0].tray_uuid.as_deref(), Some("AMS1TRAY1"));
@@ -985,6 +991,51 @@ fn merge_idle_observation_drops_near_complete_carried_identity_for_new_unknown_p
     assert_eq!(merged.subtask_id, None);
     assert_eq!(merged.subtask_name, None);
     assert_eq!(merged.active_tray_index, None);
+}
+
+#[test]
+fn merge_idle_observation_carries_active_ams_coordinate_with_active_tray() {
+    let mut previous = super::default_offline_state();
+    previous.online = true;
+    previous.mqtt_connected = true;
+    previous.last_seen_at = Some("2026-05-20T19:15:54Z".to_string());
+    previous.gcode_state = Some("RUNNING".to_string());
+    previous.subtask_id = Some("963013155".to_string());
+    previous.subtask_name = Some("With supports".to_string());
+    previous.active_ams_index = Some(1);
+    previous.active_tray_index = Some(0);
+    previous.progress_percent = Some(42);
+    previous.remaining_minutes = Some(18);
+
+    let mut next = super::default_offline_state();
+    next.online = true;
+    next.mqtt_connected = true;
+    next.last_seen_at = Some("2026-05-20T19:16:45Z".to_string());
+    next.progress_percent = Some(43);
+    next.remaining_minutes = Some(17);
+    next.raw_payload_json = Some(serde_json::json!({
+        "_bfm_last_message": {
+            "has_job_identity": false
+        },
+        "_bfm_job": {
+            "gcode_state": null,
+            "progress_percent": 43,
+            "remaining_minutes": 17,
+            "subtask_id": null,
+            "subtask_name": null,
+            "active_ams_index": null,
+            "active_tray_index": null
+        }
+    }));
+
+    let merged = super::merge_idle_observation(Some(&previous), next);
+
+    assert_eq!(merged.progress_percent, Some(43));
+    assert_eq!(merged.remaining_minutes, Some(17));
+    assert_eq!(merged.subtask_id.as_deref(), Some("963013155"));
+    assert_eq!(merged.subtask_name.as_deref(), Some("With supports"));
+    assert_eq!(merged.active_ams_index, Some(1));
+    assert_eq!(merged.active_tray_index, Some(0));
 }
 
 #[test]

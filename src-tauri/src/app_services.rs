@@ -11,7 +11,7 @@ use crate::backend::inventory_engine::{
     UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::printer_slot_live_mapping::{
-    bambu_live_slot_matches_tray, flat_bambu_live_slot_matches_tray, is_external_slot_id,
+    bambu_live_active_tray_matches_slot, bambu_live_slot_matches_tray, is_external_slot_id,
 };
 use serde::{Deserialize, Serialize};
 
@@ -339,19 +339,15 @@ fn find_observed_tray_for_slot<'a>(
 
 fn live_active_tray_matches_slot(
     slot: &crate::backend::filament_database::PrinterAmsSlotRow,
+    active_ams_index: Option<i64>,
     active_tray_index: Option<i64>,
 ) -> bool {
-    if slot_is_external(slot) {
-        return matches!(
-            active_tray_index,
-            Some(BAMBU_PRIMARY_EXTERNAL_TRAY_INDEX | BAMBU_SECONDARY_EXTERNAL_TRAY_INDEX)
-        );
-    }
-    active_tray_index
-        .map(|tray_index| {
-            flat_bambu_live_slot_matches_tray(&slot.ams_id, slot.slot_index, tray_index)
-        })
-        .unwrap_or(false)
+    bambu_live_active_tray_matches_slot(
+        &slot.ams_id,
+        slot.slot_index,
+        active_ams_index,
+        active_tray_index,
+    )
 }
 
 fn apply_live_tray_to_slot(
@@ -383,7 +379,7 @@ fn apply_live_tray_to_slot(
         observed_state.and_then(|state| state.ams_read_done_bits.clone());
     slot.live_ams_bambu_bits = observed_state.and_then(|state| state.ams_bambu_bits.clone());
     slot.live_is_active = observed_state.map(|state| {
-        live_active_tray_matches_slot(slot, state.active_tray_index)
+        live_active_tray_matches_slot(slot, state.active_ams_index, state.active_tray_index)
             && (state.progress_percent.is_some() || state.remaining_minutes.is_some())
     });
 }

@@ -101,6 +101,7 @@ export type BambuLiveObservedState = {
   print_type?: string | null;
   subtask_id?: string | null;
   subtask_name?: string | null;
+  active_ams_index?: number | null;
   active_tray_index?: number | null;
   nozzle_temp_c?: number | null;
   bed_temp_c?: number | null;

@@ -258,9 +258,13 @@ export function isBambuExternalTrayIndex(trayIndex: number | null | undefined): 
 export function liveActiveTrayMatchesSlot(
   slot: PrinterAmsSlotRow,
   activeTrayIndex: number | null | undefined,
+  activeAmsIndex?: number | null,
 ): boolean {
   if (isExternalSlot(slot)) {
     return isBambuExternalTrayIndex(activeTrayIndex);
+  }
+  if (typeof activeAmsIndex === "number" && typeof activeTrayIndex === "number") {
+    return parseInternalAmsUnitIndex(slot.ams_id) === activeAmsIndex + 1 && activeTrayIndex === slot.slot_index - 1;
   }
   return supportsFlatBambuLiveTray(slot) && activeTrayIndex === slot.slot_index - 1;
 }

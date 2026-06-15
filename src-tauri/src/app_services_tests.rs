@@ -652,6 +652,7 @@ fn companion_service_list_printer_overview_exposes_live_slot_snapshot() {
                     print_type: Some("local".to_string()),
                     subtask_id: Some("benchy-1".to_string()),
                     subtask_name: Some("Benchy".to_string()),
+                    active_ams_index: None,
                     active_tray_index: Some(0),
                     nozzle_temp_c: None,
                     bed_temp_c: None,
@@ -766,6 +767,7 @@ fn companion_service_keeps_flat_bambu_live_tray_on_first_ams_only() {
                     print_type: Some("local".to_string()),
                     subtask_id: Some("benchy-1".to_string()),
                     subtask_name: Some("Benchy".to_string()),
+                    active_ams_index: None,
                     active_tray_index: Some(0),
                     nozzle_temp_c: None,
                     bed_temp_c: None,
@@ -883,7 +885,8 @@ fn companion_service_maps_indexed_bambu_live_tray_to_second_ams() {
                     print_type: Some("local".to_string()),
                     subtask_id: Some("benchy-1".to_string()),
                     subtask_name: Some("Benchy".to_string()),
-                    active_tray_index: None,
+                    active_ams_index: Some(1),
+                    active_tray_index: Some(0),
                     nozzle_temp_c: None,
                     bed_temp_c: None,
                     ams_humidity_index: None,
@@ -941,6 +944,7 @@ fn companion_service_maps_indexed_bambu_live_tray_to_second_ams() {
             .ok_or_else(|| "missing AMS 2 slot".to_string())?;
 
         assert!(ams_1_slot_1.live_tray_uuid.is_none());
+        assert_eq!(ams_1_slot_1.live_is_active, Some(false));
         assert_eq!(
             ams_2_slot_1.live_tray_uuid.as_deref(),
             Some("tray-uuid-ams-2")
@@ -949,6 +953,7 @@ fn companion_service_maps_indexed_bambu_live_tray_to_second_ams() {
             ams_2_slot_1.live_filament_name.as_deref(),
             Some("AMS 2 spool")
         );
+        assert_eq!(ams_2_slot_1.live_is_active, Some(true));
 
         Ok(())
     })();
@@ -1001,6 +1006,7 @@ fn companion_service_list_printer_overview_maps_bambu_external_live_tray() {
                     print_type: Some("local".to_string()),
                     subtask_id: Some("benchy-1".to_string()),
                     subtask_name: Some("Benchy".to_string()),
+                    active_ams_index: None,
                     active_tray_index: Some(255),
                     nozzle_temp_c: None,
                     bed_temp_c: None,
