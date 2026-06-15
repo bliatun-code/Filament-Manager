@@ -18,6 +18,67 @@ function normalizeInventoryMatchText(raw?: string | null): string {
   return (raw ?? "").trim().toLowerCase();
 }
 
+const GENERIC_MATERIAL_NAME_TOKENS = new Set([
+  "pla",
+  "petg",
+  "abs",
+  "asa",
+  "tpu",
+  "pc",
+  "pa",
+  "cpe",
+  "hips",
+  "pva",
+  "pet",
+  "pp",
+  "pom",
+  "support",
+]);
+
+function inventoryNameTokens(raw?: string | null): string[] {
+  return (raw ?? "")
+    .toLowerCase()
+    .split(/[^a-z0-9+]+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function hasDistinctiveInventoryNameToken(tokens: string[]): boolean {
+  return tokens.some((token) => {
+    const compact = token.replace(/^\++|\++$/g, "");
+    return compact.length >= 2 && !GENERIC_MATERIAL_NAME_TOKENS.has(compact);
+  });
+}
+
+function containsNameTokenSequence(haystack: string[], needle: string[]): boolean {
+  if (needle.length === 0 || haystack.length < needle.length) {
+    return false;
+  }
+  return haystack.some((_, index) =>
+    needle.every((token, offset) => haystack[index + offset] === token),
+  );
+}
+
+function inventoryFilamentNameMatches(left?: string | null, right?: string | null): boolean {
+  const leftTokens = inventoryNameTokens(left);
+  const rightTokens = inventoryNameTokens(right);
+  if (leftTokens.length === 0 || rightTokens.length === 0) {
+    return false;
+  }
+  if (
+    leftTokens.length === rightTokens.length &&
+    leftTokens.every((token, index) => token === rightTokens[index])
+  ) {
+    return hasDistinctiveInventoryNameToken(leftTokens);
+  }
+  return (
+    (hasDistinctiveInventoryNameToken(leftTokens) &&
+      containsNameTokenSequence(rightTokens, leftTokens)) ||
+    (hasDistinctiveInventoryNameToken(rightTokens) &&
+      containsNameTokenSequence(leftTokens, rightTokens))
+  );
+}
+
 export function buildInventoryMatchResult(
   spoolRows: SpoolWithMasterRow[],
   observed: ObservedInventoryMatchInput,
@@ -53,11 +114,7 @@ export function buildInventoryMatchResult(
 
     const rowFilament = normalizeInventoryMatchText(row.master.filament_name);
     if (observedFilamentName) {
-      const filamentMatches =
-        rowFilament === observedFilamentName ||
-        rowFilament.includes(observedFilamentName) ||
-        observedFilamentName.includes(rowFilament);
-      if (!filamentMatches) {
+      if (!inventoryFilamentNameMatches(rowFilament, observedFilamentName)) {
         return false;
       }
     }

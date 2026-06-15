@@ -86,6 +86,32 @@ test("buildInventoryMatchResult falls back to metadata matching", () => {
   assert.deepEqual(result.candidates.map((row) => row.spool.id), ["spool-2"]);
 });
 
+test("buildInventoryMatchResult does not treat a material token as a filament name match", () => {
+  const result = buildInventoryMatchResult(
+    [createRow("spool-1", { material: "PLA", filamentName: "PLA Basic", hexColor: "#2563EB" })],
+    {
+      material: "PLA",
+      filamentName: "PLA",
+      colorHex: "#00FF00",
+    },
+  );
+
+  assert.equal(result.kind, "none");
+});
+
+test("buildInventoryMatchResult keeps short distinctive filament name matches", () => {
+  const result = buildInventoryMatchResult(
+    [createRow("spool-1", { material: "PETG", filamentName: "PETG HF", hexColor: "#00AE42" })],
+    {
+      material: "PETG",
+      filamentName: "HF",
+    },
+  );
+
+  assert.equal(result.kind, "metadata_single");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), ["spool-1"]);
+});
+
 test("buildInventoryMatchResult matches observed RFID color against multi swatch colors", () => {
   const result = buildInventoryMatchResult(
     [
