@@ -174,7 +174,7 @@ test("diagnostic tray helpers build fallback display trays", () => {
       remaining_percent: 87,
       match_status: null,
       match_note:
-        "RFID: tag-1 · uuid-1 · Settings preset: GFSA00_04 · Bambu PLA Basic @BBL P1S 0.4 nozzle · Nozzle range: 190-240 C",
+        "RFID: tag-1 · uuid-1 · Settings preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle · Nozzle range: 190-240 C",
     },
   ]);
   assert.equal(countDiagnosticIdentitySignals(session.fields), 2);

@@ -7,6 +7,11 @@ import {
   translateObservedMatchNote,
   type InventoryMatchResult,
 } from "../lib/inventory_match";
+import {
+  formatBambuSettingsProfileNameParts,
+  parseBambuSettingsProfileName,
+  type BambuSettingsProfileNameParts,
+} from "../lib/bambu_settings_profiles";
 import type {
   BambuLiveObservedTray,
   SpoolWithMasterRow,
@@ -93,61 +98,17 @@ export function buildSettingsBambuLiveObservedRfid(
   return trayUuid && !/^0+$/.test(trayUuid) ? trayUuid : null;
 }
 
-export type SettingsBambuLivePresetNameParts = {
-  filamentProfile: string;
-  nozzleDiameterMm: string | null;
-  printerProfile: string | null;
-  rawName: string;
-};
+export type SettingsBambuLivePresetNameParts = BambuSettingsProfileNameParts;
 
-export function parseSettingsBambuLivePresetName(
-  rawName: string | null | undefined,
-): SettingsBambuLivePresetNameParts | null {
-  const normalized = rawName?.trim() ?? "";
-  if (!normalized) {
-    return null;
-  }
-  const match = normalized.match(/^(.+?)\s+@BBL\s+(.+?)(?:\s+(\d+(?:\.\d+)?)\s+nozzle)?$/i);
-  if (match) {
-    return {
-      filamentProfile: (match[1] ?? "").trim(),
-      nozzleDiameterMm: match[3]?.trim() || null,
-      printerProfile: (match[2] ?? "").trim() || null,
-      rawName: normalized,
-    };
-  }
-  const genericNozzleMatch = normalized.match(/^(.+?)\s+@(\d+(?:\.\d+)?)\s+nozzle$/i);
-  if (genericNozzleMatch) {
-    return {
-      filamentProfile: (genericNozzleMatch[1] ?? "").trim(),
-      nozzleDiameterMm: genericNozzleMatch[2]?.trim() || null,
-      printerProfile: null,
-      rawName: normalized,
-    };
-  }
-  return {
-    filamentProfile: normalized,
-    nozzleDiameterMm: null,
-    printerProfile: null,
-    rawName: normalized,
-  };
-}
+export const parseSettingsBambuLivePresetName = parseBambuSettingsProfileName;
 
 function formatSettingsBambuLivePresetNameParts(
   rawName: string,
   t: TranslateFn,
 ): string[] {
-  const parsed = parseSettingsBambuLivePresetName(rawName);
-  if (!parsed) {
-    return [];
-  }
-  return [
-    parsed.filamentProfile,
-    parsed.printerProfile,
-    parsed.nozzleDiameterMm
-      ? `${parsed.nozzleDiameterMm} ${t("settings.bambuLivePresetNozzleSuffix", "mm nozzle")}`
-      : null,
-  ].filter((value): value is string => Boolean(value));
+  return formatBambuSettingsProfileNameParts(rawName, {
+    nozzleSuffix: t("settings.bambuLivePresetNozzleSuffix", "mm nozzle"),
+  });
 }
 
 export function buildSettingsBambuLivePresetSignalLabel({
