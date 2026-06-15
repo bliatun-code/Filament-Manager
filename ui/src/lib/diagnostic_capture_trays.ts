@@ -113,6 +113,22 @@ export function extractDiagnosticTraySnapshots(
   });
 }
 
+function formatDiagnosticNozzleRange(
+  min: number | null | undefined,
+  max: number | null | undefined,
+): string | null {
+  if (min == null && max == null) {
+    return null;
+  }
+  if (min != null && max != null) {
+    return `${min}-${max} C`;
+  }
+  if (min != null) {
+    return `min ${min} C`;
+  }
+  return `max ${max} C`;
+}
+
 export function buildDiagnosticDisplayTrays(
   observedTrays: BambuLiveObservedTray[],
   fields: DiagnosticCaptureField[],
@@ -123,6 +139,10 @@ export function buildDiagnosticDisplayTrays(
   return extractDiagnosticTraySnapshots(fields).map((tray) => {
     const identityNote = [tray.tagUid, tray.trayUuid].filter(Boolean).join(" · ");
     const presetNote = [tray.trayInfoIdx, tray.trayIdName].filter(Boolean).join(" · ");
+    const nozzleRangeNote = formatDiagnosticNozzleRange(
+      tray.nozzleTempMinC,
+      tray.nozzleTempMaxC,
+    );
 
     return {
       ams_index: tray.amsIndex,
@@ -136,7 +156,8 @@ export function buildDiagnosticDisplayTrays(
       match_note:
         [
           identityNote ? `RFID: ${identityNote}` : null,
-          presetNote ? `Preset: ${presetNote}` : null,
+          presetNote ? `Settings preset: ${presetNote}` : null,
+          nozzleRangeNote ? `Nozzle range: ${nozzleRangeNote}` : null,
         ]
           .filter(Boolean)
           .join(" · ") || null,
