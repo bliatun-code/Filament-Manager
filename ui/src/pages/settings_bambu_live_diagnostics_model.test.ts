@@ -48,6 +48,10 @@ function createLiveConfig(): BambuLiveIntegrationSettings {
       remaining_minutes: 18,
       active_tray_index: 1,
       ams_humidity_index: 3,
+      job_state_code: 4,
+      ams_status_code: 769,
+      ams_status_main: 3,
+      ams_status_sub: 1,
       trays: [
         {
           tray_index: 1,
@@ -202,7 +206,14 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
   assert.equal(model.diagnosticTrayCards[0].matchKind, "rfid_exact");
   assert.equal(model.diagnosticTrayCards[0].matchLabel, "PLA Basic · Orange");
   assert.equal(model.diagnosticTrayCards[0].observedRfidLabel, "Observed: ABC123");
-  assert.deepEqual(model.observedSummaryParts, ["42%", "18 min", "Tray 1", "AMS humidity 3"]);
+  assert.deepEqual(model.observedSummaryParts, [
+    "42%",
+    "18 min",
+    "Tray 1",
+    "AMS humidity 3",
+    "Job state 4",
+    "AMS status 3/1",
+  ]);
   assert.deepEqual(model.fallbackSummaryParts, ["43%", "17 min"]);
   assert.deepEqual(
     model.diagnosticMetricCards.map((metric) => metric.label),
@@ -275,7 +286,7 @@ test("Bambu live summary builders keep display order and omit missing values", (
 
   assert.deepEqual(
     buildSettingsBambuLiveObservedSummaryParts(liveConfig.observed_state ?? null, t),
-    ["42%", "18 min", "Tray 1", "AMS humidity 3"],
+    ["42%", "18 min", "Tray 1", "AMS humidity 3", "Job state 4", "AMS status 3/1"],
   );
   assert.deepEqual(buildSettingsBambuLiveObservedSummaryParts(null, t), []);
 

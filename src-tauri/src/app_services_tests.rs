@@ -647,6 +647,7 @@ fn companion_service_list_printer_overview_exposes_live_slot_snapshot() {
                     prepare_percent: None,
                     print_stage: None,
                     print_error_code: None,
+                    job_state_code: None,
                     gcode_state: Some("RUNNING".to_string()),
                     print_type: Some("local".to_string()),
                     subtask_id: Some("benchy-1".to_string()),
@@ -659,6 +660,9 @@ fn companion_service_list_printer_overview_exposes_live_slot_snapshot() {
                     ams_reading_bits: None,
                     ams_read_done_bits: None,
                     ams_bambu_bits: None,
+                    ams_status_code: None,
+                    ams_status_main: None,
+                    ams_status_sub: None,
                     raw_status_note: None,
                     raw_payload_json: None,
                     trays: vec![BambuLiveObservedTrayRow {

@@ -552,6 +552,7 @@ fn assign_printer_slot_derives_unknown_live_rfid_override_on_host() {
                         prepare_percent: None,
                         print_stage: None,
                         print_error_code: None,
+                        job_state_code: None,
                         gcode_state: None,
                         print_type: None,
                         subtask_id: None,
@@ -564,6 +565,9 @@ fn assign_printer_slot_derives_unknown_live_rfid_override_on_host() {
                         ams_reading_bits: None,
                         ams_read_done_bits: None,
                         ams_bambu_bits: None,
+                        ams_status_code: None,
+                        ams_status_main: None,
+                        ams_status_sub: None,
                         raw_status_note: None,
                         raw_payload_json: None,
                         trays: vec![BambuLiveObservedTrayRow {

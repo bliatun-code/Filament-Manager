@@ -408,7 +408,7 @@ Når den er aktiv, kan programmet observere:
 - RFID/tray-identitet når tilgjengelig
 - AMS-preset og filamentinnstillinger som `tray_info_idx`, `tray_id_name` og anbefalt nozzle-område når printeren sender dette
 - beregnet gjenværende vekt fra AMS
-- printerens jobbstatus
+- printerens jobbstatus og AMS-statuskoder når de finnes i MQTT-strømmen
 - subtask/jobbid og navn når printeren sender dette
 - fremdrift og resterende tid
 - nozzle-temperatur
@@ -417,6 +417,8 @@ Når den er aktiv, kan programmet observere:
 AMS-preset er ikke det samme som RFID. `tray_info_idx` og `tray_id_name` peker på en Bambu/Studio-materialprofil eller preset, ikke en fysisk rull. Programmet viser dette som diagnostikk og kan bruke det som svakt materialhint, men det skal ikke erstatte registrert RFID på rullen.
 
 Anbefalt nozzle-område fra preset er også diagnostikk. Det beskriver filamentprofilens temperaturvindu, mens live nozzle-temperatur beskriver hva printeren faktisk gjør akkurat nå.
+
+`job_state` og `ams_status` vises som diagnosekoder. De kan hjelpe oss å forstå printerens interne tilstand, men de brukes ikke alene til å telle jobber eller registrere forbruk. Automatisk forbruk bygger fortsatt på en kombinasjon av jobbidentitet, `gcode_state`, fremdrift, nozzle-temperatur, aktivt AMS-spor og sane AMS-vektendringer.
 
 ### Automatisk sporvalg
 

@@ -57,6 +57,10 @@ type BuildSettingsBambuLiveDiagnosticsModelInput = {
 type SettingsBambuLiveSummarySource = {
   activeTrayIndex?: number | null;
   amsHumidityIndex?: number | null;
+  amsStatusCode?: number | null;
+  amsStatusMain?: number | null;
+  amsStatusSub?: number | null;
+  jobStateCode?: number | null;
   progressPercent?: number | null;
   remainingMinutes?: number | null;
 };
@@ -90,6 +94,16 @@ function buildSettingsBambuLiveSummaryParts(
       `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${source.amsHumidityIndex}`,
     );
   }
+  if (source.jobStateCode != null) {
+    parts.push(`${t("settings.bambuLiveSummaryJobState", "Job state")} ${source.jobStateCode}`);
+  }
+  if (source.amsStatusCode != null) {
+    const statusValue =
+      source.amsStatusMain != null && source.amsStatusSub != null
+        ? `${source.amsStatusMain}/${source.amsStatusSub}`
+        : String(source.amsStatusCode);
+    parts.push(`${t("settings.bambuLiveSummaryAmsStatus", "AMS status")} ${statusValue}`);
+  }
   return parts;
 }
 
@@ -117,6 +131,10 @@ export function buildSettingsBambuLiveObservedSummaryParts(
     {
       activeTrayIndex: observedState?.active_tray_index,
       amsHumidityIndex: observedState?.ams_humidity_index,
+      amsStatusCode: observedState?.ams_status_code,
+      amsStatusMain: observedState?.ams_status_main,
+      amsStatusSub: observedState?.ams_status_sub,
+      jobStateCode: observedState?.job_state_code,
       progressPercent: observedState?.progress_percent,
       remainingMinutes: observedState?.remaining_minutes,
     },

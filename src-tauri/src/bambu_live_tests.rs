@@ -473,6 +473,9 @@ fn merge_print_payload_captures_print_state_and_job_identity() {
             "subtask_id": 9371,
             "subtask_name": "Calibration cube",
             "mc_percent": "42"
+        },
+        "job": {
+            "job_state": 4
         }
     });
 
@@ -483,7 +486,22 @@ fn merge_print_payload_captures_print_state_and_job_identity() {
     assert_eq!(state.subtask_id.as_deref(), Some("9371"));
     assert_eq!(state.subtask_name.as_deref(), Some("Calibration cube"));
     assert_eq!(state.progress_percent, Some(42));
+    assert_eq!(state.job_state_code, Some(4));
     assert!(is_live_print_running(&state));
+    let raw = state
+        .raw_payload_json
+        .as_ref()
+        .expect("merged raw payload should be stored");
+    assert_eq!(
+        raw.pointer("/_bfm_job/job_state_code")
+            .and_then(Value::as_i64),
+        Some(4)
+    );
+    assert_eq!(
+        raw.pointer("/_bfm_last_message/has_job_state")
+            .and_then(Value::as_bool),
+        Some(true)
+    );
 }
 
 #[test]
@@ -534,6 +552,22 @@ fn merge_print_payload_captures_preflight_diagnostics_without_starting_print() {
 }
 
 #[test]
+fn merge_print_payload_accepts_passive_job_state_without_starting_print() {
+    let mut state = super::default_offline_state();
+    let payload = serde_json::json!({
+        "job": {
+            "job_state": 2
+        }
+    });
+
+    assert!(super::merge_print_payload(&mut state, &payload));
+
+    assert_eq!(state.job_state_code, Some(2));
+    assert!(super::has_live_observation(&state));
+    assert!(!is_live_print_running(&state));
+}
+
+#[test]
 fn merge_print_payload_reads_top_level_job_identity_from_bambu_payloads() {
     let mut state = super::default_offline_state();
     let payload = serde_json::json!({
@@ -573,6 +607,7 @@ fn merge_print_payload_keeps_diagnostic_job_and_burst_snapshot_fields() {
     let ams_payload = serde_json::json!({
         "print": {
             "ams": {
+                "ams_status": 769,
                 "tray_now": "0",
                 "ams": [
                     {
@@ -634,6 +669,29 @@ fn merge_print_payload_keeps_diagnostic_job_and_burst_snapshot_fields() {
         raw.pointer("/_bfm_last_message/has_progress")
             .and_then(Value::as_bool),
         Some(false)
+    );
+    assert_eq!(state.ams_status_code, Some(769));
+    assert_eq!(state.ams_status_main, Some(3));
+    assert_eq!(state.ams_status_sub, Some(1));
+    assert_eq!(
+        raw.pointer("/_bfm_ams_status/ams_status_code")
+            .and_then(Value::as_i64),
+        Some(769)
+    );
+    assert_eq!(
+        raw.pointer("/_bfm_ams_status/ams_status_main")
+            .and_then(Value::as_i64),
+        Some(3)
+    );
+    assert_eq!(
+        raw.pointer("/_bfm_observed_fields/ams_status_at")
+            .and_then(Value::as_str),
+        Some("2026-05-18T18:00:00Z")
+    );
+    assert_eq!(
+        raw.pointer("/_bfm_last_message/has_ams_status")
+            .and_then(Value::as_bool),
+        Some(true)
     );
     assert_eq!(
         raw.pointer("/ams/ams/0/tray/0/remain")

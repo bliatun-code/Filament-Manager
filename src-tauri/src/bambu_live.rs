@@ -149,6 +149,7 @@ fn default_offline_state() -> BambuLiveObservedStateRow {
         prepare_percent: None,
         print_stage: None,
         print_error_code: None,
+        job_state_code: None,
         gcode_state: None,
         print_type: None,
         subtask_id: None,
@@ -161,6 +162,9 @@ fn default_offline_state() -> BambuLiveObservedStateRow {
         ams_reading_bits: None,
         ams_read_done_bits: None,
         ams_bambu_bits: None,
+        ams_status_code: None,
+        ams_status_main: None,
+        ams_status_sub: None,
         raw_status_note: None,
         raw_payload_json: None,
         trays: Vec::new(),
@@ -183,6 +187,7 @@ fn merge_idle_observation(
     next.prepare_percent = next.prepare_percent.or(previous.prepare_percent);
     next.print_stage = next.print_stage.or(previous.print_stage);
     next.print_error_code = next.print_error_code.or(previous.print_error_code);
+    next.job_state_code = next.job_state_code.or(previous.job_state_code);
     next.gcode_state = next.gcode_state.or_else(|| previous.gcode_state.clone());
     next.print_type = next.print_type.or_else(|| previous.print_type.clone());
     if !drop_carried_job_identity {
@@ -203,6 +208,9 @@ fn merge_idle_observation(
     next.ams_bambu_bits = next
         .ams_bambu_bits
         .or_else(|| previous.ams_bambu_bits.clone());
+    next.ams_status_code = next.ams_status_code.or(previous.ams_status_code);
+    next.ams_status_main = next.ams_status_main.or(previous.ams_status_main);
+    next.ams_status_sub = next.ams_status_sub.or(previous.ams_status_sub);
     if next.raw_payload_json.is_none() {
         next.raw_payload_json = previous.raw_payload_json.clone();
     }
@@ -376,11 +384,15 @@ fn log_state_changes(
                 "prepare_percent": next.prepare_percent,
                 "print_stage": next.print_stage,
                 "print_error_code": next.print_error_code,
+                "job_state_code": next.job_state_code,
                 "gcode_state": next.gcode_state,
                 "print_type": next.print_type,
                 "subtask_id": next.subtask_id,
                 "subtask_name": next.subtask_name,
                 "active_tray_index": next.active_tray_index,
+                "ams_status_code": next.ams_status_code,
+                "ams_status_main": next.ams_status_main,
+                "ams_status_sub": next.ams_status_sub,
             }),
         )?;
     } else if was_printing && !is_printing {
@@ -392,11 +404,15 @@ fn log_state_changes(
                 "prepare_percent": next.prepare_percent,
                 "print_stage": next.print_stage,
                 "print_error_code": next.print_error_code,
+                "job_state_code": next.job_state_code,
                 "gcode_state": next.gcode_state,
                 "print_type": next.print_type,
                 "subtask_id": next.subtask_id,
                 "subtask_name": next.subtask_name,
                 "active_tray_index": next.active_tray_index,
+                "ams_status_code": next.ams_status_code,
+                "ams_status_main": next.ams_status_main,
+                "ams_status_sub": next.ams_status_sub,
             }),
         )?;
     }
@@ -579,12 +595,14 @@ fn has_live_observation(state: &BambuLiveObservedStateRow) -> bool {
         || state.prepare_percent.is_some()
         || state.print_stage.is_some()
         || state.print_error_code.is_some()
+        || state.job_state_code.is_some()
         || state.nozzle_temp_c.is_some()
         || state.bed_temp_c.is_some()
         || state.active_tray_index.is_some()
         || state.ams_reading_bits.is_some()
         || state.ams_read_done_bits.is_some()
         || state.ams_bambu_bits.is_some()
+        || state.ams_status_code.is_some()
 }
 
 fn is_mqtt_read_timeout(error: &str) -> bool {
@@ -595,6 +613,18 @@ fn is_mqtt_read_timeout(error: &str) -> bool {
 
 fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) -> bool {
     let print = message.get("print").unwrap_or(message);
+    let job_state_signal = first_value_ref([
+        print.pointer("/job/job_state"),
+        message.pointer("/job/job_state"),
+        print.get("job_state"),
+        message.get("job_state"),
+    ]);
+    let ams_status_signal = first_value_ref([
+        print.pointer("/ams/ams_status"),
+        message.pointer("/ams/ams_status"),
+        print.get("ams_status"),
+        message.get("ams_status"),
+    ]);
     let has_supported_live_fields = print.get("ams").is_some()
         || print.get("mc_percent").is_some()
         || print.get("mc_remaining_time").is_some()
@@ -608,7 +638,9 @@ fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) -
         || message.get("subtask_id").is_some()
         || message.get("subtask_name").is_some()
         || print.get("nozzle_temper").is_some()
-        || print.get("bed_temper").is_some();
+        || print.get("bed_temper").is_some()
+        || job_state_signal.is_some()
+        || ams_status_signal.is_some();
     if !has_supported_live_fields {
         return false;
     }
@@ -619,6 +651,7 @@ fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) -
         as_i64(print.get("gcode_file_prepare_percent")).or(state.prepare_percent);
     state.print_stage = as_i64(print.get("mc_print_stage")).or(state.print_stage);
     state.print_error_code = as_i64(print.get("print_error")).or(state.print_error_code);
+    state.job_state_code = as_i64(job_state_signal).or(state.job_state_code);
     state.gcode_state =
         as_value_string(print.get("gcode_state")).or_else(|| state.gcode_state.clone());
     state.print_type = first_value_string([
@@ -647,6 +680,13 @@ fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) -
     state.ams_reading_bits = as_string(print.pointer("/ams/tray_reading_bits"));
     state.ams_read_done_bits = as_string(print.pointer("/ams/tray_read_done_bits"));
     state.ams_bambu_bits = as_string(print.pointer("/ams/tray_is_bbl_bits"));
+    if let Some(status_code) = as_i64(ams_status_signal) {
+        state.ams_status_code = Some(status_code);
+        if let Some((status_main, status_sub)) = split_ams_status_code(status_code) {
+            state.ams_status_main = Some(status_main);
+            state.ams_status_sub = Some(status_sub);
+        }
+    }
 
     if let Some(ams_trays) = print.pointer("/ams/ams/0/tray").and_then(Value::as_array) {
         let observed_at = state.last_seen_at.clone().unwrap_or_else(now_iso_string);
@@ -673,6 +713,18 @@ fn merge_raw_payload_snapshot(
     print: &Value,
     message: &Value,
 ) {
+    let job_state_signal = first_value_ref([
+        print.pointer("/job/job_state"),
+        message.pointer("/job/job_state"),
+        print.get("job_state"),
+        message.get("job_state"),
+    ]);
+    let ams_status_signal = first_value_ref([
+        print.pointer("/ams/ams_status"),
+        message.pointer("/ams/ams_status"),
+        print.get("ams_status"),
+        message.get("ams_status"),
+    ]);
     let mut merged = state
         .raw_payload_json
         .take()
@@ -693,7 +745,16 @@ fn merge_raw_payload_snapshot(
                 "prepare_percent": state.prepare_percent,
                 "print_stage": state.print_stage,
                 "print_error_code": state.print_error_code,
+                "job_state_code": state.job_state_code,
                 "active_tray_index": state.active_tray_index,
+            }),
+        );
+        object.insert(
+            "_bfm_ams_status".to_string(),
+            json!({
+                "ams_status_code": state.ams_status_code,
+                "ams_status_main": state.ams_status_main,
+                "ams_status_sub": state.ams_status_sub,
             }),
         );
         let mut observed_fields = object
@@ -727,6 +788,12 @@ fn merge_raw_payload_snapshot(
             );
             record_observed_field_time(
                 fields,
+                "job_state_at",
+                job_state_signal,
+                state.last_seen_at.as_deref(),
+            );
+            record_observed_field_time(
+                fields,
                 "remaining_minutes_at",
                 print.get("mc_remaining_time"),
                 state.last_seen_at.as_deref(),
@@ -753,6 +820,12 @@ fn merge_raw_payload_snapshot(
                 fields,
                 "active_tray_index_at",
                 print.pointer("/ams/tray_now"),
+                state.last_seen_at.as_deref(),
+            );
+            record_observed_field_time(
+                fields,
+                "ams_status_at",
+                ams_status_signal,
                 state.last_seen_at.as_deref(),
             );
             if print.get("subtask_id").is_some()
@@ -783,6 +856,8 @@ fn merge_raw_payload_snapshot(
                 "has_ams": print.get("ams").is_some(),
                 "has_trays": print.pointer("/ams/ams/0/tray").is_some(),
                 "has_job_identity": state.subtask_id.is_some(),
+                "has_job_state": job_state_signal.is_some(),
+                "has_ams_status": ams_status_signal.is_some(),
                 "has_nozzle_temp": print.get("nozzle_temper").is_some(),
                 "has_progress": print.get("mc_percent").is_some(),
                 "has_remaining_time": print.get("mc_remaining_time").is_some(),
@@ -1130,6 +1205,17 @@ fn as_value_string(value: Option<&Value>) -> Option<String> {
 
 fn first_value_string<const N: usize>(values: [Option<&Value>; N]) -> Option<String> {
     values.into_iter().find_map(as_value_string)
+}
+
+fn first_value_ref<const N: usize>(values: [Option<&Value>; N]) -> Option<&Value> {
+    values.into_iter().flatten().next()
+}
+
+fn split_ams_status_code(status_code: i64) -> Option<(i64, i64)> {
+    if status_code < 0 {
+        return None;
+    }
+    Some((status_code >> 8, status_code & 0xff))
 }
 
 fn normalize_color(value: Option<String>) -> Option<String> {

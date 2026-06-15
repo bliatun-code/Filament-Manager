@@ -94,6 +94,7 @@ export type BambuLiveObservedState = {
   prepare_percent?: number | null;
   print_stage?: number | null;
   print_error_code?: number | null;
+  job_state_code?: number | null;
   gcode_state?: string | null;
   print_type?: string | null;
   subtask_id?: string | null;
@@ -106,6 +107,9 @@ export type BambuLiveObservedState = {
   ams_reading_bits?: string | null;
   ams_read_done_bits?: string | null;
   ams_bambu_bits?: string | null;
+  ams_status_code?: number | null;
+  ams_status_main?: number | null;
+  ams_status_sub?: number | null;
   raw_status_note?: string | null;
   raw_payload_json?: unknown;
   trays: BambuLiveObservedTray[];
