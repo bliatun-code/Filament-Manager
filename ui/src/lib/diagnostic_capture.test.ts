@@ -8,6 +8,7 @@ import {
   buildDiagnosticDisplayTrays,
   countDiagnosticIdentitySignals,
   decodeBambuTrayCoordinate,
+  diagnosticTraySnapshotKey,
   exportDiagnosticCaptureSessionCsv,
   extractDiagnosticTraySnapshots,
   updateDiagnosticCaptureSessionFromPayload,
@@ -159,10 +160,12 @@ test("diagnostic tray helpers build fallback display trays", () => {
 
   assert.ok(session);
   const snapshots = extractDiagnosticTraySnapshots(session.fields);
+  assert.equal(snapshots[0]?.amsIndex, 0);
   assert.equal(snapshots[0]?.nozzleTempMinC, 190);
   assert.equal(snapshots[0]?.nozzleTempMaxC, 240);
   assert.deepEqual(buildDiagnosticDisplayTrays([], session.fields), [
     {
+      ams_index: 0,
       tray_index: 0,
       loaded: true,
       filament_type: "PLA",
@@ -175,6 +178,52 @@ test("diagnostic tray helpers build fallback display trays", () => {
     },
   ]);
   assert.equal(countDiagnosticIdentitySignals(session.fields), 2);
+});
+
+test("diagnostic tray helpers keep same tray index separate across AMS units", () => {
+  const session = updateDiagnosticCaptureSessionFromPayload({
+    session: null,
+    rawPayload: {
+      ams: {
+        ams: [
+          {
+            tray: [
+              {
+                tray_type: "PLA",
+                tray_uuid: "AMS1-SLOT1",
+              },
+            ],
+          },
+          {
+            tray: [
+              {
+                tray_type: "PETG",
+                tray_uuid: "AMS2-SLOT1",
+                nozzle_temp_min: "230",
+                nozzle_temp_max: "260",
+              },
+            ],
+          },
+        ],
+      },
+    },
+    observedAt: "2026-05-15T10:00:00Z",
+  });
+
+  assert.ok(session);
+  const snapshots = extractDiagnosticTraySnapshots(session.fields);
+  assert.deepEqual(
+    snapshots.map((snapshot) => [
+      diagnosticTraySnapshotKey(snapshot.amsIndex, snapshot.trayIndex),
+      snapshot.trayUuid,
+      snapshot.filamentType,
+      snapshot.nozzleTempMaxC,
+    ]),
+    [
+      ["0:0", "AMS1-SLOT1", "PLA", null],
+      ["1:0", "AMS2-SLOT1", "PETG", 260],
+    ],
+  );
 });
 
 test("diagnostic fallback decodes packed Bambu active tray coordinates", () => {

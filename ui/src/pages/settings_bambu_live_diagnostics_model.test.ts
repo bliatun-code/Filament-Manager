@@ -22,6 +22,7 @@ import {
   resolveSettingsBambuLiveCapturedTraySnapshot,
 } from "./settings_bambu_live_diagnostics_model";
 import {
+  diagnosticTraySnapshotKey,
   updateDiagnosticCaptureSessionFromPayload,
   type DiagnosticCaptureField,
   type DiagnosticTraySnapshot,
@@ -159,6 +160,7 @@ function createDiagnosticTraySnapshot(
   overrides: Partial<DiagnosticTraySnapshot>,
 ): DiagnosticTraySnapshot {
   return {
+    amsIndex: null,
     trayIndex: 1,
     loaded: true,
     ...overrides,
@@ -861,8 +863,8 @@ test("Bambu live captured tray snapshot prefers exact index before legacy fallba
   const exactSnapshot = createDiagnosticTraySnapshot({ trayIndex: 1, trayUuid: "EXACT" });
   const fallbackSnapshot = createDiagnosticTraySnapshot({ trayIndex: 0, trayUuid: "FALLBACK" });
   const captureTrayByIndex = new Map([
-    [0, fallbackSnapshot],
-    [1, exactSnapshot],
+    [diagnosticTraySnapshotKey(null, 0), fallbackSnapshot],
+    [diagnosticTraySnapshotKey(null, 1), exactSnapshot],
   ]);
 
   assert.equal(
@@ -875,7 +877,7 @@ test("Bambu live captured tray snapshot prefers exact index before legacy fallba
 
   assert.equal(
     resolveSettingsBambuLiveCapturedTraySnapshot({
-      captureTrayByIndex: new Map([[0, fallbackSnapshot]]),
+      captureTrayByIndex: new Map([[diagnosticTraySnapshotKey(null, 0), fallbackSnapshot]]),
       tray: createObservedTray({ tray_index: 1 }),
     }),
     fallbackSnapshot,
@@ -887,6 +889,47 @@ test("Bambu live captured tray snapshot prefers exact index before legacy fallba
       tray: createObservedTray({ tray_index: 0 }),
     }),
     null,
+  );
+});
+
+test("Bambu live captured tray snapshot prefers exact AMS coordinates over same tray legacy data", () => {
+  const legacySnapshot = createDiagnosticTraySnapshot({
+    amsIndex: null,
+    trayIndex: 0,
+    trayUuid: "LEGACY-SLOT1",
+  });
+  const ams1Snapshot = createDiagnosticTraySnapshot({
+    amsIndex: 0,
+    trayIndex: 0,
+    trayUuid: "AMS1-SLOT1",
+  });
+  const ams2Snapshot = createDiagnosticTraySnapshot({
+    amsIndex: 1,
+    trayIndex: 0,
+    trayUuid: "AMS2-SLOT1",
+  });
+
+  assert.equal(
+    resolveSettingsBambuLiveCapturedTraySnapshot({
+      captureTrayByIndex: new Map([
+        [diagnosticTraySnapshotKey(null, 0), legacySnapshot],
+        [diagnosticTraySnapshotKey(0, 0), ams1Snapshot],
+        [diagnosticTraySnapshotKey(1, 0), ams2Snapshot],
+      ]),
+      tray: createObservedTray({ ams_index: 1, tray_index: 0 }),
+    }),
+    ams2Snapshot,
+  );
+
+  assert.equal(
+    resolveSettingsBambuLiveCapturedTraySnapshot({
+      captureTrayByIndex: new Map([
+        [diagnosticTraySnapshotKey(null, 0), legacySnapshot],
+        [diagnosticTraySnapshotKey(0, 0), ams1Snapshot],
+      ]),
+      tray: createObservedTray({ ams_index: 1, tray_index: 0 }),
+    }),
+    legacySnapshot,
   );
 });
 
@@ -952,8 +995,14 @@ test("Bambu live diagnostic tray cards resolve snapshots per display tray", () =
   const trayCards = buildSettingsBambuLiveDiagnosticTrayCards({
     amsReadInProgress: false,
     captureTrayByIndex: new Map([
-      [0, createDiagnosticTraySnapshot({ trayIndex: 0, trayUuid: "ABC123" })],
-      [1, createDiagnosticTraySnapshot({ trayIndex: 1, trayUuid: "XYZ789" })],
+      [
+        diagnosticTraySnapshotKey(null, 0),
+        createDiagnosticTraySnapshot({ trayIndex: 0, trayUuid: "ABC123" }),
+      ],
+      [
+        diagnosticTraySnapshotKey(null, 1),
+        createDiagnosticTraySnapshot({ trayIndex: 1, trayUuid: "XYZ789" }),
+      ],
     ]),
     displayTrays: [
       createObservedTray({ tray_index: 0 }),

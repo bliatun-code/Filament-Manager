@@ -1,4 +1,7 @@
-import type { DiagnosticTraySnapshot } from "../lib/diagnostic_capture";
+import {
+  diagnosticTraySnapshotKey,
+  type DiagnosticTraySnapshot,
+} from "../lib/diagnostic_capture";
 import {
   buildInventoryMatchResult,
   translateObservedMatchNote,
@@ -21,7 +24,7 @@ type BuildSettingsBambuLiveDiagnosticTrayCardInput = {
 
 type BuildSettingsBambuLiveDiagnosticTrayCardsInput = {
   amsReadInProgress: boolean;
-  captureTrayByIndex: Map<number, DiagnosticTraySnapshot>;
+  captureTrayByIndex: Map<string, DiagnosticTraySnapshot>;
   displayTrays: BambuLiveObservedTray[];
   spoolRows: SpoolWithMasterRow[];
   t: TranslateFn;
@@ -288,12 +291,28 @@ export function resolveSettingsBambuLiveCapturedTraySnapshot({
   captureTrayByIndex,
   tray,
 }: {
-  captureTrayByIndex: Map<number, DiagnosticTraySnapshot>;
+  captureTrayByIndex: Map<string, DiagnosticTraySnapshot>;
   tray: BambuLiveObservedTray;
 }): DiagnosticTraySnapshot | null {
+  const exactKey = diagnosticTraySnapshotKey(tray.ams_index, tray.tray_index);
+  const sameAmsPreviousKey =
+    tray.tray_index > 0 ? diagnosticTraySnapshotKey(tray.ams_index, tray.tray_index - 1) : null;
+  const firstAmsKey =
+    tray.ams_index == null ? diagnosticTraySnapshotKey(0, tray.tray_index) : null;
+  const firstAmsPreviousKey =
+    tray.ams_index == null && tray.tray_index > 0
+      ? diagnosticTraySnapshotKey(0, tray.tray_index - 1)
+      : null;
+  const legacyKey = diagnosticTraySnapshotKey(null, tray.tray_index);
+  const legacyPreviousKey =
+    tray.tray_index > 0 ? diagnosticTraySnapshotKey(null, tray.tray_index - 1) : null;
   return (
-    captureTrayByIndex.get(tray.tray_index) ??
-    (tray.tray_index > 0 ? captureTrayByIndex.get(tray.tray_index - 1) : null) ??
+    captureTrayByIndex.get(exactKey) ??
+    (sameAmsPreviousKey ? captureTrayByIndex.get(sameAmsPreviousKey) : null) ??
+    (firstAmsKey ? captureTrayByIndex.get(firstAmsKey) : null) ??
+    (firstAmsPreviousKey ? captureTrayByIndex.get(firstAmsPreviousKey) : null) ??
+    captureTrayByIndex.get(legacyKey) ??
+    (legacyPreviousKey ? captureTrayByIndex.get(legacyPreviousKey) : null) ??
     null
   );
 }

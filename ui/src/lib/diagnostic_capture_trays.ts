@@ -12,6 +12,13 @@ export function normalizeDiagnosticHexColor(value: string | null): string | null
   return null;
 }
 
+export function diagnosticTraySnapshotKey(
+  amsIndex: number | null | undefined,
+  trayIndex: number,
+): string {
+  return `${amsIndex ?? "legacy"}:${trayIndex}`;
+}
+
 function parseDiagnosticNumber(value: string | null): number | null {
   if (value == null) {
     return null;
@@ -23,19 +30,45 @@ function parseDiagnosticNumber(value: string | null): number | null {
 export function extractDiagnosticTraySnapshots(
   fields: DiagnosticCaptureField[],
 ): DiagnosticTraySnapshot[] {
-  const trayIndices = Array.from(
+  const trayCoordinates = Array.from(
     new Set(
       fields
         .map((field) => {
-          const match = field.path.match(/ams\.ams\[\d+\]\.tray\[(\d+)\]\./);
-          return match ? Number.parseInt(match[1] ?? "", 10) : null;
+          const indexedMatch = field.path.match(/ams\.ams\[(\d+)\]\.tray\[(\d+)\]\./);
+          if (indexedMatch) {
+            const amsIndex = Number.parseInt(indexedMatch[1] ?? "", 10);
+            const trayIndex = Number.parseInt(indexedMatch[2] ?? "", 10);
+            return Number.isFinite(amsIndex) && Number.isFinite(trayIndex)
+              ? diagnosticTraySnapshotKey(amsIndex, trayIndex)
+              : null;
+          }
+          const legacyMatch = field.path.match(/ams\.tray\[(\d+)\]\./);
+          if (legacyMatch) {
+            const trayIndex = Number.parseInt(legacyMatch[1] ?? "", 10);
+            return Number.isFinite(trayIndex)
+              ? diagnosticTraySnapshotKey(null, trayIndex)
+              : null;
+          }
+          return null;
         })
-        .filter((value): value is number => value != null && Number.isFinite(value)),
+        .filter((value): value is string => value != null),
     ),
-  ).sort((left, right) => left - right);
+  )
+    .map((key) => {
+      const [amsPart, trayPart] = key.split(":");
+      const trayIndex = Number.parseInt(trayPart ?? "", 10);
+      const amsIndex = amsPart === "legacy" ? null : Number.parseInt(amsPart ?? "", 10);
+      return { amsIndex, key, trayIndex };
+    })
+    .sort((left, right) => {
+      const leftAms = left.amsIndex ?? -1;
+      const rightAms = right.amsIndex ?? -1;
+      return leftAms - rightAms || left.trayIndex - right.trayIndex;
+    });
 
-  return trayIndices.map((trayIndex) => {
-    const prefix = `ams.ams[0].tray[${trayIndex}]`;
+  return trayCoordinates.map(({ amsIndex, trayIndex }) => {
+    const prefix =
+      amsIndex == null ? `ams.tray[${trayIndex}]` : `ams.ams[${amsIndex}].tray[${trayIndex}]`;
     const fieldFor = (name: string) =>
       fields.find((field) => field.path === `${prefix}.${name}`) ?? null;
     const filamentType = fieldFor("tray_type")?.valueText ?? null;
@@ -58,6 +91,7 @@ export function extractDiagnosticTraySnapshots(
         .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
 
     return {
+      amsIndex,
       trayIndex,
       loaded: Boolean(
         (filamentType && filamentType.trim()) ||
@@ -91,6 +125,7 @@ export function buildDiagnosticDisplayTrays(
     const presetNote = [tray.trayInfoIdx, tray.trayIdName].filter(Boolean).join(" · ");
 
     return {
+      ams_index: tray.amsIndex,
       tray_index: tray.trayIndex,
       loaded: tray.loaded,
       filament_type: tray.filamentType ?? null,

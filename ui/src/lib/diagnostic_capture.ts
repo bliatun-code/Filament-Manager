@@ -49,6 +49,7 @@ export type DiagnosticFilterKey = "all" | "changed" | "recent" | "high_frequency
 export type DiagnosticGroupKey = "print" | "ams" | "tray" | "other";
 
 export type DiagnosticTraySnapshot = {
+  amsIndex?: number | null;
   trayIndex: number;
   loaded: boolean;
   filamentType?: string | null;
@@ -92,6 +93,7 @@ export { exportDiagnosticCaptureSessionCsv } from "./diagnostic_capture_csv";
 export {
   buildDiagnosticDisplayTrays,
   countReviewDiagnosticTrays,
+  diagnosticTraySnapshotKey,
   extractDiagnosticTraySnapshots,
   normalizeDiagnosticHexColor,
 } from "./diagnostic_capture_trays";

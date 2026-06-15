@@ -8,6 +8,7 @@ import {
   countChangedDiagnosticFields,
   countDiagnosticIdentitySignals,
   countReviewDiagnosticTrays,
+  diagnosticTraySnapshotKey,
   extractDiagnosticTraySnapshots,
   filterDiagnosticFields,
   groupDiagnosticFields,
@@ -287,7 +288,10 @@ export function buildSettingsBambuLiveDiagnosticsModel({
   );
   const captureTraySnapshots = extractDiagnosticTraySnapshots(diagnosticFields);
   const captureTrayByIndex = new Map(
-    captureTraySnapshots.map((tray) => [tray.trayIndex, tray]),
+    captureTraySnapshots.map((tray) => [
+      diagnosticTraySnapshotKey(tray.amsIndex, tray.trayIndex),
+      tray,
+    ]),
   );
   const displayTrays = buildDiagnosticDisplayTrays(observedState?.trays ?? [], diagnosticFields);
   const captureSessionStartedAt = diagnosticSession?.startedAt ?? null;
