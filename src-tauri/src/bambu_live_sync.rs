@@ -208,7 +208,7 @@ pub(crate) fn apply_tray_match_status(
                 tray.filament_type.as_deref(),
                 slot.spool_material.as_deref(),
             );
-            let name_match = eq_ignore_case(
+            let name_match = live_name_matches(
                 tray.filament_name.as_deref(),
                 slot.spool_filament_name.as_deref(),
             );
@@ -309,7 +309,7 @@ fn find_inventory_candidates<'a>(
         .filter(|row| {
             let material_match =
                 eq_ignore_case(tray.filament_type.as_deref(), Some(&row.master.material));
-            let name_match = eq_ignore_case(
+            let name_match = live_name_matches(
                 tray.filament_name.as_deref(),
                 Some(&row.master.filament_name),
             );
@@ -1570,6 +1570,18 @@ fn eq_ignore_case(left: Option<&str>, right: Option<&str>) -> bool {
         return false;
     };
     left.eq_ignore_ascii_case(right)
+}
+
+fn live_name_matches(left: Option<&str>, right: Option<&str>) -> bool {
+    let Some(left) = left.map(str::trim).filter(|value| !value.is_empty()) else {
+        return false;
+    };
+    let Some(right) = right.map(str::trim).filter(|value| !value.is_empty()) else {
+        return false;
+    };
+    let left = left.to_ascii_lowercase();
+    let right = right.to_ascii_lowercase();
+    left == right || left.contains(&right) || right.contains(&left)
 }
 
 fn live_color_matches_swatch(observed: Option<&str>, candidate: Option<&str>) -> bool {
