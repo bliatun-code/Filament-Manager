@@ -723,6 +723,126 @@ fn companion_service_list_printer_overview_exposes_live_slot_snapshot() {
 }
 
 #[test]
+fn companion_service_list_printer_overview_maps_bambu_external_live_tray() {
+    let db_path = temp_db_path("printer-live-external-overview");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        engine
+            .create_printer(CreatePrinterInput {
+                id: "printer_1".to_string(),
+                model: "Bambu X1C".to_string(),
+                name: "Bench Printer".to_string(),
+                ams_units: Some(0),
+                slots_per_ams: Some(1),
+            })
+            .map_err(|error| error.to_string())?;
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.save_bambu_live_integration(
+            "printer_1",
+            &BambuLiveIntegrationRow {
+                enabled: true,
+                host: Some("192.168.1.10".to_string()),
+                access_code: None,
+                printer_serial: Some("SERIAL-1".to_string()),
+                last_error: None,
+                observed_state: Some(BambuLiveObservedStateRow {
+                    online: true,
+                    last_seen_at: Some("2026-04-16T14:00:00Z".to_string()),
+                    mqtt_connected: true,
+                    progress_percent: Some(27),
+                    remaining_minutes: Some(18),
+                    prepare_percent: None,
+                    print_stage: None,
+                    print_error_code: None,
+                    job_state_code: Some(4),
+                    gcode_state: Some("RUNNING".to_string()),
+                    print_type: Some("local".to_string()),
+                    subtask_id: Some("benchy-1".to_string()),
+                    subtask_name: Some("Benchy".to_string()),
+                    active_tray_index: Some(255),
+                    nozzle_temp_c: None,
+                    bed_temp_c: None,
+                    ams_humidity_index: None,
+                    ams_temperature_c: None,
+                    ams_reading_bits: None,
+                    ams_read_done_bits: None,
+                    ams_bambu_bits: None,
+                    ams_status_code: None,
+                    ams_status_main: None,
+                    ams_status_sub: None,
+                    raw_status_note: None,
+                    raw_payload_json: None,
+                    trays: vec![BambuLiveObservedTrayRow {
+                        tray_index: 255,
+                        loaded: true,
+                        filament_type: Some("PLA".to_string()),
+                        filament_name: Some("External spool".to_string()),
+                        color_hex: Some("#2255AA".to_string()),
+                        tray_weight_g: Some(1000),
+                        remaining_percent: Some(82),
+                        remaining_grams: Some(820),
+                        observed_rfid_tag: None,
+                        tray_uuid: None,
+                        chip_id: None,
+                        tray_info_idx: Some("EXTERNAL_PRESET".to_string()),
+                        tray_id_name: Some("Bambu PLA Basic @BBL P1S 0.4 nozzle".to_string()),
+                        last_identity_seen_at: Some("2026-04-16T14:00:00Z".to_string()),
+                        last_empty_seen_at: None,
+                        empty_observation_count: Some(0),
+                        matched_inventory_spool_id: None,
+                        matched_inventory_mode: None,
+                        match_status: Some("unknown_from_printer".to_string()),
+                        match_note: Some(
+                            "AMS reported a tray identity that is not registered in inventory."
+                                .to_string(),
+                        ),
+                    }],
+                }),
+            },
+        )
+        .map_err(|error| error.to_string())?;
+
+        let service = CompanionService::new(db_path.to_string_lossy().to_string());
+        let overview = service
+            .list_printer_overview()
+            .map_err(|error| error.to_string())?;
+        let slot = overview[0]
+            .slots
+            .iter()
+            .find(|row| row.slot_id == "printer_1_ext_slot_1")
+            .ok_or_else(|| "missing external printer slot".to_string())?;
+
+        assert_eq!(slot.live_filament_type.as_deref(), Some("PLA"));
+        assert_eq!(slot.live_filament_name.as_deref(), Some("External spool"));
+        assert_eq!(slot.live_color_hex.as_deref(), Some("#2255AA"));
+        assert_eq!(slot.live_tray_info_idx.as_deref(), Some("EXTERNAL_PRESET"));
+        assert_eq!(
+            slot.live_tray_id_name.as_deref(),
+            Some("Bambu PLA Basic @BBL P1S 0.4 nozzle")
+        );
+        assert_eq!(
+            slot.live_last_identity_seen_at.as_deref(),
+            Some("2026-04-16T14:00:00Z")
+        );
+        assert_eq!(slot.live_is_active, Some(true));
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_service_list_printer_overview_maps_bambu_external_live_tray failed: {message}"
+        );
+    }
+}
+
+#[test]
 fn companion_service_hands_back_borrowed_in_spool() {
     let db_path = temp_db_path("borrowed-in-hand-back");
 

@@ -14,6 +14,8 @@ use serde::{Deserialize, Serialize};
 
 const DEFAULT_SPOOL_HISTORY_LIMIT: i64 = 80;
 const DEFAULT_SPOOL_USAGE_LIMIT: i64 = 300;
+const BAMBU_PRIMARY_EXTERNAL_TRAY_INDEX: i64 = 255;
+const BAMBU_SECONDARY_EXTERNAL_TRAY_INDEX: i64 = 254;
 
 #[derive(Clone)]
 pub struct CompanionService {
@@ -294,19 +296,51 @@ fn enrich_printer_overview_with_live_slots(
             .map(|entry| &entry.config);
         let observed_state = live_config.and_then(|config| config.observed_state.as_ref());
         for slot in &mut printer.slots {
-            if slot.ams_id.ends_with("_ext") {
-                continue;
-            }
-            let tray = observed_state.and_then(|state| {
-                state
-                    .trays
-                    .iter()
-                    .find(|candidate| candidate.tray_index == slot.slot_index - 1)
-            });
+            let tray = observed_state.and_then(|state| find_observed_tray_for_slot(slot, state));
             apply_live_tray_to_slot(slot, tray, observed_state);
         }
     }
     rows
+}
+
+fn slot_is_external(slot: &crate::backend::filament_database::PrinterAmsSlotRow) -> bool {
+    slot.ams_id.ends_with("_ext")
+}
+
+fn find_observed_tray_for_slot<'a>(
+    slot: &crate::backend::filament_database::PrinterAmsSlotRow,
+    observed_state: &'a crate::backend::filament_database::BambuLiveObservedStateRow,
+) -> Option<&'a BambuLiveObservedTrayRow> {
+    if slot_is_external(slot) {
+        return observed_state
+            .trays
+            .iter()
+            .find(|candidate| candidate.tray_index == BAMBU_PRIMARY_EXTERNAL_TRAY_INDEX)
+            .or_else(|| {
+                observed_state
+                    .trays
+                    .iter()
+                    .find(|candidate| candidate.tray_index == BAMBU_SECONDARY_EXTERNAL_TRAY_INDEX)
+            });
+    }
+
+    observed_state
+        .trays
+        .iter()
+        .find(|candidate| candidate.tray_index == slot.slot_index - 1)
+}
+
+fn live_active_tray_matches_slot(
+    slot: &crate::backend::filament_database::PrinterAmsSlotRow,
+    active_tray_index: Option<i64>,
+) -> bool {
+    if slot_is_external(slot) {
+        return matches!(
+            active_tray_index,
+            Some(BAMBU_PRIMARY_EXTERNAL_TRAY_INDEX | BAMBU_SECONDARY_EXTERNAL_TRAY_INDEX)
+        );
+    }
+    active_tray_index == Some(slot.slot_index - 1)
 }
 
 fn apply_live_tray_to_slot(
@@ -337,7 +371,7 @@ fn apply_live_tray_to_slot(
         observed_state.and_then(|state| state.ams_read_done_bits.clone());
     slot.live_ams_bambu_bits = observed_state.and_then(|state| state.ams_bambu_bits.clone());
     slot.live_is_active = observed_state.map(|state| {
-        state.active_tray_index == Some(slot.slot_index - 1)
+        live_active_tray_matches_slot(slot, state.active_tray_index)
             && (state.progress_percent.is_some() || state.remaining_minutes.is_some())
     });
 }

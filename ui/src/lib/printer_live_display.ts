@@ -11,6 +11,8 @@ export { commandErrorText } from "./error_text";
 export { formatGrams } from "./weight_display";
 
 type TranslateFn = (key: string, fallback?: string) => string;
+const BAMBU_PRIMARY_EXTERNAL_TRAY_INDEX = 255;
+const BAMBU_SECONDARY_EXTERNAL_TRAY_INDEX = 254;
 
 export function formatRelativeAge(raw: string | null | undefined, t: TranslateFn): string | null {
   const parsedMs = parseDateTimeMs(raw);
@@ -229,6 +231,37 @@ export function liveUnknownMatchesSlotOverride(
   );
 }
 
+function isExternalSlot(slot: PrinterAmsSlotRow): boolean {
+  return (slot.ams_id ?? "").endsWith("_ext");
+}
+
+export function isBambuExternalTrayIndex(trayIndex: number | null | undefined): boolean {
+  return (
+    trayIndex === BAMBU_PRIMARY_EXTERNAL_TRAY_INDEX ||
+    trayIndex === BAMBU_SECONDARY_EXTERNAL_TRAY_INDEX
+  );
+}
+
+export function liveActiveTrayMatchesSlot(
+  slot: PrinterAmsSlotRow,
+  activeTrayIndex: number | null | undefined,
+): boolean {
+  if (isExternalSlot(slot)) {
+    return isBambuExternalTrayIndex(activeTrayIndex);
+  }
+  return activeTrayIndex === slot.slot_index - 1;
+}
+
+function findBambuExternalLiveTray(
+  trays: BambuLiveObservedTray[] | null | undefined,
+): BambuLiveObservedTray | null {
+  return (
+    trays?.find((candidate) => candidate.tray_index === BAMBU_PRIMARY_EXTERNAL_TRAY_INDEX) ??
+    trays?.find((candidate) => candidate.tray_index === BAMBU_SECONDARY_EXTERNAL_TRAY_INDEX) ??
+    null
+  );
+}
+
 export function resolveLiveConnectionIndicator(
   liveConfig: BambuLiveIntegrationEntry["config"] | null,
   slots: PrinterAmsSlotRow[],
@@ -245,9 +278,6 @@ export function resolveLiveConnectionIndicator(
   let slotMqttConnected = false;
 
   for (const slot of slots) {
-    if ((slot.ams_id ?? "").endsWith("_ext")) {
-      continue;
-    }
     if (slot.live_mqtt_connected === true) {
       slotMqttConnected = true;
     }
@@ -294,26 +324,26 @@ function slotLiveTrayFallback(
   if (!clientReadOnly || clientPrinterSource !== "LIVE") {
     return null;
   }
-  if ((slot.ams_id ?? "").endsWith("_ext")) {
-    return null;
-  }
   if (!slot.live_last_identity_seen_at && !slot.live_tray_uuid && !slot.live_match_status) {
     return null;
   }
+  const trayIndex = isExternalSlot(slot)
+    ? BAMBU_PRIMARY_EXTERNAL_TRAY_INDEX
+    : slot.slot_index - 1;
   return {
-    tray_index: slot.slot_index - 1,
+    tray_index: trayIndex,
     loaded: slot.live_loaded ?? !!slot.live_tray_uuid,
-    filament_type: null,
-    filament_name: null,
+    filament_type: slot.live_filament_type ?? null,
+    filament_name: slot.live_filament_name ?? null,
     color_hex: slot.live_color_hex ?? null,
-    tray_weight_g: null,
-    remaining_percent: null,
+    tray_weight_g: slot.live_tray_weight_g ?? null,
+    remaining_percent: slot.live_remaining_percent ?? null,
     remaining_grams: null,
-    observed_rfid_tag: null,
+    observed_rfid_tag: slot.live_observed_rfid_tag ?? null,
     tray_uuid: slot.live_tray_uuid ?? null,
-    chip_id: null,
-    tray_info_idx: null,
-    tray_id_name: null,
+    chip_id: slot.live_chip_id ?? null,
+    tray_info_idx: slot.live_tray_info_idx ?? null,
+    tray_id_name: slot.live_tray_id_name ?? null,
     last_identity_seen_at: slot.live_last_identity_seen_at ?? null,
     last_empty_seen_at: null,
     empty_observation_count: null,
@@ -335,11 +365,11 @@ export function findLiveTrayForSlot(
   tray: BambuLiveObservedTray | null;
 } {
   const liveConfig = bambuLiveIntegrations[printerId] ?? null;
-  if ((slot.ams_id ?? "").endsWith("_ext")) {
-    return { liveConfig, tray: null };
-  }
-  const tray =
-    liveConfig?.observed_state?.trays.find((candidate) => candidate.tray_index === slot.slot_index - 1) ??
-    slotLiveTrayFallback(slot, clientReadOnly, clientPrinterSource);
+  const tray = isExternalSlot(slot)
+    ? findBambuExternalLiveTray(liveConfig?.observed_state?.trays) ??
+      slotLiveTrayFallback(slot, clientReadOnly, clientPrinterSource)
+    : liveConfig?.observed_state?.trays.find(
+        (candidate) => candidate.tray_index === slot.slot_index - 1,
+      ) ?? slotLiveTrayFallback(slot, clientReadOnly, clientPrinterSource);
   return { liveConfig, tray };
 }

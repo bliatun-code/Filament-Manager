@@ -11,6 +11,7 @@ import {
   formatRelativeAge,
   isOlderThanMinutes,
   isUnknownLiveRfid,
+  liveActiveTrayMatchesSlot,
   liveUnknownMatchesSlotOverride,
 } from "./printer_live_display";
 
@@ -66,17 +67,18 @@ export function derivePrinterSlotDisplayState(options: {
     ) <= 0;
   const effectiveLiveTray = liveCacheSuppressedByManualClear ? null : liveTray;
   const liveMatchedSpool = findSpoolById(effectiveLiveTray?.matched_inventory_spool_id);
-  const lastLiveIdentityAt = isExtSlot ? null : effectiveLiveTray?.last_identity_seen_at ?? null;
+  const lastLiveIdentityAt =
+    effectiveLiveTray?.last_identity_seen_at ??
+    (isExtSlot ? liveConfig?.observed_state?.last_seen_at ?? null : null);
   const liveIdentityFresh = !isOlderThanMinutes(lastLiveIdentityAt, 10);
   const liveSignalEnabled =
-    !isExtSlot &&
-    (Boolean(liveConfig?.enabled) ||
-      (clientReadOnly && clientPrinterSource === "LIVE" && !!effectiveLiveTray));
+    Boolean(liveConfig?.enabled) ||
+    (clientReadOnly && clientPrinterSource === "LIVE" && !!effectiveLiveTray);
   const liveSlotInUse =
     liveSignalEnabled &&
     liveIdentityFresh &&
     ((liveConfig?.enabled &&
-      liveConfig.observed_state?.active_tray_index === slot.slot_index - 1 &&
+      liveActiveTrayMatchesSlot(slot, liveConfig.observed_state?.active_tray_index) &&
       (liveConfig.observed_state?.progress_percent != null ||
         liveConfig.observed_state?.remaining_minutes != null)) ||
       slot.live_is_active === true);
