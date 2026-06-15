@@ -1702,7 +1702,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       printQr: "Skriv ut QR-etikett",
       rfidButton: "RFID",
       rfidHintReady:
-        "Fang AMS-identitetsdata, se over dem og lagre observert tray-identitet når den ser riktig ut.",
+        "Fang AMS/RFID-identitetsdata, se over dem og lagre observert RFID-identitet når den ser riktig ut.",
       rfidHintNeedsLive:
         "RFID-fangst trenger en printer med Live Bambu-status aktivert og minst ett tilgjengelig AMS-spor.",
       rfidRegistered: "RFID registrert",
@@ -1712,7 +1712,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "RFID er lagret på denne rullen, men AMS har ikke rapportert tidspunkt for siste observasjon ennå.",
       rfidBambuUnregistered: "RFID ikke registrert ennå",
       rfidBambuUnregisteredHint:
-        "Bambu-ruller kan kobles automatisk ved å legge rullen i AMS og lagre observert tray-identitet.",
+        "Bambu-ruller kan kobles automatisk ved å legge rullen i AMS og lagre observert RFID-identitet.",
       rfidUnsupportedVendor: "AMS RFID ikke tilgjengelig",
       rfidUnsupportedVendorHint:
         "AMS RFID-identitet er foreløpig bare tilgjengelig for Bambu-ruller. Bruk QR, vekt, lokasjon og printertildeling for denne rullen.",
@@ -1746,7 +1746,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       rfidCaptureUsingLastKnown:
         "Venter på ferske AMS-spordata. Tidligere fangede verdier blir stående til nyere data kommer.",
       rfidCaptureWaiting:
-        "Venter på ferske AMS-spordata. Hold dette vinduet åpent mens printeren rapporterer tray-oppdateringer.",
+        "Venter på ferske AMS-spordata. Hold dette vinduet åpent mens printeren rapporterer AMS-sporoppdateringer.",
       rfidCaptureUnavailable:
         "Ingen slot-spesifikke AMS-felt har kommet inn ennå for dette sporet.",
       rfidCaptureNoPayload:
@@ -1754,7 +1754,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       rfidCaptureNoSlotData:
         "Ingen slot-spesifikke AMS-felt er tilgjengelige ennå for dette kildesporet.",
       rfidCaptureNothingToSave:
-        "Ingen tray-identitet er tilgjengelig ennå for valgt kildespor.",
+        "Ingen RFID-identitet er tilgjengelig ennå for valgt kildespor.",
       rfidCaptureFailed:
         "Kunne ikke oppdatere RFID-fangsten fra printeren.",
       rfidSaved: "RFID-identitet lagret på valgt filament.",
@@ -2036,13 +2036,13 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       waitingForLiveIdentity:
         "Viser sist lagrede sportildeling til sterkere live-identitet kommer inn.",
       unknownLiveRfidHint:
-        "AMS rapporterte en tray-identitet som ikke er registrert i lageret.",
+        "AMS rapporterte en RFID-identitet som ikke er registrert i lageret.",
       rfidOverriddenHint:
         "Dette sporet er manuelt tildelt mens samme uregistrerte RFID-identitet fortsatt er aktiv.",
       rfidOverrideDialogHint:
-        "Dette sporet er manuelt tildelt mens AMS fortsatt rapporterer samme uregistrerte tray-identitet. Lagre den på valgt filament når du er klar.",
+        "Dette sporet er manuelt tildelt mens AMS fortsatt rapporterer samme uregistrerte RFID-identitet. Lagre den på valgt filament når du er klar.",
       rfidOverrideNothingToSave:
-        "Ingen ikke-tom tray-identitet er tilgjengelig å lagre for dette sporet.",
+        "Ingen ikke-tom RFID-identitet er tilgjengelig å lagre for dette sporet.",
       grams: "gram",
       jobOptional: "Jobbnavn (valgfritt)",
       swapNoteOptional: "Byttenotat (valgfritt)",
@@ -2563,13 +2563,13 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveAmsReading:
         "AMS-oppdatering pågår. RFID og spormatching kan se midlertidig usikkert ut til lesingen er ferdig.",
       bambuLiveNoInventoryMatch: "Ingen tydelig lagermatch",
-      bambuLiveInventoryRfidMatch: "Eksakt match mellom tray-identitet og lager.",
+      bambuLiveInventoryRfidMatch: "Eksakt RFID-match mot lager.",
       bambuLiveInventoryLikelyMatch:
         "Én sannsynlig lagermatch basert på materiale/navn/farge.",
       bambuLiveInventoryMultipleMatches:
         "Flere ruller i lageret kan passe dette filamentet.",
       bambuLiveInventoryNoRfidMatch:
-        "Observert tray-identitet matchet ingenting i lageret.",
+        "Observert RFID-identitet matchet ingenting i lageret.",
       bambuLiveInventoryNoMatch: "Ingen tydelig lagermatch ennå.",
       bambuLiveMatchNoteExact: "Eksakt match mellom sporidentitet og lager.",
       bambuLiveMatchNoteDuplicateIdentity:
