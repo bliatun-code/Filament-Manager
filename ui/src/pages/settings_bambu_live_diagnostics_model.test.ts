@@ -69,6 +69,8 @@ function createLiveConfig(): BambuLiveIntegrationSettings {
                 {
                   id: "1",
                   tray_uuid: "ABC123",
+                  tray_info_idx: "GFSA00_04",
+                  tray_id_name: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
                   tray_color: "FFAA00FF",
                   tray_type: "PLA",
                   remain: 77,
@@ -94,6 +96,8 @@ function createUpdatedPayload() {
             {
               id: "1",
               tray_uuid: "ABC123",
+              tray_info_idx: "GFSA00_04",
+              tray_id_name: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
               tray_color: "FFAA00FF",
               tray_type: "PLA",
               remain: 76,
@@ -209,6 +213,10 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
     ],
   );
   assert.match(model.diagnosticMetricCards[0].value, /^formatted:/);
+  assert.equal(
+    model.diagnosticMetricCards.find((metric) => metric.key === "identitySignals")?.value,
+    "1",
+  );
   assert.equal(model.reviewTrayCount, 1);
   assert.ok(model.diagnosticGroups.some((group) => group.key === "ams"));
   assert.ok(model.signalQualityBuckets.every((bucket) => bucket.label && bucket.description));
@@ -348,13 +356,13 @@ test("Bambu live signal quality buckets keep localized labels and descriptions",
 
   assert.deepEqual(
     buckets.map((bucket) => bucket.label),
-    ["Stable metadata", "Event-driven identity", "Continuous telemetry"],
+    ["Stable AMS metadata", "Event-driven AMS signals", "Continuous telemetry"],
   );
   assert.deepEqual(
     buckets.map((bucket) => bucket.description),
     [
-      "Identity and tray metadata that appears stable when observed.",
-      "Fields that tend to appear or change around AMS read/sync events.",
+      "RFID, preset, material and tray metadata observed from AMS.",
+      "AMS read and sync status fields that tend to appear around events.",
       "Fields that look like normal status/telemetry updates during operation.",
     ],
   );

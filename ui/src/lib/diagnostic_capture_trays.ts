@@ -76,17 +76,27 @@ export function buildDiagnosticDisplayTrays(
   if (observedTrays.length > 0) {
     return observedTrays;
   }
-  return extractDiagnosticTraySnapshots(fields).map((tray) => ({
-    tray_index: tray.trayIndex,
-    loaded: tray.loaded,
-    filament_type: tray.filamentType ?? null,
-    filament_name: tray.filamentName ?? null,
-    color_hex: tray.colorHex ?? null,
-    remaining_percent: tray.remainingPercent ?? null,
-    match_status: null,
-    match_note:
-      [tray.tagUid, tray.trayUuid, tray.trayInfoIdx, tray.trayIdName].filter(Boolean).join(" · ") || null,
-  }));
+  return extractDiagnosticTraySnapshots(fields).map((tray) => {
+    const identityNote = [tray.tagUid, tray.trayUuid].filter(Boolean).join(" · ");
+    const presetNote = [tray.trayInfoIdx, tray.trayIdName].filter(Boolean).join(" · ");
+
+    return {
+      tray_index: tray.trayIndex,
+      loaded: tray.loaded,
+      filament_type: tray.filamentType ?? null,
+      filament_name: tray.filamentName ?? null,
+      color_hex: tray.colorHex ?? null,
+      remaining_percent: tray.remainingPercent ?? null,
+      match_status: null,
+      match_note:
+        [
+          identityNote ? `RFID: ${identityNote}` : null,
+          presetNote ? `Preset: ${presetNote}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ") || null,
+    };
+  });
 }
 
 export function countReviewDiagnosticTrays(observedTrays: BambuLiveObservedTray[]): number {

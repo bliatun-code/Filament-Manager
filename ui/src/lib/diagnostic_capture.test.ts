@@ -5,6 +5,7 @@ import {
   buildDiagnosticChartFieldOptions,
   buildDiagnosticChartPoints,
   buildDiagnosticDisplayTrays,
+  countDiagnosticIdentitySignals,
   exportDiagnosticCaptureSessionCsv,
   updateDiagnosticCaptureSessionFromPayload,
 } from "./diagnostic_capture";
@@ -140,6 +141,8 @@ test("diagnostic tray helpers build fallback display trays", () => {
                 remain: "87",
                 tag_uid: "tag-1",
                 tray_uuid: "uuid-1",
+                tray_info_idx: "GFSA00_04",
+                tray_id_name: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
               },
             ],
           },
@@ -159,7 +162,9 @@ test("diagnostic tray helpers build fallback display trays", () => {
       color_hex: "#336699",
       remaining_percent: 87,
       match_status: null,
-      match_note: "tag-1 · uuid-1",
+      match_note:
+        "RFID: tag-1 · uuid-1 · Preset: GFSA00_04 · Bambu PLA Basic @BBL P1S 0.4 nozzle",
     },
   ]);
+  assert.equal(countDiagnosticIdentitySignals(session.fields), 2);
 });

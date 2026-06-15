@@ -165,24 +165,24 @@ export function buildSettingsBambuLiveSignalQualityBuckets(
   t: TranslateFn,
 ) {
   return buildDiagnosticSignalQualityBuckets(diagnosticFields).map((bucket) => {
-    if (bucket.label === "Stable metadata") {
+    if (bucket.label === "Stable AMS metadata") {
       return {
         ...bucket,
         description: t(
           "settings.bambuLiveSignalStableDesc",
-          "Identity and tray metadata that appears stable when observed.",
+          "RFID, preset, material and tray metadata observed from AMS.",
         ),
-        label: t("settings.bambuLiveSignalStable", "Stable metadata"),
+        label: t("settings.bambuLiveSignalStable", "Stable AMS metadata"),
       };
     }
-    if (bucket.label === "Event-driven identity") {
+    if (bucket.label === "Event-driven AMS signals") {
       return {
         ...bucket,
         description: t(
           "settings.bambuLiveSignalEventDrivenDesc",
-          "Fields that tend to appear or change around AMS read/sync events.",
+          "AMS read and sync status fields that tend to appear around events.",
         ),
-        label: t("settings.bambuLiveSignalEventDriven", "Event-driven identity"),
+        label: t("settings.bambuLiveSignalEventDriven", "Event-driven AMS signals"),
       };
     }
     return {

@@ -248,6 +248,8 @@ test("RFID capture snapshot and slot summaries merge live and cached identity fi
           tray_index: 0,
           loaded: true,
           tray_uuid: "TRAY-LIVE",
+          tray_info_idx: "GFSA00_04",
+          tray_id_name: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
           filament_type: "PLA",
           filament_name: "Basic",
           color_hex: "#2563EB",
@@ -272,6 +274,8 @@ test("RFID capture snapshot and slot summaries merge live and cached identity fi
   });
 
   assert.equal(summaries["slot-1"].rfidTag, "TRAY-LIVE");
+  assert.equal(summaries["slot-1"].trayInfoIdx, "GFSA00_04");
+  assert.equal(summaries["slot-1"].trayIdName, "Bambu PLA Basic @BBL P1S 0.4 nozzle");
   assert.equal(summaries["slot-1"].material, "PLA");
   assert.equal(summaries["slot-1"].colorHex, "#2563EB");
 });

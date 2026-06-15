@@ -416,13 +416,13 @@ export function buildDiagnosticSignalQualityBuckets(
 
   return [
     {
-      label: "Stable metadata",
-      description: "Identity and tray metadata that appears stable when observed.",
+      label: "Stable AMS metadata",
+      description: "RFID, preset, material and tray metadata observed from AMS.",
       fields: stableMetadata,
     },
     {
-      label: "Event-driven identity",
-      description: "Fields that tend to appear or change around AMS read/sync events.",
+      label: "Event-driven AMS signals",
+      description: "AMS read and sync status fields that tend to appear around events.",
       fields: eventDrivenIdentity,
     },
     {
@@ -449,7 +449,7 @@ export function countChangedDiagnosticFields(fields: DiagnosticCaptureField[]): 
 }
 
 export function countDiagnosticIdentitySignals(fields: DiagnosticCaptureField[]): number {
-  return fields.filter((field) => /(tag_uid|tray_uuid|chip_id|tray_info_idx|tray_id_name)/.test(field.path)).length;
+  return fields.filter((field) => /(tag_uid|tray_uuid|chip_id)/.test(field.path)).length;
 }
 
 export function isDiagnosticAmsReadInProgress(fields: DiagnosticCaptureField[]): boolean {

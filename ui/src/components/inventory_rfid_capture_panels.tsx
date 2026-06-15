@@ -257,14 +257,12 @@ export function InventoryRfidCaptureDiagnostics({
     <div className="mt-4 grid gap-3 lg:grid-cols-2">
       <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900/60">
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-          {t("inventory.rfidIdentityCandidates", "Identity candidates")}
+          {t("inventory.rfidIdentitySignals", "RFID identity signals")}
         </div>
         <dl className="mt-3 space-y-2 text-xs">
           <RfidDetailRow label="tag_uid" value={summary.rfidTag} code />
           <RfidDetailRow label="tray_uuid" value={summary.trayUuid} code />
           <RfidDetailRow label="chip_id" value={summary.chipId} code />
-          <RfidDetailRow label="tray_info_idx" value={summary.trayInfoIdx} code />
-          <RfidDetailRow label="tray_id_name" value={summary.trayIdName} code />
         </dl>
       </div>
       <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900/60">
@@ -287,6 +285,16 @@ export function InventoryRfidCaptureDiagnostics({
           <RfidDetailRow
             label={t("inventory.rfidLastSlotData", "Last slot data")}
             value={lastSlotDataAt ? formatCaptureTimestamp(lastSlotDataAt, locale) : null}
+          />
+          <RfidDetailRow
+            label={t("inventory.rfidPresetSignal", "AMS preset signal")}
+            value={summary.trayInfoIdx}
+            code
+          />
+          <RfidDetailRow
+            label={t("inventory.rfidPresetName", "Preset/material name")}
+            value={summary.trayIdName}
+            code
           />
           <RfidDetailRow
             label={t("inventory.rfidActiveSource", "Active source")}
