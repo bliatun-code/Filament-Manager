@@ -54,10 +54,14 @@ export function SettingsBambuLiveTrayCards({
               <span>{tray.matchLabel}</span>
             </div>
             <div className="mt-1">{tray.matchDescription}</div>
-            {tray.observedRfidLabel || tray.candidateCountText ? (
+            {tray.observedRfidLabel || tray.presetSignalLabel || tray.candidateCountText ? (
               <div className="mt-1 break-all text-[10px] text-slate-500 dark:text-slate-400">
                 {tray.observedRfidLabel}
-                {tray.observedRfidLabel && tray.candidateCountText ? " · " : null}
+                {tray.observedRfidLabel && (tray.presetSignalLabel || tray.candidateCountText)
+                  ? " · "
+                  : null}
+                {tray.presetSignalLabel}
+                {tray.presetSignalLabel && tray.candidateCountText ? " · " : null}
                 {tray.candidateCountText}
               </div>
             ) : null}

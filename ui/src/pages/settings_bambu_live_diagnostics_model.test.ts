@@ -12,6 +12,7 @@ import {
   buildSettingsBambuLiveInventoryMatchPresentation,
   buildSettingsBambuLiveObservedRfid,
   buildSettingsBambuLiveObservedSummaryParts,
+  buildSettingsBambuLivePresetSignalLabel,
   buildSettingsBambuLiveSignalQualityBuckets,
   buildSettingsBambuLiveTrayLabels,
   buildSettingsBambuLiveTrayReviewState,
@@ -542,6 +543,44 @@ test("Bambu live observed RFID trims valid values and suppresses empty or zero-o
   assert.equal(buildSettingsBambuLiveObservedRfid(null), null);
 });
 
+test("Bambu live preset signal label prefers live state and falls back to capture snapshot", () => {
+  assert.equal(
+    buildSettingsBambuLivePresetSignalLabel({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({
+        trayIdName: "Capture preset",
+        trayInfoIdx: "CAPTURE_PRESET",
+      }),
+      t,
+      tray: createObservedTray({
+        tray_id_name: "Live preset",
+        tray_info_idx: "LIVE_PRESET",
+      }),
+    }),
+    "AMS preset: LIVE_PRESET · Live preset",
+  );
+
+  assert.equal(
+    buildSettingsBambuLivePresetSignalLabel({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({
+        trayIdName: "Capture preset",
+        trayInfoIdx: "CAPTURE_PRESET",
+      }),
+      t,
+      tray: createObservedTray({ tray_id_name: null, tray_info_idx: null }),
+    }),
+    "AMS preset: CAPTURE_PRESET · Capture preset",
+  );
+
+  assert.equal(
+    buildSettingsBambuLivePresetSignalLabel({
+      capturedTraySnapshot: null,
+      t,
+      tray: createObservedTray({ tray_id_name: null, tray_info_idx: null }),
+    }),
+    null,
+  );
+});
+
 test("Bambu live tray display text prefers names, material, and empty fallbacks", () => {
   assert.deepEqual(
     buildSettingsBambuLiveTrayDisplayText({
@@ -717,7 +756,12 @@ test("Bambu live captured tray snapshot prefers exact index before legacy fallba
 test("Bambu live diagnostic tray card composes RFID match and metadata candidates", () => {
   const exactCard = buildSettingsBambuLiveDiagnosticTrayCard({
     amsReadInProgress: false,
-    capturedTraySnapshot: createDiagnosticTraySnapshot({ colorHex: "#00AAFF", trayUuid: "ABC123" }),
+    capturedTraySnapshot: createDiagnosticTraySnapshot({
+      colorHex: "#00AAFF",
+      trayIdName: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
+      trayInfoIdx: "GFSA00_04",
+      trayUuid: "ABC123",
+    }),
     spoolRows: [createSpoolRow()],
     t,
     tray: createObservedTray({
@@ -733,6 +777,10 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
   assert.equal(exactCard.matchLabel, "PLA Basic · Orange");
   assert.equal(exactCard.matchSwatchColor, "#FFAA00");
   assert.equal(exactCard.observedRfidLabel, "Observed: ABC123");
+  assert.equal(
+    exactCard.presetSignalLabel,
+    "AMS preset: GFSA00_04 · Bambu PLA Basic @BBL P1S 0.4 nozzle",
+  );
   assert.equal(exactCard.hasReview, true);
   assert.equal(exactCard.matchNote, "rfid_mismatch");
 

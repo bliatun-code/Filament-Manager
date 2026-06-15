@@ -87,6 +87,26 @@ export function buildSettingsBambuLiveObservedRfid(
   return trayUuid && !/^0+$/.test(trayUuid) ? trayUuid : null;
 }
 
+export function buildSettingsBambuLivePresetSignalLabel({
+  capturedTraySnapshot,
+  t,
+  tray,
+}: {
+  capturedTraySnapshot: DiagnosticTraySnapshot | null;
+  t: TranslateFn;
+  tray: BambuLiveObservedTray;
+}): string | null {
+  const trayInfoIdx =
+    tray.tray_info_idx?.trim() || capturedTraySnapshot?.trayInfoIdx?.trim() || "";
+  const trayIdName =
+    tray.tray_id_name?.trim() || capturedTraySnapshot?.trayIdName?.trim() || "";
+  const presetParts = [trayInfoIdx, trayIdName].filter(Boolean);
+  if (presetParts.length === 0) {
+    return null;
+  }
+  return `${t("settings.bambuLivePresetSignal", "AMS preset")}: ${presetParts.join(" · ")}`;
+}
+
 export function buildSettingsBambuLiveTrayDisplayText({
   t,
   tray,
@@ -207,6 +227,11 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
     observedRfid,
     t,
   });
+  const presetSignalLabel = buildSettingsBambuLivePresetSignalLabel({
+    capturedTraySnapshot,
+    t,
+    tray,
+  });
   const { detailText, statusText } = buildSettingsBambuLiveTrayDisplayText({ t, tray });
   const { matchLabel, matchSwatchColor } = buildSettingsBambuLiveInventoryMatchPresentation({
     capturedTraySnapshot,
@@ -245,6 +270,7 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
     matchSwatchColor,
     mqttTrayLabel,
     observedRfidLabel,
+    presetSignalLabel,
     reviewTitle,
     slotLabel,
     statusText,

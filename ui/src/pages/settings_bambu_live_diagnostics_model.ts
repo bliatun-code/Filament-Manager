@@ -32,6 +32,7 @@ export {
   buildSettingsBambuLiveInventoryMatchDescription,
   buildSettingsBambuLiveInventoryMatchPresentation,
   buildSettingsBambuLiveObservedRfid,
+  buildSettingsBambuLivePresetSignalLabel,
   buildSettingsBambuLiveTrayDisplayText,
   buildSettingsBambuLiveTrayLabels,
   buildSettingsBambuLiveTrayReviewState,
