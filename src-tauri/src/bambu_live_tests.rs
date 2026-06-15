@@ -170,6 +170,81 @@ fn apply_tray_match_status_marks_loaded_unknown_rfid_even_with_metadata_match() 
 }
 
 #[test]
+fn apply_tray_match_status_mentions_tray_info_idx_as_preset_hint() {
+    let slot = make_slot();
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        tray_info_idx: Some("GFSA00_04".to_string()),
+        tray_id_name: Some("Bambu PLA Basic @BBL P1S 0.4 nozzle".to_string()),
+        ..make_tray()
+    };
+
+    apply_tray_match_status(
+        &mut tray,
+        &overview,
+        &[make_inventory_spool("spool_1", None)],
+    );
+
+    let note = tray.match_note.as_deref().unwrap_or_default();
+    assert_eq!(tray.match_status.as_deref(), Some("unknown_rfid"));
+    assert_eq!(
+        tray.matched_inventory_mode.as_deref(),
+        Some("configured_metadata")
+    );
+    assert!(note.contains("GFSA00_04"));
+    assert!(note.contains("Bambu PLA Basic @BBL P1S 0.4 nozzle"));
+    assert!(note.contains("material/preset hint"));
+    assert!(note.contains("not a roll identity"));
+}
+
+#[test]
+fn apply_tray_match_status_does_not_treat_tray_info_idx_as_rfid_identity() {
+    let slot = make_slot();
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        tray_uuid: None,
+        observed_rfid_tag: None,
+        tray_info_idx: Some("GFSA00_04".to_string()),
+        tray_id_name: Some("Bambu PLA Basic @BBL P1S 0.4 nozzle".to_string()),
+        filament_type: Some("PETG".to_string()),
+        filament_name: Some("HF".to_string()),
+        color_hex: Some("#00AE42".to_string()),
+        ..make_tray()
+    };
+
+    apply_tray_match_status(
+        &mut tray,
+        &overview,
+        &[make_inventory_spool("spool_1", Some("GFSA00_04"))],
+    );
+
+    assert_ne!(tray.matched_inventory_mode.as_deref(), Some("exact_rfid"));
+    assert!(tray.matched_inventory_spool_id.is_none());
+}
+
+#[test]
+fn apply_tray_match_status_keeps_exact_rfid_stronger_than_preset_signal() {
+    let slot = make_slot();
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        tray_uuid: Some("real-rfid".to_string()),
+        tray_info_idx: Some("GFSA00_04".to_string()),
+        tray_id_name: Some("Bambu PLA Basic @BBL P1S 0.4 nozzle".to_string()),
+        ..make_tray()
+    };
+
+    apply_tray_match_status(
+        &mut tray,
+        &overview,
+        &[make_inventory_spool("spool_1", Some("real-rfid"))],
+    );
+
+    assert_eq!(tray.match_status.as_deref(), Some("clear_match"));
+    assert_eq!(tray.matched_inventory_mode.as_deref(), Some("exact_rfid"));
+    assert_eq!(tray.matched_inventory_spool_id.as_deref(), Some("spool_1"));
+}
+
+#[test]
 fn unknown_rfid_replacement_clears_on_new_unknown_identity_and_respects_override() {
     let mut slot = make_slot();
     let tray = BambuLiveObservedTrayRow {

@@ -198,10 +198,11 @@ pub(crate) fn apply_tray_match_status(
                 tray.matched_inventory_mode = Some("configured_metadata".to_string());
                 if has_live_unknown_rfid {
                     tray.match_status = Some("unknown_rfid".to_string());
-                    tray.match_note = Some(
+                    tray.match_note = Some(match_note_with_preset_signal(
                         "AMS reported a tray identity that is not registered in inventory."
                             .to_string(),
-                    );
+                        tray,
+                    ));
                 } else {
                     tray.match_status = Some("clear_match".to_string());
                     tray.match_note = None;
@@ -216,14 +217,12 @@ pub(crate) fn apply_tray_match_status(
                 }
                 .to_string(),
             );
-            tray.match_note = Some(
-                if has_live_unknown_rfid {
-                    "AMS reported a tray identity that is not registered in inventory."
-                } else {
-                    "Last known tray identity does not map cleanly to the currently configured spool."
-                }
-                .to_string(),
-            );
+            let note = if has_live_unknown_rfid {
+                "AMS reported a tray identity that is not registered in inventory."
+            } else {
+                "Last known tray identity does not map cleanly to the currently configured spool."
+            };
+            tray.match_note = Some(match_note_with_preset_signal(note.to_string(), tray));
             return;
         }
     }
@@ -243,7 +242,7 @@ pub(crate) fn apply_tray_match_status(
         tray.matched_inventory_spool_id = Some(candidates[0].spool.id.clone());
         tray.matched_inventory_mode = Some("inventory_metadata".to_string());
     }
-    tray.match_note = Some(if has_live_unknown_rfid {
+    let note = if has_live_unknown_rfid {
         "AMS reported a tray identity that is not registered in inventory.".to_string()
     } else {
         match candidates.len() {
@@ -251,7 +250,27 @@ pub(crate) fn apply_tray_match_status(
             1 => "One likely stored spool matches this last known tray identity.".to_string(),
             _ => "Multiple stored spools could match this live tray.".to_string(),
         }
-    });
+    };
+    tray.match_note = Some(match_note_with_preset_signal(note, tray));
+}
+
+fn match_note_with_preset_signal(mut note: String, tray: &BambuLiveObservedTrayRow) -> String {
+    if let Some(preset_note) = live_preset_signal_note(tray) {
+        note.push(' ');
+        note.push_str(&preset_note);
+    }
+    note
+}
+
+fn live_preset_signal_note(tray: &BambuLiveObservedTrayRow) -> Option<String> {
+    let tray_info_idx = live_identity_text(tray.tray_info_idx.as_deref())?;
+    let preset_display = match live_identity_text(tray.tray_id_name.as_deref()) {
+        Some(name) => format!("{tray_info_idx} ({name})"),
+        None => tray_info_idx.to_string(),
+    };
+    Some(format!(
+        "AMS preset signal {preset_display} was observed via tray_info_idx; this is a material/preset hint, not a roll identity."
+    ))
 }
 
 fn find_inventory_candidates<'a>(

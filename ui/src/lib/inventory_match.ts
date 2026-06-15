@@ -89,6 +89,19 @@ export function translateObservedMatchNote(
   if (!normalized) {
     return null;
   }
+  const presetSignalMatch = normalized.match(
+    /^(.*?)(?:\s+)?AMS preset signal (.+) was observed via tray_info_idx; this is a material\/preset hint, not a roll identity\.$/,
+  );
+  if (presetSignalMatch) {
+    const baseNote = presetSignalMatch[1].trim();
+    const baseTranslation = baseNote ? translateObservedMatchNote(baseNote, t) : null;
+    const presetSignal = presetSignalMatch[2].trim();
+    const presetTranslation = t(
+      "settings.bambuLiveMatchNotePresetSignal",
+      "AMS preset signal: {preset}. This is a material/preset hint, not a roll identity.",
+    ).replace("{preset}", presetSignal);
+    return [baseTranslation, presetTranslation].filter(Boolean).join(" ");
+  }
   switch (normalized) {
     case "Exact tray identity match against inventory.":
       return t(

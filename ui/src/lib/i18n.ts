@@ -1215,6 +1215,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Multiple configured slots share this tray index.",
       bambuLiveMatchNoteUnknownIdentity:
         "AMS reported a tray identity that is not registered in inventory.",
+      bambuLiveMatchNotePresetSignal:
+        "AMS preset signal: {preset}. This is a material/preset hint, not a roll identity.",
       bambuLiveMatchNoteConfiguredMismatch:
         "Last known tray identity does not map cleanly to the currently configured spool.",
       bambuLiveMatchNoteNoStoredMatch:
@@ -2572,6 +2574,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Flere konfigurerte spor deler denne sporindeksen.",
       bambuLiveMatchNoteUnknownIdentity:
         "AMS rapporterte en sporidentitet som ikke er registrert i lageret.",
+      bambuLiveMatchNotePresetSignal:
+        "AMS-preset-signal: {preset}. Dette er et materiale-/preset-hint, ikke en rullidentitet.",
       bambuLiveMatchNoteConfiguredMismatch:
         "Sist kjente sporidentitet passer ikke tydelig med filamentet som er konfigurert i dette sporet.",
       bambuLiveMatchNoteNoStoredMatch:
