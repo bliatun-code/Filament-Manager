@@ -427,6 +427,25 @@ fn color_replacement_without_rfid_clears_when_new_color_arrives() {
 }
 
 #[test]
+fn color_replacement_without_rfid_keeps_configured_composite_swatch_color() {
+    let mut slot = make_slot();
+    slot.spool_hex_color = Some("multi(#00FF00,#FFFF00)".to_string());
+    let tray = BambuLiveObservedTrayRow {
+        observed_rfid_tag: None,
+        tray_uuid: None,
+        color_hex: Some("#FFFF00".to_string()),
+        match_status: Some("no_clear_match".to_string()),
+        ..make_tray()
+    };
+
+    assert!(!should_auto_clear_live_color_replacement(
+        &tray,
+        Some("#00FF00"),
+        &slot
+    ));
+}
+
+#[test]
 fn color_replacement_without_rfid_does_not_clear_same_missing_or_rfid_color() {
     let slot = make_slot();
     let same_color_tray = BambuLiveObservedTrayRow {

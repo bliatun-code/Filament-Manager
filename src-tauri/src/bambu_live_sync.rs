@@ -525,6 +525,7 @@ pub(crate) fn should_auto_clear_live_color_replacement(
         return false;
     };
     !previous_color_hex.eq_ignore_ascii_case(observed_color_hex)
+        && !live_color_matches_swatch(Some(observed_color_hex), slot.spool_hex_color.as_deref())
 }
 
 pub(crate) fn slot_override_matches_live_unknown(
