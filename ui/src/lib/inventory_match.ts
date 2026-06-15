@@ -1,4 +1,4 @@
-import { normalizeHexColor, normalizeSwatchValue, parseSwatchSpec } from "./color_utils";
+import { normalizeSwatchValue, parseSwatchSpec } from "./color_utils";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
 export type InventoryMatchResult =
@@ -40,7 +40,10 @@ export function buildInventoryMatchResult(
 
   const observedMaterial = normalizeInventoryMatchText(observed.material);
   const observedFilamentName = normalizeInventoryMatchText(observed.filamentName);
-  const observedHex = normalizeHexColor(observed.colorHex, { uppercase: true });
+  const observedSwatch = normalizeSwatchValue(observed.colorHex, { uppercase: true });
+  const observedColors = observedSwatch
+    ? parseSwatchSpec(observedSwatch).colors.map((color) => color.toUpperCase())
+    : [];
 
   const metadataMatches = activeRows.filter((row) => {
     const rowMaterial = normalizeInventoryMatchText(row.master.material);
@@ -59,12 +62,15 @@ export function buildInventoryMatchResult(
       }
     }
 
-    if (observedHex) {
+    if (observedColors.length > 0) {
       const rowSwatch = normalizeSwatchValue(row.master.hex_color, { uppercase: true });
       const rowColors = rowSwatch
         ? parseSwatchSpec(rowSwatch).colors.map((color) => color.toUpperCase())
         : [];
-      if (rowColors.length > 0 && !rowColors.includes(observedHex)) {
+      if (
+        rowColors.length > 0 &&
+        !observedColors.every((observedColor) => rowColors.includes(observedColor))
+      ) {
         return false;
       }
     }
