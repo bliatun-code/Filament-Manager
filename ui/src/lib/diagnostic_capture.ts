@@ -550,6 +550,10 @@ export function pushRecentDiagnosticValue(
 export function buildDiagnosticSignalQualityBuckets(
   fields: DiagnosticCaptureField[],
 ): DiagnosticSignalQualityBucket[] {
+  const isNozzleRangeSetting = (path: string) => /nozzle_temp_(min|max)/.test(path);
+  const isLiveNozzleTemperature = (path: string) =>
+    !isNozzleRangeSetting(path) && /nozzle_temp(?:_c)?/.test(path);
+
   const stableMetadata = fields.filter((field) => {
     const path = field.path.toLowerCase();
     return (
@@ -571,7 +575,9 @@ export function buildDiagnosticSignalQualityBuckets(
   const continuousTelemetry = fields.filter((field) => {
     const path = field.path.toLowerCase();
     return (
-      /(temper|percent|remaining_time|wifi_signal|speed|mc_|bed_)/.test(path) &&
+      (/(temper|percent|remaining_time|wifi_signal|speed|mc_|bed_)/.test(path) ||
+        isLiveNozzleTemperature(path)) &&
+      !isNozzleRangeSetting(path) &&
       field.receiveCount > 1 &&
       (field.avgReceiveIntervalMs == null || field.avgReceiveIntervalMs <= 10000)
     );

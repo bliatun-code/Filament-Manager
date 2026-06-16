@@ -5,6 +5,7 @@ import {
   buildDiagnosticChartFieldOptions,
   buildDiagnosticChartPoints,
   buildDiagnosticFallbackSummary,
+  buildDiagnosticSignalQualityBuckets,
   buildDiagnosticDisplayTrays,
   classifyDiagnosticField,
   countDiagnosticIdentitySignals,
@@ -299,6 +300,58 @@ test("diagnostic chart helpers select numeric changing telemetry", () => {
       valueText: "20",
     },
   ]);
+});
+
+test("diagnostic signal quality keeps live nozzle temperature separate from settings range", () => {
+  const buckets = buildDiagnosticSignalQualityBuckets([
+    {
+      avgReceiveIntervalMs: 4000,
+      changeCount: 3,
+      firstSeenAt: "2026-05-15T10:00:00Z",
+      group: "print",
+      label: "nozzle_temp_c",
+      lastSeenAt: "2026-05-15T10:00:10Z",
+      path: "_bfm_job.nozzle_temp_c",
+      receiveCount: 3,
+      recentValues: [],
+      valueText: "218.5",
+    },
+    {
+      avgReceiveIntervalMs: 4000,
+      changeCount: 1,
+      firstSeenAt: "2026-05-15T10:00:00Z",
+      group: "tray",
+      label: "nozzle_temp_min",
+      lastSeenAt: "2026-05-15T10:00:10Z",
+      path: "ams.ams[0].tray[0].nozzle_temp_min",
+      receiveCount: 3,
+      recentValues: [],
+      valueText: "190",
+    },
+    {
+      avgReceiveIntervalMs: 4000,
+      changeCount: 1,
+      firstSeenAt: "2026-05-15T10:00:00Z",
+      group: "tray",
+      label: "nozzle_temp_max",
+      lastSeenAt: "2026-05-15T10:00:10Z",
+      path: "ams.ams[0].tray[0].nozzle_temp_max",
+      receiveCount: 3,
+      recentValues: [],
+      valueText: "240",
+    },
+  ]);
+
+  assert.deepEqual(
+    buckets.map((bucket) => [bucket.label, bucket.fields.map((field) => field.path)]),
+    [
+      [
+        "Stable AMS metadata",
+        ["ams.ams[0].tray[0].nozzle_temp_min", "ams.ams[0].tray[0].nozzle_temp_max"],
+      ],
+      ["Continuous telemetry", ["_bfm_job.nozzle_temp_c"]],
+    ],
+  );
 });
 
 test("diagnostic tray helpers build fallback display trays", () => {
