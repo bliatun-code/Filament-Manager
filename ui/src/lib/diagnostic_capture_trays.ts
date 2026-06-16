@@ -1,6 +1,7 @@
 import type { BambuLiveObservedTray } from "./tauri_client";
 import type { DiagnosticCaptureField, DiagnosticTraySnapshot } from "./diagnostic_capture";
 import { formatBambuSettingsProfileSignal } from "./bambu_settings_profiles";
+import { deriveAmsRemainingGrams, formatAmsWeightEstimate } from "./ams_weight_estimate";
 
 export function normalizeDiagnosticHexColor(value: string | null): string | null {
   const normalized = value?.trim().replace(/^#/, "") ?? "";
@@ -86,9 +87,7 @@ export function extractDiagnosticTraySnapshots(
     );
     const remainingGrams =
       explicitRemainingGrams ??
-      (trayWeightG != null && remainingPercent != null
-        ? Math.round((trayWeightG * remainingPercent) / 100)
-        : null);
+      deriveAmsRemainingGrams(remainingPercent, trayWeightG);
     const lastSeenAt =
       [
         fieldFor("tray_type")?.lastSeenAt,
@@ -127,27 +126,6 @@ export function extractDiagnosticTraySnapshots(
   });
 }
 
-function formatDiagnosticAmsEstimate(
-  remainingGrams: number | null | undefined,
-  trayWeightG: number | null | undefined,
-  remainingPercent: number | null | undefined,
-): string | null {
-  if (remainingGrams != null && trayWeightG != null) {
-    const percentNote = remainingPercent != null ? ` · ${remainingPercent}%` : "";
-    return `AMS estimate: ${remainingGrams} g / ${trayWeightG} g${percentNote}`;
-  }
-  if (remainingGrams != null) {
-    return `AMS estimate: ${remainingGrams} g`;
-  }
-  if (remainingPercent != null) {
-    return `AMS estimate: ${remainingPercent}%`;
-  }
-  if (trayWeightG != null) {
-    return `AMS spool basis: ${trayWeightG} g`;
-  }
-  return null;
-}
-
 function formatDiagnosticNozzleRange(
   min: number | null | undefined,
   max: number | null | undefined,
@@ -178,11 +156,11 @@ export function buildDiagnosticDisplayTrays(
       tray.nozzleTempMinC,
       tray.nozzleTempMaxC,
     );
-    const amsEstimateNote = formatDiagnosticAmsEstimate(
-      tray.remainingGrams,
-      tray.trayWeightG,
-      tray.remainingPercent,
-    );
+    const amsEstimateNote = formatAmsWeightEstimate({
+      remainingGrams: tray.remainingGrams,
+      remainingPercent: tray.remainingPercent,
+      trayWeightG: tray.trayWeightG,
+    });
 
     return {
       ams_index: tray.amsIndex,
