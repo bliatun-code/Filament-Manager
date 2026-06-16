@@ -1,10 +1,7 @@
 import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
 import type { useI18n } from "./i18n";
-import {
-  extractRfidCaptureFields,
-  type RfidCaptureField,
-  type RfidObservedTraySnapshot,
-} from "./inventory_rfid_capture";
+import { type RfidCaptureField, type RfidObservedTraySnapshot } from "./inventory_rfid_capture";
+import { buildRfidCaptureRefreshFieldsBySlot } from "./inventory_rfid_refresh";
 import type { InventoryPrinterSlotOption } from "./use_inventory_printer_slots";
 import {
   getPrinterSettings,
@@ -70,8 +67,9 @@ export function useInventoryRfidCaptureRefresh({
           (snapshot.bambu_live_integrations ?? []).map((entry) => [entry.printer_id, entry.config]),
         ) as Record<string, BambuLiveIntegrationSettings>;
         setBambuLiveIntegrations(nextIntegrations);
-        const observedState = nextIntegrations[selectedRfidCaptureSlot.printerId]?.observed_state;
-        if (!observedState?.raw_payload_json) {
+        const liveIntegration = nextIntegrations[selectedRfidCaptureSlot.printerId] ?? null;
+        const observedState = liveIntegration?.observed_state;
+        if (!observedState) {
           if (
             rfidCaptureFieldsLength === 0 &&
             !(observedTrayCaptureSnapshot?.fields.length)
@@ -87,10 +85,12 @@ export function useInventoryRfidCaptureRefresh({
           }
           return;
         }
-        const capturedBySlot = selectedSpoolRfidCaptureSlots.map((slot) => ({
-          slotId: slot.slotId,
-          captured: extractRfidCaptureFields(observedState.raw_payload_json, slot.slotIndex),
-        }));
+        const observedAt = observedState.last_seen_at ?? new Date().toISOString();
+        const capturedBySlot = buildRfidCaptureRefreshFieldsBySlot(
+          selectedSpoolRfidCaptureSlots,
+          liveIntegration,
+          observedAt,
+        );
         const captured =
           capturedBySlot.find((entry) => entry.slotId === selectedRfidCaptureSlot.slotId)?.captured ?? [];
         if (captured.length === 0) {
@@ -110,7 +110,6 @@ export function useInventoryRfidCaptureRefresh({
           return;
         }
         setRfidCaptureError(null);
-        const observedAt = observedState.last_seen_at ?? new Date().toISOString();
         setRfidCaptureFieldsBySlotId((current) => {
           const next = { ...current };
           for (const slotEntry of capturedBySlot) {
@@ -126,7 +125,7 @@ export function useInventoryRfidCaptureRefresh({
                   path: field.path,
                   label: field.label,
                   valueText: field.valueText,
-                  lastSeenAt: observedAt,
+                  lastSeenAt: field.lastSeenAt,
                   receiveCount: 1,
                   changeCount: 1,
                 });
@@ -136,7 +135,7 @@ export function useInventoryRfidCaptureRefresh({
                 ...existing,
                 label: field.label,
                 valueText: field.valueText,
-                lastSeenAt: observedAt,
+                lastSeenAt: field.lastSeenAt,
                 receiveCount: existing.receiveCount + 1,
                 changeCount:
                   existing.valueText === field.valueText

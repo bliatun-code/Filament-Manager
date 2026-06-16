@@ -18,6 +18,7 @@ import {
 } from "./inventory_rfid_capture";
 import type { InventorySpool } from "./inventory_list_model";
 import type { BambuLiveIntegrationSettings } from "./tauri_client";
+import { buildRfidCaptureRefreshFieldsBySlot } from "./inventory_rfid_refresh";
 
 function createSpool(overrides: Partial<InventorySpool> = {}): InventorySpool {
   return {
@@ -324,6 +325,94 @@ test("host RFID capture treats AMS slot presence bits as useful diagnostic data"
     snapshot?.fields.find((field) => field.path === "ams.tray_exist_bits")?.valueText,
     "0100",
   );
+});
+
+test("RFID refresh fields fall back to observed tray snapshots without raw payload", () => {
+  const slot = createSlot({ amsId: "printer-a_ams_1", slotId: "slot-1", slotIndex: 1 });
+  const integration = liveIntegration({
+    observed_state: {
+      online: true,
+      mqtt_connected: true,
+      last_seen_at: "2026-05-15T12:00:00.000Z",
+      ams_exist_bits: "1",
+      ams_read_done_bits: "1",
+      ams_bambu_bits: "1",
+      trays: [
+        {
+          ams_index: 0,
+          tray_index: 0,
+          loaded: true,
+          observed_rfid_tag: "TAG-LIVE",
+          tray_uuid: "TRAY-LIVE",
+          tray_info_idx: "GFSA00_04",
+          tray_id_name: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
+          filament_type: "PLA",
+          filament_name: "Basic",
+          color_hex: "#2563EB",
+          remaining_percent: 72,
+          remaining_grams: 720,
+          last_identity_seen_at: "2026-05-15T12:00:00.000Z",
+        },
+      ],
+    },
+  });
+
+  const [entry] = buildRfidCaptureRefreshFieldsBySlot([slot], integration, "fallback-at");
+
+  assert.equal(entry?.slotId, "slot-1");
+  assert.equal(entry?.captured.find((field) => field.path === "ams.tray_exist_bits")?.valueText, "1");
+  assert.equal(
+    entry?.captured.find((field) => field.path === "ams.ams[0].tray[0].tray_uuid")?.valueText,
+    "TRAY-LIVE",
+  );
+  assert.equal(
+    entry?.captured.find((field) => field.path === "ams.ams[0].tray[0].tray_uuid")?.lastSeenAt,
+    "2026-05-15T12:00:00.000Z",
+  );
+});
+
+test("RFID refresh fields prefer raw payload values over observed tray snapshots", () => {
+  const slot = createSlot({ amsId: "printer-a_ams_1", slotId: "slot-1", slotIndex: 1 });
+  const integration = liveIntegration({
+    observed_state: {
+      online: true,
+      mqtt_connected: true,
+      last_seen_at: "2026-05-15T12:00:00.000Z",
+      ams_exist_bits: "1",
+      trays: [
+        {
+          ams_index: 0,
+          tray_index: 0,
+          loaded: true,
+          tray_uuid: "TRAY-SNAPSHOT",
+          filament_type: "PLA",
+        },
+      ],
+      raw_payload_json: {
+        ams: {
+          ams: [
+            {
+              tray: [
+                {
+                  tray_uuid: "TRAY-RAW",
+                  tray_type: "PLA",
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+  });
+
+  const [entry] = buildRfidCaptureRefreshFieldsBySlot([slot], integration, "raw-at");
+  const trayUuidFields =
+    entry?.captured.filter((field) => field.path === "ams.ams[0].tray[0].tray_uuid") ?? [];
+
+  assert.equal(trayUuidFields.length, 1);
+  assert.equal(trayUuidFields[0]?.valueText, "TRAY-RAW");
+  assert.equal(trayUuidFields[0]?.lastSeenAt, "raw-at");
+  assert.equal(entry?.captured.find((field) => field.path === "ams.tray_exist_bits")?.valueText, "1");
 });
 
 test("decodeTrayExistBitsSlotPresence reads Bambu hex slot masks", () => {
