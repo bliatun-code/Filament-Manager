@@ -58,6 +58,12 @@ export type DiagnosticTraySnapshot = {
   trayWeightG?: number | null;
   remainingPercent?: number | null;
   remainingGrams?: number | null;
+  trayPresentInAms?: boolean | null;
+  trayReadDone?: boolean | null;
+  trayIsBambu?: boolean | null;
+  trayExistBits?: string | null;
+  trayReadDoneBits?: string | null;
+  trayIsBambuBits?: string | null;
   tagUid?: string | null;
   trayUuid?: string | null;
   trayInfoIdx?: string | null;

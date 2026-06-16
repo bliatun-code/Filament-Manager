@@ -2,6 +2,7 @@ import type { BambuLiveObservedTray } from "./tauri_client";
 import type { DiagnosticCaptureField, DiagnosticTraySnapshot } from "./diagnostic_capture";
 import { formatBambuSettingsProfileSignal } from "./bambu_settings_profiles";
 import { deriveAmsRemainingGrams, formatAmsWeightEstimate } from "./ams_weight_estimate";
+import { decodeTrayExistBitsSlotPresence } from "./inventory_rfid_payload";
 
 export function normalizeDiagnosticHexColor(value: string | null): string | null {
   const normalized = value?.trim().replace(/^#/, "") ?? "";
@@ -27,6 +28,11 @@ function parseDiagnosticNumber(value: string | null): number | null {
   }
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function trimDiagnosticFieldValue(field: DiagnosticCaptureField | null): string | null {
+  const trimmed = field?.valueText.trim() ?? "";
+  return trimmed || null;
 }
 
 export function extractDiagnosticTraySnapshots(
@@ -73,6 +79,16 @@ export function extractDiagnosticTraySnapshots(
       amsIndex == null ? `ams.tray[${trayIndex}]` : `ams.ams[${amsIndex}].tray[${trayIndex}]`;
     const fieldFor = (name: string) =>
       fields.find((field) => field.path === `${prefix}.${name}`) ?? null;
+    const bitFieldFor = (name: string) => {
+      const candidates =
+        amsIndex == null
+          ? [`ams.${name}`]
+          : [
+              `ams.ams[${amsIndex}].${name}`,
+              ...(amsIndex === 0 ? [`ams.${name}`] : []),
+            ];
+      return candidates.map((path) => fields.find((field) => field.path === path)).find(Boolean) ?? null;
+    };
     const filamentType = fieldFor("tray_type")?.valueText ?? null;
     const filamentName = fieldFor("tray_sub_brands")?.valueText ?? null;
     const colorRaw = fieldFor("tray_color")?.valueText ?? null;
@@ -88,6 +104,13 @@ export function extractDiagnosticTraySnapshots(
     const remainingGrams =
       explicitRemainingGrams ??
       deriveAmsRemainingGrams(remainingPercent, trayWeightG);
+    const trayExistBits = trimDiagnosticFieldValue(bitFieldFor("tray_exist_bits"));
+    const trayReadDoneBits = trimDiagnosticFieldValue(bitFieldFor("tray_read_done_bits"));
+    const trayIsBambuBits = trimDiagnosticFieldValue(bitFieldFor("tray_is_bbl_bits"));
+    const slotIndex = trayIndex + 1;
+    const trayPresentInAms = decodeTrayExistBitsSlotPresence(trayExistBits, slotIndex);
+    const trayReadDone = decodeTrayExistBitsSlotPresence(trayReadDoneBits, slotIndex);
+    const trayIsBambu = decodeTrayExistBitsSlotPresence(trayIsBambuBits, slotIndex);
     const lastSeenAt =
       [
         fieldFor("tray_type")?.lastSeenAt,
@@ -97,6 +120,9 @@ export function extractDiagnosticTraySnapshots(
         fieldFor("remain")?.lastSeenAt,
         fieldFor("remaining_grams")?.lastSeenAt,
         fieldFor("tray_uuid")?.lastSeenAt,
+        bitFieldFor("tray_exist_bits")?.lastSeenAt,
+        bitFieldFor("tray_read_done_bits")?.lastSeenAt,
+        bitFieldFor("tray_is_bbl_bits")?.lastSeenAt,
       ]
         .filter((value): value is string => Boolean(value))
         .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
@@ -107,6 +133,7 @@ export function extractDiagnosticTraySnapshots(
       loaded: Boolean(
         (filamentType && filamentType.trim()) ||
           (filamentName && filamentName.trim()) ||
+          trayPresentInAms === true ||
           (fieldFor("tray_uuid")?.valueText && !/^0+$/.test(fieldFor("tray_uuid")?.valueText ?? "")),
       ),
       filamentType,
@@ -115,6 +142,12 @@ export function extractDiagnosticTraySnapshots(
       trayWeightG,
       remainingPercent,
       remainingGrams,
+      trayPresentInAms,
+      trayReadDone,
+      trayIsBambu,
+      trayExistBits,
+      trayReadDoneBits,
+      trayIsBambuBits,
       tagUid: fieldFor("tag_uid")?.valueText ?? null,
       trayUuid: fieldFor("tray_uuid")?.valueText ?? null,
       trayInfoIdx: fieldFor("tray_info_idx")?.valueText ?? null,
@@ -142,6 +175,15 @@ function formatDiagnosticNozzleRange(
   return `max ${max} C`;
 }
 
+function formatDiagnosticTrayBitEvidence(tray: DiagnosticTraySnapshot): string | null {
+  const parts = [
+    tray.trayPresentInAms == null ? null : tray.trayPresentInAms ? "slot present" : "slot absent",
+    tray.trayReadDone == null ? null : tray.trayReadDone ? "RFID read done" : "RFID read pending",
+    tray.trayIsBambu == null ? null : tray.trayIsBambu ? "Bambu tag bit" : "no Bambu tag bit",
+  ].filter(Boolean);
+  return parts.length > 0 ? `AMS bits: ${parts.join(", ")}` : null;
+}
+
 export function buildDiagnosticDisplayTrays(
   observedTrays: BambuLiveObservedTray[],
   fields: DiagnosticCaptureField[],
@@ -156,6 +198,7 @@ export function buildDiagnosticDisplayTrays(
       tray.nozzleTempMinC,
       tray.nozzleTempMaxC,
     );
+    const bitEvidenceNote = formatDiagnosticTrayBitEvidence(tray);
     const amsEstimateNote = formatAmsWeightEstimate({
       remainingGrams: tray.remainingGrams,
       remainingPercent: tray.remainingPercent,
@@ -176,6 +219,7 @@ export function buildDiagnosticDisplayTrays(
       match_note:
         [
           identityNote ? `RFID: ${identityNote}` : null,
+          bitEvidenceNote,
           amsEstimateNote,
           presetNote ? `Settings preset: ${presetNote}` : null,
           nozzleRangeNote ? `Nozzle range: ${nozzleRangeNote}` : null,

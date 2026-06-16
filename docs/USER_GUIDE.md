@@ -420,7 +420,7 @@ Recommended nozzle range from a settings profile is also diagnostic data. It des
 
 `job_state` and `ams_status` are shown as diagnostic codes. They can help explain the printer's internal state, but they are not used by themselves to count jobs or record usage. Automatic usage still depends on a combination of job identity, `gcode_state`, progress, nozzle temperature, active AMS slot, and sane AMS weight changes.
 
-When you export a capture to CSV, the app adds dedicated `tray_snapshot` rows before the raw field and sample logs. Those rows collect AMS/slot, loaded state, material, color, AMS weight estimate, RFID/tray UUID, settings profile, and nozzle range so a capture is faster to analyze without losing the raw data.
+When you export a capture to CSV, the app adds dedicated `tray_snapshot` rows before the raw field and sample logs. Those rows collect AMS/slot, loaded state, physical slot presence, RFID read state, Bambu tag bit, material, color, AMS weight estimate, RFID/tray UUID, settings profile, and nozzle range so a capture is faster to analyze without losing the raw data.
 
 ### Automatic Slot Selection
 

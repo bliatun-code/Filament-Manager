@@ -16,6 +16,9 @@ const TRAY_SNAPSHOT_COLUMNS = [
   "ams_index",
   "tray_index",
   "tray_loaded",
+  "tray_present_in_ams",
+  "tray_read_done",
+  "tray_is_bambu",
   "filament_type",
   "filament_name",
   "color_hex",
@@ -29,6 +32,9 @@ const TRAY_SNAPSHOT_COLUMNS = [
   "settings_profile",
   "nozzle_temp_min_c",
   "nozzle_temp_max_c",
+  "tray_exist_bits",
+  "tray_read_done_bits",
+  "tray_is_bambu_bits",
   "tray_last_seen_at",
 ];
 
@@ -36,6 +42,10 @@ const EMPTY_TRAY_SNAPSHOT_CELLS = TRAY_SNAPSHOT_COLUMNS.map(() => "");
 
 function formatCsvNumber(value: number | null | undefined): string {
   return value == null ? "" : String(value);
+}
+
+function formatCsvBoolean(value: boolean | null | undefined): string {
+  return value == null ? "" : value ? "true" : "false";
 }
 
 export function exportDiagnosticCaptureSessionCsv(session: DiagnosticCaptureSession): string {
@@ -95,6 +105,9 @@ export function exportDiagnosticCaptureSessionCsv(session: DiagnosticCaptureSess
         tray.amsIndex == null ? "" : String(tray.amsIndex),
         String(tray.trayIndex),
         tray.loaded ? "true" : "false",
+        formatCsvBoolean(tray.trayPresentInAms),
+        formatCsvBoolean(tray.trayReadDone),
+        formatCsvBoolean(tray.trayIsBambu),
         tray.filamentType ?? "",
         tray.filamentName ?? "",
         tray.colorHex ?? "",
@@ -108,6 +121,9 @@ export function exportDiagnosticCaptureSessionCsv(session: DiagnosticCaptureSess
         formatBambuSettingsProfileSignal(tray.trayInfoIdx, tray.trayIdName) ?? "",
         formatCsvNumber(tray.nozzleTempMinC),
         formatCsvNumber(tray.nozzleTempMaxC),
+        tray.trayExistBits ?? "",
+        tray.trayReadDoneBits ?? "",
+        tray.trayIsBambuBits ?? "",
         tray.lastSeenAt ?? "",
       ]
         .map(escapeCsv)

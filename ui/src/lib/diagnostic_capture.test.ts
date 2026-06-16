@@ -136,6 +136,9 @@ test("diagnostic tray helpers build fallback display trays", () => {
     session: null,
     rawPayload: {
       ams: {
+        tray_exist_bits: "1",
+        tray_read_done_bits: "1",
+        tray_is_bbl_bits: "1",
         ams: [
           {
             tray: [
@@ -167,13 +170,22 @@ test("diagnostic tray helpers build fallback display trays", () => {
   assert.equal(snapshots[0]?.nozzleTempMinC, 190);
   assert.equal(snapshots[0]?.nozzleTempMaxC, 240);
   assert.equal(snapshots[0]?.remainingGrams, 870);
+  assert.equal(snapshots[0]?.trayPresentInAms, true);
+  assert.equal(snapshots[0]?.trayReadDone, true);
+  assert.equal(snapshots[0]?.trayIsBambu, true);
   const csv = exportDiagnosticCaptureSessionCsv(session);
-  assert.match(csv, /ams_index,tray_index,tray_loaded,filament_type/);
+  assert.match(
+    csv,
+    /ams_index,tray_index,tray_loaded,tray_present_in_ams,tray_read_done,tray_is_bambu,filament_type/,
+  );
   assert.match(
     csv,
     /tray_snapshot,.*AMS 1 tray 1.*GFSA00_04 · Bambu PLA Basic · P1S · 0\.4 mm nozzle/,
   );
-  assert.match(csv, /,0,0,true,PLA,Basic,#336699,1000,87,870,tag-1,uuid-1,GFSA00_04,/);
+  assert.match(
+    csv,
+    /,0,0,true,true,true,true,PLA,Basic,#336699,1000,87,870,tag-1,uuid-1,GFSA00_04,/,
+  );
   assert.deepEqual(buildDiagnosticDisplayTrays([], session.fields), [
     {
       ams_index: 0,
@@ -187,10 +199,42 @@ test("diagnostic tray helpers build fallback display trays", () => {
       remaining_grams: 870,
       match_status: null,
       match_note:
-        "RFID: tag-1 · uuid-1 · AMS estimate: 870 g / 1000 g · 87% · Settings preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle · Nozzle range: 190-240 C",
+        "RFID: tag-1 · uuid-1 · AMS bits: slot present, RFID read done, Bambu tag bit · AMS estimate: 870 g / 1000 g · 87% · Settings preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle · Nozzle range: 190-240 C",
     },
   ]);
   assert.equal(countDiagnosticIdentitySignals(session.fields), 2);
+});
+
+test("diagnostic tray helpers treat AMS bitfields as physical slot evidence", () => {
+  const session = updateDiagnosticCaptureSessionFromPayload({
+    session: null,
+    rawPayload: {
+      ams: {
+        tray_exist_bits: "1",
+        tray_read_done_bits: "0",
+        tray_is_bbl_bits: "1",
+        ams: [
+          {
+            tray: [
+              {
+                tray_type: "",
+                tray_uuid: "00000000000000000000000000000000",
+              },
+            ],
+          },
+        ],
+      },
+    },
+    observedAt: "2026-05-15T10:00:00Z",
+  });
+
+  assert.ok(session);
+  const [snapshot] = extractDiagnosticTraySnapshots(session.fields);
+
+  assert.equal(snapshot?.loaded, true);
+  assert.equal(snapshot?.trayPresentInAms, true);
+  assert.equal(snapshot?.trayReadDone, false);
+  assert.equal(snapshot?.trayIsBambu, true);
 });
 
 test("diagnostic tray helpers keep same tray index separate across AMS units", () => {

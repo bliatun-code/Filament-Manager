@@ -420,7 +420,7 @@ Anbefalt nozzle-område fra en innstillingsprofil er også diagnostikk. Det besk
 
 `job_state` og `ams_status` vises som diagnosekoder. De kan hjelpe oss å forstå printerens interne tilstand, men de brukes ikke alene til å telle jobber eller registrere forbruk. Automatisk forbruk bygger fortsatt på en kombinasjon av jobbidentitet, `gcode_state`, fremdrift, nozzle-temperatur, aktivt AMS-spor og sane AMS-vektendringer.
 
-Når du eksporterer capture til CSV, legger programmet inn egne `tray_snapshot`-rader før råfelt- og sample-loggen. Disse radene samler AMS/spor, lastet-status, materiale, farge, AMS-vektestimat, RFID/tray UUID, innstillingsprofil og nozzle-område slik at en capture kan analyseres raskere uten å miste rådata.
+Når du eksporterer capture til CSV, legger programmet inn egne `tray_snapshot`-rader før råfelt- og sample-loggen. Disse radene samler AMS/spor, lastet-status, fysisk spor-tilstedeværelse, RFID-lesestatus, Bambu-tag-bit, materiale, farge, AMS-vektestimat, RFID/tray UUID, innstillingsprofil og nozzle-område slik at en capture kan analyseres raskere uten å miste rådata.
 
 ### Automatisk sporvalg
 
