@@ -60,13 +60,38 @@ test("parseBambuSettingsProfileName keeps vendor and support profile names reada
       rawName: "Bambu Support For PLA-PETG @BBL H2C 0.2 nozzle",
     },
   );
+  assert.deepEqual(
+    parseBambuSettingsProfileName("Bambu Support For PLA/PETG @BBL X2D 0.4 nozzle"),
+    {
+      filamentProfile: "Bambu Support For PLA/PETG",
+      nozzleDiameterMm: "0.4",
+      printerProfile: "X2D",
+      rawName: "Bambu Support For PLA/PETG @BBL X2D 0.4 nozzle",
+    },
+  );
 });
 
 test("formatBambuSettingsPrinterProfile expands compact BambuStudio printer codes", () => {
-  assert.equal(formatBambuSettingsPrinterProfile("X1C"), "X1 Carbon");
-  assert.equal(formatBambuSettingsPrinterProfile("A1M"), "A1 mini");
-  assert.equal(formatBambuSettingsPrinterProfile("H2DP"), "H2D Pro");
-  assert.equal(formatBambuSettingsPrinterProfile("P2S"), "P2S");
+  const knownBambuStudioCodes = [
+    ["A1", "A1"],
+    ["A1M", "A1 mini"],
+    ["A2L", "A2L"],
+    ["H2C", "H2C"],
+    ["H2D", "H2D"],
+    ["H2DP", "H2D Pro"],
+    ["H2S", "H2S"],
+    ["P1P", "P1P"],
+    ["P1S", "P1S"],
+    ["P2S", "P2S"],
+    ["X1", "X1"],
+    ["X1C", "X1 Carbon"],
+    ["X1E", "X1E"],
+    ["X2D", "X2D"],
+  ] as const;
+
+  for (const [code, label] of knownBambuStudioCodes) {
+    assert.equal(formatBambuSettingsPrinterProfile(code), label);
+  }
   assert.equal(formatBambuSettingsPrinterProfile(" "), null);
   assert.deepEqual(formatBambuSettingsProfileNameParts("Bambu PLA Basic @BBL H2DP 0.4 nozzle"), [
     "Bambu PLA Basic",

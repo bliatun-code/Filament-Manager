@@ -6,9 +6,20 @@ export type BambuSettingsProfileNameParts = {
 };
 
 const BAMBU_PRINTER_PROFILE_LABELS: Record<string, string> = {
+  A1: "A1",
   A1M: "A1 mini",
+  A2L: "A2L",
+  H2C: "H2C",
+  H2D: "H2D",
   H2DP: "H2D Pro",
+  H2S: "H2S",
+  P1P: "P1P",
+  P1S: "P1S",
+  P2S: "P2S",
+  X1: "X1",
   X1C: "X1 Carbon",
+  X1E: "X1E",
+  X2D: "X2D",
 };
 
 export function formatBambuSettingsPrinterProfile(
