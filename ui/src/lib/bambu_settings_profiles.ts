@@ -5,6 +5,22 @@ export type BambuSettingsProfileNameParts = {
   rawName: string;
 };
 
+const BAMBU_PRINTER_PROFILE_LABELS: Record<string, string> = {
+  A1M: "A1 mini",
+  H2DP: "H2D Pro",
+  X1C: "X1 Carbon",
+};
+
+export function formatBambuSettingsPrinterProfile(
+  rawProfile: string | null | undefined,
+): string | null {
+  const normalized = rawProfile?.trim() ?? "";
+  if (!normalized) {
+    return null;
+  }
+  return BAMBU_PRINTER_PROFILE_LABELS[normalized.toUpperCase()] ?? normalized;
+}
+
 export function parseBambuSettingsProfileName(
   rawName: string | null | undefined,
 ): BambuSettingsProfileNameParts | null {
@@ -59,7 +75,7 @@ export function formatBambuSettingsProfileNameParts(
   }
   return [
     parsed.filamentProfile,
-    parsed.printerProfile,
+    formatBambuSettingsPrinterProfile(parsed.printerProfile),
     parsed.nozzleDiameterMm ? `${parsed.nozzleDiameterMm} ${nozzleSuffix}` : null,
   ].filter((value): value is string => Boolean(value));
 }

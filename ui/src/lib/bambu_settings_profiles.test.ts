@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  formatBambuSettingsPrinterProfile,
   formatBambuSettingsProfileNameParts,
   formatBambuSettingsProfileSignal,
   parseBambuSettingsProfileName,
@@ -61,6 +62,19 @@ test("parseBambuSettingsProfileName keeps vendor and support profile names reada
   );
 });
 
+test("formatBambuSettingsPrinterProfile expands compact BambuStudio printer codes", () => {
+  assert.equal(formatBambuSettingsPrinterProfile("X1C"), "X1 Carbon");
+  assert.equal(formatBambuSettingsPrinterProfile("A1M"), "A1 mini");
+  assert.equal(formatBambuSettingsPrinterProfile("H2DP"), "H2D Pro");
+  assert.equal(formatBambuSettingsPrinterProfile("P2S"), "P2S");
+  assert.equal(formatBambuSettingsPrinterProfile(" "), null);
+  assert.deepEqual(formatBambuSettingsProfileNameParts("Bambu PLA Basic @BBL H2DP 0.4 nozzle"), [
+    "Bambu PLA Basic",
+    "H2D Pro",
+    "0.4 mm nozzle",
+  ]);
+});
+
 test("parseBambuSettingsProfileName supports generic nozzle-only profiles", () => {
   assert.deepEqual(parseBambuSettingsProfileName("Generic PLA @0.2 nozzle"), {
     filamentProfile: "Generic PLA",
@@ -96,10 +110,10 @@ test("parseBambuSettingsProfileName keeps unstructured names intact", () => {
 test("formatBambuSettingsProfileSignal joins setting id and readable profile parts", () => {
   assert.equal(
     formatBambuSettingsProfileSignal(
-      "GFSA00_04",
-      "Bambu PLA Basic @BBL P1S 0.4 nozzle",
+      "GFSA00_17",
+      "Bambu PLA Basic @BBL H2DP 0.4 nozzle",
     ),
-    "GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle",
+    "GFSA00_17 · Bambu PLA Basic · H2D Pro · 0.4 mm nozzle",
   );
   assert.equal(
     formatBambuSettingsProfileSignal("GENERIC_PLA_02", "Generic PLA @0.2 nozzle", {
