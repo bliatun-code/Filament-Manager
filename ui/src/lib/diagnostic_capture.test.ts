@@ -147,6 +147,7 @@ test("diagnostic tray helpers build fallback display trays", () => {
                 tray_uuid: "uuid-1",
                 tray_info_idx: "GFSA00_04",
                 tray_id_name: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
+                tray_weight: "1000",
                 nozzle_temp_min: "190",
                 nozzle_temp_max: "240",
               },
@@ -161,8 +162,10 @@ test("diagnostic tray helpers build fallback display trays", () => {
   assert.ok(session);
   const snapshots = extractDiagnosticTraySnapshots(session.fields);
   assert.equal(snapshots[0]?.amsIndex, 0);
+  assert.equal(snapshots[0]?.trayWeightG, 1000);
   assert.equal(snapshots[0]?.nozzleTempMinC, 190);
   assert.equal(snapshots[0]?.nozzleTempMaxC, 240);
+  assert.equal(snapshots[0]?.remainingGrams, 870);
   assert.deepEqual(buildDiagnosticDisplayTrays([], session.fields), [
     {
       ams_index: 0,
@@ -171,10 +174,12 @@ test("diagnostic tray helpers build fallback display trays", () => {
       filament_type: "PLA",
       filament_name: "Basic",
       color_hex: "#336699",
+      tray_weight_g: 1000,
       remaining_percent: 87,
+      remaining_grams: 870,
       match_status: null,
       match_note:
-        "RFID: tag-1 · uuid-1 · Settings preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle · Nozzle range: 190-240 C",
+        "RFID: tag-1 · uuid-1 · AMS estimate: 870 g / 1000 g · 87% · Settings preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle · Nozzle range: 190-240 C",
     },
   ]);
   assert.equal(countDiagnosticIdentitySignals(session.fields), 2);

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildSettingsBambuLiveAmsWeightLabel,
   buildSettingsBambuLiveDiagnosticTrayCard,
   buildSettingsBambuLiveDiagnosticTrayCards,
   buildSettingsBambuLiveDiagnosticMetricCards,
@@ -81,6 +82,7 @@ function createLiveConfig(): BambuLiveIntegrationSettings {
                   tray_id_name: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
                   tray_color: "FFAA00FF",
                   tray_type: "PLA",
+                  tray_weight: 1000,
                   remain: 77,
                 },
               ],
@@ -209,6 +211,10 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
   assert.equal(model.diagnosticTrayCards[0].matchKind, "rfid_exact");
   assert.equal(model.diagnosticTrayCards[0].matchLabel, "PLA Basic · Orange");
   assert.equal(model.diagnosticTrayCards[0].observedRfidLabel, "Observed: ABC123");
+  assert.equal(
+    model.diagnosticTrayCards[0].amsWeightLabel,
+    "AMS estimate: 760 g / 1000 g · 76%",
+  );
   assert.deepEqual(model.observedSummaryParts, [
     "42%",
     "18 min",
@@ -756,6 +762,54 @@ test("Bambu live tray display text prefers names, material, and empty fallbacks"
   );
 });
 
+test("Bambu live AMS weight label formats live and captured estimates", () => {
+  assert.equal(
+    buildSettingsBambuLiveAmsWeightLabel({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({
+        remainingPercent: 77,
+        trayWeightG: 1000,
+      }),
+      t,
+      tray: createObservedTray({ remaining_percent: null }),
+    }),
+    "AMS estimate: 770 g / 1000 g · 77%",
+  );
+
+  assert.equal(
+    buildSettingsBambuLiveAmsWeightLabel({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({
+        remainingPercent: 77,
+        trayWeightG: 1000,
+      }),
+      t,
+      tray: createObservedTray({
+        remaining_grams: 735,
+        remaining_percent: 74,
+        tray_weight_g: 1000,
+      }),
+    }),
+    "AMS estimate: 735 g / 1000 g · 74%",
+  );
+
+  assert.equal(
+    buildSettingsBambuLiveAmsWeightLabel({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({ trayWeightG: 1000 }),
+      t,
+      tray: createObservedTray({ remaining_percent: null }),
+    }),
+    "AMS spool basis: 1000 g",
+  );
+
+  assert.equal(
+    buildSettingsBambuLiveAmsWeightLabel({
+      capturedTraySnapshot: null,
+      t,
+      tray: createObservedTray({ remaining_percent: null }),
+    }),
+    null,
+  );
+});
+
 test("Bambu live inventory match presentation prefers inventory label and swatch", () => {
   assert.deepEqual(
     buildSettingsBambuLiveInventoryMatchPresentation({
@@ -987,6 +1041,7 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
       colorHex: "#00AAFF",
       nozzleTempMaxC: 240,
       nozzleTempMinC: 190,
+      trayWeightG: 1000,
       trayIdName: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
       trayInfoIdx: "GFSA00_04",
       trayUuid: "ABC123",
@@ -1010,6 +1065,7 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
     exactCard.presetSignalLabel,
     "Filament settings preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle",
   );
+  assert.equal(exactCard.amsWeightLabel, "AMS estimate: 770 g / 1000 g · 77%");
   assert.equal(exactCard.nozzleRangeLabel, "Nozzle range: 190-240 C");
   assert.equal(exactCard.hasReview, true);
   assert.equal(exactCard.matchNote, "rfid_mismatch");

@@ -128,6 +128,74 @@ function formatNozzleTemperature(value: number): string {
   return Number.isInteger(value) ? value.toString() : value.toFixed(1);
 }
 
+function formatSettingsBambuLiveWeight(value: number): string {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
+function finiteDiagnosticNumber(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function deriveRemainingGrams(
+  remainingPercent: number | null,
+  trayWeightG: number | null,
+): number | null {
+  return remainingPercent != null && trayWeightG != null
+    ? Math.round((trayWeightG * remainingPercent) / 100)
+    : null;
+}
+
+export function buildSettingsBambuLiveAmsWeightLabel({
+  capturedTraySnapshot,
+  t,
+  tray,
+}: {
+  capturedTraySnapshot: DiagnosticTraySnapshot | null;
+  t: TranslateFn;
+  tray: BambuLiveObservedTray;
+}): string | null {
+  const liveTrayWeightG = finiteDiagnosticNumber(tray.tray_weight_g);
+  const capturedTrayWeightG = finiteDiagnosticNumber(capturedTraySnapshot?.trayWeightG);
+  const liveRemainingPercent = finiteDiagnosticNumber(tray.remaining_percent);
+  const capturedRemainingPercent = finiteDiagnosticNumber(
+    capturedTraySnapshot?.remainingPercent,
+  );
+  const liveRemainingGrams = finiteDiagnosticNumber(tray.remaining_grams);
+  const capturedRemainingGrams = finiteDiagnosticNumber(capturedTraySnapshot?.remainingGrams);
+
+  const remainingGrams = liveRemainingGrams ?? capturedRemainingGrams;
+  const trayWeightG =
+    remainingGrams === liveRemainingGrams
+      ? liveTrayWeightG ?? capturedTrayWeightG
+      : capturedTrayWeightG ?? liveTrayWeightG;
+  const remainingPercent =
+    remainingGrams === liveRemainingGrams
+      ? liveRemainingPercent ?? capturedRemainingPercent
+      : capturedRemainingPercent ?? liveRemainingPercent;
+  const derivedRemainingGrams =
+    remainingGrams ?? deriveRemainingGrams(remainingPercent, trayWeightG);
+
+  if (derivedRemainingGrams != null && trayWeightG != null) {
+    const percentNote =
+      remainingPercent != null
+        ? ` · ${formatSettingsBambuLiveWeight(remainingPercent)}%`
+        : "";
+    return `${t("settings.bambuLiveAmsWeightEstimate", "AMS estimate")}: ${formatSettingsBambuLiveWeight(
+      derivedRemainingGrams,
+    )} g / ${formatSettingsBambuLiveWeight(trayWeightG)} g${percentNote}`;
+  }
+  if (derivedRemainingGrams != null) {
+    return `${t("settings.bambuLiveAmsWeightEstimate", "AMS estimate")}: ${formatSettingsBambuLiveWeight(derivedRemainingGrams)} g`;
+  }
+  if (remainingPercent != null) {
+    return `${t("settings.bambuLiveAmsWeightEstimate", "AMS estimate")}: ${formatSettingsBambuLiveWeight(remainingPercent)}%`;
+  }
+  if (trayWeightG != null) {
+    return `${t("settings.bambuLiveAmsWeightBasis", "AMS spool basis")}: ${formatSettingsBambuLiveWeight(trayWeightG)} g`;
+  }
+  return null;
+}
+
 export function buildSettingsBambuLiveNozzleRangeLabel({
   capturedTraySnapshot,
   t,
@@ -353,6 +421,11 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
     t,
     tray,
   });
+  const amsWeightLabel = buildSettingsBambuLiveAmsWeightLabel({
+    capturedTraySnapshot,
+    t,
+    tray,
+  });
   const nozzleRangeLabel = buildSettingsBambuLiveNozzleRangeLabel({
     capturedTraySnapshot,
     t,
@@ -393,6 +466,7 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
     matchLabel,
     matchNote,
     matchSwatchColor,
+    amsWeightLabel,
     mqttTrayLabel,
     nozzleRangeLabel,
     observedRfidLabel,

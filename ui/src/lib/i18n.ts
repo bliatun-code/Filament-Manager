@@ -1279,6 +1279,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveSummaryAmsStatus: "AMS status",
       bambuLiveMoreInventoryCandidates: "More matching rolls exist in inventory.",
       bambuLivePresetSignal: "Filament settings preset",
+      bambuLiveAmsWeightEstimate: "AMS estimate",
+      bambuLiveAmsWeightBasis: "AMS spool basis",
       bambuLiveNozzleRange: "Nozzle range",
       bambuLiveSignalEventDriven: "Event-driven AMS signals",
       bambuLiveSignalEventDrivenDesc:
@@ -2652,6 +2654,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveSummaryAmsStatus: "AMS-status",
       bambuLiveMoreInventoryCandidates: "Det finnes flere matchende ruller i lageret.",
       bambuLivePresetSignal: "Filamentinnstillingsprofil",
+      bambuLiveAmsWeightEstimate: "AMS-estimat",
+      bambuLiveAmsWeightBasis: "AMS-rullgrunnlag",
       bambuLiveNozzleRange: "Nozzle-område",
       bambuLiveSignalEventDriven: "Hendelsesstyrte AMS-signaler",
       bambuLiveSignalEventDrivenDesc:

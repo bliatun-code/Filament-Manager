@@ -75,17 +75,28 @@ export function extractDiagnosticTraySnapshots(
     const filamentType = fieldFor("tray_type")?.valueText ?? null;
     const filamentName = fieldFor("tray_sub_brands")?.valueText ?? null;
     const colorRaw = fieldFor("tray_color")?.valueText ?? null;
+    const trayWeightG = parseDiagnosticNumber(fieldFor("tray_weight")?.valueText ?? null);
     const remainingRaw = fieldFor("remain")?.valueText ?? null;
     const remainingPercent =
       remainingRaw != null && Number.isFinite(Number.parseFloat(remainingRaw))
         ? Number.parseInt(remainingRaw, 10)
         : null;
+    const explicitRemainingGrams = parseDiagnosticNumber(
+      fieldFor("remaining_grams")?.valueText ?? null,
+    );
+    const remainingGrams =
+      explicitRemainingGrams ??
+      (trayWeightG != null && remainingPercent != null
+        ? Math.round((trayWeightG * remainingPercent) / 100)
+        : null);
     const lastSeenAt =
       [
         fieldFor("tray_type")?.lastSeenAt,
         fieldFor("tray_sub_brands")?.lastSeenAt,
         fieldFor("tray_color")?.lastSeenAt,
+        fieldFor("tray_weight")?.lastSeenAt,
         fieldFor("remain")?.lastSeenAt,
+        fieldFor("remaining_grams")?.lastSeenAt,
         fieldFor("tray_uuid")?.lastSeenAt,
       ]
         .filter((value): value is string => Boolean(value))
@@ -102,7 +113,9 @@ export function extractDiagnosticTraySnapshots(
       filamentType,
       filamentName,
       colorHex: normalizeDiagnosticHexColor(colorRaw),
+      trayWeightG,
       remainingPercent,
+      remainingGrams,
       tagUid: fieldFor("tag_uid")?.valueText ?? null,
       trayUuid: fieldFor("tray_uuid")?.valueText ?? null,
       trayInfoIdx: fieldFor("tray_info_idx")?.valueText ?? null,
@@ -112,6 +125,27 @@ export function extractDiagnosticTraySnapshots(
       lastSeenAt,
     };
   });
+}
+
+function formatDiagnosticAmsEstimate(
+  remainingGrams: number | null | undefined,
+  trayWeightG: number | null | undefined,
+  remainingPercent: number | null | undefined,
+): string | null {
+  if (remainingGrams != null && trayWeightG != null) {
+    const percentNote = remainingPercent != null ? ` · ${remainingPercent}%` : "";
+    return `AMS estimate: ${remainingGrams} g / ${trayWeightG} g${percentNote}`;
+  }
+  if (remainingGrams != null) {
+    return `AMS estimate: ${remainingGrams} g`;
+  }
+  if (remainingPercent != null) {
+    return `AMS estimate: ${remainingPercent}%`;
+  }
+  if (trayWeightG != null) {
+    return `AMS spool basis: ${trayWeightG} g`;
+  }
+  return null;
 }
 
 function formatDiagnosticNozzleRange(
@@ -144,6 +178,11 @@ export function buildDiagnosticDisplayTrays(
       tray.nozzleTempMinC,
       tray.nozzleTempMaxC,
     );
+    const amsEstimateNote = formatDiagnosticAmsEstimate(
+      tray.remainingGrams,
+      tray.trayWeightG,
+      tray.remainingPercent,
+    );
 
     return {
       ams_index: tray.amsIndex,
@@ -152,11 +191,14 @@ export function buildDiagnosticDisplayTrays(
       filament_type: tray.filamentType ?? null,
       filament_name: tray.filamentName ?? null,
       color_hex: tray.colorHex ?? null,
+      tray_weight_g: tray.trayWeightG ?? null,
       remaining_percent: tray.remainingPercent ?? null,
+      remaining_grams: tray.remainingGrams ?? null,
       match_status: null,
       match_note:
         [
           identityNote ? `RFID: ${identityNote}` : null,
+          amsEstimateNote,
           presetNote ? `Settings preset: ${presetNote}` : null,
           nozzleRangeNote ? `Nozzle range: ${nozzleRangeNote}` : null,
         ]

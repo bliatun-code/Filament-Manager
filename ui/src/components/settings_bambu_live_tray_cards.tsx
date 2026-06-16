@@ -21,6 +21,7 @@ export function SettingsBambuLiveTrayCards({
       {trays.map((tray) => {
         const metadataItems = [
           tray.observedRfidLabel,
+          tray.amsWeightLabel,
           tray.presetSignalLabel,
           tray.nozzleRangeLabel,
           tray.candidateCountText,

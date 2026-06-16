@@ -30,6 +30,7 @@ import {
   formatSettingsBambuLiveSummaryTrayIndexLabel,
 } from "./settings_bambu_live_tray_model";
 export {
+  buildSettingsBambuLiveAmsWeightLabel,
   buildSettingsBambuLiveDiagnosticTrayCard,
   buildSettingsBambuLiveDiagnosticTrayCards,
   buildSettingsBambuLiveInventoryCandidateCards,

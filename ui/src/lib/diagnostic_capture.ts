@@ -55,7 +55,9 @@ export type DiagnosticTraySnapshot = {
   filamentType?: string | null;
   filamentName?: string | null;
   colorHex?: string | null;
+  trayWeightG?: number | null;
   remainingPercent?: number | null;
+  remainingGrams?: number | null;
   tagUid?: string | null;
   trayUuid?: string | null;
   trayInfoIdx?: string | null;
@@ -395,7 +397,7 @@ export function buildDiagnosticSignalQualityBuckets(
   const stableMetadata = fields.filter((field) => {
     const path = field.path.toLowerCase();
     return (
-      /(tag_uid|tray_uuid|chip_id|tray_info_idx|tray_id_name|tray_sub_brands|tray_type|tray_color|nozzle_temp_min|nozzle_temp_max)/.test(
+      /(tag_uid|tray_uuid|chip_id|tray_info_idx|tray_id_name|tray_sub_brands|tray_type|tray_color|tray_weight|remaining_grams|nozzle_temp_min|nozzle_temp_max)/.test(
         path,
       ) &&
       field.changeCount <= 2
