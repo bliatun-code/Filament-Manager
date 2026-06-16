@@ -6,7 +6,7 @@ import type {
   PrinterOverviewRow,
   SpoolWithMasterRow,
 } from "./tauri_client";
-import { isUnknownLiveRfid } from "./printer_live_display";
+import { isUnknownLiveRfid, liveTrayIdentity } from "./printer_live_display";
 import { resolveSpoolTareWeight } from "./spool_weight";
 
 export type SlotSwapDraft = {
@@ -215,7 +215,7 @@ export function preparePrinterSlotAssignment(
   const nextUnknownOverride =
     normalizedTargetSpoolId && !isExtSlot && isUnknownLiveRfid(liveTray)
       ? {
-          trayUuid: liveTray?.tray_uuid?.trim() ?? "",
+          trayUuid: liveTrayIdentity(liveTray),
           colorHex: liveTray?.color_hex?.trim() ?? "",
         }
       : null;

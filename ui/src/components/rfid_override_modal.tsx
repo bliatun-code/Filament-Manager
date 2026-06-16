@@ -2,6 +2,7 @@ import { formatFilamentDisplayTitle, formatSpoolReference } from "../lib/display
 import { useI18n, type Locale } from "../lib/i18n";
 import {
   formatDateTime,
+  liveTrayIdentity,
   swatchCssBackground,
 } from "../lib/printer_live_display";
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
@@ -26,6 +27,7 @@ export function RfidOverrideModal({
   onSave,
 }: RfidOverrideModalProps) {
   const { t } = useI18n();
+  const observedRfid = liveTrayIdentity(prompt.liveTray);
 
   return (
     <AppModal
@@ -84,7 +86,7 @@ export function RfidOverrideModal({
                   {t("inventory.rfidObservedTag", "Observed RFID")}
                 </dt>
                 <dd className="mt-1 break-all font-mono text-slate-900 dark:text-slate-100">
-                  {prompt.liveTray.tray_uuid?.trim() || "-"}
+                  {observedRfid || "-"}
                 </dd>
               </div>
               <div>
@@ -123,7 +125,7 @@ export function RfidOverrideModal({
               type="button"
               className="rounded-lg border border-sky-300 bg-sky-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:border-sky-400/40 dark:bg-sky-500"
               onClick={onSave}
-              disabled={!prompt.liveTray.tray_uuid?.trim() || busy}
+              disabled={!observedRfid || busy}
             >
               {t("inventory.saveRfid", "Save RFID")}
             </button>

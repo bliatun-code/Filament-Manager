@@ -493,9 +493,13 @@ fn return_borrowed_in_spool_hands_back_and_hides_from_inventory() {
     }
 }
 
-#[test]
-fn assign_printer_slot_derives_unknown_live_rfid_override_on_host() {
-    let db_path = temp_db_path("derive-host-rfid-override");
+fn assert_assign_printer_slot_derives_unknown_live_rfid_override(
+    test_name: &str,
+    observed_rfid_tag: Option<&str>,
+    tray_uuid: Option<&str>,
+    expected_override: &str,
+) {
+    let db_path = temp_db_path(test_name);
 
     let result = (|| -> Result<(), String> {
         let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
@@ -582,8 +586,8 @@ fn assign_printer_slot_derives_unknown_live_rfid_override_on_host() {
                             tray_weight_g: Some(1000),
                             remaining_percent: Some(82),
                             remaining_grams: Some(820),
-                            observed_rfid_tag: None,
-                            tray_uuid: Some("tray-uuid-unknown".to_string()),
+                            observed_rfid_tag: observed_rfid_tag.map(str::to_string),
+                            tray_uuid: tray_uuid.map(str::to_string),
                             chip_id: None,
                             tray_info_idx: None,
                             tray_id_name: None,
@@ -626,7 +630,7 @@ fn assign_printer_slot_derives_unknown_live_rfid_override_on_host() {
         assert_eq!(slot.spool_id.as_deref(), Some("spool_1"));
         assert_eq!(
             slot.rfid_override_tray_uuid.as_deref(),
-            Some("tray-uuid-unknown")
+            Some(expected_override)
         );
         assert_eq!(slot.rfid_override_color_hex.as_deref(), Some("#00FF00"));
         assert!(slot.live_cache_cleared_at.is_none());
@@ -636,8 +640,28 @@ fn assign_printer_slot_derives_unknown_live_rfid_override_on_host() {
 
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
-        panic!("assign_printer_slot_derives_unknown_live_rfid_override_on_host failed: {message}");
+        panic!("{test_name} failed: {message}");
     }
+}
+
+#[test]
+fn assign_printer_slot_derives_unknown_live_rfid_override_on_host() {
+    assert_assign_printer_slot_derives_unknown_live_rfid_override(
+        "derive-host-rfid-override",
+        None,
+        Some("tray-uuid-unknown"),
+        "tray-uuid-unknown",
+    );
+}
+
+#[test]
+fn assign_printer_slot_derives_unknown_live_rfid_override_from_tag_uid_on_host() {
+    assert_assign_printer_slot_derives_unknown_live_rfid_override(
+        "derive-host-tag-uid-override",
+        Some("tag-uid-unknown"),
+        None,
+        "tag-uid-unknown",
+    );
 }
 
 #[test]

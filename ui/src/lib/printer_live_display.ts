@@ -207,18 +207,19 @@ export function formatPrinterSpoolStatusTone(status?: string | null) {
   }
 }
 
+export function liveTrayIdentity(tray?: BambuLiveObservedTray | null): string {
+  return tray?.tray_uuid?.trim() || tray?.observed_rfid_tag?.trim() || "";
+}
+
 export function isUnknownLiveRfid(tray?: BambuLiveObservedTray | null): boolean {
-  return Boolean(
-    (tray?.tray_uuid?.trim() || tray?.observed_rfid_tag?.trim()) &&
-      tray.match_status === "unknown_rfid",
-  );
+  return Boolean(liveTrayIdentity(tray) && tray?.match_status === "unknown_rfid");
 }
 
 export function liveUnknownMatchesSlotOverride(
   slot: PrinterAmsSlotRow,
   tray?: BambuLiveObservedTray | null,
 ): boolean {
-  const observedTrayUuid = (tray?.tray_uuid ?? "").trim();
+  const observedTrayUuid = liveTrayIdentity(tray);
   const observedColorHex = (tray?.color_hex ?? "").trim();
   const overrideTrayUuid = (slot.rfid_override_tray_uuid ?? "").trim();
   const overrideColorHex = (slot.rfid_override_color_hex ?? "").trim();

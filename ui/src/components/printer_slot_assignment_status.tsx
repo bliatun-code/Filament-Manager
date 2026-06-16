@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import { semanticChipClass } from "../lib/chip_styles";
 import { formatSpoolReference } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
-import { swatchCssBackground } from "../lib/printer_live_display";
+import { liveTrayIdentity, swatchCssBackground } from "../lib/printer_live_display";
 import type { PrinterSlotDisplayState } from "../lib/printer_slot_display";
 import type {
   PrinterAmsSlotRow,
@@ -43,6 +43,7 @@ export function PrinterSlotAssignmentStatus({
     liveObservedAtLabel,
     slotSwatchHex,
   } = displayState;
+  const effectiveLiveIdentity = liveTrayIdentity(effectiveLiveTray);
   const liveObservationText = liveObservedAtLabel
     ? `${t("printers.lastKnownLive", "Last known live")}: ${liveObservedAtLabel}${
         liveObservedAge ? ` · ${liveObservedAge}` : ""
@@ -63,7 +64,7 @@ export function PrinterSlotAssignmentStatus({
             {`${t(
               "printers.unknownLiveRfidHint",
               "AMS reported an RFID/AMS identity that is not registered in inventory.",
-            )} ${effectiveLiveTray?.tray_uuid}`}
+            )} ${effectiveLiveIdentity}`}
           </div>
         ) : null}
       </div>
@@ -136,11 +137,11 @@ export function PrinterSlotAssignmentStatus({
                 ? `${t(
                     "printers.rfidOverriddenHint",
                     "This slot is manually assigned while the same unregistered RFID identity is still active.",
-                  )} ${effectiveLiveTray?.tray_uuid}`
+                  )} ${effectiveLiveIdentity}`
                 : `${t(
                     "printers.unknownLiveRfidHint",
                     "AMS reported an RFID/AMS identity that is not registered in inventory.",
-                  )} ${effectiveLiveTray?.tray_uuid}`}
+                  )} ${effectiveLiveIdentity}`}
             </div>
           ) : null}
         </div>

@@ -547,6 +547,27 @@ fn apply_tray_match_status_keeps_exact_rfid_stronger_than_preset_signal() {
 }
 
 #[test]
+fn apply_tray_match_status_uses_observed_tag_uid_when_tray_uuid_is_missing() {
+    let slot = make_slot();
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        observed_rfid_tag: Some("tag-uid-only".to_string()),
+        tray_uuid: None,
+        ..make_tray()
+    };
+
+    apply_tray_match_status(
+        &mut tray,
+        &overview,
+        &[make_inventory_spool("spool_1", Some("tag-uid-only"))],
+    );
+
+    assert_eq!(tray.match_status.as_deref(), Some("clear_match"));
+    assert_eq!(tray.matched_inventory_mode.as_deref(), Some("exact_rfid"));
+    assert_eq!(tray.matched_inventory_spool_id.as_deref(), Some("spool_1"));
+}
+
+#[test]
 fn unknown_rfid_replacement_clears_on_new_unknown_identity_and_respects_override() {
     let mut slot = make_slot();
     let tray = BambuLiveObservedTrayRow {
@@ -564,6 +585,27 @@ fn unknown_rfid_replacement_clears_on_new_unknown_identity_and_respects_override
         "tray-uuid-unknown",
         "#00FF00"
     ));
+    assert!(!should_auto_clear_live_unknown_replacement(&tray, &slot));
+}
+
+#[test]
+fn unknown_rfid_replacement_uses_observed_tag_uid_when_tray_uuid_is_missing() {
+    let mut slot = make_slot();
+    let tray = BambuLiveObservedTrayRow {
+        observed_rfid_tag: Some("tag-uid-only".to_string()),
+        tray_uuid: None,
+        match_status: Some("unknown_rfid".to_string()),
+        ..make_tray()
+    };
+
+    assert!(should_auto_clear_live_unknown_replacement(&tray, &slot));
+
+    slot.spool_rfid_tag = Some("tag-uid-only".to_string());
+    assert!(!should_auto_clear_live_unknown_replacement(&tray, &slot));
+
+    slot.spool_rfid_tag = None;
+    slot.rfid_override_tray_uuid = Some("tag-uid-only".to_string());
+    slot.rfid_override_color_hex = Some("#00FF00".to_string());
     assert!(!should_auto_clear_live_unknown_replacement(&tray, &slot));
 }
 

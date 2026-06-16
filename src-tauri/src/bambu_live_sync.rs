@@ -152,10 +152,9 @@ pub(crate) fn apply_tray_match_status(
 ) {
     tray.matched_inventory_spool_id = None;
     tray.matched_inventory_mode = None;
-    let has_live_unknown_rfid =
-        tray.loaded && live_identity_text(tray.tray_uuid.as_deref()).is_some();
+    let has_live_unknown_rfid = tray.loaded && live_tray_identity_text(tray).is_some();
 
-    if let Some(observed_rfid) = tray.tray_uuid.as_deref() {
+    if let Some(observed_rfid) = live_tray_identity_text(tray) {
         let exact_matches: Vec<_> = all_spools
             .iter()
             .filter(|row| eq_ignore_case(Some(observed_rfid), row.spool.rfid_tag.as_deref()))
@@ -503,7 +502,7 @@ pub(crate) fn should_auto_clear_live_unknown_replacement(
     {
         return false;
     }
-    let Some(observed_tray_uuid) = live_identity_text(tray.tray_uuid.as_deref()) else {
+    let Some(observed_tray_uuid) = live_tray_identity_text(tray) else {
         return false;
     };
     let Some(observed_color_hex) = live_identity_text(tray.color_hex.as_deref()) else {
@@ -526,7 +525,7 @@ pub(crate) fn should_auto_clear_live_color_replacement(
     if slot.spool_id.is_none() || !tray.loaded {
         return false;
     }
-    if live_identity_text(tray.tray_uuid.as_deref()).is_some() {
+    if live_tray_identity_text(tray).is_some() {
         return false;
     }
     let Some(observed_color_hex) = live_identity_text(tray.color_hex.as_deref()) else {
@@ -559,6 +558,11 @@ pub(crate) fn slot_override_matches_live_unknown(
 
 fn live_identity_text(value: Option<&str>) -> Option<&str> {
     value.map(str::trim).filter(|value| !value.is_empty())
+}
+
+fn live_tray_identity_text(tray: &BambuLiveObservedTrayRow) -> Option<&str> {
+    live_identity_text(tray.tray_uuid.as_deref())
+        .or_else(|| live_identity_text(tray.observed_rfid_tag.as_deref()))
 }
 
 fn live_tray_has_physical_roll_signal(tray: &BambuLiveObservedTrayRow) -> bool {

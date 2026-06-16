@@ -34,6 +34,7 @@ import {
 import {
   commandErrorText as printerCommandErrorText,
   findLiveTrayForSlot as resolveLiveTrayForSlot,
+  liveTrayIdentity,
 } from "../lib/printer_live_display";
 import { sortSpoolsAlphabetically } from "../lib/spool_sort";
 import { updateInventorySpoolRfidTag } from "../lib/spool_writes";
@@ -497,7 +498,7 @@ export function usePrinterSlotInteractions({
     if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
-    const observedRfid = rfidOverridePrompt.liveTray.tray_uuid?.trim() ?? "";
+    const observedRfid = liveTrayIdentity(rfidOverridePrompt.liveTray);
     if (!observedRfid) {
       setError(
         t(

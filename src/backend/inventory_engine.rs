@@ -933,7 +933,8 @@ impl InventoryEngine {
             return None;
         }
 
-        let tray_uuid = Self::normalize_optional_text(tray.tray_uuid.as_deref())?;
+        let tray_uuid = Self::normalize_optional_text(tray.tray_uuid.as_deref())
+            .or_else(|| Self::normalize_optional_text(tray.observed_rfid_tag.as_deref()))?;
         let color_hex = Self::normalize_optional_text(tray.color_hex.as_deref())?;
         Some((tray_uuid, color_hex))
     }
