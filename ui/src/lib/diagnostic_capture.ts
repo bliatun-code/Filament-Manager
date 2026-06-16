@@ -352,12 +352,17 @@ export function classifyDiagnosticField(path: string): DiagnosticGroupKey {
     }
     return "ams";
   }
+  if (normalized.startsWith("_bfm_ams_status") || normalized.includes("ams_status")) {
+    return "ams";
+  }
   if (normalized.startsWith("tray") || normalized.includes(".tray[")) {
     return "tray";
   }
   if (
     normalized.startsWith("mc_") ||
     normalized.startsWith("gcode_") ||
+    normalized.startsWith("_bfm_job") ||
+    normalized.includes("job_state") ||
     normalized.includes("temper") ||
     normalized.includes("print") ||
     normalized === "msg" ||

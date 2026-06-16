@@ -6,6 +6,7 @@ import {
   buildDiagnosticChartPoints,
   buildDiagnosticFallbackSummary,
   buildDiagnosticDisplayTrays,
+  classifyDiagnosticField,
   countDiagnosticIdentitySignals,
   decodeBambuTrayCoordinate,
   diagnosticTraySnapshotKey,
@@ -271,4 +272,11 @@ test("diagnostic fallback decodes packed Bambu active tray coordinates", () => {
     amsStatusMain: null,
     amsStatusSub: null,
   });
+});
+
+test("diagnostic field classifier groups backend job and AMS status annotations", () => {
+  assert.equal(classifyDiagnosticField("_bfm_job.job_state_code"), "print");
+  assert.equal(classifyDiagnosticField("job.job_state"), "print");
+  assert.equal(classifyDiagnosticField("_bfm_ams_status.ams_status_code"), "ams");
+  assert.equal(classifyDiagnosticField("ams.ams_status"), "ams");
 });
