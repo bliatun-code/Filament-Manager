@@ -1036,7 +1036,7 @@ fn companion_service_list_printer_overview_maps_bambu_external_live_tray() {
                         chip_id: None,
                         tray_info_idx: Some("EXTERNAL_PRESET".to_string()),
                         tray_id_name: Some("Bambu PLA Basic @BBL P1S 0.4 nozzle".to_string()),
-                        last_identity_seen_at: Some("2026-04-16T14:00:00Z".to_string()),
+                        last_identity_seen_at: None,
                         last_empty_seen_at: None,
                         empty_observation_count: Some(0),
                         matched_inventory_spool_id: None,
@@ -1071,10 +1071,7 @@ fn companion_service_list_printer_overview_maps_bambu_external_live_tray() {
             slot.live_tray_id_name.as_deref(),
             Some("Bambu PLA Basic @BBL P1S 0.4 nozzle")
         );
-        assert_eq!(
-            slot.live_last_identity_seen_at.as_deref(),
-            Some("2026-04-16T14:00:00Z")
-        );
+        assert!(slot.live_last_identity_seen_at.is_none());
         assert_eq!(slot.live_is_active, Some(true));
 
         Ok(())
