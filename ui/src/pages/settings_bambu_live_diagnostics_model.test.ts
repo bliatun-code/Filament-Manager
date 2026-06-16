@@ -210,7 +210,7 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
   assert.equal(model.diagnosticTrayCards[0].slotLabel, "Slot 2");
   assert.equal(model.diagnosticTrayCards[0].matchKind, "rfid_exact");
   assert.equal(model.diagnosticTrayCards[0].matchLabel, "PLA Basic · Orange");
-  assert.equal(model.diagnosticTrayCards[0].observedRfidLabel, "Observed: ABC123");
+  assert.equal(model.diagnosticTrayCards[0].observedRfidLabel, "Observed RFID/AMS identity: ABC123");
   assert.equal(
     model.diagnosticTrayCards[0].amsWeightLabel,
     "AMS estimate: 760 g / 1000 g · 76%",
@@ -942,7 +942,7 @@ test("Bambu live tray labels keep stable ids and optional RFID text", () => {
     {
       key: "live-tray-legacy-2",
       mqttTrayLabel: "MQTT tray 2",
-      observedRfidLabel: "Observed: ABC123",
+      observedRfidLabel: "Observed RFID/AMS identity: ABC123",
       slotLabel: "Slot 3",
     },
   );
@@ -1104,7 +1104,7 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
   assert.equal(exactCard.matchKind, "rfid_exact");
   assert.equal(exactCard.matchLabel, "PLA Basic · Orange");
   assert.equal(exactCard.matchSwatchColor, "#FFAA00");
-  assert.equal(exactCard.observedRfidLabel, "Observed: ABC123");
+  assert.equal(exactCard.observedRfidLabel, "Observed RFID/AMS identity: ABC123");
   assert.equal(
     exactCard.presetSignalLabel,
     "Filament settings preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle",
@@ -1180,7 +1180,7 @@ test("Bambu live diagnostic tray cards resolve snapshots per display tray", () =
 
   assert.deepEqual(
     trayCards.map((card) => card.observedRfidLabel),
-    ["Observed: ABC123", "Observed: XYZ789"],
+    ["Observed RFID/AMS identity: ABC123", "Observed RFID/AMS identity: XYZ789"],
   );
   assert.deepEqual(
     trayCards.map((card) => card.matchLabel),

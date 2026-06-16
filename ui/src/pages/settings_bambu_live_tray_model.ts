@@ -337,7 +337,7 @@ export function buildSettingsBambuLiveTrayLabels({
     key: `live-tray-${trayKeyPrefix}-${tray.tray_index}`,
     mqttTrayLabel: formatSettingsBambuLiveMqttTrayIndexLabel(tray.tray_index, t),
     observedRfidLabel: observedRfid
-      ? `${t("settings.bambuLiveObservedPrefix", "Observed")}: ${observedRfid}`
+      ? `${t("settings.bambuLiveObservedRfidIdentity", "Observed RFID/AMS identity")}: ${observedRfid}`
       : null,
     slotLabel:
       typeof tray.ams_index === "number"
