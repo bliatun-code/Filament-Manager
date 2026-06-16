@@ -5539,6 +5539,67 @@ fn merge_tray_payload_keeps_settings_preset_separate_from_rfid_identity() {
 }
 
 #[test]
+fn merge_tray_snapshots_carries_identity_and_preset_for_partial_loaded_update() {
+    let mut previous = make_tray();
+    previous.tray_info_idx = Some("GFSA00_04".to_string());
+    previous.tray_id_name = Some("Bambu PLA Basic @BBL P1S 0.4 nozzle".to_string());
+
+    let mut next = make_tray();
+    next.remaining_percent = Some(76);
+    next.remaining_grams = Some(760);
+    next.observed_rfid_tag = None;
+    next.tray_uuid = None;
+    next.chip_id = None;
+    next.tray_info_idx = None;
+    next.tray_id_name = None;
+    next.last_identity_seen_at = None;
+
+    let merged = super::merge_tray_snapshots(&[previous], &[next]);
+
+    assert_eq!(merged.len(), 1);
+    assert_eq!(merged[0].remaining_grams, Some(760));
+    assert_eq!(merged[0].observed_rfid_tag.as_deref(), Some("legacy"));
+    assert_eq!(merged[0].tray_uuid.as_deref(), Some("tray-uuid-unknown"));
+    assert_eq!(merged[0].chip_id.as_deref(), Some("chip"));
+    assert_eq!(merged[0].tray_info_idx.as_deref(), Some("GFSA00_04"));
+    assert_eq!(
+        merged[0].tray_id_name.as_deref(),
+        Some("Bambu PLA Basic @BBL P1S 0.4 nozzle")
+    );
+    assert_eq!(
+        merged[0].last_identity_seen_at.as_deref(),
+        Some("2026-04-15T10:00:00Z")
+    );
+}
+
+#[test]
+fn merge_tray_snapshots_does_not_carry_identity_when_loaded_metadata_changes() {
+    let mut previous = make_tray();
+    previous.tray_info_idx = Some("GFSA00_04".to_string());
+    previous.tray_id_name = Some("Bambu PLA Basic @BBL P1S 0.4 nozzle".to_string());
+
+    let mut next = make_tray();
+    next.filament_name = Some("eSUN PLA+".to_string());
+    next.observed_rfid_tag = None;
+    next.tray_uuid = None;
+    next.chip_id = None;
+    next.tray_info_idx = None;
+    next.tray_id_name = None;
+    next.last_identity_seen_at = None;
+
+    let merged = super::merge_tray_snapshots(&[previous], &[next]);
+
+    assert_eq!(merged.len(), 1);
+    assert_eq!(merged[0].filament_name.as_deref(), Some("eSUN PLA+"));
+    assert!(merged[0].observed_rfid_tag.is_none());
+    assert!(merged[0].tray_uuid.is_none());
+    assert!(merged[0].chip_id.is_none());
+    assert!(merged[0].tray_info_idx.is_none());
+    assert!(merged[0].tray_id_name.is_none());
+    assert!(merged[0].last_identity_seen_at.is_none());
+}
+
+#[test]
 fn merge_tray_snapshots_allows_empty_update_to_clear_loaded_state() {
     let previous = make_tray();
     let next = BambuLiveObservedTrayRow {

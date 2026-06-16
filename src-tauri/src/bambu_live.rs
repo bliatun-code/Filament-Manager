@@ -318,6 +318,15 @@ fn merge_tray_snapshots(
             };
             let carry_forward_observed_identity =
                 !next.loaded && next.empty_observation_count == previous.empty_observation_count;
+            let same_loaded_metadata = next.loaded
+                && !substantive_tray_metadata_changed(
+                    Some(previous),
+                    next.filament_type.as_deref(),
+                    next.filament_name.as_deref(),
+                    next.color_hex.as_deref(),
+                );
+            let should_carry_previous_identity =
+                same_loaded_metadata || carry_forward_observed_identity;
             BambuLiveObservedTrayRow {
                 ams_index: next.ams_index,
                 tray_index: next.tray_index,
@@ -338,22 +347,34 @@ fn merge_tray_snapshots(
                 remaining_percent: next.remaining_percent.or(previous.remaining_percent),
                 remaining_grams: next.remaining_grams.or(previous.remaining_grams),
                 observed_rfid_tag: next.observed_rfid_tag.clone().or_else(|| {
-                    carry_forward_observed_identity
+                    should_carry_previous_identity
                         .then(|| previous.observed_rfid_tag.clone())
                         .flatten()
                 }),
                 tray_uuid: next.tray_uuid.clone().or_else(|| {
-                    carry_forward_observed_identity
+                    should_carry_previous_identity
                         .then(|| previous.tray_uuid.clone())
                         .flatten()
                 }),
-                chip_id: next.chip_id.clone(),
-                tray_info_idx: next.tray_info_idx.clone(),
-                tray_id_name: next.tray_id_name.clone(),
+                chip_id: next.chip_id.clone().or_else(|| {
+                    should_carry_previous_identity
+                        .then(|| previous.chip_id.clone())
+                        .flatten()
+                }),
+                tray_info_idx: next.tray_info_idx.clone().or_else(|| {
+                    should_carry_previous_identity
+                        .then(|| previous.tray_info_idx.clone())
+                        .flatten()
+                }),
+                tray_id_name: next.tray_id_name.clone().or_else(|| {
+                    should_carry_previous_identity
+                        .then(|| previous.tray_id_name.clone())
+                        .flatten()
+                }),
                 nozzle_temp_min_c: next.nozzle_temp_min_c.or(previous.nozzle_temp_min_c),
                 nozzle_temp_max_c: next.nozzle_temp_max_c.or(previous.nozzle_temp_max_c),
                 last_identity_seen_at: next.last_identity_seen_at.clone().or_else(|| {
-                    carry_forward_observed_identity
+                    should_carry_previous_identity
                         .then(|| previous.last_identity_seen_at.clone())
                         .flatten()
                 }),
