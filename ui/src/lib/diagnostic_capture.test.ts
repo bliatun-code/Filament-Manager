@@ -166,6 +166,13 @@ test("diagnostic tray helpers build fallback display trays", () => {
   assert.equal(snapshots[0]?.nozzleTempMinC, 190);
   assert.equal(snapshots[0]?.nozzleTempMaxC, 240);
   assert.equal(snapshots[0]?.remainingGrams, 870);
+  const csv = exportDiagnosticCaptureSessionCsv(session);
+  assert.match(csv, /ams_index,tray_index,tray_loaded,filament_type/);
+  assert.match(
+    csv,
+    /tray_snapshot,.*AMS 1 tray 1.*GFSA00_04 · Bambu PLA Basic · P1S · 0\.4 mm nozzle/,
+  );
+  assert.match(csv, /,0,0,true,PLA,Basic,#336699,1000,87,870,tag-1,uuid-1,GFSA00_04,/);
   assert.deepEqual(buildDiagnosticDisplayTrays([], session.fields), [
     {
       ams_index: 0,
