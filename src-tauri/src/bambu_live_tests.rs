@@ -5347,6 +5347,36 @@ fn merge_tray_payload_keeps_exact_rfid_identity_on_partial_same_metadata_update(
 }
 
 #[test]
+fn merge_tray_payload_keeps_settings_preset_separate_from_rfid_identity() {
+    let payload = serde_json::json!({
+        "id": 0,
+        "tray_info_idx": "GFSA00_04",
+        "tray_id_name": "Bambu PLA Basic @BBL P1S 0.4 nozzle",
+        "tray_type": "PLA",
+        "tray_sub_brands": "Basic"
+    });
+
+    let merged = merge_tray_payload(
+        None,
+        None,
+        0,
+        &payload,
+        "2026-04-16T14:05:00Z",
+        None,
+    );
+
+    assert!(merged.loaded);
+    assert_eq!(merged.tray_info_idx.as_deref(), Some("GFSA00_04"));
+    assert_eq!(
+        merged.tray_id_name.as_deref(),
+        Some("Bambu PLA Basic @BBL P1S 0.4 nozzle")
+    );
+    assert!(merged.tray_uuid.is_none());
+    assert!(merged.observed_rfid_tag.is_none());
+    assert!(merged.last_identity_seen_at.is_none());
+}
+
+#[test]
 fn merge_tray_snapshots_allows_empty_update_to_clear_loaded_state() {
     let previous = make_tray();
     let next = BambuLiveObservedTrayRow {
