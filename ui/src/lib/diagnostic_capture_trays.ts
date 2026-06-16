@@ -35,50 +35,106 @@ function trimDiagnosticFieldValue(field: DiagnosticCaptureField | null): string 
   return trimmed || null;
 }
 
+function parseDiagnosticTrayId(value: string | null | undefined): number | null {
+  const parsed = Number.parseInt(value?.trim() ?? "", 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function addUniquePrefix(entry: { prefixes: string[] }, prefix: string) {
+  if (!entry.prefixes.includes(prefix)) {
+    entry.prefixes.push(prefix);
+  }
+}
+
 export function extractDiagnosticTraySnapshots(
   fields: DiagnosticCaptureField[],
 ): DiagnosticTraySnapshot[] {
-  const trayCoordinates = Array.from(
-    new Set(
-      fields
-        .map((field) => {
-          const indexedMatch = field.path.match(/ams\.ams\[(\d+)\]\.tray\[(\d+)\]\./);
-          if (indexedMatch) {
-            const amsIndex = Number.parseInt(indexedMatch[1] ?? "", 10);
-            const trayIndex = Number.parseInt(indexedMatch[2] ?? "", 10);
-            return Number.isFinite(amsIndex) && Number.isFinite(trayIndex)
-              ? diagnosticTraySnapshotKey(amsIndex, trayIndex)
-              : null;
-          }
-          const legacyMatch = field.path.match(/ams\.tray\[(\d+)\]\./);
-          if (legacyMatch) {
-            const trayIndex = Number.parseInt(legacyMatch[1] ?? "", 10);
-            return Number.isFinite(trayIndex)
-              ? diagnosticTraySnapshotKey(null, trayIndex)
-              : null;
-          }
-          return null;
-        })
-        .filter((value): value is string => value != null),
-    ),
-  )
-    .map((key) => {
-      const [amsPart, trayPart] = key.split(":");
-      const trayIndex = Number.parseInt(trayPart ?? "", 10);
-      const amsIndex = amsPart === "legacy" ? null : Number.parseInt(amsPart ?? "", 10);
-      return { amsIndex, key, trayIndex };
-    })
+  const rawTrayIdByPrefix = new Map<string, number>();
+  for (const field of fields) {
+    const indexedIdMatch = field.path.match(/^(ams\.ams\[(\d+)\]\.tray\[(\d+)\])\.id$/);
+    if (indexedIdMatch) {
+      const trayId = parseDiagnosticTrayId(field.valueText);
+      if (trayId != null) {
+        rawTrayIdByPrefix.set(indexedIdMatch[1] ?? "", trayId);
+      }
+      continue;
+    }
+    const legacyIdMatch = field.path.match(/^(ams\.tray\[(\d+)\])\.id$/);
+    if (legacyIdMatch) {
+      const trayId = parseDiagnosticTrayId(field.valueText);
+      if (trayId != null) {
+        rawTrayIdByPrefix.set(legacyIdMatch[1] ?? "", trayId);
+      }
+    }
+  }
+
+  const coordinateByKey = new Map<
+    string,
+    {
+      amsIndex: number | null;
+      key: string;
+      prefixes: string[];
+      trayIndex: number;
+    }
+  >();
+  for (const field of fields) {
+    const indexedMatch = field.path.match(/^(ams\.ams\[(\d+)\]\.tray\[(\d+)\])\./);
+    if (indexedMatch) {
+      const prefix = indexedMatch[1] ?? "";
+      const amsIndex = Number.parseInt(indexedMatch[2] ?? "", 10);
+      const pathTrayIndex = Number.parseInt(indexedMatch[3] ?? "", 10);
+      if (!Number.isFinite(amsIndex) || !Number.isFinite(pathTrayIndex)) {
+        continue;
+      }
+      const trayIndex = rawTrayIdByPrefix.get(prefix) ?? pathTrayIndex;
+      const key = diagnosticTraySnapshotKey(amsIndex, trayIndex);
+      const entry =
+        coordinateByKey.get(key) ??
+        {
+          amsIndex,
+          key,
+          prefixes: [],
+          trayIndex,
+        };
+      addUniquePrefix(entry, prefix);
+      coordinateByKey.set(key, entry);
+      continue;
+    }
+
+    const legacyMatch = field.path.match(/^(ams\.tray\[(\d+)\])\./);
+    if (legacyMatch) {
+      const prefix = legacyMatch[1] ?? "";
+      const pathTrayIndex = Number.parseInt(legacyMatch[2] ?? "", 10);
+      if (!Number.isFinite(pathTrayIndex)) {
+        continue;
+      }
+      const trayIndex = rawTrayIdByPrefix.get(prefix) ?? pathTrayIndex;
+      const key = diagnosticTraySnapshotKey(null, trayIndex);
+      const entry =
+        coordinateByKey.get(key) ??
+        {
+          amsIndex: null,
+          key,
+          prefixes: [],
+          trayIndex,
+        };
+      addUniquePrefix(entry, prefix);
+      coordinateByKey.set(key, entry);
+    }
+  }
+
+  const trayCoordinates = Array.from(coordinateByKey.values())
     .sort((left, right) => {
       const leftAms = left.amsIndex ?? -1;
       const rightAms = right.amsIndex ?? -1;
       return leftAms - rightAms || left.trayIndex - right.trayIndex;
     });
 
-  return trayCoordinates.map(({ amsIndex, trayIndex }) => {
-    const prefix =
-      amsIndex == null ? `ams.tray[${trayIndex}]` : `ams.ams[${amsIndex}].tray[${trayIndex}]`;
+  return trayCoordinates.map(({ amsIndex, prefixes, trayIndex }) => {
     const fieldFor = (name: string) =>
-      fields.find((field) => field.path === `${prefix}.${name}`) ?? null;
+      prefixes
+        .map((prefix) => fields.find((field) => field.path === `${prefix}.${name}`))
+        .find(Boolean) ?? null;
     const bitFieldFor = (name: string) => {
       const candidates =
         amsIndex == null

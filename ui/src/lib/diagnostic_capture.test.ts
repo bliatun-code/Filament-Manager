@@ -126,6 +126,104 @@ test("buildDiagnosticCaptureSession seeds backend observed state annotations wit
   assert.equal(snapshot?.trayIsBambu, true);
 });
 
+test("buildDiagnosticCaptureSession augments partial raw payload with observed tray snapshots", () => {
+  const session = buildDiagnosticCaptureSession({
+    last_seen_at: "2026-05-15T10:00:00Z",
+    progress_percent: 64,
+    raw_payload_json: {
+      print: {
+        progress: 64,
+      },
+      ams: {
+        ams: [
+          {
+            tray: [
+              {
+                tray_uuid: "RAW-UUID",
+              },
+            ],
+          },
+        ],
+      },
+    },
+    trays: [
+      {
+        ams_index: 0,
+        tray_index: 0,
+        loaded: true,
+        filament_type: "PLA",
+        filament_name: "Basic",
+        color_hex: "#112233",
+        remaining_percent: 44,
+        remaining_grams: 440,
+        tray_weight_g: 1000,
+        observed_rfid_tag: "tag-1",
+        tray_uuid: "OBSERVED-UUID",
+        tray_info_idx: "GFSA00_04",
+        tray_id_name: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
+      },
+    ],
+  } as never);
+
+  assert.equal(
+    session.fields.find((field) => field.path === "print.progress")?.valueText,
+    "64",
+  );
+  assert.equal(
+    session.fields.find((field) => field.path === "ams.ams[0].tray[0].tray_uuid")?.valueText,
+    "RAW-UUID",
+  );
+  assert.equal(
+    session.fields.find((field) => field.path === "ams.ams[0].tray[0].tray_info_idx")?.valueText,
+    "GFSA00_04",
+  );
+
+  const [snapshot] = extractDiagnosticTraySnapshots(session.fields);
+  assert.equal(snapshot?.trayUuid, "RAW-UUID");
+  assert.equal(snapshot?.trayInfoIdx, "GFSA00_04");
+  assert.equal(snapshot?.remainingGrams, 440);
+});
+
+test("diagnostic tray snapshots use Bambu tray id as the logical slot coordinate", () => {
+  const session = buildDiagnosticCaptureSession({
+    last_seen_at: "2026-05-15T10:00:00Z",
+    raw_payload_json: {
+      ams: {
+        ams: [
+          {
+            tray: [
+              {
+                id: "1",
+                tray_uuid: "RAW-SLOT-2",
+              },
+            ],
+          },
+        ],
+      },
+    },
+    trays: [
+      {
+        ams_index: 0,
+        tray_index: 1,
+        loaded: true,
+        filament_type: "PLA",
+        remaining_grams: 760,
+      },
+    ],
+  } as never);
+
+  const snapshots = extractDiagnosticTraySnapshots(session.fields);
+
+  assert.equal(snapshots.length, 1);
+  assert.deepEqual(
+    snapshots.map((snapshot) => diagnosticTraySnapshotKey(snapshot.amsIndex, snapshot.trayIndex)),
+    ["0:1"],
+  );
+  assert.equal(snapshots[0]?.trayUuid, "RAW-SLOT-2");
+  assert.equal(snapshots[0]?.filamentType, "PLA");
+  assert.equal(snapshots[0]?.remainingGrams, 760);
+});
+
 test("exportDiagnosticCaptureSessionCsv writes summary and sample rows with escaping", () => {
   const session = updateDiagnosticCaptureSessionFromPayload({
     session: null,

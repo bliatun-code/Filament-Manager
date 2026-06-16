@@ -191,7 +191,7 @@ function buildFlattenedDiagnosticFields(
     : [];
   const rawPaths = new Set(rawFields.map((field) => field.path));
   const observedFields = buildObservedStateDiagnosticFields(observedState, {
-    includeObservedTrays: rawFields.length === 0,
+    includeObservedTrays: true,
   }).filter((field) => !rawPaths.has(field.path));
   return [...rawFields, ...observedFields];
 }
