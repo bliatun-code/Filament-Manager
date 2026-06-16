@@ -205,6 +205,30 @@ test("printer workspace shows live slot status for unassigned observed trays", (
   assert.match(html, /slot-card-loaded swatch-surface/);
 });
 
+test("printer workspace hides implausible live remaining percentages", () => {
+  const html = renderBoard({
+    activePrinter: createPrinterRow({
+      slots: [
+        {
+          slot_id: "slot-1",
+          ams_id: "ams_1",
+          slot_index: 1,
+          spool_id: null,
+          live_loaded: true,
+          live_filament_type: "PLA",
+          live_filament_name: "Basic",
+          live_match_status: "loaded",
+          live_remaining_percent: 105,
+        },
+      ],
+    }),
+  });
+
+  assert.doesNotMatch(html, /105%/);
+  assert.match(html, /PLA · Basic/);
+  assert.match(html, /slot-card-loaded swatch-surface/);
+});
+
 test("printer workspace highlights the targeted empty slot without rendering an inline picker", () => {
   const html = renderBoard({
     state: {

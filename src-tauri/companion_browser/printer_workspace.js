@@ -18,6 +18,10 @@ export function formatPrinterSlotLabel(slot, locale = "en", printerModel = "") {
   return formatPrinterSlotLabelForModel(slot, locale, printerModel);
 }
 
+function formatLiveRemainingPercent(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100 ? `${value}%` : "";
+}
+
 export function renderPrinterPickerTaskSheetBody(options) {
   const { state, printerSpoolOptions, escapeHtml, formatGrams } = options;
   const locale = state.locale || "en";
@@ -376,7 +380,7 @@ function renderSlotCards(options) {
         ? formatGrams(slot.spool_remaining_g)
         : slotHasLiveLoaded
           ? [
-              slot.live_remaining_percent != null ? `${slot.live_remaining_percent}%` : "",
+              formatLiveRemainingPercent(slot.live_remaining_percent),
               slot.live_is_active ? t(locale, "printers.activeSlot", "Active slot") : "",
               slot.live_last_identity_seen_at ? t(locale, "printers.liveMatchLastKnown", "Showing last known identity") : "",
             ]
