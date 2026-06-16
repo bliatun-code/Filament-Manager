@@ -172,6 +172,8 @@ function buildObservedStateDiagnosticFields(
     pushObservedDiagnosticField(fields, `${prefix}.tray_uuid`, tray.tray_uuid);
     pushObservedDiagnosticField(fields, `${prefix}.tray_info_idx`, tray.tray_info_idx);
     pushObservedDiagnosticField(fields, `${prefix}.tray_id_name`, tray.tray_id_name);
+    pushObservedDiagnosticField(fields, `${prefix}.nozzle_temp_min`, tray.nozzle_temp_min_c);
+    pushObservedDiagnosticField(fields, `${prefix}.nozzle_temp_max`, tray.nozzle_temp_max_c);
     pushObservedDiagnosticField(fields, `${prefix}.tray_type`, tray.filament_type);
     pushObservedDiagnosticField(fields, `${prefix}.tray_sub_brands`, tray.filament_name);
     pushObservedDiagnosticField(fields, `${prefix}.tray_color`, tray.color_hex);

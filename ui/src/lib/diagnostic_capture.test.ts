@@ -161,6 +161,8 @@ test("buildDiagnosticCaptureSession augments partial raw payload with observed t
         tray_uuid: "OBSERVED-UUID",
         tray_info_idx: "GFSA00_04",
         tray_id_name: "Bambu PLA Basic @BBL P1S 0.4 nozzle",
+        nozzle_temp_min_c: 190,
+        nozzle_temp_max_c: 240,
       },
     ],
   } as never);
@@ -177,10 +179,20 @@ test("buildDiagnosticCaptureSession augments partial raw payload with observed t
     session.fields.find((field) => field.path === "ams.ams[0].tray[0].tray_info_idx")?.valueText,
     "GFSA00_04",
   );
+  assert.equal(
+    session.fields.find((field) => field.path === "ams.ams[0].tray[0].nozzle_temp_min")?.valueText,
+    "190",
+  );
+  assert.equal(
+    session.fields.find((field) => field.path === "ams.ams[0].tray[0].nozzle_temp_max")?.valueText,
+    "240",
+  );
 
   const [snapshot] = extractDiagnosticTraySnapshots(session.fields);
   assert.equal(snapshot?.trayUuid, "RAW-UUID");
   assert.equal(snapshot?.trayInfoIdx, "GFSA00_04");
+  assert.equal(snapshot?.nozzleTempMinC, 190);
+  assert.equal(snapshot?.nozzleTempMaxC, 240);
   assert.equal(snapshot?.remainingGrams, 440);
 });
 
