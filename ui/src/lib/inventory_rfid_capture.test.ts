@@ -135,6 +135,14 @@ test("formatRfidCapturePresetName presents BambuStudio profile names as readable
     formatRfidCapturePresetName("Generic PLA @0.2 nozzle", t),
     "Generic PLA · 0.2 mm nozzle",
   );
+  assert.equal(
+    formatRfidCapturePresetName("Bambu Support For PLA/PETG @BBL X2D 0.4 nozzle", t),
+    "Bambu Support For PLA/PETG · X2D · 0.4 mm nozzle",
+  );
+  assert.equal(
+    formatRfidCapturePresetName("Generic PETG HF @BBL A2L 0.2 nozzle", t),
+    "Generic PETG HF · A2L · 0.2 mm nozzle",
+  );
   assert.equal(formatRfidCapturePresetName("Bambu PLA Basic @base", t), "Bambu PLA Basic");
   assert.equal(formatRfidCapturePresetName(null, t), null);
 });
