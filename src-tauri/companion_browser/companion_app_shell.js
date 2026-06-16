@@ -186,10 +186,11 @@ function renderDetailModal(options) {
     const printerRows = Array.isArray(state.printers) ? state.printers : [];
     for (const printerRow of printerRows) {
       for (const slot of Array.isArray(printerRow?.slots) ? printerRow.slots : []) {
-        const observedRfid = String(slot?.live_tray_uuid || "").trim();
+        const observedRfid = String(slot?.live_tray_uuid || slot?.live_observed_rfid_tag || "").trim();
         const hasLiveSignal =
           Boolean(slot?.live_loaded) ||
           Boolean(slot?.live_tray_uuid) ||
+          Boolean(slot?.live_observed_rfid_tag) ||
           Boolean(slot?.live_match_status) ||
           Boolean(slot?.live_mqtt_connected);
         if (!hasLiveSignal) {

@@ -285,3 +285,41 @@ test("app shell renderer includes the selected spool detail modal when opened", 
   assert.match(html, /Save weight/);
   assert.match(html, /QR code/);
 });
+
+test("app shell renderer uses observed tag uid as RFID capture fallback", () => {
+  const renderer = createRenderer({
+    state: {
+      detailOpen: true,
+      selectedDetail: createSelectedDetail("spool-1"),
+      printers: [
+        createPrinterRow({
+          printer: {
+            name: "Brutus",
+          },
+          slots: [
+            {
+              slot_id: "slot-1",
+              ams_id: "ams_1",
+              slot_index: 1,
+              spool_id: null,
+              live_loaded: true,
+              live_observed_rfid_tag: "TAG-ONLY-123",
+              live_tray_uuid: "",
+              live_match_status: "unknown_rfid",
+              live_filament_type: "PLA",
+              live_filament_name: "Basic",
+              live_last_identity_seen_at: "2026-06-16T12:00:00Z",
+            },
+          ],
+        }),
+      ],
+    },
+  });
+
+  const html = renderer.renderRoot();
+
+  assert.match(html, /data-action="update-spool-rfid-form"/);
+  assert.match(html, /TAG-ONLY-123/);
+  assert.match(html, /name="rfid-tag" value="TAG-ONLY-123"/);
+  assert.match(html, /RFID not registered/);
+});
