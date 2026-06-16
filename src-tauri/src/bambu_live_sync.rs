@@ -352,8 +352,7 @@ fn auto_sync_live_slots(
             )
         });
 
-        let slot_present_from_exist_bits =
-            tray_exist_bits_slot_present(observed.ams_exist_bits.as_deref(), tray.tray_index);
+        let slot_present_from_exist_bits = tray_auto_clear_presence_from_state(observed, tray);
         let auto_clear_empty_signal =
             should_auto_clear_live_slot(tray, slot_present_from_exist_bits);
         let auto_clear_unknown_replacement = slot
@@ -466,6 +465,16 @@ fn auto_sync_live_slots(
     }
 
     Ok(())
+}
+
+fn tray_auto_clear_presence_from_state(
+    observed: &BambuLiveObservedStateRow,
+    tray: &BambuLiveObservedTrayRow,
+) -> Option<bool> {
+    if tray.ams_index.is_some() {
+        return None;
+    }
+    tray_exist_bits_slot_present(observed.ams_exist_bits.as_deref(), tray.tray_index)
 }
 
 pub(crate) fn should_auto_clear_live_slot(

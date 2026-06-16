@@ -1872,6 +1872,122 @@ fn enrich_with_match_status_keeps_present_bit_slot_assigned_on_empty_payload() {
 }
 
 #[test]
+fn enrich_with_match_status_does_not_apply_global_exist_bits_to_indexed_ams_tray() {
+    let db_path = temp_db_path("indexed-ams-empty-payload-clears-assigned");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 2, 1)
+            .map_err(|error| error.to_string())?;
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PLA",
+                filament_name: "Matte",
+                color_name: "Matte Charcoal",
+                hex_color: Some("#000000"),
+                product_url: None,
+                vendor: Some("Bambu"),
+                default_weight: Some(1000),
+            })
+            .map_err(|error| error.to_string())?;
+        db.insert_spool(&SpoolRow {
+            id: "spool_1".to_string(),
+            master_id,
+            qr_code: None,
+            rfid_tag: Some("tray-rfid-1".to_string()),
+            rfid_observed_at: None,
+            status: "ASSIGNED".to_string(),
+            ownership_type: "OWNED".to_string(),
+            owner_name: None,
+            owner_contact: None,
+            ownership_note: None,
+            initial_weight_g: Some(1000),
+            current_weight_g: Some(20),
+            remaining_g: Some(20),
+            spool_tare_weight_g: None,
+            location_id: None,
+            home_location_id: None,
+            purchase_date: None,
+            purchase_price: None,
+            batch_code: None,
+            last_used_at: None,
+        })
+        .map_err(|error| error.to_string())?;
+        db.assign_spool_to_ams_slot(
+            "printer_1",
+            "printer_1_ams_1_slot_1",
+            Some("spool_1"),
+            None,
+            None,
+            false,
+        )
+        .map_err(|error| error.to_string())?;
+
+        let observed_at = super::now_iso_string();
+        let mut observed = super::default_offline_state();
+        observed.online = true;
+        observed.mqtt_connected = true;
+        observed.last_seen_at = Some(observed_at.clone());
+        observed.ams_exist_bits = Some("1".to_string());
+        observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: Some(0),
+            tray_index: 0,
+            loaded: false,
+            filament_type: None,
+            filament_name: None,
+            color_hex: None,
+            tray_weight_g: None,
+            remaining_percent: None,
+            remaining_grams: None,
+            observed_rfid_tag: None,
+            tray_uuid: None,
+            chip_id: None,
+            tray_info_idx: None,
+            tray_id_name: None,
+            last_identity_seen_at: None,
+            last_empty_seen_at: Some(observed_at),
+            empty_observation_count: Some(1),
+            matched_inventory_spool_id: None,
+            matched_inventory_mode: None,
+            match_status: None,
+            match_note: None,
+        }];
+
+        crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed)
+            .map_err(|error| error.to_string())?;
+
+        let slot_spool_id: Option<String> = db
+            .connection()
+            .query_row(
+                "SELECT spool_id FROM ams_slots WHERE id = 'printer_1_ams_1_slot_1'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(slot_spool_id, None);
+
+        let event_count: i64 = db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM printer_live_events WHERE event_type = 'LIVE_AUTO_SLOT_EMPTIED'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(event_count, 1);
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "enrich_with_match_status_does_not_apply_global_exist_bits_to_indexed_ams_tray failed: {message}"
+        );
+    }
+}
+
+#[test]
 fn enrich_with_match_status_recovers_loaded_zero_rebound_from_same_live_roll() {
     let db_path = temp_db_path("live-loaded-zero-rebound-rebase");
     let result = (|| -> Result<(), String> {
