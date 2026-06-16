@@ -101,13 +101,18 @@ export function buildSettingsBambuLiveInventoryCandidateCards({
 
 export function buildSettingsBambuLiveObservedRfid(
   capturedTraySnapshot: DiagnosticTraySnapshot | null,
-  tray?: Pick<BambuLiveObservedTray, "tray_uuid"> | null,
+  tray?: Pick<BambuLiveObservedTray, "observed_rfid_tag" | "tray_uuid"> | null,
 ): string | null {
-  const candidates = [tray?.tray_uuid, capturedTraySnapshot?.trayUuid];
+  const candidates = [
+    tray?.tray_uuid,
+    tray?.observed_rfid_tag,
+    capturedTraySnapshot?.trayUuid,
+    capturedTraySnapshot?.tagUid,
+  ];
   for (const candidate of candidates) {
-    const trayUuid = candidate?.trim() ?? "";
-    if (trayUuid && !/^0+$/.test(trayUuid)) {
-      return trayUuid;
+    const observedRfid = candidate?.trim() ?? "";
+    if (observedRfid && !/^0+$/.test(observedRfid)) {
+      return observedRfid;
     }
   }
   return null;

@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   findLiveTrayForSlot,
   isBambuExternalTrayIndex,
+  isUnknownLiveRfid,
   liveActiveTrayMatchesSlot,
   liveTrayMatchesSlot,
   resolveLiveConnectionIndicator,
@@ -171,6 +172,26 @@ test("findLiveTrayForSlot can rebuild external live trays from host slot snapsho
     match_status: "unknown_from_printer",
     match_note: null,
   });
+});
+
+test("findLiveTrayForSlot rebuilds host slot snapshots with observed tag uid", () => {
+  const internalSlot = slot({
+    live_observed_rfid_tag: "TAG-UID-ONLY",
+    live_match_status: "unknown_rfid",
+  });
+
+  const { tray: rebuiltTray } = findLiveTrayForSlot(
+    "printer-1",
+    internalSlot,
+    {},
+    true,
+    "LIVE",
+  );
+
+  assert.equal(rebuiltTray?.loaded, true);
+  assert.equal(rebuiltTray?.observed_rfid_tag, "TAG-UID-ONLY");
+  assert.equal(rebuiltTray?.tray_uuid, null);
+  assert.equal(isUnknownLiveRfid(rebuiltTray), true);
 });
 
 test("findLiveTrayForSlot maps indexed internal trays to their AMS unit", () => {

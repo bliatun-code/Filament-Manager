@@ -640,6 +640,20 @@ test("Bambu live observed RFID trims valid values and suppresses empty or zero-o
     "CAPTURE123",
   );
   assert.equal(
+    buildSettingsBambuLiveObservedRfid(
+      createDiagnosticTraySnapshot({ trayUuid: "CAPTURE123" }),
+      createObservedTray({ tray_uuid: "000000", observed_rfid_tag: " TAGUID123 " }),
+    ),
+    "TAGUID123",
+  );
+  assert.equal(
+    buildSettingsBambuLiveObservedRfid(
+      createDiagnosticTraySnapshot({ tagUid: " CAPTURE-TAG " }),
+      createObservedTray({ tray_uuid: "000000", observed_rfid_tag: "000000" }),
+    ),
+    "CAPTURE-TAG",
+  );
+  assert.equal(
     buildSettingsBambuLiveObservedRfid(createDiagnosticTraySnapshot({ trayUuid: " ABC123 " })),
     "ABC123",
   );

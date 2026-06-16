@@ -208,7 +208,10 @@ export function formatPrinterSpoolStatusTone(status?: string | null) {
 }
 
 export function isUnknownLiveRfid(tray?: BambuLiveObservedTray | null): boolean {
-  return Boolean(tray?.tray_uuid && tray.match_status === "unknown_rfid");
+  return Boolean(
+    (tray?.tray_uuid?.trim() || tray?.observed_rfid_tag?.trim()) &&
+      tray.match_status === "unknown_rfid",
+  );
 }
 
 export function liveUnknownMatchesSlotOverride(
@@ -359,7 +362,12 @@ function slotLiveTrayFallback(
   if (!clientReadOnly || clientPrinterSource !== "LIVE") {
     return null;
   }
-  if (!slot.live_last_identity_seen_at && !slot.live_tray_uuid && !slot.live_match_status) {
+  if (
+    !slot.live_last_identity_seen_at &&
+    !slot.live_tray_uuid &&
+    !slot.live_observed_rfid_tag &&
+    !slot.live_match_status
+  ) {
     return null;
   }
   const trayIndex = isExternalSlot(slot)
@@ -368,7 +376,7 @@ function slotLiveTrayFallback(
   return {
     ams_index: isExternalSlot(slot) ? null : (parseInternalAmsUnitIndex(slot.ams_id) ?? 1) - 1,
     tray_index: trayIndex,
-    loaded: slot.live_loaded ?? !!slot.live_tray_uuid,
+    loaded: slot.live_loaded ?? Boolean(slot.live_tray_uuid || slot.live_observed_rfid_tag),
     filament_type: slot.live_filament_type ?? null,
     filament_name: slot.live_filament_name ?? null,
     color_hex: slot.live_color_hex ?? null,
