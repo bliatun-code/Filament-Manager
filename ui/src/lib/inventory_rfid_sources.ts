@@ -66,6 +66,7 @@ export function buildObservedTrayCaptureSnapshot(
   pushField(`${trayPrefix}.tray_type`, "tray_type", tray.filament_type);
   pushField(`${trayPrefix}.tray_sub_brands`, "tray_sub_brands", tray.filament_name);
   pushField(`${trayPrefix}.tray_color`, "tray_color", tray.color_hex);
+  pushField(`${trayPrefix}.tray_weight`, "tray_weight", tray.tray_weight_g);
   pushField(`${trayPrefix}.remain`, "remain", tray.remaining_percent);
   pushField(`${trayPrefix}.remaining_grams`, "remaining_grams", tray.remaining_grams);
 

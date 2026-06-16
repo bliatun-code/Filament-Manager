@@ -281,6 +281,7 @@ test("RFID capture snapshot and slot summaries merge live and cached identity fi
           filament_type: "PLA",
           filament_name: "Basic",
           color_hex: "#2563EB",
+          tray_weight_g: 1000,
           remaining_percent: 72,
           remaining_grams: 720,
           last_identity_seen_at: "2026-05-15T12:00:00.000Z",
@@ -357,6 +358,7 @@ test("RFID refresh fields fall back to observed tray snapshots without raw paylo
           filament_type: "PLA",
           filament_name: "Basic",
           color_hex: "#2563EB",
+          tray_weight_g: 1000,
           remaining_percent: 72,
           remaining_grams: 720,
           last_identity_seen_at: "2026-05-15T12:00:00.000Z",
@@ -376,6 +378,14 @@ test("RFID refresh fields fall back to observed tray snapshots without raw paylo
   assert.equal(
     entry?.captured.find((field) => field.path === "ams.ams[0].tray[0].tray_uuid")?.lastSeenAt,
     "2026-05-15T12:00:00.000Z",
+  );
+  assert.equal(
+    entry?.captured.find((field) => field.path === "ams.ams[0].tray[0].tray_weight")?.valueText,
+    "1000",
+  );
+  assert.equal(
+    entry?.captured.find((field) => field.path === "ams.ams[0].tray[0].remaining_grams")?.valueText,
+    "720",
   );
 });
 
