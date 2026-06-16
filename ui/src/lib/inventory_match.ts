@@ -182,16 +182,19 @@ export function translateObservedMatchNote(
     return [baseTranslation, presetTranslation].filter(Boolean).join(" ");
   }
   switch (normalized) {
+    case "Exact RFID/AMS identity match against inventory.":
     case "Exact tray identity match against inventory.":
       return t(
         "settings.bambuLiveMatchNoteExact",
         "Exact RFID/AMS identity match against inventory.",
       );
+    case "Multiple inventory rolls share this saved RFID/AMS identity.":
     case "Multiple inventory rolls share this saved tray identity.":
       return t(
         "settings.bambuLiveMatchNoteDuplicateIdentity",
         "Multiple inventory rolls share this saved RFID/AMS identity.",
       );
+    case "Showing last known good RFID/AMS identity until a stronger update arrives.":
     case "Showing last known good tray identity until a stronger update arrives.":
       return t(
         "settings.bambuLiveMatchNoteLastKnownGood",
@@ -202,21 +205,25 @@ export function translateObservedMatchNote(
         "settings.bambuLiveMatchNoteDuplicateTrayIndex",
         "Multiple configured slots share this tray index.",
       );
+    case "AMS reported an RFID/AMS identity that is not registered in inventory.":
     case "AMS reported a tray identity that is not registered in inventory.":
       return t(
         "settings.bambuLiveMatchNoteUnknownIdentity",
         "AMS reported an RFID/AMS identity that is not registered in inventory.",
       );
+    case "Last known RFID/AMS identity does not map cleanly to the currently configured spool.":
     case "Last known tray identity does not map cleanly to the currently configured spool.":
       return t(
         "settings.bambuLiveMatchNoteConfiguredMismatch",
         "Last known RFID/AMS identity does not map cleanly to the currently configured spool.",
       );
+    case "No clear stored spool matches this last known RFID/AMS identity.":
     case "No clear stored spool matches this last known tray identity.":
       return t(
         "settings.bambuLiveMatchNoteNoStoredMatch",
         "No clear stored spool matches this last known RFID/AMS identity.",
       );
+    case "One likely stored spool matches this last known RFID/AMS identity.":
     case "One likely stored spool matches this last known tray identity.":
       return t(
         "settings.bambuLiveMatchNoteOneStoredMatch",

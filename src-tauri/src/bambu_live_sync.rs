@@ -164,13 +164,13 @@ pub(crate) fn apply_tray_match_status(
             tray.matched_inventory_spool_id = Some(spool.spool.id.clone());
             tray.matched_inventory_mode = Some("exact_rfid".to_string());
             tray.match_status = Some("clear_match".to_string());
-            tray.match_note = Some("Exact tray identity match against inventory.".to_string());
+            tray.match_note = Some("Exact RFID/AMS identity match against inventory.".to_string());
             return;
         }
         if exact_matches.len() > 1 {
             tray.match_status = Some("ambiguous".to_string());
             tray.match_note =
-                Some("Multiple inventory rolls share this saved tray identity.".to_string());
+                Some("Multiple inventory rolls share this saved RFID/AMS identity.".to_string());
             return;
         }
     }
@@ -178,7 +178,8 @@ pub(crate) fn apply_tray_match_status(
     if !tray.loaded {
         tray.match_status = Some("unknown_from_printer".to_string());
         tray.match_note = Some(
-            "Showing last known good tray identity until a stronger update arrives.".to_string(),
+            "Showing last known good RFID/AMS identity until a stronger update arrives."
+                .to_string(),
         );
         return;
     }
@@ -226,7 +227,7 @@ pub(crate) fn apply_tray_match_status(
                 if has_live_unknown_rfid {
                     tray.match_status = Some("unknown_rfid".to_string());
                     tray.match_note = Some(match_note_with_preset_signal(
-                        "AMS reported a tray identity that is not registered in inventory."
+                        "AMS reported an RFID/AMS identity that is not registered in inventory."
                             .to_string(),
                         tray,
                     ));
@@ -245,9 +246,9 @@ pub(crate) fn apply_tray_match_status(
                 .to_string(),
             );
             let note = if has_live_unknown_rfid {
-                "AMS reported a tray identity that is not registered in inventory."
+                "AMS reported an RFID/AMS identity that is not registered in inventory."
             } else {
-                "Last known tray identity does not map cleanly to the currently configured spool."
+                "Last known RFID/AMS identity does not map cleanly to the currently configured spool."
             };
             tray.match_note = Some(match_note_with_preset_signal(note.to_string(), tray));
             return;
@@ -270,11 +271,11 @@ pub(crate) fn apply_tray_match_status(
         tray.matched_inventory_mode = Some("inventory_metadata".to_string());
     }
     let note = if has_live_unknown_rfid {
-        "AMS reported a tray identity that is not registered in inventory.".to_string()
+        "AMS reported an RFID/AMS identity that is not registered in inventory.".to_string()
     } else {
         match candidates.len() {
-            0 => "No clear stored spool matches this last known tray identity.".to_string(),
-            1 => "One likely stored spool matches this last known tray identity.".to_string(),
+            0 => "No clear stored spool matches this last known RFID/AMS identity.".to_string(),
+            1 => "One likely stored spool matches this last known RFID/AMS identity.".to_string(),
             _ => "Multiple stored spools could match this live tray.".to_string(),
         }
     };

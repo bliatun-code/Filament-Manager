@@ -186,12 +186,16 @@ test("translateObservedMatchNote localizes known notes and preserves unknown not
       ? (fallback ?? "")
       : `${key}:${fallback ?? ""}`;
   assert.equal(
+    translateObservedMatchNote("Exact RFID/AMS identity match against inventory.", t),
+    "settings.bambuLiveMatchNoteExact:Exact RFID/AMS identity match against inventory.",
+  );
+  assert.equal(
     translateObservedMatchNote("Exact tray identity match against inventory.", t),
     "settings.bambuLiveMatchNoteExact:Exact RFID/AMS identity match against inventory.",
   );
   assert.equal(
     translateObservedMatchNote(
-      "AMS reported a tray identity that is not registered in inventory. Filament preset signal GFSA00_04 (Bambu PLA Basic @BBL P1S 0.4 nozzle) was observed via tray_info_idx; this is a material/preset hint, not a roll identity.",
+      "AMS reported an RFID/AMS identity that is not registered in inventory. Filament settings preset GFSA00_04 (Bambu PLA Basic @BBL P1S 0.4 nozzle) was observed via tray_info_idx; this is a material/settings hint, not a roll identity.",
       t,
     ),
     "settings.bambuLiveMatchNoteUnknownIdentity:AMS reported an RFID/AMS identity that is not registered in inventory. settings.bambuLiveMatchNotePresetSignal:Filament settings preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle. This is a material/settings hint, not a roll identity.",

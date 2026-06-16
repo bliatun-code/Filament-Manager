@@ -1043,7 +1043,7 @@ fn companion_service_list_printer_overview_maps_bambu_external_live_tray() {
                         matched_inventory_mode: None,
                         match_status: Some("unknown_from_printer".to_string()),
                         match_note: Some(
-                            "AMS reported a tray identity that is not registered in inventory."
+                            "AMS reported an RFID/AMS identity that is not registered in inventory."
                                 .to_string(),
                         ),
                     }],

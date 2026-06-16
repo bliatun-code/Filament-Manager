@@ -5356,14 +5356,7 @@ fn merge_tray_payload_keeps_settings_preset_separate_from_rfid_identity() {
         "tray_sub_brands": "Basic"
     });
 
-    let merged = merge_tray_payload(
-        None,
-        None,
-        0,
-        &payload,
-        "2026-04-16T14:05:00Z",
-        None,
-    );
+    let merged = merge_tray_payload(None, None, 0, &payload, "2026-04-16T14:05:00Z", None);
 
     assert!(merged.loaded);
     assert_eq!(merged.tray_info_idx.as_deref(), Some("GFSA00_04"));
