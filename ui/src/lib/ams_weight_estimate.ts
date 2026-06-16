@@ -2,6 +2,21 @@ export function finiteAmsWeightNumber(value: number | null | undefined): number 
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+export function saneAmsRemainingGrams(value: number | null | undefined): number | null {
+  const finite = finiteAmsWeightNumber(value);
+  return finite != null && finite >= 0 ? finite : null;
+}
+
+export function saneAmsRemainingPercent(value: number | null | undefined): number | null {
+  const finite = finiteAmsWeightNumber(value);
+  return finite != null && finite >= 0 && finite <= 100 ? finite : null;
+}
+
+export function saneAmsSpoolWeight(value: number | null | undefined): number | null {
+  const finite = finiteAmsWeightNumber(value);
+  return finite != null && finite > 0 ? finite : null;
+}
+
 export function formatAmsWeightNumber(value: number): string {
   return Number.isInteger(value) ? value.toString() : value.toFixed(1);
 }
@@ -10,8 +25,8 @@ export function deriveAmsRemainingGrams(
   remainingPercent: number | null | undefined,
   trayWeightG: number | null | undefined,
 ): number | null {
-  const percent = finiteAmsWeightNumber(remainingPercent);
-  const weight = finiteAmsWeightNumber(trayWeightG);
+  const percent = saneAmsRemainingPercent(remainingPercent);
+  const weight = saneAmsSpoolWeight(trayWeightG);
   return percent != null && weight != null ? Math.round((weight * percent) / 100) : null;
 }
 
@@ -28,9 +43,9 @@ export function formatAmsWeightEstimate({
   remainingPercent?: number | null;
   trayWeightG?: number | null;
 }): string | null {
-  const grams = finiteAmsWeightNumber(remainingGrams);
-  const percent = finiteAmsWeightNumber(remainingPercent);
-  const trayWeight = finiteAmsWeightNumber(trayWeightG);
+  const grams = saneAmsRemainingGrams(remainingGrams);
+  const percent = saneAmsRemainingPercent(remainingPercent);
+  const trayWeight = saneAmsSpoolWeight(trayWeightG);
 
   if (grams != null && trayWeight != null) {
     const percentNote = percent != null ? ` · ${formatAmsWeightNumber(percent)}%` : "";

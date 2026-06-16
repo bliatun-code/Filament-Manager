@@ -1,7 +1,13 @@
 import type { BambuLiveObservedTray } from "./tauri_client";
 import type { DiagnosticCaptureField, DiagnosticTraySnapshot } from "./diagnostic_capture";
 import { formatBambuSettingsProfileSignal } from "./bambu_settings_profiles";
-import { deriveAmsRemainingGrams, formatAmsWeightEstimate } from "./ams_weight_estimate";
+import {
+  deriveAmsRemainingGrams,
+  formatAmsWeightEstimate,
+  saneAmsRemainingGrams,
+  saneAmsRemainingPercent,
+  saneAmsSpoolWeight,
+} from "./ams_weight_estimate";
 import { decodeTrayExistBitsSlotPresence } from "./inventory_rfid_payload";
 
 export function normalizeDiagnosticHexColor(value: string | null): string | null {
@@ -149,14 +155,17 @@ export function extractDiagnosticTraySnapshots(
     const filamentType = fieldFor("tray_type")?.valueText ?? null;
     const filamentName = fieldFor("tray_sub_brands")?.valueText ?? null;
     const colorRaw = fieldFor("tray_color")?.valueText ?? null;
-    const trayWeightG = parseDiagnosticNumber(fieldFor("tray_weight")?.valueText ?? null);
+    const trayWeightG = saneAmsSpoolWeight(
+      parseDiagnosticNumber(fieldFor("tray_weight")?.valueText ?? null),
+    );
     const remainingRaw = fieldFor("remain")?.valueText ?? null;
-    const remainingPercent =
+    const remainingPercent = saneAmsRemainingPercent(
       remainingRaw != null && Number.isFinite(Number.parseFloat(remainingRaw))
         ? Number.parseInt(remainingRaw, 10)
-        : null;
-    const explicitRemainingGrams = parseDiagnosticNumber(
-      fieldFor("remaining_grams")?.valueText ?? null,
+        : null,
+    );
+    const explicitRemainingGrams = saneAmsRemainingGrams(
+      parseDiagnosticNumber(fieldFor("remaining_grams")?.valueText ?? null),
     );
     const remainingGrams =
       explicitRemainingGrams ??

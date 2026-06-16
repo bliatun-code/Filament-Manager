@@ -14,8 +14,10 @@ import {
 } from "../lib/bambu_settings_profiles";
 import {
   deriveAmsRemainingGrams,
-  finiteAmsWeightNumber,
   formatAmsWeightEstimate,
+  saneAmsRemainingGrams,
+  saneAmsRemainingPercent,
+  saneAmsSpoolWeight,
 } from "../lib/ams_weight_estimate";
 import type {
   BambuLiveObservedTray,
@@ -149,14 +151,14 @@ export function buildSettingsBambuLiveAmsWeightLabel({
   t: TranslateFn;
   tray: BambuLiveObservedTray;
 }): string | null {
-  const liveTrayWeightG = finiteAmsWeightNumber(tray.tray_weight_g);
-  const capturedTrayWeightG = finiteAmsWeightNumber(capturedTraySnapshot?.trayWeightG);
-  const liveRemainingPercent = finiteAmsWeightNumber(tray.remaining_percent);
-  const capturedRemainingPercent = finiteAmsWeightNumber(
+  const liveTrayWeightG = saneAmsSpoolWeight(tray.tray_weight_g);
+  const capturedTrayWeightG = saneAmsSpoolWeight(capturedTraySnapshot?.trayWeightG);
+  const liveRemainingPercent = saneAmsRemainingPercent(tray.remaining_percent);
+  const capturedRemainingPercent = saneAmsRemainingPercent(
     capturedTraySnapshot?.remainingPercent,
   );
-  const liveRemainingGrams = finiteAmsWeightNumber(tray.remaining_grams);
-  const capturedRemainingGrams = finiteAmsWeightNumber(capturedTraySnapshot?.remainingGrams);
+  const liveRemainingGrams = saneAmsRemainingGrams(tray.remaining_grams);
+  const capturedRemainingGrams = saneAmsRemainingGrams(capturedTraySnapshot?.remainingGrams);
 
   const remainingGrams = liveRemainingGrams ?? capturedRemainingGrams;
   const trayWeightG =

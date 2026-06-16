@@ -428,6 +428,47 @@ test("diagnostic tray helpers build fallback display trays", () => {
   assert.equal(countDiagnosticIdentitySignals(session.fields), 2);
 });
 
+test("diagnostic tray snapshots ignore implausible AMS estimates", () => {
+  const session = updateDiagnosticCaptureSessionFromPayload({
+    session: null,
+    rawPayload: {
+      ams: {
+        tray: [
+          {
+            remain: 105,
+            remaining_grams: -20,
+            tray_sub_brands: "Basic",
+            tray_type: "PLA",
+            tray_weight: -1000,
+          },
+        ],
+      },
+    },
+    observedAt: "2026-05-15T10:00:00Z",
+  });
+
+  assert.ok(session);
+  const [snapshot] = extractDiagnosticTraySnapshots(session.fields);
+  assert.equal(snapshot?.remainingPercent, null);
+  assert.equal(snapshot?.remainingGrams, null);
+  assert.equal(snapshot?.trayWeightG, null);
+  assert.deepEqual(buildDiagnosticDisplayTrays([], session.fields), [
+    {
+      ams_index: null,
+      tray_index: 0,
+      loaded: true,
+      filament_type: "PLA",
+      filament_name: "Basic",
+      color_hex: null,
+      tray_weight_g: null,
+      remaining_percent: null,
+      remaining_grams: null,
+      match_status: null,
+      match_note: null,
+    },
+  ]);
+});
+
 test("diagnostic tray helpers treat AMS bitfields as physical slot evidence", () => {
   const session = updateDiagnosticCaptureSessionFromPayload({
     session: null,

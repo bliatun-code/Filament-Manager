@@ -893,6 +893,37 @@ test("Bambu live AMS weight label formats live and captured estimates", () => {
   );
 });
 
+test("Bambu live AMS weight label ignores implausible live estimates", () => {
+  assert.equal(
+    buildSettingsBambuLiveAmsWeightLabel({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({
+        remainingPercent: 77,
+        trayWeightG: 1000,
+      }),
+      t,
+      tray: createObservedTray({
+        remaining_grams: -20,
+        remaining_percent: 105,
+        tray_weight_g: -1000,
+      }),
+    }),
+    "AMS estimate: 770 g / 1000 g · 77%",
+  );
+
+  assert.equal(
+    buildSettingsBambuLiveAmsWeightLabel({
+      capturedTraySnapshot: null,
+      t,
+      tray: createObservedTray({
+        remaining_grams: -20,
+        remaining_percent: 105,
+        tray_weight_g: -1000,
+      }),
+    }),
+    null,
+  );
+});
+
 test("Bambu live inventory match presentation prefers inventory label and swatch", () => {
   assert.deepEqual(
     buildSettingsBambuLiveInventoryMatchPresentation({
