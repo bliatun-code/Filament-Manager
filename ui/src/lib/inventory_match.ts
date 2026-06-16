@@ -1,4 +1,5 @@
 import { normalizeSwatchValue, parseSwatchSpec } from "./color_utils";
+import { formatBambuSettingsProfileNameParts } from "./bambu_settings_profiles";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
 export type InventoryMatchResult =
@@ -77,6 +78,22 @@ function inventoryFilamentNameMatches(left?: string | null, right?: string | nul
     (hasDistinctiveInventoryNameToken(rightTokens) &&
       containsNameTokenSequence(leftTokens, rightTokens))
   );
+}
+
+function formatSettingsPresetSignal(
+  presetSignal: string,
+  t: (key: string, fallback?: string) => string,
+): string {
+  const match = presetSignal.match(/^(.+?)\s+\((.+)\)$/);
+  if (!match) {
+    return presetSignal;
+  }
+  const settingId = (match[1] ?? "").trim();
+  const profileName = (match[2] ?? "").trim();
+  const profileParts = formatBambuSettingsProfileNameParts(profileName, {
+    nozzleSuffix: t("settings.bambuLivePresetNozzleSuffix", "mm nozzle"),
+  });
+  return [settingId, ...profileParts].filter(Boolean).join(" · ") || presetSignal;
 }
 
 export function buildInventoryMatchResult(
@@ -158,7 +175,7 @@ export function translateObservedMatchNote(
   if (presetSignalMatch) {
     const baseNote = presetSignalMatch[1].trim();
     const baseTranslation = baseNote ? translateObservedMatchNote(baseNote, t) : null;
-    const presetSignal = presetSignalMatch[2].trim();
+    const presetSignal = formatSettingsPresetSignal(presetSignalMatch[2].trim(), t);
     const presetTranslation = t(
       "settings.bambuLiveMatchNotePresetSignal",
       "Filament settings preset: {preset}. This is a material/settings hint, not a roll identity.",
