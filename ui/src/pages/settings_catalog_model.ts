@@ -4,28 +4,19 @@ import {
   suggestHexFromColor,
 } from "../lib/color_utils";
 import type { CatalogRefreshResult, MasterCatalogRow } from "../lib/tauri_client";
+import bambuMaterialFamiliesJson from "../../../src/data/bambu_material_families.json?raw";
 
 export type SettingsCatalogVendor = "Bambu" | "eSUN";
 
-const DEFAULT_BAMBU_REFRESH_MATERIALS = [
-  "ABS",
-  "ASA",
-  "PA",
-  "PA6",
-  "PAHT",
-  "PC",
-  "PCTG",
-  "PET",
-  "PETG",
-  "PLA",
-  "PP",
-  "PPA",
-  "PPS",
-  "PVA",
-  "Support for PLA",
-  "Support for PLA/PETG",
-  "TPU",
-];
+type BambuMaterialFamily = {
+  material?: unknown;
+};
+
+type BambuMaterialFamilySource = string | BambuMaterialFamily[];
+
+const DEFAULT_BAMBU_REFRESH_MATERIALS = parseBambuMaterialFamilies(
+  bambuMaterialFamiliesJson as unknown as BambuMaterialFamilySource,
+);
 
 const DEFAULT_ESUN_REFRESH_MATERIALS = [
   "ABS",
@@ -277,4 +268,13 @@ function materialOptionsForVendor(
 
 function uniqueSortedStrings(values: string[]): string[] {
   return Array.from(new Set(values)).sort((left, right) => left.localeCompare(right));
+}
+
+function parseBambuMaterialFamilies(raw: BambuMaterialFamilySource): string[] {
+  const parsed = typeof raw === "string" ? (JSON.parse(raw) as BambuMaterialFamily[]) : raw;
+  return uniqueSortedStrings(
+    parsed
+      .map((family) => (typeof family.material === "string" ? family.material.trim() : ""))
+      .filter((material) => material.length > 0),
+  );
 }

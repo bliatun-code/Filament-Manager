@@ -1,0 +1,90 @@
+[
+  {
+    "material": "Support for PLA/PETG",
+    "prefixes": ["Support for PLA/PETG", "Support for PLA-PETG"]
+  },
+  {
+    "material": "Support for PLA",
+    "prefixes": ["Support for PLA"]
+  },
+  {
+    "material": "PLA",
+    "prefixes": ["PLA"]
+  },
+  {
+    "material": "PETG",
+    "prefixes": ["PETG"]
+  },
+  {
+    "material": "ABS",
+    "prefixes": ["ABS"]
+  },
+  {
+    "material": "TPU",
+    "prefixes": ["TPU"]
+  },
+  {
+    "material": "PAHT",
+    "prefixes": ["PAHT"]
+  },
+  {
+    "material": "PA6",
+    "prefixes": ["PA6"]
+  },
+  {
+    "material": "PPA",
+    "prefixes": ["PPA"]
+  },
+  {
+    "material": "PCTG",
+    "prefixes": ["PCTG"]
+  },
+  {
+    "material": "PA",
+    "prefixes": ["PA"]
+  },
+  {
+    "material": "PPS",
+    "prefixes": ["PPS"]
+  },
+  {
+    "material": "PVA",
+    "prefixes": ["PVA"]
+  },
+  {
+    "material": "PET",
+    "prefixes": ["PET"]
+  },
+  {
+    "material": "PC",
+    "prefixes": ["PC"]
+  },
+  {
+    "material": "PP",
+    "prefixes": ["PP"]
+  },
+  {
+    "material": "PE",
+    "prefixes": ["PE"]
+  },
+  {
+    "material": "ASA",
+    "prefixes": ["ASA"]
+  },
+  {
+    "material": "BVOH",
+    "prefixes": ["BVOH"]
+  },
+  {
+    "material": "EVA",
+    "prefixes": ["EVA"]
+  },
+  {
+    "material": "HIPS",
+    "prefixes": ["HIPS"]
+  },
+  {
+    "material": "PHA",
+    "prefixes": ["PHA"]
+  }
+]

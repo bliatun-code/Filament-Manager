@@ -120,6 +120,15 @@ type FetchTextResult = {
   status: number | null;
 };
 
+type BambuMaterialFamily = {
+  material: string;
+  prefixes: string[];
+};
+
+const BAMBU_MATERIAL_FAMILIES = JSON.parse(
+  fs.readFileSync(new URL("../data/bambu_material_families.json", import.meta.url), "utf8"),
+) as BambuMaterialFamily[];
+
 type ColorOption = {
   colorName: string;
   imageUrl: string | null;
@@ -1099,23 +1108,13 @@ function parseTitleColor(title: string):
   return { material, filamentName, colorName };
 }
 
-function inferMaterial(filamentName: string): string {
-  const patterns: Array<[RegExp, string]> = [
-    [/^PLA\b/i, "PLA"],
-    [/^PETG\b/i, "PETG"],
-    [/^ABS\b/i, "ABS"],
-    [/^TPU\b/i, "TPU"],
-    [/^PA6\b/i, "PA6"],
-    [/^PAHT\b/i, "PAHT"],
-    [/^PPA\b/i, "PPA"],
-    [/^PET\b/i, "PET"],
-    [/^PC\b/i, "PC"],
-    [/^ASA\b/i, "ASA"],
-  ];
-
-  for (const [pattern, value] of patterns) {
-    if (pattern.test(filamentName)) {
-      return value;
+export function inferMaterial(filamentName: string): string {
+  const upper = filamentName.trim().toUpperCase();
+  for (const family of BAMBU_MATERIAL_FAMILIES) {
+    for (const prefix of family.prefixes) {
+      if (upper.startsWith(prefix.toUpperCase())) {
+        return family.material;
+      }
     }
   }
 
@@ -1143,7 +1142,7 @@ function matchesMaterialFilter(material: string, materialFilters: string[]): boo
   return materialFilters.includes(material.trim().toUpperCase());
 }
 
-function discoveredMaterialsFromNames(names: Iterable<string>): string[] {
+export function discoveredMaterialsFromNames(names: Iterable<string>): string[] {
   return Array.from(new Set(Array.from(names, inferMaterial))).sort((left, right) =>
     left.localeCompare(right),
   );

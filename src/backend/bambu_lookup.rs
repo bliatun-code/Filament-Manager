@@ -478,39 +478,32 @@ fn discovered_materials_from_names<'a>(names: impl Iterator<Item = &'a str>) -> 
     materials
 }
 
+const BAMBU_MATERIAL_FAMILIES_JSON: &str = include_str!("../data/bambu_material_families.json");
+
+#[derive(Debug, Deserialize)]
+struct BambuMaterialFamily {
+    material: String,
+    prefixes: Vec<String>,
+}
+
+static BAMBU_MATERIAL_FAMILIES: OnceLock<Vec<BambuMaterialFamily>> = OnceLock::new();
+
+fn bambu_material_families() -> &'static [BambuMaterialFamily] {
+    BAMBU_MATERIAL_FAMILIES
+        .get_or_init(|| {
+            serde_json::from_str(BAMBU_MATERIAL_FAMILIES_JSON)
+                .expect("Bambu material family table must be valid JSON")
+        })
+        .as_slice()
+}
+
 fn infer_material(filament_name: &str) -> String {
     let upper = filament_name.trim().to_uppercase();
-    if upper.starts_with("SUPPORT FOR PLA/PETG") || upper.starts_with("SUPPORT FOR PLA-PETG") {
-        return "Support for PLA/PETG".to_string();
-    }
-    if upper.starts_with("SUPPORT FOR PLA") {
-        return "Support for PLA".to_string();
-    }
-
-    for (prefix, value) in [
-        ("PLA", "PLA"),
-        ("PETG", "PETG"),
-        ("ABS", "ABS"),
-        ("TPU", "TPU"),
-        ("PAHT", "PAHT"),
-        ("PA6", "PA6"),
-        ("PPA", "PPA"),
-        ("PCTG", "PCTG"),
-        ("PA", "PA"),
-        ("PPS", "PPS"),
-        ("PVA", "PVA"),
-        ("PET", "PET"),
-        ("PC", "PC"),
-        ("PP", "PP"),
-        ("PE", "PE"),
-        ("ASA", "ASA"),
-        ("BVOH", "BVOH"),
-        ("EVA", "EVA"),
-        ("HIPS", "HIPS"),
-        ("PHA", "PHA"),
-    ] {
-        if upper.starts_with(prefix) {
-            return value.to_string();
+    for family in bambu_material_families() {
+        for prefix in &family.prefixes {
+            if upper.starts_with(&prefix.to_uppercase()) {
+                return family.material.clone();
+            }
         }
     }
 

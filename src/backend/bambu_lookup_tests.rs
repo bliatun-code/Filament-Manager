@@ -15,6 +15,12 @@ fn infer_material_uses_prefixes() {
     assert_eq!(infer_material("PCTG"), "PCTG");
     assert_eq!(infer_material("PPS-CF"), "PPS");
     assert_eq!(infer_material("PVA"), "PVA");
+    assert_eq!(infer_material("PP"), "PP");
+    assert_eq!(infer_material("PE Support"), "PE");
+    assert_eq!(infer_material("BVOH Support"), "BVOH");
+    assert_eq!(infer_material("EVA"), "EVA");
+    assert_eq!(infer_material("HIPS"), "HIPS");
+    assert_eq!(infer_material("PHA"), "PHA");
     assert_eq!(infer_material("Support for PLA"), "Support for PLA");
     assert_eq!(
         infer_material("Support For PLA/PETG"),
@@ -38,8 +44,14 @@ fn discovered_materials_from_bambu_product_names_are_sorted_and_complete() {
             "PET-CF",
             "PCTG",
             "PC FR",
+            "PP",
+            "PE Support",
             "PPS-CF",
             "PVA",
+            "BVOH Support",
+            "EVA",
+            "HIPS",
+            "PHA",
             "ASA Aero",
             "PLA Basic",
         ]
@@ -50,14 +62,20 @@ fn discovered_materials_from_bambu_product_names_are_sorted_and_complete() {
         vec![
             "ABS".to_string(),
             "ASA".to_string(),
+            "BVOH".to_string(),
+            "EVA".to_string(),
+            "HIPS".to_string(),
             "PA".to_string(),
             "PA6".to_string(),
             "PAHT".to_string(),
             "PC".to_string(),
             "PCTG".to_string(),
+            "PE".to_string(),
             "PET".to_string(),
             "PETG".to_string(),
+            "PHA".to_string(),
             "PLA".to_string(),
+            "PP".to_string(),
             "PPA".to_string(),
             "PPS".to_string(),
             "PVA".to_string(),
