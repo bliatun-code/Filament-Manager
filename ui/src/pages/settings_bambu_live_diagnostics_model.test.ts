@@ -626,6 +626,20 @@ test("Bambu live inventory candidate cards format at most three candidates", () 
 
 test("Bambu live observed RFID trims valid values and suppresses empty or zero-only values", () => {
   assert.equal(
+    buildSettingsBambuLiveObservedRfid(
+      createDiagnosticTraySnapshot({ trayUuid: "CAPTURE123" }),
+      createObservedTray({ tray_uuid: " LIVE123 " }),
+    ),
+    "LIVE123",
+  );
+  assert.equal(
+    buildSettingsBambuLiveObservedRfid(
+      createDiagnosticTraySnapshot({ trayUuid: "CAPTURE123" }),
+      createObservedTray({ tray_uuid: "000000" }),
+    ),
+    "CAPTURE123",
+  );
+  assert.equal(
     buildSettingsBambuLiveObservedRfid(createDiagnosticTraySnapshot({ trayUuid: " ABC123 " })),
     "ABC123",
   );

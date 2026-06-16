@@ -98,9 +98,16 @@ export function buildSettingsBambuLiveInventoryCandidateCards({
 
 export function buildSettingsBambuLiveObservedRfid(
   capturedTraySnapshot: DiagnosticTraySnapshot | null,
+  tray?: Pick<BambuLiveObservedTray, "tray_uuid"> | null,
 ): string | null {
-  const trayUuid = capturedTraySnapshot?.trayUuid?.trim() ?? "";
-  return trayUuid && !/^0+$/.test(trayUuid) ? trayUuid : null;
+  const candidates = [tray?.tray_uuid, capturedTraySnapshot?.trayUuid];
+  for (const candidate of candidates) {
+    const trayUuid = candidate?.trim() ?? "";
+    if (trayUuid && !/^0+$/.test(trayUuid)) {
+      return trayUuid;
+    }
+  }
+  return null;
 }
 
 export type SettingsBambuLivePresetNameParts = BambuSettingsProfileNameParts;
@@ -379,7 +386,7 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
   t,
   tray,
 }: BuildSettingsBambuLiveDiagnosticTrayCardInput) {
-  const observedRfid = buildSettingsBambuLiveObservedRfid(capturedTraySnapshot);
+  const observedRfid = buildSettingsBambuLiveObservedRfid(capturedTraySnapshot, tray);
   const inventoryMatch = buildInventoryMatchResult(spoolRows, {
     rfid: observedRfid,
     material: tray.filament_type ?? capturedTraySnapshot?.filamentType ?? null,
