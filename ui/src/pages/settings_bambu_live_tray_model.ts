@@ -218,11 +218,12 @@ export function buildSettingsBambuLiveTrayDisplayText({
   t: TranslateFn;
   tray: BambuLiveObservedTray;
 }) {
+  const remainingPercent = saneAmsRemainingPercent(tray.remaining_percent);
   return {
     detailText:
       [
         tray.filament_type,
-        tray.remaining_percent != null ? `${tray.remaining_percent}%` : null,
+        remainingPercent != null ? `${remainingPercent}%` : null,
       ]
         .filter(Boolean)
         .join(" · ") || "—",

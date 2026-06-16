@@ -843,6 +843,13 @@ test("Bambu live tray display text prefers names, material, and empty fallbacks"
     }),
     { detailText: "PLA · 77%", statusText: "Empty / unknown" },
   );
+  assert.deepEqual(
+    buildSettingsBambuLiveTrayDisplayText({
+      t,
+      tray: createObservedTray({ remaining_percent: 105 }),
+    }),
+    { detailText: "PLA", statusText: "PLA Basic" },
+  );
 });
 
 test("Bambu live AMS weight label formats live and captured estimates", () => {
