@@ -1674,7 +1674,7 @@ fn parse_swatch_colors(value: Option<&str>) -> Option<Vec<String>> {
     };
     if let Some(inner) = composite_inner {
         let parts: Vec<_> = inner
-            .split(|character| character == ',' || character == ';')
+            .split([',', ';'])
             .map(str::trim)
             .filter(|part| !part.is_empty())
             .collect();
