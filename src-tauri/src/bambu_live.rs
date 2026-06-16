@@ -11,6 +11,7 @@ use crate::bambu_live_sync::{
 use crate::bambu_mqtt::{
     build_connect_packet, build_subscribe_packet, parse_publish_payload, read_mqtt_packet,
 };
+use crate::bambu_thermal::{is_print_capable_temp, nozzle_thermal_state_name};
 use crate::state::AppState;
 use native_tls::TlsConnector;
 use serde_json::{json, Map, Value};
@@ -23,8 +24,6 @@ const BAMBU_MQTT_PORT: u16 = 8883;
 const OBSERVER_INTERVAL_SECS: u64 = 20;
 const MQTT_TIMEOUT_SECS: u64 = 8;
 const MQTT_BURST_SETTLE_MS: u64 = 1_200;
-const MIN_EXTRUSION_NOZZLE_TEMP_C: f64 = 180.0;
-const PRINT_CAPABLE_NOZZLE_TEMP_C: f64 = 200.0;
 
 pub async fn run_live_observer(state: AppState) {
     loop {
@@ -256,9 +255,7 @@ fn next_looks_like_new_print_without_identity(next: &BambuLiveObservedStateRow) 
     !raw_payload_has_explicit_job_identity(next)
         && (next.prepare_percent.is_some()
             || next.progress_percent.is_some_and(|progress| progress <= 10)
-            || next
-                .nozzle_temp_c
-                .is_some_and(|temp| temp >= PRINT_CAPABLE_NOZZLE_TEMP_C)
+            || next.nozzle_temp_c.is_some_and(is_print_capable_temp)
             || matches!(
                 normalized_carried_print_state(next.gcode_state.as_deref()).as_deref(),
                 Some("PREPARE" | "PREPARING" | "RUNNING" | "SLICING")
@@ -465,7 +462,7 @@ fn live_print_event_payload(
         "ams_status_sub": state.ams_status_sub,
         "nozzle_temp_c": state.nozzle_temp_c,
         "bed_temp_c": state.bed_temp_c,
-        "thermal_state": thermal_state_name(state.nozzle_temp_c),
+        "thermal_state": nozzle_thermal_state_name(state.nozzle_temp_c),
     });
     if include_last_seen_at {
         if let Value::Object(fields) = &mut payload {
@@ -473,18 +470,6 @@ fn live_print_event_payload(
         }
     }
     payload
-}
-
-fn thermal_state_name(nozzle_temp_c: Option<f64>) -> Option<&'static str> {
-    nozzle_temp_c.map(|temp| {
-        if temp < MIN_EXTRUSION_NOZZLE_TEMP_C {
-            "below_extrusion_temp"
-        } else if temp >= PRINT_CAPABLE_NOZZLE_TEMP_C {
-            "print_capable"
-        } else {
-            "transition"
-        }
-    })
 }
 
 pub(crate) fn is_live_print_running(state: &BambuLiveObservedStateRow) -> bool {
@@ -891,9 +876,7 @@ fn merge_raw_payload_snapshot(
                 print.get("nozzle_temper"),
                 state.last_seen_at.as_deref(),
             );
-            if as_f64(print.get("nozzle_temper"))
-                .is_some_and(|temp| temp >= PRINT_CAPABLE_NOZZLE_TEMP_C)
-            {
+            if as_f64(print.get("nozzle_temper")).is_some_and(is_print_capable_temp) {
                 fields.insert(
                     "nozzle_print_capable_at".to_string(),
                     state

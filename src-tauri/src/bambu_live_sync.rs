@@ -9,6 +9,9 @@ use crate::backend::filament_database::{
     SpoolWithMasterRow,
 };
 use crate::backend::printer_slot_live_mapping::bambu_live_slot_matches_tray;
+use crate::bambu_thermal::{
+    is_below_extrusion_temp, is_print_capable_temp, nozzle_thermal_state_name,
+};
 use serde_json::{json, Value};
 use time::{format_description::well_known::Rfc3339, Duration as TimeDuration, OffsetDateTime};
 
@@ -29,8 +32,6 @@ const LIVE_WEIGHT_NEAR_FINISH_MAX_REMAINING_MINUTES: i64 = 10;
 const LIVE_WEIGHT_NEAR_FINISH_SMALL_DROP_G: i64 = 10;
 const LIVE_WEIGHT_NEAR_FINISH_MIN_RECORDED_USAGE_G: i64 = 50;
 const LIVE_WEIGHT_RECENT_COMPLETED_TAIL_SYNC_SECS: i64 = 10 * 60;
-const LIVE_NOZZLE_MIN_EXTRUSION_TEMP_C: f64 = 180.0;
-const LIVE_NOZZLE_PRINT_CAPABLE_TEMP_C: f64 = 200.0;
 const LIVE_USAGE_SIGNAL_FRESH_MAX_AGE_SECS: i64 = 3 * 60;
 const LIVE_USAGE_RECENT_PRINT_CAPABLE_NOZZLE_SECS: i64 = 2 * 60 * 60;
 
@@ -1307,9 +1308,7 @@ impl LivePrintUsageContext {
     fn nozzle_blocks_filament_usage(&self) -> bool {
         self.finished_success != Some(true)
             && self.nozzle_temp_fresh
-            && self
-                .nozzle_temp_c
-                .is_some_and(|temp| temp < LIVE_NOZZLE_MIN_EXTRUSION_TEMP_C)
+            && self.nozzle_temp_c.is_some_and(is_below_extrusion_temp)
     }
 
     fn should_track_running_usage_session(&self) -> bool {
@@ -1331,15 +1330,7 @@ impl LivePrintUsageContext {
         if self.nozzle_temp_c.is_some() && !self.nozzle_temp_fresh {
             return Some("stale");
         }
-        self.nozzle_temp_c.map(|temp| {
-            if temp < LIVE_NOZZLE_MIN_EXTRUSION_TEMP_C {
-                "below_extrusion_temp"
-            } else if temp >= LIVE_NOZZLE_PRINT_CAPABLE_TEMP_C {
-                "print_capable"
-            } else {
-                "transition"
-            }
-        })
+        nozzle_thermal_state_name(self.nozzle_temp_c)
     }
 
     fn defer_initial_weight_delta(&self, used_grams: i64) -> bool {
@@ -1413,9 +1404,7 @@ fn live_print_usage_context(observed: &BambuLiveObservedStateRow) -> Option<Live
         nozzle_temp_c: observed.nozzle_temp_c,
         nozzle_temp_fresh: observed.nozzle_temp_c.is_some()
             && observed_field_is_fresh(observed, "nozzle_temper_at"),
-        recent_print_capable_nozzle: observed
-            .nozzle_temp_c
-            .is_some_and(|temp| temp >= LIVE_NOZZLE_PRINT_CAPABLE_TEMP_C)
+        recent_print_capable_nozzle: observed.nozzle_temp_c.is_some_and(is_print_capable_temp)
             || observed_recorded_field_is_recent(
                 observed,
                 "nozzle_print_capable_at",
@@ -1508,7 +1497,7 @@ pub(crate) fn is_probable_completed_carried_print_state(
 fn fresh_nozzle_can_extrude(observed: &BambuLiveObservedStateRow) -> bool {
     observed
         .nozzle_temp_c
-        .is_some_and(|temp| temp >= LIVE_NOZZLE_MIN_EXTRUSION_TEMP_C)
+        .is_some_and(|temp| !is_below_extrusion_temp(temp))
         && observed_field_is_fresh(observed, "nozzle_temper_at")
 }
 
