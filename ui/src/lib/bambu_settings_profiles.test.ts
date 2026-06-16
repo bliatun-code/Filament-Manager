@@ -42,6 +42,12 @@ test("parseBambuSettingsProfileName supports current BambuStudio printer profile
     printerProfile: "X2D",
     rawName: "Bambu PLA Galaxy @BBL X2D 0.4 nozzle",
   });
+  assert.deepEqual(parseBambuSettingsProfileName("Bambu PETG HF @BBL H2D 0.4 mm nozzle"), {
+    filamentProfile: "Bambu PETG HF",
+    nozzleDiameterMm: "0.4",
+    printerProfile: "H2D",
+    rawName: "Bambu PETG HF @BBL H2D 0.4 mm nozzle",
+  });
 });
 
 test("parseBambuSettingsProfileName keeps vendor and support profile names readable", () => {
@@ -110,6 +116,10 @@ test("parseBambuSettingsProfileName supports generic nozzle-only profiles", () =
   assert.deepEqual(formatBambuSettingsProfileNameParts("Generic PLA @0.2 nozzle"), [
     "Generic PLA",
     "0.2 mm nozzle",
+  ]);
+  assert.deepEqual(formatBambuSettingsProfileNameParts("Generic PETG @0.4mm nozzle"), [
+    "Generic PETG",
+    "0.4 mm nozzle",
   ]);
 });
 

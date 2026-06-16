@@ -40,7 +40,7 @@ export function parseBambuSettingsProfileName(
     return null;
   }
   const bambuPrinterMatch = normalized.match(
-    /^(.+?)\s+@BBL\s+(.+?)(?:\s+(\d+(?:\.\d+)?)\s+nozzle)?$/i,
+    /^(.+?)\s+@BBL\s+(.+?)(?:\s+(\d+(?:\.\d+)?)\s*(?:mm\s*)?nozzle)?$/i,
   );
   if (bambuPrinterMatch) {
     return {
@@ -50,7 +50,9 @@ export function parseBambuSettingsProfileName(
       rawName: normalized,
     };
   }
-  const genericNozzleMatch = normalized.match(/^(.+?)\s+@(\d+(?:\.\d+)?)\s+nozzle$/i);
+  const genericNozzleMatch = normalized.match(
+    /^(.+?)\s+@(\d+(?:\.\d+)?)\s*(?:mm\s*)?nozzle$/i,
+  );
   if (genericNozzleMatch) {
     return {
       filamentProfile: (genericNozzleMatch[1] ?? "").trim(),
