@@ -344,7 +344,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       printQr: "Print QR label",
       rfidButton: "RFID",
       rfidHintReady:
-        "Capture AMS identity data, review it, and save the observed tray identity when it looks correct.",
+        "Capture AMS/RFID identity data, review it, and save the observed RFID identity when it looks correct.",
       rfidHintNeedsLive:
         "RFID capture needs a printer with Live Bambu status enabled and at least one AMS slot available.",
       rfidRegistered: "RFID registered",
@@ -354,7 +354,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "An RFID is saved on this roll, but AMS has not reported a sighting timestamp for it yet.",
       rfidBambuUnregistered: "RFID not registered yet",
       rfidBambuUnregisteredHint:
-        "Bambu rolls can be linked automatically by loading the roll in AMS and saving the observed tray identity.",
+        "Bambu rolls can be linked automatically by loading the roll in AMS and saving the observed RFID identity.",
       rfidUnsupportedVendor: "AMS RFID not available",
       rfidUnsupportedVendorHint:
         "AMS RFID identity is currently only exposed for Bambu rolls. Track this roll with QR, weight, location and printer assignment instead.",
@@ -396,7 +396,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       rfidCaptureNoSlotData:
         "No slot-specific AMS fields are available yet for this source slot.",
       rfidCaptureNothingToSave:
-        "No tray identity is available yet for the selected source slot.",
+        "No RFID identity is available yet for the selected source slot.",
       rfidCaptureFailed:
         "Could not refresh RFID capture from the printer.",
       rfidSaved: "RFID tag saved on the selected roll.",

@@ -190,7 +190,7 @@ export function rfidBindingCopy(
         label: t("inventory.rfidBambuUnregistered", "RFID not registered yet"),
         hint: t(
           "inventory.rfidBambuUnregisteredHint",
-          "Bambu rolls can be linked automatically by loading the roll in AMS and saving the observed tray identity.",
+          "Bambu rolls can be linked automatically by loading the roll in AMS and saving the observed RFID identity.",
         ),
         className: semanticChipClass("warning"),
       };
