@@ -1530,6 +1530,117 @@ fn live_print_running_keeps_near_complete_current_job_running() {
 }
 
 #[test]
+fn log_state_changes_records_print_thermal_context() {
+    let db_path = temp_db_path("print-event-thermal-context");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 1, 1)
+            .map_err(|error| error.to_string())?;
+
+        let mut idle = super::default_offline_state();
+        idle.online = true;
+        idle.mqtt_connected = true;
+        idle.gcode_state = Some("IDLE".to_string());
+
+        let mut running = super::default_offline_state();
+        running.online = true;
+        running.mqtt_connected = true;
+        running.last_seen_at = Some("2026-06-16T10:20:00Z".to_string());
+        running.gcode_state = Some("RUNNING".to_string());
+        running.print_type = Some("cloud".to_string());
+        running.subtask_id = Some("job-1".to_string());
+        running.subtask_name = Some("Test print".to_string());
+        running.progress_percent = Some(12);
+        running.remaining_minutes = Some(48);
+        running.active_ams_index = Some(0);
+        running.active_tray_index = Some(2);
+        running.nozzle_temp_c = Some(218.5);
+        running.bed_temp_c = Some(55.0);
+
+        super::log_state_changes(&db, "printer_1", Some(&idle), &running)
+            .map_err(|error| error.to_string())?;
+
+        let start_payload_json: String = db
+            .connection()
+            .query_row(
+                "SELECT payload_json
+                 FROM printer_live_events
+                 WHERE event_type = 'LIVE_PRINT_STARTED'
+                 LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let start_payload: Value =
+            serde_json::from_str(&start_payload_json).map_err(|error| error.to_string())?;
+        assert_eq!(
+            start_payload.get("thermal_state").and_then(Value::as_str),
+            Some("print_capable")
+        );
+        assert_eq!(
+            start_payload.get("nozzle_temp_c").and_then(Value::as_f64),
+            Some(218.5)
+        );
+        assert_eq!(
+            start_payload.get("bed_temp_c").and_then(Value::as_f64),
+            Some(55.0)
+        );
+        assert_eq!(
+            start_payload
+                .get("active_tray_index")
+                .and_then(Value::as_i64),
+            Some(2)
+        );
+
+        let mut finished = running.clone();
+        finished.last_seen_at = Some("2026-06-16T11:08:00Z".to_string());
+        finished.gcode_state = Some("FINISH".to_string());
+        finished.print_type = Some("idle".to_string());
+        finished.progress_percent = Some(100);
+        finished.remaining_minutes = Some(0);
+        finished.nozzle_temp_c = Some(72.0);
+        finished.bed_temp_c = Some(34.0);
+
+        super::log_state_changes(&db, "printer_1", Some(&running), &finished)
+            .map_err(|error| error.to_string())?;
+
+        let finish_payload_json: String = db
+            .connection()
+            .query_row(
+                "SELECT payload_json
+                 FROM printer_live_events
+                 WHERE event_type = 'LIVE_PRINT_FINISHED'
+                 LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let finish_payload: Value =
+            serde_json::from_str(&finish_payload_json).map_err(|error| error.to_string())?;
+        assert_eq!(
+            finish_payload.get("thermal_state").and_then(Value::as_str),
+            Some("below_extrusion_temp")
+        );
+        assert_eq!(
+            finish_payload.get("last_seen_at").and_then(Value::as_str),
+            Some("2026-06-16T11:08:00Z")
+        );
+        assert_eq!(
+            finish_payload.get("nozzle_temp_c").and_then(Value::as_f64),
+            Some(72.0)
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("log_state_changes_records_print_thermal_context failed: {message}");
+    }
+}
+
+#[test]
 fn classify_live_weight_update_accepts_baseline_and_sane_decrease() {
     assert_eq!(
         classify_live_weight_update(None, 960),

@@ -23,6 +23,7 @@ const BAMBU_MQTT_PORT: u16 = 8883;
 const OBSERVER_INTERVAL_SECS: u64 = 20;
 const MQTT_TIMEOUT_SECS: u64 = 8;
 const MQTT_BURST_SETTLE_MS: u64 = 1_200;
+const MIN_EXTRUSION_NOZZLE_TEMP_C: f64 = 180.0;
 const PRINT_CAPABLE_NOZZLE_TEMP_C: f64 = 200.0;
 
 pub async fn run_live_observer(state: AppState) {
@@ -402,44 +403,13 @@ fn log_state_changes(
         db.insert_printer_live_event(
             printer_id,
             "LIVE_PRINT_STARTED",
-            &json!({
-                "progress_percent": next.progress_percent,
-                "remaining_minutes": next.remaining_minutes,
-                "prepare_percent": next.prepare_percent,
-                "print_stage": next.print_stage,
-                "print_error_code": next.print_error_code,
-                "job_state_code": next.job_state_code,
-                "gcode_state": next.gcode_state,
-                "print_type": next.print_type,
-                "subtask_id": next.subtask_id,
-                "subtask_name": next.subtask_name,
-                "active_ams_index": next.active_ams_index,
-                "active_tray_index": next.active_tray_index,
-                "ams_status_code": next.ams_status_code,
-                "ams_status_main": next.ams_status_main,
-                "ams_status_sub": next.ams_status_sub,
-            }),
+            &live_print_event_payload(next, false),
         )?;
     } else if was_printing && !is_printing {
         db.insert_printer_live_event(
             printer_id,
             "LIVE_PRINT_FINISHED",
-            &json!({
-                "last_seen_at": next.last_seen_at,
-                "prepare_percent": next.prepare_percent,
-                "print_stage": next.print_stage,
-                "print_error_code": next.print_error_code,
-                "job_state_code": next.job_state_code,
-                "gcode_state": next.gcode_state,
-                "print_type": next.print_type,
-                "subtask_id": next.subtask_id,
-                "subtask_name": next.subtask_name,
-                "active_ams_index": next.active_ams_index,
-                "active_tray_index": next.active_tray_index,
-                "ams_status_code": next.ams_status_code,
-                "ams_status_main": next.ams_status_main,
-                "ams_status_sub": next.ams_status_sub,
-            }),
+            &live_print_event_payload(next, true),
         )?;
     }
 
@@ -471,6 +441,50 @@ fn log_state_changes(
     }
 
     Ok(())
+}
+
+fn live_print_event_payload(
+    state: &BambuLiveObservedStateRow,
+    include_last_seen_at: bool,
+) -> Value {
+    let mut payload = json!({
+        "progress_percent": state.progress_percent,
+        "remaining_minutes": state.remaining_minutes,
+        "prepare_percent": state.prepare_percent,
+        "print_stage": state.print_stage,
+        "print_error_code": state.print_error_code,
+        "job_state_code": state.job_state_code,
+        "gcode_state": state.gcode_state,
+        "print_type": state.print_type,
+        "subtask_id": state.subtask_id,
+        "subtask_name": state.subtask_name,
+        "active_ams_index": state.active_ams_index,
+        "active_tray_index": state.active_tray_index,
+        "ams_status_code": state.ams_status_code,
+        "ams_status_main": state.ams_status_main,
+        "ams_status_sub": state.ams_status_sub,
+        "nozzle_temp_c": state.nozzle_temp_c,
+        "bed_temp_c": state.bed_temp_c,
+        "thermal_state": thermal_state_name(state.nozzle_temp_c),
+    });
+    if include_last_seen_at {
+        if let Value::Object(fields) = &mut payload {
+            fields.insert("last_seen_at".to_string(), json!(state.last_seen_at));
+        }
+    }
+    payload
+}
+
+fn thermal_state_name(nozzle_temp_c: Option<f64>) -> Option<&'static str> {
+    nozzle_temp_c.map(|temp| {
+        if temp < MIN_EXTRUSION_NOZZLE_TEMP_C {
+            "below_extrusion_temp"
+        } else if temp >= PRINT_CAPABLE_NOZZLE_TEMP_C {
+            "print_capable"
+        } else {
+            "transition"
+        }
+    })
 }
 
 pub(crate) fn is_live_print_running(state: &BambuLiveObservedStateRow) -> bool {
