@@ -677,13 +677,13 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       waitingForLiveIdentity:
         "Showing the last saved slot assignment until stronger live identity arrives.",
       unknownLiveRfidHint:
-        "AMS reported a tray identity that is not registered in inventory.",
+        "AMS reported an RFID/AMS identity that is not registered in inventory.",
       rfidOverriddenHint:
         "This slot is manually assigned while the same unregistered RFID identity is still active.",
       rfidOverrideDialogHint:
-        "This slot is manually assigned while AMS still reports the same unregistered tray identity. Save it on the selected roll when you are ready.",
+        "This slot is manually assigned while AMS still reports the same unregistered RFID identity. Save it on the selected roll when you are ready.",
       rfidOverrideNothingToSave:
-        "No non-empty tray identity is available to save for this slot.",
+        "No non-empty RFID identity is available to save for this slot.",
       grams: "grams",
       jobOptional: "Job name (optional)",
       swapNoteOptional: "Swap note (optional)",
@@ -1201,31 +1201,31 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveAmsReading:
         "AMS refresh in progress. RFID and tray matching can look temporarily uncertain until reading finishes.",
       bambuLiveNoInventoryMatch: "No clear inventory match",
-      bambuLiveInventoryRfidMatch: "Exact tray identity match against inventory.",
+      bambuLiveInventoryRfidMatch: "Exact RFID/AMS identity match against inventory.",
       bambuLiveInventoryLikelyMatch:
         "Single likely inventory match from material/name/color.",
       bambuLiveInventoryMultipleMatches:
         "Multiple inventory rolls could match this filament.",
       bambuLiveInventoryNoRfidMatch:
-        "Observed tray identity did not match anything in inventory.",
+        "Observed RFID/AMS identity did not match anything in inventory.",
       bambuLiveInventoryNoMatch: "No clear inventory match yet.",
-      bambuLiveMatchNoteExact: "Exact tray identity match against inventory.",
+      bambuLiveMatchNoteExact: "Exact RFID/AMS identity match against inventory.",
       bambuLiveMatchNoteDuplicateIdentity:
-        "Multiple inventory rolls share this saved tray identity.",
+        "Multiple inventory rolls share this saved RFID/AMS identity.",
       bambuLiveMatchNoteLastKnownGood:
-        "Showing last known good tray identity until a stronger update arrives.",
+        "Showing last known good RFID/AMS identity until a stronger update arrives.",
       bambuLiveMatchNoteDuplicateTrayIndex:
         "Multiple configured slots share this tray index.",
       bambuLiveMatchNoteUnknownIdentity:
-        "AMS reported a tray identity that is not registered in inventory.",
+        "AMS reported an RFID/AMS identity that is not registered in inventory.",
       bambuLiveMatchNotePresetSignal:
         "Filament settings preset: {preset}. This is a material/settings hint, not a roll identity.",
       bambuLiveMatchNoteConfiguredMismatch:
-        "Last known tray identity does not map cleanly to the currently configured spool.",
+        "Last known RFID/AMS identity does not map cleanly to the currently configured spool.",
       bambuLiveMatchNoteNoStoredMatch:
-        "No clear stored spool matches this last known tray identity.",
+        "No clear stored spool matches this last known RFID/AMS identity.",
       bambuLiveMatchNoteOneStoredMatch:
-        "One likely stored spool matches this last known tray identity.",
+        "One likely stored spool matches this last known RFID/AMS identity.",
       bambuLiveMatchNoteMultipleStoredMatch:
         "Multiple stored spools could match this live tray.",
       bambuLiveCapturedFieldCount: "Captured fields in this session",
@@ -2583,23 +2583,23 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveInventoryNoRfidMatch:
         "Observert RFID-identitet matchet ingenting i lageret.",
       bambuLiveInventoryNoMatch: "Ingen tydelig lagermatch ennå.",
-      bambuLiveMatchNoteExact: "Eksakt match mellom sporidentitet og lager.",
+      bambuLiveMatchNoteExact: "Eksakt match mellom RFID/AMS-identitet og lager.",
       bambuLiveMatchNoteDuplicateIdentity:
-        "Flere ruller i lageret deler denne lagrede sporidentiteten.",
+        "Flere ruller i lageret deler denne lagrede RFID/AMS-identiteten.",
       bambuLiveMatchNoteLastKnownGood:
-        "Viser sist kjente gyldige sporidentitet til en tydeligere oppdatering kommer.",
+        "Viser sist kjente gyldige RFID/AMS-identitet til en tydeligere oppdatering kommer.",
       bambuLiveMatchNoteDuplicateTrayIndex:
         "Flere konfigurerte spor deler denne sporindeksen.",
       bambuLiveMatchNoteUnknownIdentity:
-        "AMS rapporterte en sporidentitet som ikke er registrert i lageret.",
+        "AMS rapporterte en RFID/AMS-identitet som ikke er registrert i lageret.",
       bambuLiveMatchNotePresetSignal:
         "Filamentinnstillingsprofil: {preset}. Dette er et materiale-/innstillingshint, ikke en rullidentitet.",
       bambuLiveMatchNoteConfiguredMismatch:
-        "Sist kjente sporidentitet passer ikke tydelig med filamentet som er konfigurert i dette sporet.",
+        "Sist kjente RFID/AMS-identitet passer ikke tydelig med filamentet som er konfigurert i dette sporet.",
       bambuLiveMatchNoteNoStoredMatch:
-        "Ingen tydelig lagret rull matcher denne sist kjente sporidentiteten.",
+        "Ingen tydelig lagret rull matcher denne sist kjente RFID/AMS-identiteten.",
       bambuLiveMatchNoteOneStoredMatch:
-        "Én sannsynlig lagret rull matcher denne sist kjente sporidentiteten.",
+        "Én sannsynlig lagret rull matcher denne sist kjente RFID/AMS-identiteten.",
       bambuLiveMatchNoteMultipleStoredMatch:
         "Flere lagrede ruller kan passe dette live-sporet.",
       bambuLiveCapturedFieldCount: "Fangede felt i denne sesjonen",

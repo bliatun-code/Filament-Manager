@@ -502,7 +502,7 @@ export function usePrinterSlotInteractions({
       setError(
         t(
           "printers.rfidOverrideNothingToSave",
-          "No non-empty tray identity is available to save for this slot.",
+          "No non-empty RFID identity is available to save for this slot.",
         ),
       );
       return;

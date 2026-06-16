@@ -349,7 +349,7 @@ Sjekk dette først:
 - Printeren må være en Bambu-printer med Live Bambu status aktivert.
 - Printeren må være lagt inn med riktig AMS-oppsett.
 - Rullen bør være registrert i Lager før du lagrer RFID på den.
-- Rullen må stå i en AMS-slot der live-panelet faktisk ser en observert tray-identitet.
+- Rullen må stå i en AMS-slot der live-panelet faktisk ser en observert RFID/AMS-identitet.
 - Hvis du bruker Vert/Klient, bør RFID registreres mot vertens bibliotek, ikke en frakoblet klientcache.
 
 #### Hva du bør kontrollere
@@ -359,7 +359,7 @@ Når du åpner RFID-panelet på en rull, kan programmet vise mulige live-spor og
 - riktig printer
 - riktig AMS og spor
 - riktig farge eller materialhint
-- observert RFID/tray-id finnes
+- observert RFID/AMS-id finnes
 - programmet viser riktig kandidat eller ingen farlig konflikt
 
 Hvis flere ruller kan være samme kandidat, er det bedre å stoppe og rydde manuelt enn å lagre feil RFID. Feil RFID på en rull kan føre til at AMS-automatikken senere velger feil rull.
@@ -405,8 +405,8 @@ Når den er aktiv, kan programmet observere:
 
 - AMS-slot som er lastet eller tom
 - materiale, farge og leverandørdata som printeren rapporterer
-- RFID/tray-identitet når tilgjengelig
-- Bambu/Studio-filamentinnstillingsprofil som `tray_info_idx`, `tray_id_name` og anbefalt nozzle-område når printeren sender dette
+- RFID/AMS-identitet når tilgjengelig
+- Bambu Studio-filamentinnstillingsprofil som `tray_info_idx`, `tray_id_name` og anbefalt nozzle-område når printeren sender dette
 - beregnet gjenværende vekt fra AMS
 - printerens jobbstatus og AMS-statuskoder når de finnes i MQTT-strømmen
 - subtask/jobbid og navn når printeren sender dette
@@ -414,7 +414,7 @@ Når den er aktiv, kan programmet observere:
 - nozzle-temperatur
 - rå MQTT-data for diagnostikk/capture
 
-Bambu/Studio-filamentinnstillinger er ikke det samme som RFID. `tray_info_idx` og `tray_id_name` peker på printinnstillinger for et materiale/en profil, ikke en fysisk rull eller en komplett produktkatalograd. Programmet viser dette som diagnostikk og kan bruke det som svakt materialhint, men det skal ikke erstatte registrert RFID på rullen.
+Bambu Studio-filamentinnstillinger er ikke det samme som RFID. `tray_info_idx` og `tray_id_name` peker på printinnstillinger for et materiale/en profil, ikke en fysisk rull eller en komplett produktkatalograd. Programmet viser dette som diagnostikk og kan bruke det som svakt materialhint, men det skal ikke erstatte registrert RFID på rullen.
 
 Anbefalt nozzle-område fra en innstillingsprofil er også diagnostikk. Det beskriver profilens temperaturvindu, mens live nozzle-temperatur beskriver hva printeren faktisk gjør akkurat nå.
 

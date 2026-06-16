@@ -349,7 +349,7 @@ Check this first:
 - The printer must be a Bambu printer with Live Bambu status enabled.
 - The printer must be configured with the correct AMS setup.
 - The spool should already exist in Inventory before you save RFID on it.
-- The spool must be in an AMS slot where the live panel sees an observed tray identity.
+- The spool must be in an AMS slot where the live panel sees an observed RFID/AMS identity.
 - If you use Host/Client mode, register RFID against the host library, not a disconnected client cache.
 
 #### What to Verify
@@ -359,7 +359,7 @@ When you open the RFID panel for a spool, the app may show possible live slots a
 - correct printer
 - correct AMS and slot
 - correct color or material hint
-- observed RFID/tray id exists
+- observed RFID/AMS id exists
 - the app shows the correct candidate, or at least no dangerous conflict
 
 If several spools could be the same candidate, stop and resolve it manually instead of saving the wrong RFID. Incorrect RFID on a spool can cause AMS automation to select the wrong spool later.
@@ -405,8 +405,8 @@ When active, the app can observe:
 
 - AMS slot loaded or empty state
 - material, color, and vendor data reported by the printer
-- RFID/tray identity when available
-- Bambu/Studio filament settings profile hints such as `tray_info_idx`, `tray_id_name`, and recommended nozzle range when the printer sends them
+- RFID/AMS identity when available
+- Bambu Studio filament settings profile hints such as `tray_info_idx`, `tray_id_name`, and recommended nozzle range when the printer sends them
 - estimated remaining AMS weight
 - printer job state and AMS status codes when they appear in the MQTT stream
 - subtask/job id and name when the printer sends it
@@ -414,7 +414,7 @@ When active, the app can observe:
 - nozzle temperature
 - raw MQTT data for diagnostics/capture
 
-Bambu/Studio filament settings data is not the same as RFID. `tray_info_idx` and `tray_id_name` point to print settings for a material/profile, not a physical spool or a complete product catalog entry. The app shows this for diagnostics and can treat it as a weak material hint, but it should not replace saved RFID on the spool.
+Bambu Studio filament settings data is not the same as RFID. `tray_info_idx` and `tray_id_name` point to print settings for a material/profile, not a physical spool or a complete product catalog entry. The app shows this for diagnostics and can treat it as a weak material hint, but it should not replace saved RFID on the spool.
 
 Recommended nozzle range from a settings profile is also diagnostic data. It describes the profile's temperature window, while live nozzle temperature describes what the printer is actually doing right now.
 

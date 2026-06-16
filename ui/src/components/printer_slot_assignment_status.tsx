@@ -62,7 +62,7 @@ export function PrinterSlotAssignmentStatus({
           <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-200">
             {`${t(
               "printers.unknownLiveRfidHint",
-              "AMS reported a tray identity that is not registered in inventory.",
+              "AMS reported an RFID/AMS identity that is not registered in inventory.",
             )} ${effectiveLiveTray?.tray_uuid}`}
           </div>
         ) : null}
@@ -139,7 +139,7 @@ export function PrinterSlotAssignmentStatus({
                   )} ${effectiveLiveTray?.tray_uuid}`
                 : `${t(
                     "printers.unknownLiveRfidHint",
-                    "AMS reported a tray identity that is not registered in inventory.",
+                    "AMS reported an RFID/AMS identity that is not registered in inventory.",
                   )} ${effectiveLiveTray?.tray_uuid}`}
             </div>
           ) : null}

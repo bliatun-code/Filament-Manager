@@ -478,7 +478,7 @@ test("Bambu live inventory match descriptions stay explicit for each match state
       observedRfid: "ABC123",
       t,
     }),
-    "Exact tray identity match against inventory.",
+    "Exact RFID/AMS identity match against inventory.",
   );
   assert.equal(
     buildSettingsBambuLiveInventoryMatchDescription({
@@ -502,7 +502,7 @@ test("Bambu live inventory match descriptions stay explicit for each match state
       observedRfid: "ABC123",
       t,
     }),
-    "Observed tray identity did not match anything in inventory.",
+    "Observed RFID/AMS identity did not match anything in inventory.",
   );
   assert.equal(
     buildSettingsBambuLiveInventoryMatchDescription({

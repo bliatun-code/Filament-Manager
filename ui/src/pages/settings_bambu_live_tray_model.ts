@@ -50,7 +50,7 @@ export function buildSettingsBambuLiveInventoryMatchDescription({
   if (inventoryMatchKind === "rfid_exact") {
     return t(
       "settings.bambuLiveInventoryRfidMatch",
-      "Exact tray identity match against inventory.",
+      "Exact RFID/AMS identity match against inventory.",
     );
   }
   if (inventoryMatchKind === "metadata_single") {
@@ -68,7 +68,7 @@ export function buildSettingsBambuLiveInventoryMatchDescription({
   if (observedRfid) {
     return t(
       "settings.bambuLiveInventoryNoRfidMatch",
-      "Observed tray identity did not match anything in inventory.",
+      "Observed RFID/AMS identity did not match anything in inventory.",
     );
   }
   return t("settings.bambuLiveInventoryNoMatch", "No clear inventory match yet.");
