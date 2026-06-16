@@ -12,6 +12,7 @@ import {
   parseBambuSettingsProfileName,
   type BambuSettingsProfileNameParts,
 } from "../lib/bambu_settings_profiles";
+import { saneNozzleSettingTemp } from "../lib/bambu_nozzle_settings";
 import {
   deriveAmsRemainingGrams,
   formatAmsWeightEstimate,
@@ -190,10 +191,12 @@ export function buildSettingsBambuLiveNozzleRangeLabel({
   t: TranslateFn;
   tray?: Pick<BambuLiveObservedTray, "nozzle_temp_max_c" | "nozzle_temp_min_c"> | null;
 }): string | null {
-  const min = tray?.nozzle_temp_min_c ?? capturedTraySnapshot?.nozzleTempMinC;
-  const max = tray?.nozzle_temp_max_c ?? capturedTraySnapshot?.nozzleTempMaxC;
-  const hasMin = min != null && Number.isFinite(min);
-  const hasMax = max != null && Number.isFinite(max);
+  const min = saneNozzleSettingTemp(tray?.nozzle_temp_min_c) ??
+    saneNozzleSettingTemp(capturedTraySnapshot?.nozzleTempMinC);
+  const max = saneNozzleSettingTemp(tray?.nozzle_temp_max_c) ??
+    saneNozzleSettingTemp(capturedTraySnapshot?.nozzleTempMaxC);
+  const hasMin = min != null;
+  const hasMax = max != null;
   if (!hasMin && !hasMax) {
     return null;
   }

@@ -807,6 +807,32 @@ test("Bambu live nozzle range label formats captured filament settings", () => {
 
   assert.equal(
     buildSettingsBambuLiveNozzleRangeLabel({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({
+        nozzleTempMaxC: 240,
+        nozzleTempMinC: 190,
+      }),
+      t,
+      tray: createObservedTray({
+        nozzle_temp_max_c: 999,
+        nozzle_temp_min_c: 0,
+      }),
+    }),
+    "Nozzle range: 190-240 C",
+  );
+
+  assert.equal(
+    buildSettingsBambuLiveNozzleRangeLabel({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({
+        nozzleTempMaxC: 999,
+        nozzleTempMinC: 0,
+      }),
+      t,
+    }),
+    null,
+  );
+
+  assert.equal(
+    buildSettingsBambuLiveNozzleRangeLabel({
       capturedTraySnapshot: createDiagnosticTraySnapshot({}),
       t,
     }),

@@ -8,6 +8,7 @@ import {
   saneAmsRemainingPercent,
   saneAmsSpoolWeight,
 } from "./ams_weight_estimate";
+import { saneNozzleSettingTemp } from "./bambu_nozzle_settings";
 import { decodeTrayExistBitsSlotPresence } from "./inventory_rfid_payload";
 
 export function normalizeDiagnosticHexColor(value: string | null): string | null {
@@ -218,8 +219,12 @@ export function extractDiagnosticTraySnapshots(
       trayUuid: fieldFor("tray_uuid")?.valueText ?? null,
       trayInfoIdx: fieldFor("tray_info_idx")?.valueText ?? null,
       trayIdName: fieldFor("tray_id_name")?.valueText ?? null,
-      nozzleTempMinC: parseDiagnosticNumber(fieldFor("nozzle_temp_min")?.valueText ?? null),
-      nozzleTempMaxC: parseDiagnosticNumber(fieldFor("nozzle_temp_max")?.valueText ?? null),
+      nozzleTempMinC: saneNozzleSettingTemp(
+        parseDiagnosticNumber(fieldFor("nozzle_temp_min")?.valueText ?? null),
+      ),
+      nozzleTempMaxC: saneNozzleSettingTemp(
+        parseDiagnosticNumber(fieldFor("nozzle_temp_max")?.valueText ?? null),
+      ),
       lastSeenAt,
     };
   });

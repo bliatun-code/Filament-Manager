@@ -428,13 +428,15 @@ test("diagnostic tray helpers build fallback display trays", () => {
   assert.equal(countDiagnosticIdentitySignals(session.fields), 2);
 });
 
-test("diagnostic tray snapshots ignore implausible AMS estimates", () => {
+test("diagnostic tray snapshots ignore implausible AMS estimates and nozzle settings", () => {
   const session = updateDiagnosticCaptureSessionFromPayload({
     session: null,
     rawPayload: {
       ams: {
         tray: [
           {
+            nozzle_temp_max: 999,
+            nozzle_temp_min: 0,
             remain: 105,
             remaining_grams: -20,
             tray_sub_brands: "Basic",
@@ -452,6 +454,8 @@ test("diagnostic tray snapshots ignore implausible AMS estimates", () => {
   assert.equal(snapshot?.remainingPercent, null);
   assert.equal(snapshot?.remainingGrams, null);
   assert.equal(snapshot?.trayWeightG, null);
+  assert.equal(snapshot?.nozzleTempMinC, null);
+  assert.equal(snapshot?.nozzleTempMaxC, null);
   assert.deepEqual(buildDiagnosticDisplayTrays([], session.fields), [
     {
       ams_index: null,
