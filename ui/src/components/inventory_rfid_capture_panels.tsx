@@ -4,6 +4,7 @@ import type { InventorySpool } from "../lib/inventory_list_model";
 import {
   assessRfidCaptureMatch,
   formatCaptureTimestamp,
+  formatRfidCapturePresetName,
   rfidCaptureMatchMeta,
   type RfidCaptureField,
   type RfidCaptureSummary,
@@ -247,6 +248,7 @@ export function InventoryRfidCaptureDiagnostics({
   const { locale, t } = useI18n();
   const printerLastSeenAt =
     liveIntegration?.observed_state?.last_seen_at ?? selectedSlot?.livePrinterLastSeenAt ?? null;
+  const presetNameDisplay = formatRfidCapturePresetName(summary.trayIdName, t);
   const printerConnected = liveIntegration?.observed_state?.mqtt_connected
     ? true
     : clientReadOnly
@@ -293,7 +295,7 @@ export function InventoryRfidCaptureDiagnostics({
           />
           <RfidDetailRow
             label={t("inventory.rfidPresetName", "Preset/material name")}
-            value={summary.trayIdName}
+            value={presetNameDisplay}
             code
           />
           <RfidDetailRow

@@ -1,4 +1,5 @@
 import { neutralChipClass, semanticChipClass } from "./chip_styles";
+import { formatBambuSettingsProfileNameParts } from "./bambu_settings_profiles";
 import type { Locale } from "./i18n";
 export {
   assessRfidCaptureMatch,
@@ -122,6 +123,19 @@ export function getRfidBindingState(
 
 export function isBambuRfidVendor(vendor: string | null | undefined): boolean {
   return vendor?.trim().toLowerCase().includes("bambu") ?? false;
+}
+
+export function formatRfidCapturePresetName(
+  presetName: string | null | undefined,
+  t: (key: string, fallback: string) => string,
+): string | null {
+  const normalized = presetName?.trim();
+  if (!normalized) {
+    return null;
+  }
+  return formatBambuSettingsProfileNameParts(normalized, {
+    nozzleSuffix: t("settings.bambuLivePresetNozzleSuffix", "mm nozzle"),
+  }).join(" · ");
 }
 
 export function formatObservedAge(raw: string | null | undefined, locale: Locale): string {

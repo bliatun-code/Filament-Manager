@@ -6,6 +6,7 @@ import {
   buildSelectedRfidCaptureSnapshot,
   decodeTrayExistBitsSlotPresence,
   filterRfidCaptureSlots,
+  formatRfidCapturePresetName,
   getRfidBindingState,
   isBambuRfidVendor,
   rfidBindingCopy,
@@ -120,6 +121,21 @@ test("rfidCaptureMatchMeta maps confidence to localized chip metadata", () => {
   const exact = rfidCaptureMatchMeta("EXACT", t);
   assert.equal(exact?.label, "inventory.rfidMatchExact:Sikker");
   assert.match(exact?.className ?? "", /emerald|green|success/);
+});
+
+test("formatRfidCapturePresetName presents BambuStudio profile names as readable parts", () => {
+  const t = (_key: string, fallback: string) => fallback;
+
+  assert.equal(
+    formatRfidCapturePresetName("Bambu PLA Basic @BBL P1S 0.4 nozzle", t),
+    "Bambu PLA Basic · P1S · 0.4 mm nozzle",
+  );
+  assert.equal(
+    formatRfidCapturePresetName("Generic PLA @0.2 nozzle", t),
+    "Generic PLA · 0.2 mm nozzle",
+  );
+  assert.equal(formatRfidCapturePresetName("Bambu PLA Basic @base", t), "Bambu PLA Basic");
+  assert.equal(formatRfidCapturePresetName(null, t), null);
 });
 
 test("RFID binding state separates Bambu registration from unsupported vendors", () => {
