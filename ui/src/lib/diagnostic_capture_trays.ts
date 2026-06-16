@@ -82,10 +82,11 @@ export function extractDiagnosticTraySnapshots(
     const bitFieldFor = (name: string) => {
       const candidates =
         amsIndex == null
-          ? [`ams.${name}`]
+          ? [`ams.${name}`, `_bfm_ams_bits.${name}`]
           : [
               `ams.ams[${amsIndex}].${name}`,
               ...(amsIndex === 0 ? [`ams.${name}`] : []),
+              ...(amsIndex === 0 ? [`_bfm_ams_bits.${name}`] : []),
             ];
       return candidates.map((path) => fields.find((field) => field.path === path)).find(Boolean) ?? null;
     };

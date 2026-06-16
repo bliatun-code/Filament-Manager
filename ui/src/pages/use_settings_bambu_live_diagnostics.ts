@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { BambuLiveIntegrationEntry } from "../lib/tauri_client";
 import {
-  updateDiagnosticCaptureSessionFromPayload,
+  updateDiagnosticCaptureSessionFromObservedState,
   type DiagnosticCaptureSession,
   type DiagnosticFilterKey,
   type DiagnosticSortKey,
@@ -43,15 +43,13 @@ export function useSettingsBambuLiveDiagnostics({
       return;
     }
     const observedState = bambuLiveIntegrations[expandedBambuDetailsPrinterId]?.observed_state;
-    if (!observedState?.raw_payload_json) {
+    if (!observedState) {
       return;
     }
-    const observedAt = observedState.last_seen_at ?? new Date().toISOString();
     setDiagnosticCaptureByPrinterId((current) => {
-      const updated = updateDiagnosticCaptureSessionFromPayload({
+      const updated = updateDiagnosticCaptureSessionFromObservedState({
         session: current[expandedBambuDetailsPrinterId],
-        rawPayload: observedState.raw_payload_json,
-        observedAt,
+        observedState,
       });
       if (!updated) {
         return current;

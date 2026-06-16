@@ -66,6 +66,66 @@ test("updateDiagnosticCaptureSessionFromPayload preserves seeded sessions as cha
   assert.equal(updated.samples.at(-1)?.changeKind, "changed");
 });
 
+test("buildDiagnosticCaptureSession seeds backend observed state annotations without raw payload", () => {
+  const session = buildDiagnosticCaptureSession({
+    online: true,
+    mqtt_connected: true,
+    last_seen_at: "2026-05-15T10:00:00Z",
+    progress_percent: 64,
+    remaining_minutes: 12,
+    active_ams_index: 0,
+    active_tray_index: 2,
+    ams_humidity_index: 4,
+    job_state_code: 4,
+    ams_status_code: 769,
+    ams_status_main: 3,
+    ams_status_sub: 1,
+    ams_exist_bits: "4",
+    ams_read_done_bits: "4",
+    ams_bambu_bits: "4",
+    trays: [
+      {
+        ams_index: 0,
+        tray_index: 2,
+        loaded: true,
+        filament_type: "PETG",
+        filament_name: "Basic",
+        color_hex: "#112233",
+        remaining_percent: 44,
+        remaining_grams: 440,
+        tray_weight_g: 1000,
+        observed_rfid_tag: "tag-3",
+        tray_uuid: "uuid-3",
+      },
+    ],
+  } as never);
+
+  assert.equal(session.seededFromObservedAt, "2026-05-15T10:00:00Z");
+  assert.equal(
+    session.fields.find((field) => field.path === "_bfm_job.progress_percent")?.valueText,
+    "64",
+  );
+  assert.deepEqual(buildDiagnosticFallbackSummary(session.fields), {
+    progressPercent: 64,
+    remainingMinutes: 12,
+    activeAmsIndex: 0,
+    activeTrayIndex: 2,
+    amsHumidityIndex: 4,
+    jobStateCode: 4,
+    amsStatusCode: 769,
+    amsStatusMain: 3,
+    amsStatusSub: 1,
+  });
+
+  const [snapshot] = extractDiagnosticTraySnapshots(session.fields);
+  assert.equal(snapshot?.trayIndex, 2);
+  assert.equal(snapshot?.filamentType, "PETG");
+  assert.equal(snapshot?.remainingGrams, 440);
+  assert.equal(snapshot?.trayPresentInAms, true);
+  assert.equal(snapshot?.trayReadDone, true);
+  assert.equal(snapshot?.trayIsBambu, true);
+});
+
 test("exportDiagnosticCaptureSessionCsv writes summary and sample rows with escaping", () => {
   const session = updateDiagnosticCaptureSessionFromPayload({
     session: null,
@@ -322,5 +382,6 @@ test("diagnostic field classifier groups backend job and AMS status annotations"
   assert.equal(classifyDiagnosticField("_bfm_job.job_state_code"), "print");
   assert.equal(classifyDiagnosticField("job.job_state"), "print");
   assert.equal(classifyDiagnosticField("_bfm_ams_status.ams_status_code"), "ams");
+  assert.equal(classifyDiagnosticField("_bfm_ams_bits.tray_exist_bits"), "ams");
   assert.equal(classifyDiagnosticField("ams.ams_status"), "ams");
 });

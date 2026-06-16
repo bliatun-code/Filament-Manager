@@ -223,7 +223,14 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
     "Job state 4",
     "AMS status 3/1",
   ]);
-  assert.deepEqual(model.fallbackSummaryParts, ["43%", "17 min"]);
+  assert.deepEqual(model.fallbackSummaryParts, [
+    "43%",
+    "17 min",
+    "Tray 1",
+    "AMS humidity 3",
+    "Job state 4",
+    "AMS status 3/1",
+  ]);
   assert.deepEqual(
     model.diagnosticMetricCards.map((metric) => metric.label),
     [

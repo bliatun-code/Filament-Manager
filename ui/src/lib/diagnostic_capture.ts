@@ -110,6 +110,92 @@ export {
   normalizeDiagnosticHexColor,
 } from "./diagnostic_capture_trays";
 
+function pushObservedDiagnosticField(
+  fields: Array<{ path: string; valueText: string }>,
+  path: string,
+  value: boolean | number | string | null | undefined,
+) {
+  if (value == null) {
+    return;
+  }
+  const valueText = typeof value === "string" ? value.trim() : String(value);
+  if (!valueText) {
+    return;
+  }
+  fields.push({ path, valueText });
+}
+
+function buildObservedStateDiagnosticFields(
+  observedState: BambuLiveIntegrationEntry["config"]["observed_state"] | null | undefined,
+  options: { includeObservedTrays: boolean } = { includeObservedTrays: true },
+): Array<{ path: string; valueText: string }> {
+  if (!observedState) {
+    return [];
+  }
+
+  const fields: Array<{ path: string; valueText: string }> = [];
+  pushObservedDiagnosticField(fields, "_bfm_job.progress_percent", observedState.progress_percent);
+  pushObservedDiagnosticField(fields, "_bfm_job.remaining_minutes", observedState.remaining_minutes);
+  pushObservedDiagnosticField(fields, "_bfm_job.prepare_percent", observedState.prepare_percent);
+  pushObservedDiagnosticField(fields, "_bfm_job.print_stage", observedState.print_stage);
+  pushObservedDiagnosticField(fields, "_bfm_job.print_error_code", observedState.print_error_code);
+  pushObservedDiagnosticField(fields, "_bfm_job.job_state_code", observedState.job_state_code);
+  pushObservedDiagnosticField(fields, "_bfm_job.gcode_state", observedState.gcode_state);
+  pushObservedDiagnosticField(fields, "_bfm_job.print_type", observedState.print_type);
+  pushObservedDiagnosticField(fields, "_bfm_job.subtask_id", observedState.subtask_id);
+  pushObservedDiagnosticField(fields, "_bfm_job.subtask_name", observedState.subtask_name);
+  pushObservedDiagnosticField(fields, "_bfm_job.active_ams_index", observedState.active_ams_index);
+  pushObservedDiagnosticField(fields, "_bfm_job.active_tray_index", observedState.active_tray_index);
+  pushObservedDiagnosticField(fields, "_bfm_job.nozzle_temp_c", observedState.nozzle_temp_c);
+  pushObservedDiagnosticField(fields, "_bfm_job.bed_temp_c", observedState.bed_temp_c);
+  pushObservedDiagnosticField(fields, "_bfm_ams_status.ams_humidity_index", observedState.ams_humidity_index);
+  pushObservedDiagnosticField(fields, "_bfm_ams_status.ams_temperature_c", observedState.ams_temperature_c);
+  pushObservedDiagnosticField(fields, "_bfm_ams_status.ams_status_code", observedState.ams_status_code);
+  pushObservedDiagnosticField(fields, "_bfm_ams_status.ams_status_main", observedState.ams_status_main);
+  pushObservedDiagnosticField(fields, "_bfm_ams_status.ams_status_sub", observedState.ams_status_sub);
+  pushObservedDiagnosticField(fields, "_bfm_ams_bits.tray_reading_bits", observedState.ams_reading_bits);
+  pushObservedDiagnosticField(fields, "_bfm_ams_bits.tray_exist_bits", observedState.ams_exist_bits);
+  pushObservedDiagnosticField(fields, "_bfm_ams_bits.tray_read_done_bits", observedState.ams_read_done_bits);
+  pushObservedDiagnosticField(fields, "_bfm_ams_bits.tray_is_bbl_bits", observedState.ams_bambu_bits);
+
+  if (!options.includeObservedTrays) {
+    return fields;
+  }
+
+  for (const tray of observedState.trays ?? []) {
+    if (!Number.isFinite(tray.tray_index) || tray.tray_index < 0 || tray.tray_index >= 128) {
+      continue;
+    }
+    const amsIndex = Number.isFinite(tray.ams_index ?? 0) ? (tray.ams_index ?? 0) : 0;
+    const prefix = `ams.ams[${amsIndex}].tray[${tray.tray_index}]`;
+    pushObservedDiagnosticField(fields, `${prefix}.tag_uid`, tray.observed_rfid_tag);
+    pushObservedDiagnosticField(fields, `${prefix}.tray_uuid`, tray.tray_uuid);
+    pushObservedDiagnosticField(fields, `${prefix}.tray_info_idx`, tray.tray_info_idx);
+    pushObservedDiagnosticField(fields, `${prefix}.tray_id_name`, tray.tray_id_name);
+    pushObservedDiagnosticField(fields, `${prefix}.tray_type`, tray.filament_type);
+    pushObservedDiagnosticField(fields, `${prefix}.tray_sub_brands`, tray.filament_name);
+    pushObservedDiagnosticField(fields, `${prefix}.tray_color`, tray.color_hex);
+    pushObservedDiagnosticField(fields, `${prefix}.tray_weight`, tray.tray_weight_g);
+    pushObservedDiagnosticField(fields, `${prefix}.remain`, tray.remaining_percent);
+    pushObservedDiagnosticField(fields, `${prefix}.remaining_grams`, tray.remaining_grams);
+  }
+
+  return fields;
+}
+
+function buildFlattenedDiagnosticFields(
+  observedState: BambuLiveIntegrationEntry["config"]["observed_state"] | null | undefined,
+): Array<{ path: string; valueText: string }> {
+  const rawFields = observedState?.raw_payload_json
+    ? flattenDiagnosticFields(observedState.raw_payload_json)
+    : [];
+  const rawPaths = new Set(rawFields.map((field) => field.path));
+  const observedFields = buildObservedStateDiagnosticFields(observedState, {
+    includeObservedTrays: rawFields.length === 0,
+  }).filter((field) => !rawPaths.has(field.path));
+  return [...rawFields, ...observedFields];
+}
+
 export function flattenDiagnosticFields(
   value: unknown,
   prefix = "",
@@ -184,9 +270,7 @@ export function buildDiagnosticCaptureSession(
 ): DiagnosticCaptureSession {
   const startedAt = new Date().toISOString();
   const observedAt = observedState?.last_seen_at ?? startedAt;
-  const flattened = observedState?.raw_payload_json
-    ? flattenDiagnosticFields(observedState.raw_payload_json)
-    : [];
+  const flattened = buildFlattenedDiagnosticFields(observedState);
 
   const fields = flattened
     .map(({ path, valueText }) => ({
@@ -218,11 +302,27 @@ export function buildDiagnosticCaptureSession(
 
   return {
     startedAt,
-    seededFromObservedAt: observedState?.raw_payload_json ? observedAt : null,
-    lastCapturedAt: observedState?.raw_payload_json ? observedAt : null,
+    seededFromObservedAt: flattened.length > 0 ? observedAt : null,
+    lastCapturedAt: flattened.length > 0 ? observedAt : null,
     fields,
     samples,
   };
+}
+
+export function updateDiagnosticCaptureSessionFromObservedState(input: {
+  session: DiagnosticCaptureSession | null | undefined;
+  observedState: BambuLiveIntegrationEntry["config"]["observed_state"] | null | undefined;
+}): DiagnosticCaptureSession | null {
+  const flattened = buildFlattenedDiagnosticFields(input.observedState);
+  if (flattened.length === 0) {
+    return null;
+  }
+
+  return updateDiagnosticCaptureSessionFromFlattenedFields({
+    session: input.session,
+    flattened,
+    observedAt: input.observedState?.last_seen_at ?? new Date().toISOString(),
+  });
 }
 
 export function updateDiagnosticCaptureSessionFromPayload(input: {
@@ -235,11 +335,23 @@ export function updateDiagnosticCaptureSessionFromPayload(input: {
     return null;
   }
 
+  return updateDiagnosticCaptureSessionFromFlattenedFields({
+    session: input.session,
+    flattened,
+    observedAt: input.observedAt,
+  });
+}
+
+function updateDiagnosticCaptureSessionFromFlattenedFields(input: {
+  session: DiagnosticCaptureSession | null | undefined;
+  flattened: Array<{ path: string; valueText: string }>;
+  observedAt: string;
+}): DiagnosticCaptureSession | null {
   const existingSession = input.session ?? buildDiagnosticCaptureSession(null);
   const previousFields = new Map(existingSession.fields.map((field) => [field.path, field]));
   const nextSamples = [...existingSession.samples];
 
-  for (const { path, valueText } of flattened) {
+  for (const { path, valueText } of input.flattened) {
     const existing = previousFields.get(path);
     if (!existing) {
       previousFields.set(path, {
@@ -358,7 +470,7 @@ export function classifyDiagnosticField(path: string): DiagnosticGroupKey {
     }
     return "ams";
   }
-  if (normalized.startsWith("_bfm_ams_status") || normalized.includes("ams_status")) {
+  if (normalized.startsWith("_bfm_ams") || normalized.includes("ams_status")) {
     return "ams";
   }
   if (normalized.startsWith("tray") || normalized.includes(".tray[")) {
@@ -534,12 +646,22 @@ export function buildDiagnosticFallbackSummary(fields: DiagnosticCaptureField[])
     diagnosticFieldNumber(fields, "ams.tray_now") ?? diagnosticFieldNumber(fields, "tray_now"),
   );
   return {
-    progressPercent: diagnosticFieldNumber(fields, "mc_percent"),
-    remainingMinutes: diagnosticFieldNumber(fields, "mc_remaining_time"),
-    activeAmsIndex: activeTrayCoordinate.activeAmsIndex,
-    activeTrayIndex: activeTrayCoordinate.activeTrayIndex,
+    progressPercent:
+      diagnosticFieldNumber(fields, "mc_percent") ??
+      diagnosticFieldNumber(fields, "_bfm_job.progress_percent"),
+    remainingMinutes:
+      diagnosticFieldNumber(fields, "mc_remaining_time") ??
+      diagnosticFieldNumber(fields, "_bfm_job.remaining_minutes"),
+    activeAmsIndex:
+      activeTrayCoordinate.activeAmsIndex ??
+      diagnosticFieldNumber(fields, "_bfm_job.active_ams_index"),
+    activeTrayIndex:
+      activeTrayCoordinate.activeTrayIndex ??
+      diagnosticFieldNumber(fields, "_bfm_job.active_tray_index"),
     amsHumidityIndex:
-      diagnosticFieldNumber(fields, "ams.ams[0].humidity") ?? diagnosticFieldNumber(fields, "humidity"),
+      diagnosticFieldNumber(fields, "ams.ams[0].humidity") ??
+      diagnosticFieldNumber(fields, "humidity") ??
+      diagnosticFieldNumber(fields, "_bfm_ams_status.ams_humidity_index"),
     jobStateCode: firstDiagnosticFieldNumber(fields, [
       "_bfm_job.job_state_code",
       "job.job_state",
