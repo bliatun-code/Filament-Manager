@@ -587,6 +587,8 @@ fn assign_printer_slot_derives_unknown_live_rfid_override_on_host() {
                             chip_id: None,
                             tray_info_idx: None,
                             tray_id_name: None,
+                            nozzle_temp_min_c: None,
+                            nozzle_temp_max_c: None,
                             last_identity_seen_at: Some("2026-04-16T12:00:00Z".to_string()),
                             last_empty_seen_at: None,
                             empty_observation_count: Some(0),

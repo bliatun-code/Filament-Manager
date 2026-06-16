@@ -132,6 +132,8 @@ test("findLiveTrayForSlot can rebuild external live trays from host slot snapsho
     live_filament_name: "External spool",
     live_color_hex: "#2255AA",
     live_tray_info_idx: "EXTERNAL_PRESET",
+    live_nozzle_temp_max_c: 240,
+    live_nozzle_temp_min_c: 190,
     live_last_identity_seen_at: "2099-01-01T00:00:00Z",
     live_match_status: "unknown_from_printer",
   });
@@ -159,6 +161,8 @@ test("findLiveTrayForSlot can rebuild external live trays from host slot snapsho
     chip_id: null,
     tray_info_idx: "EXTERNAL_PRESET",
     tray_id_name: null,
+    nozzle_temp_max_c: 240,
+    nozzle_temp_min_c: 190,
     last_identity_seen_at: "2099-01-01T00:00:00Z",
     last_empty_seen_at: null,
     empty_observation_count: null,

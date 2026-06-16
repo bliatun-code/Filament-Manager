@@ -380,6 +380,8 @@ function slotLiveTrayFallback(
     chip_id: slot.live_chip_id ?? null,
     tray_info_idx: slot.live_tray_info_idx ?? null,
     tray_id_name: slot.live_tray_id_name ?? null,
+    nozzle_temp_min_c: slot.live_nozzle_temp_min_c ?? null,
+    nozzle_temp_max_c: slot.live_nozzle_temp_max_c ?? null,
     last_identity_seen_at: slot.live_last_identity_seen_at ?? null,
     last_empty_seen_at: null,
     empty_observation_count: null,

@@ -39,6 +39,8 @@ export type PrinterAmsSlotRow = {
   live_chip_id?: string | null;
   live_tray_info_idx?: string | null;
   live_tray_id_name?: string | null;
+  live_nozzle_temp_min_c?: number | null;
+  live_nozzle_temp_max_c?: number | null;
   live_filament_type?: string | null;
   live_filament_name?: string | null;
   live_color_hex?: string | null;
@@ -78,6 +80,8 @@ export type BambuLiveObservedTray = {
   chip_id?: string | null;
   tray_info_idx?: string | null;
   tray_id_name?: string | null;
+  nozzle_temp_min_c?: number | null;
+  nozzle_temp_max_c?: number | null;
   last_identity_seen_at?: string | null;
   last_empty_seen_at?: string | null;
   empty_observation_count?: number | null;

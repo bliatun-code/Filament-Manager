@@ -361,6 +361,8 @@ fn apply_live_tray_to_slot(
     slot.live_chip_id = tray.and_then(|value| value.chip_id.clone());
     slot.live_tray_info_idx = tray.and_then(|value| value.tray_info_idx.clone());
     slot.live_tray_id_name = tray.and_then(|value| value.tray_id_name.clone());
+    slot.live_nozzle_temp_min_c = tray.and_then(|value| value.nozzle_temp_min_c);
+    slot.live_nozzle_temp_max_c = tray.and_then(|value| value.nozzle_temp_max_c);
     slot.live_filament_type = tray.and_then(|value| value.filament_type.clone());
     slot.live_filament_name = tray.and_then(|value| value.filament_name.clone());
     slot.live_color_hex = tray.and_then(|value| value.color_hex.clone());

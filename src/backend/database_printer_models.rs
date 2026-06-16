@@ -43,6 +43,8 @@ pub struct PrinterAmsSlotRow {
     pub live_chip_id: Option<String>,
     pub live_tray_info_idx: Option<String>,
     pub live_tray_id_name: Option<String>,
+    pub live_nozzle_temp_min_c: Option<f64>,
+    pub live_nozzle_temp_max_c: Option<f64>,
     pub live_filament_type: Option<String>,
     pub live_filament_name: Option<String>,
     pub live_color_hex: Option<String>,
@@ -85,6 +87,10 @@ pub struct BambuLiveObservedTrayRow {
     pub chip_id: Option<String>,
     pub tray_info_idx: Option<String>,
     pub tray_id_name: Option<String>,
+    #[serde(default)]
+    pub nozzle_temp_min_c: Option<f64>,
+    #[serde(default)]
+    pub nozzle_temp_max_c: Option<f64>,
     pub last_identity_seen_at: Option<String>,
     pub last_empty_seen_at: Option<String>,
     pub empty_observation_count: Option<i64>,

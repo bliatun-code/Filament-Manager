@@ -352,6 +352,8 @@ fn merge_tray_snapshots(
                 chip_id: next.chip_id.clone(),
                 tray_info_idx: next.tray_info_idx.clone(),
                 tray_id_name: next.tray_id_name.clone(),
+                nozzle_temp_min_c: next.nozzle_temp_min_c.or(previous.nozzle_temp_min_c),
+                nozzle_temp_max_c: next.nozzle_temp_max_c.or(previous.nozzle_temp_max_c),
                 last_identity_seen_at: next.last_identity_seen_at.clone().or_else(|| {
                     carry_forward_observed_identity
                         .then(|| previous.last_identity_seen_at.clone())
@@ -1040,6 +1042,8 @@ fn merge_tray_payload(
     let chip_id = normalize_identity_text(as_string(tray.pointer("/chip_id")));
     let tray_info_idx = normalize_identity_text(as_string(tray.get("tray_info_idx")));
     let tray_id_name = normalize_identity_text(as_string(tray.get("tray_id_name")));
+    let nozzle_temp_min_c = normalize_nozzle_setting_temp(as_f64(tray.get("nozzle_temp_min")));
+    let nozzle_temp_max_c = normalize_nozzle_setting_temp(as_f64(tray.get("nozzle_temp_max")));
     let filament_type = as_string(tray.get("tray_type"));
     let filament_name = as_string(tray.get("tray_sub_brands"));
     let color_hex = normalize_color(as_string(tray.get("tray_color")));
@@ -1153,6 +1157,16 @@ fn merge_tray_payload(
         } else {
             tray_id_name.or_else(|| previous.and_then(|value| value.tray_id_name.clone()))
         },
+        nozzle_temp_min_c: if empty_by_exist_bits {
+            None
+        } else {
+            nozzle_temp_min_c.or_else(|| previous.and_then(|value| value.nozzle_temp_min_c))
+        },
+        nozzle_temp_max_c: if empty_by_exist_bits {
+            None
+        } else {
+            nozzle_temp_max_c.or_else(|| previous.and_then(|value| value.nozzle_temp_max_c))
+        },
         last_identity_seen_at: if empty_by_exist_bits {
             None
         } else if has_rfid_identity_signal {
@@ -1257,6 +1271,14 @@ fn normalize_remaining_percent(value: Option<i64>) -> Option<i64> {
 fn normalize_tray_weight(value: Option<i64>) -> Option<i64> {
     let value = value?;
     if value <= 0 {
+        return None;
+    }
+    Some(value)
+}
+
+fn normalize_nozzle_setting_temp(value: Option<f64>) -> Option<f64> {
+    let value = value?;
+    if value <= 0.0 || value > 400.0 {
         return None;
     }
     Some(value)

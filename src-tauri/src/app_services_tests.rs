@@ -682,6 +682,8 @@ fn companion_service_list_printer_overview_exposes_live_slot_snapshot() {
                         chip_id: None,
                         tray_info_idx: None,
                         tray_id_name: None,
+                        nozzle_temp_min_c: None,
+                        nozzle_temp_max_c: None,
                         last_identity_seen_at: Some("2026-04-16T14:00:00Z".to_string()),
                         last_empty_seen_at: None,
                         empty_observation_count: Some(0),
@@ -797,6 +799,8 @@ fn companion_service_keeps_flat_bambu_live_tray_on_first_ams_only() {
                         chip_id: None,
                         tray_info_idx: None,
                         tray_id_name: None,
+                        nozzle_temp_min_c: None,
+                        nozzle_temp_max_c: None,
                         last_identity_seen_at: Some("2026-04-16T14:00:00Z".to_string()),
                         last_empty_seen_at: None,
                         empty_observation_count: Some(0),
@@ -915,6 +919,8 @@ fn companion_service_maps_indexed_bambu_live_tray_to_second_ams() {
                         chip_id: None,
                         tray_info_idx: None,
                         tray_id_name: None,
+                        nozzle_temp_min_c: None,
+                        nozzle_temp_max_c: None,
                         last_identity_seen_at: Some("2026-04-16T14:00:00Z".to_string()),
                         last_empty_seen_at: None,
                         empty_observation_count: Some(0),
@@ -1036,6 +1042,8 @@ fn companion_service_list_printer_overview_maps_bambu_external_live_tray() {
                         chip_id: None,
                         tray_info_idx: Some("EXTERNAL_PRESET".to_string()),
                         tray_id_name: Some("Bambu PLA Basic @BBL P1S 0.4 nozzle".to_string()),
+                        nozzle_temp_min_c: Some(190.0),
+                        nozzle_temp_max_c: Some(240.0),
                         last_identity_seen_at: None,
                         last_empty_seen_at: None,
                         empty_observation_count: Some(0),
@@ -1071,6 +1079,8 @@ fn companion_service_list_printer_overview_maps_bambu_external_live_tray() {
             slot.live_tray_id_name.as_deref(),
             Some("Bambu PLA Basic @BBL P1S 0.4 nozzle")
         );
+        assert_eq!(slot.live_nozzle_temp_min_c, Some(190.0));
+        assert_eq!(slot.live_nozzle_temp_max_c, Some(240.0));
         assert!(slot.live_last_identity_seen_at.is_none());
         assert_eq!(slot.live_is_active, Some(true));
 

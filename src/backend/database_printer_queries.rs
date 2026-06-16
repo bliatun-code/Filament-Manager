@@ -158,6 +158,8 @@ pub(crate) fn list_printer_overview(conn: &Connection) -> InventoryResult<Vec<Pr
                 live_chip_id: None,
                 live_tray_info_idx: None,
                 live_tray_id_name: None,
+                live_nozzle_temp_min_c: None,
+                live_nozzle_temp_max_c: None,
                 live_filament_type: None,
                 live_filament_name: None,
                 live_color_hex: None,

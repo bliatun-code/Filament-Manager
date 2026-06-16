@@ -182,12 +182,14 @@ export function buildSettingsBambuLiveAmsWeightLabel({
 export function buildSettingsBambuLiveNozzleRangeLabel({
   capturedTraySnapshot,
   t,
+  tray,
 }: {
   capturedTraySnapshot: DiagnosticTraySnapshot | null;
   t: TranslateFn;
+  tray?: Pick<BambuLiveObservedTray, "nozzle_temp_max_c" | "nozzle_temp_min_c"> | null;
 }): string | null {
-  const min = capturedTraySnapshot?.nozzleTempMinC;
-  const max = capturedTraySnapshot?.nozzleTempMaxC;
+  const min = tray?.nozzle_temp_min_c ?? capturedTraySnapshot?.nozzleTempMinC;
+  const max = tray?.nozzle_temp_max_c ?? capturedTraySnapshot?.nozzleTempMaxC;
   const hasMin = min != null && Number.isFinite(min);
   const hasMax = max != null && Number.isFinite(max);
   if (!hasMin && !hasMax) {
@@ -412,6 +414,7 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
   const nozzleRangeLabel = buildSettingsBambuLiveNozzleRangeLabel({
     capturedTraySnapshot,
     t,
+    tray,
   });
   const { detailText, statusText } = buildSettingsBambuLiveTrayDisplayText({ t, tray });
   const { matchLabel, matchSwatchColor } = buildSettingsBambuLiveInventoryMatchPresentation({
