@@ -10,7 +10,16 @@ use std::collections::HashSet;
 fn infer_material_uses_prefixes() {
     assert_eq!(infer_material("PLA Basic"), "PLA");
     assert_eq!(infer_material("PA6-CF"), "PA6");
+    assert_eq!(infer_material("PA-CF"), "PA");
     assert_eq!(infer_material("PPA-CF"), "PPA");
+    assert_eq!(infer_material("PCTG"), "PCTG");
+    assert_eq!(infer_material("PPS-CF"), "PPS");
+    assert_eq!(infer_material("PVA"), "PVA");
+    assert_eq!(infer_material("Support for PLA"), "Support for PLA");
+    assert_eq!(
+        infer_material("Support For PLA/PETG"),
+        "Support for PLA/PETG"
+    );
     assert_eq!(infer_material("Custom Blend"), "CUSTOM");
 }
 
@@ -24,9 +33,13 @@ fn discovered_materials_from_bambu_product_names_are_sorted_and_complete() {
             "TPU for AMS",
             "PA6-CF",
             "PAHT-CF",
+            "PA-CF",
             "PPA-CF",
             "PET-CF",
+            "PCTG",
             "PC FR",
+            "PPS-CF",
+            "PVA",
             "ASA Aero",
             "PLA Basic",
         ]
@@ -37,13 +50,17 @@ fn discovered_materials_from_bambu_product_names_are_sorted_and_complete() {
         vec![
             "ABS".to_string(),
             "ASA".to_string(),
+            "PA".to_string(),
             "PA6".to_string(),
             "PAHT".to_string(),
             "PC".to_string(),
+            "PCTG".to_string(),
             "PET".to_string(),
             "PETG".to_string(),
             "PLA".to_string(),
             "PPA".to_string(),
+            "PPS".to_string(),
+            "PVA".to_string(),
             "TPU".to_string(),
         ]
     );

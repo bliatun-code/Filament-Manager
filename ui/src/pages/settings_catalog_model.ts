@@ -10,13 +10,20 @@ export type SettingsCatalogVendor = "Bambu" | "eSUN";
 const DEFAULT_BAMBU_REFRESH_MATERIALS = [
   "ABS",
   "ASA",
+  "PA",
   "PA6",
   "PAHT",
   "PC",
+  "PCTG",
   "PET",
   "PETG",
   "PLA",
+  "PP",
   "PPA",
+  "PPS",
+  "PVA",
+  "Support for PLA",
+  "Support for PLA/PETG",
   "TPU",
 ];
 

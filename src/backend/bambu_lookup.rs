@@ -480,17 +480,34 @@ fn discovered_materials_from_names<'a>(names: impl Iterator<Item = &'a str>) -> 
 
 fn infer_material(filament_name: &str) -> String {
     let upper = filament_name.trim().to_uppercase();
+    if upper.starts_with("SUPPORT FOR PLA/PETG") || upper.starts_with("SUPPORT FOR PLA-PETG") {
+        return "Support for PLA/PETG".to_string();
+    }
+    if upper.starts_with("SUPPORT FOR PLA") {
+        return "Support for PLA".to_string();
+    }
+
     for (prefix, value) in [
         ("PLA", "PLA"),
         ("PETG", "PETG"),
         ("ABS", "ABS"),
         ("TPU", "TPU"),
-        ("PA6", "PA6"),
         ("PAHT", "PAHT"),
+        ("PA6", "PA6"),
         ("PPA", "PPA"),
+        ("PCTG", "PCTG"),
+        ("PA", "PA"),
+        ("PPS", "PPS"),
+        ("PVA", "PVA"),
         ("PET", "PET"),
         ("PC", "PC"),
+        ("PP", "PP"),
+        ("PE", "PE"),
         ("ASA", "ASA"),
+        ("BVOH", "BVOH"),
+        ("EVA", "EVA"),
+        ("HIPS", "HIPS"),
+        ("PHA", "PHA"),
     ] {
         if upper.starts_with(prefix) {
             return value.to_string();

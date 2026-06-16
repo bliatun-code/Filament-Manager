@@ -63,13 +63,20 @@ test("settings catalog state groups vendor catalogs and material filters", () =>
   assert.deepEqual(state.bambuCatalogMaterialOptions, [
     "ABS",
     "ASA",
+    "PA",
     "PA6",
     "PAHT",
     "PC",
+    "PCTG",
     "PET",
     "PETG",
     "PLA",
+    "PP",
     "PPA",
+    "PPS",
+    "PVA",
+    "Support for PLA",
+    "Support for PLA/PETG",
     "TPU",
   ]);
   assert.deepEqual(
@@ -94,13 +101,20 @@ test("settings catalog state groups vendor catalogs and material filters", () =>
   assert.deepEqual(state.activeCatalogMaterialOptions, [
     "ABS",
     "ASA",
+    "PA",
     "PA6",
     "PAHT",
     "PC",
+    "PCTG",
     "PET",
     "PETG",
     "PLA",
+    "PP",
     "PPA",
+    "PPS",
+    "PVA",
+    "Support for PLA",
+    "Support for PLA/PETG",
     "TPU",
   ]);
   assert.deepEqual(state.activeCatalogRefreshMaterials, ["PLA"]);
