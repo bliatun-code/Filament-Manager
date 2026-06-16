@@ -313,6 +313,14 @@ test("Bambu live summary builders keep display order and omit missing values", (
     session: null,
     rawPayload: {
       ams: { humidity: "2" },
+      _bfm_ams_status: {
+        ams_status_code: 769,
+        ams_status_main: 3,
+        ams_status_sub: 1,
+      },
+      job: {
+        job_state: 4,
+      },
       mc_percent: 55,
     },
     observedAt: "2026-05-15T10:03:00Z",
@@ -320,7 +328,22 @@ test("Bambu live summary builders keep display order and omit missing values", (
 
   assert.deepEqual(
     buildSettingsBambuLiveFallbackSummaryParts(diagnosticSession?.fields ?? [], t),
-    ["55%"],
+    ["55%", "Job state 4", "AMS status 3/1"],
+  );
+
+  const rawStatusSession = updateDiagnosticCaptureSessionFromPayload({
+    session: null,
+    rawPayload: {
+      ams: {
+        ams_status: 769,
+      },
+      job_state: 2,
+    },
+    observedAt: "2026-05-15T10:03:10Z",
+  });
+  assert.deepEqual(
+    buildSettingsBambuLiveFallbackSummaryParts(rawStatusSession?.fields ?? [], t),
+    ["Job state 2", "AMS status 3/1"],
   );
 
   const indexedTraySession = updateDiagnosticCaptureSessionFromPayload({

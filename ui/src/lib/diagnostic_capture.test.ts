@@ -266,5 +266,9 @@ test("diagnostic fallback decodes packed Bambu active tray coordinates", () => {
     activeAmsIndex: 1,
     activeTrayIndex: 0,
     amsHumidityIndex: null,
+    jobStateCode: null,
+    amsStatusCode: null,
+    amsStatusMain: null,
+    amsStatusSub: null,
   });
 });

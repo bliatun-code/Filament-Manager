@@ -84,6 +84,10 @@ export type DiagnosticFallbackSummary = {
   activeAmsIndex: number | null;
   activeTrayIndex: number | null;
   amsHumidityIndex: number | null;
+  jobStateCode: number | null;
+  amsStatusCode: number | null;
+  amsStatusMain: number | null;
+  amsStatusSub: number | null;
 };
 
 export {
@@ -378,6 +382,33 @@ export function diagnosticFieldNumber(fields: DiagnosticCaptureField[], path: st
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function firstDiagnosticFieldNumber(
+  fields: DiagnosticCaptureField[],
+  paths: string[],
+): number | null {
+  for (const path of paths) {
+    const value = diagnosticFieldNumber(fields, path);
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function splitDiagnosticAmsStatusCode(statusCode: number | null): {
+  main: number;
+  sub: number;
+} | null {
+  if (statusCode == null || !Number.isFinite(statusCode) || statusCode < 0) {
+    return null;
+  }
+  const normalized = Math.trunc(statusCode);
+  return {
+    main: normalized >> 8,
+    sub: normalized & 0xff,
+  };
+}
+
 export function pushRecentDiagnosticValue(
   current: DiagnosticCaptureField["recentValues"],
   sample: { valueText: string; seenAt: string; changed: boolean },
@@ -481,6 +512,13 @@ export function decodeBambuTrayCoordinate(rawTrayIndex: number | null): {
 }
 
 export function buildDiagnosticFallbackSummary(fields: DiagnosticCaptureField[]): DiagnosticFallbackSummary {
+  const amsStatusCode = firstDiagnosticFieldNumber(fields, [
+    "_bfm_ams_status.ams_status_code",
+    "ams.ams_status",
+    "print.ams.ams_status",
+    "ams_status",
+  ]);
+  const splitAmsStatus = splitDiagnosticAmsStatusCode(amsStatusCode);
   const activeTrayCoordinate = decodeBambuTrayCoordinate(
     diagnosticFieldNumber(fields, "ams.tray_now") ?? diagnosticFieldNumber(fields, "tray_now"),
   );
@@ -491,6 +529,21 @@ export function buildDiagnosticFallbackSummary(fields: DiagnosticCaptureField[])
     activeTrayIndex: activeTrayCoordinate.activeTrayIndex,
     amsHumidityIndex:
       diagnosticFieldNumber(fields, "ams.ams[0].humidity") ?? diagnosticFieldNumber(fields, "humidity"),
+    jobStateCode: firstDiagnosticFieldNumber(fields, [
+      "_bfm_job.job_state_code",
+      "job.job_state",
+      "print.job.job_state",
+      "job_state",
+    ]),
+    amsStatusCode,
+    amsStatusMain:
+      firstDiagnosticFieldNumber(fields, ["_bfm_ams_status.ams_status_main"]) ??
+      splitAmsStatus?.main ??
+      null,
+    amsStatusSub:
+      firstDiagnosticFieldNumber(fields, ["_bfm_ams_status.ams_status_sub"]) ??
+      splitAmsStatus?.sub ??
+      null,
   };
 }
 
