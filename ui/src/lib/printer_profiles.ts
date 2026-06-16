@@ -1,3 +1,5 @@
+import supportedPrinterModelsJson from "../../../src/data/supported_printer_models.json?raw";
+
 type TranslateFn = (key: string, fallback?: string) => string;
 
 export type MultiMaterialSystemKind =
@@ -107,75 +109,62 @@ const GenericProfile: PrinterModelProfile = {
   maxSlotsPerUnit: 8,
 };
 
-const supportedPrinterModels = [
-  "Bambu Lab X1 Carbon",
-  "Bambu Lab X1",
-  "Bambu Lab X1E",
-  "Bambu Lab P1S",
-  "Bambu Lab P1P",
-  "Bambu Lab A1",
-  "Bambu Lab A1 mini",
-  "Bambu Lab A2L",
-  "Bambu Lab H2D",
-  "Bambu Lab H2D Pro",
-  "Bambu Lab H2S",
-  "Bambu Lab H2C",
-  "Bambu Lab P2S",
-  "Bambu Lab X2D",
-  "Prusa CORE One",
-  "Prusa CORE One+",
-  "Prusa XL",
-  "Prusa XL (Single Toolhead)",
-  "Prusa XL (Dual Toolhead)",
-  "Prusa XL (Five Toolhead)",
-  "Prusa MK4S",
-  "Prusa MK4",
-  "Prusa MK3.9S",
-  "Prusa MK3.9",
-  "Prusa MK3.5S",
-  "Prusa MK3.5",
-  "Prusa MINI+",
-  "Prusa i3 MK3S+",
-  "Creality K1",
-  "Creality K1 Max",
-  "Anycubic Kobra 2",
-  "Custom model",
-] as const;
-
-const exactProfiles: Record<string, PrinterModelProfile> = {
-  "bambu lab x1 carbon": BambuMultiProfile,
-  "bambu lab x1": BambuMultiProfile,
-  "bambu lab x1e": BambuMultiProfile,
-  "bambu lab p1s": BambuMultiProfile,
-  "bambu lab p1p": BambuMultiProfile,
-  "bambu lab h2d": BambuMultiProfile,
-  "bambu lab h2d pro": BambuMultiProfile,
-  "bambu lab h2s": BambuMultiProfile,
-  "bambu lab h2c": BambuMultiProfile,
-  "bambu lab p2s": BambuMultiProfile,
-  "bambu lab x2d": BambuMultiProfile,
-  "bambu lab a1": BambuA1Profile,
-  "bambu lab a1 mini": BambuA1Profile,
-  "bambu lab a2l": BambuA1Profile,
-  "prusa core one": PrusaMmuProfile,
-  "prusa core one+": PrusaMmuProfile,
-  "prusa xl": PrusaXlProfile,
-  "prusa xl (single toolhead)": PrusaXlSingleToolheadProfile,
-  "prusa xl (dual toolhead)": PrusaXlDualToolheadProfile,
-  "prusa xl (five toolhead)": PrusaXlFiveToolheadProfile,
-  "prusa mk4s": PrusaMmuProfile,
-  "prusa mk4": PrusaMmuProfile,
-  "prusa mk3.9s": PrusaMmuProfile,
-  "prusa mk3.9": PrusaMmuProfile,
-  "prusa mk3.5s": PrusaMmuProfile,
-  "prusa mk3.5": PrusaMmuProfile,
-  "prusa i3 mk3s+": PrusaMmuProfile,
-  "prusa mini+": PrusaMiniProfile,
-  "creality k1": GenericProfile,
-  "creality k1 max": GenericProfile,
-  "anycubic kobra 2": GenericProfile,
-  "custom model": GenericProfile,
+const profileByCatalogKey = {
+  bambu_multi: BambuMultiProfile,
+  bambu_a1: BambuA1Profile,
+  prusa_mmu: PrusaMmuProfile,
+  prusa_mini: PrusaMiniProfile,
+  prusa_xl: PrusaXlProfile,
+  prusa_xl_single: PrusaXlSingleToolheadProfile,
+  prusa_xl_dual: PrusaXlDualToolheadProfile,
+  prusa_xl_five: PrusaXlFiveToolheadProfile,
+  generic: GenericProfile,
 };
+
+type PrinterCatalogProfileKey = keyof typeof profileByCatalogKey;
+
+type PrinterModelCatalogEntry = {
+  model: string;
+  profile: PrinterCatalogProfileKey;
+};
+
+function isPrinterCatalogProfileKey(value: unknown): value is PrinterCatalogProfileKey {
+  return typeof value === "string" && Object.hasOwn(profileByCatalogKey, value);
+}
+
+function readPrinterModelCatalog(): PrinterModelCatalogEntry[] {
+  const parsed: unknown =
+    typeof supportedPrinterModelsJson === "string"
+      ? JSON.parse(supportedPrinterModelsJson)
+      : supportedPrinterModelsJson;
+  if (!Array.isArray(parsed)) {
+    throw new Error("Supported printer model catalog must be an array");
+  }
+  return parsed.map((entry, index) => {
+    if (
+      typeof entry !== "object" ||
+      entry == null ||
+      !("model" in entry) ||
+      !("profile" in entry) ||
+      typeof entry.model !== "string" ||
+      !isPrinterCatalogProfileKey(entry.profile)
+    ) {
+      throw new Error(`Supported printer model catalog entry ${index + 1} is invalid`);
+    }
+    return {
+      model: entry.model,
+      profile: entry.profile,
+    };
+  });
+}
+
+const printerModelCatalog = readPrinterModelCatalog();
+
+const supportedPrinterModels = printerModelCatalog.map((entry) => entry.model);
+
+const exactProfiles: Record<string, PrinterModelProfile> = Object.fromEntries(
+  printerModelCatalog.map((entry) => [normalizeModelKey(entry.model), profileByCatalogKey[entry.profile]]),
+);
 
 export function listSupportedPrinterModels(): string[] {
   return [...supportedPrinterModels];
