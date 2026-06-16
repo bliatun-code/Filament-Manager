@@ -314,6 +314,10 @@ smooth transition rolls.
   multi-material system.
 - Bambu AMS weight is treated as an estimate, not as a physical scale reading;
   live usage accounting is intentionally conservative.
+- Bambu Studio filament settings signals such as `tray_info_idx` and
+  `tray_id_name` are diagnostic material/profile hints, not physical spool
+  identity. Saved RFID/tray UUID data remains the strong identity signal for
+  automatic AMS matching.
 
 ## Stability Goals
 
