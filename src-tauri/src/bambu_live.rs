@@ -1067,7 +1067,7 @@ fn merge_tray_payload(
     let color_hex = normalize_color(as_string(tray.get("tray_color")));
     let tray_weight_g = normalize_tray_weight(as_i64(tray.get("tray_weight")));
     let remaining_percent = normalize_remaining_percent(as_i64(tray.get("remain")));
-    let has_rfid_identity_signal = tray_uuid.is_some();
+    let has_rfid_identity_signal = tray_uuid.is_some() || observed_rfid_tag.is_some();
     let has_live_observation_signal = observed_rfid_tag.is_some()
         || tray_uuid.is_some()
         || chip_id.is_some()

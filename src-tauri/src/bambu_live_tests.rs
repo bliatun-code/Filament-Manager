@@ -818,6 +818,34 @@ fn id_only_tray_payload_clears_stale_live_metadata() {
 }
 
 #[test]
+fn tag_uid_only_tray_payload_updates_last_identity_seen_at() {
+    let payload = serde_json::json!({
+        "id": "1",
+        "tag_uid": "  93883E5B5ACA4A9B  ",
+    });
+
+    let merged = merge_tray_payload(
+        None,
+        Some(0),
+        1,
+        &payload,
+        "2026-06-16T17:14:10Z",
+        Some(true),
+    );
+
+    assert!(merged.loaded);
+    assert_eq!(
+        merged.observed_rfid_tag.as_deref(),
+        Some("93883E5B5ACA4A9B")
+    );
+    assert!(merged.tray_uuid.is_none());
+    assert_eq!(
+        merged.last_identity_seen_at.as_deref(),
+        Some("2026-06-16T17:14:10Z")
+    );
+}
+
+#[test]
 fn tray_exist_bits_reads_hex_slot_presence_bits() {
     assert_eq!(tray_exist_bits_slot_present(Some("e"), 0), Some(false));
     assert_eq!(tray_exist_bits_slot_present(Some("e"), 1), Some(true));
