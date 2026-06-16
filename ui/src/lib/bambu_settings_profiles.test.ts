@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   formatBambuSettingsProfileNameParts,
+  formatBambuSettingsProfileSignal,
   parseBambuSettingsProfileName,
 } from "./bambu_settings_profiles";
 
@@ -51,4 +52,23 @@ test("parseBambuSettingsProfileName keeps unstructured names intact", () => {
     rawName: "Generic PLA",
   });
   assert.equal(parseBambuSettingsProfileName("   "), null);
+});
+
+test("formatBambuSettingsProfileSignal joins setting id and readable profile parts", () => {
+  assert.equal(
+    formatBambuSettingsProfileSignal(
+      "GFSA00_04",
+      "Bambu PLA Basic @BBL P1S 0.4 nozzle",
+    ),
+    "GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle",
+  );
+  assert.equal(
+    formatBambuSettingsProfileSignal("GENERIC_PLA_02", "Generic PLA @0.2 nozzle", {
+      nozzleSuffix: "mm dyse",
+    }),
+    "GENERIC_PLA_02 · Generic PLA · 0.2 mm dyse",
+  );
+  assert.equal(formatBambuSettingsProfileSignal("GFSA00_04", null), "GFSA00_04");
+  assert.equal(formatBambuSettingsProfileSignal(null, "Bambu PLA Basic @base"), "Bambu PLA Basic");
+  assert.equal(formatBambuSettingsProfileSignal(" ", " "), null);
 });

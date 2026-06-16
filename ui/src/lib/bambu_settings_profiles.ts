@@ -63,3 +63,14 @@ export function formatBambuSettingsProfileNameParts(
     parsed.nozzleDiameterMm ? `${parsed.nozzleDiameterMm} ${nozzleSuffix}` : null,
   ].filter((value): value is string => Boolean(value));
 }
+
+export function formatBambuSettingsProfileSignal(
+  settingId: string | null | undefined,
+  rawName: string | null | undefined,
+  options: { nozzleSuffix?: string } = {},
+): string | null {
+  const settingIdPart = settingId?.trim() ?? "";
+  const nameParts = formatBambuSettingsProfileNameParts(rawName, options);
+  const parts = [settingIdPart, ...nameParts].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}

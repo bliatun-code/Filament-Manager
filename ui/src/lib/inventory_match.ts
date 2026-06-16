@@ -1,5 +1,5 @@
 import { normalizeSwatchValue, parseSwatchSpec } from "./color_utils";
-import { formatBambuSettingsProfileNameParts } from "./bambu_settings_profiles";
+import { formatBambuSettingsProfileSignal } from "./bambu_settings_profiles";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
 export type InventoryMatchResult =
@@ -90,10 +90,9 @@ function formatSettingsPresetSignal(
   }
   const settingId = (match[1] ?? "").trim();
   const profileName = (match[2] ?? "").trim();
-  const profileParts = formatBambuSettingsProfileNameParts(profileName, {
+  return formatBambuSettingsProfileSignal(settingId, profileName, {
     nozzleSuffix: t("settings.bambuLivePresetNozzleSuffix", "mm nozzle"),
-  });
-  return [settingId, ...profileParts].filter(Boolean).join(" · ") || presetSignal;
+  }) ?? presetSignal;
 }
 
 export function buildInventoryMatchResult(

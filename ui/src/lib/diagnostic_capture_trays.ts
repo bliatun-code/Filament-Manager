@@ -1,6 +1,6 @@
 import type { BambuLiveObservedTray } from "./tauri_client";
 import type { DiagnosticCaptureField, DiagnosticTraySnapshot } from "./diagnostic_capture";
-import { formatBambuSettingsProfileNameParts } from "./bambu_settings_profiles";
+import { formatBambuSettingsProfileSignal } from "./bambu_settings_profiles";
 
 export function normalizeDiagnosticHexColor(value: string | null): string | null {
   const normalized = value?.trim().replace(/^#/, "") ?? "";
@@ -139,12 +139,7 @@ export function buildDiagnosticDisplayTrays(
   }
   return extractDiagnosticTraySnapshots(fields).map((tray) => {
     const identityNote = [tray.tagUid, tray.trayUuid].filter(Boolean).join(" · ");
-    const presetNote = [
-      tray.trayInfoIdx,
-      ...formatBambuSettingsProfileNameParts(tray.trayIdName),
-    ]
-      .filter(Boolean)
-      .join(" · ");
+    const presetNote = formatBambuSettingsProfileSignal(tray.trayInfoIdx, tray.trayIdName);
     const nozzleRangeNote = formatDiagnosticNozzleRange(
       tray.nozzleTempMinC,
       tray.nozzleTempMaxC,

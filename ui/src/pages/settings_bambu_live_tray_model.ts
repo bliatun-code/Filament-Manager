@@ -8,7 +8,7 @@ import {
   type InventoryMatchResult,
 } from "../lib/inventory_match";
 import {
-  formatBambuSettingsProfileNameParts,
+  formatBambuSettingsProfileSignal,
   parseBambuSettingsProfileName,
   type BambuSettingsProfileNameParts,
 } from "../lib/bambu_settings_profiles";
@@ -102,15 +102,6 @@ export type SettingsBambuLivePresetNameParts = BambuSettingsProfileNameParts;
 
 export const parseSettingsBambuLivePresetName = parseBambuSettingsProfileName;
 
-function formatSettingsBambuLivePresetNameParts(
-  rawName: string,
-  t: TranslateFn,
-): string[] {
-  return formatBambuSettingsProfileNameParts(rawName, {
-    nozzleSuffix: t("settings.bambuLivePresetNozzleSuffix", "mm nozzle"),
-  });
-}
-
 export function buildSettingsBambuLivePresetSignalLabel({
   capturedTraySnapshot,
   t,
@@ -124,14 +115,13 @@ export function buildSettingsBambuLivePresetSignalLabel({
     tray.tray_info_idx?.trim() || capturedTraySnapshot?.trayInfoIdx?.trim() || "";
   const trayIdName =
     tray.tray_id_name?.trim() || capturedTraySnapshot?.trayIdName?.trim() || "";
-  const presetParts = [
-    trayInfoIdx,
-    ...(trayIdName ? formatSettingsBambuLivePresetNameParts(trayIdName, t) : []),
-  ].filter(Boolean);
-  if (presetParts.length === 0) {
+  const presetSignal = formatBambuSettingsProfileSignal(trayInfoIdx, trayIdName, {
+    nozzleSuffix: t("settings.bambuLivePresetNozzleSuffix", "mm nozzle"),
+  });
+  if (!presetSignal) {
     return null;
   }
-  return `${t("settings.bambuLivePresetSignal", "Filament settings preset")}: ${presetParts.join(" · ")}`;
+  return `${t("settings.bambuLivePresetSignal", "Filament settings preset")}: ${presetSignal}`;
 }
 
 function formatNozzleTemperature(value: number): string {
