@@ -718,6 +718,18 @@ test("Bambu live preset signal label prefers live state and falls back to captur
 
   assert.equal(
     buildSettingsBambuLivePresetSignalLabel({
+      capturedTraySnapshot: null,
+      t,
+      tray: createObservedTray({
+        tray_id_name: "Bambu Support For PLA/PETG @BBL X2D 0.4 nozzle",
+        tray_info_idx: "GFSPETG_04",
+      }),
+    }),
+    "Filament settings preset: GFSPETG_04 · Bambu Support For PLA/PETG · X2D · 0.4 mm nozzle",
+  );
+
+  assert.equal(
+    buildSettingsBambuLivePresetSignalLabel({
       capturedTraySnapshot: createDiagnosticTraySnapshot({
         trayIdName: "Capture preset",
         trayInfoIdx: "CAPTURE_PRESET",
