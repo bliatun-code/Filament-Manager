@@ -22,6 +22,45 @@ test("parseBambuSettingsProfileName separates BBL printer and nozzle parts", () 
   });
 });
 
+test("parseBambuSettingsProfileName supports current BambuStudio printer profile shapes", () => {
+  assert.deepEqual(parseBambuSettingsProfileName("Bambu PLA Pure @BBL A2L 0.2 nozzle"), {
+    filamentProfile: "Bambu PLA Pure",
+    nozzleDiameterMm: "0.2",
+    printerProfile: "A2L",
+    rawName: "Bambu PLA Pure @BBL A2L 0.2 nozzle",
+  });
+  assert.deepEqual(parseBambuSettingsProfileName("Generic PETG HF @BBL H2DP 0.2 nozzle"), {
+    filamentProfile: "Generic PETG HF",
+    nozzleDiameterMm: "0.2",
+    printerProfile: "H2DP",
+    rawName: "Generic PETG HF @BBL H2DP 0.2 nozzle",
+  });
+  assert.deepEqual(parseBambuSettingsProfileName("Bambu PLA Galaxy @BBL X2D 0.4 nozzle"), {
+    filamentProfile: "Bambu PLA Galaxy",
+    nozzleDiameterMm: "0.4",
+    printerProfile: "X2D",
+    rawName: "Bambu PLA Galaxy @BBL X2D 0.4 nozzle",
+  });
+});
+
+test("parseBambuSettingsProfileName keeps vendor and support profile names readable", () => {
+  assert.deepEqual(parseBambuSettingsProfileName("eSUN PLA+ @BBL X1C 0.2 nozzle"), {
+    filamentProfile: "eSUN PLA+",
+    nozzleDiameterMm: "0.2",
+    printerProfile: "X1C",
+    rawName: "eSUN PLA+ @BBL X1C 0.2 nozzle",
+  });
+  assert.deepEqual(
+    parseBambuSettingsProfileName("Bambu Support For PLA-PETG @BBL H2C 0.2 nozzle"),
+    {
+      filamentProfile: "Bambu Support For PLA-PETG",
+      nozzleDiameterMm: "0.2",
+      printerProfile: "H2C",
+      rawName: "Bambu Support For PLA-PETG @BBL H2C 0.2 nozzle",
+    },
+  );
+});
+
 test("parseBambuSettingsProfileName supports generic nozzle-only profiles", () => {
   assert.deepEqual(parseBambuSettingsProfileName("Generic PLA @0.2 nozzle"), {
     filamentProfile: "Generic PLA",
