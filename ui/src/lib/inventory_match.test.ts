@@ -212,6 +212,13 @@ test("translateObservedMatchNote localizes known notes and preserves unknown not
   );
   assert.equal(
     translateObservedMatchNote(
+      "AMS reported a tray identity that is not registered in inventory. Filament settings preset GFSA00_17 (Bambu PLA Basic @BBL H2DP 0.4 nozzle) was observed via tray_info_idx; this is a material/settings hint, not a roll identity.",
+      t,
+    ),
+    "settings.bambuLiveMatchNoteUnknownIdentity:AMS reported an RFID/AMS identity that is not registered in inventory. settings.bambuLiveMatchNotePresetSignal:Filament settings preset: GFSA00_17 · Bambu PLA Basic · H2D Pro · 0.4 mm nozzle. This is a material/settings hint, not a roll identity.",
+  );
+  assert.equal(
+    translateObservedMatchNote(
       "AMS reported a tray identity that is not registered in inventory. Filament settings preset GENERIC_PLA_02 (Generic PLA @0.2 nozzle) was observed via tray_info_idx; this is a material/settings hint, not a roll identity.",
       t,
     ),
