@@ -1,6 +1,6 @@
 use super::{
     append_known_entries_for_product_url, build_known_entry_lookup, decode_js_string_literal,
-    discovered_materials_from_names, extract_product_list, infer_material,
+    bambu_material_families, discovered_materials_from_names, extract_product_list, infer_material,
     normalize_material_filters, official_bambu_hex_codes, resolve_bambu_hex, BambuCatalogEntry,
     BambuKnownCatalogEntry,
 };
@@ -86,6 +86,61 @@ fn discovered_materials_from_bambu_product_names_are_sorted_and_complete() {
             "TPU".to_string(),
         ]
     );
+}
+
+#[test]
+fn bambu_material_family_table_is_unique_and_ordered_by_specificity() {
+    let families = bambu_material_families();
+    assert!(!families.is_empty(), "Bambu material family table is empty");
+
+    let mut seen_materials = HashSet::new();
+    let mut seen_prefixes = HashSet::new();
+    let mut flattened_prefixes: Vec<(String, String)> = Vec::new();
+    for (family_index, family) in families.iter().enumerate() {
+        assert!(
+            !family.material.trim().is_empty(),
+            "empty Bambu material family name at index {family_index}"
+        );
+        assert!(
+            seen_materials.insert(family.material.trim().to_uppercase()),
+            "duplicate Bambu material family {}",
+            family.material
+        );
+        assert!(
+            !family.prefixes.is_empty(),
+            "Bambu material family {} has no prefixes",
+            family.material
+        );
+        for prefix in &family.prefixes {
+            assert!(
+                prefix == prefix.trim(),
+                "Bambu material prefix has surrounding whitespace: {prefix:?}"
+            );
+            assert!(
+                !prefix.is_empty(),
+                "empty Bambu material prefix for {}",
+                family.material
+            );
+            let normalized = prefix.to_uppercase();
+            assert!(
+                seen_prefixes.insert(normalized.clone()),
+                "duplicate Bambu material prefix {}",
+                prefix
+            );
+            flattened_prefixes.push((family.material.clone(), normalized));
+        }
+    }
+
+    for (left_position, (left_material, left_prefix)) in flattened_prefixes.iter().enumerate() {
+        for (right_material, right_prefix) in flattened_prefixes.iter().skip(left_position + 1) {
+            assert!(
+                !right_prefix.starts_with(left_prefix),
+                "Bambu material prefix {left_prefix:?} for {left_material} shadows \
+                 later prefix {right_prefix:?} for {right_material}; put the more \
+                 specific prefix first"
+            );
+        }
+    }
 }
 
 #[test]
