@@ -3,6 +3,8 @@ use std::collections::HashSet;
 
 const SUPPORTED_PRINTER_MODELS_JSON: &str =
     include_str!("../../src/data/supported_printer_models.json");
+const BAMBU_STUDIO_PRINTER_PROFILE_CODES_JSON: &str =
+    include_str!("../../src/data/bambu_studio_printer_profile_codes.json");
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -97,7 +99,7 @@ pub(crate) fn supported_printer_models() -> Vec<String> {
 mod tests {
     use super::{
         parse_supported_printer_model_catalog, supported_printer_models,
-        SUPPORTED_PRINTER_MODELS_JSON,
+        BAMBU_STUDIO_PRINTER_PROFILE_CODES_JSON, SUPPORTED_PRINTER_MODELS_JSON,
     };
     use std::collections::HashSet as TestHashSet;
 
@@ -136,14 +138,14 @@ mod tests {
             .iter()
             .filter_map(|entry| entry.bambu_studio_code.as_deref())
             .collect();
+        let expected_codes =
+            serde_json::from_str::<Vec<String>>(BAMBU_STUDIO_PRINTER_PROFILE_CODES_JSON)
+                .expect("Bambu Studio printer profile codes should parse");
 
-        for expected in [
-            "X1C", "X1", "X1E", "P1S", "P1P", "A1", "A1M", "A2L", "H2D", "H2DP", "H2S", "H2C",
-            "P2S", "X2D",
-        ] {
-            assert!(codes.contains(expected), "{expected}");
+        for expected in &expected_codes {
+            assert!(codes.contains(expected.as_str()), "{expected}");
         }
-        assert_eq!(codes.len(), 14);
+        assert_eq!(codes.len(), expected_codes.len());
     }
 
     #[test]

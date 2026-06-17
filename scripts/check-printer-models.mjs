@@ -5,6 +5,12 @@ import { resolve } from "node:path";
 
 const repoRoot = resolve(".");
 const printerModelsPath = resolve(repoRoot, "src", "data", "supported_printer_models.json");
+const bambuStudioCodesPath = resolve(
+  repoRoot,
+  "src",
+  "data",
+  "bambu_studio_printer_profile_codes.json",
+);
 const supportedProfiles = new Set([
   "bambu_multi",
   "bambu_a1",
@@ -16,23 +22,6 @@ const supportedProfiles = new Set([
   "prusa_xl_five",
   "generic",
 ]);
-const currentBambuStudioCodes = new Set([
-  "A1",
-  "A1M",
-  "A2L",
-  "H2C",
-  "H2D",
-  "H2DP",
-  "H2S",
-  "P1P",
-  "P1S",
-  "P2S",
-  "X1",
-  "X1C",
-  "X1E",
-  "X2D",
-]);
-
 function fail(message) {
   console.error(`Printer model check failed: ${message}`);
   process.exit(1);
@@ -43,8 +32,25 @@ function nonEmptyString(value) {
 }
 
 const models = JSON.parse(readFileSync(printerModelsPath, "utf8"));
+const currentBambuStudioCodes = JSON.parse(readFileSync(bambuStudioCodesPath, "utf8"));
 if (!Array.isArray(models) || models.length === 0) {
   fail("supported_printer_models.json must contain a non-empty array");
+}
+if (
+  !Array.isArray(currentBambuStudioCodes) ||
+  currentBambuStudioCodes.length === 0 ||
+  currentBambuStudioCodes.some((code) => !nonEmptyString(code))
+) {
+  fail("bambu_studio_printer_profile_codes.json must contain non-empty codes");
+}
+
+const normalizedCurrentBambuStudioCodes = new Set();
+for (const code of currentBambuStudioCodes) {
+  const normalized = code.trim().toUpperCase();
+  if (normalizedCurrentBambuStudioCodes.has(normalized)) {
+    fail(`bambu_studio_printer_profile_codes.json duplicates ${normalized}`);
+  }
+  normalizedCurrentBambuStudioCodes.add(normalized);
 }
 
 const seenModels = new Set();
@@ -87,7 +93,7 @@ for (const [index, entry] of models.entries()) {
   }
 }
 
-for (const code of currentBambuStudioCodes) {
+for (const code of normalizedCurrentBambuStudioCodes) {
   if (!seenBambuCodes.has(code)) {
     errors.push(`missing current Bambu Studio printer code ${code}`);
   }
