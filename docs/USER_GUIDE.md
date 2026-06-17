@@ -273,6 +273,21 @@ Typical flow:
 
 For catalog-based spools, the app fills material, color, vendor, default weight, and swatch when those data exist. For manual spools, you enter those details yourself.
 
+### Bambu Filament Code
+
+Bambu boxes include a five digit `Filament Code` on the box label, for example `53400`.
+
+In the Bambu source flow:
+
+- type or paste the code in the catalog search field to select one matching active catalog item
+- choose manually if the same code appears on several active catalog items
+- review discontinued-only matches before adding stock
+- use manual entry if no catalog item uses the code yet
+
+Desktop/client also has a batch Filament Code area in the Bambu flow. Paste one code per line, or scan codes with any scanner that behaves like keyboard input. The app lists which rows are ready and only creates the rows with a single active catalog match. Ambiguous, discontinued-only, invalid, or missing codes stay visible for manual review.
+
+Batch-created Bambu spools use the stock details on the right side of the modal, including ownership, owner/contact fields for Borrowed in, weight, and location. Companion/webapp uses the same catalog matching rules for manual code lookup, but does not use camera or webcam scanning.
+
 ### Owned Filament
 
 Owned means the spool belongs to this library.

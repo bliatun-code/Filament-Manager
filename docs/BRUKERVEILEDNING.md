@@ -273,6 +273,21 @@ Typisk flyt:
 
 For katalogbaserte ruller fyller programmet ut materiale, farge, leverandør, standardvekt og swatch der data finnes. For manuelle ruller skriver du inn dette selv.
 
+### Bambu Filament Code
+
+Bambu-esker har en femsifret `Filament Code` på eskeetiketten, for eksempel `53400`.
+
+I Bambu-flyten:
+
+- skriv eller lim inn koden i katalogsøket for å velge én aktiv katalogmatch
+- velg manuelt hvis samme kode finnes på flere aktive katalogelementer
+- kontroller treff som bare finnes på utgåtte katalogelementer før du legger til lager
+- bruk manuell registrering hvis ingen katalogelementer bruker koden ennå
+
+Desktop/client har også et batchfelt for Filament Code i Bambu-flyten. Lim inn én kode per linje, eller skann koder med en skanner som oppfører seg som tastatur. Programmet viser hvilke rader som er klare og oppretter bare radene som har ett aktivt katalogtreff. Tvetydige, utgåtte, ugyldige eller manglende koder blir stående for manuell vurdering.
+
+Batch-opprettede Bambu-ruller bruker lagerdetaljene på høyre side av modalen, inkludert eierskap, eier/kontakt for Innlånt, vekt og plassering. Companion/webapp bruker samme kataloglogikk for manuelt kodeoppslag, men bruker ikke kamera eller webcam-scanning.
+
 ### Eid filament
 
 Eid betyr at rullen tilhører vårt bibliotek.
