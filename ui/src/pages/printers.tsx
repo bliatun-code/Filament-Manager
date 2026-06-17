@@ -50,6 +50,7 @@ export default function PrintersPage() {
     printers,
     spools,
     bambuLiveIntegrations,
+    catalogMasters,
     clientPrinterSource,
     clientPrinterUpdatedAt,
     printerModels,
@@ -130,6 +131,8 @@ export default function PrintersPage() {
     openEmptySlotWeightDialog,
     openIncomingWeightDialog,
     openRfidOverrideDialog,
+    registerLiveRfidCandidate,
+    createLiveBambuCatalogSpool,
     openWeightPromptForDraft,
     outgoingWeightValue,
     resetPrinterInteractionState,
@@ -247,8 +250,10 @@ export default function PrintersPage() {
             clientPrinterSource={clientPrinterSource}
             resolvedTheme={resolvedTheme}
             bambuLiveIntegrations={bambuLiveIntegrations}
+            catalogMasters={catalogMasters}
             openDropdownSlotId={openDropdownSlotId}
             setOpenDropdownSlotId={setOpenDropdownSlotId}
+            spools={spools}
             allowedSpoolsForSlot={allowedSpoolsForSlot}
             findAllowedSpoolForSlot={findAllowedSpoolForSlot}
             getSlotDraft={getSlotDraft}
@@ -257,6 +262,8 @@ export default function PrintersPage() {
             openIncomingWeightDialog={openIncomingWeightDialog}
             openEmptySlotWeightDialog={openEmptySlotWeightDialog}
             openRfidOverrideDialog={openRfidOverrideDialog}
+            registerLiveRfidCandidate={registerLiveRfidCandidate}
+            createLiveBambuCatalogSpool={createLiveBambuCatalogSpool}
             openWeightPromptForDraft={openWeightPromptForDraft}
           />
         ))}

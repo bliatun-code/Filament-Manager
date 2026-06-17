@@ -32,10 +32,14 @@ function spool(id: string, status = "IN_STOCK", vendor = "Generic"): SpoolWithMa
   };
 }
 
-function slot(slotId: string, spoolId?: string | null): PrinterAmsSlotRow {
+function slot(
+  slotId: string,
+  spoolId?: string | null,
+  amsId = "ams_0",
+): PrinterAmsSlotRow {
   return {
     slot_id: slotId,
-    ams_id: "ams_0",
+    ams_id: amsId,
     slot_index: 0,
     spool_id: spoolId,
   };
@@ -71,6 +75,24 @@ test("buildPrinterPageSummary counts configured and loaded slots", () => {
     printerCount: 2,
     loadedSlots: 2,
     totalSlots: 3,
+  });
+});
+
+test("buildPrinterPageSummary ignores EXT readiness when multi-material slots exist", () => {
+  const summary = buildPrinterPageSummary([
+    printer("p1", [
+      slot("ext", "spool-ext", "p1_ext"),
+      slot("ams-1", "spool-1", "p1_ams_1"),
+      slot("ams-2", null, "p1_ams_1"),
+      slot("ams-3", "", "p1_ams_1"),
+    ]),
+    printer("p2", [slot("ext-only", "spool-ext-only", "p2_ext")]),
+  ]);
+
+  assert.deepEqual(summary, {
+    printerCount: 2,
+    loadedSlots: 2,
+    totalSlots: 4,
   });
 });
 

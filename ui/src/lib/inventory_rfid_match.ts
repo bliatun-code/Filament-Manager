@@ -1,4 +1,4 @@
-import { semanticChipClass } from "./chip_styles";
+import { inlineStatusSignalClass } from "./chip_styles";
 import { hexToRgb, parseSwatchSpec, toSwatchColor } from "./color_utils";
 import type { InventorySpool } from "./inventory_list_model";
 import type { RfidCaptureSummary } from "./inventory_rfid_capture";
@@ -65,14 +65,14 @@ export function rfidCaptureMatchMeta(
     return {
       label: t("inventory.rfidMatchExact", "Sikker"),
       hint: t("inventory.rfidMatchExactHint", "Materiale og HEX-farge stemmer."),
-      className: semanticChipClass("success", "px-2 py-0.5 text-[10px]"),
+      className: inlineStatusSignalClass("success", "text-[10px]"),
     };
   }
   if (confidence === "PARTIAL") {
     return {
       label: t("inventory.rfidMatchPartial", "Partial"),
       hint: t("inventory.rfidMatchPartialHint", "Materiale stemmer, og fargen er nær katalogfargen."),
-      className: semanticChipClass("warning", "px-2 py-0.5 text-[10px]"),
+      className: inlineStatusSignalClass("warning", "text-[10px]"),
     };
   }
   return null;

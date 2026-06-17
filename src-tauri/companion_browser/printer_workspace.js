@@ -22,6 +22,191 @@ function formatLiveRemainingPercent(value) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100 ? `${value}%` : "";
 }
 
+function finiteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function formatTemperature(value) {
+  const parsed = finiteNumber(value);
+  return parsed == null ? "" : `${Math.round(parsed)} °C`;
+}
+
+function formatAmsTemperature(value) {
+  const parsed = finiteNumber(value);
+  if (parsed == null || parsed < -20 || parsed > 80) {
+    return "";
+  }
+  return formatTemperature(parsed);
+}
+
+function formatRemainingMinutes(value, locale) {
+  const parsed = finiteNumber(value);
+  if (parsed == null || parsed < 0) {
+    return "";
+  }
+  const minutes = Math.round(parsed);
+  if (minutes < 60) {
+    return `${minutes} ${t(locale, "common.minutes", "min")}`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes === 0
+    ? `${hours} ${t(locale, "common.hoursShort", "h")}`
+    : `${hours} ${t(locale, "common.hoursShort", "h")} ${remainingMinutes} ${t(locale, "common.minutes", "min")}`;
+}
+
+const HUMIDITY_LETTERS = ["A", "B", "C", "D", "E"];
+
+function normalizeAmsHumidityIndex(value) {
+  const parsed = finiteNumber(value);
+  if (parsed == null) {
+    return null;
+  }
+  const rounded = Math.round(parsed);
+  if (rounded < 1 || rounded > HUMIDITY_LETTERS.length) {
+    return null;
+  }
+  return HUMIDITY_LETTERS.length + 1 - rounded;
+}
+
+function buildAmsHumidityTelemetry(value, locale) {
+  const index = normalizeAmsHumidityIndex(value);
+  if (index == null) {
+    return null;
+  }
+  return {
+    letter: HUMIDITY_LETTERS[index - 1],
+    tone:
+      index <= 2
+        ? t(locale, "printers.liveHumidityDry", "Dry")
+        : index === 3
+          ? t(locale, "printers.liveHumidityMiddle", "Mid")
+          : t(locale, "printers.liveHumidityWet", "Wet"),
+    scale: HUMIDITY_LETTERS.map((letter, letterIndex) => ({
+      letter,
+      active: letterIndex + 1 <= index,
+    })),
+  };
+}
+
+function buildPrinterLiveTelemetry(activePrinter, locale) {
+  const slots = Array.isArray(activePrinter?.slots) ? activePrinter.slots : [];
+  const liveSlots = slots.filter(
+    (slot) =>
+      Boolean(slot?.live_mqtt_connected) ||
+      Boolean(slot?.live_printer_last_seen_at) ||
+      Boolean(slot?.live_loaded),
+  );
+  if (liveSlots.length === 0) {
+    return null;
+  }
+  const source =
+    liveSlots.find((slot) => Boolean(slot?.live_is_active)) ||
+    liveSlots.find(
+      (slot) =>
+        slot?.live_progress_percent != null ||
+        slot?.live_nozzle_temp_c != null ||
+        slot?.live_bed_temp_c != null ||
+        slot?.live_ams_humidity_index != null,
+    ) ||
+    liveSlots[0];
+  const printCapableNozzle =
+    finiteNumber(source?.live_nozzle_temp_c) != null && source.live_nozzle_temp_c >= 200;
+  const hasJobTiming = source?.live_progress_percent != null || source?.live_remaining_minutes != null;
+  const showJobTiming = printCapableNozzle && hasJobTiming;
+  const progress = showJobTiming ? formatLiveRemainingPercent(source?.live_progress_percent) : "";
+  const remaining = showJobTiming ? formatRemainingMinutes(source?.live_remaining_minutes, locale) : "";
+  const nozzle = formatTemperature(source?.live_nozzle_temp_c);
+  const bed = formatTemperature(source?.live_bed_temp_c);
+  const amsTemp = formatAmsTemperature(source?.live_ams_temperature_c);
+  const humidity = buildAmsHumidityTelemetry(source?.live_ams_humidity_index, locale);
+  const hasTelemetry =
+    showJobTiming ||
+    Boolean(progress) ||
+    Boolean(remaining) ||
+    Boolean(nozzle) ||
+    Boolean(bed) ||
+    Boolean(amsTemp) ||
+    Boolean(humidity);
+  if (!hasTelemetry) {
+    return null;
+  }
+  const stateLabel = showJobTiming
+    ? t(locale, "printers.liveTelemetryPrinting", "Printing")
+    : t(locale, "printers.liveTelemetryActive", "Active");
+
+  return {
+    amsTemp,
+    bed,
+    humidity,
+    nozzle,
+    progress,
+    remaining,
+    stateLabel,
+  };
+}
+
+function renderPrinterLiveTelemetry(telemetry, locale, escapeHtml) {
+  if (!telemetry) {
+    return "";
+  }
+  const progressParts = [telemetry.progress, telemetry.remaining].filter(Boolean).join(" · ");
+  const humidityScale = telemetry.humidity
+    ? telemetry.humidity.scale
+        .map(
+          (item) =>
+            `<span class="printer-live-humidity-step${item.active ? " is-active" : ""}" aria-label="${escapeHtml(item.letter)}"></span>`,
+        )
+        .join("")
+    : "";
+  const metrics = [
+    {
+      label: t(locale, "printers.liveTelemetryNozzle", "Nozzle"),
+      value: telemetry.nozzle,
+      icon: "⌬",
+    },
+    {
+      label: t(locale, "printers.liveTelemetryBed", "Bed"),
+      value: telemetry.bed,
+      icon: "≋",
+    },
+  ].filter((item) => item.value);
+
+  return `
+    <div class="printer-live-strip">
+      <span class="printer-live-state">${escapeHtml(telemetry.stateLabel)}</span>
+      ${progressParts ? `<span class="printer-live-muted">${escapeHtml(progressParts)}</span>` : ""}
+      ${metrics
+        .map(
+          (metric) => `
+            <span class="printer-live-divider" aria-hidden="true"></span>
+            <span class="printer-live-metric">
+              <span class="printer-live-icon" aria-hidden="true">${escapeHtml(metric.icon)}</span>
+              <span class="printer-live-label">${escapeHtml(metric.label)}</span>
+              <strong>${escapeHtml(metric.value)}</strong>
+            </span>
+          `,
+        )
+        .join("")}
+      ${
+        telemetry.humidity
+          ? `
+            <span class="printer-live-divider" aria-hidden="true"></span>
+            <span class="printer-live-metric printer-live-humidity">
+              <span class="printer-live-icon" aria-hidden="true">♢</span>
+              <span class="printer-live-label">${escapeHtml(t(locale, "printers.liveTelemetryAmsHumidityShort", "AMS"))}</span>
+              <strong>${escapeHtml(telemetry.humidity.letter)}</strong>
+              <span class="printer-live-muted">${escapeHtml(telemetry.humidity.tone)}</span>
+              <span class="printer-live-humidity-scale">${humidityScale}</span>
+              ${telemetry.amsTemp ? `<span class="printer-live-muted">${escapeHtml(telemetry.amsTemp)}</span>` : ""}
+            </span>
+          `
+          : ""
+      }
+    </div>
+  `;
+}
+
 export function renderPrinterPickerTaskSheetBody(options) {
   const { state, printerSpoolOptions, escapeHtml, formatGrams } = options;
   const locale = state.locale || "en";
@@ -321,8 +506,156 @@ function formatLiveSlotStatus(slot, locale) {
   return t(locale, "printers.liveObserved", "Live observed");
 }
 
+function normalizedText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizedHex(value) {
+  const hex = String(value || "").trim().replace(/^#/, "").toUpperCase();
+  return /^[0-9A-F]{6}$/.test(hex) ? `#${hex}` : "";
+}
+
+function normalizedSwatchHexes(value) {
+  return String(value || "")
+    .split(/[;,]/)
+    .map(normalizedHex)
+    .filter(Boolean);
+}
+
+function rowIsBambuCandidate(row) {
+  const vendor = normalizedText(row?.master?.vendor);
+  const status = String(row?.spool?.status || "").trim().toUpperCase();
+  const ownershipType = String(row?.spool?.ownership_type || "OWNED").trim().toUpperCase();
+  return (
+    vendor.includes("bambu") &&
+    !String(row?.spool?.rfid_tag || "").trim() &&
+    !["EMPTY", "LOST", "MISSING"].includes(status) &&
+    !(status === "BORROWED" && ownershipType !== "BORROWED_IN")
+  );
+}
+
+function rowMatchesLiveBambuSlot(slot, row) {
+  if (!rowIsBambuCandidate(row)) {
+    return false;
+  }
+  const liveMaterial = normalizedText(slot?.live_filament_type);
+  const rowMaterial = normalizedText(row?.master?.material);
+  const rowFilament = normalizedText(row?.master?.filament_name);
+  const materialMatches =
+    Boolean(liveMaterial) &&
+    (rowMaterial === liveMaterial ||
+      rowFilament === liveMaterial ||
+      rowFilament.includes(liveMaterial) ||
+      liveMaterial.includes(rowMaterial));
+  if (!materialMatches) {
+    return false;
+  }
+
+  const liveHex = normalizedHex(slot?.live_color_hex);
+  const rowHexes = normalizedSwatchHexes(row?.master?.hex_color);
+  if (liveHex && rowHexes.length > 0) {
+    return rowHexes.includes(liveHex);
+  }
+
+  const liveName = normalizedText(slot?.live_filament_name || slot?.live_tray_id_name);
+  const rowColor = normalizedText(row?.master?.color_name);
+  if (!liveName || !rowColor) {
+    return false;
+  }
+  return liveName.includes(rowColor) || rowColor.includes(liveName) || rowFilament.includes(liveName);
+}
+
+function buildLiveInventoryCandidateRows(slot, spoolRows) {
+  const observedRfid = String(slot?.live_tray_uuid || slot?.live_observed_rfid_tag || "").trim();
+  if (slot?.live_match_status !== "unknown_rfid" || !observedRfid) {
+    return [];
+  }
+
+  const rows = Array.isArray(spoolRows) ? spoolRows : [];
+  const candidates = [];
+  const seenIds = new Set();
+  const preferredId = String(slot?.live_matched_inventory_spool_id || "").trim();
+  if (preferredId) {
+    const preferred = rows.find((row) => String(row?.spool?.id || "").trim() === preferredId);
+    if (preferred && rowIsBambuCandidate(preferred)) {
+      candidates.push(preferred);
+      seenIds.add(preferredId);
+    }
+  }
+
+  for (const row of rows) {
+    const spoolId = String(row?.spool?.id || "").trim();
+    if (!spoolId || seenIds.has(spoolId)) {
+      continue;
+    }
+    if (!rowMatchesLiveBambuSlot(slot, row)) {
+      continue;
+    }
+    candidates.push(row);
+    seenIds.add(spoolId);
+  }
+
+  return candidates.slice(0, 3);
+}
+
+function renderLiveInventoryCandidateRows(slot, spoolRows, locale, escapeHtml, formatGrams) {
+  const candidates = buildLiveInventoryCandidateRows(slot, spoolRows);
+  if (candidates.length === 0) {
+    return "";
+  }
+  const intro =
+    candidates.length === 1
+      ? t(locale, "printers.liveCandidateSingle", "Likely inventory roll")
+      : t(locale, "printers.liveCandidateMultiple", "Possible inventory rolls");
+  return `
+    <div class="slot-live-candidates">
+      <div class="slot-live-candidates-label">${escapeHtml(intro)}</div>
+      ${candidates
+        .map((row) => {
+          const swatch =
+            row.master.hex_color ||
+            suggestSwatchHex(
+              row.master.color_name,
+              row.master.filament_name,
+              row.master.vendor,
+              row.master.material,
+            );
+          const title = formatInventoryDisplayTitle(
+            row.master.material,
+            row.master.filament_name,
+            row.master.color_name,
+          );
+          const meta = [formatRollReference(row.spool), formatGrams(row.spool.remaining_g)]
+            .filter(Boolean)
+            .join(" · ");
+          return `
+            <button
+              class="slot-live-candidate-row"
+              type="button"
+              data-action="inspect-slot-spool"
+              data-spool-id="${escapeHtml(row.spool.id)}"
+            >
+              <span class="swatch-dot" style="background:${escapeHtml(toSwatchColor(swatch))};"></span>
+              <span class="slot-live-candidate-main">
+                <span class="slot-live-candidate-title">${escapeHtml(title)}</span>
+                <span class="slot-live-candidate-meta">${escapeHtml(meta)}</span>
+              </span>
+              <span class="slot-live-candidate-action">${escapeHtml(t(locale, "printers.openSpool", "Open spool"))}</span>
+            </button>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
 function renderSlotCards(options) {
-  const { activePrinter, state, escapeHtml, formatGrams } = options;
+  const { activePrinter, state, printerSpoolOptions = [], escapeHtml, formatGrams } = options;
   const locale = state.locale || "en";
 
   const slots = Array.isArray(activePrinter?.slots) ? activePrinter.slots : [];
@@ -389,6 +722,19 @@ function renderSlotCards(options) {
         : slotIsPendingTarget
           ? t(locale, "printers.chooseBelow", "Choose filament below.")
           : t(locale, "printers.loadHere", "Load a spool here.");
+      const candidateRows = renderLiveInventoryCandidateRows(
+        slot,
+        printerSpoolOptions,
+        locale,
+        escapeHtml,
+        formatGrams,
+      );
+      const slotStateLabel = slot.spool_id
+        ? t(locale, "printers.loaded", "Loaded")
+        : slotHasLiveLoaded
+          ? t(locale, "printers.liveBadge", "Live")
+          : t(locale, "printers.empty", "Empty");
+      const slotStateTone = slot.spool_id || slotHasLiveLoaded ? "info" : "neutral";
 
       return `
         <article
@@ -403,7 +749,7 @@ function renderSlotCards(options) {
               <div class="list-title">${escapeHtml(slotLabel)}</div>
               <div class="muted">${escapeHtml(slot.spool_id ? t(locale, "printers.loaded", "Loaded") : slotHasLiveLoaded ? t(locale, "printers.liveSummary", "Live from host") : t(locale, "printers.openSlot", "Open slot"))}</div>
             </div>
-            <span class="pill">${escapeHtml(slot.spool_id ? t(locale, "printers.loaded", "Loaded") : slotHasLiveLoaded ? t(locale, "printers.liveBadge", "Live") : t(locale, "printers.empty", "Empty"))}</span>
+            <span class="inline-signal slot-card-state" data-tone="${escapeHtml(slotStateTone)}">${escapeHtml(slotStateLabel)}</span>
           </div>
           <div class="slot-content-line swatch-line">
             <span class="swatch-dot" style="background:${escapeHtml(slotContentColor)}"></span>
@@ -411,6 +757,7 @@ function renderSlotCards(options) {
           </div>
           <div class="muted slot-card-subtitle">${escapeHtml(slotSummary)}</div>
           <div class="meta-line slot-card-meta">${escapeHtml(slotMeta)}</div>
+          ${candidateRows}
           <div class="slot-actions">
             ${
               slot.spool_id
@@ -475,6 +822,7 @@ export function renderPrinterBoard(options) {
   const {
     state,
     activePrinter,
+    printerSpoolOptions = [],
     escapeHtml,
     formatGrams,
   } = options;
@@ -488,6 +836,7 @@ export function renderPrinterBoard(options) {
   const loadedSlots = activePrinterSlots.filter((slot) => Boolean(slot?.spool_id)).length;
   const emptySlots = Math.max(activePrinterSlots.length - loadedSlots, 0);
   const printerHasLiveSignal = hasLivePrinterSignal(activePrinter);
+  const liveTelemetry = buildPrinterLiveTelemetry(activePrinter, locale);
 
   return `
     <div class="printer-board-header">
@@ -495,15 +844,17 @@ export function renderPrinterBoard(options) {
         <h3>${escapeHtml(activePrinter.printer.name)}</h3>
         <p class="section-copy">${escapeHtml(activePrinter.printer.model)}</p>
         <div class="meta-line printer-board-meta">
-          ${printerHasLiveSignal ? `<span class="pill">${escapeHtml(t(locale, "printers.liveBadge", "Live"))}</span> · ` : ""}
+          ${printerHasLiveSignal ? `<span class="printer-live-dot" aria-hidden="true"></span>${escapeHtml(t(locale, "printers.liveBadge", "Live"))} · ` : ""}
           ${escapeHtml(t(locale, "printers.loadedSummary", "{loaded} loaded · {open} open", { loaded: loadedSlots, open: emptySlots }))}
         </div>
+        ${renderPrinterLiveTelemetry(liveTelemetry, locale, escapeHtml)}
       </div>
     </div>
     <div class="slot-grid compact-slot-grid">
       ${renderSlotCards({
         activePrinter,
         state,
+        printerSpoolOptions,
         escapeHtml,
         formatGrams,
       })}

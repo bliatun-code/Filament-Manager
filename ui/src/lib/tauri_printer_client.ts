@@ -52,6 +52,12 @@ export type PrinterAmsSlotRow = {
   live_matched_inventory_spool_id?: string | null;
   live_matched_inventory_mode?: string | null;
   live_is_active?: boolean | null;
+  live_progress_percent?: number | null;
+  live_remaining_minutes?: number | null;
+  live_nozzle_temp_c?: number | null;
+  live_bed_temp_c?: number | null;
+  live_ams_humidity_index?: number | null;
+  live_ams_temperature_c?: number | null;
   live_printer_last_seen_at?: string | null;
   live_mqtt_connected?: boolean | null;
   live_ams_exist_bits?: string | null;

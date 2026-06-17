@@ -11,6 +11,7 @@ import type { ResolvedTheme } from "../lib/theme_mode";
 import type {
   BambuLiveIntegrationEntry,
   BambuLiveObservedTray,
+  MasterCatalogRow,
   PrinterAmsSlotRow,
   PrinterOverviewRow,
   SpoolWithMasterRow,
@@ -26,8 +27,10 @@ type PrinterOverviewCardProps = {
   clientPrinterSource: PrinterSnapshotSource;
   resolvedTheme: ResolvedTheme;
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
+  catalogMasters: MasterCatalogRow[];
   openDropdownSlotId: string | null;
   setOpenDropdownSlotId: Dispatch<SetStateAction<string | null>>;
+  spools: SpoolWithMasterRow[];
   allowedSpoolsForSlot: (slotSpoolId?: string | null) => SpoolWithMasterRow[];
   findAllowedSpoolForSlot: (
     slotSpoolId: string | null | undefined,
@@ -47,6 +50,18 @@ type PrinterOverviewCardProps = {
     slot: PrinterAmsSlotRow,
     liveTray: BambuLiveObservedTray,
   ) => void;
+  registerLiveRfidCandidate: (
+    printer: PrinterOverviewRow,
+    slot: PrinterAmsSlotRow,
+    liveTray: BambuLiveObservedTray,
+    row: SpoolWithMasterRow,
+  ) => void;
+  createLiveBambuCatalogSpool: (
+    printer: PrinterOverviewRow,
+    slot: PrinterAmsSlotRow,
+    liveTray: BambuLiveObservedTray,
+    master: MasterCatalogRow,
+  ) => void;
   openWeightPromptForDraft: (
     printer: PrinterOverviewRow["printer"],
     slot: PrinterAmsSlotRow,
@@ -62,8 +77,10 @@ export function PrinterOverviewCard({
   clientPrinterSource,
   resolvedTheme,
   bambuLiveIntegrations,
+  catalogMasters,
   openDropdownSlotId,
   setOpenDropdownSlotId,
+  spools,
   allowedSpoolsForSlot,
   findAllowedSpoolForSlot,
   getSlotDraft,
@@ -72,6 +89,8 @@ export function PrinterOverviewCard({
   openIncomingWeightDialog,
   openEmptySlotWeightDialog,
   openRfidOverrideDialog,
+  registerLiveRfidCandidate,
+  createLiveBambuCatalogSpool,
   openWeightPromptForDraft,
 }: PrinterOverviewCardProps) {
   const { t } = useI18n();
@@ -97,6 +116,7 @@ export function PrinterOverviewCard({
         printer={printer}
         hasMultiMaterial={hasMultiMaterial}
         liveConnectionIndicator={liveConnectionIndicator}
+        liveConfig={printerLiveConfig}
         resolvedTheme={resolvedTheme}
       />
       <div className="mt-3 grid grid-cols-1 gap-2.5 lg:grid-cols-2">
@@ -111,8 +131,10 @@ export function PrinterOverviewCard({
             clientPrinterSource={clientPrinterSource}
             resolvedTheme={resolvedTheme}
             bambuLiveIntegrations={bambuLiveIntegrations}
+            catalogMasters={catalogMasters}
             openDropdownSlotId={openDropdownSlotId}
             setOpenDropdownSlotId={setOpenDropdownSlotId}
+            spools={spools}
             allowedSpoolsForSlot={allowedSpoolsForSlot}
             findAllowedSpoolForSlot={findAllowedSpoolForSlot}
             getSlotDraft={getSlotDraft}
@@ -121,6 +143,8 @@ export function PrinterOverviewCard({
             openIncomingWeightDialog={openIncomingWeightDialog}
             openEmptySlotWeightDialog={openEmptySlotWeightDialog}
             openRfidOverrideDialog={openRfidOverrideDialog}
+            registerLiveRfidCandidate={registerLiveRfidCandidate}
+            createLiveBambuCatalogSpool={createLiveBambuCatalogSpool}
             openWeightPromptForDraft={openWeightPromptForDraft}
           />
         ))}

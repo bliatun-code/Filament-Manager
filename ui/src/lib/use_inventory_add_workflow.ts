@@ -70,6 +70,7 @@ export function useInventoryAddWorkflow({
   const {
     activeCatalogMasters,
     applyCatalogDefaults,
+    bambuCodeLookup,
     borrowedFromContact,
     borrowedFromName,
     borrowedInNote,
@@ -239,6 +240,7 @@ export function useInventoryAddWorkflow({
   const modalProps: InventoryAddModalProps = {
     actionStyle: currentCreateActionStyle,
     activeCatalogMasters,
+    bambuCodeLookup,
     borrowedFromContact,
     borrowedFromName,
     borrowedInNote,

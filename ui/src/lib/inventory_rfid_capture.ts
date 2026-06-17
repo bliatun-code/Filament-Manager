@@ -1,4 +1,4 @@
-import { neutralChipClass, semanticChipClass } from "./chip_styles";
+import { inlineStatusSignalClass, semanticChipClass } from "./chip_styles";
 import { formatBambuSettingsProfileNameParts } from "./bambu_settings_profiles";
 import type { Locale } from "./i18n";
 export {
@@ -174,7 +174,7 @@ export function rfidBindingCopy(
           "inventory.rfidRegisteredHint",
           "This RFID stays tied to the Bambu roll until the roll is used up or the saved RFID is overwritten. The AMS sighting only shows when the printer last reported this identity.",
         ),
-        className: semanticChipClass("success"),
+        className: inlineStatusSignalClass("neutral"),
       };
     case "LINKED_UNSEEN":
       return {
@@ -183,7 +183,7 @@ export function rfidBindingCopy(
           "inventory.rfidRegisteredUnseenHint",
           "An RFID is saved on this roll, but AMS has not reported a sighting timestamp for it yet.",
         ),
-        className: semanticChipClass("success"),
+        className: inlineStatusSignalClass("neutral"),
       };
     case "BAMBU_UNREGISTERED":
       return {
@@ -201,7 +201,7 @@ export function rfidBindingCopy(
           "inventory.rfidUnsupportedVendorHint",
           "AMS RFID identity is currently only exposed for Bambu rolls. Track this roll with QR, weight, location and printer assignment instead.",
         ),
-        className: neutralChipClass(false),
+        className: inlineStatusSignalClass("neutral"),
       };
   }
 }

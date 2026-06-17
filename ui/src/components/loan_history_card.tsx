@@ -1,5 +1,5 @@
 import { VendorBadge } from "./vendor_badge";
-import { semanticChipClass } from "../lib/chip_styles";
+import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { useI18n } from "../lib/i18n";
 import {
   compactLoanTimestamp,
@@ -58,9 +58,9 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
                   compact
                 />
                 <span
-                  className={semanticChipClass(
-                    isInbound ? "warning" : "info",
-                    "px-2.5 py-0.5 text-[10px] whitespace-nowrap",
+                  className={inlineStatusSignalClass(
+                    isInbound ? "warning" : "neutral",
+                    "text-[10px] whitespace-nowrap",
                   )}
                 >
                   {isInbound
@@ -88,10 +88,7 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
               </button>
             ) : (
               <span
-                className={semanticChipClass(
-                  "success",
-                  "px-2.5 py-0.5 text-[10px] whitespace-nowrap",
-                )}
+                className={inlineStatusSignalClass("neutral", "text-[10px] whitespace-nowrap")}
               >
                 {isInbound
                   ? t("loans.handedBack", "Handed back")

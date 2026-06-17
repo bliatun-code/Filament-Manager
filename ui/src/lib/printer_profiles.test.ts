@@ -6,6 +6,7 @@ import {
   formatBambuStudioPrinterProfileCode,
   listSupportedPrinterModels,
   resolvePrinterModelProfile,
+  summarizeEffectivePrinterSlots,
 } from "./printer_profiles";
 
 type SupportedPrinterModelFixture = {
@@ -83,4 +84,34 @@ test("resolvePrinterModelProfile keeps generic fallback for non-profiled exact m
   assert.equal(profile.systemKind, "GENERIC");
   assert.equal(profile.maxUnits, 4);
   assert.equal(profile.maxSlotsPerUnit, 8);
+});
+
+test("summarizeEffectivePrinterSlots treats AMS/MMU slots as the readiness target when present", () => {
+  const summary = summarizeEffectivePrinterSlots([
+    { ams_id: "printer_ext", spool_id: "spool-ext" },
+    { ams_id: "printer_ams_1", spool_id: "spool-1" },
+    { ams_id: "printer_ams_1", spool_id: "spool-2" },
+    { ams_id: "printer_ams_1", spool_id: null },
+    { ams_id: "printer_ams_1", spool_id: "" },
+  ]);
+
+  assert.equal(summary.mode, "MULTI");
+  assert.equal(summary.loadedSlots, 2);
+  assert.equal(summary.totalSlots, 4);
+  assert.deepEqual(
+    summary.slots.map((slot) => slot.ams_id),
+    ["printer_ams_1", "printer_ams_1", "printer_ams_1", "printer_ams_1"],
+  );
+});
+
+test("summarizeEffectivePrinterSlots uses EXT as readiness target for single-material printers", () => {
+  const emptySummary = summarizeEffectivePrinterSlots([{ ams_id: "printer_ext", spool_id: null }]);
+  assert.equal(emptySummary.mode, "EXT");
+  assert.equal(emptySummary.loadedSlots, 0);
+  assert.equal(emptySummary.totalSlots, 1);
+
+  const loadedSummary = summarizeEffectivePrinterSlots([{ ams_id: "printer_ext", spool_id: "spool-ext" }]);
+  assert.equal(loadedSummary.mode, "EXT");
+  assert.equal(loadedSummary.loadedSlots, 1);
+  assert.equal(loadedSummary.totalSlots, 1);
 });

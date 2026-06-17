@@ -35,6 +35,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       copied: "Copied",
       copyFailed: "Copy failed",
       unknown: "Unknown",
+      minutes: "min",
+      hoursShort: "h",
     },
     vendor: {
       bambu: "Bambu",
@@ -136,7 +138,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       badgeJobsLogged: "jobs logged",
       badgeSlotReadiness: "Slot readiness",
       badgeSlotReadinessDesc:
-        "Keep the current printer path ready, whether the printer is using AMS or EXT.",
+        "Keep AMS/MMU slots ready when configured; single-material printers count EXT.",
       badgeSlotsLoaded: "slots loaded",
       badgeNoPrinterSlots: "No printer slots configured yet.",
     },
@@ -202,6 +204,12 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       borrowedFrom: "Borrowed from",
       ownerContactOptional: "Owner contact (optional)",
       borrowedInNoteOptional: "Borrowed-in note (optional)",
+      editOwnership: "Ownership",
+      ownerNameRequired: "Owner name (required)",
+      ownershipNoteOptional: "Note (optional)",
+      ownedOwnershipHelp: "Owned rolls stay in your inventory and can be loaned out later.",
+      saveOwnership: "Save ownership",
+      ownershipUpdated: "Roll ownership updated.",
       reference: "Reference",
       lowStockOnly: "Low stock (1-200 g)",
       lowStockActiveBadge: "Low stock filter active",
@@ -289,6 +297,15 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       catalogManagedInSettingsHelp:
         "Use the local catalogue below to add rolls directly to stock, wishlist, or on-order queues.",
       selectionPreview: "Selection preview",
+      bambuCodeLabel: "Filament Code",
+      bambuCodeHelp:
+        "Use the five digit code printed as Filament Code on the Bambu box label.",
+      bambuCodeSingleMatch: "One active Bambu catalog entry matched and is selected.",
+      bambuCodeMultipleMatches:
+        "This code is used by several active Bambu catalog entries. Choose the correct row.",
+      bambuCodeDiscontinuedOnly: "Only discontinued Bambu catalog entries use this code.",
+      bambuCodeNoMatch: "No Bambu catalog entry uses this filament code yet.",
+      bambuCodeMoreMatches: "more",
       manualDetails: "Manual details",
       manualDetailsHelp:
         "Use this when a filament is missing from the vendor catalog or you want a fully manual entry.",
@@ -456,6 +473,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
           "Vendor, material, filament name and color are required to save metadata.",
         invalidHex:
           "Invalid swatch color. Use #RRGGBB, multi(#RRGGBB,#RRGGBB) or gradient(#RRGGBB,#RRGGBB).",
+        ownerNameRequired: "Borrowed-in rolls need an owner or counterparty name.",
+        updateOwnership: "Failed to update roll ownership.",
         updateMetadata: "Failed to update roll metadata.",
         requireAmsForInUse: "Choose a printer slot before setting ASSIGNED.",
         incomingWeightRequired: "Enter incoming roll weight before saving slot changes.",
@@ -503,7 +522,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       statusOnOrder: "On order",
       statusReceived: "Received",
       qty: "Qty",
-      searchBambu: "Search Bambu material/color",
+      searchBambu: "Search Bambu material/color or filament code",
       searchEsun: "Search eSUN material/color",
       vendorPlaceholder: "Vendor (e.g. Generic, eSUN)",
       materialPlaceholder: "Material (e.g. PLA)",
@@ -669,6 +688,19 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       liveConnectionConnected: "Live connected",
       liveConnectionIdle: "Live idle",
       liveConnectionWaiting: "Live waiting",
+      liveTelemetryState: "Printer state",
+      liveTelemetryPrinting: "Printing",
+      liveTelemetryPreparing: "Preparing",
+      liveTelemetryPaused: "Paused",
+      liveTelemetryActive: "Active",
+      liveTelemetryIdle: "Idle",
+      liveTelemetryNozzle: "Nozzle",
+      liveTelemetryBed: "Bed",
+      liveTelemetryAmsHumidity: "AMS humidity",
+      liveTelemetryAmsHumidityShort: "AMS",
+      liveHumidityDry: "Dry",
+      liveHumidityMiddle: "Mid",
+      liveHumidityWet: "Wet",
       liveRfid: "Live RFID",
       manualAssignment: "Manual",
       unknownLiveRfid: "RFID is not registered",
@@ -680,6 +712,29 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "AMS reported an RFID/AMS identity that is not registered in inventory.",
       rfidOverriddenHint:
         "This slot is manually assigned while the same unregistered RFID identity is still active.",
+      liveCandidateCurrentMatches:
+        "Current assignment matches the live material/color signal.",
+      liveCandidateCount:
+        "{count} inventory rolls match the live material/color signal.",
+      liveRfidCandidateCurrentMatches:
+        "Current assignment looks like this live Bambu roll. Save RFID to bind it permanently.",
+      liveRfidCandidateCount:
+        "{count} inventory rolls look like this live Bambu roll.",
+      liveCandidateCurrent: "current",
+      liveCandidateMore: "More candidates exist in inventory.",
+      liveCandidateHasRfid: "RFID saved",
+      liveCandidateSelectBeforeRfid: "select first",
+      registerLiveRfid: "Save RFID",
+      liveCatalogCandidateSingle:
+        "Bambu catalog has one likely match. Add it here to save the live RFID.",
+      liveCatalogCandidateCount:
+        "{count} Bambu catalog entries look like this live roll.",
+      addCatalogRollAndSaveRfid: "Add + save RFID",
+      liveCatalogRequiresEmptySlot: "clear slot first",
+      liveRfidRegisteredAndAssigned:
+        "RFID saved and the suggested roll was assigned to this slot.",
+      liveCatalogCreatedAndAssigned:
+        "{label} was added, RFID was saved, and the roll was assigned to this slot.",
       rfidOverrideDialogHint:
         "This slot is manually assigned while AMS still reports the same unregistered RFID identity. Save it on the selected roll when you are ready.",
       rfidOverrideNothingToSave:
@@ -705,6 +760,11 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         selectRollBeforeWeight: "Select a target roll before updating weight.",
         invalidUsage: "Usage grams must be greater than zero.",
         recordUsage: "Failed to record print usage.",
+        candidateAlreadyHasRfid: "This inventory roll already has an RFID identity saved.",
+        selectCandidateBeforeRfid:
+          "Select this roll in the slot first, so any outgoing roll weight is handled before saving RFID.",
+        createFromCatalogRequiresEmptySlot:
+          "Clear or swap the current roll through the normal slot flow before creating a new catalog roll here.",
       },
     },
     statistics: {
@@ -1200,10 +1260,16 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveGroupOther: "Other",
       bambuLiveAmsReading:
         "AMS refresh in progress. RFID and tray matching can look temporarily uncertain until reading finishes.",
+      bambuLiveNoNewStatusPoll:
+        "No new MQTT burst arrived in this poll. Showing the last known live state and captured diagnostics.",
+      bambuLiveNoLiveStatusPoll:
+        "Connected, but no live MQTT status arrived during this poll.",
+      bambuLiveWaitingForStatusBurst:
+        "Connected, waiting for the next MQTT status burst.",
       bambuLiveNoInventoryMatch: "No clear inventory match",
       bambuLiveInventoryRfidMatch: "Exact RFID/AMS identity match against inventory.",
       bambuLiveInventoryLikelyMatch:
-        "Single likely inventory match from material/name/color.",
+        "Single likely inventory match from material and live color.",
       bambuLiveInventoryMultipleMatches:
         "Multiple inventory rolls could match this filament.",
       bambuLiveInventoryNoRfidMatch:
@@ -1407,6 +1473,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       copied: "Kopiert",
       copyFailed: "Kopiering feilet",
       unknown: "Ukjent",
+      minutes: "min",
+      hoursShort: "t",
     },
     vendor: {
       bambu: "Bambu",
@@ -1508,7 +1576,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       badgeJobsLogged: "jobber loggført",
       badgeSlotReadiness: "Sporberedskap",
       badgeSlotReadinessDesc:
-        "Hold den aktive printerbanen klar, enten printeren bruker AMS eller EXT.",
+        "Hold AMS/MMU-spor klare når de finnes; single-material-printere teller EXT.",
       badgeSlotsLoaded: "spor lastet",
       badgeNoPrinterSlots: "Ingen printerspor konfigurert ennå.",
     },
@@ -1574,6 +1642,12 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       borrowedFrom: "Lånt fra",
       ownerContactOptional: "Eierkontakt (valgfritt)",
       borrowedInNoteOptional: "Notat for innlånt filament (valgfritt)",
+      editOwnership: "Eierskap",
+      ownerNameRequired: "Eiernavn (påkrevd)",
+      ownershipNoteOptional: "Notat (valgfritt)",
+      ownedOwnershipHelp: "Eide ruller blir værende i lageret og kan lånes ut senere.",
+      saveOwnership: "Lagre eierskap",
+      ownershipUpdated: "Eierskap for filamentet er oppdatert.",
       reference: "Referanse",
       lowStockOnly: "Lav beholdning (1-200 g)",
       lowStockActiveBadge: "Lav beholdning aktiv",
@@ -1661,6 +1735,16 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       catalogManagedInSettingsHelp:
         "Bruk den lokale katalogen under for å legge filament direkte på lager, i ønskelisten eller i bestillingskøen.",
       selectionPreview: "Valgt oppføring",
+      bambuCodeLabel: "Filament Code",
+      bambuCodeHelp:
+        "Bruk den femsifrede koden som står som Filament Code på Bambu-etiketten.",
+      bambuCodeSingleMatch: "Én aktiv Bambu-katalogoppføring matcher og er valgt.",
+      bambuCodeMultipleMatches:
+        "Denne koden brukes av flere aktive Bambu-katalogoppføringer. Velg riktig rad.",
+      bambuCodeDiscontinuedOnly:
+        "Bare utgåtte Bambu-katalogoppføringer bruker denne koden.",
+      bambuCodeNoMatch: "Ingen Bambu-katalogoppføring bruker denne filamentkoden ennå.",
+      bambuCodeMoreMatches: "til",
       manualDetails: "Manuelle detaljer",
       manualDetailsHelp:
         "Bruk dette når et filament mangler i leverandørkatalogen eller du vil opprette alt manuelt.",
@@ -1829,6 +1913,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
           "Leverandør, materiale, filamentnavn og farge er påkrevd for å lagre metadata.",
         invalidHex:
           "Ugyldig swatch-farge. Bruk #RRGGBB, multi(#RRGGBB,#RRGGBB) eller gradient(#RRGGBB,#RRGGBB).",
+        ownerNameRequired: "Innlånte filamenter trenger eier eller motpart.",
+        updateOwnership: "Kunne ikke oppdatere eierskap for filamentet.",
         updateMetadata: "Kunne ikke oppdatere filamentmetadata.",
         requireAmsForInUse: "Velg printer-spor før status settes til ASSIGNED.",
         incomingWeightRequired: "Oppgi innkommende rullvekt før du lagrer sporendringer.",
@@ -1876,7 +1962,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       statusOnOrder: "Bestilt",
       statusReceived: "Mottatt",
       qty: "Antall",
-      searchBambu: "Søk Bambu materiale/farge",
+      searchBambu: "Søk Bambu materiale/farge eller filamentkode",
       searchEsun: "Søk eSUN materiale/farge",
       vendorPlaceholder: "Leverandør (f.eks. Generic, eSUN)",
       materialPlaceholder: "Materiale (f.eks. PLA)",
@@ -2043,6 +2129,19 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       liveConnectionConnected: "Live tilkoblet",
       liveConnectionIdle: "Live inaktiv",
       liveConnectionWaiting: "Live venter",
+      liveTelemetryState: "Printerstatus",
+      liveTelemetryPrinting: "Printer",
+      liveTelemetryPreparing: "Forbereder",
+      liveTelemetryPaused: "Pauset",
+      liveTelemetryActive: "Aktiv",
+      liveTelemetryIdle: "Inaktiv",
+      liveTelemetryNozzle: "Dyse",
+      liveTelemetryBed: "Plate",
+      liveTelemetryAmsHumidity: "AMS-fukt",
+      liveTelemetryAmsHumidityShort: "AMS",
+      liveHumidityDry: "Tørr",
+      liveHumidityMiddle: "Midt",
+      liveHumidityWet: "Fuktig",
       liveRfid: "Live RFID",
       manualAssignment: "Manuell",
       unknownLiveRfid: "RFID er ikke registrert",
@@ -2054,6 +2153,29 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "AMS rapporterte en RFID-identitet som ikke er registrert i lageret.",
       rfidOverriddenHint:
         "Dette sporet er manuelt tildelt mens samme uregistrerte RFID-identitet fortsatt er aktiv.",
+      liveCandidateCurrentMatches:
+        "Nåværende tildeling matcher live-signalet for materiale/farge.",
+      liveCandidateCount:
+        "{count} ruller i lageret matcher live-signalet for materiale/farge.",
+      liveRfidCandidateCurrentMatches:
+        "Nåværende tildeling ligner denne live Bambu-rullen. Lagre RFID for å binde den permanent.",
+      liveRfidCandidateCount:
+        "{count} ruller i lageret ligner denne live Bambu-rullen.",
+      liveCandidateCurrent: "nåværende",
+      liveCandidateMore: "Flere kandidater finnes i lageret.",
+      liveCandidateHasRfid: "RFID lagret",
+      liveCandidateSelectBeforeRfid: "velg først",
+      registerLiveRfid: "Lagre RFID",
+      liveCatalogCandidateSingle:
+        "Bambu-katalogen har én sannsynlig match. Legg den til her for å lagre live-RFID.",
+      liveCatalogCandidateCount:
+        "{count} Bambu-katalogoppføringer ligner denne live-rullen.",
+      addCatalogRollAndSaveRfid: "Legg til + lagre RFID",
+      liveCatalogRequiresEmptySlot: "tøm sporet først",
+      liveRfidRegisteredAndAssigned:
+        "RFID lagret og foreslått rull ble tildelt dette sporet.",
+      liveCatalogCreatedAndAssigned:
+        "{label} ble lagt til, RFID ble lagret og rullen ble tildelt dette sporet.",
       rfidOverrideDialogHint:
         "Dette sporet er manuelt tildelt mens AMS fortsatt rapporterer samme uregistrerte RFID-identitet. Lagre den på valgt filament når du er klar.",
       rfidOverrideNothingToSave:
@@ -2079,6 +2201,11 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         selectRollBeforeWeight: "Velg en målrull før du oppdaterer vekt.",
         invalidUsage: "Forbruk i gram må være større enn null.",
         recordUsage: "Kunne ikke registrere printforbruk.",
+        candidateAlreadyHasRfid: "Denne lagerrullen har allerede en lagret RFID-identitet.",
+        selectCandidateBeforeRfid:
+          "Velg denne rullen i sporet først, slik at eventuell utgående rullvekt håndteres før RFID lagres.",
+        createFromCatalogRequiresEmptySlot:
+          "Tøm eller bytt nåværende rull via vanlig spor-flyt før du oppretter en ny katalogrull her.",
       },
     },
     statistics: {
@@ -2577,10 +2704,16 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveGroupOther: "Annet",
       bambuLiveAmsReading:
         "AMS-oppdatering pågår. RFID og spormatching kan se midlertidig usikkert ut til lesingen er ferdig.",
+      bambuLiveNoNewStatusPoll:
+        "Ingen ny MQTT-burst kom inn i denne pollen. Viser sist kjente live-status og fanget diagnostikk.",
+      bambuLiveNoLiveStatusPoll:
+        "Tilkoblet, men ingen live MQTT-status kom inn i denne pollen.",
+      bambuLiveWaitingForStatusBurst:
+        "Tilkoblet, venter på neste MQTT-statusburst.",
       bambuLiveNoInventoryMatch: "Ingen tydelig lagermatch",
       bambuLiveInventoryRfidMatch: "Eksakt RFID-match mot lager.",
       bambuLiveInventoryLikelyMatch:
-        "Én sannsynlig lagermatch basert på materiale/navn/farge.",
+        "Én sannsynlig lagermatch basert på materiale og live-farge.",
       bambuLiveInventoryMultipleMatches:
         "Flere ruller i lageret kan passe dette filamentet.",
       bambuLiveInventoryNoRfidMatch:

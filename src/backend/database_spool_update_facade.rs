@@ -3,6 +3,7 @@ use super::database_result::InventoryResult;
 use super::database_spool_updates::{
     set_spool_home_location as set_spool_home_location_row,
     set_spool_location as set_spool_location_row, update_spool_details as update_spool_details_row,
+    update_spool_ownership as update_spool_ownership_row,
     update_spool_ownership_metadata as update_spool_ownership_metadata_row,
     update_spool_rfid_tag as update_spool_rfid_tag_row,
     update_spool_status as update_spool_status_row,
@@ -85,6 +86,24 @@ impl FilamentDatabase {
         update_spool_ownership_metadata_row(
             self.connection(),
             spool_id,
+            owner_name,
+            owner_contact,
+            ownership_note,
+        )
+    }
+
+    pub fn update_spool_ownership(
+        &self,
+        spool_id: &str,
+        ownership_type: &str,
+        owner_name: Option<&str>,
+        owner_contact: Option<&str>,
+        ownership_note: Option<&str>,
+    ) -> InventoryResult<()> {
+        update_spool_ownership_row(
+            self.connection(),
+            spool_id,
+            ownership_type,
             owner_name,
             owner_contact,
             ownership_note,

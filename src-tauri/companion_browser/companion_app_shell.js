@@ -74,6 +74,7 @@ function renderWorkflowShell(options) {
     return renderPrintersShell({
       state,
       activePrinter,
+      printerSpoolOptions: options.printerSpoolOptions,
       escapeHtml,
       formatGrams,
     });

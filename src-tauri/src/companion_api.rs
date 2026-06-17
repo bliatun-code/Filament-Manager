@@ -6,7 +6,8 @@ use crate::backend::filament_database::{
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput,
     DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, RecordPrintUsageInput, ReturnSpoolLoanInput,
-    UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
+    UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
+    UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::statistics::{FilamentConsumptionRow, StatisticsEngine};
 #[cfg(test)]
@@ -1054,6 +1055,41 @@ pub(super) async fn handle_update_borrowed_in_spool(
     Ok(Json(WriteResponse {
         ok: true,
         message: "Borrowed-in spool details updated".to_string(),
+    }))
+}
+
+pub(super) async fn handle_update_spool_ownership(
+    State(state): State<CompanionApiState>,
+    Path(spool_id): Path<String>,
+    Json(payload): Json<UpdateSpoolOwnershipRequest>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    let spool_id = spool_id.trim();
+    if spool_id.is_empty() {
+        return Err(CompanionApiError::BadRequest(
+            "spool_id is required".to_string(),
+        ));
+    }
+    let ownership_type = payload.ownership_type.trim().to_ascii_uppercase();
+    if !matches!(ownership_type.as_str(), "OWNED" | "BORROWED_IN") {
+        return Err(CompanionApiError::BadRequest(
+            "ownership_type must be OWNED or BORROWED_IN".to_string(),
+        ));
+    }
+
+    state
+        .service
+        .update_spool_ownership(UpdateSpoolOwnershipInput {
+            spool_id: spool_id.to_string(),
+            ownership_type,
+            owner_name: normalize_optional_text(payload.owner_name.as_deref()),
+            owner_contact: normalize_optional_text(payload.owner_contact.as_deref()),
+            ownership_note: normalize_optional_text(payload.ownership_note.as_deref()),
+        })
+        .map_err(CompanionApiError::from)?;
+
+    Ok(Json(WriteResponse {
+        ok: true,
+        message: "Spool ownership updated".to_string(),
     }))
 }
 

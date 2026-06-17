@@ -23,6 +23,7 @@ import {
 import type {
   BambuLiveIntegrationSettings,
   BambuLiveObservedState,
+  PrinterAmsSlotRow,
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
 import {
@@ -58,6 +59,7 @@ type BuildSettingsBambuLiveDiagnosticsModelInput = {
   diagnosticSort: DiagnosticSortKey;
   formatDateTime: FormatDateTimeFn;
   liveConfig: BambuLiveIntegrationSettings | null;
+  printerSlots?: PrinterAmsSlotRow[];
   selectedChartFieldPath?: string | null;
   spoolRows: SpoolWithMasterRow[];
   t: TranslateFn;
@@ -84,6 +86,11 @@ type BuildSettingsBambuLiveDiagnosticMetricCardsInput = {
   identityFieldCount: number;
   t: TranslateFn;
 };
+
+const NO_LIVE_STATUS_DURING_POLL_NOTE =
+  "Connected, but no live MQTT status arrived during this poll.";
+const WAITING_FOR_STATUS_BURST_NOTE =
+  "Connected, waiting for the next MQTT status burst.";
 
 function buildSettingsBambuLiveSummaryParts(
   source: SettingsBambuLiveSummarySource,
@@ -162,6 +169,49 @@ export function buildSettingsBambuLiveObservedSummaryParts(
     },
     t,
   );
+}
+
+export function buildSettingsBambuLiveStatusNote({
+  fallbackSummaryParts,
+  observedState,
+  observedSummaryParts,
+  t,
+}: {
+  fallbackSummaryParts: string[];
+  observedState: BambuLiveObservedState | null;
+  observedSummaryParts: string[];
+  t: TranslateFn;
+}): string | null {
+  const rawNote = observedState?.raw_status_note?.trim() ?? "";
+  if (!rawNote) {
+    return null;
+  }
+  const hasDisplayedContext =
+    observedSummaryParts.length > 0 ||
+    fallbackSummaryParts.length > 0 ||
+    (observedState?.trays?.length ?? 0) > 0 ||
+    observedState?.raw_payload_json != null;
+
+  if (rawNote === NO_LIVE_STATUS_DURING_POLL_NOTE) {
+    return hasDisplayedContext
+      ? t(
+          "settings.bambuLiveNoNewStatusPoll",
+          "No new MQTT burst arrived in this poll. Showing the last known live state and captured diagnostics.",
+        )
+      : t(
+          "settings.bambuLiveNoLiveStatusPoll",
+          "Connected, but no live MQTT status arrived during this poll.",
+        );
+  }
+
+  if (rawNote === WAITING_FOR_STATUS_BURST_NOTE) {
+    return t(
+      "settings.bambuLiveWaitingForStatusBurst",
+      "Connected, waiting for the next MQTT status burst.",
+    );
+  }
+
+  return rawNote;
 }
 
 export function buildSettingsBambuLiveDiagnosticMetricCards({
@@ -277,6 +327,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticSort,
   formatDateTime,
   liveConfig,
+  printerSlots,
   selectedChartFieldPath,
   spoolRows,
   t,
@@ -312,6 +363,12 @@ export function buildSettingsBambuLiveDiagnosticsModel({
   const signalQualityBuckets = buildSettingsBambuLiveSignalQualityBuckets(diagnosticFields, t);
   const fallbackSummaryParts = buildSettingsBambuLiveFallbackSummaryParts(diagnosticFields, t);
   const observedSummaryParts = buildSettingsBambuLiveObservedSummaryParts(observedState, t);
+  const statusNote = buildSettingsBambuLiveStatusNote({
+    fallbackSummaryParts,
+    observedState,
+    observedSummaryParts,
+    t,
+  });
   const { diagnosticGroups, sortedDiagnosticFields } = buildSettingsBambuLiveDiagnosticGroups({
     diagnosticFields,
     diagnosticFilter,
@@ -332,6 +389,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
     amsReadInProgress,
     captureTrayByKey,
     displayTrays,
+    printerSlots,
     spoolRows,
     t,
   });
@@ -350,6 +408,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
     reviewTrayCount,
     selectedDiagnosticChartField,
     signalQualityBuckets,
+    statusNote,
     sortedDiagnosticFields,
   };
 }

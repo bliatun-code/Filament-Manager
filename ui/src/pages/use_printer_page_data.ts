@@ -4,9 +4,11 @@ import {
   loadPrinterPageData,
   type PrinterSnapshotSource,
 } from "../lib/printer_data_source";
+import { loadCatalogMasters } from "../lib/catalog_data_source";
 import { sortPrinterSlotsExtLast } from "../lib/printer_profiles";
 import type {
   BambuLiveIntegrationEntry,
+  MasterCatalogRow,
   PrinterOverviewRow,
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
@@ -27,6 +29,7 @@ export type UsePrinterPageDataResult = {
   printers: PrinterOverviewRow[];
   spools: SpoolWithMasterRow[];
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
+  catalogMasters: MasterCatalogRow[];
   clientPrinterSource: PrinterSnapshotSource;
   clientPrinterUpdatedAt: string | null;
   printerModels: string[];
@@ -49,11 +52,13 @@ export function usePrinterPageData({
   const [bambuLiveIntegrations, setBambuLiveIntegrations] = useState<
     Record<string, BambuLiveIntegrationEntry["config"]>
   >({});
+  const [catalogMasters, setCatalogMasters] = useState<MasterCatalogRow[]>([]);
   const [clientPrinterSource, setClientPrinterSource] =
     useState<PrinterSnapshotSource>("LIVE");
   const [clientPrinterUpdatedAt, setClientPrinterUpdatedAt] = useState<string | null>(null);
   const [printerModels, setPrinterModels] = useState<string[]>([]);
   const reloadInFlightRef = useRef(false);
+  const catalogLoadedRef = useRef(false);
 
   const reloadData = useCallback(async (options?: { silent?: boolean }) => {
     if (!tauri || reloadInFlightRef.current) {
@@ -70,6 +75,22 @@ export function usePrinterPageData({
         clientLibraryId,
         supportedPrinterModels,
       });
+      if (!options?.silent || !catalogLoadedRef.current) {
+        try {
+          const loadedCatalogMasters = await loadCatalogMasters({
+            clientReadOnly,
+            clientHostBaseUrl,
+            clientLibraryId,
+            limit: 5000,
+          });
+          catalogLoadedRef.current = true;
+          setCatalogMasters(loadedCatalogMasters);
+        } catch (catalogLoadError) {
+          console.warn("Failed to load master catalog for printer assistance.", catalogLoadError);
+          catalogLoadedRef.current = true;
+          setCatalogMasters([]);
+        }
+      }
       setClientPrinterSource(loaded.source);
       setClientPrinterUpdatedAt(loaded.updatedAt);
       setPrinters(
@@ -124,6 +145,7 @@ export function usePrinterPageData({
     printers,
     spools,
     bambuLiveIntegrations,
+    catalogMasters,
     clientPrinterSource,
     clientPrinterUpdatedAt,
     printerModels,

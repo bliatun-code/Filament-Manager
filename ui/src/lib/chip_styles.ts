@@ -29,3 +29,22 @@ export function semanticChipClass(
 ): string {
   return `rounded-lg border ${sizeClasses} font-semibold ${semanticToneClassByTone[tone]}`;
 }
+
+const inlineSignalToneClassByTone: Record<SemanticChipTone, string> = {
+  neutral:
+    "text-slate-500 before:bg-slate-400/80 dark:text-slate-400 dark:before:bg-slate-500",
+  info: "text-slate-500 before:bg-sky-400/85 dark:text-slate-400 dark:before:bg-sky-300/85",
+  success:
+    "text-slate-500 before:bg-emerald-500/85 dark:text-slate-400 dark:before:bg-emerald-300/85",
+  warning:
+    "text-amber-700 before:bg-amber-500 dark:text-amber-200 dark:before:bg-amber-300",
+  danger:
+    "text-rose-700 before:bg-rose-500 dark:text-rose-200 dark:before:bg-rose-300",
+};
+
+export function inlineStatusSignalClass(
+  tone: SemanticChipTone = "neutral",
+  sizeClasses = "text-[11px]",
+): string {
+  return `inline-flex items-center gap-1.5 ${sizeClasses} font-medium leading-none ${inlineSignalToneClassByTone[tone]} before:h-1 before:w-1 before:shrink-0 before:rounded-full`;
+}

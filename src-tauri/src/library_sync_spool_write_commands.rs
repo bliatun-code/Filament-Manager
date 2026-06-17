@@ -8,8 +8,8 @@ use crate::library_sync_host_client::{
 };
 use crate::library_sync_models::{
     LibrarySyncCreateSpoolInput, LibrarySyncCreateSpoolResponse,
-    LibrarySyncUpdateSpoolDetailsInput, LibrarySyncUpdateSpoolRfidTagInput,
-    LibrarySyncWeightWriteInput,
+    LibrarySyncUpdateSpoolDetailsInput, LibrarySyncUpdateSpoolOwnershipInput,
+    LibrarySyncUpdateSpoolRfidTagInput, LibrarySyncWeightWriteInput,
 };
 use crate::state::AppState;
 
@@ -92,6 +92,36 @@ pub(crate) fn update_library_sync_host_spool_details(
 
     refresh_library_sync_spool_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, "Host spool details updated.", None)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub(crate) fn update_library_sync_host_spool_ownership(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncUpdateSpoolOwnershipInput,
+) -> Result<(), String> {
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+
+    let spool_id = input.spool_id.trim();
+    if spool_id.is_empty() {
+        return Err("Spool id is required.".to_string());
+    }
+
+    perform_library_sync_host_write(
+        &state,
+        &normalized_base_url,
+        &format!("/api/v1/spools/{spool_id}/ownership"),
+        &serde_json::json!({
+            "ownership_type": input.ownership_type.trim(),
+            "owner_name": trimmed_non_empty(input.owner_name.as_deref()),
+            "owner_contact": trimmed_non_empty(input.owner_contact.as_deref()),
+            "ownership_note": trimmed_non_empty(input.ownership_note.as_deref()),
+        }),
+    )?;
+
+    refresh_library_sync_spool_cache(&state, &normalized_base_url);
+    save_library_sync_success(&state, "Host spool ownership updated.", None)?;
     Ok(())
 }
 

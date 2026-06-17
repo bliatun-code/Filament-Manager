@@ -1,6 +1,5 @@
 import { VendorBadge } from "./vendor_badge";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
-import { semanticChipClass } from "../lib/chip_styles";
 import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import { formatInventoryDisplayTitle } from "../lib/inventory_list_model";
@@ -146,7 +145,7 @@ export function WishlistQueuePanel({
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <VendorBadge vendor={item.vendor} compact />
-                    <span className={semanticChipClass("info", "px-3 py-1 text-[11px]")}>
+                    <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
                       {t("wishlist.qty", "Qty")} {item.quantity}
                     </span>
                   </div>

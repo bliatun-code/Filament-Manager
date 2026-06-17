@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildInventoryMetadataCandidateResult,
   buildInventoryMatchResult,
   translateObservedMatchNote,
 } from "./inventory_match";
@@ -14,6 +15,7 @@ function createRow(
     material?: string;
     filamentName?: string;
     hexColor?: string | null;
+    vendor?: string;
   } = {},
 ): SpoolWithMasterRow {
   return {
@@ -30,7 +32,7 @@ function createRow(
       color_name: "Blue",
       hex_color: overrides.hexColor ?? "#2563EB",
       default_weight: 1000,
-      vendor: "Bambu",
+      vendor: overrides.vendor ?? "eSUN",
     },
   };
 }
@@ -66,6 +68,78 @@ test("buildInventoryMatchResult ignores empty and lost rows", () => {
   );
 
   assert.equal(result.kind, "none");
+});
+
+test("buildInventoryMatchResult ignores deleted rows", () => {
+  const result = buildInventoryMatchResult(
+    [
+      createRow("deleted", {
+        status: "DELETED",
+        rfidTag: "ABC123",
+        material: "PLA",
+        filamentName: "PLA Basic",
+      }),
+    ],
+    {
+      rfid: "ABC123",
+      material: "PLA",
+      filamentName: "PLA Basic",
+    },
+  );
+
+  assert.equal(result.kind, "none");
+});
+
+test("buildInventoryMatchResult does not fall back to metadata when an unregistered RFID is present", () => {
+  const result = buildInventoryMatchResult(
+    [
+      createRow("metadata", {
+        material: "PLA",
+        filamentName: "PLA+HS",
+        hexColor: "#121212",
+      }),
+    ],
+    {
+      rfid: "UNREGISTERED-RFID",
+      material: "PLA",
+      colorHex: "#000000",
+    },
+  );
+
+  assert.equal(result.kind, "none");
+});
+
+test("buildInventoryMetadataCandidateResult suggests Bambu rows for unknown RFID assistance", () => {
+  const observed = {
+    rfid: "UNREGISTERED-BAMBU-RFID",
+    material: "PLA",
+    filamentName: "PLA Matte",
+    colorHex: "#000000",
+  };
+  const rows = [
+    createRow("bambu-black", {
+      vendor: "Bambu",
+      material: "PLA",
+      filamentName: "PLA Matte",
+      hexColor: "#000000",
+    }),
+    createRow("esun-black", {
+      vendor: "eSUN",
+      material: "PLA",
+      filamentName: "PLA+HS",
+      hexColor: "#000000",
+    }),
+  ];
+
+  assert.equal(buildInventoryMatchResult(rows, observed).kind, "none");
+
+  const result = buildInventoryMetadataCandidateResult(rows, observed, {
+    includeBambuMetadataCandidates: true,
+    onlyBambuMetadataCandidates: true,
+  });
+
+  assert.equal(result.kind, "metadata_single");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), ["bambu-black"]);
 });
 
 test("buildInventoryMatchResult falls back to metadata matching", () => {
@@ -178,6 +252,102 @@ test("buildInventoryMatchResult reports multiple metadata candidates", () => {
 
   assert.equal(result.kind, "metadata_multiple");
   assert.deepEqual(result.candidates.map((row) => row.spool.id), ["spool-1", "spool-2"]);
+});
+
+test("buildInventoryMatchResult keeps Bambu rolls out of non-RFID metadata matching", () => {
+  const result = buildInventoryMatchResult(
+    [
+      createRow("bambu", {
+        vendor: "Bambu",
+        material: "PLA",
+        filamentName: "PLA Matte",
+        hexColor: "#000000",
+      }),
+      createRow("esun", {
+        vendor: "eSUN",
+        material: "PLA",
+        filamentName: "PLA+HS",
+        hexColor: "#121212",
+      }),
+    ],
+    {
+      material: "PLA",
+      filamentName: "PLA Matte",
+      colorHex: "#000000",
+    },
+  );
+
+  assert.equal(result.kind, "metadata_single");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), ["esun"]);
+});
+
+test("buildInventoryMatchResult matches third-party live AMS color with tolerance and prefers the assigned slot", () => {
+  const result = buildInventoryMatchResult(
+    [
+      createRow("assigned-black", {
+        status: "ASSIGNED",
+        material: "PLA",
+        filamentName: "PLA+HS",
+        hexColor: "#121212",
+      }),
+      createRow("stock-black", {
+        status: "IN_STOCK",
+        material: "PLA",
+        filamentName: "PLA+HS",
+        hexColor: "#121212",
+      }),
+      createRow("dark-purple", {
+        status: "IN_STOCK",
+        material: "PLA",
+        filamentName: "PLA-Twinkling",
+        hexColor: "#33152F",
+      }),
+      createRow("black-tpu", {
+        status: "IN_STOCK",
+        material: "TPU",
+        filamentName: "TPU",
+        hexColor: "#000000",
+      }),
+    ],
+    {
+      material: "PLA",
+      filamentName: "PLA Matte",
+      colorHex: "#000000",
+    },
+    { preferredSpoolId: "assigned-black" },
+  );
+
+  assert.equal(result.kind, "metadata_multiple");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), [
+    "assigned-black",
+    "stock-black",
+  ]);
+});
+
+test("buildInventoryMatchResult excludes borrowed rolls from non-RFID metadata candidates", () => {
+  const result = buildInventoryMatchResult(
+    [
+      createRow("borrowed", {
+        status: "BORROWED",
+        material: "PLA",
+        filamentName: "PLA+HS",
+        hexColor: "#121212",
+      }),
+      createRow("stock", {
+        status: "IN_STOCK",
+        material: "PLA",
+        filamentName: "PLA+HS",
+        hexColor: "#121212",
+      }),
+    ],
+    {
+      material: "PLA",
+      colorHex: "#000000",
+    },
+  );
+
+  assert.equal(result.kind, "metadata_single");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), ["stock"]);
 });
 
 test("translateObservedMatchNote localizes known notes and preserves unknown notes", () => {

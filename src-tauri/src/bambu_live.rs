@@ -11,7 +11,9 @@ use crate::bambu_live_sync::{
 use crate::bambu_mqtt::{
     build_connect_packet, build_subscribe_packet, parse_publish_payload, read_mqtt_packet,
 };
-use crate::bambu_thermal::{is_print_capable_temp, nozzle_thermal_state_name};
+use crate::bambu_thermal::{
+    is_below_extrusion_temp, is_print_capable_temp, nozzle_thermal_state_name,
+};
 use crate::state::AppState;
 use native_tls::TlsConnector;
 use serde_json::{json, Map, Value};
@@ -183,16 +185,19 @@ fn merge_idle_observation(
     };
 
     let drop_carried_job_identity = should_drop_carried_job_identity(previous, &next);
+    let drop_carried_job_progress = should_drop_carried_job_progress(previous, &next);
 
     next.last_seen_at = next.last_seen_at.or_else(|| previous.last_seen_at.clone());
-    next.progress_percent = next.progress_percent.or(previous.progress_percent);
-    next.remaining_minutes = next.remaining_minutes.or(previous.remaining_minutes);
-    next.prepare_percent = next.prepare_percent.or(previous.prepare_percent);
-    next.print_stage = next.print_stage.or(previous.print_stage);
-    next.print_error_code = next.print_error_code.or(previous.print_error_code);
-    next.job_state_code = next.job_state_code.or(previous.job_state_code);
-    next.gcode_state = next.gcode_state.or_else(|| previous.gcode_state.clone());
-    next.print_type = next.print_type.or_else(|| previous.print_type.clone());
+    if !drop_carried_job_progress {
+        next.progress_percent = next.progress_percent.or(previous.progress_percent);
+        next.remaining_minutes = next.remaining_minutes.or(previous.remaining_minutes);
+        next.prepare_percent = next.prepare_percent.or(previous.prepare_percent);
+        next.print_stage = next.print_stage.or(previous.print_stage);
+        next.print_error_code = next.print_error_code.or(previous.print_error_code);
+        next.job_state_code = next.job_state_code.or(previous.job_state_code);
+        next.gcode_state = next.gcode_state.or_else(|| previous.gcode_state.clone());
+        next.print_type = next.print_type.or_else(|| previous.print_type.clone());
+    }
     if !drop_carried_job_identity {
         next.subtask_id = next.subtask_id.or_else(|| previous.subtask_id.clone());
         next.subtask_name = next.subtask_name.or_else(|| previous.subtask_name.clone());
@@ -204,7 +209,8 @@ fn merge_idle_observation(
     next.nozzle_temp_c = next.nozzle_temp_c.or(previous.nozzle_temp_c);
     next.bed_temp_c = next.bed_temp_c.or(previous.bed_temp_c);
     next.ams_humidity_index = next.ams_humidity_index.or(previous.ams_humidity_index);
-    next.ams_temperature_c = next.ams_temperature_c.or(previous.ams_temperature_c);
+    next.ams_temperature_c = sanitize_ams_temperature_c(next.ams_temperature_c)
+        .or_else(|| sanitize_ams_temperature_c(previous.ams_temperature_c));
     next.ams_reading_bits = next
         .ams_reading_bits
         .or_else(|| previous.ams_reading_bits.clone());
@@ -237,6 +243,40 @@ fn should_drop_carried_job_identity(
     previous.subtask_id.is_some()
         && previous_looks_near_complete(previous)
         && next_looks_like_new_print_without_identity(next)
+}
+
+fn should_drop_carried_job_progress(
+    previous: &BambuLiveObservedStateRow,
+    next: &BambuLiveObservedStateRow,
+) -> bool {
+    has_terminal_or_idle_print_state(next)
+        || (has_terminal_or_idle_print_state(previous)
+            && raw_payload_has_no_current_job_fields(next))
+        || next_looks_like_cold_jobless_stop(previous, next)
+}
+
+fn next_looks_like_cold_jobless_stop(
+    previous: &BambuLiveObservedStateRow,
+    next: &BambuLiveObservedStateRow,
+) -> bool {
+    is_live_print_running(previous)
+        && next.nozzle_temp_c.is_some_and(is_below_extrusion_temp)
+        && raw_payload_has_no_current_job_fields(next)
+}
+
+fn has_terminal_or_idle_print_state(state: &BambuLiveObservedStateRow) -> bool {
+    let gcode_state = normalized_carried_print_state(state.gcode_state.as_deref());
+    matches!(
+        gcode_state.as_deref(),
+        Some("IDLE" | "FAILED" | "STOP" | "STOPPED" | "CANCELLED")
+    ) || (matches!(gcode_state.as_deref(), Some("FINISH" | "FINISHED"))
+        && is_credible_finished_print_state(state))
+        || (state
+            .print_type
+            .as_deref()
+            .map(str::trim)
+            .is_some_and(|value| value.eq_ignore_ascii_case("idle"))
+            && !is_live_print_running(state))
 }
 
 fn previous_looks_near_complete(previous: &BambuLiveObservedStateRow) -> bool {
@@ -283,6 +323,34 @@ fn raw_payload_has_explicit_job_identity(state: &BambuLiveObservedStateRow) -> b
         .and_then(|payload| payload.pointer("/_bfm_last_message/has_job_identity"))
         .and_then(Value::as_bool)
         .unwrap_or(false)
+}
+
+fn raw_payload_has_no_current_job_fields(state: &BambuLiveObservedStateRow) -> bool {
+    let Some(job) = state
+        .raw_payload_json
+        .as_ref()
+        .and_then(|payload| payload.get("_bfm_job"))
+        .and_then(Value::as_object)
+    else {
+        return false;
+    };
+
+    [
+        "active_tray_index",
+        "gcode_state",
+        "job_state_code",
+        "print_type",
+        "progress_percent",
+        "prepare_percent",
+        "print_stage",
+        "print_error_code",
+        "remaining_minutes",
+        "session_key",
+        "subtask_id",
+        "subtask_name",
+    ]
+    .into_iter()
+    .all(|key| job.get(key).is_none_or(Value::is_null))
 }
 
 fn merge_tray_snapshots(
@@ -733,7 +801,9 @@ fn merge_print_payload(state: &mut BambuLiveObservedStateRow, message: &Value) -
     state.bed_temp_c = as_f64(print.get("bed_temper")).or(state.bed_temp_c);
     state.ams_humidity_index =
         as_i64(print.pointer("/ams/ams/0/humidity")).or(state.ams_humidity_index);
-    state.ams_temperature_c = as_f64(print.pointer("/ams/ams/0/temp")).or(state.ams_temperature_c);
+    if let Some(ams_temperature_c) = as_f64(print.pointer("/ams/ams/0/temp")) {
+        state.ams_temperature_c = sanitize_ams_temperature_c(Some(ams_temperature_c));
+    }
     state.ams_reading_bits = as_string(print.pointer("/ams/tray_reading_bits"))
         .or_else(|| state.ams_reading_bits.clone());
     state.ams_exist_bits =
@@ -1314,6 +1384,20 @@ fn as_i64(value: Option<&Value>) -> Option<i64> {
         Some(Value::Number(number)) => number.as_i64(),
         Some(Value::String(raw)) => raw.trim().parse::<i64>().ok(),
         _ => None,
+    }
+}
+
+fn sanitize_ams_temperature_c(value: Option<f64>) -> Option<f64> {
+    let value = value?;
+    if !value.is_finite() {
+        return None;
+    }
+    // Plain AMS units are not heated, while newer drying-capable AMS units still stay
+    // far below nozzle/bed temperatures. Values above this are not trustworthy air temp.
+    if (-20.0..=80.0).contains(&value) {
+        Some(value)
+    } else {
+        None
     }
 }
 

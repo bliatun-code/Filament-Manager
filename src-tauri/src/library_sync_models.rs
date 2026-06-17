@@ -70,6 +70,17 @@ pub(crate) struct LibrarySyncUpdateSpoolDetailsInput {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct LibrarySyncUpdateSpoolOwnershipInput {
+    pub(crate) base_url: String,
+    pub(crate) expected_library_id: Option<String>,
+    pub(crate) spool_id: String,
+    pub(crate) ownership_type: String,
+    pub(crate) owner_name: Option<String>,
+    pub(crate) owner_contact: Option<String>,
+    pub(crate) ownership_note: Option<String>,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct LibrarySyncUpdateSpoolRfidTagInput {
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,

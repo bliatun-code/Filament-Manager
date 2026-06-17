@@ -33,6 +33,10 @@ pub(super) fn build_router(state: CompanionApiState) -> Router {
             post(handle_update_borrowed_in_spool),
         )
         .route(
+            "/spools/{spool_id}/ownership",
+            post(handle_update_spool_ownership),
+        )
+        .route(
             "/spools/{spool_id}/details",
             post(handle_update_spool_details),
         )

@@ -1,5 +1,5 @@
 import { VendorBadge } from "./vendor_badge";
-import { neutralChipClass, semanticChipClass } from "../lib/chip_styles";
+import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import {
@@ -69,7 +69,7 @@ export function InventorySpoolDetailHeader({
             >
               {spool.material}
             </span>
-            <span className={semanticChipClass(ownershipTone, "px-2.5 py-1 text-[11px]")}>
+            <span className={inlineStatusSignalClass(ownershipTone)}>
               {ownershipLabel}
             </span>
           </div>
@@ -77,10 +77,10 @@ export function InventorySpoolDetailHeader({
       </div>
       <div className="flex shrink-0 items-start gap-2">
         <div className="flex flex-wrap justify-end gap-2">
-          <span className={semanticChipClass(statusTone, "px-3 py-1 text-xs")}>
+          <span className={inlineStatusSignalClass(statusTone, "text-xs")}>
             {statusLabel}
           </span>
-          <span className={neutralChipClass(true, "px-3 py-1 text-xs")}>
+          <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">
             {formatGrams(spool.remainingGrams)}
           </span>
         </div>

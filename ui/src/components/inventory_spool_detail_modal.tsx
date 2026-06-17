@@ -16,12 +16,17 @@ import {
 import {
   InventorySpoolHomeLocationPanel,
   InventorySpoolLostStatusPanel,
+  InventorySpoolOwnershipPanel,
   InventorySpoolTarePanel,
 } from "./inventory_spool_maintenance_panels";
 import { RollUsageChart } from "./roll_usage_chart";
 import { WeightInput } from "./weight_input";
 import { useI18n } from "../lib/i18n";
-import type { InventorySemanticTone, InventorySpool } from "../lib/inventory_list_model";
+import type {
+  InventorySemanticTone,
+  InventorySpool,
+  OwnershipType,
+} from "../lib/inventory_list_model";
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { SpoolHistoryEventRow, SpoolUsagePointRow } from "../lib/tauri_client";
@@ -52,6 +57,10 @@ type InventorySpoolDetailModalProps = {
   onChangeHexColor: (value: string) => void;
   onChangeLocation: (value: string) => void;
   onChangeMaterial: (value: string) => void;
+  onChangeOwnerContact: (value: string) => void;
+  onChangeOwnerName: (value: string) => void;
+  onChangeOwnershipNote: (value: string) => void;
+  onChangeOwnershipType: (value: OwnershipType) => void;
   onChangeTare: (value: string) => void;
   onChangeVendor: (value: string) => void;
   onClose: () => void;
@@ -62,6 +71,7 @@ type InventorySpoolDetailModalProps = {
   onRefill: () => void;
   onSaveLocation: () => void;
   onSaveMasterMetadata: () => void;
+  onSaveOwnership: () => void;
   onSaveTareWeight: () => void;
   onStartRfidCapture: () => void;
   onSubmitWeight: (grams: number) => void;
@@ -70,7 +80,11 @@ type InventorySpoolDetailModalProps = {
   onToggleRollHistory: () => void;
   open: boolean;
   ownershipLabel: string;
+  ownershipNoteDraft: string;
   ownershipTone: InventorySemanticTone;
+  ownershipTypeDraft: OwnershipType;
+  ownerContactDraft: string;
+  ownerNameDraft: string;
   qrCompanionAvailable: boolean;
   qrDataUrl: string | null;
   qrLoading: boolean;
@@ -115,6 +129,10 @@ export function InventorySpoolDetailModal({
   onChangeHexColor,
   onChangeLocation,
   onChangeMaterial,
+  onChangeOwnerContact,
+  onChangeOwnerName,
+  onChangeOwnershipNote,
+  onChangeOwnershipType,
   onChangeTare,
   onChangeVendor,
   onClose,
@@ -125,6 +143,7 @@ export function InventorySpoolDetailModal({
   onRefill,
   onSaveLocation,
   onSaveMasterMetadata,
+  onSaveOwnership,
   onSaveTareWeight,
   onStartRfidCapture,
   onSubmitWeight,
@@ -133,7 +152,11 @@ export function InventorySpoolDetailModal({
   onToggleRollHistory,
   open,
   ownershipLabel,
+  ownershipNoteDraft,
   ownershipTone,
+  ownershipTypeDraft,
+  ownerContactDraft,
+  ownerNameDraft,
   qrCompanionAvailable,
   qrDataUrl,
   qrLoading,
@@ -259,6 +282,21 @@ export function InventorySpoolDetailModal({
                 resolvedTheme={resolvedTheme}
                 spoolHexColor={spool.hexColor}
                 value={locationDraft}
+              />
+
+              <InventorySpoolOwnershipPanel
+                contactValue={ownerContactDraft}
+                disabled={!runtimeAvailable || manageBusy}
+                noteValue={ownershipNoteDraft}
+                onChangeContact={onChangeOwnerContact}
+                onChangeName={onChangeOwnerName}
+                onChangeNote={onChangeOwnershipNote}
+                onChangeType={onChangeOwnershipType}
+                onSave={onSaveOwnership}
+                ownerNameValue={ownerNameDraft}
+                resolvedTheme={resolvedTheme}
+                spoolHexColor={spool.hexColor}
+                typeValue={ownershipTypeDraft}
               />
 
               <InventorySpoolLostStatusPanel

@@ -1,5 +1,6 @@
 import { describePrinterCapability } from "../lib/printer_profiles";
 import type { PrinterRow } from "../lib/tauri_client";
+import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { useI18n } from "../lib/i18n";
 import { PrinterModelPreview } from "./printer_model_preview";
 
@@ -49,9 +50,13 @@ export function SettingsPrinterCardHeader({
             {printer.name}
           </span>{" "}
           {hasLiveIntegration ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-sky-700 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-200">
+            <span
+              className={inlineStatusSignalClass(
+                reviewTrayCount > 0 ? "warning" : "neutral",
+                "text-[11px]",
+              )}
+            >
               {t("settings.bambuLiveBadge", "Live")}
-              {reviewTrayCount > 0 ? <span aria-hidden="true">!</span> : null}
             </span>
           ) : null}{" "}
           · {printer.model} · {describePrinterCapability(t, printer.model, hasMultiMaterial)} ·{" "}

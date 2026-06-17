@@ -5,6 +5,7 @@ import {
   toSwatchColor,
 } from "../lib/color_utils";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
+import { inlineStatusSignalClass } from "../lib/chip_styles";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import { SettingsMetricTile } from "./settings_ui";
 import { chipButtonClass, settingsActionButtonClass } from "../lib/settings_ui_classes";
@@ -63,7 +64,7 @@ export function SettingsMissingSwatchesPanel({
               )}
             </div>
           </div>
-          <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-600 shadow-sm shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:shadow-none">
+          <div className={inlineStatusSignalClass("neutral", "text-sm")}>
             {t("settings.missingSwatches", "Missing swatches")}: {missingSwatchCount}
           </div>
         </div>

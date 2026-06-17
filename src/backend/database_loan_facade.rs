@@ -18,7 +18,10 @@ use super::database_loan_return::{
     return_inbound_spool_loan as return_inbound_spool_loan_row,
     return_spool_loan as return_spool_loan_row,
 };
-use super::database_loan_update::update_active_inbound_spool_loan_counterparty as update_active_inbound_spool_loan_counterparty_row;
+use super::database_loan_update::{
+    close_inbound_spool_loan_without_returning_spool as close_inbound_spool_loan_without_returning_spool_row,
+    update_active_inbound_spool_loan_counterparty as update_active_inbound_spool_loan_counterparty_row,
+};
 use super::database_result::InventoryResult;
 
 impl FilamentDatabase {
@@ -35,6 +38,20 @@ impl FilamentDatabase {
             counterparty_name,
             counterparty_contact,
             counterparty_note,
+        )
+    }
+
+    pub fn close_inbound_spool_loan_without_returning_spool(
+        &self,
+        loan_id: &str,
+        returned_grams: i64,
+        return_note: Option<&str>,
+    ) -> InventoryResult<SpoolLoanRow> {
+        close_inbound_spool_loan_without_returning_spool_row(
+            self.connection(),
+            loan_id,
+            returned_grams,
+            return_note,
         )
     }
 

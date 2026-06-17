@@ -27,6 +27,12 @@ export function renderSelectedSpoolDetailBody(options) {
     ? normalizedDetailStatus
     : "IN_STOCK";
   const detailStatusLabel = formatStatusLabel(detailStatus, locale);
+  const detailStatusTone =
+    detailStatus === "LOST" ? "danger" : detailStatus === "EMPTY" ? "warning" : "success";
+  const detailOwnershipTone =
+    String(selectedSpool.spool.ownership_type || "").trim().toUpperCase() === "BORROWED_IN"
+      ? "info"
+      : "neutral";
   const detailLocation = selectedSpool.spool.location_id || "";
   const detailHomeLocation = selectedSpool.spool.home_location_id || "";
   const detailPlacementLabel = formatPlacementLabel(detailLocation, locale);
@@ -74,9 +80,9 @@ export function renderSelectedSpoolDetailBody(options) {
             <div class="detail-summary-copy">
               <div class="detail-title">${escapeHtml(detailTitle)}</div>
             </div>
-            <div class="pill-row detail-summary-pills">
-              <span class="pill">${escapeHtml(detailStatusLabel)}</span>
-              <span class="pill">${escapeHtml(ownershipLabel(selectedSpool.spool))}</span>
+            <div class="detail-summary-signals">
+              <span class="inline-signal" data-tone="${escapeHtml(detailStatusTone)}">${escapeHtml(detailStatusLabel)}</span>
+              <span class="inline-signal" data-tone="${escapeHtml(detailOwnershipTone)}">${escapeHtml(ownershipLabel(selectedSpool.spool))}</span>
             </div>
           </div>
           <div class="meta-line detail-summary-meta">

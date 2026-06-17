@@ -3,10 +3,12 @@ import {
   type DiagnosticTraySnapshot,
 } from "../lib/diagnostic_capture";
 import {
+  buildInventoryMetadataCandidateResult,
   buildInventoryMatchResult,
   translateObservedMatchNote,
   type InventoryMatchResult,
 } from "../lib/inventory_match";
+import { liveTrayMatchesSlot } from "../lib/printer_live_display";
 import {
   formatBambuSettingsProfileSignal,
   parseBambuSettingsProfileName,
@@ -22,6 +24,7 @@ import {
 } from "../lib/ams_weight_estimate";
 import type {
   BambuLiveObservedTray,
+  PrinterAmsSlotRow,
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
 
@@ -30,6 +33,7 @@ type TranslateFn = (key: string, fallback: string) => string;
 type BuildSettingsBambuLiveDiagnosticTrayCardInput = {
   amsReadInProgress: boolean;
   capturedTraySnapshot: DiagnosticTraySnapshot | null;
+  printerSlots?: PrinterAmsSlotRow[];
   spoolRows: SpoolWithMasterRow[];
   t: TranslateFn;
   tray: BambuLiveObservedTray;
@@ -39,6 +43,7 @@ type BuildSettingsBambuLiveDiagnosticTrayCardsInput = {
   amsReadInProgress: boolean;
   captureTrayByKey: Map<string, DiagnosticTraySnapshot>;
   displayTrays: BambuLiveObservedTray[];
+  printerSlots?: PrinterAmsSlotRow[];
   spoolRows: SpoolWithMasterRow[];
   t: TranslateFn;
 };
@@ -64,7 +69,7 @@ export function buildSettingsBambuLiveInventoryMatchDescription({
   if (inventoryMatchKind === "metadata_single") {
     return t(
       "settings.bambuLiveInventoryLikelyMatch",
-      "Single likely inventory match from material/name/color.",
+      "Single likely inventory match from material and live color.",
     );
   }
   if (inventoryMatchKind === "metadata_multiple") {
@@ -395,17 +400,30 @@ export function resolveSettingsBambuLiveCapturedTraySnapshot({
 export function buildSettingsBambuLiveDiagnosticTrayCard({
   amsReadInProgress,
   capturedTraySnapshot,
+  printerSlots = [],
   spoolRows,
   t,
   tray,
 }: BuildSettingsBambuLiveDiagnosticTrayCardInput) {
   const observedRfid = buildSettingsBambuLiveObservedRfid(capturedTraySnapshot, tray);
-  const inventoryMatch = buildInventoryMatchResult(spoolRows, {
+  const preferredSlot = printerSlots.find((slot) => liveTrayMatchesSlot(slot, tray));
+  const observedMatchInput = {
     rfid: observedRfid,
     material: tray.filament_type ?? capturedTraySnapshot?.filamentType ?? null,
     filamentName: tray.filament_name ?? capturedTraySnapshot?.filamentName ?? null,
     colorHex: tray.color_hex ?? capturedTraySnapshot?.colorHex ?? null,
+  };
+  const strictInventoryMatch = buildInventoryMatchResult(spoolRows, observedMatchInput, {
+    preferredSpoolId: preferredSlot?.spool_id ?? null,
   });
+  const inventoryMatch =
+    strictInventoryMatch.kind === "none" && observedRfid
+      ? buildInventoryMetadataCandidateResult(spoolRows, observedMatchInput, {
+          includeBambuMetadataCandidates: true,
+          onlyBambuMetadataCandidates: true,
+          preferredSpoolId: preferredSlot?.spool_id ?? null,
+        })
+      : strictInventoryMatch;
   const primaryInventoryMatch = inventoryMatch.candidates[0] ?? null;
   const matchDescription = buildSettingsBambuLiveInventoryMatchDescription({
     inventoryMatchKind: inventoryMatch.kind,
@@ -478,6 +496,7 @@ export function buildSettingsBambuLiveDiagnosticTrayCards({
   amsReadInProgress,
   captureTrayByKey,
   displayTrays,
+  printerSlots,
   spoolRows,
   t,
 }: BuildSettingsBambuLiveDiagnosticTrayCardsInput) {
@@ -489,6 +508,7 @@ export function buildSettingsBambuLiveDiagnosticTrayCards({
     return buildSettingsBambuLiveDiagnosticTrayCard({
       amsReadInProgress,
       capturedTraySnapshot,
+      printerSlots,
       spoolRows,
       t,
       tray,

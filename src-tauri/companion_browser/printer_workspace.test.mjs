@@ -175,8 +175,113 @@ test("printer workspace shows a live badge when host live data is present", () =
     }),
   });
 
-  assert.match(html, />Live</);
+  assert.match(html, /printer-live-dot/);
+  assert.match(html, /Live ·/);
+  assert.doesNotMatch(html, /printer-live-strip/);
   assert.match(html, /0 loaded · 1 open/);
+});
+
+test("printer workspace renders live telemetry from host MQTT snapshots", () => {
+  const html = renderBoard({
+    activePrinter: createPrinterRow({
+      slots: [
+        {
+          slot_id: "slot-1",
+          ams_id: "ams_1",
+          slot_index: 1,
+          spool_id: "spool-1",
+          spool_material: "PLA",
+          spool_filament_name: "Basic",
+          spool_color_name: "Black",
+          spool_remaining_g: 640,
+          live_mqtt_connected: true,
+          live_loaded: true,
+          live_is_active: true,
+          live_progress_percent: 17,
+          live_remaining_minutes: 88,
+          live_nozzle_temp_c: 220.2,
+          live_bed_temp_c: 55.4,
+          live_ams_humidity_index: 4,
+          live_ams_temperature_c: 38.1,
+        },
+      ],
+    }),
+  });
+
+  assert.match(html, /printer-live-strip/);
+  assert.match(html, /Printing/);
+  assert.match(html, /17% · 1 h 28 min/);
+  assert.match(html, /Nozzle/);
+  assert.match(html, /220 °C/);
+  assert.match(html, /Bed/);
+  assert.match(html, /55 °C/);
+  assert.match(html, /AMS/);
+  assert.match(html, />B</);
+  assert.match(html, /Dry/);
+  assert.match(html, /38 °C/);
+});
+
+test("printer workspace hides impossible AMS air temperatures", () => {
+  const html = renderBoard({
+    activePrinter: createPrinterRow({
+      slots: [
+        {
+          slot_id: "slot-1",
+          ams_id: "ams_1",
+          slot_index: 1,
+          spool_id: "spool-1",
+          spool_material: "PLA",
+          spool_filament_name: "Basic",
+          spool_color_name: "Black",
+          spool_remaining_g: 640,
+          live_mqtt_connected: true,
+          live_loaded: true,
+          live_is_active: true,
+          live_nozzle_temp_c: 220.2,
+          live_bed_temp_c: 55.4,
+          live_ams_humidity_index: 4,
+          live_ams_temperature_c: 134.7,
+        },
+      ],
+    }),
+  });
+
+  assert.match(html, /printer-live-strip/);
+  assert.match(html, />B</);
+  assert.doesNotMatch(html, /135 °C/);
+});
+
+test("printer workspace does not show stale job timing when only a loaded slot remains active", () => {
+  const html = renderBoard({
+    activePrinter: createPrinterRow({
+      slots: [
+        {
+          slot_id: "slot-4",
+          ams_id: "ams_1",
+          slot_index: 4,
+          spool_id: "spool-4",
+          spool_material: "PLA",
+          spool_filament_name: "Basic",
+          spool_color_name: "White",
+          spool_remaining_g: 0,
+          live_mqtt_connected: true,
+          live_loaded: true,
+          live_is_active: true,
+          live_progress_percent: 41,
+          live_remaining_minutes: 25,
+          live_nozzle_temp_c: 44.2,
+          live_bed_temp_c: 44.1,
+        },
+      ],
+    }),
+  });
+
+  assert.match(html, /printer-live-strip/);
+  assert.match(html, /Active/);
+  assert.match(html, /44 °C/);
+  assert.doesNotMatch(html, /Printing/);
+  assert.doesNotMatch(html, /41%/);
+  assert.doesNotMatch(html, /25 min/);
 });
 
 test("printer workspace shows live slot status for unassigned observed trays", () => {
@@ -203,6 +308,66 @@ test("printer workspace shows live slot status for unassigned observed trays", (
   assert.match(html, /PLA · Basic/);
   assert.match(html, /74%/);
   assert.match(html, /slot-card-loaded swatch-surface/);
+});
+
+test("printer workspace suggests Bambu inventory candidates for unknown live RFID", () => {
+  const html = renderBoard({
+    activePrinter: createPrinterRow({
+      slots: [
+        {
+          slot_id: "slot-1",
+          ams_id: "ams_1",
+          slot_index: 1,
+          spool_id: null,
+          live_loaded: true,
+          live_filament_type: "PLA",
+          live_filament_name: "PLA Matte",
+          live_color_hex: "#000000",
+          live_match_status: "unknown_rfid",
+          live_tray_uuid: "UNREGISTERED-RFID",
+          live_matched_inventory_spool_id: "spool-bambu",
+        },
+      ],
+    }),
+    printerSpoolOptions: [
+      {
+        spool: {
+          id: "spool-bambu",
+          remaining_g: 940,
+          status: "IN_STOCK",
+          rfid_tag: null,
+        },
+        master: {
+          material: "PLA",
+          filament_name: "PLA Matte",
+          color_name: "Matte Black",
+          vendor: "Bambu",
+          hex_color: "#000000",
+        },
+      },
+      {
+        spool: {
+          id: "spool-esun",
+          remaining_g: 940,
+          status: "IN_STOCK",
+          rfid_tag: null,
+        },
+        master: {
+          material: "PLA",
+          filament_name: "PLA+HS",
+          color_name: "Black",
+          vendor: "eSUN",
+          hex_color: "#000000",
+        },
+      },
+    ],
+  });
+
+  assert.match(html, /Likely inventory roll/);
+  assert.match(html, /PLA Matte · Matte Black/);
+  assert.match(html, /data-action="inspect-slot-spool"/);
+  assert.match(html, /data-spool-id="spool-bambu"/);
+  assert.doesNotMatch(html, /spool-esun/);
 });
 
 test("printer workspace hides implausible live remaining percentages", () => {

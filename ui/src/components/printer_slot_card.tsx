@@ -12,6 +12,7 @@ import type { ResolvedTheme } from "../lib/theme_mode";
 import type {
   BambuLiveIntegrationEntry,
   BambuLiveObservedTray,
+  MasterCatalogRow,
   PrinterAmsSlotRow,
   PrinterOverviewRow,
   SpoolWithMasterRow,
@@ -28,8 +29,10 @@ type PrinterSlotCardProps = {
   clientPrinterSource: PrinterSnapshotSource;
   resolvedTheme: ResolvedTheme;
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
+  catalogMasters: MasterCatalogRow[];
   openDropdownSlotId: string | null;
   setOpenDropdownSlotId: Dispatch<SetStateAction<string | null>>;
+  spools: SpoolWithMasterRow[];
   allowedSpoolsForSlot: (slotSpoolId?: string | null) => SpoolWithMasterRow[];
   findAllowedSpoolForSlot: (
     slotSpoolId: string | null | undefined,
@@ -49,6 +52,18 @@ type PrinterSlotCardProps = {
     slot: PrinterAmsSlotRow,
     liveTray: BambuLiveObservedTray,
   ) => void;
+  registerLiveRfidCandidate: (
+    printer: PrinterOverviewRow,
+    slot: PrinterAmsSlotRow,
+    liveTray: BambuLiveObservedTray,
+    row: SpoolWithMasterRow,
+  ) => void;
+  createLiveBambuCatalogSpool: (
+    printer: PrinterOverviewRow,
+    slot: PrinterAmsSlotRow,
+    liveTray: BambuLiveObservedTray,
+    master: MasterCatalogRow,
+  ) => void;
   openWeightPromptForDraft: (
     printer: PrinterOverviewRow["printer"],
     slot: PrinterAmsSlotRow,
@@ -65,8 +80,10 @@ export function PrinterSlotCard({
   clientPrinterSource,
   resolvedTheme,
   bambuLiveIntegrations,
+  catalogMasters,
   openDropdownSlotId,
   setOpenDropdownSlotId,
+  spools,
   allowedSpoolsForSlot,
   findAllowedSpoolForSlot,
   getSlotDraft,
@@ -75,6 +92,8 @@ export function PrinterSlotCard({
   openIncomingWeightDialog,
   openEmptySlotWeightDialog,
   openRfidOverrideDialog,
+  registerLiveRfidCandidate,
+  createLiveBambuCatalogSpool,
   openWeightPromptForDraft,
 }: PrinterSlotCardProps) {
   const { t, locale } = useI18n();
@@ -96,6 +115,8 @@ export function PrinterSlotCard({
     slot,
     liveConfig,
     liveTray,
+    spoolRows: spools,
+    catalogRows: catalogMasters,
     selectedTargetSpool,
     clientReadOnly,
     clientPrinterSource,
@@ -156,6 +177,8 @@ export function PrinterSlotCard({
         displayState={slotDisplay}
         currentRollStyle={slotCurrentRollStyle}
         openRfidOverrideDialog={openRfidOverrideDialog}
+        registerLiveRfidCandidate={registerLiveRfidCandidate}
+        createLiveBambuCatalogSpool={createLiveBambuCatalogSpool}
       />
 
       <button

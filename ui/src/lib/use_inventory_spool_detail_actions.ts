@@ -2,11 +2,12 @@ import type { Dispatch, SetStateAction } from "react";
 import { isValidSwatchColor, normalizeSwatchValue } from "./color_utils";
 import { commandErrorText } from "./error_text";
 import type { useI18n } from "./i18n";
-import type { InventorySpool, SpoolStatus } from "./inventory_list_model";
+import type { InventorySpool, OwnershipType, SpoolStatus } from "./inventory_list_model";
 import {
   deleteInventorySpool,
   purgeInventorySpool,
   updateInventorySpoolDetails,
+  updateInventorySpoolOwnership,
   updateInventorySpoolStatus,
   updateInventorySpoolTareWeight,
   updateInventorySpoolWeight,
@@ -46,6 +47,10 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   selectedSpool: InventorySpool | null;
   selectedSpoolAssignedSlot: InventoryPrinterSlotOption | null;
   selectedSpoolLocationDraft: string;
+  selectedSpoolOwnerContactDraft: string;
+  selectedSpoolOwnerNameDraft: string;
+  selectedSpoolOwnershipDraft: OwnershipType;
+  selectedSpoolOwnershipNoteDraft: string;
   selectedSpoolResolvedTare: number;
   selectedSpoolTareDraft: string;
   setConfirmDelete: Dispatch<SetStateAction<boolean>>;
@@ -54,6 +59,9 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   setInfoMessage: Dispatch<SetStateAction<string | null>>;
   setManageBusy: Dispatch<SetStateAction<boolean>>;
   setMasterEditUnlocked: Dispatch<SetStateAction<boolean>>;
+  setSelectedSpoolOwnerContactDraft: Dispatch<SetStateAction<string>>;
+  setSelectedSpoolOwnerNameDraft: Dispatch<SetStateAction<string>>;
+  setSelectedSpoolOwnershipNoteDraft: Dispatch<SetStateAction<string>>;
   setSelectedSpoolTareDraft: Dispatch<SetStateAction<string>>;
   tauriAvailable: boolean;
   t: ReturnType<typeof useI18n>["t"];
@@ -113,6 +121,10 @@ export function useInventorySpoolDetailActions({
   selectedSpool,
   selectedSpoolAssignedSlot,
   selectedSpoolLocationDraft,
+  selectedSpoolOwnerContactDraft,
+  selectedSpoolOwnerNameDraft,
+  selectedSpoolOwnershipDraft,
+  selectedSpoolOwnershipNoteDraft,
   selectedSpoolResolvedTare,
   selectedSpoolTareDraft,
   setConfirmDelete,
@@ -121,6 +133,9 @@ export function useInventorySpoolDetailActions({
   setInfoMessage,
   setManageBusy,
   setMasterEditUnlocked,
+  setSelectedSpoolOwnerContactDraft,
+  setSelectedSpoolOwnerNameDraft,
+  setSelectedSpoolOwnershipNoteDraft,
   setSelectedSpoolTareDraft,
   tauriAvailable,
   t,
@@ -199,6 +214,68 @@ export function useInventorySpoolDetailActions({
         commandErrorText(
           updateError,
           t("inventory.error.updateMetadata", "Failed to update roll metadata."),
+        ),
+      );
+    } finally {
+      setManageBusy(false);
+    }
+  }
+
+  async function handleSaveSpoolOwnership() {
+    if (!tauriAvailable || !selectedSpool || manageBusy) {
+      return;
+    }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
+
+    const ownerName = selectedSpoolOwnerNameDraft.trim();
+    const ownerContact = selectedSpoolOwnerContactDraft.trim();
+    const ownershipNote = selectedSpoolOwnershipNoteDraft.trim();
+    if (selectedSpoolOwnershipDraft === "BORROWED_IN" && !ownerName) {
+      setError(
+        t(
+          "inventory.error.ownerNameRequired",
+          "Borrowed-in rolls need an owner or counterparty name.",
+        ),
+      );
+      return;
+    }
+
+    setConfirmDelete(false);
+    setConfirmPurge(false);
+    setManageBusy(true);
+    setError(null);
+    try {
+      await updateInventorySpoolOwnership(
+        {
+          spool_id: selectedSpool.id,
+          ownership_type: selectedSpoolOwnershipDraft,
+          owner_name: selectedSpoolOwnershipDraft === "BORROWED_IN" ? ownerName : null,
+          owner_contact: selectedSpoolOwnershipDraft === "BORROWED_IN" ? ownerContact || null : null,
+          ownership_note: selectedSpoolOwnershipDraft === "BORROWED_IN" ? ownershipNote || null : null,
+        },
+        hostWriteTarget,
+      );
+      await reloadInventorySurfaces();
+      await reloadSpoolDetail(selectedSpool.id);
+      if (selectedSpoolOwnershipDraft === "OWNED") {
+        setSelectedSpoolOwnerNameDraft("");
+        setSelectedSpoolOwnerContactDraft("");
+        setSelectedSpoolOwnershipNoteDraft("");
+      }
+      setInfoMessage(
+        t("inventory.ownershipUpdated", "Roll ownership updated."),
+      );
+    } catch (ownershipError) {
+      console.error(ownershipError);
+      setError(
+        commandErrorText(
+          ownershipError,
+          t("inventory.error.updateOwnership", "Failed to update roll ownership."),
         ),
       );
     } finally {
@@ -614,6 +691,7 @@ export function useInventorySpoolDetailActions({
     handlePurgeSelected,
     handleRefillSpool,
     handleSaveMasterMetadata,
+    handleSaveSpoolOwnership,
     handleSaveSpoolLocation,
     handleSaveSpoolTareWeight,
     handleToggleLostStatus,

@@ -1,7 +1,7 @@
 use super::{
     AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
     DeleteSpoolInput, InventoryEngine, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
-    UpdateSpoolDetailsInput, WeightSource,
+    UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput, WeightSource,
 };
 use crate::backend::filament_database::{
     BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow, FilamentDatabase,
@@ -1157,6 +1157,169 @@ fn update_borrowed_in_spool_updates_spool_and_active_inbound_loan() {
     if let Err(message) = result {
         panic!(
             "update_borrowed_in_spool_updates_spool_and_active_inbound_loan test failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn update_spool_ownership_marks_owned_spool_as_borrowed_in() {
+    let db_path = temp_db_path("update-owned-to-borrowed-in");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "owned_spool_to_borrow".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Blue".to_string(),
+                hex_color: Some("#3355ff".to_string()),
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: None,
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(760),
+                location: Some("Shelf D".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+
+        engine
+            .update_spool_ownership(UpdateSpoolOwnershipInput {
+                spool_id: "owned_spool_to_borrow".to_string(),
+                ownership_type: "BORROWED_IN".to_string(),
+                owner_name: Some("Nora".to_string()),
+                owner_contact: Some("nora@example.com".to_string()),
+                ownership_note: Some("Prototype spool".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+
+        let spool = engine
+            .db
+            .get_spool_with_master_by_id("owned_spool_to_borrow")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected updated spool".to_string())?;
+        assert_eq!(spool.spool.ownership_type, "BORROWED_IN");
+        assert_eq!(spool.spool.owner_name.as_deref(), Some("Nora"));
+
+        let inbound_loans = engine
+            .list_spool_loans_for_direction(20, false, Some("INBOUND"))
+            .map_err(|error| error.to_string())?;
+        assert_eq!(inbound_loans.len(), 1);
+        assert_eq!(inbound_loans[0].loan.counterparty_name, "Nora");
+        assert_eq!(inbound_loans[0].loan.grams_out, 760);
+
+        let history_rows = engine
+            .list_spool_history("owned_spool_to_borrow", 20)
+            .map_err(|error| error.to_string())?;
+        assert!(history_rows
+            .iter()
+            .any(|row| row.event_type == "OWNERSHIP_UPDATED"));
+        assert!(history_rows
+            .iter()
+            .any(|row| row.event_type == "BORROWED_IN_REGISTERED"));
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("update_spool_ownership_marks_owned_spool_as_borrowed_in failed: {message}");
+    }
+}
+
+#[test]
+fn update_spool_ownership_marks_borrowed_in_spool_as_owned_without_deleting_it() {
+    let db_path = temp_db_path("update-borrowed-in-to-owned");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "borrowed_spool_to_own".to_string(),
+                material: "PETG".to_string(),
+                filament_name: "Prototype".to_string(),
+                color_name: "Green".to_string(),
+                hex_color: Some("#33aa55".to_string()),
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: Some("borrowed-to-owned-qr".to_string()),
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("BORROWED_IN".to_string()),
+                owner_name: Some("Carla".to_string()),
+                owner_contact: Some("carla@example.com".to_string()),
+                ownership_note: Some("Fit check".to_string()),
+                initial_weight_g: Some(880),
+                location: Some("Shelf E".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+
+        engine
+            .update_spool_weight("borrowed_spool_to_own", 710, None, WeightSource::Manual)
+            .map_err(|error| error.to_string())?;
+
+        engine
+            .update_spool_ownership(UpdateSpoolOwnershipInput {
+                spool_id: "borrowed_spool_to_own".to_string(),
+                ownership_type: "OWNED".to_string(),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+        let spool = engine
+            .db
+            .get_spool_by_id("borrowed_spool_to_own")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected preserved spool".to_string())?;
+        assert_eq!(spool.ownership_type, "OWNED");
+        assert_eq!(spool.status, "IN_STOCK");
+        assert_eq!(spool.remaining_g, Some(710));
+        assert!(spool.owner_name.is_none());
+
+        let visible_spools = engine
+            .list_spools(20, 0)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(visible_spools.len(), 1);
+        assert_eq!(visible_spools[0].spool.id, "borrowed_spool_to_own");
+
+        let inbound_loans = engine
+            .list_spool_loans_for_direction(20, true, Some("INBOUND"))
+            .map_err(|error| error.to_string())?;
+        assert_eq!(inbound_loans.len(), 1);
+        assert_eq!(inbound_loans[0].loan.loan_status, "RETURNED");
+        assert_eq!(inbound_loans[0].loan.returned_grams, Some(710));
+        assert_eq!(inbound_loans[0].loan.consumed_grams, Some(170));
+
+        let history_rows = engine
+            .list_spool_history("borrowed_spool_to_own", 20)
+            .map_err(|error| error.to_string())?;
+        assert!(history_rows
+            .iter()
+            .any(|row| row.event_type == "OWNERSHIP_UPDATED"));
+        assert!(history_rows
+            .iter()
+            .any(|row| row.event_type == "BORROWED_IN_ACQUIRED"));
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "update_spool_ownership_marks_borrowed_in_spool_as_owned_without_deleting_it failed: {message}"
         );
     }
 }

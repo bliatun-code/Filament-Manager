@@ -101,6 +101,14 @@ export type UpdateSpoolRfidTagInput = {
   rfid_observed_at?: string | null;
 };
 
+export type UpdateSpoolOwnershipInput = {
+  spool_id: string;
+  ownership_type: "OWNED" | "BORROWED_IN" | string;
+  owner_name?: string | null;
+  owner_contact?: string | null;
+  ownership_note?: string | null;
+};
+
 export type DeleteSpoolInput = {
   spool_id: string;
   reason?: string | null;
@@ -239,6 +247,24 @@ export async function updateLibrarySyncHostSpoolDetails(
   });
 }
 
+export async function updateLibrarySyncHostSpoolOwnership(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: UpdateSpoolOwnershipInput,
+) {
+  return invoke<void>("update_library_sync_host_spool_ownership", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      spool_id: input.spool_id,
+      ownership_type: input.ownership_type,
+      owner_name: input.owner_name ?? null,
+      owner_contact: input.owner_contact ?? null,
+      ownership_note: input.ownership_note ?? null,
+    },
+  });
+}
+
 export async function updateLibrarySyncHostSpoolRfidTag(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
@@ -264,6 +290,10 @@ export async function updateSpoolStatus(spoolId: string, status: string) {
 
 export async function updateSpoolDetails(input: UpdateSpoolDetailsInput) {
   return invoke<void>("update_spool_details", { input });
+}
+
+export async function updateSpoolOwnership(input: UpdateSpoolOwnershipInput) {
+  return invoke<void>("update_spool_ownership", { input });
 }
 
 export async function updateSpoolRfidTag(input: UpdateSpoolRfidTagInput) {

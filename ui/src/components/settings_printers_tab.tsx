@@ -165,6 +165,7 @@ export function SettingsPrintersTab({
             diagnosticSort,
             formatDateTime: (value) => formatSettingsDateTime(value, locale),
             liveConfig,
+            printerSlots,
             selectedChartFieldPath: diagnosticChartFieldByPrinterId[printer.id],
             spoolRows,
             t,

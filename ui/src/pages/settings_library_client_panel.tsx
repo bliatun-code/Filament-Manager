@@ -1,4 +1,5 @@
 import { SettingsMetricTile } from "../components/settings_ui";
+import { inlineStatusSignalClass } from "../lib/chip_styles";
 import {
   settingsActionButtonClass,
   settingsCompactInfoPanelClass,
@@ -123,7 +124,7 @@ export function SettingsLibraryClientPanel({
               >
                 {t("settings.librarySyncPairHost", "Pair desktop client")}
               </button>
-              <span className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300">
+              <span className={inlineStatusSignalClass("neutral", "text-xs")}>
                 {t("settings.librarySyncClientAuthUnpaired", "Not paired")}
               </span>
             </div>
@@ -165,11 +166,10 @@ export function SettingsLibraryClientPanel({
                 {t("settings.librarySyncClearClientAuth", "Remove pairing")}
               </button>
               <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  settingsClientHostPairingValid
-                    ? "border border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200"
-                    : "border border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-100"
-                }`}
+                className={inlineStatusSignalClass(
+                  settingsClientHostPairingValid ? "success" : "warning",
+                  "text-xs",
+                )}
               >
                 {settingsClientHostPairingValid
                   ? t("settings.librarySyncClientAuthPaired", "Paired")

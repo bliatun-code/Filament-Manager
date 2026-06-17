@@ -464,6 +464,20 @@ fn ensure_live_usage_session(
 
     let existing = find_active_live_usage_session(conn, &printer_id, &session_key)?;
     if let Some(existing) = existing {
+        if session_key != LIVE_USAGE_PROVISIONAL_SESSION_KEY {
+            if let Some(provisional) = find_active_live_usage_session(
+                conn,
+                &printer_id,
+                LIVE_USAGE_PROVISIONAL_SESSION_KEY,
+            )? {
+                merge_active_live_usage_session(
+                    conn,
+                    &existing,
+                    &provisional,
+                    observed_at.as_deref(),
+                )?;
+            }
+        }
         conn.execute(
             "UPDATE printer_live_usage_sessions
              SET job_name = COALESCE(?2, job_name),
@@ -474,7 +488,18 @@ fn ensure_live_usage_session(
                     ELSE 'RUNNING'
                  END
              WHERE id = ?1",
-            params![&existing, job_name, print_type, observed_at],
+            params![
+                &existing,
+                job_name.as_deref(),
+                print_type.as_deref(),
+                observed_at.as_deref()
+            ],
+        )?;
+        finish_other_active_live_usage_sessions(
+            conn,
+            &printer_id,
+            &session_key,
+            observed_at.as_deref(),
         )?;
         return Ok(LiveUsageSessionRef { id: existing });
     }
@@ -498,10 +523,16 @@ fn ensure_live_usage_session(
                 params![
                     &provisional,
                     stored_session_key,
-                    job_name,
-                    print_type,
-                    observed_at
+                    job_name.as_deref(),
+                    print_type.as_deref(),
+                    observed_at.as_deref()
                 ],
+            )?;
+            finish_other_active_live_usage_sessions(
+                conn,
+                &printer_id,
+                &session_key,
+                observed_at.as_deref(),
             )?;
             return Ok(LiveUsageSessionRef { id: provisional });
         }
@@ -523,12 +554,133 @@ fn ensure_live_usage_session(
             &id,
             printer_id,
             stored_session_key,
-            job_name,
-            print_type,
-            observed_at
+            job_name.as_deref(),
+            print_type.as_deref(),
+            observed_at.as_deref()
         ],
     )?;
+    finish_other_active_live_usage_sessions(
+        conn,
+        &printer_id,
+        &session_key,
+        observed_at.as_deref(),
+    )?;
     Ok(LiveUsageSessionRef { id })
+}
+
+fn merge_active_live_usage_session(
+    conn: &Connection,
+    target_session_id: &str,
+    source_session_id: &str,
+    observed_at: Option<&str>,
+) -> InventoryResult<()> {
+    if target_session_id == source_session_id {
+        return Ok(());
+    }
+
+    let source_total_used_g: i64 = conn
+        .query_row(
+            "SELECT total_used_g
+             FROM printer_live_usage_sessions
+             WHERE id = ?1
+               AND status NOT IN ('COMPLETED', 'FAILED')",
+            params![source_session_id],
+            |row| row.get(0),
+        )
+        .optional()?
+        .unwrap_or(0);
+
+    let mut statement = conn.prepare(
+        "SELECT id, spool_id, used_g
+         FROM printer_live_usage_session_spools
+         WHERE session_id = ?1",
+    )?;
+    let rows = statement
+        .query_map(params![source_session_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)?,
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    for (source_usage_id, spool_id, used_g) in rows {
+        let existing_target_usage_id: Option<String> = conn
+            .query_row(
+                "SELECT id
+                 FROM printer_live_usage_session_spools
+                 WHERE session_id = ?1 AND spool_id = ?2",
+                params![target_session_id, &spool_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+
+        if let Some(existing_target_usage_id) = existing_target_usage_id {
+            conn.execute(
+                "UPDATE printer_live_usage_session_spools
+                 SET used_g = used_g + ?2
+                 WHERE id = ?1",
+                params![existing_target_usage_id, used_g.max(0)],
+            )?;
+            conn.execute(
+                "DELETE FROM printer_live_usage_session_spools
+                 WHERE id = ?1",
+                params![source_usage_id],
+            )?;
+        } else {
+            conn.execute(
+                "UPDATE printer_live_usage_session_spools
+                 SET session_id = ?2
+                 WHERE id = ?1",
+                params![source_usage_id, target_session_id],
+            )?;
+        }
+    }
+
+    conn.execute(
+        "UPDATE printer_live_usage_sessions
+         SET total_used_g = total_used_g + ?2,
+             last_seen_at = COALESCE(?3, last_seen_at)
+         WHERE id = ?1",
+        params![target_session_id, source_total_used_g.max(0), observed_at,],
+    )?;
+    conn.execute(
+        "DELETE FROM printer_live_usage_sessions
+         WHERE id = ?1",
+        params![source_session_id],
+    )?;
+
+    Ok(())
+}
+
+fn finish_other_active_live_usage_sessions(
+    conn: &Connection,
+    printer_id: &str,
+    session_key: &str,
+    observed_at: Option<&str>,
+) -> InventoryResult<()> {
+    if session_key == LIVE_USAGE_PROVISIONAL_SESSION_KEY {
+        return Ok(());
+    }
+
+    conn.execute(
+        "UPDATE printer_live_usage_sessions
+         SET status = 'FAILED',
+             success = 0,
+             finished_at = COALESCE(?4, datetime('now')),
+             last_seen_at = COALESCE(?4, datetime('now'))
+         WHERE printer_id = ?1
+           AND status NOT IN ('COMPLETED', 'FAILED')
+           AND NOT (session_key = ?2 OR session_key LIKE ?3 ESCAPE '\\')",
+        params![
+            printer_id,
+            session_key,
+            live_usage_session_key_prefix(session_key),
+            observed_at,
+        ],
+    )?;
+    Ok(())
 }
 
 fn find_active_live_usage_session(

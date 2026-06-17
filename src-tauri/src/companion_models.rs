@@ -147,6 +147,14 @@ pub(crate) struct UpdateBorrowedInSpoolRequest {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct UpdateSpoolOwnershipRequest {
+    pub(crate) ownership_type: String,
+    pub(crate) owner_name: Option<String>,
+    pub(crate) owner_contact: Option<String>,
+    pub(crate) ownership_note: Option<String>,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct UpdateSpoolDetailsRequest {
     pub(crate) status: String,
     pub(crate) location: Option<String>,

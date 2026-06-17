@@ -6,6 +6,7 @@ import {
   type SetStateAction,
 } from "react";
 import { commandErrorText } from "../lib/error_text";
+import { buildInventoryCreateSpoolRequest } from "../lib/inventory_create_model";
 import {
   buildAllowedSpoolOptionMapsBySlotSpoolId,
   buildAllowedSpoolOptionsBySlotSpoolId,
@@ -29,6 +30,7 @@ import {
 import {
   writePreparedMeasuredWeightUpdate,
   writePreparedPrinterSlotAssignment,
+  writePrinterSlotAssignment,
   writeSpoolMeasuredWeight,
 } from "../lib/printer_slot_writes";
 import {
@@ -37,10 +39,14 @@ import {
   liveTrayIdentity,
 } from "../lib/printer_live_display";
 import { sortSpoolsAlphabetically } from "../lib/spool_sort";
-import { updateInventorySpoolRfidTag } from "../lib/spool_writes";
+import {
+  createInventorySpoolFromMaster,
+  updateInventorySpoolRfidTag,
+} from "../lib/spool_writes";
 import type {
   BambuLiveIntegrationEntry,
   BambuLiveObservedTray,
+  MasterCatalogRow,
   PrinterAmsSlotRow,
   PrinterOverviewRow,
   SpoolWithMasterRow,
@@ -552,6 +558,251 @@ export function usePrinterSlotInteractions({
     t,
   ]);
 
+  const registerLiveRfidCandidate = useCallback(
+    async (
+      printer: PrinterOverviewRow,
+      slot: PrinterAmsSlotRow,
+      liveTray: BambuLiveObservedTray,
+      row: SpoolWithMasterRow,
+    ) => {
+      if (!tauri || busy) {
+        return;
+      }
+      if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+        return;
+      }
+      if (clientReadOnly && !canUseClientHostWrite()) {
+        return;
+      }
+      const observedRfid = liveTrayIdentity(liveTray);
+      if (!observedRfid) {
+        setError(
+          t(
+            "printers.rfidOverrideNothingToSave",
+            "No non-empty RFID identity is available to save for this slot.",
+          ),
+        );
+        return;
+      }
+      if (row.spool.rfid_tag?.trim()) {
+        setError(
+          t(
+            "printers.error.candidateAlreadyHasRfid",
+            "This inventory roll already has an RFID identity saved.",
+          ),
+        );
+        return;
+      }
+      if (slot.spool_id && slot.spool_id !== row.spool.id) {
+        setError(
+          t(
+            "printers.error.selectCandidateBeforeRfid",
+            "Select this roll in the slot first, so any outgoing roll weight is handled before saving RFID.",
+          ),
+        );
+        return;
+      }
+
+      setBusy(true);
+      setError(null);
+      setInfo(null);
+      try {
+        await updateInventorySpoolRfidTag(
+          {
+            spool_id: row.spool.id,
+            rfid_tag: observedRfid,
+            rfid_observed_at:
+              liveTray.last_identity_seen_at ??
+              bambuLiveIntegrations[printer.printer.id]?.observed_state?.last_seen_at ??
+              new Date().toISOString(),
+          },
+          {
+            clientReadOnly,
+            clientHostBaseUrl,
+            clientLibraryId,
+          },
+        );
+
+        if (!slot.spool_id) {
+          await writePrinterSlotAssignment(
+            {
+              clientReadOnly,
+              clientHostBaseUrl,
+              clientLibraryId,
+            },
+            {
+              printer_id: printer.printer.id,
+              slot_id: slot.slot_id,
+              spool_id: row.spool.id,
+              rfid_override_tray_uuid: observedRfid,
+              rfid_override_color_hex: liveTray.color_hex?.trim() || null,
+              clear_live_cache_before_next_refresh: false,
+            },
+          );
+        }
+
+        await reloadData();
+        setInfo(
+          slot.spool_id
+            ? t("inventory.rfidSaved", "RFID tag saved on the selected roll.")
+            : t(
+                "printers.liveRfidRegisteredAndAssigned",
+                "RFID saved and the suggested roll was assigned to this slot.",
+              ),
+        );
+      } catch (saveError) {
+        console.error(saveError);
+        setError(
+          commandErrorText(
+            saveError,
+            t("inventory.error.saveRfid", "Failed to save RFID tag."),
+          ),
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [
+      bambuLiveIntegrations,
+      busy,
+      canUseClientHostWrite,
+      clientHostBaseUrl,
+      clientLibraryId,
+      clientReadOnly,
+      ensureLocalWriteAllowed,
+      reloadData,
+      setBusy,
+      setError,
+      setInfo,
+      tauri,
+      t,
+    ],
+  );
+
+  const createLiveBambuCatalogSpool = useCallback(
+    async (
+      printer: PrinterOverviewRow,
+      slot: PrinterAmsSlotRow,
+      liveTray: BambuLiveObservedTray,
+      master: MasterCatalogRow,
+    ) => {
+      if (!tauri || busy) {
+        return;
+      }
+      if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+        return;
+      }
+      if (clientReadOnly && !canUseClientHostWrite()) {
+        return;
+      }
+      const observedRfid = liveTrayIdentity(liveTray);
+      if (!observedRfid) {
+        setError(
+          t(
+            "printers.rfidOverrideNothingToSave",
+            "No non-empty RFID identity is available to save for this slot.",
+          ),
+        );
+        return;
+      }
+      if (slot.spool_id) {
+        setError(
+          t(
+            "printers.error.createFromCatalogRequiresEmptySlot",
+            "Clear or swap the current roll through the normal slot flow before creating a new catalog roll here.",
+          ),
+        );
+        return;
+      }
+
+      const request = buildInventoryCreateSpoolRequest({
+        id: `spool_${Date.now()}`,
+        mode: "bambu",
+        selectedBambuMaster: master,
+        selectedEsunMaster: null,
+        initialWeightRaw: String(master.default_weight || 1000),
+        ownershipType: "OWNED",
+      });
+      if (!request.ok || request.kind !== "catalog") {
+        setError(t("inventory.error.add", "Failed to add filament."));
+        return;
+      }
+
+      setBusy(true);
+      setError(null);
+      setInfo(null);
+      try {
+        const createdSpoolId = await createInventorySpoolFromMaster(request.input, {
+          clientReadOnly,
+          clientHostBaseUrl,
+          clientLibraryId,
+        });
+        await updateInventorySpoolRfidTag(
+          {
+            spool_id: createdSpoolId,
+            rfid_tag: observedRfid,
+            rfid_observed_at:
+              liveTray.last_identity_seen_at ??
+              bambuLiveIntegrations[printer.printer.id]?.observed_state?.last_seen_at ??
+              new Date().toISOString(),
+          },
+          {
+            clientReadOnly,
+            clientHostBaseUrl,
+            clientLibraryId,
+          },
+        );
+        await writePrinterSlotAssignment(
+          {
+            clientReadOnly,
+            clientHostBaseUrl,
+            clientLibraryId,
+          },
+          {
+            printer_id: printer.printer.id,
+            slot_id: slot.slot_id,
+            spool_id: createdSpoolId,
+            rfid_override_tray_uuid: observedRfid,
+            rfid_override_color_hex: liveTray.color_hex?.trim() || null,
+            clear_live_cache_before_next_refresh: false,
+          },
+        );
+        await reloadData();
+        setInfo(
+          t(
+            "printers.liveCatalogCreatedAndAssigned",
+            "{label} was added, RFID was saved, and the roll was assigned to this slot.",
+          ).replace("{label}", request.addedLabel),
+        );
+      } catch (createError) {
+        console.error(createError);
+        setError(
+          commandErrorText(
+            createError,
+            t("inventory.error.add", "Failed to add filament."),
+          ),
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [
+      bambuLiveIntegrations,
+      busy,
+      canUseClientHostWrite,
+      clientHostBaseUrl,
+      clientLibraryId,
+      clientReadOnly,
+      ensureLocalWriteAllowed,
+      reloadData,
+      setBusy,
+      setError,
+      setInfo,
+      tauri,
+      t,
+    ],
+  );
+
   const openWeightPromptForDraft = useCallback(
     (printer: PrinterOverviewRow["printer"], slot: PrinterAmsSlotRow, draft: SlotSwapDraft) => {
       if (!clientReadOnly && !ensureLocalWriteAllowed()) {
@@ -605,6 +856,8 @@ export function usePrinterSlotInteractions({
     openEmptySlotWeightDialog,
     openIncomingWeightDialog,
     openRfidOverrideDialog,
+    registerLiveRfidCandidate,
+    createLiveBambuCatalogSpool,
     openWeightPromptForDraft,
     outgoingWeightValue,
     resetPrinterInteractionState,

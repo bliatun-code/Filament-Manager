@@ -7,10 +7,12 @@ import {
   purgeLibrarySyncHostSpool,
   purgeSpool,
   updateLibrarySyncHostSpoolDetails,
+  updateLibrarySyncHostSpoolOwnership,
   updateLibrarySyncHostSpoolRfidTag,
   updateLibrarySyncHostSpoolTareWeight,
   updateLibrarySyncHostSpoolWeight,
   updateSpoolDetails,
+  updateSpoolOwnership,
   updateSpoolRfidTag,
   updateSpoolStatus,
   updateSpoolTareWeight,
@@ -20,6 +22,7 @@ import {
   type DeleteSpoolInput,
   type PurgeSpoolInput,
   type UpdateSpoolDetailsInput,
+  type UpdateSpoolOwnershipInput,
   type UpdateSpoolRfidTagInput,
 } from "./tauri_client";
 import { requireClientHostWriteTarget } from "./host_write_target";
@@ -35,7 +38,9 @@ type SpoolWriteDependencies = {
   createLocalSpool?: typeof createSpool;
   createLocalManualSpool?: typeof createManualSpool;
   updateHostSpoolDetails?: typeof updateLibrarySyncHostSpoolDetails;
+  updateHostSpoolOwnership?: typeof updateLibrarySyncHostSpoolOwnership;
   updateLocalSpoolDetails?: typeof updateSpoolDetails;
+  updateLocalSpoolOwnership?: typeof updateSpoolOwnership;
   updateLocalSpoolStatus?: typeof updateSpoolStatus;
   deleteHostSpool?: typeof deleteLibrarySyncHostSpool;
   deleteLocalSpool?: typeof deleteSpool;
@@ -103,6 +108,24 @@ export async function updateInventorySpoolDetails(
   }
 
   await updateLocalSpoolDetails(input);
+}
+
+export async function updateInventorySpoolOwnership(
+  input: UpdateSpoolOwnershipInput,
+  target: SpoolWriteTarget = {},
+  dependencies: SpoolWriteDependencies = {},
+): Promise<void> {
+  const updateHostSpoolOwnership =
+    dependencies.updateHostSpoolOwnership ?? updateLibrarySyncHostSpoolOwnership;
+  const updateLocalSpoolOwnership = dependencies.updateLocalSpoolOwnership ?? updateSpoolOwnership;
+
+  if (target.clientReadOnly) {
+    const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
+    await updateHostSpoolOwnership(hostTarget.baseUrl, hostTarget.libraryId, input);
+    return;
+  }
+
+  await updateLocalSpoolOwnership(input);
 }
 
 export async function updateInventorySpoolStatus(

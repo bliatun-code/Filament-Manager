@@ -69,6 +69,7 @@ export function SettingsBambuLiveObservedDetailsPanel({
     selectedDiagnosticChartField,
     signalQualityBuckets,
     sortedDiagnosticFields,
+    statusNote,
   } = model;
 
   return (
@@ -91,9 +92,9 @@ export function SettingsBambuLiveObservedDetailsPanel({
             {t("settings.bambuLiveObservedSummary", "Observed summary")}:{" "}
             {observedSummaryParts.join(" · ") || fallbackSummaryParts.join(" · ") || "—"}
           </div>
-          {observedState.raw_status_note ? (
+          {statusNote ? (
             <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
-              {observedState.raw_status_note}
+              {statusNote}
             </div>
           ) : null}
           {amsReadInProgress ? (

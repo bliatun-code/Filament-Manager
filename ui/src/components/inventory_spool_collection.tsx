@@ -1,5 +1,5 @@
 import { VendorBadge } from "./vendor_badge";
-import { semanticChipClass } from "../lib/chip_styles";
+import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { swatchCssBackground } from "../lib/color_utils";
 import { formatPlacementLabel } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
@@ -51,12 +51,7 @@ function OwnershipChip({
     return null;
   }
   return (
-    <span
-      className={semanticChipClass(
-        inventoryOwnershipTone(ownershipType),
-        "px-2 py-0.5 text-[10px]",
-      )}
-    >
+    <span className={inlineStatusSignalClass(inventoryOwnershipTone(ownershipType), "text-[10px]")}>
       {formatInventoryOwnershipLabel(t, ownershipType)}
     </span>
   );

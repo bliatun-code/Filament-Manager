@@ -91,6 +91,15 @@ pub struct UpdateBorrowedInSpoolInput {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct UpdateSpoolOwnershipInput {
+    pub spool_id: String,
+    pub ownership_type: String,
+    pub owner_name: Option<String>,
+    pub owner_contact: Option<String>,
+    pub ownership_note: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UpdateMasterCatalogEntryInput {
     pub master_id: String,
     pub material: String,
@@ -753,6 +762,141 @@ impl InventoryEngine {
                 "ownership_note": ownership_note,
             }),
         )
+    }
+
+    pub fn update_spool_ownership(&self, input: UpdateSpoolOwnershipInput) -> InventoryResult<()> {
+        let spool_id = input.spool_id.trim();
+        if spool_id.is_empty() {
+            return Err(InventoryError::Db("spool id is required".to_string()));
+        }
+        let next_ownership_type = normalize_ownership_type(Some(input.ownership_type.as_str()));
+        let owner_name = normalize_optional_input_text(input.owner_name.as_deref());
+        let owner_contact = normalize_optional_input_text(input.owner_contact.as_deref());
+        let ownership_note = normalize_optional_input_text(input.ownership_note.as_deref());
+
+        let spool = self
+            .db
+            .get_spool_with_master_by_id(spool_id)?
+            .ok_or(InventoryError::NotFound)?;
+        let previous_ownership_type = normalize_ownership_type(Some(&spool.spool.ownership_type));
+
+        if next_ownership_type == "BORROWED_IN" {
+            let owner_name = owner_name.ok_or(InventoryError::Db(
+                "borrowed-in spools require an owner/counterparty name".to_string(),
+            ))?;
+            if previous_ownership_type == "BORROWED_IN" {
+                return self.update_borrowed_in_spool(UpdateBorrowedInSpoolInput {
+                    spool_id: spool_id.to_string(),
+                    owner_name,
+                    owner_contact,
+                    ownership_note,
+                });
+            }
+            if self.db.spool_has_active_loan(spool_id)? {
+                return Err(InventoryError::Db(
+                    "finish active loan history before changing ownership".to_string(),
+                ));
+            }
+
+            self.db.update_spool_ownership(
+                spool_id,
+                "BORROWED_IN",
+                Some(owner_name.as_str()),
+                owner_contact.as_deref(),
+                ownership_note.as_deref(),
+            )?;
+            let grams_out = spool
+                .spool
+                .remaining_g
+                .or(spool.spool.current_weight_g)
+                .or(spool.spool.initial_weight_g)
+                .unwrap_or(0);
+            let loan = self.db.create_inbound_spool_loan(
+                spool_id,
+                owner_name.as_str(),
+                owner_contact.as_deref(),
+                ownership_note.as_deref(),
+                grams_out,
+            )?;
+            self.log_spool_event(
+                spool_id,
+                "OWNERSHIP_UPDATED",
+                json!({
+                    "previous_ownership_type": previous_ownership_type,
+                    "ownership_type": "BORROWED_IN",
+                    "owner_name": owner_name,
+                    "owner_contact": owner_contact,
+                    "ownership_note": ownership_note,
+                }),
+            )?;
+            self.log_spool_event(
+                spool_id,
+                "BORROWED_IN_REGISTERED",
+                json!({
+                    "loan_id": loan.id,
+                    "ownership_type": "BORROWED_IN",
+                    "owner_name": owner_name,
+                    "owner_contact": owner_contact,
+                    "ownership_note": ownership_note,
+                    "loan_direction": loan.loan_direction,
+                    "counterparty_name": loan.counterparty_name,
+                    "grams_out": loan.grams_out,
+                }),
+            )?;
+            return Ok(());
+        }
+
+        if self
+            .db
+            .find_active_spool_loan_for_direction(spool_id, "OUTBOUND")?
+            .is_some()
+        {
+            return Err(InventoryError::Db(
+                "return loaned-out spool before changing ownership".to_string(),
+            ));
+        }
+
+        let active_inbound = self
+            .db
+            .find_active_spool_loan_for_direction(spool_id, "INBOUND")?;
+        self.db
+            .update_spool_ownership(spool_id, "OWNED", None, None, None)?;
+        self.log_spool_event(
+            spool_id,
+            "OWNERSHIP_UPDATED",
+            json!({
+                "previous_ownership_type": previous_ownership_type,
+                "ownership_type": "OWNED",
+                "owner_name": null,
+                "owner_contact": null,
+                "ownership_note": null,
+            }),
+        )?;
+        if let Some(active_inbound) = active_inbound {
+            let returned_grams = spool
+                .spool
+                .remaining_g
+                .or(spool.spool.current_weight_g)
+                .or(spool.spool.initial_weight_g)
+                .unwrap_or(0);
+            let loan = self.db.close_inbound_spool_loan_without_returning_spool(
+                &active_inbound.loan.id,
+                returned_grams,
+                Some("Ownership changed to owned"),
+            )?;
+            self.log_spool_event(
+                spool_id,
+                "BORROWED_IN_ACQUIRED",
+                json!({
+                    "loan_id": loan.id,
+                    "loan_direction": loan.loan_direction,
+                    "counterparty_name": loan.counterparty_name,
+                    "returned_grams": loan.returned_grams,
+                    "consumed_grams": loan.consumed_grams,
+                }),
+            )?;
+        }
+        Ok(())
     }
 
     pub fn delete_spool(&self, input: DeleteSpoolInput) -> InventoryResult<()> {

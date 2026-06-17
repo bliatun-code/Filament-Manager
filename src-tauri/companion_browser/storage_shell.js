@@ -18,12 +18,122 @@ function catalogMatchesSource(master, source) {
   return vendor.includes("bambu");
 }
 
+const FILAMENT_CODE_PATTERN = /(?<!\d)\d{5}(?!\d)/;
+
+function extractBambuFilamentCode(value) {
+  return String(value || "").match(FILAMENT_CODE_PATTERN)?.[0] || null;
+}
+
+function catalogMasterBambuFilamentCode(master) {
+  const vendor = String(master?.vendor || "").trim().toLowerCase();
+  if (!vendor.includes("bambu")) {
+    return null;
+  }
+  return extractBambuFilamentCode(master?.color_name);
+}
+
+function catalogMasterMatchesBambuFilamentCode(master, code) {
+  return code ? catalogMasterBambuFilamentCode(master) === code : false;
+}
+
+function buildBambuFilamentCodeLookup(masters, rawQuery) {
+  const code = extractBambuFilamentCode(rawQuery);
+  if (!code) {
+    return {
+      code: null,
+      status: "no_code",
+      matches: [],
+      activeMatches: [],
+      discontinuedMatches: [],
+    };
+  }
+
+  const matches = masters
+    .filter((master) => catalogMasterMatchesBambuFilamentCode(master, code))
+    .sort((left, right) => {
+      if (Boolean(left.is_discontinued) !== Boolean(right.is_discontinued)) {
+        return Number(Boolean(left.is_discontinued)) - Number(Boolean(right.is_discontinued));
+      }
+      return `${left.material} ${left.filament_name} ${left.color_name}`.localeCompare(
+        `${right.material} ${right.filament_name} ${right.color_name}`,
+      );
+    });
+  const activeMatches = matches.filter((master) => !master.is_discontinued);
+  const discontinuedMatches = matches.filter((master) => master.is_discontinued);
+  let status = "no_match";
+  if (activeMatches.length === 1) {
+    status = "single_active";
+  } else if (activeMatches.length > 1) {
+    status = "multiple_active";
+  } else if (discontinuedMatches.length > 0) {
+    status = "discontinued_only";
+  }
+
+  return { code, status, matches, activeMatches, discontinuedMatches };
+}
+
+function renderBambuFilamentCodeLookupHint(lookup, locale, escapeHtml) {
+  if (!lookup.code) {
+    return "";
+  }
+
+  const displayMatches =
+    lookup.activeMatches.length > 0 ? lookup.activeMatches : lookup.discontinuedMatches;
+  const matchPreview = displayMatches
+    .slice(0, 3)
+    .map((master) => formatInventoryDisplayTitle(master.material, master.filament_name, master.color_name))
+    .join(", ");
+  const remainingCount = Math.max(0, displayMatches.length - 3);
+  let message = t(locale, "storage.bambuCodeNoMatch", "No Bambu catalog entry uses this filament code yet.");
+  if (lookup.status === "single_active") {
+    message = t(locale, "storage.bambuCodeSingleMatch", "One active Bambu catalog entry matched and is selected.");
+  } else if (lookup.status === "multiple_active") {
+    message = t(
+      locale,
+      "storage.bambuCodeMultipleMatches",
+      "This code is used by several active Bambu catalog entries. Choose the correct row.",
+    );
+  } else if (lookup.status === "discontinued_only") {
+    message = t(locale, "storage.bambuCodeDiscontinuedOnly", "Only discontinued Bambu catalog entries use this code.");
+  }
+
+  return `
+    <div class="add-spool-code-lookup" aria-live="polite">
+      <div class="add-spool-code-label">
+        <span>${escapeHtml(t(locale, "storage.bambuCodeLabel", "Filament Code"))}</span>
+        <strong>${escapeHtml(lookup.code)}</strong>
+      </div>
+      <div class="add-spool-code-copy">
+        <div>${escapeHtml(message)}</div>
+        ${
+          matchPreview
+            ? `<p>${escapeHtml(matchPreview)}${
+                remainingCount > 0
+                  ? ` +${escapeHtml(String(remainingCount))} ${escapeHtml(t(locale, "storage.bambuCodeMoreMatches", "more"))}`
+                  : ""
+              }</p>`
+            : `<p>${escapeHtml(
+                t(
+                  locale,
+                  "storage.bambuCodeHelp",
+                  "Use the five digit code printed as Filament Code on the Bambu box label.",
+                ),
+              )}</p>`
+        }
+      </div>
+    </div>
+  `;
+}
+
 function resolveAddSheetState(state) {
   const draft = state.borrowedInDraft || {};
   const source = String(draft.source || "bambu").trim().toLowerCase();
-  const catalogSearch = String(draft.catalogSearch || "").trim().toLowerCase();
+  const rawCatalogSearch = String(draft.catalogSearch || "").trim();
+  const catalogSearch = rawCatalogSearch.toLowerCase();
   const catalogStatusFilter = String(draft.catalogStatusFilter || "ACTIVE").trim().toUpperCase();
   const catalogMasters = Array.isArray(state.catalogMasters) ? state.catalogMasters : [];
+  const bambuCodeLookup =
+    source === "bambu" ? buildBambuFilamentCodeLookup(catalogMasters, rawCatalogSearch) : null;
   const visibleCatalogMasters = sortCatalogMastersAlphabetically(
     catalogMasters.filter((master) => {
       if (!catalogMatchesSource(master, source)) {
@@ -40,7 +150,7 @@ function resolveAddSheetState(state) {
       }
       return `${master.material} ${master.filament_name} ${master.color_name} ${master.vendor}`
         .toLowerCase()
-        .includes(catalogSearch);
+        .includes(catalogSearch) || catalogMasterMatchesBambuFilamentCode(master, bambuCodeLookup?.code);
     }),
   );
   const selectedMasterId = String(draft.selectedMasterId || "").trim();
@@ -79,6 +189,7 @@ function resolveAddSheetState(state) {
   return {
     draft,
     source,
+    bambuCodeLookup,
     catalogStatusFilter,
     visibleCatalogMasters,
     selectedMaster,
@@ -276,10 +387,17 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
                   type="search"
                   value="${escapeHtml(String(draft.catalogSearch || ""))}"
                   placeholder="${escapeHtml(
-                    t(locale, "storage.catalogSearch", "Search material, filament, color, or vendor"),
+                    selection.source === "bambu"
+                      ? t(locale, "storage.catalogSearchBambu", "Search material, color, or filament code")
+                      : t(locale, "storage.catalogSearch", "Search material, filament, color, or vendor"),
                   )}"
                   autocomplete="off"
                 />
+                ${
+                  selection.source === "bambu" && selection.bambuCodeLookup
+                    ? renderBambuFilamentCodeLookupHint(selection.bambuCodeLookup, locale, escapeHtml)
+                    : ""
+                }
                 <div class="dense-list add-spool-catalog-list">
                   ${
                     selection.visibleCatalogMasters.length > 0

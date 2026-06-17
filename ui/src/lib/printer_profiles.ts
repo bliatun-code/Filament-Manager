@@ -305,16 +305,6 @@ export function summarizeEffectivePrinterSlots<T extends SlotLike>(
 } {
   const extSlots = slots.filter((slot) => isExternalSlotId(slot.ams_id));
   const multiSlots = slots.filter((slot) => !isExternalSlotId(slot.ams_id));
-  const hasExtLoaded = extSlots.some((slot) => Boolean(slot.spool_id));
-
-  if (hasExtLoaded) {
-    return {
-      mode: "EXT",
-      loadedSlots: extSlots.filter((slot) => Boolean(slot.spool_id)).length,
-      totalSlots: extSlots.length,
-      slots: extSlots,
-    };
-  }
 
   if (multiSlots.length > 0) {
     return {

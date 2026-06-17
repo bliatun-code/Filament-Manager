@@ -138,3 +138,31 @@ pub(crate) fn update_spool_ownership_metadata(
     )?;
     require_rows(affected)
 }
+
+pub(crate) fn update_spool_ownership(
+    conn: &Connection,
+    spool_id: &str,
+    ownership_type: &str,
+    owner_name: Option<&str>,
+    owner_contact: Option<&str>,
+    ownership_note: Option<&str>,
+) -> InventoryResult<()> {
+    let affected = conn.execute(
+        "UPDATE filament_spools
+         SET ownership_type = ?1,
+             owner_name = ?2,
+             owner_contact = ?3,
+             ownership_note = ?4,
+             updated_at = datetime('now')
+         WHERE id = ?5
+           AND deleted_at IS NULL",
+        params![
+            ownership_type,
+            normalize_optional_text(owner_name),
+            normalize_optional_text(owner_contact),
+            normalize_optional_text(ownership_note),
+            spool_id
+        ],
+    )?;
+    require_rows(affected)
+}

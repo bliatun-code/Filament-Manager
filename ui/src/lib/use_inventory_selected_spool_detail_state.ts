@@ -1,5 +1,6 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import type { InventorySpool } from "./inventory_list_model";
+import type { OwnershipType } from "./inventory_list_model";
 import type { RfidCaptureField } from "./inventory_rfid_capture";
 import type { InventoryDetailVisualFixture } from "./inventory_visual_fixture";
 import { resolveSpoolTareWeight } from "./spool_weight";
@@ -46,6 +47,11 @@ export function useInventorySelectedSpoolDetailState({
   const [confirmPurge, setConfirmPurge] = useState(false);
   const [selectedSpoolTareDraft, setSelectedSpoolTareDraft] = useState("");
   const [selectedSpoolLocationDraft, setSelectedSpoolLocationDraft] = useState("");
+  const [selectedSpoolOwnershipDraft, setSelectedSpoolOwnershipDraft] =
+    useState<OwnershipType>("OWNED");
+  const [selectedSpoolOwnerNameDraft, setSelectedSpoolOwnerNameDraft] = useState("");
+  const [selectedSpoolOwnerContactDraft, setSelectedSpoolOwnerContactDraft] = useState("");
+  const [selectedSpoolOwnershipNoteDraft, setSelectedSpoolOwnershipNoteDraft] = useState("");
   const [showRfidCapturedFields, setShowRfidCapturedFields] = useState(false);
   const [showRollHistory, setShowRollHistory] = useState(false);
 
@@ -63,6 +69,10 @@ export function useInventorySelectedSpoolDetailState({
       setConfirmPurge(false);
       setSelectedSpoolLocationDraft("");
       setSelectedSpoolTareDraft("");
+      setSelectedSpoolOwnershipDraft("OWNED");
+      setSelectedSpoolOwnerNameDraft("");
+      setSelectedSpoolOwnerContactDraft("");
+      setSelectedSpoolOwnershipNoteDraft("");
       closeRfidCaptureModal();
       setSelectedRfidCaptureSlotId(null);
       setRfidCaptureError(null);
@@ -81,6 +91,10 @@ export function useInventorySelectedSpoolDetailState({
     setSelectedSpoolTareDraft(
       String(resolveSpoolTareWeight(selectedSpool.spoolTareWeightGrams, selectedSpool.vendor)),
     );
+    setSelectedSpoolOwnershipDraft(selectedSpool.ownershipType);
+    setSelectedSpoolOwnerNameDraft(selectedSpool.ownerName ?? "");
+    setSelectedSpoolOwnerContactDraft(selectedSpool.ownerContact ?? "");
+    setSelectedSpoolOwnershipNoteDraft(selectedSpool.ownershipNote ?? "");
     closeRfidCaptureModal();
     setSelectedRfidCaptureSlotId(null);
     setRfidCaptureError(null);
@@ -136,6 +150,10 @@ export function useInventorySelectedSpoolDetailState({
     editMasterVendor,
     masterEditUnlocked,
     selectedSpoolLocationDraft,
+    selectedSpoolOwnershipDraft,
+    selectedSpoolOwnerContactDraft,
+    selectedSpoolOwnerNameDraft,
+    selectedSpoolOwnershipNoteDraft,
     selectedSpoolTareDraft,
     setConfirmDelete,
     setConfirmPurge,
@@ -146,6 +164,10 @@ export function useInventorySelectedSpoolDetailState({
     setEditMasterVendor,
     setMasterEditUnlocked,
     setSelectedSpoolLocationDraft,
+    setSelectedSpoolOwnershipDraft,
+    setSelectedSpoolOwnerContactDraft,
+    setSelectedSpoolOwnerNameDraft,
+    setSelectedSpoolOwnershipNoteDraft,
     setSelectedSpoolTareDraft,
     setShowRfidCapturedFields,
     setShowRollHistory,

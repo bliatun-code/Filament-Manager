@@ -1,4 +1,8 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import {
+  buildBambuFilamentCodeLookup,
+  catalogMasterMatchesBambuFilamentCode,
+} from "./bambu_filament_code_lookup";
 import { resolveCatalogSelectionDefaults } from "./catalog_data_source";
 import {
   activeCatalogMastersForMode,
@@ -24,6 +28,7 @@ function filterCreateCatalogMasters(
   query: string,
 ): MasterCatalogRow[] {
   const term = query.trim().toLowerCase();
+  const bambuCode = vendorToken === "bambu" ? buildBambuFilamentCodeLookup(masters, query).code : null;
   return masters
     .filter((master) => master.vendor.toLowerCase().includes(vendorToken))
     .sort((left, right) => {
@@ -32,7 +37,12 @@ function filterCreateCatalogMasters(
       }
       return createCatalogSortKey(left).localeCompare(createCatalogSortKey(right));
     })
-    .filter((master) => term.length === 0 || createCatalogSearchText(master).includes(term));
+    .filter(
+      (master) =>
+        term.length === 0 ||
+        createCatalogSearchText(master).includes(term) ||
+        catalogMasterMatchesBambuFilamentCode(master, bambuCode),
+    );
 }
 
 function selectedCreateCatalogMaster(
@@ -66,6 +76,10 @@ export function useInventoryCreateDraft(masters: MasterCatalogRow[]) {
     () => filterCreateCatalogMasters(masters, "bambu", deferredBambuCatalogQuery),
     [deferredBambuCatalogQuery, masters],
   );
+  const bambuCodeLookup = useMemo(
+    () => buildBambuFilamentCodeLookup(masters, deferredBambuCatalogQuery),
+    [deferredBambuCatalogQuery, masters],
+  );
   const selectedBambuMaster = useMemo(
     () => selectedCreateCatalogMaster(filteredBambuMasters, newBambuMasterId),
     [filteredBambuMasters, newBambuMasterId],
@@ -79,10 +93,18 @@ export function useInventoryCreateDraft(masters: MasterCatalogRow[]) {
       setNewBambuMasterId("");
       return;
     }
+    if (
+      bambuCodeLookup.status === "single_active" &&
+      bambuCodeLookup.activeMatches[0] &&
+      newBambuMasterId !== bambuCodeLookup.activeMatches[0].id
+    ) {
+      setNewBambuMasterId(bambuCodeLookup.activeMatches[0].id);
+      return;
+    }
     if (!filteredBambuMasters.some((master) => master.id === newBambuMasterId)) {
       setNewBambuMasterId(filteredBambuMasters[0].id);
     }
-  }, [createMode, filteredBambuMasters, newBambuMasterId]);
+  }, [bambuCodeLookup, createMode, filteredBambuMasters, newBambuMasterId]);
 
   useEffect(() => {
     if (createMode === "bambu" && selectedBambuMaster) {
@@ -188,6 +210,7 @@ export function useInventoryCreateDraft(masters: MasterCatalogRow[]) {
   return {
     activeCatalogMasters,
     applyCatalogDefaults,
+    bambuCodeLookup,
     borrowedFromContact,
     borrowedFromName,
     borrowedInNote,

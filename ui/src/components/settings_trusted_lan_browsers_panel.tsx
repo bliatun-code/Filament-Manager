@@ -1,4 +1,5 @@
 import type { TrustedLanPairedBrowserRowModel } from "../pages/settings_companion_model";
+import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { settingsActionButtonClass } from "../lib/settings_ui_classes";
 
 type SettingsTrustedLanBrowsersPanelProps = {
@@ -36,7 +37,7 @@ function TrustedLanBrowserRow({
               <div className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                 {browser.displayName}
               </div>
-              <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200">
+              <span className={inlineStatusSignalClass("success")}>
                 {browser.statusLabel}
               </span>
             </div>
@@ -75,11 +76,11 @@ function TrustedLanRevokedBrowserRow({
             <div className="truncate text-sm font-semibold text-slate-700 dark:text-slate-100">
               {browser.displayName}
             </div>
-            <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            <span className={inlineStatusSignalClass("neutral")}>
               {browser.statusLabel}
             </span>
           </div>
-          <TrustedLanBrowserMeta browser={browser} revoked t={t} />
+          <TrustedLanBrowserMeta browser={browser} t={t} />
         </div>
       </div>
     </div>
@@ -88,25 +89,23 @@ function TrustedLanRevokedBrowserRow({
 
 function TrustedLanBrowserMeta({
   browser,
-  revoked = false,
   t,
 }: {
   browser: TrustedLanPairedBrowserRowModel;
-  revoked?: boolean;
   t: (key: string, fallback: string) => string;
 }) {
-  const chipClass = revoked
-    ? "rounded-full border border-slate-200 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-950/70"
-    : "rounded-full border border-slate-200 bg-slate-50 px-3 py-1 dark:border-slate-700 dark:bg-slate-900/60";
-
   return (
-    <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
-      <span className={chipClass}>{browser.activityLabel}</span>
-      <span className={chipClass}>{browser.pairedLabel}</span>
+    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+      <span>{browser.activityLabel}</span>
+      <span className="text-slate-300 dark:text-slate-600">·</span>
+      <span>{browser.pairedLabel}</span>
       {browser.originLabel ? (
-        <span className={chipClass}>
-          {t("settings.trustedLanOrigin", "Origin")} {browser.originLabel}
-        </span>
+        <>
+          <span className="text-slate-300 dark:text-slate-600">·</span>
+          <span>
+            {t("settings.trustedLanOrigin", "Origin")} {browser.originLabel}
+          </span>
+        </>
       ) : null}
     </div>
   );
@@ -138,11 +137,11 @@ export function SettingsTrustedLanBrowsersPanel({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
+          <span className={inlineStatusSignalClass("success", "text-xs")}>
             {activeBrowsers.length} {t("settings.trustedLanActive", "Active")}
           </span>
           {revokedBrowsers.length > 0 ? (
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-600 dark:bg-slate-950/60 dark:text-slate-200">
+            <span className={inlineStatusSignalClass("neutral", "text-xs")}>
               {revokedBrowsers.length} {t("settings.trustedLanRevoked", "Revoked")}
             </span>
           ) : null}

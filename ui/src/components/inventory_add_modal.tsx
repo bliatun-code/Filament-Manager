@@ -9,6 +9,7 @@ import {
 import { InventoryStockSourcePanel } from "./inventory_stock_source_panel";
 import { WishlistQueuePanel } from "./wishlist_queue_panel";
 import { useI18n } from "../lib/i18n";
+import type { BambuFilamentCodeLookup } from "../lib/bambu_filament_code_lookup";
 import type { InventoryCreateMode } from "../lib/inventory_create_model";
 import type { OwnershipType } from "../lib/inventory_list_model";
 import type { ResolvedTheme } from "../lib/theme_mode";
@@ -22,6 +23,7 @@ import type {
 export type InventoryAddModalProps = {
   actionStyle?: CSSProperties;
   activeCatalogMasters: MasterCatalogRow[];
+  bambuCodeLookup: BambuFilamentCodeLookup;
   borrowedFromContact: string;
   borrowedFromName: string;
   borrowedInNote: string;
@@ -80,6 +82,7 @@ export type InventoryAddModalProps = {
 export function InventoryAddModal({
   actionStyle,
   activeCatalogMasters,
+  bambuCodeLookup,
   borrowedFromContact,
   borrowedFromName,
   borrowedInNote,
@@ -194,6 +197,7 @@ export function InventoryAddModal({
             <div className="space-y-4">
               <InventoryStockSourcePanel
                 activeCatalogMasters={activeCatalogMasters}
+                bambuCodeLookup={bambuCodeLookup}
                 catalogQuery={catalogQuery}
                 createMode={createMode}
                 isCatalogCreateMode={isCatalogCreateMode}

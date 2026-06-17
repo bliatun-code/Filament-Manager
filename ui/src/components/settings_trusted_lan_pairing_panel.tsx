@@ -1,4 +1,5 @@
 import type { Locale } from "../lib/i18n";
+import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { formatTrustedLanPairingExpiry } from "../lib/settings_utils";
 import { settingsActionButtonClass } from "../lib/settings_ui_classes";
 
@@ -89,12 +90,12 @@ export function SettingsTrustedLanPairingPanel({
 
             {pairingLink ? (
               <>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200">
+                <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                  <span className={inlineStatusSignalClass("neutral", "text-xs")}>
                     {t("settings.trustedLanPairingLabelMeta", "Browser label")}:{" "}
                     {pairingLabel ?? t("settings.trustedLanPairingLabelEmpty", "No label")}
                   </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200">
+                  <span className={inlineStatusSignalClass("neutral", "text-xs")}>
                     {t("settings.trustedLanPairingExpiresAt", "Expires at")}:{" "}
                     {pairingExpiresAtMs
                       ? formatTrustedLanPairingExpiry(pairingExpiresAtMs, locale)

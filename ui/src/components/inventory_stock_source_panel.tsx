@@ -1,8 +1,8 @@
 import { SegmentedChoiceRow } from "./segmented_choice_row";
-import { VendorBadge } from "./vendor_badge";
-import { neutralChipClass } from "../lib/chip_styles";
+import { inlineStatusSignalClass, neutralChipClass } from "../lib/chip_styles";
 import { swatchCssBackground, toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
+import type { BambuFilamentCodeLookup } from "../lib/bambu_filament_code_lookup";
 import { formatMasterDisplayTitle } from "../lib/inventory_list_model";
 import { inventoryCatalogRowStyle } from "../lib/inventory_swatch_style";
 import type { InventoryCreateMode } from "../lib/inventory_create_model";
@@ -11,6 +11,7 @@ import type { MasterCatalogRow } from "../lib/tauri_client";
 
 type InventoryStockSourcePanelProps = {
   activeCatalogMasters: MasterCatalogRow[];
+  bambuCodeLookup: BambuFilamentCodeLookup;
   catalogQuery: string;
   createMode: InventoryCreateMode;
   isCatalogCreateMode: boolean;
@@ -33,8 +34,86 @@ type InventoryStockSourcePanelProps = {
   tauriAvailable: boolean;
 };
 
+function BambuFilamentCodeLookupHint({
+  lookup,
+}: {
+  lookup: BambuFilamentCodeLookup;
+}) {
+  const { t } = useI18n();
+
+  if (!lookup.code) {
+    return null;
+  }
+
+  const displayMatches =
+    lookup.activeMatches.length > 0 ? lookup.activeMatches : lookup.discontinuedMatches;
+  const matchPreview = displayMatches
+    .slice(0, 3)
+    .map((master) => formatMasterDisplayTitle(master))
+    .join(", ");
+  const remainingCount = Math.max(0, displayMatches.length - 3);
+
+  let message = t(
+    "inventory.bambuCodeNoMatch",
+    "No Bambu catalog entry uses this filament code yet.",
+  );
+  if (lookup.status === "single_active") {
+    message = t(
+      "inventory.bambuCodeSingleMatch",
+      "One active Bambu catalog entry matched and is selected.",
+    );
+  } else if (lookup.status === "multiple_active") {
+    message = t(
+      "inventory.bambuCodeMultipleMatches",
+      "This code is used by several active Bambu catalog entries. Choose the correct row.",
+    );
+  } else if (lookup.status === "discontinued_only") {
+    message = t(
+      "inventory.bambuCodeDiscontinuedOnly",
+      "Only discontinued Bambu catalog entries use this code.",
+    );
+  }
+
+  return (
+    <div
+      className="rounded-2xl border border-slate-200/90 bg-white/72 p-3 text-xs text-slate-600 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-300"
+      aria-live="polite"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-[11px] leading-none text-slate-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-400">
+          <span className="block text-[9px] uppercase tracking-[0.18em]">
+            {t("inventory.bambuCodeLabel", "Filament Code")}
+          </span>
+          <span className="mt-1 block text-lg font-semibold tracking-normal text-slate-900 dark:text-slate-50">
+            {lookup.code}
+          </span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-slate-800 dark:text-slate-100">{message}</div>
+          {matchPreview ? (
+            <div className="mt-1 leading-5 text-slate-500 dark:text-slate-400">
+              {matchPreview}
+              {remainingCount > 0
+                ? ` +${remainingCount} ${t("inventory.bambuCodeMoreMatches", "more")}`
+                : ""}
+            </div>
+          ) : (
+            <div className="mt-1 leading-5 text-slate-500 dark:text-slate-400">
+              {t(
+                "inventory.bambuCodeHelp",
+                "Use the five digit code printed as Filament Code on the Bambu box label.",
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function InventoryStockSourcePanel({
   activeCatalogMasters,
+  bambuCodeLookup,
   catalogQuery,
   createMode,
   isCatalogCreateMode,
@@ -85,25 +164,30 @@ export function InventoryStockSourcePanel({
               ]}
             />
             {isCatalogCreateMode ? (
-              <span className="shrink-0 rounded-full border border-slate-300 bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200">
+              <span className="shrink-0 text-[11px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
                 {activeCatalogMasters.length}
               </span>
             ) : null}
           </div>
 
           {isCatalogCreateMode ? (
-            <input
-              type="search"
-              value={catalogQuery}
-              onChange={(event) => onCatalogQueryChange(event.target.value)}
-              placeholder={
-                createMode === "bambu"
-                  ? t("wishlist.searchBambu", "Search Bambu material/color")
-                  : t("wishlist.searchEsun", "Search eSUN material/color")
-              }
-              className="page-header-search !w-full"
-              disabled={!tauriAvailable}
-            />
+            <div className="space-y-2.5">
+              <input
+                type="search"
+                value={catalogQuery}
+                onChange={(event) => onCatalogQueryChange(event.target.value)}
+                placeholder={
+                  createMode === "bambu"
+                    ? t("wishlist.searchBambu", "Search Bambu material/color or filament code")
+                    : t("wishlist.searchEsun", "Search eSUN material/color")
+                }
+                className="page-header-search !w-full"
+                disabled={!tauriAvailable}
+              />
+              {createMode === "bambu" ? (
+                <BambuFilamentCodeLookupHint lookup={bambuCodeLookup} />
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
@@ -145,10 +229,10 @@ export function InventoryStockSourcePanel({
                         {formatMasterDisplayTitle(master)}
                       </span>
                       <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                        <VendorBadge vendor={master.vendor} compact />
+                        <span>{master.material}</span>
                         <span>{master.default_weight} g</span>
                         {master.is_discontinued ? (
-                          <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 dark:border-amber-400/50 dark:bg-amber-500/15 dark:text-amber-200">
+                          <span className={inlineStatusSignalClass("warning", "text-[11px]")}>
                             {t("common.discontinued", "Discontinued")}
                           </span>
                         ) : null}
@@ -157,7 +241,7 @@ export function InventoryStockSourcePanel({
                   </span>
 
                   {selected ? (
-                    <span className="shrink-0 rounded-full border border-slate-300 bg-white/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-700 shadow-sm dark:border-slate-500 dark:bg-slate-900/80 dark:text-slate-100 dark:shadow-none">
+                    <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">
                       ✓ {t("common.selected", "Selected")}
                     </span>
                   ) : null}

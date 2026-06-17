@@ -3,7 +3,7 @@ import { printerBrandCssVars, styleObjectToString } from "./companion_theme.js";
 import { renderPrinterBoard, renderPrinterRoster } from "./printer_workspace.js";
 
 export function renderPrintersShell(options) {
-  const { state, activePrinter, escapeHtml, formatGrams } = options;
+  const { state, activePrinter, escapeHtml, formatGrams, printerSpoolOptions = [] } = options;
   const locale = state.locale || "en";
   const printerCount = Array.isArray(state.printers) ? state.printers.length : 0;
   const showPrinterRoster = printerCount > 1;
@@ -37,6 +37,7 @@ export function renderPrintersShell(options) {
           ${renderPrinterBoard({
             state,
             activePrinter,
+            printerSpoolOptions,
             escapeHtml,
             formatGrams,
           })}

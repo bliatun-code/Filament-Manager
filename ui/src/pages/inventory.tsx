@@ -226,6 +226,10 @@ export default function InventoryPage({
     editMasterVendor,
     masterEditUnlocked,
     selectedSpoolLocationDraft,
+    selectedSpoolOwnerContactDraft,
+    selectedSpoolOwnerNameDraft,
+    selectedSpoolOwnershipDraft,
+    selectedSpoolOwnershipNoteDraft,
     selectedSpoolTareDraft,
     setConfirmDelete,
     setConfirmPurge,
@@ -236,6 +240,10 @@ export default function InventoryPage({
     setEditMasterVendor,
     setMasterEditUnlocked,
     setSelectedSpoolLocationDraft,
+    setSelectedSpoolOwnerContactDraft,
+    setSelectedSpoolOwnerNameDraft,
+    setSelectedSpoolOwnershipDraft,
+    setSelectedSpoolOwnershipNoteDraft,
     setSelectedSpoolTareDraft,
     setShowRfidCapturedFields,
     setShowRollHistory,
@@ -427,6 +435,7 @@ export default function InventoryPage({
     handlePurgeSelected,
     handleRefillSpool,
     handleSaveMasterMetadata,
+    handleSaveSpoolOwnership,
     handleSaveSpoolLocation,
     handleSaveSpoolTareWeight,
     handleToggleLostStatus,
@@ -455,6 +464,10 @@ export default function InventoryPage({
     selectedSpool,
     selectedSpoolAssignedSlot,
     selectedSpoolLocationDraft,
+    selectedSpoolOwnerContactDraft,
+    selectedSpoolOwnerNameDraft,
+    selectedSpoolOwnershipDraft,
+    selectedSpoolOwnershipNoteDraft,
     selectedSpoolResolvedTare,
     selectedSpoolTareDraft,
     setConfirmDelete,
@@ -463,6 +476,9 @@ export default function InventoryPage({
     setInfoMessage,
     setManageBusy,
     setMasterEditUnlocked,
+    setSelectedSpoolOwnerContactDraft,
+    setSelectedSpoolOwnerNameDraft,
+    setSelectedSpoolOwnershipNoteDraft,
     setSelectedSpoolTareDraft,
     tauriAvailable: tauri,
     t,
@@ -563,6 +579,10 @@ export default function InventoryPage({
         onChangeHexColor={setEditMasterHexColor}
         onChangeLocation={setSelectedSpoolLocationDraft}
         onChangeMaterial={setEditMasterMaterial}
+        onChangeOwnerContact={setSelectedSpoolOwnerContactDraft}
+        onChangeOwnerName={setSelectedSpoolOwnerNameDraft}
+        onChangeOwnershipNote={setSelectedSpoolOwnershipNoteDraft}
+        onChangeOwnershipType={setSelectedSpoolOwnershipDraft}
         onChangeTare={setSelectedSpoolTareDraft}
         onChangeVendor={setEditMasterVendor}
         onClose={closeRollModal}
@@ -573,6 +593,7 @@ export default function InventoryPage({
         onRefill={handleRefillSpool}
         onSaveLocation={handleSaveSpoolLocation}
         onSaveMasterMetadata={handleSaveMasterMetadata}
+        onSaveOwnership={handleSaveSpoolOwnership}
         onSaveTareWeight={handleSaveSpoolTareWeight}
         onStartRfidCapture={handleStartRfidCapture}
         onSubmitWeight={handleWeightSubmit}
@@ -582,6 +603,10 @@ export default function InventoryPage({
         open={showRollModal}
         ownershipLabel={selectedSpoolOwnershipLabel}
         ownershipTone={selectedSpoolOwnershipTone}
+        ownershipTypeDraft={selectedSpoolOwnershipDraft}
+        ownerContactDraft={selectedSpoolOwnerContactDraft}
+        ownerNameDraft={selectedSpoolOwnerNameDraft}
+        ownershipNoteDraft={selectedSpoolOwnershipNoteDraft}
         qrCompanionAvailable={selectedSpoolQrCompanionAvailable}
         qrDataUrl={selectedSpoolQrDataUrl}
         qrLoading={selectedSpoolQrLoading}

@@ -1,4 +1,4 @@
-import { normalizeSwatchValue, parseSwatchSpec } from "./color_utils";
+import { normalizeHexColor, normalizeSwatchValue, parseSwatchSpec } from "./color_utils";
 import { formatBambuSettingsProfileSignal } from "./bambu_settings_profiles";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
@@ -15,8 +15,67 @@ export type ObservedInventoryMatchInput = {
   colorHex?: string | null;
 };
 
+export type InventoryMatchOptions = {
+  /**
+   * The slot assignment the user/app already believes is active. This does not
+   * force a match, but it sorts equally plausible live candidates first.
+   */
+  preferredSpoolId?: string | null;
+  /**
+   * Bambu rolls in AMS should normally identify through RFID. Without an RFID,
+   * Bambu Studio filament settings can be too generic and should not drown out
+   * third-party rolls that only have material and color to work with.
+   */
+  includeBambuMetadataCandidates?: boolean;
+  /**
+   * Unknown live RFID is a Bambu-only signal today. Suggesting third-party rows
+   * in that flow adds noise because those rolls cannot emit a Bambu RFID.
+   */
+  onlyBambuMetadataCandidates?: boolean;
+};
+
+const LIVE_COLOR_MATCH_DISTANCE = 48;
+const BLACK_BOX_VENDOR = "bambu";
+
 function normalizeInventoryMatchText(raw?: string | null): string {
   return (raw ?? "").trim().toLowerCase();
+}
+
+function normalizeInventoryMatchToken(raw?: string | null): string {
+  return normalizeInventoryMatchText(raw).replace(/[^a-z0-9+]/g, "");
+}
+
+const MATERIAL_FAMILY_TOKENS = [
+  "pla",
+  "petg",
+  "abs",
+  "asa",
+  "tpu",
+  "pc",
+  "pa",
+  "cpe",
+  "hips",
+  "pva",
+  "pet",
+  "pp",
+  "pom",
+  "support",
+] as const;
+
+function materialFamily(raw?: string | null): string | null {
+  const normalized = normalizeInventoryMatchToken(raw);
+  if (!normalized) {
+    return null;
+  }
+  const exact = MATERIAL_FAMILY_TOKENS.find((token) => normalized === token);
+  if (exact) {
+    return exact;
+  }
+  return (
+    MATERIAL_FAMILY_TOKENS.find((token) => normalized.startsWith(token)) ??
+    MATERIAL_FAMILY_TOKENS.find((token) => normalized.includes(token)) ??
+    normalized
+  );
 }
 
 const GENERIC_MATERIAL_NAME_TOKENS = new Set([
@@ -34,6 +93,11 @@ const GENERIC_MATERIAL_NAME_TOKENS = new Set([
   "pp",
   "pom",
   "support",
+  "basic",
+  "matte",
+  "silk",
+  "generic",
+  "bambu",
 ]);
 
 function inventoryNameTokens(raw?: string | null): string[] {
@@ -80,6 +144,166 @@ function inventoryFilamentNameMatches(left?: string | null, right?: string | nul
   );
 }
 
+function isBambuVendor(row: SpoolWithMasterRow): boolean {
+  return normalizeInventoryMatchToken(row.master.vendor).startsWith(BLACK_BOX_VENDOR);
+}
+
+function normalizeSpoolStatus(raw?: string | null): string {
+  return (raw ?? "").trim().toUpperCase();
+}
+
+function isVisibleInventoryRow(row: SpoolWithMasterRow): boolean {
+  const status = normalizeSpoolStatus(row.spool.status);
+  return status !== "EMPTY" && status !== "LOST" && status !== "DELETED";
+}
+
+function isMetadataCandidateRow(
+  row: SpoolWithMasterRow,
+  options: InventoryMatchOptions,
+): boolean {
+  if (!isVisibleInventoryRow(row)) {
+    return false;
+  }
+  const status = normalizeSpoolStatus(row.spool.status);
+  if (status === "BORROWED") {
+    return false;
+  }
+  const bambuVendor = isBambuVendor(row);
+  if (options.onlyBambuMetadataCandidates && !bambuVendor) {
+    return false;
+  }
+  if (!options.includeBambuMetadataCandidates && bambuVendor) {
+    return false;
+  }
+  return true;
+}
+
+function rgbFromHex(raw?: string | null): [number, number, number] | null {
+  const normalized = normalizeHexColor(raw, { uppercase: true });
+  if (!normalized) {
+    return null;
+  }
+  const compact = normalized.slice(1);
+  const expanded =
+    compact.length === 3
+      ? compact
+          .split("")
+          .map((part) => `${part}${part}`)
+          .join("")
+      : compact;
+  if (expanded.length !== 6) {
+    return null;
+  }
+  const red = Number.parseInt(expanded.slice(0, 2), 16);
+  const green = Number.parseInt(expanded.slice(2, 4), 16);
+  const blue = Number.parseInt(expanded.slice(4, 6), 16);
+  if ([red, green, blue].some((channel) => Number.isNaN(channel))) {
+    return null;
+  }
+  return [red, green, blue];
+}
+
+function colorDistance(left: [number, number, number], right: [number, number, number]): number {
+  const red = left[0] - right[0];
+  const green = left[1] - right[1];
+  const blue = left[2] - right[2];
+  return Math.sqrt(red * red + green * green + blue * blue);
+}
+
+function swatchColors(raw?: string | null): string[] {
+  const normalized = normalizeSwatchValue(raw, { uppercase: true });
+  if (!normalized) {
+    return [];
+  }
+  return parseSwatchSpec(normalized).colors.map((color) => color.toUpperCase());
+}
+
+function nearestSwatchDistance(
+  observedColor: string,
+  candidateColors: string[],
+): number | null {
+  const observedRgb = rgbFromHex(observedColor);
+  if (!observedRgb) {
+    return null;
+  }
+  const distances = candidateColors
+    .map((candidateColor) => rgbFromHex(candidateColor))
+    .filter((rgb): rgb is [number, number, number] => rgb != null)
+    .map((candidateRgb) => colorDistance(observedRgb, candidateRgb));
+  return distances.length > 0 ? Math.min(...distances) : null;
+}
+
+function swatchMatchesObserved(observedColors: string[], candidateColors: string[]): boolean {
+  if (observedColors.length === 0) {
+    return true;
+  }
+  if (candidateColors.length === 0) {
+    return false;
+  }
+  return observedColors.every((observedColor) => {
+    const distance = nearestSwatchDistance(observedColor, candidateColors);
+    return distance != null && distance <= LIVE_COLOR_MATCH_DISTANCE;
+  });
+}
+
+function metadataCandidateScore({
+  row,
+  observedColors,
+  observedFilamentName,
+  observedMaterial,
+  options,
+}: {
+  row: SpoolWithMasterRow;
+  observedColors: string[];
+  observedFilamentName: string;
+  observedMaterial: string;
+  options: InventoryMatchOptions;
+}): number {
+  let score = 0;
+  if (options.preferredSpoolId && row.spool.id === options.preferredSpoolId) {
+    score += 1000;
+  }
+  if (observedMaterial && normalizeInventoryMatchText(row.master.material) === observedMaterial) {
+    score += 80;
+  }
+  const rowName = normalizeInventoryMatchText(row.master.filament_name);
+  if (observedFilamentName && inventoryFilamentNameMatches(rowName, observedFilamentName)) {
+    score += 20;
+  }
+  const candidateColors = swatchColors(row.master.hex_color);
+  const nearestDistance =
+    observedColors.length > 0 && candidateColors.length > 0
+      ? Math.min(
+          ...observedColors
+            .map((observedColor) => nearestSwatchDistance(observedColor, candidateColors))
+            .filter((distance): distance is number => distance != null),
+        )
+      : null;
+  if (nearestDistance != null && Number.isFinite(nearestDistance)) {
+    score += Math.max(0, Math.round(100 - nearestDistance));
+  }
+  const status = normalizeSpoolStatus(row.spool.status);
+  if (status === "ASSIGNED" || status === "IN_USE") {
+    score += 8;
+  } else if (status === "IN_STOCK") {
+    score += 4;
+  }
+  return score;
+}
+
+function sortMetadataCandidates(
+  candidates: SpoolWithMasterRow[],
+  scoreById: Map<string, number>,
+): SpoolWithMasterRow[] {
+  return [...candidates].sort((left, right) => {
+    const scoreDelta = (scoreById.get(right.spool.id) ?? 0) - (scoreById.get(left.spool.id) ?? 0);
+    if (scoreDelta !== 0) {
+      return scoreDelta;
+    }
+    return left.spool.id.localeCompare(right.spool.id, undefined, { numeric: true });
+  });
+}
+
 function formatSettingsPresetSignal(
   presetSignal: string,
   t: (key: string, fallback?: string) => string,
@@ -98,11 +322,9 @@ function formatSettingsPresetSignal(
 export function buildInventoryMatchResult(
   spoolRows: SpoolWithMasterRow[],
   observed: ObservedInventoryMatchInput,
+  options: InventoryMatchOptions = {},
 ): InventoryMatchResult {
-  const activeRows = spoolRows.filter((row) => {
-    const status = (row.spool.status ?? "").trim().toUpperCase();
-    return status !== "EMPTY" && status !== "LOST";
-  });
+  const activeRows = spoolRows.filter(isVisibleInventoryRow);
 
   const normalizedObservedRfid =
     observed.rfid?.trim() && !/^0+$/.test(observed.rfid.trim()) ? observed.rfid.trim() : null;
@@ -113,51 +335,66 @@ export function buildInventoryMatchResult(
     if (rfidMatches.length > 0) {
       return { kind: "rfid_exact", candidates: rfidMatches };
     }
+    return { kind: "none", candidates: [] };
   }
 
   const observedMaterial = normalizeInventoryMatchText(observed.material);
+  const observedMaterialFamily = materialFamily(observed.material ?? observed.filamentName);
   const observedFilamentName = normalizeInventoryMatchText(observed.filamentName);
-  const observedSwatch = normalizeSwatchValue(observed.colorHex, { uppercase: true });
-  const observedColors = observedSwatch
-    ? parseSwatchSpec(observedSwatch).colors.map((color) => color.toUpperCase())
-    : [];
+  const observedColors = swatchColors(observed.colorHex);
+  const shouldUseNameAsFilter =
+    observedColors.length === 0 &&
+    hasDistinctiveInventoryNameToken(inventoryNameTokens(observedFilamentName));
+  const scoreById = new Map<string, number>();
 
   const metadataMatches = activeRows.filter((row) => {
-    const rowMaterial = normalizeInventoryMatchText(row.master.material);
-    if (observedMaterial && rowMaterial !== observedMaterial) {
+    if (!isMetadataCandidateRow(row, options)) {
+      return false;
+    }
+
+    const rowMaterialFamily = materialFamily(row.master.material ?? row.master.filament_name);
+    if (observedMaterialFamily && rowMaterialFamily !== observedMaterialFamily) {
       return false;
     }
 
     const rowFilament = normalizeInventoryMatchText(row.master.filament_name);
-    if (observedFilamentName) {
-      if (!inventoryFilamentNameMatches(rowFilament, observedFilamentName)) {
-        return false;
-      }
+    if (shouldUseNameAsFilter && !inventoryFilamentNameMatches(rowFilament, observedFilamentName)) {
+      return false;
     }
 
-    if (observedColors.length > 0) {
-      const rowSwatch = normalizeSwatchValue(row.master.hex_color, { uppercase: true });
-      const rowColors = rowSwatch
-        ? parseSwatchSpec(rowSwatch).colors.map((color) => color.toUpperCase())
-        : [];
-      if (
-        rowColors.length > 0 &&
-        !observedColors.every((observedColor) => rowColors.includes(observedColor))
-      ) {
-        return false;
-      }
+    if (!swatchMatchesObserved(observedColors, swatchColors(row.master.hex_color))) {
+      return false;
     }
 
+    scoreById.set(
+      row.spool.id,
+      metadataCandidateScore({
+        row,
+        observedColors,
+        observedFilamentName,
+        observedMaterial,
+        options,
+      }),
+    );
     return true;
   });
+  const sortedMetadataMatches = sortMetadataCandidates(metadataMatches, scoreById);
 
-  if (metadataMatches.length === 1) {
-    return { kind: "metadata_single", candidates: metadataMatches };
+  if (sortedMetadataMatches.length === 1) {
+    return { kind: "metadata_single", candidates: sortedMetadataMatches };
   }
-  if (metadataMatches.length > 1) {
-    return { kind: "metadata_multiple", candidates: metadataMatches };
+  if (sortedMetadataMatches.length > 1) {
+    return { kind: "metadata_multiple", candidates: sortedMetadataMatches };
   }
   return { kind: "none", candidates: [] };
+}
+
+export function buildInventoryMetadataCandidateResult(
+  spoolRows: SpoolWithMasterRow[],
+  observed: ObservedInventoryMatchInput,
+  options: InventoryMatchOptions = {},
+): InventoryMatchResult {
+  return buildInventoryMatchResult(spoolRows, { ...observed, rfid: null }, options);
 }
 
 export function translateObservedMatchNote(

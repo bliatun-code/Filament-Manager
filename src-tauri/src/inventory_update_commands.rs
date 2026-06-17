@@ -1,5 +1,6 @@
 use crate::backend::inventory_engine::{
-    UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput, UpdateSpoolRfidTagInput, WeightSource,
+    UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
+    UpdateSpoolRfidTagInput, WeightSource,
 };
 use crate::inventory_command_support::{companion_service, inventory_error_to_string};
 use crate::state::AppState;
@@ -51,6 +52,16 @@ pub(crate) fn update_spool_details(
 ) -> Result<(), String> {
     companion_service(&state)
         .update_spool_details(input)
+        .map_err(inventory_error_to_string)
+}
+
+#[tauri::command]
+pub(crate) fn update_spool_ownership(
+    state: tauri::State<'_, AppState>,
+    input: UpdateSpoolOwnershipInput,
+) -> Result<(), String> {
+    companion_service(&state)
+        .update_spool_ownership(input)
         .map_err(inventory_error_to_string)
 }
 

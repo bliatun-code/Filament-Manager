@@ -1,4 +1,5 @@
 import { SettingsMetricTile } from "./settings_ui";
+import { inlineStatusSignalClass } from "../lib/chip_styles";
 import type { BackupValidationStats } from "../lib/tauri_client";
 
 type TranslateFn = (key: string, fallback: string) => string;
@@ -24,13 +25,7 @@ export function SettingsBackupValidationSummary({
         <div className="font-semibold">
           {t("settings.backupValidationSummary", "Backup validation summary")}
         </div>
-        <span
-          className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-            hasWarnings
-              ? "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-400/50 dark:bg-amber-500/20 dark:text-amber-200"
-              : "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/50 dark:bg-emerald-500/20 dark:text-emerald-200"
-          }`}
-        >
+        <span className={inlineStatusSignalClass(hasWarnings ? "warning" : "neutral")}>
           {hasWarnings
             ? t("settings.validationStatusWarn", "Has warnings")
             : t("settings.validationStatusOk", "Fully compatible")}

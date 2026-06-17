@@ -14,6 +14,7 @@ import {
   buildSettingsBambuLiveNozzleRangeLabel,
   buildSettingsBambuLiveObservedRfid,
   buildSettingsBambuLiveObservedSummaryParts,
+  buildSettingsBambuLiveStatusNote,
   parseSettingsBambuLivePresetName,
   buildSettingsBambuLivePresetSignalLabel,
   buildSettingsBambuLiveSignalQualityBuckets,
@@ -119,7 +120,12 @@ function createUpdatedPayload() {
   };
 }
 
-function createSpoolRow(overrides: Partial<SpoolWithMasterRow> = {}): SpoolWithMasterRow {
+function createSpoolRow(
+  overrides: {
+    master?: Partial<SpoolWithMasterRow["master"]>;
+    spool?: Partial<SpoolWithMasterRow["spool"]>;
+  } = {},
+): SpoolWithMasterRow {
   return {
     spool: {
       id: "spool-1",
@@ -522,7 +528,7 @@ test("Bambu live inventory match descriptions stay explicit for each match state
       observedRfid: null,
       t,
     }),
-    "Single likely inventory match from material/name/color.",
+    "Single likely inventory match from material and live color.",
   );
   assert.equal(
     buildSettingsBambuLiveInventoryMatchDescription({
@@ -1232,10 +1238,22 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
   assert.equal(exactCard.matchNote, "rfid_mismatch");
 
   const metadataRows = [
-    createSpoolRow({ spool: { id: "spool-1", master_id: "master-1", rfid_tag: null, status: "IN_STOCK" } }),
-    createSpoolRow({ spool: { id: "spool-2", master_id: "master-1", rfid_tag: null, status: "IN_STOCK" } }),
-    createSpoolRow({ spool: { id: "spool-3", master_id: "master-1", rfid_tag: null, status: "IN_STOCK" } }),
-    createSpoolRow({ spool: { id: "spool-4", master_id: "master-1", rfid_tag: null, status: "IN_STOCK" } }),
+    createSpoolRow({
+      spool: { id: "spool-1", master_id: "master-1", rfid_tag: null, status: "IN_STOCK" },
+      master: { vendor: "eSUN" },
+    }),
+    createSpoolRow({
+      spool: { id: "spool-2", master_id: "master-1", rfid_tag: null, status: "IN_STOCK" },
+      master: { vendor: "eSUN" },
+    }),
+    createSpoolRow({
+      spool: { id: "spool-3", master_id: "master-1", rfid_tag: null, status: "IN_STOCK" },
+      master: { vendor: "eSUN" },
+    }),
+    createSpoolRow({
+      spool: { id: "spool-4", master_id: "master-1", rfid_tag: null, status: "IN_STOCK" },
+      master: { vendor: "eSUN" },
+    }),
   ];
   const metadataCard = buildSettingsBambuLiveDiagnosticTrayCard({
     amsReadInProgress: false,
@@ -1252,6 +1270,193 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
   assert.deepEqual(
     metadataCard.candidates.map((candidate) => candidate.key),
     ["spool-1", "spool-2", "spool-3"],
+  );
+});
+
+test("Bambu live diagnostic tray card uses Bambu-only metadata suggestions for unknown RFID", () => {
+  const card = buildSettingsBambuLiveDiagnosticTrayCard({
+    amsReadInProgress: false,
+    capturedTraySnapshot: null,
+    spoolRows: [
+      createSpoolRow({
+        spool: {
+          id: "bambu-black",
+          master_id: "master-bambu",
+          rfid_tag: null,
+          status: "IN_STOCK",
+        },
+        master: {
+          id: "master-bambu",
+          material: "PLA",
+          filament_name: "PLA Matte",
+          color_name: "Black",
+          hex_color: "#000000",
+          default_weight: 1000,
+          vendor: "Bambu",
+        },
+      }),
+      createSpoolRow({
+        spool: {
+          id: "esun-black",
+          master_id: "master-esun",
+          rfid_tag: null,
+          status: "IN_STOCK",
+        },
+        master: {
+          id: "master-esun",
+          material: "PLA",
+          filament_name: "PLA+HS",
+          color_name: "Black",
+          hex_color: "#000000",
+          default_weight: 1000,
+          vendor: "eSUN",
+        },
+      }),
+    ],
+    t,
+    tray: createObservedTray({
+      color_hex: "#000000",
+      filament_name: "PLA Matte",
+      filament_type: "PLA",
+      observed_rfid_tag: null,
+      tray_index: 0,
+      tray_uuid: "UNREGISTERED-BAMBU-RFID",
+    }),
+  });
+
+  assert.equal(card.matchKind, "metadata_single");
+  assert.deepEqual(card.candidates.map((candidate) => candidate.key), ["bambu-black"]);
+  assert.equal(card.matchLabel, "PLA Matte · Black");
+});
+
+test("Bambu live diagnostic tray card uses live material and color candidates instead of preset name", () => {
+  const card = buildSettingsBambuLiveDiagnosticTrayCard({
+    amsReadInProgress: false,
+    capturedTraySnapshot: null,
+    printerSlots: [
+      {
+        slot_id: "slot-3",
+        ams_id: "printer_ams_1",
+        slot_index: 3,
+        spool_id: "assigned-black",
+      },
+    ],
+    spoolRows: [
+      createSpoolRow({
+        spool: {
+          id: "bambu-charcoal",
+          master_id: "master-bambu",
+          rfid_tag: "RFID-BAMBU",
+          status: "IN_STOCK",
+        },
+        master: {
+          id: "master-bambu",
+          material: "PLA",
+          filament_name: "PLA Matte",
+          color_name: "Matte Charcoal",
+          hex_color: "#000000",
+          default_weight: 1000,
+          vendor: "Bambu",
+        },
+      }),
+      createSpoolRow({
+        spool: {
+          id: "assigned-black",
+          master_id: "master-esun",
+          rfid_tag: null,
+          status: "ASSIGNED",
+        },
+        master: {
+          id: "master-esun",
+          material: "PLA",
+          filament_name: "PLA+HS",
+          color_name: "Black",
+          hex_color: "#121212",
+          default_weight: 1000,
+          vendor: "eSUN",
+        },
+      }),
+      createSpoolRow({
+        spool: {
+          id: "stock-black",
+          master_id: "master-esun",
+          rfid_tag: null,
+          status: "IN_STOCK",
+        },
+        master: {
+          id: "master-esun",
+          material: "PLA",
+          filament_name: "PLA+HS",
+          color_name: "Black",
+          hex_color: "#121212",
+          default_weight: 1000,
+          vendor: "eSUN",
+        },
+      }),
+      createSpoolRow({
+        spool: {
+          id: "dark-purple",
+          master_id: "master-purple",
+          rfid_tag: null,
+          status: "IN_STOCK",
+        },
+        master: {
+          id: "master-purple",
+          material: "PLA",
+          filament_name: "PLA-Twinkling",
+          color_name: "Purple",
+          hex_color: "#33152F",
+          default_weight: 1000,
+          vendor: "eSUN",
+        },
+      }),
+    ],
+    t,
+    tray: createObservedTray({
+      ams_index: 0,
+      tray_index: 2,
+      filament_type: "PLA",
+      filament_name: "PLA Matte",
+      color_hex: "#000000",
+      observed_rfid_tag: null,
+      tray_uuid: null,
+    }),
+  });
+
+  assert.equal(card.matchKind, "metadata_multiple");
+  assert.deepEqual(
+    card.candidates.map((candidate) => candidate.key),
+    ["assigned-black", "stock-black"],
+  );
+  assert.equal(card.matchLabel, "PLA+HS · Black");
+});
+
+test("buildSettingsBambuLiveStatusNote distinguishes stale poll from missing diagnostics", () => {
+  const staleState = createLiveConfig().observed_state!;
+  staleState.raw_status_note = "Connected, but no live MQTT status arrived during this poll.";
+  assert.equal(
+    buildSettingsBambuLiveStatusNote({
+      fallbackSummaryParts: [],
+      observedState: staleState,
+      observedSummaryParts: ["42%"],
+      t,
+    }),
+    "No new MQTT burst arrived in this poll. Showing the last known live state and captured diagnostics.",
+  );
+
+  assert.equal(
+    buildSettingsBambuLiveStatusNote({
+      fallbackSummaryParts: [],
+      observedState: {
+        mqtt_connected: true,
+        online: true,
+        raw_status_note: "Connected, but no live MQTT status arrived during this poll.",
+        trays: [],
+      },
+      observedSummaryParts: [],
+      t,
+    }),
+    "Connected, but no live MQTT status arrived during this poll.",
   );
 });
 

@@ -7,6 +7,7 @@ import {
   deleteInventorySpool,
   purgeInventorySpool,
   updateInventorySpoolDetails,
+  updateInventorySpoolOwnership,
   updateInventorySpoolRfidTag,
   updateInventorySpoolStatus,
   updateInventorySpoolTareWeight,
@@ -16,6 +17,7 @@ import type {
   CreateManualSpoolInput,
   CreateSpoolInput,
   UpdateSpoolDetailsInput,
+  UpdateSpoolOwnershipInput,
 } from "./tauri_client";
 
 function masterSpoolInput(overrides: Partial<CreateSpoolInput> = {}): CreateSpoolInput {
@@ -185,6 +187,58 @@ test("updateInventorySpoolStatus uses the narrow local status command outside cl
   );
 
   assert.deepEqual(calls, [{ spoolId: "spool-1", status: "LOST" }]);
+});
+
+function spoolOwnershipInput(
+  overrides: Partial<UpdateSpoolOwnershipInput> = {},
+): UpdateSpoolOwnershipInput {
+  return {
+    spool_id: "spool-1",
+    ownership_type: "BORROWED_IN",
+    owner_name: "Nora",
+    owner_contact: "nora@example.com",
+    ownership_note: "Prototype batch",
+    ...overrides,
+  };
+}
+
+test("updateInventorySpoolOwnership routes client writes to the host", async () => {
+  const calls: Array<{ baseUrl: string; ownershipType: string; ownerName?: string | null }> = [];
+
+  await updateInventorySpoolOwnership(
+    spoolOwnershipInput(),
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      updateHostSpoolOwnership: async (baseUrl, _libraryId, input) => {
+        calls.push({
+          baseUrl,
+          ownershipType: input.ownership_type,
+          ownerName: input.owner_name,
+        });
+      },
+    },
+  );
+
+  assert.deepEqual(calls, [
+    { baseUrl: "http://host", ownershipType: "BORROWED_IN", ownerName: "Nora" },
+  ]);
+});
+
+test("updateInventorySpoolOwnership writes locally outside client mode", async () => {
+  const calls: UpdateSpoolOwnershipInput[] = [];
+  const input = spoolOwnershipInput({ ownership_type: "OWNED", owner_name: null });
+
+  await updateInventorySpoolOwnership(
+    input,
+    { clientReadOnly: false },
+    {
+      updateLocalSpoolOwnership: async (localInput) => {
+        calls.push(localInput);
+      },
+    },
+  );
+
+  assert.deepEqual(calls, [input]);
 });
 
 test("deleteInventorySpool and purgeInventorySpool route destructive writes to the host", async () => {

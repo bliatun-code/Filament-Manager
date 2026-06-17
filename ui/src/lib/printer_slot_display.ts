@@ -1,10 +1,20 @@
 import type {
   BambuLiveIntegrationEntry,
   BambuLiveObservedTray,
+  MasterCatalogRow,
   PrinterAmsSlotRow,
   SpoolWithMasterRow,
 } from "./tauri_client";
+import {
+  buildBambuLiveCatalogMatchResult,
+  type BambuLiveCatalogMatchResult,
+} from "./bambu_live_catalog_match";
 import type { Locale } from "./i18n";
+import {
+  buildInventoryMetadataCandidateResult,
+  buildInventoryMatchResult,
+  type InventoryMatchResult,
+} from "./inventory_match";
 import {
   compareObservedTimestamps,
   formatDateTime,
@@ -12,6 +22,7 @@ import {
   isOlderThanMinutes,
   isUnknownLiveRfid,
   liveActiveTrayMatchesSlot,
+  liveTrayIdentity,
   liveUnknownMatchesSlotOverride,
 } from "./printer_live_display";
 
@@ -30,6 +41,9 @@ export type PrinterSlotDisplayState = {
   showManualLabel: boolean;
   liveObservedAge: string | null;
   liveObservedAtLabel: string | null;
+  liveInventoryMatch: InventoryMatchResult;
+  liveSuggestedInventoryMatch: InventoryMatchResult;
+  liveCatalogMatch: BambuLiveCatalogMatchResult;
   slotSwatchHex: string | null;
 };
 
@@ -37,6 +51,8 @@ export function derivePrinterSlotDisplayState(options: {
   slot: PrinterAmsSlotRow;
   liveConfig: BambuLiveIntegrationEntry["config"] | null;
   liveTray: BambuLiveObservedTray | null;
+  spoolRows?: SpoolWithMasterRow[];
+  catalogRows?: MasterCatalogRow[];
   selectedTargetSpool: SpoolWithMasterRow | null;
   clientReadOnly: boolean;
   clientPrinterSource: "LIVE" | "CACHED" | "OFFLINE";
@@ -48,6 +64,8 @@ export function derivePrinterSlotDisplayState(options: {
     slot,
     liveConfig,
     liveTray,
+    spoolRows = [],
+    catalogRows = [],
     selectedTargetSpool,
     clientReadOnly,
     clientPrinterSource,
@@ -74,21 +92,31 @@ export function derivePrinterSlotDisplayState(options: {
   const liveSignalEnabled =
     Boolean(liveConfig?.enabled) ||
     (clientReadOnly && clientPrinterSource === "LIVE" && !!effectiveLiveTray);
+  const activeTrayMatchesSlot =
+    Boolean(liveConfig?.enabled) &&
+    liveActiveTrayMatchesSlot(
+      slot,
+      liveConfig?.observed_state?.active_tray_index,
+      liveConfig?.observed_state?.active_ams_index,
+    );
+  const activePrintContext =
+    liveConfig?.observed_state?.progress_percent != null ||
+    liveConfig?.observed_state?.remaining_minutes != null;
+  const lastLiveActiveAt =
+    activeTrayMatchesSlot && activePrintContext
+      ? liveConfig?.observed_state?.last_seen_at ?? null
+      : null;
+  const liveActiveSignalFresh = !isOlderThanMinutes(lastLiveActiveAt, 10);
   const liveSlotInUse =
     liveSignalEnabled &&
-    liveIdentityFresh &&
-    ((liveConfig?.enabled &&
-      liveActiveTrayMatchesSlot(
-        slot,
-        liveConfig.observed_state?.active_tray_index,
-        liveConfig.observed_state?.active_ams_index,
-      ) &&
-      (liveConfig.observed_state?.progress_percent != null ||
-        liveConfig.observed_state?.remaining_minutes != null)) ||
-      slot.live_is_active === true);
+    ((activeTrayMatchesSlot && activePrintContext && liveActiveSignalFresh) ||
+      (slot.live_is_active === true && liveIdentityFresh));
+  const savedRfidTag = slot.spool_rfid_tag?.trim() ?? "";
   const liveIdentityLabel =
     liveIdentityFresh && effectiveLiveTray?.matched_inventory_mode === "exact_rfid"
       ? t("printers.liveRfid", "Live RFID")
+      : savedRfidTag
+        ? t("inventory.rfidRegistered", "RFID registered")
       : null;
   const unknownLiveRfid =
     liveIdentityFresh && liveSignalEnabled && isUnknownLiveRfid(effectiveLiveTray);
@@ -99,8 +127,38 @@ export function derivePrinterSlotDisplayState(options: {
     !rfidOverridden &&
     liveSignalEnabled &&
     isOlderThanMinutes(lastLiveIdentityAt, 10);
-  const liveObservedAge = formatRelativeAge(lastLiveIdentityAt, t);
-  const liveObservedAtLabel = lastLiveIdentityAt ? formatDateTime(lastLiveIdentityAt, locale) : null;
+  const lastLiveObservationAt = liveSlotInUse
+    ? lastLiveActiveAt ?? lastLiveIdentityAt
+    : lastLiveIdentityAt;
+  const liveObservedAge = formatRelativeAge(lastLiveObservationAt, t);
+  const liveObservedAtLabel = lastLiveObservationAt
+    ? formatDateTime(lastLiveObservationAt, locale)
+    : null;
+  const observedInventoryInput = effectiveLiveTray
+    ? {
+        rfid: liveTrayIdentity(effectiveLiveTray),
+        material: effectiveLiveTray.filament_type,
+        filamentName: effectiveLiveTray.filament_name,
+        colorHex: effectiveLiveTray.color_hex,
+      }
+    : null;
+  const liveInventoryMatch = observedInventoryInput
+    ? buildInventoryMatchResult(spoolRows, observedInventoryInput, {
+        preferredSpoolId: slot.spool_id ?? null,
+      })
+    : { kind: "none" as const, candidates: [] };
+  const liveSuggestedInventoryMatch =
+    observedInventoryInput && unknownLiveRfid
+      ? buildInventoryMetadataCandidateResult(spoolRows, observedInventoryInput, {
+          includeBambuMetadataCandidates: true,
+          onlyBambuMetadataCandidates: true,
+          preferredSpoolId: slot.spool_id ?? null,
+        })
+      : liveInventoryMatch;
+  const liveCatalogMatch =
+    unknownLiveRfid && liveSuggestedInventoryMatch.candidates.length === 0
+      ? buildBambuLiveCatalogMatchResult(catalogRows, effectiveLiveTray)
+      : { kind: "none" as const, candidates: [] };
   const slotSwatchHex =
     (liveIdentityFresh ? liveMatchedSpool?.master.hex_color : null) ??
     selectedTargetSpool?.master.hex_color ??
@@ -120,6 +178,9 @@ export function derivePrinterSlotDisplayState(options: {
     showManualLabel,
     liveObservedAge,
     liveObservedAtLabel,
+    liveInventoryMatch,
+    liveSuggestedInventoryMatch,
+    liveCatalogMatch,
     slotSwatchHex,
   };
 }

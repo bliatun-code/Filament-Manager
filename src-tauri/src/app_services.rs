@@ -8,7 +8,7 @@ use crate::backend::inventory_engine::{
     AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
     CreateWishlistItemInput, DeleteSpoolInput, InventoryEngine, LendSpoolInput, PurgeSpoolInput,
     RecordPrintUsageInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
-    UpdateSpoolDetailsInput, UpdateWishlistStatusInput, WeightSource,
+    UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::printer_slot_live_mapping::{
     bambu_live_active_tray_matches_slot, bambu_live_slot_matches_tray, is_external_slot_id,
@@ -215,6 +215,10 @@ impl CompanionService {
         self.with_inventory(|engine| engine.update_borrowed_in_spool(input))
     }
 
+    pub fn update_spool_ownership(&self, input: UpdateSpoolOwnershipInput) -> InventoryResult<()> {
+        self.with_inventory(|engine| engine.update_spool_ownership(input))
+    }
+
     pub fn update_spool_details(&self, input: UpdateSpoolDetailsInput) -> InventoryResult<()> {
         self.with_inventory(|engine| engine.update_spool_details(input))
     }
@@ -374,6 +378,12 @@ fn apply_live_tray_to_slot(
     slot.live_matched_inventory_spool_id =
         tray.and_then(|value| value.matched_inventory_spool_id.clone());
     slot.live_matched_inventory_mode = tray.and_then(|value| value.matched_inventory_mode.clone());
+    slot.live_progress_percent = observed_state.and_then(|state| state.progress_percent);
+    slot.live_remaining_minutes = observed_state.and_then(|state| state.remaining_minutes);
+    slot.live_nozzle_temp_c = observed_state.and_then(|state| state.nozzle_temp_c);
+    slot.live_bed_temp_c = observed_state.and_then(|state| state.bed_temp_c);
+    slot.live_ams_humidity_index = observed_state.and_then(|state| state.ams_humidity_index);
+    slot.live_ams_temperature_c = observed_state.and_then(|state| state.ams_temperature_c);
     slot.live_printer_last_seen_at = observed_state.and_then(|state| state.last_seen_at.clone());
     slot.live_mqtt_connected = observed_state.map(|state| state.mqtt_connected);
     slot.live_ams_exist_bits = observed_state.and_then(|state| state.ams_exist_bits.clone());

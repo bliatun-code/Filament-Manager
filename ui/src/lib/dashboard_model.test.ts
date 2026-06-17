@@ -5,7 +5,7 @@ import {
   buildDashboardCompanionPresentation,
   buildDashboardDerivedState,
 } from "./dashboard_model";
-import type { InventoryOverview, SpoolWithMasterRow } from "./tauri_client";
+import type { InventoryOverview, PrinterOverviewRow, SpoolWithMasterRow } from "./tauri_client";
 
 const t = (_key: string, fallback: string) => fallback;
 
@@ -51,6 +51,29 @@ function spoolRow(
       default_weight: 1000,
       vendor: "Bambu",
     },
+  };
+}
+
+function printer(
+  id: string,
+  slots: PrinterOverviewRow["slots"],
+): PrinterOverviewRow {
+  return {
+    printer: {
+      id,
+      model: "Bambu Lab P1S",
+      name: id,
+      created_at: "2026-01-01 00:00:00",
+      updated_at: "2026-01-01 00:00:00",
+    },
+    usage: {
+      total_jobs: 0,
+      successful_jobs: 0,
+      failed_jobs: 0,
+      total_used_g: 0,
+      last_job_at: null,
+    },
+    slots,
   };
 }
 
@@ -123,6 +146,40 @@ test("buildDashboardDerivedState keeps borrowed rows out of inventory health sco
 
   assert.equal(result.ownershipOnHand.total, 1);
   assert.equal(result.health.score, 0);
+});
+
+test("buildDashboardDerivedState ignores EXT readiness for AMS/MMU printers", () => {
+  const result = buildDashboardDerivedState({
+    overview: overview(),
+    printers: [
+      printer("with-ams", [
+        { slot_id: "ext", ams_id: "printer_ext", slot_index: 0, spool_id: "spool-ext" },
+        { slot_id: "ams-1", ams_id: "printer_ams_1", slot_index: 1, spool_id: "spool-1" },
+        { slot_id: "ams-2", ams_id: "printer_ams_1", slot_index: 2, spool_id: null },
+        { slot_id: "ams-3", ams_id: "printer_ams_1", slot_index: 3, spool_id: "" },
+        { slot_id: "ams-4", ams_id: "printer_ams_1", slot_index: 4, spool_id: "spool-4" },
+      ]),
+      printer("single-material", [
+        { slot_id: "ext-only", ams_id: "single_ext", slot_index: 0, spool_id: "spool-ext-only" },
+      ]),
+    ],
+    spoolRows: [],
+    loans: [],
+    wishlist: [],
+    t,
+  });
+
+  assert.equal(result.goalMetrics.loadedSlots, 3);
+  assert.equal(result.goalMetrics.totalSlots, 5);
+  assert.deepEqual(
+    result.health.metrics.find((metric) => metric.id === "loaded"),
+    {
+      id: "loaded",
+      label: "slots loaded",
+      value: "3",
+      tone: "emerald",
+    },
+  );
 });
 
 test("buildDashboardCompanionPresentation labels standalone companion health", () => {

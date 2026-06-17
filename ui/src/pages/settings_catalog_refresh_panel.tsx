@@ -1,4 +1,5 @@
 import { SettingsMetricTile } from "../components/settings_ui";
+import { inlineStatusSignalClass } from "../lib/chip_styles";
 import {
   chipButtonClass,
   settingsActionButtonClass,
@@ -75,7 +76,7 @@ export function SettingsCatalogRefreshPanel({
               )}
             </div>
           </div>
-          <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-600 shadow-sm shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:shadow-none">
+          <div className={inlineStatusSignalClass("neutral", "text-sm")}>
             {t("settings.totalCatalog", "Catalog")}: {catalogCount}
           </div>
         </div>
@@ -176,7 +177,7 @@ export function SettingsCatalogRefreshPanel({
                   {catalogRefreshProgressMessage}
                 </div>
               </div>
-              <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-300">
+              <div className={inlineStatusSignalClass("neutral", "text-xs")}>
                 {catalogRefreshVendor}
               </div>
             </div>
