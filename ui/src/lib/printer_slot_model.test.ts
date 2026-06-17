@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildSlotCatalogOnboardingPrompt,
+  buildSlotCatalogOnboardingSaveState,
   buildMeasuredTotalWeightDraft,
   parseWeightInput,
   prepareMeasuredWeightUpdate,
@@ -111,4 +112,86 @@ test("buildSlotCatalogOnboardingPrompt prepares safe owned defaults from live ca
   assert.equal(prompt.initialWeight, "750");
   assert.equal(prompt.ownershipType, "OWNED");
   assert.equal(prompt.borrowedFromName, "");
+});
+
+test("buildSlotCatalogOnboardingSaveState blocks unsafe catalog slot onboarding writes", () => {
+  const printer = {
+    printer: {
+      id: "printer-1",
+      name: "X1C",
+      model: "Bambu Lab X1 Carbon",
+    },
+  } as PrinterOverviewRow;
+  const slot = {
+    slot_id: "slot-1",
+    ams_id: "printer_ams_1",
+    slot_index: 2,
+  } as PrinterAmsSlotRow;
+  const master = {
+    id: "master-1",
+    vendor: "Bambu",
+    material: "PLA",
+    filament_name: "PLA Matte",
+    color_name: "Black",
+    hex_color: "#000000",
+    default_weight: 750,
+    product_url: null,
+    is_discontinued: false,
+    discontinued_at: null,
+  } as MasterCatalogRow;
+  const liveConfig = null;
+  const readyPrompt = buildSlotCatalogOnboardingPrompt(
+    printer,
+    slot,
+    master,
+    {
+      loaded: true,
+      observed_rfid_tag: "RFID-1",
+    } as BambuLiveObservedTray,
+    liveConfig,
+  );
+
+  assert.deepEqual(buildSlotCatalogOnboardingSaveState(readyPrompt), {
+    disabled: false,
+    reason: null,
+    observedRfid: "RFID-1",
+  });
+  assert.deepEqual(
+    buildSlotCatalogOnboardingSaveState(readyPrompt, { busy: true }),
+    {
+      disabled: true,
+      reason: "busy",
+      observedRfid: "RFID-1",
+    },
+  );
+  assert.equal(
+    buildSlotCatalogOnboardingSaveState({
+      ...readyPrompt,
+      liveTray: { loaded: true } as BambuLiveObservedTray,
+    }).reason,
+    "missing_rfid",
+  );
+  assert.equal(
+    buildSlotCatalogOnboardingSaveState({
+      ...readyPrompt,
+      slot: { ...slot, spool_id: "existing-spool" } as PrinterAmsSlotRow,
+    }).reason,
+    "occupied_slot",
+  );
+  assert.equal(
+    buildSlotCatalogOnboardingSaveState({
+      ...readyPrompt,
+      ownershipType: "BORROWED_IN",
+      borrowedFromName: " ",
+    }).reason,
+    "borrowed_owner_required",
+  );
+  assert.equal(
+    buildSlotCatalogOnboardingSaveState({
+      ...readyPrompt,
+      ownershipType: "BORROWED_IN",
+      borrowedFromName: "Nora",
+    }).reason,
+    null,
+  );
 });

@@ -19,6 +19,7 @@ import {
   buildMeasuredTotalWeightDraft,
   buildRfidOverridePrompt,
   buildSlotCatalogOnboardingPrompt,
+  buildSlotCatalogOnboardingSaveState,
   buildSlotSwapDraft,
   parseWeightInput,
   prepareMeasuredWeightUpdate,
@@ -778,8 +779,8 @@ export function usePrinterSlotInteractions({
       borrowedFromContact,
       borrowedInNote,
     } = slotCatalogOnboardingPrompt;
-    const observedRfid = liveTrayIdentity(liveTray);
-    if (!observedRfid) {
+    const saveState = buildSlotCatalogOnboardingSaveState(slotCatalogOnboardingPrompt);
+    if (saveState.reason === "missing_rfid") {
       setError(
         t(
           "printers.rfidOverrideNothingToSave",
@@ -788,7 +789,7 @@ export function usePrinterSlotInteractions({
       );
       return;
     }
-    if (slot.spool_id) {
+    if (saveState.reason === "occupied_slot") {
       setError(
         t(
           "printers.error.createFromCatalogRequiresEmptySlot",
@@ -797,7 +798,7 @@ export function usePrinterSlotInteractions({
       );
       return;
     }
-    if (ownershipType === "BORROWED_IN" && !borrowedFromName.trim()) {
+    if (saveState.reason === "borrowed_owner_required") {
       setError(
         t(
           "inventory.error.borrowedInNeedsOwner",
@@ -806,6 +807,7 @@ export function usePrinterSlotInteractions({
       );
       return;
     }
+    const observedRfid = saveState.observedRfid;
 
     const request = buildInventoryCreateSpoolRequest({
       id: `spool_${Date.now()}`,

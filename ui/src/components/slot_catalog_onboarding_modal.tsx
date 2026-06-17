@@ -3,11 +3,13 @@ import { useI18n, type Locale } from "../lib/i18n";
 import type { OwnershipType } from "../lib/inventory_list_model";
 import {
   formatDateTime,
-  liveTrayIdentity,
   swatchCssBackground,
 } from "../lib/printer_live_display";
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
-import type { SlotCatalogOnboardingPrompt } from "../lib/printer_slot_model";
+import {
+  buildSlotCatalogOnboardingSaveState,
+  type SlotCatalogOnboardingPrompt,
+} from "../lib/printer_slot_model";
 import { AppModal } from "./app_modal";
 import { modalFormInputClassName } from "./form_control_class";
 import { ModalHeader } from "./modal_chrome";
@@ -42,11 +44,11 @@ export function SlotCatalogOnboardingModal({
   onSave,
 }: SlotCatalogOnboardingModalProps) {
   const { t } = useI18n();
-  const observedRfid = liveTrayIdentity(prompt.liveTray);
+  const saveState = buildSlotCatalogOnboardingSaveState(prompt, { busy });
+  const observedRfid = saveState.observedRfid;
   const isBorrowedIn = prompt.ownershipType === "BORROWED_IN";
   const slotAlreadyAssigned = Boolean(prompt.slot.spool_id);
-  const ownerMissing = isBorrowedIn && !prompt.borrowedFromName.trim();
-  const saveDisabled = busy || !observedRfid || slotAlreadyAssigned || ownerMissing;
+  const saveDisabled = saveState.disabled;
 
   return (
     <AppModal

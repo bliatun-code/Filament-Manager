@@ -59,6 +59,18 @@ export type SlotCatalogOnboardingPrompt = {
   borrowedInNote: string;
 };
 
+export type SlotCatalogOnboardingSaveBlockReason =
+  | "busy"
+  | "missing_rfid"
+  | "occupied_slot"
+  | "borrowed_owner_required";
+
+export type SlotCatalogOnboardingSaveState = {
+  disabled: boolean;
+  reason: SlotCatalogOnboardingSaveBlockReason | null;
+  observedRfid: string;
+};
+
 export type PreparedPrinterSlotAssignment = {
   currentSpoolId: string | null;
   targetSpoolId: string | null;
@@ -241,6 +253,32 @@ export function buildSlotCatalogOnboardingPrompt(
     borrowedFromName: "",
     borrowedFromContact: "",
     borrowedInNote: "",
+  };
+}
+
+export function buildSlotCatalogOnboardingSaveState(
+  prompt: SlotCatalogOnboardingPrompt,
+  options: { busy?: boolean } = {},
+): SlotCatalogOnboardingSaveState {
+  const observedRfid = liveTrayIdentity(prompt.liveTray);
+  let reason: SlotCatalogOnboardingSaveBlockReason | null = null;
+  if (options.busy) {
+    reason = "busy";
+  } else if (!observedRfid) {
+    reason = "missing_rfid";
+  } else if (prompt.slot.spool_id) {
+    reason = "occupied_slot";
+  } else if (
+    prompt.ownershipType === "BORROWED_IN" &&
+    !prompt.borrowedFromName.trim()
+  ) {
+    reason = "borrowed_owner_required";
+  }
+
+  return {
+    disabled: Boolean(reason),
+    reason,
+    observedRfid,
   };
 }
 
