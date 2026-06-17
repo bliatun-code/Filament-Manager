@@ -45,12 +45,30 @@ if (
 }
 
 const normalizedCurrentBambuStudioCodes = new Set();
-for (const code of currentBambuStudioCodes) {
+const bambuStudioCodeErrors = [];
+for (const [index, code] of currentBambuStudioCodes.entries()) {
   const normalized = code.trim().toUpperCase();
+  if (code !== normalized) {
+    bambuStudioCodeErrors.push(`codes[${index}] must be uppercase and trimmed: ${code}`);
+  }
   if (normalizedCurrentBambuStudioCodes.has(normalized)) {
     fail(`bambu_studio_printer_profile_codes.json duplicates ${normalized}`);
   }
   normalizedCurrentBambuStudioCodes.add(normalized);
+}
+const sortedBambuStudioCodes = [...normalizedCurrentBambuStudioCodes].sort();
+if (JSON.stringify(currentBambuStudioCodes) !== JSON.stringify(sortedBambuStudioCodes)) {
+  bambuStudioCodeErrors.push("bambu_studio_printer_profile_codes.json must be sorted alphabetically");
+}
+if (bambuStudioCodeErrors.length > 0) {
+  for (const error of bambuStudioCodeErrors) {
+    console.error(`  - ${error}`);
+  }
+  fail(
+    `${bambuStudioCodeErrors.length} Bambu Studio code validation error${
+      bambuStudioCodeErrors.length === 1 ? "" : "s"
+    }`,
+  );
 }
 
 const seenModels = new Set();
@@ -96,6 +114,11 @@ for (const [index, entry] of models.entries()) {
 for (const code of normalizedCurrentBambuStudioCodes) {
   if (!seenBambuCodes.has(code)) {
     errors.push(`missing current Bambu Studio printer code ${code}`);
+  }
+}
+for (const code of [...seenBambuCodes].sort()) {
+  if (!normalizedCurrentBambuStudioCodes.has(code)) {
+    errors.push(`Bambu Studio printer code ${code} is not in the current code reference`);
   }
 }
 
