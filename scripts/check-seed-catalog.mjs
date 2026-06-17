@@ -2,6 +2,12 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import {
+  isNonEmptyString,
+  isShoutingAsciiLabel,
+  isValidSwatch,
+  seedCatalogIdentityKey,
+} from "./seed-catalog-utils.mjs";
 
 const repoRoot = resolve(".");
 const seedCatalogPath = resolve(repoRoot, "src", "data", "seed_filament_catalog.json");
@@ -10,58 +16,6 @@ const seed = JSON.parse(readFileSync(seedCatalogPath, "utf8"));
 function fail(message) {
   console.error(`Seed catalog check failed: ${message}`);
   process.exit(1);
-}
-
-function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
-function normalizeHexColor(value) {
-  const raw = String(value ?? "").trim();
-  if (/^#[0-9a-fA-F]{3}$/.test(raw) || /^#[0-9a-fA-F]{6}$/.test(raw)) {
-    return raw.toUpperCase();
-  }
-  if (/^[0-9a-fA-F]{3}$/.test(raw) || /^[0-9a-fA-F]{6}$/.test(raw)) {
-    return `#${raw.toUpperCase()}`;
-  }
-  return null;
-}
-
-function normalizeSwatchColorList(raw) {
-  const colors = String(raw ?? "")
-    .split(/[;,]/)
-    .map((part) => normalizeHexColor(part.trim()))
-    .filter(Boolean);
-  return colors.length >= 2 ? colors : null;
-}
-
-function isValidSwatch(value) {
-  if (value == null) {
-    return true;
-  }
-  const raw = String(value).trim();
-  if (!raw) {
-    return false;
-  }
-  if (normalizeHexColor(raw)) {
-    return true;
-  }
-  const compositeMatch = raw.match(/^(multi|gradient)\((.*)\)$/i);
-  if (compositeMatch) {
-    return normalizeSwatchColorList(compositeMatch[2]) != null;
-  }
-  return normalizeSwatchColorList(raw) != null;
-}
-
-function catalogIdentityKey(entry) {
-  return [entry.material, entry.filament_name, entry.color_name]
-    .map((value) => String(value ?? "").trim().toLowerCase())
-    .join("\u001f");
-}
-
-function isShoutingAsciiLabel(value) {
-  const letters = Array.from(String(value ?? "")).filter((char) => /[A-Za-z]/.test(char));
-  return letters.length > 0 && letters.every((char) => char === char.toUpperCase());
 }
 
 if (!isNonEmptyString(seed.version)) {
@@ -92,7 +46,7 @@ for (const [index, entry] of seed.entries.entries()) {
   }
   ids.add(entry.id);
 
-  const identity = catalogIdentityKey(entry);
+  const identity = seedCatalogIdentityKey(entry);
   if (identities.has(identity)) {
     errors.push(
       `${label} duplicates normalized material/filament/color identity for ${entry.material} / ${entry.filament_name} / ${entry.color_name}`,
