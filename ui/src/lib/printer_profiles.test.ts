@@ -1,11 +1,46 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 
 import {
   formatBambuStudioPrinterProfileCode,
   listSupportedPrinterModels,
   resolvePrinterModelProfile,
 } from "./printer_profiles";
+
+type SupportedPrinterModelFixture = {
+  model: string;
+  bambu_studio_code?: string | null;
+};
+
+const supportedPrinterModelFixtures = JSON.parse(
+  fs.readFileSync(
+    new URL("../../../src/data/supported_printer_models.json", import.meta.url),
+    "utf8",
+  ),
+) as SupportedPrinterModelFixture[];
+const currentBambuStudioCodes = JSON.parse(
+  fs.readFileSync(
+    new URL("../../../src/data/bambu_studio_printer_profile_codes.json", import.meta.url),
+    "utf8",
+  ),
+) as string[];
+
+function expectedBambuStudioCodeLabels(): Array<[string, string]> {
+  const labelByCode = new Map(
+    supportedPrinterModelFixtures
+      .filter((entry) => entry.bambu_studio_code)
+      .map((entry) => [
+        String(entry.bambu_studio_code).trim().toUpperCase(),
+        entry.model.replace(/^Bambu Lab\s+/i, "").trim(),
+      ]),
+  );
+  return currentBambuStudioCodes.map((code) => {
+    const label = labelByCode.get(code);
+    assert.ok(label, `missing Bambu Studio fixture label for ${code}`);
+    return [code, label];
+  });
+}
 
 test("listSupportedPrinterModels exposes the shared add-printer model list", () => {
   const models = listSupportedPrinterModels();
@@ -35,24 +70,7 @@ test("resolvePrinterModelProfile maps current Bambu Studio models conservatively
 });
 
 test("formatBambuStudioPrinterProfileCode uses the shared printer catalog codes", () => {
-  const expectedCodes = [
-    ["A1", "A1"],
-    ["A1M", "A1 mini"],
-    ["A2L", "A2L"],
-    ["H2C", "H2C"],
-    ["H2D", "H2D"],
-    ["H2DP", "H2D Pro"],
-    ["H2S", "H2S"],
-    ["P1P", "P1P"],
-    ["P1S", "P1S"],
-    ["P2S", "P2S"],
-    ["X1", "X1"],
-    ["X1C", "X1 Carbon"],
-    ["X1E", "X1E"],
-    ["X2D", "X2D"],
-  ] as const;
-
-  for (const [code, label] of expectedCodes) {
+  for (const [code, label] of expectedBambuStudioCodeLabels()) {
     assert.equal(formatBambuStudioPrinterProfileCode(code), label);
   }
   assert.equal(formatBambuStudioPrinterProfileCode(" "), null);
