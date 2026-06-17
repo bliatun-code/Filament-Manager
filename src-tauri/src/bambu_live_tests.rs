@@ -15,6 +15,8 @@ use std::io::Cursor;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+type LiveUsageSessionRow = (String, String, i64, Option<i64>, Option<String>);
+
 fn temp_db_path(test_name: &str) -> PathBuf {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -3370,7 +3372,7 @@ fn enrich_with_match_status_closes_stale_running_session_when_new_subtask_starts
         crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed)
             .map_err(|error| error.to_string())?;
 
-        let rows: Vec<(String, String, i64, Option<i64>, Option<String>)> = {
+        let rows: Vec<LiveUsageSessionRow> = {
             let mut statement = db
                 .connection()
                 .prepare(

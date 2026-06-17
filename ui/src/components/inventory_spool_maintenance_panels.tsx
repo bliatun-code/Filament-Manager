@@ -14,6 +14,12 @@ const inventoryMaintenanceInputClass =
   "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100";
 const inventoryMaintenanceSaveButtonClass =
   "rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-slate-300/30 transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white";
+const ownershipSegmentBaseClass =
+  "rounded-lg px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
+const ownershipSegmentActiveClass =
+  "bg-[rgba(255,255,255,0.94)] text-slate-950 shadow-sm shadow-slate-900/10 ring-1 ring-slate-900/5 dark:bg-[rgba(30,41,59,0.92)] dark:text-slate-50 dark:shadow-none dark:ring-white/10";
+const ownershipSegmentIdleClass =
+  "text-slate-600 hover:bg-[rgba(255,255,255,0.58)] hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800/55 dark:hover:text-slate-100";
 
 type InventorySpoolTarePanelProps = SpoolMaintenancePanelBaseProps & {
   onChange: (value: string) => void;
@@ -169,10 +175,10 @@ export function InventorySpoolOwnershipPanel({
       <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-100/70 p-1 dark:border-slate-700 dark:bg-slate-950/40">
         <button
           type="button"
-          className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+          className={`${ownershipSegmentBaseClass} ${
             typeValue === "OWNED"
-              ? "bg-white text-slate-950 shadow-sm dark:bg-slate-100 dark:text-slate-950"
-              : "text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-slate-100"
+              ? ownershipSegmentActiveClass
+              : ownershipSegmentIdleClass
           }`}
           onClick={() => onChangeType("OWNED")}
           disabled={disabled}
@@ -181,10 +187,8 @@ export function InventorySpoolOwnershipPanel({
         </button>
         <button
           type="button"
-          className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
-            borrowed
-              ? "bg-white text-slate-950 shadow-sm dark:bg-slate-100 dark:text-slate-950"
-              : "text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-slate-100"
+          className={`${ownershipSegmentBaseClass} ${
+            borrowed ? ownershipSegmentActiveClass : ownershipSegmentIdleClass
           }`}
           onClick={() => onChangeType("BORROWED_IN")}
           disabled={disabled}
