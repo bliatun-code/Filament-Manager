@@ -117,6 +117,7 @@ What `verify` covers:
 - UI lint
 - companion/webapp tests
 - React/UI model tests
+- seed catalog, Bambu catalog data, and printer model data contracts
 - Tauri invoke and companion route contract checks
 - UI reachability and architecture checks
 - version consistency checks
