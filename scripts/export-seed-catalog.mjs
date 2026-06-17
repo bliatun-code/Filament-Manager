@@ -3,7 +3,11 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
-import { dedupeSeedCatalogEntries, normalizeSeedColorName } from "./seed-catalog-utils.mjs";
+import {
+  dedupeSeedCatalogEntries,
+  normalizeSeedColorName,
+  normalizeSwatchValue,
+} from "./seed-catalog-utils.mjs";
 
 const dbPath =
   process.argv[2] ??
@@ -38,7 +42,7 @@ const entries = dedupeSeedCatalogEntries(
         material: String(row.material ?? "").trim(),
         filament_name: String(row.filament_name ?? "").trim(),
         color_name: normalizeSeedColorName(String(row.color_name ?? "")),
-        hex_color: String(row.hex_color ?? "").trim() || null,
+        hex_color: normalizeSwatchValue(row.hex_color),
         product_url: String(row.product_url ?? "").trim() || null,
         default_weight: Math.max(1, Number(row.default_weight) || 1000),
         is_discontinued: Number(row.is_discontinued) !== 0,

@@ -46,22 +46,42 @@ function normalizeSwatchColorList(raw) {
   return colors.length >= 2 ? colors : null;
 }
 
+export function normalizeSwatchValue(value) {
+  if (value == null) {
+    return null;
+  }
+  const raw = String(value).trim();
+  if (!raw) {
+    return null;
+  }
+  const singleColor = normalizeHexColor(raw);
+  if (singleColor) {
+    return singleColor;
+  }
+
+  const compositeMatch = raw.match(/^(multi|gradient)\((.*)\)$/i);
+  if (compositeMatch) {
+    const colors = normalizeSwatchColorList(compositeMatch[2]);
+    return colors ? `${compositeMatch[1].toLowerCase()}(${colors.join(",")})` : null;
+  }
+
+  const colors = normalizeSwatchColorList(raw);
+  return colors ? `gradient(${colors.join(",")})` : null;
+}
+
 export function isValidSwatch(value) {
   if (value == null) {
     return true;
   }
-  const raw = String(value).trim();
-  if (!raw) {
-    return false;
-  }
-  if (normalizeHexColor(raw)) {
+  return normalizeSwatchValue(value) != null;
+}
+
+export function isCanonicalSwatch(value) {
+  if (value == null) {
     return true;
   }
-  const compositeMatch = raw.match(/^(multi|gradient)\((.*)\)$/i);
-  if (compositeMatch) {
-    return normalizeSwatchColorList(compositeMatch[2]) != null;
-  }
-  return normalizeSwatchColorList(raw) != null;
+  const normalized = normalizeSwatchValue(value);
+  return normalized != null && String(value).trim() === normalized;
 }
 
 export function seedCatalogIdentityKey(entry) {

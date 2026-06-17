@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   isNonEmptyString,
+  isCanonicalSwatch,
   isShoutingAsciiLabel,
   isValidSwatch,
   seedCatalogIdentityKey,
@@ -68,6 +69,8 @@ for (const [index, entry] of seed.entries.entries()) {
   }
   if (!isValidSwatch(entry.hex_color)) {
     errors.push(`${label}.hex_color must be null, a hex color, multi(...), or gradient(...)`);
+  } else if (!isCanonicalSwatch(entry.hex_color)) {
+    errors.push(`${label}.hex_color must be normalized to uppercase canonical swatch format`);
   }
 }
 
