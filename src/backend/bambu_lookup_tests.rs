@@ -53,6 +53,8 @@ fn discovered_materials_from_bambu_product_names_are_sorted_and_complete() {
             "HIPS",
             "PHA",
             "ASA Aero",
+            "Support for PLA",
+            "Support for PLA/PETG",
             "PLA Basic",
         ]
         .into_iter(),
@@ -79,6 +81,8 @@ fn discovered_materials_from_bambu_product_names_are_sorted_and_complete() {
             "PPA".to_string(),
             "PPS".to_string(),
             "PVA".to_string(),
+            "Support for PLA".to_string(),
+            "Support for PLA/PETG".to_string(),
             "TPU".to_string(),
         ]
     );
