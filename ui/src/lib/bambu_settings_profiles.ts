@@ -1,25 +1,10 @@
+import { formatBambuStudioPrinterProfileCode } from "./printer_profiles";
+
 export type BambuSettingsProfileNameParts = {
   filamentProfile: string;
   nozzleDiameterMm: string | null;
   printerProfile: string | null;
   rawName: string;
-};
-
-const BAMBU_PRINTER_PROFILE_LABELS: Record<string, string> = {
-  A1: "A1",
-  A1M: "A1 mini",
-  A2L: "A2L",
-  H2C: "H2C",
-  H2D: "H2D",
-  H2DP: "H2D Pro",
-  H2S: "H2S",
-  P1P: "P1P",
-  P1S: "P1S",
-  P2S: "P2S",
-  X1: "X1",
-  X1C: "X1 Carbon",
-  X1E: "X1E",
-  X2D: "X2D",
 };
 
 export function formatBambuSettingsPrinterProfile(
@@ -29,7 +14,7 @@ export function formatBambuSettingsPrinterProfile(
   if (!normalized) {
     return null;
   }
-  return BAMBU_PRINTER_PROFILE_LABELS[normalized.toUpperCase()] ?? normalized;
+  return formatBambuStudioPrinterProfileCode(normalized);
 }
 
 export function parseBambuSettingsProfileName(

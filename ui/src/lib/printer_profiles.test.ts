@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { listSupportedPrinterModels, resolvePrinterModelProfile } from "./printer_profiles";
+import {
+  formatBambuStudioPrinterProfileCode,
+  listSupportedPrinterModels,
+  resolvePrinterModelProfile,
+} from "./printer_profiles";
 
 test("listSupportedPrinterModels exposes the shared add-printer model list", () => {
   const models = listSupportedPrinterModels();
@@ -28,6 +32,31 @@ test("resolvePrinterModelProfile maps current Bambu Studio models conservatively
   assert.equal(resolvePrinterModelProfile("Bambu Lab H2D Pro").maxUnits, 4);
   assert.equal(resolvePrinterModelProfile("Bambu Lab P2S").maxSlotsPerUnit, 4);
   assert.equal(resolvePrinterModelProfile("Bambu Lab X2D").defaultSlotsPerUnit, 4);
+});
+
+test("formatBambuStudioPrinterProfileCode uses the shared printer catalog codes", () => {
+  const expectedCodes = [
+    ["A1", "A1"],
+    ["A1M", "A1 mini"],
+    ["A2L", "A2L"],
+    ["H2C", "H2C"],
+    ["H2D", "H2D"],
+    ["H2DP", "H2D Pro"],
+    ["H2S", "H2S"],
+    ["P1P", "P1P"],
+    ["P1S", "P1S"],
+    ["P2S", "P2S"],
+    ["X1", "X1"],
+    ["X1C", "X1 Carbon"],
+    ["X1E", "X1E"],
+    ["X2D", "X2D"],
+  ] as const;
+
+  for (const [code, label] of expectedCodes) {
+    assert.equal(formatBambuStudioPrinterProfileCode(code), label);
+  }
+  assert.equal(formatBambuStudioPrinterProfileCode(" "), null);
+  assert.equal(formatBambuStudioPrinterProfileCode("UNKNOWN"), "UNKNOWN");
 });
 
 test("resolvePrinterModelProfile keeps generic fallback for non-profiled exact models", () => {

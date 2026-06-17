@@ -126,6 +126,7 @@ type PrinterCatalogProfileKey = keyof typeof profileByCatalogKey;
 type PrinterModelCatalogEntry = {
   model: string;
   profile: PrinterCatalogProfileKey;
+  bambu_studio_code: string | null;
 };
 
 function isPrinterCatalogProfileKey(value: unknown): value is PrinterCatalogProfileKey {
@@ -154,6 +155,10 @@ function readPrinterModelCatalog(): PrinterModelCatalogEntry[] {
     return {
       model: entry.model,
       profile: entry.profile,
+      bambu_studio_code:
+        "bambu_studio_code" in entry && typeof entry.bambu_studio_code === "string"
+          ? entry.bambu_studio_code.trim() || null
+          : null,
     };
   });
 }
@@ -162,12 +167,32 @@ const printerModelCatalog = readPrinterModelCatalog();
 
 const supportedPrinterModels = printerModelCatalog.map((entry) => entry.model);
 
+const bambuStudioProfileLabelByCode: Record<string, string> = Object.fromEntries(
+  printerModelCatalog.flatMap((entry) => {
+    const code = entry.bambu_studio_code?.trim();
+    if (!code) {
+      return [];
+    }
+    return [[code.toUpperCase(), entry.model.replace(/^Bambu Lab\s+/i, "").trim()]];
+  }),
+);
+
 const exactProfiles: Record<string, PrinterModelProfile> = Object.fromEntries(
   printerModelCatalog.map((entry) => [normalizeModelKey(entry.model), profileByCatalogKey[entry.profile]]),
 );
 
 export function listSupportedPrinterModels(): string[] {
   return [...supportedPrinterModels];
+}
+
+export function formatBambuStudioPrinterProfileCode(
+  code: string | null | undefined,
+): string | null {
+  const normalized = code?.trim() ?? "";
+  if (!normalized) {
+    return null;
+  }
+  return bambuStudioProfileLabelByCode[normalized.toUpperCase()] ?? normalized;
 }
 
 export function findPrinterModelProfileExact(model: string): PrinterModelProfile | null {
