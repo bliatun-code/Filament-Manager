@@ -15,7 +15,7 @@ const dbPath =
   );
 const outputPath =
   process.argv[3] ?? path.join("src", "data", "seed_filament_catalog.json");
-const version = process.argv[4] ?? "2026.05.29-local-1314";
+const version = process.argv[4] ?? "2026.06.17-local-1106";
 
 const db = new Database(dbPath, { readonly: true });
 const rows = db
@@ -29,30 +29,106 @@ const rows = db
   )
   .all();
 
-const entries = rows
-  .map((row) => {
-    const entry = {
-      vendor: String(row.vendor ?? "").trim() || "Generic",
-      material: String(row.material ?? "").trim(),
-      filament_name: String(row.filament_name ?? "").trim(),
-      color_name: String(row.color_name ?? "").trim(),
-      hex_color: String(row.hex_color ?? "").trim() || null,
-      product_url: String(row.product_url ?? "").trim() || null,
-      default_weight: Math.max(1, Number(row.default_weight) || 1000),
-      is_discontinued: Number(row.is_discontinued) !== 0,
-    };
-    const idKey = [
-      entry.vendor,
-      entry.material,
-      entry.filament_name,
-      entry.color_name,
-    ].join("\u001f");
-    return {
-      ...entry,
-      id: `seed_${crypto.createHash("sha256").update(idKey).digest("hex").slice(0, 18)}`,
-    };
-  })
-  .filter((entry) => entry.material && entry.filament_name && entry.color_name);
+function isShoutingAsciiLabel(value) {
+  const letters = Array.from(value).filter((char) => /[A-Za-z]/.test(char));
+  return letters.length > 0 && letters.every((char) => char === char.toUpperCase());
+}
+
+function titleCaseAsciiLabel(value) {
+  let nextUpper = true;
+  return Array.from(value)
+    .map((char) => {
+      if (/[A-Za-z]/.test(char)) {
+        const normalized = nextUpper ? char.toUpperCase() : char.toLowerCase();
+        nextUpper = false;
+        return normalized;
+      }
+      nextUpper = /[\s\-\/_([{]/.test(char);
+      return char;
+    })
+    .join("");
+}
+
+function normalizeSeedColorName(value) {
+  const trimmed = value.trim();
+  return isShoutingAsciiLabel(trimmed) ? titleCaseAsciiLabel(trimmed) : trimmed;
+}
+
+function catalogIdentityKey(entry) {
+  return [entry.material, entry.filament_name, entry.color_name]
+    .map((value) => value.trim().toLowerCase())
+    .join("\u001f");
+}
+
+function catalogEntryRank(entry) {
+  return [
+    entry.is_discontinued ? 1 : 0,
+    isShoutingAsciiLabel(entry.color_name) ? 1 : 0,
+    entry.product_url ? 0 : 1,
+    entry.id,
+  ];
+}
+
+function compareRank(left, right) {
+  const leftRank = catalogEntryRank(left);
+  const rightRank = catalogEntryRank(right);
+  for (let index = 0; index < leftRank.length; index += 1) {
+    if (leftRank[index] < rightRank[index]) {
+      return -1;
+    }
+    if (leftRank[index] > rightRank[index]) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+function dedupeEntries(rawEntries) {
+  const byIdentity = new Map();
+  for (const entry of rawEntries) {
+    const key = catalogIdentityKey(entry);
+    const existing = byIdentity.get(key);
+    if (!existing || compareRank(entry, existing) < 0) {
+      byIdentity.set(key, entry);
+    }
+  }
+  return Array.from(byIdentity.values()).sort((left, right) =>
+    [left.vendor, left.material, left.filament_name, left.color_name, left.id]
+      .join("\u001f")
+      .localeCompare(
+        [right.vendor, right.material, right.filament_name, right.color_name, right.id].join(
+          "\u001f",
+        ),
+      ),
+  );
+}
+
+const entries = dedupeEntries(
+  rows
+    .map((row) => {
+      const entry = {
+        vendor: String(row.vendor ?? "").trim() || "Generic",
+        material: String(row.material ?? "").trim(),
+        filament_name: String(row.filament_name ?? "").trim(),
+        color_name: normalizeSeedColorName(String(row.color_name ?? "")),
+        hex_color: String(row.hex_color ?? "").trim() || null,
+        product_url: String(row.product_url ?? "").trim() || null,
+        default_weight: Math.max(1, Number(row.default_weight) || 1000),
+        is_discontinued: Number(row.is_discontinued) !== 0,
+      };
+      const idKey = [
+        entry.vendor,
+        entry.material,
+        entry.filament_name,
+        entry.color_name,
+      ].join("\u001f");
+      return {
+        ...entry,
+        id: `seed_${crypto.createHash("sha256").update(idKey).digest("hex").slice(0, 18)}`,
+      };
+    })
+    .filter((entry) => entry.material && entry.filament_name && entry.color_name),
+);
 
 const payload = {
   version,

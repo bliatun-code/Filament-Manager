@@ -13,6 +13,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const LEGACY_INIT_MIGRATION_SQL: &str = include_str!("../database/migrations/001_init.sql");
 const LEGACY_SYNC_QUEUE_MIGRATION_SQL: &str =
     include_str!("../database/migrations/002_sync_queue.sql");
+const EXPECTED_SEEDED_CATALOG_COUNT: i64 = 1106;
+const EXPECTED_BAMBU_SEEDED_COUNT: i64 = 316;
+const EXPECTED_ESUN_SEEDED_COUNT: i64 = 783;
 
 fn temp_db_path(test_name: &str) -> PathBuf {
     let nanos = SystemTime::now()
@@ -180,7 +183,7 @@ fn apply_schema_seeds_sanitized_master_catalog() {
                 |row| row.get(0),
             )
             .map_err(|error| error.to_string())?;
-        assert_eq!(seeded_count, 1314);
+        assert_eq!(seeded_count, EXPECTED_SEEDED_CATALOG_COUNT);
 
         let vendor_counts: (i64, i64) = db
             .conn
@@ -193,7 +196,27 @@ fn apply_schema_seeds_sanitized_master_catalog() {
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
             .map_err(|error| error.to_string())?;
-        assert_eq!(vendor_counts, (316, 991));
+        assert_eq!(
+            vendor_counts,
+            (EXPECTED_BAMBU_SEEDED_COUNT, EXPECTED_ESUN_SEEDED_COUNT)
+        );
+
+        let normalized_duplicate_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*)
+                 FROM (
+                    SELECT lower(material), lower(filament_name), lower(color_name)
+                    FROM filament_master_list
+                    WHERE catalog_source = 'seeded'
+                    GROUP BY lower(material), lower(filament_name), lower(color_name)
+                    HAVING COUNT(*) > 1
+                 )",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(normalized_duplicate_count, 0);
 
         let unrelated_counts: (i64, i64, i64, i64) = db
             .conn
@@ -218,7 +241,10 @@ fn apply_schema_seeds_sanitized_master_catalog() {
                 |row| row.get(0),
             )
             .map_err(|error| error.to_string())?;
-        assert_eq!(seeded_count_after_second_apply, 1314);
+        assert_eq!(
+            seeded_count_after_second_apply,
+            EXPECTED_SEEDED_CATALOG_COUNT
+        );
 
         Ok(())
     })();
@@ -247,7 +273,7 @@ fn reset_catalog_data_preserves_seeded_catalog_rows() {
         let stats = db.reset_catalog_data().map_err(|error| error.to_string())?;
 
         assert_eq!(stats.removed_count, 1);
-        assert_eq!(stats.remaining_count, 1314);
+        assert_eq!(stats.remaining_count, EXPECTED_SEEDED_CATALOG_COUNT);
 
         let seeded_count: i64 = db
             .conn
@@ -266,7 +292,7 @@ fn reset_catalog_data_preserves_seeded_catalog_rows() {
             )
             .map_err(|error| error.to_string())?;
 
-        assert_eq!(seeded_count, 1314);
+        assert_eq!(seeded_count, EXPECTED_SEEDED_CATALOG_COUNT);
         assert_eq!(manual_count, 0);
 
         Ok(())
@@ -1274,7 +1300,7 @@ fn reset_app_state_clears_fk_graph_without_dropping_catalog_data() {
             .conn
             .query_row("SELECT COUNT(*) FROM label_templates", [], |row| row.get(0))
             .map_err(|error| error.to_string())?;
-        assert_eq!(master_count, 1315);
+        assert_eq!(master_count, EXPECTED_SEEDED_CATALOG_COUNT + 1);
         let preserved_master_count: i64 = db
             .conn
             .query_row(

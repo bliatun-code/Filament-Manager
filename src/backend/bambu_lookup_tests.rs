@@ -1,8 +1,8 @@
 use super::{
-    append_known_entries_for_product_url, build_known_entry_lookup, decode_js_string_literal,
-    bambu_material_families, discovered_materials_from_names, extract_product_list, infer_material,
-    normalize_material_filters, official_bambu_hex_codes, resolve_bambu_hex, BambuCatalogEntry,
-    BambuKnownCatalogEntry,
+    append_known_entries_for_product_url, bambu_material_families, build_known_entry_lookup,
+    decode_js_string_literal, discovered_materials_from_names, extract_product_list,
+    infer_material, normalize_material_filters, official_bambu_hex_codes, resolve_bambu_hex,
+    BambuCatalogEntry, BambuKnownCatalogEntry,
 };
 use std::collections::HashSet;
 
