@@ -12,6 +12,28 @@ export function collectTestFiles(directory, pattern) {
   });
 }
 
+export function normalizeNodeTestArgs(argv) {
+  const normalized = [];
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === "--grep" || arg === "-g") {
+      const pattern = argv[index + 1];
+      if (!pattern) {
+        throw new Error(`${arg} requires a test name pattern`);
+      }
+      normalized.push("--test-name-pattern", pattern);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--grep=")) {
+      normalized.push(`--test-name-pattern=${arg.slice("--grep=".length)}`);
+      continue;
+    }
+    normalized.push(arg);
+  }
+  return normalized;
+}
+
 export function runNodeTestCommand(args, options = {}) {
   const result = spawnSync(process.execPath, args, {
     stdio: "inherit",

@@ -1,5 +1,9 @@
 import { resolve } from "node:path";
-import { collectTestFiles, runNodeTestCommand } from "./test-runner-utils.mjs";
+import {
+  collectTestFiles,
+  normalizeNodeTestArgs,
+  runNodeTestCommand,
+} from "./test-runner-utils.mjs";
 
 const testsDir = resolve("src-tauri", "companion_browser");
 const testFiles = collectTestFiles(testsDir, /\.test\.mjs$/).sort();
@@ -9,4 +13,4 @@ if (testFiles.length === 0) {
   process.exit(1);
 }
 
-runNodeTestCommand(["--test", ...testFiles]);
+runNodeTestCommand(["--test", ...normalizeNodeTestArgs(process.argv.slice(2)), ...testFiles]);

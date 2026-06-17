@@ -136,6 +136,9 @@ npm run test:rust
 npm run check:contracts
 ```
 
+`test:ui` and `test:companion` also accept `--grep "name pattern"` for focused
+Node test runs.
+
 Dependency/audit checks:
 
 ```bash
