@@ -159,6 +159,7 @@ pub(crate) struct LibrarySyncCreateSpoolInput {
     pub(crate) initial_weight_g: Option<i64>,
     pub(crate) location: Option<String>,
     pub(crate) hex_color: Option<String>,
+    pub(crate) ownership_type: Option<String>,
     pub(crate) owner_name: Option<String>,
     pub(crate) owner_contact: Option<String>,
     pub(crate) ownership_note: Option<String>,

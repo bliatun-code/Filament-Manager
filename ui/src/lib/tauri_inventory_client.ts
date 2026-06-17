@@ -149,7 +149,7 @@ export async function createSpool(input: CreateSpoolInput) {
   return invoke<void>("create_spool", { input });
 }
 
-export async function createLibrarySyncHostSpool(
+export function buildLibrarySyncHostSpoolCreatePayload(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
   input: CreateSpoolInput | CreateManualSpoolInput,
@@ -158,7 +158,7 @@ export async function createLibrarySyncHostSpool(
     ("location" in input ? input.location : undefined) ??
     ("location_id" in input ? input.location_id : undefined) ??
     null;
-  return invoke<string>("create_library_sync_host_spool", {
+  return {
     input: {
       base_url: baseUrl,
       expected_library_id: expectedLibraryId ?? null,
@@ -170,11 +170,23 @@ export async function createLibrarySyncHostSpool(
       initial_weight_g: input.initial_weight_g ?? null,
       location: normalizedLocation,
       hex_color: "hex_color" in input ? input.hex_color ?? null : null,
+      ownership_type: input.ownership_type ?? null,
       owner_name: input.owner_name ?? null,
       owner_contact: input.owner_contact ?? null,
       ownership_note: input.ownership_note ?? null,
     },
-  });
+  };
+}
+
+export async function createLibrarySyncHostSpool(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: CreateSpoolInput | CreateManualSpoolInput,
+) {
+  return invoke<string>(
+    "create_library_sync_host_spool",
+    buildLibrarySyncHostSpoolCreatePayload(baseUrl, expectedLibraryId, input),
+  );
 }
 
 export async function createManualSpool(input: CreateManualSpoolInput) {

@@ -161,7 +161,16 @@ pub(crate) fn create_library_sync_host_spool(
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
     let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
-    let path = if trimmed_non_empty(input.owner_name.as_deref()).is_some() {
+    let explicit_ownership_type = trimmed_non_empty(input.ownership_type.as_deref());
+    let ownership_type = explicit_ownership_type
+        .as_deref()
+        .unwrap_or("OWNED")
+        .to_uppercase();
+
+    let path = if ownership_type == "BORROWED_IN"
+        || (explicit_ownership_type.is_none()
+            && trimmed_non_empty(input.owner_name.as_deref()).is_some())
+    {
         "/api/v1/spools/borrowed-in"
     } else if trimmed_non_empty(input.master_id.as_deref()).is_some() {
         "/api/v1/spools/owned"
