@@ -930,14 +930,91 @@
 }
 
 .add-spool-code-lookup {
-  align-items: center;
+  align-items: stretch;
   background: color-mix(in srgb, var(--surface) 72%, transparent);
   border: 1px solid var(--border);
   border-radius: 0.9rem;
   color: var(--muted);
-  display: flex;
+  display: grid;
   gap: 0.72rem;
+  grid-template-columns: minmax(8.5rem, 0.64fr) minmax(6.2rem, auto) minmax(0, 1fr);
   padding: 0.72rem;
+}
+
+.add-spool-code-visual {
+  display: grid;
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.add-spool-code-box-label {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.68), transparent 62%),
+    color-mix(in srgb, var(--surface-strong) 86%, var(--accent-soft));
+  border: 1px solid var(--border);
+  border-radius: 0.72rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48);
+  color: var(--text);
+  display: grid;
+  gap: 0.42rem;
+  padding: 0.56rem;
+}
+
+.add-spool-code-box-top,
+.add-spool-code-box-field {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
+.add-spool-code-box-top {
+  color: var(--muted);
+  font-size: 0.58rem;
+  font-weight: 820;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.add-spool-code-box-field {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 0.56rem;
+  padding: 0.38rem 0.46rem;
+}
+
+.add-spool-code-box-field span {
+  color: var(--muted);
+  font-size: 0.58rem;
+  font-weight: 820;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.add-spool-code-box-field strong {
+  color: var(--text);
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+  font-size: 0.98rem;
+}
+
+.add-spool-code-box-bars {
+  display: grid;
+  grid-template-columns: 0.45fr 0.2fr 0.35fr 0.16fr 0.55fr;
+  gap: 0.18rem;
+  height: 0.8rem;
+}
+
+.add-spool-code-box-bars span {
+  background: color-mix(in srgb, var(--text) 58%, transparent);
+  border-radius: 0.12rem;
+}
+
+.add-spool-code-visual-caption {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
 }
 
 .add-spool-code-label {
@@ -969,6 +1046,7 @@
 }
 
 .add-spool-code-copy {
+  align-self: center;
   display: grid;
   gap: 0.18rem;
   min-width: 0;
@@ -986,6 +1064,16 @@
   font-size: 0.78rem;
   line-height: 1.45;
   margin: 0;
+}
+
+@media (max-width: 720px) {
+  .add-spool-code-lookup {
+    grid-template-columns: 1fr;
+  }
+
+  .add-spool-code-label {
+    width: fit-content;
+  }
 }
 
 .add-spool-filter-row {

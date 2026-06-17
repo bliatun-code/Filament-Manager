@@ -48,12 +48,31 @@ function renderBambuFilamentCodeLookupHint(lookup, locale, escapeHtml) {
   } else if (lookup.status === "discontinued_only") {
     message = t(locale, "storage.bambuCodeDiscontinuedOnly", "Only discontinued Bambu catalog entries use this code.");
   }
+  const displayCode = lookup.code || "53400";
 
   return `
     <div class="add-spool-code-lookup" aria-live="polite">
+      <div class="add-spool-code-visual">
+        <div class="add-spool-code-box-label" aria-hidden="true">
+          <div class="add-spool-code-box-top">
+            <span>Bambu Lab</span>
+            <span>1.75 mm</span>
+          </div>
+          <div class="add-spool-code-box-field">
+            <span>${escapeHtml(t(locale, "storage.bambuCodeLabel", "Filament Code"))}</span>
+            <strong>${escapeHtml(displayCode)}</strong>
+          </div>
+          <div class="add-spool-code-box-bars">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+        <div class="add-spool-code-visual-caption">
+          ${escapeHtml(t(locale, "storage.bambuCodeBoxLabelHint", "Find this field on the box label."))}
+        </div>
+      </div>
       <div class="add-spool-code-label">
         <span>${escapeHtml(t(locale, "storage.bambuCodeLabel", "Filament Code"))}</span>
-        <strong>${escapeHtml(lookup.code || "53400")}</strong>
+        <strong>${escapeHtml(displayCode)}</strong>
       </div>
       <div class="add-spool-code-copy">
         <div>${escapeHtml(message)}</div>

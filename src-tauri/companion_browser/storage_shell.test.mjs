@@ -153,7 +153,11 @@ test("add filament task sheet shows Bambu filament code help before and after lo
   const helpHtml = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
   assert.match(helpHtml, /Filament Code/);
   assert.match(helpHtml, /53400/);
+  assert.match(helpHtml, /Find this field on the box label/);
+  assert.match(helpHtml, /add-spool-code-box-label/);
   assert.match(helpHtml, /Type the code into the search field/);
+  assert.doesNotMatch(helpHtml, /camera/i);
+  assert.doesNotMatch(helpHtml, /webcam/i);
 
   state.borrowedInDraft = {
     ...state.borrowedInDraft,

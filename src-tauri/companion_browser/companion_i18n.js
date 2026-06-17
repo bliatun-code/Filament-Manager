@@ -99,6 +99,7 @@ const dictionaries = {
       bambuCodeMoreMatches: "more",
       bambuCodeTryCatalogSearch: "You can still search by material, series, or color name.",
       bambuCodeEnterExample: "Type the code into the search field, for example 53400.",
+      bambuCodeBoxLabelHint: "Find this field on the box label.",
       activeOnly: "Active",
       allCatalog: "All",
       selected: "Selected",
@@ -616,6 +617,7 @@ const dictionaries = {
       bambuCodeTryCatalogSearch:
         "Du kan fortsatt søke etter materiale, serie eller fargenavn.",
       bambuCodeEnterExample: "Skriv koden i søkefeltet, for eksempel 53400.",
+      bambuCodeBoxLabelHint: "Finn dette feltet på eskeetiketten.",
       activeOnly: "Aktive",
       allCatalog: "Alle",
       selected: "Valgt",
