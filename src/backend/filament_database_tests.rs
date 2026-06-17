@@ -3,11 +3,16 @@ use super::{
     LibrarySyncSettingsRow, ManualMasterInput, SpoolRow, TrustedLanSettingsRow, FULL_BACKUP_TABLES,
     RESET_APP_STATE_TABLES,
 };
+use crate::backend::database_schema::{ensure_no_foreign_key_violations, table_has_column};
 use crate::backend::statistics::InventoryOverview;
 use serde_json::json;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+const LEGACY_INIT_MIGRATION_SQL: &str = include_str!("../database/migrations/001_init.sql");
+const LEGACY_SYNC_QUEUE_MIGRATION_SQL: &str =
+    include_str!("../database/migrations/002_sync_queue.sql");
 
 fn temp_db_path(test_name: &str) -> PathBuf {
     let nanos = SystemTime::now()
@@ -15,6 +20,128 @@ fn temp_db_path(test_name: &str) -> PathBuf {
         .unwrap_or_default()
         .as_nanos();
     std::env::temp_dir().join(format!("filament-manager-{test_name}-{nanos}.db"))
+}
+
+#[test]
+fn historical_sql_migrations_upgrade_to_current_schema() {
+    let db_path = temp_db_path("historical-migration-upgrade");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.conn
+            .execute_batch(LEGACY_INIT_MIGRATION_SQL)
+            .map_err(|error| error.to_string())?;
+        db.conn
+            .execute_batch(LEGACY_SYNC_QUEUE_MIGRATION_SQL)
+            .map_err(|error| error.to_string())?;
+
+        db.conn
+            .execute(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor
+                 ) VALUES ('legacy_master', 'PLA', 'Legacy Basic', 'Red', 1000, 'Manual')",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "INSERT INTO filament_spools (
+                    id, master_id, qr_code, status, initial_weight_g, current_weight_g, remaining_g
+                 ) VALUES (
+                    'legacy_spool', 'legacy_master', 'legacy-qr', 'IN_STOCK', 1000, 850, 850
+                 )",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "INSERT INTO printers (id, model, name)
+                 VALUES ('legacy_printer', 'Bambu Lab P1S', 'Legacy P1S')",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "INSERT INTO sync_queue (id, action_type, payload_json)
+                 VALUES ('legacy_sync', 'noop', '{}')",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+
+        for (table, column) in [
+            ("filament_master_list", "catalog_source"),
+            ("filament_master_list", "catalog_seed_version"),
+            ("filament_master_list", "catalog_user_edited"),
+            ("filament_spools", "rfid_tag"),
+            ("filament_spools", "rfid_observed_at"),
+            ("filament_spools", "spool_tare_weight_g"),
+            ("filament_spools", "ownership_type"),
+            ("filament_spools", "owner_name"),
+            ("filament_spools", "owner_contact"),
+            ("filament_spools", "ownership_note"),
+            ("ams_slots", "rfid_override_tray_uuid"),
+            ("ams_slots", "rfid_override_color_hex"),
+            ("ams_slots", "live_cache_cleared_at"),
+            ("spool_loans", "loan_direction"),
+            ("spool_loans", "loan_status"),
+            ("spool_loans", "counterparty_name"),
+            ("trusted_lan_pairings", "pairing_token_hash"),
+            ("trusted_lan_paired_browsers", "device_token_hash"),
+            ("sync_queue", "status"),
+        ] {
+            assert!(
+                table_has_column(&db.conn, table, column).map_err(|error| error.to_string())?,
+                "{table}.{column} should exist after historical migration upgrade"
+            );
+        }
+
+        let preserved_spool: (String, i64) = db
+            .conn
+            .query_row(
+                "SELECT ownership_type, remaining_g
+                 FROM filament_spools
+                 WHERE id = 'legacy_spool'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(preserved_spool, ("OWNED".to_string(), 850));
+
+        let ext_slot_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*)
+                 FROM ams_slots
+                 WHERE id = 'legacy_printer_ext_slot_1'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(ext_slot_count, 1);
+
+        let preserved_sync_queue_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM sync_queue WHERE id = 'legacy_sync'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(preserved_sync_queue_count, 1);
+
+        ensure_no_foreign_key_violations(&db.conn, "historical migration smoke")
+            .map_err(|error| error.to_string())?;
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(error) = result {
+        panic!("historical_sql_migrations_upgrade_to_current_schema failed: {error}");
+    }
 }
 
 #[test]
