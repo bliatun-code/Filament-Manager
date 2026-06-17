@@ -18,6 +18,7 @@ import {
   buildIncomingWeightPrompt,
   buildMeasuredTotalWeightDraft,
   buildRfidOverridePrompt,
+  buildSavedRfidPrinterSlotAssignment,
   buildSlotCatalogOnboardingPrompt,
   buildSlotCatalogOnboardingSaveState,
   buildSlotSwapDraft,
@@ -638,14 +639,11 @@ export function usePrinterSlotInteractions({
               clientHostBaseUrl,
               clientLibraryId,
             },
-            {
-              printer_id: printer.printer.id,
-              slot_id: slot.slot_id,
-              spool_id: row.spool.id,
-              rfid_override_tray_uuid: observedRfid,
-              rfid_override_color_hex: liveTray.color_hex?.trim() || null,
-              clear_live_cache_before_next_refresh: false,
-            },
+            buildSavedRfidPrinterSlotAssignment(
+              printer.printer.id,
+              slot,
+              row.spool.id,
+            ),
           );
         }
 
@@ -856,14 +854,7 @@ export function usePrinterSlotInteractions({
           clientHostBaseUrl,
           clientLibraryId,
         },
-        {
-          printer_id: printerId,
-          slot_id: slot.slot_id,
-          spool_id: createdSpoolId,
-          rfid_override_tray_uuid: observedRfid,
-          rfid_override_color_hex: liveTray.color_hex?.trim() || null,
-          clear_live_cache_before_next_refresh: false,
-        },
+        buildSavedRfidPrinterSlotAssignment(printerId, slot, createdSpoolId),
       );
       await reloadData();
       setSlotCatalogOnboardingPrompt(null);

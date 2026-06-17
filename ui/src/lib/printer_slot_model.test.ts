@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildSavedRfidPrinterSlotAssignment,
   buildSlotCatalogOnboardingPrompt,
   buildSlotCatalogOnboardingSaveState,
   buildMeasuredTotalWeightDraft,
@@ -65,6 +66,26 @@ test("preparePrinterSlotAssignment derives unknown live override from observed t
   assert.equal(prepared.assignInput.rfid_override_tray_uuid, "TAG-UID-ONLY");
   assert.equal(prepared.assignInput.rfid_override_color_hex, "#00FF00");
   assert.equal(prepared.overrideChanged, true);
+});
+
+test("buildSavedRfidPrinterSlotAssignment assigns a persisted RFID spool without stale manual override", () => {
+  const slot = {
+    slot_id: "slot-1",
+    ams_id: "printer_ams_1",
+    slot_index: 1,
+    spool_id: null,
+    rfid_override_tray_uuid: "OLD-UNKNOWN-RFID",
+    rfid_override_color_hex: "#00FF00",
+  } as PrinterAmsSlotRow;
+
+  assert.deepEqual(buildSavedRfidPrinterSlotAssignment("printer-1", slot, "spool-1"), {
+    printer_id: "printer-1",
+    slot_id: "slot-1",
+    spool_id: "spool-1",
+    rfid_override_tray_uuid: null,
+    rfid_override_color_hex: null,
+    clear_live_cache_before_next_refresh: false,
+  });
 });
 
 test("buildSlotCatalogOnboardingPrompt prepares safe owned defaults from live catalog fallback", () => {

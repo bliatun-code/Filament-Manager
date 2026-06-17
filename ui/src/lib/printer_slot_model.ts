@@ -282,6 +282,21 @@ export function buildSlotCatalogOnboardingSaveState(
   };
 }
 
+export function buildSavedRfidPrinterSlotAssignment(
+  printerId: string,
+  slot: PrinterAmsSlotRow,
+  spoolId: string,
+): AssignPrinterSlotInput {
+  return {
+    printer_id: printerId,
+    slot_id: slot.slot_id,
+    spool_id: spoolId,
+    rfid_override_tray_uuid: null,
+    rfid_override_color_hex: null,
+    clear_live_cache_before_next_refresh: false,
+  };
+}
+
 export function preparePrinterSlotAssignment(
   printerId: string,
   slot: PrinterAmsSlotRow,
