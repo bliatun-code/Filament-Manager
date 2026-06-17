@@ -10,38 +10,64 @@ pub(crate) fn normalize_optional_text(value: Option<&str>) -> Option<String> {
         .map(str::to_string)
 }
 
-pub(crate) fn normalize_optional_hex_color(
+pub(crate) fn normalize_optional_swatch_color(
     value: Option<&str>,
 ) -> Result<Option<String>, CompanionApiError> {
     let Some(value) = normalize_optional_text(value) else {
         return Ok(None);
     };
 
-    let normalized = if value.starts_with('#') {
-        value.to_uppercase()
-    } else {
-        format!("#{}", value.to_uppercase())
-    };
+    normalize_swatch_value(&value).map(Some).ok_or_else(|| {
+        CompanionApiError::BadRequest(
+            "hex_color must use #RGB, #RRGGBB, gradient(...), or multi(...)".to_string(),
+        )
+    })
+}
 
-    let valid = match normalized.len() {
-        4 => normalized
-            .chars()
-            .skip(1)
-            .all(|char| char.is_ascii_hexdigit()),
-        7 => normalized
-            .chars()
-            .skip(1)
-            .all(|char| char.is_ascii_hexdigit()),
-        _ => false,
-    };
-
-    if !valid {
-        return Err(CompanionApiError::BadRequest(
-            "hex_color must use #RGB or #RRGGBB".to_string(),
-        ));
+fn normalize_swatch_value(value: &str) -> Option<String> {
+    if let Some(hex_color) = normalize_hex_color(value) {
+        return Some(hex_color);
     }
 
-    Ok(Some(normalized))
+    let trimmed = value.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    let composite = if lower.starts_with("multi(") && trimmed.ends_with(')') {
+        Some(("multi", &trimmed[6..trimmed.len() - 1]))
+    } else if lower.starts_with("gradient(") && trimmed.ends_with(')') {
+        Some(("gradient", &trimmed[9..trimmed.len() - 1]))
+    } else {
+        None
+    };
+    if let Some((kind, inner)) = composite {
+        let colors = normalize_swatch_color_list(inner)?;
+        return Some(format!("{kind}({})", colors.join(",")));
+    }
+
+    let colors = normalize_swatch_color_list(trimmed)?;
+    Some(format!("gradient({})", colors.join(",")))
+}
+
+fn normalize_swatch_color_list(value: &str) -> Option<Vec<String>> {
+    let parts: Vec<_> = value
+        .split([',', ';'])
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .collect();
+    if parts.len() < 2 {
+        return None;
+    }
+    parts.into_iter().map(normalize_hex_color).collect()
+}
+
+fn normalize_hex_color(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    let without_hash = trimmed.strip_prefix('#').unwrap_or(trimmed);
+    match without_hash.len() {
+        3 | 6 if without_hash.chars().all(|char| char.is_ascii_hexdigit()) => {
+            Some(format!("#{without_hash}").to_uppercase())
+        }
+        _ => None,
+    }
 }
 
 pub(crate) fn build_companion_spool_qr_payload(
@@ -164,4 +190,32 @@ pub(crate) fn html_response(content: &'static str) -> Response {
 
 fn encode_versioned_qr_ref(reference: &str) -> String {
     format!("v1:{}", reference.trim())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalizes_optional_swatch_colors() {
+        assert_eq!(
+            normalize_optional_swatch_color(Some("abc123")).unwrap(),
+            Some("#ABC123".to_string())
+        );
+        assert_eq!(
+            normalize_optional_swatch_color(Some("Gradient(#ec984c; #6cd4bc)")).unwrap(),
+            Some("gradient(#EC984C,#6CD4BC)".to_string())
+        );
+        assert_eq!(
+            normalize_optional_swatch_color(Some("multi(#720062,3a913f)")).unwrap(),
+            Some("multi(#720062,#3A913F)".to_string())
+        );
+        assert_eq!(normalize_optional_swatch_color(Some("   ")).unwrap(), None);
+    }
+
+    #[test]
+    fn rejects_invalid_optional_swatch_colors() {
+        assert!(normalize_optional_swatch_color(Some("not-a-color")).is_err());
+        assert!(normalize_optional_swatch_color(Some("multi(#EC984C,not-a-color)")).is_err());
+    }
 }

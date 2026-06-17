@@ -3,6 +3,7 @@ use std::collections::HashSet;
 
 const SUPPORTED_PRINTER_MODELS_JSON: &str =
     include_str!("../../src/data/supported_printer_models.json");
+#[cfg(test)]
 const BAMBU_STUDIO_PRINTER_PROFILE_CODES_JSON: &str =
     include_str!("../../src/data/bambu_studio_printer_profile_codes.json");
 

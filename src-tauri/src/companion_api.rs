@@ -22,7 +22,7 @@ use crate::companion_http::{
 use crate::companion_models::*;
 use crate::companion_payload::{
     build_companion_spool_qr_payload, build_qr_svg, bytes_response, html_response,
-    normalize_optional_hex_color, normalize_optional_text, normalize_owned_manual_fields,
+    normalize_optional_swatch_color, normalize_optional_text, normalize_owned_manual_fields,
     string_response, text_response, validate_initial_weight,
 };
 use crate::companion_session::{
@@ -656,7 +656,7 @@ pub(super) async fn handle_create_owned_spool(
                 material: manual.material,
                 filament_name: manual.filament_name,
                 color_name: manual.color_name,
-                hex_color: normalize_optional_hex_color(payload.hex_color.as_deref())?,
+                hex_color: normalize_optional_swatch_color(payload.hex_color.as_deref())?,
                 product_url: None,
                 vendor: Some(
                     payload
@@ -752,7 +752,7 @@ pub(super) async fn handle_create_borrowed_in_spool(
                 material: manual.material,
                 filament_name: manual.filament_name,
                 color_name: manual.color_name,
-                hex_color: normalize_optional_hex_color(payload.hex_color.as_deref())?,
+                hex_color: normalize_optional_swatch_color(payload.hex_color.as_deref())?,
                 product_url: None,
                 vendor: Some(
                     payload
