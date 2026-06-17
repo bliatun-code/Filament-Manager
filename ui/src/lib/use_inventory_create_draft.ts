@@ -1,5 +1,9 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
+  buildBambuFilamentCodeBatch,
+  type BambuFilamentCodeBatch,
+} from "./bambu_filament_code_batch";
+import {
   buildBambuFilamentCodeLookup,
   catalogMasterMatchesBambuFilamentCode,
 } from "./bambu_filament_code_lookup";
@@ -55,6 +59,7 @@ function selectedCreateCatalogMaster(
 export function useInventoryCreateDraft(masters: MasterCatalogRow[]) {
   const [createMode, setCreateMode] = useState<InventoryCreateMode>("bambu");
   const [bambuCatalogQuery, setBambuCatalogQuery] = useState("");
+  const [bambuBatchInput, setBambuBatchInput] = useState("");
   const [newBambuMasterId, setNewBambuMasterId] = useState("");
   const [newInitialWeight, setNewInitialWeight] = useState("");
   const [newLocation, setNewLocation] = useState("");
@@ -79,6 +84,10 @@ export function useInventoryCreateDraft(masters: MasterCatalogRow[]) {
   const bambuCodeLookup = useMemo(
     () => buildBambuFilamentCodeLookup(masters, deferredBambuCatalogQuery),
     [deferredBambuCatalogQuery, masters],
+  );
+  const bambuCodeBatch: BambuFilamentCodeBatch = useMemo(
+    () => buildBambuFilamentCodeBatch({ masters, rawInput: bambuBatchInput }),
+    [bambuBatchInput, masters],
   );
   const selectedBambuMaster = useMemo(
     () => selectedCreateCatalogMaster(filteredBambuMasters, newBambuMasterId),
@@ -176,6 +185,10 @@ export function useInventoryCreateDraft(masters: MasterCatalogRow[]) {
     resetBorrowedInDraft();
   }, [resetBorrowedInDraft]);
 
+  const resetBambuBatchInput = useCallback(() => {
+    setBambuBatchInput("");
+  }, []);
+
   const handleCatalogQueryChange = useCallback(
     (value: string) => {
       if (createMode === "bambu") {
@@ -210,6 +223,8 @@ export function useInventoryCreateDraft(masters: MasterCatalogRow[]) {
   return {
     activeCatalogMasters,
     applyCatalogDefaults,
+    bambuBatchInput,
+    bambuCodeBatch,
     bambuCodeLookup,
     borrowedFromContact,
     borrowedFromName,
@@ -230,6 +245,7 @@ export function useInventoryCreateDraft(masters: MasterCatalogRow[]) {
     newLocation,
     newOwnershipType,
     resetAfterCreatedSpool,
+    resetBambuBatchInput,
     resetBorrowedInDraft,
     selectCatalogMaster,
     selectedBambuMaster,
@@ -238,6 +254,7 @@ export function useInventoryCreateDraft(masters: MasterCatalogRow[]) {
     setBorrowedFromContact,
     setBorrowedFromName,
     setBorrowedInNote,
+    setBambuBatchInput,
     setCreateMode,
     setManualColorName,
     setManualFilamentName,

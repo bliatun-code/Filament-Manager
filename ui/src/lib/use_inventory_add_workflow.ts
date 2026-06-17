@@ -70,6 +70,8 @@ export function useInventoryAddWorkflow({
   const {
     activeCatalogMasters,
     applyCatalogDefaults,
+    bambuBatchInput,
+    bambuCodeBatch,
     bambuCodeLookup,
     borrowedFromContact,
     borrowedFromName,
@@ -88,6 +90,7 @@ export function useInventoryAddWorkflow({
     newLocation,
     newOwnershipType,
     resetAfterCreatedSpool,
+    resetBambuBatchInput,
     resetBorrowedInDraft,
     selectCatalogMaster,
     selectedBambuMaster,
@@ -96,6 +99,7 @@ export function useInventoryAddWorkflow({
     setBorrowedFromContact,
     setBorrowedFromName,
     setBorrowedInNote,
+    setBambuBatchInput,
     setCreateMode,
     setManualColorName,
     setManualFilamentName,
@@ -148,6 +152,7 @@ export function useInventoryAddWorkflow({
   const {
     currentCreateDraft,
     handleAddCurrentToWishlist,
+    handleCreateBambuCodeBatch,
     handleCreateSpool,
     handleDeleteWishlistItem,
     handleStockFromWishlist,
@@ -156,6 +161,7 @@ export function useInventoryAddWorkflow({
     borrowedFromContact,
     borrowedFromName,
     borrowedInNote,
+    bambuCodeBatch,
     busy,
     canUseClientHostWrite,
     clientHostBaseUrl,
@@ -177,6 +183,7 @@ export function useInventoryAddWorkflow({
     reloadSpools,
     reloadWishlist,
     resetAfterCreatedSpool,
+    resetBambuBatchInput,
     selectedBambuMaster,
     selectedEsunMaster,
     setBusy,
@@ -235,11 +242,19 @@ export function useInventoryAddWorkflow({
     ? inventorySwatchActionButtonStyle(currentCreateSwatchHex, resolvedTheme)
     : undefined;
   const disableWishlistCreate = !tauriAvailable || busy || !currentCreateDraft;
+  const disableBambuBatchCreate =
+    !tauriAvailable ||
+    busy ||
+    createMode !== "bambu" ||
+    bambuCodeBatch.creatableRows.length === 0 ||
+    (newOwnershipType === "BORROWED_IN" && !borrowedFromName.trim());
   const addModalActive = showAddModal && sidePanelMode === "ADD";
 
   const modalProps: InventoryAddModalProps = {
     actionStyle: currentCreateActionStyle,
     activeCatalogMasters,
+    bambuBatchInput,
+    bambuCodeBatch,
     bambuCodeLookup,
     borrowedFromContact,
     borrowedFromName,
@@ -249,6 +264,7 @@ export function useInventoryAddWorkflow({
     catalogQuery,
     confirmWishlistRemoveId,
     createMode,
+    disabledBambuBatchCreate: disableBambuBatchCreate,
     disabledCreate: disableCreate,
     disabledWishlistCreate: disableWishlistCreate,
     error,
@@ -265,8 +281,10 @@ export function useInventoryAddWorkflow({
     onBorrowedFromContactChange: setBorrowedFromContact,
     onBorrowedFromNameChange: setBorrowedFromName,
     onBorrowedInNoteChange: setBorrowedInNote,
+    onBambuBatchInputChange: setBambuBatchInput,
     onCatalogQueryChange: handleCatalogQueryChange,
     onClose: closeAddModal,
+    onCreateBambuCodeBatch: handleCreateBambuCodeBatch,
     onCreateModeChange: setCreateMode,
     onCreateSpool: handleCreateSpool,
     onDeleteWishlistItem: handleDeleteWishlistItem,

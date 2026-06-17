@@ -15,7 +15,7 @@ export type BambuFilamentCodeLookup = {
   discontinuedMatches: MasterCatalogRow[];
 };
 
-const FILAMENT_CODE_PATTERN = /(?<!\d)\d{5}(?!\d)/;
+const FILAMENT_CODE_GLOBAL_PATTERN = /(?<!\d)\d{5}(?!\d)/g;
 
 function isBambuCatalogMaster(master: MasterCatalogRow): boolean {
   return master.vendor.trim().toLowerCase().includes("bambu");
@@ -26,8 +26,14 @@ function catalogSortKey(master: MasterCatalogRow): string {
 }
 
 export function extractBambuFilamentCode(value: string | null | undefined): string | null {
-  const match = String(value ?? "").match(FILAMENT_CODE_PATTERN);
-  return match?.[0] ?? null;
+  return extractBambuFilamentCodes(value)[0] ?? null;
+}
+
+export function extractBambuFilamentCodes(value: string | null | undefined): string[] {
+  return Array.from(
+    String(value ?? "").matchAll(FILAMENT_CODE_GLOBAL_PATTERN),
+    (match) => match[0],
+  );
 }
 
 export function catalogMasterBambuFilamentCode(master: MasterCatalogRow): string | null {

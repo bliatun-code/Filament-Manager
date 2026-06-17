@@ -98,6 +98,8 @@ export type InventoryCreateSpoolError =
   | "ESUN_MASTER_REQUIRED"
   | "MANUAL_FIELDS_REQUIRED";
 
+export type InventoryCreateBatchError = InventoryCreateSpoolError | "BATCH_EMPTY";
+
 export type InventoryCreateSpoolRequest =
   | {
       ok: true;
@@ -114,6 +116,19 @@ export type InventoryCreateSpoolRequest =
   | {
       ok: false;
       error: InventoryCreateSpoolError;
+    };
+
+export type InventoryCreateCatalogBatchRequest =
+  | {
+      ok: true;
+      requests: Array<{
+        input: CreateSpoolInput;
+        addedLabel: string;
+      }>;
+    }
+  | {
+      ok: false;
+      error: InventoryCreateBatchError;
     };
 
 export function buildInventoryCreateSpoolRequest(input: {
@@ -205,4 +220,49 @@ export function buildInventoryCreateSpoolRequest(input: {
       location,
     },
   };
+}
+
+export function buildBambuCatalogBatchCreateRequests(input: {
+  idPrefix: string;
+  selectedMasters: MasterCatalogRow[];
+  initialWeightRaw: string;
+  ownershipType: OwnershipType;
+  borrowedFromName?: string | null;
+  borrowedFromContact?: string | null;
+  borrowedInNote?: string | null;
+  location?: string | null;
+}): InventoryCreateCatalogBatchRequest {
+  if (input.selectedMasters.length === 0) {
+    return { ok: false, error: "BATCH_EMPTY" };
+  }
+
+  const requests: Array<{
+    input: CreateSpoolInput;
+    addedLabel: string;
+  }> = [];
+  for (const [index, master] of input.selectedMasters.entries()) {
+    const request = buildInventoryCreateSpoolRequest({
+      id: `${input.idPrefix}_${index + 1}`,
+      mode: "bambu",
+      selectedBambuMaster: master,
+      initialWeightRaw: input.initialWeightRaw,
+      ownershipType: input.ownershipType,
+      borrowedFromName: input.borrowedFromName,
+      borrowedFromContact: input.borrowedFromContact,
+      borrowedInNote: input.borrowedInNote,
+      location: input.location,
+    });
+    if (!request.ok) {
+      return request;
+    }
+    if (request.kind !== "catalog") {
+      return { ok: false, error: "BAMBU_MASTER_REQUIRED" };
+    }
+    requests.push({
+      input: request.input,
+      addedLabel: request.addedLabel,
+    });
+  }
+
+  return { ok: true, requests };
 }

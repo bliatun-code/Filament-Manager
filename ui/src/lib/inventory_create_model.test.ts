@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   activeCatalogMastersForMode,
+  buildBambuCatalogBatchCreateRequests,
   buildInventoryCreateSpoolRequest,
   currentCreateSwatchHexForMode,
   formatInventoryCreateAddedLabel,
@@ -247,5 +248,76 @@ test("buildInventoryCreateSpoolRequest reports validation failures", () => {
       ownershipType: "OWNED",
     }),
     { ok: false, error: "MANUAL_FIELDS_REQUIRED" },
+  );
+});
+
+test("buildBambuCatalogBatchCreateRequests applies shared stock details to every match", () => {
+  const request = buildBambuCatalogBatchCreateRequests({
+    idPrefix: "batch-1",
+    selectedMasters: [
+      master({ id: "yellow", filament_name: "TPU for AMS", color_name: "Yellow (53400)" }),
+      master({ id: "blue", filament_name: "PLA Basic", color_name: "Blue (53600)" }),
+    ],
+    initialWeightRaw: "880",
+    ownershipType: "BORROWED_IN",
+    borrowedFromName: " Ada ",
+    borrowedFromContact: " ada@example.com ",
+    borrowedInNote: " Return soon ",
+    location: " Shelf B ",
+  });
+
+  assert.equal(request.ok, true);
+  if (!request.ok) {
+    return;
+  }
+  assert.deepEqual(
+    request.requests.map((entry) => ({
+      id: entry.input.id,
+      master_id: entry.input.master_id,
+      ownership_type: entry.input.ownership_type,
+      owner_name: entry.input.owner_name,
+      initial_weight_g: entry.input.initial_weight_g,
+      location_id: entry.input.location_id,
+    })),
+    [
+      {
+        id: "batch-1_1",
+        master_id: "yellow",
+        ownership_type: "BORROWED_IN",
+        owner_name: "Ada",
+        initial_weight_g: 880,
+        location_id: "Shelf B",
+      },
+      {
+        id: "batch-1_2",
+        master_id: "blue",
+        ownership_type: "BORROWED_IN",
+        owner_name: "Ada",
+        initial_weight_g: 880,
+        location_id: "Shelf B",
+      },
+    ],
+  );
+});
+
+test("buildBambuCatalogBatchCreateRequests validates empty and borrowed-in batches before writes", () => {
+  assert.deepEqual(
+    buildBambuCatalogBatchCreateRequests({
+      idPrefix: "batch-empty",
+      selectedMasters: [],
+      initialWeightRaw: "1000",
+      ownershipType: "OWNED",
+    }),
+    { ok: false, error: "BATCH_EMPTY" },
+  );
+  assert.deepEqual(
+    buildBambuCatalogBatchCreateRequests({
+      idPrefix: "batch-borrowed",
+      selectedMasters: [master()],
+      initialWeightRaw: "1000",
+      ownershipType: "BORROWED_IN",
+      borrowedFromName: " ",
+    }),
+    { ok: false, error: "BORROWED_OWNER_REQUIRED" },
   );
 });

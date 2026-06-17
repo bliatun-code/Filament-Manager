@@ -1,8 +1,12 @@
 import { useMemo, type Dispatch, type SetStateAction } from "react";
 import { commandErrorText } from "./error_text";
+import type { BambuFilamentCodeBatch } from "./bambu_filament_code_batch";
 import {
+  buildBambuCatalogBatchCreateRequests,
   buildInventoryCreateSpoolRequest,
+  type InventoryCreateBatchError,
   type InventoryCreateMode,
+  type InventoryCreateSpoolError,
 } from "./inventory_create_model";
 import { formatInventoryDisplayTitle, type OwnershipType } from "./inventory_list_model";
 import {
@@ -24,6 +28,7 @@ type InventoryCreateActionsInput = {
   borrowedFromContact: string;
   borrowedFromName: string;
   borrowedInNote: string;
+  bambuCodeBatch: BambuFilamentCodeBatch;
   busy: boolean;
   canUseClientHostWrite: () => boolean;
   clientHostBaseUrl: string | null;
@@ -45,6 +50,7 @@ type InventoryCreateActionsInput = {
   reloadSpools: () => Promise<void>;
   reloadWishlist: () => Promise<void>;
   resetAfterCreatedSpool: () => void;
+  resetBambuBatchInput: () => void;
   selectedBambuMaster: MasterCatalogRow | null;
   selectedEsunMaster: MasterCatalogRow | null;
   setBusy: Dispatch<SetStateAction<boolean>>;
@@ -61,6 +67,7 @@ export function useInventoryCreateActions({
   borrowedFromContact,
   borrowedFromName,
   borrowedInNote,
+  bambuCodeBatch,
   busy,
   canUseClientHostWrite,
   clientHostBaseUrl,
@@ -82,6 +89,7 @@ export function useInventoryCreateActions({
   reloadSpools,
   reloadWishlist,
   resetAfterCreatedSpool,
+  resetBambuBatchInput,
   selectedBambuMaster,
   selectedEsunMaster,
   setBusy,
@@ -126,6 +134,35 @@ export function useInventoryCreateActions({
     return tauriAvailable && !busy;
   }
 
+  function showCreateValidationError(error: InventoryCreateSpoolError | InventoryCreateBatchError) {
+    if (error === "BORROWED_OWNER_REQUIRED") {
+      setError(
+        t(
+          "inventory.error.borrowedInNeedsOwner",
+          "Borrowed-in registration needs a name for who the spool is borrowed from.",
+        ),
+      );
+    } else if (error === "BAMBU_MASTER_REQUIRED") {
+      setError(t("inventory.error.selectBambuFirst", "Select a Bambu filament first."));
+    } else if (error === "ESUN_MASTER_REQUIRED") {
+      setError(t("inventory.error.selectEsunFirst", "Select an eSUN filament first."));
+    } else if (error === "BATCH_EMPTY") {
+      setError(
+        t(
+          "inventory.error.bambuBatchEmpty",
+          "Paste at least one Bambu Filament Code with a single active catalog match.",
+        ),
+      );
+    } else {
+      setError(
+        t(
+          "inventory.error.manualNeedsFields",
+          "Manual create needs filament name and color.",
+        ),
+      );
+    }
+  }
+
   async function handleCreateSpool() {
     if (!canStartWrite()) {
       return;
@@ -151,25 +188,7 @@ export function useInventoryCreateActions({
       location: newLocation,
     });
     if (!createRequest.ok) {
-      if (createRequest.error === "BORROWED_OWNER_REQUIRED") {
-        setError(
-          t(
-            "inventory.error.borrowedInNeedsOwner",
-            "Borrowed-in registration needs a name for who the spool is borrowed from.",
-          ),
-        );
-      } else if (createRequest.error === "BAMBU_MASTER_REQUIRED") {
-        setError(t("inventory.error.selectBambuFirst", "Select a Bambu filament first."));
-      } else if (createRequest.error === "ESUN_MASTER_REQUIRED") {
-        setError(t("inventory.error.selectEsunFirst", "Select an eSUN filament first."));
-      } else {
-        setError(
-          t(
-            "inventory.error.manualNeedsFields",
-            "Manual create needs filament name and color.",
-          ),
-        );
-      }
+      showCreateValidationError(createRequest.error);
       setBusy(false);
       return;
     }
@@ -200,6 +219,70 @@ export function useInventoryCreateActions({
           t(
             "inventory.error.createSpool",
             "Failed to create spool. Check QR uniqueness and values.",
+          ),
+        ),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCreateBambuCodeBatch() {
+    if (!canStartWrite()) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const batchRequest = buildBambuCatalogBatchCreateRequests({
+      idPrefix: `spool_${Date.now()}`,
+      selectedMasters: bambuCodeBatch.creatableRows
+        .map((row) => row.master)
+        .filter((master): master is MasterCatalogRow => Boolean(master)),
+      initialWeightRaw: newInitialWeight,
+      ownershipType: newOwnershipType,
+      borrowedFromName,
+      borrowedFromContact,
+      borrowedInNote,
+      location: newLocation,
+    });
+    if (!batchRequest.ok) {
+      showCreateValidationError(batchRequest.error);
+      setBusy(false);
+      return;
+    }
+
+    try {
+      let latestCreatedSpoolId: string | null = null;
+      for (const request of batchRequest.requests) {
+        latestCreatedSpoolId = await createInventorySpoolFromMaster(
+          request.input,
+          hostWriteTarget,
+        );
+      }
+
+      await reloadSpools();
+      await reloadCatalog();
+      if (latestCreatedSpoolId) {
+        setSelectedSpoolId(latestCreatedSpoolId);
+        setRecentlyAddedSpoolId(latestCreatedSpoolId);
+      }
+      setInfoMessage(
+        `${
+          newOwnershipType === "BORROWED_IN"
+            ? t("inventory.borrowedInBatchRegistered", "Borrowed-in batch registered")
+            : t("inventory.bambuBatchAdded", "Bambu code batch added")
+        }: ${batchRequest.requests.length}`,
+      );
+      resetAfterCreatedSpool();
+      resetBambuBatchInput();
+    } catch (batchError) {
+      console.error(batchError);
+      setError(
+        commandErrorText(
+          batchError,
+          t(
+            "inventory.error.createBambuBatch",
+            "Failed to create Bambu code batch. Check QR uniqueness and values.",
           ),
         ),
       );
@@ -376,6 +459,7 @@ export function useInventoryCreateActions({
   return {
     currentCreateDraft,
     handleAddCurrentToWishlist,
+    handleCreateBambuCodeBatch,
     handleCreateSpool,
     handleDeleteWishlistItem,
     handleStockFromWishlist,

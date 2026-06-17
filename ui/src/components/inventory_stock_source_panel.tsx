@@ -2,6 +2,10 @@ import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { inlineStatusSignalClass, neutralChipClass } from "../lib/chip_styles";
 import { swatchCssBackground, toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
+import type {
+  BambuFilamentCodeBatch,
+  BambuFilamentCodeBatchRow,
+} from "../lib/bambu_filament_code_batch";
 import type { BambuFilamentCodeLookup } from "../lib/bambu_filament_code_lookup";
 import { formatMasterDisplayTitle } from "../lib/inventory_list_model";
 import { inventoryCatalogRowStyle } from "../lib/inventory_swatch_style";
@@ -11,16 +15,21 @@ import type { MasterCatalogRow } from "../lib/tauri_client";
 
 type InventoryStockSourcePanelProps = {
   activeCatalogMasters: MasterCatalogRow[];
+  bambuBatchInput: string;
+  bambuCodeBatch: BambuFilamentCodeBatch;
   bambuCodeLookup: BambuFilamentCodeLookup;
   catalogQuery: string;
   createMode: InventoryCreateMode;
+  disabledBambuBatchCreate: boolean;
   isCatalogCreateMode: boolean;
   manualColorName: string;
   manualFilamentName: string;
   manualHexColor: string;
   manualMaterial: string;
   manualVendor: string;
+  onBambuBatchInputChange: (value: string) => void;
   onCatalogQueryChange: (value: string) => void;
+  onCreateBambuCodeBatch: () => void;
   onCreateModeChange: (value: InventoryCreateMode) => void;
   onManualColorNameChange: (value: string) => void;
   onManualFilamentNameChange: (value: string) => void;
@@ -117,18 +126,166 @@ function BambuFilamentCodeLookupHint({
   );
 }
 
+function bambuBatchRowStatusLabel(
+  row: BambuFilamentCodeBatchRow,
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  if (row.master) {
+    return t("inventory.bambuBatchReady", "Ready");
+  }
+  if (row.lookup.status === "multiple_active") {
+    return t("inventory.bambuBatchAmbiguous", "Choose manually");
+  }
+  if (row.lookup.status === "discontinued_only") {
+    return t("common.discontinued", "Discontinued");
+  }
+  if (row.lookup.status === "no_match") {
+    return t("inventory.bambuBatchNoMatch", "No match");
+  }
+  return t("inventory.bambuBatchNoCode", "No code");
+}
+
+function bambuBatchRowPreview(row: BambuFilamentCodeBatchRow): string {
+  if (row.master) {
+    return formatMasterDisplayTitle(row.master);
+  }
+  const matches =
+    row.lookup.activeMatches.length > 0
+      ? row.lookup.activeMatches
+      : row.lookup.discontinuedMatches;
+  if (matches.length === 0) {
+    return row.sourceText;
+  }
+  const preview = matches
+    .slice(0, 2)
+    .map((master) => formatMasterDisplayTitle(master))
+    .join(", ");
+  return matches.length > 2 ? `${preview} +${matches.length - 2}` : preview;
+}
+
+function BambuFilamentCodeBatchPanel({
+  batch,
+  disabledCreate,
+  input,
+  onCreateBatch,
+  onInputChange,
+  tauriAvailable,
+}: {
+  batch: BambuFilamentCodeBatch;
+  disabledCreate: boolean;
+  input: string;
+  onCreateBatch: () => void;
+  onInputChange: (value: string) => void;
+  tauriAvailable: boolean;
+}) {
+  const { t } = useI18n();
+  const visibleRows = batch.rows.slice(0, 6);
+  const hiddenCount = Math.max(0, batch.rows.length - visibleRows.length);
+
+  return (
+    <div className="rounded-2xl border border-slate-200/90 bg-white/72 p-3 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+            {t("inventory.bambuBatchTitle", "Batch Filament Codes")}
+          </div>
+          <div className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+            {t(
+              "inventory.bambuBatchHelp",
+              "Paste one or more five digit codes. Ready matches use the stock details on the right.",
+            )}
+          </div>
+        </div>
+        {batch.rows.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold tabular-nums">
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700 dark:border-emerald-800/70 dark:bg-emerald-950/40 dark:text-emerald-200">
+              {batch.creatableRows.length} {t("inventory.bambuBatchReadyShort", "ready")}
+            </span>
+            {batch.blockedRows.length > 0 ? (
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
+                {batch.blockedRows.length} {t("inventory.bambuBatchNeedsReview", "review")}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      <textarea
+        value={input}
+        onChange={(event) => onInputChange(event.target.value)}
+        placeholder={t("inventory.bambuBatchPlaceholder", "53400\n53600\n65103")}
+        rows={4}
+        className="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500"
+        disabled={!tauriAvailable}
+      />
+
+      {batch.rows.length > 0 ? (
+        <div className="mt-3 space-y-1.5">
+          {visibleRows.map((row) => {
+            const ready = Boolean(row.master);
+            return (
+              <div
+                key={row.key}
+                className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white/75 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-950/55"
+              >
+                <div className="min-w-0">
+                  <div className="font-mono font-semibold text-slate-800 dark:text-slate-100">
+                    {row.code ?? row.sourceText}
+                  </div>
+                  <div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-slate-500 dark:text-slate-400">
+                    {bambuBatchRowPreview(row)}
+                  </div>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-semibold ${
+                    ready
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/70 dark:bg-emerald-950/40 dark:text-emerald-200"
+                      : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300"
+                  }`}
+                >
+                  {bambuBatchRowStatusLabel(row, t)}
+                </span>
+              </div>
+            );
+          })}
+          {hiddenCount > 0 ? (
+            <div className="px-1 text-xs text-slate-500 dark:text-slate-400">
+              +{hiddenCount} {t("inventory.bambuBatchMoreRows", "more")}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <button
+        type="button"
+        className="mt-3 w-full rounded-xl border border-slate-900 bg-slate-900 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+        onClick={onCreateBatch}
+        disabled={disabledCreate}
+      >
+        {t("inventory.bambuBatchAddReady", "Add ready matches")} ·{" "}
+        {batch.creatableRows.length}
+      </button>
+    </div>
+  );
+}
+
 export function InventoryStockSourcePanel({
   activeCatalogMasters,
+  bambuBatchInput,
+  bambuCodeBatch,
   bambuCodeLookup,
   catalogQuery,
   createMode,
+  disabledBambuBatchCreate,
   isCatalogCreateMode,
   manualColorName,
   manualFilamentName,
   manualHexColor,
   manualMaterial,
   manualVendor,
+  onBambuBatchInputChange,
   onCatalogQueryChange,
+  onCreateBambuCodeBatch,
   onCreateModeChange,
   onManualColorNameChange,
   onManualFilamentNameChange,
@@ -191,7 +348,17 @@ export function InventoryStockSourcePanel({
                 disabled={!tauriAvailable}
               />
               {createMode === "bambu" ? (
-                <BambuFilamentCodeLookupHint lookup={bambuCodeLookup} />
+                <>
+                  <BambuFilamentCodeLookupHint lookup={bambuCodeLookup} />
+                  <BambuFilamentCodeBatchPanel
+                    batch={bambuCodeBatch}
+                    disabledCreate={disabledBambuBatchCreate}
+                    input={bambuBatchInput}
+                    onCreateBatch={onCreateBambuCodeBatch}
+                    onInputChange={onBambuBatchInputChange}
+                    tauriAvailable={tauriAvailable}
+                  />
+                </>
               ) : null}
             </div>
           ) : null}

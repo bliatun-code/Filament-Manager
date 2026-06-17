@@ -308,6 +308,20 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuCodeMoreMatches: "more",
       bambuCodeTryCatalogSearch: "You can still search by material, series, or color name.",
       bambuCodeEnterExample: "Type the code into the search field, for example 53400.",
+      bambuBatchTitle: "Batch Filament Codes",
+      bambuBatchHelp:
+        "Paste one or more five digit codes. Ready matches use the stock details on the right.",
+      bambuBatchPlaceholder: "53400\n53600\n65103",
+      bambuBatchReady: "Ready",
+      bambuBatchReadyShort: "ready",
+      bambuBatchNeedsReview: "review",
+      bambuBatchAmbiguous: "Choose manually",
+      bambuBatchNoMatch: "No match",
+      bambuBatchNoCode: "No code",
+      bambuBatchMoreRows: "more",
+      bambuBatchAddReady: "Add ready matches",
+      bambuBatchAdded: "Bambu code batch added",
+      borrowedInBatchRegistered: "Borrowed-in batch registered",
       manualDetails: "Manual details",
       manualDetailsHelp:
         "Use this when a filament is missing from the vendor catalog or you want a fully manual entry.",
@@ -469,6 +483,10 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         selectEsunFirst: "Run eSUN lookup and select a product.",
         manualNeedsFields: "Manual create needs filament name and color.",
         createSpool: "Failed to create spool. Check QR uniqueness and values.",
+        bambuBatchEmpty:
+          "Paste at least one Bambu Filament Code with a single active catalog match.",
+        createBambuBatch:
+          "Failed to create Bambu code batch. Check QR uniqueness and values.",
         stockFromWishlist: "Failed to stock roll from wishlist item.",
         unlockMetadataFirst: "Unlock metadata before editing catalog details.",
         masterFieldsRequired:
@@ -1754,6 +1772,20 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuCodeTryCatalogSearch:
         "Du kan fortsatt søke etter materiale, serie eller fargenavn.",
       bambuCodeEnterExample: "Skriv koden i søkefeltet, for eksempel 53400.",
+      bambuBatchTitle: "Batch Filament Codes",
+      bambuBatchHelp:
+        "Lim inn én eller flere femsifrede koder. Klare treff bruker lagerdetaljene til høyre.",
+      bambuBatchPlaceholder: "53400\n53600\n65103",
+      bambuBatchReady: "Klar",
+      bambuBatchReadyShort: "klare",
+      bambuBatchNeedsReview: "sjekk",
+      bambuBatchAmbiguous: "Velg manuelt",
+      bambuBatchNoMatch: "Ingen treff",
+      bambuBatchNoCode: "Ingen kode",
+      bambuBatchMoreRows: "til",
+      bambuBatchAddReady: "Legg til klare treff",
+      bambuBatchAdded: "Bambu-kodebatch lagt til",
+      borrowedInBatchRegistered: "Innlånt batch registrert",
       manualDetails: "Manuelle detaljer",
       manualDetailsHelp:
         "Bruk dette når et filament mangler i leverandørkatalogen eller du vil opprette alt manuelt.",
@@ -1916,6 +1948,10 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         selectEsunFirst: "Kjør eSUN-oppslag og velg et produkt.",
         manualNeedsFields: "Manuell oppretting krever filamentnavn og farge.",
         createSpool: "Kunne ikke opprette filament. Sjekk QR-unikhet og verdier.",
+        bambuBatchEmpty:
+          "Lim inn minst én Bambu Filament Code med ett aktivt katalogtreff.",
+        createBambuBatch:
+          "Kunne ikke opprette Bambu-kodebatch. Sjekk QR-unikhet og verdier.",
         stockFromWishlist: "Kunne ikke legge filament til lager fra ønskelistepost.",
         unlockMetadataFirst: "Lås opp metadata før du redigerer katalogdetaljer.",
         masterFieldsRequired:

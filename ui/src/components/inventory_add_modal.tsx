@@ -10,6 +10,7 @@ import { InventoryStockSourcePanel } from "./inventory_stock_source_panel";
 import { WishlistQueuePanel } from "./wishlist_queue_panel";
 import { useI18n } from "../lib/i18n";
 import type { BambuFilamentCodeLookup } from "../lib/bambu_filament_code_lookup";
+import type { BambuFilamentCodeBatch } from "../lib/bambu_filament_code_batch";
 import type { InventoryCreateMode } from "../lib/inventory_create_model";
 import type { OwnershipType } from "../lib/inventory_list_model";
 import type { ResolvedTheme } from "../lib/theme_mode";
@@ -23,6 +24,8 @@ import type {
 export type InventoryAddModalProps = {
   actionStyle?: CSSProperties;
   activeCatalogMasters: MasterCatalogRow[];
+  bambuBatchInput: string;
+  bambuCodeBatch: BambuFilamentCodeBatch;
   bambuCodeLookup: BambuFilamentCodeLookup;
   borrowedFromContact: string;
   borrowedFromName: string;
@@ -32,6 +35,7 @@ export type InventoryAddModalProps = {
   catalogQuery: string;
   confirmWishlistRemoveId: string | null;
   createMode: InventoryCreateMode;
+  disabledBambuBatchCreate: boolean;
   disabledCreate: boolean;
   disabledWishlistCreate: boolean;
   error: string | null;
@@ -48,8 +52,10 @@ export type InventoryAddModalProps = {
   onBorrowedFromContactChange: (value: string) => void;
   onBorrowedFromNameChange: (value: string) => void;
   onBorrowedInNoteChange: (value: string) => void;
+  onBambuBatchInputChange: (value: string) => void;
   onCatalogQueryChange: (value: string) => void;
   onClose: () => void;
+  onCreateBambuCodeBatch: () => void;
   onCreateModeChange: (value: InventoryCreateMode) => void;
   onCreateSpool: () => void;
   onDeleteWishlistItem: (itemId: string) => void;
@@ -82,6 +88,8 @@ export type InventoryAddModalProps = {
 export function InventoryAddModal({
   actionStyle,
   activeCatalogMasters,
+  bambuBatchInput,
+  bambuCodeBatch,
   bambuCodeLookup,
   borrowedFromContact,
   borrowedFromName,
@@ -91,6 +99,7 @@ export function InventoryAddModal({
   catalogQuery,
   confirmWishlistRemoveId,
   createMode,
+  disabledBambuBatchCreate,
   disabledCreate,
   disabledWishlistCreate,
   error,
@@ -107,8 +116,10 @@ export function InventoryAddModal({
   onBorrowedFromContactChange,
   onBorrowedFromNameChange,
   onBorrowedInNoteChange,
+  onBambuBatchInputChange,
   onCatalogQueryChange,
   onClose,
+  onCreateBambuCodeBatch,
   onCreateModeChange,
   onCreateSpool,
   onDeleteWishlistItem,
@@ -197,16 +208,21 @@ export function InventoryAddModal({
             <div className="space-y-4">
               <InventoryStockSourcePanel
                 activeCatalogMasters={activeCatalogMasters}
+                bambuBatchInput={bambuBatchInput}
+                bambuCodeBatch={bambuCodeBatch}
                 bambuCodeLookup={bambuCodeLookup}
                 catalogQuery={catalogQuery}
                 createMode={createMode}
+                disabledBambuBatchCreate={disabledBambuBatchCreate}
                 isCatalogCreateMode={isCatalogCreateMode}
                 manualColorName={manualColorName}
                 manualFilamentName={manualFilamentName}
                 manualHexColor={manualHexColor}
                 manualMaterial={manualMaterial}
                 manualVendor={manualVendor}
+                onBambuBatchInputChange={onBambuBatchInputChange}
                 onCatalogQueryChange={onCatalogQueryChange}
+                onCreateBambuCodeBatch={onCreateBambuCodeBatch}
                 onCreateModeChange={onCreateModeChange}
                 onManualColorNameChange={onManualColorNameChange}
                 onManualFilamentNameChange={onManualFilamentNameChange}
