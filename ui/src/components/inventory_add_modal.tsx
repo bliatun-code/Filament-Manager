@@ -10,7 +10,10 @@ import { InventoryStockSourcePanel } from "./inventory_stock_source_panel";
 import { WishlistQueuePanel } from "./wishlist_queue_panel";
 import { useI18n } from "../lib/i18n";
 import type { BambuFilamentCodeLookup } from "../lib/bambu_filament_code_lookup";
-import type { BambuFilamentCodeBatch } from "../lib/bambu_filament_code_batch";
+import type {
+  BambuFilamentCodeBatch,
+  BambuFilamentCodeBatchCreateState,
+} from "../lib/bambu_filament_code_batch";
 import type { InventoryCreateMode } from "../lib/inventory_create_model";
 import type { OwnershipType } from "../lib/inventory_list_model";
 import type { ResolvedTheme } from "../lib/theme_mode";
@@ -25,6 +28,7 @@ export type InventoryAddModalProps = {
   actionStyle?: CSSProperties;
   activeCatalogMasters: MasterCatalogRow[];
   bambuBatchInput: string;
+  bambuBatchCreateState: BambuFilamentCodeBatchCreateState;
   bambuCodeBatch: BambuFilamentCodeBatch;
   bambuCodeLookup: BambuFilamentCodeLookup;
   borrowedFromContact: string;
@@ -89,6 +93,7 @@ export function InventoryAddModal({
   actionStyle,
   activeCatalogMasters,
   bambuBatchInput,
+  bambuBatchCreateState,
   bambuCodeBatch,
   bambuCodeLookup,
   borrowedFromContact,
@@ -209,6 +214,7 @@ export function InventoryAddModal({
               <InventoryStockSourcePanel
                 activeCatalogMasters={activeCatalogMasters}
                 bambuBatchInput={bambuBatchInput}
+                bambuBatchCreateState={bambuBatchCreateState}
                 bambuCodeBatch={bambuCodeBatch}
                 bambuCodeLookup={bambuCodeLookup}
                 catalogQuery={catalogQuery}

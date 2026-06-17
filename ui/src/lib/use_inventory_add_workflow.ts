@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { InventoryAddModalProps } from "../components/inventory_add_modal";
+import { buildBambuFilamentCodeBatchCreateState } from "./bambu_filament_code_batch";
 import { isInventoryCreateDisabled } from "./inventory_create_model";
 import {
   inventoryCreatePreviewPanelStyle,
@@ -242,18 +243,20 @@ export function useInventoryAddWorkflow({
     ? inventorySwatchActionButtonStyle(currentCreateSwatchHex, resolvedTheme)
     : undefined;
   const disableWishlistCreate = !tauriAvailable || busy || !currentCreateDraft;
-  const disableBambuBatchCreate =
-    !tauriAvailable ||
-    busy ||
-    createMode !== "bambu" ||
-    bambuCodeBatch.creatableRows.length === 0 ||
-    (newOwnershipType === "BORROWED_IN" && !borrowedFromName.trim());
+  const bambuBatchCreateState = buildBambuFilamentCodeBatchCreateState({
+    batch: bambuCodeBatch,
+    tauriAvailable,
+    busy,
+    isBambuMode: createMode === "bambu",
+    borrowedOwnerRequired: newOwnershipType === "BORROWED_IN" && !borrowedFromName.trim(),
+  });
   const addModalActive = showAddModal && sidePanelMode === "ADD";
 
   const modalProps: InventoryAddModalProps = {
     actionStyle: currentCreateActionStyle,
     activeCatalogMasters,
     bambuBatchInput,
+    bambuBatchCreateState,
     bambuCodeBatch,
     bambuCodeLookup,
     borrowedFromContact,
@@ -264,7 +267,7 @@ export function useInventoryAddWorkflow({
     catalogQuery,
     confirmWishlistRemoveId,
     createMode,
-    disabledBambuBatchCreate: disableBambuBatchCreate,
+    disabledBambuBatchCreate: bambuBatchCreateState.disabled,
     disabledCreate: disableCreate,
     disabledWishlistCreate: disableWishlistCreate,
     error,

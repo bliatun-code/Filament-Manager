@@ -19,6 +19,22 @@ export type BambuFilamentCodeBatch = {
   blockedRows: BambuFilamentCodeBatchRow[];
 };
 
+export type BambuFilamentCodeBatchCreateBlockReason =
+  | "busy"
+  | "wrong_mode"
+  | "missing_runtime"
+  | "no_ready_rows"
+  | "borrowed_owner_required";
+
+export type BambuFilamentCodeBatchCreateState = {
+  disabled: boolean;
+  reason: BambuFilamentCodeBatchCreateBlockReason | null;
+  readyCount: number;
+  reviewCount: number;
+  totalCount: number;
+  partial: boolean;
+};
+
 type ParsedBatchEntry = {
   sourceText: string;
   code: string | null;
@@ -66,5 +82,38 @@ export function buildBambuFilamentCodeBatch(input: {
     rows,
     creatableRows,
     blockedRows: rows.filter((row) => !row.master),
+  };
+}
+
+export function buildBambuFilamentCodeBatchCreateState(input: {
+  batch: BambuFilamentCodeBatch;
+  tauriAvailable: boolean;
+  busy: boolean;
+  isBambuMode: boolean;
+  borrowedOwnerRequired: boolean;
+}): BambuFilamentCodeBatchCreateState {
+  const readyCount = input.batch.creatableRows.length;
+  const reviewCount = input.batch.blockedRows.length;
+  const totalCount = input.batch.rows.length;
+  let reason: BambuFilamentCodeBatchCreateBlockReason | null = null;
+  if (!input.tauriAvailable) {
+    reason = "missing_runtime";
+  } else if (input.busy) {
+    reason = "busy";
+  } else if (!input.isBambuMode) {
+    reason = "wrong_mode";
+  } else if (readyCount === 0) {
+    reason = "no_ready_rows";
+  } else if (input.borrowedOwnerRequired) {
+    reason = "borrowed_owner_required";
+  }
+
+  return {
+    disabled: Boolean(reason),
+    reason,
+    readyCount,
+    reviewCount,
+    totalCount,
+    partial: readyCount > 0 && reviewCount > 0,
   };
 }

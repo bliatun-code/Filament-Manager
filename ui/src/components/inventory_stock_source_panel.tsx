@@ -5,6 +5,7 @@ import { useI18n } from "../lib/i18n";
 import type {
   BambuFilamentCodeBatch,
   BambuFilamentCodeBatchRow,
+  BambuFilamentCodeBatchCreateState,
 } from "../lib/bambu_filament_code_batch";
 import type { BambuFilamentCodeLookup } from "../lib/bambu_filament_code_lookup";
 import { formatMasterDisplayTitle } from "../lib/inventory_list_model";
@@ -16,6 +17,7 @@ import type { MasterCatalogRow } from "../lib/tauri_client";
 type InventoryStockSourcePanelProps = {
   activeCatalogMasters: MasterCatalogRow[];
   bambuBatchInput: string;
+  bambuBatchCreateState: BambuFilamentCodeBatchCreateState;
   bambuCodeBatch: BambuFilamentCodeBatch;
   bambuCodeLookup: BambuFilamentCodeLookup;
   catalogQuery: string;
@@ -163,8 +165,40 @@ function bambuBatchRowPreview(row: BambuFilamentCodeBatchRow): string {
   return matches.length > 2 ? `${preview} +${matches.length - 2}` : preview;
 }
 
+function bambuBatchCreateStateMessage(
+  state: BambuFilamentCodeBatchCreateState,
+  t: ReturnType<typeof useI18n>["t"],
+): string | null {
+  if (state.totalCount === 0) {
+    return null;
+  }
+  if (state.reason === "borrowed_owner_required") {
+    return t(
+      "inventory.bambuBatchBorrowedOwnerRequired",
+      "Enter who the spools are borrowed from before creating this borrowed-in batch.",
+    );
+  }
+  if (state.reason === "no_ready_rows") {
+    return t(
+      "inventory.bambuBatchNoneReady",
+      "No rows are ready yet. Review ambiguous, discontinued or missing codes manually.",
+    );
+  }
+  if (state.partial) {
+    return t(
+      "inventory.bambuBatchPartialReady",
+      "Only ready rows will be added; review rows are skipped.",
+    );
+  }
+  if (state.readyCount > 0) {
+    return t("inventory.bambuBatchAllReady", "All pasted codes are ready.");
+  }
+  return null;
+}
+
 function BambuFilamentCodeBatchPanel({
   batch,
+  createState,
   disabledCreate,
   input,
   onCreateBatch,
@@ -172,6 +206,7 @@ function BambuFilamentCodeBatchPanel({
   tauriAvailable,
 }: {
   batch: BambuFilamentCodeBatch;
+  createState: BambuFilamentCodeBatchCreateState;
   disabledCreate: boolean;
   input: string;
   onCreateBatch: () => void;
@@ -181,6 +216,7 @@ function BambuFilamentCodeBatchPanel({
   const { t } = useI18n();
   const visibleRows = batch.rows.slice(0, 6);
   const hiddenCount = Math.max(0, batch.rows.length - visibleRows.length);
+  const createMessage = bambuBatchCreateStateMessage(createState, t);
 
   return (
     <div className="rounded-2xl border border-slate-200/90 bg-white/72 p-3 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45">
@@ -209,6 +245,12 @@ function BambuFilamentCodeBatchPanel({
           </div>
         ) : null}
       </div>
+
+      {createMessage ? (
+        <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+          {createMessage}
+        </div>
+      ) : null}
 
       <textarea
         value={input}
@@ -272,6 +314,7 @@ function BambuFilamentCodeBatchPanel({
 export function InventoryStockSourcePanel({
   activeCatalogMasters,
   bambuBatchInput,
+  bambuBatchCreateState,
   bambuCodeBatch,
   bambuCodeLookup,
   catalogQuery,
@@ -352,6 +395,7 @@ export function InventoryStockSourcePanel({
                   <BambuFilamentCodeLookupHint lookup={bambuCodeLookup} />
                   <BambuFilamentCodeBatchPanel
                     batch={bambuCodeBatch}
+                    createState={bambuBatchCreateState}
                     disabledCreate={disabledBambuBatchCreate}
                     input={bambuBatchInput}
                     onCreateBatch={onCreateBambuCodeBatch}

@@ -319,6 +319,12 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchNoMatch: "No match",
       bambuBatchNoCode: "No code",
       bambuBatchMoreRows: "more",
+      bambuBatchBorrowedOwnerRequired:
+        "Enter who the spools are borrowed from before creating this borrowed-in batch.",
+      bambuBatchNoneReady:
+        "No rows are ready yet. Review ambiguous, discontinued or missing codes manually.",
+      bambuBatchPartialReady: "Only ready rows will be added; review rows are skipped.",
+      bambuBatchAllReady: "All pasted codes are ready.",
       bambuBatchAddReady: "Add ready matches",
       bambuBatchAdded: "Bambu code batch added",
       borrowedInBatchRegistered: "Borrowed-in batch registered",
@@ -1787,6 +1793,13 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchNoMatch: "Ingen treff",
       bambuBatchNoCode: "Ingen kode",
       bambuBatchMoreRows: "til",
+      bambuBatchBorrowedOwnerRequired:
+        "Oppgi hvem filamentene er lånt fra før du oppretter denne innlånte batchen.",
+      bambuBatchNoneReady:
+        "Ingen rader er klare ennå. Avklar tvetydige, utgåtte eller manglende koder manuelt.",
+      bambuBatchPartialReady:
+        "Bare klare rader blir lagt til; rader til sjekk hoppes over.",
+      bambuBatchAllReady: "Alle innlimte koder er klare.",
       bambuBatchAddReady: "Legg til klare treff",
       bambuBatchAdded: "Bambu-kodebatch lagt til",
       borrowedInBatchRegistered: "Innlånt batch registrert",

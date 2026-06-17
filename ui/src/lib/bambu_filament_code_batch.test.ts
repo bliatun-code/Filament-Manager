@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildBambuFilamentCodeBatch } from "./bambu_filament_code_batch";
+import {
+  buildBambuFilamentCodeBatch,
+  buildBambuFilamentCodeBatchCreateState,
+} from "./bambu_filament_code_batch";
 import type { MasterCatalogRow } from "./tauri_client";
 
 function master(overrides: Partial<MasterCatalogRow> = {}): MasterCatalogRow {
@@ -67,5 +70,55 @@ test("buildBambuFilamentCodeBatch blocks ambiguous, discontinued-only, missing, 
   assert.deepEqual(
     batch.blockedRows.map((row) => row.lookup.status),
     ["multiple_active", "discontinued_only", "no_match", "no_code"],
+  );
+});
+
+test("buildBambuFilamentCodeBatchCreateState reports ready, partial, and borrowed-in blockers", () => {
+  const batch = buildBambuFilamentCodeBatch({
+    masters: [
+      master({ id: "yellow", color_name: "Yellow (53400)" }),
+      master({ id: "petg-black", material: "PETG", color_name: "Black (65103)" }),
+      master({ id: "pla-black", material: "PLA", color_name: "Black (65103)" }),
+    ],
+    rawInput: "53400\n65103",
+  });
+
+  assert.deepEqual(
+    buildBambuFilamentCodeBatchCreateState({
+      batch,
+      tauriAvailable: true,
+      busy: false,
+      isBambuMode: true,
+      borrowedOwnerRequired: false,
+    }),
+    {
+      disabled: false,
+      reason: null,
+      readyCount: 1,
+      reviewCount: 1,
+      totalCount: 2,
+      partial: true,
+    },
+  );
+
+  assert.equal(
+    buildBambuFilamentCodeBatchCreateState({
+      batch,
+      tauriAvailable: true,
+      busy: false,
+      isBambuMode: true,
+      borrowedOwnerRequired: true,
+    }).reason,
+    "borrowed_owner_required",
+  );
+  assert.equal(
+    buildBambuFilamentCodeBatchCreateState({
+      batch: buildBambuFilamentCodeBatch({ masters: [], rawInput: "99999" }),
+      tauriAvailable: true,
+      busy: false,
+      isBambuMode: true,
+      borrowedOwnerRequired: false,
+    }).reason,
+    "no_ready_rows",
   );
 });
