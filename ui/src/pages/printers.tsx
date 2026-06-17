@@ -5,6 +5,7 @@ import { AddPrinterModal } from "../components/add_printer_modal";
 import { IncomingWeightModal } from "../components/incoming_weight_modal";
 import { PrinterOverviewCard } from "../components/printer_overview_card";
 import { RfidOverrideModal } from "../components/rfid_override_modal";
+import { SlotCatalogOnboardingModal } from "../components/slot_catalog_onboarding_modal";
 import { useI18n } from "../lib/i18n";
 import { formatDateTime } from "../lib/printer_live_display";
 import { useResolvedTheme } from "../lib/theme_mode";
@@ -125,6 +126,7 @@ export default function PrintersPage() {
     findSpoolById,
     getSlotDraft,
     handleSaveOverrideRfid,
+    handleCreateLiveBambuCatalogSpool,
     incomingWeightPrompt,
     incomingWeightValue,
     openDropdownSlotId,
@@ -141,7 +143,11 @@ export default function PrintersPage() {
     setOpenDropdownSlotId,
     setOutgoingWeightValue,
     setRfidOverridePrompt,
+    setSlotCatalogOnboardingPrompt,
+    setSlotCatalogOwnershipType,
     setSlotDraft,
+    slotCatalogOnboardingPrompt,
+    updateSlotCatalogOnboardingPrompt,
   } = usePrinterSlotInteractions({
     bambuLiveIntegrations,
     busy,
@@ -288,6 +294,32 @@ export default function PrintersPage() {
           prompt={rfidOverridePrompt}
           onClose={() => setRfidOverridePrompt(null)}
           onSave={() => void handleSaveOverrideRfid()}
+        />
+      ) : null}
+
+      {slotCatalogOnboardingPrompt ? (
+        <SlotCatalogOnboardingModal
+          busy={busy}
+          locale={locale}
+          prompt={slotCatalogOnboardingPrompt}
+          onClose={() => setSlotCatalogOnboardingPrompt(null)}
+          onBorrowedFromContactChange={(value) =>
+            updateSlotCatalogOnboardingPrompt({ borrowedFromContact: value })
+          }
+          onBorrowedFromNameChange={(value) =>
+            updateSlotCatalogOnboardingPrompt({ borrowedFromName: value })
+          }
+          onBorrowedInNoteChange={(value) =>
+            updateSlotCatalogOnboardingPrompt({ borrowedInNote: value })
+          }
+          onInitialWeightChange={(value) =>
+            updateSlotCatalogOnboardingPrompt({ initialWeight: value })
+          }
+          onLocationChange={(value) =>
+            updateSlotCatalogOnboardingPrompt({ location: value })
+          }
+          onOwnershipTypeChange={setSlotCatalogOwnershipType}
+          onSave={() => void handleCreateLiveBambuCatalogSpool()}
         />
       ) : null}
 

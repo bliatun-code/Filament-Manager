@@ -3,8 +3,7 @@ import {
   type DiagnosticTraySnapshot,
 } from "../lib/diagnostic_capture";
 import {
-  buildInventoryMetadataCandidateResult,
-  buildInventoryMatchResult,
+  buildBambuUnknownRfidInventoryDecision,
   translateObservedMatchNote,
   type InventoryMatchResult,
 } from "../lib/inventory_match";
@@ -413,17 +412,11 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
     filamentName: tray.filament_name ?? capturedTraySnapshot?.filamentName ?? null,
     colorHex: tray.color_hex ?? capturedTraySnapshot?.colorHex ?? null,
   };
-  const strictInventoryMatch = buildInventoryMatchResult(spoolRows, observedMatchInput, {
+  const inventoryDecision = buildBambuUnknownRfidInventoryDecision(spoolRows, observedMatchInput, {
+    enableMetadataCandidates: Boolean(observedRfid),
     preferredSpoolId: preferredSlot?.spool_id ?? null,
   });
-  const inventoryMatch =
-    strictInventoryMatch.kind === "none" && observedRfid
-      ? buildInventoryMetadataCandidateResult(spoolRows, observedMatchInput, {
-          includeBambuMetadataCandidates: true,
-          onlyBambuMetadataCandidates: true,
-          preferredSpoolId: preferredSlot?.spool_id ?? null,
-        })
-      : strictInventoryMatch;
+  const inventoryMatch = inventoryDecision.suggestedInventoryMatch;
   const primaryInventoryMatch = inventoryMatch.candidates[0] ?? null;
   const matchDescription = buildSettingsBambuLiveInventoryMatchDescription({
     inventoryMatchKind: inventoryMatch.kind,

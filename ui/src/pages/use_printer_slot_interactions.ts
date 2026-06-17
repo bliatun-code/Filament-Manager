@@ -18,12 +18,14 @@ import {
   buildIncomingWeightPrompt,
   buildMeasuredTotalWeightDraft,
   buildRfidOverridePrompt,
+  buildSlotCatalogOnboardingPrompt,
   buildSlotSwapDraft,
   parseWeightInput,
   prepareMeasuredWeightUpdate,
   preparePrinterSlotAssignment,
   resolveSpoolTareWeightForRow,
   type IncomingWeightPrompt,
+  type SlotCatalogOnboardingPrompt,
   type SlotRfidOverridePrompt,
   type SlotSwapDraft,
 } from "../lib/printer_slot_model";
@@ -52,6 +54,7 @@ import type {
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
 import type { I18nContextValue } from "../lib/i18n";
+import type { OwnershipType } from "../lib/inventory_list_model";
 import type { PrinterSnapshotSource } from "../lib/printer_data_source";
 import { useSlotDropdownDismissal } from "./use_slot_dropdown_dismissal";
 
@@ -104,6 +107,8 @@ export function usePrinterSlotInteractions({
   const [outgoingWeightValue, setOutgoingWeightValue] = useState("");
   const [rfidOverridePrompt, setRfidOverridePrompt] =
     useState<SlotRfidOverridePrompt | null>(null);
+  const [slotCatalogOnboardingPrompt, setSlotCatalogOnboardingPrompt] =
+    useState<SlotCatalogOnboardingPrompt | null>(null);
 
   const resetPrinterInteractionState = useCallback(() => {
     setSlotDrafts({});
@@ -111,6 +116,8 @@ export function usePrinterSlotInteractions({
     setIncomingWeightPrompt(null);
     setIncomingWeightValue("");
     setOutgoingWeightValue("");
+    setRfidOverridePrompt(null);
+    setSlotCatalogOnboardingPrompt(null);
   }, []);
 
   const spoolsById = useMemo(() => buildSpoolsById(spools), [spools]);
@@ -680,7 +687,7 @@ export function usePrinterSlotInteractions({
   );
 
   const createLiveBambuCatalogSpool = useCallback(
-    async (
+    (
       printer: PrinterOverviewRow,
       slot: PrinterAmsSlotRow,
       liveTray: BambuLiveObservedTray,
@@ -715,76 +722,166 @@ export function usePrinterSlotInteractions({
         return;
       }
 
-      const request = buildInventoryCreateSpoolRequest({
-        id: `spool_${Date.now()}`,
-        mode: "bambu",
-        selectedBambuMaster: master,
-        selectedEsunMaster: null,
-        initialWeightRaw: String(master.default_weight || 1000),
-        ownershipType: "OWNED",
-      });
-      if (!request.ok || request.kind !== "catalog") {
-        setError(t("inventory.error.add", "Failed to add filament."));
-        return;
-      }
+      const liveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
+      setSlotCatalogOnboardingPrompt(
+        buildSlotCatalogOnboardingPrompt(printer, slot, master, liveTray, liveConfig),
+      );
+    },
+    [
+      bambuLiveIntegrations,
+      busy,
+      canUseClientHostWrite,
+      clientReadOnly,
+      ensureLocalWriteAllowed,
+      setError,
+      tauri,
+      t,
+    ],
+  );
 
-      setBusy(true);
-      setError(null);
-      setInfo(null);
-      try {
-        const createdSpoolId = await createInventorySpoolFromMaster(request.input, {
+  const updateSlotCatalogOnboardingPrompt = useCallback(
+    (patch: Partial<SlotCatalogOnboardingPrompt>) => {
+      setSlotCatalogOnboardingPrompt((current) =>
+        current ? { ...current, ...patch } : current,
+      );
+    },
+    [],
+  );
+
+  const setSlotCatalogOwnershipType = useCallback(
+    (ownershipType: OwnershipType) => {
+      updateSlotCatalogOnboardingPrompt({ ownershipType });
+    },
+    [updateSlotCatalogOnboardingPrompt],
+  );
+
+  const handleCreateLiveBambuCatalogSpool = useCallback(async () => {
+    if (!slotCatalogOnboardingPrompt || !tauri || busy) {
+      return;
+    }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
+
+    const {
+      master,
+      liveTray,
+      printerId,
+      slot,
+      initialWeight,
+      location,
+      ownershipType,
+      borrowedFromName,
+      borrowedFromContact,
+      borrowedInNote,
+    } = slotCatalogOnboardingPrompt;
+    const observedRfid = liveTrayIdentity(liveTray);
+    if (!observedRfid) {
+      setError(
+        t(
+          "printers.rfidOverrideNothingToSave",
+          "No non-empty RFID identity is available to save for this slot.",
+        ),
+      );
+      return;
+    }
+    if (slot.spool_id) {
+      setError(
+        t(
+          "printers.error.createFromCatalogRequiresEmptySlot",
+          "Clear or swap the current roll through the normal slot flow before creating a new catalog roll here.",
+        ),
+      );
+      return;
+    }
+    if (ownershipType === "BORROWED_IN" && !borrowedFromName.trim()) {
+      setError(
+        t(
+          "inventory.error.borrowedInNeedsOwner",
+          "Borrowed-in registration needs a name for who the spool is borrowed from.",
+        ),
+      );
+      return;
+    }
+
+    const request = buildInventoryCreateSpoolRequest({
+      id: `spool_${Date.now()}`,
+      mode: "bambu",
+      selectedBambuMaster: master,
+      selectedEsunMaster: null,
+      initialWeightRaw: initialWeight,
+      ownershipType,
+      borrowedFromName,
+      borrowedFromContact,
+      borrowedInNote,
+      location,
+    });
+    if (!request.ok || request.kind !== "catalog") {
+      setError(t("inventory.error.add", "Failed to add filament."));
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const createdSpoolId = await createInventorySpoolFromMaster(request.input, {
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+      });
+      await updateInventorySpoolRfidTag(
+        {
+          spool_id: createdSpoolId,
+          rfid_tag: observedRfid,
+          rfid_observed_at:
+            liveTray.last_identity_seen_at ??
+            bambuLiveIntegrations[printerId]?.observed_state?.last_seen_at ??
+            new Date().toISOString(),
+        },
+        {
           clientReadOnly,
           clientHostBaseUrl,
           clientLibraryId,
-        });
-        await updateInventorySpoolRfidTag(
-          {
-            spool_id: createdSpoolId,
-            rfid_tag: observedRfid,
-            rfid_observed_at:
-              liveTray.last_identity_seen_at ??
-              bambuLiveIntegrations[printer.printer.id]?.observed_state?.last_seen_at ??
-              new Date().toISOString(),
-          },
-          {
-            clientReadOnly,
-            clientHostBaseUrl,
-            clientLibraryId,
-          },
-        );
-        await writePrinterSlotAssignment(
-          {
-            clientReadOnly,
-            clientHostBaseUrl,
-            clientLibraryId,
-          },
-          {
-            printer_id: printer.printer.id,
-            slot_id: slot.slot_id,
-            spool_id: createdSpoolId,
-            rfid_override_tray_uuid: observedRfid,
-            rfid_override_color_hex: liveTray.color_hex?.trim() || null,
-            clear_live_cache_before_next_refresh: false,
-          },
-        );
-        await reloadData();
-        setInfo(
-          t(
-            "printers.liveCatalogCreatedAndAssigned",
-            "{label} was added, RFID was saved, and the roll was assigned to this slot.",
-          ).replace("{label}", request.addedLabel),
-        );
-      } catch (createError) {
-        console.error(createError);
-        setError(
-          commandErrorText(
-            createError,
-            t("inventory.error.add", "Failed to add filament."),
-          ),
-        );
-      } finally {
-        setBusy(false);
-      }
+        },
+      );
+      await writePrinterSlotAssignment(
+        {
+          clientReadOnly,
+          clientHostBaseUrl,
+          clientLibraryId,
+        },
+        {
+          printer_id: printerId,
+          slot_id: slot.slot_id,
+          spool_id: createdSpoolId,
+          rfid_override_tray_uuid: observedRfid,
+          rfid_override_color_hex: liveTray.color_hex?.trim() || null,
+          clear_live_cache_before_next_refresh: false,
+        },
+      );
+      await reloadData();
+      setSlotCatalogOnboardingPrompt(null);
+      setInfo(
+        t(
+          "printers.liveCatalogCreatedAndAssigned",
+          "{label} was added, RFID was saved, and the roll was assigned to this slot.",
+        ).replace("{label}", request.addedLabel),
+      );
+    } catch (createError) {
+      console.error(createError);
+      setError(
+        commandErrorText(
+          createError,
+          t("inventory.error.add", "Failed to add filament."),
+        ),
+      );
+    } finally {
+      setBusy(false);
+    }
     },
     [
       bambuLiveIntegrations,
@@ -798,6 +895,7 @@ export function usePrinterSlotInteractions({
       setBusy,
       setError,
       setInfo,
+      slotCatalogOnboardingPrompt,
       tauri,
       t,
     ],
@@ -858,6 +956,7 @@ export function usePrinterSlotInteractions({
     openRfidOverrideDialog,
     registerLiveRfidCandidate,
     createLiveBambuCatalogSpool,
+    handleCreateLiveBambuCatalogSpool,
     openWeightPromptForDraft,
     outgoingWeightValue,
     resetPrinterInteractionState,
@@ -866,6 +965,10 @@ export function usePrinterSlotInteractions({
     setOpenDropdownSlotId,
     setOutgoingWeightValue,
     setRfidOverridePrompt,
+    setSlotCatalogOnboardingPrompt,
+    setSlotCatalogOwnershipType,
     setSlotDraft,
+    slotCatalogOnboardingPrompt,
+    updateSlotCatalogOnboardingPrompt,
   };
 }

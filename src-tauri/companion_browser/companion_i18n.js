@@ -97,6 +97,8 @@ const dictionaries = {
       bambuCodeDiscontinuedOnly: "Only discontinued Bambu catalog entries use this code.",
       bambuCodeNoMatch: "No Bambu catalog entry uses this filament code yet.",
       bambuCodeMoreMatches: "more",
+      bambuCodeTryCatalogSearch: "You can still search by material, series, or color name.",
+      bambuCodeEnterExample: "Type the code into the search field, for example 53400.",
       activeOnly: "Active",
       allCatalog: "All",
       selected: "Selected",
@@ -611,6 +613,9 @@ const dictionaries = {
         "Bare utgåtte Bambu-katalogoppføringer bruker denne koden.",
       bambuCodeNoMatch: "Ingen Bambu-katalogoppføring bruker denne filamentkoden ennå.",
       bambuCodeMoreMatches: "til",
+      bambuCodeTryCatalogSearch:
+        "Du kan fortsatt søke etter materiale, serie eller fargenavn.",
+      bambuCodeEnterExample: "Skriv koden i søkefeltet, for eksempel 53400.",
       activeOnly: "Aktive",
       allCatalog: "Alle",
       selected: "Valgt",

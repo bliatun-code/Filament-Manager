@@ -306,6 +306,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuCodeDiscontinuedOnly: "Only discontinued Bambu catalog entries use this code.",
       bambuCodeNoMatch: "No Bambu catalog entry uses this filament code yet.",
       bambuCodeMoreMatches: "more",
+      bambuCodeTryCatalogSearch: "You can still search by material, series, or color name.",
+      bambuCodeEnterExample: "Type the code into the search field, for example 53400.",
       manualDetails: "Manual details",
       manualDetailsHelp:
         "Use this when a filament is missing from the vendor catalog or you want a fully manual entry.",
@@ -729,7 +731,11 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Bambu catalog has one likely match. Add it here to save the live RFID.",
       liveCatalogCandidateCount:
         "{count} Bambu catalog entries look like this live roll.",
+      slotOnboarding: "AMS onboarding",
       addCatalogRollAndSaveRfid: "Add + save RFID",
+      addBorrowedCatalogRollAndSaveRfid: "Add borrowed-in + save RFID",
+      slotOnboardingOccupied:
+        "This slot already has a roll assigned. Clear or swap it through the normal slot flow before creating a new roll from the live AMS signal.",
       liveCatalogRequiresEmptySlot: "clear slot first",
       liveRfidRegisteredAndAssigned:
         "RFID saved and the suggested roll was assigned to this slot.",
@@ -1745,6 +1751,9 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Bare utgåtte Bambu-katalogoppføringer bruker denne koden.",
       bambuCodeNoMatch: "Ingen Bambu-katalogoppføring bruker denne filamentkoden ennå.",
       bambuCodeMoreMatches: "til",
+      bambuCodeTryCatalogSearch:
+        "Du kan fortsatt søke etter materiale, serie eller fargenavn.",
+      bambuCodeEnterExample: "Skriv koden i søkefeltet, for eksempel 53400.",
       manualDetails: "Manuelle detaljer",
       manualDetailsHelp:
         "Bruk dette når et filament mangler i leverandørkatalogen eller du vil opprette alt manuelt.",
@@ -2170,7 +2179,11 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Bambu-katalogen har én sannsynlig match. Legg den til her for å lagre live-RFID.",
       liveCatalogCandidateCount:
         "{count} Bambu-katalogoppføringer ligner denne live-rullen.",
+      slotOnboarding: "AMS-innrulling",
       addCatalogRollAndSaveRfid: "Legg til + lagre RFID",
+      addBorrowedCatalogRollAndSaveRfid: "Legg til innlånt + lagre RFID",
+      slotOnboardingOccupied:
+        "Dette sporet har allerede en tildelt rull. Tøm eller bytt den via vanlig sporflyt før du oppretter en ny rull fra live AMS-signalet.",
       liveCatalogRequiresEmptySlot: "tøm sporet først",
       liveRfidRegisteredAndAssigned:
         "RFID lagret og foreslått rull ble tildelt dette sporet.",

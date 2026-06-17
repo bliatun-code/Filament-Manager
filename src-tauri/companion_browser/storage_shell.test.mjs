@@ -133,6 +133,66 @@ test("add filament task sheet exposes stock and wishlist flows from the same sel
   assert.match(html, /Add current selection to wishlist/);
 });
 
+test("add filament task sheet shows Bambu filament code help before and after lookup", () => {
+  const state = createInitialCompanionState();
+  state.catalogMasters = [
+    {
+      id: "master-code",
+      material: "TPU",
+      filament_name: "TPU for AMS",
+      color_name: "Yellow (53400)",
+      hex_color: "#FACC15",
+      product_url: null,
+      default_weight: 1000,
+      vendor: "Bambu",
+      is_discontinued: false,
+      discontinued_at: null,
+    },
+  ];
+
+  const helpHtml = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+  assert.match(helpHtml, /Filament Code/);
+  assert.match(helpHtml, /53400/);
+  assert.match(helpHtml, /Type the code into the search field/);
+
+  state.borrowedInDraft = {
+    ...state.borrowedInDraft,
+    catalogSearch: "53400",
+  };
+  const lookupHtml = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+  assert.match(lookupHtml, /One active Bambu catalog entry matched and is selected/);
+  assert.match(lookupHtml, /TPU for AMS/);
+});
+
+test("add filament task sheet surfaces discontinued-only Bambu code matches under active filter", () => {
+  const state = createInitialCompanionState();
+  state.borrowedInDraft = {
+    ...state.borrowedInDraft,
+    catalogSearch: "12345",
+    catalogStatusFilter: "ACTIVE",
+  };
+  state.catalogMasters = [
+    {
+      id: "master-old",
+      material: "PLA",
+      filament_name: "PLA Basic",
+      color_name: "Old Red (12345)",
+      hex_color: "#B91C1C",
+      product_url: null,
+      default_weight: 1000,
+      vendor: "Bambu",
+      is_discontinued: true,
+      discontinued_at: "2024-01-01T00:00:00Z",
+    },
+  ];
+
+  const html = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+
+  assert.match(html, /Only discontinued Bambu catalog entries use this code/);
+  assert.match(html, /Old Red \(12345\)/);
+  assert.match(html, /Discontinued/);
+});
+
 test("add filament task sheet localizes key copy in norwegian", () => {
   const state = createInitialCompanionState();
   state.locale = "nb";

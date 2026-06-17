@@ -2,10 +2,12 @@ import type {
   AssignPrinterSlotInput,
   BambuLiveIntegrationEntry,
   BambuLiveObservedTray,
+  MasterCatalogRow,
   PrinterAmsSlotRow,
   PrinterOverviewRow,
   SpoolWithMasterRow,
 } from "./tauri_client";
+import type { OwnershipType } from "./inventory_list_model";
 import { isUnknownLiveRfid, liveTrayIdentity } from "./printer_live_display";
 import { resolveSpoolTareWeight } from "./spool_weight";
 
@@ -39,6 +41,22 @@ export type SlotRfidOverridePrompt = {
   spool: SpoolWithMasterRow;
   liveTray: BambuLiveObservedTray;
   observedAt: string | null;
+};
+
+export type SlotCatalogOnboardingPrompt = {
+  printerId: string;
+  printerName: string;
+  printerModel: string;
+  slot: PrinterAmsSlotRow;
+  liveTray: BambuLiveObservedTray;
+  master: MasterCatalogRow;
+  observedAt: string | null;
+  initialWeight: string;
+  location: string;
+  ownershipType: OwnershipType;
+  borrowedFromName: string;
+  borrowedFromContact: string;
+  borrowedInNote: string;
 };
 
 export type PreparedPrinterSlotAssignment = {
@@ -199,6 +217,30 @@ export function buildRfidOverridePrompt(
     spool,
     liveTray,
     observedAt: liveTray.last_identity_seen_at ?? liveConfig?.observed_state?.last_seen_at ?? null,
+  };
+}
+
+export function buildSlotCatalogOnboardingPrompt(
+  printer: PrinterOverviewRow,
+  slot: PrinterAmsSlotRow,
+  master: MasterCatalogRow,
+  liveTray: BambuLiveObservedTray,
+  liveConfig: BambuLiveIntegrationEntry["config"] | null,
+): SlotCatalogOnboardingPrompt {
+  return {
+    printerId: printer.printer.id,
+    printerName: printer.printer.name,
+    printerModel: printer.printer.model,
+    slot,
+    liveTray,
+    master,
+    observedAt: liveTray.last_identity_seen_at ?? liveConfig?.observed_state?.last_seen_at ?? null,
+    initialWeight: String(master.default_weight || 1000),
+    location: "",
+    ownershipType: "OWNED",
+    borrowedFromName: "",
+    borrowedFromContact: "",
+    borrowedInNote: "",
   };
 }
 

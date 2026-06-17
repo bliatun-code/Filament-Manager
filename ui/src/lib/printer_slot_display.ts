@@ -11,8 +11,7 @@ import {
 } from "./bambu_live_catalog_match";
 import type { Locale } from "./i18n";
 import {
-  buildInventoryMetadataCandidateResult,
-  buildInventoryMatchResult,
+  buildBambuUnknownRfidInventoryDecision,
   type InventoryMatchResult,
 } from "./inventory_match";
 import {
@@ -142,19 +141,17 @@ export function derivePrinterSlotDisplayState(options: {
         colorHex: effectiveLiveTray.color_hex,
       }
     : null;
-  const liveInventoryMatch = observedInventoryInput
-    ? buildInventoryMatchResult(spoolRows, observedInventoryInput, {
+  const inventoryDecision = observedInventoryInput
+    ? buildBambuUnknownRfidInventoryDecision(spoolRows, observedInventoryInput, {
+        enableMetadataCandidates: unknownLiveRfid,
         preferredSpoolId: slot.spool_id ?? null,
       })
-    : { kind: "none" as const, candidates: [] };
-  const liveSuggestedInventoryMatch =
-    observedInventoryInput && unknownLiveRfid
-      ? buildInventoryMetadataCandidateResult(spoolRows, observedInventoryInput, {
-          includeBambuMetadataCandidates: true,
-          onlyBambuMetadataCandidates: true,
-          preferredSpoolId: slot.spool_id ?? null,
-        })
-      : liveInventoryMatch;
+    : {
+        strictInventoryMatch: { kind: "none" as const, candidates: [] },
+        suggestedInventoryMatch: { kind: "none" as const, candidates: [] },
+      };
+  const liveInventoryMatch = inventoryDecision.strictInventoryMatch;
+  const liveSuggestedInventoryMatch = inventoryDecision.suggestedInventoryMatch;
   const liveCatalogMatch =
     unknownLiveRfid && liveSuggestedInventoryMatch.candidates.length === 0
       ? buildBambuLiveCatalogMatchResult(catalogRows, effectiveLiveTray)

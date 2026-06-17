@@ -41,10 +41,6 @@ function BambuFilamentCodeLookupHint({
 }) {
   const { t } = useI18n();
 
-  if (!lookup.code) {
-    return null;
-  }
-
   const displayMatches =
     lookup.activeMatches.length > 0 ? lookup.activeMatches : lookup.discontinuedMatches;
   const matchPreview = displayMatches
@@ -54,10 +50,15 @@ function BambuFilamentCodeLookupHint({
   const remainingCount = Math.max(0, displayMatches.length - 3);
 
   let message = t(
-    "inventory.bambuCodeNoMatch",
-    "No Bambu catalog entry uses this filament code yet.",
+    "inventory.bambuCodeHelp",
+    "Use the five digit code printed as Filament Code on the Bambu box label.",
   );
-  if (lookup.status === "single_active") {
+  if (lookup.status === "no_match") {
+    message = t(
+      "inventory.bambuCodeNoMatch",
+      "No Bambu catalog entry uses this filament code yet.",
+    );
+  } else if (lookup.status === "single_active") {
     message = t(
       "inventory.bambuCodeSingleMatch",
       "One active Bambu catalog entry matched and is selected.",
@@ -85,7 +86,7 @@ function BambuFilamentCodeLookupHint({
             {t("inventory.bambuCodeLabel", "Filament Code")}
           </span>
           <span className="mt-1 block text-lg font-semibold tracking-normal text-slate-900 dark:text-slate-50">
-            {lookup.code}
+            {lookup.code ?? "53400"}
           </span>
         </div>
         <div className="min-w-0 flex-1">
@@ -99,10 +100,15 @@ function BambuFilamentCodeLookupHint({
             </div>
           ) : (
             <div className="mt-1 leading-5 text-slate-500 dark:text-slate-400">
-              {t(
-                "inventory.bambuCodeHelp",
-                "Use the five digit code printed as Filament Code on the Bambu box label.",
-              )}
+              {lookup.code
+                ? t(
+                    "inventory.bambuCodeTryCatalogSearch",
+                    "You can still search by material, series, or color name.",
+                  )
+                : t(
+                    "inventory.bambuCodeEnterExample",
+                    "Type the code into the search field, for example 53400.",
+                  )}
             </div>
           )}
         </div>

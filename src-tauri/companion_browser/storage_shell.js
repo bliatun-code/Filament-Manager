@@ -4,6 +4,10 @@ import {
   formatStatusLabel,
   sortCatalogMastersAlphabetically,
 } from "./formatters.js";
+import {
+  buildBambuFilamentCodeLookup,
+  catalogMasterMatchesBambuFilamentCode,
+} from "./bambu_filament_code_lookup.js";
 import { styleObjectToString, suggestSwatchHex, swatchCssVars, toSwatchColor } from "./companion_theme.js";
 import { t } from "./companion_i18n.js";
 
@@ -18,65 +22,7 @@ function catalogMatchesSource(master, source) {
   return vendor.includes("bambu");
 }
 
-const FILAMENT_CODE_PATTERN = /(?<!\d)\d{5}(?!\d)/;
-
-function extractBambuFilamentCode(value) {
-  return String(value || "").match(FILAMENT_CODE_PATTERN)?.[0] || null;
-}
-
-function catalogMasterBambuFilamentCode(master) {
-  const vendor = String(master?.vendor || "").trim().toLowerCase();
-  if (!vendor.includes("bambu")) {
-    return null;
-  }
-  return extractBambuFilamentCode(master?.color_name);
-}
-
-function catalogMasterMatchesBambuFilamentCode(master, code) {
-  return code ? catalogMasterBambuFilamentCode(master) === code : false;
-}
-
-function buildBambuFilamentCodeLookup(masters, rawQuery) {
-  const code = extractBambuFilamentCode(rawQuery);
-  if (!code) {
-    return {
-      code: null,
-      status: "no_code",
-      matches: [],
-      activeMatches: [],
-      discontinuedMatches: [],
-    };
-  }
-
-  const matches = masters
-    .filter((master) => catalogMasterMatchesBambuFilamentCode(master, code))
-    .sort((left, right) => {
-      if (Boolean(left.is_discontinued) !== Boolean(right.is_discontinued)) {
-        return Number(Boolean(left.is_discontinued)) - Number(Boolean(right.is_discontinued));
-      }
-      return `${left.material} ${left.filament_name} ${left.color_name}`.localeCompare(
-        `${right.material} ${right.filament_name} ${right.color_name}`,
-      );
-    });
-  const activeMatches = matches.filter((master) => !master.is_discontinued);
-  const discontinuedMatches = matches.filter((master) => master.is_discontinued);
-  let status = "no_match";
-  if (activeMatches.length === 1) {
-    status = "single_active";
-  } else if (activeMatches.length > 1) {
-    status = "multiple_active";
-  } else if (discontinuedMatches.length > 0) {
-    status = "discontinued_only";
-  }
-
-  return { code, status, matches, activeMatches, discontinuedMatches };
-}
-
 function renderBambuFilamentCodeLookupHint(lookup, locale, escapeHtml) {
-  if (!lookup.code) {
-    return "";
-  }
-
   const displayMatches =
     lookup.activeMatches.length > 0 ? lookup.activeMatches : lookup.discontinuedMatches;
   const matchPreview = displayMatches
@@ -84,8 +30,14 @@ function renderBambuFilamentCodeLookupHint(lookup, locale, escapeHtml) {
     .map((master) => formatInventoryDisplayTitle(master.material, master.filament_name, master.color_name))
     .join(", ");
   const remainingCount = Math.max(0, displayMatches.length - 3);
-  let message = t(locale, "storage.bambuCodeNoMatch", "No Bambu catalog entry uses this filament code yet.");
-  if (lookup.status === "single_active") {
+  let message = t(
+    locale,
+    "storage.bambuCodeHelp",
+    "Use the five digit code printed as Filament Code on the Bambu box label.",
+  );
+  if (lookup.status === "no_match") {
+    message = t(locale, "storage.bambuCodeNoMatch", "No Bambu catalog entry uses this filament code yet.");
+  } else if (lookup.status === "single_active") {
     message = t(locale, "storage.bambuCodeSingleMatch", "One active Bambu catalog entry matched and is selected.");
   } else if (lookup.status === "multiple_active") {
     message = t(
@@ -101,7 +53,7 @@ function renderBambuFilamentCodeLookupHint(lookup, locale, escapeHtml) {
     <div class="add-spool-code-lookup" aria-live="polite">
       <div class="add-spool-code-label">
         <span>${escapeHtml(t(locale, "storage.bambuCodeLabel", "Filament Code"))}</span>
-        <strong>${escapeHtml(lookup.code)}</strong>
+        <strong>${escapeHtml(lookup.code || "53400")}</strong>
       </div>
       <div class="add-spool-code-copy">
         <div>${escapeHtml(message)}</div>
@@ -113,11 +65,17 @@ function renderBambuFilamentCodeLookupHint(lookup, locale, escapeHtml) {
                   : ""
               }</p>`
             : `<p>${escapeHtml(
-                t(
-                  locale,
-                  "storage.bambuCodeHelp",
-                  "Use the five digit code printed as Filament Code on the Bambu box label.",
-                ),
+                lookup.code
+                  ? t(
+                      locale,
+                      "storage.bambuCodeTryCatalogSearch",
+                      "You can still search by material, series, or color name.",
+                    )
+                  : t(
+                      locale,
+                      "storage.bambuCodeEnterExample",
+                      "Type the code into the search field, for example 53400.",
+                    ),
               )}</p>`
         }
       </div>
@@ -139,7 +97,14 @@ function resolveAddSheetState(state) {
       if (!catalogMatchesSource(master, source)) {
         return false;
       }
-      if (catalogStatusFilter === "ACTIVE" && master.is_discontinued) {
+      const codeMatchesMaster =
+        source === "bambu" &&
+        catalogMasterMatchesBambuFilamentCode(master, bambuCodeLookup?.code);
+      const includeDiscontinuedCodeMatch =
+        catalogStatusFilter === "ACTIVE" &&
+        bambuCodeLookup?.status === "discontinued_only" &&
+        codeMatchesMaster;
+      if (catalogStatusFilter === "ACTIVE" && master.is_discontinued && !includeDiscontinuedCodeMatch) {
         return false;
       }
       if (catalogStatusFilter === "DISCONTINUED" && !master.is_discontinued) {
@@ -150,7 +115,7 @@ function resolveAddSheetState(state) {
       }
       return `${master.material} ${master.filament_name} ${master.color_name} ${master.vendor}`
         .toLowerCase()
-        .includes(catalogSearch) || catalogMasterMatchesBambuFilamentCode(master, bambuCodeLookup?.code);
+        .includes(catalogSearch) || codeMatchesMaster;
     }),
   );
   const selectedMasterId = String(draft.selectedMasterId || "").trim();

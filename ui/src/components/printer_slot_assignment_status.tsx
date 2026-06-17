@@ -155,7 +155,7 @@ export function PrinterSlotAssignmentStatus({
     if (rows.length === 0) {
       return null;
     }
-    const visibleRows = rows.slice(0, 3);
+    const visibleRows = rows.slice(0, 4);
     const currentAssignmentMatched = Boolean(
       slot.spool_id && rows.some((row) => row.spool.id === slot.spool_id),
     );
@@ -206,6 +206,11 @@ export function PrinterSlotAssignmentStatus({
                     ? ` · ${t("printers.liveCandidateCurrent", "current")}`
                     : ""}
                 </span>
+                {row.spool.ownership_type === "BORROWED_IN" ? (
+                  <span className="shrink-0 rounded-md border border-sky-200/80 bg-sky-50/80 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-200">
+                    {t("inventory.borrowedIn", "Borrowed in")}
+                  </span>
+                ) : null}
                 {unknownLiveRfid ? (
                   canRegisterCandidate ? (
                     <button

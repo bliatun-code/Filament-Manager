@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildBambuUnknownRfidInventoryDecision,
   buildInventoryMetadataCandidateResult,
   buildInventoryMatchResult,
   translateObservedMatchNote,
@@ -16,6 +17,7 @@ function createRow(
     filamentName?: string;
     hexColor?: string | null;
     vendor?: string;
+    ownershipType?: string;
   } = {},
 ): SpoolWithMasterRow {
   return {
@@ -24,6 +26,7 @@ function createRow(
       master_id: `${id}-master`,
       status: overrides.status ?? "IN_STOCK",
       rfid_tag: overrides.rfidTag,
+      ownership_type: overrides.ownershipType ?? "OWNED",
     },
     master: {
       id: `${id}-master`,
@@ -140,6 +143,78 @@ test("buildInventoryMetadataCandidateResult suggests Bambu rows for unknown RFID
 
   assert.equal(result.kind, "metadata_single");
   assert.deepEqual(result.candidates.map((row) => row.spool.id), ["bambu-black"]);
+});
+
+test("buildBambuUnknownRfidInventoryDecision keeps strict RFID match before Bambu metadata assistance", () => {
+  const observed = {
+    rfid: "UNREGISTERED-BAMBU-RFID",
+    material: "PLA",
+    filamentName: "PLA Matte",
+    colorHex: "#000000",
+  };
+  const rows = [
+    createRow("bambu-black", {
+      vendor: "Bambu",
+      material: "PLA",
+      filamentName: "PLA Matte",
+      hexColor: "#000000",
+    }),
+    createRow("esun-black", {
+      vendor: "eSUN",
+      material: "PLA",
+      filamentName: "PLA+HS",
+      hexColor: "#000000",
+    }),
+  ];
+
+  const disabledDecision = buildBambuUnknownRfidInventoryDecision(rows, observed, {
+    enableMetadataCandidates: false,
+  });
+  const enabledDecision = buildBambuUnknownRfidInventoryDecision(rows, observed, {
+    enableMetadataCandidates: true,
+  });
+  const exactDecision = buildBambuUnknownRfidInventoryDecision(
+    [createRow("exact", { rfidTag: "UNREGISTERED-BAMBU-RFID", vendor: "Bambu" })],
+    observed,
+    { enableMetadataCandidates: true },
+  );
+
+  assert.equal(disabledDecision.strictInventoryMatch.kind, "none");
+  assert.equal(disabledDecision.suggestedInventoryMatch.kind, "none");
+  assert.equal(enabledDecision.strictInventoryMatch.kind, "none");
+  assert.equal(enabledDecision.suggestedInventoryMatch.kind, "metadata_single");
+  assert.deepEqual(enabledDecision.suggestedInventoryMatch.candidates.map((row) => row.spool.id), [
+    "bambu-black",
+  ]);
+  assert.equal(exactDecision.strictInventoryMatch.kind, "rfid_exact");
+  assert.equal(exactDecision.suggestedInventoryMatch.kind, "rfid_exact");
+});
+
+test("buildInventoryMetadataCandidateResult keeps borrowed-in Bambu rows available for unknown RFID assistance", () => {
+  const result = buildInventoryMetadataCandidateResult(
+    [
+      createRow("borrowed-in-bambu", {
+        vendor: "Bambu",
+        ownershipType: "BORROWED_IN",
+        material: "PLA",
+        filamentName: "PLA Matte",
+        hexColor: "#000000",
+      }),
+    ],
+    {
+      rfid: "UNREGISTERED-BAMBU-RFID",
+      material: "PLA",
+      filamentName: "PLA Matte",
+      colorHex: "#000000",
+    },
+    {
+      includeBambuMetadataCandidates: true,
+      onlyBambuMetadataCandidates: true,
+    },
+  );
+
+  assert.equal(result.kind, "metadata_single");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), ["borrowed-in-bambu"]);
 });
 
 test("buildInventoryMatchResult falls back to metadata matching", () => {

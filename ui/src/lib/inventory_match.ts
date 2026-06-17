@@ -34,6 +34,11 @@ export type InventoryMatchOptions = {
   onlyBambuMetadataCandidates?: boolean;
 };
 
+export type BambuUnknownRfidInventoryDecision = {
+  strictInventoryMatch: InventoryMatchResult;
+  suggestedInventoryMatch: InventoryMatchResult;
+};
+
 const LIVE_COLOR_MATCH_DISTANCE = 48;
 const BLACK_BOX_VENDOR = "bambu";
 
@@ -395,6 +400,29 @@ export function buildInventoryMetadataCandidateResult(
   options: InventoryMatchOptions = {},
 ): InventoryMatchResult {
   return buildInventoryMatchResult(spoolRows, { ...observed, rfid: null }, options);
+}
+
+export function buildBambuUnknownRfidInventoryDecision(
+  spoolRows: SpoolWithMasterRow[],
+  observed: ObservedInventoryMatchInput,
+  options: InventoryMatchOptions & { enableMetadataCandidates?: boolean } = {},
+): BambuUnknownRfidInventoryDecision {
+  const strictInventoryMatch = buildInventoryMatchResult(spoolRows, observed, {
+    preferredSpoolId: options.preferredSpoolId,
+  });
+  const suggestedInventoryMatch =
+    options.enableMetadataCandidates && strictInventoryMatch.kind === "none"
+      ? buildInventoryMetadataCandidateResult(spoolRows, observed, {
+          includeBambuMetadataCandidates: true,
+          onlyBambuMetadataCandidates: true,
+          preferredSpoolId: options.preferredSpoolId,
+        })
+      : strictInventoryMatch;
+
+  return {
+    strictInventoryMatch,
+    suggestedInventoryMatch,
+  };
 }
 
 export function translateObservedMatchNote(
