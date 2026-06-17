@@ -7,7 +7,7 @@ export function useSettingsSwatchMessages(t: SettingsTranslator) {
   const settingsSwatchErrorMessageLabels = useCallback(() => ({
     invalidSwatchHex: t(
       "settings.error.invalidSwatchHex",
-      "Invalid swatch hex value. Use #RGB or #RRGGBB.",
+      "Invalid swatch value. Use #RGB, #RRGGBB, gradient(...), or multi(...).",
     ),
     saveSwatchFailed: t(
       "settings.error.saveSwatch",

@@ -355,7 +355,8 @@ test("settings swatch single-action messages return stable copy", () => {
 
 test("settings swatch error messages return stable fallback copy", () => {
   const labels = {
-    invalidSwatchHex: "Invalid swatch hex value. Use #RGB or #RRGGBB.",
+    invalidSwatchHex:
+      "Invalid swatch value. Use #RGB, #RRGGBB, gradient(...), or multi(...).",
     saveSwatchFailed: "Failed to save swatch for selected filament.",
   };
 

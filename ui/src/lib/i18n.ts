@@ -1351,7 +1351,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         updatePrinter: "Failed to update printer.",
         setActive: "Failed to set active printer.",
         deletePrinter: "Failed to delete printer.",
-        invalidSwatchHex: "Invalid swatch hex value. Use #RGB or #RRGGBB.",
+        invalidSwatchHex:
+          "Invalid swatch value. Use #RGB, #RRGGBB, gradient(...), or multi(...).",
         saveSwatch: "Failed to save swatch for selected filament.",
         resetApp: "Failed to reset app data.",
         resetCatalogs: "Failed to repair catalog.",
