@@ -3,22 +3,71 @@ use serde::Deserialize;
 const SUPPORTED_PRINTER_MODELS_JSON: &str =
     include_str!("../../src/data/supported_printer_models.json");
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum PrinterProfileKey {
+    BambuMulti,
+    BambuA1,
+    PrusaMmu,
+    PrusaMini,
+    PrusaXl,
+    PrusaXlSingle,
+    PrusaXlDual,
+    PrusaXlFive,
+    Generic,
+}
+
+impl PrinterProfileKey {
+    fn as_catalog_key(&self) -> &'static str {
+        match self {
+            Self::BambuMulti => "bambu_multi",
+            Self::BambuA1 => "bambu_a1",
+            Self::PrusaMmu => "prusa_mmu",
+            Self::PrusaMini => "prusa_mini",
+            Self::PrusaXl => "prusa_xl",
+            Self::PrusaXlSingle => "prusa_xl_single",
+            Self::PrusaXlDual => "prusa_xl_dual",
+            Self::PrusaXlFive => "prusa_xl_five",
+            Self::Generic => "generic",
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
 struct SupportedPrinterModel {
     model: String,
+    profile: PrinterProfileKey,
+}
+
+fn parse_supported_printer_model_catalog(raw: &str) -> Result<Vec<SupportedPrinterModel>, String> {
+    let entries = serde_json::from_str::<Vec<SupportedPrinterModel>>(raw)
+        .map_err(|error| format!("supported printer model catalog must be valid JSON: {error}"))?;
+    for (index, entry) in entries.iter().enumerate() {
+        if entry.model.trim().is_empty() {
+            return Err(format!(
+                "supported printer model catalog entry {} has an empty model",
+                index + 1
+            ));
+        }
+        let _ = entry.profile.as_catalog_key();
+    }
+    Ok(entries)
 }
 
 pub(crate) fn supported_printer_models() -> Vec<String> {
-    serde_json::from_str::<Vec<SupportedPrinterModel>>(SUPPORTED_PRINTER_MODELS_JSON)
-        .expect("supported printer model catalog must be valid JSON")
+    parse_supported_printer_model_catalog(SUPPORTED_PRINTER_MODELS_JSON)
+        .expect("supported printer model catalog must be valid")
         .into_iter()
-        .map(|entry| entry.model)
+        .map(|entry| {
+            let SupportedPrinterModel { model, profile: _ } = entry;
+            model
+        })
         .collect()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::supported_printer_models;
+    use super::{parse_supported_printer_model_catalog, supported_printer_models};
     use std::collections::HashSet;
 
     #[test]
@@ -43,5 +92,23 @@ mod tests {
             assert!(models.iter().any(|model| model == expected), "{expected}");
         }
         assert_eq!(HashSet::<_>::from_iter(models.iter()).len(), models.len());
+    }
+
+    #[test]
+    fn supported_printer_model_catalog_rejects_unknown_profiles() {
+        let error =
+            parse_supported_printer_model_catalog(r#"[{"model":"Mystery","profile":"bogus"}]"#)
+                .expect_err("unknown profile keys should fail catalog validation");
+
+        assert!(error.contains("bogus"));
+    }
+
+    #[test]
+    fn supported_printer_model_catalog_rejects_empty_models() {
+        let error =
+            parse_supported_printer_model_catalog(r#"[{"model":"  ","profile":"generic"}]"#)
+                .expect_err("empty model names should fail catalog validation");
+
+        assert!(error.contains("empty model"));
     }
 }
