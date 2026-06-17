@@ -314,6 +314,10 @@ smooth transition rolls.
   should truly be removed.
 - Every printer gets an `EXT` slot so single-spool usage works even without a
   multi-material system.
+- The supported printer model catalog is shared by desktop, webapp, and host
+  code. Bambu Lab entries also keep their Bambu Studio printer profile code so
+  diagnostics can display familiar upstream names without duplicating model
+  maps in the UI.
 - Bambu AMS weight is treated as an estimate, not as a physical scale reading;
   live usage accounting is intentionally conservative.
 - Bambu Studio filament settings signals such as `tray_info_idx` and

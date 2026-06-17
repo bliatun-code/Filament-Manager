@@ -418,6 +418,8 @@ Bambu Studio-filamentinnstillinger er ikke det samme som RFID. `tray_info_idx` o
 
 Anbefalt nozzle-område fra en innstillingsprofil er også diagnostikk. Det beskriver profilens temperaturvindu, mens live nozzle-temperatur beskriver hva printeren faktisk gjør akkurat nå.
 
+Printermodell-listen deles mellom desktop-app, webapp og host. For Bambu Lab-modeller lagres også Bambu Studio-printerprofilkoden, slik at diagnostikk kan vise kjente upstream-navn som `BBL P1S` uten at printermodellvalg blandes med rull-/RFID-identitet.
+
 `job_state` og `ams_status` vises som diagnosekoder. De kan hjelpe oss å forstå printerens interne tilstand, men de brukes ikke alene til å telle jobber eller registrere forbruk. Automatisk forbruk bygger fortsatt på en kombinasjon av jobbidentitet, `gcode_state`, fremdrift, nozzle-temperatur, aktivt AMS-spor og sane AMS-vektendringer.
 
 Når du eksporterer capture til CSV, legger programmet inn egne `tray_snapshot`-rader før råfelt- og sample-loggen. Disse radene samler AMS/spor, lastet-status, fysisk spor-tilstedeværelse, RFID-lesestatus, Bambu-tag-bit, materiale, farge, AMS-vektestimat, RFID/tray UUID, innstillingsprofil og nozzle-område slik at en capture kan analyseres raskere uten å miste rådata.
