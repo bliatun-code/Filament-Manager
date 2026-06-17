@@ -49,6 +49,18 @@ export function SlotCatalogOnboardingModal({
   const isBorrowedIn = prompt.ownershipType === "BORROWED_IN";
   const slotAlreadyAssigned = Boolean(prompt.slot.spool_id);
   const saveDisabled = saveState.disabled;
+  const saveBlockMessage =
+    saveState.reason === "missing_rfid"
+      ? t(
+          "printers.slotOnboardingNeedsRfid",
+          "Wait for a non-empty RFID identity from the live AMS signal before adding and binding this roll.",
+        )
+      : saveState.reason === "borrowed_owner_required"
+        ? t(
+            "printers.slotOnboardingNeedsBorrowedOwner",
+            "Enter who the spool is borrowed from before registering it as borrowed-in.",
+          )
+        : null;
 
   return (
     <AppModal
@@ -208,6 +220,12 @@ export function SlotCatalogOnboardingModal({
               />
             </label>
           </div>
+
+          {saveBlockMessage ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+              {saveBlockMessage}
+            </div>
+          ) : null}
 
           <div className="flex flex-wrap justify-end gap-3">
             <button
