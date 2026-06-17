@@ -196,6 +196,136 @@ test("submitManualSpoolRegistration routes owned stock through the owned create 
   ]);
 });
 
+test("submitManualSpoolRegistration routes borrowed-in catalog stock through the inbound create path", async () => {
+  const harness = createMutationHarness({
+    state: {
+      catalogMasters: [
+        {
+          id: "master-borrowed-1",
+          material: "PLA",
+          filament_name: "Matte",
+          color_name: "Ivory",
+          vendor: "Bambu Lab",
+          default_weight: 1000,
+        },
+      ],
+    },
+    fetchJson: async (path, init) => {
+      assert.equal(path, "/api/v1/spools/borrowed-in");
+      const payload = JSON.parse(String(init?.body || "{}"));
+      assert.deepEqual(payload, {
+        master_id: "master-borrowed-1",
+        initial_weight_g: 1000,
+        location: "Drybox 2",
+        owner_name: "Mina",
+        owner_contact: "mina@example.com",
+        ownership_note: "AMS test loan",
+      });
+      return { spool_id: "borrowed-catalog-2" };
+    },
+  });
+
+  await harness.mutations.submitManualSpoolRegistration({
+    source: "bambu",
+    masterId: "master-borrowed-1",
+    ownershipType: "BORROWED_IN",
+    ownerName: "Mina",
+    ownerContact: "mina@example.com",
+    initialWeight: "",
+    location: "Drybox 2",
+    note: "AMS test loan",
+  });
+
+  assert.equal(harness.state.selectedSpoolId, "borrowed-catalog-2");
+  assert.equal(harness.state.statusTone, "success");
+  assert.equal(harness.state.statusMessage, "Borrowed-in spool registered.");
+  assert.deepEqual(harness.detailFeedbackCalls, [
+    {
+      spoolId: "borrowed-catalog-2",
+      message: "Borrowed-in spool registered just now.",
+    },
+  ]);
+});
+
+test("submitManualSpoolRegistration requires an explicit catalog master before adding catalog stock", async () => {
+  let fetchCount = 0;
+  const harness = createMutationHarness({
+    state: {
+      catalogMasters: [
+        {
+          id: "master-1",
+          material: "PLA",
+          filament_name: "Basic",
+          color_name: "Red",
+          vendor: "Bambu",
+          default_weight: 1000,
+        },
+      ],
+    },
+    fetchJson: async () => {
+      fetchCount += 1;
+      return { spool_id: "unexpected" };
+    },
+  });
+
+  await harness.mutations.submitManualSpoolRegistration({
+    source: "bambu",
+    masterId: "",
+    ownershipType: "OWNED",
+    initialWeight: "1000",
+  });
+
+  assert.equal(fetchCount, 0);
+  assert.equal(harness.state.statusTone, "error");
+  assert.equal(harness.state.statusMessage, "Choose a catalog filament before adding stock.");
+  assert.deepEqual(harness.busyCalls, []);
+  assert.deepEqual(harness.renderCalls, ["render"]);
+});
+
+test("submitManualSpoolRegistration rejects stale catalog master selections from another source", async () => {
+  let fetchCount = 0;
+  const harness = createMutationHarness({
+    state: {
+      catalogMasters: [
+        {
+          id: "esun-1",
+          material: "PLA",
+          filament_name: "PLA+",
+          color_name: "Blue",
+          vendor: "eSUN",
+          default_weight: 1000,
+        },
+        {
+          id: "bambu-1",
+          material: "PLA",
+          filament_name: "Basic",
+          color_name: "Red",
+          vendor: "Bambu Lab",
+          default_weight: 1000,
+        },
+      ],
+    },
+    fetchJson: async () => {
+      fetchCount += 1;
+      return { spool_id: "unexpected" };
+    },
+  });
+
+  await harness.mutations.submitManualSpoolRegistration({
+    source: "bambu",
+    masterId: "esun-1",
+    ownershipType: "BORROWED_IN",
+    ownerName: "Mina",
+    initialWeight: "1000",
+  });
+
+  assert.equal(fetchCount, 0);
+  assert.equal(harness.state.statusTone, "error");
+  assert.equal(harness.state.statusMessage, "Choose a catalog filament before adding stock.");
+  assert.deepEqual(harness.busyCalls, []);
+  assert.deepEqual(harness.renderCalls, ["render"]);
+});
+
 test("submitWishlistStock creates owned stock and marks the wishlist item received", async () => {
   const fetchCalls = [];
   const harness = createMutationHarness({

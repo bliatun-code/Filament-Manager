@@ -16,11 +16,15 @@ function resolveCatalogMaster(catalogMasters, masterIdValue, sourceValue) {
   }
 
   const masterId = String(masterIdValue || "").trim();
+  if (!masterId) {
+    return null;
+  }
+
   const selected = catalogMasters.find((master) => master?.id === masterId) || null;
   if (catalogMatchesSource(selected, source)) {
     return selected;
   }
-  return catalogMasters.find((master) => catalogMatchesSource(master, source)) || null;
+  return null;
 }
 
 export function createCompanionMutationHelpers({ state, fetchJson, tr }) {
