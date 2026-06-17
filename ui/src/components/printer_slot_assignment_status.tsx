@@ -144,7 +144,10 @@ export function PrinterSlotAssignmentStatus({
         </div>
         {rows.length > visibleRows.length ? (
           <div className="mt-1 text-slate-500 dark:text-slate-400">
-            {t("printers.liveCandidateMore", "More candidates exist in inventory.")}
+            {t(
+              "printers.liveCatalogCandidateMore",
+              "More Bambu catalog candidates are available.",
+            )}
           </div>
         ) : null}
       </div>
@@ -174,14 +177,28 @@ export function PrinterSlotAssignmentStatus({
             "printers.liveCandidateCurrentMatches",
             "Current assignment matches the live material/color signal.",
           )
-        : t(
-            "printers.liveCandidateCount",
-            "{count} inventory rolls match the live material/color signal.",
-          ).replace("{count}", String(rows.length));
+        : rows.length === 1
+          ? t(
+              "printers.liveCandidateSingle",
+              "One inventory roll matches the live material/color signal.",
+            )
+          : t(
+              "printers.liveCandidateCount",
+              "{count} inventory rolls match the live material/color signal.",
+            ).replace("{count}", String(rows.length));
+    const unknownRfidSummary =
+      unknownLiveRfid && !currentAssignmentMatched && rows.length === 1
+        ? t(
+            "printers.liveRfidCandidateSingle",
+            "One inventory roll looks like this live Bambu roll. Save RFID to bind it permanently.",
+          )
+        : summary;
 
     return (
       <div className="mt-2 rounded-lg border border-slate-300/50 bg-white/35 px-2 py-1.5 text-[11px] leading-4 text-slate-600 dark:border-slate-700/80 dark:bg-slate-950/20 dark:text-slate-300">
-        <div className="font-medium text-slate-700 dark:text-slate-200">{summary}</div>
+        <div className="font-medium text-slate-700 dark:text-slate-200">
+          {unknownRfidSummary}
+        </div>
         <div className="mt-1 space-y-1">
           {visibleRows.map((row) => {
             const candidateHasSavedRfid = Boolean(row.spool.rfid_tag?.trim());

@@ -740,10 +740,14 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "This slot is manually assigned while the same unregistered RFID identity is still active.",
       liveCandidateCurrentMatches:
         "Current assignment matches the live material/color signal.",
+      liveCandidateSingle:
+        "One inventory roll matches the live material/color signal.",
       liveCandidateCount:
         "{count} inventory rolls match the live material/color signal.",
       liveRfidCandidateCurrentMatches:
         "Current assignment looks like this live Bambu roll. Save RFID to bind it permanently.",
+      liveRfidCandidateSingle:
+        "One inventory roll looks like this live Bambu roll. Save RFID to bind it permanently.",
       liveRfidCandidateCount:
         "{count} inventory rolls look like this live Bambu roll.",
       liveCandidateCurrent: "current",
@@ -755,6 +759,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Bambu catalog has one likely match. Add it here to save the live RFID.",
       liveCatalogCandidateCount:
         "{count} Bambu catalog entries look like this live roll.",
+      liveCatalogCandidateMore: "More Bambu catalog candidates are available.",
       slotOnboarding: "AMS onboarding",
       addCatalogRollAndSaveRfid: "Add + save RFID",
       addBorrowedCatalogRollAndSaveRfid: "Add borrowed-in + save RFID",
@@ -2217,10 +2222,14 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Dette sporet er manuelt tildelt mens samme uregistrerte RFID-identitet fortsatt er aktiv.",
       liveCandidateCurrentMatches:
         "Nåværende tildeling matcher live-signalet for materiale/farge.",
+      liveCandidateSingle:
+        "Én rull i lageret matcher live-signalet for materiale/farge.",
       liveCandidateCount:
         "{count} ruller i lageret matcher live-signalet for materiale/farge.",
       liveRfidCandidateCurrentMatches:
         "Nåværende tildeling ligner denne live Bambu-rullen. Lagre RFID for å binde den permanent.",
+      liveRfidCandidateSingle:
+        "Én rull i lageret ligner denne live Bambu-rullen. Lagre RFID for å binde den permanent.",
       liveRfidCandidateCount:
         "{count} ruller i lageret ligner denne live Bambu-rullen.",
       liveCandidateCurrent: "nåværende",
@@ -2232,6 +2241,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Bambu-katalogen har én sannsynlig match. Legg den til her for å lagre live-RFID.",
       liveCatalogCandidateCount:
         "{count} Bambu-katalogoppføringer ligner denne live-rullen.",
+      liveCatalogCandidateMore: "Flere Bambu-katalogkandidater er tilgjengelige.",
       slotOnboarding: "AMS-innrulling",
       addCatalogRollAndSaveRfid: "Legg til + lagre RFID",
       addBorrowedCatalogRollAndSaveRfid: "Legg til innlånt + lagre RFID",
