@@ -528,6 +528,10 @@ Programmet støtter:
 
 Katalogelementer er maler. En fysisk rull er en egen lagerpost basert på en katalogmal eller manuell registrering.
 
+Programmet leveres med en lokal seed-katalog for kjente filamenter. Den gjør at eldre ruller fortsatt er søkbare selv om produsenten ikke lenger viser dem i nettbutikken. Seed-katalogen er normalisert og ryddet for rene case-duplikater, slik at for eksempel samme eSUN-farge ikke dukker opp både som `BLACK` og `Black`.
+
+Katalogreparasjon gjenoppretter den innebygde seed-katalogen og fjerner bare ubrukte ikke-seedede katalograder. Ruller på lager, ønskelistekoblinger, utlån, printerdata, RFID, plasseringer og historikk skal bevares.
+
 ## Data, historikk og sikkerhet
 
 Programmet bevarer historikk for viktige handlinger.

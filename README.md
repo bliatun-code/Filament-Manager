@@ -283,10 +283,12 @@ Optional tuning:
 - `BAMBU_MATERIAL_TYPES=PLA,PETG` to refresh a smaller material slice
 
 Catalog data is stored in SQLite in `filament_master_list`. The app ships with
-a sanitized seed catalog in `src/data/seed_filament_catalog.json` so old or
-currently unavailable manufacturer listings stay searchable when users add
-rolls they already own or find through resellers. The seed contains only master
-catalog metadata, never spool, loan, printer, RFID, location, or usage history.
+a sanitized, case-normalized seed catalog in
+`src/data/seed_filament_catalog.json` so old or currently unavailable
+manufacturer listings stay searchable when users add rolls they already own or
+find through resellers. The seed is deduplicated by material, filament name, and
+color name after normalization, and contains only master catalog metadata, never
+spool, loan, printer, RFID, location, or usage history.
 
 The Settings UI can still refresh supported Bambu and eSUN catalog data. The
 normal path is to refresh selected material families when new products appear;

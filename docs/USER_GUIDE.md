@@ -528,6 +528,10 @@ The app supports:
 
 Catalog entries are templates. A physical spool is a separate inventory record based on a catalog entry or manual registration.
 
+The app ships with a local seed catalog for known filament. This keeps older rolls searchable even after the manufacturer no longer lists them in the store. The seed catalog is normalized and cleaned of pure case duplicates, so the same eSUN color should not appear both as `BLACK` and `Black`.
+
+Catalog repair restores the bundled seed catalog and removes only unused non-seeded catalog rows. Inventory spools, wishlist links, loans, printer data, RFID, locations, and history should be preserved.
+
 ## Data, History, and Safety
 
 The app keeps history for important actions.
