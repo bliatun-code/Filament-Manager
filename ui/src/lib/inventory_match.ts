@@ -157,20 +157,26 @@ function normalizeSpoolStatus(raw?: string | null): string {
   return (raw ?? "").trim().toUpperCase();
 }
 
-function isVisibleInventoryRow(row: SpoolWithMasterRow): boolean {
+function isExactRfidInventoryRow(row: SpoolWithMasterRow): boolean {
   const status = normalizeSpoolStatus(row.spool.status);
-  return status !== "EMPTY" && status !== "LOST" && status !== "MISSING" && status !== "DELETED";
+  return (
+    status !== "LOST" &&
+    status !== "MISSING" &&
+    status !== "DELETED" &&
+    status !== "BORROWED"
+  );
+}
+
+function isMetadataVisibleInventoryRow(row: SpoolWithMasterRow): boolean {
+  const status = normalizeSpoolStatus(row.spool.status);
+  return isExactRfidInventoryRow(row) && status !== "EMPTY";
 }
 
 function isMetadataCandidateRow(
   row: SpoolWithMasterRow,
   options: InventoryMatchOptions,
 ): boolean {
-  if (!isVisibleInventoryRow(row)) {
-    return false;
-  }
-  const status = normalizeSpoolStatus(row.spool.status);
-  if (status === "BORROWED") {
+  if (!isMetadataVisibleInventoryRow(row)) {
     return false;
   }
   const bambuVendor = isBambuVendor(row);
@@ -329,7 +335,7 @@ export function buildInventoryMatchResult(
   observed: ObservedInventoryMatchInput,
   options: InventoryMatchOptions = {},
 ): InventoryMatchResult {
-  const activeRows = spoolRows.filter(isVisibleInventoryRow);
+  const activeRows = spoolRows.filter(isExactRfidInventoryRow);
 
   const normalizedObservedRfid =
     observed.rfid?.trim() && !/^0+$/.test(observed.rfid.trim()) ? observed.rfid.trim() : null;

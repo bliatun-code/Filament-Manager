@@ -163,6 +163,16 @@ fn make_inventory_spool(id: &str, rfid_tag: Option<&str>) -> SpoolWithMasterRow 
     }
 }
 
+fn make_inventory_spool_with_status(
+    id: &str,
+    rfid_tag: Option<&str>,
+    status: &str,
+) -> SpoolWithMasterRow {
+    let mut row = make_inventory_spool(id, rfid_tag);
+    row.spool.status = status.to_string();
+    row
+}
+
 #[test]
 fn apply_tray_match_status_marks_loaded_unknown_rfid_even_with_metadata_match() {
     let slot = make_slot();
@@ -552,6 +562,102 @@ fn apply_tray_match_status_keeps_exact_rfid_stronger_than_preset_signal() {
     assert_eq!(tray.match_status.as_deref(), Some("clear_match"));
     assert_eq!(tray.matched_inventory_mode.as_deref(), Some("exact_rfid"));
     assert_eq!(tray.matched_inventory_spool_id.as_deref(), Some("spool_1"));
+}
+
+#[test]
+fn apply_tray_match_status_ignores_unavailable_exact_rfid_matches() {
+    let mut slot = make_slot();
+    slot.spool_id = None;
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        tray_uuid: Some("real-rfid".to_string()),
+        ..make_tray()
+    };
+
+    apply_tray_match_status(
+        &mut tray,
+        &overview,
+        &[
+            make_inventory_spool_with_status("lost", Some("real-rfid"), "LOST"),
+            make_inventory_spool_with_status("missing", Some("real-rfid"), "MISSING"),
+            make_inventory_spool_with_status("deleted", Some("real-rfid"), "DELETED"),
+            make_inventory_spool_with_status("borrowed", Some("real-rfid"), "BORROWED"),
+        ],
+    );
+
+    assert_eq!(tray.match_status.as_deref(), Some("unknown_rfid"));
+    assert!(tray.matched_inventory_spool_id.is_none());
+    assert!(tray.matched_inventory_mode.is_none());
+}
+
+#[test]
+fn apply_tray_match_status_keeps_empty_exact_rfid_matches_available_for_recovery() {
+    let mut slot = make_slot();
+    slot.spool_id = None;
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        tray_uuid: Some("real-rfid".to_string()),
+        ..make_tray()
+    };
+
+    apply_tray_match_status(
+        &mut tray,
+        &overview,
+        &[make_inventory_spool_with_status(
+            "empty",
+            Some("real-rfid"),
+            "EMPTY",
+        )],
+    );
+
+    assert_eq!(tray.match_status.as_deref(), Some("clear_match"));
+    assert_eq!(tray.matched_inventory_mode.as_deref(), Some("exact_rfid"));
+    assert_eq!(tray.matched_inventory_spool_id.as_deref(), Some("empty"));
+}
+
+#[test]
+fn apply_tray_match_status_ignores_unavailable_metadata_candidates() {
+    let mut slot = make_slot();
+    slot.spool_id = None;
+    let overview = make_overview(slot);
+    let mut tray = make_tray();
+
+    apply_tray_match_status(
+        &mut tray,
+        &overview,
+        &[
+            make_inventory_spool_with_status("empty", None, "EMPTY"),
+            make_inventory_spool_with_status("lost", None, "LOST"),
+            make_inventory_spool_with_status("missing", None, "MISSING"),
+            make_inventory_spool_with_status("deleted", None, "DELETED"),
+            make_inventory_spool_with_status("borrowed", None, "BORROWED"),
+        ],
+    );
+
+    assert_eq!(tray.match_status.as_deref(), Some("unknown_rfid"));
+    assert!(tray.matched_inventory_spool_id.is_none());
+    assert!(tray.matched_inventory_mode.is_none());
+}
+
+#[test]
+fn apply_tray_match_status_keeps_borrowed_in_exact_rfid_matches_available() {
+    let slot = make_slot();
+    let overview = make_overview(slot);
+    let mut borrowed_in = make_inventory_spool("borrowed_in", Some("real-rfid"));
+    borrowed_in.spool.ownership_type = "BORROWED_IN".to_string();
+    let mut tray = BambuLiveObservedTrayRow {
+        tray_uuid: Some("real-rfid".to_string()),
+        ..make_tray()
+    };
+
+    apply_tray_match_status(&mut tray, &overview, &[borrowed_in]);
+
+    assert_eq!(tray.match_status.as_deref(), Some("clear_match"));
+    assert_eq!(tray.matched_inventory_mode.as_deref(), Some("exact_rfid"));
+    assert_eq!(
+        tray.matched_inventory_spool_id.as_deref(),
+        Some("borrowed_in")
+    );
 }
 
 #[test]

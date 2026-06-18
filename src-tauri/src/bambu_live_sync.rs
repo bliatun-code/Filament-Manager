@@ -157,6 +157,7 @@ pub(crate) fn apply_tray_match_status(
     if let Some(observed_rfid) = live_tray_identity_text(tray) {
         let exact_matches: Vec<_> = all_spools
             .iter()
+            .filter(|row| spool_available_for_exact_live_rfid_match(row))
             .filter(|row| eq_ignore_case(Some(observed_rfid), row.spool.rfid_tag.as_deref()))
             .collect();
         if exact_matches.len() == 1 {
@@ -307,6 +308,7 @@ fn find_inventory_candidates<'a>(
 ) -> Vec<&'a SpoolWithMasterRow> {
     all_spools
         .iter()
+        .filter(|row| spool_available_for_live_metadata_match(row))
         .filter(|row| {
             let material_match =
                 eq_ignore_case(tray.filament_type.as_deref(), Some(&row.master.material));
@@ -325,6 +327,20 @@ fn find_inventory_candidates<'a>(
                 >= 2
         })
         .collect()
+}
+
+fn spool_available_for_exact_live_rfid_match(row: &SpoolWithMasterRow) -> bool {
+    !matches!(
+        row.spool.status.trim().to_ascii_uppercase().as_str(),
+        "LOST" | "MISSING" | "DELETED" | "BORROWED"
+    )
+}
+
+fn spool_available_for_live_metadata_match(row: &SpoolWithMasterRow) -> bool {
+    !matches!(
+        row.spool.status.trim().to_ascii_uppercase().as_str(),
+        "EMPTY" | "LOST" | "MISSING" | "DELETED" | "BORROWED"
+    )
 }
 
 fn auto_sync_live_slots(

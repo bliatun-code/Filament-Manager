@@ -57,12 +57,13 @@ test("buildInventoryMatchResult prefers exact non-zero RFID matches", () => {
   assert.deepEqual(result.candidates.map((row) => row.spool.id), ["spool-1"]);
 });
 
-test("buildInventoryMatchResult ignores empty, lost, and missing rows", () => {
+test("buildInventoryMatchResult ignores unavailable rows for exact RFID matches", () => {
   const result = buildInventoryMatchResult(
     [
-      createRow("empty", { status: "EMPTY", rfidTag: "ABC123" }),
       createRow("lost", { status: "LOST", material: "PLA", filamentName: "PLA Basic" }),
       createRow("missing", { status: "MISSING", rfidTag: "ABC123" }),
+      createRow("deleted", { status: "DELETED", rfidTag: "ABC123" }),
+      createRow("borrowed", { status: "BORROWED", rfidTag: "ABC123" }),
     ],
     {
       rfid: "ABC123",
@@ -74,11 +75,11 @@ test("buildInventoryMatchResult ignores empty, lost, and missing rows", () => {
   assert.equal(result.kind, "none");
 });
 
-test("buildInventoryMatchResult ignores deleted rows", () => {
+test("buildInventoryMatchResult keeps empty rows eligible for exact RFID recovery", () => {
   const result = buildInventoryMatchResult(
     [
-      createRow("deleted", {
-        status: "DELETED",
+      createRow("empty", {
+        status: "EMPTY",
         rfidTag: "ABC123",
         material: "PLA",
         filamentName: "PLA Basic",
@@ -91,7 +92,29 @@ test("buildInventoryMatchResult ignores deleted rows", () => {
     },
   );
 
-  assert.equal(result.kind, "none");
+  assert.equal(result.kind, "rfid_exact");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), ["empty"]);
+});
+
+test("buildInventoryMatchResult keeps borrowed-in rows eligible for exact RFID matches", () => {
+  const result = buildInventoryMatchResult(
+    [
+      createRow("borrowed-in", {
+        rfidTag: "ABC123",
+        ownershipType: "BORROWED_IN",
+        material: "PLA",
+        filamentName: "PLA Basic",
+      }),
+    ],
+    {
+      rfid: "ABC123",
+      material: "PLA",
+      filamentName: "PLA Basic",
+    },
+  );
+
+  assert.equal(result.kind, "rfid_exact");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), ["borrowed-in"]);
 });
 
 test("buildInventoryMatchResult does not fall back to metadata when an unregistered RFID is present", () => {
