@@ -185,6 +185,15 @@ test("buildSlotCatalogOnboardingOpenState blocks stale catalog onboarding opens"
     }).reason,
     "occupied_slot",
   );
+  assert.equal(
+    buildSlotCatalogOnboardingOpenState(slot, liveTray, {
+      currentLiveTray: {
+        loaded: true,
+        observed_rfid_tag: "RFID-2",
+      } as BambuLiveObservedTray,
+    }).reason,
+    "live_identity_changed",
+  );
 });
 
 test("buildLiveRfidCandidateRegistrationState blocks unsafe candidate RFID saves", () => {
@@ -235,6 +244,15 @@ test("buildLiveRfidCandidateRegistrationState blocks unsafe candidate RFID saves
       spool: { ...row.spool, rfid_tag: "SAVED-RFID" },
     }).reason,
     "candidate_has_rfid",
+  );
+  assert.equal(
+    buildLiveRfidCandidateRegistrationState(slot, liveTray, row, {
+      currentLiveTray: {
+        loaded: true,
+        observed_rfid_tag: "RFID-2",
+      } as BambuLiveObservedTray,
+    }).reason,
+    "live_identity_changed",
   );
   assert.equal(
     buildLiveRfidCandidateRegistrationState(slot, liveTray, row, {
@@ -319,6 +337,15 @@ test("buildSlotCatalogOnboardingSaveState blocks unsafe catalog slot onboarding 
       currentSlot: { ...slot, spool_id: "freshly-assigned-spool" } as PrinterAmsSlotRow,
     }).reason,
     "occupied_slot",
+  );
+  assert.equal(
+    buildSlotCatalogOnboardingSaveState(readyPrompt, {
+      currentLiveTray: {
+        loaded: true,
+        observed_rfid_tag: "RFID-2",
+      } as BambuLiveObservedTray,
+    }).reason,
+    "live_identity_changed",
   );
   assert.equal(
     buildSlotCatalogOnboardingSaveState({

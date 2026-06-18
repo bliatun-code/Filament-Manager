@@ -124,6 +124,7 @@ export default function PrintersPage() {
     allowedSpoolsForSlot,
     confirmIncomingWeightDialog,
     findAllowedSpoolForSlot,
+    findLiveTrayForSlot,
     findSpoolById,
     getSlotDraft,
     handleSaveOverrideRfid,
@@ -306,6 +307,12 @@ export default function PrintersPage() {
             slotCatalogOnboardingPrompt.printerId,
             slotCatalogOnboardingPrompt.slot.slot_id,
           )}
+          currentLiveTray={
+            findLiveTrayForSlot(
+              slotCatalogOnboardingPrompt.printerId,
+              slotCatalogOnboardingPrompt.slot,
+            ).tray
+          }
           locale={locale}
           prompt={slotCatalogOnboardingPrompt}
           onClose={() => setSlotCatalogOnboardingPrompt(null)}

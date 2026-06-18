@@ -10,7 +10,7 @@ import {
   buildSlotCatalogOnboardingSaveState,
   type SlotCatalogOnboardingPrompt,
 } from "../lib/printer_slot_model";
-import type { PrinterAmsSlotRow } from "../lib/tauri_client";
+import type { BambuLiveObservedTray, PrinterAmsSlotRow } from "../lib/tauri_client";
 import { AppModal } from "./app_modal";
 import { modalFormInputClassName } from "./form_control_class";
 import { ModalHeader } from "./modal_chrome";
@@ -20,6 +20,7 @@ import { SegmentedChoiceRow } from "./segmented_choice_row";
 type SlotCatalogOnboardingModalProps = {
   busy: boolean;
   currentSlot?: PrinterAmsSlotRow | null;
+  currentLiveTray?: BambuLiveObservedTray | null;
   locale: Locale;
   prompt: SlotCatalogOnboardingPrompt;
   onBorrowedFromContactChange: (value: string) => void;
@@ -35,6 +36,7 @@ type SlotCatalogOnboardingModalProps = {
 export function SlotCatalogOnboardingModal({
   busy,
   currentSlot,
+  currentLiveTray,
   locale,
   prompt,
   onBorrowedFromContactChange,
@@ -47,7 +49,11 @@ export function SlotCatalogOnboardingModal({
   onSave,
 }: SlotCatalogOnboardingModalProps) {
   const { t } = useI18n();
-  const saveState = buildSlotCatalogOnboardingSaveState(prompt, { busy, currentSlot });
+  const saveState = buildSlotCatalogOnboardingSaveState(prompt, {
+    busy,
+    currentSlot,
+    currentLiveTray,
+  });
   const observedRfid = saveState.observedRfid;
   const isBorrowedIn = prompt.ownershipType === "BORROWED_IN";
   const slotAlreadyAssigned = Boolean((currentSlot ?? prompt.slot).spool_id);
@@ -58,12 +64,17 @@ export function SlotCatalogOnboardingModal({
           "printers.slotOnboardingNeedsRfid",
           "Wait for a non-empty RFID identity from the live AMS signal before adding and binding this roll.",
         )
-      : saveState.reason === "borrowed_owner_required"
-        ? t(
-            "printers.slotOnboardingNeedsBorrowedOwner",
-            "Enter who the spool is borrowed from before registering it as borrowed-in.",
-          )
-        : null;
+        : saveState.reason === "borrowed_owner_required"
+          ? t(
+              "printers.slotOnboardingNeedsBorrowedOwner",
+              "Enter who the spool is borrowed from before registering it as borrowed-in.",
+            )
+          : saveState.reason === "live_identity_changed"
+            ? t(
+                "printers.slotOnboardingLiveIdentityChanged",
+                "The live AMS identity changed before saving. Reopen the slot action and confirm the current roll.",
+              )
+            : null;
 
   return (
     <AppModal

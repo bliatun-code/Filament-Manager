@@ -587,12 +587,17 @@ export function usePrinterSlotInteractions({
         return;
       }
       const currentSlot = findPrinterSlotById(printers, printer.printer.id, slot.slot_id);
+      const { tray: currentLiveTray } = findLiveTrayForSlot(
+        printer.printer.id,
+        currentSlot ?? slot,
+      );
       const registrationState = buildLiveRfidCandidateRegistrationState(
         slot,
         liveTray,
         row,
         {
           currentSlot,
+          currentLiveTray,
         },
       );
       if (registrationState.reason === "missing_rfid") {
@@ -600,6 +605,15 @@ export function usePrinterSlotInteractions({
           t(
             "printers.rfidOverrideNothingToSave",
             "No non-empty RFID identity is available to save for this slot.",
+          ),
+        );
+        return;
+      }
+      if (registrationState.reason === "live_identity_changed") {
+        setError(
+          t(
+            "printers.error.liveRfidChangedBeforeSave",
+            "The live AMS identity changed before saving. Reopen the slot action and confirm the current roll.",
           ),
         );
         return;
@@ -689,6 +703,7 @@ export function usePrinterSlotInteractions({
       clientLibraryId,
       clientReadOnly,
       ensureLocalWriteAllowed,
+      findLiveTrayForSlot,
       printers,
       reloadData,
       setBusy,
@@ -716,8 +731,13 @@ export function usePrinterSlotInteractions({
         return;
       }
       const currentSlot = findPrinterSlotById(printers, printer.printer.id, slot.slot_id);
+      const { tray: currentLiveTray } = findLiveTrayForSlot(
+        printer.printer.id,
+        currentSlot ?? slot,
+      );
       const openState = buildSlotCatalogOnboardingOpenState(slot, liveTray, {
         currentSlot,
+        currentLiveTray,
       });
       if (openState.reason === "missing_rfid") {
         setError(
@@ -737,6 +757,15 @@ export function usePrinterSlotInteractions({
         );
         return;
       }
+      if (openState.reason === "live_identity_changed") {
+        setError(
+          t(
+            "printers.error.liveRfidChangedBeforeSave",
+            "The live AMS identity changed before saving. Reopen the slot action and confirm the current roll.",
+          ),
+        );
+        return;
+      }
 
       const liveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
       setSlotCatalogOnboardingPrompt(
@@ -749,6 +778,7 @@ export function usePrinterSlotInteractions({
       canUseClientHostWrite,
       clientReadOnly,
       ensureLocalWriteAllowed,
+      findLiveTrayForSlot,
       printers,
       setError,
       tauri,
@@ -797,8 +827,10 @@ export function usePrinterSlotInteractions({
     } = slotCatalogOnboardingPrompt;
     const currentSlot = findPrinterSlotById(printers, printerId, slot.slot_id);
     const slotForWrite = currentSlot ?? slot;
+    const { tray: currentLiveTray } = findLiveTrayForSlot(printerId, slotForWrite);
     const saveState = buildSlotCatalogOnboardingSaveState(slotCatalogOnboardingPrompt, {
       currentSlot,
+      currentLiveTray,
     });
     if (saveState.reason === "missing_rfid") {
       setError(
@@ -823,6 +855,15 @@ export function usePrinterSlotInteractions({
         t(
           "inventory.error.borrowedInNeedsOwner",
           "Borrowed-in registration needs a name for who the spool is borrowed from.",
+        ),
+      );
+      return;
+    }
+    if (saveState.reason === "live_identity_changed") {
+      setError(
+        t(
+          "printers.error.liveRfidChangedBeforeSave",
+          "The live AMS identity changed before saving. Reopen the slot action and confirm the current roll.",
         ),
       );
       return;
@@ -906,6 +947,7 @@ export function usePrinterSlotInteractions({
       clientLibraryId,
       clientReadOnly,
       ensureLocalWriteAllowed,
+      findLiveTrayForSlot,
       printers,
       reloadData,
       setBusy,
@@ -961,6 +1003,7 @@ export function usePrinterSlotInteractions({
     allowedSpoolsForSlot,
     confirmIncomingWeightDialog,
     findAllowedSpoolForSlot,
+    findLiveTrayForSlot,
     findSpoolById,
     getSlotDraft,
     handleSaveOverrideRfid,

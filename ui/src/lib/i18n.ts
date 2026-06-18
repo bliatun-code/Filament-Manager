@@ -769,6 +769,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Wait for a non-empty RFID identity from the live AMS signal before adding and binding this roll.",
       slotOnboardingNeedsBorrowedOwner:
         "Enter who the spool is borrowed from before registering it as borrowed-in.",
+      slotOnboardingLiveIdentityChanged:
+        "The live AMS identity changed before saving. Reopen the slot action and confirm the current roll.",
       liveCatalogRequiresEmptySlot: "clear slot first",
       liveRfidRegisteredAndAssigned:
         "RFID saved and the suggested roll was assigned to this slot.",
@@ -802,6 +804,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         candidateAlreadyHasRfid: "This inventory roll already has an RFID identity saved.",
         selectCandidateBeforeRfid:
           "Select this roll in the slot first, so any outgoing roll weight is handled before saving RFID.",
+        liveRfidChangedBeforeSave:
+          "The live AMS identity changed before saving. Reopen the slot action and confirm the current roll.",
         createFromCatalogRequiresEmptySlot:
           "Clear or swap the current roll through the normal slot flow before creating a new catalog roll here.",
       },
@@ -2251,6 +2255,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Vent på en ikke-tom RFID-identitet fra live AMS-signalet før rullen legges til og bindes.",
       slotOnboardingNeedsBorrowedOwner:
         "Skriv hvem rullen er lånt fra før den registreres som innlånt.",
+      slotOnboardingLiveIdentityChanged:
+        "Live AMS-identiteten endret seg før lagring. Åpne sporhandlingen på nytt og bekreft gjeldende rull.",
       liveCatalogRequiresEmptySlot: "tøm sporet først",
       liveRfidRegisteredAndAssigned:
         "RFID lagret og foreslått rull ble tildelt dette sporet.",
@@ -2284,6 +2290,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         candidateAlreadyHasRfid: "Denne lagerrullen har allerede en lagret RFID-identitet.",
         selectCandidateBeforeRfid:
           "Velg denne rullen i sporet først, slik at eventuell utgående rullvekt håndteres før RFID lagres.",
+        liveRfidChangedBeforeSave:
+          "Live AMS-identiteten endret seg før lagring. Åpne sporhandlingen på nytt og bekreft gjeldende rull.",
         createFromCatalogRequiresEmptySlot:
           "Tøm eller bytt nåværende rull via vanlig spor-flyt før du oppretter en ny katalogrull her.",
       },

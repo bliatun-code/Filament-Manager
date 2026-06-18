@@ -62,7 +62,8 @@ export type SlotCatalogOnboardingPrompt = {
 export type SlotCatalogOnboardingOpenBlockReason =
   | "busy"
   | "missing_rfid"
-  | "occupied_slot";
+  | "occupied_slot"
+  | "live_identity_changed";
 
 export type SlotCatalogOnboardingSaveBlockReason =
   | SlotCatalogOnboardingOpenBlockReason
@@ -84,6 +85,7 @@ export type SlotCatalogOnboardingSaveState = {
 export type LiveRfidCandidateRegistrationBlockReason =
   | "busy"
   | "missing_rfid"
+  | "live_identity_changed"
   | "candidate_has_rfid"
   | "select_candidate_first";
 
@@ -102,6 +104,20 @@ export type PreparedPrinterSlotAssignment = {
   shouldAssignSlot: boolean;
   assignInput: AssignPrinterSlotInput;
 };
+
+type LiveIdentitySafetyOptions = {
+  currentLiveTray?: BambuLiveObservedTray | null;
+};
+
+function liveIdentityChanged(
+  liveTray: BambuLiveObservedTray,
+  options: LiveIdentitySafetyOptions,
+): boolean {
+  if (!Object.prototype.hasOwnProperty.call(options, "currentLiveTray")) {
+    return false;
+  }
+  return liveTrayIdentity(options.currentLiveTray) !== liveTrayIdentity(liveTray);
+}
 
 export type PreparedMeasuredWeightUpdate = {
   safeMeasuredTotal: number;
@@ -294,7 +310,11 @@ export function buildSlotCatalogOnboardingPrompt(
 export function buildSlotCatalogOnboardingOpenState(
   slot: PrinterAmsSlotRow,
   liveTray: BambuLiveObservedTray,
-  options: { busy?: boolean; currentSlot?: PrinterAmsSlotRow | null } = {},
+  options: {
+    busy?: boolean;
+    currentSlot?: PrinterAmsSlotRow | null;
+    currentLiveTray?: BambuLiveObservedTray | null;
+  } = {},
 ): SlotCatalogOnboardingOpenState {
   const observedRfid = liveTrayIdentity(liveTray);
   const slotForSafety = options.currentSlot ?? slot;
@@ -305,6 +325,8 @@ export function buildSlotCatalogOnboardingOpenState(
     reason = "missing_rfid";
   } else if (slotForSafety.spool_id) {
     reason = "occupied_slot";
+  } else if (liveIdentityChanged(liveTray, options)) {
+    reason = "live_identity_changed";
   }
 
   return {
@@ -317,7 +339,11 @@ export function buildSlotCatalogOnboardingOpenState(
 
 export function buildSlotCatalogOnboardingSaveState(
   prompt: SlotCatalogOnboardingPrompt,
-  options: { busy?: boolean; currentSlot?: PrinterAmsSlotRow | null } = {},
+  options: {
+    busy?: boolean;
+    currentSlot?: PrinterAmsSlotRow | null;
+    currentLiveTray?: BambuLiveObservedTray | null;
+  } = {},
 ): SlotCatalogOnboardingSaveState {
   const openState = buildSlotCatalogOnboardingOpenState(prompt.slot, prompt.liveTray, options);
   let reason: SlotCatalogOnboardingSaveBlockReason | null = openState.reason;
@@ -355,7 +381,11 @@ export function buildLiveRfidCandidateRegistrationState(
   slot: PrinterAmsSlotRow,
   liveTray: BambuLiveObservedTray,
   row: SpoolWithMasterRow,
-  options: { busy?: boolean; currentSlot?: PrinterAmsSlotRow | null } = {},
+  options: {
+    busy?: boolean;
+    currentSlot?: PrinterAmsSlotRow | null;
+    currentLiveTray?: BambuLiveObservedTray | null;
+  } = {},
 ): LiveRfidCandidateRegistrationState {
   const observedRfid = liveTrayIdentity(liveTray);
   const slotForSafety = options.currentSlot ?? slot;
@@ -364,6 +394,8 @@ export function buildLiveRfidCandidateRegistrationState(
     reason = "busy";
   } else if (!observedRfid) {
     reason = "missing_rfid";
+  } else if (liveIdentityChanged(liveTray, options)) {
+    reason = "live_identity_changed";
   } else if (row.spool.rfid_tag?.trim()) {
     reason = "candidate_has_rfid";
   } else if (slotForSafety.spool_id && slotForSafety.spool_id !== row.spool.id) {
