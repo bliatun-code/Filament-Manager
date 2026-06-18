@@ -447,6 +447,48 @@ test("printer workspace marks borrowed-in Bambu candidates for unknown live RFID
   assert.match(html, /Borrowed-in/);
 });
 
+test("printer workspace does not show live RFID candidates that already have RFID", () => {
+  const html = renderBoard({
+    activePrinter: createPrinterRow({
+      slots: [
+        {
+          slot_id: "slot-1",
+          ams_id: "ams_1",
+          slot_index: 1,
+          spool_id: null,
+          live_loaded: true,
+          live_filament_type: "PLA",
+          live_filament_name: "PLA Matte",
+          live_color_hex: "#000000",
+          live_match_status: "unknown_rfid",
+          live_tray_uuid: "UNREGISTERED-RFID",
+        },
+      ],
+    }),
+    printerSpoolOptions: [
+      {
+        spool: {
+          id: "saved-rfid-spool",
+          remaining_g: 820,
+          status: "IN_STOCK",
+          rfid_tag: "OLD-RFID",
+        },
+        master: {
+          material: "PLA",
+          filament_name: "PLA Matte",
+          color_name: "Black",
+          vendor: "Bambu",
+          hex_color: "#000000",
+        },
+      },
+    ],
+  });
+
+  assert.doesNotMatch(html, /slot-live-candidates/);
+  assert.doesNotMatch(html, /saved-rfid-spool/);
+  assert.doesNotMatch(html, /Save RFID/);
+});
+
 test("printer workspace does not show live RFID candidates for already assigned slots", () => {
   const html = renderBoard({
     activePrinter: createPrinterRow({

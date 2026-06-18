@@ -214,6 +214,39 @@ test("buildBambuUnknownRfidInventoryDecision keeps strict RFID match before Bamb
   assert.equal(exactDecision.suggestedInventoryMatch.kind, "rfid_exact");
 });
 
+test("buildBambuUnknownRfidInventoryDecision skips saved-RFID metadata candidates", () => {
+  const observed = {
+    rfid: "NEW-BAMBU-RFID",
+    material: "PLA",
+    filamentName: "PLA Matte",
+    colorHex: "#000000",
+  };
+  const rows = [
+    createRow("saved-rfid-bambu", {
+      vendor: "Bambu",
+      rfidTag: "OLD-BAMBU-RFID",
+      material: "PLA",
+      filamentName: "PLA Matte",
+      hexColor: "#000000",
+    }),
+  ];
+
+  const genericMetadata = buildInventoryMetadataCandidateResult(rows, observed, {
+    includeBambuMetadataCandidates: true,
+    onlyBambuMetadataCandidates: true,
+  });
+  const onboardingDecision = buildBambuUnknownRfidInventoryDecision(rows, observed, {
+    enableMetadataCandidates: true,
+  });
+
+  assert.equal(genericMetadata.kind, "metadata_single");
+  assert.deepEqual(genericMetadata.candidates.map((row) => row.spool.id), [
+    "saved-rfid-bambu",
+  ]);
+  assert.equal(onboardingDecision.strictInventoryMatch.kind, "none");
+  assert.equal(onboardingDecision.suggestedInventoryMatch.kind, "none");
+});
+
 test("buildInventoryMetadataCandidateResult keeps borrowed-in Bambu rows available for unknown RFID assistance", () => {
   const result = buildInventoryMetadataCandidateResult(
     [

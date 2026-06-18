@@ -57,6 +57,7 @@ function spoolRow(
     colorName?: string;
     hexColor?: string;
     status?: string;
+    rfidTag?: string | null;
   } = {},
 ): SpoolWithMasterRow {
   return {
@@ -64,7 +65,7 @@ function spoolRow(
       id,
       master_id: `${id}-master`,
       status: overrides.status ?? "IN_STOCK",
-      rfid_tag: null,
+      rfid_tag: overrides.rfidTag ?? null,
     },
     master: {
       id: `${id}-master`,
@@ -294,6 +295,43 @@ test("derivePrinterSlotDisplayState falls back to Bambu catalog suggestions when
       catalogRow("bambu-matte-black"),
       catalogRow("bambu-matte-white", { color_name: "White", hex_color: "#FFFFFF" }),
     ],
+    selectedTargetSpool: null,
+    clientReadOnly: false,
+    clientPrinterSource: "LIVE",
+    locale: "en",
+    t,
+    findSpoolById: () => null,
+  });
+
+  assert.equal(state.unknownLiveRfid, true);
+  assert.equal(state.liveSuggestedInventoryMatch.kind, "none");
+  assert.equal(state.liveCatalogMatch.kind, "catalog_single");
+  assert.deepEqual(state.liveCatalogMatch.candidates.map((row) => row.id), [
+    "bambu-matte-black",
+  ]);
+});
+
+test("derivePrinterSlotDisplayState falls back to catalog when matching inventory already has RFID", () => {
+  const state = derivePrinterSlotDisplayState({
+    slot: slot({ ams_id: "printer_ams_1", slot_index: 1 }),
+    liveConfig: liveConfig(0, 0),
+    liveTray: tray({
+      tray_index: 0,
+      tray_uuid: "NEW-BAMBU-RFID",
+      match_status: "unknown_rfid",
+      filament_type: "PLA",
+      filament_name: "PLA Matte",
+      color_hex: "#000000",
+    }),
+    spoolRows: [
+      spoolRow("already-bound-bambu", {
+        rfidTag: "OLD-BAMBU-RFID",
+        material: "PLA",
+        filamentName: "PLA Matte",
+        hexColor: "#000000",
+      }),
+    ],
+    catalogRows: [catalogRow("bambu-matte-black")],
     selectedTargetSpool: null,
     clientReadOnly: false,
     clientPrinterSource: "LIVE",

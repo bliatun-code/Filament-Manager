@@ -32,6 +32,12 @@ export type InventoryMatchOptions = {
    * in that flow adds noise because those rolls cannot emit a Bambu RFID.
    */
   onlyBambuMetadataCandidates?: boolean;
+  /**
+   * Unknown live RFID onboarding can only bind inventory rows that do not already
+   * carry a saved RFID identity. Rows with saved RFID remain eligible for the
+   * strict exact-RFID pass.
+   */
+  requireMissingRfidTag?: boolean;
 };
 
 export type BambuUnknownRfidInventoryDecision = {
@@ -177,6 +183,9 @@ function isMetadataCandidateRow(
   options: InventoryMatchOptions,
 ): boolean {
   if (!isMetadataVisibleInventoryRow(row)) {
+    return false;
+  }
+  if (options.requireMissingRfidTag && (row.spool.rfid_tag ?? "").trim()) {
     return false;
   }
   const bambuVendor = isBambuVendor(row);
@@ -421,6 +430,7 @@ export function buildBambuUnknownRfidInventoryDecision(
       ? buildInventoryMetadataCandidateResult(spoolRows, observed, {
           includeBambuMetadataCandidates: true,
           onlyBambuMetadataCandidates: true,
+          requireMissingRfidTag: true,
           preferredSpoolId: options.preferredSpoolId,
         })
       : strictInventoryMatch;
