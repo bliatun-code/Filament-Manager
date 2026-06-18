@@ -58,28 +58,33 @@ export function SlotCatalogOnboardingModal({
   const isBorrowedIn = prompt.ownershipType === "BORROWED_IN";
   const slotAlreadyAssigned = Boolean((currentSlot ?? prompt.slot).spool_id);
   const saveDisabled = saveState.disabled;
-  const saveBlockMessage =
-    saveState.reason === "missing_rfid"
-      ? t(
-          "printers.slotOnboardingNeedsRfid",
-          "Wait for a non-empty RFID identity from the live AMS signal before adding and binding this roll.",
-        )
-        : saveState.reason === "borrowed_owner_required"
-          ? t(
-              "printers.slotOnboardingNeedsBorrowedOwner",
-              "Enter who the spool is borrowed from before registering it as borrowed-in.",
-            )
-          : saveState.reason === "live_slot_unloaded"
-            ? t(
-                "printers.slotOnboardingLiveSlotUnloaded",
-                "AMS no longer reports a loaded roll in this slot. Reopen the slot action when the roll is loaded.",
-              )
-            : saveState.reason === "live_identity_changed"
-              ? t(
-                  "printers.slotOnboardingLiveIdentityChanged",
-                  "The live AMS identity changed before saving. Reopen the slot action and confirm the current roll.",
-                )
-              : null;
+  let saveBlockMessage: string | null = null;
+  if (saveState.reason === "missing_rfid") {
+    saveBlockMessage = t(
+      "printers.slotOnboardingNeedsRfid",
+      "Wait for a non-empty RFID identity from the live AMS signal before adding and binding this roll.",
+    );
+  } else if (saveState.reason === "borrowed_owner_required") {
+    saveBlockMessage = t(
+      "printers.slotOnboardingNeedsBorrowedOwner",
+      "Enter who the spool is borrowed from before registering it as borrowed-in.",
+    );
+  } else if (saveState.reason === "occupied_slot") {
+    saveBlockMessage = t(
+      "printers.slotOnboardingOccupiedBeforeSave",
+      "This slot now has a roll assigned. Clear or swap it through the normal slot flow before adding a new roll from AMS.",
+    );
+  } else if (saveState.reason === "live_slot_unloaded") {
+    saveBlockMessage = t(
+      "printers.slotOnboardingLiveSlotUnloaded",
+      "AMS no longer reports a loaded roll in this slot. Reopen the slot action when the roll is loaded.",
+    );
+  } else if (saveState.reason === "live_identity_changed") {
+    saveBlockMessage = t(
+      "printers.slotOnboardingLiveIdentityChanged",
+      "The live AMS identity changed before saving. Reopen the slot action and confirm the current roll.",
+    );
+  }
 
   return (
     <AppModal
