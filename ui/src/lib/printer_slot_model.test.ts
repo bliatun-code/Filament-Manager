@@ -6,6 +6,7 @@ import {
   buildMeasuredTotalWeightDraft,
   buildSlotCatalogOnboardingCreateRequest,
   buildSlotCatalogOnboardingOpenState,
+  buildSlotCatalogOnboardingPostCreateWrites,
   buildSlotCatalogOnboardingPrompt,
   buildSlotCatalogOnboardingSaveState,
   findPrinterSlotById,
@@ -105,6 +106,38 @@ test("buildSavedRfidPrinterSlotAssignment assigns a persisted RFID spool without
     printer_id: "printer-1",
     slot_id: "slot-1",
     spool_id: "spool-1",
+    rfid_override_tray_uuid: null,
+    rfid_override_color_hex: null,
+    clear_live_cache_before_next_refresh: false,
+  });
+});
+
+test("buildSlotCatalogOnboardingPostCreateWrites saves RFID before assigning the created spool", () => {
+  const slot = {
+    slot_id: "slot-1",
+    ams_id: "printer_ams_1",
+    slot_index: 1,
+    rfid_override_tray_uuid: "OLD-UNKNOWN-RFID",
+    rfid_override_color_hex: "#00FF00",
+  } as PrinterAmsSlotRow;
+
+  const writes = buildSlotCatalogOnboardingPostCreateWrites({
+    printerId: "printer-1",
+    slot,
+    createdSpoolId: "host-created-spool",
+    observedRfid: "RFID-NEW",
+    rfidObservedAt: "2099-01-02T00:00:00Z",
+  });
+
+  assert.deepEqual(writes.rfidInput, {
+    spool_id: "host-created-spool",
+    rfid_tag: "RFID-NEW",
+    rfid_observed_at: "2099-01-02T00:00:00Z",
+  });
+  assert.deepEqual(writes.assignInput, {
+    printer_id: "printer-1",
+    slot_id: "slot-1",
+    spool_id: "host-created-spool",
     rfid_override_tray_uuid: null,
     rfid_override_color_hex: null,
     clear_live_cache_before_next_refresh: false,

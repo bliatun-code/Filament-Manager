@@ -21,6 +21,7 @@ import {
   buildSavedRfidPrinterSlotAssignment,
   buildSlotCatalogOnboardingOpenState,
   buildSlotCatalogOnboardingCreateRequest,
+  buildSlotCatalogOnboardingPostCreateWrites,
   buildSlotCatalogOnboardingPrompt,
   buildSlotSwapDraft,
   findPrinterSlotById,
@@ -914,25 +915,25 @@ export function usePrinterSlotInteractions({
         clientHostBaseUrl,
         clientLibraryId,
       });
-      await updateInventorySpoolRfidTag(
-        {
-          spool_id: createdSpoolId,
-          rfid_tag: observedRfid,
-          rfid_observed_at: rfidObservedAt ?? new Date().toISOString(),
-        },
-        {
-          clientReadOnly,
-          clientHostBaseUrl,
-          clientLibraryId,
-        },
-      );
+      const postCreateWrites = buildSlotCatalogOnboardingPostCreateWrites({
+        printerId,
+        slot: slotForWrite,
+        createdSpoolId,
+        observedRfid,
+        rfidObservedAt: rfidObservedAt ?? new Date().toISOString(),
+      });
+      await updateInventorySpoolRfidTag(postCreateWrites.rfidInput, {
+        clientReadOnly,
+        clientHostBaseUrl,
+        clientLibraryId,
+      });
       await writePrinterSlotAssignment(
         {
           clientReadOnly,
           clientHostBaseUrl,
           clientLibraryId,
         },
-        buildSavedRfidPrinterSlotAssignment(printerId, slotForWrite, createdSpoolId),
+        postCreateWrites.assignInput,
       );
       await reloadData();
       setSlotCatalogOnboardingPrompt(null);

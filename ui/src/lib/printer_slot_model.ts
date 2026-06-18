@@ -6,6 +6,7 @@ import type {
   PrinterAmsSlotRow,
   PrinterOverviewRow,
   SpoolWithMasterRow,
+  UpdateSpoolRfidTagInput,
 } from "./tauri_client";
 import {
   buildInventoryCreateSpoolRequest,
@@ -127,6 +128,11 @@ export type PreparedPrinterSlotAssignment = {
   hasChange: boolean;
   overrideChanged: boolean;
   shouldAssignSlot: boolean;
+  assignInput: AssignPrinterSlotInput;
+};
+
+export type SlotCatalogOnboardingPostCreateWrites = {
+  rfidInput: UpdateSpoolRfidTagInput;
   assignInput: AssignPrinterSlotInput;
 };
 
@@ -467,6 +473,27 @@ export function buildSavedRfidPrinterSlotAssignment(
     rfid_override_tray_uuid: null,
     rfid_override_color_hex: null,
     clear_live_cache_before_next_refresh: false,
+  };
+}
+
+export function buildSlotCatalogOnboardingPostCreateWrites(input: {
+  printerId: string;
+  slot: PrinterAmsSlotRow;
+  createdSpoolId: string;
+  observedRfid: string;
+  rfidObservedAt: string;
+}): SlotCatalogOnboardingPostCreateWrites {
+  return {
+    rfidInput: {
+      spool_id: input.createdSpoolId,
+      rfid_tag: input.observedRfid,
+      rfid_observed_at: input.rfidObservedAt,
+    },
+    assignInput: buildSavedRfidPrinterSlotAssignment(
+      input.printerId,
+      input.slot,
+      input.createdSpoolId,
+    ),
   };
 }
 
