@@ -76,6 +76,24 @@ test("buildBambuLiveCatalogMatchResult includes discontinued Bambu rows as histo
   assert.deepEqual(result.candidates.map((row) => row.id), ["old-black"]);
 });
 
+test("buildBambuLiveCatalogMatchResult keeps active candidates ahead of discontinued references", () => {
+  const result = buildBambuLiveCatalogMatchResult(
+    [
+      master("old-black", { is_discontinued: true, discontinued_at: "2025-01-01T00:00:00Z" }),
+      master("basic-black", { filament_name: "PLA Basic" }),
+      master("matte-black"),
+    ],
+    tray({ filament_name: null }),
+  );
+
+  assert.equal(result.kind, "catalog_multiple");
+  assert.deepEqual(result.candidates.map((row) => row.id), [
+    "basic-black",
+    "matte-black",
+    "old-black",
+  ]);
+});
+
 test("buildBambuLiveCatalogMatchResult ignores unloaded or empty live trays", () => {
   assert.equal(
     buildBambuLiveCatalogMatchResult([master("matte-black")], tray({ loaded: false })).kind,

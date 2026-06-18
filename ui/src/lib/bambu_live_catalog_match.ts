@@ -39,6 +39,13 @@ function observedFromLiveTray(liveTray: BambuLiveObservedTray): ObservedInventor
   };
 }
 
+function sortCatalogCandidates(candidates: MasterCatalogRow[]): MasterCatalogRow[] {
+  return [...candidates].sort(
+    (left, right) =>
+      Number(Boolean(left.is_discontinued)) - Number(Boolean(right.is_discontinued)),
+  );
+}
+
 export function buildBambuLiveCatalogMatchResult(
   catalogRows: MasterCatalogRow[],
   liveTray: BambuLiveObservedTray | null | undefined,
@@ -63,12 +70,13 @@ export function buildBambuLiveCatalogMatchResult(
   const candidates = result.candidates
     .map((row) => rowsById.get(row.master.id))
     .filter((row): row is MasterCatalogRow => row != null);
+  const sortedCandidates = sortCatalogCandidates(candidates);
 
-  if (candidates.length === 1) {
-    return { kind: "catalog_single", candidates };
+  if (sortedCandidates.length === 1) {
+    return { kind: "catalog_single", candidates: sortedCandidates };
   }
-  if (candidates.length > 1) {
-    return { kind: "catalog_multiple", candidates };
+  if (sortedCandidates.length > 1) {
+    return { kind: "catalog_multiple", candidates: sortedCandidates };
   }
   return { kind: "none", candidates: [] };
 }

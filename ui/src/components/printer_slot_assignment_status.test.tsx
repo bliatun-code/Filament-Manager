@@ -224,6 +224,30 @@ test("PrinterSlotAssignmentStatus offers catalog add and RFID save when inventor
   assert.doesNotMatch(html, /Save RFID/);
 });
 
+test("PrinterSlotAssignmentStatus lists multiple catalog onboarding choices", () => {
+  const html = renderStatus({
+    slotRow: slot(),
+    catalogRows: [
+      catalogRow("bambu-matte-black"),
+      catalogRow("bambu-basic-black", { filament_name: "PLA Basic" }),
+      catalogRow("bambu-archived-black", {
+        filament_name: "PLA Archived",
+        is_discontinued: true,
+      }),
+      catalogRow("bambu-extra-black", { filament_name: "PLA Extra" }),
+    ],
+  });
+
+  assert.match(html, /4 Bambu catalog entries look like this live roll\./);
+  assert.match(html, /PLA Matte.*Black/);
+  assert.match(html, /PLA Basic.*Black/);
+  assert.match(html, /PLA Extra.*Black/);
+  assert.doesNotMatch(html, /PLA Archived.*Black/);
+  assert.doesNotMatch(html, /Discontinued/);
+  assert.match(html, /More Bambu catalog candidates are available\./);
+  assert.equal((html.match(/Add \+ save RFID/g) ?? []).length, 3);
+});
+
 test("PrinterSlotAssignmentStatus blocks catalog onboarding when the slot is already occupied", () => {
   const html = renderStatus({
     slotRow: slot({ spool_id: "loaded-spool" }),
