@@ -168,6 +168,65 @@ test("add filament task sheet shows Bambu filament code help before and after lo
   assert.match(lookupHtml, /TPU for AMS/);
 });
 
+test("add filament task sheet requires explicit row selection for ambiguous Bambu codes", () => {
+  const state = createInitialCompanionState();
+  state.borrowedInDraft = {
+    ...state.borrowedInDraft,
+    catalogSearch: "65103",
+  };
+  state.catalogMasters = [
+    {
+      id: "petg-black",
+      material: "PETG",
+      filament_name: "PETG HF",
+      color_name: "Black (65103)",
+      hex_color: "#111111",
+      product_url: null,
+      default_weight: 1000,
+      vendor: "Bambu",
+      is_discontinued: false,
+      discontinued_at: null,
+    },
+    {
+      id: "pla-black",
+      material: "PLA",
+      filament_name: "PLA Basic",
+      color_name: "Black (65103)",
+      hex_color: "#000000",
+      product_url: null,
+      default_weight: 1000,
+      vendor: "Bambu",
+      is_discontinued: false,
+      discontinued_at: null,
+    },
+  ];
+
+  const reviewHtml = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+
+  assert.match(reviewHtml, /This code is used by several active Bambu catalog entries/);
+  assert.match(reviewHtml, /data-master-id="petg-black"/);
+  assert.match(reviewHtml, /data-master-id="pla-black"/);
+  assert.match(reviewHtml, /name="filament-master-id" value=""/);
+  assert.match(reviewHtml, /Choose a catalog row/);
+  assert.match(
+    reviewHtml,
+    /<button class="primary-button" type="submit" disabled>\s*Add spool to inventory/,
+  );
+
+  state.borrowedInDraft = {
+    ...state.borrowedInDraft,
+    selectedMasterId: "pla-black",
+  };
+  const selectedHtml = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+
+  assert.match(selectedHtml, /name="filament-master-id" value="pla-black"/);
+  assert.doesNotMatch(selectedHtml, /Choose a catalog row/);
+  assert.doesNotMatch(
+    selectedHtml,
+    /<button class="primary-button" type="submit" disabled>\s*Add spool to inventory/,
+  );
+});
+
 test("add filament task sheet surfaces discontinued-only Bambu code matches under active filter", () => {
   const state = createInitialCompanionState();
   state.borrowedInDraft = {
@@ -195,6 +254,8 @@ test("add filament task sheet surfaces discontinued-only Bambu code matches unde
   assert.match(html, /Only discontinued Bambu catalog entries use this code/);
   assert.match(html, /Old Red \(12345\)/);
   assert.match(html, /Discontinued/);
+  assert.match(html, /name="filament-master-id" value=""/);
+  assert.match(html, /Choose a catalog row/);
 });
 
 test("add filament task sheet localizes key copy in norwegian", () => {

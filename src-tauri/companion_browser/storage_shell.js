@@ -5,6 +5,7 @@ import {
   sortCatalogMastersAlphabetically,
 } from "./formatters.js";
 import {
+  bambuFilamentCodeLookupRequiresExplicitSelection,
   buildBambuFilamentCodeLookup,
   catalogMasterMatchesBambuFilamentCode,
 } from "./bambu_filament_code_lookup.js";
@@ -138,12 +139,17 @@ function resolveAddSheetState(state) {
     }),
   );
   const selectedMasterId = String(draft.selectedMasterId || "").trim();
+  const explicitSelectedMaster =
+    source === "manual"
+      ? null
+      : visibleCatalogMasters.find((master) => master.id === selectedMasterId) || null;
+  const bambuCodeRequiresExplicitSelection =
+    source === "bambu" && bambuFilamentCodeLookupRequiresExplicitSelection(bambuCodeLookup);
   const selectedMaster =
     (source === "manual"
       ? null
-      : visibleCatalogMasters.find((master) => master.id === selectedMasterId) ||
-        visibleCatalogMasters[0] ||
-        null);
+      : explicitSelectedMaster ||
+        (bambuCodeRequiresExplicitSelection ? null : visibleCatalogMasters[0] || null));
   const material =
     source === "manual"
       ? String(draft.material || "").trim()
@@ -190,6 +196,7 @@ function resolveAddSheetState(state) {
       onOrder: wishlistItems.filter((item) => item.status === "ON_ORDER").length,
       received: wishlistItems.filter((item) => item.status === "RECEIVED").length,
     },
+    requiresCatalogSelection: source !== "manual" && !selectedMaster,
   };
 }
 
@@ -218,6 +225,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
   const previewVendor = selection.vendor || t(locale, "storage.vendor", "Vendor");
   const previewWeight = selection.selectedMaster?.default_weight ? `${selection.selectedMaster.default_weight} g` : "";
   const isBorrowedIn = String(draft.ownershipType || "").trim().toUpperCase() === "BORROWED_IN";
+  const catalogSelectionMissing = selection.requiresCatalogSelection;
   const wishlistRows = selection.visibleWishlistItems
     .map((item) => {
       const linkedMaster = (Array.isArray(state.catalogMasters) ? state.catalogMasters : []).find(
@@ -445,7 +453,11 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
               <div class="list-title">${escapeHtml(previewTitle)}</div>
               <div class="list-subtitle">${escapeHtml(previewVendor)}${previewWeight ? ` · ${escapeHtml(previewWeight)}` : ""}</div>
             </div>
-            <span class="pill">${escapeHtml(t(locale, "storage.selected", "Selected"))}</span>
+            ${
+              catalogSelectionMissing
+                ? `<span class="pill">${escapeHtml(t(locale, "storage.chooseCatalogRow", "Choose a catalog row"))}</span>`
+                : `<span class="pill">${escapeHtml(t(locale, "storage.selected", "Selected"))}</span>`
+            }
           </div>
         </div>
 
@@ -555,7 +567,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
           </div>
 
           <div class="detail-actions form-action-block utility-sheet-actions">
-            <button class="primary-button" type="submit" ${busy ? "disabled" : ""}>
+            <button class="primary-button" type="submit" ${busy || catalogSelectionMissing ? "disabled" : ""}>
               ${escapeHtml(
                 isBorrowedIn
                   ? t(locale, "storage.registerBorrowedIn", "Register borrowed-in spool")
@@ -599,7 +611,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
           </div>
 
           <div class="detail-actions form-action-block utility-sheet-actions">
-            <button class="secondary-button" type="submit" ${busy ? "disabled" : ""}>
+            <button class="secondary-button" type="submit" ${busy || catalogSelectionMissing ? "disabled" : ""}>
               ${escapeHtml(t(locale, "storage.addCurrentSelectionToWishlist", "Add current selection to wishlist"))}
             </button>
           </div>

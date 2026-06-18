@@ -56,3 +56,7 @@ export function buildBambuFilamentCodeLookup(masters, rawQuery) {
 
   return { code, status, matches, activeMatches, discontinuedMatches };
 }
+
+export function bambuFilamentCodeLookupRequiresExplicitSelection(lookup) {
+  return lookup?.status === "multiple_active" || lookup?.status === "discontinued_only";
+}
