@@ -27,7 +27,7 @@ function createCatalogSearchText(master: MasterCatalogRow): string {
   return createCatalogSortKey(master).toLowerCase();
 }
 
-function filterCreateCatalogMasters(
+export function filterCreateCatalogMasters(
   masters: MasterCatalogRow[],
   vendorToken: string,
   query: string,
