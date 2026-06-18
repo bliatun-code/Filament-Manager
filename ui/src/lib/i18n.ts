@@ -767,6 +767,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       addBorrowedCatalogRollAndSaveRfid: "Add borrowed-in + save RFID",
       slotOnboardingOccupied:
         "This slot already has a roll assigned. Clear or swap it through the normal slot flow before creating a new roll from the live AMS signal.",
+      slotOnboardingOccupiedBeforeSave:
+        "This slot now has a roll assigned. Clear or swap it through the normal slot flow before adding a new roll from AMS.",
       slotOnboardingNeedsRfid:
         "Wait for a non-empty RFID identity from the live AMS signal before adding and binding this roll.",
       slotOnboardingNeedsBorrowedOwner:
@@ -2262,6 +2264,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       addBorrowedCatalogRollAndSaveRfid: "Legg til innlånt + lagre RFID",
       slotOnboardingOccupied:
         "Dette sporet har allerede en tildelt rull. Tøm eller bytt den via vanlig sporflyt før du oppretter en ny rull fra live AMS-signalet.",
+      slotOnboardingOccupiedBeforeSave:
+        "Dette sporet har nå en tildelt rull. Tøm eller bytt den via vanlig sporflyt før du legger til en ny rull fra AMS.",
       slotOnboardingNeedsRfid:
         "Vent på en ikke-tom RFID-identitet fra live AMS-signalet før rullen legges til og bindes.",
       slotOnboardingNeedsBorrowedOwner:
