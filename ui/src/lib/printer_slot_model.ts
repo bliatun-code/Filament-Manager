@@ -175,13 +175,12 @@ export function filterAllowedSpoolsForSlot(
 ): SpoolWithMasterRow[] {
   return sortedSpools.filter((row) => {
     const status = (row.spool.status ?? "").trim().toUpperCase();
-    const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
     if (
       status === "EMPTY" ||
       status === "LOST" ||
       status === "MISSING" ||
       status === "DELETED" ||
-      (status === "BORROWED" && ownershipType !== "BORROWED_IN")
+      status === "BORROWED"
     ) {
       return false;
     }

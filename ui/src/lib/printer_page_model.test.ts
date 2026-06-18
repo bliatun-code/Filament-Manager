@@ -10,13 +10,18 @@ import {
 } from "./printer_page_model";
 import type { PrinterAmsSlotRow, PrinterOverviewRow, SpoolWithMasterRow } from "./tauri_client";
 
-function spool(id: string, status = "IN_STOCK", vendor = "Generic"): SpoolWithMasterRow {
+function spool(
+  id: string,
+  status = "IN_STOCK",
+  vendor = "Generic",
+  ownershipType = "OWNED",
+): SpoolWithMasterRow {
   return {
     spool: {
       id,
       master_id: `master-${id}`,
       status,
-      ownership_type: "OWNED",
+      ownership_type: ownershipType,
       remaining_g: 500,
       spool_tare_weight_g: vendor === "Bambu" ? null : 200,
     },
@@ -108,9 +113,12 @@ test("spool lookup resolves known tare weights and empty ids safely", () => {
 test("allowed spool options keep the active slot spool selectable", () => {
   const sortedSpools = [
     spool("available"),
+    spool("borrowed-in", "IN_STOCK", "Generic", "BORROWED_IN"),
     spool("active", "IN_USE"),
     spool("lost", "LOST"),
     spool("deleted", "DELETED"),
+    spool("loaned-out-owned", "BORROWED"),
+    spool("loaned-out-borrowed-in", "BORROWED", "Generic", "BORROWED_IN"),
   ];
   const optionsBySlot = buildAllowedSpoolOptionsBySlotSpoolId(
     [printer("p1", [slot("a", "active")])],
@@ -119,8 +127,8 @@ test("allowed spool options keep the active slot spool selectable", () => {
   const globalOptions = optionsBySlot.get("")?.map((row) => row.spool.id);
   const activeSlotOptions = optionsBySlot.get("active")?.map((row) => row.spool.id);
 
-  assert.deepEqual(globalOptions, ["available"]);
-  assert.deepEqual(activeSlotOptions, ["available", "active"]);
+  assert.deepEqual(globalOptions, ["available", "borrowed-in"]);
+  assert.deepEqual(activeSlotOptions, ["available", "borrowed-in", "active"]);
   assert.equal(
     buildAllowedSpoolOptionMapsBySlotSpoolId(optionsBySlot).get("active")?.get("active")?.spool.id,
     "active",
