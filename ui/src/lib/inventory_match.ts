@@ -159,7 +159,7 @@ function normalizeSpoolStatus(raw?: string | null): string {
 
 function isVisibleInventoryRow(row: SpoolWithMasterRow): boolean {
   const status = normalizeSpoolStatus(row.spool.status);
-  return status !== "EMPTY" && status !== "LOST" && status !== "DELETED";
+  return status !== "EMPTY" && status !== "LOST" && status !== "MISSING" && status !== "DELETED";
 }
 
 function isMetadataCandidateRow(

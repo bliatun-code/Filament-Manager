@@ -57,11 +57,12 @@ test("buildInventoryMatchResult prefers exact non-zero RFID matches", () => {
   assert.deepEqual(result.candidates.map((row) => row.spool.id), ["spool-1"]);
 });
 
-test("buildInventoryMatchResult ignores empty and lost rows", () => {
+test("buildInventoryMatchResult ignores empty, lost, and missing rows", () => {
   const result = buildInventoryMatchResult(
     [
       createRow("empty", { status: "EMPTY", rfidTag: "ABC123" }),
       createRow("lost", { status: "LOST", material: "PLA", filamentName: "PLA Basic" }),
+      createRow("missing", { status: "MISSING", rfidTag: "ABC123" }),
     ],
     {
       rfid: "ABC123",
