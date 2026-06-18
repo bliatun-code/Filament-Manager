@@ -224,6 +224,8 @@ export function PrinterSlotAssignmentStatus({
                 ? t("printers.liveCandidateHasRfid", "RFID saved")
                 : registrationState?.reason === "select_candidate_first"
                   ? t("printers.liveCandidateSelectBeforeRfid", "select first")
+                  : registrationState?.reason === "candidate_unavailable"
+                    ? t("printers.liveCandidateUnavailable", "not available")
                   : registrationState?.reason === "missing_rfid"
                     ? t("printers.liveCatalogRequiresRfid", "wait for RFID")
                     : null;

@@ -755,6 +755,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       liveCandidateMore: "More candidates exist in inventory.",
       liveCandidateHasRfid: "RFID saved",
       liveCandidateSelectBeforeRfid: "select first",
+      liveCandidateUnavailable: "not available",
       registerLiveRfid: "Save RFID",
       liveCatalogCandidateSingle:
         "Bambu catalog has one likely match. Add it here to save the live RFID.",
@@ -803,6 +804,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         invalidUsage: "Usage grams must be greater than zero.",
         recordUsage: "Failed to record print usage.",
         candidateAlreadyHasRfid: "This inventory roll already has an RFID identity saved.",
+        candidateUnavailableForRfid:
+          "Refresh printer data; this roll is no longer available as a live Bambu RFID candidate.",
         selectCandidateBeforeRfid:
           "Select this roll in the slot first, so any outgoing roll weight is handled before saving RFID.",
         liveRfidChangedBeforeSave:
@@ -2242,6 +2245,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       liveCandidateMore: "Flere kandidater finnes i lageret.",
       liveCandidateHasRfid: "RFID lagret",
       liveCandidateSelectBeforeRfid: "velg først",
+      liveCandidateUnavailable: "ikke tilgjengelig",
       registerLiveRfid: "Lagre RFID",
       liveCatalogCandidateSingle:
         "Bambu-katalogen har én sannsynlig match. Legg den til her for å lagre live-RFID.",
@@ -2290,6 +2294,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         invalidUsage: "Forbruk i gram må være større enn null.",
         recordUsage: "Kunne ikke registrere printforbruk.",
         candidateAlreadyHasRfid: "Denne lagerrullen har allerede en lagret RFID-identitet.",
+        candidateUnavailableForRfid:
+          "Oppdater printerdata; denne rullen er ikke lenger tilgjengelig som live Bambu RFID-kandidat.",
         selectCandidateBeforeRfid:
           "Velg denne rullen i sporet først, slik at eventuell utgående rullvekt håndteres før RFID lagres.",
         liveRfidChangedBeforeSave:

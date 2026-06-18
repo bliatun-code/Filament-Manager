@@ -627,6 +627,15 @@ export function usePrinterSlotInteractions({
         );
         return;
       }
+      if (registrationState.reason === "candidate_unavailable") {
+        setError(
+          t(
+            "printers.error.candidateUnavailableForRfid",
+            "Refresh printer data; this roll is no longer available as a live Bambu RFID candidate.",
+          ),
+        );
+        return;
+      }
       if (registrationState.reason === "select_candidate_first") {
         setError(
           t(

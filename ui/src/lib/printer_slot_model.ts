@@ -87,6 +87,7 @@ export type LiveRfidCandidateRegistrationBlockReason =
   | "missing_rfid"
   | "live_identity_changed"
   | "candidate_has_rfid"
+  | "candidate_unavailable"
   | "select_candidate_first";
 
 export type LiveRfidCandidateRegistrationState = {
@@ -117,6 +118,15 @@ function liveIdentityChanged(
     return false;
   }
   return liveTrayIdentity(options.currentLiveTray) !== liveTrayIdentity(liveTray);
+}
+
+function rowCanReceiveLiveBambuRfid(row: SpoolWithMasterRow): boolean {
+  const vendor = (row.master.vendor ?? "").trim().toLowerCase();
+  const status = (row.spool.status ?? "").trim().toUpperCase();
+  return (
+    vendor.includes("bambu") &&
+    !["EMPTY", "LOST", "MISSING", "DELETED", "BORROWED"].includes(status)
+  );
 }
 
 export type PreparedMeasuredWeightUpdate = {
@@ -398,6 +408,8 @@ export function buildLiveRfidCandidateRegistrationState(
     reason = "live_identity_changed";
   } else if (row.spool.rfid_tag?.trim()) {
     reason = "candidate_has_rfid";
+  } else if (!rowCanReceiveLiveBambuRfid(row)) {
+    reason = "candidate_unavailable";
   } else if (slotForSafety.spool_id && slotForSafety.spool_id !== row.spool.id) {
     reason = "select_candidate_first";
   }

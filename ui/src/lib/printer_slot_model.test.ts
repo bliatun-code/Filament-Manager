@@ -255,6 +255,34 @@ test("buildLiveRfidCandidateRegistrationState blocks unsafe candidate RFID saves
     "live_identity_changed",
   );
   assert.equal(
+    buildLiveRfidCandidateRegistrationState(slot, liveTray, {
+      ...row,
+      spool: { ...row.spool, status: "BORROWED" },
+    }).reason,
+    "candidate_unavailable",
+  );
+  assert.equal(
+    buildLiveRfidCandidateRegistrationState(slot, liveTray, {
+      ...row,
+      spool: { ...row.spool, status: "MISSING" },
+    }).reason,
+    "candidate_unavailable",
+  );
+  assert.equal(
+    buildLiveRfidCandidateRegistrationState(slot, liveTray, {
+      ...row,
+      master: { ...row.master, vendor: "eSUN" },
+    }).reason,
+    "candidate_unavailable",
+  );
+  assert.equal(
+    buildLiveRfidCandidateRegistrationState(slot, liveTray, {
+      ...row,
+      spool: { ...row.spool, ownership_type: "BORROWED_IN" },
+    }).reason,
+    null,
+  );
+  assert.equal(
     buildLiveRfidCandidateRegistrationState(slot, liveTray, row, {
       currentSlot: { ...slot, spool_id: "different-spool" } as PrinterAmsSlotRow,
     }).reason,
