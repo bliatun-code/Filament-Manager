@@ -144,3 +144,62 @@ test("InventoryStockSourcePanel hides Bambu code controls outside Bambu catalog 
   assert.doesNotMatch(manualHtml, /Filament Code/);
   assert.doesNotMatch(manualHtml, /Batch Filament Codes/);
 });
+
+test("InventoryStockSourcePanel renders ambiguous Bambu code matches for manual selection", () => {
+  const html = renderPanel({
+    mode: "bambu",
+    masters: [
+      master({
+        id: "petg-black",
+        material: "PETG",
+        filament_name: "PETG HF",
+        color_name: "Black (65103)",
+        hex_color: "#111111",
+      }),
+      master({
+        id: "pla-black",
+        material: "PLA",
+        filament_name: "PLA Basic",
+        color_name: "Black (65103)",
+        hex_color: "#000000",
+      }),
+    ],
+    catalogQuery: "65103",
+  });
+
+  assert.match(
+    html,
+    /This code is used by several active Bambu catalog entries\. Choose the correct row\./,
+  );
+  assert.match(html, /PETG HF · Black \(65103\)/);
+  assert.match(html, /PLA Basic · Black \(65103\)/);
+});
+
+test("InventoryStockSourcePanel renders discontinued-only Bambu code matches", () => {
+  const html = renderPanel({
+    mode: "bambu",
+    masters: [
+      master({
+        id: "archived-red",
+        color_name: "Old Red (12345)",
+        is_discontinued: true,
+        discontinued_at: "2024-01-01T00:00:00Z",
+      }),
+    ],
+    catalogQuery: "12345",
+  });
+
+  assert.match(html, /Only discontinued Bambu catalog entries use this code\./);
+  assert.match(html, /TPU for AMS · Old Red \(12345\)/);
+  assert.match(html, /Discontinued/);
+});
+
+test("InventoryStockSourcePanel renders no-match Bambu code guidance", () => {
+  const html = renderPanel({
+    mode: "bambu",
+    catalogQuery: "99999",
+  });
+
+  assert.match(html, /No Bambu catalog entry uses this filament code yet\./);
+  assert.match(html, /You can still search by material, series, or color name\./);
+});
