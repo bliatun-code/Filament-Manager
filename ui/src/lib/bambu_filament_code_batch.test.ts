@@ -56,6 +56,32 @@ test("buildBambuFilamentCodeBatch keeps duplicates as separate stock rows", () =
   );
 });
 
+test("buildBambuFilamentCodeBatch creates the active row when a code has discontinued history", () => {
+  const batch = buildBambuFilamentCodeBatch({
+    masters: [
+      master({
+        id: "old-yellow",
+        filament_name: "PLA Basic",
+        color_name: "Old Yellow (53400)",
+        is_discontinued: true,
+      }),
+      master({
+        id: "active-yellow",
+        filament_name: "TPU for AMS",
+        color_name: "Yellow (53400)",
+      }),
+    ],
+    rawInput: "53400",
+  });
+
+  assert.equal(batch.rows[0]?.lookup.status, "single_active");
+  assert.deepEqual(
+    batch.creatableRows.map((row) => row.master?.id),
+    ["active-yellow"],
+  );
+  assert.equal(batch.blockedRows.length, 0);
+});
+
 test("buildBambuFilamentCodeBatch blocks ambiguous, discontinued-only, missing, and invalid rows", () => {
   const batch = buildBambuFilamentCodeBatch({
     masters: [
