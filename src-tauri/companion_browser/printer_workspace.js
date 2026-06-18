@@ -530,12 +530,10 @@ function normalizedSwatchHexes(value) {
 function rowIsBambuCandidate(row) {
   const vendor = normalizedText(row?.master?.vendor);
   const status = String(row?.spool?.status || "").trim().toUpperCase();
-  const ownershipType = String(row?.spool?.ownership_type || "OWNED").trim().toUpperCase();
   return (
     vendor.includes("bambu") &&
     !String(row?.spool?.rfid_tag || "").trim() &&
-    !["EMPTY", "LOST", "MISSING"].includes(status) &&
-    !(status === "BORROWED" && ownershipType !== "BORROWED_IN")
+    !["EMPTY", "LOST", "DELETED", "MISSING", "BORROWED"].includes(status)
   );
 }
 
@@ -630,7 +628,14 @@ function renderLiveInventoryCandidateRows(slot, spoolRows, locale, escapeHtml, f
             row.master.filament_name,
             row.master.color_name,
           );
-          const meta = [formatRollReference(row.spool), formatGrams(row.spool.remaining_g)]
+          const ownershipType = String(row?.spool?.ownership_type || "OWNED").trim().toUpperCase();
+          const meta = [
+            formatRollReference(row.spool),
+            formatGrams(row.spool.remaining_g),
+            ownershipType === "BORROWED_IN"
+              ? t(locale, "storage.borrowedInAction", "Borrowed-in")
+              : null,
+          ]
             .filter(Boolean)
             .join(" · ");
           return `

@@ -360,6 +360,36 @@ test("printer workspace suggests Bambu inventory candidates for unknown live RFI
           hex_color: "#000000",
         },
       },
+      {
+        spool: {
+          id: "spool-deleted",
+          remaining_g: 940,
+          status: "DELETED",
+          rfid_tag: null,
+        },
+        master: {
+          material: "PLA",
+          filament_name: "PLA Matte",
+          color_name: "Black",
+          vendor: "Bambu",
+          hex_color: "#000000",
+        },
+      },
+      {
+        spool: {
+          id: "spool-loaned-out",
+          remaining_g: 940,
+          status: "BORROWED",
+          rfid_tag: null,
+        },
+        master: {
+          material: "PLA",
+          filament_name: "PLA Matte",
+          color_name: "Black",
+          vendor: "Bambu",
+          hex_color: "#000000",
+        },
+      },
     ],
   });
 
@@ -368,6 +398,50 @@ test("printer workspace suggests Bambu inventory candidates for unknown live RFI
   assert.match(html, /data-action="inspect-slot-spool"/);
   assert.match(html, /data-spool-id="spool-bambu"/);
   assert.doesNotMatch(html, /spool-esun/);
+  assert.doesNotMatch(html, /spool-deleted/);
+  assert.doesNotMatch(html, /spool-loaned-out/);
+});
+
+test("printer workspace marks borrowed-in Bambu candidates for unknown live RFID", () => {
+  const html = renderBoard({
+    activePrinter: createPrinterRow({
+      slots: [
+        {
+          slot_id: "slot-1",
+          ams_id: "ams_1",
+          slot_index: 1,
+          spool_id: null,
+          live_loaded: true,
+          live_filament_type: "PLA",
+          live_filament_name: "PLA Matte",
+          live_color_hex: "#000000",
+          live_match_status: "unknown_rfid",
+          live_tray_uuid: "UNREGISTERED-RFID",
+        },
+      ],
+    }),
+    printerSpoolOptions: [
+      {
+        spool: {
+          id: "spool-borrowed-in",
+          remaining_g: 820,
+          status: "IN_STOCK",
+          rfid_tag: null,
+          ownership_type: "BORROWED_IN",
+        },
+        master: {
+          material: "PLA",
+          filament_name: "PLA Matte",
+          color_name: "Black",
+          vendor: "Bambu",
+          hex_color: "#000000",
+        },
+      },
+    ],
+  });
+
+  assert.match(html, /data-spool-id="spool-borrowed-in"/);
+  assert.match(html, /Borrowed-in/);
 });
 
 test("printer workspace hides implausible live remaining percentages", () => {
