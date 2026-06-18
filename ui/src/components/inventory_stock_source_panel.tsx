@@ -92,13 +92,29 @@ function BambuFilamentCodeLookupHint({
       aria-live="polite"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-[11px] leading-none text-slate-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-400">
-          <span className="block text-[9px] uppercase tracking-[0.18em]">
-            {t("inventory.bambuCodeLabel", "Filament Code")}
-          </span>
-          <span className="mt-1 block text-lg font-semibold tracking-normal text-slate-900 dark:text-slate-50">
-            {lookup.code ?? "53400"}
-          </span>
+        <div className="w-full shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-[11px] leading-none text-slate-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-400 sm:w-44">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-[9px] font-semibold uppercase tracking-[0.18em]">
+              {t("inventory.bambuCodeBoxLabelHint", "Box label")}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400">
+              Bambu
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2 rounded-lg bg-white px-2 py-1 dark:bg-slate-950/80">
+              <span>{t("inventory.material", "Material")}</span>
+              <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">PLA</span>
+            </div>
+            <div className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 ring-2 ring-slate-900/5 dark:border-slate-600 dark:bg-slate-950/80 dark:ring-white/10">
+              <span className="block text-[9px] font-semibold uppercase tracking-[0.16em]">
+                {t("inventory.bambuCodeLabel", "Filament Code")}
+              </span>
+              <span className="mt-1 block font-mono text-lg font-semibold tracking-normal text-slate-900 dark:text-slate-50">
+                {lookup.code ?? "53400"}
+              </span>
+            </div>
+          </div>
         </div>
         <div className="min-w-0 flex-1">
           <div className="font-semibold text-slate-800 dark:text-slate-100">{message}</div>
