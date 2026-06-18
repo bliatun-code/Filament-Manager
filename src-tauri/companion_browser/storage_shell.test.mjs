@@ -168,6 +168,48 @@ test("add filament task sheet shows Bambu filament code help before and after lo
   assert.match(lookupHtml, /TPU for AMS/);
 });
 
+test("add filament task sheet selects the active Bambu code match when discontinued history exists", () => {
+  const state = createInitialCompanionState();
+  state.borrowedInDraft = {
+    ...state.borrowedInDraft,
+    catalogSearch: "53400",
+  };
+  state.catalogMasters = [
+    {
+      id: "old-yellow",
+      material: "PLA",
+      filament_name: "PLA Basic",
+      color_name: "Old Yellow (53400)",
+      hex_color: "#D97706",
+      product_url: null,
+      default_weight: 1000,
+      vendor: "Bambu",
+      is_discontinued: true,
+      discontinued_at: "2024-01-01T00:00:00Z",
+    },
+    {
+      id: "active-yellow",
+      material: "TPU",
+      filament_name: "TPU for AMS",
+      color_name: "Yellow (53400)",
+      hex_color: "#FACC15",
+      product_url: null,
+      default_weight: 1000,
+      vendor: "Bambu",
+      is_discontinued: false,
+      discontinued_at: null,
+    },
+  ];
+
+  const html = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+
+  assert.match(html, /One active Bambu catalog entry matched and is selected/);
+  assert.match(html, /name="filament-master-id" value="active-yellow"/);
+  assert.match(html, /TPU for AMS/);
+  assert.doesNotMatch(html, /old-yellow/);
+  assert.doesNotMatch(html, /Old Yellow/);
+});
+
 test("add filament task sheet keeps Bambu filament code lookup scoped to Bambu source", () => {
   const state = createInitialCompanionState();
   state.borrowedInDraft = {
