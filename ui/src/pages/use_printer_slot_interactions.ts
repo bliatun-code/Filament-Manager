@@ -777,7 +777,14 @@ export function usePrinterSlotInteractions({
       borrowedFromContact,
       borrowedInNote,
     } = slotCatalogOnboardingPrompt;
-    const saveState = buildSlotCatalogOnboardingSaveState(slotCatalogOnboardingPrompt);
+    const currentSlot =
+      printers
+        .find((printer) => printer.printer.id === printerId)
+        ?.slots.find((candidate) => candidate.slot_id === slot.slot_id) ?? null;
+    const slotForWrite = currentSlot ?? slot;
+    const saveState = buildSlotCatalogOnboardingSaveState(slotCatalogOnboardingPrompt, {
+      currentSlot,
+    });
     if (saveState.reason === "missing_rfid") {
       setError(
         t(
@@ -854,7 +861,7 @@ export function usePrinterSlotInteractions({
           clientHostBaseUrl,
           clientLibraryId,
         },
-        buildSavedRfidPrinterSlotAssignment(printerId, slot, createdSpoolId),
+        buildSavedRfidPrinterSlotAssignment(printerId, slotForWrite, createdSpoolId),
       );
       await reloadData();
       setSlotCatalogOnboardingPrompt(null);
@@ -884,6 +891,7 @@ export function usePrinterSlotInteractions({
       clientLibraryId,
       clientReadOnly,
       ensureLocalWriteAllowed,
+      printers,
       reloadData,
       setBusy,
       setError,

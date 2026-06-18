@@ -200,6 +200,12 @@ test("buildSlotCatalogOnboardingSaveState blocks unsafe catalog slot onboarding 
     "occupied_slot",
   );
   assert.equal(
+    buildSlotCatalogOnboardingSaveState(readyPrompt, {
+      currentSlot: { ...slot, spool_id: "freshly-assigned-spool" } as PrinterAmsSlotRow,
+    }).reason,
+    "occupied_slot",
+  );
+  assert.equal(
     buildSlotCatalogOnboardingSaveState({
       ...readyPrompt,
       ownershipType: "BORROWED_IN",

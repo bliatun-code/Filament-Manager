@@ -258,15 +258,16 @@ export function buildSlotCatalogOnboardingPrompt(
 
 export function buildSlotCatalogOnboardingSaveState(
   prompt: SlotCatalogOnboardingPrompt,
-  options: { busy?: boolean } = {},
+  options: { busy?: boolean; currentSlot?: PrinterAmsSlotRow | null } = {},
 ): SlotCatalogOnboardingSaveState {
   const observedRfid = liveTrayIdentity(prompt.liveTray);
+  const slotForSafety = options.currentSlot ?? prompt.slot;
   let reason: SlotCatalogOnboardingSaveBlockReason | null = null;
   if (options.busy) {
     reason = "busy";
   } else if (!observedRfid) {
     reason = "missing_rfid";
-  } else if (prompt.slot.spool_id) {
+  } else if (slotForSafety.spool_id) {
     reason = "occupied_slot";
   } else if (
     prompt.ownershipType === "BORROWED_IN" &&
