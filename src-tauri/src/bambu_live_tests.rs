@@ -640,6 +640,52 @@ fn apply_tray_match_status_ignores_unavailable_metadata_candidates() {
 }
 
 #[test]
+fn apply_tray_match_status_ignores_saved_rfid_metadata_candidates_for_unknown_rfid() {
+    let mut slot = make_slot();
+    slot.spool_id = None;
+    let overview = make_overview(slot);
+    let mut tray = make_tray();
+
+    apply_tray_match_status(
+        &mut tray,
+        &overview,
+        &[make_inventory_spool("already_bound", Some("old-rfid"))],
+    );
+
+    assert_eq!(tray.match_status.as_deref(), Some("unknown_rfid"));
+    assert!(tray.matched_inventory_spool_id.is_none());
+    assert!(tray.matched_inventory_mode.is_none());
+}
+
+#[test]
+fn apply_tray_match_status_keeps_saved_rfid_metadata_candidates_without_unknown_rfid() {
+    let mut slot = make_slot();
+    slot.spool_id = None;
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        observed_rfid_tag: None,
+        tray_uuid: None,
+        ..make_tray()
+    };
+
+    apply_tray_match_status(
+        &mut tray,
+        &overview,
+        &[make_inventory_spool("already_bound", Some("old-rfid"))],
+    );
+
+    assert_eq!(tray.match_status.as_deref(), Some("possible_match"));
+    assert_eq!(
+        tray.matched_inventory_spool_id.as_deref(),
+        Some("already_bound")
+    );
+    assert_eq!(
+        tray.matched_inventory_mode.as_deref(),
+        Some("inventory_metadata")
+    );
+}
+
+#[test]
 fn apply_tray_match_status_keeps_borrowed_in_exact_rfid_matches_available() {
     let slot = make_slot();
     let overview = make_overview(slot);

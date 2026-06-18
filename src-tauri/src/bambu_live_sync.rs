@@ -256,7 +256,7 @@ pub(crate) fn apply_tray_match_status(
         }
     }
 
-    let candidates = find_inventory_candidates(tray, all_spools);
+    let candidates = find_inventory_candidates(tray, all_spools, has_live_unknown_rfid);
     tray.match_status = Some(if has_live_unknown_rfid {
         "unknown_rfid".to_string()
     } else {
@@ -305,10 +305,21 @@ fn live_preset_signal_note(tray: &BambuLiveObservedTrayRow) -> Option<String> {
 fn find_inventory_candidates<'a>(
     tray: &BambuLiveObservedTrayRow,
     all_spools: &'a [SpoolWithMasterRow],
+    require_missing_rfid_tag: bool,
 ) -> Vec<&'a SpoolWithMasterRow> {
     all_spools
         .iter()
         .filter(|row| spool_available_for_live_metadata_match(row))
+        .filter(|row| {
+            !require_missing_rfid_tag
+                || row
+                    .spool
+                    .rfid_tag
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .is_none()
+        })
         .filter(|row| {
             let material_match =
                 eq_ignore_case(tray.filament_type.as_deref(), Some(&row.master.material));
