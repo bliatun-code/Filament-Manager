@@ -749,6 +749,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Current assignment looks like this live Bambu roll. Save RFID to bind it permanently.",
       liveRfidCandidateSingle:
         "One inventory roll looks like this live Bambu roll. Save RFID to bind it permanently.",
+      liveRfidCandidateSelectFirst:
+        "One inventory roll looks like this live Bambu roll. Select it before saving RFID.",
       liveRfidCandidateCount:
         "{count} inventory rolls look like this live Bambu roll.",
       liveCandidateCurrent: "current",
@@ -2246,6 +2248,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Nåværende tildeling ligner denne live Bambu-rullen. Lagre RFID for å binde den permanent.",
       liveRfidCandidateSingle:
         "Én rull i lageret ligner denne live Bambu-rullen. Lagre RFID for å binde den permanent.",
+      liveRfidCandidateSelectFirst:
+        "Én rull i lageret ligner denne live Bambu-rullen. Velg den før RFID lagres.",
       liveRfidCandidateCount:
         "{count} ruller i lageret ligner denne live Bambu-rullen.",
       liveCandidateCurrent: "nåværende",

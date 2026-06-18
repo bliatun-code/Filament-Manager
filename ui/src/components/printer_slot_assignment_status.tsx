@@ -177,6 +177,7 @@ export function PrinterSlotAssignmentStatus({
     const currentAssignmentMatched = Boolean(
       slot.spool_id && rows.some((row) => row.spool.id === slot.spool_id),
     );
+    const occupiedByDifferentRoll = Boolean(slot.spool_id && !currentAssignmentMatched);
     const summary = unknownLiveRfid
       ? currentAssignmentMatched
         ? t(
@@ -201,13 +202,19 @@ export function PrinterSlotAssignmentStatus({
               "printers.liveCandidateCount",
               "{count} inventory rolls match the live material/color signal.",
             ).replace("{count}", String(rows.length));
-    const unknownRfidSummary =
-      unknownLiveRfid && !currentAssignmentMatched && rows.length === 1
+    const unknownRfidSummary = unknownLiveRfid
+      ? occupiedByDifferentRoll
         ? t(
-            "printers.liveRfidCandidateSingle",
-            "One inventory roll looks like this live Bambu roll. Save RFID to bind it permanently.",
+            "printers.liveRfidCandidateSelectFirst",
+            "One inventory roll looks like this live Bambu roll. Select it before saving RFID.",
           )
-        : summary;
+        : !currentAssignmentMatched && rows.length === 1
+          ? t(
+              "printers.liveRfidCandidateSingle",
+              "One inventory roll looks like this live Bambu roll. Save RFID to bind it permanently.",
+            )
+          : summary
+      : summary;
 
     return (
       <div className="mt-2 rounded-lg border border-slate-300/50 bg-white/35 px-2 py-1.5 text-[11px] leading-4 text-slate-600 dark:border-slate-700/80 dark:bg-slate-950/20 dark:text-slate-300">

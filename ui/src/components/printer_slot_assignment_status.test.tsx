@@ -209,6 +209,20 @@ test("PrinterSlotAssignmentStatus lists multiple unknown RFID candidates with bo
   assert.match(html, /Save RFID/);
 });
 
+test("PrinterSlotAssignmentStatus requires selecting a different candidate before saving RFID", () => {
+  const html = renderStatus({
+    slotRow: slot({ spool_id: "loaded-other-spool" }),
+    spools: [spoolRow("bambu-black")],
+  });
+
+  assert.match(html, /Current roll/);
+  assert.match(html, /One inventory roll looks like this live Bambu roll/);
+  assert.match(html, /PLA Matte.*Black/);
+  assert.match(html, /select first/);
+  assert.doesNotMatch(html, /Save RFID/);
+  assert.doesNotMatch(html, /Add \+ save RFID/);
+});
+
 test("PrinterSlotAssignmentStatus offers catalog add and RFID save when inventory has no unknown RFID match", () => {
   const html = renderStatus({
     slotRow: slot(),
