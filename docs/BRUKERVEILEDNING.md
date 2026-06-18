@@ -288,6 +288,8 @@ Desktop/client har også et batchfelt for Filament Code i Bambu-flyten. Lim inn 
 
 Batch-opprettede Bambu-ruller bruker lagerdetaljene på høyre side av modalen, inkludert eierskap, eier/kontakt for Innlånt, vekt og plassering. Companion/webapp bruker samme kataloglogikk for manuelt kodeoppslag, men bruker ikke kamera eller webcam-scanning.
 
+Planen for senere kamera- og batch-scanning ligger i [Camera And Batch Scanning Plan](CAMERA_BATCH_SCANNING_PLAN.md). Kortversjonen er at desktop/client skal starte med trygg kode-/barcode-scanning inn i samme batchmodell, mens OCR og live webcam holdes som egne, eksplisitte batcher.
+
 ### Eid filament
 
 Eid betyr at rullen tilhører vårt bibliotek.
