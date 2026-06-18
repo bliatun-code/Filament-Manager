@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildSavedRfidPrinterSlotAssignment,
   buildMeasuredTotalWeightDraft,
+  buildSlotCatalogOnboardingOpenState,
   buildSlotCatalogOnboardingPrompt,
   buildSlotCatalogOnboardingSaveState,
   findPrinterSlotById,
@@ -152,6 +153,36 @@ test("buildSlotCatalogOnboardingPrompt prepares safe owned defaults from live ca
   assert.equal(prompt.initialWeight, "750");
   assert.equal(prompt.ownershipType, "OWNED");
   assert.equal(prompt.borrowedFromName, "");
+});
+
+test("buildSlotCatalogOnboardingOpenState blocks stale catalog onboarding opens", () => {
+  const slot = {
+    slot_id: "slot-1",
+    ams_id: "printer_ams_1",
+    slot_index: 2,
+  } as PrinterAmsSlotRow;
+  const liveTray = {
+    loaded: true,
+    observed_rfid_tag: "RFID-1",
+  } as BambuLiveObservedTray;
+
+  assert.deepEqual(buildSlotCatalogOnboardingOpenState(slot, liveTray), {
+    disabled: false,
+    reason: null,
+    observedRfid: "RFID-1",
+    slot,
+  });
+  assert.equal(
+    buildSlotCatalogOnboardingOpenState(slot, { loaded: true } as BambuLiveObservedTray)
+      .reason,
+    "missing_rfid",
+  );
+  assert.equal(
+    buildSlotCatalogOnboardingOpenState(slot, liveTray, {
+      currentSlot: { ...slot, spool_id: "fresh-spool" } as PrinterAmsSlotRow,
+    }).reason,
+    "occupied_slot",
+  );
 });
 
 test("buildSlotCatalogOnboardingSaveState blocks unsafe catalog slot onboarding writes", () => {

@@ -59,11 +59,21 @@ export type SlotCatalogOnboardingPrompt = {
   borrowedInNote: string;
 };
 
-export type SlotCatalogOnboardingSaveBlockReason =
+export type SlotCatalogOnboardingOpenBlockReason =
   | "busy"
   | "missing_rfid"
-  | "occupied_slot"
+  | "occupied_slot";
+
+export type SlotCatalogOnboardingSaveBlockReason =
+  | SlotCatalogOnboardingOpenBlockReason
   | "borrowed_owner_required";
+
+export type SlotCatalogOnboardingOpenState = {
+  disabled: boolean;
+  reason: SlotCatalogOnboardingOpenBlockReason | null;
+  observedRfid: string;
+  slot: PrinterAmsSlotRow;
+};
 
 export type SlotCatalogOnboardingSaveState = {
   disabled: boolean;
@@ -268,20 +278,38 @@ export function buildSlotCatalogOnboardingPrompt(
   };
 }
 
-export function buildSlotCatalogOnboardingSaveState(
-  prompt: SlotCatalogOnboardingPrompt,
+export function buildSlotCatalogOnboardingOpenState(
+  slot: PrinterAmsSlotRow,
+  liveTray: BambuLiveObservedTray,
   options: { busy?: boolean; currentSlot?: PrinterAmsSlotRow | null } = {},
-): SlotCatalogOnboardingSaveState {
-  const observedRfid = liveTrayIdentity(prompt.liveTray);
-  const slotForSafety = options.currentSlot ?? prompt.slot;
-  let reason: SlotCatalogOnboardingSaveBlockReason | null = null;
+): SlotCatalogOnboardingOpenState {
+  const observedRfid = liveTrayIdentity(liveTray);
+  const slotForSafety = options.currentSlot ?? slot;
+  let reason: SlotCatalogOnboardingOpenBlockReason | null = null;
   if (options.busy) {
     reason = "busy";
   } else if (!observedRfid) {
     reason = "missing_rfid";
   } else if (slotForSafety.spool_id) {
     reason = "occupied_slot";
-  } else if (
+  }
+
+  return {
+    disabled: Boolean(reason),
+    reason,
+    observedRfid,
+    slot: slotForSafety,
+  };
+}
+
+export function buildSlotCatalogOnboardingSaveState(
+  prompt: SlotCatalogOnboardingPrompt,
+  options: { busy?: boolean; currentSlot?: PrinterAmsSlotRow | null } = {},
+): SlotCatalogOnboardingSaveState {
+  const openState = buildSlotCatalogOnboardingOpenState(prompt.slot, prompt.liveTray, options);
+  let reason: SlotCatalogOnboardingSaveBlockReason | null = openState.reason;
+  if (
+    !reason &&
     prompt.ownershipType === "BORROWED_IN" &&
     !prompt.borrowedFromName.trim()
   ) {
@@ -291,7 +319,7 @@ export function buildSlotCatalogOnboardingSaveState(
   return {
     disabled: Boolean(reason),
     reason,
-    observedRfid,
+    observedRfid: openState.observedRfid,
   };
 }
 

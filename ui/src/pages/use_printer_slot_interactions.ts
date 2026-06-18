@@ -19,6 +19,7 @@ import {
   buildMeasuredTotalWeightDraft,
   buildRfidOverridePrompt,
   buildSavedRfidPrinterSlotAssignment,
+  buildSlotCatalogOnboardingOpenState,
   buildSlotCatalogOnboardingPrompt,
   buildSlotCatalogOnboardingSaveState,
   buildSlotSwapDraft,
@@ -705,8 +706,11 @@ export function usePrinterSlotInteractions({
       if (clientReadOnly && !canUseClientHostWrite()) {
         return;
       }
-      const observedRfid = liveTrayIdentity(liveTray);
-      if (!observedRfid) {
+      const currentSlot = findPrinterSlotById(printers, printer.printer.id, slot.slot_id);
+      const openState = buildSlotCatalogOnboardingOpenState(slot, liveTray, {
+        currentSlot,
+      });
+      if (openState.reason === "missing_rfid") {
         setError(
           t(
             "printers.rfidOverrideNothingToSave",
@@ -715,7 +719,7 @@ export function usePrinterSlotInteractions({
         );
         return;
       }
-      if (slot.spool_id) {
+      if (openState.reason === "occupied_slot") {
         setError(
           t(
             "printers.error.createFromCatalogRequiresEmptySlot",
@@ -727,7 +731,7 @@ export function usePrinterSlotInteractions({
 
       const liveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
       setSlotCatalogOnboardingPrompt(
-        buildSlotCatalogOnboardingPrompt(printer, slot, master, liveTray, liveConfig),
+        buildSlotCatalogOnboardingPrompt(printer, openState.slot, master, liveTray, liveConfig),
       );
     },
     [
@@ -736,6 +740,7 @@ export function usePrinterSlotInteractions({
       canUseClientHostWrite,
       clientReadOnly,
       ensureLocalWriteAllowed,
+      printers,
       setError,
       tauri,
       t,

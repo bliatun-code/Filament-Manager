@@ -10,6 +10,7 @@ import {
   buildSlotCatalogOnboardingSaveState,
   type SlotCatalogOnboardingPrompt,
 } from "../lib/printer_slot_model";
+import type { PrinterAmsSlotRow } from "../lib/tauri_client";
 import { AppModal } from "./app_modal";
 import { modalFormInputClassName } from "./form_control_class";
 import { ModalHeader } from "./modal_chrome";
@@ -18,6 +19,7 @@ import { SegmentedChoiceRow } from "./segmented_choice_row";
 
 type SlotCatalogOnboardingModalProps = {
   busy: boolean;
+  currentSlot?: PrinterAmsSlotRow | null;
   locale: Locale;
   prompt: SlotCatalogOnboardingPrompt;
   onBorrowedFromContactChange: (value: string) => void;
@@ -32,6 +34,7 @@ type SlotCatalogOnboardingModalProps = {
 
 export function SlotCatalogOnboardingModal({
   busy,
+  currentSlot,
   locale,
   prompt,
   onBorrowedFromContactChange,
@@ -44,10 +47,10 @@ export function SlotCatalogOnboardingModal({
   onSave,
 }: SlotCatalogOnboardingModalProps) {
   const { t } = useI18n();
-  const saveState = buildSlotCatalogOnboardingSaveState(prompt, { busy });
+  const saveState = buildSlotCatalogOnboardingSaveState(prompt, { busy, currentSlot });
   const observedRfid = saveState.observedRfid;
   const isBorrowedIn = prompt.ownershipType === "BORROWED_IN";
-  const slotAlreadyAssigned = Boolean(prompt.slot.spool_id);
+  const slotAlreadyAssigned = Boolean((currentSlot ?? prompt.slot).spool_id);
   const saveDisabled = saveState.disabled;
   const saveBlockMessage =
     saveState.reason === "missing_rfid"

@@ -8,6 +8,7 @@ import { RfidOverrideModal } from "../components/rfid_override_modal";
 import { SlotCatalogOnboardingModal } from "../components/slot_catalog_onboarding_modal";
 import { useI18n } from "../lib/i18n";
 import { formatDateTime } from "../lib/printer_live_display";
+import { findPrinterSlotById } from "../lib/printer_slot_model";
 import { useResolvedTheme } from "../lib/theme_mode";
 import { useClientWriteGuards } from "../lib/use_client_write_guards";
 import { listSupportedPrinterModels } from "../lib/printer_profiles";
@@ -300,6 +301,11 @@ export default function PrintersPage() {
       {slotCatalogOnboardingPrompt ? (
         <SlotCatalogOnboardingModal
           busy={busy}
+          currentSlot={findPrinterSlotById(
+            printers,
+            slotCatalogOnboardingPrompt.printerId,
+            slotCatalogOnboardingPrompt.slot.slot_id,
+          )}
           locale={locale}
           prompt={slotCatalogOnboardingPrompt}
           onClose={() => setSlotCatalogOnboardingPrompt(null)}

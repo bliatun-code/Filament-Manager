@@ -3,6 +3,7 @@ import { inlineStatusSignalClass, semanticChipClass } from "../lib/chip_styles";
 import { formatSpoolReference } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
 import { liveTrayIdentity, swatchCssBackground } from "../lib/printer_live_display";
+import { buildSlotCatalogOnboardingOpenState } from "../lib/printer_slot_model";
 import type { PrinterSlotDisplayState } from "../lib/printer_slot_display";
 import type {
   MasterCatalogRow,
@@ -100,8 +101,17 @@ export function PrinterSlotAssignmentStatus({
             "printers.liveCatalogCandidateCount",
             "{count} Bambu catalog entries look like this live roll.",
           ).replace("{count}", String(rows.length));
+    const catalogOpenState = effectiveLiveTray
+      ? buildSlotCatalogOnboardingOpenState(slot, effectiveLiveTray, { busy })
+      : null;
+    const catalogBlockLabel =
+      catalogOpenState?.reason === "occupied_slot"
+        ? t("printers.liveCatalogRequiresEmptySlot", "clear slot first")
+        : catalogOpenState?.reason === "missing_rfid"
+          ? t("printers.liveCatalogRequiresRfid", "wait for RFID")
+          : null;
     const canCreateFromCatalog = Boolean(
-      effectiveLiveTray && effectiveLiveIdentity && !slot.spool_id,
+      catalogOpenState && !catalogBlockLabel && effectiveLiveIdentity,
     );
 
     return (
@@ -130,15 +140,15 @@ export function PrinterSlotAssignmentStatus({
                     effectiveLiveTray &&
                     createLiveBambuCatalogSpool(printer, slot, effectiveLiveTray, master)
                   }
-                  disabled={busy}
+                  disabled={busy || catalogOpenState?.disabled}
                 >
                   {t("printers.addCatalogRollAndSaveRfid", "Add + save RFID")}
                 </button>
-              ) : (
+              ) : catalogBlockLabel ? (
                 <span className="ml-auto shrink-0 text-[10px] text-slate-400 dark:text-slate-500">
-                  {t("printers.liveCatalogRequiresEmptySlot", "clear slot first")}
+                  {catalogBlockLabel}
                 </span>
-              )}
+              ) : null}
             </div>
           ))}
         </div>
