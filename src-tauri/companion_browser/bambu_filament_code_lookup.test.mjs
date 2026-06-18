@@ -74,6 +74,30 @@ test("buildBambuFilamentCodeLookup reports single and multiple active matches", 
   ]);
 });
 
+test("buildBambuFilamentCodeLookup prefers one active match over discontinued history", () => {
+  const lookup = buildBambuFilamentCodeLookup(
+    [
+      master({
+        id: "old-yellow",
+        filament_name: "PLA Basic",
+        color_name: "Old Yellow (53400)",
+        is_discontinued: true,
+      }),
+      master({ id: "active-yellow", filament_name: "TPU for AMS", color_name: "Yellow (53400)" }),
+    ],
+    "53400",
+  );
+
+  assert.equal(lookup.status, "single_active");
+  assert.deepEqual(lookup.matches.map((match) => match.id), [
+    "active-yellow",
+    "old-yellow",
+  ]);
+  assert.deepEqual(lookup.activeMatches.map((match) => match.id), ["active-yellow"]);
+  assert.deepEqual(lookup.discontinuedMatches.map((match) => match.id), ["old-yellow"]);
+  assert.equal(bambuFilamentCodeLookupRequiresExplicitSelection(lookup), false);
+});
+
 test("buildBambuFilamentCodeLookup distinguishes discontinued-only and no-match results", () => {
   const discontinued = buildBambuFilamentCodeLookup(
     [master({ id: "archived", color_name: "Old Color (12345)", is_discontinued: true })],
