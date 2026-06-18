@@ -258,6 +258,39 @@ test("add filament task sheet surfaces discontinued-only Bambu code matches unde
   assert.match(html, /Choose a catalog row/);
 });
 
+test("add filament task sheet blocks Bambu filament codes with no catalog match", () => {
+  const state = createInitialCompanionState();
+  state.borrowedInDraft = {
+    ...state.borrowedInDraft,
+    catalogSearch: "99999",
+  };
+  state.catalogMasters = [
+    {
+      id: "master-code",
+      material: "TPU",
+      filament_name: "TPU for AMS",
+      color_name: "Yellow (53400)",
+      hex_color: "#FACC15",
+      product_url: null,
+      default_weight: 1000,
+      vendor: "Bambu",
+      is_discontinued: false,
+      discontinued_at: null,
+    },
+  ];
+
+  const html = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+
+  assert.match(html, /No Bambu catalog entry uses this filament code yet/);
+  assert.match(html, /name="filament-master-id" value=""/);
+  assert.match(html, /No catalog entries match this vendor filter/);
+  assert.match(html, /Choose a catalog row/);
+  assert.match(
+    html,
+    /<button class="primary-button" type="submit" disabled>\s*Add spool to inventory/,
+  );
+});
+
 test("add filament task sheet localizes key copy in norwegian", () => {
   const state = createInitialCompanionState();
   state.locale = "nb";
