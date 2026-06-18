@@ -4,6 +4,7 @@ import {
   buildLiveRfidCandidateRegistrationState,
   buildSavedRfidPrinterSlotAssignment,
   buildMeasuredTotalWeightDraft,
+  buildSlotCatalogOnboardingCreateRequest,
   buildSlotCatalogOnboardingOpenState,
   buildSlotCatalogOnboardingPrompt,
   buildSlotCatalogOnboardingSaveState,
@@ -155,6 +156,108 @@ test("buildSlotCatalogOnboardingPrompt prepares safe owned defaults from live ca
   assert.equal(prompt.initialWeight, "750");
   assert.equal(prompt.ownershipType, "OWNED");
   assert.equal(prompt.borrowedFromName, "");
+});
+
+test("buildSlotCatalogOnboardingCreateRequest prepares owned and borrowed catalog writes", () => {
+  const printer = {
+    printer: {
+      id: "printer-1",
+      name: "X1C",
+      model: "Bambu Lab X1 Carbon",
+    },
+  } as PrinterOverviewRow;
+  const slot = {
+    slot_id: "slot-1",
+    ams_id: "printer_ams_1",
+    slot_index: 2,
+  } as PrinterAmsSlotRow;
+  const master = {
+    id: "master-1",
+    vendor: "Bambu",
+    material: "PLA",
+    filament_name: "PLA Matte",
+    color_name: "Black",
+    hex_color: "#000000",
+    default_weight: 750,
+    product_url: null,
+    is_discontinued: false,
+    discontinued_at: null,
+  } as MasterCatalogRow;
+  const prompt = buildSlotCatalogOnboardingPrompt(
+    printer,
+    slot,
+    master,
+    {
+      loaded: true,
+      observed_rfid_tag: "RFID-1",
+      last_identity_seen_at: "2099-01-01T00:00:00Z",
+    } as BambuLiveObservedTray,
+    null,
+  );
+
+  const ownedRequest = buildSlotCatalogOnboardingCreateRequest(prompt, {
+    id: "spool-owned",
+    currentLiveTray: {
+      loaded: true,
+      observed_rfid_tag: "RFID-1",
+      last_identity_seen_at: "2099-01-02T00:00:00Z",
+    } as BambuLiveObservedTray,
+  });
+
+  assert.equal(ownedRequest.ok, true);
+  if (!ownedRequest.ok) {
+    throw new Error("expected owned catalog onboarding request");
+  }
+  assert.equal(ownedRequest.observedRfid, "RFID-1");
+  assert.equal(ownedRequest.rfidObservedAt, "2099-01-02T00:00:00Z");
+  assert.equal(ownedRequest.request.input.id, "spool-owned");
+  assert.equal(ownedRequest.request.input.master_id, "master-1");
+  assert.equal(ownedRequest.request.input.ownership_type, "OWNED");
+  assert.equal(ownedRequest.request.input.owner_name, null);
+
+  const borrowedRequest = buildSlotCatalogOnboardingCreateRequest(
+    {
+      ...prompt,
+      initialWeight: "900",
+      location: " Shelf A ",
+      ownershipType: "BORROWED_IN",
+      borrowedFromName: " Ada ",
+      borrowedFromContact: " ada@example.com ",
+      borrowedInNote: " Return later ",
+    },
+    {
+      id: "spool-borrowed",
+      observedAtFallback: "2099-01-03T00:00:00Z",
+    },
+  );
+
+  assert.equal(borrowedRequest.ok, true);
+  if (!borrowedRequest.ok) {
+    throw new Error("expected borrowed catalog onboarding request");
+  }
+  assert.equal(borrowedRequest.rfidObservedAt, "2099-01-01T00:00:00Z");
+  assert.deepEqual(
+    {
+      id: borrowedRequest.request.input.id,
+      ownership_type: borrowedRequest.request.input.ownership_type,
+      owner_name: borrowedRequest.request.input.owner_name,
+      owner_contact: borrowedRequest.request.input.owner_contact,
+      ownership_note: borrowedRequest.request.input.ownership_note,
+      initial_weight_g: borrowedRequest.request.input.initial_weight_g,
+      current_weight_g: borrowedRequest.request.input.current_weight_g,
+      location_id: borrowedRequest.request.input.location_id,
+    },
+    {
+      id: "spool-borrowed",
+      ownership_type: "BORROWED_IN",
+      owner_name: "Ada",
+      owner_contact: "ada@example.com",
+      ownership_note: "Return later",
+      initial_weight_g: 900,
+      current_weight_g: 900,
+      location_id: "Shelf A",
+    },
+  );
 });
 
 test("buildSlotCatalogOnboardingOpenState blocks stale catalog onboarding opens", () => {

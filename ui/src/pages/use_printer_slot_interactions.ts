@@ -6,7 +6,6 @@ import {
   type SetStateAction,
 } from "react";
 import { commandErrorText } from "../lib/error_text";
-import { buildInventoryCreateSpoolRequest } from "../lib/inventory_create_model";
 import {
   buildAllowedSpoolOptionMapsBySlotSpoolId,
   buildAllowedSpoolOptionsBySlotSpoolId,
@@ -21,8 +20,8 @@ import {
   buildRfidOverridePrompt,
   buildSavedRfidPrinterSlotAssignment,
   buildSlotCatalogOnboardingOpenState,
+  buildSlotCatalogOnboardingCreateRequest,
   buildSlotCatalogOnboardingPrompt,
-  buildSlotCatalogOnboardingSaveState,
   buildSlotSwapDraft,
   findPrinterSlotById,
   parseWeightInput,
@@ -840,26 +839,18 @@ export function usePrinterSlotInteractions({
       return;
     }
 
-    const {
-      master,
-      liveTray,
-      printerId,
-      slot,
-      initialWeight,
-      location,
-      ownershipType,
-      borrowedFromName,
-      borrowedFromContact,
-      borrowedInNote,
-    } = slotCatalogOnboardingPrompt;
+    const { printerId, slot } = slotCatalogOnboardingPrompt;
     const currentSlot = findPrinterSlotById(printers, printerId, slot.slot_id);
     const slotForWrite = currentSlot ?? slot;
     const { tray: currentLiveTray } = findLiveTrayForSlot(printerId, slotForWrite);
-    const saveState = buildSlotCatalogOnboardingSaveState(slotCatalogOnboardingPrompt, {
+    const createRequest = buildSlotCatalogOnboardingCreateRequest(slotCatalogOnboardingPrompt, {
+      id: `spool_${Date.now()}`,
       currentSlot,
       currentLiveTray,
+      observedAtFallback:
+        bambuLiveIntegrations[printerId]?.observed_state?.last_seen_at ?? null,
     });
-    if (saveState.reason === "missing_rfid") {
+    if (!createRequest.ok && createRequest.error === "missing_rfid") {
       setError(
         t(
           "printers.rfidOverrideNothingToSave",
@@ -868,7 +859,7 @@ export function usePrinterSlotInteractions({
       );
       return;
     }
-    if (saveState.reason === "occupied_slot") {
+    if (!createRequest.ok && createRequest.error === "occupied_slot") {
       setError(
         t(
           "printers.error.createFromCatalogRequiresEmptySlot",
@@ -877,7 +868,11 @@ export function usePrinterSlotInteractions({
       );
       return;
     }
-    if (saveState.reason === "borrowed_owner_required") {
+    if (
+      !createRequest.ok &&
+      (createRequest.error === "borrowed_owner_required" ||
+        createRequest.error === "BORROWED_OWNER_REQUIRED")
+    ) {
       setError(
         t(
           "inventory.error.borrowedInNeedsOwner",
@@ -886,7 +881,7 @@ export function usePrinterSlotInteractions({
       );
       return;
     }
-    if (saveState.reason === "live_slot_unloaded") {
+    if (!createRequest.ok && createRequest.error === "live_slot_unloaded") {
       setError(
         t(
           "printers.error.liveSlotUnloadedBeforeSave",
@@ -895,7 +890,7 @@ export function usePrinterSlotInteractions({
       );
       return;
     }
-    if (saveState.reason === "live_identity_changed") {
+    if (!createRequest.ok && createRequest.error === "live_identity_changed") {
       setError(
         t(
           "printers.error.liveRfidChangedBeforeSave",
@@ -904,24 +899,11 @@ export function usePrinterSlotInteractions({
       );
       return;
     }
-    const observedRfid = saveState.observedRfid;
-
-    const request = buildInventoryCreateSpoolRequest({
-      id: `spool_${Date.now()}`,
-      mode: "bambu",
-      selectedBambuMaster: master,
-      selectedEsunMaster: null,
-      initialWeightRaw: initialWeight,
-      ownershipType,
-      borrowedFromName,
-      borrowedFromContact,
-      borrowedInNote,
-      location,
-    });
-    if (!request.ok || request.kind !== "catalog") {
+    if (!createRequest.ok) {
       setError(t("inventory.error.add", "Failed to add filament."));
       return;
     }
+    const { observedRfid, request, rfidObservedAt } = createRequest;
 
     setBusy(true);
     setError(null);
@@ -936,10 +918,7 @@ export function usePrinterSlotInteractions({
         {
           spool_id: createdSpoolId,
           rfid_tag: observedRfid,
-          rfid_observed_at:
-            liveTray.last_identity_seen_at ??
-            bambuLiveIntegrations[printerId]?.observed_state?.last_seen_at ??
-            new Date().toISOString(),
+          rfid_observed_at: rfidObservedAt ?? new Date().toISOString(),
         },
         {
           clientReadOnly,

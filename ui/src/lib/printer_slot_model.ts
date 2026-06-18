@@ -7,6 +7,11 @@ import type {
   PrinterOverviewRow,
   SpoolWithMasterRow,
 } from "./tauri_client";
+import {
+  buildInventoryCreateSpoolRequest,
+  type InventoryCreateSpoolError,
+  type InventoryCreateSpoolRequest,
+} from "./inventory_create_model";
 import type { OwnershipType } from "./inventory_list_model";
 import { isUnknownLiveRfid, liveTrayIdentity } from "./printer_live_display";
 import { resolveSpoolTareWeight } from "./spool_weight";
@@ -82,6 +87,23 @@ export type SlotCatalogOnboardingSaveState = {
   reason: SlotCatalogOnboardingSaveBlockReason | null;
   observedRfid: string;
 };
+
+type SlotCatalogOnboardingCatalogCreateRequest = Extract<
+  InventoryCreateSpoolRequest,
+  { ok: true; kind: "catalog" }
+>;
+
+export type SlotCatalogOnboardingCreateRequest =
+  | {
+      ok: true;
+      request: SlotCatalogOnboardingCatalogCreateRequest;
+      observedRfid: string;
+      rfidObservedAt: string | null;
+    }
+  | {
+      ok: false;
+      error: SlotCatalogOnboardingSaveBlockReason | InventoryCreateSpoolError;
+    };
 
 export type LiveRfidCandidateRegistrationBlockReason =
   | "busy"
@@ -383,6 +405,53 @@ export function buildSlotCatalogOnboardingSaveState(
     disabled: Boolean(reason),
     reason,
     observedRfid: openState.observedRfid,
+  };
+}
+
+export function buildSlotCatalogOnboardingCreateRequest(
+  prompt: SlotCatalogOnboardingPrompt,
+  input: {
+    id: string;
+    busy?: boolean;
+    currentSlot?: PrinterAmsSlotRow | null;
+    currentLiveTray?: BambuLiveObservedTray | null;
+    observedAtFallback?: string | null;
+  },
+): SlotCatalogOnboardingCreateRequest {
+  const saveState = buildSlotCatalogOnboardingSaveState(prompt, input);
+  if (saveState.reason) {
+    return { ok: false, error: saveState.reason };
+  }
+
+  const request = buildInventoryCreateSpoolRequest({
+    id: input.id,
+    mode: "bambu",
+    selectedBambuMaster: prompt.master,
+    selectedEsunMaster: null,
+    initialWeightRaw: prompt.initialWeight,
+    ownershipType: prompt.ownershipType,
+    borrowedFromName: prompt.borrowedFromName,
+    borrowedFromContact: prompt.borrowedFromContact,
+    borrowedInNote: prompt.borrowedInNote,
+    location: prompt.location,
+  });
+  if (!request.ok) {
+    return { ok: false, error: request.error };
+  }
+  if (request.kind !== "catalog") {
+    return { ok: false, error: "BAMBU_MASTER_REQUIRED" };
+  }
+
+  return {
+    ok: true,
+    request,
+    observedRfid: saveState.observedRfid,
+    rfidObservedAt:
+      input.currentLiveTray?.last_identity_seen_at ??
+      prompt.liveTray.last_identity_seen_at ??
+      input.observedAtFallback ??
+      prompt.observedAt ??
+      null,
   };
 }
 
