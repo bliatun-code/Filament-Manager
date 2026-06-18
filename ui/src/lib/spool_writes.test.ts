@@ -18,6 +18,7 @@ import type {
   CreateSpoolInput,
   UpdateSpoolDetailsInput,
   UpdateSpoolOwnershipInput,
+  UpdateSpoolRfidTagInput,
 } from "./tauri_client";
 
 function masterSpoolInput(overrides: Partial<CreateSpoolInput> = {}): CreateSpoolInput {
@@ -320,21 +321,47 @@ test("updateInventorySpoolTareWeight routes empty spool weight writes", async ()
 });
 
 test("updateInventorySpoolRfidTag routes RFID writes to the host", async () => {
-  const calls: Array<{ baseUrl: string; rfidTag?: string | null }> = [];
+  const input: UpdateSpoolRfidTagInput = {
+    spool_id: "spool-1",
+    rfid_tag: "rfid-1",
+    rfid_observed_at: "2026-04-01 10:00:00",
+  };
+  const calls: Array<{
+    baseUrl: string;
+    libraryId: string;
+    input: UpdateSpoolRfidTagInput;
+  }> = [];
 
   await updateInventorySpoolRfidTag(
-    {
-      spool_id: "spool-1",
-      rfid_tag: "rfid-1",
-      rfid_observed_at: "2026-04-01 10:00:00",
-    },
+    input,
     { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
     {
-      updateHostSpoolRfidTag: async (baseUrl, _libraryId, input) => {
-        calls.push({ baseUrl, rfidTag: input.rfid_tag });
+      updateHostSpoolRfidTag: async (baseUrl, libraryId, hostInput) => {
+        calls.push({ baseUrl, libraryId, input: hostInput });
       },
     },
   );
 
-  assert.deepEqual(calls, [{ baseUrl: "http://host", rfidTag: "rfid-1" }]);
+  assert.deepEqual(calls, [{ baseUrl: "http://host", libraryId: "library-1", input }]);
+});
+
+test("updateInventorySpoolRfidTag writes locally outside client mode", async () => {
+  const input: UpdateSpoolRfidTagInput = {
+    spool_id: "spool-1",
+    rfid_tag: "rfid-1",
+    rfid_observed_at: "2026-04-01 10:00:00",
+  };
+  const calls: UpdateSpoolRfidTagInput[] = [];
+
+  await updateInventorySpoolRfidTag(
+    input,
+    { clientReadOnly: false },
+    {
+      updateLocalSpoolRfidTag: async (localInput) => {
+        calls.push(localInput);
+      },
+    },
+  );
+
+  assert.deepEqual(calls, [input]);
 });
