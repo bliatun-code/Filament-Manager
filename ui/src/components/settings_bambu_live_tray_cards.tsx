@@ -68,7 +68,7 @@ export function SettingsBambuLiveTrayCards({
                   {metadataItems.join(" · ")}
                 </div>
               ) : null}
-              {tray.matchKind === "metadata_multiple" ? (
+              {tray.showCandidateCards ? (
                 <div className="mt-2 space-y-1.5">
                   {tray.candidates.map((candidate) => (
                     <div

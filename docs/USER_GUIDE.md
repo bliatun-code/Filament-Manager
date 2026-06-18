@@ -288,6 +288,8 @@ Desktop/client also has a batch Filament Code area in the Bambu flow. Paste one 
 
 Batch-created Bambu spools use the stock details on the right side of the modal, including ownership, owner/contact fields for Borrowed in, weight, and location. Companion/webapp uses the same catalog matching rules for manual code lookup, but does not use camera or webcam scanning.
 
+The plan for later camera and batch scanning is in [Camera And Batch Scanning Plan](CAMERA_BATCH_SCANNING_PLAN.md). In short, desktop/client should start with safe code/barcode scanning into the same batch model, while OCR and live webcam stay separate explicit batches.
+
 ### Owned Filament
 
 Owned means the spool belongs to this library.

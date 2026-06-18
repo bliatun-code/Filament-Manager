@@ -1325,6 +1325,7 @@ test("Bambu live diagnostic tray card uses Bambu-only metadata suggestions for u
   });
 
   assert.equal(card.matchKind, "metadata_single");
+  assert.equal(card.showCandidateCards, true);
   assert.deepEqual(card.candidates.map((candidate) => candidate.key), ["bambu-black"]);
   assert.equal(card.matchLabel, "PLA Matte · Black");
 });

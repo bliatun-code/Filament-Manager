@@ -471,6 +471,8 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
     key,
     matchDescription,
     matchKind: inventoryMatch.kind,
+    showCandidateCards:
+      inventoryMatch.kind === "metadata_single" || inventoryMatch.kind === "metadata_multiple",
     matchLabel,
     matchNote,
     matchSwatchColor,
