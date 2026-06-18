@@ -453,12 +453,12 @@ export function createCompanionAppShellRenderer(options) {
           return false;
         }
         const status = String(row.spool.status || "").trim().toUpperCase();
-        const ownershipType = String(row.spool.ownership_type || "OWNED").trim().toUpperCase();
         if (
           status === "EMPTY" ||
           status === "LOST" ||
+          status === "DELETED" ||
           status === "MISSING" ||
-          (status === "BORROWED" && ownershipType !== "BORROWED_IN")
+          status === "BORROWED"
         ) {
           return false;
         }

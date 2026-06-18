@@ -139,6 +139,18 @@ test("filteredSpools excludes EMPTY rows from storage visibility", () => {
   assert.deepEqual(visibleIds, ["spool-in-stock"]);
 });
 
+test("printer load guard excludes inactive spool statuses", () => {
+  const { logic } = createLogic();
+
+  assert.equal(logic.canLoadSpoolIntoPrinter(createSpoolRow("spool-ready")), true);
+  for (const status of ["BORROWED", "EMPTY", "LOST", "DELETED", "MISSING"]) {
+    assert.equal(
+      logic.canLoadSpoolIntoPrinter(createSpoolRow(`spool-${status}`, { spool: { status } })),
+      false,
+    );
+  }
+});
+
 test("loan guard helper preserves browser-safe write constraints", () => {
   const { logic } = createLogic();
 

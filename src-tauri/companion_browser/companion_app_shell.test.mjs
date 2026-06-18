@@ -228,6 +228,12 @@ test("app shell renderer uses the shared task-sheet shell for slot-targeted prin
           hex_color: "#2563EB",
         },
       }),
+      createSpoolRow("spool-deleted", {
+        spool: { status: "DELETED" },
+      }),
+      createSpoolRow("spool-borrowed", {
+        spool: { status: "BORROWED" },
+      }),
     ],
   });
 
@@ -237,6 +243,8 @@ test("app shell renderer uses the shared task-sheet shell for slot-targeted prin
   assert.match(html, /Load filament/);
   assert.match(html, /X1C · AMS 1 · Slot 1/);
   assert.match(html, /data-action="assign-selected-spool"/);
+  assert.doesNotMatch(html, /data-spool-id="spool-deleted"/);
+  assert.doesNotMatch(html, /data-spool-id="spool-borrowed"/);
 });
 
 test("app shell renderer uses the shared task-sheet shell for printer slot weight updates", () => {

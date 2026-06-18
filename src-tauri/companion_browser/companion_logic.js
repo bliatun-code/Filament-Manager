@@ -209,7 +209,7 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
 
   function canLoadSpoolIntoPrinter(row) {
     const status = row?.spool?.status?.trim().toUpperCase() || "";
-    return !["BORROWED", "EMPTY", "LOST"].includes(status);
+    return !["BORROWED", "EMPTY", "LOST", "DELETED", "MISSING"].includes(status);
   }
 
   function loanActionState(row) {
