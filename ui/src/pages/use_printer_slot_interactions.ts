@@ -16,6 +16,7 @@ import {
 import {
   buildEmptySlotWeightPrompt,
   buildIncomingWeightPrompt,
+  buildLiveRfidCandidateRegistrationState,
   buildMeasuredTotalWeightDraft,
   buildRfidOverridePrompt,
   buildSavedRfidPrinterSlotAssignment,
@@ -585,8 +586,16 @@ export function usePrinterSlotInteractions({
       if (clientReadOnly && !canUseClientHostWrite()) {
         return;
       }
-      const observedRfid = liveTrayIdentity(liveTray);
-      if (!observedRfid) {
+      const currentSlot = findPrinterSlotById(printers, printer.printer.id, slot.slot_id);
+      const registrationState = buildLiveRfidCandidateRegistrationState(
+        slot,
+        liveTray,
+        row,
+        {
+          currentSlot,
+        },
+      );
+      if (registrationState.reason === "missing_rfid") {
         setError(
           t(
             "printers.rfidOverrideNothingToSave",
@@ -595,7 +604,7 @@ export function usePrinterSlotInteractions({
         );
         return;
       }
-      if (row.spool.rfid_tag?.trim()) {
+      if (registrationState.reason === "candidate_has_rfid") {
         setError(
           t(
             "printers.error.candidateAlreadyHasRfid",
@@ -604,9 +613,7 @@ export function usePrinterSlotInteractions({
         );
         return;
       }
-      const currentSlot = findPrinterSlotById(printers, printer.printer.id, slot.slot_id);
-      const slotForSafety = currentSlot ?? slot;
-      if (slotForSafety.spool_id && slotForSafety.spool_id !== row.spool.id) {
+      if (registrationState.reason === "select_candidate_first") {
         setError(
           t(
             "printers.error.selectCandidateBeforeRfid",
@@ -615,6 +622,8 @@ export function usePrinterSlotInteractions({
         );
         return;
       }
+      const observedRfid = registrationState.observedRfid;
+      const slotForSafety = registrationState.slot;
 
       setBusy(true);
       setError(null);

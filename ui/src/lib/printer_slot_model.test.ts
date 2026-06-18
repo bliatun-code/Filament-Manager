@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildLiveRfidCandidateRegistrationState,
   buildSavedRfidPrinterSlotAssignment,
   buildMeasuredTotalWeightDraft,
   buildSlotCatalogOnboardingOpenState,
@@ -17,6 +18,7 @@ import type {
   MasterCatalogRow,
   PrinterAmsSlotRow,
   PrinterOverviewRow,
+  SpoolWithMasterRow,
 } from "./tauri_client";
 
 test("parseWeightInput accepts non-negative integer grams and rejects empty or invalid values", () => {
@@ -182,6 +184,69 @@ test("buildSlotCatalogOnboardingOpenState blocks stale catalog onboarding opens"
       currentSlot: { ...slot, spool_id: "fresh-spool" } as PrinterAmsSlotRow,
     }).reason,
     "occupied_slot",
+  );
+});
+
+test("buildLiveRfidCandidateRegistrationState blocks unsafe candidate RFID saves", () => {
+  const slot = {
+    slot_id: "slot-1",
+    ams_id: "printer_ams_1",
+    slot_index: 2,
+  } as PrinterAmsSlotRow;
+  const liveTray = {
+    loaded: true,
+    observed_rfid_tag: "RFID-1",
+  } as BambuLiveObservedTray;
+  const row = {
+    spool: {
+      id: "spool-1",
+      master_id: "master-1",
+      status: "IN_STOCK",
+      rfid_tag: null,
+    },
+    master: {
+      id: "master-1",
+      vendor: "Bambu",
+      material: "PLA",
+      filament_name: "PLA Matte",
+      color_name: "Black",
+      hex_color: "#000000",
+      default_weight: 1000,
+    },
+  } as SpoolWithMasterRow;
+
+  assert.deepEqual(buildLiveRfidCandidateRegistrationState(slot, liveTray, row), {
+    disabled: false,
+    reason: null,
+    observedRfid: "RFID-1",
+    slot,
+  });
+  assert.equal(
+    buildLiveRfidCandidateRegistrationState(
+      slot,
+      { loaded: true } as BambuLiveObservedTray,
+      row,
+    ).reason,
+    "missing_rfid",
+  );
+  assert.equal(
+    buildLiveRfidCandidateRegistrationState(slot, liveTray, {
+      ...row,
+      spool: { ...row.spool, rfid_tag: "SAVED-RFID" },
+    }).reason,
+    "candidate_has_rfid",
+  );
+  assert.equal(
+    buildLiveRfidCandidateRegistrationState(slot, liveTray, row, {
+      currentSlot: { ...slot, spool_id: "different-spool" } as PrinterAmsSlotRow,
+    }).reason,
+    "select_candidate_first",
+  );
+  assert.equal(
+    buildLiveRfidCandidateRegistrationState(slot, liveTray, row, {
+      currentSlot: { ...slot, spool_id: "spool-1" } as PrinterAmsSlotRow,
+    }).reason,
+    null,
   );
 });
 

@@ -3,7 +3,10 @@ import { inlineStatusSignalClass, semanticChipClass } from "../lib/chip_styles";
 import { formatSpoolReference } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
 import { liveTrayIdentity, swatchCssBackground } from "../lib/printer_live_display";
-import { buildSlotCatalogOnboardingOpenState } from "../lib/printer_slot_model";
+import {
+  buildLiveRfidCandidateRegistrationState,
+  buildSlotCatalogOnboardingOpenState,
+} from "../lib/printer_slot_model";
 import type { PrinterSlotDisplayState } from "../lib/printer_slot_display";
 import type {
   MasterCatalogRow,
@@ -211,13 +214,24 @@ export function PrinterSlotAssignmentStatus({
         </div>
         <div className="mt-1 space-y-1">
           {visibleRows.map((row) => {
-            const candidateHasSavedRfid = Boolean(row.spool.rfid_tag?.trim());
+            const registrationState = effectiveLiveTray
+              ? buildLiveRfidCandidateRegistrationState(slot, effectiveLiveTray, row, {
+                  busy,
+                })
+              : null;
+            const registrationBlockLabel =
+              registrationState?.reason === "candidate_has_rfid"
+                ? t("printers.liveCandidateHasRfid", "RFID saved")
+                : registrationState?.reason === "select_candidate_first"
+                  ? t("printers.liveCandidateSelectBeforeRfid", "select first")
+                  : registrationState?.reason === "missing_rfid"
+                    ? t("printers.liveCatalogRequiresRfid", "wait for RFID")
+                    : null;
             const canRegisterCandidate =
               unknownLiveRfid &&
-              !!effectiveLiveTray &&
-              !!effectiveLiveIdentity &&
-              !candidateHasSavedRfid &&
-              (!slot.spool_id || slot.spool_id === row.spool.id);
+              !!registrationState &&
+              !registrationBlockLabel &&
+              !!effectiveLiveIdentity;
             return (
               <div key={row.spool.id} className="flex min-w-0 items-center gap-1.5">
                 <span
@@ -243,20 +257,21 @@ export function PrinterSlotAssignmentStatus({
                     <button
                       type="button"
                       className="ml-auto shrink-0 rounded-md border border-slate-300/70 bg-white/55 px-2 py-0.5 text-[10px] font-semibold text-slate-700 transition hover:border-sky-400/70 hover:text-sky-700 disabled:opacity-50 dark:border-slate-600/70 dark:bg-slate-900/45 dark:text-slate-200 dark:hover:border-sky-300/60 dark:hover:text-sky-200"
-                      onClick={() =>
-                        registerLiveRfidCandidate(printer, slot, effectiveLiveTray, row)
-                      }
-                      disabled={busy}
+                      onClick={() => {
+                        if (!effectiveLiveTray) {
+                          return;
+                        }
+                        registerLiveRfidCandidate(printer, slot, effectiveLiveTray, row);
+                      }}
+                      disabled={busy || registrationState?.disabled}
                     >
                       {t("printers.registerLiveRfid", "Save RFID")}
                     </button>
-                  ) : (
+                  ) : registrationBlockLabel ? (
                     <span className="ml-auto shrink-0 text-[10px] text-slate-400 dark:text-slate-500">
-                      {candidateHasSavedRfid
-                        ? t("printers.liveCandidateHasRfid", "RFID saved")
-                        : t("printers.liveCandidateSelectBeforeRfid", "select first")}
+                      {registrationBlockLabel}
                     </span>
-                  )
+                  ) : null
                 ) : null}
               </div>
             );

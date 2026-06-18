@@ -81,6 +81,19 @@ export type SlotCatalogOnboardingSaveState = {
   observedRfid: string;
 };
 
+export type LiveRfidCandidateRegistrationBlockReason =
+  | "busy"
+  | "missing_rfid"
+  | "candidate_has_rfid"
+  | "select_candidate_first";
+
+export type LiveRfidCandidateRegistrationState = {
+  disabled: boolean;
+  reason: LiveRfidCandidateRegistrationBlockReason | null;
+  observedRfid: string;
+  slot: PrinterAmsSlotRow;
+};
+
 export type PreparedPrinterSlotAssignment = {
   currentSpoolId: string | null;
   targetSpoolId: string | null;
@@ -335,6 +348,33 @@ export function buildSavedRfidPrinterSlotAssignment(
     rfid_override_tray_uuid: null,
     rfid_override_color_hex: null,
     clear_live_cache_before_next_refresh: false,
+  };
+}
+
+export function buildLiveRfidCandidateRegistrationState(
+  slot: PrinterAmsSlotRow,
+  liveTray: BambuLiveObservedTray,
+  row: SpoolWithMasterRow,
+  options: { busy?: boolean; currentSlot?: PrinterAmsSlotRow | null } = {},
+): LiveRfidCandidateRegistrationState {
+  const observedRfid = liveTrayIdentity(liveTray);
+  const slotForSafety = options.currentSlot ?? slot;
+  let reason: LiveRfidCandidateRegistrationBlockReason | null = null;
+  if (options.busy) {
+    reason = "busy";
+  } else if (!observedRfid) {
+    reason = "missing_rfid";
+  } else if (row.spool.rfid_tag?.trim()) {
+    reason = "candidate_has_rfid";
+  } else if (slotForSafety.spool_id && slotForSafety.spool_id !== row.spool.id) {
+    reason = "select_candidate_first";
+  }
+
+  return {
+    disabled: Boolean(reason),
+    reason,
+    observedRfid,
+    slot: slotForSafety,
   };
 }
 
