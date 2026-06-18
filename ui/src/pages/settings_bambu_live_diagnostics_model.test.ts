@@ -1373,6 +1373,47 @@ test("Bambu live diagnostic tray card skips saved-RFID metadata suggestions for 
   );
 });
 
+test("Bambu live diagnostic tray card matches composite swatches for unknown RFID", () => {
+  const card = buildSettingsBambuLiveDiagnosticTrayCard({
+    amsReadInProgress: false,
+    capturedTraySnapshot: null,
+    spoolRows: [
+      createSpoolRow({
+        spool: {
+          id: "multi-swatch-bambu",
+          master_id: "master-bambu",
+          rfid_tag: null,
+          status: "IN_STOCK",
+        },
+        master: {
+          id: "master-bambu",
+          material: "PLA",
+          filament_name: "PLA Matte",
+          color_name: "Black/White",
+          hex_color: "#FFFFFF;#000000",
+          default_weight: 1000,
+          vendor: "Bambu",
+        },
+      }),
+    ],
+    t,
+    tray: createObservedTray({
+      color_hex: "#000000",
+      filament_name: "PLA Matte",
+      filament_type: "PLA",
+      observed_rfid_tag: null,
+      tray_index: 0,
+      tray_uuid: "UNREGISTERED-BAMBU-RFID",
+    }),
+  });
+
+  assert.equal(card.matchKind, "metadata_single");
+  assert.equal(card.matchLabel, "PLA Matte · Black/White");
+  assert.deepEqual(card.candidates.map((candidate) => candidate.key), [
+    "multi-swatch-bambu",
+  ]);
+});
+
 test("Bambu live diagnostic tray card uses live material and color candidates instead of preset name", () => {
   const card = buildSettingsBambuLiveDiagnosticTrayCard({
     amsReadInProgress: false,
