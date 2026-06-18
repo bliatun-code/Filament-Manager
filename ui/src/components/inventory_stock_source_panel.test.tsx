@@ -117,6 +117,38 @@ test("InventoryStockSourcePanel keeps Bambu Filament Code help and batch entry i
   assert.doesNotMatch(html, /webcam/i);
 });
 
+test("InventoryStockSourcePanel previews the active Bambu code match when discontinued history exists", () => {
+  const html = renderPanel({
+    mode: "bambu",
+    masters: [
+      master({
+        id: "old-yellow",
+        material: "PLA",
+        filament_name: "PLA Basic",
+        color_name: "Old Yellow (53400)",
+        is_discontinued: true,
+        discontinued_at: "2024-01-01T00:00:00Z",
+      }),
+      master({
+        id: "active-yellow",
+        material: "TPU",
+        filament_name: "TPU for AMS",
+        color_name: "Yellow (53400)",
+      }),
+    ],
+    catalogQuery: "53400",
+  });
+
+  const lookupSegment = html.slice(
+    html.indexOf("One active Bambu catalog entry matched"),
+    html.indexOf("Batch Filament Codes"),
+  );
+
+  assert.match(html, /One active Bambu catalog entry matched and is selected/);
+  assert.match(lookupSegment, /TPU for AMS · Yellow \(53400\)/);
+  assert.doesNotMatch(lookupSegment, /PLA Basic · Old Yellow \(53400\)/);
+});
+
 test("InventoryStockSourcePanel hides Bambu code controls outside Bambu catalog mode", () => {
   const esunHtml = renderPanel({
     mode: "esun",
