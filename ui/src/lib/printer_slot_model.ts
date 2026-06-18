@@ -62,6 +62,7 @@ export type SlotCatalogOnboardingPrompt = {
 export type SlotCatalogOnboardingOpenBlockReason =
   | "busy"
   | "missing_rfid"
+  | "live_slot_unloaded"
   | "occupied_slot"
   | "live_identity_changed";
 
@@ -85,6 +86,7 @@ export type SlotCatalogOnboardingSaveState = {
 export type LiveRfidCandidateRegistrationBlockReason =
   | "busy"
   | "missing_rfid"
+  | "live_slot_unloaded"
   | "live_identity_changed"
   | "candidate_has_rfid"
   | "candidate_unavailable"
@@ -118,6 +120,16 @@ function liveIdentityChanged(
     return false;
   }
   return liveTrayIdentity(options.currentLiveTray) !== liveTrayIdentity(liveTray);
+}
+
+function liveTrayLoadedForSafety(
+  liveTray: BambuLiveObservedTray,
+  options: LiveIdentitySafetyOptions,
+): boolean {
+  const tray = Object.prototype.hasOwnProperty.call(options, "currentLiveTray")
+    ? options.currentLiveTray
+    : liveTray;
+  return tray?.loaded === true;
 }
 
 function rowCanReceiveLiveBambuRfid(row: SpoolWithMasterRow): boolean {
@@ -333,6 +345,8 @@ export function buildSlotCatalogOnboardingOpenState(
     reason = "busy";
   } else if (!observedRfid) {
     reason = "missing_rfid";
+  } else if (!liveTrayLoadedForSafety(liveTray, options)) {
+    reason = "live_slot_unloaded";
   } else if (slotForSafety.spool_id) {
     reason = "occupied_slot";
   } else if (liveIdentityChanged(liveTray, options)) {
@@ -404,6 +418,8 @@ export function buildLiveRfidCandidateRegistrationState(
     reason = "busy";
   } else if (!observedRfid) {
     reason = "missing_rfid";
+  } else if (!liveTrayLoadedForSafety(liveTray, options)) {
+    reason = "live_slot_unloaded";
   } else if (liveIdentityChanged(liveTray, options)) {
     reason = "live_identity_changed";
   } else if (row.spool.rfid_tag?.trim()) {

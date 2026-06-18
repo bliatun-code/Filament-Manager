@@ -618,6 +618,15 @@ export function usePrinterSlotInteractions({
         );
         return;
       }
+      if (registrationState.reason === "live_slot_unloaded") {
+        setError(
+          t(
+            "printers.error.liveSlotUnloadedBeforeSave",
+            "AMS no longer reports a loaded roll in this slot. Refresh and confirm the current roll before saving RFID.",
+          ),
+        );
+        return;
+      }
       if (registrationState.reason === "candidate_has_rfid") {
         setError(
           t(
@@ -766,6 +775,15 @@ export function usePrinterSlotInteractions({
         );
         return;
       }
+      if (openState.reason === "live_slot_unloaded") {
+        setError(
+          t(
+            "printers.error.liveSlotUnloadedBeforeSave",
+            "AMS no longer reports a loaded roll in this slot. Refresh and confirm the current roll before saving RFID.",
+          ),
+        );
+        return;
+      }
       if (openState.reason === "live_identity_changed") {
         setError(
           t(
@@ -864,6 +882,15 @@ export function usePrinterSlotInteractions({
         t(
           "inventory.error.borrowedInNeedsOwner",
           "Borrowed-in registration needs a name for who the spool is borrowed from.",
+        ),
+      );
+      return;
+    }
+    if (saveState.reason === "live_slot_unloaded") {
+      setError(
+        t(
+          "printers.error.liveSlotUnloadedBeforeSave",
+          "AMS no longer reports a loaded roll in this slot. Refresh and confirm the current roll before saving RFID.",
         ),
       );
       return;

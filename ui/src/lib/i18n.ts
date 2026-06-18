@@ -771,9 +771,12 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Wait for a non-empty RFID identity from the live AMS signal before adding and binding this roll.",
       slotOnboardingNeedsBorrowedOwner:
         "Enter who the spool is borrowed from before registering it as borrowed-in.",
+      slotOnboardingLiveSlotUnloaded:
+        "AMS no longer reports a loaded roll in this slot. Reopen the slot action when the roll is loaded.",
       slotOnboardingLiveIdentityChanged:
         "The live AMS identity changed before saving. Reopen the slot action and confirm the current roll.",
       liveCatalogRequiresEmptySlot: "clear slot first",
+      liveCatalogRequiresLoadedSlot: "load roll first",
       liveRfidRegisteredAndAssigned:
         "RFID saved and the suggested roll was assigned to this slot.",
       liveCatalogCreatedAndAssigned:
@@ -806,6 +809,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         candidateAlreadyHasRfid: "This inventory roll already has an RFID identity saved.",
         candidateUnavailableForRfid:
           "Refresh printer data; this roll is no longer available as a live Bambu RFID candidate.",
+        liveSlotUnloadedBeforeSave:
+          "AMS no longer reports a loaded roll in this slot. Refresh and confirm the current roll before saving RFID.",
         selectCandidateBeforeRfid:
           "Select this roll in the slot first, so any outgoing roll weight is handled before saving RFID.",
         liveRfidChangedBeforeSave:
@@ -2261,9 +2266,12 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Vent på en ikke-tom RFID-identitet fra live AMS-signalet før rullen legges til og bindes.",
       slotOnboardingNeedsBorrowedOwner:
         "Skriv hvem rullen er lånt fra før den registreres som innlånt.",
+      slotOnboardingLiveSlotUnloaded:
+        "AMS rapporterer ikke lenger en lastet rull i dette sporet. Åpne sporhandlingen på nytt når rullen er lastet.",
       slotOnboardingLiveIdentityChanged:
         "Live AMS-identiteten endret seg før lagring. Åpne sporhandlingen på nytt og bekreft gjeldende rull.",
       liveCatalogRequiresEmptySlot: "tøm sporet først",
+      liveCatalogRequiresLoadedSlot: "last rull først",
       liveRfidRegisteredAndAssigned:
         "RFID lagret og foreslått rull ble tildelt dette sporet.",
       liveCatalogCreatedAndAssigned:
@@ -2296,6 +2304,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         candidateAlreadyHasRfid: "Denne lagerrullen har allerede en lagret RFID-identitet.",
         candidateUnavailableForRfid:
           "Oppdater printerdata; denne rullen er ikke lenger tilgjengelig som live Bambu RFID-kandidat.",
+        liveSlotUnloadedBeforeSave:
+          "AMS rapporterer ikke lenger en lastet rull i dette sporet. Oppdater og bekreft gjeldende rull før RFID lagres.",
         selectCandidateBeforeRfid:
           "Velg denne rullen i sporet først, slik at eventuell utgående rullvekt håndteres før RFID lagres.",
         liveRfidChangedBeforeSave:

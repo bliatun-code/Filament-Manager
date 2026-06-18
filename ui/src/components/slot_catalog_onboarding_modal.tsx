@@ -69,12 +69,17 @@ export function SlotCatalogOnboardingModal({
               "printers.slotOnboardingNeedsBorrowedOwner",
               "Enter who the spool is borrowed from before registering it as borrowed-in.",
             )
-          : saveState.reason === "live_identity_changed"
+          : saveState.reason === "live_slot_unloaded"
             ? t(
-                "printers.slotOnboardingLiveIdentityChanged",
-                "The live AMS identity changed before saving. Reopen the slot action and confirm the current roll.",
+                "printers.slotOnboardingLiveSlotUnloaded",
+                "AMS no longer reports a loaded roll in this slot. Reopen the slot action when the roll is loaded.",
               )
-            : null;
+            : saveState.reason === "live_identity_changed"
+              ? t(
+                  "printers.slotOnboardingLiveIdentityChanged",
+                  "The live AMS identity changed before saving. Reopen the slot action and confirm the current roll.",
+                )
+              : null;
 
   return (
     <AppModal

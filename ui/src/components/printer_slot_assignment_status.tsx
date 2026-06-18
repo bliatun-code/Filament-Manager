@@ -112,6 +112,8 @@ export function PrinterSlotAssignmentStatus({
         ? t("printers.liveCatalogRequiresEmptySlot", "clear slot first")
         : catalogOpenState?.reason === "missing_rfid"
           ? t("printers.liveCatalogRequiresRfid", "wait for RFID")
+          : catalogOpenState?.reason === "live_slot_unloaded"
+            ? t("printers.liveCatalogRequiresLoadedSlot", "load roll first")
           : null;
     const canCreateFromCatalog = Boolean(
       catalogOpenState && !catalogBlockLabel && effectiveLiveIdentity,
@@ -226,9 +228,11 @@ export function PrinterSlotAssignmentStatus({
                   ? t("printers.liveCandidateSelectBeforeRfid", "select first")
                   : registrationState?.reason === "candidate_unavailable"
                     ? t("printers.liveCandidateUnavailable", "not available")
-                  : registrationState?.reason === "missing_rfid"
-                    ? t("printers.liveCatalogRequiresRfid", "wait for RFID")
-                    : null;
+                    : registrationState?.reason === "live_slot_unloaded"
+                      ? t("printers.liveCatalogRequiresLoadedSlot", "load roll first")
+                      : registrationState?.reason === "missing_rfid"
+                        ? t("printers.liveCatalogRequiresRfid", "wait for RFID")
+                        : null;
             const canRegisterCandidate =
               unknownLiveRfid &&
               !!registrationState &&

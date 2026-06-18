@@ -180,6 +180,13 @@ test("buildSlotCatalogOnboardingOpenState blocks stale catalog onboarding opens"
     "missing_rfid",
   );
   assert.equal(
+    buildSlotCatalogOnboardingOpenState(slot, {
+      loaded: false,
+      observed_rfid_tag: "RFID-1",
+    } as BambuLiveObservedTray).reason,
+    "live_slot_unloaded",
+  );
+  assert.equal(
     buildSlotCatalogOnboardingOpenState(slot, liveTray, {
       currentSlot: { ...slot, spool_id: "fresh-spool" } as PrinterAmsSlotRow,
     }).reason,
@@ -237,6 +244,23 @@ test("buildLiveRfidCandidateRegistrationState blocks unsafe candidate RFID saves
       row,
     ).reason,
     "missing_rfid",
+  );
+  assert.equal(
+    buildLiveRfidCandidateRegistrationState(
+      slot,
+      { loaded: false, observed_rfid_tag: "RFID-1" } as BambuLiveObservedTray,
+      row,
+    ).reason,
+    "live_slot_unloaded",
+  );
+  assert.equal(
+    buildLiveRfidCandidateRegistrationState(slot, liveTray, row, {
+      currentLiveTray: {
+        loaded: false,
+        observed_rfid_tag: "RFID-1",
+      } as BambuLiveObservedTray,
+    }).reason,
+    "live_slot_unloaded",
   );
   assert.equal(
     buildLiveRfidCandidateRegistrationState(slot, liveTray, {
