@@ -93,3 +93,9 @@ export function buildBambuFilamentCodeLookup(
     discontinuedMatches,
   };
 }
+
+export function bambuFilamentCodeLookupRequiresExplicitSelection(
+  lookup: BambuFilamentCodeLookup,
+): boolean {
+  return lookup.status === "multiple_active" || lookup.status === "discontinued_only";
+}

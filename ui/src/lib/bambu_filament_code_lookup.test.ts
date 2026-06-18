@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildBambuFilamentCodeLookup,
+  bambuFilamentCodeLookupRequiresExplicitSelection,
   catalogMasterBambuFilamentCode,
   extractBambuFilamentCode,
   extractBambuFilamentCodes,
@@ -91,4 +92,26 @@ test("buildBambuFilamentCodeLookup distinguishes discontinued-only matches", () 
   assert.equal(lookup.status, "discontinued_only");
   assert.equal(lookup.activeMatches.length, 0);
   assert.equal(lookup.discontinuedMatches.length, 1);
+});
+
+test("bambuFilamentCodeLookupRequiresExplicitSelection flags ambiguous and discontinued codes", () => {
+  const single = buildBambuFilamentCodeLookup(
+    [master({ id: "yellow", color_name: "Yellow (53400)" })],
+    "53400",
+  );
+  const multiple = buildBambuFilamentCodeLookup(
+    [
+      master({ id: "petg-black", material: "PETG", color_name: "Black (65103)" }),
+      master({ id: "pla-black", material: "PLA", color_name: "Black (65103)" }),
+    ],
+    "65103",
+  );
+  const discontinued = buildBambuFilamentCodeLookup(
+    [master({ id: "archived", color_name: "Old Color (12345)", is_discontinued: true })],
+    "12345",
+  );
+
+  assert.equal(bambuFilamentCodeLookupRequiresExplicitSelection(single), false);
+  assert.equal(bambuFilamentCodeLookupRequiresExplicitSelection(multiple), true);
+  assert.equal(bambuFilamentCodeLookupRequiresExplicitSelection(discontinued), true);
 });
