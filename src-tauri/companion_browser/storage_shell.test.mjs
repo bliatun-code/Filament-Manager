@@ -168,6 +168,49 @@ test("add filament task sheet shows Bambu filament code help before and after lo
   assert.match(lookupHtml, /TPU for AMS/);
 });
 
+test("add filament task sheet keeps Bambu filament code lookup scoped to Bambu source", () => {
+  const state = createInitialCompanionState();
+  state.borrowedInDraft = {
+    ...state.borrowedInDraft,
+    source: "esun",
+    catalogSearch: "53400",
+  };
+  state.catalogMasters = [
+    {
+      id: "master-bambu-code",
+      material: "TPU",
+      filament_name: "TPU for AMS",
+      color_name: "Yellow (53400)",
+      hex_color: "#FACC15",
+      product_url: null,
+      default_weight: 1000,
+      vendor: "Bambu",
+      is_discontinued: false,
+      discontinued_at: null,
+    },
+    {
+      id: "master-esun",
+      material: "PLA",
+      filament_name: "PLA+",
+      color_name: "Yellow",
+      hex_color: "#FBBF24",
+      product_url: null,
+      default_weight: 1000,
+      vendor: "eSUN",
+      is_discontinued: false,
+      discontinued_at: null,
+    },
+  ];
+
+  const html = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+
+  assert.doesNotMatch(html, /add-spool-code-lookup/);
+  assert.doesNotMatch(html, /Find this field on the box label/);
+  assert.doesNotMatch(html, /One active Bambu catalog entry matched/);
+  assert.doesNotMatch(html, /name="filament-master-id" value="master-bambu-code"/);
+  assert.match(html, /No catalog entries match this vendor filter/);
+});
+
 test("add filament task sheet requires explicit row selection for ambiguous Bambu codes", () => {
   const state = createInitialCompanionState();
   state.borrowedInDraft = {
