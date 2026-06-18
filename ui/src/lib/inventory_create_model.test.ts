@@ -110,6 +110,28 @@ test("isInventoryCreateDisabled guards runtime, required selection, and borrowed
     isInventoryCreateDisabled({
       tauriAvailable: true,
       busy: false,
+      mode: "bambu",
+      selectedBambuMaster: master(),
+      ownershipType: "BORROWED_IN",
+      borrowedFromName: " ",
+    }),
+    true,
+  );
+  assert.equal(
+    isInventoryCreateDisabled({
+      tauriAvailable: true,
+      busy: false,
+      mode: "esun",
+      selectedEsunMaster: master({ vendor: "eSUN" }),
+      ownershipType: "BORROWED_IN",
+      borrowedFromName: "Ada",
+    }),
+    false,
+  );
+  assert.equal(
+    isInventoryCreateDisabled({
+      tauriAvailable: true,
+      busy: false,
       mode: "manual",
       manualFilamentName: "PLA",
       manualColorName: "Blue",

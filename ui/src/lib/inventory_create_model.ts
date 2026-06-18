@@ -63,14 +63,20 @@ export function isInventoryCreateDisabled(input: {
     return true;
   }
   if (input.mode === "bambu") {
-    return !input.selectedBambuMaster;
-  }
-  if (input.mode === "esun") {
-    return !input.selectedEsunMaster;
-  }
-  if (!(input.manualFilamentName ?? "").trim() || !(input.manualColorName ?? "").trim()) {
+    if (!input.selectedBambuMaster) {
+      return true;
+    }
+  } else if (input.mode === "esun") {
+    if (!input.selectedEsunMaster) {
+      return true;
+    }
+  } else if (
+    !(input.manualFilamentName ?? "").trim() ||
+    !(input.manualColorName ?? "").trim()
+  ) {
     return true;
   }
+
   return input.ownershipType === "BORROWED_IN" && !(input.borrowedFromName ?? "").trim();
 }
 
