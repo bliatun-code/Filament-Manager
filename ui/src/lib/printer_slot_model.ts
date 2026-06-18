@@ -97,6 +97,18 @@ export function resolveSpoolTareWeightForRow(row?: SpoolWithMasterRow | null): n
   return resolveSpoolTareWeight(row.spool.spool_tare_weight_g, row.master.vendor);
 }
 
+export function findPrinterSlotById(
+  printers: PrinterOverviewRow[],
+  printerId: string,
+  slotId: string,
+): PrinterAmsSlotRow | null {
+  return (
+    printers
+      .find((printer) => printer.printer.id === printerId)
+      ?.slots.find((slot) => slot.slot_id === slotId) ?? null
+  );
+}
+
 export function parseWeightInput(raw: string): number | null {
   const trimmed = raw.trim();
   if (!trimmed) {

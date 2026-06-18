@@ -2,9 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildSavedRfidPrinterSlotAssignment,
+  buildMeasuredTotalWeightDraft,
   buildSlotCatalogOnboardingPrompt,
   buildSlotCatalogOnboardingSaveState,
-  buildMeasuredTotalWeightDraft,
+  findPrinterSlotById,
   parseWeightInput,
   prepareMeasuredWeightUpdate,
   preparePrinterSlotAssignment,
@@ -28,6 +29,24 @@ test("buildMeasuredTotalWeightDraft combines remaining filament and empty spool 
   assert.equal(buildMeasuredTotalWeightDraft(750, 250), "1000");
   assert.equal(buildMeasuredTotalWeightDraft(-50, 20), "0");
   assert.equal(buildMeasuredTotalWeightDraft(null, 250), "");
+});
+
+test("findPrinterSlotById resolves the current slot snapshot", () => {
+  const firstSlot = { slot_id: "slot-1", ams_id: "ams-1", slot_index: 1 } as PrinterAmsSlotRow;
+  const secondSlot = { slot_id: "slot-2", ams_id: "ams-1", slot_index: 2 } as PrinterAmsSlotRow;
+  const printers = [
+    {
+      printer: { id: "printer-1", name: "P1S", model: "Bambu Lab P1S" },
+      slots: [firstSlot],
+    },
+    {
+      printer: { id: "printer-2", name: "X1C", model: "Bambu Lab X1 Carbon" },
+      slots: [secondSlot],
+    },
+  ] as PrinterOverviewRow[];
+
+  assert.equal(findPrinterSlotById(printers, "printer-2", "slot-2"), secondSlot);
+  assert.equal(findPrinterSlotById(printers, "printer-2", "missing"), null);
 });
 
 test("prepareMeasuredWeightUpdate separates host usage and local no-op decisions", () => {

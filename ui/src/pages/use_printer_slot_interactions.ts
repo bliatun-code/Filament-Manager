@@ -22,6 +22,7 @@ import {
   buildSlotCatalogOnboardingPrompt,
   buildSlotCatalogOnboardingSaveState,
   buildSlotSwapDraft,
+  findPrinterSlotById,
   parseWeightInput,
   prepareMeasuredWeightUpdate,
   preparePrinterSlotAssignment,
@@ -602,7 +603,9 @@ export function usePrinterSlotInteractions({
         );
         return;
       }
-      if (slot.spool_id && slot.spool_id !== row.spool.id) {
+      const currentSlot = findPrinterSlotById(printers, printer.printer.id, slot.slot_id);
+      const slotForSafety = currentSlot ?? slot;
+      if (slotForSafety.spool_id && slotForSafety.spool_id !== row.spool.id) {
         setError(
           t(
             "printers.error.selectCandidateBeforeRfid",
@@ -632,7 +635,7 @@ export function usePrinterSlotInteractions({
           },
         );
 
-        if (!slot.spool_id) {
+        if (!slotForSafety.spool_id) {
           await writePrinterSlotAssignment(
             {
               clientReadOnly,
@@ -641,7 +644,7 @@ export function usePrinterSlotInteractions({
             },
             buildSavedRfidPrinterSlotAssignment(
               printer.printer.id,
-              slot,
+              slotForSafety,
               row.spool.id,
             ),
           );
@@ -649,7 +652,7 @@ export function usePrinterSlotInteractions({
 
         await reloadData();
         setInfo(
-          slot.spool_id
+          slotForSafety.spool_id
             ? t("inventory.rfidSaved", "RFID tag saved on the selected roll.")
             : t(
                 "printers.liveRfidRegisteredAndAssigned",
@@ -676,6 +679,7 @@ export function usePrinterSlotInteractions({
       clientLibraryId,
       clientReadOnly,
       ensureLocalWriteAllowed,
+      printers,
       reloadData,
       setBusy,
       setError,
@@ -777,10 +781,7 @@ export function usePrinterSlotInteractions({
       borrowedFromContact,
       borrowedInNote,
     } = slotCatalogOnboardingPrompt;
-    const currentSlot =
-      printers
-        .find((printer) => printer.printer.id === printerId)
-        ?.slots.find((candidate) => candidate.slot_id === slot.slot_id) ?? null;
+    const currentSlot = findPrinterSlotById(printers, printerId, slot.slot_id);
     const slotForWrite = currentSlot ?? slot;
     const saveState = buildSlotCatalogOnboardingSaveState(slotCatalogOnboardingPrompt, {
       currentSlot,
