@@ -180,6 +180,7 @@ export function filterAllowedSpoolsForSlot(
       status === "EMPTY" ||
       status === "LOST" ||
       status === "MISSING" ||
+      status === "DELETED" ||
       (status === "BORROWED" && ownershipType !== "BORROWED_IN")
     ) {
       return false;

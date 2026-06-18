@@ -110,6 +110,7 @@ test("allowed spool options keep the active slot spool selectable", () => {
     spool("available"),
     spool("active", "IN_USE"),
     spool("lost", "LOST"),
+    spool("deleted", "DELETED"),
   ];
   const optionsBySlot = buildAllowedSpoolOptionsBySlotSpoolId(
     [printer("p1", [slot("a", "active")])],
