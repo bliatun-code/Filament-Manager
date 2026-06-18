@@ -130,6 +130,7 @@ test("submitLiveSlotCandidateRfidUpdate saves a current unknown live RFID candid
             {
               slot_id: "slot-1",
               spool_id: null,
+              live_loaded: true,
               live_match_status: "unknown_rfid",
               live_tray_uuid: "RFID-1",
             },
@@ -189,6 +190,7 @@ test("submitLiveSlotCandidateRfidUpdate rejects stale or occupied live slots", a
             {
               slot_id: "slot-1",
               spool_id: "already-loaded",
+              live_loaded: true,
               live_match_status: "unknown_rfid",
               live_tray_uuid: "RFID-1",
             },
@@ -240,6 +242,7 @@ test("submitLiveSlotCandidateRfidUpdate rejects candidates that already have RFI
             {
               slot_id: "slot-1",
               spool_id: null,
+              live_loaded: true,
               live_match_status: "unknown_rfid",
               live_tray_uuid: "RFID-1",
             },
@@ -330,6 +333,58 @@ test("submitLiveSlotCandidateRfidUpdate rejects stale or inactive candidates", a
     assert.match(harness.state.statusMessage, /live slot identity changed/);
     assert.deepEqual(harness.renderCalls, ["render"]);
   }
+});
+
+test("submitLiveSlotCandidateRfidUpdate rejects unloaded live slots", async () => {
+  let fetchCount = 0;
+  const harness = createMutationHarness({
+    state: {
+      spools: [
+        {
+          spool: {
+            id: "spool-candidate",
+            rfid_tag: null,
+          },
+          master: {
+            vendor: "Bambu Lab",
+          },
+        },
+      ],
+      printers: [
+        {
+          printer: {
+            id: "printer-1",
+          },
+          slots: [
+            {
+              slot_id: "slot-1",
+              spool_id: null,
+              live_loaded: false,
+              live_match_status: "unknown_rfid",
+              live_tray_uuid: "RFID-1",
+            },
+          ],
+        },
+      ],
+    },
+    fetchJson: async () => {
+      fetchCount += 1;
+      return {};
+    },
+  });
+
+  await harness.mutations.submitLiveSlotCandidateRfidUpdate(
+    "spool-candidate",
+    "printer-1",
+    "slot-1",
+    "RFID-1",
+    "2026-04-17T18:45:56Z",
+  );
+
+  assert.equal(fetchCount, 0);
+  assert.equal(harness.state.statusTone, "error");
+  assert.match(harness.state.statusMessage, /live slot identity changed/);
+  assert.deepEqual(harness.renderCalls, ["render"]);
 });
 
 test("submitManualSpoolRegistration routes borrowed-in spools through the inbound create path", async () => {

@@ -1,4 +1,5 @@
 import {
+  liveSlotHasLoadedRoll,
   liveSlotObservedRfid,
   rowCanReceiveLiveBambuRfid,
 } from "./companion_live_rfid_candidates.js";
@@ -281,6 +282,7 @@ export function createCompanionSpoolMutations({
     if (
       !currentSlot ||
       currentSlot.spool_id ||
+      !liveSlotHasLoadedRoll(currentSlot) ||
       currentSlot.live_match_status !== "unknown_rfid" ||
       currentObservedRfid !== normalizedRfidTag
     ) {

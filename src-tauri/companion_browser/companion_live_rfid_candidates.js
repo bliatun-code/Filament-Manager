@@ -23,6 +23,10 @@ export function liveSlotObservedRfid(slot) {
   return String(slot?.live_tray_uuid || slot?.live_observed_rfid_tag || "").trim();
 }
 
+export function liveSlotHasLoadedRoll(slot) {
+  return slot?.live_loaded === true || slot?.loaded === true;
+}
+
 export function rowCanReceiveLiveBambuRfid(row) {
   const vendor = normalizedText(row?.master?.vendor);
   const status = String(row?.spool?.status || "").trim().toUpperCase();
@@ -66,7 +70,12 @@ export function rowMatchesLiveBambuSlot(slot, row) {
 
 export function buildLiveInventoryCandidateRows(slot, spoolRows) {
   const observedRfid = liveSlotObservedRfid(slot);
-  if (slot?.spool_id || slot?.live_match_status !== "unknown_rfid" || !observedRfid) {
+  if (
+    slot?.spool_id ||
+    slot?.live_match_status !== "unknown_rfid" ||
+    !observedRfid ||
+    !liveSlotHasLoadedRoll(slot)
+  ) {
     return [];
   }
 
