@@ -570,7 +570,7 @@ function rowMatchesLiveBambuSlot(slot, row) {
 
 function buildLiveInventoryCandidateRows(slot, spoolRows) {
   const observedRfid = String(slot?.live_tray_uuid || slot?.live_observed_rfid_tag || "").trim();
-  if (slot?.live_match_status !== "unknown_rfid" || !observedRfid) {
+  if (slot?.spool_id || slot?.live_match_status !== "unknown_rfid" || !observedRfid) {
     return [];
   }
 
@@ -601,11 +601,13 @@ function buildLiveInventoryCandidateRows(slot, spoolRows) {
   return candidates.slice(0, 3);
 }
 
-function renderLiveInventoryCandidateRows(slot, spoolRows, locale, escapeHtml, formatGrams) {
+function renderLiveInventoryCandidateRows(slot, spoolRows, activePrinter, locale, escapeHtml, formatGrams) {
   const candidates = buildLiveInventoryCandidateRows(slot, spoolRows);
   if (candidates.length === 0) {
     return "";
   }
+  const observedRfid = String(slot?.live_tray_uuid || slot?.live_observed_rfid_tag || "").trim();
+  const observedAt = String(slot?.live_last_identity_seen_at || slot?.live_printer_last_seen_at || "").trim();
   const intro =
     candidates.length === 1
       ? t(locale, "printers.liveCandidateSingle", "Likely inventory roll")
@@ -642,15 +644,19 @@ function renderLiveInventoryCandidateRows(slot, spoolRows, locale, escapeHtml, f
             <button
               class="slot-live-candidate-row"
               type="button"
-              data-action="inspect-slot-spool"
+              data-action="save-live-rfid-candidate"
+              data-printer-id="${escapeHtml(activePrinter?.printer?.id || "")}"
+              data-slot-id="${escapeHtml(slot?.slot_id || "")}"
               data-spool-id="${escapeHtml(row.spool.id)}"
+              data-rfid-tag="${escapeHtml(observedRfid)}"
+              data-rfid-observed-at="${escapeHtml(observedAt)}"
             >
               <span class="swatch-dot" style="background:${escapeHtml(toSwatchColor(swatch))};"></span>
               <span class="slot-live-candidate-main">
                 <span class="slot-live-candidate-title">${escapeHtml(title)}</span>
                 <span class="slot-live-candidate-meta">${escapeHtml(meta)}</span>
               </span>
-              <span class="slot-live-candidate-action">${escapeHtml(t(locale, "printers.openSpool", "Open spool"))}</span>
+              <span class="slot-live-candidate-action">${escapeHtml(t(locale, "printers.saveCandidateRfid", "Save RFID"))}</span>
             </button>
           `;
         })
@@ -730,6 +736,7 @@ function renderSlotCards(options) {
       const candidateRows = renderLiveInventoryCandidateRows(
         slot,
         printerSpoolOptions,
+        activePrinter,
         locale,
         escapeHtml,
         formatGrams,

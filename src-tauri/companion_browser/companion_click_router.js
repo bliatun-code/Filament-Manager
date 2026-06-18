@@ -162,6 +162,17 @@ export function routeCompanionClickAction(action, target, handlers) {
     return true;
   }
 
+  if (action === "save-live-rfid-candidate") {
+    handlers.submitLiveSlotCandidateRfidUpdate(
+      readAttr(target, "data-spool-id"),
+      readAttr(target, "data-printer-id"),
+      readAttr(target, "data-slot-id"),
+      readAttr(target, "data-rfid-tag"),
+      readAttr(target, "data-rfid-observed-at"),
+    );
+    return true;
+  }
+
   if (action === "open-loan-spool") {
     handlers.openLoanSpool(readAttr(target, "data-spool-id"));
     return true;

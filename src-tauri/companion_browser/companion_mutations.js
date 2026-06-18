@@ -71,6 +71,7 @@ export function createCompanionMutations(options) {
     });
   const {
     submitBorrowedInUpdate,
+    submitLiveSlotCandidateRfidUpdate,
     submitPrinterSlotWeightUpdate,
     submitQrLookup,
     submitSpoolDetailsUpdate,
@@ -111,6 +112,7 @@ export function createCompanionMutations(options) {
     submitTareWeightUpdate,
     submitSpoolDetailsUpdate,
     submitSpoolRfidUpdate,
+    submitLiveSlotCandidateRfidUpdate,
     submitPrinterSlotAssignment,
     submitSpoolLoan,
     submitSpoolLoanReturn,

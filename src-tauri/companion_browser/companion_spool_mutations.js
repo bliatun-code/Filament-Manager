@@ -215,6 +215,65 @@ export function createCompanionSpoolMutations({
     }
   }
 
+  async function submitLiveSlotCandidateRfidUpdate(
+    spoolId,
+    printerId,
+    slotId,
+    rfidTagValue,
+    observedAtValue,
+  ) {
+    const trimmedSpoolId = String(spoolId || "").trim();
+    const trimmedPrinterId = String(printerId || "").trim();
+    const trimmedSlotId = String(slotId || "").trim();
+    const normalizedRfidTag = String(rfidTagValue || "").trim();
+    const candidateRow =
+      state.spools.find((row) => String(row?.spool?.id || "").trim() === trimmedSpoolId) || null;
+    const printerRow =
+      state.printers.find((row) => String(row?.printer?.id || "").trim() === trimmedPrinterId) || null;
+    const currentSlot =
+      printerRow?.slots?.find((slot) => String(slot?.slot_id || "").trim() === trimmedSlotId) || null;
+    const currentObservedRfid = String(
+      currentSlot?.live_tray_uuid || currentSlot?.live_observed_rfid_tag || "",
+    ).trim();
+
+    if (!trimmedSpoolId) {
+      setStatus(tr("status.selectSpoolBeforeEdit", "Select a spool before editing its details."), "error");
+      render();
+      return;
+    }
+    if (!normalizedRfidTag) {
+      setStatus(tr("status.rfidCaptureNothingToSave", "No observed RFID was available to save."), "error");
+      render();
+      return;
+    }
+    if (String(candidateRow?.spool?.rfid_tag || "").trim()) {
+      setStatus(
+        tr("status.rfidCandidateAlreadyRegistered", "This roll already has an RFID saved."),
+        "error",
+      );
+      render();
+      return;
+    }
+    if (
+      !currentSlot ||
+      currentSlot.spool_id ||
+      currentSlot.live_match_status !== "unknown_rfid" ||
+      currentObservedRfid !== normalizedRfidTag
+    ) {
+      setStatus(
+        tr(
+          "status.rfidLiveCandidateStale",
+          "Refresh Companion data; the live slot identity changed before RFID could be saved.",
+        ),
+        "error",
+      );
+      render();
+      return;
+    }
+
+    await submitSpoolRfidUpdate(trimmedSpoolId, normalizedRfidTag, observedAtValue);
+  }
+
   async function submitQrLookup(qrCodeValue) {
     const parsedPayload = parseQrPayload(qrCodeValue);
     if (!parsedPayload?.ref) {
@@ -290,6 +349,7 @@ export function createCompanionSpoolMutations({
 
   return {
     submitBorrowedInUpdate,
+    submitLiveSlotCandidateRfidUpdate,
     submitPrinterSlotWeightUpdate,
     submitQrLookup,
     submitSpoolDetailsUpdate,

@@ -106,6 +106,158 @@ test("submitQrLookup accepts versioned deep-link payloads", async () => {
   ]);
 });
 
+test("submitLiveSlotCandidateRfidUpdate saves a current unknown live RFID candidate", async () => {
+  const fetchCalls = [];
+  const harness = createMutationHarness({
+    state: {
+      spools: [
+        {
+          spool: {
+            id: "spool-candidate",
+            rfid_tag: null,
+          },
+        },
+      ],
+      printers: [
+        {
+          printer: {
+            id: "printer-1",
+          },
+          slots: [
+            {
+              slot_id: "slot-1",
+              spool_id: null,
+              live_match_status: "unknown_rfid",
+              live_tray_uuid: "RFID-1",
+            },
+          ],
+        },
+      ],
+    },
+    fetchJson: async (path, init) => {
+      fetchCalls.push([path, JSON.parse(String(init?.body || "{}"))]);
+      return {};
+    },
+  });
+
+  await harness.mutations.submitLiveSlotCandidateRfidUpdate(
+    "spool-candidate",
+    "printer-1",
+    "slot-1",
+    "RFID-1",
+    "2026-04-17T18:45:56Z",
+  );
+
+  assert.deepEqual(fetchCalls, [
+    [
+      "/api/v1/spools/spool-candidate/rfid",
+      {
+        rfid_tag: "RFID-1",
+        rfid_observed_at: "2026-04-17T18:45:56Z",
+      },
+    ],
+  ]);
+  assert.equal(harness.refreshCount, 1);
+  assert.equal(harness.state.statusTone, "success");
+  assert.equal(harness.state.statusMessage, "RFID saved.");
+});
+
+test("submitLiveSlotCandidateRfidUpdate rejects stale or occupied live slots", async () => {
+  let fetchCount = 0;
+  const harness = createMutationHarness({
+    state: {
+      spools: [
+        {
+          spool: {
+            id: "spool-candidate",
+            rfid_tag: null,
+          },
+        },
+      ],
+      printers: [
+        {
+          printer: {
+            id: "printer-1",
+          },
+          slots: [
+            {
+              slot_id: "slot-1",
+              spool_id: "already-loaded",
+              live_match_status: "unknown_rfid",
+              live_tray_uuid: "RFID-1",
+            },
+          ],
+        },
+      ],
+    },
+    fetchJson: async () => {
+      fetchCount += 1;
+      return {};
+    },
+  });
+
+  await harness.mutations.submitLiveSlotCandidateRfidUpdate(
+    "spool-candidate",
+    "printer-1",
+    "slot-1",
+    "RFID-1",
+    "2026-04-17T18:45:56Z",
+  );
+
+  assert.equal(fetchCount, 0);
+  assert.equal(harness.state.statusTone, "error");
+  assert.match(harness.state.statusMessage, /live slot identity changed/);
+  assert.deepEqual(harness.renderCalls, ["render"]);
+});
+
+test("submitLiveSlotCandidateRfidUpdate rejects candidates that already have RFID", async () => {
+  let fetchCount = 0;
+  const harness = createMutationHarness({
+    state: {
+      spools: [
+        {
+          spool: {
+            id: "spool-candidate",
+            rfid_tag: "EXISTING-RFID",
+          },
+        },
+      ],
+      printers: [
+        {
+          printer: {
+            id: "printer-1",
+          },
+          slots: [
+            {
+              slot_id: "slot-1",
+              spool_id: null,
+              live_match_status: "unknown_rfid",
+              live_tray_uuid: "RFID-1",
+            },
+          ],
+        },
+      ],
+    },
+    fetchJson: async () => {
+      fetchCount += 1;
+      return {};
+    },
+  });
+
+  await harness.mutations.submitLiveSlotCandidateRfidUpdate(
+    "spool-candidate",
+    "printer-1",
+    "slot-1",
+    "RFID-1",
+    "2026-04-17T18:45:56Z",
+  );
+
+  assert.equal(fetchCount, 0);
+  assert.equal(harness.state.statusTone, "error");
+  assert.equal(harness.state.statusMessage, "This roll already has an RFID saved.");
+  assert.deepEqual(harness.renderCalls, ["render"]);
+});
+
 test("submitManualSpoolRegistration routes borrowed-in spools through the inbound create path", async () => {
   const harness = createMutationHarness({
     state: {

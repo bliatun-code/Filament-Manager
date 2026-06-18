@@ -78,6 +78,7 @@ export function handleCompanionClickEvent(event, options) {
       options.openSpoolDetail(spoolId, { rootFlow: "loans" });
     },
     submitPrinterSlotAssignment: (...args) => void options.submitPrinterSlotAssignment(...args),
+    submitLiveSlotCandidateRfidUpdate: (...args) => void options.submitLiveSlotCandidateRfidUpdate(...args),
     submitWishlistStatus: (...args) => void options.submitWishlistStatus(...args),
     submitWishlistStock: (...args) => void options.submitWishlistStock(...args),
   });

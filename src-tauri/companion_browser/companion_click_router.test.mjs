@@ -266,6 +266,33 @@ test("click router routes selected slot filament through the printer weight flow
   ]);
 });
 
+test("click router dispatches live RFID candidate saves", () => {
+  const calls = [];
+
+  assert.equal(
+    routeCompanionClickAction(
+      "save-live-rfid-candidate",
+      createTarget({
+        "data-spool-id": "spool-1",
+        "data-printer-id": "printer-1",
+        "data-slot-id": "slot-a",
+        "data-rfid-tag": "RFID-1",
+        "data-rfid-observed-at": "2026-04-17T18:45:56Z",
+      }),
+      {
+        submitLiveSlotCandidateRfidUpdate(...args) {
+          calls.push(args);
+        },
+      },
+    ),
+    true,
+  );
+
+  assert.deepEqual(calls, [
+    ["spool-1", "printer-1", "slot-a", "RFID-1", "2026-04-17T18:45:56Z"],
+  ]);
+});
+
 test("click router returns false for unhandled actions", () => {
   const handled = routeCompanionClickAction("missing-action", createTarget({}), {});
   assert.equal(handled, false);
