@@ -1,3 +1,7 @@
+import {
+  liveSlotObservedRfid,
+  rowCanReceiveLiveBambuRfid,
+} from "./companion_live_rfid_candidates.js";
 import { parseQrPayload } from "./qr_payload.js";
 
 export function createCompanionSpoolMutations({
@@ -232,9 +236,7 @@ export function createCompanionSpoolMutations({
       state.printers.find((row) => String(row?.printer?.id || "").trim() === trimmedPrinterId) || null;
     const currentSlot =
       printerRow?.slots?.find((slot) => String(slot?.slot_id || "").trim() === trimmedSlotId) || null;
-    const currentObservedRfid = String(
-      currentSlot?.live_tray_uuid || currentSlot?.live_observed_rfid_tag || "",
-    ).trim();
+    const currentObservedRfid = liveSlotObservedRfid(currentSlot);
 
     if (!trimmedSpoolId) {
       setStatus(tr("status.selectSpoolBeforeEdit", "Select a spool before editing its details."), "error");
@@ -246,9 +248,31 @@ export function createCompanionSpoolMutations({
       render();
       return;
     }
+    if (!candidateRow) {
+      setStatus(
+        tr(
+          "status.rfidLiveCandidateStale",
+          "Refresh Companion data; the live slot identity changed before RFID could be saved.",
+        ),
+        "error",
+      );
+      render();
+      return;
+    }
     if (String(candidateRow?.spool?.rfid_tag || "").trim()) {
       setStatus(
         tr("status.rfidCandidateAlreadyRegistered", "This roll already has an RFID saved."),
+        "error",
+      );
+      render();
+      return;
+    }
+    if (!rowCanReceiveLiveBambuRfid(candidateRow)) {
+      setStatus(
+        tr(
+          "status.rfidLiveCandidateStale",
+          "Refresh Companion data; the live slot identity changed before RFID could be saved.",
+        ),
         "error",
       );
       render();
