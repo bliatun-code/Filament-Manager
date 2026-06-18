@@ -6,6 +6,7 @@ import {
   buildBambuFilamentCodeLookup,
   catalogMasterBambuFilamentCode,
   extractBambuFilamentCode,
+  extractBambuFilamentCodes,
 } from "./bambu_filament_code_lookup.js";
 
 function master(overrides = {}) {
@@ -29,6 +30,15 @@ test("extractBambuFilamentCode reads standalone five digit filament codes only",
   assert.equal(extractBambuFilamentCode("TPU for AMS Yellow (53400)"), "53400");
   assert.equal(extractBambuFilamentCode("6977252426206"), null);
   assert.equal(extractBambuFilamentCode("U02-Y0-1.75-1000-SPL"), null);
+});
+
+test("extractBambuFilamentCodes reads multiple standalone five digit filament codes", () => {
+  assert.deepEqual(extractBambuFilamentCodes("53400, 53600\n65103"), [
+    "53400",
+    "53600",
+    "65103",
+  ]);
+  assert.deepEqual(extractBambuFilamentCodes("6977252426206 123456"), []);
 });
 
 test("catalogMasterBambuFilamentCode reads codes from Bambu catalog colors", () => {
