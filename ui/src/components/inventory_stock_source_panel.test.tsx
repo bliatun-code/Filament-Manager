@@ -44,10 +44,13 @@ function renderPanel(options: {
   masters?: MasterCatalogRow[];
   catalogQuery?: string;
   batchInput?: string;
+  selectedMasterId?: string | null;
 }) {
   const masters = options.masters ?? [master()];
   const catalogQuery = options.catalogQuery ?? "";
   const batchInput = options.batchInput ?? "";
+  const selectedMasterId =
+    "selectedMasterId" in options ? options.selectedMasterId : masters[0]?.id ?? null;
   const bambuCodeBatch = buildBambuFilamentCodeBatch({
     masters,
     rawInput: batchInput,
@@ -91,7 +94,7 @@ function renderPanel(options: {
         onSelectCatalogMaster: () => {},
         onUseManualFromCatalog: () => {},
         resolvedTheme: "light",
-        selectedCatalogMasterId: masters[0]?.id ?? null,
+        selectedCatalogMasterId: selectedMasterId ?? null,
         tauriAvailable: true,
       }),
     ),
@@ -219,11 +222,13 @@ test("InventoryStockSourcePanel renders discontinued-only Bambu code matches", (
       }),
     ],
     catalogQuery: "12345",
+    selectedMasterId: null,
   });
 
   assert.match(html, /Only discontinued Bambu catalog entries use this code\./);
   assert.match(html, /TPU for AMS · Old Red \(12345\)/);
   assert.match(html, /Discontinued/);
+  assert.doesNotMatch(html, /Selected/);
 });
 
 test("InventoryStockSourcePanel renders no-match Bambu code guidance", () => {
