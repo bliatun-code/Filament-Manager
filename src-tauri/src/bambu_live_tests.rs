@@ -658,6 +658,54 @@ fn apply_tray_match_status_ignores_saved_rfid_metadata_candidates_for_unknown_rf
 }
 
 #[test]
+fn apply_tray_match_status_ignores_non_bambu_metadata_candidates_for_unknown_rfid() {
+    let mut slot = make_slot();
+    slot.spool_id = None;
+    let overview = make_overview(slot);
+    let mut tray = make_tray();
+    let mut generic_candidate = make_inventory_spool("generic_match", None);
+    generic_candidate.master.hex_color = Some("#00FF00".to_string());
+
+    apply_tray_match_status(&mut tray, &overview, &[generic_candidate]);
+
+    assert_eq!(tray.match_status.as_deref(), Some("unknown_rfid"));
+    assert!(tray.matched_inventory_spool_id.is_none());
+    assert!(tray.matched_inventory_mode.is_none());
+}
+
+#[test]
+fn apply_tray_match_status_keeps_bambu_color_metadata_candidates_for_unknown_rfid() {
+    let mut slot = make_slot();
+    slot.spool_id = None;
+    let overview = make_overview(slot);
+    let mut tray = make_tray();
+    let mut generic_candidate = make_inventory_spool("generic_match", None);
+    generic_candidate.master.hex_color = Some("#00FF00".to_string());
+    let mut bambu_color_mismatch = make_inventory_spool("bambu_wrong_color", None);
+    bambu_color_mismatch.master.vendor = "Bambu".to_string();
+    bambu_color_mismatch.master.hex_color = Some("#FF0000".to_string());
+    let mut bambu_color_match = make_inventory_spool("bambu_green", None);
+    bambu_color_match.master.vendor = "Bambu".to_string();
+    bambu_color_match.master.hex_color = Some("#00FF00".to_string());
+
+    apply_tray_match_status(
+        &mut tray,
+        &overview,
+        &[generic_candidate, bambu_color_mismatch, bambu_color_match],
+    );
+
+    assert_eq!(tray.match_status.as_deref(), Some("unknown_rfid"));
+    assert_eq!(
+        tray.matched_inventory_mode.as_deref(),
+        Some("inventory_metadata")
+    );
+    assert_eq!(
+        tray.matched_inventory_spool_id.as_deref(),
+        Some("bambu_green")
+    );
+}
+
+#[test]
 fn apply_tray_match_status_keeps_saved_rfid_metadata_candidates_without_unknown_rfid() {
     let mut slot = make_slot();
     slot.spool_id = None;

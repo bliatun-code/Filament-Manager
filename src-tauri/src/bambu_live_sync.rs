@@ -321,6 +321,9 @@ fn find_inventory_candidates<'a>(
                     .is_none()
         })
         .filter(|row| {
+            if require_missing_rfid_tag && !spool_vendor_is_bambu(row) {
+                return false;
+            }
             let material_match =
                 eq_ignore_case(tray.filament_type.as_deref(), Some(&row.master.material));
             let name_match = live_name_matches(
@@ -331,6 +334,15 @@ fn find_inventory_candidates<'a>(
                 tray.color_hex.as_deref(),
                 row.master.hex_color.as_deref(),
             );
+            let has_color_signal = tray
+                .color_hex
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .is_some();
+            if require_missing_rfid_tag && has_color_signal {
+                return color_match && (material_match || name_match);
+            }
             [material_match, name_match, color_match]
                 .into_iter()
                 .filter(|value| *value)
@@ -352,6 +364,14 @@ fn spool_available_for_live_metadata_match(row: &SpoolWithMasterRow) -> bool {
         row.spool.status.trim().to_ascii_uppercase().as_str(),
         "EMPTY" | "LOST" | "MISSING" | "DELETED" | "BORROWED"
     )
+}
+
+fn spool_vendor_is_bambu(row: &SpoolWithMasterRow) -> bool {
+    row.master
+        .vendor
+        .trim()
+        .to_ascii_lowercase()
+        .contains("bambu")
 }
 
 fn auto_sync_live_slots(
