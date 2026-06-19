@@ -222,3 +222,31 @@ test("SlotCatalogOnboardingModal blocks catalog onboarding when the slot becomes
   );
   assert.match(html, /<button[^>]*disabled="">\s*Add \+ save RFID/);
 });
+
+test("SlotCatalogOnboardingModal blocks catalog onboarding when the live slot unloads", () => {
+  const html = renderModal({
+    prompt: prompt(),
+    currentSlot: slot(),
+    currentLiveTray: liveTray({ loaded: false }),
+  });
+
+  assert.match(
+    html,
+    /AMS no longer reports a loaded roll in this slot\. Reopen the slot action when the roll is loaded\./,
+  );
+  assert.match(html, /<button[^>]*disabled="">\s*Add \+ save RFID/);
+});
+
+test("SlotCatalogOnboardingModal blocks catalog onboarding when the live identity changes", () => {
+  const html = renderModal({
+    prompt: prompt(),
+    currentSlot: slot(),
+    currentLiveTray: liveTray({ observed_rfid_tag: "RFID-OTHER" }),
+  });
+
+  assert.match(
+    html,
+    /The live AMS identity changed before saving\. Reopen the slot action and confirm the current roll\./,
+  );
+  assert.match(html, /<button[^>]*disabled="">\s*Add \+ save RFID/);
+});
