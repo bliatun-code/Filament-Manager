@@ -99,6 +99,20 @@ test("buildBambuFilamentCodeBatch blocks ambiguous, discontinued-only, missing, 
   );
 });
 
+test("buildBambuFilamentCodeBatch blocks non-code barcode values", () => {
+  const batch = buildBambuFilamentCodeBatch({
+    masters: [master({ id: "yellow", color_name: "Yellow (53400)" })],
+    rawInput: "6977252426206",
+  });
+
+  assert.equal(batch.rows.length, 1);
+  assert.equal(batch.rows[0]?.sourceText, "6977252426206");
+  assert.equal(batch.rows[0]?.code, null);
+  assert.equal(batch.rows[0]?.lookup.status, "no_code");
+  assert.equal(batch.creatableRows.length, 0);
+  assert.equal(batch.blockedRows.length, 1);
+});
+
 test("buildBambuFilamentCodeBatchCreateState reports ready, partial, and borrowed-in blockers", () => {
   const batch = buildBambuFilamentCodeBatch({
     masters: [
