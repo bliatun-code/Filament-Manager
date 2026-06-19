@@ -1,7 +1,7 @@
 import {
   buildInventoryMetadataCandidateResult,
-  type ObservedInventoryMatchInput,
 } from "./inventory_match";
+import { buildBambuLiveObservedInventoryMatchInput } from "./bambu_live_observed_match";
 import type {
   BambuLiveObservedTray,
   MasterCatalogRow,
@@ -25,20 +25,6 @@ function fakeCatalogSpoolRow(master: MasterCatalogRow): SpoolWithMasterRow {
   };
 }
 
-function observedFromLiveTray(liveTray: BambuLiveObservedTray): ObservedInventoryMatchInput | null {
-  const material = liveTray.filament_type?.trim() ?? "";
-  const filamentName = liveTray.filament_name?.trim() ?? "";
-  const colorHex = liveTray.color_hex?.trim() ?? "";
-  if (!material && !filamentName && !colorHex) {
-    return null;
-  }
-  return {
-    material: material || null,
-    filamentName: filamentName || null,
-    colorHex: colorHex || null,
-  };
-}
-
 function sortCatalogCandidates(candidates: MasterCatalogRow[]): MasterCatalogRow[] {
   return [...candidates].sort(
     (left, right) =>
@@ -53,7 +39,7 @@ export function buildBambuLiveCatalogMatchResult(
   if (!liveTray?.loaded) {
     return { kind: "none", candidates: [] };
   }
-  const observed = observedFromLiveTray(liveTray);
+  const observed = buildBambuLiveObservedInventoryMatchInput(liveTray);
   if (!observed) {
     return { kind: "none", candidates: [] };
   }

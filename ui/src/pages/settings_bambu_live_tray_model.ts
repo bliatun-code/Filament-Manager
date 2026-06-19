@@ -11,6 +11,7 @@ import {
   buildBambuLiveCatalogMatchResult,
   type BambuLiveCatalogMatchResult,
 } from "../lib/bambu_live_catalog_match";
+import { buildBambuLiveObservedInventoryMatchInput } from "../lib/bambu_live_observed_match";
 import { liveTrayMatchesSlot } from "../lib/printer_live_display";
 import {
   formatBambuSettingsProfileSignal,
@@ -465,12 +466,18 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
 }: BuildSettingsBambuLiveDiagnosticTrayCardInput) {
   const observedRfid = buildSettingsBambuLiveObservedRfid(capturedTraySnapshot, tray);
   const preferredSlot = printerSlots.find((slot) => liveTrayMatchesSlot(slot, tray));
-  const observedMatchInput = {
-    rfid: observedRfid,
-    material: tray.filament_type ?? capturedTraySnapshot?.filamentType ?? null,
-    filamentName: tray.filament_name ?? capturedTraySnapshot?.filamentName ?? null,
-    colorHex: tray.color_hex ?? capturedTraySnapshot?.colorHex ?? null,
-  };
+  const observedMatchInput =
+    buildBambuLiveObservedInventoryMatchInput(tray, {
+      rfid: observedRfid,
+      material: capturedTraySnapshot?.filamentType ?? null,
+      filamentName: capturedTraySnapshot?.filamentName ?? null,
+      colorHex: capturedTraySnapshot?.colorHex ?? null,
+    }) ?? {
+      rfid: observedRfid,
+      material: null,
+      filamentName: null,
+      colorHex: null,
+    };
   const inventoryDecision = buildBambuUnknownRfidInventoryDecision(spoolRows, observedMatchInput, {
     enableMetadataCandidates: Boolean(observedRfid),
     preferredSpoolId: preferredSlot?.spool_id ?? null,

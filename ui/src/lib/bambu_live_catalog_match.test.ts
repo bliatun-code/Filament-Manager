@@ -51,6 +51,24 @@ test("buildBambuLiveCatalogMatchResult finds one Bambu catalog match from live A
   assert.deepEqual(result.candidates.map((row) => row.id), ["matte-black"]);
 });
 
+test("buildBambuLiveCatalogMatchResult uses tray preset name when direct filament fields are missing", () => {
+  const result = buildBambuLiveCatalogMatchResult(
+    [
+      master("matte-black"),
+      master("matte-white", { color_name: "White", hex_color: "#FFFFFF" }),
+    ],
+    tray({
+      filament_type: null,
+      filament_name: null,
+      tray_id_name: "Bambu PLA Matte @BBL P1S 0.4 nozzle",
+      color_hex: "#000000",
+    }),
+  );
+
+  assert.equal(result.kind, "catalog_single");
+  assert.deepEqual(result.candidates.map((row) => row.id), ["matte-black"]);
+});
+
 test("buildBambuLiveCatalogMatchResult can shortlist multiple Bambu catalog matches", () => {
   const result = buildBambuLiveCatalogMatchResult(
     [

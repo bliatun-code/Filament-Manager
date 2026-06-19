@@ -9,6 +9,7 @@ import {
   buildBambuLiveCatalogMatchResult,
   type BambuLiveCatalogMatchResult,
 } from "./bambu_live_catalog_match";
+import { buildBambuLiveObservedInventoryMatchInput } from "./bambu_live_observed_match";
 import type { Locale } from "./i18n";
 import {
   buildBambuUnknownRfidInventoryDecision,
@@ -133,14 +134,8 @@ export function derivePrinterSlotDisplayState(options: {
   const liveObservedAtLabel = lastLiveObservationAt
     ? formatDateTime(lastLiveObservationAt, locale)
     : null;
-  const observedInventoryInput = effectiveLiveTray
-    ? {
-        rfid: liveTrayIdentity(effectiveLiveTray),
-        material: effectiveLiveTray.filament_type,
-        filamentName: effectiveLiveTray.filament_name,
-        colorHex: effectiveLiveTray.color_hex,
-      }
-    : null;
+  const observedInventoryInput =
+    buildBambuLiveObservedInventoryMatchInput(effectiveLiveTray);
   const inventoryDecision = observedInventoryInput
     ? buildBambuUnknownRfidInventoryDecision(spoolRows, observedInventoryInput, {
         enableMetadataCandidates: unknownLiveRfid,
