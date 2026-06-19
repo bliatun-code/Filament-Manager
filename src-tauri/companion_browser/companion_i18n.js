@@ -235,8 +235,10 @@ const dictionaries = {
       liveHumidityDry: "Dry",
       liveHumidityMiddle: "Mid",
       liveHumidityWet: "Wet",
-      liveCandidateSingle: "Likely inventory roll",
-      liveCandidateMultiple: "Possible inventory rolls",
+      liveCandidateSingle:
+        "One inventory roll looks like this live Bambu roll. Save RFID to bind it permanently.",
+      liveCandidateMultiple:
+        "{count} inventory rolls look like this live Bambu roll. Choose the correct row to save RFID.",
       saveCandidateRfid: "Save RFID",
       activeSlot: "Active slot",
       extSlot: "EXT Slot",
@@ -758,8 +760,10 @@ const dictionaries = {
       liveHumidityDry: "Tørr",
       liveHumidityMiddle: "Midt",
       liveHumidityWet: "Fuktig",
-      liveCandidateSingle: "Sannsynlig lagerspole",
-      liveCandidateMultiple: "Mulige lagerspoler",
+      liveCandidateSingle:
+        "Én rull i lageret ligner denne live Bambu-rullen. Lagre RFID for å binde den permanent.",
+      liveCandidateMultiple:
+        "{count} ruller i lageret ligner denne live Bambu-rullen. Velg riktig rad for å lagre RFID.",
       saveCandidateRfid: "Lagre RFID",
       activeSlot: "Aktivt spor",
       extSlot: "EXT-spor",

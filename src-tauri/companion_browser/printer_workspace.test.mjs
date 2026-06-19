@@ -393,7 +393,10 @@ test("printer workspace suggests Bambu inventory candidates for unknown live RFI
     ],
   });
 
-  assert.match(html, /Likely inventory roll/);
+  assert.match(
+    html,
+    /One inventory roll looks like this live Bambu roll\. Save RFID to bind it permanently\./,
+  );
   assert.match(html, /PLA Matte · Matte Black/);
   assert.match(html, /data-action="save-live-rfid-candidate"/);
   assert.match(html, /data-slot-id="slot-1"/);
@@ -446,6 +449,69 @@ test("printer workspace marks borrowed-in Bambu candidates for unknown live RFID
 
   assert.match(html, /data-spool-id="spool-borrowed-in"/);
   assert.match(html, /Borrowed-in · Ada/);
+});
+
+test("printer workspace explains multiple live RFID candidates in Norwegian", () => {
+  const html = renderBoard({
+    state: {
+      ...createInitialCompanionState(),
+      locale: "nb",
+    },
+    activePrinter: createPrinterRow({
+      slots: [
+        {
+          slot_id: "slot-1",
+          ams_id: "ams_1",
+          slot_index: 1,
+          spool_id: null,
+          live_loaded: true,
+          live_filament_type: "PLA",
+          live_filament_name: "PLA Matte",
+          live_color_hex: "#000000",
+          live_match_status: "unknown_rfid",
+          live_tray_uuid: "UNREGISTERED-RFID",
+        },
+      ],
+    }),
+    printerSpoolOptions: [
+      {
+        spool: {
+          id: "spool-black",
+          remaining_g: 820,
+          status: "IN_STOCK",
+          rfid_tag: null,
+        },
+        master: {
+          material: "PLA",
+          filament_name: "PLA Matte",
+          color_name: "Black",
+          vendor: "Bambu",
+          hex_color: "#000000",
+        },
+      },
+      {
+        spool: {
+          id: "spool-black-backup",
+          remaining_g: 910,
+          status: "IN_STOCK",
+          rfid_tag: null,
+        },
+        master: {
+          material: "PLA",
+          filament_name: "PLA Matte",
+          color_name: "Black backup",
+          vendor: "Bambu",
+          hex_color: "#000000",
+        },
+      },
+    ],
+  });
+
+  assert.match(
+    html,
+    /2 ruller i lageret ligner denne live Bambu-rullen\. Velg riktig rad for å lagre RFID\./,
+  );
+  assert.match(html, /Lagre RFID/);
 });
 
 test("printer workspace matches composite swatches for unknown live RFID candidates", () => {
