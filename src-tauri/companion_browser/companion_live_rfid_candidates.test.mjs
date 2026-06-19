@@ -120,3 +120,17 @@ test("Companion live RFID candidates keep host preference, borrowed-in rows, and
     [],
   );
 });
+
+test("Companion live RFID candidates ignore color-only unknown RFID signals", () => {
+  assert.deepEqual(
+    buildLiveInventoryCandidateRows(
+      slot({
+        live_filament_type: null,
+        live_filament_name: null,
+        live_color_hex: "#000000",
+      }),
+      [row("bambu-black")],
+    ),
+    [],
+  );
+});
