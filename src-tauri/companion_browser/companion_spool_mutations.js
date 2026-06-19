@@ -297,7 +297,11 @@ export function createCompanionSpoolMutations({
       return;
     }
 
-    await submitSpoolRfidUpdate(trimmedSpoolId, normalizedRfidTag, observedAtValue);
+    const currentObservedAt =
+      String(currentSlot?.live_last_identity_seen_at || currentSlot?.live_printer_last_seen_at || "").trim() ||
+      observedAtValue;
+
+    await submitSpoolRfidUpdate(trimmedSpoolId, normalizedRfidTag, currentObservedAt);
   }
 
   async function submitQrLookup(qrCodeValue) {

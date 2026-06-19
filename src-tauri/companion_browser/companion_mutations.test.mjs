@@ -133,6 +133,7 @@ test("submitLiveSlotCandidateRfidUpdate saves a current unknown live RFID candid
               live_loaded: true,
               live_match_status: "unknown_rfid",
               live_tray_uuid: "RFID-1",
+              live_last_identity_seen_at: "2026-04-17T18:46:30Z",
             },
           ],
         },
@@ -157,7 +158,7 @@ test("submitLiveSlotCandidateRfidUpdate saves a current unknown live RFID candid
       "/api/v1/spools/spool-candidate/rfid",
       {
         rfid_tag: "RFID-1",
-        rfid_observed_at: "2026-04-17T18:45:56Z",
+        rfid_observed_at: "2026-04-17T18:46:30Z",
       },
     ],
   ]);
