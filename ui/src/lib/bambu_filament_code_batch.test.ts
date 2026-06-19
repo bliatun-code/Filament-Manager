@@ -186,6 +186,8 @@ test("appendBambuFilamentCodeBatchScanValues appends multiple image barcode valu
   });
 
   assert.deepEqual(append.appendedLines, ["53600", "65103"]);
+  assert.deepEqual(append.appendedCodeLines, ["53600", "65103"]);
+  assert.deepEqual(append.appendedReviewLines, []);
   assert.equal(append.input, "53400\n53600\n65103");
 });
 
@@ -196,6 +198,11 @@ test("appendBambuFilamentCodeBatchScanValues keeps non-code image barcode values
   });
 
   assert.deepEqual(append.appendedLines, [
+    "6977252426206",
+    "U02-Y0-1.75-1000-SPL",
+  ]);
+  assert.deepEqual(append.appendedCodeLines, []);
+  assert.deepEqual(append.appendedReviewLines, [
     "6977252426206",
     "U02-Y0-1.75-1000-SPL",
   ]);
@@ -213,6 +220,33 @@ test("appendBambuFilamentCodeBatchScanValues keeps non-code image barcode values
     batch.blockedRows.map((row) => row.lookup.status),
     ["no_code", "no_code"],
   );
+});
+
+test("appendBambuFilamentCodeBatchScanValues keeps mixed image barcode values reviewable", () => {
+  const append = appendBambuFilamentCodeBatchScanValues({
+    currentInput: "53400",
+    scanValues: ["Filament Code: 53600", "6977252426206"],
+  });
+
+  assert.deepEqual(append.appendedLines, ["53600", "6977252426206"]);
+  assert.deepEqual(append.appendedCodeLines, ["53600"]);
+  assert.deepEqual(append.appendedReviewLines, ["6977252426206"]);
+  assert.equal(append.input, "53400\n53600\n6977252426206");
+
+  const batch = buildBambuFilamentCodeBatch({
+    masters: [
+      master({ id: "yellow", color_name: "Yellow (53400)" }),
+      master({ id: "green", color_name: "Green (53600)" }),
+    ],
+    rawInput: append.input,
+  });
+
+  assert.deepEqual(
+    batch.creatableRows.map((row) => row.master?.id),
+    ["yellow", "green"],
+  );
+  assert.equal(batch.blockedRows[0]?.sourceText, "6977252426206");
+  assert.equal(batch.blockedRows[0]?.lookup.status, "no_code");
 });
 
 test("buildBambuFilamentCodeBatchCreateState reports ready, partial, and borrowed-in blockers", () => {

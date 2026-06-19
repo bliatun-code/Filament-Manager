@@ -215,6 +215,32 @@ function bambuBatchCreateStateMessage(
   return null;
 }
 
+function bambuBatchImageScanMessage(
+  append: { appendedCodeLines: string[]; appendedReviewLines: string[] },
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  const codeCount = append.appendedCodeLines.length;
+  const reviewCount = append.appendedReviewLines.length;
+  if (codeCount > 0 && reviewCount > 0) {
+    return t(
+      "inventory.bambuBatchImageAddedMixed",
+      "{codeCount} filament code(s) and {reviewCount} barcode value(s) for review were added to the batch.",
+    )
+      .replace("{codeCount}", String(codeCount))
+      .replace("{reviewCount}", String(reviewCount));
+  }
+  if (codeCount > 0) {
+    return t(
+      "inventory.bambuBatchImageAddedCodes",
+      "{count} filament code(s) added to the batch.",
+    ).replace("{count}", String(codeCount));
+  }
+  return t(
+    "inventory.bambuBatchImageAddedReview",
+    "{count} barcode value(s) added for review.",
+  ).replace("{count}", String(reviewCount));
+}
+
 function BambuFilamentCodeBatchPanel({
   batch,
   createState,
@@ -269,12 +295,7 @@ function BambuFilamentCodeBatchPanel({
       });
       if (result.status === "ready") {
         onInputChange(result.append.input);
-        setImageScanMessage(
-          t(
-            "inventory.bambuBatchImageAdded",
-            "{count} barcode value(s) added to the batch.",
-          ).replace("{count}", String(result.appendedLines.length)),
-        );
+        setImageScanMessage(bambuBatchImageScanMessage(result.append, t));
       } else if (result.status === "unsupported") {
         setImageScanMessage(
           t(

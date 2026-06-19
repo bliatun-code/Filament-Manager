@@ -38,6 +38,8 @@ export type BambuFilamentCodeBatchCreateState = {
 export type BambuFilamentCodeBatchScanAppendResult = {
   input: string;
   appendedLines: string[];
+  appendedCodeLines: string[];
+  appendedReviewLines: string[];
 };
 
 export type BambuFilamentCodeBatchScanValuesInput = {
@@ -76,6 +78,8 @@ export function appendBambuFilamentCodeBatchScanInput(input: {
     return {
       input: input.currentInput,
       appendedLines: [],
+      appendedCodeLines: [],
+      appendedReviewLines: [],
     };
   }
 
@@ -93,17 +97,30 @@ export function appendBambuFilamentCodeBatchScanValues(
     return {
       input: input.currentInput,
       appendedLines: [],
+      appendedCodeLines: [],
+      appendedReviewLines: [],
     };
   }
 
-  const detectedCodes = scanValues.flatMap((value) => extractBambuFilamentCodes(value));
-  const appendedLines = detectedCodes.length > 0 ? detectedCodes : scanValues;
+  const appendedCodeLines: string[] = [];
+  const appendedReviewLines: string[] = [];
+  scanValues.forEach((value) => {
+    const detectedCodes = extractBambuFilamentCodes(value);
+    if (detectedCodes.length > 0) {
+      appendedCodeLines.push(...detectedCodes);
+    } else {
+      appendedReviewLines.push(value);
+    }
+  });
+  const appendedLines = [...appendedCodeLines, ...appendedReviewLines];
   const currentInput = input.currentInput.trimEnd();
   const appendedInput = appendedLines.join("\n");
 
   return {
     input: currentInput ? `${currentInput}\n${appendedInput}` : appendedInput,
     appendedLines,
+    appendedCodeLines,
+    appendedReviewLines,
   };
 }
 

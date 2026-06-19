@@ -318,6 +318,10 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchImageAction: "Add from image",
       bambuBatchImageScanning: "Reading image...",
       bambuBatchImageAdded: "{count} barcode value(s) added to the batch.",
+      bambuBatchImageAddedCodes: "{count} filament code(s) added to the batch.",
+      bambuBatchImageAddedReview: "{count} barcode value(s) added for review.",
+      bambuBatchImageAddedMixed:
+        "{codeCount} filament code(s) and {reviewCount} barcode value(s) for review were added to the batch.",
       bambuBatchImageUnsupported:
         "Image barcode detection is not available here. Paste or type the code instead.",
       bambuBatchImageNoBarcode: "No barcode was found in that image.",
@@ -1834,6 +1838,10 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchImageAction: "Legg til fra bilde",
       bambuBatchImageScanning: "Leser bilde...",
       bambuBatchImageAdded: "{count} strekkodeverdi(er) lagt til i batchen.",
+      bambuBatchImageAddedCodes: "{count} filamentkode(r) lagt til i batchen.",
+      bambuBatchImageAddedReview: "{count} strekkodeverdi(er) lagt til for sjekk.",
+      bambuBatchImageAddedMixed:
+        "{codeCount} filamentkode(r) og {reviewCount} strekkodeverdi(er) til sjekk ble lagt til i batchen.",
       bambuBatchImageUnsupported:
         "Strekkodelesing fra bilde er ikke tilgjengelig her. Lim inn eller skriv koden i stedet.",
       bambuBatchImageNoBarcode: "Fant ingen strekkode i bildet.",

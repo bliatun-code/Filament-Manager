@@ -34,6 +34,8 @@ test("scanBambuFilamentCodesFromImage appends detected barcode filament codes", 
   assert.equal(closed, true);
   assert.deepEqual(result.rawValues, ["Filament Code: 53600", "65103"]);
   assert.deepEqual(result.appendedLines, ["53600", "65103"]);
+  assert.deepEqual(result.append?.appendedCodeLines, ["53600", "65103"]);
+  assert.deepEqual(result.append?.appendedReviewLines, []);
   assert.equal(result.append?.input, "53400\n53600\n65103");
 });
 
@@ -49,7 +51,26 @@ test("scanBambuFilamentCodesFromImage keeps non-code barcode values reviewable",
 
   assert.equal(result.status, "ready");
   assert.deepEqual(result.appendedLines, ["6977252426206"]);
+  assert.deepEqual(result.append?.appendedCodeLines, []);
+  assert.deepEqual(result.append?.appendedReviewLines, ["6977252426206"]);
   assert.equal(result.append?.input, "6977252426206");
+});
+
+test("scanBambuFilamentCodesFromImage keeps mixed barcode values in the batch review model", async () => {
+  const result = await scanBambuFilamentCodesFromImage({
+    currentInput: "53400",
+    file: new Blob(["image"], { type: "image/png" }),
+    dependencies: {
+      barcodeDetector: detectorFor(["Filament Code: 53600", "6977252426206"]),
+      createImageBitmap: async () => ({}),
+    },
+  });
+
+  assert.equal(result.status, "ready");
+  assert.deepEqual(result.appendedLines, ["53600", "6977252426206"]);
+  assert.deepEqual(result.append?.appendedCodeLines, ["53600"]);
+  assert.deepEqual(result.append?.appendedReviewLines, ["6977252426206"]);
+  assert.equal(result.append?.input, "53400\n53600\n6977252426206");
 });
 
 test("scanBambuFilamentCodesFromImage reports unsupported and empty image scans", async () => {
