@@ -341,6 +341,20 @@ test("add filament task sheet surfaces discontinued-only Bambu code matches unde
   assert.match(html, /Discontinued/);
   assert.match(html, /name="filament-master-id" value=""/);
   assert.match(html, /Choose a catalog row/);
+
+  state.borrowedInDraft = {
+    ...state.borrowedInDraft,
+    selectedMasterId: "master-old",
+  };
+  const selectedHtml = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+
+  assert.match(selectedHtml, /Only discontinued Bambu catalog entries use this code/);
+  assert.match(selectedHtml, /name="filament-master-id" value="master-old"/);
+  assert.doesNotMatch(selectedHtml, /Choose a catalog row/);
+  assert.doesNotMatch(
+    selectedHtml,
+    /<button class="primary-button" type="submit" disabled>\s*Add spool to inventory/,
+  );
 });
 
 test("add filament task sheet blocks Bambu filament codes with no catalog match", () => {
