@@ -336,6 +336,35 @@ test("buildSlotCatalogOnboardingCreateRequest prepares owned and borrowed catalo
       location_id: "Shelf A",
     },
   );
+
+  assert.deepEqual(
+    buildSlotCatalogOnboardingCreateRequest(prompt, {
+      id: "spool-occupied",
+      currentSlot: { ...slot, spool_id: "freshly-assigned-spool" } as PrinterAmsSlotRow,
+    }),
+    { ok: false, error: "occupied_slot" },
+  );
+  assert.deepEqual(
+    buildSlotCatalogOnboardingCreateRequest(
+      {
+        ...prompt,
+        ownershipType: "BORROWED_IN",
+        borrowedFromName: " ",
+      },
+      { id: "spool-missing-owner" },
+    ),
+    { ok: false, error: "borrowed_owner_required" },
+  );
+  assert.deepEqual(
+    buildSlotCatalogOnboardingCreateRequest(prompt, {
+      id: "spool-stale-rfid",
+      currentLiveTray: {
+        loaded: true,
+        observed_rfid_tag: "RFID-2",
+      } as BambuLiveObservedTray,
+    }),
+    { ok: false, error: "live_identity_changed" },
+  );
 });
 
 test("buildSlotCatalogOnboardingOpenState blocks stale catalog onboarding opens", () => {
