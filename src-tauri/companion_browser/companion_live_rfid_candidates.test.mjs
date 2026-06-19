@@ -156,6 +156,20 @@ test("Companion live RFID candidates infer material from live filament name", ()
   );
 });
 
+test("Companion live RFID candidates require material family in live names", () => {
+  assert.deepEqual(
+    buildLiveInventoryCandidateRows(
+      slot({
+        live_filament_type: null,
+        live_filament_name: "Matte",
+        live_color_hex: "#030303",
+      }),
+      [row("bambu-black")],
+    ),
+    [],
+  );
+});
+
 test("Companion live RFID candidates require candidate swatch when live color is present", () => {
   assert.deepEqual(
     buildLiveInventoryCandidateRows(

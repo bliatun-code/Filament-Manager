@@ -9,6 +9,22 @@ function normalizedText(value) {
 
 const COMPOSITE_SWATCH_PATTERN = /^(multi|gradient)\((.*)\)$/i;
 const LIVE_COLOR_MATCH_DISTANCE = 48;
+const MATERIAL_FAMILY_TOKENS = [
+  "pla",
+  "petg",
+  "abs",
+  "asa",
+  "tpu",
+  "pc",
+  "pa",
+  "cpe",
+  "hips",
+  "pva",
+  "pet",
+  "pp",
+  "pom",
+  "support",
+];
 
 function normalizedHex(value) {
   const hex = String(value || "").trim().replace(/^#/, "").toUpperCase();
@@ -19,6 +35,18 @@ function normalizedHex(value) {
       .join("")}`;
   }
   return /^[0-9A-F]{6}$/.test(hex) ? `#${hex}` : "";
+}
+
+function materialFamilyFromText(value) {
+  const tokens = normalizedText(value).split(" ").filter(Boolean);
+  if (tokens.length === 0) {
+    return "";
+  }
+  return (
+    MATERIAL_FAMILY_TOKENS.find((family) => tokens.some((token) => token === family)) ||
+    MATERIAL_FAMILY_TOKENS.find((family) => tokens.some((token) => token.startsWith(family))) ||
+    ""
+  );
 }
 
 function normalizedSwatchHexes(value) {
@@ -90,18 +118,13 @@ export function rowMatchesLiveBambuSlot(slot, row) {
   if (!rowCanReceiveLiveBambuRfid(row)) {
     return false;
   }
-  const liveMaterial = normalizedText(
+  const liveMaterialFamily = materialFamilyFromText(
     slot?.live_filament_type || slot?.live_filament_name || slot?.live_tray_id_name,
   );
-  const rowMaterial = normalizedText(row?.master?.material);
-  const rowFilament = normalizedText(row?.master?.filament_name);
-  const materialMatches =
-    Boolean(liveMaterial) &&
-    (rowMaterial === liveMaterial ||
-      rowFilament === liveMaterial ||
-      rowFilament.includes(liveMaterial) ||
-      (Boolean(rowMaterial) && liveMaterial.includes(rowMaterial)));
-  if (!materialMatches) {
+  const rowMaterialFamily = materialFamilyFromText(
+    row?.master?.material || row?.master?.filament_name,
+  );
+  if (!liveMaterialFamily || liveMaterialFamily !== rowMaterialFamily) {
     return false;
   }
 
@@ -113,6 +136,7 @@ export function rowMatchesLiveBambuSlot(slot, row) {
 
   const liveName = normalizedText(slot?.live_filament_name || slot?.live_tray_id_name);
   const rowColor = normalizedText(row?.master?.color_name);
+  const rowFilament = normalizedText(row?.master?.filament_name);
   if (!liveName || !rowColor) {
     return false;
   }
