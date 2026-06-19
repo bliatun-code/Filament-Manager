@@ -73,6 +73,19 @@ test("Companion live RFID candidates match near and composite Bambu swatches", (
     ),
     ["multi-black"],
   );
+  assert.equal(
+    rowMatchesLiveBambuSlot(
+      slot(),
+      row("missing-material", {
+        master: {
+          material: "",
+          filament_name: "",
+          hex_color: "#030303",
+        },
+      }),
+    ),
+    false,
+  );
 });
 
 test("Companion live RFID candidates keep host preference, borrowed-in rows, and occupied-slot guard", () => {

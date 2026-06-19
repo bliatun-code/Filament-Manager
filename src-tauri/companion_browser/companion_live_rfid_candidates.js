@@ -98,7 +98,7 @@ export function rowMatchesLiveBambuSlot(slot, row) {
     (rowMaterial === liveMaterial ||
       rowFilament === liveMaterial ||
       rowFilament.includes(liveMaterial) ||
-      liveMaterial.includes(rowMaterial));
+      (Boolean(rowMaterial) && liveMaterial.includes(rowMaterial)));
   if (!materialMatches) {
     return false;
   }
