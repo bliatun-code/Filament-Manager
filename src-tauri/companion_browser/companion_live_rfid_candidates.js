@@ -7,16 +7,65 @@ function normalizedText(value) {
     .trim();
 }
 
+const COMPOSITE_SWATCH_PATTERN = /^(multi|gradient)\((.*)\)$/i;
+const LIVE_COLOR_MATCH_DISTANCE = 48;
+
 function normalizedHex(value) {
   const hex = String(value || "").trim().replace(/^#/, "").toUpperCase();
+  if (/^[0-9A-F]{3}$/.test(hex)) {
+    return `#${hex
+      .split("")
+      .map((part) => `${part}${part}`)
+      .join("")}`;
+  }
   return /^[0-9A-F]{6}$/.test(hex) ? `#${hex}` : "";
 }
 
 function normalizedSwatchHexes(value) {
-  return String(value || "")
+  const raw = String(value || "").trim();
+  const solid = normalizedHex(raw);
+  if (solid) {
+    return [solid];
+  }
+  const compositeMatch = raw.match(COMPOSITE_SWATCH_PATTERN);
+  const colorSource = compositeMatch ? compositeMatch[2] : raw;
+  return colorSource
     .split(/[;,]/)
     .map(normalizedHex)
     .filter(Boolean);
+}
+
+function rgbFromHex(value) {
+  const hex = normalizedHex(value).slice(1);
+  if (hex.length !== 6) {
+    return null;
+  }
+  const red = Number.parseInt(hex.slice(0, 2), 16);
+  const green = Number.parseInt(hex.slice(2, 4), 16);
+  const blue = Number.parseInt(hex.slice(4, 6), 16);
+  return [red, green, blue].some((channel) => Number.isNaN(channel))
+    ? null
+    : [red, green, blue];
+}
+
+function colorDistance(left, right) {
+  const red = left[0] - right[0];
+  const green = left[1] - right[1];
+  const blue = left[2] - right[2];
+  return Math.sqrt(red * red + green * green + blue * blue);
+}
+
+function swatchMatchesObservedColor(observedHex, candidateHexes) {
+  const observedRgb = rgbFromHex(observedHex);
+  if (!observedRgb || candidateHexes.length === 0) {
+    return false;
+  }
+  return candidateHexes.some((candidateHex) => {
+    const candidateRgb = rgbFromHex(candidateHex);
+    return candidateRgb
+      ? colorDistance(observedRgb, candidateRgb) <= LIVE_COLOR_MATCH_DISTANCE
+      : false;
+  });
 }
 
 export function liveSlotObservedRfid(slot) {
@@ -57,7 +106,7 @@ export function rowMatchesLiveBambuSlot(slot, row) {
   const liveHex = normalizedHex(slot?.live_color_hex);
   const rowHexes = normalizedSwatchHexes(row?.master?.hex_color);
   if (liveHex && rowHexes.length > 0) {
-    return rowHexes.includes(liveHex);
+    return swatchMatchesObservedColor(liveHex, rowHexes);
   }
 
   const liveName = normalizedText(slot?.live_filament_name || slot?.live_tray_id_name);
