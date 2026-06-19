@@ -38,6 +38,11 @@ export type InventoryMatchOptions = {
    * strict exact-RFID pass.
    */
   requireMissingRfidTag?: boolean;
+  /**
+   * Unknown Bambu RFID/catalog fallback should not offer choices from color
+   * alone; many Bambu colors are reused across material families.
+   */
+  requireObservedMaterialFamily?: boolean;
 };
 
 export type BambuUnknownRfidInventoryDecision = {
@@ -362,6 +367,9 @@ export function buildInventoryMatchResult(
   const observedMaterialFamily = materialFamily(observed.material ?? observed.filamentName);
   const observedFilamentName = normalizeInventoryMatchText(observed.filamentName);
   const observedColors = swatchColors(observed.colorHex);
+  if (options.requireObservedMaterialFamily && !observedMaterialFamily) {
+    return { kind: "none", candidates: [] };
+  }
   const shouldUseNameAsFilter =
     observedColors.length === 0 &&
     hasDistinctiveInventoryNameToken(inventoryNameTokens(observedFilamentName));
@@ -431,6 +439,7 @@ export function buildBambuUnknownRfidInventoryDecision(
           includeBambuMetadataCandidates: true,
           onlyBambuMetadataCandidates: true,
           requireMissingRfidTag: true,
+          requireObservedMaterialFamily: true,
           preferredSpoolId: options.preferredSpoolId,
         })
       : strictInventoryMatch;

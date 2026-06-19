@@ -247,6 +247,31 @@ test("buildBambuUnknownRfidInventoryDecision skips saved-RFID metadata candidate
   assert.equal(onboardingDecision.suggestedInventoryMatch.kind, "none");
 });
 
+test("buildBambuUnknownRfidInventoryDecision does not suggest Bambu rows from color alone", () => {
+  const decision = buildBambuUnknownRfidInventoryDecision(
+    [
+      createRow("bambu-black", {
+        vendor: "Bambu",
+        material: "PLA",
+        filamentName: "PLA Matte",
+        hexColor: "#000000",
+      }),
+    ],
+    {
+      rfid: "UNREGISTERED-BAMBU-RFID",
+      material: null,
+      filamentName: null,
+      colorHex: "#000000",
+    },
+    {
+      enableMetadataCandidates: true,
+    },
+  );
+
+  assert.equal(decision.strictInventoryMatch.kind, "none");
+  assert.equal(decision.suggestedInventoryMatch.kind, "none");
+});
+
 test("buildInventoryMetadataCandidateResult keeps borrowed-in Bambu rows available for unknown RFID assistance", () => {
   const result = buildInventoryMetadataCandidateResult(
     [

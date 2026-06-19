@@ -107,3 +107,12 @@ test("buildBambuLiveCatalogMatchResult ignores unloaded or empty live trays", ()
     "none",
   );
 });
+
+test("buildBambuLiveCatalogMatchResult ignores color-only live tray metadata", () => {
+  const result = buildBambuLiveCatalogMatchResult(
+    [master("matte-black")],
+    tray({ filament_type: null, filament_name: null, color_hex: "#000000" }),
+  );
+
+  assert.equal(result.kind, "none");
+});

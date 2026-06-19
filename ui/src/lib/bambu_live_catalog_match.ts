@@ -65,6 +65,7 @@ export function buildBambuLiveCatalogMatchResult(
     {
       includeBambuMetadataCandidates: true,
       onlyBambuMetadataCandidates: true,
+      requireObservedMaterialFamily: true,
     },
   );
   const candidates = result.candidates
