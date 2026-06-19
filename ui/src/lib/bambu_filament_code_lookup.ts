@@ -15,7 +15,8 @@ export type BambuFilamentCodeLookup = {
   discontinuedMatches: MasterCatalogRow[];
 };
 
-const FILAMENT_CODE_GLOBAL_PATTERN = /(?<!\d)\d{5}(?!\d)/g;
+// Avoid lookbehind so Companion/manual lookup works in older mobile browsers too.
+const FILAMENT_CODE_GLOBAL_PATTERN = /(?:^|\D)(\d{5})(?!\d)/g;
 
 function isBambuCatalogMaster(master: MasterCatalogRow): boolean {
   return master.vendor.trim().toLowerCase().includes("bambu");
@@ -32,8 +33,8 @@ export function extractBambuFilamentCode(value: string | null | undefined): stri
 export function extractBambuFilamentCodes(value: string | null | undefined): string[] {
   return Array.from(
     String(value ?? "").matchAll(FILAMENT_CODE_GLOBAL_PATTERN),
-    (match) => match[0],
-  );
+    (match) => match[1],
+  ).filter((code): code is string => Boolean(code));
 }
 
 export function catalogMasterBambuFilamentCode(master: MasterCatalogRow): string | null {
