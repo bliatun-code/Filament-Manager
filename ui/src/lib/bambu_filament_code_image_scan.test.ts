@@ -5,6 +5,7 @@ import {
   bambuFilamentCodeImageScanAvailable,
   createBambuFilamentBarcodeScanner,
   decodeBambuEan13BarcodeFromCanvas,
+  detectKnownBambuBoxEanFromCanvas,
   isBambuFilamentBarcodeDecodeMiss,
   type BambuFilamentBarcodeDetectorConstructor,
   scanBambuFilamentCodesFromImage,
@@ -70,6 +71,20 @@ const TEST_EAN13_PARITY: Record<string, string> = {
   "9": "LGGLGL",
 };
 
+const TEST_CODE128_PATTERNS: Record<number, number[]> = {
+  16: [1, 2, 3, 1, 2, 2],
+  17: [1, 2, 3, 2, 2, 1],
+  19: [2, 2, 1, 1, 3, 2],
+  21: [2, 1, 3, 2, 1, 2],
+  22: [2, 2, 3, 1, 1, 2],
+  23: [3, 1, 2, 1, 3, 1],
+  24: [3, 1, 1, 2, 2, 2],
+  25: [3, 2, 1, 1, 2, 2],
+  63: [1, 1, 1, 2, 2, 4],
+  104: [2, 1, 1, 2, 1, 4],
+  106: [2, 3, 3, 1, 1, 1, 2],
+};
+
 function ean13BitPattern(code: string): string {
   const digits = code.split("");
   const parity = TEST_EAN13_PARITY[digits[0] ?? ""];
@@ -116,6 +131,68 @@ function fakeEan13Canvas(code: string): HTMLCanvasElement {
     }
   }
 
+  return {
+    width,
+    height,
+    getContext: () => ({
+      getImageData: () => ({ data }),
+    }),
+  } as unknown as HTMLCanvasElement;
+}
+
+function code128BitPattern(values: number[]): string {
+  return values
+    .map((value) => {
+      const widths = TEST_CODE128_PATTERNS[value];
+      assert.ok(widths);
+      let black = true;
+      let pattern = "";
+      widths.forEach((width) => {
+        pattern += (black ? "1" : "0").repeat(width);
+        black = !black;
+      });
+      return pattern;
+    })
+    .join("");
+}
+
+function fakeCode128Canvas(values: number[]): HTMLCanvasElement {
+  const moduleWidth = 4;
+  const quietModules = 18;
+  const barcodePattern = code128BitPattern(values);
+  const width = (barcodePattern.length + quietModules * 2) * moduleWidth;
+  const height = 96;
+  const data = new Uint8ClampedArray(width * height * 4).fill(255);
+  const barcodeTop = 16;
+  const barcodeBottom = 82;
+
+  for (let moduleIndex = 0; moduleIndex < barcodePattern.length; moduleIndex += 1) {
+    if (barcodePattern[moduleIndex] !== "1") {
+      continue;
+    }
+    const startX = (quietModules + moduleIndex) * moduleWidth;
+    for (let y = barcodeTop; y < barcodeBottom; y += 1) {
+      for (let x = startX; x < startX + moduleWidth; x += 1) {
+        const offset = (y * width + x) * 4;
+        data[offset] = 0;
+        data[offset + 1] = 0;
+        data[offset + 2] = 0;
+        data[offset + 3] = 255;
+      }
+    }
+  }
+
+  return {
+    width,
+    height,
+    getContext: () => ({
+      getImageData: () => ({ data }),
+    }),
+  } as unknown as HTMLCanvasElement;
+}
+
+function blankCanvas(width = 320, height = 120): HTMLCanvasElement {
+  const data = new Uint8ClampedArray(width * height * 4).fill(255);
   return {
     width,
     height,
@@ -323,6 +400,25 @@ test("decodeBambuEan13BarcodeFromCanvas reads Bambu box EAN rows", () => {
   assert.equal(
     decodeBambuEan13BarcodeFromCanvas(fakeEan13Canvas("6975337031338")),
     "6975337031338",
+  );
+});
+
+test("detectKnownBambuBoxEanFromCanvas matches known Bambu EAN and Code 128 box labels", () => {
+  assert.equal(
+    detectKnownBambuBoxEanFromCanvas(fakeEan13Canvas("6975337031338")),
+    "6975337031338",
+  );
+  assert.equal(
+    detectKnownBambuBoxEanFromCanvas(
+      fakeCode128Canvas([
+        104, 22, 25, 23, 21, 19, 19, 23, 16, 19, 17, 19, 19, 24, 63, 106,
+      ]),
+    ),
+    "6975337031338",
+  );
+  assert.equal(
+    detectKnownBambuBoxEanFromCanvas(blankCanvas()),
+    null,
   );
 });
 

@@ -490,6 +490,19 @@ function BambuFilamentCodeBatchPanel({
         if (emptyCameraFrameCountRef.current >= 3) {
           seenCameraKeysRef.current = new Set();
         }
+        if (
+          emptyCameraFrameCountRef.current === 4 ||
+          emptyCameraFrameCountRef.current % 10 === 0
+        ) {
+          showCameraFeedback(
+            "scanning",
+            t(
+              "inventory.bambuBatchCameraNoBarcodeYet",
+              "Scanning frames; no barcode match yet. Move closer or farther away until the bars are sharp.",
+            ),
+            { sticky: true },
+          );
+        }
         return;
       }
 

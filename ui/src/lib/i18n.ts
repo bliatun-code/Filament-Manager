@@ -348,6 +348,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchCameraUnavailable: "Camera unavailable",
       bambuBatchCameraErrorShort: "Camera error",
       bambuBatchCameraPreviewIdle: "Start the webcam to scan Bambu box labels.",
+      bambuBatchCameraNoBarcodeYet:
+        "Scanning frames; no barcode match yet. Move closer or farther away until the bars are sharp.",
       bambuBatchCameraAddedCodeValues: "Added {codes}.",
       bambuBatchCameraAddedReviewValues: "Added for review: {values}.",
       bambuBatchCameraAddedMixedValues:
@@ -1909,6 +1911,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchCameraUnavailable: "Kamera utilgjengelig",
       bambuBatchCameraErrorShort: "Kamerafeil",
       bambuBatchCameraPreviewIdle: "Start webkameraet for å skanne Bambu-eskeetiketter.",
+      bambuBatchCameraNoBarcodeYet:
+        "Skanner bilder; ingen strekkode funnet ennå. Flytt esken litt nærmere eller lenger unna til strekene er skarpe.",
       bambuBatchCameraAddedCodeValues: "La til {codes}.",
       bambuBatchCameraAddedReviewValues: "Lagt til for sjekk: {values}.",
       bambuBatchCameraAddedMixedValues:

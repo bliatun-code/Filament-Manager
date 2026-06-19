@@ -18,7 +18,7 @@ export type BambuFilamentCodeLookup = {
 // Avoid lookbehind so Companion/manual lookup works in older mobile browsers too.
 const FILAMENT_CODE_GLOBAL_PATTERN = /(?:^|\D)(\d{5})(?!\d)/g;
 
-const BAMBU_BOX_CODE_ALIASES: Record<string, string> = {
+export const BAMBU_BOX_CODE_ALIASES: Record<string, string> = {
   "6975337031338": "11101",
   "A01-K1-1.75-1000-SPL": "11101",
 };
