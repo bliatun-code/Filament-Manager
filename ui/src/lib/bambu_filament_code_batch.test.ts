@@ -116,6 +116,29 @@ test("buildBambuFilamentCodeBatch blocks non-code barcode values", () => {
   assert.equal(batch.blockedRows.length, 1);
 });
 
+test("buildBambuFilamentCodeBatch resolves known Bambu box barcode aliases", () => {
+  const batch = buildBambuFilamentCodeBatch({
+    masters: [
+      master({
+        id: "matte-charcoal",
+        filament_name: "PLA Matte",
+        color_name: "Charcoal (11101)",
+      }),
+    ],
+    rawInput: "6975337031338\nSKU: A01-K1-1.75-1000-SPL",
+  });
+
+  assert.deepEqual(
+    batch.rows.map((row) => row.code),
+    ["11101", "11101"],
+  );
+  assert.deepEqual(
+    batch.creatableRows.map((row) => row.master?.id),
+    ["matte-charcoal", "matte-charcoal"],
+  );
+  assert.equal(batch.blockedRows.length, 0);
+});
+
 test("appendBambuFilamentCodeBatchScanInput appends detected codes into batch input", () => {
   const append = appendBambuFilamentCodeBatchScanInput({
     currentInput: "53400\n",
@@ -250,6 +273,24 @@ test("appendBambuFilamentCodeBatchScanValues keeps mixed image barcode values re
   assert.equal(batch.blockedRows[0]?.lookup.status, "no_code");
 });
 
+test("appendBambuFilamentCodeBatchScanValues maps known box barcodes and ignores Bambu instruction URLs", () => {
+  const append = appendBambuFilamentCodeBatchScanValues({
+    currentInput: "",
+    scanValues: [
+      "6975337031338",
+      "https://wiki.bambulab.com/en/filament-acc/filament/pla-matte",
+    ],
+  });
+
+  assert.deepEqual(append.appendedLines, ["11101"]);
+  assert.deepEqual(append.appendedCodeLines, ["11101"]);
+  assert.deepEqual(append.appendedReviewLines, []);
+  assert.deepEqual(append.ignoredLines, [
+    "https://wiki.bambulab.com/en/filament-acc/filament/pla-matte",
+  ]);
+  assert.equal(append.input, "11101");
+});
+
 test("appendBambuFilamentCodeBatchScanValuesOnce adds each live scan value once per session", () => {
   const firstAppend = appendBambuFilamentCodeBatchScanValuesOnce({
     currentInput: "",
@@ -279,6 +320,20 @@ test("appendBambuFilamentCodeBatchScanValuesOnce adds each live scan value once 
   assert.equal(nextAppend.status, "appended");
   assert.deepEqual(nextAppend.appendedLines, ["53600"]);
   assert.equal(nextAppend.input, "53400\n6977252426206\n53600");
+});
+
+test("appendBambuFilamentCodeBatchScanValuesOnce reports ignored Bambu instruction QR values", () => {
+  const append = appendBambuFilamentCodeBatchScanValuesOnce({
+    currentInput: "",
+    scanValues: ["https://wiki.bambulab.com/en/filament-acc/filament/pla-matte"],
+  });
+
+  assert.equal(append.status, "ignored");
+  assert.deepEqual(append.appendedLines, []);
+  assert.deepEqual(append.ignoredLines, [
+    "https://wiki.bambulab.com/en/filament-acc/filament/pla-matte",
+  ]);
+  assert.equal(append.input, "");
 });
 
 test("buildBambuFilamentCodeBatchCreateState reports ready, partial, and borrowed-in blockers", () => {

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   bambuFilamentCodeImageScanAvailable,
+  createBambuFilamentBarcodeScanner,
   isBambuFilamentBarcodeDecodeMiss,
   type BambuFilamentBarcodeDetectorConstructor,
   scanBambuFilamentCodesFromImage,
@@ -81,6 +82,45 @@ test("scanBambuFilamentCodesFromImage keeps non-code barcode values reviewable",
   assert.deepEqual(result.append?.appendedCodeLines, []);
   assert.deepEqual(result.append?.appendedReviewLines, ["6977252426206"]);
   assert.equal(result.append?.input, "6977252426206");
+});
+
+test("scanBambuFilamentCodesFromImage maps known box barcodes and ignores instruction QRs", async () => {
+  const result = await scanBambuFilamentCodesFromImage({
+    currentInput: "",
+    file: new Blob(["image"], { type: "image/png" }),
+    dependencies: {
+      barcodeDetector: detectorFor([
+        "6975337031338",
+        "https://wiki.bambulab.com/en/filament-acc/filament/pla-matte",
+      ]),
+      createImageBitmap: async () => ({}),
+    },
+  });
+
+  assert.equal(result.status, "ready");
+  assert.deepEqual(result.appendedLines, ["11101"]);
+  assert.deepEqual(result.append?.appendedCodeLines, ["11101"]);
+  assert.deepEqual(result.append?.appendedReviewLines, []);
+  assert.deepEqual(result.append?.ignoredLines, [
+    "https://wiki.bambulab.com/en/filament-acc/filament/pla-matte",
+  ]);
+  assert.equal(result.append?.input, "11101");
+});
+
+test("createBambuFilamentBarcodeScanner tries fallback when native finds only an instruction QR", async () => {
+  const scanner = await createBambuFilamentBarcodeScanner({
+    barcodeDetector: detectorFor([
+      "https://wiki.bambulab.com/en/filament-acc/filament/pla-matte",
+    ]),
+    fallbackBarcodeScanner: async () => ({
+      detect: async () => [{ rawValue: "6975337031338" }],
+    }),
+  });
+
+  assert.deepEqual(await scanner?.detect({}), [
+    { rawValue: "https://wiki.bambulab.com/en/filament-acc/filament/pla-matte" },
+    { rawValue: "6975337031338" },
+  ]);
 });
 
 test("scanBambuFilamentCodesFromImage keeps mixed barcode values in the batch review model", async () => {

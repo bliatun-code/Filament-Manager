@@ -1,5 +1,6 @@
 import {
   appendBambuFilamentCodeBatchScanValues,
+  isIgnoredBambuFilamentBatchScanValue,
   type BambuFilamentCodeBatchScanAppendResult,
 } from "./bambu_filament_code_batch";
 
@@ -65,6 +66,17 @@ const ZXING_BARCODE_FORMAT_KEYS = [
   "UPC_A",
   "UPC_E",
 ] as const;
+
+const ZXING_LINEAR_BARCODE_FORMAT_KEYS = [
+  "CODE_128",
+  "CODE_39",
+  "EAN_13",
+  "EAN_8",
+  "UPC_A",
+  "UPC_E",
+] as const;
+
+const ZXING_MATRIX_BARCODE_FORMAT_KEYS = ["QR_CODE", "DATA_MATRIX"] as const;
 
 let zxingBarcodeScannerPromise: Promise<BambuFilamentBarcodeDetector | null> | null =
   null;
@@ -206,33 +218,93 @@ function normalizeZxingResult(result: unknown): BambuFilamentBarcodeDetection[] 
   return rawValue ? [{ rawValue }] : [];
 }
 
+function zxingFormats(
+  zxing: typeof import("@zxing/browser"),
+  keys: readonly string[],
+): number[] {
+  return keys
+    .map((key) => zxing.BarcodeFormat[key as keyof typeof zxing.BarcodeFormat])
+    .filter((format): format is number => typeof format === "number");
+}
+
+function createZxingReader(
+  zxing: typeof import("@zxing/browser"),
+  keys: readonly string[],
+): import("@zxing/browser").BrowserMultiFormatReader {
+  const reader = new zxing.BrowserMultiFormatReader();
+  reader.possibleFormats = zxingFormats(zxing, keys);
+  return reader;
+}
+
+function rawDetectionValues(detections: BambuFilamentBarcodeDetection[]): string[] {
+  return detections
+    .map((detection) => String(detection.rawValue ?? "").trim())
+    .filter(Boolean);
+}
+
+function detectionsOnlyContainIgnoredValues(
+  detections: BambuFilamentBarcodeDetection[],
+): boolean {
+  const rawValues = rawDetectionValues(detections);
+  return (
+    rawValues.length > 0 &&
+    rawValues.every((value) => isIgnoredBambuFilamentBatchScanValue(value))
+  );
+}
+
 export async function createZxingBambuFilamentBarcodeScanner(): Promise<BambuFilamentBarcodeDetector | null> {
   zxingBarcodeScannerPromise ??= (async () => {
     const zxing = await import("@zxing/browser");
-    const reader = new zxing.BrowserMultiFormatReader();
-    reader.possibleFormats = ZXING_BARCODE_FORMAT_KEYS.map(
-      (key) => zxing.BarcodeFormat[key],
-    ).filter((format): format is number => typeof format === "number");
+    const linearReader = createZxingReader(zxing, ZXING_LINEAR_BARCODE_FORMAT_KEYS);
+    const matrixReader = createZxingReader(zxing, ZXING_MATRIX_BARCODE_FORMAT_KEYS);
+    const broadReader = createZxingReader(zxing, ZXING_BARCODE_FORMAT_KEYS);
+    const readers = [linearReader, matrixReader, broadReader];
 
     return {
       detect: async (image: unknown) => {
-        try {
-          const canvas = createCanvasForBarcodeScan(image);
-          const result = canvas
-            ? reader.decodeFromCanvas(canvas)
-            : reader.decode(image as HTMLImageElement | HTMLVideoElement);
-          return normalizeZxingResult(result);
-        } catch (error) {
-          if (isBambuFilamentBarcodeDecodeMiss(error)) {
-            return [];
+        const canvas = createCanvasForBarcodeScan(image);
+        const scanImage = canvas ?? image;
+        let lastMiss: unknown = null;
+        for (const reader of readers) {
+          try {
+            const result = canvas
+              ? reader.decodeFromCanvas(canvas)
+              : reader.decode(scanImage as HTMLImageElement | HTMLVideoElement);
+            return normalizeZxingResult(result);
+          } catch (error) {
+            if (isBambuFilamentBarcodeDecodeMiss(error)) {
+              lastMiss = error;
+              continue;
+            }
+            throw error;
           }
-          throw error;
         }
+
+        if (lastMiss) {
+          return [];
+        }
+        return [];
       },
     };
   })().catch(() => null);
 
   return zxingBarcodeScannerPromise;
+}
+
+async function detectWithFallbackAfterIgnoredNative(input: {
+  nativeDetections: BambuFilamentBarcodeDetection[];
+  image: unknown;
+  fallbackFactory: BambuFilamentBarcodeScannerFactory;
+}): Promise<BambuFilamentBarcodeDetection[]> {
+  if (!detectionsOnlyContainIgnoredValues(input.nativeDetections)) {
+    return input.nativeDetections;
+  }
+
+  const fallbackScanner = await input.fallbackFactory();
+  const fallbackDetections = (await fallbackScanner?.detect(input.image)) ?? [];
+  return rawDetectionValues(fallbackDetections).length > 0
+    ? [...input.nativeDetections, ...fallbackDetections]
+    : input.nativeDetections;
 }
 
 export async function createBambuFilamentBarcodeScanner(
@@ -265,18 +337,22 @@ export async function createBambuFilamentBarcodeScanner(
     detect: async (image: unknown) => {
       try {
         const nativeDetections = await nativeDetector.detect(image);
-        const hasNativeValue = nativeDetections.some((detection) =>
-          String(detection.rawValue ?? "").trim(),
-        );
-        if (hasNativeValue || !fallbackScannerFactory) {
-          return nativeDetections;
+        const hasNativeValue = rawDetectionValues(nativeDetections).length > 0;
+        if (hasNativeValue) {
+          return fallbackScannerFactory
+            ? detectWithFallbackAfterIgnoredNative({
+                nativeDetections,
+                image,
+                fallbackFactory: fallbackScannerFactory,
+              })
+            : nativeDetections;
         }
       } catch (error) {
         if (!fallbackScannerFactory) {
           throw error;
         }
       }
-      const fallbackScanner = await fallbackScannerFactory();
+      const fallbackScanner = await fallbackScannerFactory?.();
       return fallbackScanner?.detect(image) ?? [];
     },
   };

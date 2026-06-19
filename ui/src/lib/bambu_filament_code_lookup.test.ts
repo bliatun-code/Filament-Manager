@@ -8,6 +8,8 @@ import {
   catalogMasterBambuFilamentCode,
   extractBambuFilamentCode,
   extractBambuFilamentCodes,
+  resolveBambuFilamentCode,
+  resolveBambuFilamentCodes,
   type BambuFilamentCodeLookupStatus,
 } from "./bambu_filament_code_lookup";
 import type { MasterCatalogRow } from "./tauri_client";
@@ -82,6 +84,12 @@ test("extractBambuFilamentCodes reads multiple standalone five digit filament co
     "65103",
   ]);
   assert.deepEqual(extractBambuFilamentCodes("6977252426206 123456"), []);
+});
+
+test("resolveBambuFilamentCode maps known Bambu box EAN and SKU aliases", () => {
+  assert.deepEqual(resolveBambuFilamentCodes("6975337031338"), ["11101"]);
+  assert.equal(resolveBambuFilamentCode("SKU: A01-K1-1.75-1000-SPL"), "11101");
+  assert.equal(resolveBambuFilamentCode("6977252426206"), null);
 });
 
 test("catalogMasterBambuFilamentCode reads codes from Bambu catalog colors", () => {

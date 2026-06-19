@@ -129,3 +129,23 @@ test("appendBambuFilamentCodeCameraScanValues deduplicates a continuous camera s
   assert.deepEqual(second.appendedLines, []);
   assert.equal(second.input, "53400");
 });
+
+test("appendBambuFilamentCodeCameraScanValues maps box EANs and ignores instruction QRs", () => {
+  const eanAppend = appendBambuFilamentCodeCameraScanValues({
+    currentInput: "",
+    rawValues: ["6975337031338"],
+  });
+  const qrAppend = appendBambuFilamentCodeCameraScanValues({
+    currentInput: eanAppend.input,
+    rawValues: ["https://wiki.bambulab.com/en/filament-acc/filament/pla-matte"],
+    seenKeys: eanAppend.nextSeenKeys,
+  });
+
+  assert.equal(eanAppend.status, "appended");
+  assert.deepEqual(eanAppend.appendedCodeLines, ["11101"]);
+  assert.equal(eanAppend.input, "11101");
+
+  assert.equal(qrAppend.status, "ignored");
+  assert.deepEqual(qrAppend.appendedLines, []);
+  assert.equal(qrAppend.input, "11101");
+});

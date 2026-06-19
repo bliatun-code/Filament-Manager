@@ -1,6 +1,7 @@
 import {
   buildBambuFilamentCodeLookup,
   extractBambuFilamentCodes,
+  resolveBambuFilamentCodes,
   type BambuFilamentCodeLookup,
 } from "./bambu_filament_code_lookup";
 import type { MasterCatalogRow } from "./tauri_client";
@@ -40,6 +41,7 @@ export type BambuFilamentCodeBatchScanAppendResult = {
   appendedLines: string[];
   appendedCodeLines: string[];
   appendedReviewLines: string[];
+  ignoredLines: string[];
 };
 
 export type BambuFilamentCodeBatchScanValuesInput = {
@@ -49,7 +51,7 @@ export type BambuFilamentCodeBatchScanValuesInput = {
 
 export type BambuFilamentCodeBatchScanAppendOnceResult =
   BambuFilamentCodeBatchScanAppendResult & {
-    status: "appended" | "duplicate" | "empty";
+    status: "appended" | "duplicate" | "ignored" | "empty";
     appendedKeys: string[];
     skippedKeys: string[];
     skippedLines: string[];
@@ -69,13 +71,30 @@ function parseBambuFilamentCodeBatchEntries(rawInput: string): ParsedBatchEntry[
     .flatMap((line): ParsedBatchEntry[] => {
       const codes = extractBambuFilamentCodes(line);
       if (codes.length === 0) {
-        return [{ sourceText: line, code: null }];
+        return [{ sourceText: line, code: resolveBambuFilamentCodes(line)[0] ?? null }];
       }
       if (codes.length === 1) {
         return [{ sourceText: line, code: codes[0] }];
       }
       return codes.map((code) => ({ sourceText: code, code }));
     });
+}
+
+export function isIgnoredBambuFilamentBatchScanValue(value: string): boolean {
+  if (resolveBambuFilamentCodes(value).length > 0) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value);
+    return (
+      ["http:", "https:"].includes(url.protocol) &&
+      (url.hostname.toLowerCase().includes("bambu") ||
+        url.href.toLowerCase().includes("bambulab"))
+    );
+  } catch {
+    return /^https?:\/\/\S*bambu/i.test(value);
+  }
 }
 
 export function appendBambuFilamentCodeBatchScanInput(input: {
@@ -89,6 +108,7 @@ export function appendBambuFilamentCodeBatchScanInput(input: {
       appendedLines: [],
       appendedCodeLines: [],
       appendedReviewLines: [],
+      ignoredLines: [],
     };
   }
 
@@ -108,15 +128,19 @@ export function appendBambuFilamentCodeBatchScanValues(
       appendedLines: [],
       appendedCodeLines: [],
       appendedReviewLines: [],
+      ignoredLines: [],
     };
   }
 
   const appendedCodeLines: string[] = [];
   const appendedReviewLines: string[] = [];
+  const ignoredLines: string[] = [];
   scanValues.forEach((value) => {
-    const detectedCodes = extractBambuFilamentCodes(value);
+    const detectedCodes = resolveBambuFilamentCodes(value);
     if (detectedCodes.length > 0) {
       appendedCodeLines.push(...detectedCodes);
+    } else if (isIgnoredBambuFilamentBatchScanValue(value)) {
+      ignoredLines.push(value);
     } else {
       appendedReviewLines.push(value);
     }
@@ -130,6 +154,7 @@ export function appendBambuFilamentCodeBatchScanValues(
     appendedLines,
     appendedCodeLines,
     appendedReviewLines,
+    ignoredLines,
   };
 }
 
@@ -142,10 +167,15 @@ export function appendBambuFilamentCodeBatchScanValuesOnce(input: {
   const appendedKeys: string[] = [];
   const skippedKeys: string[] = [];
   const skippedLines: string[] = [];
+  const ignoredLines: string[] = [];
   const scanValues = input.scanValues.map((value) => value.trim()).filter(Boolean);
 
   const freshLines = scanValues.flatMap((value) => {
-    const detectedCodes = extractBambuFilamentCodes(value);
+    const detectedCodes = resolveBambuFilamentCodes(value);
+    if (detectedCodes.length === 0 && isIgnoredBambuFilamentBatchScanValue(value)) {
+      ignoredLines.push(value);
+      return [];
+    }
     const entries =
       detectedCodes.length > 0
         ? detectedCodes.map((code) => ({ key: `code:${code}`, line: code }))
@@ -171,10 +201,17 @@ export function appendBambuFilamentCodeBatchScanValuesOnce(input: {
   return {
     ...append,
     status:
-      appendedKeys.length > 0 ? "appended" : skippedKeys.length > 0 ? "duplicate" : "empty",
+      appendedKeys.length > 0
+        ? "appended"
+        : skippedKeys.length > 0
+          ? "duplicate"
+          : ignoredLines.length > 0
+            ? "ignored"
+            : "empty",
     appendedKeys,
     skippedKeys,
     skippedLines,
+    ignoredLines,
     nextSeenKeys,
   };
 }

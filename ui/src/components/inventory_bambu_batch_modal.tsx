@@ -222,11 +222,16 @@ function bambuBatchCreateStateMessage(
 }
 
 function bambuBatchImageScanMessage(
-  append: { appendedCodeLines: string[]; appendedReviewLines: string[] },
+  append: {
+    appendedCodeLines: string[];
+    appendedReviewLines: string[];
+    ignoredLines: string[];
+  },
   t: ReturnType<typeof useI18n>["t"],
 ): string {
   const codeCount = append.appendedCodeLines.length;
   const reviewCount = append.appendedReviewLines.length;
+  const ignoredCount = append.ignoredLines.length;
   if (codeCount > 0 && reviewCount > 0) {
     return t(
       "inventory.bambuBatchImageAddedMixed",
@@ -240,6 +245,12 @@ function bambuBatchImageScanMessage(
       "inventory.bambuBatchImageAddedCodes",
       "{count} filament code(s) added to the batch.",
     ).replace("{count}", String(codeCount));
+  }
+  if (ignoredCount > 0) {
+    return t(
+      "inventory.bambuBatchImageIgnored",
+      "Ignored {count} Bambu instruction QR value(s).",
+    ).replace("{count}", String(ignoredCount));
   }
   return t(
     "inventory.bambuBatchImageAddedReview",
@@ -260,15 +271,21 @@ type BambuBatchCameraStatus =
   | "added"
   | "review"
   | "duplicate"
+  | "ignored"
   | "unsupported"
   | "error";
 
 function bambuBatchCameraScanMessage(
-  append: { appendedCodeLines: string[]; appendedReviewLines: string[] },
+  append: {
+    appendedCodeLines: string[];
+    appendedReviewLines: string[];
+    ignoredLines: string[];
+  },
   t: ReturnType<typeof useI18n>["t"],
 ): string {
   const codeCount = append.appendedCodeLines.length;
   const reviewCount = append.appendedReviewLines.length;
+  const ignoredCount = append.ignoredLines.length;
   const codePreview = formatBambuBatchScanLinePreview(append.appendedCodeLines);
   const reviewPreview = formatBambuBatchScanLinePreview(append.appendedReviewLines);
   if (codeCount > 0 && reviewCount > 0) {
@@ -284,6 +301,12 @@ function bambuBatchCameraScanMessage(
       "inventory.bambuBatchCameraAddedCodeValues",
       "Added {codes}.",
     ).replace("{codes}", codePreview);
+  }
+  if (ignoredCount > 0) {
+    return t(
+      "inventory.bambuBatchCameraIgnoredQr",
+      "Ignored a Bambu instruction QR. Keep showing the Filament Code label.",
+    );
   }
   return t(
     "inventory.bambuBatchCameraAddedReviewValues",
@@ -307,6 +330,9 @@ function bambuBatchCameraStatusLabel(
   if (status === "duplicate") {
     return t("inventory.bambuBatchCameraDuplicate", "Already added");
   }
+  if (status === "ignored") {
+    return t("inventory.bambuBatchCameraIgnored", "Ignored");
+  }
   if (status === "unsupported") {
     return t("inventory.bambuBatchCameraUnavailable", "Camera unavailable");
   }
@@ -322,6 +348,9 @@ function bambuBatchCameraOverlayClassName(status: BambuBatchCameraStatus): strin
   }
   if (status === "duplicate") {
     return "border-amber-300/50 bg-amber-500/15 text-amber-50";
+  }
+  if (status === "ignored") {
+    return "border-white/20 bg-slate-950/60 text-slate-100";
   }
   if (status === "unsupported" || status === "error") {
     return "border-rose-300/50 bg-rose-500/15 text-rose-50";
@@ -488,6 +517,8 @@ function BambuFilamentCodeBatchPanel({
             "Already added. Move the label away before scanning another copy.",
           ),
         );
+      } else if (append.status === "ignored") {
+        showCameraFeedback("ignored", bambuBatchCameraScanMessage(append, t));
       }
     } catch (error) {
       if (!mountedRef.current) {

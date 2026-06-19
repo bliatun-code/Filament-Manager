@@ -18,6 +18,11 @@ export type BambuFilamentCodeLookup = {
 // Avoid lookbehind so Companion/manual lookup works in older mobile browsers too.
 const FILAMENT_CODE_GLOBAL_PATTERN = /(?:^|\D)(\d{5})(?!\d)/g;
 
+const BAMBU_BOX_CODE_ALIASES: Record<string, string> = {
+  "6975337031338": "11101",
+  "A01-K1-1.75-1000-SPL": "11101",
+};
+
 function isBambuCatalogMaster(master: MasterCatalogRow): boolean {
   return master.vendor.trim().toLowerCase().includes("bambu");
 }
@@ -35,6 +40,39 @@ export function extractBambuFilamentCodes(value: string | null | undefined): str
     String(value ?? "").matchAll(FILAMENT_CODE_GLOBAL_PATTERN),
     (match) => match[1],
   ).filter((code): code is string => Boolean(code));
+}
+
+function normalizedBambuBoxValue(value: string | null | undefined): string {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[‐‑‒–—―]/g, "-");
+}
+
+function uniqueCodes(codes: string[]): string[] {
+  return Array.from(new Set(codes));
+}
+
+export function resolveBambuFilamentCodes(value: string | null | undefined): string[] {
+  const directCodes = extractBambuFilamentCodes(value);
+  if (directCodes.length > 0) {
+    return uniqueCodes(directCodes);
+  }
+
+  const normalized = normalizedBambuBoxValue(value);
+  if (!normalized) {
+    return [];
+  }
+
+  return uniqueCodes(
+    Object.entries(BAMBU_BOX_CODE_ALIASES).flatMap(([alias, code]) =>
+      normalized.includes(alias) ? [code] : [],
+    ),
+  );
+}
+
+export function resolveBambuFilamentCode(value: string | null | undefined): string | null {
+  return resolveBambuFilamentCodes(value)[0] ?? null;
 }
 
 export function catalogMasterBambuFilamentCode(master: MasterCatalogRow): string | null {
@@ -55,7 +93,7 @@ export function buildBambuFilamentCodeLookup(
   masters: MasterCatalogRow[],
   rawQuery: string,
 ): BambuFilamentCodeLookup {
-  const code = extractBambuFilamentCode(rawQuery);
+  const code = resolveBambuFilamentCode(rawQuery);
   if (!code) {
     return {
       code: null,

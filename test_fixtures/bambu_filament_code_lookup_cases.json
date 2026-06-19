@@ -64,6 +64,18 @@
       "discontinued_at": null
     },
     {
+      "id": "matte-charcoal",
+      "material": "PLA",
+      "filament_name": "PLA Matte",
+      "color_name": "Charcoal (11101)",
+      "hex_color": "#282828",
+      "product_url": null,
+      "default_weight": 1000,
+      "vendor": "Bambu Lab",
+      "is_discontinued": false,
+      "discontinued_at": null
+    },
+    {
       "id": "petg-black",
       "material": "PETG",
       "filament_name": "PETG HF",
@@ -131,6 +143,26 @@
       "matches": ["yellow", "old-yellow"],
       "activeMatches": ["yellow"],
       "discontinuedMatches": ["old-yellow"],
+      "requiresExplicitSelection": false
+    },
+    {
+      "name": "known Bambu box EAN maps to the printed filament code",
+      "rawQuery": "6975337031338",
+      "code": "11101",
+      "status": "single_active",
+      "matches": ["matte-charcoal"],
+      "activeMatches": ["matte-charcoal"],
+      "discontinuedMatches": [],
+      "requiresExplicitSelection": false
+    },
+    {
+      "name": "known Bambu box SKU maps to the printed filament code",
+      "rawQuery": "SKU: A01-K1-1.75-1000-SPL",
+      "code": "11101",
+      "status": "single_active",
+      "matches": ["matte-charcoal"],
+      "activeMatches": ["matte-charcoal"],
+      "discontinuedMatches": [],
       "requiresExplicitSelection": false
     },
     {

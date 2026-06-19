@@ -328,6 +328,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchImageAddedReview: "{count} barcode value(s) added for review.",
       bambuBatchImageAddedMixed:
         "{codeCount} filament code(s) and {reviewCount} barcode value(s) for review were added to the batch.",
+      bambuBatchImageIgnored: "Ignored {count} Bambu instruction QR value(s).",
       bambuBatchImageUnsupported:
         "Image barcode detection is not available here. Paste or type the code instead.",
       bambuBatchImageNoBarcode: "No barcode was found in that image.",
@@ -342,6 +343,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchCameraAdded: "Added",
       bambuBatchCameraReview: "Review",
       bambuBatchCameraDuplicate: "Already added",
+      bambuBatchCameraIgnored: "Ignored",
       bambuBatchCameraUnavailable: "Camera unavailable",
       bambuBatchCameraErrorShort: "Camera error",
       bambuBatchCameraPreviewIdle: "Start the webcam to scan Bambu box labels.",
@@ -349,6 +351,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchCameraAddedReviewValues: "Added for review: {values}.",
       bambuBatchCameraAddedMixedValues:
         "Added {codes}; {reviewCount} barcode value(s) for review.",
+      bambuBatchCameraIgnoredQr:
+        "Ignored a Bambu instruction QR. Keep showing the Filament Code label.",
       bambuBatchCameraAlreadyAdded:
         "Already added. Move the label away before scanning another copy.",
       bambuBatchCameraBarcodeUnsupported:
@@ -1884,6 +1888,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchImageAddedReview: "{count} strekkodeverdi(er) lagt til for sjekk.",
       bambuBatchImageAddedMixed:
         "{codeCount} filamentkode(r) og {reviewCount} strekkodeverdi(er) til sjekk ble lagt til i batchen.",
+      bambuBatchImageIgnored: "Ignorerte {count} Bambu instruksjons-QR-verdi(er).",
       bambuBatchImageUnsupported:
         "Strekkodelesing fra bilde er ikke tilgjengelig her. Lim inn eller skriv koden i stedet.",
       bambuBatchImageNoBarcode: "Fant ingen strekkode i bildet.",
@@ -1898,6 +1903,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchCameraAdded: "Lagt til",
       bambuBatchCameraReview: "Til sjekk",
       bambuBatchCameraDuplicate: "Allerede lagt til",
+      bambuBatchCameraIgnored: "Ignorert",
       bambuBatchCameraUnavailable: "Kamera utilgjengelig",
       bambuBatchCameraErrorShort: "Kamerafeil",
       bambuBatchCameraPreviewIdle: "Start webkameraet for å skanne Bambu-eskeetiketter.",
@@ -1905,6 +1911,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchCameraAddedReviewValues: "Lagt til for sjekk: {values}.",
       bambuBatchCameraAddedMixedValues:
         "La til {codes}; {reviewCount} strekkodeverdi(er) til sjekk.",
+      bambuBatchCameraIgnoredQr:
+        "Ignorerte en Bambu instruksjons-QR. Hold Filament Code-etiketten foran kameraet.",
       bambuBatchCameraAlreadyAdded:
         "Allerede lagt til. Flytt etiketten bort før du skanner en ny av samme type.",
       bambuBatchCameraBarcodeUnsupported:
