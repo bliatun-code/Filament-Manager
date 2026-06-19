@@ -28,6 +28,7 @@ import {
   parseWeightInput,
   prepareMeasuredWeightUpdate,
   preparePrinterSlotAssignment,
+  resolveLiveRfidObservedAt,
   resolveSpoolTareWeightForRow,
   type IncomingWeightPrompt,
   type SlotCatalogOnboardingPrompt,
@@ -666,9 +667,13 @@ export function usePrinterSlotInteractions({
             spool_id: row.spool.id,
             rfid_tag: observedRfid,
             rfid_observed_at:
-              liveTray.last_identity_seen_at ??
-              bambuLiveIntegrations[printer.printer.id]?.observed_state?.last_seen_at ??
-              new Date().toISOString(),
+              resolveLiveRfidObservedAt({
+                liveTray,
+                currentLiveTray,
+                observedAtFallback:
+                  bambuLiveIntegrations[printer.printer.id]?.observed_state?.last_seen_at ??
+                  new Date().toISOString(),
+              }) ?? new Date().toISOString(),
           },
           {
             clientReadOnly,

@@ -160,6 +160,19 @@ function liveTrayLoadedForSafety(
   return tray?.loaded === true;
 }
 
+export function resolveLiveRfidObservedAt(input: {
+  liveTray: BambuLiveObservedTray;
+  currentLiveTray?: BambuLiveObservedTray | null;
+  observedAtFallback?: string | null;
+}): string | null {
+  return (
+    input.currentLiveTray?.last_identity_seen_at ??
+    input.liveTray.last_identity_seen_at ??
+    input.observedAtFallback ??
+    null
+  );
+}
+
 function rowCanReceiveLiveBambuRfid(row: SpoolWithMasterRow): boolean {
   const vendor = (row.master.vendor ?? "").trim().toLowerCase();
   const status = (row.spool.status ?? "").trim().toUpperCase();
@@ -452,12 +465,11 @@ export function buildSlotCatalogOnboardingCreateRequest(
     ok: true,
     request,
     observedRfid: saveState.observedRfid,
-    rfidObservedAt:
-      input.currentLiveTray?.last_identity_seen_at ??
-      prompt.liveTray.last_identity_seen_at ??
-      input.observedAtFallback ??
-      prompt.observedAt ??
-      null,
+    rfidObservedAt: resolveLiveRfidObservedAt({
+      liveTray: prompt.liveTray,
+      currentLiveTray: input.currentLiveTray,
+      observedAtFallback: input.observedAtFallback ?? prompt.observedAt,
+    }),
   };
 }
 

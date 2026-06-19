@@ -13,6 +13,7 @@ import {
   parseWeightInput,
   prepareMeasuredWeightUpdate,
   preparePrinterSlotAssignment,
+  resolveLiveRfidObservedAt,
 } from "./printer_slot_model";
 import type {
   BambuLiveIntegrationSettings,
@@ -110,6 +111,50 @@ test("buildSavedRfidPrinterSlotAssignment assigns a persisted RFID spool without
     rfid_override_color_hex: null,
     clear_live_cache_before_next_refresh: false,
   });
+});
+
+test("resolveLiveRfidObservedAt prefers the freshest confirmed live identity timestamp", () => {
+  const liveTray = {
+    loaded: true,
+    observed_rfid_tag: "RFID-1",
+    last_identity_seen_at: "2099-01-01T00:00:00Z",
+  } as BambuLiveObservedTray;
+
+  assert.equal(
+    resolveLiveRfidObservedAt({
+      liveTray,
+      currentLiveTray: {
+        loaded: true,
+        observed_rfid_tag: "RFID-1",
+        last_identity_seen_at: "2099-01-02T00:00:00Z",
+      } as BambuLiveObservedTray,
+      observedAtFallback: "2099-01-03T00:00:00Z",
+    }),
+    "2099-01-02T00:00:00Z",
+  );
+  assert.equal(
+    resolveLiveRfidObservedAt({
+      liveTray,
+      currentLiveTray: {
+        loaded: true,
+        observed_rfid_tag: "RFID-1",
+        last_identity_seen_at: null,
+      } as BambuLiveObservedTray,
+      observedAtFallback: "2099-01-03T00:00:00Z",
+    }),
+    "2099-01-01T00:00:00Z",
+  );
+  assert.equal(
+    resolveLiveRfidObservedAt({
+      liveTray: {
+        loaded: true,
+        observed_rfid_tag: "RFID-1",
+        last_identity_seen_at: null,
+      } as BambuLiveObservedTray,
+      observedAtFallback: "2099-01-03T00:00:00Z",
+    }),
+    "2099-01-03T00:00:00Z",
+  );
 });
 
 test("buildSlotCatalogOnboardingPostCreateWrites saves RFID before assigning the created spool", () => {
