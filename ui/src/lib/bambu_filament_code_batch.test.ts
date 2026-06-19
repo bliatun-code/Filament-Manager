@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   appendBambuFilamentCodeBatchScanInput,
+  appendBambuFilamentCodeBatchScanValues,
   buildBambuFilamentCodeBatch,
   buildBambuFilamentCodeBatchCreateState,
 } from "./bambu_filament_code_batch";
@@ -176,6 +177,42 @@ test("appendBambuFilamentCodeBatchScanInput keeps duplicates and invalid scans r
   );
   assert.equal(batch.blockedRows[0]?.sourceText, "6977252426206");
   assert.equal(batch.blockedRows[0]?.lookup.status, "no_code");
+});
+
+test("appendBambuFilamentCodeBatchScanValues appends multiple image barcode values", () => {
+  const append = appendBambuFilamentCodeBatchScanValues({
+    currentInput: "53400",
+    scanValues: ["Filament Code: 53600", "65103", "  "],
+  });
+
+  assert.deepEqual(append.appendedLines, ["53600", "65103"]);
+  assert.equal(append.input, "53400\n53600\n65103");
+});
+
+test("appendBambuFilamentCodeBatchScanValues keeps non-code image barcode values reviewable", () => {
+  const append = appendBambuFilamentCodeBatchScanValues({
+    currentInput: "",
+    scanValues: ["6977252426206", "U02-Y0-1.75-1000-SPL"],
+  });
+
+  assert.deepEqual(append.appendedLines, [
+    "6977252426206",
+    "U02-Y0-1.75-1000-SPL",
+  ]);
+
+  const batch = buildBambuFilamentCodeBatch({
+    masters: [master({ id: "yellow", color_name: "Yellow (53400)" })],
+    rawInput: append.input,
+  });
+
+  assert.deepEqual(
+    batch.blockedRows.map((row) => row.sourceText),
+    ["6977252426206", "U02-Y0-1.75-1000-SPL"],
+  );
+  assert.deepEqual(
+    batch.blockedRows.map((row) => row.lookup.status),
+    ["no_code", "no_code"],
+  );
 });
 
 test("buildBambuFilamentCodeBatchCreateState reports ready, partial, and borrowed-in blockers", () => {

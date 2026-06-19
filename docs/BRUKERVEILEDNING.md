@@ -284,11 +284,11 @@ I Bambu-flyten:
 - kontroller treff som bare finnes på utgåtte katalogelementer før du legger til lager
 - bruk manuell registrering hvis ingen katalogelementer bruker koden ennå
 
-Desktop/client har også et batchfelt for Filament Code i Bambu-flyten. Lim inn én kode per linje, eller bruk det lille skann/skriv-feltet for å legge til én oppdaget kode om gangen fra tastatur-lignende scannerinput eller manuell inntasting. Programmet viser hvilke rader som er klare og oppretter bare radene som har ett aktivt katalogtreff. Tvetydige, utgåtte, ugyldige eller manglende koder blir stående for manuell vurdering.
+Desktop/client har også et batchfelt for Filament Code i Bambu-flyten. Lim inn én kode per linje, bruk det lille skann/skriv-feltet for å legge til én oppdaget kode om gangen, eller legg til strekkodeverdier fra et stillbilde når nettleseren støtter innebygd strekkodelesing. Programmet viser hvilke rader som er klare og oppretter bare radene som har ett aktivt katalogtreff. Tvetydige, utgåtte, ugyldige eller manglende koder blir stående for manuell vurdering.
 
 Batch-opprettede Bambu-ruller bruker lagerdetaljene på høyre side av modalen, inkludert eierskap, eier/kontakt for Innlånt, vekt og plassering. Companion/webapp bruker samme kataloglogikk for manuelt kodeoppslag, men bruker ikke kamera eller webcam-scanning.
 
-Planen for senere kamera- og batch-scanning ligger i [Camera And Batch Scanning Plan](CAMERA_BATCH_SCANNING_PLAN.md). Kortversjonen er at desktop/client skal starte med trygg kode-/barcode-scanning inn i samme batchmodell, mens OCR og live webcam holdes som egne, eksplisitte batcher.
+Planen for senere kamera- og batch-scanning ligger i [Camera And Batch Scanning Plan](CAMERA_BATCH_SCANNING_PLAN.md). Kortversjonen er at desktop/client starter med trygg kode-/barcode-input inn i samme batchmodell, mens OCR og live webcam holdes som egne, eksplisitte batcher.
 
 ### Eid filament
 

@@ -23,6 +23,9 @@ camera, image, or OCR sources.
 - A desktop/client scan/type row uses the scan-input adapter to append detected
   five digit codes, keep duplicate scans as separate rows, and keep invalid
   non-code values visible for review through the same batch model.
+- Desktop/client can also add barcode values from a still image when the browser
+  provides native barcode detection. Unsupported browsers fall back to manual
+  paste/type input.
 - Companion has manual Bambu Filament Code lookup, but no camera flow.
 - Batch create already applies ownership, borrowed-in owner/contact, weight, and
   location consistently to all ready rows.
@@ -35,8 +38,7 @@ camera, image, or OCR sources.
    changing the batch decision rules.
 3. Prefer browser-native barcode detection when available, with a clear manual
    fallback when it is not.
-4. Add still-image import before live webcam if the UI needs a lower-risk
-   stepping stone.
+4. Keep still-image import as the lower-risk stepping stone before live webcam.
 5. Treat OCR as a later review-first workflow: detect possible codes, show the
    source image and candidate list, and require explicit confirmation before
    stock creation.

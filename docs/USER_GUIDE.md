@@ -284,11 +284,11 @@ In the Bambu source flow:
 - review discontinued-only matches before adding stock
 - use manual entry if no catalog item uses the code yet
 
-Desktop/client also has a batch Filament Code area in the Bambu flow. Paste one code per line, or use the small scan/type field to append one detected code at a time from keyboard-style scanner input or manual typing. The app lists which rows are ready and only creates the rows with a single active catalog match. Ambiguous, discontinued-only, invalid, or missing codes stay visible for manual review.
+Desktop/client also has a batch Filament Code area in the Bambu flow. Paste one code per line, use the small scan/type field to append one detected code at a time, or add barcode values from a still image when your browser supports native barcode detection. The app lists which rows are ready and only creates the rows with a single active catalog match. Ambiguous, discontinued-only, invalid, or missing codes stay visible for manual review.
 
 Batch-created Bambu spools use the stock details on the right side of the modal, including ownership, owner/contact fields for Borrowed in, weight, and location. Companion/webapp uses the same catalog matching rules for manual code lookup, but does not use camera or webcam scanning.
 
-The plan for later camera and batch scanning is in [Camera And Batch Scanning Plan](CAMERA_BATCH_SCANNING_PLAN.md). In short, desktop/client should start with safe code/barcode scanning into the same batch model, while OCR and live webcam stay separate explicit batches.
+The plan for later camera and batch scanning is in [Camera And Batch Scanning Plan](CAMERA_BATCH_SCANNING_PLAN.md). In short, desktop/client starts with safe code/barcode input into the same batch model, while OCR and live webcam stay separate explicit batches.
 
 ### Owned Filament
 

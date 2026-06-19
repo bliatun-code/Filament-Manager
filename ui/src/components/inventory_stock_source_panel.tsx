@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { inlineStatusSignalClass, neutralChipClass } from "../lib/chip_styles";
 import { swatchCssBackground, toSwatchColor } from "../lib/color_utils";
@@ -9,6 +9,7 @@ import type {
   BambuFilamentCodeBatchCreateState,
 } from "../lib/bambu_filament_code_batch";
 import { appendBambuFilamentCodeBatchScanInput } from "../lib/bambu_filament_code_batch";
+import { scanBambuFilamentCodesFromImage } from "../lib/bambu_filament_code_image_scan";
 import type { BambuFilamentCodeLookup } from "../lib/bambu_filament_code_lookup";
 import { formatMasterDisplayTitle } from "../lib/inventory_list_model";
 import { inventoryCatalogRowStyle } from "../lib/inventory_swatch_style";
@@ -233,6 +234,8 @@ function BambuFilamentCodeBatchPanel({
 }) {
   const { t } = useI18n();
   const [scanInput, setScanInput] = useState("");
+  const [imageScanBusy, setImageScanBusy] = useState(false);
+  const [imageScanMessage, setImageScanMessage] = useState<string | null>(null);
   const visibleRows = batch.rows.slice(0, 6);
   const hiddenCount = Math.max(0, batch.rows.length - visibleRows.length);
   const createMessage = bambuBatchCreateStateMessage(createState, t);
@@ -248,6 +251,51 @@ function BambuFilamentCodeBatchPanel({
     }
     onInputChange(append.input);
     setScanInput("");
+  };
+
+  const handleImageScan = async (event: ChangeEvent<HTMLInputElement>) => {
+    const inputElement = event.currentTarget;
+    const file = inputElement.files?.[0] ?? null;
+    if (!file) {
+      return;
+    }
+
+    setImageScanBusy(true);
+    setImageScanMessage(t("inventory.bambuBatchImageScanning", "Reading image..."));
+    try {
+      const result = await scanBambuFilamentCodesFromImage({
+        currentInput: input,
+        file,
+      });
+      if (result.status === "ready") {
+        onInputChange(result.append.input);
+        setImageScanMessage(
+          t(
+            "inventory.bambuBatchImageAdded",
+            "{count} barcode value(s) added to the batch.",
+          ).replace("{count}", String(result.appendedLines.length)),
+        );
+      } else if (result.status === "unsupported") {
+        setImageScanMessage(
+          t(
+            "inventory.bambuBatchImageUnsupported",
+            "Image barcode detection is not available here. Paste or type the code instead.",
+          ),
+        );
+      } else {
+        setImageScanMessage(
+          t("inventory.bambuBatchImageNoBarcode", "No barcode was found in that image."),
+        );
+      }
+    } catch (error) {
+      console.error(error);
+      setImageScanMessage(
+        t("inventory.bambuBatchImageError", "Could not read that image."),
+      );
+    } finally {
+      setImageScanBusy(false);
+      inputElement.value = "";
+    }
   };
 
   return (
@@ -308,6 +356,30 @@ function BambuFilamentCodeBatchPanel({
           {t("inventory.bambuBatchAppendScan", "Add to batch")}
         </button>
       </form>
+
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <label
+          className={`inline-flex cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80 ${
+            !tauriAvailable || imageScanBusy ? "pointer-events-none opacity-50" : ""
+          }`}
+        >
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(event) => void handleImageScan(event)}
+            disabled={!tauriAvailable || imageScanBusy}
+          />
+          {imageScanBusy
+            ? t("inventory.bambuBatchImageScanning", "Reading image...")
+            : t("inventory.bambuBatchImageAction", "Add from image")}
+        </label>
+        {imageScanMessage ? (
+          <span className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+            {imageScanMessage}
+          </span>
+        ) : null}
+      </div>
 
       <textarea
         value={input}

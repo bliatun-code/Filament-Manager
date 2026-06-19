@@ -40,6 +40,11 @@ export type BambuFilamentCodeBatchScanAppendResult = {
   appendedLines: string[];
 };
 
+export type BambuFilamentCodeBatchScanValuesInput = {
+  currentInput: string;
+  scanValues: string[];
+};
+
 type ParsedBatchEntry = {
   sourceText: string;
   code: string | null;
@@ -74,8 +79,25 @@ export function appendBambuFilamentCodeBatchScanInput(input: {
     };
   }
 
-  const detectedCodes = extractBambuFilamentCodes(trimmedScanText);
-  const appendedLines = detectedCodes.length > 0 ? detectedCodes : [trimmedScanText];
+  return appendBambuFilamentCodeBatchScanValues({
+    currentInput: input.currentInput,
+    scanValues: [trimmedScanText],
+  });
+}
+
+export function appendBambuFilamentCodeBatchScanValues(
+  input: BambuFilamentCodeBatchScanValuesInput,
+): BambuFilamentCodeBatchScanAppendResult {
+  const scanValues = input.scanValues.map((value) => value.trim()).filter(Boolean);
+  if (scanValues.length === 0) {
+    return {
+      input: input.currentInput,
+      appendedLines: [],
+    };
+  }
+
+  const detectedCodes = scanValues.flatMap((value) => extractBambuFilamentCodes(value));
+  const appendedLines = detectedCodes.length > 0 ? detectedCodes : scanValues;
   const currentInput = input.currentInput.trimEnd();
   const appendedInput = appendedLines.join("\n");
 
