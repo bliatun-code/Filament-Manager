@@ -297,6 +297,27 @@ test("PrinterSlotAssignmentStatus offers catalog add and RFID save when inventor
   assert.doesNotMatch(html, /Save RFID/);
 });
 
+test("PrinterSlotAssignmentStatus offers catalog add from tray preset name", () => {
+  const html = renderStatus({
+    slotRow: slot(),
+    liveTray: unknownRfidTray({
+      filament_type: null,
+      filament_name: null,
+      tray_id_name: "Bambu PLA Matte @BBL P1S 0.4 nozzle",
+      color_hex: "#000000",
+    }),
+    catalogRows: [catalogRow("bambu-matte-black")],
+  });
+
+  assert.match(
+    html,
+    /Bambu catalog has one likely match\. Add it here to save the live RFID\./,
+  );
+  assert.match(html, /PLA Matte.*Black/);
+  assert.match(html, /Add \+ save RFID/);
+  assert.doesNotMatch(html, /Save RFID/);
+});
+
 test("PrinterSlotAssignmentStatus lists multiple catalog onboarding choices", () => {
   const html = renderStatus({
     slotRow: slot(),
