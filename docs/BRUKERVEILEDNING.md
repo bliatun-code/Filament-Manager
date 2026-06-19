@@ -347,7 +347,7 @@ Når en Bambu AMS rapporterer en RFID-identitet, kan programmet matche den mot e
 
 RFID-registrering er derfor en nøkkel til god automatikk. Uten RFID kan programmet ofte se materiale, farge og spor, men det kan ikke alltid vite hvilken fysisk rull som ligger der. Med lagret RFID blir identiteten mye sterkere, og automatisk tildeling blir tryggere.
 
-Typisk RFID-flyt:
+Typisk RFID-flyt for en rull som allerede ligger i Lager:
 
 1. Legg rullen i en AMS-slot på en Bambu-printer med Live Bambu status aktivert.
 2. Åpne rullens detaljpanel i Lager.
@@ -357,7 +357,9 @@ Typisk RFID-flyt:
 6. Kontroller at observert RFID, farge og spor ser riktig ut.
 7. Lagre RFID på rullen.
 
-Etter dette kan programmet bruke RFID som sterk identitet. Hvis flere ruller har samme eller uklare data, vil programmet være mer forsiktig og be om manuell vurdering.
+Fra et printerslot kan en ukjent Bambu-RFID også håndteres direkte i slotkortet. Hvis én lagerrull ser ut som live-rullen, bruk **Lagre RFID**. Hvis flere lagerruller matcher, velg riktig rull fra kortlisten. Hvis ingen lagerrull matcher, men Bambu-katalogen har et sannsynlig treff, bruk **Legg til + lagre RFID** og velg om den nye rullen er eid eller innlånt før du lagrer.
+
+Etter dette kan programmet bruke RFID som sterk identitet. Hvis flere ruller har samme eller uklare data, eller hvis sporet allerede har en annen tildelt rull, vil programmet være mer forsiktig og be om manuell vurdering før det lagrer eller oppretter noe.
 
 #### Før du registrerer RFID
 
@@ -365,7 +367,7 @@ Sjekk dette først:
 
 - Printeren må være en Bambu-printer med Live Bambu status aktivert.
 - Printeren må være lagt inn med riktig AMS-oppsett.
-- Rullen bør være registrert i Lager før du lagrer RFID på den.
+- Rullen bør være registrert i Lager, med mindre du bruker slotkortets **Legg til + lagre RFID**-flyt for å opprette en ny Bambu-katalogrull fra live AMS-signalet.
 - Rullen må stå i en AMS-slot der live-panelet faktisk ser en observert RFID/AMS-identitet.
 - Hvis du bruker Vert/Klient, bør RFID registreres mot vertens bibliotek, ikke en frakoblet klientcache.
 

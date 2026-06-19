@@ -347,7 +347,7 @@ When a Bambu AMS reports an RFID identity, the app can match it against a saved 
 
 RFID registration is therefore a key to reliable automation. Without RFID, the app can often see material, color, and slot, but it cannot always know which physical spool is loaded. With saved RFID, the identity becomes much stronger and automatic assignment becomes safer.
 
-Typical RFID flow:
+Typical RFID flow for an existing inventory spool:
 
 1. Put the spool in an AMS slot on a Bambu printer with Live Bambu status enabled.
 2. Open the spool detail panel in Inventory.
@@ -357,7 +357,9 @@ Typical RFID flow:
 6. Verify that observed RFID, color, and slot look correct.
 7. Save RFID on the spool.
 
-After this, the app can use RFID as a strong identity. If several spools share unclear or conflicting data, the app will be more cautious and ask for manual review.
+From a printer slot, an unknown Bambu RFID can also be handled directly in the slot card. If one inventory spool looks like the live roll, use **Save RFID**. If several inventory spools match, choose the correct row from the shortlist. If no inventory spool matches but the Bambu catalog has a likely entry, use **Add + save RFID** and choose whether the new spool is owned or borrowed-in before saving.
+
+After this, the app can use RFID as a strong identity. If several spools share unclear or conflicting data, or if the slot already has another assigned roll, the app will be more cautious and ask for manual review before saving or creating anything.
 
 #### Before Registering RFID
 
@@ -365,7 +367,7 @@ Check this first:
 
 - The printer must be a Bambu printer with Live Bambu status enabled.
 - The printer must be configured with the correct AMS setup.
-- The spool should already exist in Inventory before you save RFID on it.
+- The spool should already exist in Inventory, unless you are using the slot card's **Add + save RFID** flow to create a new Bambu catalog spool from the live AMS signal.
 - The spool must be in an AMS slot where the live panel sees an observed RFID/AMS identity.
 - If you use Host/Client mode, register RFID against the host library, not a disconnected client cache.
 
