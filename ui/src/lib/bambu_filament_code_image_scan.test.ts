@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   bambuFilamentCodeImageScanAvailable,
+  isBambuFilamentBarcodeDecodeMiss,
   type BambuFilamentBarcodeDetectorConstructor,
   scanBambuFilamentCodesFromImage,
 } from "./bambu_filament_code_image_scan";
@@ -14,6 +15,32 @@ function detectorFor(rawValues: string[]): BambuFilamentBarcodeDetectorConstruct
     }
   };
 }
+
+test("isBambuFilamentBarcodeDecodeMiss recognizes ZXing miss shapes", () => {
+  assert.equal(
+    isBambuFilamentBarcodeDecodeMiss({ name: "NotFoundException" }),
+    true,
+  );
+  assert.equal(
+    isBambuFilamentBarcodeDecodeMiss({
+      constructor: { kind: "ChecksumException" },
+    }),
+    true,
+  );
+  assert.equal(
+    isBambuFilamentBarcodeDecodeMiss({
+      getKind: () => "FormatException",
+    }),
+    true,
+  );
+  assert.equal(
+    isBambuFilamentBarcodeDecodeMiss(
+      new Error("No MultiFormat Readers were able to detect the code."),
+    ),
+    true,
+  );
+  assert.equal(isBambuFilamentBarcodeDecodeMiss(new TypeError("canvas failed")), false);
+});
 
 test("scanBambuFilamentCodesFromImage appends detected barcode filament codes", async () => {
   let closed = false;

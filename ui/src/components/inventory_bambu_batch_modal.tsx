@@ -40,6 +40,8 @@ type InventoryBambuBatchModalProps = {
   tauriAvailable: boolean;
 };
 
+const CAMERA_READ_WARNING_THRESHOLD = 3;
+
 function BambuFilamentCodeLookupHint({
   lookup,
 }: {
@@ -358,6 +360,7 @@ function BambuFilamentCodeBatchPanel({
   > | null>(null);
   const seenCameraKeysRef = useRef<Set<string>>(new Set());
   const emptyCameraFrameCountRef = useRef(0);
+  const readErrorFrameCountRef = useRef(0);
   const scanBusyRef = useRef(false);
   const scanTimerRef = useRef<number | null>(null);
   const feedbackTimerRef = useRef<number | null>(null);
@@ -396,6 +399,7 @@ function BambuFilamentCodeBatchPanel({
     detectorRef.current = null;
     seenCameraKeysRef.current = new Set();
     emptyCameraFrameCountRef.current = 0;
+    readErrorFrameCountRef.current = 0;
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
@@ -452,6 +456,7 @@ function BambuFilamentCodeBatchPanel({
         return;
       }
       if (frame.status === "no_barcode") {
+        readErrorFrameCountRef.current = 0;
         emptyCameraFrameCountRef.current += 1;
         if (emptyCameraFrameCountRef.current >= 3) {
           seenCameraKeysRef.current = new Set();
@@ -460,6 +465,7 @@ function BambuFilamentCodeBatchPanel({
       }
 
       emptyCameraFrameCountRef.current = 0;
+      readErrorFrameCountRef.current = 0;
       const append = appendBambuFilamentCodeCameraScanValues({
         currentInput: inputRef.current,
         rawValues: frame.rawValues,
@@ -488,20 +494,21 @@ function BambuFilamentCodeBatchPanel({
         return;
       }
       console.error(error);
-      stopCameraStream();
-      setCameraActive(false);
-      showCameraFeedback(
-        "error",
-        t(
-          "inventory.bambuBatchCameraReadError",
-          "Camera scanning stopped after a read error.",
-        ),
-        { sticky: true },
-      );
+      readErrorFrameCountRef.current += 1;
+      if (readErrorFrameCountRef.current >= CAMERA_READ_WARNING_THRESHOLD) {
+        showCameraFeedback(
+          "scanning",
+          t(
+            "inventory.bambuBatchCameraReadRetry",
+            "Camera is still active, but the reader skipped a frame. Keep the label steady.",
+          ),
+          { sticky: true },
+        );
+      }
     } finally {
       scanBusyRef.current = false;
     }
-  }, [onInputChange, showCameraFeedback, stopCameraStream, t]);
+  }, [onInputChange, showCameraFeedback, t]);
 
   useEffect(() => {
     if (!cameraActive || typeof window === "undefined") {
@@ -608,6 +615,7 @@ function BambuFilamentCodeBatchPanel({
       streamRef.current = stream;
       seenCameraKeysRef.current = new Set();
       emptyCameraFrameCountRef.current = 0;
+      readErrorFrameCountRef.current = 0;
       setCameraActive(true);
       showCameraFeedback(
         "scanning",

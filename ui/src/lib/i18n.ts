@@ -360,6 +360,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchCameraError: "Could not start the camera.",
       bambuBatchCameraPreviewError: "Could not start camera preview.",
       bambuBatchCameraReadError: "Camera scanning stopped after a read error.",
+      bambuBatchCameraReadRetry:
+        "Camera is still active, but the reader skipped a frame. Keep the label steady.",
       bambuBatchPlaceholder: "53400\n53600\n65103",
       bambuBatchReady: "Ready",
       bambuBatchReadyShort: "ready",
@@ -1914,6 +1916,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchCameraError: "Kunne ikke starte kameraet.",
       bambuBatchCameraPreviewError: "Kunne ikke starte kameravisningen.",
       bambuBatchCameraReadError: "Kameraskanning stoppet etter en lesefeil.",
+      bambuBatchCameraReadRetry:
+        "Kameraet er fortsatt aktivt, men leseren hoppet over et bilde. Hold etiketten rolig.",
       bambuBatchPlaceholder: "53400\n53600\n65103",
       bambuBatchReady: "Klar",
       bambuBatchReadyShort: "kan legges til",

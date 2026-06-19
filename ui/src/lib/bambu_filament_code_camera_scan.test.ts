@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   appendBambuFilamentCodeCameraScanValues,
+  bambuFilamentCodeCameraFrameReady,
   bambuFilamentCodeCameraScanSupport,
   createBambuFilamentCodeCameraDetector,
   requestBambuFilamentCodeCameraStream,
@@ -89,6 +90,24 @@ test("scanBambuFilamentCodeCameraFrame returns trimmed barcode values", async ()
     status: "no_barcode",
     rawValues: [],
   });
+});
+
+test("scanBambuFilamentCodeCameraFrame waits for video dimensions", async () => {
+  let detectCount = 0;
+  const frame = await scanBambuFilamentCodeCameraFrame({
+    detector: {
+      detect: async () => {
+        detectCount += 1;
+        return [{ rawValue: "Filament Code: 53400" }];
+      },
+    },
+    videoFrame: { videoWidth: 0, videoHeight: 720 },
+  });
+
+  assert.equal(bambuFilamentCodeCameraFrameReady({ videoWidth: 1280, videoHeight: 720 }), true);
+  assert.equal(bambuFilamentCodeCameraFrameReady({ videoWidth: 0, videoHeight: 720 }), false);
+  assert.deepEqual(frame, { status: "no_barcode", rawValues: [] });
+  assert.equal(detectCount, 0);
 });
 
 test("appendBambuFilamentCodeCameraScanValues deduplicates a continuous camera session", () => {

@@ -133,12 +133,32 @@ function resolveCreateImageBitmap(
     : globalThis.createImageBitmap;
 }
 
-function isZxingDecodeMiss(error: unknown): boolean {
-  const name = String((error as { name?: unknown })?.name ?? "");
+export function isBambuFilamentBarcodeDecodeMiss(error: unknown): boolean {
+  const errorLike = error as {
+    constructor?: { kind?: unknown };
+    getKind?: unknown;
+    message?: unknown;
+    name?: unknown;
+  };
+  const kind =
+    typeof errorLike?.getKind === "function" ? String(errorLike.getKind()) : "";
+  const constructorKind = String(errorLike?.constructor?.kind ?? "");
+  const message = String(errorLike?.message ?? "");
+  const name = String(errorLike?.name ?? "");
+  const stringValue = String(error ?? "");
+  const markers = [name, kind, constructorKind, message, stringValue];
   return (
-    name === "NotFoundException" ||
-    name === "ChecksumException" ||
-    name === "FormatException"
+    markers.some((marker) =>
+      ["NotFoundException", "ChecksumException", "FormatException"].includes(
+        marker,
+      ),
+    ) ||
+    markers.some((marker) =>
+      [
+        "No MultiFormat Readers were able to detect the code.",
+        "No barcode found",
+      ].some((needle) => marker.includes(needle)),
+    )
   );
 }
 
@@ -203,7 +223,7 @@ export async function createZxingBambuFilamentBarcodeScanner(): Promise<BambuFil
             : reader.decode(image as HTMLImageElement | HTMLVideoElement);
           return normalizeZxingResult(result);
         } catch (error) {
-          if (isZxingDecodeMiss(error)) {
+          if (isBambuFilamentBarcodeDecodeMiss(error)) {
             return [];
           }
           throw error;

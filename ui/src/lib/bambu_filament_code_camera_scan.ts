@@ -52,6 +52,31 @@ function resolveMediaDevices(
     : globalMediaDevices();
 }
 
+function cameraFrameDimension(input: unknown, keys: string[]): number {
+  const source = input as Record<string, unknown>;
+  for (const key of keys) {
+    const value = Number(source[key]);
+    if (Number.isFinite(value) && value > 0) {
+      return value;
+    }
+  }
+  return 0;
+}
+
+export function bambuFilamentCodeCameraFrameReady(videoFrame: unknown): boolean {
+  const source = videoFrame as Record<string, unknown> | null;
+  const hasVideoDimensions =
+    source !== null && ("videoWidth" in source || "videoHeight" in source);
+  if (!hasVideoDimensions) {
+    return true;
+  }
+
+  return (
+    cameraFrameDimension(videoFrame, ["videoWidth"]) > 0 &&
+    cameraFrameDimension(videoFrame, ["videoHeight"]) > 0
+  );
+}
+
 export function bambuFilamentCodeCameraScanSupport(
   dependencies: BambuFilamentCodeCameraScanDependencies = {},
 ): BambuFilamentCodeCameraScanSupport {
@@ -83,6 +108,13 @@ export async function scanBambuFilamentCodeCameraFrame(input: {
   detector: BambuFilamentBarcodeDetector;
   videoFrame: unknown;
 }): Promise<BambuFilamentCodeCameraFrameResult> {
+  if (!bambuFilamentCodeCameraFrameReady(input.videoFrame)) {
+    return {
+      status: "no_barcode",
+      rawValues: [],
+    };
+  }
+
   const rawValues = (await input.detector.detect(input.videoFrame))
     .map((detection) => String(detection.rawValue ?? "").trim())
     .filter(Boolean);
