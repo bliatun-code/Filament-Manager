@@ -22,7 +22,6 @@ import {
   isOlderThanMinutes,
   isUnknownLiveRfid,
   liveActiveTrayMatchesSlot,
-  liveTrayIdentity,
   liveUnknownMatchesSlotOverride,
 } from "./printer_live_display";
 
