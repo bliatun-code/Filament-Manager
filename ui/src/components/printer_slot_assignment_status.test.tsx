@@ -189,6 +189,27 @@ test("PrinterSlotAssignmentStatus offers one-click RFID registration for one unk
   assert.doesNotMatch(html, /Add \+ save RFID/);
 });
 
+test("PrinterSlotAssignmentStatus keeps one-click RFID registration for one borrowed-in candidate", () => {
+  const html = renderStatus({
+    slotRow: slot(),
+    spools: [
+      spoolRow("borrowed-bambu-black", {
+        ownershipType: "BORROWED_IN",
+      }),
+    ],
+  });
+
+  assert.match(
+    html,
+    /One inventory roll looks like this live Bambu roll\. Save RFID to bind it permanently\./,
+  );
+  assert.match(html, /PLA Matte.*Black/);
+  assert.match(html, /Borrowed in/);
+  assert.match(html, /Save RFID/);
+  assert.doesNotMatch(html, /select first/);
+  assert.doesNotMatch(html, /Add \+ save RFID/);
+});
+
 test("PrinterSlotAssignmentStatus lists multiple unknown RFID candidates with borrowed-in context", () => {
   const html = renderStatus({
     slotRow: slot(),
