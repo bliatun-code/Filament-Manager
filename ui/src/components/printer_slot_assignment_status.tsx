@@ -204,10 +204,15 @@ export function PrinterSlotAssignmentStatus({
             ).replace("{count}", String(rows.length));
     const unknownRfidSummary = unknownLiveRfid
       ? occupiedByDifferentRoll
-        ? t(
-            "printers.liveRfidCandidateSelectFirst",
-            "One inventory roll looks like this live Bambu roll. Select it before saving RFID.",
-          )
+        ? rows.length === 1
+          ? t(
+              "printers.liveRfidCandidateSelectFirst",
+              "One inventory roll looks like this live Bambu roll. Select it before saving RFID.",
+            )
+          : `${summary} ${t(
+              "printers.liveRfidCandidateSelectCorrect",
+              "Select the correct roll before saving RFID.",
+            )}`
         : !currentAssignmentMatched && rows.length === 1
           ? t(
               "printers.liveRfidCandidateSingle",
