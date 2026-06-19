@@ -88,12 +88,10 @@ test("Companion live RFID candidates match near and composite Bambu swatches", (
   );
 });
 
-test("Companion live RFID candidates keep host preference, borrowed-in rows, and occupied-slot guard", () => {
+test("Companion live RFID candidates keep matching host preference, borrowed-in rows, and occupied-slot guard", () => {
   const preferred = row("host-preferred", {
     master: {
-      filament_name: "PLA Basic",
-      color_name: "White",
-      hex_color: "#FFFFFF",
+      hex_color: "#010101",
     },
   });
   const borrowedIn = row("borrowed-in", {
@@ -118,6 +116,29 @@ test("Companion live RFID candidates keep host preference, borrowed-in rows, and
       borrowedIn,
     ]),
     [],
+  );
+});
+
+test("Companion live RFID candidates ignore stale mismatched host preference", () => {
+  const stalePreferred = row("stale-host-preferred", {
+    master: {
+      filament_name: "PLA Basic",
+      color_name: "White",
+      hex_color: "#FFFFFF",
+    },
+  });
+  const matchingCandidate = row("matching-candidate", {
+    master: {
+      hex_color: "#010101",
+    },
+  });
+
+  assert.deepEqual(
+    buildLiveInventoryCandidateRows(
+      slot({ live_matched_inventory_spool_id: "stale-host-preferred" }),
+      [matchingCandidate, stalePreferred],
+    ).map((candidateRow) => candidateRow.spool.id),
+    ["matching-candidate"],
   );
 });
 

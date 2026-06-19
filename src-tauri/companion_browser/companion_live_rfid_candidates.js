@@ -134,7 +134,7 @@ export function buildLiveInventoryCandidateRows(slot, spoolRows) {
   const preferredId = String(slot?.live_matched_inventory_spool_id || "").trim();
   if (preferredId) {
     const preferred = rows.find((row) => String(row?.spool?.id || "").trim() === preferredId);
-    if (preferred && rowCanReceiveLiveBambuRfid(preferred)) {
+    if (preferred && rowMatchesLiveBambuSlot(slot, preferred)) {
       candidates.push(preferred);
       seenIds.add(preferredId);
     }
