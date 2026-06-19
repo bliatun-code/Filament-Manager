@@ -84,6 +84,7 @@ test("scanBambuFilamentCodesFromImage reports unsupported and empty image scans"
   assert.equal(
     bambuFilamentCodeImageScanAvailable({
       barcodeDetector: null,
+      fallbackBarcodeScanner: null,
       createImageBitmap: async () => ({}),
     }),
     false,
@@ -94,6 +95,7 @@ test("scanBambuFilamentCodesFromImage reports unsupported and empty image scans"
     file: new Blob(["image"], { type: "image/png" }),
     dependencies: {
       barcodeDetector: null,
+      fallbackBarcodeScanner: null,
       createImageBitmap: async () => ({}),
     },
   });
@@ -105,11 +107,60 @@ test("scanBambuFilamentCodesFromImage reports unsupported and empty image scans"
     file: new Blob(["image"], { type: "image/png" }),
     dependencies: {
       barcodeDetector: detectorFor([]),
+      fallbackBarcodeScanner: null,
       createImageBitmap: async () => ({}),
     },
   });
   assert.equal(empty.status, "no_barcode");
   assert.equal(empty.append, null);
+});
+
+test("scanBambuFilamentCodesFromImage uses fallback barcode scanner when native detection is unavailable", async () => {
+  const bitmap = { close: () => {} };
+  const result = await scanBambuFilamentCodesFromImage({
+    currentInput: "",
+    file: new Blob(["image"], { type: "image/png" }),
+    dependencies: {
+      barcodeDetector: null,
+      createImageBitmap: async () => bitmap,
+      fallbackBarcodeScanner: async () => ({
+        detect: async (image) => {
+          assert.equal(image, bitmap);
+          return [{ rawValue: "Filament Code: 53400" }];
+        },
+      }),
+    },
+  });
+
+  assert.equal(
+    bambuFilamentCodeImageScanAvailable({
+      barcodeDetector: null,
+      createImageBitmap: async () => ({}),
+      fallbackBarcodeScanner: async () => null,
+    }),
+    true,
+  );
+  assert.equal(result.status, "ready");
+  assert.deepEqual(result.appendedLines, ["53400"]);
+  assert.equal(result.append?.input, "53400");
+});
+
+test("scanBambuFilamentCodesFromImage tries fallback barcode scanner after an empty native scan", async () => {
+  const result = await scanBambuFilamentCodesFromImage({
+    currentInput: "53400",
+    file: new Blob(["image"], { type: "image/png" }),
+    dependencies: {
+      barcodeDetector: detectorFor([]),
+      createImageBitmap: async () => ({}),
+      fallbackBarcodeScanner: async () => ({
+        detect: async () => [{ rawValue: "Filament Code: 53600" }],
+      }),
+    },
+  });
+
+  assert.equal(result.status, "ready");
+  assert.deepEqual(result.appendedLines, ["53600"]);
+  assert.equal(result.append?.input, "53400\n53600");
 });
 
 test("scanBambuFilamentCodesFromImage filters requested barcode formats when supported formats are available", async () => {

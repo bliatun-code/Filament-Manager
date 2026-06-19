@@ -3,8 +3,8 @@ import {
   type BambuFilamentCodeBatchScanAppendOnceResult,
 } from "./bambu_filament_code_batch";
 import {
-  createBambuFilamentBarcodeDetector,
-  globalBambuFilamentBarcodeDetector,
+  createBambuFilamentBarcodeScanner,
+  type BambuFilamentBarcodeScannerFactory,
   type BambuFilamentBarcodeDetector,
   type BambuFilamentBarcodeDetectorConstructor,
 } from "./bambu_filament_code_image_scan";
@@ -13,12 +13,13 @@ type BambuFilamentCodeCameraMediaDevices = Pick<MediaDevices, "getUserMedia">;
 
 export type BambuFilamentCodeCameraScanDependencies = {
   barcodeDetector?: BambuFilamentBarcodeDetectorConstructor | null;
+  fallbackBarcodeScanner?: BambuFilamentBarcodeScannerFactory | null;
   mediaDevices?: BambuFilamentCodeCameraMediaDevices | null;
 };
 
 export type BambuFilamentCodeCameraScanSupport =
   | { available: true; reason: null }
-  | { available: false; reason: "barcode_detector" | "camera" };
+  | { available: false; reason: "camera" };
 
 export type BambuFilamentCodeCameraFrameResult =
   | { status: "ready"; rawValues: string[] }
@@ -43,14 +44,6 @@ function globalMediaDevices(): BambuFilamentCodeCameraMediaDevices | undefined {
   return navigator.mediaDevices;
 }
 
-function resolveBarcodeDetector(
-  dependencies: BambuFilamentCodeCameraScanDependencies,
-): BambuFilamentBarcodeDetectorConstructor | null | undefined {
-  return Object.prototype.hasOwnProperty.call(dependencies, "barcodeDetector")
-    ? dependencies.barcodeDetector
-    : globalBambuFilamentBarcodeDetector();
-}
-
 function resolveMediaDevices(
   dependencies: BambuFilamentCodeCameraScanDependencies,
 ): BambuFilamentCodeCameraMediaDevices | null | undefined {
@@ -62,11 +55,6 @@ function resolveMediaDevices(
 export function bambuFilamentCodeCameraScanSupport(
   dependencies: BambuFilamentCodeCameraScanDependencies = {},
 ): BambuFilamentCodeCameraScanSupport {
-  const detector = resolveBarcodeDetector(dependencies);
-  if (typeof detector !== "function") {
-    return { available: false, reason: "barcode_detector" };
-  }
-
   const mediaDevices = resolveMediaDevices(dependencies);
   if (typeof mediaDevices?.getUserMedia !== "function") {
     return { available: false, reason: "camera" };
@@ -78,11 +66,7 @@ export function bambuFilamentCodeCameraScanSupport(
 export async function createBambuFilamentCodeCameraDetector(
   dependencies: BambuFilamentCodeCameraScanDependencies = {},
 ): Promise<BambuFilamentBarcodeDetector | null> {
-  const detectorConstructor = resolveBarcodeDetector(dependencies);
-  if (typeof detectorConstructor !== "function") {
-    return null;
-  }
-  return createBambuFilamentBarcodeDetector(detectorConstructor);
+  return createBambuFilamentBarcodeScanner(dependencies);
 }
 
 export async function requestBambuFilamentCodeCameraStream(

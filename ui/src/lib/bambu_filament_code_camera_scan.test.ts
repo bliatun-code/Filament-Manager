@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   appendBambuFilamentCodeCameraScanValues,
   bambuFilamentCodeCameraScanSupport,
+  createBambuFilamentCodeCameraDetector,
   requestBambuFilamentCodeCameraStream,
   scanBambuFilamentCodeCameraFrame,
 } from "./bambu_filament_code_camera_scan";
@@ -17,16 +18,7 @@ function detectorFor(rawValues: string[]): BambuFilamentBarcodeDetectorConstruct
   };
 }
 
-test("bambuFilamentCodeCameraScanSupport reports missing browser capabilities", () => {
-  assert.deepEqual(
-    bambuFilamentCodeCameraScanSupport({
-      barcodeDetector: null,
-      mediaDevices: {
-        getUserMedia: async () => ({}) as MediaStream,
-      },
-    }),
-    { available: false, reason: "barcode_detector" },
-  );
+test("bambuFilamentCodeCameraScanSupport reports missing camera access", () => {
   assert.deepEqual(
     bambuFilamentCodeCameraScanSupport({
       barcodeDetector: detectorFor(["53400"]),
@@ -43,6 +35,17 @@ test("bambuFilamentCodeCameraScanSupport reports missing browser capabilities", 
     }),
     { available: true, reason: null },
   );
+});
+
+test("createBambuFilamentCodeCameraDetector uses the fallback scanner without native BarcodeDetector", async () => {
+  const scanner = await createBambuFilamentCodeCameraDetector({
+    barcodeDetector: null,
+    fallbackBarcodeScanner: async () => ({
+      detect: async () => [{ rawValue: "Filament Code: 53400" }],
+    }),
+  });
+
+  assert.deepEqual(await scanner?.detect({}), [{ rawValue: "Filament Code: 53400" }]);
 });
 
 test("requestBambuFilamentCodeCameraStream asks for an environment-facing video stream", async () => {

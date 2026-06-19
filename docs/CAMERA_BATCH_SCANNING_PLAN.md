@@ -24,10 +24,15 @@ camera, image, or OCR sources.
   five digit codes, keep duplicate scans as separate rows, and keep invalid
   non-code values visible for review through the same batch model.
 - Desktop/client can also add barcode values from a still image when the browser
-  provides native barcode detection. Detected five digit codes and raw non-code
-  barcode values stay separate in the batch model, so mixed image results can add
-  ready rows while keeping other barcode values visible for review. Unsupported
-  browsers fall back to manual paste/type input.
+  provides native barcode detection or the bundled ZXing fallback can decode the
+  image. Detected five digit codes and raw non-code barcode values stay separate
+  in the batch model, so mixed image results can add ready rows while keeping
+  other barcode values visible for review.
+- Desktop/client can run a live webcam session from the Bambu batch modal. The
+  camera preview scans continuously, gives overlay feedback when a code or
+  review value is added, and suppresses repeats while the same label stays in
+  view. Moving the label away resets the repeat guard so another box with the
+  same Filament Code can still be added.
 - Companion has manual Bambu Filament Code lookup, but no camera flow.
 - Batch create already applies ownership, borrowed-in owner/contact, weight, and
   location consistently to all ready rows.
@@ -38,9 +43,10 @@ camera, image, or OCR sources.
    stuck.
 2. Reuse the desktop/client scan-input adapter in future capture UI without
    changing the batch decision rules.
-3. Prefer browser-native barcode detection when available, with a clear manual
-   fallback when it is not.
-4. Keep still-image import as the lower-risk stepping stone before live webcam.
+3. Prefer browser-native barcode detection when available, then fall back to the
+   bundled ZXing scanner before asking the user to paste or type manually.
+4. Keep still-image import and live webcam as explicit batch tools outside the
+   regular catalog search flow.
 5. Treat OCR as a later review-first workflow: detect possible codes, show the
    source image and candidate list, and require explicit confirmation before
    stock creation.
@@ -53,7 +59,7 @@ camera, image, or OCR sources.
   input.
 - Borrowed-in batch creation must remain blocked until owner name is present.
 - Tests must cover one active match, multiple active matches, discontinued-only,
-  no match, duplicate scans, mixed image scans, and invalid non-code barcode
-  values.
+  no match, duplicate scans, native and fallback barcode decoding, mixed image
+  scans, and invalid non-code barcode values.
 - Companion tests must continue to assert that camera/webcam wording and flows
   are absent.

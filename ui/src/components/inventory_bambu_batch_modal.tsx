@@ -556,15 +556,10 @@ function BambuFilamentCodeBatchPanel({
     if (!support.available) {
       setCameraStatus("unsupported");
       setCameraMessage(
-        support.reason === "barcode_detector"
-          ? t(
-              "inventory.bambuBatchCameraBarcodeUnsupported",
-              "Live barcode detection is not available here. Use image import or type the code instead.",
-            )
-          : t(
-              "inventory.bambuBatchCameraUnsupported",
-              "Camera access is not available here. Use image import or type the code instead.",
-            ),
+        t(
+          "inventory.bambuBatchCameraUnsupported",
+          "Camera access is not available here. Use image import or type the code instead.",
+        ),
       );
       return;
     }
@@ -580,8 +575,8 @@ function BambuFilamentCodeBatchPanel({
         setCameraStatus("unsupported");
         setCameraMessage(
           t(
-            "inventory.bambuBatchCameraUnsupported",
-            "Camera access is not available here. Use image import or type the code instead.",
+            "inventory.bambuBatchCameraBarcodeUnsupported",
+            "Live barcode detection is not available here. Use image import or type the code instead.",
           ),
         );
         return;
