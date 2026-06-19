@@ -223,6 +223,24 @@ test("PrinterSlotAssignmentStatus requires selecting a different candidate befor
   assert.doesNotMatch(html, /Add \+ save RFID/);
 });
 
+test("PrinterSlotAssignmentStatus allows RFID registration when the candidate is already assigned", () => {
+  const html = renderStatus({
+    slotRow: slot({ spool_id: "bambu-black" }),
+    spools: [spoolRow("bambu-black")],
+  });
+
+  assert.match(html, /Current roll/);
+  assert.match(
+    html,
+    /Current assignment looks like this live Bambu roll\. Save RFID to bind it permanently\./,
+  );
+  assert.match(html, /PLA Matte.*Black/);
+  assert.match(html, /current/);
+  assert.match(html, /Save RFID/);
+  assert.doesNotMatch(html, /select first/);
+  assert.doesNotMatch(html, /Add \+ save RFID/);
+});
+
 test("PrinterSlotAssignmentStatus offers catalog add and RFID save when inventory has no unknown RFID match", () => {
   const html = renderStatus({
     slotRow: slot(),
