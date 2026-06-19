@@ -90,7 +90,9 @@ export function rowMatchesLiveBambuSlot(slot, row) {
   if (!rowCanReceiveLiveBambuRfid(row)) {
     return false;
   }
-  const liveMaterial = normalizedText(slot?.live_filament_type);
+  const liveMaterial = normalizedText(
+    slot?.live_filament_type || slot?.live_filament_name || slot?.live_tray_id_name,
+  );
   const rowMaterial = normalizedText(row?.master?.material);
   const rowFilament = normalizedText(row?.master?.filament_name);
   const materialMatches =

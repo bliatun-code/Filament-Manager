@@ -142,6 +142,20 @@ test("Companion live RFID candidates ignore stale mismatched host preference", (
   );
 });
 
+test("Companion live RFID candidates infer material from live filament name", () => {
+  assert.deepEqual(
+    buildLiveInventoryCandidateRows(
+      slot({
+        live_filament_type: null,
+        live_filament_name: "PLA Matte",
+        live_color_hex: "#030303",
+      }),
+      [row("bambu-black")],
+    ).map((candidateRow) => candidateRow.spool.id),
+    ["bambu-black"],
+  );
+});
+
 test("Companion live RFID candidates ignore color-only unknown RFID signals", () => {
   assert.deepEqual(
     buildLiveInventoryCandidateRows(
