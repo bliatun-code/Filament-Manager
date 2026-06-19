@@ -144,6 +144,36 @@ test("buildBambuFilamentCodeBatchCreateState reports ready, partial, and borrowe
   assert.equal(
     buildBambuFilamentCodeBatchCreateState({
       batch,
+      tauriAvailable: false,
+      busy: false,
+      isBambuMode: true,
+      borrowedOwnerRequired: false,
+    }).reason,
+    "missing_runtime",
+  );
+  assert.equal(
+    buildBambuFilamentCodeBatchCreateState({
+      batch,
+      tauriAvailable: true,
+      busy: true,
+      isBambuMode: true,
+      borrowedOwnerRequired: false,
+    }).reason,
+    "busy",
+  );
+  assert.equal(
+    buildBambuFilamentCodeBatchCreateState({
+      batch,
+      tauriAvailable: true,
+      busy: false,
+      isBambuMode: false,
+      borrowedOwnerRequired: false,
+    }).reason,
+    "wrong_mode",
+  );
+  assert.equal(
+    buildBambuFilamentCodeBatchCreateState({
+      batch,
       tauriAvailable: true,
       busy: false,
       isBambuMode: true,
