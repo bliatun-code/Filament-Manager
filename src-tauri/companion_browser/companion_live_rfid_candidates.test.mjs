@@ -156,6 +156,26 @@ test("Companion live RFID candidates infer material from live filament name", ()
   );
 });
 
+test("Companion live RFID candidates require candidate swatch when live color is present", () => {
+  assert.deepEqual(
+    buildLiveInventoryCandidateRows(
+      slot({
+        live_filament_type: "PLA",
+        live_filament_name: "PLA Matte",
+        live_color_hex: "#030303",
+      }),
+      [
+        row("missing-swatch", {
+          master: {
+            hex_color: null,
+          },
+        }),
+      ],
+    ),
+    [],
+  );
+});
+
 test("Companion live RFID candidates ignore color-only unknown RFID signals", () => {
   assert.deepEqual(
     buildLiveInventoryCandidateRows(

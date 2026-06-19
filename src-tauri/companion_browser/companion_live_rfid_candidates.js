@@ -107,8 +107,8 @@ export function rowMatchesLiveBambuSlot(slot, row) {
 
   const liveHex = normalizedHex(slot?.live_color_hex);
   const rowHexes = normalizedSwatchHexes(row?.master?.hex_color);
-  if (liveHex && rowHexes.length > 0) {
-    return swatchMatchesObservedColor(liveHex, rowHexes);
+  if (liveHex) {
+    return rowHexes.length > 0 ? swatchMatchesObservedColor(liveHex, rowHexes) : false;
   }
 
   const liveName = normalizedText(slot?.live_filament_name || slot?.live_tray_id_name);
