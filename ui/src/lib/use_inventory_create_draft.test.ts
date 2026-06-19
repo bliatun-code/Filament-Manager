@@ -59,3 +59,34 @@ test("filterCreateCatalogMasters keeps active Bambu code matches ahead of discon
     ["active-yellow", "old-yellow"],
   );
 });
+
+test("filterCreateCatalogMasters keeps discontinued-only Bambu code matches selectable", () => {
+  const results = filterCreateCatalogMasters(
+    [
+      master("archived-red", {
+        color_name: "Old Red (12345)",
+        is_discontinued: true,
+        discontinued_at: "2024-01-01T00:00:00Z",
+      }),
+      master("active-yellow", {
+        color_name: "Yellow (53400)",
+        filament_name: "TPU for AMS",
+      }),
+    ],
+    "bambu",
+    "12345",
+  );
+
+  assert.deepEqual(
+    results.map((entry) => entry.id),
+    ["archived-red"],
+  );
+  assert.equal(
+    selectedCreateCatalogMaster(results, "", { allowFallback: false }),
+    null,
+  );
+  assert.equal(
+    selectedCreateCatalogMaster(results, "archived-red", { allowFallback: false })?.id,
+    "archived-red",
+  );
+});
