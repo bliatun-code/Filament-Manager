@@ -278,6 +278,35 @@ test("derivePrinterSlotDisplayState keeps unknown RFID strict while offering Bam
   assert.equal(state.liveCatalogMatch.kind, "none");
 });
 
+test("derivePrinterSlotDisplayState suggests unknown RFID inventory from filament name material", () => {
+  const state = derivePrinterSlotDisplayState({
+    slot: slot({ ams_id: "printer_ams_1", slot_index: 1 }),
+    liveConfig: liveConfig(0, 0),
+    liveTray: tray({
+      tray_index: 0,
+      tray_uuid: "UNREGISTERED-BAMBU-RFID",
+      match_status: "unknown_rfid",
+      filament_type: null,
+      filament_name: "PLA Matte",
+      color_hex: "#000000",
+    }),
+    spoolRows: [spoolRow("bambu-black")],
+    selectedTargetSpool: null,
+    clientReadOnly: false,
+    clientPrinterSource: "LIVE",
+    locale: "en",
+    t,
+    findSpoolById: () => null,
+  });
+
+  assert.equal(state.unknownLiveRfid, true);
+  assert.equal(state.liveSuggestedInventoryMatch.kind, "metadata_single");
+  assert.deepEqual(state.liveSuggestedInventoryMatch.candidates.map((row) => row.spool.id), [
+    "bambu-black",
+  ]);
+  assert.equal(state.liveCatalogMatch.kind, "none");
+});
+
 test("derivePrinterSlotDisplayState falls back to Bambu catalog suggestions when inventory has no match", () => {
   const state = derivePrinterSlotDisplayState({
     slot: slot({ ams_id: "printer_ams_1", slot_index: 1 }),
