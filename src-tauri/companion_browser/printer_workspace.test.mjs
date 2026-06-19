@@ -431,6 +431,7 @@ test("printer workspace marks borrowed-in Bambu candidates for unknown live RFID
           status: "IN_STOCK",
           rfid_tag: null,
           ownership_type: "BORROWED_IN",
+          owner_name: "Ada",
         },
         master: {
           material: "PLA",
@@ -444,7 +445,7 @@ test("printer workspace marks borrowed-in Bambu candidates for unknown live RFID
   });
 
   assert.match(html, /data-spool-id="spool-borrowed-in"/);
-  assert.match(html, /Borrowed-in/);
+  assert.match(html, /Borrowed-in · Ada/);
 });
 
 test("printer workspace matches composite swatches for unknown live RFID candidates", () => {

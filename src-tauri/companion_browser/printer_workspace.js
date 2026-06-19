@@ -540,12 +540,17 @@ function renderLiveInventoryCandidateRows(slot, spoolRows, activePrinter, locale
             row.master.color_name,
           );
           const ownershipType = String(row?.spool?.ownership_type || "OWNED").trim().toUpperCase();
+          const ownerName = String(row?.spool?.owner_name || "").trim();
+          const ownershipLabel =
+            ownershipType === "BORROWED_IN"
+              ? ownerName
+                ? `${t(locale, "storage.borrowedInAction", "Borrowed-in")} · ${ownerName}`
+                : t(locale, "storage.borrowedInAction", "Borrowed-in")
+              : null;
           const meta = [
             formatRollReference(row.spool),
             formatGrams(row.spool.remaining_g),
-            ownershipType === "BORROWED_IN"
-              ? t(locale, "storage.borrowedInAction", "Borrowed-in")
-              : null,
+            ownershipLabel,
           ]
             .filter(Boolean)
             .join(" · ");
