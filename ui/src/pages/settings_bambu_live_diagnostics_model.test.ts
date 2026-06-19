@@ -1508,6 +1508,57 @@ test("Bambu live diagnostic tray card falls back to Bambu catalog when inventory
   ]);
 });
 
+test("Bambu live diagnostic tray card avoids unknown RFID suggestions from color alone", () => {
+  const card = buildSettingsBambuLiveDiagnosticTrayCard({
+    amsReadInProgress: false,
+    catalogRows: [
+      createCatalogRow({
+        id: "bambu-matte-black",
+        color_name: "Black",
+        filament_name: "PLA Matte",
+        hex_color: "#000000",
+      }),
+    ],
+    capturedTraySnapshot: null,
+    spoolRows: [
+      createSpoolRow({
+        spool: {
+          id: "bambu-black",
+          master_id: "master-bambu",
+          rfid_tag: null,
+          status: "IN_STOCK",
+        },
+        master: {
+          id: "master-bambu",
+          material: "PLA",
+          filament_name: "PLA Matte",
+          color_name: "Black",
+          hex_color: "#000000",
+          default_weight: 1000,
+          vendor: "Bambu",
+        },
+      }),
+    ],
+    t,
+    tray: createObservedTray({
+      color_hex: "#000000",
+      filament_name: null,
+      filament_type: null,
+      observed_rfid_tag: null,
+      tray_index: 0,
+      tray_uuid: "UNREGISTERED-BAMBU-RFID",
+    }),
+  });
+
+  assert.equal(card.matchKind, "none");
+  assert.equal(card.showCandidateCards, false);
+  assert.deepEqual(card.candidates, []);
+  assert.equal(
+    card.matchDescription,
+    "Observed RFID/AMS identity did not match anything in inventory.",
+  );
+});
+
 test("Bambu live diagnostic tray card exposes multiple catalog candidates after inventory miss", () => {
   const card = buildSettingsBambuLiveDiagnosticTrayCard({
     amsReadInProgress: false,
