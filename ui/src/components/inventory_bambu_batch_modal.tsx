@@ -574,17 +574,31 @@ function BambuFilamentCodeBatchPanel({
 
     try {
       const detector = await createBambuFilamentCodeCameraDetector();
-      const stream = await requestBambuFilamentCodeCameraStream();
       if (!mountedRef.current) {
-        stream?.getTracks().forEach((track) => track.stop());
         return;
       }
-      if (!detector || !stream) {
+      if (!detector) {
         setCameraStatus("unsupported");
         setCameraMessage(
           t(
             "inventory.bambuBatchCameraBarcodeUnsupported",
             "Live barcode detection is not available here. Use image import or type the code instead.",
+          ),
+        );
+        return;
+      }
+
+      const stream = await requestBambuFilamentCodeCameraStream();
+      if (!mountedRef.current) {
+        stream?.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      if (!stream) {
+        setCameraStatus("unsupported");
+        setCameraMessage(
+          t(
+            "inventory.bambuBatchCameraUnsupported",
+            "Camera access is not available here. Use image import or type the code instead.",
           ),
         );
         return;
