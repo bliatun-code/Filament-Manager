@@ -35,6 +35,11 @@ export type BambuFilamentCodeBatchCreateState = {
   partial: boolean;
 };
 
+export type BambuFilamentCodeBatchScanAppendResult = {
+  input: string;
+  appendedLines: string[];
+};
+
 type ParsedBatchEntry = {
   sourceText: string;
   code: string | null;
@@ -55,6 +60,29 @@ function parseBambuFilamentCodeBatchEntries(rawInput: string): ParsedBatchEntry[
       }
       return codes.map((code) => ({ sourceText: code, code }));
     });
+}
+
+export function appendBambuFilamentCodeBatchScanInput(input: {
+  currentInput: string;
+  scanText: string | null | undefined;
+}): BambuFilamentCodeBatchScanAppendResult {
+  const trimmedScanText = String(input.scanText ?? "").trim();
+  if (!trimmedScanText) {
+    return {
+      input: input.currentInput,
+      appendedLines: [],
+    };
+  }
+
+  const detectedCodes = extractBambuFilamentCodes(trimmedScanText);
+  const appendedLines = detectedCodes.length > 0 ? detectedCodes : [trimmedScanText];
+  const currentInput = input.currentInput.trimEnd();
+  const appendedInput = appendedLines.join("\n");
+
+  return {
+    input: currentInput ? `${currentInput}\n${appendedInput}` : appendedInput,
+    appendedLines,
+  };
 }
 
 export function buildBambuFilamentCodeBatch(input: {

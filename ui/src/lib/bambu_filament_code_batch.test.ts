@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  appendBambuFilamentCodeBatchScanInput,
   buildBambuFilamentCodeBatch,
   buildBambuFilamentCodeBatchCreateState,
 } from "./bambu_filament_code_batch";
@@ -111,6 +112,70 @@ test("buildBambuFilamentCodeBatch blocks non-code barcode values", () => {
   assert.equal(batch.rows[0]?.lookup.status, "no_code");
   assert.equal(batch.creatableRows.length, 0);
   assert.equal(batch.blockedRows.length, 1);
+});
+
+test("appendBambuFilamentCodeBatchScanInput appends detected codes into batch input", () => {
+  const append = appendBambuFilamentCodeBatchScanInput({
+    currentInput: "53400\n",
+    scanText: "Filament Code: 53600 / 65103",
+  });
+
+  assert.deepEqual(append.appendedLines, ["53600", "65103"]);
+  assert.equal(append.input, "53400\n53600\n65103");
+
+  const batch = buildBambuFilamentCodeBatch({
+    masters: [
+      master({ id: "yellow", color_name: "Yellow (53400)" }),
+      master({ id: "blue", color_name: "Blue (53600)" }),
+      master({ id: "black", color_name: "Black (65103)" }),
+    ],
+    rawInput: append.input,
+  });
+
+  assert.deepEqual(
+    batch.creatableRows.map((row) => row.master?.id),
+    ["yellow", "blue", "black"],
+  );
+});
+
+test("appendBambuFilamentCodeBatchScanInput keeps duplicates and invalid scans reviewable", () => {
+  const firstAppend = appendBambuFilamentCodeBatchScanInput({
+    currentInput: "",
+    scanText: "53400",
+  });
+  const secondAppend = appendBambuFilamentCodeBatchScanInput({
+    currentInput: firstAppend.input,
+    scanText: "53400",
+  });
+  const invalidAppend = appendBambuFilamentCodeBatchScanInput({
+    currentInput: secondAppend.input,
+    scanText: "6977252426206",
+  });
+  const emptyAppend = appendBambuFilamentCodeBatchScanInput({
+    currentInput: invalidAppend.input,
+    scanText: "   ",
+  });
+
+  assert.deepEqual(secondAppend.appendedLines, ["53400"]);
+  assert.deepEqual(invalidAppend.appendedLines, ["6977252426206"]);
+  assert.deepEqual(emptyAppend.appendedLines, []);
+  assert.equal(emptyAppend.input, "53400\n53400\n6977252426206");
+
+  const batch = buildBambuFilamentCodeBatch({
+    masters: [master({ id: "yellow", color_name: "Yellow (53400)" })],
+    rawInput: emptyAppend.input,
+  });
+
+  assert.deepEqual(
+    batch.rows.map((row) => row.code),
+    ["53400", "53400", null],
+  );
+  assert.deepEqual(
+    batch.creatableRows.map((row) => row.master?.id),
+    ["yellow", "yellow"],
+  );
+  assert.equal(batch.blockedRows[0]?.sourceText, "6977252426206");
+  assert.equal(batch.blockedRows[0]?.lookup.status, "no_code");
 });
 
 test("buildBambuFilamentCodeBatchCreateState reports ready, partial, and borrowed-in blockers", () => {
