@@ -168,6 +168,34 @@ test("add filament task sheet shows Bambu filament code help before and after lo
   assert.match(lookupHtml, /TPU for AMS/);
 });
 
+test("add filament task sheet localizes Bambu filament code help in Norwegian", () => {
+  const state = createInitialCompanionState();
+  state.locale = "nb";
+  state.catalogMasters = [
+    {
+      id: "master-code",
+      material: "TPU",
+      filament_name: "TPU for AMS",
+      color_name: "Yellow (53400)",
+      hex_color: "#FACC15",
+      product_url: null,
+      default_weight: 1000,
+      vendor: "Bambu",
+      is_discontinued: false,
+      discontinued_at: null,
+    },
+  ];
+
+  const html = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+
+  assert.match(html, /femsifrede koden/);
+  assert.match(html, /Filament Code/);
+  assert.match(html, /eskeetiketten/);
+  assert.match(html, /Skriv koden i/);
+  assert.doesNotMatch(html, /camera/i);
+  assert.doesNotMatch(html, /webcam/i);
+});
+
 test("add filament task sheet selects the active Bambu code match when discontinued history exists", () => {
   const state = createInitialCompanionState();
   state.borrowedInDraft = {
