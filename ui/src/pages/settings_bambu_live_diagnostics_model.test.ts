@@ -1595,6 +1595,39 @@ test("Bambu live diagnostic tray card falls back to Bambu catalog when inventory
   ]);
 });
 
+test("Bambu live diagnostic tray card falls back to Bambu catalog from tray preset name", () => {
+  const card = buildSettingsBambuLiveDiagnosticTrayCard({
+    amsReadInProgress: false,
+    catalogRows: [
+      createCatalogRow({
+        id: "bambu-matte-black",
+        color_name: "Black",
+        filament_name: "PLA Matte",
+        hex_color: "#000000",
+      }),
+    ],
+    capturedTraySnapshot: null,
+    spoolRows: [],
+    t,
+    tray: createObservedTray({
+      color_hex: "#000000",
+      filament_name: null,
+      filament_type: null,
+      observed_rfid_tag: null,
+      tray_id_name: "Bambu PLA Matte @BBL P1S 0.4 nozzle",
+      tray_index: 0,
+      tray_uuid: "UNREGISTERED-BAMBU-RFID",
+    }),
+  });
+
+  assert.equal(card.matchKind, "catalog_single");
+  assert.equal(card.showCandidateCards, true);
+  assert.equal(card.matchLabel, "PLA Matte · Black");
+  assert.deepEqual(card.candidates.map((candidate) => candidate.key), [
+    "bambu-matte-black",
+  ]);
+});
+
 test("Bambu live diagnostic tray card avoids unknown RFID suggestions from color alone", () => {
   const card = buildSettingsBambuLiveDiagnosticTrayCard({
     amsReadInProgress: false,
