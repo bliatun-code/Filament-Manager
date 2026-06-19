@@ -706,6 +706,38 @@ fn apply_tray_match_status_keeps_bambu_color_metadata_candidates_for_unknown_rfi
 }
 
 #[test]
+fn apply_tray_match_status_keeps_bambu_name_metadata_candidates_without_color_for_unknown_rfid() {
+    let mut slot = make_slot();
+    slot.spool_id = None;
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        filament_type: Some("PETG".to_string()),
+        filament_name: Some("HF".to_string()),
+        color_hex: None,
+        ..make_tray()
+    };
+    let mut generic_candidate = make_inventory_spool("generic_petg_hf", None);
+    generic_candidate.master.material = "PETG".to_string();
+    generic_candidate.master.filament_name = "PETG HF".to_string();
+    let mut bambu_candidate = make_inventory_spool("bambu_petg_hf", None);
+    bambu_candidate.master.vendor = "Bambu".to_string();
+    bambu_candidate.master.material = "PETG".to_string();
+    bambu_candidate.master.filament_name = "PETG HF".to_string();
+
+    apply_tray_match_status(&mut tray, &overview, &[generic_candidate, bambu_candidate]);
+
+    assert_eq!(tray.match_status.as_deref(), Some("unknown_rfid"));
+    assert_eq!(
+        tray.matched_inventory_mode.as_deref(),
+        Some("inventory_metadata")
+    );
+    assert_eq!(
+        tray.matched_inventory_spool_id.as_deref(),
+        Some("bambu_petg_hf")
+    );
+}
+
+#[test]
 fn apply_tray_match_status_keeps_saved_rfid_metadata_candidates_without_unknown_rfid() {
     let mut slot = make_slot();
     slot.spool_id = None;
