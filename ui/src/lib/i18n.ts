@@ -1331,6 +1331,12 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveInventoryNoRfidMatch:
         "Observed RFID/AMS identity did not match anything in inventory.",
       bambuLiveInventoryNoMatch: "No clear inventory match yet.",
+      bambuLiveCatalogLikelyMatch:
+        "Single likely Bambu catalog match from material and live color.",
+      bambuLiveCatalogMultipleMatches:
+        "Multiple Bambu catalog entries could match this filament.",
+      bambuLiveCatalogCandidate: "Bambu catalog",
+      bambuLiveCatalogCandidateCount: "catalog entries",
       bambuLiveMatchNoteExact: "Exact RFID/AMS identity match against inventory.",
       bambuLiveMatchNoteDuplicateIdentity:
         "Multiple inventory rolls share this saved RFID/AMS identity.",
@@ -2833,6 +2839,12 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuLiveInventoryNoRfidMatch:
         "Observert RFID-identitet matchet ingenting i lageret.",
       bambuLiveInventoryNoMatch: "Ingen tydelig lagermatch ennå.",
+      bambuLiveCatalogLikelyMatch:
+        "Én sannsynlig Bambu-katalogmatch basert på materiale og live-farge.",
+      bambuLiveCatalogMultipleMatches:
+        "Flere Bambu-katalogoppføringer kan passe dette filamentet.",
+      bambuLiveCatalogCandidate: "Bambu-katalog",
+      bambuLiveCatalogCandidateCount: "katalogtreff",
       bambuLiveMatchNoteExact: "Eksakt match mellom RFID/AMS-identitet og lager.",
       bambuLiveMatchNoteDuplicateIdentity:
         "Flere ruller i lageret deler denne lagrede RFID/AMS-identiteten.",

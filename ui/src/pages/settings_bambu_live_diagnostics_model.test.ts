@@ -33,6 +33,7 @@ import {
 import type {
   BambuLiveIntegrationSettings,
   BambuLiveObservedTray,
+  MasterCatalogRow,
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
 
@@ -147,6 +148,22 @@ function createSpoolRow(
   };
 }
 
+function createCatalogRow(overrides: Partial<MasterCatalogRow> = {}): MasterCatalogRow {
+  return {
+    id: "catalog-pla-basic-orange",
+    material: "PLA",
+    filament_name: "PLA Basic",
+    color_name: "Orange",
+    hex_color: "#FFAA00",
+    product_url: null,
+    default_weight: 1000,
+    vendor: "Bambu",
+    is_discontinued: false,
+    discontinued_at: null,
+    ...overrides,
+  };
+}
+
 function createDiagnosticField(
   overrides: Partial<DiagnosticCaptureField>,
 ): DiagnosticCaptureField {
@@ -198,6 +215,7 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
     observedAt: "2026-05-15T10:01:00Z",
   });
   const model = buildSettingsBambuLiveDiagnosticsModel({
+    catalogRows: [],
     diagnosticFilter: "all",
     diagnosticSession,
     diagnosticSort: "path",
@@ -255,6 +273,46 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
   assert.equal(model.reviewTrayCount, 1);
   assert.ok(model.diagnosticGroups.some((group) => group.key === "ams"));
   assert.ok(model.signalQualityBuckets.every((bucket) => bucket.label && bucket.description));
+});
+
+test("buildSettingsBambuLiveDiagnosticsModel passes catalog fallback into tray cards", () => {
+  const liveConfig = createLiveConfig();
+  if (liveConfig.observed_state) {
+    liveConfig.observed_state.trays = [
+      createObservedTray({
+        color_hex: "#000000",
+        filament_name: "PLA Matte",
+        filament_type: "PLA",
+        observed_rfid_tag: null,
+        tray_uuid: "UNKNOWN-BAMBU-RFID",
+      }),
+    ];
+  }
+  const model = buildSettingsBambuLiveDiagnosticsModel({
+    catalogRows: [
+      createCatalogRow({
+        id: "bambu-matte-black",
+        color_name: "Black",
+        filament_name: "PLA Matte",
+        hex_color: "#000000",
+      }),
+    ],
+    diagnosticFilter: "all",
+    diagnosticSession: null,
+    diagnosticSort: "path",
+    formatDateTime,
+    liveConfig,
+    selectedChartFieldPath: null,
+    spoolRows: [],
+    t,
+  });
+
+  assert.equal(model.diagnosticTrayCards[0].matchKind, "catalog_single");
+  assert.equal(model.diagnosticTrayCards[0].matchLabel, "PLA Matte · Black");
+  assert.deepEqual(
+    model.diagnosticTrayCards[0].candidates.map((candidate) => candidate.key),
+    ["bambu-matte-black"],
+  );
 });
 
 test("buildSettingsBambuLiveDiagnosticsModel falls back to first chart field and empty state safely", () => {
@@ -516,7 +574,7 @@ test("Bambu live diagnostic groups apply filters, sorting and labels together", 
 test("Bambu live inventory match descriptions stay explicit for each match state", () => {
   assert.equal(
     buildSettingsBambuLiveInventoryMatchDescription({
-      inventoryMatchKind: "rfid_exact",
+      matchKind: "rfid_exact",
       observedRfid: "ABC123",
       t,
     }),
@@ -524,7 +582,7 @@ test("Bambu live inventory match descriptions stay explicit for each match state
   );
   assert.equal(
     buildSettingsBambuLiveInventoryMatchDescription({
-      inventoryMatchKind: "metadata_single",
+      matchKind: "metadata_single",
       observedRfid: null,
       t,
     }),
@@ -532,7 +590,7 @@ test("Bambu live inventory match descriptions stay explicit for each match state
   );
   assert.equal(
     buildSettingsBambuLiveInventoryMatchDescription({
-      inventoryMatchKind: "metadata_multiple",
+      matchKind: "metadata_multiple",
       observedRfid: null,
       t,
     }),
@@ -540,7 +598,23 @@ test("Bambu live inventory match descriptions stay explicit for each match state
   );
   assert.equal(
     buildSettingsBambuLiveInventoryMatchDescription({
-      inventoryMatchKind: "none",
+      matchKind: "catalog_single",
+      observedRfid: "ABC123",
+      t,
+    }),
+    "Single likely Bambu catalog match from material and live color.",
+  );
+  assert.equal(
+    buildSettingsBambuLiveInventoryMatchDescription({
+      matchKind: "catalog_multiple",
+      observedRfid: "ABC123",
+      t,
+    }),
+    "Multiple Bambu catalog entries could match this filament.",
+  );
+  assert.equal(
+    buildSettingsBambuLiveInventoryMatchDescription({
+      matchKind: "none",
       observedRfid: "ABC123",
       t,
     }),
@@ -548,7 +622,7 @@ test("Bambu live inventory match descriptions stay explicit for each match state
   );
   assert.equal(
     buildSettingsBambuLiveInventoryMatchDescription({
-      inventoryMatchKind: "none",
+      matchKind: "none",
       observedRfid: null,
       t,
     }),
@@ -994,6 +1068,25 @@ test("Bambu live inventory match presentation prefers inventory label and swatch
   assert.deepEqual(
     buildSettingsBambuLiveInventoryMatchPresentation({
       capturedTraySnapshot: createDiagnosticTraySnapshot({ colorHex: "#00AAFF" }),
+      primaryCatalogMatch: createCatalogRow({
+        color_name: "Black",
+        filament_name: "PLA Matte",
+        hex_color: "#000000",
+      }),
+      primaryInventoryMatch: null,
+      t,
+      tray: createObservedTray({ color_hex: null }),
+    }),
+    {
+      matchLabel: "PLA Matte · Black",
+      matchSwatchColor: "#000000",
+    },
+  );
+
+  assert.deepEqual(
+    buildSettingsBambuLiveInventoryMatchPresentation({
+      capturedTraySnapshot: createDiagnosticTraySnapshot({ colorHex: "#00AAFF" }),
+      primaryCatalogMatch: null,
       primaryInventoryMatch: null,
       t,
       tray: createObservedTray({ color_hex: null }),
@@ -1370,6 +1463,92 @@ test("Bambu live diagnostic tray card skips saved-RFID metadata suggestions for 
   assert.equal(
     card.matchDescription,
     "Observed RFID/AMS identity did not match anything in inventory.",
+  );
+});
+
+test("Bambu live diagnostic tray card falls back to Bambu catalog when inventory has no candidates", () => {
+  const card = buildSettingsBambuLiveDiagnosticTrayCard({
+    amsReadInProgress: false,
+    catalogRows: [
+      createCatalogRow({
+        id: "bambu-matte-black",
+        color_name: "Black",
+        filament_name: "PLA Matte",
+        hex_color: "#000000",
+      }),
+    ],
+    capturedTraySnapshot: null,
+    spoolRows: [],
+    t,
+    tray: createObservedTray({
+      color_hex: "#000000",
+      filament_name: "PLA Matte",
+      filament_type: "PLA",
+      observed_rfid_tag: null,
+      tray_index: 0,
+      tray_uuid: "UNREGISTERED-BAMBU-RFID",
+    }),
+  });
+
+  assert.equal(card.matchKind, "catalog_single");
+  assert.equal(card.showCandidateCards, true);
+  assert.equal(card.matchLabel, "PLA Matte · Black");
+  assert.equal(card.matchSwatchColor, "#000000");
+  assert.equal(
+    card.matchDescription,
+    "Single likely Bambu catalog match from material and live color.",
+  );
+  assert.deepEqual(card.candidates, [
+    {
+      key: "bambu-matte-black",
+      subtitle: "Bambu catalog · bambu-matte-black",
+      swatchColor: "#000000",
+      title: "PLA Matte · Black",
+    },
+  ]);
+});
+
+test("Bambu live diagnostic tray card exposes multiple catalog candidates after inventory miss", () => {
+  const card = buildSettingsBambuLiveDiagnosticTrayCard({
+    amsReadInProgress: false,
+    catalogRows: [
+      createCatalogRow({
+        id: "bambu-matte-black",
+        color_name: "Black",
+        filament_name: "PLA Matte",
+        hex_color: "#000000",
+      }),
+      createCatalogRow({
+        id: "bambu-matte-black-history",
+        color_name: "Black",
+        discontinued_at: "2025-01-01T00:00:00Z",
+        filament_name: "PLA Matte",
+        hex_color: "#000000",
+        is_discontinued: true,
+      }),
+    ],
+    capturedTraySnapshot: null,
+    spoolRows: [],
+    t,
+    tray: createObservedTray({
+      color_hex: "#000000",
+      filament_name: "PLA Matte",
+      filament_type: "PLA",
+      observed_rfid_tag: null,
+      tray_index: 0,
+      tray_uuid: "UNREGISTERED-BAMBU-RFID",
+    }),
+  });
+
+  assert.equal(card.matchKind, "catalog_multiple");
+  assert.equal(card.candidateCountText, "2 catalog entries");
+  assert.equal(card.showCandidateCards, true);
+  assert.deepEqual(
+    card.candidates.map((candidate) => candidate.subtitle),
+    [
+      "Bambu catalog · bambu-matte-black",
+      "Discontinued · bambu-matte-black-history",
+    ],
   );
 });
 

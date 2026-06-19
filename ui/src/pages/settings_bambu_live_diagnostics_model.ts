@@ -23,6 +23,7 @@ import {
 import type {
   BambuLiveIntegrationSettings,
   BambuLiveObservedState,
+  MasterCatalogRow,
   PrinterAmsSlotRow,
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
@@ -54,6 +55,7 @@ type TranslateFn = (key: string, fallback: string) => string;
 type FormatDateTimeFn = (value: string) => string;
 
 type BuildSettingsBambuLiveDiagnosticsModelInput = {
+  catalogRows?: MasterCatalogRow[];
   diagnosticFilter: DiagnosticFilterKey;
   diagnosticSession: DiagnosticCaptureSession | null;
   diagnosticSort: DiagnosticSortKey;
@@ -322,6 +324,7 @@ export function buildSettingsBambuLiveDiagnosticGroups({
 }
 
 export function buildSettingsBambuLiveDiagnosticsModel({
+  catalogRows = [],
   diagnosticFilter,
   diagnosticSession,
   diagnosticSort,
@@ -387,6 +390,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
   });
   const diagnosticTrayCards = buildSettingsBambuLiveDiagnosticTrayCards({
     amsReadInProgress,
+    catalogRows,
     captureTrayByKey,
     displayTrays,
     printerSlots,

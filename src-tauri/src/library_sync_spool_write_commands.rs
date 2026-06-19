@@ -162,10 +162,7 @@ pub(crate) fn create_library_sync_host_spool(
     let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     let explicit_ownership_type = trimmed_non_empty(input.ownership_type.as_deref());
-    let ownership_type = explicit_ownership_type
-        .as_deref()
-        .unwrap_or("OWNED")
-        .to_uppercase();
+    let ownership_type = explicit_ownership_type.unwrap_or("OWNED").to_uppercase();
 
     let path = if ownership_type == "BORROWED_IN"
         || (explicit_ownership_type.is_none()

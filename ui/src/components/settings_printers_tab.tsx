@@ -12,6 +12,7 @@ import { formatSettingsDateTime } from "../lib/settings_utils";
 import type { PrinterModelProfile } from "../lib/printer_profiles";
 import type {
   BambuLiveIntegrationEntry,
+  MasterCatalogRow,
   PrinterAmsSlotRow,
   PrinterRow,
   SpoolWithMasterRow,
@@ -30,6 +31,7 @@ import {
 type SettingsPrintersTabProps = {
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
   busy: boolean;
+  catalogRows: MasterCatalogRow[];
   confirmDeletePrinterId: string | null;
   diagnosticCaptureActiveByPrinterId: Record<string, boolean>;
   diagnosticCaptureByPrinterId: Record<string, DiagnosticCaptureSession>;
@@ -78,6 +80,7 @@ type SettingsPrintersTabProps = {
 export function SettingsPrintersTab({
   bambuLiveIntegrations,
   busy,
+  catalogRows,
   confirmDeletePrinterId,
   diagnosticCaptureActiveByPrinterId,
   diagnosticCaptureByPrinterId,
@@ -160,6 +163,7 @@ export function SettingsPrintersTab({
           const diagnosticSort = diagnosticSortByPrinterId[printer.id] ?? "path";
           const diagnosticFilter = diagnosticFilterByPrinterId[printer.id] ?? "all";
           const bambuDiagnostics = buildSettingsBambuLiveDiagnosticsModel({
+            catalogRows,
             diagnosticFilter,
             diagnosticSession,
             diagnosticSort,

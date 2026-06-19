@@ -7,6 +7,10 @@ import {
   translateObservedMatchNote,
   type InventoryMatchResult,
 } from "../lib/inventory_match";
+import {
+  buildBambuLiveCatalogMatchResult,
+  type BambuLiveCatalogMatchResult,
+} from "../lib/bambu_live_catalog_match";
 import { liveTrayMatchesSlot } from "../lib/printer_live_display";
 import {
   formatBambuSettingsProfileSignal,
@@ -23,6 +27,7 @@ import {
 } from "../lib/ams_weight_estimate";
 import type {
   BambuLiveObservedTray,
+  MasterCatalogRow,
   PrinterAmsSlotRow,
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
@@ -31,6 +36,7 @@ type TranslateFn = (key: string, fallback: string) => string;
 
 type BuildSettingsBambuLiveDiagnosticTrayCardInput = {
   amsReadInProgress: boolean;
+  catalogRows?: MasterCatalogRow[];
   capturedTraySnapshot: DiagnosticTraySnapshot | null;
   printerSlots?: PrinterAmsSlotRow[];
   spoolRows: SpoolWithMasterRow[];
@@ -40,6 +46,7 @@ type BuildSettingsBambuLiveDiagnosticTrayCardInput = {
 
 type BuildSettingsBambuLiveDiagnosticTrayCardsInput = {
   amsReadInProgress: boolean;
+  catalogRows?: MasterCatalogRow[];
   captureTrayByKey: Map<string, DiagnosticTraySnapshot>;
   displayTrays: BambuLiveObservedTray[];
   printerSlots?: PrinterAmsSlotRow[];
@@ -50,31 +57,47 @@ type BuildSettingsBambuLiveDiagnosticTrayCardsInput = {
 const BAMBU_LIVE_SECONDARY_EXTERNAL_TRAY_INDEX = 254;
 const BAMBU_LIVE_EXTERNAL_TRAY_INDEX = 255;
 
+type SettingsBambuLiveDiagnosticMatchKind =
+  | InventoryMatchResult["kind"]
+  | BambuLiveCatalogMatchResult["kind"];
+
 export function buildSettingsBambuLiveInventoryMatchDescription({
-  inventoryMatchKind,
+  matchKind,
   observedRfid,
   t,
 }: {
-  inventoryMatchKind: InventoryMatchResult["kind"];
+  matchKind: SettingsBambuLiveDiagnosticMatchKind;
   observedRfid: string | null;
   t: TranslateFn;
 }): string {
-  if (inventoryMatchKind === "rfid_exact") {
+  if (matchKind === "rfid_exact") {
     return t(
       "settings.bambuLiveInventoryRfidMatch",
       "Exact RFID/AMS identity match against inventory.",
     );
   }
-  if (inventoryMatchKind === "metadata_single") {
+  if (matchKind === "metadata_single") {
     return t(
       "settings.bambuLiveInventoryLikelyMatch",
       "Single likely inventory match from material and live color.",
     );
   }
-  if (inventoryMatchKind === "metadata_multiple") {
+  if (matchKind === "metadata_multiple") {
     return t(
       "settings.bambuLiveInventoryMultipleMatches",
       "Multiple inventory rolls could match this filament.",
+    );
+  }
+  if (matchKind === "catalog_single") {
+    return t(
+      "settings.bambuLiveCatalogLikelyMatch",
+      "Single likely Bambu catalog match from material and live color.",
+    );
+  }
+  if (matchKind === "catalog_multiple") {
+    return t(
+      "settings.bambuLiveCatalogMultipleMatches",
+      "Multiple Bambu catalog entries could match this filament.",
     );
   }
   if (observedRfid) {
@@ -100,6 +123,23 @@ export function buildSettingsBambuLiveInventoryCandidateCards({
       : `${t("settings.bambuLiveCandidateNoRfidSaved", "No RFID saved")} · ${candidate.spool.id}`,
     swatchColor: candidate.master.hex_color,
     title: `${candidate.master.filament_name} · ${candidate.master.color_name}`,
+  }));
+}
+
+export function buildSettingsBambuLiveCatalogCandidateCards({
+  candidates,
+  t,
+}: {
+  candidates: MasterCatalogRow[];
+  t: TranslateFn;
+}) {
+  return candidates.slice(0, 3).map((candidate) => ({
+    key: candidate.id,
+    subtitle: candidate.is_discontinued
+      ? `${t("common.discontinued", "Discontinued")} · ${candidate.id}`
+      : `${t("settings.bambuLiveCatalogCandidate", "Bambu catalog")} · ${candidate.id}`,
+    swatchColor: candidate.hex_color,
+    title: `${candidate.filament_name} · ${candidate.color_name}`,
   }));
 }
 
@@ -247,11 +287,13 @@ export function buildSettingsBambuLiveTrayDisplayText({
 
 export function buildSettingsBambuLiveInventoryMatchPresentation({
   capturedTraySnapshot,
+  primaryCatalogMatch,
   primaryInventoryMatch,
   t,
   tray,
 }: {
   capturedTraySnapshot: DiagnosticTraySnapshot | null;
+  primaryCatalogMatch?: MasterCatalogRow | null;
   primaryInventoryMatch: SpoolWithMasterRow | null;
   t: TranslateFn;
   tray: BambuLiveObservedTray;
@@ -259,9 +301,13 @@ export function buildSettingsBambuLiveInventoryMatchPresentation({
   return {
     matchLabel: primaryInventoryMatch
       ? `${primaryInventoryMatch.master.filament_name} · ${primaryInventoryMatch.master.color_name}`
+      : primaryCatalogMatch
+        ? `${primaryCatalogMatch.filament_name} · ${primaryCatalogMatch.color_name}`
       : t("settings.bambuLiveNoInventoryMatch", "No clear inventory match"),
     matchSwatchColor: primaryInventoryMatch
       ? primaryInventoryMatch.master.hex_color
+      : primaryCatalogMatch
+        ? primaryCatalogMatch.hex_color
       : tray.color_hex ?? capturedTraySnapshot?.colorHex,
   };
 }
@@ -398,6 +444,7 @@ export function resolveSettingsBambuLiveCapturedTraySnapshot({
 
 export function buildSettingsBambuLiveDiagnosticTrayCard({
   amsReadInProgress,
+  catalogRows = [],
   capturedTraySnapshot,
   printerSlots = [],
   spoolRows,
@@ -418,8 +465,21 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
   });
   const inventoryMatch = inventoryDecision.suggestedInventoryMatch;
   const primaryInventoryMatch = inventoryMatch.candidates[0] ?? null;
+  const catalogTray: BambuLiveObservedTray = {
+    ...tray,
+    color_hex: tray.color_hex ?? capturedTraySnapshot?.colorHex ?? null,
+    filament_name: tray.filament_name ?? capturedTraySnapshot?.filamentName ?? null,
+    filament_type: tray.filament_type ?? capturedTraySnapshot?.filamentType ?? null,
+  };
+  const catalogMatch =
+    observedRfid && inventoryMatch.candidates.length === 0
+      ? buildBambuLiveCatalogMatchResult(catalogRows, catalogTray)
+      : { kind: "none" as const, candidates: [] };
+  const primaryCatalogMatch = catalogMatch.candidates[0] ?? null;
+  const activeMatchKind =
+    inventoryMatch.kind !== "none" ? inventoryMatch.kind : catalogMatch.kind;
   const matchDescription = buildSettingsBambuLiveInventoryMatchDescription({
-    inventoryMatchKind: inventoryMatch.kind,
+    matchKind: activeMatchKind,
     observedRfid,
     t,
   });
@@ -441,6 +501,7 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
   const { detailText, statusText } = buildSettingsBambuLiveTrayDisplayText({ t, tray });
   const { matchLabel, matchSwatchColor } = buildSettingsBambuLiveInventoryMatchPresentation({
     capturedTraySnapshot,
+    primaryCatalogMatch,
     primaryInventoryMatch,
     t,
     tray,
@@ -460,19 +521,33 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
     candidateCountText:
       inventoryMatch.kind === "metadata_multiple"
         ? `${inventoryMatch.candidates.length} ${t("settings.bambuLiveCandidateCount", "candidates")}`
+        : catalogMatch.kind === "catalog_multiple"
+          ? `${catalogMatch.candidates.length} ${t("settings.bambuLiveCatalogCandidateCount", "catalog entries")}`
         : null,
-    candidates: buildSettingsBambuLiveInventoryCandidateCards({
-      candidates: inventoryMatch.candidates,
-      t,
-    }),
+    candidates:
+      inventoryMatch.kind !== "none"
+        ? buildSettingsBambuLiveInventoryCandidateCards({
+            candidates: inventoryMatch.candidates,
+            t,
+          })
+        : buildSettingsBambuLiveCatalogCandidateCards({
+            candidates: catalogMatch.candidates,
+            t,
+          }),
     detailText,
-    hasMoreCandidates: inventoryMatch.candidates.length > 3,
+    hasMoreCandidates:
+      inventoryMatch.kind !== "none"
+        ? inventoryMatch.candidates.length > 3
+        : catalogMatch.candidates.length > 3,
     hasReview,
     key,
     matchDescription,
-    matchKind: inventoryMatch.kind,
+    matchKind: activeMatchKind,
     showCandidateCards:
-      inventoryMatch.kind === "metadata_single" || inventoryMatch.kind === "metadata_multiple",
+      inventoryMatch.kind === "metadata_single" ||
+      inventoryMatch.kind === "metadata_multiple" ||
+      catalogMatch.kind === "catalog_single" ||
+      catalogMatch.kind === "catalog_multiple",
     matchLabel,
     matchNote,
     matchSwatchColor,
@@ -489,6 +564,7 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
 
 export function buildSettingsBambuLiveDiagnosticTrayCards({
   amsReadInProgress,
+  catalogRows = [],
   captureTrayByKey,
   displayTrays,
   printerSlots,
@@ -502,6 +578,7 @@ export function buildSettingsBambuLiveDiagnosticTrayCards({
     });
     return buildSettingsBambuLiveDiagnosticTrayCard({
       amsReadInProgress,
+      catalogRows,
       capturedTraySnapshot,
       printerSlots,
       spoolRows,

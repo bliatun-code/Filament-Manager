@@ -253,6 +253,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const { settingsPrintersRouteProps } = useSettingsPrintersSection({
     bambuLiveIntegrations,
     busy,
+    catalogRows: catalogMasters,
     loading,
     locale,
     printerOverview,

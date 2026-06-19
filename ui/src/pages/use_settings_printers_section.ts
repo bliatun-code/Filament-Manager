@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type { Locale } from "../lib/i18n";
 import type {
   BambuLiveIntegrationEntry,
+  MasterCatalogRow,
   PrinterOverviewRow,
   PrinterRow,
   SpoolWithMasterRow,
@@ -15,6 +16,7 @@ import { useSettingsPrinterSectionState } from "./use_settings_printer_section_s
 type UseSettingsPrintersSectionInput = {
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
   busy: boolean;
+  catalogRows: MasterCatalogRow[];
   loading: boolean;
   locale: Locale;
   printerOverview: PrinterOverviewRow[];
@@ -35,6 +37,7 @@ type UseSettingsPrintersSectionInput = {
 export function useSettingsPrintersSection({
   bambuLiveIntegrations,
   busy,
+  catalogRows,
   loading,
   locale,
   printerOverview,
@@ -140,6 +143,7 @@ export function useSettingsPrintersSection({
   const settingsPrintersRouteProps = buildSettingsPrintersRouteProps({
     bambuLiveIntegrations,
     busy,
+    catalogRows,
     confirmDeletePrinterId,
     diagnosticCaptureActiveByPrinterId,
     diagnosticCaptureByPrinterId,
