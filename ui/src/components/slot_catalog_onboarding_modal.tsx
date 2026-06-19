@@ -56,6 +56,9 @@ export function SlotCatalogOnboardingModal({
   });
   const observedRfid = saveState.observedRfid;
   const isBorrowedIn = prompt.ownershipType === "BORROWED_IN";
+  const primaryActionLabel = isBorrowedIn
+    ? t("printers.addBorrowedCatalogRollAndSaveRfid", "Add borrowed-in + save RFID")
+    : t("printers.addCatalogRollAndSaveRfid", "Add + save RFID");
   const slotAlreadyAssigned = Boolean((currentSlot ?? prompt.slot).spool_id);
   const saveDisabled = saveState.disabled;
   let saveBlockMessage: string | null = null;
@@ -99,7 +102,7 @@ export function SlotCatalogOnboardingModal({
       <div>
         <ModalHeader
           eyebrow={t("printers.slotOnboarding", "AMS onboarding")}
-          title={t("printers.addCatalogRollAndSaveRfid", "Add + save RFID")}
+          title={primaryActionLabel}
           subtitle={`${prompt.printerName} · ${formatPrinterSlotLabelForModel(t, prompt.printerModel, {
             ams_id: prompt.slot.ams_id,
             slot_index: prompt.slot.slot_index,
@@ -266,9 +269,7 @@ export function SlotCatalogOnboardingModal({
               onClick={onSave}
               disabled={saveDisabled}
             >
-              {isBorrowedIn
-                ? t("printers.addBorrowedCatalogRollAndSaveRfid", "Add borrowed-in + save RFID")
-                : t("printers.addCatalogRollAndSaveRfid", "Add + save RFID")}
+              {primaryActionLabel}
             </button>
           </div>
         </div>

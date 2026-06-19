@@ -132,6 +132,7 @@ test("SlotCatalogOnboardingModal renders the owned catalog onboarding save path"
 
   assert.match(html, /AMS onboarding/);
   assert.match(html, /Add \+ save RFID/);
+  assert.equal((html.match(/Add \+ save RFID/g) ?? []).length, 2);
   assert.match(html, /PLA Matte · Black/);
   assert.match(html, /Observed RFID/);
   assert.match(html, /RFID-NEW/);
@@ -205,6 +206,7 @@ test("SlotCatalogOnboardingModal renders the borrowed-in catalog onboarding save
     /Enter who the spool is borrowed from before registering it as borrowed-in\./,
   );
   assert.doesNotMatch(html, /<button[^>]*disabled="">\s*Add borrowed-in \+ save RFID/);
+  assert.equal((html.match(/Add borrowed-in \+ save RFID/g) ?? []).length, 2);
   assert.match(html, />\s*Add borrowed-in \+ save RFID\s*<\/button>/);
 });
 
