@@ -284,7 +284,7 @@ In the Bambu source flow:
 - review discontinued-only matches before adding stock
 - use manual entry if no catalog item uses the code yet
 
-Desktop/client also has a batch Filament Code area in the Bambu flow. Paste one code per line, or scan codes with any scanner that behaves like keyboard input. The app lists which rows are ready and only creates the rows with a single active catalog match. Ambiguous, discontinued-only, invalid, or missing codes stay visible for manual review.
+Desktop/client also has a batch Filament Code area in the Bambu flow. Paste one code per line, or use the small scan/type field to append one detected code at a time from keyboard-style scanner input or manual typing. The app lists which rows are ready and only creates the rows with a single active catalog match. Ambiguous, discontinued-only, invalid, or missing codes stay visible for manual review.
 
 Batch-created Bambu spools use the stock details on the right side of the modal, including ownership, owner/contact fields for Borrowed in, weight, and location. Companion/webapp uses the same catalog matching rules for manual code lookup, but does not use camera or webcam scanning.
 

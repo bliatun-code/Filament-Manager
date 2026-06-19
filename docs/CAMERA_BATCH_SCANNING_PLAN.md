@@ -20,9 +20,9 @@ camera, image, or OCR sources.
 - Single-code lookup uses the shared Bambu catalog matching rules.
 - Desktop/client Bambu batch input accepts one code per line or scanner-style
   pasted input.
-- A desktop/client scan-input adapter can append detected five digit codes, keep
-  duplicate scans as separate rows, and keep invalid non-code values visible for
-  review through the same batch model.
+- A desktop/client scan/type row uses the scan-input adapter to append detected
+  five digit codes, keep duplicate scans as separate rows, and keep invalid
+  non-code values visible for review through the same batch model.
 - Companion has manual Bambu Filament Code lookup, but no camera flow.
 - Batch create already applies ownership, borrowed-in owner/contact, weight, and
   location consistently to all ready rows.
@@ -31,7 +31,7 @@ camera, image, or OCR sources.
 
 1. Keep manual batch input as the baseline and improve copy only where users get
    stuck.
-2. Wire the desktop/client scan-input adapter into future capture UI without
+2. Reuse the desktop/client scan-input adapter in future capture UI without
    changing the batch decision rules.
 3. Prefer browser-native barcode detection when available, with a clear manual
    fallback when it is not.

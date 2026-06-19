@@ -312,6 +312,9 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchTitle: "Batch Filament Codes",
       bambuBatchHelp:
         "Paste one or more five digit codes. Ready matches use the stock details on the right.",
+      bambuBatchScanLabel: "Scan or type one code",
+      bambuBatchScanPlaceholder: "Scan or type one code",
+      bambuBatchAppendScan: "Add to batch",
       bambuBatchPlaceholder: "53400\n53600\n65103",
       bambuBatchReady: "Ready",
       bambuBatchReadyShort: "ready",
@@ -1818,6 +1821,9 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchTitle: "Filament Code-batch",
       bambuBatchHelp:
         "Lim inn én eller flere femsifrede koder. Klare treff bruker lagerdetaljene til høyre.",
+      bambuBatchScanLabel: "Skann eller skriv én kode",
+      bambuBatchScanPlaceholder: "Skann eller skriv én kode",
+      bambuBatchAppendScan: "Legg til i batch",
       bambuBatchPlaceholder: "53400\n53600\n65103",
       bambuBatchReady: "Klar",
       bambuBatchReadyShort: "kan legges til",

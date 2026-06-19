@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { inlineStatusSignalClass, neutralChipClass } from "../lib/chip_styles";
 import { swatchCssBackground, toSwatchColor } from "../lib/color_utils";
@@ -7,6 +8,7 @@ import type {
   BambuFilamentCodeBatchRow,
   BambuFilamentCodeBatchCreateState,
 } from "../lib/bambu_filament_code_batch";
+import { appendBambuFilamentCodeBatchScanInput } from "../lib/bambu_filament_code_batch";
 import type { BambuFilamentCodeLookup } from "../lib/bambu_filament_code_lookup";
 import { formatMasterDisplayTitle } from "../lib/inventory_list_model";
 import { inventoryCatalogRowStyle } from "../lib/inventory_swatch_style";
@@ -230,9 +232,23 @@ function BambuFilamentCodeBatchPanel({
   tauriAvailable: boolean;
 }) {
   const { t } = useI18n();
+  const [scanInput, setScanInput] = useState("");
   const visibleRows = batch.rows.slice(0, 6);
   const hiddenCount = Math.max(0, batch.rows.length - visibleRows.length);
   const createMessage = bambuBatchCreateStateMessage(createState, t);
+  const trimmedScanInput = scanInput.trim();
+
+  const appendScanInput = () => {
+    const append = appendBambuFilamentCodeBatchScanInput({
+      currentInput: input,
+      scanText: scanInput,
+    });
+    if (append.appendedLines.length === 0) {
+      return;
+    }
+    onInputChange(append.input);
+    setScanInput("");
+  };
 
   return (
     <div className="rounded-2xl border border-slate-200/90 bg-white/72 p-3 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45">
@@ -267,6 +283,31 @@ function BambuFilamentCodeBatchPanel({
           {createMessage}
         </div>
       ) : null}
+
+      <form
+        className="mt-3 flex flex-col gap-2 sm:flex-row"
+        onSubmit={(event) => {
+          event.preventDefault();
+          appendScanInput();
+        }}
+      >
+        <input
+          type="text"
+          value={scanInput}
+          onChange={(event) => setScanInput(event.target.value)}
+          placeholder={t("inventory.bambuBatchScanPlaceholder", "Scan or type one code")}
+          aria-label={t("inventory.bambuBatchScanLabel", "Scan or type one code")}
+          className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500"
+          disabled={!tauriAvailable}
+        />
+        <button
+          type="submit"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80"
+          disabled={!tauriAvailable || !trimmedScanInput}
+        >
+          {t("inventory.bambuBatchAppendScan", "Add to batch")}
+        </button>
+      </form>
 
       <textarea
         value={input}
