@@ -47,6 +47,15 @@ export type BambuFilamentCodeBatchScanValuesInput = {
   scanValues: string[];
 };
 
+export type BambuFilamentCodeBatchScanAppendOnceResult =
+  BambuFilamentCodeBatchScanAppendResult & {
+    status: "appended" | "duplicate" | "empty";
+    appendedKeys: string[];
+    skippedKeys: string[];
+    skippedLines: string[];
+    nextSeenKeys: Set<string>;
+  };
+
 type ParsedBatchEntry = {
   sourceText: string;
   code: string | null;
@@ -121,6 +130,52 @@ export function appendBambuFilamentCodeBatchScanValues(
     appendedLines,
     appendedCodeLines,
     appendedReviewLines,
+  };
+}
+
+export function appendBambuFilamentCodeBatchScanValuesOnce(input: {
+  currentInput: string;
+  scanValues: string[];
+  seenKeys?: ReadonlySet<string>;
+}): BambuFilamentCodeBatchScanAppendOnceResult {
+  const nextSeenKeys = new Set(input.seenKeys ?? []);
+  const appendedKeys: string[] = [];
+  const skippedKeys: string[] = [];
+  const skippedLines: string[] = [];
+  const scanValues = input.scanValues.map((value) => value.trim()).filter(Boolean);
+
+  const freshLines = scanValues.flatMap((value) => {
+    const detectedCodes = extractBambuFilamentCodes(value);
+    const entries =
+      detectedCodes.length > 0
+        ? detectedCodes.map((code) => ({ key: `code:${code}`, line: code }))
+        : [{ key: `review:${value.toLowerCase()}`, line: value }];
+
+    return entries.flatMap((entry) => {
+      if (nextSeenKeys.has(entry.key)) {
+        skippedKeys.push(entry.key);
+        skippedLines.push(entry.line);
+        return [];
+      }
+      nextSeenKeys.add(entry.key);
+      appendedKeys.push(entry.key);
+      return [entry.line];
+    });
+  });
+
+  const append = appendBambuFilamentCodeBatchScanValues({
+    currentInput: input.currentInput,
+    scanValues: freshLines,
+  });
+
+  return {
+    ...append,
+    status:
+      appendedKeys.length > 0 ? "appended" : skippedKeys.length > 0 ? "duplicate" : "empty",
+    appendedKeys,
+    skippedKeys,
+    skippedLines,
+    nextSeenKeys,
   };
 }
 

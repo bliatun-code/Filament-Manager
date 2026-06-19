@@ -1,4 +1,10 @@
-import { useState, type ChangeEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
 import { AppModal } from "./app_modal";
 import { inventoryModalOverlayClassName } from "./inventory_modal_chrome";
 import { ModalHeader } from "./modal_chrome";
@@ -10,6 +16,13 @@ import type {
   BambuFilamentCodeBatchRow,
 } from "../lib/bambu_filament_code_batch";
 import { appendBambuFilamentCodeBatchScanInput } from "../lib/bambu_filament_code_batch";
+import {
+  appendBambuFilamentCodeCameraScanValues,
+  bambuFilamentCodeCameraScanSupport,
+  createBambuFilamentCodeCameraDetector,
+  requestBambuFilamentCodeCameraStream,
+  scanBambuFilamentCodeCameraFrame,
+} from "../lib/bambu_filament_code_camera_scan";
 import { scanBambuFilamentCodesFromImage } from "../lib/bambu_filament_code_image_scan";
 import type { BambuFilamentCodeLookup } from "../lib/bambu_filament_code_lookup";
 import { formatMasterDisplayTitle } from "../lib/inventory_list_model";
@@ -232,6 +245,80 @@ function bambuBatchImageScanMessage(
   ).replace("{count}", String(reviewCount));
 }
 
+type BambuBatchCameraStatus =
+  | "idle"
+  | "starting"
+  | "scanning"
+  | "added"
+  | "review"
+  | "duplicate"
+  | "unsupported"
+  | "error";
+
+function bambuBatchCameraScanMessage(
+  append: { appendedCodeLines: string[]; appendedReviewLines: string[] },
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  const codeCount = append.appendedCodeLines.length;
+  const reviewCount = append.appendedReviewLines.length;
+  if (codeCount > 0 && reviewCount > 0) {
+    return t(
+      "inventory.bambuBatchCameraAddedMixed",
+      "{codeCount} filament code(s) and {reviewCount} barcode value(s) for review were added.",
+    )
+      .replace("{codeCount}", String(codeCount))
+      .replace("{reviewCount}", String(reviewCount));
+  }
+  if (codeCount > 0) {
+    return t(
+      "inventory.bambuBatchCameraAddedCodes",
+      "{count} filament code(s) added.",
+    ).replace("{count}", String(codeCount));
+  }
+  return t(
+    "inventory.bambuBatchCameraAddedReview",
+    "{count} barcode value(s) added for review.",
+  ).replace("{count}", String(reviewCount));
+}
+
+function bambuBatchCameraStatusLabel(
+  status: BambuBatchCameraStatus,
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  if (status === "starting") {
+    return t("inventory.bambuBatchCameraStarting", "Starting camera");
+  }
+  if (status === "added") {
+    return t("inventory.bambuBatchCameraAdded", "Added");
+  }
+  if (status === "review") {
+    return t("inventory.bambuBatchCameraReview", "Review");
+  }
+  if (status === "duplicate") {
+    return t("inventory.bambuBatchCameraDuplicate", "Already added");
+  }
+  if (status === "unsupported") {
+    return t("inventory.bambuBatchCameraUnavailable", "Camera unavailable");
+  }
+  if (status === "error") {
+    return t("inventory.bambuBatchCameraErrorShort", "Camera error");
+  }
+  return t("inventory.bambuBatchCameraScanning", "Scanning");
+}
+
+function bambuBatchCameraOverlayClassName(status: BambuBatchCameraStatus): string {
+  if (status === "added" || status === "review") {
+    return "border-emerald-300/50 bg-emerald-500/15 text-emerald-50";
+  }
+  if (status === "duplicate") {
+    return "border-amber-300/50 bg-amber-500/15 text-amber-50";
+  }
+  if (status === "unsupported" || status === "error") {
+    return "border-rose-300/50 bg-rose-500/15 text-rose-50";
+  }
+  return "border-white/20 bg-slate-950/45 text-white";
+}
+
 function BambuFilamentCodeBatchPanel({
   batch,
   createState,
@@ -253,10 +340,282 @@ function BambuFilamentCodeBatchPanel({
   const [scanInput, setScanInput] = useState("");
   const [imageScanBusy, setImageScanBusy] = useState(false);
   const [imageScanMessage, setImageScanMessage] = useState<string | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraStatus, setCameraStatus] = useState<BambuBatchCameraStatus>("idle");
+  const [cameraMessage, setCameraMessage] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const detectorRef = useRef<Awaited<
+    ReturnType<typeof createBambuFilamentCodeCameraDetector>
+  > | null>(null);
+  const seenCameraKeysRef = useRef<Set<string>>(new Set());
+  const emptyCameraFrameCountRef = useRef(0);
+  const scanBusyRef = useRef(false);
+  const scanTimerRef = useRef<number | null>(null);
+  const feedbackTimerRef = useRef<number | null>(null);
+  const inputRef = useRef(input);
+  const mountedRef = useRef(true);
   const visibleRows = batch.rows.slice(0, 6);
   const hiddenCount = Math.max(0, batch.rows.length - visibleRows.length);
   const createMessage = bambuBatchCreateStateMessage(createState, t);
   const trimmedScanInput = scanInput.trim();
+  const cameraPanelVisible = cameraActive || cameraStatus !== "idle";
+  const cameraStarting = cameraStatus === "starting";
+
+  useEffect(() => {
+    inputRef.current = input;
+  }, [input]);
+
+  const clearCameraTimers = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (scanTimerRef.current !== null) {
+      window.clearInterval(scanTimerRef.current);
+      scanTimerRef.current = null;
+    }
+    if (feedbackTimerRef.current !== null) {
+      window.clearTimeout(feedbackTimerRef.current);
+      feedbackTimerRef.current = null;
+    }
+  }, []);
+
+  const stopCameraStream = useCallback(() => {
+    clearCameraTimers();
+    scanBusyRef.current = false;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    detectorRef.current = null;
+    seenCameraKeysRef.current = new Set();
+    emptyCameraFrameCountRef.current = 0;
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }, [clearCameraTimers]);
+
+  const showCameraFeedback = useCallback(
+    (
+      status: BambuBatchCameraStatus,
+      message: string,
+      options: { sticky?: boolean } = {},
+    ) => {
+      setCameraStatus(status);
+      setCameraMessage(message);
+      if (typeof window === "undefined") {
+        return;
+      }
+      if (feedbackTimerRef.current !== null) {
+        window.clearTimeout(feedbackTimerRef.current);
+        feedbackTimerRef.current = null;
+      }
+      if (!options.sticky && ["added", "review", "duplicate"].includes(status)) {
+        feedbackTimerRef.current = window.setTimeout(() => {
+          setCameraStatus("scanning");
+          setCameraMessage(
+            t(
+              "inventory.bambuBatchCameraShowLabel",
+              "Show a Bambu box label to the camera.",
+            ),
+          );
+          feedbackTimerRef.current = null;
+        }, 1800);
+      }
+    },
+    [t],
+  );
+
+  const scanCameraFrame = useCallback(async () => {
+    if (scanBusyRef.current) {
+      return;
+    }
+    const video = videoRef.current;
+    const detector = detectorRef.current;
+    if (!video || !detector || video.readyState < 2) {
+      return;
+    }
+
+    scanBusyRef.current = true;
+    try {
+      const frame = await scanBambuFilamentCodeCameraFrame({
+        detector,
+        videoFrame: video,
+      });
+      if (!mountedRef.current) {
+        return;
+      }
+      if (frame.status === "no_barcode") {
+        emptyCameraFrameCountRef.current += 1;
+        if (emptyCameraFrameCountRef.current >= 3) {
+          seenCameraKeysRef.current = new Set();
+        }
+        return;
+      }
+
+      emptyCameraFrameCountRef.current = 0;
+      const append = appendBambuFilamentCodeCameraScanValues({
+        currentInput: inputRef.current,
+        rawValues: frame.rawValues,
+        seenKeys: seenCameraKeysRef.current,
+      });
+      seenCameraKeysRef.current = append.nextSeenKeys;
+
+      if (append.status === "appended") {
+        inputRef.current = append.input;
+        onInputChange(append.input);
+        showCameraFeedback(
+          append.appendedCodeLines.length > 0 ? "added" : "review",
+          bambuBatchCameraScanMessage(append, t),
+        );
+      } else if (append.status === "duplicate") {
+        showCameraFeedback(
+          "duplicate",
+          t(
+            "inventory.bambuBatchCameraAlreadyAdded",
+            "Already added. Move the label away before scanning another copy.",
+          ),
+        );
+      }
+    } catch (error) {
+      if (!mountedRef.current) {
+        return;
+      }
+      console.error(error);
+      stopCameraStream();
+      setCameraActive(false);
+      showCameraFeedback(
+        "error",
+        t(
+          "inventory.bambuBatchCameraReadError",
+          "Camera scanning stopped after a read error.",
+        ),
+        { sticky: true },
+      );
+    } finally {
+      scanBusyRef.current = false;
+    }
+  }, [onInputChange, showCameraFeedback, stopCameraStream, t]);
+
+  useEffect(() => {
+    if (!cameraActive || typeof window === "undefined") {
+      return undefined;
+    }
+
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (video && stream) {
+      video.srcObject = stream;
+      void video.play().catch((error) => {
+        console.error(error);
+        stopCameraStream();
+        setCameraActive(false);
+        showCameraFeedback(
+          "error",
+          t("inventory.bambuBatchCameraPreviewError", "Could not start camera preview."),
+          { sticky: true },
+        );
+      });
+    }
+
+    const initialScanTimer = window.setTimeout(() => void scanCameraFrame(), 250);
+    scanTimerRef.current = window.setInterval(() => void scanCameraFrame(), 650);
+
+    return () => {
+      window.clearTimeout(initialScanTimer);
+      if (scanTimerRef.current !== null) {
+        window.clearInterval(scanTimerRef.current);
+        scanTimerRef.current = null;
+      }
+    };
+  }, [cameraActive, scanCameraFrame, showCameraFeedback, stopCameraStream, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      stopCameraStream();
+    };
+  }, [stopCameraStream]);
+
+  const stopCamera = useCallback(() => {
+    stopCameraStream();
+    setCameraActive(false);
+    setCameraStatus("idle");
+    setCameraMessage(null);
+  }, [stopCameraStream]);
+
+  const startCamera = useCallback(async () => {
+    if (!tauriAvailable || cameraStarting) {
+      return;
+    }
+
+    stopCameraStream();
+    setCameraStatus("starting");
+    setCameraMessage(t("inventory.bambuBatchCameraStartingMessage", "Starting camera..."));
+
+    const support = bambuFilamentCodeCameraScanSupport();
+    if (!support.available) {
+      setCameraStatus("unsupported");
+      setCameraMessage(
+        support.reason === "barcode_detector"
+          ? t(
+              "inventory.bambuBatchCameraBarcodeUnsupported",
+              "Live barcode detection is not available here. Use image import or type the code instead.",
+            )
+          : t(
+              "inventory.bambuBatchCameraUnsupported",
+              "Camera access is not available here. Use image import or type the code instead.",
+            ),
+      );
+      return;
+    }
+
+    try {
+      const detector = await createBambuFilamentCodeCameraDetector();
+      const stream = await requestBambuFilamentCodeCameraStream();
+      if (!mountedRef.current) {
+        stream?.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      if (!detector || !stream) {
+        setCameraStatus("unsupported");
+        setCameraMessage(
+          t(
+            "inventory.bambuBatchCameraUnsupported",
+            "Camera access is not available here. Use image import or type the code instead.",
+          ),
+        );
+        return;
+      }
+
+      detectorRef.current = detector;
+      streamRef.current = stream;
+      seenCameraKeysRef.current = new Set();
+      emptyCameraFrameCountRef.current = 0;
+      setCameraActive(true);
+      showCameraFeedback(
+        "scanning",
+        t("inventory.bambuBatchCameraShowLabel", "Show a Bambu box label to the camera."),
+        { sticky: true },
+      );
+    } catch (error) {
+      if (!mountedRef.current) {
+        return;
+      }
+      console.error(error);
+      stopCameraStream();
+      setCameraActive(false);
+      const errorName = error instanceof Error ? error.name : "";
+      setCameraStatus("error");
+      setCameraMessage(
+        errorName === "NotAllowedError" || errorName === "PermissionDeniedError"
+          ? t(
+              "inventory.bambuBatchCameraPermissionDenied",
+              "Camera permission was denied. Allow camera access and try again.",
+            )
+          : t("inventory.bambuBatchCameraError", "Could not start the camera."),
+      );
+    }
+  }, [cameraStarting, showCameraFeedback, stopCameraStream, tauriAvailable, t]);
 
   const appendScanInput = () => {
     const append = appendBambuFilamentCodeBatchScanInput({
@@ -386,12 +745,70 @@ function BambuFilamentCodeBatchPanel({
             ? t("inventory.bambuBatchImageScanning", "Reading image...")
             : t("inventory.bambuBatchImageAction", "Add from image")}
         </label>
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80"
+          onClick={cameraActive ? stopCamera : () => void startCamera()}
+          disabled={!tauriAvailable || cameraStarting}
+        >
+          {cameraActive
+            ? t("inventory.bambuBatchCameraStop", "Stop webcam")
+            : cameraStarting
+              ? t("inventory.bambuBatchCameraStartingAction", "Starting camera...")
+              : t("inventory.bambuBatchCameraAction", "Use webcam")}
+        </button>
         {imageScanMessage ? (
           <span className="text-xs leading-5 text-slate-500 dark:text-slate-400">
             {imageScanMessage}
           </span>
         ) : null}
       </div>
+
+      {cameraPanelVisible ? (
+        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700">
+          <div className="relative aspect-video min-h-48 bg-slate-950">
+            {cameraActive ? (
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center px-5 text-center text-sm text-slate-400">
+                {cameraMessage ??
+                  t(
+                    "inventory.bambuBatchCameraPreviewIdle",
+                    "Start the webcam to scan Bambu box labels.",
+                  )}
+              </div>
+            )}
+            <div className="pointer-events-none absolute inset-5 rounded-2xl border border-white/30" />
+            <div className="pointer-events-none absolute left-8 right-8 top-1/2 h-px bg-white/20" />
+            <div className="pointer-events-none absolute bottom-8 top-8 left-1/2 w-px bg-white/20" />
+            <div
+              className={`pointer-events-none absolute left-3 top-3 rounded-full border px-3 py-1 text-xs font-semibold shadow-lg shadow-slate-950/30 ${bambuBatchCameraOverlayClassName(
+                cameraStatus,
+              )}`}
+            >
+              {bambuBatchCameraStatusLabel(cameraStatus, t)}
+            </div>
+            <div
+              className={`pointer-events-none absolute inset-x-3 bottom-3 rounded-xl border px-3 py-2 text-sm font-semibold shadow-lg shadow-slate-950/30 ${bambuBatchCameraOverlayClassName(
+                cameraStatus,
+              )}`}
+              aria-live="polite"
+            >
+              {cameraMessage ??
+                t(
+                  "inventory.bambuBatchCameraShowLabel",
+                  "Show a Bambu box label to the camera.",
+                )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <textarea
         value={input}

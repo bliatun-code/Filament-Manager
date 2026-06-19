@@ -1,0 +1,109 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  appendBambuFilamentCodeCameraScanValues,
+  bambuFilamentCodeCameraScanSupport,
+  requestBambuFilamentCodeCameraStream,
+  scanBambuFilamentCodeCameraFrame,
+} from "./bambu_filament_code_camera_scan";
+import type { BambuFilamentBarcodeDetectorConstructor } from "./bambu_filament_code_image_scan";
+
+function detectorFor(rawValues: string[]): BambuFilamentBarcodeDetectorConstructor {
+  return class {
+    async detect() {
+      return rawValues.map((rawValue) => ({ rawValue }));
+    }
+  };
+}
+
+test("bambuFilamentCodeCameraScanSupport reports missing browser capabilities", () => {
+  assert.deepEqual(
+    bambuFilamentCodeCameraScanSupport({
+      barcodeDetector: null,
+      mediaDevices: {
+        getUserMedia: async () => ({}) as MediaStream,
+      },
+    }),
+    { available: false, reason: "barcode_detector" },
+  );
+  assert.deepEqual(
+    bambuFilamentCodeCameraScanSupport({
+      barcodeDetector: detectorFor(["53400"]),
+      mediaDevices: null,
+    }),
+    { available: false, reason: "camera" },
+  );
+  assert.deepEqual(
+    bambuFilamentCodeCameraScanSupport({
+      barcodeDetector: detectorFor(["53400"]),
+      mediaDevices: {
+        getUserMedia: async () => ({}) as MediaStream,
+      },
+    }),
+    { available: true, reason: null },
+  );
+});
+
+test("requestBambuFilamentCodeCameraStream asks for an environment-facing video stream", async () => {
+  let constraints: MediaStreamConstraints | null = null;
+  const fakeStream = { id: "stream" } as unknown as MediaStream;
+  const stream = await requestBambuFilamentCodeCameraStream({
+    mediaDevices: {
+      getUserMedia: async (requestedConstraints) => {
+        constraints = requestedConstraints;
+        return fakeStream;
+      },
+    },
+  });
+
+  assert.equal(stream, fakeStream);
+  assert.deepEqual(constraints, {
+    audio: false,
+    video: {
+      facingMode: { ideal: "environment" },
+      height: { ideal: 720 },
+      width: { ideal: 1280 },
+    },
+  });
+});
+
+test("scanBambuFilamentCodeCameraFrame returns trimmed barcode values", async () => {
+  const ready = await scanBambuFilamentCodeCameraFrame({
+    detector: new (detectorFor([" Filament Code: 53400 ", ""]))(),
+    videoFrame: {},
+  });
+  const empty = await scanBambuFilamentCodeCameraFrame({
+    detector: new (detectorFor([""]))(),
+    videoFrame: {},
+  });
+
+  assert.deepEqual(ready, {
+    status: "ready",
+    rawValues: ["Filament Code: 53400"],
+  });
+  assert.deepEqual(empty, {
+    status: "no_barcode",
+    rawValues: [],
+  });
+});
+
+test("appendBambuFilamentCodeCameraScanValues deduplicates a continuous camera session", () => {
+  const first = appendBambuFilamentCodeCameraScanValues({
+    currentInput: "",
+    rawValues: ["Filament Code: 53400"],
+  });
+  const second = appendBambuFilamentCodeCameraScanValues({
+    currentInput: first.input,
+    rawValues: ["53400"],
+    seenKeys: first.nextSeenKeys,
+  });
+
+  assert.equal(first.status, "appended");
+  assert.deepEqual(first.appendedCodeLines, ["53400"]);
+  assert.equal(first.input, "53400");
+
+  assert.equal(second.status, "duplicate");
+  assert.deepEqual(second.appendedLines, []);
+  assert.equal(second.input, "53400");
+});

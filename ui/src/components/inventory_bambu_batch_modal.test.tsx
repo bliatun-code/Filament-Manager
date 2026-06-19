@@ -100,6 +100,7 @@ test("InventoryBambuBatchModal owns Bambu code help and batch controls without s
   assert.match(html, /Scan or type one code/);
   assert.match(html, /Add to batch/);
   assert.match(html, /Add from image/);
+  assert.match(html, /Use webcam/);
   assert.match(html, /All pasted codes are ready/);
   assert.match(html, /Add ready matches/);
   assert.match(html, /TPU for AMS · Yellow \(53400\)/);
@@ -107,7 +108,6 @@ test("InventoryBambuBatchModal owns Bambu code help and batch controls without s
   assert.doesNotMatch(html, /Ownership/);
   assert.doesNotMatch(html, /Add current selection to wishlist/);
   assert.doesNotMatch(html, /Add spool to inventory/);
-  assert.doesNotMatch(html, /webcam/i);
 });
 
 test("InventoryBambuBatchModal localizes batch controls in Norwegian", () => {
@@ -123,6 +123,7 @@ test("InventoryBambuBatchModal localizes batch controls in Norwegian", () => {
   assert.match(html, /Filament Code-batch/);
   assert.match(html, /Legg til i batch/);
   assert.match(html, /Legg til fra bilde/);
+  assert.match(html, /Bruk webkamera/);
   assert.match(html, /1 kan legges til/);
   assert.match(html, /Alle innlimte koder er klare/);
   assert.match(html, /Legg til klare treff/);

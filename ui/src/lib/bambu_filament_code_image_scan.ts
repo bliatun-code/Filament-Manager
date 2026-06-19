@@ -3,12 +3,12 @@ import {
   type BambuFilamentCodeBatchScanAppendResult,
 } from "./bambu_filament_code_batch";
 
-type BarcodeDetection = {
+export type BambuFilamentBarcodeDetection = {
   rawValue?: string | null;
 };
 
 export type BambuFilamentBarcodeDetector = {
-  detect: (image: unknown) => Promise<BarcodeDetection[]>;
+  detect: (image: unknown) => Promise<BambuFilamentBarcodeDetection[]>;
 };
 
 export type BambuFilamentBarcodeDetectorConstructor = {
@@ -34,12 +34,12 @@ export type BambuFilamentCodeImageScanResult =
       append: null;
     };
 
-type BambuFilamentCodeImageScanDependencies = {
+export type BambuFilamentCodeImageScanDependencies = {
   barcodeDetector?: BambuFilamentBarcodeDetectorConstructor | null;
   createImageBitmap?: ((file: Blob) => Promise<BambuFilamentImageBitmap>) | null;
 };
 
-const BARCODE_FORMATS = [
+export const BAMBU_FILAMENT_BARCODE_FORMATS = [
   "qr_code",
   "data_matrix",
   "code_128",
@@ -54,20 +54,20 @@ async function supportedBarcodeFormats(
   detectorConstructor: BambuFilamentBarcodeDetectorConstructor,
 ): Promise<string[]> {
   if (typeof detectorConstructor.getSupportedFormats !== "function") {
-    return BARCODE_FORMATS;
+    return BAMBU_FILAMENT_BARCODE_FORMATS;
   }
   try {
     const supportedFormats = await detectorConstructor.getSupportedFormats();
     const supported = new Set(
       supportedFormats.map((format) => String(format).trim()).filter(Boolean),
     );
-    return BARCODE_FORMATS.filter((format) => supported.has(format));
+    return BAMBU_FILAMENT_BARCODE_FORMATS.filter((format) => supported.has(format));
   } catch {
-    return BARCODE_FORMATS;
+    return BAMBU_FILAMENT_BARCODE_FORMATS;
   }
 }
 
-async function createBarcodeDetector(
+export async function createBambuFilamentBarcodeDetector(
   detectorConstructor: BambuFilamentBarcodeDetectorConstructor,
 ): Promise<BambuFilamentBarcodeDetector> {
   const formats = await supportedBarcodeFormats(detectorConstructor);
@@ -82,7 +82,9 @@ async function createBarcodeDetector(
   }
 }
 
-function globalBarcodeDetector(): BambuFilamentBarcodeDetectorConstructor | undefined {
+export function globalBambuFilamentBarcodeDetector():
+  | BambuFilamentBarcodeDetectorConstructor
+  | undefined {
   return (globalThis as typeof globalThis & {
     BarcodeDetector?: BambuFilamentBarcodeDetectorConstructor;
   }).BarcodeDetector;
@@ -93,7 +95,7 @@ function resolveBarcodeDetector(
 ): BambuFilamentBarcodeDetectorConstructor | null | undefined {
   return Object.prototype.hasOwnProperty.call(dependencies, "barcodeDetector")
     ? dependencies.barcodeDetector
-    : globalBarcodeDetector();
+    : globalBambuFilamentBarcodeDetector();
 }
 
 function resolveCreateImageBitmap(
@@ -132,7 +134,7 @@ export async function scanBambuFilamentCodesFromImage(input: {
 
   const bitmap = await createBitmap(input.file);
   try {
-    const detector = await createBarcodeDetector(detectorConstructor);
+    const detector = await createBambuFilamentBarcodeDetector(detectorConstructor);
     const rawValues = (await detector.detect(bitmap))
       .map((detection) => String(detection.rawValue ?? "").trim())
       .filter(Boolean);

@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   appendBambuFilamentCodeBatchScanInput,
   appendBambuFilamentCodeBatchScanValues,
+  appendBambuFilamentCodeBatchScanValuesOnce,
   buildBambuFilamentCodeBatch,
   buildBambuFilamentCodeBatchCreateState,
 } from "./bambu_filament_code_batch";
@@ -247,6 +248,37 @@ test("appendBambuFilamentCodeBatchScanValues keeps mixed image barcode values re
   );
   assert.equal(batch.blockedRows[0]?.sourceText, "6977252426206");
   assert.equal(batch.blockedRows[0]?.lookup.status, "no_code");
+});
+
+test("appendBambuFilamentCodeBatchScanValuesOnce adds each live scan value once per session", () => {
+  const firstAppend = appendBambuFilamentCodeBatchScanValuesOnce({
+    currentInput: "",
+    scanValues: ["Filament Code: 53400", "6977252426206"],
+  });
+  const duplicateAppend = appendBambuFilamentCodeBatchScanValuesOnce({
+    currentInput: firstAppend.input,
+    scanValues: ["53400", "6977252426206"],
+    seenKeys: firstAppend.nextSeenKeys,
+  });
+  const nextAppend = appendBambuFilamentCodeBatchScanValuesOnce({
+    currentInput: duplicateAppend.input,
+    scanValues: ["Filament Code: 53600"],
+    seenKeys: duplicateAppend.nextSeenKeys,
+  });
+
+  assert.equal(firstAppend.status, "appended");
+  assert.deepEqual(firstAppend.appendedLines, ["53400", "6977252426206"]);
+  assert.deepEqual(firstAppend.appendedKeys, ["code:53400", "review:6977252426206"]);
+  assert.equal(firstAppend.input, "53400\n6977252426206");
+
+  assert.equal(duplicateAppend.status, "duplicate");
+  assert.deepEqual(duplicateAppend.appendedLines, []);
+  assert.deepEqual(duplicateAppend.skippedLines, ["53400", "6977252426206"]);
+  assert.equal(duplicateAppend.input, "53400\n6977252426206");
+
+  assert.equal(nextAppend.status, "appended");
+  assert.deepEqual(nextAppend.appendedLines, ["53600"]);
+  assert.equal(nextAppend.input, "53400\n6977252426206\n53600");
 });
 
 test("buildBambuFilamentCodeBatchCreateState reports ready, partial, and borrowed-in blockers", () => {
