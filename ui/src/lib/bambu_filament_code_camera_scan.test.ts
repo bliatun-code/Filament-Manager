@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  applyBambuFilamentCodeCameraTrackHints,
   appendBambuFilamentCodeCameraScanValues,
   bambuFilamentCodeCameraFrameReady,
   bambuFilamentCodeCameraScanSupport,
@@ -65,10 +66,40 @@ test("requestBambuFilamentCodeCameraStream asks for an environment-facing video 
   assert.deepEqual(constraints, {
     audio: false,
     video: {
+      aspectRatio: { ideal: 16 / 9 },
       facingMode: { ideal: "environment" },
+      frameRate: { ideal: 30 },
       height: { ideal: 1080 },
       width: { ideal: 1920 },
     },
+  });
+});
+
+test("applyBambuFilamentCodeCameraTrackHints asks for continuous camera tuning when supported", async () => {
+  let appliedConstraints: MediaTrackConstraints | null = null;
+
+  await applyBambuFilamentCodeCameraTrackHints({
+    getVideoTracks: () =>
+      [
+        {
+          applyConstraints: async (constraints) => {
+            appliedConstraints = constraints;
+          },
+          getCapabilities: () => ({
+            exposureMode: ["manual", "continuous"],
+            focusMode: ["manual", "continuous"],
+            whiteBalanceMode: ["manual", "continuous"],
+          }),
+        } as unknown as MediaStreamTrack,
+      ],
+  });
+
+  assert.deepEqual(appliedConstraints, {
+    advanced: [
+      { focusMode: "continuous" },
+      { exposureMode: "continuous" },
+      { whiteBalanceMode: "continuous" },
+    ],
   });
 });
 

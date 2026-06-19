@@ -31,7 +31,9 @@ export type BambuFilamentCodeCameraAppendResult =
 export const BAMBU_FILAMENT_CODE_CAMERA_CONSTRAINTS: MediaStreamConstraints = {
   audio: false,
   video: {
+    aspectRatio: { ideal: 16 / 9 },
     facingMode: { ideal: "environment" },
+    frameRate: { ideal: 30 },
     height: { ideal: 1080 },
     width: { ideal: 1920 },
   },
@@ -101,7 +103,46 @@ export async function requestBambuFilamentCodeCameraStream(
   if (typeof mediaDevices?.getUserMedia !== "function") {
     return null;
   }
-  return mediaDevices.getUserMedia(BAMBU_FILAMENT_CODE_CAMERA_CONSTRAINTS);
+  const stream = await mediaDevices.getUserMedia(BAMBU_FILAMENT_CODE_CAMERA_CONSTRAINTS);
+  await applyBambuFilamentCodeCameraTrackHints(stream);
+  return stream;
+}
+
+export async function applyBambuFilamentCodeCameraTrackHints(
+  stream: Pick<MediaStream, "getVideoTracks">,
+): Promise<void> {
+  const track = stream.getVideoTracks?.()[0];
+  if (!track || typeof track.applyConstraints !== "function") {
+    return;
+  }
+
+  const capabilities =
+    typeof track.getCapabilities === "function" ? track.getCapabilities() : null;
+  const advanced: Array<MediaTrackConstraintSet & Record<string, unknown>> = [];
+  const supportsCapabilityValue = (name: string, value: string) => {
+    const supported = (capabilities as Record<string, unknown> | null)?.[name];
+    return Array.isArray(supported) && supported.includes(value);
+  };
+
+  if (supportsCapabilityValue("focusMode", "continuous")) {
+    advanced.push({ focusMode: "continuous" });
+  }
+  if (supportsCapabilityValue("exposureMode", "continuous")) {
+    advanced.push({ exposureMode: "continuous" });
+  }
+  if (supportsCapabilityValue("whiteBalanceMode", "continuous")) {
+    advanced.push({ whiteBalanceMode: "continuous" });
+  }
+
+  if (advanced.length === 0) {
+    return;
+  }
+
+  try {
+    await track.applyConstraints({ advanced });
+  } catch {
+    // Camera capability hints are best-effort; scanning still works without them.
+  }
 }
 
 export async function scanBambuFilamentCodeCameraFrame(input: {

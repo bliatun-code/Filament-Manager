@@ -340,7 +340,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchCameraStartingMessage: "Starting camera...",
       bambuBatchCameraScanning: "Scanning",
       bambuBatchCameraShowLabel:
-        "Hold the Filament Code or barcode flat inside the horizontal guide.",
+        "Hold the Filament Code or barcode flat in the guide, far enough away that the bars stay sharp.",
       bambuBatchCameraAdded: "Added",
       bambuBatchCameraReview: "Review",
       bambuBatchCameraDuplicate: "Already added",
@@ -1901,7 +1901,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchCameraStartingMessage: "Starter kamera...",
       bambuBatchCameraScanning: "Skanner",
       bambuBatchCameraShowLabel:
-        "Hold Filament Code eller strekkoden flatt i den horisontale guiden.",
+        "Hold Filament Code eller strekkoden flatt i guiden, langt nok unna til at strekene er skarpe.",
       bambuBatchCameraAdded: "Lagt til",
       bambuBatchCameraReview: "Til sjekk",
       bambuBatchCameraDuplicate: "Allerede lagt til",

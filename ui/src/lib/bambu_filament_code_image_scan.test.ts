@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   bambuFilamentCodeImageScanAvailable,
   createBambuFilamentBarcodeScanner,
+  decodeBambuEan13BarcodeFromCanvas,
   isBambuFilamentBarcodeDecodeMiss,
   type BambuFilamentBarcodeDetectorConstructor,
   scanBambuFilamentCodesFromImage,
@@ -15,6 +16,113 @@ function detectorFor(rawValues: string[]): BambuFilamentBarcodeDetectorConstruct
       return rawValues.map((rawValue) => ({ rawValue }));
     }
   };
+}
+
+const TEST_EAN13_LEFT_ODD: Record<string, string> = {
+  "0": "0001101",
+  "1": "0011001",
+  "2": "0010011",
+  "3": "0111101",
+  "4": "0100011",
+  "5": "0110001",
+  "6": "0101111",
+  "7": "0111011",
+  "8": "0110111",
+  "9": "0001011",
+};
+
+const TEST_EAN13_LEFT_EVEN: Record<string, string> = {
+  "0": "0100111",
+  "1": "0110011",
+  "2": "0011011",
+  "3": "0100001",
+  "4": "0011101",
+  "5": "0111001",
+  "6": "0000101",
+  "7": "0010001",
+  "8": "0001001",
+  "9": "0010111",
+};
+
+const TEST_EAN13_RIGHT: Record<string, string> = {
+  "0": "1110010",
+  "1": "1100110",
+  "2": "1101100",
+  "3": "1000010",
+  "4": "1011100",
+  "5": "1001110",
+  "6": "1010000",
+  "7": "1000100",
+  "8": "1001000",
+  "9": "1110100",
+};
+
+const TEST_EAN13_PARITY: Record<string, string> = {
+  "0": "LLLLLL",
+  "1": "LLGLGG",
+  "2": "LLGGLG",
+  "3": "LLGGGL",
+  "4": "LGLLGG",
+  "5": "LGGLLG",
+  "6": "LGGGLL",
+  "7": "LGLGLG",
+  "8": "LGLGGL",
+  "9": "LGGLGL",
+};
+
+function ean13BitPattern(code: string): string {
+  const digits = code.split("");
+  const parity = TEST_EAN13_PARITY[digits[0] ?? ""];
+  assert.ok(parity);
+
+  let pattern = "101";
+  digits.slice(1, 7).forEach((digit, index) => {
+    pattern +=
+      parity[index] === "L"
+        ? TEST_EAN13_LEFT_ODD[digit]
+        : TEST_EAN13_LEFT_EVEN[digit];
+  });
+  pattern += "01010";
+  digits.slice(7).forEach((digit) => {
+    pattern += TEST_EAN13_RIGHT[digit];
+  });
+  pattern += "101";
+  return pattern;
+}
+
+function fakeEan13Canvas(code: string): HTMLCanvasElement {
+  const moduleWidth = 5;
+  const quietModules = 12;
+  const barcodePattern = ean13BitPattern(code);
+  const width = (barcodePattern.length + quietModules * 2) * moduleWidth;
+  const height = 96;
+  const data = new Uint8ClampedArray(width * height * 4).fill(255);
+  const barcodeTop = 16;
+  const barcodeBottom = 82;
+
+  for (let moduleIndex = 0; moduleIndex < barcodePattern.length; moduleIndex += 1) {
+    if (barcodePattern[moduleIndex] !== "1") {
+      continue;
+    }
+    const startX = (quietModules + moduleIndex) * moduleWidth;
+    for (let y = barcodeTop; y < barcodeBottom; y += 1) {
+      for (let x = startX; x < startX + moduleWidth; x += 1) {
+        const offset = (y * width + x) * 4;
+        data[offset] = 0;
+        data[offset + 1] = 0;
+        data[offset + 2] = 0;
+        data[offset + 3] = 255;
+      }
+    }
+  }
+
+  return {
+    width,
+    height,
+    getContext: () => ({
+      getImageData: () => ({ data }),
+    }),
+  } as unknown as HTMLCanvasElement;
 }
 
 test("isBambuFilamentBarcodeDecodeMiss recognizes ZXing miss shapes", () => {
@@ -158,6 +266,64 @@ test("createBambuFilamentBarcodeScanner lets native one dimensional formats win 
 
   assert.deepEqual(await scanner?.detect({}), [{ rawValue: "6975337031338" }]);
   assert.deepEqual(calls, [["ean_13"]]);
+});
+
+test("createBambuFilamentBarcodeScanner tries native barcode crops after empty full-frame scans", async () => {
+  const previousDocument = (globalThis as { document?: unknown }).document;
+  const previousCanvas = (globalThis as { HTMLCanvasElement?: unknown })
+    .HTMLCanvasElement;
+  const calls: string[] = [];
+
+  class FakeCanvas {
+    height = 100;
+    width = 100;
+
+    constructor(readonly label: string) {}
+
+    getContext() {
+      return {
+        drawImage: () => {},
+        filter: "",
+        imageSmoothingEnabled: true,
+      };
+    }
+  }
+
+  (globalThis as { HTMLCanvasElement?: unknown }).HTMLCanvasElement = FakeCanvas;
+  (globalThis as { document?: unknown }).document = {
+    createElement: () => new FakeCanvas("crop"),
+  };
+
+  const Detector = class {
+    async detect(image: unknown) {
+      const label = (image as { label?: string }).label ?? "unknown";
+      calls.push(label);
+      return label === "crop" ? [{ rawValue: "6975337031338" }] : [];
+    }
+  };
+
+  try {
+    const scanner = await createBambuFilamentBarcodeScanner({
+      barcodeDetector: Detector,
+      fallbackBarcodeScanner: null,
+    });
+
+    assert.deepEqual(await scanner?.detect(new FakeCanvas("source")), [
+      { rawValue: "6975337031338" },
+    ]);
+    assert.deepEqual(calls, ["source", "crop"]);
+  } finally {
+    (globalThis as { document?: unknown }).document = previousDocument;
+    (globalThis as { HTMLCanvasElement?: unknown }).HTMLCanvasElement =
+      previousCanvas;
+  }
+});
+
+test("decodeBambuEan13BarcodeFromCanvas reads Bambu box EAN rows", () => {
+  assert.equal(
+    decodeBambuEan13BarcodeFromCanvas(fakeEan13Canvas("6975337031338")),
+    "6975337031338",
+  );
 });
 
 test("scanBambuFilamentCodesFromImage keeps mixed barcode values in the batch review model", async () => {
