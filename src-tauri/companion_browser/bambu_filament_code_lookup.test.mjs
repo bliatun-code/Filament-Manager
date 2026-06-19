@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   bambuFilamentCodeLookupRequiresExplicitSelection,
@@ -8,6 +9,16 @@ import {
   extractBambuFilamentCode,
   extractBambuFilamentCodes,
 } from "./bambu_filament_code_lookup.js";
+
+const sharedFixture = JSON.parse(
+  readFileSync(
+    new URL(
+      "../../test_fixtures/bambu_filament_code_lookup_cases.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 
 function master(overrides = {}) {
   return {
@@ -30,6 +41,17 @@ test("extractBambuFilamentCode reads standalone five digit filament codes only",
   assert.equal(extractBambuFilamentCode("TPU for AMS Yellow (53400)"), "53400");
   assert.equal(extractBambuFilamentCode("6977252426206"), null);
   assert.equal(extractBambuFilamentCode("U02-Y0-1.75-1000-SPL"), null);
+});
+
+test("shared Bambu filament code extraction cases match Companion expectations", () => {
+  for (const testCase of sharedFixture.extractCases) {
+    assert.deepEqual(
+      extractBambuFilamentCodes(testCase.input),
+      testCase.codes,
+      testCase.input,
+    );
+    assert.equal(extractBambuFilamentCode(testCase.input), testCase.first, testCase.input);
+  }
 });
 
 test("extractBambuFilamentCodes reads multiple standalone five digit filament codes", () => {
@@ -72,6 +94,38 @@ test("buildBambuFilamentCodeLookup reports single and multiple active matches", 
     "petg-black",
     "pla-black",
   ]);
+});
+
+test("shared Bambu filament code lookup cases match Companion expectations", () => {
+  for (const testCase of sharedFixture.lookupCases) {
+    const lookup = buildBambuFilamentCodeLookup(
+      sharedFixture.masters,
+      testCase.rawQuery,
+    );
+
+    assert.equal(lookup.code, testCase.code, testCase.name);
+    assert.equal(lookup.status, testCase.status, testCase.name);
+    assert.deepEqual(
+      lookup.matches.map((match) => match.id),
+      testCase.matches,
+      testCase.name,
+    );
+    assert.deepEqual(
+      lookup.activeMatches.map((match) => match.id),
+      testCase.activeMatches,
+      testCase.name,
+    );
+    assert.deepEqual(
+      lookup.discontinuedMatches.map((match) => match.id),
+      testCase.discontinuedMatches,
+      testCase.name,
+    );
+    assert.equal(
+      bambuFilamentCodeLookupRequiresExplicitSelection(lookup),
+      testCase.requiresExplicitSelection,
+      testCase.name,
+    );
+  }
 });
 
 test("buildBambuFilamentCodeLookup prefers one active match over discontinued history", () => {

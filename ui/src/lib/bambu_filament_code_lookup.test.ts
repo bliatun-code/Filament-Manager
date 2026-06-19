@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -7,8 +8,38 @@ import {
   catalogMasterBambuFilamentCode,
   extractBambuFilamentCode,
   extractBambuFilamentCodes,
+  type BambuFilamentCodeLookupStatus,
 } from "./bambu_filament_code_lookup";
 import type { MasterCatalogRow } from "./tauri_client";
+
+type SharedLookupFixture = {
+  extractCases: Array<{
+    input: string;
+    codes: string[];
+    first: string | null;
+  }>;
+  masters: MasterCatalogRow[];
+  lookupCases: Array<{
+    name: string;
+    rawQuery: string;
+    code: string | null;
+    status: BambuFilamentCodeLookupStatus;
+    matches: string[];
+    activeMatches: string[];
+    discontinuedMatches: string[];
+    requiresExplicitSelection: boolean;
+  }>;
+};
+
+const sharedFixture = JSON.parse(
+  readFileSync(
+    new URL(
+      "../../../test_fixtures/bambu_filament_code_lookup_cases.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+) as SharedLookupFixture;
 
 function master(overrides: Partial<MasterCatalogRow> = {}): MasterCatalogRow {
   return {
@@ -31,6 +62,17 @@ test("extractBambuFilamentCode reads standalone five digit filament codes only",
   assert.equal(extractBambuFilamentCode("TPU for AMS Yellow (53400)"), "53400");
   assert.equal(extractBambuFilamentCode("6977252426206"), null);
   assert.equal(extractBambuFilamentCode("U02-Y0-1.75-1000-SPL"), null);
+});
+
+test("shared Bambu filament code extraction cases match desktop expectations", () => {
+  for (const testCase of sharedFixture.extractCases) {
+    assert.deepEqual(
+      extractBambuFilamentCodes(testCase.input),
+      testCase.codes,
+      testCase.input,
+    );
+    assert.equal(extractBambuFilamentCode(testCase.input), testCase.first, testCase.input);
+  }
 });
 
 test("extractBambuFilamentCodes reads multiple standalone five digit filament codes", () => {
@@ -65,6 +107,38 @@ test("buildBambuFilamentCodeLookup reports single active match", () => {
     lookup.activeMatches.map((match) => match.id),
     ["yellow"],
   );
+});
+
+test("shared Bambu filament code lookup cases match desktop expectations", () => {
+  for (const testCase of sharedFixture.lookupCases) {
+    const lookup = buildBambuFilamentCodeLookup(
+      sharedFixture.masters,
+      testCase.rawQuery,
+    );
+
+    assert.equal(lookup.code, testCase.code, testCase.name);
+    assert.equal(lookup.status, testCase.status, testCase.name);
+    assert.deepEqual(
+      lookup.matches.map((match) => match.id),
+      testCase.matches,
+      testCase.name,
+    );
+    assert.deepEqual(
+      lookup.activeMatches.map((match) => match.id),
+      testCase.activeMatches,
+      testCase.name,
+    );
+    assert.deepEqual(
+      lookup.discontinuedMatches.map((match) => match.id),
+      testCase.discontinuedMatches,
+      testCase.name,
+    );
+    assert.equal(
+      bambuFilamentCodeLookupRequiresExplicitSelection(lookup),
+      testCase.requiresExplicitSelection,
+      testCase.name,
+    );
+  }
 });
 
 test("buildBambuFilamentCodeLookup keeps ambiguous reused codes visible", () => {

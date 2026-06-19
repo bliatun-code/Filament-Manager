@@ -1,0 +1,177 @@
+{
+  "extractCases": [
+    {
+      "input": "Filament Code: 53400",
+      "codes": ["53400"],
+      "first": "53400"
+    },
+    {
+      "input": "TPU for AMS Yellow (53400)",
+      "codes": ["53400"],
+      "first": "53400"
+    },
+    {
+      "input": "53400, 53600\n65103",
+      "codes": ["53400", "53600", "65103"],
+      "first": "53400"
+    },
+    {
+      "input": "6977252426206 123456",
+      "codes": [],
+      "first": null
+    },
+    {
+      "input": "U02-Y0-1.75-1000-SPL",
+      "codes": [],
+      "first": null
+    }
+  ],
+  "masters": [
+    {
+      "id": "yellow",
+      "material": "TPU",
+      "filament_name": "TPU for AMS",
+      "color_name": "Yellow (53400)",
+      "hex_color": "#FACC15",
+      "product_url": null,
+      "default_weight": 1000,
+      "vendor": "Bambu Lab",
+      "is_discontinued": false,
+      "discontinued_at": null
+    },
+    {
+      "id": "old-yellow",
+      "material": "PLA",
+      "filament_name": "PLA Basic",
+      "color_name": "Old Yellow (53400)",
+      "hex_color": "#EAB308",
+      "product_url": null,
+      "default_weight": 1000,
+      "vendor": "Bambu Lab",
+      "is_discontinued": true,
+      "discontinued_at": "2024-01-01T00:00:00Z"
+    },
+    {
+      "id": "blue",
+      "material": "TPU",
+      "filament_name": "TPU for AMS",
+      "color_name": "Blue (53600)",
+      "hex_color": "#2563EB",
+      "product_url": null,
+      "default_weight": 1000,
+      "vendor": "Bambu Lab",
+      "is_discontinued": false,
+      "discontinued_at": null
+    },
+    {
+      "id": "petg-black",
+      "material": "PETG",
+      "filament_name": "PETG HF",
+      "color_name": "Black (65103)",
+      "hex_color": "#111111",
+      "product_url": null,
+      "default_weight": 1000,
+      "vendor": "Bambu",
+      "is_discontinued": false,
+      "discontinued_at": null
+    },
+    {
+      "id": "pla-black",
+      "material": "PLA",
+      "filament_name": "PLA Basic",
+      "color_name": "Black (65103)",
+      "hex_color": "#000000",
+      "product_url": null,
+      "default_weight": 1000,
+      "vendor": "Bambu",
+      "is_discontinued": false,
+      "discontinued_at": null
+    },
+    {
+      "id": "archived-red",
+      "material": "PLA",
+      "filament_name": "PLA Basic",
+      "color_name": "Old Red (12345)",
+      "hex_color": "#EF4444",
+      "product_url": null,
+      "default_weight": 1000,
+      "vendor": "Bambu",
+      "is_discontinued": true,
+      "discontinued_at": "2024-01-01T00:00:00Z"
+    },
+    {
+      "id": "esun-code-lookalike",
+      "material": "PLA",
+      "filament_name": "PLA+",
+      "color_name": "Black (53400)",
+      "hex_color": "#020617",
+      "product_url": null,
+      "default_weight": 1000,
+      "vendor": "eSUN",
+      "is_discontinued": false,
+      "discontinued_at": null
+    }
+  ],
+  "lookupCases": [
+    {
+      "name": "single active match ignores non-Bambu code lookalikes",
+      "rawQuery": "Filament Code: 53600",
+      "code": "53600",
+      "status": "single_active",
+      "matches": ["blue"],
+      "activeMatches": ["blue"],
+      "discontinuedMatches": [],
+      "requiresExplicitSelection": false
+    },
+    {
+      "name": "active match stays selected when discontinued history exists",
+      "rawQuery": "53400",
+      "code": "53400",
+      "status": "single_active",
+      "matches": ["yellow", "old-yellow"],
+      "activeMatches": ["yellow"],
+      "discontinuedMatches": ["old-yellow"],
+      "requiresExplicitSelection": false
+    },
+    {
+      "name": "ambiguous active matches require manual selection",
+      "rawQuery": "65103",
+      "code": "65103",
+      "status": "multiple_active",
+      "matches": ["petg-black", "pla-black"],
+      "activeMatches": ["petg-black", "pla-black"],
+      "discontinuedMatches": [],
+      "requiresExplicitSelection": true
+    },
+    {
+      "name": "discontinued-only matches require manual selection",
+      "rawQuery": "12345",
+      "code": "12345",
+      "status": "discontinued_only",
+      "matches": ["archived-red"],
+      "activeMatches": [],
+      "discontinuedMatches": ["archived-red"],
+      "requiresExplicitSelection": true
+    },
+    {
+      "name": "missing code reports no code",
+      "rawQuery": "6977252426206",
+      "code": null,
+      "status": "no_code",
+      "matches": [],
+      "activeMatches": [],
+      "discontinuedMatches": [],
+      "requiresExplicitSelection": false
+    },
+    {
+      "name": "unknown five digit code reports no match",
+      "rawQuery": "99999",
+      "code": "99999",
+      "status": "no_match",
+      "matches": [],
+      "activeMatches": [],
+      "discontinuedMatches": [],
+      "requiresExplicitSelection": false
+    }
+  ]
+}
