@@ -326,10 +326,11 @@ fn find_inventory_candidates<'a>(
             }
             let material_match =
                 eq_ignore_case(tray.filament_type.as_deref(), Some(&row.master.material));
-            let name_match = live_name_matches(
-                tray.filament_name.as_deref(),
-                Some(&row.master.filament_name),
-            );
+            let observed_name = tray
+                .filament_name
+                .as_deref()
+                .or(tray.tray_id_name.as_deref());
+            let name_match = live_name_matches(observed_name, Some(&row.master.filament_name));
             let color_match = live_color_matches_swatch(
                 tray.color_hex.as_deref(),
                 row.master.hex_color.as_deref(),

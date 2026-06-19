@@ -738,6 +738,37 @@ fn apply_tray_match_status_keeps_bambu_name_metadata_candidates_without_color_fo
 }
 
 #[test]
+fn apply_tray_match_status_uses_tray_preset_name_for_unknown_rfid_inventory_hint() {
+    let mut slot = make_slot();
+    slot.spool_id = None;
+    let overview = make_overview(slot);
+    let mut tray = BambuLiveObservedTrayRow {
+        filament_type: None,
+        filament_name: None,
+        tray_id_name: Some("Bambu PLA Matte @BBL P1S 0.4 nozzle".to_string()),
+        color_hex: Some("#000000".to_string()),
+        ..make_tray()
+    };
+    let mut bambu_candidate = make_inventory_spool("bambu_black", None);
+    bambu_candidate.master.vendor = "Bambu".to_string();
+    bambu_candidate.master.filament_name = "PLA Matte".to_string();
+    bambu_candidate.master.color_name = "Black".to_string();
+    bambu_candidate.master.hex_color = Some("#000000".to_string());
+
+    apply_tray_match_status(&mut tray, &overview, &[bambu_candidate]);
+
+    assert_eq!(tray.match_status.as_deref(), Some("unknown_rfid"));
+    assert_eq!(
+        tray.matched_inventory_mode.as_deref(),
+        Some("inventory_metadata")
+    );
+    assert_eq!(
+        tray.matched_inventory_spool_id.as_deref(),
+        Some("bambu_black")
+    );
+}
+
+#[test]
 fn apply_tray_match_status_keeps_saved_rfid_metadata_candidates_without_unknown_rfid() {
     let mut slot = make_slot();
     slot.spool_id = None;
