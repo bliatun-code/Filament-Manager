@@ -116,14 +116,26 @@ export function buildSettingsBambuLiveInventoryCandidateCards({
   candidates: SpoolWithMasterRow[];
   t: TranslateFn;
 }) {
-  return candidates.slice(0, 3).map((candidate) => ({
-    key: candidate.spool.id,
-    subtitle: candidate.spool.rfid_tag?.trim()
-      ? `${t("settings.bambuLiveCandidateRfidSaved", "RFID saved")} · ${candidate.spool.id}`
-      : `${t("settings.bambuLiveCandidateNoRfidSaved", "No RFID saved")} · ${candidate.spool.id}`,
-    swatchColor: candidate.master.hex_color,
-    title: `${candidate.master.filament_name} · ${candidate.master.color_name}`,
-  }));
+  return candidates.slice(0, 3).map((candidate) => {
+    const rfidLabel = candidate.spool.rfid_tag?.trim()
+      ? t("settings.bambuLiveCandidateRfidSaved", "RFID saved")
+      : t("settings.bambuLiveCandidateNoRfidSaved", "No RFID saved");
+    const ownershipType = (candidate.spool.ownership_type ?? "").trim().toUpperCase();
+    const ownerName = candidate.spool.owner_name?.trim();
+    const ownershipLabel =
+      ownershipType === "BORROWED_IN"
+        ? ownerName
+          ? `${t("inventory.borrowedIn", "Borrowed in")} · ${ownerName}`
+          : t("inventory.borrowedIn", "Borrowed in")
+        : null;
+
+    return {
+      key: candidate.spool.id,
+      subtitle: [rfidLabel, ownershipLabel, candidate.spool.id].filter(Boolean).join(" · "),
+      swatchColor: candidate.master.hex_color,
+      title: `${candidate.master.filament_name} · ${candidate.master.color_name}`,
+    };
+  });
 }
 
 export function buildSettingsBambuLiveCatalogCandidateCards({

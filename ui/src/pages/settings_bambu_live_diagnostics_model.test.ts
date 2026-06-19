@@ -649,6 +649,8 @@ test("Bambu live inventory candidate cards format at most three candidates", () 
           master_id: "master-2",
           rfid_tag: "",
           status: "IN_STOCK",
+          ownership_type: "BORROWED_IN",
+          owner_name: "Ada",
         },
       }),
       createSpoolRow({
@@ -699,7 +701,11 @@ test("Bambu live inventory candidate cards format at most three candidates", () 
   );
   assert.deepEqual(
     candidates.map((candidate) => candidate.subtitle),
-    ["RFID saved · spool-1", "No RFID saved · spool-2", "RFID saved · spool-3"],
+    [
+      "RFID saved · spool-1",
+      "No RFID saved · Borrowed in · Ada · spool-2",
+      "RFID saved · spool-3",
+    ],
   );
   assert.ok(candidates.every((candidate) => candidate.swatchColor));
 });
