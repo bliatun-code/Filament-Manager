@@ -941,6 +941,28 @@
   padding: 0.72rem;
 }
 
+.add-spool-code-details {
+  background: color-mix(in srgb, var(--surface-muted) 62%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+}
+
+.add-spool-code-details-body {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.add-spool-code-entry-field {
+  max-width: 16rem;
+}
+
+.add-spool-code-entry-input {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+  letter-spacing: 0.02em;
+}
+
 .add-spool-code-visual {
   display: grid;
   gap: 0.38rem;

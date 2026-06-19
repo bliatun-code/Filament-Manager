@@ -103,6 +103,37 @@ function renderBambuFilamentCodeLookupHint(lookup, locale, escapeHtml) {
   `;
 }
 
+function renderBambuFilamentCodeLookupDetails(lookup, locale, escapeHtml) {
+  const detailsOpen = lookup.code ? " open" : "";
+  return `
+    <details class="add-spool-code-details detail-collapsible"${detailsOpen}>
+      <summary class="detail-collapsible-summary">
+        <span>${escapeHtml(t(locale, "storage.bambuCodeDetailsTitle", "Bambu Filament Code"))}</span>
+        <span class="detail-history-summary">${escapeHtml(
+          t(locale, "storage.bambuCodeDetailsMeta", "Manual lookup from the box label"),
+        )}</span>
+      </summary>
+      <div class="detail-collapsible-body add-spool-code-details-body">
+        <label class="stack detail-field add-spool-code-entry-field">
+          <span class="muted">${escapeHtml(t(locale, "storage.bambuCodeLabel", "Filament Code"))}</span>
+          <input
+            class="text-input add-spool-code-entry-input"
+            name="filament-code-search"
+            type="text"
+            inputmode="numeric"
+            maxlength="5"
+            pattern="[0-9]{5}"
+            value="${escapeHtml(lookup.code || "")}"
+            placeholder="53400"
+            autocomplete="off"
+          />
+        </label>
+        ${renderBambuFilamentCodeLookupHint(lookup, locale, escapeHtml)}
+      </div>
+    </details>
+  `;
+}
+
 function resolveAddSheetState(state) {
   const draft = state.borrowedInDraft || {};
   const source = String(draft.source || "bambu").trim().toLowerCase();
@@ -441,6 +472,11 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
                         )}</div>`
                   }
                 </div>
+                ${
+                  selection.source === "bambu" && selection.bambuCodeLookup
+                    ? renderBambuFilamentCodeLookupDetails(selection.bambuCodeLookup, locale, escapeHtml)
+                    : ""
+                }
               </div>
             `
         }

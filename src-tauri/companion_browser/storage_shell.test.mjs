@@ -151,7 +151,17 @@ test("add filament task sheet shows Bambu filament code help before and after lo
   ];
 
   const helpHtml = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+  assert.ok(
+    helpHtml.indexOf('name="filament-catalog-search"') <
+      helpHtml.indexOf("add-spool-catalog-list"),
+  );
+  assert.ok(
+    helpHtml.indexOf("add-spool-catalog-list") <
+      helpHtml.indexOf("add-spool-code-details"),
+  );
   assert.match(helpHtml, /Filament Code/);
+  assert.match(helpHtml, /name="filament-code-search"/);
+  assert.match(helpHtml, /Manual lookup from the box label/);
   assert.match(helpHtml, /53400/);
   assert.match(helpHtml, /Find this field on the box label/);
   assert.match(helpHtml, /add-spool-code-box-label/);
@@ -164,6 +174,8 @@ test("add filament task sheet shows Bambu filament code help before and after lo
     catalogSearch: "53400",
   };
   const lookupHtml = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+  assert.match(lookupHtml, /<details class="add-spool-code-details detail-collapsible" open>/);
+  assert.match(lookupHtml, /name="filament-code-search"[\s\S]*value="53400"/);
   assert.match(lookupHtml, /One active Bambu catalog entry matched and is selected/);
   assert.match(lookupHtml, /TPU for AMS/);
 });
@@ -191,6 +203,7 @@ test("add filament task sheet localizes Bambu filament code help in Norwegian", 
   assert.match(html, /femsifrede koden/);
   assert.match(html, /Filament Code/);
   assert.match(html, /eskeetiketten/);
+  assert.match(html, /Manuelt oppslag fra eskeetiketten/);
   assert.match(html, /Skriv koden i/);
   assert.doesNotMatch(html, /camera/i);
   assert.doesNotMatch(html, /webcam/i);
