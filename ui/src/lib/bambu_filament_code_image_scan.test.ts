@@ -105,10 +105,15 @@ function ean13BitPattern(code: string): string {
   return pattern;
 }
 
-function fakeEan13Canvas(code: string): HTMLCanvasElement {
+function fakeEan13Canvas(
+  code: string,
+  settings: { mirrored?: boolean } = {},
+): HTMLCanvasElement {
   const moduleWidth = 5;
   const quietModules = 12;
-  const barcodePattern = ean13BitPattern(code);
+  const barcodePattern = settings.mirrored
+    ? ean13BitPattern(code).split("").reverse().join("")
+    : ean13BitPattern(code);
   const width = (barcodePattern.length + quietModules * 2) * moduleWidth;
   const height = 96;
   const data = new Uint8ClampedArray(width * height * 4).fill(255);
@@ -156,10 +161,15 @@ function code128BitPattern(values: number[]): string {
     .join("");
 }
 
-function fakeCode128Canvas(values: number[]): HTMLCanvasElement {
+function fakeCode128Canvas(
+  values: number[],
+  settings: { mirrored?: boolean } = {},
+): HTMLCanvasElement {
   const moduleWidth = 4;
   const quietModules = 18;
-  const barcodePattern = code128BitPattern(values);
+  const barcodePattern = settings.mirrored
+    ? code128BitPattern(values).split("").reverse().join("")
+    : code128BitPattern(values);
   const width = (barcodePattern.length + quietModules * 2) * moduleWidth;
   const height = 96;
   const data = new Uint8ClampedArray(width * height * 4).fill(255);
@@ -410,9 +420,27 @@ test("detectKnownBambuBoxEanFromCanvas matches known Bambu EAN and Code 128 box 
   );
   assert.equal(
     detectKnownBambuBoxEanFromCanvas(
+      fakeEan13Canvas("6975337031338", { mirrored: true }),
+    ),
+    "6975337031338",
+  );
+  assert.equal(
+    detectKnownBambuBoxEanFromCanvas(
       fakeCode128Canvas([
         104, 22, 25, 23, 21, 19, 19, 23, 16, 19, 17, 19, 19, 24, 63, 106,
       ]),
+    ),
+    "6975337031338",
+  );
+  assert.equal(
+    detectKnownBambuBoxEanFromCanvas(
+      fakeCode128Canvas(
+        [
+          104, 22, 25, 23, 21, 19, 19, 23, 16, 19, 17, 19, 19, 24, 63,
+          106,
+        ],
+        { mirrored: true },
+      ),
     ),
     "6975337031338",
   );

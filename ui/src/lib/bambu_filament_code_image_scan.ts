@@ -1276,6 +1276,32 @@ function scoreKnownBambuBoxEanPattern(input: {
   };
 }
 
+function scoreKnownBambuBoxEanColumns(input: {
+  best: KnownBambuBoxEanScore | null;
+  columns: number[];
+}): KnownBambuBoxEanScore | null {
+  const prefix = prefixSums(input.columns);
+  const positions = knownBambuBoxEanColumnPositions(input.columns);
+  let best = input.best;
+  for (const position of positions) {
+    for (const pattern of KNOWN_BAMBU_BOX_EAN_PATTERNS) {
+      if (pattern.bits.length !== position.moduleCount) {
+        continue;
+      }
+      const score = scoreKnownBambuBoxEanPattern({
+        left: position.left,
+        moduleWidth: position.moduleWidth,
+        pattern,
+        prefix,
+      });
+      if (score && (!best || score.rank > best.rank)) {
+        best = score;
+      }
+    }
+  }
+  return best;
+}
+
 export function detectKnownBambuBoxEanFromCanvas(
   canvas: Pick<HTMLCanvasElement, "getContext" | "height" | "width">,
 ): string | null {
@@ -1307,27 +1333,18 @@ export function detectKnownBambuBoxEanFromCanvas(
       y0: band.y0,
       y1: band.y1,
     });
-    const prefix = prefixSums(columns);
-    const positions = knownBambuBoxEanColumnPositions(columns);
-    for (const position of positions) {
-      for (const pattern of KNOWN_BAMBU_BOX_EAN_PATTERNS) {
-        if (pattern.bits.length !== position.moduleCount) {
-          continue;
-        }
-        const score = scoreKnownBambuBoxEanPattern({
-          left: position.left,
-          moduleWidth: position.moduleWidth,
-          pattern,
-          prefix,
-        });
-        if (score && (!best || score.rank > best.rank)) {
-          best = score;
-        }
-      }
-    }
+    best = scoreKnownBambuBoxEanColumns({ best, columns });
     const currentBest = best as KnownBambuBoxEanScore | null;
     if (currentBest && currentBest.rank >= KNOWN_BAMBU_BOX_EAN_MIN_RANK + 16) {
       return currentBest.code;
+    }
+    best = scoreKnownBambuBoxEanColumns({
+      best,
+      columns: [...columns].reverse(),
+    });
+    const mirroredBest = best as KnownBambuBoxEanScore | null;
+    if (mirroredBest && mirroredBest.rank >= KNOWN_BAMBU_BOX_EAN_MIN_RANK + 16) {
+      return mirroredBest.code;
     }
   }
 
