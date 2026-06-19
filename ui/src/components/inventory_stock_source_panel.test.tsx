@@ -4,11 +4,6 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
-  buildBambuFilamentCodeBatch,
-  buildBambuFilamentCodeBatchCreateState,
-} from "../lib/bambu_filament_code_batch";
-import { buildBambuFilamentCodeLookup } from "../lib/bambu_filament_code_lookup";
-import {
   dictionaries,
   I18nContext,
   lookup,
@@ -49,26 +44,13 @@ function renderPanel(options: {
   mode: InventoryCreateMode;
   masters?: MasterCatalogRow[];
   catalogQuery?: string;
-  batchInput?: string;
   selectedMasterId?: string | null;
   locale?: Locale;
 }) {
   const masters = options.masters ?? [master()];
   const catalogQuery = options.catalogQuery ?? "";
-  const batchInput = options.batchInput ?? "";
   const selectedMasterId =
     "selectedMasterId" in options ? options.selectedMasterId : masters[0]?.id ?? null;
-  const bambuCodeBatch = buildBambuFilamentCodeBatch({
-    masters,
-    rawInput: batchInput,
-  });
-  const bambuBatchCreateState = buildBambuFilamentCodeBatchCreateState({
-    batch: bambuCodeBatch,
-    tauriAvailable: true,
-    busy: false,
-    isBambuMode: options.mode === "bambu",
-    borrowedOwnerRequired: false,
-  });
 
   return renderToStaticMarkup(
     React.createElement(
@@ -76,22 +58,15 @@ function renderPanel(options: {
       { value: i18nValue(options.locale ?? "en") },
       React.createElement(InventoryStockSourcePanel, {
         activeCatalogMasters: masters,
-        bambuBatchInput: batchInput,
-        bambuBatchCreateState,
-        bambuCodeBatch,
-        bambuCodeLookup: buildBambuFilamentCodeLookup(masters, catalogQuery),
         catalogQuery,
         createMode: options.mode,
-        disabledBambuBatchCreate: bambuBatchCreateState.disabled,
         isCatalogCreateMode: options.mode !== "manual",
         manualColorName: "",
         manualFilamentName: "",
         manualHexColor: "",
         manualMaterial: "PLA",
         manualVendor: "Generic",
-        onBambuBatchInputChange: () => {},
         onCatalogQueryChange: () => {},
-        onCreateBambuCodeBatch: () => {},
         onCreateModeChange: () => {},
         onManualColorNameChange: () => {},
         onManualFilamentNameChange: () => {},
@@ -108,62 +83,50 @@ function renderPanel(options: {
   );
 }
 
-test("InventoryStockSourcePanel keeps Bambu Filament Code help and batch entry inside Bambu mode", () => {
+test("InventoryStockSourcePanel keeps Bambu search directly above the catalog list", () => {
   const html = renderPanel({
     mode: "bambu",
     catalogQuery: "Filament Code: 53400",
-    batchInput: "53400",
   });
 
   assert.match(html, /Search Bambu material\/color or filament code/);
-  assert.match(html, /Filament Code/);
-  assert.match(html, /Box label/);
-  assert.match(html, /Find this field on the box label/);
-  assert.match(html, /One active Bambu catalog entry matched and is selected/);
   assert.match(html, /TPU for AMS/);
-  assert.match(html, /Batch Filament Codes/);
-  assert.match(html, /Scan or type one code/);
-  assert.match(html, /Add to batch/);
-  assert.match(html, /Add from image/);
-  assert.match(html, /All pasted codes are ready/);
-  assert.match(html, /Add ready matches/);
+  assert.ok(
+    html.indexOf("Search Bambu material/color or filament code") <
+      html.indexOf("TPU for AMS"),
+  );
+  assert.doesNotMatch(html, /Box label/);
+  assert.doesNotMatch(html, /Find this field on the box label/);
+  assert.doesNotMatch(html, /One active Bambu catalog entry matched/);
+  assert.doesNotMatch(html, /Batch Filament Codes/);
+  assert.doesNotMatch(html, /Scan or type one code/);
+  assert.doesNotMatch(html, /Add from image/);
+  assert.doesNotMatch(html, /Add ready matches/);
   assert.doesNotMatch(html, /camera/i);
   assert.doesNotMatch(html, /webcam/i);
 });
 
-test("InventoryStockSourcePanel localizes Bambu batch controls in Norwegian", () => {
+test("InventoryStockSourcePanel localizes the regular Bambu source without batch controls", () => {
   const html = renderPanel({
     mode: "bambu",
     catalogQuery: "53400",
-    batchInput: "53400",
     locale: "nb",
   });
 
-  assert.match(html, /Filament Code-batch/);
-  assert.match(html, /Finn dette feltet på eskeetiketten/);
-  assert.match(html, /Skann eller skriv én kode/);
-  assert.match(html, /Legg til i batch/);
-  assert.match(html, /Legg til fra bilde/);
-  assert.match(html, /1 kan legges til/);
-  assert.match(html, /Alle innlimte koder er klare/);
-  assert.match(html, /Legg til klare treff/);
-  assert.doesNotMatch(html, /1 klare/);
+  assert.match(html, /Søk Bambu/);
+  assert.match(html, /TPU for AMS/);
+  assert.doesNotMatch(html, /Filament Code-batch/);
+  assert.doesNotMatch(html, /Finn dette feltet på eskeetiketten/);
+  assert.doesNotMatch(html, /Skann eller skriv én kode/);
+  assert.doesNotMatch(html, /Legg til fra bilde/);
   assert.doesNotMatch(html, /Batch Filament Codes/);
   assert.doesNotMatch(html, /Add ready matches/);
 });
 
-test("InventoryStockSourcePanel previews the active Bambu code match when discontinued history exists", () => {
+test("InventoryStockSourcePanel renders the active Bambu code catalog row after search", () => {
   const html = renderPanel({
     mode: "bambu",
     masters: [
-      master({
-        id: "old-yellow",
-        material: "PLA",
-        filament_name: "PLA Basic",
-        color_name: "Old Yellow (53400)",
-        is_discontinued: true,
-        discontinued_at: "2024-01-01T00:00:00Z",
-      }),
       master({
         id: "active-yellow",
         material: "TPU",
@@ -174,14 +137,9 @@ test("InventoryStockSourcePanel previews the active Bambu code match when discon
     catalogQuery: "53400",
   });
 
-  const lookupSegment = html.slice(
-    html.indexOf("One active Bambu catalog entry matched"),
-    html.indexOf("Batch Filament Codes"),
-  );
-
-  assert.match(html, /One active Bambu catalog entry matched and is selected/);
-  assert.match(lookupSegment, /TPU for AMS · Yellow \(53400\)/);
-  assert.doesNotMatch(lookupSegment, /PLA Basic · Old Yellow \(53400\)/);
+  assert.match(html, /TPU for AMS · Yellow \(53400\)/);
+  assert.doesNotMatch(html, /PLA Basic · Old Yellow \(53400\)/);
+  assert.doesNotMatch(html, /One active Bambu catalog entry matched/);
 });
 
 test("InventoryStockSourcePanel hides Bambu code controls outside Bambu catalog mode", () => {
@@ -196,12 +154,10 @@ test("InventoryStockSourcePanel hides Bambu code controls outside Bambu catalog 
       }),
     ],
     catalogQuery: "white",
-    batchInput: "53400",
   });
   const manualHtml = renderPanel({
     mode: "manual",
     catalogQuery: "53400",
-    batchInput: "53400",
   });
 
   assert.match(esunHtml, /Search eSUN material\/color/);
@@ -234,12 +190,9 @@ test("InventoryStockSourcePanel renders ambiguous Bambu code matches for manual 
     catalogQuery: "65103",
   });
 
-  assert.match(
-    html,
-    /This code is used by several active Bambu catalog entries\. Choose the correct row\./,
-  );
   assert.match(html, /PETG HF · Black \(65103\)/);
   assert.match(html, /PLA Basic · Black \(65103\)/);
+  assert.doesNotMatch(html, /This code is used by several active Bambu catalog entries/);
 });
 
 test("InventoryStockSourcePanel renders discontinued-only Bambu code matches", () => {
@@ -257,18 +210,21 @@ test("InventoryStockSourcePanel renders discontinued-only Bambu code matches", (
     selectedMasterId: null,
   });
 
-  assert.match(html, /Only discontinued Bambu catalog entries use this code\./);
   assert.match(html, /TPU for AMS · Old Red \(12345\)/);
   assert.match(html, /Discontinued/);
   assert.doesNotMatch(html, /Selected/);
+  assert.doesNotMatch(html, /Only discontinued Bambu catalog entries use this code/);
 });
 
-test("InventoryStockSourcePanel renders no-match Bambu code guidance", () => {
+test("InventoryStockSourcePanel renders the normal empty catalog message for no-match code filters", () => {
   const html = renderPanel({
     mode: "bambu",
+    masters: [],
     catalogQuery: "99999",
+    selectedMasterId: null,
   });
 
-  assert.match(html, /No Bambu catalog entry uses this filament code yet\./);
-  assert.match(html, /You can still search by material, series, or color name\./);
+  assert.match(html, /No catalog entries match the current vendor filters\./);
+  assert.doesNotMatch(html, /No Bambu catalog entry uses this filament code yet\./);
+  assert.doesNotMatch(html, /You can still search by material, series, or color name\./);
 });

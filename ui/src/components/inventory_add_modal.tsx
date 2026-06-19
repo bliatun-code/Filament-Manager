@@ -1,6 +1,7 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
+import { InventoryBambuBatchModal } from "./inventory_bambu_batch_modal";
 import { InventoryCreateActionsPanel } from "./inventory_create_actions_panel";
 import {
   inventoryModalOverlayClassName,
@@ -154,10 +155,18 @@ export function InventoryAddModal({
   wishlistValue,
 }: InventoryAddModalProps) {
   const { t } = useI18n();
+  const [bambuBatchModalOpen, setBambuBatchModalOpen] = useState(false);
 
   if (!open) {
     return null;
   }
+
+  const openBambuBatchModal = () => {
+    if (createMode !== "bambu") {
+      onCreateModeChange("bambu");
+    }
+    setBambuBatchModalOpen(true);
+  };
 
   return (
     <AppModal
@@ -184,15 +193,31 @@ export function InventoryAddModal({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/85 text-base leading-none text-slate-600 shadow-sm shadow-slate-900/5 backdrop-blur-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:shadow-black/30 dark:hover:bg-slate-800/60"
-              aria-label={t("common.close", "Close")}
-              title={t("common.close", "Close")}
-            >
-              ×
-            </button>
+            <div className="flex shrink-0 items-start gap-2">
+              <button
+                type="button"
+                onClick={openBambuBatchModal}
+                className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-xl border border-slate-200 bg-white/85 px-3 text-xs font-semibold text-slate-700 shadow-sm shadow-slate-900/5 backdrop-blur-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:shadow-black/30 dark:hover:bg-slate-800/60 sm:text-sm"
+                aria-label={t("inventory.bambuBatchHeaderAction", "Batch add from boxes")}
+                title={t("inventory.bambuBatchHeaderAction", "Batch add from boxes")}
+              >
+                <span className="hidden sm:inline">
+                  {t("inventory.bambuBatchHeaderAction", "Batch add from boxes")}
+                </span>
+                <span className="sm:hidden">
+                  {t("inventory.bambuBatchHeaderActionShort", "Batch")}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/85 text-base leading-none text-slate-600 shadow-sm shadow-slate-900/5 backdrop-blur-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:shadow-black/30 dark:hover:bg-slate-800/60"
+                aria-label={t("common.close", "Close")}
+                title={t("common.close", "Close")}
+              >
+                ×
+              </button>
+            </div>
           </div>
         </div>
 
@@ -213,22 +238,15 @@ export function InventoryAddModal({
             <div className="space-y-4">
               <InventoryStockSourcePanel
                 activeCatalogMasters={activeCatalogMasters}
-                bambuBatchInput={bambuBatchInput}
-                bambuBatchCreateState={bambuBatchCreateState}
-                bambuCodeBatch={bambuCodeBatch}
-                bambuCodeLookup={bambuCodeLookup}
                 catalogQuery={catalogQuery}
                 createMode={createMode}
-                disabledBambuBatchCreate={disabledBambuBatchCreate}
                 isCatalogCreateMode={isCatalogCreateMode}
                 manualColorName={manualColorName}
                 manualFilamentName={manualFilamentName}
                 manualHexColor={manualHexColor}
                 manualMaterial={manualMaterial}
                 manualVendor={manualVendor}
-                onBambuBatchInputChange={onBambuBatchInputChange}
                 onCatalogQueryChange={onCatalogQueryChange}
-                onCreateBambuCodeBatch={onCreateBambuCodeBatch}
                 onCreateModeChange={onCreateModeChange}
                 onManualColorNameChange={onManualColorNameChange}
                 onManualFilamentNameChange={onManualFilamentNameChange}
@@ -285,6 +303,18 @@ export function InventoryAddModal({
             </div>
           </div>
         </div>
+        <InventoryBambuBatchModal
+          batch={bambuCodeBatch}
+          createState={bambuBatchCreateState}
+          disabledCreate={disabledBambuBatchCreate}
+          input={bambuBatchInput}
+          lookup={bambuCodeLookup}
+          onClose={() => setBambuBatchModalOpen(false)}
+          onCreateBatch={onCreateBambuCodeBatch}
+          onInputChange={onBambuBatchInputChange}
+          open={bambuBatchModalOpen}
+          tauriAvailable={tauriAvailable}
+        />
       </>
     </AppModal>
   );

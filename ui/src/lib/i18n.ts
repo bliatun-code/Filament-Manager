@@ -310,9 +310,15 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuCodeEnterExample: "Type the code into the search field, for example 53400.",
       bambuCodeBoxLabelTitle: "Box label",
       bambuCodeBoxLabelHint: "Find this field on the box label.",
+      bambuBatchHeaderAction: "Batch add from boxes",
+      bambuBatchHeaderActionShort: "Batch",
+      bambuBatchModalEyebrow: "Bambu boxes",
+      bambuBatchModalTitle: "Batch add from boxes",
+      bambuBatchModalSubtitle:
+        "Add several Bambu rolls from box Filament Codes without moving the normal catalog search out of view.",
       bambuBatchTitle: "Batch Filament Codes",
       bambuBatchHelp:
-        "Paste one or more five digit codes. Ready matches use the stock details on the right.",
+        "Paste one or more five digit codes. Ready matches use the stock details from Add filament.",
       bambuBatchScanLabel: "Scan or type one code",
       bambuBatchScanPlaceholder: "Scan or type one code",
       bambuBatchAppendScan: "Add to batch",
@@ -1830,9 +1836,15 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuCodeEnterExample: "Skriv koden i søkefeltet, for eksempel 53400.",
       bambuCodeBoxLabelTitle: "Eskeetikett",
       bambuCodeBoxLabelHint: "Finn dette feltet på eskeetiketten.",
+      bambuBatchHeaderAction: "Batch legg inn fra esker",
+      bambuBatchHeaderActionShort: "Batch",
+      bambuBatchModalEyebrow: "Bambu-esker",
+      bambuBatchModalTitle: "Batch legg inn fra esker",
+      bambuBatchModalSubtitle:
+        "Legg inn flere Bambu-ruller fra Filament Code på esken uten å flytte det vanlige katalogsøket ut av syne.",
       bambuBatchTitle: "Filament Code-batch",
       bambuBatchHelp:
-        "Lim inn én eller flere femsifrede koder. Klare treff bruker lagerdetaljene til høyre.",
+        "Lim inn én eller flere femsifrede koder. Klare treff bruker lagerdetaljene fra Legg til filament.",
       bambuBatchScanLabel: "Skann eller skriv én kode",
       bambuBatchScanPlaceholder: "Skann eller skriv én kode",
       bambuBatchAppendScan: "Legg til i batch",
