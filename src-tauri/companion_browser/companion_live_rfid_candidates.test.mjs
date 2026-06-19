@@ -156,6 +156,21 @@ test("Companion live RFID candidates infer material from live filament name", ()
   );
 });
 
+test("Companion live RFID candidates infer material from live tray preset name", () => {
+  assert.deepEqual(
+    buildLiveInventoryCandidateRows(
+      slot({
+        live_filament_type: null,
+        live_filament_name: null,
+        live_tray_id_name: "Bambu PLA Matte @BBL P1S 0.4 nozzle",
+        live_color_hex: "#030303",
+      }),
+      [row("bambu-black")],
+    ).map((candidateRow) => candidateRow.spool.id),
+    ["bambu-black"],
+  );
+});
+
 test("Companion live RFID candidates require material family in live names", () => {
   assert.deepEqual(
     buildLiveInventoryCandidateRows(
