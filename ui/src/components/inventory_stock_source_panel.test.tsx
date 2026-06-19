@@ -8,18 +8,24 @@ import {
   buildBambuFilamentCodeBatchCreateState,
 } from "../lib/bambu_filament_code_batch";
 import { buildBambuFilamentCodeLookup } from "../lib/bambu_filament_code_lookup";
-import { I18nContext, type I18nContextValue } from "../lib/i18n";
+import {
+  dictionaries,
+  I18nContext,
+  lookup,
+  type I18nContextValue,
+  type Locale,
+} from "../lib/i18n";
 import type { InventoryCreateMode } from "../lib/inventory_create_model";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import { InventoryStockSourcePanel } from "./inventory_stock_source_panel";
 
-const t = (_key: string, fallback = "") => fallback;
-
-const i18nValue: I18nContextValue = {
-  locale: "en",
-  setLocale: () => {},
-  t,
-};
+function i18nValue(locale: Locale = "en"): I18nContextValue {
+  return {
+    locale,
+    setLocale: () => {},
+    t: (key, fallback = "") => lookup(dictionaries[locale], key) ?? fallback,
+  };
+}
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
@@ -45,6 +51,7 @@ function renderPanel(options: {
   catalogQuery?: string;
   batchInput?: string;
   selectedMasterId?: string | null;
+  locale?: Locale;
 }) {
   const masters = options.masters ?? [master()];
   const catalogQuery = options.catalogQuery ?? "";
@@ -66,7 +73,7 @@ function renderPanel(options: {
   return renderToStaticMarkup(
     React.createElement(
       I18nContext.Provider,
-      { value: i18nValue },
+      { value: i18nValue(options.locale ?? "en") },
       React.createElement(InventoryStockSourcePanel, {
         activeCatalogMasters: masters,
         bambuBatchInput: batchInput,
@@ -118,6 +125,23 @@ test("InventoryStockSourcePanel keeps Bambu Filament Code help and batch entry i
   assert.match(html, /Add ready matches/);
   assert.doesNotMatch(html, /camera/i);
   assert.doesNotMatch(html, /webcam/i);
+});
+
+test("InventoryStockSourcePanel localizes Bambu batch controls in Norwegian", () => {
+  const html = renderPanel({
+    mode: "bambu",
+    catalogQuery: "53400",
+    batchInput: "53400",
+    locale: "nb",
+  });
+
+  assert.match(html, /Filament Code-batch/);
+  assert.match(html, /1 kan legges til/);
+  assert.match(html, /Alle innlimte koder er klare/);
+  assert.match(html, /Legg til klare treff/);
+  assert.doesNotMatch(html, /1 klare/);
+  assert.doesNotMatch(html, /Batch Filament Codes/);
+  assert.doesNotMatch(html, /Add ready matches/);
 });
 
 test("InventoryStockSourcePanel previews the active Bambu code match when discontinued history exists", () => {
