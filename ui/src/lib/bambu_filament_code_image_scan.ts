@@ -11,9 +11,10 @@ export type BambuFilamentBarcodeDetector = {
   detect: (image: unknown) => Promise<BarcodeDetection[]>;
 };
 
-export type BambuFilamentBarcodeDetectorConstructor = new (options?: {
-  formats?: string[];
-}) => BambuFilamentBarcodeDetector;
+export type BambuFilamentBarcodeDetectorConstructor = {
+  new (options?: { formats?: string[] }): BambuFilamentBarcodeDetector;
+  getSupportedFormats?: () => Promise<string[]>;
+};
 
 export type BambuFilamentImageBitmap = {
   close?: () => void;
@@ -48,6 +49,38 @@ const BARCODE_FORMATS = [
   "upc_a",
   "upc_e",
 ];
+
+async function supportedBarcodeFormats(
+  detectorConstructor: BambuFilamentBarcodeDetectorConstructor,
+): Promise<string[]> {
+  if (typeof detectorConstructor.getSupportedFormats !== "function") {
+    return BARCODE_FORMATS;
+  }
+  try {
+    const supportedFormats = await detectorConstructor.getSupportedFormats();
+    const supported = new Set(
+      supportedFormats.map((format) => String(format).trim()).filter(Boolean),
+    );
+    return BARCODE_FORMATS.filter((format) => supported.has(format));
+  } catch {
+    return BARCODE_FORMATS;
+  }
+}
+
+async function createBarcodeDetector(
+  detectorConstructor: BambuFilamentBarcodeDetectorConstructor,
+): Promise<BambuFilamentBarcodeDetector> {
+  const formats = await supportedBarcodeFormats(detectorConstructor);
+  const options = formats.length > 0 ? { formats } : undefined;
+  try {
+    return new detectorConstructor(options);
+  } catch (error) {
+    if (options) {
+      return new detectorConstructor();
+    }
+    throw error;
+  }
+}
 
 function globalBarcodeDetector(): BambuFilamentBarcodeDetectorConstructor | undefined {
   return (globalThis as typeof globalThis & {
@@ -99,7 +132,7 @@ export async function scanBambuFilamentCodesFromImage(input: {
 
   const bitmap = await createBitmap(input.file);
   try {
-    const detector = new detectorConstructor({ formats: BARCODE_FORMATS });
+    const detector = await createBarcodeDetector(detectorConstructor);
     const rawValues = (await detector.detect(bitmap))
       .map((detection) => String(detection.rawValue ?? "").trim())
       .filter(Boolean);

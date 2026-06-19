@@ -90,3 +90,65 @@ test("scanBambuFilamentCodesFromImage reports unsupported and empty image scans"
   assert.equal(empty.status, "no_barcode");
   assert.equal(empty.append, null);
 });
+
+test("scanBambuFilamentCodesFromImage filters requested barcode formats when supported formats are available", async () => {
+  const constructedFormats: Array<string[] | null> = [];
+  const Detector = class {
+    static async getSupportedFormats() {
+      return ["qr_code", "unknown_format"];
+    }
+
+    constructor(options?: { formats?: string[] }) {
+      constructedFormats.push(options?.formats ?? null);
+    }
+
+    async detect() {
+      return [{ rawValue: "Filament Code: 53400" }];
+    }
+  };
+
+  const result = await scanBambuFilamentCodesFromImage({
+    currentInput: "",
+    file: new Blob(["image"], { type: "image/png" }),
+    dependencies: {
+      barcodeDetector: Detector,
+      createImageBitmap: async () => ({}),
+    },
+  });
+
+  assert.equal(result.status, "ready");
+  assert.deepEqual(constructedFormats, [["qr_code"]]);
+  assert.equal(result.append?.input, "53400");
+});
+
+test("scanBambuFilamentCodesFromImage falls back when barcode detector rejects format options", async () => {
+  const constructedFormats: Array<string[] | null> = [];
+  const Detector = class {
+    constructor(options?: { formats?: string[] }) {
+      constructedFormats.push(options?.formats ?? null);
+      if (options?.formats) {
+        throw new TypeError("unsupported formats");
+      }
+    }
+
+    async detect() {
+      return [{ rawValue: "Filament Code: 53600" }];
+    }
+  };
+
+  const result = await scanBambuFilamentCodesFromImage({
+    currentInput: "53400",
+    file: new Blob(["image"], { type: "image/png" }),
+    dependencies: {
+      barcodeDetector: Detector,
+      createImageBitmap: async () => ({}),
+    },
+  });
+
+  assert.equal(result.status, "ready");
+  assert.deepEqual(constructedFormats, [
+    ["qr_code", "data_matrix", "code_128", "code_39", "ean_13", "ean_8", "upc_a", "upc_e"],
+    null,
+  ]);
+  assert.equal(result.append?.input, "53400\n53600");
+});
