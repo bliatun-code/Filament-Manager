@@ -165,6 +165,31 @@ test("SlotCatalogOnboardingModal blocks borrowed-in catalog onboarding until own
   assert.match(html, /<button[^>]*disabled="">\s*Add borrowed-in \+ save RFID/);
 });
 
+test("SlotCatalogOnboardingModal renders the borrowed-in catalog onboarding save path", () => {
+  const html = renderModal({
+    prompt: prompt({
+      ownershipType: "BORROWED_IN",
+      borrowedFromName: "Ada",
+      borrowedFromContact: "ada@example.com",
+      borrowedInNote: "Return after project",
+    }),
+    currentSlot: slot(),
+    currentLiveTray: liveTray(),
+  });
+
+  assert.match(html, /Register this spool as borrowed from someone else/);
+  assert.match(html, /Borrowed from/);
+  assert.match(html, /value="Ada"/);
+  assert.match(html, /value="ada@example.com"/);
+  assert.match(html, /value="Return after project"/);
+  assert.doesNotMatch(
+    html,
+    /Enter who the spool is borrowed from before registering it as borrowed-in\./,
+  );
+  assert.doesNotMatch(html, /<button[^>]*disabled="">\s*Add borrowed-in \+ save RFID/);
+  assert.match(html, />\s*Add borrowed-in \+ save RFID\s*<\/button>/);
+});
+
 test("SlotCatalogOnboardingModal blocks catalog onboarding when the slot becomes occupied", () => {
   const html = renderModal({
     prompt: prompt(),
