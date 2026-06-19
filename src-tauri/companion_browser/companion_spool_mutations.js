@@ -238,6 +238,7 @@ export function createCompanionSpoolMutations({
     const currentSlot =
       printerRow?.slots?.find((slot) => String(slot?.slot_id || "").trim() === trimmedSlotId) || null;
     const currentObservedRfid = liveSlotObservedRfid(currentSlot);
+    const currentSlotSpoolId = String(currentSlot?.spool_id || "").trim();
 
     if (!trimmedSpoolId) {
       setStatus(tr("status.selectSpoolBeforeEdit", "Select a spool before editing its details."), "error");
@@ -281,7 +282,7 @@ export function createCompanionSpoolMutations({
     }
     if (
       !currentSlot ||
-      currentSlot.spool_id ||
+      (currentSlotSpoolId && currentSlotSpoolId !== trimmedSpoolId) ||
       !liveSlotHasLoadedRoll(currentSlot) ||
       currentSlot.live_match_status !== "unknown_rfid" ||
       currentObservedRfid !== normalizedRfidTag

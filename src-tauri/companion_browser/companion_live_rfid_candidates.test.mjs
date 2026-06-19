@@ -94,6 +94,11 @@ test("Companion live RFID candidates keep matching host preference, borrowed-in 
       hex_color: "#010101",
     },
   });
+  const currentAssignment = row("already-loaded", {
+    master: {
+      hex_color: "#010101",
+    },
+  });
   const borrowedIn = row("borrowed-in", {
     spool: {
       ownership_type: "BORROWED_IN",
@@ -116,6 +121,13 @@ test("Companion live RFID candidates keep matching host preference, borrowed-in 
       borrowedIn,
     ]),
     [],
+  );
+  assert.deepEqual(
+    buildLiveInventoryCandidateRows(slot({ spool_id: "already-loaded" }), [
+      preferred,
+      currentAssignment,
+    ]).map((candidateRow) => candidateRow.spool.id),
+    ["already-loaded"],
   );
 });
 

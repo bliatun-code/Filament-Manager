@@ -146,7 +146,6 @@ export function rowMatchesLiveBambuSlot(slot, row) {
 export function buildLiveInventoryCandidateRows(slot, spoolRows) {
   const observedRfid = liveSlotObservedRfid(slot);
   if (
-    slot?.spool_id ||
     slot?.live_match_status !== "unknown_rfid" ||
     !observedRfid ||
     !liveSlotHasLoadedRoll(slot)
@@ -155,6 +154,14 @@ export function buildLiveInventoryCandidateRows(slot, spoolRows) {
   }
 
   const rows = Array.isArray(spoolRows) ? spoolRows : [];
+  const assignedSpoolId = String(slot?.spool_id || "").trim();
+  if (assignedSpoolId) {
+    const assignedRow = rows.find(
+      (row) => String(row?.spool?.id || "").trim() === assignedSpoolId,
+    );
+    return assignedRow && rowMatchesLiveBambuSlot(slot, assignedRow) ? [assignedRow] : [];
+  }
+
   const candidates = [];
   const seenIds = new Set();
   const preferredId = String(slot?.live_matched_inventory_spool_id || "").trim();

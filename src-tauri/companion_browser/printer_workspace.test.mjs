@@ -578,6 +578,54 @@ test("printer workspace does not show live RFID candidates for already assigned 
   assert.doesNotMatch(html, /candidate-spool/);
 });
 
+test("printer workspace can save live RFID for the already assigned Bambu candidate", () => {
+  const html = renderBoard({
+    activePrinter: createPrinterRow({
+      slots: [
+        {
+          slot_id: "slot-1",
+          ams_id: "ams_1",
+          slot_index: 1,
+          spool_id: "loaded-spool",
+          spool_material: "PLA",
+          spool_filament_name: "PLA Matte",
+          spool_color_name: "Black",
+          spool_remaining_g: 640,
+          live_loaded: true,
+          live_filament_type: "PLA",
+          live_filament_name: "PLA Matte",
+          live_color_hex: "#000000",
+          live_match_status: "unknown_rfid",
+          live_tray_uuid: "UNREGISTERED-RFID",
+        },
+      ],
+    }),
+    printerSpoolOptions: [
+      {
+        spool: {
+          id: "loaded-spool",
+          remaining_g: 640,
+          status: "ASSIGNED",
+          rfid_tag: null,
+        },
+        master: {
+          material: "PLA",
+          filament_name: "PLA Matte",
+          color_name: "Black",
+          vendor: "Bambu",
+          hex_color: "#000000",
+        },
+      },
+    ],
+  });
+
+  assert.match(html, /Current roll|Loaded/);
+  assert.match(html, /slot-live-candidates/);
+  assert.match(html, /data-spool-id="loaded-spool"/);
+  assert.match(html, /data-rfid-tag="UNREGISTERED-RFID"/);
+  assert.match(html, /Save RFID/);
+});
+
 test("printer workspace does not show live RFID candidates for unloaded slots", () => {
   const html = renderBoard({
     activePrinter: createPrinterRow({
