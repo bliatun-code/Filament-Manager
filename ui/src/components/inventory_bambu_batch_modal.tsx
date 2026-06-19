@@ -841,6 +841,7 @@ function BambuFilamentCodeBatchPanel({
               </div>
             )}
             <div className="pointer-events-none absolute inset-5 rounded-2xl border border-white/30" />
+            <div className="pointer-events-none absolute left-[8%] right-[8%] top-[42%] h-[16%] rounded-xl border border-white/45 bg-white/[0.03] shadow-[0_0_24px_rgba(255,255,255,0.12)]" />
             <div className="pointer-events-none absolute left-8 right-8 top-1/2 h-px bg-white/20" />
             <div className="pointer-events-none absolute bottom-8 top-8 left-1/2 w-px bg-white/20" />
             <div

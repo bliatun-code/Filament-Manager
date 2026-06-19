@@ -123,6 +123,43 @@ test("createBambuFilamentBarcodeScanner tries fallback when native finds only an
   ]);
 });
 
+test("createBambuFilamentBarcodeScanner lets native one dimensional formats win before QR", async () => {
+  const calls: string[][] = [];
+  const Detector = class {
+    private formats: string[];
+
+    static async getSupportedFormats() {
+      return ["qr_code", "ean_13"];
+    }
+
+    constructor(options?: { formats?: string[] }) {
+      this.formats = options?.formats ?? [];
+    }
+
+    async detect() {
+      calls.push(this.formats);
+      if (this.formats.includes("ean_13") && !this.formats.includes("qr_code")) {
+        return [{ rawValue: "6975337031338" }];
+      }
+      return [
+        {
+          rawValue: "https://wiki.bambulab.com/en/filament-acc/filament/pla-matte",
+        },
+      ];
+    }
+  };
+
+  const scanner = await createBambuFilamentBarcodeScanner({
+    barcodeDetector: Detector,
+    fallbackBarcodeScanner: async () => ({
+      detect: async () => [{ rawValue: "11101" }],
+    }),
+  });
+
+  assert.deepEqual(await scanner?.detect({}), [{ rawValue: "6975337031338" }]);
+  assert.deepEqual(calls, [["ean_13"]]);
+});
+
 test("scanBambuFilamentCodesFromImage keeps mixed barcode values in the batch review model", async () => {
   const result = await scanBambuFilamentCodesFromImage({
     currentInput: "53400",
@@ -286,6 +323,7 @@ test("scanBambuFilamentCodesFromImage falls back when barcode detector rejects f
 
   assert.equal(result.status, "ready");
   assert.deepEqual(constructedFormats, [
+    ["code_128", "code_39", "ean_13", "ean_8", "upc_a", "upc_e"],
     ["qr_code", "data_matrix", "code_128", "code_39", "ean_13", "ean_8", "upc_a", "upc_e"],
     null,
   ]);

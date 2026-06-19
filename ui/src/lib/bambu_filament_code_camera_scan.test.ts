@@ -66,8 +66,8 @@ test("requestBambuFilamentCodeCameraStream asks for an environment-facing video 
     audio: false,
     video: {
       facingMode: { ideal: "environment" },
-      height: { ideal: 720 },
-      width: { ideal: 1280 },
+      height: { ideal: 1080 },
+      width: { ideal: 1920 },
     },
   });
 });
