@@ -41,6 +41,9 @@ type InventoryBambuBatchModalProps = {
 };
 
 const CAMERA_READ_WARNING_THRESHOLD = 3;
+const CAMERA_SCAN_INITIAL_DELAY_MS = 350;
+const CAMERA_SCAN_INTERVAL_MS = 1200;
+const CAMERA_DUPLICATE_RESET_EMPTY_FRAME_COUNT = 5;
 
 function BambuFilamentCodeLookupHint({
   lookup,
@@ -85,11 +88,11 @@ function BambuFilamentCodeLookupHint({
 
   return (
     <div
-      className="rounded-2xl border border-slate-200/90 bg-white/72 p-3 text-xs text-slate-600 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-300"
+      className="rounded-2xl border border-slate-200/90 bg-white/72 p-2.5 text-xs text-slate-600 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-300"
       aria-live="polite"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="w-full shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-[11px] leading-none text-slate-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-400 sm:w-44">
+        <div className="w-full shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-2 text-[11px] leading-none text-slate-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-400 sm:w-36">
           <div className="mb-2 flex items-center justify-between gap-2">
             <span className="text-[9px] font-semibold uppercase tracking-[0.18em]">
               {t("inventory.bambuCodeBoxLabelTitle", "Box label")}
@@ -107,11 +110,11 @@ function BambuFilamentCodeLookupHint({
               <span className="block text-[9px] font-semibold uppercase tracking-[0.16em]">
                 {t("inventory.bambuCodeLabel", "Filament Code")}
               </span>
-              <span className="mt-1 block font-mono text-lg font-semibold tracking-normal text-slate-900 dark:text-slate-50">
+              <span className="mt-1 block font-mono text-base font-semibold tracking-normal text-slate-900 dark:text-slate-50">
                 {lookup.code ?? "53400"}
               </span>
             </div>
-            <div className="flex h-5 items-end gap-0.5 rounded-md bg-white px-2 py-1 dark:bg-slate-950/80">
+            <div className="hidden h-5 items-end gap-0.5 rounded-md bg-white px-2 py-1 dark:bg-slate-950/80 sm:flex">
               {[3, 1, 2, 4, 1, 3, 2].map((height, index) => (
                 <span
                   key={`${height}-${index}`}
@@ -121,7 +124,7 @@ function BambuFilamentCodeLookupHint({
               ))}
             </div>
           </div>
-          <div className="mt-2 text-[10px] leading-4 text-slate-500 dark:text-slate-400">
+          <div className="mt-1 text-[10px] leading-4 text-slate-500 dark:text-slate-400">
             {t("inventory.bambuCodeBoxLabelHint", "Find this field on the box label.")}
           </div>
         </div>
@@ -363,6 +366,7 @@ function BambuFilamentCodeBatchPanel({
   createState,
   disabledCreate,
   input,
+  lookup,
   onCreateBatch,
   onInputChange,
   tauriAvailable,
@@ -371,6 +375,7 @@ function BambuFilamentCodeBatchPanel({
   createState: BambuFilamentCodeBatchCreateState;
   disabledCreate: boolean;
   input: string;
+  lookup: BambuFilamentCodeLookup;
   onCreateBatch: () => void;
   onInputChange: (value: string) => void;
   tauriAvailable: boolean;
@@ -395,7 +400,7 @@ function BambuFilamentCodeBatchPanel({
   const feedbackTimerRef = useRef<number | null>(null);
   const inputRef = useRef(input);
   const mountedRef = useRef(true);
-  const visibleRows = batch.rows.slice(0, 6);
+  const visibleRows = batch.rows.slice(0, 30);
   const hiddenCount = Math.max(0, batch.rows.length - visibleRows.length);
   const createMessage = bambuBatchCreateStateMessage(createState, t);
   const trimmedScanInput = scanInput.trim();
@@ -487,7 +492,10 @@ function BambuFilamentCodeBatchPanel({
       if (frame.status === "no_barcode") {
         readErrorFrameCountRef.current = 0;
         emptyCameraFrameCountRef.current += 1;
-        if (emptyCameraFrameCountRef.current >= 3) {
+        if (
+          emptyCameraFrameCountRef.current >=
+          CAMERA_DUPLICATE_RESET_EMPTY_FRAME_COUNT
+        ) {
           seenCameraKeysRef.current = new Set();
         }
         if (
@@ -575,8 +583,14 @@ function BambuFilamentCodeBatchPanel({
       });
     }
 
-    const initialScanTimer = window.setTimeout(() => void scanCameraFrame(), 250);
-    scanTimerRef.current = window.setInterval(() => void scanCameraFrame(), 650);
+    const initialScanTimer = window.setTimeout(
+      () => void scanCameraFrame(),
+      CAMERA_SCAN_INITIAL_DELAY_MS,
+    );
+    scanTimerRef.current = window.setInterval(
+      () => void scanCameraFrame(),
+      CAMERA_SCAN_INTERVAL_MS,
+    );
 
     return () => {
       window.clearTimeout(initialScanTimer);
@@ -739,202 +753,241 @@ function BambuFilamentCodeBatchPanel({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200/90 bg-white/72 p-4 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-            {t("inventory.bambuBatchTitle", "Batch Filament Codes")}
-          </div>
-          <div className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
-            {t(
-              "inventory.bambuBatchHelp",
-              "Paste one or more five digit codes. Ready matches use the stock details from Add filament.",
-            )}
-          </div>
-        </div>
-        {batch.rows.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold tabular-nums">
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700 dark:border-emerald-800/70 dark:bg-emerald-950/40 dark:text-emerald-200">
-              {batch.creatableRows.length} {t("inventory.bambuBatchReadyShort", "ready")}
-            </span>
-            {batch.blockedRows.length > 0 ? (
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
-                {batch.blockedRows.length} {t("inventory.bambuBatchNeedsReview", "review")}
+    <div className="grid min-h-0 gap-4 lg:h-full lg:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
+      <section className="min-h-0 space-y-3 overflow-y-auto overscroll-contain pr-1">
+        <BambuFilamentCodeLookupHint lookup={lookup} />
+
+        <div className="rounded-2xl border border-slate-200/90 bg-white/72 p-3 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                {t("inventory.bambuBatchScanTitle", "Scan or enter codes")}
+              </div>
+              <div className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                {t(
+                  "inventory.bambuBatchScanHelp",
+                  "Use the webcam, image import, or type one code at a time.",
+                )}
+              </div>
+            </div>
+            {cameraPanelVisible ? (
+              <span
+                className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${bambuBatchCameraOverlayClassName(
+                  cameraStatus,
+                )}`}
+              >
+                {bambuBatchCameraStatusLabel(cameraStatus, t)}
               </span>
             ) : null}
           </div>
-        ) : null}
-      </div>
 
-      {createMessage ? (
-        <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
-          {createMessage}
-        </div>
-      ) : null}
+          <form
+            className="mt-3 flex flex-col gap-2 sm:flex-row"
+            onSubmit={(event) => {
+              event.preventDefault();
+              appendScanInput();
+            }}
+          >
+            <input
+              type="text"
+              value={scanInput}
+              onChange={(event) => setScanInput(event.target.value)}
+              placeholder={t("inventory.bambuBatchScanPlaceholder", "Scan or type one code")}
+              aria-label={t("inventory.bambuBatchScanLabel", "Scan or type one code")}
+              className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500"
+              disabled={!tauriAvailable}
+            />
+            <button
+              type="submit"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80"
+              disabled={!tauriAvailable || !trimmedScanInput}
+            >
+              {t("inventory.bambuBatchAppendScan", "Add to batch")}
+            </button>
+          </form>
 
-      <form
-        className="mt-3 flex flex-col gap-2 sm:flex-row"
-        onSubmit={(event) => {
-          event.preventDefault();
-          appendScanInput();
-        }}
-      >
-        <input
-          type="text"
-          value={scanInput}
-          onChange={(event) => setScanInput(event.target.value)}
-          placeholder={t("inventory.bambuBatchScanPlaceholder", "Scan or type one code")}
-          aria-label={t("inventory.bambuBatchScanLabel", "Scan or type one code")}
-          className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500"
-          disabled={!tauriAvailable}
-        />
-        <button
-          type="submit"
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80"
-          disabled={!tauriAvailable || !trimmedScanInput}
-        >
-          {t("inventory.bambuBatchAppendScan", "Add to batch")}
-        </button>
-      </form>
-
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <label
-          className={`inline-flex cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80 ${
-            !tauriAvailable || imageScanBusy ? "pointer-events-none opacity-50" : ""
-          }`}
-        >
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(event) => void handleImageScan(event)}
-            disabled={!tauriAvailable || imageScanBusy}
-          />
-          {imageScanBusy
-            ? t("inventory.bambuBatchImageScanning", "Reading image...")
-            : t("inventory.bambuBatchImageAction", "Add from image")}
-        </label>
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80"
-          onClick={cameraActive ? stopCamera : () => void startCamera()}
-          disabled={!tauriAvailable || cameraStarting}
-        >
-          {cameraActive
-            ? t("inventory.bambuBatchCameraStop", "Stop webcam")
-            : cameraStarting
-              ? t("inventory.bambuBatchCameraStartingAction", "Starting camera...")
-              : t("inventory.bambuBatchCameraAction", "Use webcam")}
-        </button>
-        {imageScanMessage ? (
-          <span className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-            {imageScanMessage}
-          </span>
-        ) : null}
-      </div>
-
-      {cameraPanelVisible ? (
-        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700">
-          <div className="relative aspect-video min-h-48 bg-slate-950">
-            {cameraActive ? (
-              <video
-                ref={videoRef}
-                autoPlay
-                muted
-                playsInline
-                className="h-full w-full object-cover"
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <label
+              className={`inline-flex cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80 ${
+                !tauriAvailable || imageScanBusy ? "pointer-events-none opacity-50" : ""
+              }`}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => void handleImageScan(event)}
+                disabled={!tauriAvailable || imageScanBusy}
               />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center px-5 text-center text-sm text-slate-400">
-                {cameraMessage ??
-                  t(
-                    "inventory.bambuBatchCameraPreviewIdle",
-                    "Start the webcam to scan Bambu box labels.",
-                  )}
-              </div>
-            )}
-            <div className="pointer-events-none absolute inset-5 rounded-2xl border border-white/30" />
-            <div className="pointer-events-none absolute left-[8%] right-[8%] top-[42%] h-[16%] rounded-xl border border-white/45 bg-white/[0.03] shadow-[0_0_24px_rgba(255,255,255,0.12)]" />
-            <div className="pointer-events-none absolute left-8 right-8 top-1/2 h-px bg-white/20" />
-            <div className="pointer-events-none absolute bottom-8 top-8 left-1/2 w-px bg-white/20" />
-            <div
-              className={`pointer-events-none absolute left-3 top-3 rounded-full border px-3 py-1 text-xs font-semibold shadow-lg shadow-slate-950/30 ${bambuBatchCameraOverlayClassName(
-                cameraStatus,
-              )}`}
+              {imageScanBusy
+                ? t("inventory.bambuBatchImageScanning", "Reading image...")
+                : t("inventory.bambuBatchImageAction", "Add from image")}
+            </label>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80"
+              onClick={cameraActive ? stopCamera : () => void startCamera()}
+              disabled={!tauriAvailable || cameraStarting}
             >
-              {bambuBatchCameraStatusLabel(cameraStatus, t)}
-            </div>
-            <div
-              className={`pointer-events-none absolute inset-x-3 bottom-3 rounded-xl border px-3 py-2 text-sm font-semibold shadow-lg shadow-slate-950/30 ${bambuBatchCameraOverlayClassName(
-                cameraStatus,
-              )}`}
-              aria-live="polite"
-            >
-              {cameraMessage ??
-                t(
-                  "inventory.bambuBatchCameraShowLabel",
-                  "Show a Bambu box label to the camera.",
-                )}
-            </div>
+              {cameraActive
+                ? t("inventory.bambuBatchCameraStop", "Stop webcam")
+                : cameraStarting
+                  ? t("inventory.bambuBatchCameraStartingAction", "Starting camera...")
+                  : t("inventory.bambuBatchCameraAction", "Use webcam")}
+            </button>
+            {imageScanMessage ? (
+              <span className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+                {imageScanMessage}
+              </span>
+            ) : null}
           </div>
         </div>
-      ) : null}
 
-      <textarea
-        value={input}
-        onChange={(event) => onInputChange(event.target.value)}
-        placeholder={t("inventory.bambuBatchPlaceholder", "53400\n53600\n65103")}
-        rows={4}
-        className="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500"
-        disabled={!tauriAvailable}
-      />
-
-      {batch.rows.length > 0 ? (
-        <div className="mt-3 space-y-1.5">
-          {visibleRows.map((row) => {
-            const ready = Boolean(row.master);
-            return (
-              <div
-                key={row.key}
-                className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white/75 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-950/55"
-              >
-                <div className="min-w-0">
-                  <div className="font-mono font-semibold text-slate-800 dark:text-slate-100">
-                    {row.code ?? row.sourceText}
-                  </div>
-                  <div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-slate-500 dark:text-slate-400">
-                    {bambuBatchRowPreview(row)}
-                  </div>
+        {cameraPanelVisible ? (
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700">
+            <div className="relative aspect-video min-h-48 bg-slate-950 lg:min-h-0">
+              {cameraActive ? (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center px-5 text-center text-sm text-slate-400">
+                  {cameraMessage ??
+                    t(
+                      "inventory.bambuBatchCameraPreviewIdle",
+                      "Start the webcam to scan Bambu box labels.",
+                    )}
                 </div>
-                <span
-                  className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-semibold ${
-                    ready
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/70 dark:bg-emerald-950/40 dark:text-emerald-200"
-                      : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300"
-                  }`}
-                >
-                  {bambuBatchRowStatusLabel(row, t)}
-                </span>
+              )}
+              <div className="pointer-events-none absolute inset-5 rounded-2xl border border-white/30" />
+              <div className="pointer-events-none absolute left-[8%] right-[8%] top-[42%] h-[16%] rounded-xl border border-white/45 bg-white/[0.03] shadow-[0_0_24px_rgba(255,255,255,0.12)]" />
+              <div className="pointer-events-none absolute left-8 right-8 top-1/2 h-px bg-white/20" />
+              <div className="pointer-events-none absolute bottom-8 top-8 left-1/2 w-px bg-white/20" />
+              <div
+                className={`pointer-events-none absolute inset-x-3 bottom-3 rounded-xl border px-3 py-2 text-sm font-semibold shadow-lg shadow-slate-950/30 ${bambuBatchCameraOverlayClassName(
+                  cameraStatus,
+                )}`}
+                aria-live="polite"
+              >
+                {cameraMessage ??
+                  t(
+                    "inventory.bambuBatchCameraShowLabel",
+                    "Show a Bambu box label to the camera.",
+                  )}
               </div>
-            );
-          })}
-          {hiddenCount > 0 ? (
-            <div className="px-1 text-xs text-slate-500 dark:text-slate-400">
-              +{hiddenCount} {t("inventory.bambuBatchMoreRows", "more")}
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      <aside className="flex min-h-0 flex-col rounded-2xl border border-slate-200/90 bg-white/72 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45">
+        <div className="shrink-0 border-b border-slate-200/80 p-3 dark:border-slate-800/70">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                {t("inventory.bambuBatchTitle", "Batch Filament Codes")}
+              </div>
+              <div className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                {t(
+                  "inventory.bambuBatchHelp",
+                  "Paste one or more five digit codes. Ready matches use the stock details from Add filament.",
+                )}
+              </div>
+            </div>
+            {batch.rows.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold tabular-nums">
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700 dark:border-emerald-800/70 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  {batch.creatableRows.length}{" "}
+                  {t("inventory.bambuBatchReadyShort", "ready")}
+                </span>
+                {batch.blockedRows.length > 0 ? (
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
+                    {batch.blockedRows.length}{" "}
+                    {t("inventory.bambuBatchNeedsReview", "review")}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          {createMessage ? (
+            <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+              {createMessage}
             </div>
           ) : null}
         </div>
-      ) : null}
 
-      <button
-        type="button"
-        className="mt-3 w-full rounded-xl border border-slate-900 bg-slate-900 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-        onClick={onCreateBatch}
-        disabled={disabledCreate}
-      >
-        {t("inventory.bambuBatchAddReady", "Add ready matches")} ·{" "}
-        {batch.creatableRows.length}
-      </button>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
+          <textarea
+            value={input}
+            onChange={(event) => onInputChange(event.target.value)}
+            placeholder={t("inventory.bambuBatchPlaceholder", "53400\n53600\n65103")}
+            rows={3}
+            className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500"
+            disabled={!tauriAvailable}
+          />
+
+          {batch.rows.length > 0 ? (
+            <div className="mt-3 space-y-1.5">
+              {visibleRows.map((row) => {
+                const ready = Boolean(row.master);
+                return (
+                  <div
+                    key={row.key}
+                    className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white/75 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-950/55"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-mono font-semibold text-slate-800 dark:text-slate-100">
+                        {row.code ?? row.sourceText}
+                      </div>
+                      <div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-slate-500 dark:text-slate-400">
+                        {bambuBatchRowPreview(row)}
+                      </div>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-semibold ${
+                        ready
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/70 dark:bg-emerald-950/40 dark:text-emerald-200"
+                          : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300"
+                      }`}
+                    >
+                      {bambuBatchRowStatusLabel(row, t)}
+                    </span>
+                  </div>
+                );
+              })}
+              {hiddenCount > 0 ? (
+                <div className="px-1 text-xs text-slate-500 dark:text-slate-400">
+                  +{hiddenCount} {t("inventory.bambuBatchMoreRows", "more")}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="mt-3 rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+              {t(
+                "inventory.bambuBatchNoRowsYet",
+                "Scanned and typed codes will appear here.",
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="shrink-0 border-t border-slate-200/80 p-3 dark:border-slate-800/70">
+          <button
+            type="button"
+            className="w-full rounded-xl border border-slate-900 bg-slate-900 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+            onClick={onCreateBatch}
+            disabled={disabledCreate}
+          >
+            {t("inventory.bambuBatchAddReady", "Add ready matches")} ·{" "}
+            {batch.creatableRows.length}
+          </button>
+        </div>
+      </aside>
     </div>
   );
 }
@@ -961,8 +1014,11 @@ export function InventoryBambuBatchModal({
     <AppModal
       closeOnBackdrop
       onBackdropClose={onClose}
-      overlayClassName={inventoryModalOverlayClassName}
-      panelClassName={modalPanelClassName("xl", "flex max-h-[90vh] min-h-0 flex-col p-0")}
+      overlayClassName={`${inventoryModalOverlayClassName} overflow-hidden overscroll-contain`}
+      panelClassName={modalPanelClassName(
+        "wide",
+        "flex h-[min(92vh,900px)] max-h-[92vh] min-h-0 w-[min(96vw,86rem)] max-w-none flex-col p-0 overscroll-contain",
+      )}
       zIndex={60}
     >
       <>
@@ -975,21 +1031,21 @@ export function InventoryBambuBatchModal({
           )}
           closeLabel={t("common.close", "Close")}
           onClose={onClose}
+          className="py-3"
+          subtitleClassName="max-w-2xl text-xs leading-5"
         />
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-          <div className="space-y-4">
-            <BambuFilamentCodeLookupHint lookup={lookup} />
-            <BambuFilamentCodeBatchPanel
-              batch={batch}
-              createState={createState}
-              disabledCreate={disabledCreate}
-              input={input}
-              onCreateBatch={onCreateBatch}
-              onInputChange={onInputChange}
-              tauriAvailable={tauriAvailable}
-            />
-          </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 lg:overflow-hidden">
+          <BambuFilamentCodeBatchPanel
+            batch={batch}
+            createState={createState}
+            disabledCreate={disabledCreate}
+            input={input}
+            lookup={lookup}
+            onCreateBatch={onCreateBatch}
+            onInputChange={onInputChange}
+            tauriAvailable={tauriAvailable}
+          />
         </div>
       </>
     </AppModal>

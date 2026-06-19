@@ -319,6 +319,9 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchTitle: "Batch Filament Codes",
       bambuBatchHelp:
         "Paste one or more five digit codes. Ready matches use the stock details from Add filament.",
+      bambuBatchScanTitle: "Scan or enter codes",
+      bambuBatchScanHelp:
+        "Use the webcam, image import, or type one code at a time.",
       bambuBatchScanLabel: "Scan or type one code",
       bambuBatchScanPlaceholder: "Scan or type one code",
       bambuBatchAppendScan: "Add to batch",
@@ -377,6 +380,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchNoMatch: "No match",
       bambuBatchNoCode: "No code",
       bambuBatchMoreRows: "more",
+      bambuBatchNoRowsYet: "Scanned and typed codes will appear here.",
       bambuBatchBorrowedOwnerRequired:
         "Enter who the spools are borrowed from before creating this borrowed-in batch.",
       bambuBatchNoneReady:
@@ -1882,6 +1886,9 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchTitle: "Filament Code-batch",
       bambuBatchHelp:
         "Lim inn én eller flere femsifrede koder. Klare treff bruker lagerdetaljene fra Legg til filament.",
+      bambuBatchScanTitle: "Skann eller legg inn koder",
+      bambuBatchScanHelp:
+        "Bruk webkamera, bildeimport eller skriv én kode om gangen.",
       bambuBatchScanLabel: "Skann eller skriv én kode",
       bambuBatchScanPlaceholder: "Skann eller skriv én kode",
       bambuBatchAppendScan: "Legg til i batch",
@@ -1940,6 +1947,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchNoMatch: "Ingen treff",
       bambuBatchNoCode: "Ingen kode",
       bambuBatchMoreRows: "til",
+      bambuBatchNoRowsYet: "Skannede og skrevne koder vises her.",
       bambuBatchBorrowedOwnerRequired:
         "Oppgi hvem filamentene er lånt fra før du oppretter denne innlånte batchen.",
       bambuBatchNoneReady:

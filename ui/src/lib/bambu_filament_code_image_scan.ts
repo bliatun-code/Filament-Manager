@@ -1379,7 +1379,7 @@ function detectEan13FromBarcodeCanvasCandidates(
   return detectKnownBambuBoxEanFromBarcodeCanvasCandidates(canvases);
 }
 
-function createCanvasEan13BambuFilamentBarcodeScanner(): BambuFilamentBarcodeDetector {
+export function createFastBambuFilamentBoxBarcodeScanner(): BambuFilamentBarcodeDetector {
   return {
     detect: async (image: unknown) => {
       const canvas = createCanvasForBarcodeScan(image);
@@ -1549,7 +1549,7 @@ export async function createZxingBambuFilamentBarcodeScanner(): Promise<BambuFil
       zxing = await import("@zxing/browser");
       zxingCore = await import("@zxing/library");
     } catch {
-      return createCanvasEan13BambuFilamentBarcodeScanner();
+      return createFastBambuFilamentBoxBarcodeScanner();
     }
 
     const linearReader = createZxingReader(
@@ -1598,7 +1598,7 @@ export async function createZxingBambuFilamentBarcodeScanner(): Promise<BambuFil
         });
       },
     };
-  })().catch(() => createCanvasEan13BambuFilamentBarcodeScanner());
+  })().catch(() => createFastBambuFilamentBoxBarcodeScanner());
 
   return zxingBarcodeScannerPromise;
 }

@@ -4,6 +4,7 @@ import {
 } from "./bambu_filament_code_batch";
 import {
   createBambuFilamentBarcodeScanner,
+  createFastBambuFilamentBoxBarcodeScanner,
   type BambuFilamentBarcodeScannerFactory,
   type BambuFilamentBarcodeDetector,
   type BambuFilamentBarcodeDetectorConstructor,
@@ -93,7 +94,16 @@ export function bambuFilamentCodeCameraScanSupport(
 export async function createBambuFilamentCodeCameraDetector(
   dependencies: BambuFilamentCodeCameraScanDependencies = {},
 ): Promise<BambuFilamentBarcodeDetector | null> {
-  return createBambuFilamentBarcodeScanner(dependencies);
+  const fallbackBarcodeScanner = Object.prototype.hasOwnProperty.call(
+    dependencies,
+    "fallbackBarcodeScanner",
+  )
+    ? dependencies.fallbackBarcodeScanner
+    : async () => createFastBambuFilamentBoxBarcodeScanner();
+  return createBambuFilamentBarcodeScanner({
+    ...dependencies,
+    fallbackBarcodeScanner,
+  });
 }
 
 export async function requestBambuFilamentCodeCameraStream(

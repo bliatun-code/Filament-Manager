@@ -50,6 +50,15 @@ test("createBambuFilamentCodeCameraDetector uses the fallback scanner without na
   assert.deepEqual(await scanner?.detect({}), [{ rawValue: "Filament Code: 53400" }]);
 });
 
+test("createBambuFilamentCodeCameraDetector provides a fast box fallback by default", async () => {
+  const scanner = await createBambuFilamentCodeCameraDetector({
+    barcodeDetector: null,
+  });
+
+  assert.ok(scanner);
+  assert.deepEqual(await scanner.detect({}), []);
+});
+
 test("requestBambuFilamentCodeCameraStream asks for an environment-facing video stream", async () => {
   let constraints: MediaStreamConstraints | null = null;
   const fakeStream = { id: "stream" } as unknown as MediaStream;
