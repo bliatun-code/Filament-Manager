@@ -345,10 +345,10 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchCameraUnavailable: "Camera unavailable",
       bambuBatchCameraErrorShort: "Camera error",
       bambuBatchCameraPreviewIdle: "Start the webcam to scan Bambu box labels.",
-      bambuBatchCameraAddedCodes: "{count} filament code(s) added.",
-      bambuBatchCameraAddedReview: "{count} barcode value(s) added for review.",
-      bambuBatchCameraAddedMixed:
-        "{codeCount} filament code(s) and {reviewCount} barcode value(s) for review were added.",
+      bambuBatchCameraAddedCodeValues: "Added {codes}.",
+      bambuBatchCameraAddedReviewValues: "Added for review: {values}.",
+      bambuBatchCameraAddedMixedValues:
+        "Added {codes}; {reviewCount} barcode value(s) for review.",
       bambuBatchCameraAlreadyAdded:
         "Already added. Move the label away before scanning another copy.",
       bambuBatchCameraBarcodeUnsupported:
@@ -1899,10 +1899,10 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchCameraUnavailable: "Kamera utilgjengelig",
       bambuBatchCameraErrorShort: "Kamerafeil",
       bambuBatchCameraPreviewIdle: "Start webkameraet for å skanne Bambu-eskeetiketter.",
-      bambuBatchCameraAddedCodes: "{count} filamentkode(r) lagt til.",
-      bambuBatchCameraAddedReview: "{count} strekkodeverdi(er) lagt til for sjekk.",
-      bambuBatchCameraAddedMixed:
-        "{codeCount} filamentkode(r) og {reviewCount} strekkodeverdi(er) til sjekk ble lagt til.",
+      bambuBatchCameraAddedCodeValues: "La til {codes}.",
+      bambuBatchCameraAddedReviewValues: "Lagt til for sjekk: {values}.",
+      bambuBatchCameraAddedMixedValues:
+        "La til {codes}; {reviewCount} strekkodeverdi(er) til sjekk.",
       bambuBatchCameraAlreadyAdded:
         "Allerede lagt til. Flytt etiketten bort før du skanner en ny av samme type.",
       bambuBatchCameraBarcodeUnsupported:

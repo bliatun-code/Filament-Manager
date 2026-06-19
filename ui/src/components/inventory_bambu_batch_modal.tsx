@@ -245,6 +245,12 @@ function bambuBatchImageScanMessage(
   ).replace("{count}", String(reviewCount));
 }
 
+function formatBambuBatchScanLinePreview(lines: string[]): string {
+  const preview = lines.slice(0, 3).join(", ");
+  const remainingCount = Math.max(0, lines.length - 3);
+  return remainingCount > 0 ? `${preview} +${remainingCount}` : preview;
+}
+
 type BambuBatchCameraStatus =
   | "idle"
   | "starting"
@@ -261,24 +267,26 @@ function bambuBatchCameraScanMessage(
 ): string {
   const codeCount = append.appendedCodeLines.length;
   const reviewCount = append.appendedReviewLines.length;
+  const codePreview = formatBambuBatchScanLinePreview(append.appendedCodeLines);
+  const reviewPreview = formatBambuBatchScanLinePreview(append.appendedReviewLines);
   if (codeCount > 0 && reviewCount > 0) {
     return t(
-      "inventory.bambuBatchCameraAddedMixed",
-      "{codeCount} filament code(s) and {reviewCount} barcode value(s) for review were added.",
+      "inventory.bambuBatchCameraAddedMixedValues",
+      "Added {codes}; {reviewCount} barcode value(s) for review.",
     )
-      .replace("{codeCount}", String(codeCount))
+      .replace("{codes}", codePreview)
       .replace("{reviewCount}", String(reviewCount));
   }
   if (codeCount > 0) {
     return t(
-      "inventory.bambuBatchCameraAddedCodes",
-      "{count} filament code(s) added.",
-    ).replace("{count}", String(codeCount));
+      "inventory.bambuBatchCameraAddedCodeValues",
+      "Added {codes}.",
+    ).replace("{codes}", codePreview);
   }
   return t(
-    "inventory.bambuBatchCameraAddedReview",
-    "{count} barcode value(s) added for review.",
-  ).replace("{count}", String(reviewCount));
+    "inventory.bambuBatchCameraAddedReviewValues",
+    "Added for review: {values}.",
+  ).replace("{values}", reviewPreview);
 }
 
 function bambuBatchCameraStatusLabel(
