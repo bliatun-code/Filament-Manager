@@ -357,9 +357,15 @@ Typisk RFID-flyt for en rull som allerede ligger i Lager:
 6. Kontroller at observert RFID, farge og spor ser riktig ut.
 7. Lagre RFID på rullen.
 
-Fra et printerslot kan en ukjent Bambu-RFID også håndteres direkte i slotkortet. Hvis én lagerrull ser ut som live-rullen, bruk **Lagre RFID**. Hvis flere lagerruller matcher, velg riktig rull fra kortlisten. Hvis ingen lagerrull matcher, men Bambu-katalogen har et sannsynlig treff, bruk **Legg til + lagre RFID** og velg om den nye rullen er eid eller innlånt før du lagrer.
+Fra et printerslot kan en ukjent Bambu-RFID også håndteres direkte i slotkortet:
 
-Etter dette kan programmet bruke RFID som sterk identitet. Hvis flere ruller har samme eller uklare data, eller hvis sporet allerede har en annen tildelt rull, vil programmet være mer forsiktig og be om manuell vurdering før det lagrer eller oppretter noe.
+- Hvis nøyaktig én lagerrull ser ut som live-rullen, bruk **Lagre RFID** for å registrere observert identitet på den rullen.
+- Hvis flere lagerruller matcher, velg riktig rull fra kortlisten før du lagrer RFID.
+- Hvis ingen lagerrull matcher, men Bambu-katalogen har et sannsynlig treff, bruk **Legg til + lagre RFID**, velg om den nye rullen er eid eller innlånt, og bekreft ny rull og RFID-registrering samlet.
+
+Slotflyten erstatter aldri en allerede tildelt rull i det stille. Hvis sporet allerede har en annen rull, må du først rydde eller endre tildelingen med en tydelig handling. Programmet ber også om ny bekreftelse hvis live-RFID forsvinner, sporet tømmes eller den observerte identiteten endrer seg mens du vurderer valget.
+
+Etter dette kan programmet bruke RFID som sterk identitet. Hvis flere ruller har samme eller uklare data, vil programmet være mer forsiktig og be om manuell vurdering før det lagrer eller oppretter noe.
 
 #### Før du registrerer RFID
 

@@ -357,9 +357,15 @@ Typical RFID flow for an existing inventory spool:
 6. Verify that observed RFID, color, and slot look correct.
 7. Save RFID on the spool.
 
-From a printer slot, an unknown Bambu RFID can also be handled directly in the slot card. If one inventory spool looks like the live roll, use **Save RFID**. If several inventory spools match, choose the correct row from the shortlist. If no inventory spool matches but the Bambu catalog has a likely entry, use **Add + save RFID** and choose whether the new spool is owned or borrowed-in before saving.
+From a printer slot, an unknown Bambu RFID can also be handled directly in the slot card:
 
-After this, the app can use RFID as a strong identity. If several spools share unclear or conflicting data, or if the slot already has another assigned roll, the app will be more cautious and ask for manual review before saving or creating anything.
+- If exactly one inventory spool looks like the live roll, use **Save RFID** to register the observed identity on that spool.
+- If several inventory spools match, choose the correct spool from the shortlist before saving RFID.
+- If no inventory spool matches but the Bambu catalog has a likely entry, use **Add + save RFID**, choose whether the new spool is owned or borrowed-in, then confirm the new spool and RFID registration together.
+
+The slot flow never silently replaces an already assigned spool. If the slot already has a different roll, clear or change the assignment deliberately first. The app also asks for a fresh confirmation when the live RFID disappears, the slot unloads, or the observed identity changes while you are deciding.
+
+After this, the app can use RFID as a strong identity. If several spools share unclear or conflicting data, the app will be more cautious and ask for manual review before saving or creating anything.
 
 #### Before Registering RFID
 
