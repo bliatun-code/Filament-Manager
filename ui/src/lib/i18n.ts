@@ -317,7 +317,6 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchAppendScan: "Add to batch",
       bambuBatchImageAction: "Add from image",
       bambuBatchImageScanning: "Reading image...",
-      bambuBatchImageAdded: "{count} barcode value(s) added to the batch.",
       bambuBatchImageAddedCodes: "{count} filament code(s) added to the batch.",
       bambuBatchImageAddedReview: "{count} barcode value(s) added for review.",
       bambuBatchImageAddedMixed:
@@ -1837,7 +1836,6 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuBatchAppendScan: "Legg til i batch",
       bambuBatchImageAction: "Legg til fra bilde",
       bambuBatchImageScanning: "Leser bilde...",
-      bambuBatchImageAdded: "{count} strekkodeverdi(er) lagt til i batchen.",
       bambuBatchImageAddedCodes: "{count} filamentkode(r) lagt til i batchen.",
       bambuBatchImageAddedReview: "{count} strekkodeverdi(er) lagt til for sjekk.",
       bambuBatchImageAddedMixed:

@@ -24,8 +24,10 @@ camera, image, or OCR sources.
   five digit codes, keep duplicate scans as separate rows, and keep invalid
   non-code values visible for review through the same batch model.
 - Desktop/client can also add barcode values from a still image when the browser
-  provides native barcode detection. Unsupported browsers fall back to manual
-  paste/type input.
+  provides native barcode detection. Detected five digit codes and raw non-code
+  barcode values stay separate in the batch model, so mixed image results can add
+  ready rows while keeping other barcode values visible for review. Unsupported
+  browsers fall back to manual paste/type input.
 - Companion has manual Bambu Filament Code lookup, but no camera flow.
 - Batch create already applies ownership, borrowed-in owner/contact, weight, and
   location consistently to all ready rows.
@@ -51,6 +53,7 @@ camera, image, or OCR sources.
   input.
 - Borrowed-in batch creation must remain blocked until owner name is present.
 - Tests must cover one active match, multiple active matches, discontinued-only,
-  no match, duplicate scans, and invalid non-code barcode values.
+  no match, duplicate scans, mixed image scans, and invalid non-code barcode
+  values.
 - Companion tests must continue to assert that camera/webcam wording and flows
   are absent.
