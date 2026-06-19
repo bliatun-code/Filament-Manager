@@ -142,6 +142,24 @@ test("SlotCatalogOnboardingModal renders the owned catalog onboarding save path"
   assert.doesNotMatch(html, /disabled="">\s*Add \+ save RFID/);
 });
 
+test("SlotCatalogOnboardingModal marks discontinued catalog fallback rows", () => {
+  const html = renderModal({
+    prompt: prompt({
+      master: master({
+        is_discontinued: true,
+        discontinued_at: "2025-01-01T00:00:00Z",
+        filament_name: "PLA Archived",
+      }),
+    }),
+    currentSlot: slot(),
+    currentLiveTray: liveTray(),
+  });
+
+  assert.match(html, /PLA Archived · Black/);
+  assert.match(html, /Bambu Lab · 1000 g · Discontinued/);
+  assert.match(html, /Add \+ save RFID/);
+});
+
 test("SlotCatalogOnboardingModal blocks borrowed-in catalog onboarding until owner is entered", () => {
   const html = renderModal({
     prompt: prompt({
