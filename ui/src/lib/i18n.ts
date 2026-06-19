@@ -492,6 +492,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         createSpool: "Failed to create spool. Check QR uniqueness and values.",
         bambuBatchEmpty:
           "Paste at least one Bambu Filament Code with a single active catalog match.",
+        bambuBatchWrongMode:
+          "Switch to Bambu source before creating a Filament Code batch.",
         createBambuBatch:
           "Failed to create Bambu code batch. Check QR uniqueness and values.",
         stockFromWishlist: "Failed to stock roll from wishlist item.",
@@ -1998,6 +2000,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         createSpool: "Kunne ikke opprette filament. Sjekk QR-unikhet og verdier.",
         bambuBatchEmpty:
           "Lim inn minst én Bambu Filament Code med ett aktivt katalogtreff.",
+        bambuBatchWrongMode:
+          "Bytt til Bambu-kilde før du oppretter en Filament Code-batch.",
         createBambuBatch:
           "Kunne ikke opprette Bambu-kodebatch. Sjekk QR-unikhet og verdier.",
         stockFromWishlist: "Kunne ikke legge filament til lager fra ønskelistepost.",

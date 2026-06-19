@@ -231,6 +231,15 @@ export function useInventoryCreateActions({
     if (!canStartWrite()) {
       return;
     }
+    if (createMode !== "bambu") {
+      setError(
+        t(
+          "inventory.error.bambuBatchWrongMode",
+          "Switch to Bambu source before creating a Filament Code batch.",
+        ),
+      );
+      return;
+    }
     setBusy(true);
     setError(null);
     const batchRequest = buildBambuCatalogBatchCreateRequests({
