@@ -1,12 +1,34 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   buildBambuUnknownRfidInventoryDecision,
   buildInventoryMetadataCandidateResult,
   buildInventoryMatchResult,
   translateObservedMatchNote,
+  type ObservedInventoryMatchInput,
 } from "./inventory_match";
 import type { SpoolWithMasterRow } from "./tauri_client";
+
+type SharedLiveRfidCandidateFixture = {
+  cases: Array<{
+    name: string;
+    preferredSpoolId?: string | null;
+    observed: ObservedInventoryMatchInput;
+    rows: SpoolWithMasterRow[];
+    expectedCandidateIds: string[];
+  }>;
+};
+
+const sharedLiveRfidCandidateFixture = JSON.parse(
+  readFileSync(
+    new URL(
+      "../../../test_fixtures/bambu_live_rfid_candidate_cases.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+) as SharedLiveRfidCandidateFixture;
 
 function createRow(
   id: string,
@@ -212,6 +234,25 @@ test("buildBambuUnknownRfidInventoryDecision keeps strict RFID match before Bamb
   ]);
   assert.equal(exactDecision.strictInventoryMatch.kind, "rfid_exact");
   assert.equal(exactDecision.suggestedInventoryMatch.kind, "rfid_exact");
+});
+
+test("shared Bambu live RFID candidate cases match desktop expectations", () => {
+  for (const testCase of sharedLiveRfidCandidateFixture.cases) {
+    const decision = buildBambuUnknownRfidInventoryDecision(
+      testCase.rows,
+      testCase.observed,
+      {
+        enableMetadataCandidates: true,
+        preferredSpoolId: testCase.preferredSpoolId ?? null,
+      },
+    );
+
+    assert.deepEqual(
+      decision.suggestedInventoryMatch.candidates.map((row) => row.spool.id),
+      testCase.expectedCandidateIds,
+      testCase.name,
+    );
+  }
 });
 
 test("buildBambuUnknownRfidInventoryDecision skips saved-RFID metadata candidates", () => {

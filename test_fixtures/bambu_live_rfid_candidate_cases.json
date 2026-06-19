@@ -1,0 +1,240 @@
+{
+  "cases": [
+    {
+      "name": "single Bambu candidate skips third-party and far colors",
+      "observed": {
+        "rfid": "RFID-NEW",
+        "material": "PLA",
+        "filamentName": "PLA Matte",
+        "colorHex": "#030303"
+      },
+      "rows": [
+        {
+          "spool": {
+            "id": "esun-black",
+            "master_id": "esun-black-master",
+            "status": "IN_STOCK",
+            "rfid_tag": null,
+            "ownership_type": "OWNED"
+          },
+          "master": {
+            "id": "esun-black-master",
+            "material": "PLA",
+            "filament_name": "PLA+",
+            "color_name": "Black",
+            "hex_color": "#000000",
+            "default_weight": 1000,
+            "vendor": "eSUN"
+          }
+        },
+        {
+          "spool": {
+            "id": "bambu-black",
+            "master_id": "bambu-black-master",
+            "status": "IN_STOCK",
+            "rfid_tag": null,
+            "ownership_type": "OWNED"
+          },
+          "master": {
+            "id": "bambu-black-master",
+            "material": "PLA",
+            "filament_name": "PLA Matte",
+            "color_name": "Black",
+            "hex_color": "#000000",
+            "default_weight": 1000,
+            "vendor": "Bambu"
+          }
+        },
+        {
+          "spool": {
+            "id": "bambu-red",
+            "master_id": "bambu-red-master",
+            "status": "IN_STOCK",
+            "rfid_tag": null,
+            "ownership_type": "OWNED"
+          },
+          "master": {
+            "id": "bambu-red-master",
+            "material": "PLA",
+            "filament_name": "PLA Matte",
+            "color_name": "Red",
+            "hex_color": "#B91C1C",
+            "default_weight": 1000,
+            "vendor": "Bambu"
+          }
+        }
+      ],
+      "expectedCandidateIds": ["bambu-black"]
+    },
+    {
+      "name": "host preference sorts first and borrowed-in rows stay eligible",
+      "preferredSpoolId": "host-preferred",
+      "observed": {
+        "rfid": "RFID-NEW",
+        "material": "PLA",
+        "filamentName": "PLA Matte",
+        "colorHex": "#010101"
+      },
+      "rows": [
+        {
+          "spool": {
+            "id": "borrowed-in",
+            "master_id": "borrowed-in-master",
+            "status": "IN_STOCK",
+            "rfid_tag": null,
+            "ownership_type": "BORROWED_IN",
+            "owner_name": "Ada"
+          },
+          "master": {
+            "id": "borrowed-in-master",
+            "material": "PLA",
+            "filament_name": "PLA Matte",
+            "color_name": "Black",
+            "hex_color": "#000000",
+            "default_weight": 1000,
+            "vendor": "Bambu"
+          }
+        },
+        {
+          "spool": {
+            "id": "host-preferred",
+            "master_id": "host-preferred-master",
+            "status": "IN_STOCK",
+            "rfid_tag": null,
+            "ownership_type": "OWNED"
+          },
+          "master": {
+            "id": "host-preferred-master",
+            "material": "PLA",
+            "filament_name": "PLA Matte",
+            "color_name": "Black",
+            "hex_color": "#000000",
+            "default_weight": 1000,
+            "vendor": "Bambu"
+          }
+        }
+      ],
+      "expectedCandidateIds": ["host-preferred", "borrowed-in"]
+    },
+    {
+      "name": "saved RFID rows are skipped for unknown RFID onboarding",
+      "observed": {
+        "rfid": "RFID-NEW",
+        "material": "PLA",
+        "filamentName": "PLA Matte",
+        "colorHex": "#000000"
+      },
+      "rows": [
+        {
+          "spool": {
+            "id": "already-bound",
+            "master_id": "already-bound-master",
+            "status": "IN_STOCK",
+            "rfid_tag": "OLD-RFID",
+            "ownership_type": "OWNED"
+          },
+          "master": {
+            "id": "already-bound-master",
+            "material": "PLA",
+            "filament_name": "PLA Matte",
+            "color_name": "Black",
+            "hex_color": "#000000",
+            "default_weight": 1000,
+            "vendor": "Bambu"
+          }
+        }
+      ],
+      "expectedCandidateIds": []
+    },
+    {
+      "name": "color-only live signal is not enough for Bambu RFID assistance",
+      "observed": {
+        "rfid": "RFID-NEW",
+        "material": null,
+        "filamentName": null,
+        "colorHex": "#000000"
+      },
+      "rows": [
+        {
+          "spool": {
+            "id": "bambu-black",
+            "master_id": "bambu-black-master",
+            "status": "IN_STOCK",
+            "rfid_tag": null,
+            "ownership_type": "OWNED"
+          },
+          "master": {
+            "id": "bambu-black-master",
+            "material": "PLA",
+            "filament_name": "PLA Matte",
+            "color_name": "Black",
+            "hex_color": "#000000",
+            "default_weight": 1000,
+            "vendor": "Bambu"
+          }
+        }
+      ],
+      "expectedCandidateIds": []
+    },
+    {
+      "name": "live color requires a saved candidate swatch",
+      "observed": {
+        "rfid": "RFID-NEW",
+        "material": "PLA",
+        "filamentName": "PLA Matte",
+        "colorHex": "#000000"
+      },
+      "rows": [
+        {
+          "spool": {
+            "id": "missing-swatch",
+            "master_id": "missing-swatch-master",
+            "status": "IN_STOCK",
+            "rfid_tag": null,
+            "ownership_type": "OWNED"
+          },
+          "master": {
+            "id": "missing-swatch-master",
+            "material": "PLA",
+            "filament_name": "PLA Matte",
+            "color_name": "Black",
+            "hex_color": null,
+            "default_weight": 1000,
+            "vendor": "Bambu"
+          }
+        }
+      ],
+      "expectedCandidateIds": []
+    },
+    {
+      "name": "composite swatches can satisfy the live color",
+      "observed": {
+        "rfid": "RFID-NEW",
+        "material": "PLA",
+        "filamentName": "PLA Matte",
+        "colorHex": "#3AA13F"
+      },
+      "rows": [
+        {
+          "spool": {
+            "id": "gradient-green",
+            "master_id": "gradient-green-master",
+            "status": "IN_STOCK",
+            "rfid_tag": null,
+            "ownership_type": "OWNED"
+          },
+          "master": {
+            "id": "gradient-green-master",
+            "material": "PLA",
+            "filament_name": "PLA Matte",
+            "color_name": "Green gradient",
+            "hex_color": "gradient(#720062,#3A913F)",
+            "default_weight": 1000,
+            "vendor": "Bambu"
+          }
+        }
+      ],
+      "expectedCandidateIds": ["gradient-green"]
+    }
+  ]
+}

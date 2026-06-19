@@ -1,10 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   buildLiveInventoryCandidateRows,
   rowMatchesLiveBambuSlot,
 } from "./companion_live_rfid_candidates.js";
+
+const sharedLiveRfidCandidateFixture = JSON.parse(
+  readFileSync(
+    new URL(
+      "../../test_fixtures/bambu_live_rfid_candidate_cases.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 
 function slot(overrides = {}) {
   return {
@@ -152,6 +163,25 @@ test("Companion live RFID candidates ignore stale mismatched host preference", (
     ).map((candidateRow) => candidateRow.spool.id),
     ["matching-candidate"],
   );
+});
+
+test("shared Bambu live RFID candidate cases match Companion expectations", () => {
+  for (const testCase of sharedLiveRfidCandidateFixture.cases) {
+    assert.deepEqual(
+      buildLiveInventoryCandidateRows(
+        slot({
+          live_color_hex: testCase.observed.colorHex,
+          live_filament_name: testCase.observed.filamentName,
+          live_filament_type: testCase.observed.material,
+          live_matched_inventory_spool_id: testCase.preferredSpoolId ?? null,
+          live_tray_uuid: testCase.observed.rfid,
+        }),
+        testCase.rows,
+      ).map((candidateRow) => candidateRow.spool.id),
+      testCase.expectedCandidateIds,
+      testCase.name,
+    );
+  }
 });
 
 test("Companion live RFID candidates infer material from live filament name", () => {
