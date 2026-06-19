@@ -308,7 +308,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuCodeMoreMatches: "more",
       bambuCodeTryCatalogSearch: "You can still search by material, series, or color name.",
       bambuCodeEnterExample: "Type the code into the search field, for example 53400.",
-      bambuCodeBoxLabelHint: "Box label",
+      bambuCodeBoxLabelTitle: "Box label",
+      bambuCodeBoxLabelHint: "Find this field on the box label.",
       bambuBatchTitle: "Batch Filament Codes",
       bambuBatchHelp:
         "Paste one or more five digit codes. Ready matches use the stock details on the right.",
@@ -1827,7 +1828,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       bambuCodeTryCatalogSearch:
         "Du kan fortsatt søke etter materiale, serie eller fargenavn.",
       bambuCodeEnterExample: "Skriv koden i søkefeltet, for eksempel 53400.",
-      bambuCodeBoxLabelHint: "Eskeetikett",
+      bambuCodeBoxLabelTitle: "Eskeetikett",
+      bambuCodeBoxLabelHint: "Finn dette feltet på eskeetiketten.",
       bambuBatchTitle: "Filament Code-batch",
       bambuBatchHelp:
         "Lim inn én eller flere femsifrede koder. Klare treff bruker lagerdetaljene til høyre.",

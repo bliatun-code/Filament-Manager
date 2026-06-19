@@ -98,7 +98,7 @@ function BambuFilamentCodeLookupHint({
         <div className="w-full shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-[11px] leading-none text-slate-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-400 sm:w-44">
           <div className="mb-2 flex items-center justify-between gap-2">
             <span className="text-[9px] font-semibold uppercase tracking-[0.18em]">
-              {t("inventory.bambuCodeBoxLabelHint", "Box label")}
+              {t("inventory.bambuCodeBoxLabelTitle", "Box label")}
             </span>
             <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400">
               Bambu
@@ -117,6 +117,18 @@ function BambuFilamentCodeLookupHint({
                 {lookup.code ?? "53400"}
               </span>
             </div>
+            <div className="flex h-5 items-end gap-0.5 rounded-md bg-white px-2 py-1 dark:bg-slate-950/80">
+              {[3, 1, 2, 4, 1, 3, 2].map((height, index) => (
+                <span
+                  key={`${height}-${index}`}
+                  className="w-0.5 rounded-full bg-slate-400 dark:bg-slate-500"
+                  style={{ height: `${height * 3}px` }}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="mt-2 text-[10px] leading-4 text-slate-500 dark:text-slate-400">
+            {t("inventory.bambuCodeBoxLabelHint", "Find this field on the box label.")}
           </div>
         </div>
         <div className="min-w-0 flex-1">

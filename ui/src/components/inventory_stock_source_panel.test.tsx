@@ -118,6 +118,7 @@ test("InventoryStockSourcePanel keeps Bambu Filament Code help and batch entry i
   assert.match(html, /Search Bambu material\/color or filament code/);
   assert.match(html, /Filament Code/);
   assert.match(html, /Box label/);
+  assert.match(html, /Find this field on the box label/);
   assert.match(html, /One active Bambu catalog entry matched and is selected/);
   assert.match(html, /TPU for AMS/);
   assert.match(html, /Batch Filament Codes/);
@@ -139,6 +140,7 @@ test("InventoryStockSourcePanel localizes Bambu batch controls in Norwegian", ()
   });
 
   assert.match(html, /Filament Code-batch/);
+  assert.match(html, /Finn dette feltet på eskeetiketten/);
   assert.match(html, /Skann eller skriv én kode/);
   assert.match(html, /Legg til i batch/);
   assert.match(html, /Legg til fra bilde/);
