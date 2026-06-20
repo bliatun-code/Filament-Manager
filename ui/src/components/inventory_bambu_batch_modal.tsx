@@ -7,9 +7,12 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { AppModal } from "./app_modal";
-import { inventoryWideModalWidthClassName } from "./inventory_modal_chrome";
+import {
+  inventoryModalOverlayClassName,
+  inventoryTwoColumnModalGridClassName,
+  inventoryWideModalPanelClassName,
+} from "./inventory_modal_chrome";
 import { ModalHeader } from "./modal_chrome";
-import { modalPanelClassName } from "./modal_panel_class";
 import { useI18n } from "../lib/i18n";
 import type {
   BambuFilamentCodeBatch,
@@ -639,8 +642,10 @@ function BambuFilamentCodeBatchPanel({
   };
 
   return (
-    <div className="grid min-h-0 gap-4 overflow-y-auto overscroll-contain lg:h-full lg:grid-cols-[minmax(0,1.22fr)_minmax(320px,0.78fr)] lg:overflow-hidden">
-      <section className="flex min-h-0 flex-col gap-3 lg:overflow-hidden">
+    <div
+      className={`${inventoryTwoColumnModalGridClassName} min-h-0 overflow-y-auto overscroll-contain min-[900px]:h-full min-[900px]:overflow-hidden`}
+    >
+      <section className="flex min-h-0 flex-col gap-3 min-[900px]:overflow-hidden">
         <div className="shrink-0 rounded-2xl border border-slate-200/90 bg-white/72 p-3 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
@@ -732,7 +737,7 @@ function BambuFilamentCodeBatchPanel({
             cameraPanelVisible ? "flex-1" : "hidden"
           }`}
         >
-          <div className="relative h-full min-h-[18rem] bg-slate-950 lg:min-h-0">
+          <div className="relative h-full min-h-[18rem] bg-slate-950 min-[900px]:min-h-0">
             {cameraPanelVisible ? (
               <>
                 {cameraActive ? (
@@ -917,11 +922,8 @@ export function InventoryBambuBatchModal({
     <AppModal
       closeOnBackdrop
       onBackdropClose={onClose}
-      overlayClassName="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-slate-950/30 p-3 backdrop-blur-md dark:bg-black/45 sm:p-4"
-      panelClassName={modalPanelClassName(
-        "wide",
-        `flex h-[calc(100vh-2rem)] max-h-[940px] min-h-0 ${inventoryWideModalWidthClassName} max-w-none flex-col p-0 overscroll-contain`,
-      )}
+      overlayClassName={inventoryModalOverlayClassName}
+      panelClassName={`${inventoryWideModalPanelClassName} overscroll-contain`}
       zIndex={60}
     >
       <>

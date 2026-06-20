@@ -1,5 +1,9 @@
 import { AppModal } from "./app_modal";
 import {
+  inventoryModalOverlayClassName,
+  inventoryWideModalPanelClassName,
+} from "./inventory_modal_chrome";
+import {
   InventoryRfidCapturedFieldsPanel,
   InventoryRfidCaptureActions,
   InventoryRfidCaptureDiagnostics,
@@ -82,64 +86,73 @@ export function InventoryRfidCaptureModal({
 
   return (
     <AppModal
+      closeOnBackdrop
       onBackdropClose={onClose}
-      panelClassName="w-full max-w-6xl rounded-3xl border border-slate-200/90 bg-white/95 p-0 shadow-2xl shadow-slate-300/25 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/92 dark:shadow-black/45"
+      overlayClassName={inventoryModalOverlayClassName}
+      panelClassName={inventoryWideModalPanelClassName}
+      zIndex={60}
     >
-      <div className="mx-auto w-full max-w-none rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-950">
-        <InventoryRfidCaptureHeader
-          displayTitle={displayTitle}
-          matchMeta={matchMeta}
-          onClose={onClose}
-          selectedSlot={selectedSlot}
-          slotLabel={slotLabel}
-          spoolHexColor={spool.hexColor}
-        />
-
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <InventoryRfidCaptureSlotPicker
-            onSelectSlot={onSelectSlot}
-            selectedSlotId={selectedSlot?.slotId ?? null}
-            slotSummaries={slotSummaries}
-            slots={slots}
-            spool={spool}
-          />
-          <InventoryRfidCaptureSummaryCards
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="shrink-0 border-b border-slate-200/80 px-5 py-4 dark:border-slate-800/70 sm:px-6">
+          <InventoryRfidCaptureHeader
+            displayTitle={displayTitle}
             matchMeta={matchMeta}
-            savedRfidTag={spool.rfidTag}
-            summary={summary}
+            onClose={onClose}
+            selectedSlot={selectedSlot}
+            slotLabel={slotLabel}
+            spoolHexColor={spool.hexColor}
           />
         </div>
 
-        <InventoryRfidCaptureDiagnostics
-          clientReadOnly={clientReadOnly}
-          lastSlotDataAt={lastSlotDataAt}
-          liveIntegration={liveIntegration}
-          selectedSlot={selectedSlot}
-          slotLabel={slotLabel}
-          summary={summary}
-        />
-
-        {error ? (
-          <div className="mt-4 rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs text-amber-800 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-200">
-            {error}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+          <div className="grid gap-3 sm:grid-cols-2 min-[900px]:grid-cols-4">
+            <InventoryRfidCaptureSlotPicker
+              onSelectSlot={onSelectSlot}
+              selectedSlotId={selectedSlot?.slotId ?? null}
+              slotSummaries={slotSummaries}
+              slots={slots}
+              spool={spool}
+            />
+            <InventoryRfidCaptureSummaryCards
+              matchMeta={matchMeta}
+              savedRfidTag={spool.rfidTag}
+              summary={summary}
+            />
           </div>
-        ) : null}
 
-        <InventoryRfidCapturedFieldsPanel
-          fields={fields}
-          hasObservedSnapshotFields={hasObservedSnapshotFields}
-          loading={loading}
-          onToggle={onToggleCapturedFields}
-          show={showCapturedFields}
-          supportsRfidCapture={supportsRfidCapture}
-        />
+          <InventoryRfidCaptureDiagnostics
+            clientReadOnly={clientReadOnly}
+            lastSlotDataAt={lastSlotDataAt}
+            liveIntegration={liveIntegration}
+            selectedSlot={selectedSlot}
+            slotLabel={slotLabel}
+            summary={summary}
+          />
 
-        <InventoryRfidCaptureActions
-          canSave={canSave}
-          manageBusy={manageBusy}
-          onCancel={onCancel}
-          onSave={onSave}
-        />
+          {error ? (
+            <div className="mt-4 rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs text-amber-800 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-200">
+              {error}
+            </div>
+          ) : null}
+
+          <InventoryRfidCapturedFieldsPanel
+            fields={fields}
+            hasObservedSnapshotFields={hasObservedSnapshotFields}
+            loading={loading}
+            onToggle={onToggleCapturedFields}
+            show={showCapturedFields}
+            supportsRfidCapture={supportsRfidCapture}
+          />
+        </div>
+
+        <div className="shrink-0 border-t border-slate-200/80 px-5 py-4 dark:border-slate-800/70 sm:px-6">
+          <InventoryRfidCaptureActions
+            canSave={canSave}
+            manageBusy={manageBusy}
+            onCancel={onCancel}
+            onSave={onSave}
+          />
+        </div>
       </div>
     </AppModal>
   );

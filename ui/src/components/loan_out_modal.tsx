@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
+import {
+  inventoryModalOverlayClassName,
+  inventoryTwoColumnModalGridClassName,
+  inventoryWideModalPanelClassName,
+} from "./inventory_modal_chrome";
 import { ModalHeader } from "./modal_chrome";
-import { modalPanelClassName } from "./modal_panel_class";
 import { VendorBadge } from "./vendor_badge";
 import {
   formatFilamentDisplayTitle,
@@ -192,8 +196,8 @@ export function LoanOutModal({
     <AppModal
       closeOnBackdrop
       onBackdropClose={busy ? undefined : onClose}
-      overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-md dark:bg-black/55"
-      panelClassName={modalPanelClassName("wide", "flex max-h-[92vh] min-h-0 flex-col p-0")}
+      overlayClassName={inventoryModalOverlayClassName}
+      panelClassName={inventoryWideModalPanelClassName}
     >
       <div className="flex min-h-0 flex-1 flex-col">
         <ModalHeader
@@ -202,8 +206,7 @@ export function LoanOutModal({
           onClose={onClose}
           closeLabel={t("common.close", "Close")}
           disabled={busy}
-          className="px-6 py-5"
-          titleClassName="text-2xl"
+          className="px-6 py-4"
         />
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
@@ -226,7 +229,7 @@ export function LoanOutModal({
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.96fr)_minmax(22rem,0.9fr)]">
+            <div className={inventoryTwoColumnModalGridClassName}>
               <div className={`${panelCardClassName} flex min-h-0 flex-col`}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className={panelTitleClassName}>

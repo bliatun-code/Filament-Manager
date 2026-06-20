@@ -115,10 +115,12 @@ export function InventoryRfidCaptureHeader({
       </div>
       <button
         type="button"
-        className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-100"
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200/80 bg-white/85 text-base leading-none text-slate-600 shadow-sm shadow-slate-200/25 transition hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-300 dark:shadow-none dark:hover:bg-slate-800/70"
         onClick={onClose}
+        aria-label={t("common.close", "Close")}
+        title={t("common.close", "Close")}
       >
-        {t("common.close", "Close")}
+        ×
       </button>
     </div>
   );
@@ -134,7 +136,7 @@ export function InventoryRfidCaptureSlotPicker({
   const { t } = useI18n();
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 md:col-span-2 xl:col-span-4 dark:border-slate-700 dark:bg-slate-900/60">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:col-span-2 min-[900px]:col-span-4 dark:border-slate-700 dark:bg-slate-900/60">
       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
         {t("inventory.rfidSourceSlot", "RFID source slot")}
       </div>
@@ -256,7 +258,7 @@ export function InventoryRfidCaptureDiagnostics({
       : false;
 
   return (
-    <div className="mt-4 grid gap-3 lg:grid-cols-2">
+    <div className="mt-4 grid gap-3 min-[900px]:grid-cols-2">
       <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900/60">
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
           {t("inventory.rfidIdentitySignals", "RFID identity signals")}
@@ -446,7 +448,7 @@ export function InventoryRfidCaptureActions({
   const { t } = useI18n();
 
   return (
-    <div className="mt-5 flex flex-wrap justify-end gap-3">
+    <div className="flex flex-wrap justify-end gap-3">
       <button
         type="button"
         className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-100"

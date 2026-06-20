@@ -5,6 +5,7 @@ import { InventoryCatalogMetadataPanel } from "./inventory_catalog_metadata_pane
 import { InventoryDangerZonePanel } from "./inventory_danger_zone_panel";
 import {
   inventoryModalOverlayClassName,
+  inventoryTwoColumnModalGridClassName,
   inventoryWideModalPanelClassName,
 } from "./inventory_modal_chrome";
 import { InventoryRollHistoryPanel } from "./inventory_roll_history_panel";
@@ -200,7 +201,7 @@ export function InventorySpoolDetailModal({
         />
 
         <div className="overflow-y-auto px-4 pb-4 pt-4 sm:p-5">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
+          <div className={inventoryTwoColumnModalGridClassName}>
             <div
               className={inventoryDetailPanelClassName}
               style={inventorySwatchPanelStyle(spool.hexColor, resolvedTheme)}

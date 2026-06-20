@@ -45,7 +45,7 @@ export function InventorySpoolDetailHeader({
   const currentMaterialTone = materialTone(spool.material);
 
   return (
-    <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200/80 bg-white/88 px-4 py-4 backdrop-blur-xl sm:px-5 dark:border-slate-700/80 dark:bg-slate-950/88">
+    <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200/80 bg-white/88 px-5 py-4 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-950/88 sm:px-6">
       <div className="flex min-w-0 items-start gap-3.5">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/60 p-2 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/30 dark:shadow-none">
           <span
@@ -56,7 +56,7 @@ export function InventorySpoolDetailHeader({
           />
         </div>
         <div className="min-w-0">
-          <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
             {t("inventory.selectedRoll", "Selected roll")}
           </div>
           <div className="mt-1 truncate text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
@@ -88,7 +88,7 @@ export function InventorySpoolDetailHeader({
           type="button"
           aria-label={t("common.close", "Close")}
           title={t("common.close", "Close")}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white/80 text-lg leading-none text-slate-700 shadow-sm shadow-slate-900/5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200 dark:shadow-black/30 dark:hover:bg-slate-800/70"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200/80 bg-white/85 text-base leading-none text-slate-600 shadow-sm shadow-slate-200/25 transition hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-300 dark:shadow-none dark:hover:bg-slate-800/70"
           onClick={onClose}
         >
           &times;

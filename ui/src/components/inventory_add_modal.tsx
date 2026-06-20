@@ -5,9 +5,11 @@ import { InventoryBambuBatchModal } from "./inventory_bambu_batch_modal";
 import { InventoryCreateActionsPanel } from "./inventory_create_actions_panel";
 import {
   inventoryModalOverlayClassName,
+  inventoryTwoColumnModalGridClassName,
   inventoryWideModalPanelClassName,
 } from "./inventory_modal_chrome";
 import { InventoryStockSourcePanel } from "./inventory_stock_source_panel";
+import { ModalHeader } from "./modal_chrome";
 import { WishlistQueuePanel } from "./wishlist_queue_panel";
 import { useI18n } from "../lib/i18n";
 import type {
@@ -173,28 +175,22 @@ export function InventoryAddModal({
       panelClassName={inventoryWideModalPanelClassName}
     >
       <>
-        <div className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/88 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-950/88">
-          <div className="flex items-start justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5">
-            <div className="min-w-0 flex-1">
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                {t("inventory.stockEntry", "Stock entry")}
-              </div>
-              <div className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50 sm:text-[2rem]">
-                {t("inventory.addFilament", "Add filament")}
-              </div>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {t(
-                  "inventory.addFilamentSubtitle",
-                  "Add directly to stock, or keep the wishlist → on order → stock workflow.",
-                )}
-              </p>
-            </div>
-
-            <div className="flex shrink-0 items-start gap-2">
+        <ModalHeader
+          eyebrow={t("inventory.stockEntry", "Stock entry")}
+          title={t("inventory.addFilament", "Add filament")}
+          subtitle={t(
+            "inventory.addFilamentSubtitle",
+            "Add directly to stock, or keep the wishlist → on order → stock workflow.",
+          )}
+          closeLabel={t("common.close", "Close")}
+          onClose={onClose}
+          className="sticky top-0 z-10 bg-white/88 backdrop-blur-xl dark:bg-slate-950/88"
+          aside={
+            <>
               <button
                 type="button"
                 onClick={openBambuBatchModal}
-                className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-xl border border-slate-200 bg-white/85 px-3 text-xs font-semibold text-slate-700 shadow-sm shadow-slate-900/5 backdrop-blur-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:shadow-black/30 dark:hover:bg-slate-800/60 sm:text-sm"
+                className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-lg border border-slate-200/80 bg-white/85 px-3 text-xs font-semibold text-slate-700 shadow-sm shadow-slate-200/25 backdrop-blur-sm transition hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 dark:shadow-none dark:hover:bg-slate-800/70 sm:text-sm"
                 aria-label={t("inventory.bambuBatchHeaderAction", "Batch add from boxes")}
                 title={t("inventory.bambuBatchHeaderAction", "Batch add from boxes")}
               >
@@ -205,18 +201,9 @@ export function InventoryAddModal({
                   {t("inventory.bambuBatchHeaderActionShort", "Batch")}
                 </span>
               </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/85 text-base leading-none text-slate-600 shadow-sm shadow-slate-900/5 backdrop-blur-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:shadow-black/30 dark:hover:bg-slate-800/60"
-                aria-label={t("common.close", "Close")}
-                title={t("common.close", "Close")}
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
           {error ? (
@@ -231,7 +218,7 @@ export function InventoryAddModal({
             </FeedbackBanner>
           ) : null}
 
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)] xl:gap-5">
+          <div className={inventoryTwoColumnModalGridClassName}>
             <div className="space-y-4">
               <InventoryStockSourcePanel
                 activeCatalogMasters={activeCatalogMasters}
@@ -258,7 +245,7 @@ export function InventoryAddModal({
               />
             </div>
 
-            <div className="space-y-4 self-start lg:sticky lg:top-0">
+            <div className="space-y-4 self-start min-[900px]:sticky min-[900px]:top-0">
               <InventoryCreateActionsPanel
                 actionStyle={actionStyle}
                 borrowedFromContact={borrowedFromContact}
