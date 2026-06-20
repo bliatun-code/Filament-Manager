@@ -7,6 +7,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { AppModal } from "./app_modal";
+import { inventoryWideModalWidthClassName } from "./inventory_modal_chrome";
 import { ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { useI18n } from "../lib/i18n";
@@ -919,7 +920,7 @@ export function InventoryBambuBatchModal({
       overlayClassName="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-slate-950/30 p-3 backdrop-blur-md dark:bg-black/45 sm:p-4"
       panelClassName={modalPanelClassName(
         "wide",
-        "flex h-[calc(100vh-2rem)] max-h-[940px] min-h-0 w-[min(96vw,86rem)] max-w-none flex-col p-0 overscroll-contain",
+        `flex h-[calc(100vh-2rem)] max-h-[940px] min-h-0 ${inventoryWideModalWidthClassName} max-w-none flex-col p-0 overscroll-contain`,
       )}
       zIndex={60}
     >

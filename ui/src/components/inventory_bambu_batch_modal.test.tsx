@@ -36,6 +36,8 @@ function i18nValue(locale: Locale = "en"): I18nContextValue {
 test("InventoryBambuBatchModal portals above the add modal and preserves camera aspect", () => {
   assert.match(source, /createPortal\(modal, document\.body\)/);
   assert.match(source, /object-contain/);
+  assert.match(source, /inventoryWideModalWidthClassName/);
+  assert.doesNotMatch(source, /w-\[min\(96vw,86rem\)\]/);
   assert.doesNotMatch(source, /object-cover/);
 });
 
@@ -111,6 +113,8 @@ test("InventoryBambuBatchModal owns batch controls without stock workflow side p
   assert.match(html, /All pasted codes are ready/);
   assert.match(html, /Add ready matches/);
   assert.match(html, /TPU for AMS · Yellow \(53400\)/);
+  assert.match(html, /w-\[min\(100%,72rem\)\]/);
+  assert.match(html, /xl:w-\[min\(80vw,72rem\)\]/);
   assert.match(html, /lg:grid-cols-\[minmax\(0,1.22fr\)_minmax\(320px,0.78fr\)\]/);
   assert.doesNotMatch(html, /Box label/);
   assert.doesNotMatch(html, /One active Bambu catalog entry matched and is selected/);

@@ -4,7 +4,7 @@ const widthClassName: Record<ModalPanelWidth, string> = {
   md: "max-w-md",
   lg: "max-w-lg",
   xl: "max-w-3xl",
-  wide: "max-w-5xl",
+  wide: "max-w-[72rem] xl:w-[min(80vw,72rem)]",
 };
 
 export function modalPanelClassName(
