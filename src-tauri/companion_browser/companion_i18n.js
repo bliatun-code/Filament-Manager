@@ -275,6 +275,11 @@ const dictionaries = {
       desktopInCharge: "Desktop app and SQLite stay in charge.",
       trustedLanDesktopInCharge:
         "Desktop app and SQLite stay in charge. Trusted-LAN access is still desktop-controlled and not encrypted on the network.",
+      license: "License",
+      licenseHelp: "Open source terms for this browser companion.",
+      sourceCode: "Source code",
+      viewLicense: "View license",
+      viewNotices: "Notices",
     },
     trustedLan: {
       title: "Trusted-LAN browser companion",
@@ -803,6 +808,11 @@ const dictionaries = {
       desktopInCharge: "Desktop-appen og SQLite er fortsatt kilden til sannhet.",
       trustedLanDesktopInCharge:
         "Desktop-appen og SQLite er fortsatt kilden til sannhet. Trusted-LAN-tilgang styres fortsatt fra desktop og er ikke kryptert på nettverket.",
+      license: "Lisens",
+      licenseHelp: "Vilkår for åpen kildekode for denne nettleserkompanjongen.",
+      sourceCode: "Kildekode",
+      viewLicense: "Vis lisens",
+      viewNotices: "Notiser",
     },
     trustedLan: {
       title: "Trusted-LAN-nettleserkompanjong",

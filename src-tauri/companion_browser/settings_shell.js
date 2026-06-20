@@ -1,5 +1,10 @@
 import { t } from "./companion_i18n.js";
 
+const APP_LICENSE_ID = "AGPL-3.0-or-later";
+const APP_LICENSE_URL = "https://github.com/bliatun-code/Filament-Manager/blob/main/LICENSE";
+const APP_NOTICE_URL = "https://github.com/bliatun-code/Filament-Manager/blob/main/NOTICE.md";
+const APP_SOURCE_URL = "https://github.com/bliatun-code/Filament-Manager";
+
 export function renderSettingsShell(options) {
   const { state, escapeHtml, connectionSummary: connectionSummaryOption = "" } = options;
   const busy = state.busy || state.detailBusy;
@@ -121,6 +126,31 @@ export function renderSettingsShell(options) {
               <button class="primary-button" type="button" data-action="refresh" ${busy ? "disabled" : ""}>
                 ${escapeHtml(t(locale, "shell.refreshCompanionData", "Refresh data"))}
               </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="surface-panel settings-card">
+          <div class="section-header">
+            <div>
+              <h3>${escapeHtml(t(locale, "settings.license", "License"))}</h3>
+              <p class="section-copy">${escapeHtml(t(locale, "settings.licenseHelp", "Open source terms for this browser companion."))}</p>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="meta-line">
+              <strong>${escapeHtml(APP_LICENSE_ID)}</strong>
+            </div>
+            <div class="detail-actions settings-license-links">
+              <a class="ghost-button companion-link-button" href="${escapeHtml(APP_SOURCE_URL)}" target="_blank" rel="noreferrer">
+                ${escapeHtml(t(locale, "settings.sourceCode", "Source code"))}
+              </a>
+              <a class="ghost-button companion-link-button" href="${escapeHtml(APP_LICENSE_URL)}" target="_blank" rel="noreferrer">
+                ${escapeHtml(t(locale, "settings.viewLicense", "View license"))}
+              </a>
+              <a class="ghost-button companion-link-button" href="${escapeHtml(APP_NOTICE_URL)}" target="_blank" rel="noreferrer">
+                ${escapeHtml(t(locale, "settings.viewNotices", "Notices"))}
+              </a>
             </div>
           </div>
         </section>

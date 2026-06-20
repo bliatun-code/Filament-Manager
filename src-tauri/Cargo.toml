@@ -2,6 +2,7 @@
 name = "bambu-filament-manager"
 version = "0.16.0"
 edition = "2021"
+license = "AGPL-3.0-or-later"
 
 [dependencies]
 tauri = { version = "2.11.3", features = [] }

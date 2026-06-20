@@ -17,6 +17,7 @@ mod companion_routes;
 mod companion_session;
 mod companion_state;
 mod document_commands;
+mod external_url_commands;
 mod inventory_activity_commands;
 mod inventory_command_support;
 mod inventory_create_commands;
@@ -263,6 +264,7 @@ fn main() {
             inventory_stats_commands::list_filament_consumption,
             document_commands::print_label_html,
             document_commands::print_label_pdf,
+            external_url_commands::open_external_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

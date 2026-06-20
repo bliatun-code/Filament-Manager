@@ -39,6 +39,18 @@ test("settings shell renders session metrics and current session actions", () =>
   assert.doesNotMatch(html, /Loopback API/);
 });
 
+test("settings shell exposes AGPL license and source links", () => {
+  const html = renderShell();
+
+  assert.match(html, /AGPL-3\.0-or-later/);
+  assert.match(html, /Source code/);
+  assert.match(html, /View license/);
+  assert.match(html, /Notices/);
+  assert.match(html, /github\.com\/bliatun-code\/Filament-Manager/);
+  assert.match(html, /github\.com\/bliatun-code\/Filament-Manager\/blob\/main\/LICENSE/);
+  assert.match(html, /github\.com\/bliatun-code\/Filament-Manager\/blob\/main\/NOTICE\.md/);
+});
+
 test("settings shell reflects disconnected session state", () => {
   const html = renderShell({
     state: {
@@ -65,5 +77,8 @@ test("settings shell localizes visible controls in norwegian", () => {
   assert.match(html, /Språk/);
   assert.match(html, /Norsk/);
   assert.match(html, /Engelsk/);
+  assert.match(html, /Lisens/);
+  assert.match(html, /Kildekode/);
+  assert.match(html, /Vis lisens/);
   assert.match(html, /Refresh companion data|Oppdater kompanjongdata/);
 });

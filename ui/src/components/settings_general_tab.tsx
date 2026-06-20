@@ -1,5 +1,13 @@
 import type { Locale } from "../lib/i18n";
 import type { ThemeMode } from "../lib/theme_mode";
+import {
+  APP_LICENSE_ID,
+  APP_LICENSE_NAME,
+  licenseUrlForAppVersion,
+  noticeUrlForAppVersion,
+  sourceUrlForAppVersion,
+} from "../lib/app_metadata";
+import { openExternalUrl } from "../lib/tauri_maintenance_client";
 import { chipButtonClass, settingsActionButtonClass } from "../lib/settings_ui_classes";
 
 type TranslateFn = (key: string, fallback: string) => string;
@@ -27,17 +35,70 @@ export function SettingsGeneralTab({
   onPrintInventoryOverviewA4,
   onThemeSelection,
 }: SettingsGeneralTabProps) {
+  const displayVersion = appVersion?.trim() || t("common.unknown", "Unknown");
+  const sourceUrl = sourceUrlForAppVersion(appVersion);
+  const licenseUrl = licenseUrlForAppVersion(appVersion);
+  const noticeUrl = noticeUrlForAppVersion(appVersion);
+
   return (
     <>
-      <section className="surface-card space-y-3">
+      <section className="surface-card space-y-4">
         <div className="section-eyebrow">
           {t("settings.program", "Program")}
         </div>
-        <div className="text-sm text-slate-700 dark:text-slate-300">
-          {t("settings.version", "Version")}:{" "}
-          <span className="font-semibold text-slate-900 dark:text-slate-100">
-            {appVersion?.trim() || t("common.unknown", "Unknown")}
-          </span>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="surface-subtle px-4 py-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+              {t("settings.version", "Version")}
+            </div>
+            <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              {displayVersion}
+            </div>
+          </div>
+          <div className="surface-subtle px-4 py-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+              {t("settings.license", "License")}
+            </div>
+            <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              {APP_LICENSE_ID}
+            </div>
+          </div>
+        </div>
+        <div className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+          {t(
+            "settings.licenseHelp",
+            "Filament Manager is open source. Modified distributed versions, and modified versions used over a network, must make their corresponding source available under the same license.",
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              void openExternalUrl(sourceUrl);
+            }}
+            className={settingsActionButtonClass()}
+          >
+            {t("settings.sourceCode", "Source code")}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void openExternalUrl(licenseUrl);
+            }}
+            className={settingsActionButtonClass()}
+            title={APP_LICENSE_NAME}
+          >
+            {t("settings.viewLicense", "View license")}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void openExternalUrl(noticeUrl);
+            }}
+            className={settingsActionButtonClass()}
+          >
+            {t("settings.viewNotices", "Notices")}
+          </button>
         </div>
       </section>
 

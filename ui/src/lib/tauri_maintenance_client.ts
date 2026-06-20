@@ -40,6 +40,14 @@ export async function setDockIconTheme(theme: "light" | "dark") {
   return invoke<void>("set_dock_icon_theme", { theme });
 }
 
+export async function openExternalUrl(url: string) {
+  if (isTauri()) {
+    return invoke<void>("open_external_url", { url });
+  }
+
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 export async function setWindowTitle(title: string) {
   if (typeof document !== "undefined") {
     document.title = title;

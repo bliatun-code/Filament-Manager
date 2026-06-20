@@ -45,6 +45,20 @@ Release notes:
 - Catalog refresh and maintenance for Bambu and eSUN filament data.
 - Backup, import/export, reset, and maintenance tools.
 
+## License
+
+Filament Manager is licensed under the GNU Affero General Public License v3.0
+or later (`AGPL-3.0-or-later`).
+
+You may use, study, modify, and redistribute this software, including
+commercially. If you distribute modified versions, or run a modified version
+for users over a network, you must make the corresponding source code available
+under the same license.
+
+This license is intended to keep improvements to Filament Manager open and
+available to its users. See [LICENSE](LICENSE) for the full license text and
+[NOTICE.md](NOTICE.md) for trademark and attribution notices.
+
 ## Repository Layout
 
 - `src-tauri/`: Tauri shell, Rust commands, companion server, Bambu live sync,
