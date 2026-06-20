@@ -19,6 +19,7 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
+- [v0.16.0](RELEASE_NOTES_v0.16.0.md)
 - [v0.15.1](RELEASE_NOTES_v0.15.1.md)
 - [v0.15.0](RELEASE_NOTES_v0.15.0.md)
 - [v0.14.0](RELEASE_NOTES_v0.14.0.md)
@@ -178,7 +179,7 @@ Windows MSI uses the per-user WiX template in `src-tauri/wix/per-user.wxs`.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current release target: `v0.15.1`
+- Current release target: `v0.16.0`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`

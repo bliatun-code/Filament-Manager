@@ -20,6 +20,7 @@ src-tauri/gen/schemas/* 2.json
 data/*.db
 data/*.sqlite
 data/*.sqlite3
+data/reports/
 
 # Local temp
 tmp/
