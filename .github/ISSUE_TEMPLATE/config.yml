@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: User guide
+    url: https://github.com/bliatun-code/Filament-Manager/blob/main/docs/USER_GUIDE.md
+    about: Start here for expected workflows and current behavior.
+  - name: Security report
+    url: https://github.com/bliatun-code/Filament-Manager/security/advisories/new
+    about: Report vulnerabilities privately instead of opening a public issue.

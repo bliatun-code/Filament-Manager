@@ -1,0 +1,41 @@
+name: Bambu AMS or RFID matching issue
+description: Report incorrect slot matching, shortlist candidates, RFID onboarding, or Bambu Live diagnostics.
+title: "[AMS Matching]: "
+labels:
+  - bug
+  - bambu-live
+body:
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: "0.16.0"
+    validations:
+      required: true
+  - type: textarea
+    id: slot_signal
+    attributes:
+      label: Live slot signal
+      description: Material, color, RFID/tag UID state, AMS/slot number, and whether this was an unknown RFID case.
+      placeholder: "AMS 1 Slot 4, PLA+HS, Black, unknown RFID ..."
+    validations:
+      required: true
+  - type: textarea
+    id: candidates
+    attributes:
+      label: Candidate list shown
+      description: Which rolls were shown, selected, or missing from the shortlist?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: Which roll should have matched, or why should no roll have matched?
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Paste relevant sanitized Bambu Live diagnostics or screenshots.

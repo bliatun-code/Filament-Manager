@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest a product improvement or workflow.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Workflow or problem
+      description: What are you trying to do, and where does the current app get in the way?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior you would like to see.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional notes on other approaches.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Area
+      options:
+        - Inventory
+        - Add filament
+        - Printers / AMS
+        - Bambu Live / RFID
+        - Loans
+        - Statistics
+        - Companion
+        - Settings / maintenance
+        - Other

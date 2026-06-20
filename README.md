@@ -31,6 +31,9 @@ Start with the user guide for product behavior and workflows:
 
 - Norwegian: [docs/BRUKERVEILEDNING.md](docs/BRUKERVEILEDNING.md)
 - English: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+- Screenshot tour: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md)
+- Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Security policy: [SECURITY.md](SECURITY.md)
 
 Release notes:
 

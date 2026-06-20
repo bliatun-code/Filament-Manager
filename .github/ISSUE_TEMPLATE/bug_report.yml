@@ -1,0 +1,58 @@
+name: Bug report
+description: Report a reproducible problem in Filament Manager.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Please remove private LAN addresses, tokens, names, and screenshots with sensitive inventory data before submitting.
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Find this in Settings -> Program.
+      placeholder: "0.16.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS
+        - Windows
+        - Linux/dev
+        - Companion browser
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the visible problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Relevant diagnostics
+      description: Logs, screenshots, workflow context, or test data after removing sensitive details.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I have removed private tokens, LAN secrets, and personal data from this report.
+          required: true

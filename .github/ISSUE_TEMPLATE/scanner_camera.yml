@@ -1,0 +1,53 @@
+name: Scanner or camera issue
+description: Report a problem with Bambu code, barcode, image import, or webcam scanning.
+title: "[Scanner]: "
+labels:
+  - bug
+  - scanner
+body:
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: "0.16.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: scan_mode
+    attributes:
+      label: Scan mode
+      options:
+        - Manual code entry
+        - Image import
+        - Webcam scanning
+        - Keyboard barcode scanner
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS desktop
+        - Windows desktop
+        - Browser/client
+        - Companion
+    validations:
+      required: true
+  - type: textarea
+    id: label_details
+    attributes:
+      label: Label or box details
+      description: Filament material/color/code, barcode value, SKU, or QR target if known.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Include whether the camera preview worked, whether anything was detected, and what feedback was shown.
+    validations:
+      required: true
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Screenshots or sample images
+      description: Attach images only if they do not expose private data.
