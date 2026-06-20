@@ -6,7 +6,6 @@ import {
   type ChangeEvent,
 } from "react";
 import { AppModal } from "./app_modal";
-import { inventoryModalOverlayClassName } from "./inventory_modal_chrome";
 import { ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { useI18n } from "../lib/i18n";
@@ -24,7 +23,6 @@ import {
   scanBambuFilamentCodeCameraFrame,
 } from "../lib/bambu_filament_code_camera_scan";
 import { scanBambuFilamentCodesFromImage } from "../lib/bambu_filament_code_image_scan";
-import type { BambuFilamentCodeLookup } from "../lib/bambu_filament_code_lookup";
 import { formatMasterDisplayTitle } from "../lib/inventory_list_model";
 
 type InventoryBambuBatchModalProps = {
@@ -32,7 +30,6 @@ type InventoryBambuBatchModalProps = {
   createState: BambuFilamentCodeBatchCreateState;
   disabledCreate: boolean;
   input: string;
-  lookup: BambuFilamentCodeLookup;
   onClose: () => void;
   onCreateBatch: () => void;
   onInputChange: (value: string) => void;
@@ -44,117 +41,6 @@ const CAMERA_READ_WARNING_THRESHOLD = 3;
 const CAMERA_SCAN_INITIAL_DELAY_MS = 350;
 const CAMERA_SCAN_INTERVAL_MS = 1200;
 const CAMERA_DUPLICATE_RESET_EMPTY_FRAME_COUNT = 5;
-
-function BambuFilamentCodeLookupHint({
-  lookup,
-}: {
-  lookup: BambuFilamentCodeLookup;
-}) {
-  const { t } = useI18n();
-
-  const displayMatches =
-    lookup.activeMatches.length > 0 ? lookup.activeMatches : lookup.discontinuedMatches;
-  const matchPreview = displayMatches
-    .slice(0, 3)
-    .map((master) => formatMasterDisplayTitle(master))
-    .join(", ");
-  const remainingCount = Math.max(0, displayMatches.length - 3);
-
-  let message = t(
-    "inventory.bambuCodeHelp",
-    "Use the five digit code printed as Filament Code on the Bambu box label.",
-  );
-  if (lookup.status === "no_match") {
-    message = t(
-      "inventory.bambuCodeNoMatch",
-      "No Bambu catalog entry uses this filament code yet.",
-    );
-  } else if (lookup.status === "single_active") {
-    message = t(
-      "inventory.bambuCodeSingleMatch",
-      "One active Bambu catalog entry matched and is selected.",
-    );
-  } else if (lookup.status === "multiple_active") {
-    message = t(
-      "inventory.bambuCodeMultipleMatches",
-      "This code is used by several active Bambu catalog entries. Choose the correct row.",
-    );
-  } else if (lookup.status === "discontinued_only") {
-    message = t(
-      "inventory.bambuCodeDiscontinuedOnly",
-      "Only discontinued Bambu catalog entries use this code.",
-    );
-  }
-
-  return (
-    <div
-      className="rounded-2xl border border-slate-200/90 bg-white/72 p-2.5 text-xs text-slate-600 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-300"
-      aria-live="polite"
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="w-full shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-2 text-[11px] leading-none text-slate-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-400 sm:w-36">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="text-[9px] font-semibold uppercase tracking-[0.18em]">
-              {t("inventory.bambuCodeBoxLabelTitle", "Box label")}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400">
-              Bambu
-            </span>
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2 rounded-lg bg-white px-2 py-1 dark:bg-slate-950/80">
-              <span>{t("inventory.material", "Material")}</span>
-              <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">PLA</span>
-            </div>
-            <div className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 ring-2 ring-slate-900/5 dark:border-slate-600 dark:bg-slate-950/80 dark:ring-white/10">
-              <span className="block text-[9px] font-semibold uppercase tracking-[0.16em]">
-                {t("inventory.bambuCodeLabel", "Filament Code")}
-              </span>
-              <span className="mt-1 block font-mono text-base font-semibold tracking-normal text-slate-900 dark:text-slate-50">
-                {lookup.code ?? "53400"}
-              </span>
-            </div>
-            <div className="hidden h-5 items-end gap-0.5 rounded-md bg-white px-2 py-1 dark:bg-slate-950/80 sm:flex">
-              {[3, 1, 2, 4, 1, 3, 2].map((height, index) => (
-                <span
-                  key={`${height}-${index}`}
-                  className="w-0.5 rounded-full bg-slate-400 dark:bg-slate-500"
-                  style={{ height: `${height * 3}px` }}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="mt-1 text-[10px] leading-4 text-slate-500 dark:text-slate-400">
-            {t("inventory.bambuCodeBoxLabelHint", "Find this field on the box label.")}
-          </div>
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="font-semibold text-slate-800 dark:text-slate-100">{message}</div>
-          {matchPreview ? (
-            <div className="mt-1 leading-5 text-slate-500 dark:text-slate-400">
-              {matchPreview}
-              {remainingCount > 0
-                ? ` +${remainingCount} ${t("inventory.bambuCodeMoreMatches", "more")}`
-                : ""}
-            </div>
-          ) : (
-            <div className="mt-1 leading-5 text-slate-500 dark:text-slate-400">
-              {lookup.code
-                ? t(
-                    "inventory.bambuCodeTryCatalogSearch",
-                    "You can still search by material, series, or color name.",
-                  )
-                : t(
-                    "inventory.bambuCodeEnterExample",
-                    "Type the code into the search field, for example 53400.",
-                  )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function bambuBatchRowStatusLabel(
   row: BambuFilamentCodeBatchRow,
@@ -366,7 +252,6 @@ function BambuFilamentCodeBatchPanel({
   createState,
   disabledCreate,
   input,
-  lookup,
   onCreateBatch,
   onInputChange,
   tauriAvailable,
@@ -375,7 +260,6 @@ function BambuFilamentCodeBatchPanel({
   createState: BambuFilamentCodeBatchCreateState;
   disabledCreate: boolean;
   input: string;
-  lookup: BambuFilamentCodeLookup;
   onCreateBatch: () => void;
   onInputChange: (value: string) => void;
   tauriAvailable: boolean;
@@ -753,11 +637,9 @@ function BambuFilamentCodeBatchPanel({
   };
 
   return (
-    <div className="grid min-h-0 gap-4 lg:h-full lg:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
-      <section className="min-h-0 space-y-3 overflow-y-auto overscroll-contain pr-1">
-        <BambuFilamentCodeLookupHint lookup={lookup} />
-
-        <div className="rounded-2xl border border-slate-200/90 bg-white/72 p-3 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45">
+    <div className="grid min-h-0 gap-4 overflow-y-auto overscroll-contain lg:h-full lg:grid-cols-[minmax(0,1.22fr)_minmax(320px,0.78fr)] lg:overflow-hidden">
+      <section className="flex min-h-0 flex-col gap-3 lg:overflow-hidden">
+        <div className="shrink-0 rounded-2xl border border-slate-200/90 bg-white/72 p-3 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
@@ -843,45 +725,51 @@ function BambuFilamentCodeBatchPanel({
           </div>
         </div>
 
-        {cameraPanelVisible ? (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700">
-            <div className="relative aspect-video min-h-48 bg-slate-950 lg:min-h-0">
-              {cameraActive ? (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center px-5 text-center text-sm text-slate-400">
+        <div
+          className={`min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700 ${
+            cameraPanelVisible ? "flex-1" : "hidden"
+          }`}
+        >
+          <div className="relative h-full min-h-[18rem] bg-slate-950 lg:min-h-0">
+            {cameraPanelVisible ? (
+              <>
+                {cameraActive ? (
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    muted
+                    playsInline
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center px-5 text-center text-sm text-slate-400">
+                    {cameraMessage ??
+                      t(
+                        "inventory.bambuBatchCameraPreviewIdle",
+                        "Start the webcam to scan Bambu box labels.",
+                      )}
+                  </div>
+                )}
+                <div className="pointer-events-none absolute inset-5 rounded-2xl border border-white/30" />
+                <div className="pointer-events-none absolute left-[8%] right-[8%] top-[42%] h-[16%] rounded-xl border border-white/45 bg-white/[0.03] shadow-[0_0_24px_rgba(255,255,255,0.12)]" />
+                <div className="pointer-events-none absolute left-8 right-8 top-1/2 h-px bg-white/20" />
+                <div className="pointer-events-none absolute bottom-8 top-8 left-1/2 w-px bg-white/20" />
+                <div
+                  className={`pointer-events-none absolute inset-x-3 bottom-3 rounded-xl border px-3 py-2 text-sm font-semibold shadow-lg shadow-slate-950/30 ${bambuBatchCameraOverlayClassName(
+                    cameraStatus,
+                  )}`}
+                  aria-live="polite"
+                >
                   {cameraMessage ??
                     t(
-                      "inventory.bambuBatchCameraPreviewIdle",
-                      "Start the webcam to scan Bambu box labels.",
+                      "inventory.bambuBatchCameraShowLabel",
+                      "Show a Bambu box label to the camera.",
                     )}
                 </div>
-              )}
-              <div className="pointer-events-none absolute inset-5 rounded-2xl border border-white/30" />
-              <div className="pointer-events-none absolute left-[8%] right-[8%] top-[42%] h-[16%] rounded-xl border border-white/45 bg-white/[0.03] shadow-[0_0_24px_rgba(255,255,255,0.12)]" />
-              <div className="pointer-events-none absolute left-8 right-8 top-1/2 h-px bg-white/20" />
-              <div className="pointer-events-none absolute bottom-8 top-8 left-1/2 w-px bg-white/20" />
-              <div
-                className={`pointer-events-none absolute inset-x-3 bottom-3 rounded-xl border px-3 py-2 text-sm font-semibold shadow-lg shadow-slate-950/30 ${bambuBatchCameraOverlayClassName(
-                  cameraStatus,
-                )}`}
-                aria-live="polite"
-              >
-                {cameraMessage ??
-                  t(
-                    "inventory.bambuBatchCameraShowLabel",
-                    "Show a Bambu box label to the camera.",
-                  )}
-              </div>
-            </div>
+              </>
+            ) : null}
           </div>
-        ) : null}
+        </div>
       </section>
 
       <aside className="flex min-h-0 flex-col rounded-2xl border border-slate-200/90 bg-white/72 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45">
@@ -997,7 +885,6 @@ export function InventoryBambuBatchModal({
   createState,
   disabledCreate,
   input,
-  lookup,
   onClose,
   onCreateBatch,
   onInputChange,
@@ -1005,6 +892,20 @@ export function InventoryBambuBatchModal({
   tauriAvailable,
 }: InventoryBambuBatchModalProps) {
   const { t } = useI18n();
+
+  useEffect(() => {
+    if (!open || typeof document === "undefined") {
+      return undefined;
+    }
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "contain";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscrollBehavior;
+    };
+  }, [open]);
 
   if (!open) {
     return null;
@@ -1014,10 +915,10 @@ export function InventoryBambuBatchModal({
     <AppModal
       closeOnBackdrop
       onBackdropClose={onClose}
-      overlayClassName={`${inventoryModalOverlayClassName} overflow-hidden overscroll-contain`}
+      overlayClassName="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-slate-950/30 p-3 backdrop-blur-md dark:bg-black/45 sm:p-4"
       panelClassName={modalPanelClassName(
         "wide",
-        "flex h-[min(92vh,900px)] max-h-[92vh] min-h-0 w-[min(96vw,86rem)] max-w-none flex-col p-0 overscroll-contain",
+        "flex h-[calc(100vh-2rem)] max-h-[940px] min-h-0 w-[min(96vw,86rem)] max-w-none flex-col p-0 overscroll-contain",
       )}
       zIndex={60}
     >
@@ -1031,17 +932,17 @@ export function InventoryBambuBatchModal({
           )}
           closeLabel={t("common.close", "Close")}
           onClose={onClose}
-          className="py-3"
-          subtitleClassName="max-w-2xl text-xs leading-5"
+          className="py-2.5"
+          titleClassName="text-lg"
+          subtitleClassName="max-w-3xl text-xs leading-4"
         />
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 lg:overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-hidden px-3 py-3 sm:px-4">
           <BambuFilamentCodeBatchPanel
             batch={batch}
             createState={createState}
             disabledCreate={disabledCreate}
             input={input}
-            lookup={lookup}
             onCreateBatch={onCreateBatch}
             onInputChange={onInputChange}
             tauriAvailable={tauriAvailable}

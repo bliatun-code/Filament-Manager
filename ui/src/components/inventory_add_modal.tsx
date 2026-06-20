@@ -10,7 +10,6 @@ import {
 import { InventoryStockSourcePanel } from "./inventory_stock_source_panel";
 import { WishlistQueuePanel } from "./wishlist_queue_panel";
 import { useI18n } from "../lib/i18n";
-import type { BambuFilamentCodeLookup } from "../lib/bambu_filament_code_lookup";
 import type {
   BambuFilamentCodeBatch,
   BambuFilamentCodeBatchCreateState,
@@ -31,7 +30,6 @@ export type InventoryAddModalProps = {
   bambuBatchInput: string;
   bambuBatchCreateState: BambuFilamentCodeBatchCreateState;
   bambuCodeBatch: BambuFilamentCodeBatch;
-  bambuCodeLookup: BambuFilamentCodeLookup;
   borrowedFromContact: string;
   borrowedFromName: string;
   borrowedInNote: string;
@@ -96,7 +94,6 @@ export function InventoryAddModal({
   bambuBatchInput,
   bambuBatchCreateState,
   bambuCodeBatch,
-  bambuCodeLookup,
   borrowedFromContact,
   borrowedFromName,
   borrowedInNote,
@@ -308,7 +305,6 @@ export function InventoryAddModal({
           createState={bambuBatchCreateState}
           disabledCreate={disabledBambuBatchCreate}
           input={bambuBatchInput}
-          lookup={bambuCodeLookup}
           onClose={() => setBambuBatchModalOpen(false)}
           onCreateBatch={onCreateBambuCodeBatch}
           onInputChange={onBambuBatchInputChange}

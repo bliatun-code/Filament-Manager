@@ -19,7 +19,7 @@ test("InventoryAddModal wires the separate Bambu batch modal from existing workf
   assert.match(source, /<InventoryBambuBatchModal/);
   assert.match(source, /batch=\{bambuCodeBatch\}/);
   assert.match(source, /createState=\{bambuBatchCreateState\}/);
-  assert.match(source, /lookup=\{bambuCodeLookup\}/);
+  assert.doesNotMatch(source, /lookup=\{bambuCodeLookup\}/);
   assert.match(source, /onCreateBatch=\{onCreateBambuCodeBatch\}/);
   assert.match(source, /onInputChange=\{onBambuBatchInputChange\}/);
 });

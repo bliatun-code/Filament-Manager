@@ -7,7 +7,6 @@ import {
   buildBambuFilamentCodeBatch,
   buildBambuFilamentCodeBatchCreateState,
 } from "../lib/bambu_filament_code_batch";
-import { buildBambuFilamentCodeLookup } from "../lib/bambu_filament_code_lookup";
 import {
   dictionaries,
   I18nContext,
@@ -45,7 +44,6 @@ function master(overrides: Partial<MasterCatalogRow> = {}): MasterCatalogRow {
 }
 
 function renderBatchModal(options: {
-  catalogQuery?: string;
   input?: string;
   locale?: Locale;
   masters?: MasterCatalogRow[];
@@ -73,7 +71,6 @@ function renderBatchModal(options: {
         createState,
         disabledCreate: createState.disabled,
         input,
-        lookup: buildBambuFilamentCodeLookup(masters, options.catalogQuery ?? ""),
         onClose: () => {},
         onCreateBatch: () => {},
         onInputChange: () => {},
@@ -84,17 +81,13 @@ function renderBatchModal(options: {
   );
 }
 
-test("InventoryBambuBatchModal owns Bambu code help and batch controls without stock workflow side panels", () => {
+test("InventoryBambuBatchModal owns batch controls without stock workflow side panels", () => {
   const html = renderBatchModal({
-    catalogQuery: "53400",
     input: "53400",
   });
 
   assert.match(html, /Batch add from boxes/);
   assert.match(html, /Bambu boxes/);
-  assert.match(html, /Box label/);
-  assert.match(html, /Filament Code/);
-  assert.match(html, /One active Bambu catalog entry matched and is selected/);
   assert.match(html, /Batch Filament Codes/);
   assert.match(html, /Ready matches use the stock details from Add filament/);
   assert.match(html, /Scan or enter codes/);
@@ -106,7 +99,9 @@ test("InventoryBambuBatchModal owns Bambu code help and batch controls without s
   assert.match(html, /All pasted codes are ready/);
   assert.match(html, /Add ready matches/);
   assert.match(html, /TPU for AMS · Yellow \(53400\)/);
-  assert.match(html, /lg:grid-cols-\[minmax\(0,1.18fr\)_minmax\(320px,0.82fr\)\]/);
+  assert.match(html, /lg:grid-cols-\[minmax\(0,1.22fr\)_minmax\(320px,0.78fr\)\]/);
+  assert.doesNotMatch(html, /Box label/);
+  assert.doesNotMatch(html, /One active Bambu catalog entry matched and is selected/);
   assert.doesNotMatch(html, /Wishlist &amp; orders/);
   assert.doesNotMatch(html, /Ownership/);
   assert.doesNotMatch(html, /Add current selection to wishlist/);
@@ -115,14 +110,12 @@ test("InventoryBambuBatchModal owns Bambu code help and batch controls without s
 
 test("InventoryBambuBatchModal localizes batch controls in Norwegian", () => {
   const html = renderBatchModal({
-    catalogQuery: "53400",
     input: "53400",
     locale: "nb",
   });
 
   assert.match(html, /Batch legg inn fra esker/);
   assert.match(html, /Bambu-esker/);
-  assert.match(html, /Finn dette feltet på eskeetiketten/);
   assert.match(html, /Filament Code-batch/);
   assert.match(html, /Skann eller legg inn koder/);
   assert.match(html, /Legg til i batch/);
@@ -131,6 +124,7 @@ test("InventoryBambuBatchModal localizes batch controls in Norwegian", () => {
   assert.match(html, /1 kan legges til/);
   assert.match(html, /Alle innlimte koder er klare/);
   assert.match(html, /Legg til klare treff/);
+  assert.doesNotMatch(html, /Finn dette feltet på eskeetiketten/);
   assert.doesNotMatch(html, /Batch Filament Codes/);
   assert.doesNotMatch(html, /Add ready matches/);
 });
