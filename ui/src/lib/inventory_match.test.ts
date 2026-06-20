@@ -37,6 +37,7 @@ function createRow(
     rfidTag?: string | null;
     material?: string;
     filamentName?: string;
+    colorName?: string;
     hexColor?: string | null;
     vendor?: string;
     ownershipType?: string;
@@ -54,7 +55,7 @@ function createRow(
       id: `${id}-master`,
       material: overrides.material ?? "PLA",
       filament_name: overrides.filamentName ?? "PLA Basic",
-      color_name: "Blue",
+      color_name: overrides.colorName ?? "Blue",
       hex_color: overrides.hexColor ?? "#2563EB",
       default_weight: 1000,
       vendor: overrides.vendor ?? "eSUN",
@@ -545,6 +546,115 @@ test("buildInventoryMatchResult matches third-party live AMS color with toleranc
     "assigned-black",
     "stock-black",
   ]);
+});
+
+test("buildInventoryMatchResult uses Bambu Studio Other color name hints for eSUN candidates", () => {
+  const result = buildInventoryMatchResult(
+    [
+      createRow("esun-purple", {
+        vendor: "eSUN",
+        material: "PLA",
+        filamentName: "PLA-Twinkling (PLA-TK)",
+        colorName: "Purple",
+        hexColor: "#33152F",
+      }),
+      createRow("esun-black", {
+        vendor: "eSUN",
+        material: "PLA",
+        filamentName: "PLA+HS",
+        colorName: "Black",
+        hexColor: "#121212",
+      }),
+    ],
+    {
+      material: "PLA",
+      filamentName: "PLA Basic",
+      colorHex: "#443089",
+    },
+  );
+
+  assert.equal(result.kind, "metadata_single");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), ["esun-purple"]);
+});
+
+test("buildInventoryMatchResult uses Bambu Studio Other color name hints for Generic candidates", () => {
+  const result = buildInventoryMatchResult(
+    [
+      createRow("generic-gray", {
+        vendor: "Generic",
+        material: "PLA",
+        filamentName: "PLA",
+        colorName: "Warm Grey",
+        hexColor: "#444444",
+      }),
+    ],
+    {
+      material: "PLA",
+      filamentName: "PLA Basic",
+      colorHex: "#898989",
+    },
+  );
+
+  assert.equal(result.kind, "metadata_single");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), ["generic-gray"]);
+});
+
+test("buildInventoryMatchResult uses Other color names to reject RGB-close semantic conflicts", () => {
+  const result = buildInventoryMatchResult(
+    [
+      createRow("black", {
+        vendor: "eSUN",
+        material: "PLA",
+        filamentName: "PLA+HS",
+        colorName: "Black",
+        hexColor: "#121212",
+      }),
+      createRow("twinkling-purple", {
+        vendor: "eSUN",
+        material: "PLA",
+        filamentName: "PLA-Twinkling (PLA-TK)",
+        colorName: "Purple",
+        hexColor: "#33152F",
+      }),
+    ],
+    {
+      material: "PLA",
+      filamentName: "PLA Basic",
+      colorHex: "#161616",
+    },
+  );
+
+  assert.equal(result.kind, "metadata_single");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), ["black"]);
+});
+
+test("buildInventoryMatchResult does not use Other color name hints for Bambu or other vendors", () => {
+  const result = buildInventoryMatchResult(
+    [
+      createRow("bambu-purple", {
+        vendor: "Bambu",
+        material: "PLA",
+        filamentName: "PLA Basic",
+        colorName: "Purple",
+        hexColor: "#33152F",
+      }),
+      createRow("third-party-purple", {
+        vendor: "Print With Smile",
+        material: "PLA",
+        filamentName: "PLA",
+        colorName: "Purple",
+        hexColor: "#33152F",
+      }),
+    ],
+    {
+      material: "PLA",
+      filamentName: "PLA Basic",
+      colorHex: "#443089",
+    },
+    { includeBambuMetadataCandidates: true },
+  );
+
+  assert.equal(result.kind, "none");
 });
 
 test("buildInventoryMatchResult excludes borrowed rolls from non-RFID metadata candidates", () => {

@@ -52,6 +52,46 @@ export type BambuUnknownRfidInventoryDecision = {
 
 const LIVE_COLOR_MATCH_DISTANCE = 48;
 const BLACK_BOX_VENDOR = "bambu";
+const SEMANTIC_OTHER_COLOR_HINT_VENDORS = new Set(["esun", "generic"]);
+
+const BAMBU_STUDIO_OTHER_COLOR_NAME_HINTS: Array<{
+  hex: string;
+  tokens: string[];
+}> = [
+  { hex: "#FFFFFF", tokens: ["white"] },
+  { hex: "#FFF144", tokens: ["yellow"] },
+  { hex: "#DCF478", tokens: ["lime", "yellow"] },
+  { hex: "#0ACC38", tokens: ["green"] },
+  { hex: "#057748", tokens: ["green"] },
+  { hex: "#0D6284", tokens: ["teal"] },
+  { hex: "#0EE2A0", tokens: ["mint"] },
+  { hex: "#76D9F4", tokens: ["cyan"] },
+  { hex: "#46A8F9", tokens: ["blue"] },
+  { hex: "#2850E0", tokens: ["blue"] },
+  { hex: "#443089", tokens: ["purple"] },
+  { hex: "#A03CF7", tokens: ["violet", "purple"] },
+  { hex: "#F330F9", tokens: ["magenta", "pink"] },
+  { hex: "#D4B1DD", tokens: ["lavender", "purple", "pink"] },
+  { hex: "#F95D73", tokens: ["pink", "coral"] },
+  { hex: "#F72323", tokens: ["red"] },
+  { hex: "#7C4B00", tokens: ["brown"] },
+  { hex: "#F98C36", tokens: ["orange", "copper"] },
+  { hex: "#FCECD6", tokens: ["cream", "white"] },
+  { hex: "#D3C5A3", tokens: ["khaki", "beige"] },
+  { hex: "#AF7933", tokens: ["bronze", "brown", "copper", "gold"] },
+  { hex: "#898989", tokens: ["gray", "grey"] },
+  { hex: "#BCBCBC", tokens: ["gray", "grey", "silver"] },
+  { hex: "#161616", tokens: ["black"] },
+];
+
+const BAMBU_STUDIO_OTHER_COLOR_HINTS_BY_HEX = new Map(
+  BAMBU_STUDIO_OTHER_COLOR_NAME_HINTS.map((hint) => [hint.hex, hint.tokens]),
+);
+const BAMBU_STUDIO_OTHER_COLOR_HINT_TOKENS = new Set(
+  BAMBU_STUDIO_OTHER_COLOR_NAME_HINTS.flatMap((hint) =>
+    hint.tokens.map(canonicalBambuStudioOtherColorHintToken),
+  ),
+);
 
 function normalizeInventoryMatchText(raw?: string | null): string {
   return (raw ?? "").trim().toLowerCase();
@@ -59,6 +99,13 @@ function normalizeInventoryMatchText(raw?: string | null): string {
 
 function normalizeInventoryMatchToken(raw?: string | null): string {
   return normalizeInventoryMatchText(raw).replace(/[^a-z0-9+]/g, "");
+}
+
+function canonicalBambuStudioOtherColorHintToken(token: string): string {
+  if (token === "grey") {
+    return "gray";
+  }
+  return token;
 }
 
 const MATERIAL_FAMILY_TOKENS = [
@@ -124,6 +171,14 @@ function inventoryNameTokens(raw?: string | null): string[] {
     .filter(Boolean);
 }
 
+function canonicalColorNameToken(token: string): string {
+  return canonicalBambuStudioOtherColorHintToken(token);
+}
+
+function inventoryColorNameTokens(raw?: string | null): string[] {
+  return inventoryNameTokens(raw).map(canonicalColorNameToken);
+}
+
 function hasDistinctiveInventoryNameToken(tokens: string[]): boolean {
   return tokens.some((token) => {
     const compact = token.replace(/^\++|\++$/g, "");
@@ -162,6 +217,11 @@ function inventoryFilamentNameMatches(left?: string | null, right?: string | nul
 
 function isBambuVendor(row: SpoolWithMasterRow): boolean {
   return normalizeInventoryMatchToken(row.master.vendor).startsWith(BLACK_BOX_VENDOR);
+}
+
+function canUseSemanticOtherColorHint(row: SpoolWithMasterRow): boolean {
+  const vendor = normalizeInventoryMatchToken(row.master.vendor);
+  return SEMANTIC_OTHER_COLOR_HINT_VENDORS.has(vendor);
 }
 
 function normalizeSpoolStatus(raw?: string | null): string {
@@ -271,6 +331,54 @@ function swatchMatchesObserved(observedColors: string[], candidateColors: string
   });
 }
 
+function semanticOtherColorHintMatchesObserved(
+  row: SpoolWithMasterRow,
+  observedColors: string[],
+): boolean {
+  if (observedColors.length === 0 || !canUseSemanticOtherColorHint(row)) {
+    return false;
+  }
+  const candidateTokens = semanticOtherColorHintCandidateTokens(row);
+  if (candidateTokens.size === 0) {
+    return false;
+  }
+  return observedColors.every((observedColor) => {
+    const hintTokens = BAMBU_STUDIO_OTHER_COLOR_HINTS_BY_HEX.get(observedColor.toUpperCase());
+    return (
+      hintTokens != null &&
+      hintTokens.some((token) => candidateTokens.has(canonicalColorNameToken(token)))
+    );
+  });
+}
+
+function semanticOtherColorHintCandidateTokens(row: SpoolWithMasterRow): Set<string> {
+  const rawTokens = [
+    ...inventoryColorNameTokens(row.master.color_name),
+    ...inventoryColorNameTokens(row.master.filament_name),
+  ];
+  return new Set(rawTokens.filter((token) => BAMBU_STUDIO_OTHER_COLOR_HINT_TOKENS.has(token)));
+}
+
+function semanticOtherColorHintConflictsObserved(
+  row: SpoolWithMasterRow,
+  observedColors: string[],
+): boolean {
+  if (observedColors.length === 0 || !canUseSemanticOtherColorHint(row)) {
+    return false;
+  }
+  const candidateTokens = semanticOtherColorHintCandidateTokens(row);
+  if (candidateTokens.size === 0) {
+    return false;
+  }
+  return observedColors.every((observedColor) => {
+    const hintTokens = BAMBU_STUDIO_OTHER_COLOR_HINTS_BY_HEX.get(observedColor.toUpperCase());
+    return (
+      hintTokens != null &&
+      hintTokens.every((token) => !candidateTokens.has(canonicalColorNameToken(token)))
+    );
+  });
+}
+
 function metadataCandidateScore({
   row,
   observedColors,
@@ -306,6 +414,9 @@ function metadataCandidateScore({
       : null;
   if (nearestDistance != null && Number.isFinite(nearestDistance)) {
     score += Math.max(0, Math.round(100 - nearestDistance));
+  }
+  if (semanticOtherColorHintMatchesObserved(row, observedColors)) {
+    score += 60;
   }
   const status = normalizeSpoolStatus(row.spool.status);
   if (status === "ASSIGNED" || status === "IN_USE") {
@@ -390,7 +501,14 @@ export function buildInventoryMatchResult(
       return false;
     }
 
-    if (!swatchMatchesObserved(observedColors, swatchColors(row.master.hex_color))) {
+    const candidateColors = swatchColors(row.master.hex_color);
+    if (semanticOtherColorHintConflictsObserved(row, observedColors)) {
+      return false;
+    }
+    if (
+      !swatchMatchesObserved(observedColors, candidateColors) &&
+      !semanticOtherColorHintMatchesObserved(row, observedColors)
+    ) {
       return false;
     }
 
