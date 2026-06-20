@@ -10,6 +10,21 @@ backend. It can run as a single local installation, as a host for other desktop
 clients, or as a local webapp/companion server for paired browsers on the same
 LAN.
 
+## Product Tour
+
+A quick look at the main desktop workflows. Click a preview to open the
+larger screenshot, or open the full [screenshot tour](docs/SCREENSHOTS.md).
+
+<p align="center">
+  <a href="docs/screenshots/dashboard.jpg"><img src="docs/screenshots/dashboard-thumb.jpg" alt="Dashboard overview with inventory health and recent activity" width="220"></a>
+  <a href="docs/screenshots/inventory.jpg"><img src="docs/screenshots/inventory-thumb.jpg" alt="Inventory grid with filament spool cards" width="220"></a>
+  <a href="docs/screenshots/loans.jpg"><img src="docs/screenshots/loans-thumb.jpg" alt="Loan history with active loan cards" width="220"></a>
+  <a href="docs/screenshots/printers.jpg"><img src="docs/screenshots/printers-thumb.jpg" alt="Printer AMS slot overview" width="220"></a>
+  <a href="docs/screenshots/statistics.jpg"><img src="docs/screenshots/statistics-thumb.jpg" alt="Statistics page with printer and loan usage" width="220"></a>
+  <a href="docs/screenshots/add-filament.jpg"><img src="docs/screenshots/add-filament-thumb.jpg" alt="Add filament stock entry flow" width="220"></a>
+  <a href="docs/screenshots/filament-details.jpg"><img src="docs/screenshots/filament-details-thumb.jpg" alt="Filament detail panel with weight, ownership and QR tools" width="220"></a>
+</p>
+
 ## Documentation
 
 Start with the user guide for product behavior and workflows:

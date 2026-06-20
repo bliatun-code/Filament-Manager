@@ -11,6 +11,11 @@ Release date: 2026-06-20
 - Moved Bambu batch entry into its own modal so normal catalog search, stock entry, wishlist, and order workflows stay visually connected.
 - Tightened AMS shortlist matching for eSUN and Generic rolls by using Bambu Studio Other Color signals plus semantic color-name hints.
 
+## Screenshot Tour
+
+The release includes a small visual product tour with screenshots for the main
+desktop workflows: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
+
 ## Full Scope Since v0.15.1
 
 - Expanded Bambu Live parsing and diagnostics for AMS slot presence bits, packed active-tray coordinates, external/virtual trays, AMS indexes, tray snapshots, job state, AMS status, nozzle ranges, nozzle thermal state, and live AMS weight estimates.
