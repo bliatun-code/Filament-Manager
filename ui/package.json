@@ -17,7 +17,7 @@
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",
     "@zxing/browser": "^0.2.0",
-    "@zxing/library": "^0.22.0",
+    "@zxing/library": "^0.23.0",
     "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4",
     "react": "^19.2.6",
