@@ -5,6 +5,7 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { AppModal } from "./app_modal";
 import { ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
@@ -739,7 +740,7 @@ function BambuFilamentCodeBatchPanel({
                     autoPlay
                     muted
                     playsInline
-                    className="h-full w-full object-cover"
+                    className="h-full w-full bg-slate-950 object-contain"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center px-5 text-center text-sm text-slate-400">
@@ -911,7 +912,7 @@ export function InventoryBambuBatchModal({
     return null;
   }
 
-  return (
+  const modal = (
     <AppModal
       closeOnBackdrop
       onBackdropClose={onClose}
@@ -951,4 +952,10 @@ export function InventoryBambuBatchModal({
       </>
     </AppModal>
   );
+
+  if (typeof document === "undefined") {
+    return modal;
+  }
+
+  return createPortal(modal, document.body);
 }

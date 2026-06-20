@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -17,6 +18,11 @@ import {
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import { InventoryBambuBatchModal } from "./inventory_bambu_batch_modal";
 
+const source = readFileSync(
+  new URL("./inventory_bambu_batch_modal.tsx", import.meta.url),
+  "utf8",
+);
+
 function i18nValue(locale: Locale = "en"): I18nContextValue {
   return {
     locale,
@@ -26,6 +32,12 @@ function i18nValue(locale: Locale = "en"): I18nContextValue {
 }
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
+
+test("InventoryBambuBatchModal portals above the add modal and preserves camera aspect", () => {
+  assert.match(source, /createPortal\(modal, document\.body\)/);
+  assert.match(source, /object-contain/);
+  assert.doesNotMatch(source, /object-cover/);
+});
 
 function master(overrides: Partial<MasterCatalogRow> = {}): MasterCatalogRow {
   return {
