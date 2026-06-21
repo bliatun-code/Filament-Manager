@@ -1,6 +1,8 @@
 use crate::backend::filament_database::{BackupValidationStats, ImportDataStats};
 use crate::state::AppState;
 use crate::with_db;
+#[cfg(target_os = "windows")]
+use crate::{APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME};
 use base64::Engine;
 use serde::Serialize;
 use std::fs::File;
@@ -139,15 +141,20 @@ fn resolve_app_storage_dir_for_handle(app: &tauri::AppHandle) -> Result<PathBuf,
 
 #[cfg(target_os = "windows")]
 fn resolve_windows_storage_dir(roaming_dir: PathBuf, local_dir: PathBuf) -> PathBuf {
-    let roaming_db_path = roaming_dir.join("bambu.db");
-    let local_db_path = local_dir.join("bambu.db");
-    if local_db_path.exists() {
+    if storage_dir_has_database(&local_dir) {
         return local_dir;
     }
-    if roaming_db_path.exists() {
+    if storage_dir_has_database(&roaming_dir) {
         return roaming_dir;
     }
     local_dir
+}
+
+#[cfg(target_os = "windows")]
+fn storage_dir_has_database(dir: &Path) -> bool {
+    [APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME]
+        .iter()
+        .any(|file_name| dir.join(file_name).exists())
 }
 
 fn write_generated_file(path: &Path, contents: &[u8]) -> Result<(), String> {

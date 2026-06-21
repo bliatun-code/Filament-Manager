@@ -95,7 +95,7 @@ export function renderTopbar(options) {
     statusTone,
     escapeHtml,
   } = options;
-  const flowLabel = activeRootFlowItem?.label || "Storage";
+  const flowLabel = activeRootFlowItem?.label || "Inventory";
   const flowMeta = activeRootFlowItem?.meta || "Trusted-LAN workflow";
   const showHeading = layoutMode === "phone";
 

@@ -40,7 +40,7 @@ function createRootFlowItems(state, spools) {
   return [
     {
       flow: "storage",
-      label: t(locale, "nav.storage", "Storage"),
+      label: t(locale, "nav.storage", "Inventory"),
       meta: t(locale, "nav.visibleCount", "{count} visible", { count: spools.length }),
       compactMeta: `${spools.length}`,
     },
@@ -167,14 +167,14 @@ function renderDetailModal(options) {
                     t(
                       locale,
                       "detail.borrowedInRemovedHint",
-                      "The last borrowed-in spool was removed from inventory after hand-back. Pick another spool from Storage to continue.",
+                      "The last borrowed-in spool was removed from inventory after hand-back. Pick another spool from Inventory to continue.",
                     ),
                   )
                 : escapeHtml(
                     t(
                       locale,
                       "detail.selectSpoolHint",
-                      "Choose a spool from Storage, Loans, or Printers to inspect it here.",
+                      "Choose a spool from Inventory, Loans, or Printers to inspect it here.",
                     ),
                   )
             }

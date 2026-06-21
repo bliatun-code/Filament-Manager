@@ -15,8 +15,8 @@ const dbPath =
     process.env.HOME ?? "",
     "Library",
     "Application Support",
-    "com.bambu.filament.manager",
-    "bambu.db",
+    "no.bliatun.filamentmanager",
+    "filament-manager.db",
   );
 const outputPath =
   process.argv[3] ?? path.join("src", "data", "seed_filament_catalog.json");

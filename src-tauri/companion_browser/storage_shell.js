@@ -23,117 +23,6 @@ function catalogMatchesSource(master, source) {
   return vendor.includes("bambu");
 }
 
-function renderBambuFilamentCodeLookupHint(lookup, locale, escapeHtml) {
-  const displayMatches =
-    lookup.activeMatches.length > 0 ? lookup.activeMatches : lookup.discontinuedMatches;
-  const matchPreview = displayMatches
-    .slice(0, 3)
-    .map((master) => formatInventoryDisplayTitle(master.material, master.filament_name, master.color_name))
-    .join(", ");
-  const remainingCount = Math.max(0, displayMatches.length - 3);
-  let message = t(
-    locale,
-    "storage.bambuCodeHelp",
-    "Use the five digit code printed as Filament Code on the Bambu box label.",
-  );
-  if (lookup.status === "no_match") {
-    message = t(locale, "storage.bambuCodeNoMatch", "No Bambu catalog entry uses this filament code yet.");
-  } else if (lookup.status === "single_active") {
-    message = t(locale, "storage.bambuCodeSingleMatch", "One active Bambu catalog entry matched and is selected.");
-  } else if (lookup.status === "multiple_active") {
-    message = t(
-      locale,
-      "storage.bambuCodeMultipleMatches",
-      "This code is used by several active Bambu catalog entries. Choose the correct row.",
-    );
-  } else if (lookup.status === "discontinued_only") {
-    message = t(locale, "storage.bambuCodeDiscontinuedOnly", "Only discontinued Bambu catalog entries use this code.");
-  }
-  const displayCode = lookup.code || "53400";
-
-  return `
-    <div class="add-spool-code-lookup" aria-live="polite">
-      <div class="add-spool-code-visual">
-        <div class="add-spool-code-box-label" aria-hidden="true">
-          <div class="add-spool-code-box-top">
-            <span>Bambu Lab</span>
-            <span>1.75 mm</span>
-          </div>
-          <div class="add-spool-code-box-field">
-            <span>${escapeHtml(t(locale, "storage.bambuCodeLabel", "Filament Code"))}</span>
-            <strong>${escapeHtml(displayCode)}</strong>
-          </div>
-          <div class="add-spool-code-box-bars">
-            <span></span><span></span><span></span><span></span><span></span>
-          </div>
-        </div>
-        <div class="add-spool-code-visual-caption">
-          ${escapeHtml(t(locale, "storage.bambuCodeBoxLabelHint", "Find this field on the box label."))}
-        </div>
-      </div>
-      <div class="add-spool-code-label">
-        <span>${escapeHtml(t(locale, "storage.bambuCodeLabel", "Filament Code"))}</span>
-        <strong>${escapeHtml(displayCode)}</strong>
-      </div>
-      <div class="add-spool-code-copy">
-        <div>${escapeHtml(message)}</div>
-        ${
-          matchPreview
-            ? `<p>${escapeHtml(matchPreview)}${
-                remainingCount > 0
-                  ? ` +${escapeHtml(String(remainingCount))} ${escapeHtml(t(locale, "storage.bambuCodeMoreMatches", "more"))}`
-                  : ""
-              }</p>`
-            : `<p>${escapeHtml(
-                lookup.code
-                  ? t(
-                      locale,
-                      "storage.bambuCodeTryCatalogSearch",
-                      "You can still search by material, series, or color name.",
-                    )
-                  : t(
-                      locale,
-                      "storage.bambuCodeEnterExample",
-                      "Type the code into the search field, for example 53400.",
-                    ),
-              )}</p>`
-        }
-      </div>
-    </div>
-  `;
-}
-
-function renderBambuFilamentCodeLookupDetails(lookup, locale, escapeHtml) {
-  const detailsOpen = lookup.code ? " open" : "";
-  return `
-    <details class="add-spool-code-details detail-collapsible"${detailsOpen}>
-      <summary class="detail-collapsible-summary">
-        <span>${escapeHtml(t(locale, "storage.bambuCodeDetailsTitle", "Bambu Filament Code"))}</span>
-        <span class="detail-history-summary">${escapeHtml(
-          t(locale, "storage.bambuCodeDetailsMeta", "Manual lookup from the box label"),
-        )}</span>
-      </summary>
-      <div class="detail-collapsible-body add-spool-code-details-body">
-        <label class="stack detail-field add-spool-code-entry-field">
-          <span class="muted">${escapeHtml(t(locale, "storage.bambuCodeLabel", "Filament Code"))}</span>
-          <input
-            class="text-input add-spool-code-entry-input"
-            name="filament-code-search"
-            type="text"
-            inputmode="numeric"
-            maxlength="5"
-            pattern="[0-9]{5}"
-            value="${escapeHtml(lookup.code || "")}"
-            placeholder="53400"
-            autocomplete="off"
-          />
-        </label>
-        ${renderBambuFilamentCodeLookupHint(lookup, locale, escapeHtml)}
-      </div>
-    </details>
-  `;
-}
-
 function resolveAddSheetState(state) {
   const draft = state.borrowedInDraft || {};
   const source = String(draft.source || "bambu").trim().toLowerCase();
@@ -416,11 +305,6 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
                   )}"
                   autocomplete="off"
                 />
-                ${
-                  selection.source === "bambu" && selection.bambuCodeLookup
-                    ? renderBambuFilamentCodeLookupHint(selection.bambuCodeLookup, locale, escapeHtml)
-                    : ""
-                }
                 <div class="dense-list add-spool-catalog-list">
                   ${
                     selection.visibleCatalogMasters.length > 0
@@ -472,11 +356,6 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
                         )}</div>`
                   }
                 </div>
-                ${
-                  selection.source === "bambu" && selection.bambuCodeLookup
-                    ? renderBambuFilamentCodeLookupDetails(selection.bambuCodeLookup, locale, escapeHtml)
-                    : ""
-                }
               </div>
             `
         }
@@ -855,9 +734,9 @@ export function renderStorageShell(options) {
     <section class="workflow-shell storage-shell">
       <div class="workflow-header">
         <div class="workflow-header-copy">
-          <h2>${escapeHtml(t(locale, "storage.title", "Storage"))}</h2>
+          <h2>${escapeHtml(t(locale, "storage.title", "Inventory"))}</h2>
           <p class="section-copy">
-            ${escapeHtml(t(locale, "storage.subtitle", "Browse local stock and open the spool you need."))}
+            ${escapeHtml(t(locale, "storage.subtitle", "Browse inventory and open the spool you need."))}
           </p>
         </div>
         <div class="workflow-header-side workflow-header-summary">

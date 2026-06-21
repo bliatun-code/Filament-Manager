@@ -447,9 +447,6 @@ export function createCompanionShellState(options) {
       case "filament-catalog-search":
         state.borrowedInDraft.catalogSearch = value;
         return true;
-      case "filament-code-search":
-        state.borrowedInDraft.catalogSearch = value;
-        return true;
       case "filament-material":
         state.borrowedInDraft.material = value;
         return true;

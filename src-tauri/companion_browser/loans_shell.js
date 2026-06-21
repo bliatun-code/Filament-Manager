@@ -65,7 +65,7 @@ function renderHiddenSelectionBanner(selectedSpool, loanRows, escapeHtml, format
         <button class="secondary-button" type="button" data-action="show-all-loans">
           ${escapeHtml(t(locale, "loans.showAll", "Show all loans"))}
         </button>
-        ${loanRows.length ? `<button class="ghost-button" type="button" data-action="set-root-flow" data-root-flow="storage">${escapeHtml(t(locale, "nav.storage", "Storage"))}</button>` : ""}
+        ${loanRows.length ? `<button class="ghost-button" type="button" data-action="set-root-flow" data-root-flow="storage">${escapeHtml(t(locale, "nav.storage", "Inventory"))}</button>` : ""}
         <button class="ghost-button" type="button" data-action="open-current-detail">
           ${escapeHtml(t(locale, "detail.openDetail", "Detail"))}
         </button>

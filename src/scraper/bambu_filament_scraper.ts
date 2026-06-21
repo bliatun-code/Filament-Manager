@@ -9,7 +9,7 @@ export const DEFAULT_BASE_URLS = [
   "https://store.bambulab.com",
 ];
 export const DEFAULT_COLLECTION_HANDLE = "bambu-lab-3d-printer-filament";
-export const DEFAULT_DB_PATH = "./bambu_filament_manager.db";
+export const DEFAULT_DB_PATH = "./filament-manager.db";
 const DEFAULT_WEIGHT_G = 1000;
 const REQUEST_TIMEOUT_MS = Number.parseInt(process.env.BAMBU_TIMEOUT_MS ?? "20000", 10);
 const MAX_FETCH_RETRIES = Number.parseInt(process.env.BAMBU_FETCH_RETRIES ?? "2", 10);

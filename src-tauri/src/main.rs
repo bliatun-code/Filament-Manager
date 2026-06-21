@@ -78,8 +78,27 @@ use objc2_foundation::NSData;
 use state::AppState;
 #[cfg(target_os = "macos")]
 use std::ffi::c_void;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::Manager;
+
+pub(crate) const APP_DB_FILE_NAME: &str = "filament-manager.db";
+pub(crate) const LEGACY_APP_DB_FILE_NAME: &str = "bambu.db";
+pub(crate) const LEGACY_APP_DATA_DIR_NAME: &str = "com.bambu.filament.manager";
+const USER_DATA_TABLES: &[&str] = &[
+    "filament_spools",
+    "printers",
+    "spool_loans",
+    "wishlist_items",
+    "spool_history_events",
+];
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DatabaseUserDataState {
+    HasUserData,
+    NoUserData,
+    Unreadable,
+}
 
 #[cfg(target_os = "macos")]
 const DOCK_ICON_LIGHT_BYTES: &[u8] = include_bytes!("../icons/dock-light.png");
@@ -283,8 +302,8 @@ fn ensure_db(app: &tauri::App) -> Result<PathBuf, String> {
     }
 
     let app_dir = resolve_app_storage_dir_for_app(app)?;
-    std::fs::create_dir_all(&app_dir).map_err(|error| error.to_string())?;
-    let db_path = app_dir.join("bambu.db");
+    prepare_app_storage_dir(&app_dir)?;
+    let db_path = app_dir.join(APP_DB_FILE_NAME);
     let db = FilamentDatabase::open(&db_path).map_err(|error| format!("DB open: {error:?}"))?;
     db.apply_schema()
         .map_err(|error| format!("DB schema: {error:?}"))?;
@@ -314,17 +333,148 @@ fn resolve_app_storage_dir_for_app(app: &tauri::App) -> Result<PathBuf, String> 
     }
 }
 
+fn prepare_app_storage_dir(app_dir: &Path) -> Result<(), String> {
+    migrate_legacy_app_storage_if_needed(app_dir)?;
+    std::fs::create_dir_all(app_dir).map_err(|error| error.to_string())
+}
+
+fn migrate_legacy_app_storage_if_needed(app_dir: &Path) -> Result<(), String> {
+    let Some((legacy_db_path, legacy_dir)) = legacy_database_source(app_dir) else {
+        return Ok(());
+    };
+
+    let current_db_path = app_dir.join(APP_DB_FILE_NAME);
+    let current_db_exists = current_db_path.exists();
+    let should_migrate = if current_db_exists {
+        matches!(
+            database_user_data_state(&current_db_path),
+            DatabaseUserDataState::NoUserData
+        ) && matches!(
+            database_user_data_state(&legacy_db_path),
+            DatabaseUserDataState::HasUserData
+        )
+    } else {
+        true
+    };
+    if !should_migrate {
+        return Ok(());
+    }
+
+    if let Some(legacy_dir) = legacy_dir {
+        copy_dir_contents_without_overwrite(&legacy_dir, app_dir)?;
+    } else {
+        std::fs::create_dir_all(app_dir).map_err(|error| error.to_string())?;
+    }
+    if current_db_exists {
+        let backup_path = legacy_migration_backup_path(app_dir);
+        std::fs::copy(&current_db_path, &backup_path).map_err(|error| error.to_string())?;
+    }
+    std::fs::copy(&legacy_db_path, &current_db_path).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+fn legacy_database_source(app_dir: &Path) -> Option<(PathBuf, Option<PathBuf>)> {
+    let mut candidates = Vec::new();
+
+    let same_dir_legacy_db = app_dir.join(LEGACY_APP_DB_FILE_NAME);
+    if same_dir_legacy_db.exists() {
+        candidates.push((same_dir_legacy_db, None));
+    }
+
+    if let Some(parent_dir) = app_dir.parent() {
+        let legacy_dir = parent_dir.join(LEGACY_APP_DATA_DIR_NAME);
+        for file_name in [APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME] {
+            let legacy_db_path = legacy_dir.join(file_name);
+            if legacy_db_path.exists() {
+                candidates.push((legacy_db_path, Some(legacy_dir.clone())));
+            }
+        }
+    }
+
+    let mut empty_fallback = None;
+    for candidate in candidates {
+        match database_user_data_state(&candidate.0) {
+            DatabaseUserDataState::HasUserData => return Some(candidate),
+            DatabaseUserDataState::NoUserData if empty_fallback.is_none() => {
+                empty_fallback = Some(candidate);
+            }
+            DatabaseUserDataState::NoUserData | DatabaseUserDataState::Unreadable => {}
+        }
+    }
+
+    empty_fallback
+}
+
+fn copy_dir_contents_without_overwrite(source_dir: &Path, target_dir: &Path) -> Result<(), String> {
+    std::fs::create_dir_all(target_dir).map_err(|error| error.to_string())?;
+    for entry in std::fs::read_dir(source_dir).map_err(|error| error.to_string())? {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let source_path = entry.path();
+        let target_path = target_dir.join(entry.file_name());
+        let file_type = entry.file_type().map_err(|error| error.to_string())?;
+
+        if file_type.is_dir() {
+            if target_path.exists() && !target_path.is_dir() {
+                continue;
+            }
+            copy_dir_contents_without_overwrite(&source_path, &target_path)?;
+        } else if file_type.is_file() && !target_path.exists() {
+            std::fs::copy(&source_path, &target_path).map_err(|error| error.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+fn database_user_data_state(db_path: &Path) -> DatabaseUserDataState {
+    let connection = match rusqlite::Connection::open_with_flags(
+        db_path,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+    ) {
+        Ok(connection) => connection,
+        Err(_) => return DatabaseUserDataState::Unreadable,
+    };
+
+    for table in USER_DATA_TABLES {
+        let sql = format!("SELECT COUNT(*) FROM {table}");
+        let count = match connection.query_row(&sql, [], |row| row.get::<_, i64>(0)) {
+            Ok(count) => count,
+            Err(error) if error.to_string().contains("no such table") => 0,
+            Err(_) => return DatabaseUserDataState::Unreadable,
+        };
+        if count > 0 {
+            return DatabaseUserDataState::HasUserData;
+        }
+    }
+
+    DatabaseUserDataState::NoUserData
+}
+
+fn legacy_migration_backup_path(app_dir: &Path) -> PathBuf {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    app_dir.join(format!(
+        "{APP_DB_FILE_NAME}.backup-empty-before-legacy-migration-{timestamp}"
+    ))
+}
+
 #[cfg(target_os = "windows")]
 fn resolve_windows_storage_dir(roaming_dir: PathBuf, local_dir: PathBuf) -> PathBuf {
-    let roaming_db_path = roaming_dir.join("bambu.db");
-    let local_db_path = local_dir.join("bambu.db");
-    if local_db_path.exists() {
+    if storage_dir_has_database(&local_dir) {
         return local_dir;
     }
-    if roaming_db_path.exists() {
+    if storage_dir_has_database(&roaming_dir) {
         return roaming_dir;
     }
     local_dir
+}
+
+#[cfg(target_os = "windows")]
+fn storage_dir_has_database(dir: &Path) -> bool {
+    [APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME]
+        .iter()
+        .any(|file_name| dir.join(file_name).exists())
 }
 
 pub(crate) fn with_inventory<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>

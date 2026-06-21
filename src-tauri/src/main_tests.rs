@@ -1,6 +1,6 @@
 use crate::backend::filament_database::{FilamentDatabase, TrustedLanSettingsRow};
 use crate::trusted_lan_runtime_commands::load_trusted_lan_runtime;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn temp_db_path(test_name: &str) -> PathBuf {
@@ -9,6 +9,53 @@ fn temp_db_path(test_name: &str) -> PathBuf {
         .unwrap_or_default()
         .as_nanos();
     std::env::temp_dir().join(format!("filament-manager-main-{test_name}-{nanos}.db"))
+}
+
+fn temp_dir_path(test_name: &str) -> PathBuf {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    std::env::temp_dir().join(format!("filament-manager-main-{test_name}-{nanos}"))
+}
+
+fn write_migration_probe_db(path: &Path, spool_count: usize) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    if path.exists() {
+        std::fs::remove_file(path).map_err(|error| error.to_string())?;
+    }
+    let connection = rusqlite::Connection::open(path).map_err(|error| error.to_string())?;
+    for table in [
+        "filament_spools",
+        "printers",
+        "spool_loans",
+        "wishlist_items",
+        "spool_history_events",
+    ] {
+        connection
+            .execute(&format!("CREATE TABLE {table} (id TEXT PRIMARY KEY)"), [])
+            .map_err(|error| error.to_string())?;
+    }
+    for index in 0..spool_count {
+        connection
+            .execute(
+                "INSERT INTO filament_spools (id) VALUES (?1)",
+                rusqlite::params![format!("spool-{index}")],
+            )
+            .map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+fn migration_probe_spool_count(path: &Path) -> Result<i64, String> {
+    let connection = rusqlite::Connection::open(path).map_err(|error| error.to_string())?;
+    connection
+        .query_row("SELECT COUNT(*) FROM filament_spools", [], |row| {
+            row.get::<_, i64>(0)
+        })
+        .map_err(|error| error.to_string())
 }
 
 #[test]
@@ -45,10 +92,115 @@ fn trusted_lan_runtime_keeps_enabled_state_from_settings() {
     }
 }
 
+#[test]
+fn app_storage_migration_copies_legacy_bundle_data_once() {
+    use super::{
+        prepare_app_storage_dir, APP_DB_FILE_NAME, LEGACY_APP_DATA_DIR_NAME,
+        LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("legacy-app-storage");
+    let legacy_dir = base.join(LEGACY_APP_DATA_DIR_NAME);
+    let app_dir = base.join("no.bliatun.filamentmanager");
+    let result = (|| -> Result<(), String> {
+        std::fs::create_dir_all(legacy_dir.join("labels")).map_err(|error| error.to_string())?;
+        write_migration_probe_db(&legacy_dir.join(LEGACY_APP_DB_FILE_NAME), 1)?;
+        write_migration_probe_db(&app_dir.join(APP_DB_FILE_NAME), 0)?;
+        std::fs::write(legacy_dir.join("labels").join("label.pdf"), b"legacy-label")
+            .map_err(|error| error.to_string())?;
+
+        prepare_app_storage_dir(&app_dir)?;
+        let migrated_spool_count = migration_probe_spool_count(&app_dir.join(APP_DB_FILE_NAME))?;
+        let migrated_label = std::fs::read(app_dir.join("labels").join("label.pdf"))
+            .map_err(|error| error.to_string())?;
+        let has_empty_backup = std::fs::read_dir(&app_dir)
+            .map_err(|error| error.to_string())?
+            .filter_map(Result::ok)
+            .any(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with("filament-manager.db.backup-empty-before-legacy-migration-")
+            });
+        assert_eq!(migrated_spool_count, 1);
+        assert_eq!(migrated_label, b"legacy-label");
+        assert!(has_empty_backup);
+
+        write_migration_probe_db(&legacy_dir.join(LEGACY_APP_DB_FILE_NAME), 2)?;
+        prepare_app_storage_dir(&app_dir)?;
+        let current_spool_count = migration_probe_spool_count(&app_dir.join(APP_DB_FILE_NAME))?;
+        assert_eq!(current_spool_count, 1);
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn app_storage_migration_renames_same_dir_legacy_database() {
+    use super::{prepare_app_storage_dir, APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME};
+
+    let base = temp_dir_path("legacy-db-file-name");
+    let app_dir = base.join("no.bliatun.filamentmanager");
+    let result = (|| -> Result<(), String> {
+        write_migration_probe_db(&app_dir.join(LEGACY_APP_DB_FILE_NAME), 1)?;
+
+        prepare_app_storage_dir(&app_dir)?;
+
+        assert!(app_dir.join(LEGACY_APP_DB_FILE_NAME).exists());
+        assert_eq!(
+            migration_probe_spool_count(&app_dir.join(APP_DB_FILE_NAME))?,
+            1
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn app_storage_migration_does_not_overwrite_unreadable_current_database() {
+    use super::{
+        prepare_app_storage_dir, APP_DB_FILE_NAME, LEGACY_APP_DATA_DIR_NAME,
+        LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("unreadable-current-db-file");
+    let legacy_dir = base.join(LEGACY_APP_DATA_DIR_NAME);
+    let app_dir = base.join("no.bliatun.filamentmanager");
+    let result = (|| -> Result<(), String> {
+        write_migration_probe_db(&legacy_dir.join(LEGACY_APP_DB_FILE_NAME), 1)?;
+        std::fs::create_dir_all(&app_dir).map_err(|error| error.to_string())?;
+        std::fs::write(app_dir.join(APP_DB_FILE_NAME), b"not a sqlite database")
+            .map_err(|error| error.to_string())?;
+
+        prepare_app_storage_dir(&app_dir)?;
+
+        let current_db_bytes =
+            std::fs::read(app_dir.join(APP_DB_FILE_NAME)).map_err(|error| error.to_string())?;
+        assert_eq!(current_db_bytes, b"not a sqlite database");
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
 #[cfg(target_os = "windows")]
 #[test]
 fn windows_storage_prefers_existing_db_location() {
-    use super::resolve_windows_storage_dir;
+    use super::{resolve_windows_storage_dir, APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME};
     use crate::document_commands::chrono_id;
 
     let base =
@@ -63,13 +215,13 @@ fn windows_storage_prefers_existing_db_location() {
             resolve_windows_storage_dir(roaming_dir.clone(), local_dir.clone());
         assert_eq!(selected_without_db, local_dir);
 
-        std::fs::write(roaming_dir.join("bambu.db"), b"roaming-db")
+        std::fs::write(roaming_dir.join(LEGACY_APP_DB_FILE_NAME), b"roaming-db")
             .map_err(|error| error.to_string())?;
         let selected_with_roaming =
             resolve_windows_storage_dir(roaming_dir.clone(), local_dir.clone());
         assert_eq!(selected_with_roaming, roaming_dir);
 
-        std::fs::write(local_dir.join("bambu.db"), b"local-db")
+        std::fs::write(local_dir.join(APP_DB_FILE_NAME), b"local-db")
             .map_err(|error| error.to_string())?;
         let selected_with_local =
             resolve_windows_storage_dir(roaming_dir.clone(), local_dir.clone());

@@ -17,7 +17,7 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
 
   function detailReturnLabel() {
     const sectionId = detailReturnSection();
-    return sectionLabels[sectionId] || sectionLabels.inventory || t(locale(), "recovery.sourceInventory", "Storage");
+    return sectionLabels[sectionId] || sectionLabels.inventory || t(locale(), "recovery.sourceInventory", "Inventory");
   }
 
   function openingSpoolLabel(spoolId = "", options = {}) {
@@ -216,7 +216,7 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
     if (!row) {
       return {
         allowed: false,
-        reason: t(locale(), "logic.loanSelectSpool", "Select a spool from storage before creating a loan."),
+        reason: t(locale(), "logic.loanSelectSpool", "Select a spool from inventory before creating a loan."),
       };
     }
 
@@ -283,7 +283,7 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
       ? {
           spoolId: fallbackSpoolId,
           inventorySpoolId: fallbackSpoolId,
-          sourceTag: t(locale(), "recovery.sourceInventory", "Storage"),
+          sourceTag: t(locale(), "recovery.sourceInventory", "Inventory"),
           previewLabel:
             fallbackMaterial && fallbackFilament
               ? `${fallbackSpoolId} · ${fallbackMaterial} ${fallbackFilament}`
@@ -389,7 +389,7 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
       slotId: String(target?.slotId || "").trim(),
       loanId: String(target?.loanId || "").trim(),
       sourceTag: String(
-        target?.sourceTag || sectionLabels[normalizedSection] || t(locale(), "recovery.sourceInventory", "Storage"),
+        target?.sourceTag || sectionLabels[normalizedSection] || t(locale(), "recovery.sourceInventory", "Inventory"),
       ).trim(),
       previewLabel: String(target?.previewLabel || normalizedSpoolId).trim(),
       buttonLabel: String(target?.buttonLabel || t(locale(), "recovery.selectSuggested", "Select suggested spool")).trim(),
@@ -427,7 +427,7 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
     const recoverySection = normalizeRecoverySection(sectionId);
     const recoveryTarget = recoveryTargetForSection(recoverySection);
     return String(
-      recoveryTarget?.sourceTag || sectionLabels[recoverySection] || t(locale(), "recovery.sourceInventory", "Storage"),
+      recoveryTarget?.sourceTag || sectionLabels[recoverySection] || t(locale(), "recovery.sourceInventory", "Inventory"),
     ).trim();
   }
 

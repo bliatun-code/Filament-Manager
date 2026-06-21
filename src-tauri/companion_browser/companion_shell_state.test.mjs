@@ -91,16 +91,6 @@ test("add-spool source and queue controls update the shared draft", () => {
   assert.deepEqual(harness.renderCalls, ["render", "render", "render", "render"]);
 });
 
-test("filament-code-search updates the same catalog search draft as manual Bambu lookup", () => {
-  const harness = createShellStateHarness();
-
-  assert.equal(harness.shellState.setBorrowedInDraftField("filament-code-search", "53400"), true);
-
-  assert.equal(harness.state.borrowedInDraft.catalogSearch, "53400");
-  assert.equal(harness.state.borrowedInDraft.source, "bambu");
-  assert.deepEqual(harness.renderCalls, []);
-});
-
 test("printer spool search stays local to the slot-targeted picker task sheet", () => {
   const harness = createShellStateHarness({
     state: {

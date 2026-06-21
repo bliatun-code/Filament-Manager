@@ -131,7 +131,7 @@ test("app shell renderer composes the mobile shell with the four primary tabs", 
 
   const html = renderer.renderRoot();
 
-  assert.match(html, /Storage/);
+  assert.match(html, /Inventory/);
   assert.match(html, /Loans/);
   assert.match(html, /Printers/);
   assert.match(html, /Settings/);

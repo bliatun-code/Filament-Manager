@@ -32,7 +32,7 @@ const COMPANION_ICON_LIGHT_HREF = "/companion/icon-light.png";
 const COMPANION_ICON_DARK_HREF = "/companion/icon-dark.png";
 const RECOVERY_SECTIONS = new Set(["inventory", "printers", "detail", "loans"]);
 const RECOVERY_SECTION_LABELS = {
-  inventory: "Storage",
+  inventory: "Inventory",
   printers: "Printers",
   detail: "Detail",
   loans: "Loans",
@@ -40,7 +40,7 @@ const RECOVERY_SECTION_LABELS = {
 
 function syncRecoverySectionLabels(locale) {
   const nextLocale = normalizeCompanionLocale(locale);
-  RECOVERY_SECTION_LABELS.inventory = t(nextLocale, "nav.storage", "Storage");
+  RECOVERY_SECTION_LABELS.inventory = t(nextLocale, "nav.storage", "Inventory");
   RECOVERY_SECTION_LABELS.printers = t(nextLocale, "nav.printers", "Printers");
   RECOVERY_SECTION_LABELS.detail = t(nextLocale, "detail.openDetail", "Detail");
   RECOVERY_SECTION_LABELS.loans = t(nextLocale, "nav.loans", "Loans");

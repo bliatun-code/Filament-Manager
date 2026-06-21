@@ -270,7 +270,7 @@ macOS:
 
 - Download DMG from the latest GitHub release.
 - App data path is typically
-  `~/Library/Application Support/com.bambu.filament.manager`.
+  `~/Library/Application Support/no.bliatun.filamentmanager`.
 
 If macOS blocks first launch of an unsigned build downloaded from GitHub:
 
@@ -288,7 +288,7 @@ Windows:
 - MSI default install path:
   `C:\Users\<user>\AppData\Local\Filament Manager`
 - App data path:
-  `C:\Users\<user>\AppData\Local\com.bambu.filament.manager`
+  `C:\Users\<user>\AppData\Local\no.bliatun.filamentmanager`
 - The MSI is per-user and should not require Administrator privileges for the
   default install path.
 - Uninstall removes installed app files but keeps local app data unless that data
@@ -299,7 +299,7 @@ Windows:
 Safe Bambu catalog refresh from the scraper:
 
 ```bash
-BAMBU_DB_PATH=./data/bambu.db npm run scrape:auto:safe
+BAMBU_DB_PATH=./data/filament-manager.db npm run scrape:auto:safe
 ```
 
 Manual scraper run:
@@ -307,7 +307,7 @@ Manual scraper run:
 ```bash
 BAMBU_BASE_URL=https://eu.store.bambulab.com \
 BAMBU_COLLECTION=bambu-lab-3d-printer-filament \
-BAMBU_DB_PATH=./data/bambu.db \
+BAMBU_DB_PATH=./data/filament-manager.db \
 npm run scrape
 ```
 
@@ -393,7 +393,7 @@ Windows MSI install fails with permission errors:
 App starts but data appears empty:
 
 - Check whether the expected app data directory exists.
-- Check whether `bambu.db` was created on first run.
+- Check whether `filament-manager.db` was created on first run.
 - If using Client mode, verify the host is reachable and pairing is valid.
 
 `sqlite3` CLI warning in `doctor`:

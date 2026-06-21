@@ -53,12 +53,12 @@ test("storage shell keeps search and primary actions close to the spool list", (
     },
   });
 
-  assert.match(html, /Storage/);
+  assert.match(html, /Inventory/);
   assert.match(html, /Add spool/);
   assert.doesNotMatch(html, /Scan QR/);
   assert.match(html, /data-action="select-spool"/);
   assert.doesNotMatch(html, /Selected spool/);
-  assert.match(html, /Browse local stock and open the spool you need\./);
+  assert.match(html, /Browse inventory and open the spool you need\./);
 });
 
 test("storage shell shows the selected hidden banner when a search hides the active spool", () => {
@@ -133,7 +133,7 @@ test("add filament task sheet exposes stock and wishlist flows from the same sel
   assert.match(html, /Add current selection to wishlist/);
 });
 
-test("add filament task sheet shows Bambu filament code help before and after lookup", () => {
+test("add filament task sheet keeps Bambu filament code lookup in catalog search without help card", () => {
   const state = createInitialCompanionState();
   state.catalogMasters = [
     {
@@ -150,37 +150,34 @@ test("add filament task sheet shows Bambu filament code help before and after lo
     },
   ];
 
-  const helpHtml = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+  const initialHtml = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
   assert.ok(
-    helpHtml.indexOf('name="filament-catalog-search"') <
-      helpHtml.indexOf("add-spool-catalog-list"),
+    initialHtml.indexOf('name="filament-catalog-search"') <
+      initialHtml.indexOf("add-spool-catalog-list"),
   );
-  assert.ok(
-    helpHtml.indexOf("add-spool-catalog-list") <
-      helpHtml.indexOf("add-spool-code-details"),
-  );
-  assert.match(helpHtml, /Filament Code/);
-  assert.match(helpHtml, /name="filament-code-search"/);
-  assert.match(helpHtml, /Manual lookup from the box label/);
-  assert.match(helpHtml, /53400/);
-  assert.match(helpHtml, /Find this field on the box label/);
-  assert.match(helpHtml, /add-spool-code-box-label/);
-  assert.match(helpHtml, /Type the code into the search field/);
-  assert.doesNotMatch(helpHtml, /camera/i);
-  assert.doesNotMatch(helpHtml, /webcam/i);
+  assert.match(initialHtml, /Search material, color, or filament code/);
+  assert.doesNotMatch(initialHtml, /add-spool-code-lookup/);
+  assert.doesNotMatch(initialHtml, /add-spool-code-details/);
+  assert.doesNotMatch(initialHtml, /name="filament-code-search"/);
+  assert.doesNotMatch(initialHtml, /Find this field on the box label/);
+  assert.doesNotMatch(initialHtml, /Manual lookup from the box label/);
+  assert.doesNotMatch(initialHtml, /camera/i);
+  assert.doesNotMatch(initialHtml, /webcam/i);
 
   state.borrowedInDraft = {
     ...state.borrowedInDraft,
     catalogSearch: "53400",
   };
   const lookupHtml = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
-  assert.match(lookupHtml, /<details class="add-spool-code-details detail-collapsible" open>/);
-  assert.match(lookupHtml, /name="filament-code-search"[\s\S]*value="53400"/);
-  assert.match(lookupHtml, /One active Bambu catalog entry matched and is selected/);
+  assert.match(lookupHtml, /name="filament-catalog-search"[\s\S]*value="53400"/);
+  assert.match(lookupHtml, /name="filament-master-id" value="master-code"/);
   assert.match(lookupHtml, /TPU for AMS/);
+  assert.doesNotMatch(lookupHtml, /add-spool-code-lookup/);
+  assert.doesNotMatch(lookupHtml, /add-spool-code-details/);
+  assert.doesNotMatch(lookupHtml, /One active Bambu catalog entry matched and is selected/);
 });
 
-test("add filament task sheet localizes Bambu filament code help in Norwegian", () => {
+test("add filament task sheet localizes Bambu code catalog search in Norwegian without help card", () => {
   const state = createInitialCompanionState();
   state.locale = "nb";
   state.catalogMasters = [
@@ -200,11 +197,14 @@ test("add filament task sheet localizes Bambu filament code help in Norwegian", 
 
   const html = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
 
-  assert.match(html, /femsifrede koden/);
-  assert.match(html, /Filament Code/);
-  assert.match(html, /eskeetiketten/);
-  assert.match(html, /Manuelt oppslag fra eskeetiketten/);
-  assert.match(html, /Skriv koden i/);
+  assert.match(html, /Søk etter materiale, farge eller filamentkode/);
+  assert.doesNotMatch(html, /femsifrede koden/);
+  assert.doesNotMatch(html, /Filament Code/);
+  assert.doesNotMatch(html, /eskeetiketten/);
+  assert.doesNotMatch(html, /Manuelt oppslag fra eskeetiketten/);
+  assert.doesNotMatch(html, /Skriv koden i/);
+  assert.doesNotMatch(html, /add-spool-code-lookup/);
+  assert.doesNotMatch(html, /add-spool-code-details/);
   assert.doesNotMatch(html, /camera/i);
   assert.doesNotMatch(html, /webcam/i);
 });
@@ -244,9 +244,10 @@ test("add filament task sheet selects the active Bambu code match when discontin
 
   const html = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
 
-  assert.match(html, /One active Bambu catalog entry matched and is selected/);
   assert.match(html, /name="filament-master-id" value="active-yellow"/);
   assert.match(html, /TPU for AMS/);
+  assert.doesNotMatch(html, /One active Bambu catalog entry matched and is selected/);
+  assert.doesNotMatch(html, /add-spool-code-lookup/);
   assert.doesNotMatch(html, /old-yellow/);
   assert.doesNotMatch(html, /Old Yellow/);
 });
@@ -329,11 +330,12 @@ test("add filament task sheet requires explicit row selection for ambiguous Bamb
 
   const reviewHtml = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
 
-  assert.match(reviewHtml, /This code is used by several active Bambu catalog entries/);
   assert.match(reviewHtml, /data-master-id="petg-black"/);
   assert.match(reviewHtml, /data-master-id="pla-black"/);
   assert.match(reviewHtml, /name="filament-master-id" value=""/);
   assert.match(reviewHtml, /Choose a catalog row/);
+  assert.doesNotMatch(reviewHtml, /This code is used by several active Bambu catalog entries/);
+  assert.doesNotMatch(reviewHtml, /add-spool-code-lookup/);
   assert.match(
     reviewHtml,
     /<button class="primary-button" type="submit" disabled>\s*Add spool to inventory/,
@@ -377,11 +379,12 @@ test("add filament task sheet surfaces discontinued-only Bambu code matches unde
 
   const html = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
 
-  assert.match(html, /Only discontinued Bambu catalog entries use this code/);
   assert.match(html, /Old Red \(12345\)/);
   assert.match(html, /Discontinued/);
   assert.match(html, /name="filament-master-id" value=""/);
   assert.match(html, /Choose a catalog row/);
+  assert.doesNotMatch(html, /Only discontinued Bambu catalog entries use this code/);
+  assert.doesNotMatch(html, /add-spool-code-lookup/);
 
   state.borrowedInDraft = {
     ...state.borrowedInDraft,
@@ -389,8 +392,9 @@ test("add filament task sheet surfaces discontinued-only Bambu code matches unde
   };
   const selectedHtml = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
 
-  assert.match(selectedHtml, /Only discontinued Bambu catalog entries use this code/);
   assert.match(selectedHtml, /name="filament-master-id" value="master-old"/);
+  assert.doesNotMatch(selectedHtml, /Only discontinued Bambu catalog entries use this code/);
+  assert.doesNotMatch(selectedHtml, /add-spool-code-lookup/);
   assert.doesNotMatch(selectedHtml, /Choose a catalog row/);
   assert.doesNotMatch(
     selectedHtml,
@@ -421,10 +425,11 @@ test("add filament task sheet blocks Bambu filament codes with no catalog match"
 
   const html = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
 
-  assert.match(html, /No Bambu catalog entry uses this filament code yet/);
   assert.match(html, /name="filament-master-id" value=""/);
   assert.match(html, /No catalog entries match this vendor filter/);
   assert.match(html, /Choose a catalog row/);
+  assert.doesNotMatch(html, /No Bambu catalog entry uses this filament code yet/);
+  assert.doesNotMatch(html, /add-spool-code-lookup/);
   assert.match(
     html,
     /<button class="primary-button" type="submit" disabled>\s*Add spool to inventory/,
