@@ -9,7 +9,7 @@ import {
   sourceUrlForAppVersion,
 } from "./app_metadata";
 
-test("app metadata exposes AGPL licensing and versioned source links", () => {
+test("app metadata exposes AGPL licensing and source links", () => {
   assert.equal(APP_LICENSE_ID, "AGPL-3.0-or-later");
   assert.equal(
     sourceUrlForAppVersion("0.16.0"),
@@ -17,10 +17,10 @@ test("app metadata exposes AGPL licensing and versioned source links", () => {
   );
   assert.equal(
     licenseUrlForAppVersion("v0.16.0"),
-    `${APP_REPOSITORY_URL}/blob/v0.16.0/LICENSE`,
+    `${APP_REPOSITORY_URL}/blob/main/LICENSE`,
   );
   assert.equal(
-    noticeUrlForAppVersion("dev-web"),
+    noticeUrlForAppVersion("0.16.0"),
     `${APP_REPOSITORY_URL}/blob/main/NOTICE.md`,
   );
 });

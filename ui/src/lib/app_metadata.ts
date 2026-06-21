@@ -12,12 +12,14 @@ export function sourceUrlForAppVersion(appVersion: string | null | undefined): s
   return releaseRef ? `${APP_REPOSITORY_URL}/tree/${releaseRef}` : APP_REPOSITORY_URL;
 }
 
-export function licenseUrlForAppVersion(appVersion: string | null | undefined): string {
-  const releaseRef = releaseRefForVersion(appVersion);
-  return `${APP_REPOSITORY_URL}/blob/${releaseRef ?? "main"}/LICENSE`;
-}
+type AppVersionUrlBuilder = (appVersion: string | null | undefined) => string;
 
-export function noticeUrlForAppVersion(appVersion: string | null | undefined): string {
-  const releaseRef = releaseRefForVersion(appVersion);
-  return `${APP_REPOSITORY_URL}/blob/${releaseRef ?? "main"}/NOTICE.md`;
-}
+export const licenseUrlForAppVersion: AppVersionUrlBuilder = () => {
+  // Legal documents were added after earlier release tags, so keep these links stable.
+  return `${APP_REPOSITORY_URL}/blob/main/LICENSE`;
+};
+
+export const noticeUrlForAppVersion: AppVersionUrlBuilder = () => {
+  // Legal documents were added after earlier release tags, so keep these links stable.
+  return `${APP_REPOSITORY_URL}/blob/main/NOTICE.md`;
+};
