@@ -1,15 +1,10 @@
 use serde::{Deserialize, Deserializer};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) enum OptionalUpdate<T> {
+    #[default]
     Unset,
     Set(Option<T>),
-}
-
-impl<T> Default for OptionalUpdate<T> {
-    fn default() -> Self {
-        Self::Unset
-    }
 }
 
 impl<'de, T> Deserialize<'de> for OptionalUpdate<T>
