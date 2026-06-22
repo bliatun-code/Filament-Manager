@@ -52,12 +52,25 @@ export async function setDockIconTheme(theme: "light" | "dark") {
   return invoke<void>("set_dock_icon_theme", { theme });
 }
 
-export async function openExternalUrl(url: string) {
-  if (isTauri()) {
-    return invoke<void>("open_external_url", { url });
+function openInBrowser(url: string) {
+  if (typeof window === "undefined" || typeof window.open !== "function") {
+    return;
   }
 
   window.open(url, "_blank", "noopener,noreferrer");
+}
+
+export async function openExternalUrl(url: string) {
+  if (!isTauri()) {
+    openInBrowser(url);
+    return;
+  }
+
+  try {
+    await invoke<void>("open_external_url", { url });
+  } catch {
+    openInBrowser(url);
+  }
 }
 
 export async function setWindowTitle(title: string) {

@@ -12,6 +12,10 @@ type InvokeFn = <T>(command: string, payload?: Record<string, unknown>) => Promi
 let cachedInvoke: InvokeFn | null = null;
 
 export function hasTauriRuntime(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
   return Boolean(window.__TAURI__?.invoke || window.__TAURI_INTERNALS__);
 }
 
@@ -19,7 +23,7 @@ async function resolveInvoke(): Promise<InvokeFn> {
   if (cachedInvoke) {
     return cachedInvoke;
   }
-  if (window.__TAURI__?.invoke) {
+  if (typeof window !== "undefined" && window.__TAURI__?.invoke) {
     cachedInvoke = window.__TAURI__.invoke.bind(window.__TAURI__);
     return cachedInvoke;
   }

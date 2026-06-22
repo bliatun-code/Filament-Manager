@@ -159,6 +159,7 @@ export default function App() {
               <button
                 key={page.key}
                 type="button"
+                aria-current={activePage === page.key ? "page" : undefined}
                 onClick={() => {
                   navigateToPage(page.key);
                 }}
