@@ -176,6 +176,7 @@ test("loans shell localizes core copy in norwegian", () => {
   assert.match(html, /Utlån/);
   assert.match(html, /Aktive 1/);
   assert.match(html, /Registrer retur/);
+  assert.match(html, /aria-label="Utlånsfiltre"/);
 });
 
 test("loan return task sheet switches inbound records to hand-back flow", () => {

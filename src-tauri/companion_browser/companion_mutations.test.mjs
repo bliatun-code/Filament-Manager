@@ -716,6 +716,24 @@ test("submitWishlistStock creates owned stock and marks the wishlist item receiv
   assert.equal(harness.state.statusMessage, "Wishlist spool added to inventory.");
 });
 
+test("submitWishlistDelete removes an item through the host wishlist route", async () => {
+  const fetchCalls = [];
+  const harness = createMutationHarness({
+    fetchJson: async (path, init) => {
+      fetchCalls.push([path, JSON.parse(String(init?.body || "{}"))]);
+      return { ok: true };
+    },
+  });
+
+  await harness.mutations.submitWishlistDelete("wish-9");
+
+  assert.deepEqual(fetchCalls, [["/api/v1/wishlist/wish-9/delete", {}]]);
+  assert.equal(harness.refreshCount, 1);
+  assert.deepEqual(harness.busyCalls, [true, false]);
+  assert.equal(harness.state.statusTone, "success");
+  assert.equal(harness.state.statusMessage, "Wishlist item removed.");
+});
+
 test("status messages follow selected locale for validation errors", async () => {
   const harness = createMutationHarness({
     state: {

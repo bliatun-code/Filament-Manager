@@ -87,6 +87,11 @@ export function routeCompanionClickAction(action, target, handlers) {
     return true;
   }
 
+  if (action === "wishlist-delete") {
+    handlers.submitWishlistDelete(readAttr(target, "data-wishlist-id"));
+    return true;
+  }
+
   if (action === "set-theme-mode") {
     handlers.setThemeMode(readAttr(target, "data-theme-mode") || "auto");
     return true;

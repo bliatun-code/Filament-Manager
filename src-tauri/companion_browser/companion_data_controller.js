@@ -1,8 +1,28 @@
 import { t } from "./companion_i18n.js";
 import { isLoanCurrentlyActive } from "./companion_loan_state.js";
 
+const SPOOL_PAGE_SIZE = 250;
+
 function normalizeDetailRootFlow(rootFlow) {
   return rootFlow === "printers" || rootFlow === "loans" ? rootFlow : "storage";
+}
+
+async function fetchAllSpoolRows(fetchJson) {
+  const rows = [];
+  let offset = 0;
+  while (true) {
+    const page = await fetchJson(
+      `/api/v1/inventory/spools?limit=${SPOOL_PAGE_SIZE}&offset=${offset}`,
+    );
+    if (!Array.isArray(page)) {
+      return [];
+    }
+    rows.push(...page);
+    if (page.length < SPOOL_PAGE_SIZE) {
+      return rows;
+    }
+    offset += page.length;
+  }
 }
 
 export function createCompanionDataController(options) {
@@ -127,7 +147,7 @@ export function createCompanionDataController(options) {
     setBusy(true);
     try {
       const [spools, catalogMasters, wishlistItems, printers, loanHistory] = await Promise.all([
-        fetchJson("/api/v1/inventory/spools?limit=500&offset=0"),
+        fetchAllSpoolRows(fetchJson),
         fetchJson("/api/v1/catalog/masters?limit=2000"),
         fetchJson("/api/v1/wishlist?limit=500"),
         fetchJson("/api/v1/printers/overview"),

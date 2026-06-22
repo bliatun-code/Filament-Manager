@@ -61,6 +61,9 @@ function createBaseOptions(overrides = {}) {
     submitSpoolLoan() {},
     submitSpoolLoanReturn() {},
     submitManualSpoolRegistration() {},
+    submitWishlistStatus() {},
+    submitWishlistStock() {},
+    submitWishlistDelete() {},
     submitBorrowedInUpdate() {},
     submitBorrowedInHandBack() {},
     ...overrides,
@@ -110,6 +113,28 @@ test("click handler refreshes current trusted-LAN companion data", async () => {
   assert.equal(handled, true);
   await Promise.resolve();
   assert.equal(refreshCount, 1);
+});
+
+test("click handler dispatches wishlist deletion from the rendered queue", () => {
+  const calls = [];
+  const options = createBaseOptions({
+    submitWishlistDelete(itemId) {
+      calls.push(itemId);
+    },
+  });
+
+  const handled = handleCompanionClickEvent(
+    {
+      target: createActionTarget({
+        "data-action": "wishlist-delete",
+        "data-wishlist-id": "wish-7",
+      }),
+    },
+    options,
+  );
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls, ["wish-7"]);
 });
 
 test("input handler updates loan search and collapses the expanded return state", () => {

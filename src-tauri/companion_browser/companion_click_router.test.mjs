@@ -163,6 +163,20 @@ test("click router dispatches add-spool source, catalog, and wishlist actions", 
     ),
     true,
   );
+  assert.equal(
+    routeCompanionClickAction(
+      "wishlist-delete",
+      createTarget({
+        "data-wishlist-id": "wish-3",
+      }),
+      {
+        submitWishlistDelete(itemId) {
+          calls.push(["wishlist-delete", itemId]);
+        },
+      },
+    ),
+    true,
+  );
 
   assert.deepEqual(calls, [
     ["source", "esun"],
@@ -171,6 +185,7 @@ test("click router dispatches add-spool source, catalog, and wishlist actions", 
     ["wishlist-filter", "ON_ORDER"],
     ["wishlist-status", "wish-1", "RECEIVED"],
     ["wishlist-stock", "wish-2"],
+    ["wishlist-delete", "wish-3"],
   ]);
 });
 

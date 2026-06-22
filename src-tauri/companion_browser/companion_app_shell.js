@@ -525,6 +525,7 @@ export function createCompanionAppShellRenderer(options) {
                 ? renderPhoneBottomNav({
                     activeRootFlow: state.activeRootFlow,
                     rootFlowItems,
+                    locale: state.locale,
                     escapeHtml,
                   })
                 : ""

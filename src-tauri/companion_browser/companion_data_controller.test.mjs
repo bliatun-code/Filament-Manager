@@ -105,6 +105,50 @@ test("refreshOverview selects the first spool and loads its detail when nothing 
   assert.equal(harness.state.statusTone, "success");
 });
 
+test("refreshOverview loads all spool pages from the host", async () => {
+  const paths = [];
+  const firstPage = Array.from({ length: 250 }, (_, index) => ({
+    spool: { id: `spool-${index}` },
+    master: {},
+  }));
+  const secondPage = [{ spool: { id: "spool-250" }, master: {} }];
+  const harness = createDataHarness({
+    fetchJson: async (path) => {
+      paths.push(path);
+      if (path === "/api/v1/inventory/spools?limit=250&offset=0") {
+        return firstPage;
+      }
+      if (path === "/api/v1/inventory/spools?limit=250&offset=250") {
+        return secondPage;
+      }
+      if (path.startsWith("/api/v1/catalog/masters")) {
+        return [];
+      }
+      if (path.startsWith("/api/v1/wishlist")) {
+        return [];
+      }
+      if (path === "/api/v1/printers/overview") {
+        return [];
+      }
+      if (path.startsWith("/api/v1/loans")) {
+        return [];
+      }
+      if (path.startsWith("/api/v1/spools/spool-0")) {
+        return { spool: { spool: { id: "spool-0" } } };
+      }
+      throw new Error(`unexpected path ${path}`);
+    },
+  });
+
+  await harness.controller.refreshOverview();
+
+  assert.equal(harness.state.spools.length, 251);
+  assert.equal(harness.state.selectedSpoolId, "spool-0");
+  assert.ok(paths.includes("/api/v1/inventory/spools?limit=250&offset=0"));
+  assert.ok(paths.includes("/api/v1/inventory/spools?limit=250&offset=250"));
+  assert.equal(paths.includes("/api/v1/inventory/spools?limit=250&offset=500"), false);
+});
+
 test("loadSpoolDetail ignores stale response races and keeps the latest detail", async () => {
   const resolvers = new Map();
   const harness = createDataHarness({

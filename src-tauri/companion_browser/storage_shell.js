@@ -203,6 +203,15 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
             >
               ${escapeHtml(t(locale, "storage.stockNow", "Stock now"))}
             </button>
+            <button
+              class="ghost-button"
+              type="button"
+              data-action="wishlist-delete"
+              data-wishlist-id="${escapeHtml(item.id)}"
+              ${busy ? "disabled" : ""}
+            >
+              ${escapeHtml(t(locale, "storage.remove", "Remove"))}
+            </button>
           </div>
         </div>
       `;
@@ -613,17 +622,29 @@ function renderSelectedSpoolHiddenBanner(
       style="${escapeHtml(styleObjectToString(swatchCssVars(selectedSpool.master.hex_color)))}"
     >
       <div class="selection-banner-copy">
-        <div class="list-title">Selected spool hidden</div>
-        <div class="section-copy">${escapeHtml(displayTitle)} stays selected for detail, slots, and loans.</div>
+        <div class="list-title">
+          ${escapeHtml(t(locale, "storage.hiddenSelectedTitle", "Selected spool hidden"))}
+        </div>
+        <div class="section-copy">
+          ${escapeHtml(
+            t(locale, "storage.hiddenSelectedBody", "{title} stays selected for detail, slots, and loans.", {
+              title: displayTitle,
+            }),
+          )}
+        </div>
       </div>
       <div class="selection-banner-summary meta-line">${summaryLine}</div>
       <div class="selection-banner-actions">
         <button class="secondary-button" type="button" data-action="clear-inventory-search">
-          Clear search
+          ${escapeHtml(t(locale, "storage.clearSearch", "Clear search"))}
         </button>
-        ${hasLoanHistory ? `<button class="ghost-button" type="button" data-action="set-root-flow" data-root-flow="loans">Loans</button>` : ""}
+        ${
+          hasLoanHistory
+            ? `<button class="ghost-button" type="button" data-action="set-root-flow" data-root-flow="loans">${escapeHtml(t(locale, "loans.title", "Loans"))}</button>`
+            : ""
+        }
         <button class="ghost-button" type="button" data-action="open-current-detail">
-          Detail
+          ${escapeHtml(t(locale, "detail.openDetail", "Detail"))}
         </button>
       </div>
     </div>
@@ -663,7 +684,9 @@ function renderSpoolRows(options) {
         row.spool.home_location_id && row.spool.home_location_id !== row.spool.location_id
           ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(row.spool.home_location_id, locale)}`
           : "",
-        row.spool.owner_name ? `Borrowed from ${row.spool.owner_name}` : "",
+        row.spool.owner_name
+          ? t(locale, "loans.borrowedFrom", "Borrowed from {name}", { name: row.spool.owner_name })
+          : "",
       ]
         .filter(Boolean)
         .map((value) => escapeHtml(value))
@@ -740,7 +763,7 @@ export function renderStorageShell(options) {
           </p>
         </div>
         <div class="workflow-header-side workflow-header-summary">
-          ${escapeHtml(`${spools.length} visible`)}
+          ${escapeHtml(t(locale, "nav.visibleCount", "{count} visible", { count: spools.length }))}
         </div>
       </div>
 

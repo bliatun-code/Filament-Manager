@@ -79,6 +79,49 @@ test("storage shell shows the selected hidden banner when a search hides the act
   assert.match(html, /Detail/);
 });
 
+test("storage shell localizes hidden selection recovery in norwegian", () => {
+  const html = renderShell({
+    state: {
+      locale: "nb",
+      search: "PETG",
+      loanHistory: [{ loan: { spool_id: "spool-1" } }],
+    },
+    spools: [createSpoolRow("spool-2", { master: { material: "PETG" } })],
+    selectedSpool: createSpoolRow("spool-1"),
+  });
+
+  assert.match(html, /1 synlige/);
+  assert.match(html, /Valgt spole er skjult/);
+  assert.match(html, /forblir valgt for detaljer, printerspor og utlån/);
+  assert.match(html, /Tøm søk/);
+  assert.match(html, /data-root-flow="loans"[\s\S]*Utlån/);
+  assert.match(html, /Detaljer/);
+});
+
+test("storage shell localizes borrowed-in row owner metadata", () => {
+  const html = renderShell({
+    state: {
+      locale: "nb",
+    },
+    spools: [
+      createSpoolRow("borrowed-1", {
+        spool: {
+          ownership_type: "BORROWED_IN",
+          owner_name: "Erik",
+        },
+      }),
+    ],
+    selectedSpool: createSpoolRow("borrowed-1", {
+      spool: {
+        ownership_type: "BORROWED_IN",
+        owner_name: "Erik",
+      },
+    }),
+  });
+
+  assert.match(html, /Lånt fra Erik/);
+});
+
 test("storage shell collapses to an empty state when no visible spools match", () => {
   const html = renderShell({
     spools: [],
@@ -126,6 +169,7 @@ test("add filament task sheet exposes stock and wishlist flows from the same sel
   assert.match(html, /data-action="set-filament-ownership"/);
   assert.match(html, /data-action="wishlist-update-status"/);
   assert.match(html, /data-action="wishlist-stock-now"/);
+  assert.match(html, /data-action="wishlist-delete"/);
   assert.match(html, /data-action="add-spool-form"/);
   assert.match(html, /data-action="wishlist-item-form"/);
   assert.match(html, /Add spool to inventory/);

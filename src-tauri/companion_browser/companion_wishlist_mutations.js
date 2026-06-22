@@ -130,9 +130,32 @@ export function createCompanionWishlistMutations({
     }
   }
 
+  async function submitWishlistDelete(itemIdValue) {
+    const itemId = String(itemIdValue || "").trim();
+    if (!itemId) {
+      setStatus(tr("status.wishlistSelectBeforeDelete", "Choose a wishlist item before removing it."), "error");
+      render();
+      return;
+    }
+
+    setBusy(true);
+    setStatus(tr("status.wishlistDeleting", "Removing wishlist item..."), "default");
+    try {
+      await postJson(`/api/v1/wishlist/${encodeURIComponent(itemId)}/delete`, {});
+      await refreshOverview();
+      setStatus(tr("status.wishlistDeleted", "Wishlist item removed."), "success");
+    } catch (error) {
+      setStatus(error.message || tr("status.wishlistDeleteFailed", "Failed to remove wishlist item."), "error");
+      render();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return {
     submitWishlistCreate,
     submitWishlistStatus,
     submitWishlistStock,
+    submitWishlistDelete,
   };
 }

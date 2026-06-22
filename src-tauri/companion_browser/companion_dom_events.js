@@ -81,6 +81,7 @@ export function handleCompanionClickEvent(event, options) {
     submitLiveSlotCandidateRfidUpdate: (...args) => void options.submitLiveSlotCandidateRfidUpdate(...args),
     submitWishlistStatus: (...args) => void options.submitWishlistStatus(...args),
     submitWishlistStock: (...args) => void options.submitWishlistStock(...args),
+    submitWishlistDelete: (...args) => void options.submitWishlistDelete(...args),
   });
 }
 

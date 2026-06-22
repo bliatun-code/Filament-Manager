@@ -487,7 +487,7 @@ export function renderLoansShell(options) {
             </button>
           </div>
         </div>
-        <div class="loan-filter-row" role="group" aria-label="Loan status filters">
+        <div class="loan-filter-row" role="group" aria-label="${escapeHtml(t(locale, "loans.filterAria", "Loan status filters"))}">
           ${renderLoanFilterButton("ACTIVE", t(locale, "loans.activeFilter", "Active {count}", { count: loanSummary.active }), state.loanStatusFilter === "ACTIVE", escapeHtml)}
           ${renderLoanFilterButton("RETURNED", t(locale, "loans.returnedFilter", "Returned {count}", { count: loanSummary.returned }), state.loanStatusFilter === "RETURNED", escapeHtml)}
           ${renderLoanFilterButton("ALL", t(locale, "loans.allFilter", "All {count}", { count: loanSummary.total }), state.loanStatusFilter === "ALL", escapeHtml)}

@@ -34,9 +34,9 @@ function renderStatusLine(statusMessage, statusTone, busy, escapeHtml, locale = 
   return `<div class="status-line app-status-line" data-tone="${escapeHtml(statusTone)}">${escapeHtml(message)}</div>`;
 }
 
-function renderTabletRootSwitch(activeRootFlow, rootFlowItems, escapeHtml) {
+function renderTabletRootSwitch(activeRootFlow, rootFlowItems, escapeHtml, locale = "en") {
   return `
-    <div class="root-switch" role="tablist" aria-label="Primary flows">
+    <div class="root-switch" role="tablist" aria-label="${escapeHtml(t(locale, "nav.primaryFlowsAria", "Primary flows"))}">
       ${rootFlowItems.map((item) => renderRootFlowButton(activeRootFlow, item, escapeHtml)).join("")}
     </div>
   `;
@@ -50,7 +50,7 @@ export function renderDesktopRail(options) {
         <p class="eyebrow">${escapeHtml(t(locale, "rail.eyebrow", "Browser Companion"))}</p>
         <div class="desktop-rail-title">${escapeHtml(t(locale, "rail.title", "Filament Manager"))}</div>
       </div>
-      <nav class="desktop-rail-nav" aria-label="Primary flows">
+      <nav class="desktop-rail-nav" aria-label="${escapeHtml(t(locale, "nav.primaryFlowsAria", "Primary flows"))}">
         ${rootFlowItems.map((item) => renderRootFlowButton(activeRootFlow, item, escapeHtml)).join("")}
       </nav>
       <div class="desktop-rail-meta">
@@ -61,9 +61,9 @@ export function renderDesktopRail(options) {
 }
 
 export function renderPhoneBottomNav(options) {
-  const { activeRootFlow, rootFlowItems, escapeHtml } = options;
+  const { activeRootFlow, rootFlowItems, escapeHtml, locale = "en" } = options;
   return `
-    <nav class="phone-bottom-nav" aria-label="Primary flows">
+    <nav class="phone-bottom-nav" aria-label="${escapeHtml(t(locale, "nav.primaryFlowsAria", "Primary flows"))}">
       ${rootFlowItems
         .map(
           (item) => `
@@ -114,7 +114,7 @@ export function renderTopbar(options) {
               ? '<div class="topbar-utility-spacer" aria-hidden="true"></div>'
               : ""
         }
-        ${layoutMode === "tablet" ? renderTabletRootSwitch(activeRootFlow, rootFlowItems, escapeHtml) : ""}
+        ${layoutMode === "tablet" ? renderTabletRootSwitch(activeRootFlow, rootFlowItems, escapeHtml, locale) : ""}
       </div>
       ${renderStatusLine(statusMessage, statusTone, busy, escapeHtml, locale)}
     </header>

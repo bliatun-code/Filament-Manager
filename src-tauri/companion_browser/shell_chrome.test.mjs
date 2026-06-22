@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  renderDesktopRail,
   renderDetailModalShell,
   renderPhoneBottomNav,
   renderTopbar,
@@ -100,6 +101,37 @@ test("phone bottom nav renders just the four primary flow labels", () => {
   assert.match(html, /data-root-flow="printers"/);
   assert.match(html, /data-root-flow="settings"/);
   assert.doesNotMatch(html, />On</);
+});
+
+test("root flow navigation labels use the active locale for assistive text", () => {
+  const tabletHtml = renderTopbar({
+    layoutMode: "tablet",
+    locale: "nb",
+    activeRootFlow: "storage",
+    activeRootFlowItem: rootFlowItems[0],
+    rootFlowItems,
+    busy: false,
+    statusMessage: "",
+    statusTone: "default",
+    escapeHtml: (value) => String(value ?? ""),
+  });
+  const phoneHtml = renderPhoneBottomNav({
+    activeRootFlow: "storage",
+    rootFlowItems,
+    locale: "nb",
+    escapeHtml: (value) => String(value ?? ""),
+  });
+  const desktopHtml = renderDesktopRail({
+    locale: "nb",
+    activeRootFlow: "storage",
+    rootFlowItems,
+    activeLoansCount: 2,
+    escapeHtml: (value) => String(value ?? ""),
+  });
+
+  assert.match(tabletHtml, /aria-label="Hovedflyter"/);
+  assert.match(phoneHtml, /aria-label="Hovedflyter"/);
+  assert.match(desktopHtml, /aria-label="Hovedflyter"/);
 });
 
 test("detail modal shell wraps the provided body and close affordance", () => {
