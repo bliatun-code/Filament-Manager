@@ -26,6 +26,9 @@ type UseSettingsCatalogSectionInput = {
   settingsSwatchBulkMessageLabels: () => SettingsSwatchBulkMessageLabels;
   settingsSwatchErrorMessageLabels: () => SettingsSwatchErrorMessageLabels;
   settingsSwatchSavedMessageLabels: () => SettingsSwatchSavedMessageLabels;
+  settingsClientHostBaseUrl: string | null;
+  settingsClientLibraryId: string | null;
+  settingsClientReadOnly: boolean;
   tauri: boolean;
   t: TranslateFn;
 };
@@ -41,6 +44,9 @@ export function useSettingsCatalogSection({
   settingsSwatchBulkMessageLabels,
   settingsSwatchErrorMessageLabels,
   settingsSwatchSavedMessageLabels,
+  settingsClientHostBaseUrl,
+  settingsClientLibraryId,
+  settingsClientReadOnly,
   tauri,
   t,
 }: UseSettingsCatalogSectionInput) {
@@ -113,6 +119,9 @@ export function useSettingsCatalogSection({
     setInfo,
     settingsCatalogRefreshMessageLabels,
     settingsCatalogRefreshSummaryLabels,
+    settingsClientHostBaseUrl,
+    settingsClientLibraryId,
+    settingsClientReadOnly,
     swatchBusy,
     tauri,
   });
@@ -130,6 +139,9 @@ export function useSettingsCatalogSection({
       settingsSwatchBulkMessageLabels,
       settingsSwatchErrorMessageLabels,
       settingsSwatchSavedMessageLabels,
+      settingsClientHostBaseUrl,
+      settingsClientLibraryId,
+      settingsClientReadOnly,
       swatchBusy,
       swatchDraftById,
       tauri,
@@ -137,10 +149,15 @@ export function useSettingsCatalogSection({
     });
 
   const settingsCatalogRouteProps = buildSettingsCatalogRouteProps({
-    helpText: t(
-      "settings.catalogTabHelp",
-      "Catalog updates are performed here. Inventory add-flow uses the local catalogue managed on this page.",
-    ),
+    helpText: settingsClientReadOnly
+      ? t(
+          "settings.catalogTabClientHelp",
+          "This client shows the host catalog. Swatch fixes and vendor catalog refreshes are saved on the host.",
+        )
+      : t(
+          "settings.catalogTabHelp",
+          "Catalog updates are performed here. Inventory add-flow uses the local catalog managed on this page.",
+        ),
     missingSwatchesPanel: {
       busy,
       catalogRefreshBusy,
@@ -175,6 +192,7 @@ export function useSettingsCatalogSection({
       catalogRefreshVendor,
       catalogVendor,
       showCatalogRefreshLog,
+      settingsClientReadOnly,
       swatchBusy,
       tauri,
       t,

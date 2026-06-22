@@ -28,6 +28,18 @@ export async function exportFullBackupJson() {
   return invoke<{ content: string }>("export_full_backup_json");
 }
 
+export async function fetchLibrarySyncFullBackupJson(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+) {
+  return invoke<{ content: string }>("fetch_library_sync_full_backup_json", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+    },
+  });
+}
+
 export async function importFullBackupJson(content: string) {
   return invoke<void>("import_full_backup_json", { content });
 }

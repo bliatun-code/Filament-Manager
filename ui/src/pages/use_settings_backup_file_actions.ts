@@ -40,6 +40,7 @@ type UseSettingsBackupFileActionsInput = {
   setLibrarySyncValidation: Dispatch<SetStateAction<LibrarySyncHostValidationResult | null>>;
   settingsBackupErrorMessageLabels: () => SettingsBackupErrorMessageLabels;
   settingsBackupValidationMessageLabels: () => SettingsBackupValidationMessageLabels;
+  settingsClientReadOnly: boolean;
   settingsImportMessageLabels: () => SettingsImportMessageLabels;
   tauri: boolean;
 };
@@ -63,13 +64,14 @@ export function useSettingsBackupFileActions({
   setLibrarySyncValidation,
   settingsBackupErrorMessageLabels,
   settingsBackupValidationMessageLabels,
+  settingsClientReadOnly,
   settingsImportMessageLabels,
   tauri,
 }: UseSettingsBackupFileActionsInput) {
   async function handleImportDataFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!file || !tauri || busy) {
+    if (!file || !tauri || busy || settingsClientReadOnly) {
       return;
     }
     clearConfirmResetAction();

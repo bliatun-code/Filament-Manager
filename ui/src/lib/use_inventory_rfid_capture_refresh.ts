@@ -12,6 +12,7 @@ type InventoryRfidCaptureRefreshInput = {
   clientReadOnly: boolean;
   observedTrayCaptureSnapshot: RfidObservedTraySnapshot | null;
   rfidCaptureFieldsLength: number;
+  reloadPrinterOverview: () => Promise<void>;
   selectedRfidCaptureSlot: InventoryPrinterSlotOption | null;
   selectedSpoolRfidCaptureSlots: InventoryPrinterSlotOption[];
   setBambuLiveIntegrations: Dispatch<
@@ -29,6 +30,7 @@ export function useInventoryRfidCaptureRefresh({
   clientReadOnly,
   observedTrayCaptureSnapshot,
   rfidCaptureFieldsLength,
+  reloadPrinterOverview,
   selectedRfidCaptureSlot,
   selectedSpoolRfidCaptureSlots,
   setBambuLiveIntegrations,
@@ -45,12 +47,48 @@ export function useInventoryRfidCaptureRefresh({
     if (
       !showRfidCaptureModal ||
       !tauriAvailable ||
-      clientReadOnly ||
       !selectedRfidCaptureSlot
     ) {
       return;
     }
     let cancelled = false;
+
+    if (clientReadOnly) {
+      const refreshHostOverview = async () => {
+        if (cancelled || refreshInFlightRef.current) {
+          return;
+        }
+        refreshInFlightRef.current = true;
+        setRfidCaptureLoading(true);
+        try {
+          await reloadPrinterOverview();
+          if (!cancelled) {
+            setRfidCaptureError(null);
+          }
+        } catch (captureError) {
+          console.error(captureError);
+          if (!cancelled) {
+            setRfidCaptureError(
+              t("inventory.rfidCaptureFailed", "Could not refresh RFID capture from the printer."),
+            );
+          }
+        } finally {
+          refreshInFlightRef.current = false;
+          if (!cancelled) {
+            setRfidCaptureLoading(false);
+          }
+        }
+      };
+
+      void refreshHostOverview();
+      const timer = window.setInterval(() => {
+        void refreshHostOverview();
+      }, 4000);
+      return () => {
+        cancelled = true;
+        window.clearInterval(timer);
+      };
+    }
 
     const refreshCapture = async () => {
       if (cancelled || refreshInFlightRef.current) {
@@ -178,6 +216,7 @@ export function useInventoryRfidCaptureRefresh({
   }, [
     clientReadOnly,
     observedTrayCaptureSnapshot,
+    reloadPrinterOverview,
     rfidCaptureFieldsLength,
     selectedRfidCaptureSlot,
     selectedSpoolRfidCaptureSlots,

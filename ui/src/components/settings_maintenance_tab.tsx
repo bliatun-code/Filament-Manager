@@ -20,6 +20,8 @@ type SettingsMaintenanceTabProps = {
   lastCatalogReset: CatalogResetStats | null;
   missingSwatchCount: number;
   printerCount: number;
+  settingsClientHostWritePaired: boolean;
+  settingsClientReadOnly: boolean;
   tauri: boolean;
   t: TranslateFn;
   onExportFullBackup: () => void;
@@ -46,6 +48,8 @@ export function SettingsMaintenanceTab({
   lastCatalogReset,
   missingSwatchCount,
   printerCount,
+  settingsClientHostWritePaired,
+  settingsClientReadOnly,
   tauri,
   t,
   onExportFullBackup,
@@ -58,6 +62,10 @@ export function SettingsMaintenanceTab({
   onResetCatalogs,
   onValidateBackupFile,
 }: SettingsMaintenanceTabProps) {
+  const hostOnlyActionDisabled = !tauri || busy || settingsClientReadOnly;
+  const fullBackupActionDisabled =
+    !tauri || busy || (settingsClientReadOnly && !settingsClientHostWritePaired);
+
   return (
     <section className="surface-card xl:col-span-2">
       <div className="section-eyebrow">
@@ -75,6 +83,14 @@ export function SettingsMaintenanceTab({
                 "Export a full JSON backup with inventory, history and configured printers.",
               )}
             </div>
+            {settingsClientReadOnly ? (
+              <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-900 dark:text-sky-100">
+                {t(
+                  "settings.clientHostOnlyMaintenance",
+                  "This device is a client. Full backup is exported from the paired host. Import, reset and repair actions must still be run on the host so library data stays in one place.",
+                )}
+              </div>
+            ) : null}
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <SettingsMetricTile label={t("nav.printers", "Printers")} value={printerCount} />
@@ -96,7 +112,7 @@ export function SettingsMaintenanceTab({
                 type="button"
                 className={settingsActionButtonClass("accent")}
                 onClick={onExportFullBackup}
-                disabled={!tauri || busy}
+                disabled={fullBackupActionDisabled}
               >
                 {t("settings.exportFullBackup", "Export full backup (JSON)")}
               </button>
@@ -134,7 +150,7 @@ export function SettingsMaintenanceTab({
                 type="button"
                 className={`${settingsActionButtonClass()} w-full`}
                 onClick={onOpenDataImport}
-                disabled={!tauri || busy}
+                disabled={hostOnlyActionDisabled}
               >
                 {t("settings.importDataFile", "Import backup/data file")}
               </button>
@@ -189,7 +205,7 @@ export function SettingsMaintenanceTab({
               type="button"
               className="mt-3 w-full rounded-xl border border-amber-400 bg-amber-200 px-4 py-2 text-sm font-semibold text-amber-950 shadow-sm shadow-amber-200/30 disabled:opacity-50 dark:border-amber-400/50 dark:bg-amber-500/20 dark:text-amber-100 dark:shadow-none"
               onClick={onResetCatalogs}
-              disabled={!tauri || busy}
+              disabled={hostOnlyActionDisabled}
             >
               {confirmResetAction === "CATALOG"
                 ? t("settings.confirmResetCatalogsAction", "Confirm catalog repair")
@@ -223,7 +239,7 @@ export function SettingsMaintenanceTab({
               type="button"
               className="mt-3 w-full rounded-xl border border-rose-400 bg-rose-200 px-4 py-2 text-sm font-semibold text-rose-950 shadow-sm shadow-rose-200/30 disabled:opacity-50 dark:border-rose-400/50 dark:bg-rose-500/20 dark:text-rose-100 dark:shadow-none"
               onClick={onResetAppData}
-              disabled={!tauri || busy}
+              disabled={hostOnlyActionDisabled}
             >
               {confirmResetAction === "APP"
                 ? t("settings.confirmResetAppAction", "Confirm reset app data")

@@ -1,9 +1,14 @@
 import {
   createLibrarySyncHostPrinter,
   createPrinter,
+  deleteBambuLiveIntegration,
+  deleteLibrarySyncHostBambuLiveIntegration,
   deleteLibrarySyncHostPrinter,
   deletePrinter,
+  saveBambuLiveIntegration,
+  saveLibrarySyncHostBambuLiveIntegration,
   type CreatePrinterInput,
+  type SaveBambuLiveIntegrationInput,
 } from "./tauri_client";
 import { requireClientHostWriteTarget } from "./host_write_target";
 
@@ -18,6 +23,10 @@ type PrinterWriteDependencies = {
   createLocalPrinter?: typeof createPrinter;
   deleteHostPrinter?: typeof deleteLibrarySyncHostPrinter;
   deleteLocalPrinter?: typeof deletePrinter;
+  deleteHostBambuLiveIntegration?: typeof deleteLibrarySyncHostBambuLiveIntegration;
+  deleteLocalBambuLiveIntegration?: typeof deleteBambuLiveIntegration;
+  saveHostBambuLiveIntegration?: typeof saveLibrarySyncHostBambuLiveIntegration;
+  saveLocalBambuLiveIntegration?: typeof saveBambuLiveIntegration;
 };
 
 export async function createManagedPrinter(
@@ -58,4 +67,48 @@ export async function deleteManagedPrinter(
   }
 
   await deleteLocalPrinter(printerId);
+}
+
+export async function saveManagedBambuLiveIntegration(
+  input: SaveBambuLiveIntegrationInput,
+  target: PrinterWriteTarget = {},
+  dependencies: PrinterWriteDependencies = {},
+): Promise<void> {
+  const saveHostBambuLiveIntegration =
+    dependencies.saveHostBambuLiveIntegration ?? saveLibrarySyncHostBambuLiveIntegration;
+  const saveLocalBambuLiveIntegration =
+    dependencies.saveLocalBambuLiveIntegration ?? saveBambuLiveIntegration;
+
+  if (target.clientReadOnly) {
+    const hostTarget = requireClientHostWriteTarget(
+      target,
+      "Host connection details are missing for this printer action.",
+    );
+    await saveHostBambuLiveIntegration(hostTarget.baseUrl, hostTarget.libraryId, input);
+    return;
+  }
+
+  await saveLocalBambuLiveIntegration(input);
+}
+
+export async function deleteManagedBambuLiveIntegration(
+  printerId: string,
+  target: PrinterWriteTarget = {},
+  dependencies: PrinterWriteDependencies = {},
+): Promise<void> {
+  const deleteHostBambuLiveIntegration =
+    dependencies.deleteHostBambuLiveIntegration ?? deleteLibrarySyncHostBambuLiveIntegration;
+  const deleteLocalBambuLiveIntegration =
+    dependencies.deleteLocalBambuLiveIntegration ?? deleteBambuLiveIntegration;
+
+  if (target.clientReadOnly) {
+    const hostTarget = requireClientHostWriteTarget(
+      target,
+      "Host connection details are missing for this printer action.",
+    );
+    await deleteHostBambuLiveIntegration(hostTarget.baseUrl, hostTarget.libraryId, printerId);
+    return;
+  }
+
+  await deleteLocalBambuLiveIntegration(printerId);
 }

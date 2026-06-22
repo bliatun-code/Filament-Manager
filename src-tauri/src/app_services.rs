@@ -8,10 +8,14 @@ use crate::backend::inventory_engine::{
     AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
     CreateWishlistItemInput, DeleteSpoolInput, InventoryEngine, LendSpoolInput, PurgeSpoolInput,
     RecordPrintUsageInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
-    UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
+    UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
+    UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::printer_slot_live_mapping::{
     bambu_live_active_tray_matches_slot, bambu_live_slot_matches_tray, is_external_slot_id,
+};
+use crate::catalog_commands::{
+    refresh_bambu_catalog_blocking, refresh_esun_catalog_blocking, CatalogRefreshResult,
 };
 use serde::{Deserialize, Serialize};
 
@@ -51,6 +55,27 @@ impl CompanionService {
     ) -> InventoryResult<Vec<FilamentMasterCatalogRow>> {
         let db = FilamentDatabase::open(&self.db_path)?;
         db.list_master_catalog(limit, search)
+    }
+
+    pub fn update_master_catalog_entry(
+        &self,
+        input: UpdateMasterCatalogEntryInput,
+    ) -> InventoryResult<String> {
+        self.with_inventory(|engine| engine.update_master_catalog_entry(input))
+    }
+
+    pub fn refresh_bambu_catalog(
+        &self,
+        material_types: Option<Vec<String>>,
+    ) -> Result<CatalogRefreshResult, String> {
+        refresh_bambu_catalog_blocking(&self.db_path, material_types, None)
+    }
+
+    pub fn refresh_esun_catalog(
+        &self,
+        material_types: Option<Vec<String>>,
+    ) -> Result<CatalogRefreshResult, String> {
+        refresh_esun_catalog_blocking(&self.db_path, material_types, None)
     }
 
     pub fn list_wishlist_items(&self, limit: i64) -> InventoryResult<Vec<WishlistItemRow>> {

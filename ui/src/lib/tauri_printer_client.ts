@@ -199,10 +199,42 @@ export async function saveBambuLiveIntegration(input: SaveBambuLiveIntegrationIn
   return invoke<void>("save_bambu_live_integration", { input });
 }
 
+export async function saveLibrarySyncHostBambuLiveIntegration(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: SaveBambuLiveIntegrationInput,
+) {
+  return invoke<void>("save_library_sync_host_bambu_live_integration", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      printer_id: input.printer_id,
+      enabled: input.enabled,
+      host: input.host ?? null,
+      access_code: input.access_code ?? null,
+      printer_serial: input.printer_serial ?? null,
+    },
+  });
+}
+
 export async function deleteBambuLiveIntegration(printerId: string) {
   return invoke<void>("delete_bambu_live_integration", {
     printerId,
     printer_id: printerId,
+  });
+}
+
+export async function deleteLibrarySyncHostBambuLiveIntegration(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  printerId: string,
+) {
+  return invoke<void>("delete_library_sync_host_bambu_live_integration", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      printer_id: printerId,
+    },
   });
 }
 

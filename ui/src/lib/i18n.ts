@@ -158,10 +158,6 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Host connection details are missing for this client device.",
       clientWriteRequiresPairing:
         "Pair this desktop client with the host before running protected sync actions.",
-      clientAssignedWeightUnsupported:
-        "Paired desktop weight updates are only available for rolls that are not currently loaded in a printer.",
-      clientAssignedStatusUnsupported:
-        "Paired desktop status changes are not available while the roll is still loaded in a printer.",
       clientWeightUpdated: "Weight updated on the host library.",
       clientTareWeightUpdated:
         "Empty spool weight updated on the host library.",
@@ -1291,6 +1287,10 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       backupTitle: "Backup",
       backupDescription:
         "Export a full JSON backup with inventory, history and configured printers.",
+      clientHostOnlyMaintenance:
+        "This device is a client. Full backup is exported from the paired host. Import, reset and repair actions must still be run on the host so library data stays in one place.",
+      clientHostBackupRequiresPairing:
+        "Pair this client with the host before exporting a full host backup.",
       exportFullBackup: "Export full backup (JSON)",
       importDataFile: "Import backup/data file",
       importFullBackup: "Import full backup",
@@ -1359,9 +1359,13 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       reactivated: "reactivated",
       catalogTabHelp:
         "The app ships with a local seed catalog. Vendor updates add newly discovered products and refresh selected material families.",
+      catalogTabClientHelp:
+        "This client shows the host catalog. Swatch fixes and vendor catalog refreshes are saved on the host.",
       catalogRefreshTitle: "Vendor catalog updates",
       catalogRefreshHelp:
         "Choose vendor and refresh only the material families that need new products. A full vendor audit is slower and may mark unseen products as historical.",
+      catalogRefreshClientHostOnly:
+        "Vendor catalog updates are sent to the host. This client still shows and edits the shared host catalog.",
       catalogAllTypes: "Full vendor audit",
       discoveredMaterials: "Discovered materials",
       refreshCurrentVendor: "Refresh current vendor catalog",
@@ -1729,10 +1733,6 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
         "Vertsdetaljer mangler for denne klientenheten.",
       clientWriteRequiresPairing:
         "Par denne desktop-klienten med verten før beskyttede sync-handlinger brukes.",
-      clientAssignedWeightUnsupported:
-        "Parede desktop-vektoppdateringer er foreløpig bare tilgjengelige for ruller som ikke er lastet i en printer.",
-      clientAssignedStatusUnsupported:
-        "Parede desktop-statusendringer er ikke tilgjengelige mens rullen fortsatt er lastet i en printer.",
       clientWeightUpdated: "Vekten er oppdatert på vertsbiblioteket.",
       clientTareWeightUpdated:
         "Tom rull-vekt er oppdatert på vertsbiblioteket.",
@@ -2870,6 +2870,10 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       backupTitle: "Sikkerhetskopi",
       backupDescription:
         "Eksporter en full JSON-sikkerhetskopi med lager, historikk og konfigurerte printere.",
+      clientHostOnlyMaintenance:
+        "Denne enheten er klient. Full sikkerhetskopi eksporteres fra paret vert. Import, nullstilling og reparasjon må fortsatt gjøres på verten slik at bibliotekdata blir liggende ett sted.",
+      clientHostBackupRequiresPairing:
+        "Par denne klienten med verten før du eksporterer en full sikkerhetskopi fra verten.",
       exportFullBackup: "Eksporter full sikkerhetskopi (JSON)",
       importDataFile: "Importer sikkerhetskopi/datafil",
       importFullBackup: "Importer full sikkerhetskopi",
@@ -2938,9 +2942,13 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       reactivated: "reaktivert",
       catalogTabHelp:
         "Appen leveres med en lokal seed-katalog. Leverandøroppdateringer legger til nye produkter og oppdaterer valgte materialfamilier.",
+      catalogTabClientHelp:
+        "Denne klienten viser vertens katalog. Swatch-rettelser og leverandøroppdateringer lagres på verten.",
       catalogRefreshTitle: "Oppdatering av leverandørkatalog",
       catalogRefreshHelp:
         "Velg leverandør og oppdater bare materialfamiliene som trenger nye produkter. Full leverandøraudit er tregere og kan merke produkter som ikke sees som historiske.",
+      catalogRefreshClientHostOnly:
+        "Leverandøroppdateringer sendes til verten. Denne klienten viser og redigerer fortsatt den delte vertskatalogen.",
       catalogAllTypes: "Full leverandøraudit",
       discoveredMaterials: "Oppdagede materialer",
       refreshCurrentVendor: "Oppdater valgt leverandørkatalog",

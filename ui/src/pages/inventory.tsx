@@ -412,6 +412,7 @@ export default function InventoryPage({
     clientReadOnly,
     observedTrayCaptureSnapshot,
     rfidCaptureFieldsLength: rfidCaptureFields.length,
+    reloadPrinterOverview,
     selectedRfidCaptureSlot,
     selectedSpoolRfidCaptureSlots,
     setBambuLiveIntegrations,

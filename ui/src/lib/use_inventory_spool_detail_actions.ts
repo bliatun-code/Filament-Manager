@@ -12,12 +12,12 @@ import {
   updateInventorySpoolTareWeight,
   updateInventorySpoolWeight,
 } from "./spool_writes";
-import { writePrinterSlotAssignment } from "./printer_slot_writes";
 import {
-  recordPrintUsage,
-  updateMasterCatalogEntry,
-} from "./tauri_client";
-import { buildMeasuredWeightUpdatePlan } from "./inventory_spool_weight_update_model";
+  writePreparedMeasuredWeightUpdate,
+  writePrinterSlotAssignment,
+} from "./printer_slot_writes";
+import { prepareMeasuredWeightUpdate } from "./printer_slot_model";
+import { updateManagedMasterCatalogEntry } from "./catalog_writes";
 import type { InventoryPrinterSlotOption } from "./use_inventory_printer_slots";
 
 type InventoryDetailReloads = {
@@ -68,33 +68,23 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
 };
 
 async function applyMeasuredWeightWithUsage(
+  hostWriteTarget: {
+    clientReadOnly: boolean;
+    clientHostBaseUrl: string | null;
+    clientLibraryId: string | null;
+  },
   printerId: string,
   spoolId: string,
   previousRemaining: number | null | undefined,
   measuredTotalWeight: number,
   tareWeight: number,
-  jobName?: string | null,
 ) {
-  const plan = buildMeasuredWeightUpdatePlan({
-    previousRemaining,
-    measuredTotalWeight,
-    tareWeight,
-    jobName,
-  });
-  if (plan.kind === "usage") {
-    await recordPrintUsage({
-      printer_id: printerId,
-      spool_id: spoolId,
-      grams: plan.usedGrams,
-      job_name: plan.jobName,
-      success: true,
-    });
-    return;
-  }
-  if (plan.kind === "weight") {
-    await updateInventorySpoolWeight(spoolId, plan.measuredTotalWeight);
-    return;
-  }
+  await writePreparedMeasuredWeightUpdate(
+    hostWriteTarget,
+    printerId,
+    spoolId,
+    prepareMeasuredWeightUpdate(previousRemaining, measuredTotalWeight, tareWeight),
+  );
 }
 
 export function useInventorySpoolDetailActions({
@@ -149,10 +139,13 @@ export function useInventorySpoolDetailActions({
   }
 
   async function handleSaveMasterMetadata() {
-    if (!ensureLocalWriteAllowed()) {
+    if (!tauriAvailable || !selectedSpool || manageBusy) {
       return;
     }
-    if (!tauriAvailable || !selectedSpool || manageBusy) {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
     if (!masterEditUnlocked) {
@@ -194,14 +187,17 @@ export function useInventorySpoolDetailActions({
     setManageBusy(true);
     setError(null);
     try {
-      await updateMasterCatalogEntry({
-        master_id: selectedSpool.masterId,
-        vendor,
-        material,
-        filament_name: filamentName,
-        color_name: colorName,
-        hex_color: hexColor,
-      });
+      await updateManagedMasterCatalogEntry(
+        {
+          master_id: selectedSpool.masterId,
+          vendor,
+          material,
+          filament_name: filamentName,
+          color_name: colorName,
+          hex_color: hexColor,
+        },
+        hostWriteTarget,
+      );
       await reloadSpools();
       await reloadCatalog();
       await reloadActiveLoans();
@@ -394,9 +390,7 @@ export function useInventorySpoolDetailActions({
       );
       await reloadSpools();
       await reloadPrinterOverview();
-      if (!clientReadOnly) {
-        await reloadSpoolDetail(selectedSpool.id);
-      }
+      await reloadSpoolDetail(selectedSpool.id);
       setInfoMessage(t("inventory.homeLocationSaved", "Home location saved."));
     } catch (updateError) {
       console.error(updateError);
@@ -475,17 +469,7 @@ export function useInventorySpoolDetailActions({
     setManageBusy(true);
     setError(null);
     try {
-      if (clientReadOnly) {
-        if (nextStatus === "LOST" && selectedSpoolAssignedSlot) {
-          setError(
-            t(
-              "inventory.clientAssignedStatusUnsupported",
-              "Paired desktop status changes are not available while the roll is still loaded in a printer.",
-            ),
-          );
-          return;
-        }
-      } else if (nextStatus === "LOST" && selectedSpoolAssignedSlot) {
+      if (nextStatus === "LOST" && selectedSpoolAssignedSlot) {
         await writePrinterSlotAssignment(hostWriteTarget, {
           printer_id: selectedSpoolAssignedSlot.printerId,
           slot_id: selectedSpoolAssignedSlot.slotId,
@@ -502,9 +486,7 @@ export function useInventorySpoolDetailActions({
         hostWriteTarget,
       );
       await reloadInventorySurfaces();
-      if (!clientReadOnly) {
-        await reloadSpoolDetail(selectedSpool.id);
-      }
+      await reloadSpoolDetail(selectedSpool.id);
       setInfoMessage(
         nextStatus === "LOST"
           ? t("inventory.markedLost", "Roll marked as lost.")
@@ -581,52 +563,44 @@ export function useInventorySpoolDetailActions({
     setManageBusy(true);
     setError(null);
     try {
-      if (clientReadOnly) {
-        if (selectedSpoolAssignedSlot) {
-          setError(
-            t(
-              "inventory.clientAssignedWeightUnsupported",
-              "Paired desktop weight updates are only available for rolls that are not currently loaded in a printer.",
-            ),
-          );
-          return;
-        }
-        await updateInventorySpoolWeight(selectedSpool.id, safeGrams, hostWriteTarget);
-        await reloadSpools();
-        await reloadPrinterOverview();
-        setInfoMessage(
-          t(
-            "inventory.clientWeightUpdated",
-            "Weight updated on the host library.",
-          ),
-        );
-        return;
-      }
+      let successMessage: string | null = null;
       if (selectedSpoolAssignedSlot) {
         await applyMeasuredWeightWithUsage(
+          hostWriteTarget,
           selectedSpoolAssignedSlot.printerId,
           selectedSpool.id,
           selectedSpool.remainingGrams,
           safeGrams,
           selectedSpoolResolvedTare,
-          null,
         );
       } else {
-        await updateInventorySpoolWeight(selectedSpool.id, safeGrams);
+        await updateInventorySpoolWeight(selectedSpool.id, safeGrams, hostWriteTarget);
       }
       const calculatedRemaining = Math.max(0, safeGrams - selectedSpoolResolvedTare);
       if (selectedSpool.status === "EMPTY" && calculatedRemaining > 0) {
-        await updateInventorySpoolStatus({
-          spool_id: selectedSpool.id,
-          qr_code: selectedSpool.qrCode ?? null,
-          status: "IN_STOCK",
-          location: selectedSpool.location ?? null,
-        });
-        setInfoMessage(t("inventory.refilledAuto", "Roll reactivated from new measured weight."));
+        await updateInventorySpoolStatus(
+          {
+            spool_id: selectedSpool.id,
+            qr_code: selectedSpool.qrCode ?? null,
+            status: "IN_STOCK",
+            location: selectedSpool.location ?? null,
+          },
+          hostWriteTarget,
+        );
+        successMessage = t("inventory.refilledAuto", "Roll reactivated from new measured weight.");
       }
       await reloadSpools();
       await reloadPrinterOverview();
       await reloadSpoolDetail(selectedSpool.id);
+      if (clientReadOnly) {
+        successMessage ??= t(
+          "inventory.clientWeightUpdated",
+          "Weight updated on the host library.",
+        );
+      }
+      if (successMessage) {
+        setInfoMessage(successMessage);
+      }
     } catch (updateError) {
       console.error(updateError);
       setError(
@@ -659,6 +633,7 @@ export function useInventorySpoolDetailActions({
       if (clientReadOnly) {
         await updateInventorySpoolTareWeight(selectedSpool.id, safeGrams, hostWriteTarget);
         await reloadSpools();
+        await reloadSpoolDetail(selectedSpool.id);
         setSelectedSpoolTareDraft(String(safeGrams));
         setInfoMessage(
           t(

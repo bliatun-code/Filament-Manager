@@ -1,3 +1,4 @@
+use crate::catalog_commands::CatalogRefreshResult;
 use crate::library_sync_cache_refresh::{
     refresh_library_sync_printer_cache, refresh_library_sync_spool_cache,
 };
@@ -5,12 +6,17 @@ use crate::library_sync_command_support::{
     library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
     trimmed_non_empty,
 };
-use crate::library_sync_host_client::perform_library_sync_host_write;
+use crate::library_sync_host_client::{
+    perform_library_sync_host_write, perform_library_sync_host_write_and_parse_with_timeout,
+};
 use crate::library_sync_models::{
     LibrarySyncAssignPrinterSlotInput, LibrarySyncCreatePrinterInput,
-    LibrarySyncDeletePrinterInput, LibrarySyncRecordPrintUsageInput,
+    LibrarySyncDeleteBambuLiveIntegrationInput, LibrarySyncDeletePrinterInput,
+    LibrarySyncRecordPrintUsageInput, LibrarySyncRefreshCatalogInput,
+    LibrarySyncSaveBambuLiveIntegrationInput, LibrarySyncUpdateMasterCatalogEntryInput,
 };
 use crate::state::AppState;
+use std::time::Duration;
 
 #[tauri::command]
 pub(crate) fn assign_library_sync_host_printer_slot(
@@ -108,6 +114,128 @@ pub(crate) fn create_library_sync_host_printer(
 
     refresh_library_sync_printer_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, "Host printer saved.", None)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub(crate) fn update_library_sync_host_master_catalog_entry(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncUpdateMasterCatalogEntryInput,
+) -> Result<(), String> {
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+
+    let master_id = input.master_id.trim();
+    let material = input.material.trim();
+    let filament_name = input.filament_name.trim();
+    let color_name = input.color_name.trim();
+    if master_id.is_empty()
+        || material.is_empty()
+        || filament_name.is_empty()
+        || color_name.is_empty()
+    {
+        return Err("Master id, material, filament name and color name are required.".to_string());
+    }
+
+    perform_library_sync_host_write(
+        &state,
+        &normalized_base_url,
+        &format!("/api/v1/catalog/masters/{master_id}/details"),
+        &serde_json::json!({
+            "material": material,
+            "filament_name": filament_name,
+            "color_name": color_name,
+            "hex_color": trimmed_non_empty(input.hex_color.as_deref()),
+            "product_url": trimmed_non_empty(input.product_url.as_deref()),
+            "vendor": trimmed_non_empty(input.vendor.as_deref()),
+            "default_weight": input.default_weight,
+        }),
+    )?;
+
+    save_library_sync_success(&state, "Host catalog entry updated.", None)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub(crate) fn refresh_library_sync_host_vendor_catalog(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncRefreshCatalogInput,
+) -> Result<CatalogRefreshResult, String> {
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+
+    let vendor = input.vendor.trim();
+    if !vendor.eq_ignore_ascii_case("Bambu") && !vendor.eq_ignore_ascii_case("eSUN") {
+        return Err("Vendor must be Bambu or eSUN.".to_string());
+    }
+
+    let summary = perform_library_sync_host_write_and_parse_with_timeout(
+        &state,
+        &normalized_base_url,
+        "/api/v1/catalog/refresh",
+        &serde_json::json!({
+            "vendor": vendor,
+            "material_types": input.material_types.unwrap_or_default(),
+        }),
+        Duration::from_secs(180),
+    )?;
+
+    save_library_sync_success(&state, "Host catalog refreshed.", None)?;
+    Ok(summary)
+}
+
+#[tauri::command]
+pub(crate) fn save_library_sync_host_bambu_live_integration(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncSaveBambuLiveIntegrationInput,
+) -> Result<(), String> {
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+
+    let printer_id = input.printer_id.trim();
+    if printer_id.is_empty() {
+        return Err("Printer id is required.".to_string());
+    }
+
+    perform_library_sync_host_write(
+        &state,
+        &normalized_base_url,
+        &format!("/api/v1/printers/{printer_id}/bambu-live"),
+        &serde_json::json!({
+            "enabled": input.enabled,
+            "host": trimmed_non_empty(input.host.as_deref()),
+            "access_code": trimmed_non_empty(input.access_code.as_deref()),
+            "printer_serial": trimmed_non_empty(input.printer_serial.as_deref()),
+        }),
+    )?;
+
+    refresh_library_sync_printer_cache(&state, &normalized_base_url);
+    save_library_sync_success(&state, "Host Bambu Live integration saved.", None)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub(crate) fn delete_library_sync_host_bambu_live_integration(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncDeleteBambuLiveIntegrationInput,
+) -> Result<(), String> {
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+
+    let printer_id = input.printer_id.trim();
+    if printer_id.is_empty() {
+        return Err("Printer id is required.".to_string());
+    }
+
+    perform_library_sync_host_write(
+        &state,
+        &normalized_base_url,
+        &format!("/api/v1/printers/{printer_id}/bambu-live/delete"),
+        &serde_json::json!({}),
+    )?;
+
+    refresh_library_sync_printer_cache(&state, &normalized_base_url);
+    save_library_sync_success(&state, "Host Bambu Live integration deleted.", None)?;
     Ok(())
 }
 

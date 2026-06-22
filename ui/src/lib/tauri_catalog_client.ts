@@ -92,6 +92,22 @@ export async function refreshEsunCatalog(materialTypes?: string[]) {
   });
 }
 
+export async function refreshLibrarySyncHostVendorCatalog(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  vendor: string,
+  materialTypes?: string[],
+) {
+  return invoke<CatalogRefreshResult>("refresh_library_sync_host_vendor_catalog", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      vendor,
+      material_types: materialTypes && materialTypes.length > 0 ? materialTypes : [],
+    },
+  });
+}
+
 export async function subscribeCatalogRefreshProgress(
   handler: (payload: CatalogRefreshProgressPayload) => void,
 ): Promise<() => void> {
@@ -120,6 +136,27 @@ export async function fetchEsunProductDetail(handle: string) {
 
 export async function updateMasterCatalogEntry(input: UpdateMasterCatalogEntryInput) {
   return invoke<string>("update_master_catalog_entry", { input });
+}
+
+export async function updateLibrarySyncHostMasterCatalogEntry(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: UpdateMasterCatalogEntryInput,
+) {
+  return invoke<void>("update_library_sync_host_master_catalog_entry", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      master_id: input.master_id,
+      material: input.material,
+      filament_name: input.filament_name,
+      color_name: input.color_name,
+      hex_color: input.hex_color ?? null,
+      product_url: input.product_url ?? null,
+      vendor: input.vendor ?? null,
+      default_weight: input.default_weight ?? null,
+    },
+  });
 }
 
 export async function fetchLibrarySyncCatalogMasters(

@@ -1,10 +1,7 @@
 import { type Dispatch, type SetStateAction } from "react";
+import { refreshManagedVendorCatalog } from "../lib/catalog_writes";
 import { toErrorMessage } from "../lib/error_text";
-import {
-  refreshBambuCatalog,
-  refreshEsunCatalog,
-  type CatalogRefreshResult,
-} from "../lib/tauri_client";
+import type { CatalogRefreshResult } from "../lib/tauri_client";
 import {
   buildSettingsCatalogRefreshFallbackErrorMessage,
   buildSettingsCatalogRefreshPreparingMessage,
@@ -32,6 +29,9 @@ type UseSettingsCatalogRefreshActionsInput = {
   setInfo: Dispatch<SetStateAction<string | null>>;
   settingsCatalogRefreshMessageLabels: () => SettingsCatalogRefreshMessageLabels;
   settingsCatalogRefreshSummaryLabels: () => SettingsCatalogRefreshSummaryLabels;
+  settingsClientHostBaseUrl: string | null;
+  settingsClientLibraryId: string | null;
+  settingsClientReadOnly: boolean;
   swatchBusy: boolean;
   tauri: boolean;
 };
@@ -53,6 +53,9 @@ export function useSettingsCatalogRefreshActions({
   setInfo,
   settingsCatalogRefreshMessageLabels,
   settingsCatalogRefreshSummaryLabels,
+  settingsClientHostBaseUrl,
+  settingsClientLibraryId,
+  settingsClientReadOnly,
   swatchBusy,
   tauri,
 }: UseSettingsCatalogRefreshActionsInput) {
@@ -72,10 +75,15 @@ export function useSettingsCatalogRefreshActions({
     setError(null);
     setInfo(null);
     try {
-      const summary =
-        vendor === "Bambu"
-          ? await refreshBambuCatalog(materialTypes)
-          : await refreshEsunCatalog(materialTypes);
+      const summary = await refreshManagedVendorCatalog(
+        vendor,
+        materialTypes,
+        {
+          clientReadOnly: settingsClientReadOnly,
+          clientHostBaseUrl: settingsClientHostBaseUrl,
+          clientLibraryId: settingsClientLibraryId,
+        },
+      );
       completeCatalogRefreshResult(summary);
       await reloadSettings();
       if (summary.imported === 0) {

@@ -22,6 +22,10 @@ export type PrinterSlotWriteTarget = {
 type PrinterSlotWriteDependencies = {
   assignHostPrinterSlot?: typeof assignLibrarySyncHostPrinterSlot;
   assignLocalPrinterSlot?: typeof assignPrinterSlot;
+  recordHostPrintUsage?: typeof recordLibrarySyncHostPrintUsage;
+  recordLocalPrintUsage?: typeof recordPrintUsage;
+  updateHostSpoolWeight?: typeof updateLibrarySyncHostSpoolWeight;
+  updateLocalSpoolWeight?: typeof updateSpoolWeight;
 };
 
 export async function writePrinterSlotAssignment(
@@ -50,14 +54,22 @@ export async function writePreparedMeasuredWeightUpdate(
   printerId: string,
   spoolId: string,
   preparedWeight: PreparedMeasuredWeightUpdate,
+  dependencies: PrinterSlotWriteDependencies = {},
 ) {
+  const recordHostPrintUsage =
+    dependencies.recordHostPrintUsage ?? recordLibrarySyncHostPrintUsage;
+  const recordLocalPrintUsage = dependencies.recordLocalPrintUsage ?? recordPrintUsage;
+  const updateHostSpoolWeight =
+    dependencies.updateHostSpoolWeight ?? updateLibrarySyncHostSpoolWeight;
+  const updateLocalSpoolWeight = dependencies.updateLocalSpoolWeight ?? updateSpoolWeight;
+
   if (target.clientReadOnly) {
     const hostTarget = requireClientHostWriteTarget(
       target,
       "Host connection details are missing for this printer action.",
     );
     if (preparedWeight.clientAction === "record_usage") {
-      await recordLibrarySyncHostPrintUsage(hostTarget.baseUrl, hostTarget.libraryId, {
+      await recordHostPrintUsage(hostTarget.baseUrl, hostTarget.libraryId, {
         printer_id: printerId,
         spool_id: spoolId,
         grams: preparedWeight.usedGrams,
@@ -66,7 +78,7 @@ export async function writePreparedMeasuredWeightUpdate(
       });
       return;
     }
-    await updateLibrarySyncHostSpoolWeight(
+    await updateHostSpoolWeight(
       hostTarget.baseUrl,
       hostTarget.libraryId,
       spoolId,
@@ -76,7 +88,7 @@ export async function writePreparedMeasuredWeightUpdate(
   }
 
   if (preparedWeight.localAction === "record_usage") {
-    await recordPrintUsage({
+    await recordLocalPrintUsage({
       printer_id: printerId,
       spool_id: spoolId,
       grams: preparedWeight.usedGrams,
@@ -87,7 +99,7 @@ export async function writePreparedMeasuredWeightUpdate(
   }
 
   if (preparedWeight.localAction === "update_weight") {
-    await updateSpoolWeight(spoolId, preparedWeight.safeMeasuredTotal);
+    await updateLocalSpoolWeight(spoolId, preparedWeight.safeMeasuredTotal);
   }
 }
 

@@ -245,17 +245,22 @@ export async function updateLibrarySyncHostSpoolDetails(
   expectedLibraryId: string | null | undefined,
   input: UpdateSpoolDetailsInput,
 ) {
+  const payload: Record<string, unknown> = {
+    base_url: baseUrl,
+    expected_library_id: expectedLibraryId ?? null,
+    spool_id: input.spool_id,
+    qr_code: input.qr_code ?? null,
+    status: input.status,
+  };
+  if (input.location !== undefined) {
+    payload.location = input.location;
+  }
+  if (input.home_location !== undefined) {
+    payload.home_location = input.home_location;
+  }
+
   return invoke<void>("update_library_sync_host_spool_details", {
-    input: {
-      base_url: baseUrl,
-      expected_library_id: expectedLibraryId ?? null,
-      spool_id: input.spool_id,
-      qr_code: input.qr_code ?? null,
-      status: input.status,
-      location: input.location ?? null,
-      home_location:
-        input.home_location === undefined ? undefined : input.home_location,
-    },
+    input: payload,
   });
 }
 

@@ -68,6 +68,7 @@ type UseSettingsMaintenanceSectionInput = {
   settingsBackupValidationMessageLabels: () => SettingsBackupValidationMessageLabels;
   settingsCatalogResetMessageLabels: () => SettingsCatalogResetMessageLabels;
   settingsClientHostBaseUrl: string | null;
+  settingsClientHostWritePaired: boolean;
   settingsClientLibraryId: string | null;
   settingsClientReadOnly: boolean;
   settingsInventoryRows: SpoolWithMasterRow[];
@@ -112,6 +113,7 @@ export function useSettingsMaintenanceSection({
   settingsBackupValidationMessageLabels,
   settingsCatalogResetMessageLabels,
   settingsClientHostBaseUrl,
+  settingsClientHostWritePaired,
   settingsClientLibraryId,
   settingsClientReadOnly,
   settingsInventoryRows,
@@ -149,6 +151,7 @@ export function useSettingsMaintenanceSection({
     setInfo,
     setLastCatalogReset,
     settingsCatalogResetMessageLabels,
+    settingsClientReadOnly,
     settingsMaintenanceResetMessageLabels,
     tauri,
   });
@@ -172,6 +175,9 @@ export function useSettingsMaintenanceSection({
     setError,
     setInfo,
     settingsBackupErrorMessageLabels,
+    settingsClientHostBaseUrl,
+    settingsClientHostWritePaired,
+    settingsClientLibraryId,
     settingsClientReadOnly,
     settingsInventoryExportMessageLabels,
     tauri,
@@ -213,6 +219,7 @@ export function useSettingsMaintenanceSection({
     setLibrarySyncValidation,
     settingsBackupErrorMessageLabels,
     settingsBackupValidationMessageLabels,
+    settingsClientReadOnly,
     settingsImportMessageLabels,
     tauri,
   });
@@ -230,6 +237,8 @@ export function useSettingsMaintenanceSection({
     lastCatalogReset,
     missingSwatchCount,
     printerCount,
+    settingsClientHostWritePaired,
+    settingsClientReadOnly,
     tauri,
     t,
     onExportFullBackup: handleExportFullBackup,

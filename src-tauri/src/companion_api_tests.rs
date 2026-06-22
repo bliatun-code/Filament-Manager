@@ -1321,6 +1321,65 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
 }
 
 #[tokio::test]
+async fn companion_api_exports_full_backup_from_protected_route() {
+    let db_path = temp_db_path("protected-full-backup");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+
+        let unauthorized = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/backup/full")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(unauthorized.status(), StatusCode::UNAUTHORIZED);
+
+        let AuthenticatedTestSession { session_cookie, .. } =
+            pair_test_session(&router, &db_path).await?;
+        let backup = router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/backup/full")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(backup.status(), StatusCode::OK);
+
+        let body = to_bytes(backup.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let body_text = String::from_utf8(body.to_vec()).map_err(|error| error.to_string())?;
+        let parsed: serde_json::Value =
+            serde_json::from_str(&body_text).map_err(|error| error.to_string())?;
+        let backup_content = parsed
+            .get("content")
+            .and_then(|value| value.as_str())
+            .ok_or_else(|| "missing backup content".to_string())?;
+        assert!(backup_content.contains("\"filament_spools\""));
+        assert!(backup_content.contains("\"spool_1\""));
+        assert!(backup_content.contains("\"printer_1\""));
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("companion_api_exports_full_backup_from_protected_route failed: {message}");
+    }
+}
+
+#[tokio::test]
 async fn companion_api_qa_route_can_expire_sessions() {
     let db_path = temp_db_path("qa-expire-session");
     let result = async {
@@ -1569,6 +1628,112 @@ async fn companion_api_lists_catalog_and_wishlist_items() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(error) = result {
         panic!("companion_api_lists_catalog_and_wishlist_items failed: {error}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_updates_master_catalog_entry() {
+    let db_path = temp_db_path("catalog-master-update");
+    let result = async {
+        seed_db(&db_path)?;
+        let master = FilamentDatabase::open(&db_path)
+            .map_err(|error| error.to_string())?
+            .list_master_catalog(20, Some("Basic"))
+            .map_err(|error| error.to_string())?
+            .into_iter()
+            .next()
+            .ok_or_else(|| "missing master catalog seed".to_string())?;
+
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+            ..
+        } = pair_test_session(&router, &db_path).await?;
+
+        let update = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/catalog/masters/{}/details", master.id))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r##"{"vendor":"eSUN","material":"PLA","filament_name":"PLA+","color_name":"Deep Purple","hex_color":" #4B3290 ","product_url":" https://example.com/pla ","default_weight":750}"##,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(update.status(), StatusCode::OK);
+
+        let updated = FilamentDatabase::open(&db_path)
+            .map_err(|error| error.to_string())?
+            .list_master_catalog(20, Some("Deep Purple"))
+            .map_err(|error| error.to_string())?
+            .into_iter()
+            .find(|row| row.id == master.id)
+            .ok_or_else(|| "updated master catalog row not found".to_string())?;
+        assert_eq!(updated.vendor, "eSUN");
+        assert_eq!(updated.material, "PLA");
+        assert_eq!(updated.filament_name, "PLA+");
+        assert_eq!(updated.color_name, "Deep Purple");
+        assert_eq!(updated.hex_color.as_deref(), Some("#4B3290"));
+        assert_eq!(updated.product_url.as_deref(), Some("https://example.com/pla"));
+        assert_eq!(updated.default_weight, 750);
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(error) = result {
+        panic!("companion_api_updates_master_catalog_entry failed: {error}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_rejects_invalid_catalog_refresh_vendor() {
+    let db_path = temp_db_path("catalog-refresh-invalid-vendor");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+            ..
+        } = pair_test_session(&router, &db_path).await?;
+
+        let response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/catalog/refresh")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(r#"{"vendor":"Other","material_types":[]}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(error) = result {
+        panic!("companion_api_rejects_invalid_catalog_refresh_vendor failed: {error}");
     }
 }
 
@@ -1936,6 +2101,88 @@ async fn companion_api_creates_and_deletes_printer() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(error) = result {
         panic!("companion_api_creates_and_deletes_printer failed: {error}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_saves_and_deletes_bambu_live_integration() {
+    let db_path = temp_db_path("printer-bambu-live");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+            ..
+        } = pair_test_session(&router, &db_path).await?;
+
+        let save_live = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/printers/printer_1/bambu-live")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"enabled":true,"host":" 192.168.1.42 ","access_code":" access-code ","printer_serial":" TEST-SERIAL "}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(save_live.status(), StatusCode::OK);
+
+        let integrations = FilamentDatabase::open(&db_path)
+            .map_err(|error| error.to_string())?
+            .list_bambu_live_integrations()
+            .map_err(|error| error.to_string())?;
+        let live = integrations
+            .iter()
+            .find(|entry| entry.printer_id == "printer_1")
+            .ok_or_else(|| "missing saved Bambu Live integration".to_string())?;
+        assert!(live.config.enabled);
+        assert_eq!(live.config.host.as_deref(), Some("192.168.1.42"));
+        assert_eq!(live.config.access_code.as_deref(), Some("access-code"));
+        assert_eq!(live.config.printer_serial.as_deref(), Some("TEST-SERIAL"));
+
+        let delete_live = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/printers/printer_1/bambu-live/delete")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from("{}"))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(delete_live.status(), StatusCode::OK);
+
+        let integrations = FilamentDatabase::open(&db_path)
+            .map_err(|error| error.to_string())?
+            .list_bambu_live_integrations()
+            .map_err(|error| error.to_string())?;
+        assert!(!integrations
+            .iter()
+            .any(|entry| entry.printer_id == "printer_1"));
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(error) = result {
+        panic!("companion_api_saves_and_deletes_bambu_live_integration failed: {error}");
     }
 }
 
@@ -2378,6 +2625,172 @@ async fn companion_api_updates_spool_status_and_location() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("companion_api_updates_spool_status_and_location failed: {message}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_preserves_location_when_status_update_omits_location() {
+    let db_path = temp_db_path("spool-details-status-only");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+            ..
+        } = pair_test_session(&router, &db_path).await?;
+
+        let update_location = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(r#"{"status":"IN_STOCK","location":"Shelf A"}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(update_location.status(), StatusCode::OK);
+
+        let update_status = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(r#"{"status":"LOST"}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(update_status.status(), StatusCode::OK);
+
+        let detail = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/spools/spool_1")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(detail.status(), StatusCode::OK);
+
+        let detail_body = to_bytes(detail.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let detail_text =
+            String::from_utf8(detail_body.to_vec()).map_err(|error| error.to_string())?;
+        assert!(detail_text.contains("\"status\":\"LOST\""));
+        assert!(detail_text.contains("\"location_id\":\"Shelf A\""));
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_api_preserves_location_when_status_update_omits_location failed: {message}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn companion_api_clears_location_when_status_update_sends_null_location() {
+    let db_path = temp_db_path("spool-details-clear-location");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+            ..
+        } = pair_test_session(&router, &db_path).await?;
+
+        let update_location = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(r#"{"status":"IN_STOCK","location":"Shelf A"}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(update_location.status(), StatusCode::OK);
+
+        let clear_location = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(r#"{"status":"IN_STOCK","location":null}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(clear_location.status(), StatusCode::OK);
+
+        let detail = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/spools/spool_1")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(detail.status(), StatusCode::OK);
+
+        let detail_body = to_bytes(detail.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let detail_text =
+            String::from_utf8(detail_body.to_vec()).map_err(|error| error.to_string())?;
+        assert!(detail_text.contains("\"status\":\"IN_STOCK\""));
+        assert!(detail_text.contains("\"location_id\":null"));
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_api_clears_location_when_status_update_sends_null_location failed: {message}"
+        );
     }
 }
 

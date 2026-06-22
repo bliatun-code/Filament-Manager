@@ -173,6 +173,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsSwatchBulkMessageLabels,
     settingsSwatchErrorMessageLabels,
     settingsSwatchSavedMessageLabels,
+    settingsClientHostBaseUrl,
+    settingsClientLibraryId,
+    settingsClientReadOnly,
     tauri,
     t,
   });
@@ -236,6 +239,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsBackupValidationMessageLabels,
     settingsCatalogResetMessageLabels,
     settingsClientHostBaseUrl,
+    settingsClientHostWritePaired,
     settingsClientLibraryId,
     settingsClientReadOnly,
     settingsInventoryRows: spoolRows,

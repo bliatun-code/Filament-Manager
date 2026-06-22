@@ -167,7 +167,7 @@ pub(crate) async fn refresh_esun_catalog(
     }
 }
 
-fn refresh_bambu_catalog_blocking(
+pub(crate) fn refresh_bambu_catalog_blocking(
     db_path: &str,
     material_types: Option<Vec<String>>,
     app: Option<&tauri::AppHandle>,
@@ -404,7 +404,7 @@ fn refresh_bambu_catalog_blocking(
     })
 }
 
-fn refresh_esun_catalog_blocking(
+pub(crate) fn refresh_esun_catalog_blocking(
     db_path: &str,
     material_types: Option<Vec<String>>,
     app: Option<&tauri::AppHandle>,

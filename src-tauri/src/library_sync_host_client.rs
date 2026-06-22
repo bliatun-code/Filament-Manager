@@ -64,7 +64,7 @@ pub(crate) fn fetch_library_sync_host_json<T: DeserializeOwned>(
     path: &str,
 ) -> Result<T, String> {
     let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_millis(800))
+        .timeout(Duration::from_millis(2500))
         .build()
         .map_err(|error| format!("Failed to prepare host request client: {error}"))?;
 
@@ -210,7 +210,7 @@ pub(crate) fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
     path: &str,
 ) -> Result<T, String> {
     let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_millis(900))
+        .timeout(Duration::from_millis(2500))
         .build()
         .map_err(|error| format!("Failed to prepare host read client: {error}"))?;
     let initial_auth_state =
@@ -319,8 +319,27 @@ pub(crate) fn perform_library_sync_host_write_and_parse<
     path: &str,
     payload: &T,
 ) -> Result<R, String> {
+    perform_library_sync_host_write_and_parse_with_timeout(
+        state,
+        base_url,
+        path,
+        payload,
+        Duration::from_millis(2500),
+    )
+}
+
+pub(crate) fn perform_library_sync_host_write_and_parse_with_timeout<
+    T: serde::Serialize,
+    R: DeserializeOwned,
+>(
+    state: &tauri::State<'_, AppState>,
+    base_url: &str,
+    path: &str,
+    payload: &T,
+    timeout: Duration,
+) -> Result<R, String> {
     let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_millis(2500))
+        .timeout(timeout)
         .build()
         .map_err(|error| format!("Failed to prepare desktop sync write client: {error}"))?;
     let initial_auth_state =

@@ -12,8 +12,9 @@ use crate::library_sync_host_client::{
     fetch_library_sync_host_json, get_library_sync_host_json_authenticated,
 };
 use crate::library_sync_models::{
-    LibrarySyncCatalogListInput, LibrarySyncFilamentConsumptionInput, LibrarySyncSpoolDetailInput,
-    LibrarySyncSpoolListInput, LibrarySyncWishlistListInput, ValidateLibrarySyncHostInput,
+    LibrarySyncCatalogListInput, LibrarySyncFilamentConsumptionInput,
+    LibrarySyncFullBackupResponse, LibrarySyncSpoolDetailInput, LibrarySyncSpoolListInput,
+    LibrarySyncWishlistListInput, ValidateLibrarySyncHostInput,
 };
 use crate::printer_settings_commands::PrinterSettingsSnapshot;
 use crate::state::AppState;
@@ -226,4 +227,19 @@ pub(crate) fn fetch_library_sync_wishlist_items(
         }
         Err(error) => Err(error),
     }
+}
+
+#[tauri::command]
+pub(crate) fn fetch_library_sync_full_backup_json(
+    state: tauri::State<'_, AppState>,
+    input: ValidateLibrarySyncHostInput,
+) -> Result<LibrarySyncFullBackupResponse, String> {
+    let (normalized_base_url, _) = prepare_library_sync_host_checked(&input)?;
+    let payload: LibrarySyncFullBackupResponse = get_library_sync_host_json_authenticated(
+        &state,
+        &normalized_base_url,
+        "/api/v1/backup/full",
+    )?;
+    save_library_sync_success(&state, "Host full backup exported.", None)?;
+    Ok(payload)
 }

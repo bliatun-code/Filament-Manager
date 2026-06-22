@@ -2,6 +2,7 @@ use crate::backend::filament_database::{
     PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::backend::statistics::InventoryOverview;
+use crate::optional_update::OptionalUpdate;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
@@ -65,8 +66,10 @@ pub(crate) struct LibrarySyncUpdateSpoolDetailsInput {
     pub(crate) spool_id: String,
     pub(crate) qr_code: Option<String>,
     pub(crate) status: String,
-    pub(crate) location: Option<String>,
-    pub(crate) home_location: Option<Option<String>>,
+    #[serde(default)]
+    pub(crate) location: OptionalUpdate<String>,
+    #[serde(default)]
+    pub(crate) home_location: OptionalUpdate<String>,
 }
 
 #[derive(Deserialize)]
@@ -141,10 +144,37 @@ pub(crate) struct LibrarySyncCatalogListInput {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct LibrarySyncUpdateMasterCatalogEntryInput {
+    pub(crate) base_url: String,
+    pub(crate) expected_library_id: Option<String>,
+    pub(crate) master_id: String,
+    pub(crate) material: String,
+    pub(crate) filament_name: String,
+    pub(crate) color_name: String,
+    pub(crate) hex_color: Option<String>,
+    pub(crate) product_url: Option<String>,
+    pub(crate) vendor: Option<String>,
+    pub(crate) default_weight: Option<i64>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct LibrarySyncRefreshCatalogInput {
+    pub(crate) base_url: String,
+    pub(crate) expected_library_id: Option<String>,
+    pub(crate) vendor: String,
+    pub(crate) material_types: Option<Vec<String>>,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct LibrarySyncWishlistListInput {
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,
     pub(crate) limit: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct LibrarySyncFullBackupResponse {
+    pub(crate) content: String,
 }
 
 #[derive(Deserialize)]
@@ -202,6 +232,24 @@ pub(crate) struct LibrarySyncCreatePrinterInput {
     pub(crate) name: String,
     pub(crate) ams_units: Option<i64>,
     pub(crate) slots_per_ams: Option<i64>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct LibrarySyncSaveBambuLiveIntegrationInput {
+    pub(crate) base_url: String,
+    pub(crate) expected_library_id: Option<String>,
+    pub(crate) printer_id: String,
+    pub(crate) enabled: bool,
+    pub(crate) host: Option<String>,
+    pub(crate) access_code: Option<String>,
+    pub(crate) printer_serial: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct LibrarySyncDeleteBambuLiveIntegrationInput {
+    pub(crate) base_url: String,
+    pub(crate) expected_library_id: Option<String>,
+    pub(crate) printer_id: String,
 }
 
 #[derive(Deserialize)]

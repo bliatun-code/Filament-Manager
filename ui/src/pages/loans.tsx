@@ -20,6 +20,7 @@ import {
   toMeasuredTotalWeight,
   toReturnedFilamentWeight,
 } from "../lib/loan_display";
+import { buildLoansCsv } from "../lib/loan_export";
 import { isLoanCurrentlyActive } from "../lib/loan_state";
 import { loadLoanRowsPage, returnInventoryLoan } from "../lib/loan_data_source";
 import { useClientWriteGuards } from "../lib/use_client_write_guards";
@@ -118,19 +119,23 @@ export default function LoansPage() {
   );
 
   async function handleExportCsv() {
-    if (!tauri || busy || clientReadOnly) {
+    if (!tauri || busy) {
       return;
     }
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
-      const payload = await exportLoansCsv(
-        true,
-        directionFilter === "ALL" ? "ALL" : directionFilter,
-      );
+      const content = clientReadOnly
+        ? buildLoansCsv(loans, directionFilter)
+        : (
+            await exportLoansCsv(
+              true,
+              directionFilter === "ALL" ? "ALL" : directionFilter,
+            )
+          ).content;
       downloadTextFile(
-        payload.content,
+        content,
         `bambu-loans-${Date.now()}.csv`,
         "text/csv;charset=utf-8",
       );
@@ -262,7 +267,7 @@ export default function LoansPage() {
             <button
               type="button"
               onClick={() => void handleExportCsv()}
-              disabled={!tauri || busy || clientReadOnly}
+              disabled={!tauri || busy || (clientReadOnly && loans.length === 0)}
               className="header-button-secondary w-full min-[920px]:w-auto"
             >
               {t("loans.exportCsv", "Export loans CSV")}

@@ -1,9 +1,13 @@
 import { type Dispatch, type SetStateAction } from "react";
 import { toErrorMessage } from "../lib/error_text";
-import { createManagedPrinter, deleteManagedPrinter } from "../lib/printer_writes";
 import {
-  deleteBambuLiveIntegration,
-  saveBambuLiveIntegration,
+  createManagedPrinter,
+  deleteManagedBambuLiveIntegration,
+  deleteManagedPrinter,
+  saveManagedBambuLiveIntegration,
+  type PrinterWriteTarget,
+} from "../lib/printer_writes";
+import {
   type BambuLiveIntegrationEntry,
   type PrinterOverviewRow,
   type PrinterRow,
@@ -148,28 +152,28 @@ export function useSettingsPrinterActions({
     setError(null);
     setInfo(null);
     try {
-      if (settingsClientReadOnly) {
-        await createManagedPrinter(
-          prepared.printer,
-          {
+      const writeTarget: PrinterWriteTarget = settingsClientReadOnly
+        ? {
             clientReadOnly: true,
             clientHostBaseUrl: settingsClientHostBaseUrl,
             clientLibraryId: settingsClientLibraryId,
-          },
-        );
-      } else {
-        await createManagedPrinter(prepared.printer);
-        if (prepared.bambuLive.enabled) {
-          await saveBambuLiveIntegration({
+          }
+        : {};
+
+      await createManagedPrinter(prepared.printer, writeTarget);
+      if (prepared.bambuLive.enabled) {
+        await saveManagedBambuLiveIntegration(
+          {
             printer_id: prepared.printer.id,
             enabled: true,
             host: prepared.bambuLive.host,
             access_code: prepared.bambuLive.accessCode,
             printer_serial: prepared.bambuLive.printerSerial,
-          });
-        } else {
-          await deleteBambuLiveIntegration(prepared.printer.id);
-        }
+          },
+          writeTarget,
+        );
+      } else {
+        await deleteManagedBambuLiveIntegration(prepared.printer.id, writeTarget);
       }
       await reloadSettings();
       setInfo(

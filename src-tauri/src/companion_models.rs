@@ -1,5 +1,6 @@
 use crate::backend::filament_database::{BambuLiveIntegrationEntryRow, PrinterRow, SpoolLoanRow};
 use crate::backend::statistics::InventoryOverview;
+use crate::optional_update::OptionalUpdate;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Default)]
@@ -140,6 +141,31 @@ pub(crate) struct SetActivePrinterRequest {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct SaveBambuLiveIntegrationRequest {
+    pub(crate) enabled: bool,
+    pub(crate) host: Option<String>,
+    pub(crate) access_code: Option<String>,
+    pub(crate) printer_serial: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct UpdateMasterCatalogEntryRequest {
+    pub(crate) material: String,
+    pub(crate) filament_name: String,
+    pub(crate) color_name: String,
+    pub(crate) hex_color: Option<String>,
+    pub(crate) product_url: Option<String>,
+    pub(crate) vendor: Option<String>,
+    pub(crate) default_weight: Option<i64>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct RefreshVendorCatalogRequest {
+    pub(crate) vendor: String,
+    pub(crate) material_types: Option<Vec<String>>,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct UpdateBorrowedInSpoolRequest {
     pub(crate) owner_name: String,
     pub(crate) owner_contact: Option<String>,
@@ -157,8 +183,10 @@ pub(crate) struct UpdateSpoolOwnershipRequest {
 #[derive(Deserialize)]
 pub(crate) struct UpdateSpoolDetailsRequest {
     pub(crate) status: String,
-    pub(crate) location: Option<String>,
-    pub(crate) home_location: Option<Option<String>>,
+    #[serde(default)]
+    pub(crate) location: OptionalUpdate<String>,
+    #[serde(default)]
+    pub(crate) home_location: OptionalUpdate<String>,
 }
 
 #[derive(Deserialize)]

@@ -6,6 +6,7 @@ import {
   exportFullBackupJson,
   exportInventoryCsv,
   exportInventoryJson,
+  fetchLibrarySyncFullBackupJson,
   validateFullBackupJson,
   type BackupValidationStats,
   type SpoolWithMasterRow,
@@ -33,6 +34,9 @@ type UseSettingsBackupExportActionsInput = {
   setError: Dispatch<SetStateAction<string | null>>;
   setInfo: Dispatch<SetStateAction<string | null>>;
   settingsBackupErrorMessageLabels: () => SettingsBackupErrorMessageLabels;
+  settingsClientHostBaseUrl: string | null;
+  settingsClientHostWritePaired: boolean;
+  settingsClientLibraryId: string | null;
   settingsClientReadOnly: boolean;
   settingsInventoryExportMessageLabels: () => SettingsInventoryExportMessageLabels;
   tauri: boolean;
@@ -47,6 +51,9 @@ export function useSettingsBackupExportActions({
   setError,
   setInfo,
   settingsBackupErrorMessageLabels,
+  settingsClientHostBaseUrl,
+  settingsClientHostWritePaired,
+  settingsClientLibraryId,
   settingsClientReadOnly,
   settingsInventoryExportMessageLabels,
   tauri,
@@ -56,11 +63,28 @@ export function useSettingsBackupExportActions({
     if (!tauri || busy) {
       return;
     }
+    if (
+      settingsClientReadOnly &&
+      (!settingsClientHostWritePaired || !settingsClientHostBaseUrl || !settingsClientLibraryId)
+    ) {
+      setError(
+        t(
+          "settings.clientHostBackupRequiresPairing",
+          "Pair this client with the host before exporting a full host backup.",
+        ),
+      );
+      return;
+    }
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
-      const payload = await exportFullBackupJson();
+      const payload = settingsClientReadOnly
+        ? await fetchLibrarySyncFullBackupJson(
+            settingsClientHostBaseUrl ?? "",
+            settingsClientLibraryId,
+          )
+        : await exportFullBackupJson();
       const validationSummary = await validateFullBackupJson(payload.content);
       downloadTextFile(
         payload.content,

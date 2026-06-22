@@ -1,15 +1,17 @@
 use crate::app_services::CompanionSpoolDetail;
 use crate::backend::filament_database::{
-    ActiveSpoolLoanRow, FilamentDatabase, FilamentMasterCatalogRow, LibrarySyncSettingsRow,
-    PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
+    ActiveSpoolLoanRow, BambuLiveIntegrationRow, FilamentDatabase, FilamentMasterCatalogRow,
+    LibrarySyncSettingsRow, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
+    WishlistItemRow,
 };
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput,
     DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, RecordPrintUsageInput, ReturnSpoolLoanInput,
-    UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
-    UpdateWishlistStatusInput, WeightSource,
+    UpdateBorrowedInSpoolInput, UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput,
+    UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::statistics::{FilamentConsumptionRow, StatisticsEngine};
+use crate::catalog_commands::CatalogRefreshResult;
 #[cfg(test)]
 use crate::companion_assets::companion_browser_assets;
 use crate::companion_assets::{
@@ -31,6 +33,7 @@ use crate::companion_session::{
     generate_companion_spool_id, random_hex_token, unix_epoch_millis,
 };
 use crate::companion_state::CompanionApiState;
+use crate::library_sync_models::LibrarySyncFullBackupResponse;
 use crate::security::hash_secret;
 use crate::state::AppState;
 use axum::body::Body;
@@ -201,6 +204,19 @@ pub(super) async fn handle_library_spools(
         .list_spools(limit, offset)
         .map_err(CompanionApiError::from)?;
     Ok(Json(rows))
+}
+
+pub(super) async fn handle_export_full_backup(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+) -> Result<Json<LibrarySyncFullBackupResponse>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    let db = FilamentDatabase::open(&state.db_path)
+        .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
+    let content = db
+        .export_full_backup_json()
+        .map_err(|error| CompanionApiError::Internal(format!("{error:?}")))?;
+    Ok(Json(LibrarySyncFullBackupResponse { content }))
 }
 
 pub(super) async fn handle_library_printers(
@@ -465,6 +481,65 @@ pub(super) async fn handle_list_catalog_masters(
     Ok(Json(rows))
 }
 
+pub(super) async fn handle_update_master_catalog_entry(
+    State(state): State<CompanionApiState>,
+    Path(master_id): Path<String>,
+    Json(payload): Json<UpdateMasterCatalogEntryRequest>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    let master_id = master_id.trim();
+    if master_id.is_empty() {
+        return Err(CompanionApiError::BadRequest(
+            "master_id is required".to_string(),
+        ));
+    }
+
+    state
+        .service
+        .update_master_catalog_entry(UpdateMasterCatalogEntryInput {
+            master_id: master_id.to_string(),
+            material: payload.material,
+            filament_name: payload.filament_name,
+            color_name: payload.color_name,
+            hex_color: payload.hex_color,
+            product_url: payload.product_url,
+            vendor: payload.vendor,
+            default_weight: payload.default_weight,
+        })
+        .map_err(CompanionApiError::from)?;
+
+    Ok(Json(WriteResponse {
+        ok: true,
+        message: "Catalog entry updated".to_string(),
+    }))
+}
+
+pub(super) async fn handle_refresh_vendor_catalog(
+    State(state): State<CompanionApiState>,
+    Json(payload): Json<RefreshVendorCatalogRequest>,
+) -> Result<Json<CatalogRefreshResult>, CompanionApiError> {
+    let vendor = payload.vendor.trim().to_ascii_lowercase();
+    if vendor != "bambu" && vendor != "esun" {
+        return Err(CompanionApiError::BadRequest(
+            "vendor must be Bambu or eSUN".to_string(),
+        ));
+    }
+
+    let service = state.service.clone();
+    let material_types = payload.material_types;
+    let result = tokio::task::spawn_blocking(move || {
+        if vendor == "bambu" {
+            service.refresh_bambu_catalog(material_types)
+        } else {
+            service.refresh_esun_catalog(material_types)
+        }
+    })
+    .await
+    .map_err(|error| CompanionApiError::Internal(format!("Catalog refresh task failed: {error}")))?
+    .map_err(CompanionApiError::Internal)?;
+
+    Ok(Json(result))
+}
+
 pub(super) async fn handle_list_printer_overview(
     State(state): State<CompanionApiState>,
 ) -> Result<Json<Vec<PrinterOverviewRow>>, CompanionApiError> {
@@ -523,6 +598,69 @@ pub(super) async fn handle_delete_printer(
     Ok(Json(WriteResponse {
         ok: true,
         message: "Printer deleted".to_string(),
+    }))
+}
+
+pub(super) async fn handle_save_bambu_live_integration(
+    State(state): State<CompanionApiState>,
+    Path(printer_id): Path<String>,
+    Json(payload): Json<SaveBambuLiveIntegrationRequest>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    let printer_id = printer_id.trim();
+    if printer_id.is_empty() {
+        return Err(CompanionApiError::BadRequest(
+            "printer_id is required".to_string(),
+        ));
+    }
+
+    let db = FilamentDatabase::open(&state.db_path).map_err(CompanionApiError::from)?;
+    let exists = db
+        .list_printers()
+        .map_err(CompanionApiError::from)?
+        .into_iter()
+        .any(|printer| printer.id == printer_id);
+    if !exists {
+        return Err(CompanionApiError::NotFound("Printer not found".to_string()));
+    }
+
+    db.save_bambu_live_integration(
+        printer_id,
+        &BambuLiveIntegrationRow {
+            enabled: payload.enabled,
+            host: normalize_optional_text(payload.host.as_deref()),
+            access_code: normalize_optional_text(payload.access_code.as_deref()),
+            printer_serial: normalize_optional_text(payload.printer_serial.as_deref()),
+            last_error: None,
+            observed_state: None,
+        },
+    )
+    .map_err(CompanionApiError::from)?;
+
+    Ok(Json(WriteResponse {
+        ok: true,
+        message: "Bambu Live integration saved".to_string(),
+    }))
+}
+
+pub(super) async fn handle_delete_bambu_live_integration(
+    State(state): State<CompanionApiState>,
+    Path(printer_id): Path<String>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    let printer_id = printer_id.trim();
+    if printer_id.is_empty() {
+        return Err(CompanionApiError::BadRequest(
+            "printer_id is required".to_string(),
+        ));
+    }
+
+    FilamentDatabase::open(&state.db_path)
+        .map_err(CompanionApiError::from)?
+        .delete_bambu_live_integration(printer_id)
+        .map_err(CompanionApiError::from)?;
+
+    Ok(Json(WriteResponse {
+        ok: true,
+        message: "Bambu Live integration deleted".to_string(),
     }))
 }
 
@@ -1124,8 +1262,15 @@ pub(super) async fn handle_update_spool_details(
                 .to_string(),
         ));
     }
-    let requested_location = normalize_optional_text(payload.location.as_deref());
-    let editing_home_location_only = payload.home_location.is_some()
+    let requested_location = match payload.location.as_update() {
+        Some(value) => normalize_optional_text(value.map(String::as_str)),
+        None => spool.spool.location_id.clone(),
+    };
+    let requested_home_location = payload
+        .home_location
+        .as_update()
+        .map(|value| normalize_optional_text(value.map(String::as_str)));
+    let editing_home_location_only = payload.home_location.is_set()
         && requested_location == spool.spool.location_id
         && status == current_status;
     if (current_status == "IN_USE"
@@ -1158,7 +1303,7 @@ pub(super) async fn handle_update_spool_details(
             qr_code: spool.spool.qr_code.clone(),
             status,
             location: requested_location,
-            home_location: payload.home_location,
+            home_location: requested_home_location,
         })
         .map_err(CompanionApiError::from)?;
 

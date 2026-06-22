@@ -87,6 +87,19 @@ function syncSettings(
 }
 
 const catalogRows: MasterCatalogRow[] = [];
+const hostCatalogRows: MasterCatalogRow[] = [
+  {
+    id: "master-host",
+    material: "PLA",
+    filament_name: "Basic",
+    color_name: "Blue",
+    hex_color: "#0000ff",
+    product_url: null,
+    default_weight: 1000,
+    vendor: "Bambu",
+    is_discontinued: false,
+  },
+];
 const localSpoolRows: SpoolWithMasterRow[] = [];
 const hostSpoolRows: SpoolWithMasterRow[] = [];
 const cachedSpoolRows: SpoolWithMasterRow[] = [spoolWithMasterRow("spool-cache")];
@@ -129,8 +142,9 @@ function remoteSnapshot(
 test("loadSettingsPageData loads local settings overview and local spools", async () => {
   const result = await loadSettingsPageData({
     loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
-    loadCatalogRows: async (limit) => {
-      assert.equal(limit, 5000);
+    loadCatalogRows: async (options) => {
+      assert.equal(options.limit, 5000);
+      assert.equal(options.clientReadOnly, false);
       return catalogRows;
     },
     loadSyncSettings: async () => syncSettings(),
@@ -150,7 +164,13 @@ test("loadSettingsPageData loads local settings overview and local spools", asyn
 test("loadSettingsPageData prefers host overview, settings, and spools for clients", async () => {
   const result = await loadSettingsPageData({
     loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
-    loadCatalogRows: async () => catalogRows,
+    loadCatalogRows: async (options) => {
+      assert.equal(options.clientReadOnly, true);
+      assert.equal(options.clientHostBaseUrl, "http://host");
+      assert.equal(options.clientLibraryId, "library-host");
+      assert.equal(options.limit, 5000);
+      return hostCatalogRows;
+    },
     loadSyncSettings: async () =>
       syncSettings({
         mode: "CLIENT",
@@ -172,6 +192,7 @@ test("loadSettingsPageData prefers host overview, settings, and spools for clien
   });
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-host"]);
+  assert.equal(result.catalogRows, hostCatalogRows);
   assert.equal(result.spoolRows, hostSpoolRows);
   assert.equal(result.bambuLiveIntegrations["printer-host"]?.enabled, true);
 });
@@ -179,7 +200,10 @@ test("loadSettingsPageData prefers host overview, settings, and spools for clien
 test("loadSettingsPageData falls back to cached client printers and spools", async () => {
   const result = await loadSettingsPageData({
     loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
-    loadCatalogRows: async () => catalogRows,
+    loadCatalogRows: async (options) => {
+      assert.equal(options.clientReadOnly, true);
+      return hostCatalogRows;
+    },
     loadSyncSettings: async () =>
       syncSettings({
         mode: "CLIENT",
@@ -206,6 +230,7 @@ test("loadSettingsPageData falls back to cached client printers and spools", asy
   });
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-cache"]);
+  assert.equal(result.catalogRows, hostCatalogRows);
   assert.equal(result.spoolRows, cachedSpoolRows);
   assert.equal(result.bambuLiveIntegrations["printer-host"]?.enabled, true);
 });
@@ -213,7 +238,9 @@ test("loadSettingsPageData falls back to cached client printers and spools", asy
 test("loadSettingsPageData avoids local spools when client host details are incomplete", async () => {
   const result = await loadSettingsPageData({
     loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
-    loadCatalogRows: async () => catalogRows,
+    loadCatalogRows: async () => {
+      throw new Error("local catalog should not be loaded for incomplete client settings");
+    },
     loadSyncSettings: async () =>
       syncSettings({
         mode: "CLIENT",
@@ -240,6 +267,7 @@ test("loadSettingsPageData avoids local spools when client host details are inco
   });
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-cache"]);
+  assert.deepEqual(result.catalogRows, []);
   assert.equal(result.spoolRows, cachedSpoolRows);
   assert.equal(result.bambuLiveIntegrations["printer-local"]?.enabled, true);
 });
@@ -249,7 +277,10 @@ test("loadSettingsPageData keeps fulfilled host client data when one host endpoi
 
   const result = await loadSettingsPageData({
     loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
-    loadCatalogRows: async () => catalogRows,
+    loadCatalogRows: async (options) => {
+      assert.equal(options.clientReadOnly, true);
+      return hostCatalogRows;
+    },
     loadSyncSettings: async () =>
       syncSettings({
         mode: "CLIENT",
@@ -272,6 +303,7 @@ test("loadSettingsPageData keeps fulfilled host client data when one host endpoi
   });
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-host"]);
+  assert.equal(result.catalogRows, hostCatalogRows);
   assert.equal(result.spoolRows, hostSpoolRows);
   assert.equal(result.bambuLiveIntegrations["printer-local"]?.enabled, true);
   assert.equal(errors.length, 1);

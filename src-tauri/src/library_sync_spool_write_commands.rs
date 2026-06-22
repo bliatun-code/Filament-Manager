@@ -76,18 +76,30 @@ pub(crate) fn update_library_sync_host_spool_details(
         return Err("Spool id is required.".to_string());
     }
 
+    let mut payload = serde_json::Map::new();
+    payload.insert(
+        "qr_code".to_string(),
+        serde_json::json!(trimmed_non_empty(input.qr_code.as_deref())),
+    );
+    payload.insert("status".to_string(), serde_json::json!(input.status.trim()));
+    if let Some(value) = input.location.as_update() {
+        payload.insert(
+            "location".to_string(),
+            serde_json::json!(trimmed_non_empty(value.map(String::as_str))),
+        );
+    }
+    if let Some(value) = input.home_location.as_update() {
+        payload.insert(
+            "home_location".to_string(),
+            serde_json::json!(trimmed_non_empty(value.map(String::as_str))),
+        );
+    }
+
     perform_library_sync_host_write(
         &state,
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/details"),
-        &serde_json::json!({
-            "qr_code": trimmed_non_empty(input.qr_code.as_deref()),
-            "status": input.status.trim(),
-            "location": trimmed_non_empty(input.location.as_deref()),
-            "home_location": input.home_location.as_ref().map(|value| {
-                trimmed_non_empty(value.as_deref())
-            }),
-        }),
+        &serde_json::Value::Object(payload),
     )?;
 
     refresh_library_sync_spool_cache(&state, &normalized_base_url);

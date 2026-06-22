@@ -7,11 +7,25 @@ use axum::Router;
 pub(super) fn build_router(state: CompanionApiState) -> Router {
     let protected = Router::new()
         .route("/inventory/spools", get(handle_list_spools))
+        .route("/backup/full", get(handle_export_full_backup))
         .route("/catalog/masters", get(handle_list_catalog_masters))
+        .route("/catalog/refresh", post(handle_refresh_vendor_catalog))
+        .route(
+            "/catalog/masters/{master_id}/details",
+            post(handle_update_master_catalog_entry),
+        )
         .route("/loans", get(handle_list_spool_loans))
         .route("/printers/overview", get(handle_list_printer_overview))
         .route("/printers", post(handle_create_printer))
         .route("/printers/{printer_id}/delete", post(handle_delete_printer))
+        .route(
+            "/printers/{printer_id}/bambu-live",
+            post(handle_save_bambu_live_integration),
+        )
+        .route(
+            "/printers/{printer_id}/bambu-live/delete",
+            post(handle_delete_bambu_live_integration),
+        )
         .route("/printers/active", post(handle_set_active_printer))
         .route("/loans/active", get(handle_list_active_spool_loans))
         .route("/wishlist", get(handle_list_wishlist_items))

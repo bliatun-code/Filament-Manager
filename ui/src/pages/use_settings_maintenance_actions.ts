@@ -27,6 +27,7 @@ type UseSettingsMaintenanceActionsInput = {
   setInfo: Dispatch<SetStateAction<string | null>>;
   setLastCatalogReset: Dispatch<SetStateAction<CatalogResetStats | null>>;
   settingsCatalogResetMessageLabels: () => SettingsCatalogResetMessageLabels;
+  settingsClientReadOnly: boolean;
   settingsMaintenanceResetMessageLabels: () => SettingsMaintenanceResetMessageLabels;
   tauri: boolean;
 };
@@ -42,11 +43,12 @@ export function useSettingsMaintenanceActions({
   setInfo,
   setLastCatalogReset,
   settingsCatalogResetMessageLabels,
+  settingsClientReadOnly,
   settingsMaintenanceResetMessageLabels,
   tauri,
 }: UseSettingsMaintenanceActionsInput) {
   async function handleResetAppData() {
-    if (!tauri || busy) {
+    if (!tauri || busy || settingsClientReadOnly) {
       return;
     }
     if (shouldArmSettingsResetAction(confirmResetAction, "APP")) {
@@ -78,7 +80,7 @@ export function useSettingsMaintenanceActions({
   }
 
   async function handleResetCatalogs() {
-    if (!tauri || busy) {
+    if (!tauri || busy || settingsClientReadOnly) {
       return;
     }
     if (shouldArmSettingsResetAction(confirmResetAction, "CATALOG")) {

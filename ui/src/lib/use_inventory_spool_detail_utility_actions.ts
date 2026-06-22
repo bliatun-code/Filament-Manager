@@ -164,6 +164,7 @@ export function useInventorySpoolDetailUtilityActions({
         { clientReadOnly, clientHostBaseUrl, clientLibraryId },
       );
       await reloadSpools();
+      await reloadPrinterOverview();
       await reloadSpoolDetail(selectedSpool.id);
       setInfoMessage(t("inventory.rfidSaved", "RFID tag saved on the selected roll."));
       closeRfidCaptureModal();
@@ -185,6 +186,7 @@ export function useInventorySpoolDetailUtilityActions({
     manageBusy,
     reloadSpoolDetail,
     reloadSpools,
+    reloadPrinterOverview,
     rfidCaptureLastSeenAt,
     rfidCaptureSummary.rfidTag,
     selectedRfidCaptureLiveIntegration,

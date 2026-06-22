@@ -1,8 +1,6 @@
 import { formatFilamentDisplayTitle } from "../lib/display_format";
-import {
-  updateMasterCatalogEntry,
-  type MasterCatalogRow,
-} from "../lib/tauri_client";
+import { updateManagedMasterCatalogEntry } from "../lib/catalog_writes";
+import type { MasterCatalogRow } from "../lib/tauri_client";
 import {
   buildSettingsNoMissingSwatchesMessage,
   buildSettingsSwatchBulkConfirmMessage,
@@ -29,6 +27,9 @@ type UseSettingsSwatchActionsOptions = {
   settingsSwatchSavedMessageLabels: () => SettingsSwatchSavedMessageLabels;
   swatchBusy: boolean;
   swatchDraftById: Record<string, string>;
+  settingsClientHostBaseUrl: string | null;
+  settingsClientLibraryId: string | null;
+  settingsClientReadOnly: boolean;
   tauri: boolean;
   visibleMissingSwatchMasters: MasterCatalogRow[];
 };
@@ -47,9 +48,18 @@ export function useSettingsSwatchActions({
   settingsSwatchSavedMessageLabels,
   swatchBusy,
   swatchDraftById,
+  settingsClientHostBaseUrl,
+  settingsClientLibraryId,
+  settingsClientReadOnly,
   tauri,
   visibleMissingSwatchMasters,
 }: UseSettingsSwatchActionsOptions) {
+  const catalogWriteTarget = {
+    clientReadOnly: settingsClientReadOnly,
+    clientHostBaseUrl: settingsClientHostBaseUrl,
+    clientLibraryId: settingsClientLibraryId,
+  };
+
   async function handleSaveMissingSwatch(master: MasterCatalogRow) {
     if (!tauri || busy || swatchBusy) {
       return;
@@ -65,16 +75,19 @@ export function useSettingsSwatchActions({
     setError(null);
     setInfo(null);
     try {
-      await updateMasterCatalogEntry({
-        master_id: master.id,
-        vendor: master.vendor,
-        material: master.material,
-        filament_name: master.filament_name,
-        color_name: master.color_name,
-        hex_color: normalizedHex,
-        product_url: master.product_url ?? null,
-        default_weight: master.default_weight,
-      });
+      await updateManagedMasterCatalogEntry(
+        {
+          master_id: master.id,
+          vendor: master.vendor,
+          material: master.material,
+          filament_name: master.filament_name,
+          color_name: master.color_name,
+          hex_color: normalizedHex,
+          product_url: master.product_url ?? null,
+          default_weight: master.default_weight,
+        },
+        catalogWriteTarget,
+      );
       setInfo(
         buildSettingsSwatchSavedMessage(
           formatFilamentDisplayTitle(master.material, master.filament_name, master.color_name),
@@ -123,16 +136,19 @@ export function useSettingsSwatchActions({
           continue;
         }
         try {
-          await updateMasterCatalogEntry({
-            master_id: master.id,
-            vendor: master.vendor,
-            material: master.material,
-            filament_name: master.filament_name,
-            color_name: master.color_name,
-            hex_color: normalizedHex,
-            product_url: master.product_url ?? null,
-            default_weight: master.default_weight,
-          });
+          await updateManagedMasterCatalogEntry(
+            {
+              master_id: master.id,
+              vendor: master.vendor,
+              material: master.material,
+              filament_name: master.filament_name,
+              color_name: master.color_name,
+              hex_color: normalizedHex,
+              product_url: master.product_url ?? null,
+              default_weight: master.default_weight,
+            },
+            catalogWriteTarget,
+          );
           updated += 1;
         } catch (bulkError) {
           console.error(bulkError);

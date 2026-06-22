@@ -4,7 +4,6 @@ import {
   fetchLibrarySyncPrinterSettings,
   getLibrarySyncSettings,
   getPrinterSettings,
-  listMasterCatalog,
   listPrinterOverview,
   type BambuLiveIntegrationEntry,
   type LibrarySyncSettings,
@@ -14,6 +13,7 @@ import {
   type PrinterSettingsSnapshot,
   type SpoolWithMasterRow,
 } from "./tauri_client";
+import { loadCatalogMasters } from "./catalog_data_source";
 import { mapBambuLiveIntegrations } from "./printer_data_source";
 import { loadAllSpoolRows } from "./spool_data_source";
 import { requireClientHostWriteTarget, resolveClientHostTarget } from "./host_write_target";
@@ -29,7 +29,7 @@ export type SettingsPageData = {
 
 type SettingsPageDataDependencies = {
   loadPrinterSettings?: typeof getPrinterSettings;
-  loadCatalogRows?: typeof listMasterCatalog;
+  loadCatalogRows?: typeof loadCatalogMasters;
   loadSyncSettings?: typeof getLibrarySyncSettings;
   loadSpoolRows?: typeof loadAllSpoolRows;
   fetchHostPrinterOverview?: typeof fetchLibrarySyncPrinterOverview;
@@ -63,7 +63,7 @@ export async function loadSettingsPageData(
   dependencies: SettingsPageDataDependencies = {},
 ): Promise<SettingsPageData> {
   const loadPrinterSettings = dependencies.loadPrinterSettings ?? getPrinterSettings;
-  const loadCatalogRows = dependencies.loadCatalogRows ?? listMasterCatalog;
+  const loadCatalogRows = dependencies.loadCatalogRows ?? loadCatalogMasters;
   const loadSyncSettings = dependencies.loadSyncSettings ?? getLibrarySyncSettings;
   const loadSpoolRows = dependencies.loadSpoolRows ?? loadAllSpoolRows;
   const fetchHostPrinterOverview =
@@ -73,12 +73,12 @@ export async function loadSettingsPageData(
   const listLocalPrinterOverview = dependencies.listLocalPrinterOverview ?? listPrinterOverview;
   const onHostLoadError = dependencies.onHostLoadError ?? console.warn;
 
-  const [snapshot, catalogRows, syncSettings] = await Promise.all([
+  const [snapshot, syncSettings] = await Promise.all([
     loadPrinterSettings(),
-    loadCatalogRows(5000),
     loadSyncSettings(),
   ]);
 
+  let catalogRows: MasterCatalogRow[] = [];
   let overviewRows: PrinterOverviewRow[];
   let spoolRows: SpoolWithMasterRow[];
   let bambuLiveIntegrations = mapBambuLiveIntegrations(snapshot.bambu_live_integrations);
@@ -92,24 +92,43 @@ export async function loadSettingsPageData(
       clientLibraryId: syncSettings.library_id,
     });
     if (hostTarget) {
-      const [hostOverviewResult, hostPrinterSettingsResult, hostSpoolRowsResult] =
-        await Promise.allSettled([
-          fetchHostPrinterOverview(hostTarget.baseUrl, hostTarget.libraryId),
-          fetchHostPrinterSettings(hostTarget.baseUrl, hostTarget.libraryId),
-          loadSpoolRows(
-            {
-              clientReadOnly: true,
-              clientHostBaseUrl: hostTarget.baseUrl,
-              clientLibraryId: hostTarget.libraryId,
-            },
-            5000,
-          ),
-        ]);
+      const [
+        hostCatalogRowsResult,
+        hostOverviewResult,
+        hostPrinterSettingsResult,
+        hostSpoolRowsResult,
+      ] = await Promise.allSettled([
+        loadCatalogRows({
+          clientReadOnly: true,
+          clientHostBaseUrl: hostTarget.baseUrl,
+          clientLibraryId: hostTarget.libraryId,
+          limit: 5000,
+        }),
+        fetchHostPrinterOverview(hostTarget.baseUrl, hostTarget.libraryId),
+        fetchHostPrinterSettings(hostTarget.baseUrl, hostTarget.libraryId),
+        loadSpoolRows(
+          {
+            clientReadOnly: true,
+            clientHostBaseUrl: hostTarget.baseUrl,
+            clientLibraryId: hostTarget.libraryId,
+          },
+          5000,
+        ),
+      ]);
 
       notifySettledErrors(
-        [hostOverviewResult, hostPrinterSettingsResult, hostSpoolRowsResult],
+        [
+          hostCatalogRowsResult,
+          hostOverviewResult,
+          hostPrinterSettingsResult,
+          hostSpoolRowsResult,
+        ],
         onHostLoadError,
       );
+
+      if (hostCatalogRowsResult.status === "fulfilled") {
+        catalogRows = hostCatalogRowsResult.value;
+      }
 
       if (hostOverviewResult.status === "fulfilled") {
         overviewRows = hostOverviewResult.value;
@@ -130,6 +149,10 @@ export async function loadSettingsPageData(
       overviewRows = cachedPrinterRows;
     }
   } else {
+    catalogRows = await loadCatalogRows({
+      clientReadOnly: false,
+      limit: 5000,
+    });
     spoolRows = await loadSpoolRows(
       {
         clientReadOnly: false,

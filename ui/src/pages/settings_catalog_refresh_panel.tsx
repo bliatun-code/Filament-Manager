@@ -27,6 +27,7 @@ type SettingsCatalogRefreshPanelProps = {
   catalogRefreshVendor: SettingsCatalogVendor;
   catalogVendor: SettingsCatalogVendor;
   showCatalogRefreshLog: boolean;
+  settingsClientReadOnly: boolean;
   swatchBusy: boolean;
   tauri: boolean;
   t: TranslateFn;
@@ -52,6 +53,7 @@ export function SettingsCatalogRefreshPanel({
   catalogRefreshVendor,
   catalogVendor,
   showCatalogRefreshLog,
+  settingsClientReadOnly,
   swatchBusy,
   tauri,
   t,
@@ -75,6 +77,14 @@ export function SettingsCatalogRefreshPanel({
                 "Choose vendor and refresh only the material families that need new products. A full vendor audit is slower and may mark unseen products as historical.",
               )}
             </div>
+            {settingsClientReadOnly ? (
+              <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-900 dark:text-sky-100">
+                {t(
+                  "settings.catalogRefreshClientHostOnly",
+                  "Vendor catalog updates run on the host. This client still shows the host catalog and can save swatch fixes there.",
+                )}
+              </div>
+            ) : null}
           </div>
           <div className={inlineStatusSignalClass("neutral", "text-sm")}>
             {t("settings.totalCatalog", "Catalog")}: {catalogCount}

@@ -43,6 +43,7 @@ mod library_sync_snapshot_commands;
 mod library_sync_spool_write_commands;
 mod library_sync_validation_commands;
 mod library_sync_wishlist_write_commands;
+mod optional_update;
 mod printer_active_commands;
 mod printer_bambu_live_commands;
 mod printer_command_support;
@@ -219,6 +220,7 @@ fn main() {
             library_sync_read_commands::fetch_library_sync_spools,
             library_sync_read_commands::fetch_library_sync_catalog_masters,
             library_sync_read_commands::fetch_library_sync_wishlist_items,
+            library_sync_read_commands::fetch_library_sync_full_backup_json,
             library_sync_cache_commands::fetch_cached_library_sync_spools,
             library_sync_read_commands::fetch_library_sync_printer_overview,
             library_sync_read_commands::fetch_library_sync_printer_settings,
@@ -232,10 +234,14 @@ fn main() {
             library_sync_spool_write_commands::create_library_sync_host_spool,
             library_sync_wishlist_write_commands::create_library_sync_host_wishlist_item,
             library_sync_printer_write_commands::create_library_sync_host_printer,
+            library_sync_printer_write_commands::save_library_sync_host_bambu_live_integration,
+            library_sync_printer_write_commands::update_library_sync_host_master_catalog_entry,
+            library_sync_printer_write_commands::refresh_library_sync_host_vendor_catalog,
             library_sync_wishlist_write_commands::update_library_sync_host_wishlist_item_status,
             library_sync_wishlist_write_commands::delete_library_sync_host_wishlist_item,
             library_sync_danger_zone_commands::delete_library_sync_host_spool,
             library_sync_printer_write_commands::delete_library_sync_host_printer,
+            library_sync_printer_write_commands::delete_library_sync_host_bambu_live_integration,
             library_sync_danger_zone_commands::purge_library_sync_host_spool,
             library_sync_spool_write_commands::update_library_sync_host_spool_weight,
             library_sync_spool_write_commands::update_library_sync_host_spool_tare_weight,
