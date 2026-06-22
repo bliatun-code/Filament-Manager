@@ -37,12 +37,7 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
-- [v0.16.0](RELEASE_NOTES_v0.16.0.md)
-- [v0.15.1](RELEASE_NOTES_v0.15.1.md)
-- [v0.15.0](RELEASE_NOTES_v0.15.0.md)
-- [v0.14.0](RELEASE_NOTES_v0.14.0.md)
-- [v0.13.0](RELEASE_NOTES_v0.13.0.md)
-- [v0.12.0](RELEASE_NOTES_v0.12.0.md)
+- [v0.17.0](RELEASE_NOTES_v0.17.0.md)
 
 ## Feature Overview
 
@@ -211,7 +206,7 @@ Windows MSI uses the per-user WiX template in `src-tauri/wix/per-user.wxs`.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current release target: `v0.16.0`
+- Current release target: `v0.17.0`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`
@@ -232,7 +227,7 @@ npm run verify
 The release workflow builds installer artifacts from tags and manual runs:
 
 - Workflow: `.github/workflows/release-build.yml`
-- Tag trigger: push tag matching `v*`, for example `v0.15.0`
+- Tag trigger: push tag matching `v*`, for example `v0.17.0`
 - Manual trigger: `workflow_dispatch` with `platform` set to `both`, `windows`,
   or `macos`
 - Outputs:
