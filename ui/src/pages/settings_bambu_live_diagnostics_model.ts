@@ -188,6 +188,12 @@ export function buildSettingsBambuLiveStatusNote({
   if (!rawNote) {
     return null;
   }
+  if (
+    observedState?.mqtt_connected &&
+    rawNote.toLowerCase().startsWith("failed to connect to printer mqtt")
+  ) {
+    return null;
+  }
   const hasDisplayedContext =
     observedSummaryParts.length > 0 ||
     fallbackSummaryParts.length > 0 ||

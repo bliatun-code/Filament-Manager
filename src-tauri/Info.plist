@@ -4,5 +4,7 @@
 <dict>
   <key>NSCameraUsageDescription</key>
   <string>Filament Manager uses the camera to scan Bambu box Filament Codes into the batch add flow.</string>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>Filament Manager connects to printers and companion devices on your local network.</string>
 </dict>
 </plist>

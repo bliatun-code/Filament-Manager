@@ -9,7 +9,7 @@ export function neutralChipClass(
   }`;
 }
 
-type SemanticChipTone = "neutral" | "info" | "success" | "warning" | "danger";
+export type SemanticChipTone = "neutral" | "info" | "success" | "warning" | "danger";
 
 const semanticToneClassByTone: Record<SemanticChipTone, string> = {
   neutral:

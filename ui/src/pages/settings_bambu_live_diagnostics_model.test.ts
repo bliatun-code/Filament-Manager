@@ -1904,6 +1904,23 @@ test("buildSettingsBambuLiveStatusNote distinguishes stale poll from missing dia
   );
 });
 
+test("buildSettingsBambuLiveStatusNote suppresses stale connection errors after MQTT reconnects", () => {
+  assert.equal(
+    buildSettingsBambuLiveStatusNote({
+      fallbackSummaryParts: [],
+      observedState: {
+        mqtt_connected: true,
+        online: true,
+        raw_status_note: "failed to connect to printer MQTT: No route to host (os error 65)",
+        trays: [],
+      },
+      observedSummaryParts: ["63%"],
+      t,
+    }),
+    null,
+  );
+});
+
 test("Bambu live diagnostic tray cards resolve snapshots per display tray", () => {
   const trayCards = buildSettingsBambuLiveDiagnosticTrayCards({
     amsReadInProgress: false,

@@ -230,9 +230,6 @@ fn merge_idle_observation(
         next.raw_payload_json = previous.raw_payload_json.clone();
     }
     next.trays = merge_tray_snapshots(&previous.trays, &next.trays);
-    if next.raw_status_note.is_none() {
-        next.raw_status_note = previous.raw_status_note.clone();
-    }
     next
 }
 
@@ -603,7 +600,7 @@ fn observe_printer_state(
         .next()
         .ok_or_else(|| "no printer address resolved".to_string())?;
     let tcp_stream = TcpStream::connect_timeout(&address, Duration::from_secs(5))
-        .map_err(|error| format!("failed to connect to printer MQTT: {error}"))?;
+        .map_err(|error| format_mqtt_connect_error(&error))?;
     tcp_stream
         .set_read_timeout(Some(Duration::from_secs(MQTT_TIMEOUT_SECS)))
         .map_err(|error| format!("failed to set MQTT read timeout: {error}"))?;
@@ -700,6 +697,28 @@ fn observe_printer_state(
         started.elapsed().as_millis().min(i64::MAX as u128) as i64,
     );
     Ok(merged)
+}
+
+fn format_mqtt_connect_error(error: &std::io::Error) -> String {
+    format_mqtt_connect_error_for_platform(error, cfg!(target_os = "macos"))
+}
+
+fn format_mqtt_connect_error_for_platform(error: &std::io::Error, is_macos: bool) -> String {
+    let base = format!("failed to connect to printer MQTT: {error}");
+    if is_macos && looks_like_macos_local_network_block(error) {
+        return format!(
+            "{base}. macOS may be blocking Filament Manager's Local Network access. Allow Filament Manager in System Settings > Privacy & Security > Local Network, then restart the app. If it is not listed, launch the app from Applications and retry the printer connection."
+        );
+    }
+    base
+}
+
+fn looks_like_macos_local_network_block(error: &std::io::Error) -> bool {
+    matches!(error.raw_os_error(), Some(51 | 65))
+        || error
+            .to_string()
+            .to_lowercase()
+            .contains("no route to host")
 }
 
 fn has_live_observation(state: &BambuLiveObservedStateRow) -> bool {

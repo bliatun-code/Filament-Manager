@@ -1271,6 +1271,44 @@ fn merge_idle_observation_does_not_carry_impossible_ams_air_temperature() {
 }
 
 #[test]
+fn merge_idle_observation_does_not_carry_stale_connection_error() {
+    let mut previous = super::default_offline_state();
+    previous.online = false;
+    previous.mqtt_connected = false;
+    previous.raw_status_note =
+        Some("failed to connect to printer MQTT: No route to host".to_string());
+
+    let mut next = super::default_offline_state();
+    next.online = true;
+    next.mqtt_connected = true;
+    next.last_seen_at = Some("2026-06-23T01:43:00Z".to_string());
+    next.progress_percent = Some(63);
+
+    let merged = super::merge_idle_observation(Some(&previous), next);
+
+    assert_eq!(merged.raw_status_note, None);
+}
+
+#[test]
+fn mqtt_connect_error_explains_probable_macos_local_network_block() {
+    let error = std::io::Error::from_raw_os_error(65);
+    let message = super::format_mqtt_connect_error_for_platform(&error, true);
+
+    assert!(message.starts_with("failed to connect to printer MQTT:"));
+    assert!(message.contains("Local Network access"));
+    assert!(message.contains("System Settings > Privacy & Security > Local Network"));
+}
+
+#[test]
+fn mqtt_connect_error_keeps_plain_socket_message_outside_macos() {
+    let error = std::io::Error::from_raw_os_error(65);
+    let message = super::format_mqtt_connect_error_for_platform(&error, false);
+
+    assert!(message.starts_with("failed to connect to printer MQTT:"));
+    assert!(!message.contains("Local Network access"));
+}
+
+#[test]
 fn merge_idle_observation_drops_carried_progress_when_cancelled_print_goes_cold() {
     let mut previous = super::default_offline_state();
     previous.online = true;

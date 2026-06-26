@@ -1,6 +1,6 @@
 import { describePrinterCapability } from "../lib/printer_profiles";
 import type { PrinterRow } from "../lib/tauri_client";
-import { inlineStatusSignalClass } from "../lib/chip_styles";
+import { inlineStatusSignalClass, type SemanticChipTone } from "../lib/chip_styles";
 import { useI18n } from "../lib/i18n";
 import { PrinterModelPreview } from "./printer_model_preview";
 
@@ -12,11 +12,11 @@ type SettingsPrinterCardHeaderProps = {
   hasMultiMaterial: boolean;
   isEditing: boolean;
   isExpanded: boolean;
+  liveStatusTone: SemanticChipTone;
   onRemove: () => void;
   onToggleDetails: () => void;
   onToggleEdit: () => void;
   printer: PrinterRow;
-  reviewTrayCount: number;
   tauri: boolean;
 };
 
@@ -28,11 +28,11 @@ export function SettingsPrinterCardHeader({
   hasMultiMaterial,
   isEditing,
   isExpanded,
+  liveStatusTone,
   onRemove,
   onToggleDetails,
   onToggleEdit,
   printer,
-  reviewTrayCount,
   tauri,
 }: SettingsPrinterCardHeaderProps) {
   const { t } = useI18n();
@@ -52,7 +52,7 @@ export function SettingsPrinterCardHeader({
           {hasLiveIntegration ? (
             <span
               className={inlineStatusSignalClass(
-                reviewTrayCount > 0 ? "warning" : "neutral",
+                liveStatusTone,
                 "text-[11px]",
               )}
             >

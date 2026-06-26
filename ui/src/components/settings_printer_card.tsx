@@ -12,6 +12,7 @@ import {
 import { printerBrandSurfaceStyle } from "../lib/printer_branding";
 import { useI18n } from "../lib/i18n";
 import { useResolvedTheme } from "../lib/theme_mode";
+import type { SemanticChipTone } from "../lib/chip_styles";
 import type {
   BambuLiveIntegrationSettings,
   PrinterAmsSlotRow,
@@ -84,6 +85,20 @@ type SettingsPrinterCardProps = {
   onRemove: () => void;
 };
 
+function settingsPrinterLiveStatusTone(
+  liveConfig: BambuLiveIntegrationSettings | null,
+): SemanticChipTone {
+  if (!liveConfig?.enabled) {
+    return "neutral";
+  }
+
+  if (liveConfig.observed_state?.mqtt_connected) {
+    return "success";
+  }
+
+  return "warning";
+}
+
 export function SettingsPrinterCard({
   confirmDelete,
   editActions,
@@ -103,7 +118,6 @@ export function SettingsPrinterCard({
   const resolvedTheme = useResolvedTheme();
   const hasMultiMaterial = hasConfiguredMultiMaterial(printerSlots);
   const configuredSetup = describeConfiguredPrinterSetup(t, printer.model, printerSlots);
-  const { reviewTrayCount } = liveDiagnostics.model;
 
   return (
     <div
@@ -118,11 +132,11 @@ export function SettingsPrinterCard({
         hasMultiMaterial={hasMultiMaterial}
         isEditing={isEditing}
         isExpanded={expanded}
+        liveStatusTone={settingsPrinterLiveStatusTone(liveDiagnostics.liveConfig)}
         onRemove={onRemove}
         onToggleDetails={liveDiagnosticsActions.onToggleDetails}
         onToggleEdit={isEditing ? editActions.onCancel : editActions.onStart}
         printer={printer}
-        reviewTrayCount={reviewTrayCount}
         tauri={tauri}
       />
 

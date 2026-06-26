@@ -277,6 +277,11 @@ If macOS blocks first launch of an unsigned build downloaded from GitHub:
 xattr -dr com.apple.quarantine "/Applications/Filament Manager.app"
 ```
 
+If Bambu Live works in development but the installed DMG reports `No route to
+host` for a reachable printer, allow Filament Manager in `System Settings ->
+Privacy & Security -> Local Network`, then restart the app. The installed app
+uses a different macOS privacy identity than the development process.
+
 Windows:
 
 - Supported installer path: Windows 11 + Tauri MSI.
