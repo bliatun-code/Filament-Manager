@@ -12,6 +12,7 @@ use crate::bambu_live_sync::{
 };
 use serde_json::Value;
 use std::io::Cursor;
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -25,6 +26,10 @@ fn temp_db_path(test_name: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
         "filament-manager-bambu-live-{test_name}-{nanos}.db"
     ))
+}
+
+fn mqtt_attempt(address: &str, error: std::io::Error) -> (SocketAddr, std::io::Error) {
+    (address.parse().expect("valid socket address"), error)
 }
 
 fn make_slot() -> PrinterAmsSlotRow {
@@ -1291,20 +1296,45 @@ fn merge_idle_observation_does_not_carry_stale_connection_error() {
 
 #[test]
 fn mqtt_connect_error_explains_probable_macos_local_network_block() {
-    let error = std::io::Error::from_raw_os_error(65);
-    let message = super::format_mqtt_connect_error_for_platform(&error, true);
+    let attempts = vec![
+        mqtt_attempt("[fe80::1]:8883", std::io::Error::from_raw_os_error(65)),
+        mqtt_attempt("192.168.86.22:8883", std::io::Error::from_raw_os_error(65)),
+    ];
+    let message = super::format_mqtt_connect_errors_for_platform(&attempts, true);
 
-    assert!(message.starts_with("failed to connect to printer MQTT:"));
+    assert!(message.starts_with("failed to connect to printer MQTT on all 2 resolved addresses:"));
+    assert!(message.contains("[fe80::1]:8883"));
+    assert!(message.contains("192.168.86.22:8883"));
     assert!(message.contains("Local Network access"));
     assert!(message.contains("System Settings > Privacy & Security > Local Network"));
 }
 
 #[test]
 fn mqtt_connect_error_keeps_plain_socket_message_outside_macos() {
-    let error = std::io::Error::from_raw_os_error(65);
-    let message = super::format_mqtt_connect_error_for_platform(&error, false);
+    let attempts = vec![mqtt_attempt(
+        "192.168.86.22:8883",
+        std::io::Error::from_raw_os_error(65),
+    )];
+    let message = super::format_mqtt_connect_errors_for_platform(&attempts, false);
 
-    assert!(message.starts_with("failed to connect to printer MQTT:"));
+    assert!(message.starts_with("failed to connect to printer MQTT at 192.168.86.22:8883:"));
+    assert!(message.contains("No route to host") || message.contains("os error 65"));
+    assert!(!message.contains("Local Network access"));
+}
+
+#[test]
+fn mqtt_connect_error_avoids_local_network_hint_for_mixed_failures() {
+    let attempts = vec![
+        mqtt_attempt("[fe80::1]:8883", std::io::Error::from_raw_os_error(65)),
+        mqtt_attempt(
+            "192.168.86.22:8883",
+            std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "connection refused"),
+        ),
+    ];
+    let message = super::format_mqtt_connect_errors_for_platform(&attempts, true);
+
+    assert!(message.contains("all 2 resolved addresses"));
+    assert!(message.contains("connection refused"));
     assert!(!message.contains("Local Network access"));
 }
 

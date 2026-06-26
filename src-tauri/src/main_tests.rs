@@ -1,7 +1,39 @@
 use crate::backend::filament_database::{FilamentDatabase, TrustedLanSettingsRow};
 use crate::trusted_lan_runtime_commands::load_trusted_lan_runtime;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+static DB_PATH_ENV_LOCK: Mutex<()> = Mutex::new(());
+
+struct EnvVarGuard {
+    key: &'static str,
+    original: Option<OsString>,
+}
+
+impl EnvVarGuard {
+    fn set(key: &'static str, value: Option<&OsStr>) -> Self {
+        let guard = Self {
+            key,
+            original: std::env::var_os(key),
+        };
+        match value {
+            Some(value) => std::env::set_var(key, value),
+            None => std::env::remove_var(key),
+        }
+        guard
+    }
+}
+
+impl Drop for EnvVarGuard {
+    fn drop(&mut self) {
+        match &self.original {
+            Some(value) => std::env::set_var(self.key, value),
+            None => std::env::remove_var(self.key),
+        }
+    }
+}
 
 fn temp_db_path(test_name: &str) -> PathBuf {
     let nanos = SystemTime::now()
@@ -56,6 +88,52 @@ fn migration_probe_spool_count(path: &Path) -> Result<i64, String> {
             row.get::<_, i64>(0)
         })
         .map_err(|error| error.to_string())
+}
+
+#[test]
+fn app_db_path_override_prefers_current_env_var() {
+    use super::{app_db_path_override_from_env, APP_DB_PATH_ENV_VAR, LEGACY_APP_DB_PATH_ENV_VAR};
+
+    let _lock = DB_PATH_ENV_LOCK.lock().unwrap();
+    let current = temp_db_path("current-db-env");
+    let legacy = temp_db_path("legacy-db-env");
+    let _current_guard = EnvVarGuard::set(APP_DB_PATH_ENV_VAR, Some(current.as_os_str()));
+    let _legacy_guard = EnvVarGuard::set(LEGACY_APP_DB_PATH_ENV_VAR, Some(legacy.as_os_str()));
+
+    assert_eq!(
+        app_db_path_override_from_env().as_deref(),
+        Some(current.as_path())
+    );
+}
+
+#[test]
+fn app_db_path_override_keeps_legacy_env_var_as_fallback() {
+    use super::{app_db_path_override_from_env, APP_DB_PATH_ENV_VAR, LEGACY_APP_DB_PATH_ENV_VAR};
+
+    let _lock = DB_PATH_ENV_LOCK.lock().unwrap();
+    let legacy = temp_db_path("legacy-db-env-fallback");
+    let _current_guard = EnvVarGuard::set(APP_DB_PATH_ENV_VAR, None);
+    let _legacy_guard = EnvVarGuard::set(LEGACY_APP_DB_PATH_ENV_VAR, Some(legacy.as_os_str()));
+
+    assert_eq!(
+        app_db_path_override_from_env().as_deref(),
+        Some(legacy.as_path())
+    );
+}
+
+#[test]
+fn app_db_path_override_ignores_empty_current_env_var() {
+    use super::{app_db_path_override_from_env, APP_DB_PATH_ENV_VAR, LEGACY_APP_DB_PATH_ENV_VAR};
+
+    let _lock = DB_PATH_ENV_LOCK.lock().unwrap();
+    let legacy = temp_db_path("empty-current-db-env");
+    let _current_guard = EnvVarGuard::set(APP_DB_PATH_ENV_VAR, Some(OsStr::new("")));
+    let _legacy_guard = EnvVarGuard::set(LEGACY_APP_DB_PATH_ENV_VAR, Some(legacy.as_os_str()));
+
+    assert_eq!(
+        app_db_path_override_from_env().as_deref(),
+        Some(legacy.as_path())
+    );
 }
 
 #[test]

@@ -191,6 +191,10 @@ Build only a macOS DMG:
 npm run tauri -- build --bundles dmg
 ```
 
+On macOS, `npm run tauri` ad-hoc signs local builds so bundle entitlements are
+applied. Set `FILAMENT_MANAGER_MACOS_SIGNING_IDENTITY` or pass Tauri `--config`
+when building with a specific signing identity.
+
 Build only a Windows MSI on Windows:
 
 ```powershell
@@ -299,7 +303,7 @@ Windows:
 Safe Bambu catalog refresh from the scraper:
 
 ```bash
-BAMBU_DB_PATH=./data/filament-manager.db npm run scrape:auto:safe
+FILAMENT_MANAGER_DB_PATH=./data/filament-manager.db npm run scrape:auto:safe
 ```
 
 Manual scraper run:
@@ -307,7 +311,7 @@ Manual scraper run:
 ```bash
 BAMBU_BASE_URL=https://eu.store.bambulab.com \
 BAMBU_COLLECTION=bambu-lab-3d-printer-filament \
-BAMBU_DB_PATH=./data/filament-manager.db \
+FILAMENT_MANAGER_DB_PATH=./data/filament-manager.db \
 npm run scrape
 ```
 
@@ -318,6 +322,8 @@ Optional tuning:
 - `BAMBU_TIMEOUT_MS=20000`
 - `BAMBU_PRODUCT_DELAY_MS=200`
 - `BAMBU_MATERIAL_TYPES=PLA,PETG` to refresh a smaller material slice
+- `BAMBU_DB_PATH` is still accepted as a legacy alias for
+  `FILAMENT_MANAGER_DB_PATH`
 
 Catalog data is stored in SQLite in `filament_master_list`. The app ships with
 a sanitized, case-normalized seed catalog in

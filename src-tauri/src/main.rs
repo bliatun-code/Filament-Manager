@@ -84,8 +84,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::Manager;
 
 pub(crate) const APP_DB_FILE_NAME: &str = "filament-manager.db";
+pub(crate) const APP_DB_PATH_ENV_VAR: &str = "FILAMENT_MANAGER_DB_PATH";
 pub(crate) const LEGACY_APP_DB_FILE_NAME: &str = "bambu.db";
 pub(crate) const LEGACY_APP_DATA_DIR_NAME: &str = "com.bambu.filament.manager";
+pub(crate) const LEGACY_APP_DB_PATH_ENV_VAR: &str = "BAMBU_DB_PATH";
 const USER_DATA_TABLES: &[&str] = &[
     "filament_spools",
     "printers",
@@ -296,8 +298,7 @@ fn main() {
 }
 
 fn ensure_db(app: &tauri::App) -> Result<PathBuf, String> {
-    if let Ok(env_path) = std::env::var("BAMBU_DB_PATH") {
-        let path = PathBuf::from(env_path);
+    if let Some(path) = app_db_path_override_from_env() {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
         }
@@ -314,6 +315,16 @@ fn ensure_db(app: &tauri::App) -> Result<PathBuf, String> {
     db.apply_schema()
         .map_err(|error| format!("DB schema: {error:?}"))?;
     Ok(db_path)
+}
+
+fn app_db_path_override_from_env() -> Option<PathBuf> {
+    env_path(APP_DB_PATH_ENV_VAR).or_else(|| env_path(LEGACY_APP_DB_PATH_ENV_VAR))
+}
+
+fn env_path(name: &str) -> Option<PathBuf> {
+    std::env::var_os(name)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
 }
 
 fn resolve_app_storage_dir_for_app(app: &tauri::App) -> Result<PathBuf, String> {

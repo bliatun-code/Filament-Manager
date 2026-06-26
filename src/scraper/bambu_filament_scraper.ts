@@ -10,6 +10,8 @@ export const DEFAULT_BASE_URLS = [
 ];
 export const DEFAULT_COLLECTION_HANDLE = "bambu-lab-3d-printer-filament";
 export const DEFAULT_DB_PATH = "./filament-manager.db";
+export const APP_DB_PATH_ENV_VAR = "FILAMENT_MANAGER_DB_PATH";
+export const LEGACY_APP_DB_PATH_ENV_VAR = "BAMBU_DB_PATH";
 const DEFAULT_WEIGHT_G = 1000;
 const REQUEST_TIMEOUT_MS = Number.parseInt(process.env.BAMBU_TIMEOUT_MS ?? "20000", 10);
 const MAX_FETCH_RETRIES = Number.parseInt(process.env.BAMBU_FETCH_RETRIES ?? "2", 10);
@@ -78,6 +80,16 @@ export type ScrapeOptions = {
   verbose?: boolean;
   materialTypes?: string[];
 };
+
+function dbPathFromEnv(): string | undefined {
+  const current = process.env[APP_DB_PATH_ENV_VAR]?.trim();
+  if (current) {
+    return current;
+  }
+
+  const legacy = process.env[LEGACY_APP_DB_PATH_ENV_VAR]?.trim();
+  return legacy || undefined;
+}
 
 type FetchResult = {
   baseUrl: string;
@@ -1308,7 +1320,7 @@ export async function runScrape(
     options.collectionHandle ??
     process.env.BAMBU_COLLECTION ??
     DEFAULT_COLLECTION_HANDLE;
-  const dbPath = options.dbPath ?? process.env.BAMBU_DB_PATH ?? DEFAULT_DB_PATH;
+  const dbPath = options.dbPath ?? dbPathFromEnv() ?? DEFAULT_DB_PATH;
   const verbose = options.verbose ?? process.env.BAMBU_VERBOSE === "1";
   const materialFilters = normalizeMaterialFilters(
     options.materialTypes ??

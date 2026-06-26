@@ -19,7 +19,7 @@ use native_tls::TlsConnector;
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 use std::io::Write;
-use std::net::{TcpStream, ToSocketAddrs};
+use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 const BAMBU_MQTT_PORT: u16 = 8883;
@@ -594,13 +594,7 @@ fn observe_printer_state(
     access_code: &str,
     printer_serial: &str,
 ) -> Result<BambuLiveObservedStateRow, String> {
-    let address = (host, BAMBU_MQTT_PORT)
-        .to_socket_addrs()
-        .map_err(|error| format!("failed to resolve printer host: {error}"))?
-        .next()
-        .ok_or_else(|| "no printer address resolved".to_string())?;
-    let tcp_stream = TcpStream::connect_timeout(&address, Duration::from_secs(5))
-        .map_err(|error| format_mqtt_connect_error(&error))?;
+    let tcp_stream = connect_printer_mqtt_tcp(host)?;
     tcp_stream
         .set_read_timeout(Some(Duration::from_secs(MQTT_TIMEOUT_SECS)))
         .map_err(|error| format!("failed to set MQTT read timeout: {error}"))?;
@@ -699,13 +693,63 @@ fn observe_printer_state(
     Ok(merged)
 }
 
-fn format_mqtt_connect_error(error: &std::io::Error) -> String {
-    format_mqtt_connect_error_for_platform(error, cfg!(target_os = "macos"))
+fn connect_printer_mqtt_tcp(host: &str) -> Result<TcpStream, String> {
+    let addresses = resolve_printer_mqtt_addresses(host)?;
+    let mut attempts = Vec::new();
+
+    for address in addresses {
+        match TcpStream::connect_timeout(&address, Duration::from_secs(5)) {
+            Ok(stream) => return Ok(stream),
+            Err(error) => attempts.push((address, error)),
+        }
+    }
+
+    Err(format_mqtt_connect_errors(&attempts))
 }
 
-fn format_mqtt_connect_error_for_platform(error: &std::io::Error, is_macos: bool) -> String {
-    let base = format!("failed to connect to printer MQTT: {error}");
-    if is_macos && looks_like_macos_local_network_block(error) {
+fn resolve_printer_mqtt_addresses(host: &str) -> Result<Vec<SocketAddr>, String> {
+    let addresses = (host, BAMBU_MQTT_PORT)
+        .to_socket_addrs()
+        .map_err(|error| format!("failed to resolve printer host: {error}"))?
+        .collect::<Vec<_>>();
+
+    if addresses.is_empty() {
+        return Err("no printer address resolved".to_string());
+    }
+
+    Ok(addresses)
+}
+
+fn format_mqtt_connect_errors(attempts: &[(SocketAddr, std::io::Error)]) -> String {
+    format_mqtt_connect_errors_for_platform(attempts, cfg!(target_os = "macos"))
+}
+
+fn format_mqtt_connect_errors_for_platform(
+    attempts: &[(SocketAddr, std::io::Error)],
+    is_macos: bool,
+) -> String {
+    let base = match attempts {
+        [] => "failed to connect to printer MQTT: no printer address resolved".to_string(),
+        [(address, error)] => format!("failed to connect to printer MQTT at {address}: {error}"),
+        _ => {
+            let details = attempts
+                .iter()
+                .map(|(address, error)| format!("{address}: {error}"))
+                .collect::<Vec<_>>()
+                .join("; ");
+            format!(
+                "failed to connect to printer MQTT on all {} resolved addresses: {details}",
+                attempts.len()
+            )
+        }
+    };
+
+    if is_macos
+        && !attempts.is_empty()
+        && attempts
+            .iter()
+            .all(|(_, error)| looks_like_macos_local_network_block(error))
+    {
         return format!(
             "{base}. macOS may be blocking Filament Manager's Local Network access. Allow Filament Manager in System Settings > Privacy & Security > Local Network, then restart the app. If it is not listed, launch the app from Applications and retry the printer connection."
         );
