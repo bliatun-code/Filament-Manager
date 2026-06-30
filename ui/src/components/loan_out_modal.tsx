@@ -16,7 +16,10 @@ import {
 } from "../lib/display_format";
 import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
-import { inventoryCatalogRowStyle } from "../lib/inventory_swatch_style";
+import {
+  inventoryCatalogRowStyle,
+  inventorySwatchActionButtonStyle,
+} from "../lib/inventory_swatch_style";
 import { useResolvedTheme } from "../lib/theme_mode";
 import { lendInventorySpool } from "../lib/loan_data_source";
 import {
@@ -316,78 +319,76 @@ export function LoanOutModal({
 
               <div className={panelCardClassName}>
                 {selectedSpool ? (
-                  <div className="space-y-4">
-                    <div
-                      className="rounded-[1.4rem] border px-4 py-4 shadow-sm shadow-slate-200/15 dark:shadow-none"
-                      style={swatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/75 bg-white/65 p-2 shadow-sm shadow-slate-200/25 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
-                          <span
-                            className="h-full w-full rounded-xl border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
-                            style={{
-                              background: swatchCssBackground(selectedSpool.hexColor),
-                            }}
-                          />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-                            {t("inventory.selectionPreview", "Selection preview")}
-                          </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-2">
-                            <div className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-                              {formatFilamentDisplayTitle(
-                                selectedSpool.material,
-                                selectedSpool.filamentName,
-                                selectedSpool.colorName,
-                              )}
-                            </div>
-                            <VendorBadge vendor={selectedSpool.vendor} compact />
-                          </div>
+                  <div
+                    className="rounded-[1.4rem] border px-4 py-4 shadow-sm shadow-slate-200/15 dark:shadow-none"
+                    style={swatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/75 bg-white/65 p-2 shadow-sm shadow-slate-200/25 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
+                        <span
+                          className="h-full w-full rounded-xl border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
+                          style={{
+                            background: swatchCssBackground(selectedSpool.hexColor),
+                          }}
+                        />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+                          {t("inventory.selectionPreview", "Selection preview")}
                         </div>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.25fr)_minmax(132px,0.8fr)]">
-                        <div
-                          className="rounded-xl border px-3 py-2.5"
-                          style={swatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
-                        >
-                          <div className={detailLabelClassName}>
-                            {t("inventory.reference", "Reference")}
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <div className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+                            {formatFilamentDisplayTitle(
+                              selectedSpool.material,
+                              selectedSpool.filamentName,
+                              selectedSpool.colorName,
+                            )}
                           </div>
-                          <div
-                            className={`${detailValueClassName} font-mono`}
-                            title={`#${selectedSpool.id}`}
-                          >
-                            {selectedReferenceLabel}
-                          </div>
-                        </div>
-                        <div
-                          className="rounded-xl border px-3 py-2.5"
-                          style={swatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
-                        >
-                          <div className={detailLabelClassName}>
-                            {t("inventory.remaining", "Remaining")}
-                          </div>
-                          <div className={detailValueClassName}>
-                            {formatLoanOutGrams(selectedSpool.remainingGrams)}
-                          </div>
-                        </div>
-                        <div
-                          className="rounded-xl border px-3 py-2.5 sm:col-span-2"
-                          style={swatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
-                        >
-                          <div className={detailLabelClassName}>
-                            {t("inventory.location", "Location")}
-                          </div>
-                          <div className={detailValueClassName} title={selectedPlacementLabel ?? ""}>
-                            {selectedPlacementLabel}
-                          </div>
+                          <VendorBadge vendor={selectedSpool.vendor} compact />
                         </div>
                       </div>
                     </div>
 
-                    <div className="rounded-[1.4rem] border border-slate-200/80 bg-white/94 p-4 shadow-sm shadow-slate-200/18 dark:border-slate-700/70 dark:bg-slate-950/35 dark:shadow-none">
+                    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.25fr)_minmax(132px,0.8fr)]">
+                      <div
+                        className="rounded-xl border px-3 py-2.5"
+                        style={swatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
+                      >
+                        <div className={detailLabelClassName}>
+                          {t("inventory.reference", "Reference")}
+                        </div>
+                        <div
+                          className={`${detailValueClassName} font-mono`}
+                          title={`#${selectedSpool.id}`}
+                        >
+                          {selectedReferenceLabel}
+                        </div>
+                      </div>
+                      <div
+                        className="rounded-xl border px-3 py-2.5"
+                        style={swatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
+                      >
+                        <div className={detailLabelClassName}>
+                          {t("inventory.remaining", "Remaining")}
+                        </div>
+                        <div className={detailValueClassName}>
+                          {formatLoanOutGrams(selectedSpool.remainingGrams)}
+                        </div>
+                      </div>
+                      <div
+                        className="rounded-xl border px-3 py-2.5 sm:col-span-2"
+                        style={swatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
+                      >
+                        <div className={detailLabelClassName}>
+                          {t("inventory.location", "Location")}
+                        </div>
+                        <div className={detailValueClassName} title={selectedPlacementLabel ?? ""}>
+                          {selectedPlacementLabel}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 border-t border-white/60 pt-4 dark:border-white/10">
                       <div className={panelTitleClassName}>
                         {t("inventory.loanDetails", "Loan details")}
                       </div>
@@ -450,6 +451,10 @@ export function LoanOutModal({
                         onClick={() => void handleSubmit()}
                         disabled={!tauri || busy}
                         className={`mt-4 w-full ${modalActionButtonClassName("solid", "roomy")}`}
+                        style={inventorySwatchActionButtonStyle(
+                          selectedSpool.hexColor,
+                          resolvedTheme,
+                        )}
                       >
                         {t("inventory.loanOutRoll", "Loan out roll")}
                       </button>
