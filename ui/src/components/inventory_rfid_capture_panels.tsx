@@ -9,6 +9,7 @@ import { useI18n } from "../lib/i18n";
 import type { InventorySpool } from "../lib/inventory_list_model";
 import {
   assessRfidCaptureMatch,
+  buildRfidCaptureSlotLiveStatus,
   formatCaptureTimestamp,
   formatRfidCapturePresetName,
   rfidCaptureMatchMeta,
@@ -26,6 +27,9 @@ type RfidCaptureMatchMeta = {
 
 type RfidCaptureSlotOption = {
   amsId: string;
+  liveIsActive?: boolean | null;
+  liveLastIdentitySeenAt?: string | null;
+  liveLoaded?: boolean | null;
   liveMqttConnected?: boolean | null;
   livePrinterLastSeenAt?: string | null;
   printerModel: string;
@@ -131,7 +135,7 @@ export function InventoryRfidCaptureSlotPicker({
   slots,
   spool,
 }: InventoryRfidCaptureSlotPickerProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
 
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:col-span-2 min-[900px]:col-span-4 dark:border-slate-700 dark:bg-slate-900/60">
@@ -150,6 +154,8 @@ export function InventoryRfidCaptureSlotPicker({
             assessRfidCaptureMatch(spool, slotSummary),
             t,
           );
+          const slotLiveStatus = buildRfidCaptureSlotLiveStatus(slot, locale, t);
+          const hasSlotMeta = Boolean(slotMatchMeta || slotLiveStatus.stateLabel);
           return (
             <button
               key={slot.slotId}
@@ -168,9 +174,21 @@ export function InventoryRfidCaptureSlotPicker({
                 />
                 <span>{label ?? `Slot ${slot.slotIndex}`}</span>
               </div>
-              {slotMatchMeta ? (
-                <div className="mt-1">
-                  <span className={slotMatchMeta.className}>{slotMatchMeta.label}</span>
+              {hasSlotMeta ? (
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  {slotMatchMeta ? (
+                    <span className={slotMatchMeta.className}>{slotMatchMeta.label}</span>
+                  ) : null}
+                  {slotLiveStatus.stateLabel && slotLiveStatus.stateClassName ? (
+                    <span className={slotLiveStatus.stateClassName}>
+                      {slotLiveStatus.stateLabel}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+              {slotLiveStatus.observedText ? (
+                <div className="mt-1 text-[11px] font-normal leading-snug text-slate-500 dark:text-slate-400">
+                  {slotLiveStatus.observedText}
                 </div>
               ) : null}
             </button>

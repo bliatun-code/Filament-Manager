@@ -74,7 +74,9 @@ export type RfidCaptureHostSlotLike = {
   amsId: string;
   slotId: string;
   slotIndex: number;
+  liveIsActive?: boolean | null;
   liveLoaded?: boolean | null;
+  liveMqttConnected?: boolean | null;
   liveObservedRfidTag?: string | null;
   liveTrayUuid?: string | null;
   liveChipId?: string | null;
@@ -94,6 +96,12 @@ export type RfidCaptureHostSlotLike = {
 
 export type RfidCapturePrinterSlotLike = RfidCaptureHostSlotLike & {
   printerId: string;
+};
+
+export type RfidCaptureSlotLiveStatus = {
+  observedText: string | null;
+  stateClassName: string | null;
+  stateLabel: string | null;
 };
 
 export function formatCaptureTimestamp(raw: string, locale: Locale): string {
@@ -160,6 +168,57 @@ export function formatObservedAge(raw: string | null | undefined, locale: Locale
   }
   const diffDays = Math.round(diffHours / 24);
   return locale === "nb" ? `${diffDays} dager siden` : `${diffDays} days ago`;
+}
+
+export function buildRfidCaptureSlotLiveStatus(
+  slot: Pick<
+    RfidCaptureHostSlotLike,
+    | "liveIsActive"
+    | "liveLoaded"
+    | "liveLastIdentitySeenAt"
+    | "liveMqttConnected"
+    | "livePrinterLastSeenAt"
+  >,
+  locale: Locale,
+  t: (key: string, fallback: string) => string,
+): RfidCaptureSlotLiveStatus {
+  const state =
+    slot.liveIsActive === true
+      ? {
+          label: t("inventory.rfidSlotActive", "Active"),
+          className: inlineStatusSignalClass("success", "text-[10px]"),
+        }
+      : slot.liveLoaded === true
+        ? {
+            label: t("inventory.rfidSlotLoaded", "Loaded"),
+            className: inlineStatusSignalClass("info", "text-[10px]"),
+          }
+        : slot.liveLoaded === false
+          ? {
+              label: t("inventory.rfidSlotEmpty", "Empty"),
+              className: inlineStatusSignalClass("neutral", "text-[10px]"),
+            }
+          : slot.liveMqttConnected === true
+            ? {
+                label: t("inventory.rfidSlotLive", "Live"),
+                className: inlineStatusSignalClass("neutral", "text-[10px]"),
+              }
+            : null;
+
+  const identitySeenAt = slot.liveLastIdentitySeenAt?.trim() || null;
+  const liveSeenAt = slot.livePrinterLastSeenAt?.trim() || null;
+  const observedAt = identitySeenAt ?? liveSeenAt;
+  const observedLabel = identitySeenAt
+    ? t("inventory.rfidSlotIdentitySeen", "RFID seen")
+    : t("inventory.rfidSlotLiveSeen", "Live seen");
+
+  return {
+    observedText: observedAt
+      ? `${observedLabel}: ${formatCaptureTimestamp(observedAt, locale)}`
+      : null,
+    stateClassName: state?.className ?? null,
+    stateLabel: state?.label ?? null,
+  };
 }
 
 export function rfidBindingCopy(

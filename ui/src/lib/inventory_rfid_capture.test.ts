@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   assessRfidCaptureMatch,
   buildRfidCaptureSlotSummaries,
+  buildRfidCaptureSlotLiveStatus,
   buildSelectedRfidCaptureSnapshot,
   decodeTrayExistBitsSlotPresence,
   filterRfidCaptureSlots,
@@ -174,6 +175,54 @@ test("rfidBindingCopy avoids freshness language for saved RFID identities", () =
     rfidBindingCopy("LINKED_SEEN", t).label,
     "inventory.rfidRegistered:RFID registered",
   );
+});
+
+test("buildRfidCaptureSlotLiveStatus summarizes active identity sightings", () => {
+  const status = buildRfidCaptureSlotLiveStatus(
+    createSlot({
+      liveIsActive: true,
+      liveLoaded: true,
+      liveLastIdentitySeenAt: "2026-06-30T12:00:00.000Z",
+      livePrinterLastSeenAt: "2026-06-30T12:01:00.000Z",
+    }),
+    "en",
+    (_key, fallback) => fallback,
+  );
+
+  assert.equal(status.stateLabel, "Active");
+  assert.match(status.stateClassName ?? "", /emerald|green|success/);
+  assert.match(status.observedText ?? "", /^RFID seen:/);
+  assert.match(status.observedText ?? "", /06\/30/);
+});
+
+test("buildRfidCaptureSlotLiveStatus falls back to loaded live printer sightings", () => {
+  const status = buildRfidCaptureSlotLiveStatus(
+    createSlot({
+      liveLoaded: true,
+      liveLastIdentitySeenAt: null,
+      livePrinterLastSeenAt: "2026-06-30T12:01:00.000Z",
+    }),
+    "en",
+    (_key, fallback) => fallback,
+  );
+
+  assert.equal(status.stateLabel, "Loaded");
+  assert.match(status.observedText ?? "", /^Live seen:/);
+});
+
+test("buildRfidCaptureSlotLiveStatus reports empty slots without timestamps", () => {
+  const status = buildRfidCaptureSlotLiveStatus(
+    createSlot({
+      liveLoaded: false,
+      liveLastIdentitySeenAt: null,
+      livePrinterLastSeenAt: null,
+    }),
+    "en",
+    (_key, fallback) => fallback,
+  );
+
+  assert.equal(status.stateLabel, "Empty");
+  assert.equal(status.observedText, null);
 });
 
 test("filterRfidCaptureSlots prefers assigned-printer capture sources", () => {
