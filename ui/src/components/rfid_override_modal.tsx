@@ -9,7 +9,7 @@ import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
 import type { SlotRfidOverridePrompt } from "../lib/printer_slot_model";
 import { AppModal } from "./app_modal";
 import { modalActionButtonClassName } from "./modal_action_button_class";
-import { ModalHeader } from "./modal_chrome";
+import { modalDetailLabelClassName, ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 
 type RfidOverrideModalProps = {
@@ -75,7 +75,7 @@ export function RfidOverrideModal({
             </div>
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
               <div>
-                <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                <dt className={modalDetailLabelClassName}>
                   {t("inventory.rfidCurrentTag", "Saved RFID")}
                 </dt>
                 <dd className="mt-1 break-all font-mono text-slate-900 dark:text-slate-100">
@@ -83,7 +83,7 @@ export function RfidOverrideModal({
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                <dt className={modalDetailLabelClassName}>
                   {t("inventory.rfidObservedTag", "Observed RFID")}
                 </dt>
                 <dd className="mt-1 break-all font-mono text-slate-900 dark:text-slate-100">
@@ -91,7 +91,7 @@ export function RfidOverrideModal({
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                <dt className={modalDetailLabelClassName}>
                   {t("inventory.rfidObservedColor", "Observed color")}
                 </dt>
                 <dd className="mt-1 flex items-center gap-2 text-slate-900 dark:text-slate-100">
@@ -103,7 +103,7 @@ export function RfidOverrideModal({
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                <dt className={modalDetailLabelClassName}>
                   {t("inventory.rfidLastSeen", "Last seen")}
                 </dt>
                 <dd className="mt-1 text-slate-900 dark:text-slate-100">
