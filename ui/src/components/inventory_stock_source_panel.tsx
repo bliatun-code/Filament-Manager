@@ -33,6 +33,20 @@ type InventoryStockSourcePanelProps = {
   tauriAvailable: boolean;
 };
 
+function inventoryStockCatalogRowClassName(selected: boolean): string {
+  const base =
+    "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-[13px] outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+
+  if (selected) {
+    return `${base} border-slate-900/20 ring-1 ring-slate-900/10 dark:border-slate-400/50 dark:ring-slate-400/20`;
+  }
+
+  return `${base} border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-500`;
+}
+
+const inventoryStockManualFallbackButtonClassName =
+  "w-full rounded-xl border border-slate-200 bg-white/85 px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-50 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+
 export function InventoryStockSourcePanel({
   activeCatalogMasters,
   catalogQuery,
@@ -121,11 +135,7 @@ export function InventoryStockSourcePanel({
                   type="button"
                   aria-pressed={selected}
                   onClick={() => onSelectCatalogMaster(master)}
-                  className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-[13px] transition ${
-                    selected
-                      ? "border-slate-900/20 ring-1 ring-slate-900/10 dark:border-slate-400/50 dark:ring-slate-400/20"
-                      : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-500"
-                  }`}
+                  className={inventoryStockCatalogRowClassName(selected)}
                   style={inventoryCatalogRowStyle(
                     master.hex_color ?? null,
                     selected,
@@ -178,7 +188,7 @@ export function InventoryStockSourcePanel({
           </div>
           <button
             type="button"
-            className="w-full rounded-xl border border-slate-200 bg-white/85 px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80"
+            className={inventoryStockManualFallbackButtonClassName}
             onClick={onUseManualFromCatalog}
           >
             {t("wishlist.addMissingFilamentManual", "Missing filament? Add it manually")}
