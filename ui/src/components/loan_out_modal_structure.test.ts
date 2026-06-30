@@ -13,6 +13,11 @@ test("LoanOutModal uses shared wide modal layout rhythm", () => {
   assert.match(source, /inventoryTwoColumnModalGridClassName/);
   assert.match(source, /inventoryWideModalPanelClassName/);
   assert.match(source, /modalActionButtonClassName\("solid", "roomy"\)/);
+  assert.match(source, /inventoryCatalogRowStyle/);
+  assert.match(source, /hoveredLoanSpoolId/);
+  assert.match(source, /setHoveredLoanSpoolId\(spool\.id\)/);
+  assert.match(source, /setHoveredLoanSpoolId\(null\)/);
+  assert.match(source, /hoveredLoanSpoolId === spool\.id/);
   assert.match(source, /loanOutSpoolButtonClassName/);
   assert.match(stylesSource, /loanOutSpoolButtonClassName/);
   assert.match(stylesSource, /focus-visible:border-sky-300/);

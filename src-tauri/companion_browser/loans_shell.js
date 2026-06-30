@@ -97,20 +97,18 @@ function renderLoanPickerRows(options) {
         .join(" · ");
       return `
         <button
-          class="surface-card loan-card compact-loan-card swatch-surface loan-picker-option"
+          class="list-row dense-list-row spool-list-row swatch-surface loan-picker-option"
           type="button"
           data-action="select-loan-spool"
           data-spool-id="${escapeHtml(row.spool.id)}"
           style="${escapeHtml(styleObjectToString(swatchCssVars(swatch)))}"
         >
-          <div class="loan-card-head">
-            <div class="stack loan-card-copy">
-              <div class="swatch-line">
-                <span class="swatch-dot" style="background:${escapeHtml(toSwatchColor(swatch))};"></span>
-                <span class="list-title">${escapeHtml(displayTitle)}</span>
-              </div>
-              <div class="meta-line">${metadata}</div>
+          <div class="dense-list-main">
+            <div class="swatch-line spool-row-title">
+              <span class="swatch-dot" style="background:${escapeHtml(toSwatchColor(swatch))};"></span>
+              <span class="list-title">${escapeHtml(displayTitle)}</span>
             </div>
+            <div class="meta-line spool-row-meta">${metadata}</div>
           </div>
         </button>
       `;

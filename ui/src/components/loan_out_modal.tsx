@@ -16,6 +16,7 @@ import {
 } from "../lib/display_format";
 import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
+import { inventoryCatalogRowStyle } from "../lib/inventory_swatch_style";
 import { useResolvedTheme } from "../lib/theme_mode";
 import { lendInventorySpool } from "../lib/loan_data_source";
 import {
@@ -74,6 +75,7 @@ export function LoanOutModal({
   const [error, setError] = useState<string | null>(null);
   const [spools, setSpools] = useState<LoanableSpool[]>([]);
   const [selectedSpoolId, setSelectedSpoolId] = useState<string | null>(null);
+  const [hoveredLoanSpoolId, setHoveredLoanSpoolId] = useState<string | null>(null);
   const [borrowerName, setBorrowerName] = useState("");
   const [gramsOut, setGramsOut] = useState("");
   const [note, setNote] = useState("");
@@ -249,6 +251,8 @@ export function LoanOutModal({
                       <button
                         key={spool.id}
                         type="button"
+                        onMouseEnter={() => setHoveredLoanSpoolId(spool.id)}
+                        onMouseLeave={() => setHoveredLoanSpoolId(null)}
                         onClick={() => {
                           setSelectedSpoolId(spool.id);
                           setGramsOut(
@@ -258,11 +262,12 @@ export function LoanOutModal({
                           );
                         }}
                         className={loanOutSpoolButtonClassName(isActive)}
-                        style={
-                          isActive
-                            ? swatchInsetStyle(spool.hexColor, resolvedTheme)
-                            : undefined
-                        }
+                        style={inventoryCatalogRowStyle(
+                          spool.hexColor,
+                          isActive,
+                          resolvedTheme,
+                          hoveredLoanSpoolId === spool.id,
+                        )}
                       >
                         <span className="flex min-w-0 items-center gap-2.5">
                           <span

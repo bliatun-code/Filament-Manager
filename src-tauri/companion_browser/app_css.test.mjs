@@ -23,6 +23,17 @@ test("loaded printer slot cards keep their swatch surface treatment", () => {
   assert.match(css, /rgb\(var\(--swatch-rgb\) \/ calc\(var\(--swatch-surface-top\) \+ 0\.02\)\)/);
 });
 
+test("swatch filament rows keep the bright hover outline", () => {
+  const css = readCssBundle();
+
+  assert.match(css, /\.list-row\.swatch-surface:hover,\s*\.loan-card\.swatch-surface:hover\s*\{/);
+  assert.match(css, /0 0 0 1px rgba\(248, 250, 252, 0\.38\)/);
+  assert.match(
+    css,
+    /:root\[data-theme-mode="light"\] \.list-row\.swatch-surface:hover,[\s\S]*0 0 0 1px rgba\(255, 255, 255, 0\.96\)/,
+  );
+});
+
 test("companion shell defines reusable status and panel surface tokens", () => {
   const css = readCssBundle();
 

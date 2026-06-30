@@ -2,7 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createInitialCompanionState } from "./session_state.js";
-import { renderLoanCreateTaskSheetBody, renderLoanReturnTaskSheetBody, renderLoansShell } from "./loans_shell.js";
+import {
+  renderLoanCreateTaskSheetBody,
+  renderLoanPickerTaskSheetBody,
+  renderLoanReturnTaskSheetBody,
+  renderLoansShell,
+} from "./loans_shell.js";
 
 function createLoanRow(overrides = {}) {
   return {
@@ -40,6 +45,7 @@ function createSelectedSpool() {
       filament_name: "Basic",
       color_name: "White",
       vendor: "Bambu",
+      hex_color: "#ffffff",
     },
   };
 }
@@ -123,6 +129,24 @@ test("loan return task sheet renders the compact return form", () => {
   assert.match(html, /Returned total weight incl\. spool \(g\)/);
   assert.match(html, /value="750"/);
   assert.doesNotMatch(html, /Marks the loan returned in local data\./);
+});
+
+test("loan picker uses the same swatch list row language as add filament", () => {
+  const state = {
+    ...createInitialCompanionState(),
+    busy: false,
+  };
+  const html = renderLoanPickerTaskSheetBody({
+    state,
+    loanSpoolOptions: [createSelectedSpool()],
+    escapeHtml: (value) => String(value ?? ""),
+    formatGrams: (value) => `${value ?? 0} g`,
+  });
+
+  assert.match(html, /list-row dense-list-row spool-list-row swatch-surface loan-picker-option/);
+  assert.match(html, /data-action="select-loan-spool"/);
+  assert.match(html, /--swatch-rgb/);
+  assert.doesNotMatch(html, /loan-card compact-loan-card swatch-surface loan-picker-option/);
 });
 
 test("loan create task sheet renders outgoing measured weight and slot warning", () => {

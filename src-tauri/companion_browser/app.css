@@ -411,6 +411,18 @@
   background-color: var(--surface-strong);
 }
 
+.list-row.swatch-surface:hover,
+.loan-card.swatch-surface:hover {
+  background-color: var(--swatch-surface-base);
+  border-color: rgba(248, 250, 252, 0.68);
+  box-shadow:
+    inset 0 1px 0 var(--swatch-surface-inset),
+    0 18px 38px -34px rgb(var(--swatch-rgb) / var(--swatch-surface-shadow)),
+    0 3px 10px var(--swatch-surface-ambient),
+    0 0 0 1px rgba(248, 250, 252, 0.38),
+    0 12px 22px -24px rgba(2, 6, 23, 0.5);
+}
+
 :root[data-theme-mode="light"] .desktop-rail,
 :root[data-theme-mode="light"] .app-topbar,
 :root[data-theme-mode="light"] .workflow-shell,
@@ -455,6 +467,18 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.76),
     0 16px 32px -28px rgb(var(--swatch-rgb) / calc(var(--swatch-surface-shadow) + 0.08)),
     0 8px 20px -18px rgba(15, 23, 42, 0.24);
+}
+
+:root[data-theme-mode="light"] .list-row.swatch-surface:hover,
+:root[data-theme-mode="light"] .loan-card.swatch-surface:hover {
+  border-color: rgba(255, 255, 255, 0.98);
+  box-shadow:
+    inset 3px 0 0 rgb(var(--swatch-rgb) / 0.56),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76),
+    0 16px 32px -28px rgb(var(--swatch-rgb) / calc(var(--swatch-surface-shadow) + 0.08)),
+    0 8px 20px -18px rgba(15, 23, 42, 0.24),
+    0 0 0 1px rgba(255, 255, 255, 0.96),
+    0 12px 22px -24px rgba(15, 23, 42, 0.18);
 }
 
 :root[data-theme-mode="light"] .printer-board.printer-brand-surface,
@@ -553,6 +577,20 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.76),
       0 16px 32px -28px rgb(var(--swatch-rgb) / calc(var(--swatch-surface-shadow) + 0.08)),
       0 8px 20px -18px rgba(15, 23, 42, 0.24);
+  }
+
+  :root:not([data-theme-mode]) .list-row.swatch-surface:hover,
+  :root:not([data-theme-mode]) .loan-card.swatch-surface:hover,
+  :root[data-theme-mode="auto"] .list-row.swatch-surface:hover,
+  :root[data-theme-mode="auto"] .loan-card.swatch-surface:hover {
+    border-color: rgba(255, 255, 255, 0.98);
+    box-shadow:
+      inset 3px 0 0 rgb(var(--swatch-rgb) / 0.56),
+      inset 0 1px 0 rgba(255, 255, 255, 0.76),
+      0 16px 32px -28px rgb(var(--swatch-rgb) / calc(var(--swatch-surface-shadow) + 0.08)),
+      0 8px 20px -18px rgba(15, 23, 42, 0.24),
+      0 0 0 1px rgba(255, 255, 255, 0.96),
+      0 12px 22px -24px rgba(15, 23, 42, 0.18);
   }
 
   :root:not([data-theme-mode]) .printer-board.printer-brand-surface,
@@ -1252,6 +1290,11 @@
   display: grid;
   gap: 0.58rem;
   box-shadow: none;
+  transition:
+    transform 140ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .loan-card.swatch-surface {
@@ -3650,6 +3693,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .list-row:hover,
+  .loan-card.swatch-surface:hover,
   .printer-roster-item:hover,
   .loan-filter-button:hover,
   .root-flow-button:hover,
