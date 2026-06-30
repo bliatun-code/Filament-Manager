@@ -38,6 +38,19 @@ function wishlistItemHex(
   return item.master_id ? catalogMasterById.get(item.master_id)?.hex_color ?? null : null;
 }
 
+type WishlistQueueActionTone = "stock" | "remove";
+
+function wishlistQueueActionButtonClassName(tone: WishlistQueueActionTone): string {
+  const base =
+    "inline-flex items-center justify-center rounded-xl border px-3 py-2 text-[11px] font-semibold outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+
+  if (tone === "stock") {
+    return `${base} border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/20`;
+  }
+
+  return `${base} border-slate-300 bg-white/80 text-slate-700 hover:bg-white dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-200 dark:hover:bg-slate-900/80`;
+}
+
 export function WishlistQueuePanel({
   busy,
   catalogMasterById,
@@ -187,7 +200,7 @@ export function WishlistQueuePanel({
                   {canStockItem ? (
                     <button
                       type="button"
-                      className="inline-flex items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
+                      className={wishlistQueueActionButtonClassName("stock")}
                       onClick={() => onStockItem(item)}
                       disabled={!tauriAvailable || busy}
                     >
@@ -196,7 +209,7 @@ export function WishlistQueuePanel({
                   ) : null}
                   <button
                     type="button"
-                    className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white/80 px-3 py-2 text-[11px] font-semibold text-slate-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-200 dark:hover:bg-slate-900/80"
+                    className={wishlistQueueActionButtonClassName("remove")}
                     onClick={() => onDeleteItem(item.id)}
                     disabled={!tauriAvailable || busy}
                   >
