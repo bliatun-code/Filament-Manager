@@ -12,6 +12,10 @@ export function collectCssFiles(directory) {
   });
 }
 
+export function normalizeCompanionCssSourcePath(filePath) {
+  return filePath.replaceAll("\\", "/");
+}
+
 export function analyzeCompanionCssVariables(options = {}) {
   const repoRoot = options.repoRoot ?? resolve(".");
   const cssDirectory =
@@ -21,7 +25,7 @@ export function analyzeCompanionCssVariables(options = {}) {
 
   for (const file of collectCssFiles(cssDirectory)) {
     const source = readFileSync(file, "utf8");
-    const relativePath = relative(repoRoot, file);
+    const relativePath = normalizeCompanionCssSourcePath(relative(repoRoot, file));
 
     for (const match of source.matchAll(/(^|[;{\s])(--[a-zA-Z0-9-]+)\s*:/g)) {
       definitions.add(match[2]);

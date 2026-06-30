@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import {
   analyzeCompanionCssVariables,
   formatCompanionCssVariableReport,
+  normalizeCompanionCssSourcePath,
 } from "./check-companion-css-vars.mjs";
 
 function withCssFixture(files, callback) {
@@ -66,5 +67,12 @@ test("companion css variable analyzer reports success counts", () => {
         "Companion CSS variables ok (2 used, 2 defined).",
       );
     },
+  );
+});
+
+test("companion css variable analyzer normalizes Windows source paths", () => {
+  assert.equal(
+    normalizeCompanionCssSourcePath("src-tauri\\companion_browser\\app.css"),
+    "src-tauri/companion_browser/app.css",
   );
 });
