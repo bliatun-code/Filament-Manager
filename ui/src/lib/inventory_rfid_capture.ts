@@ -104,6 +104,8 @@ export type RfidCaptureSlotLiveStatus = {
   stateLabel: string | null;
 };
 
+type TranslateFn = (key: string, fallback: string) => string;
+
 export function formatCaptureTimestamp(raw: string, locale: Locale): string {
   const parsed = new Date(raw);
   if (Number.isNaN(parsed.getTime())) {
@@ -221,9 +223,21 @@ export function buildRfidCaptureSlotLiveStatus(
   };
 }
 
+export function formatRfidCapturedFieldsStatus(input: {
+  fieldCount: number;
+  loading: boolean;
+  t: TranslateFn;
+}): string {
+  const fieldCount = Math.max(0, input.fieldCount);
+  if (input.loading && fieldCount === 0) {
+    return input.t("common.loading", "Loading...");
+  }
+  return `${fieldCount} ${input.t("inventory.fields", "fields")}`;
+}
+
 export function rfidBindingCopy(
   state: RfidBindingState,
-  t: (key: string, fallback: string) => string,
+  t: TranslateFn,
 ): { label: string; hint: string; className: string } {
   switch (state) {
     case "LINKED_SEEN":

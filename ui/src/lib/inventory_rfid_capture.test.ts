@@ -7,6 +7,7 @@ import {
   buildSelectedRfidCaptureSnapshot,
   decodeTrayExistBitsSlotPresence,
   filterRfidCaptureSlots,
+  formatRfidCapturedFieldsStatus,
   formatRfidCapturePresetName,
   getRfidBindingState,
   isBambuRfidVendor,
@@ -223,6 +224,23 @@ test("buildRfidCaptureSlotLiveStatus reports empty slots without timestamps", ()
 
   assert.equal(status.stateLabel, "Empty");
   assert.equal(status.observedText, null);
+});
+
+test("formatRfidCapturedFieldsStatus keeps the field count stable while refreshing", () => {
+  const t = (_key: string, fallback: string) => fallback;
+
+  assert.equal(
+    formatRfidCapturedFieldsStatus({ fieldCount: 13, loading: true, t }),
+    "13 fields",
+  );
+  assert.equal(
+    formatRfidCapturedFieldsStatus({ fieldCount: 0, loading: true, t }),
+    "Loading...",
+  );
+  assert.equal(
+    formatRfidCapturedFieldsStatus({ fieldCount: 0, loading: false, t }),
+    "0 fields",
+  );
 });
 
 test("filterRfidCaptureSlots prefers assigned-printer capture sources", () => {

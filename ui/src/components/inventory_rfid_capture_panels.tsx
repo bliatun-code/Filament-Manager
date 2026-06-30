@@ -11,6 +11,7 @@ import {
   assessRfidCaptureMatch,
   buildRfidCaptureSlotLiveStatus,
   formatCaptureTimestamp,
+  formatRfidCapturedFieldsStatus,
   formatRfidCapturePresetName,
   rfidCaptureMatchMeta,
   type RfidCaptureField,
@@ -365,6 +366,11 @@ export function InventoryRfidCapturedFieldsPanel({
   supportsRfidCapture,
 }: InventoryRfidCapturedFieldsPanelProps) {
   const { locale, t } = useI18n();
+  const capturedFieldsStatus = formatRfidCapturedFieldsStatus({
+    fieldCount: fields.length,
+    loading,
+    t,
+  });
 
   return (
     <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -373,8 +379,8 @@ export function InventoryRfidCapturedFieldsPanel({
           {t("inventory.rfidCapturedFields", "Captured slot fields")}
         </div>
         <div className="flex items-center gap-3">
-          <div className="text-slate-500 dark:text-slate-400">
-            {loading ? t("common.loading", "Loading...") : `${fields.length} ${t("inventory.fields", "fields")}`}
+          <div className="min-w-[5.5rem] text-right tabular-nums text-slate-500 dark:text-slate-400">
+            {capturedFieldsStatus}
           </div>
           <button
             type="button"
