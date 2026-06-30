@@ -1,6 +1,10 @@
 import { swatchCssBackground, toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
-import { inventoryDetailEyebrowClassName } from "./inventory_detail_panel_class";
+import {
+  inventoryDetailCompactActionButtonClassName,
+  inventoryDetailCompactFormControlClassName,
+  inventoryDetailEyebrowClassName,
+} from "./inventory_detail_panel_class";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 
@@ -82,7 +86,7 @@ export function InventoryCatalogMetadataPanel({
             value={vendor}
             onChange={(event) => onChangeVendor(event.target.value)}
             placeholder={t("wishlist.vendorPlaceholder", "Vendor")}
-            className="w-full rounded border border-slate-200 px-2 py-1 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100"
+            className={inventoryDetailCompactFormControlClassName}
             disabled={disabled}
           />
           <input
@@ -90,7 +94,7 @@ export function InventoryCatalogMetadataPanel({
             value={material}
             onChange={(event) => onChangeMaterial(event.target.value)}
             placeholder={t("wishlist.materialPlaceholder", "Material")}
-            className="w-full rounded border border-slate-200 px-2 py-1 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100"
+            className={inventoryDetailCompactFormControlClassName}
             disabled={disabled}
           />
           <input
@@ -98,7 +102,7 @@ export function InventoryCatalogMetadataPanel({
             value={filamentName}
             onChange={(event) => onChangeFilamentName(event.target.value)}
             placeholder={t("wishlist.filamentName", "Filament name")}
-            className="w-full rounded border border-slate-200 px-2 py-1 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100"
+            className={inventoryDetailCompactFormControlClassName}
             disabled={disabled}
           />
           <input
@@ -106,7 +110,7 @@ export function InventoryCatalogMetadataPanel({
             value={colorName}
             onChange={(event) => onChangeColorName(event.target.value)}
             placeholder={t("wishlist.colorName", "Color name")}
-            className="w-full rounded border border-slate-200 px-2 py-1 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100"
+            className={inventoryDetailCompactFormControlClassName}
             disabled={disabled}
           />
           <div className="grid grid-cols-[1fr_auto_auto] gap-2">
@@ -115,7 +119,7 @@ export function InventoryCatalogMetadataPanel({
               value={hexColor}
               onChange={(event) => onChangeHexColor(event.target.value)}
               placeholder={t("wishlist.hexOptional", "Hex color")}
-              className="w-full rounded border border-slate-200 px-2 py-1 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100"
+              className={inventoryDetailCompactFormControlClassName}
               disabled={disabled}
             />
             <input
@@ -132,7 +136,7 @@ export function InventoryCatalogMetadataPanel({
           </div>
           <button
             type="button"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100"
+            className={inventoryDetailCompactActionButtonClassName}
             onClick={onSave}
             disabled={disabled}
           >

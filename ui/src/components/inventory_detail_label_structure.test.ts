@@ -19,6 +19,8 @@ test("inventory detail labels use shared detail typography classes", () => {
     /text-xs uppercase tracking-\[0\.2em\] text-slate-500 dark:text-slate-400/;
 
   assert.match(detailPanelClasses, /inventoryDetailActionButtonClassName/);
+  assert.match(detailPanelClasses, /inventoryDetailCompactActionButtonClassName/);
+  assert.match(detailPanelClasses, /inventoryDetailCompactFormControlClassName/);
   assert.match(detailPanelClasses, /inventoryDetailDangerActionButtonClassName/);
   assert.match(detailPanelClasses, /inventoryDetailEyebrowClassName/);
   assert.match(detailPanelClasses, /inventoryDetailFormControlClassName/);
@@ -27,6 +29,8 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(detailPanelClasses, /inventoryDetailSaveButtonClassName/);
   assert.match(detailPanelClasses, /inventoryPanelToggleButtonClassName/);
   assert.match(detailPanelClasses, /focus-visible:border-sky-300/);
+  assert.match(catalogMetadataPanel, /inventoryDetailCompactActionButtonClassName/);
+  assert.match(catalogMetadataPanel, /inventoryDetailCompactFormControlClassName/);
   assert.match(catalogMetadataPanel, /inventoryDetailEyebrowClassName/);
   assert.match(detailModal, /inventoryDetailEyebrowClassName/);
   assert.match(maintenancePanels, /inventoryDetailEyebrowClassName/);
@@ -41,6 +45,14 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(rfidCapturePanels, /inventoryPanelToggleButtonClassName/);
   assert.match(rollHistoryPanel, /inventoryPanelToggleButtonClassName/);
   assert.doesNotMatch(catalogMetadataPanel, rawEyebrowClass);
+  assert.doesNotMatch(
+    catalogMetadataPanel,
+    /w-full rounded border border-slate-200 px-2 py-1 text-xs text-slate-900/,
+  );
+  assert.doesNotMatch(
+    catalogMetadataPanel,
+    /rounded-lg border border-slate-200 bg-white px-3 py-1\.5 text-xs font-semibold/,
+  );
   assert.doesNotMatch(detailModal, rawEyebrowClass);
   assert.doesNotMatch(maintenancePanels, rawEyebrowClass);
   assert.doesNotMatch(
