@@ -34,6 +34,15 @@ test("swatch filament rows keep the bright hover outline", () => {
   );
 });
 
+test("swatch action buttons reuse the selected filament color", () => {
+  const css = readCssBundle();
+
+  assert.match(css, /\.primary-button\.swatch-action-button,\s*\.secondary-button\.swatch-action-button\s*\{/);
+  assert.match(css, /rgb\(var\(--swatch-rgb\) \/ 0\.96\)/);
+  assert.match(css, /0 18px 36px -24px rgb\(var\(--swatch-rgb\) \/ 0\.74\)/);
+  assert.match(css, /\.loan-create-card\s*\{[\s\S]*display: grid;[\s\S]*gap: 0\.72rem;/);
+});
+
 test("companion shell defines reusable status and panel surface tokens", () => {
   const css = readCssBundle();
 

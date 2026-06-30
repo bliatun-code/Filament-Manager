@@ -491,7 +491,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
           </div>
 
           <div class="detail-actions form-action-block utility-sheet-actions">
-            <button class="primary-button" type="submit" ${busy || catalogSelectionMissing ? "disabled" : ""}>
+            <button class="primary-button swatch-action-button" type="submit" ${busy || catalogSelectionMissing ? "disabled" : ""}>
               ${escapeHtml(
                 isBorrowedIn
                   ? t(locale, "storage.registerBorrowedIn", "Register borrowed-in spool")
@@ -535,7 +535,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
           </div>
 
           <div class="detail-actions form-action-block utility-sheet-actions">
-            <button class="secondary-button" type="submit" ${busy || catalogSelectionMissing ? "disabled" : ""}>
+            <button class="secondary-button swatch-action-button" type="submit" ${busy || catalogSelectionMissing ? "disabled" : ""}>
               ${escapeHtml(t(locale, "storage.addCurrentSelectionToWishlist", "Add current selection to wishlist"))}
             </button>
           </div>

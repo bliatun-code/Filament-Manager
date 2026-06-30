@@ -172,6 +172,8 @@ test("add filament task sheet exposes stock and wishlist flows from the same sel
   assert.match(html, /data-action="wishlist-delete"/);
   assert.match(html, /data-action="add-spool-form"/);
   assert.match(html, /data-action="wishlist-item-form"/);
+  assert.match(html, /class="primary-button swatch-action-button" type="submit"/);
+  assert.match(html, /class="secondary-button swatch-action-button" type="submit"/);
   assert.match(html, /Add spool to inventory/);
   assert.match(html, /Home location \(optional\)/);
   assert.match(html, /Add current selection to wishlist/);
@@ -382,7 +384,7 @@ test("add filament task sheet requires explicit row selection for ambiguous Bamb
   assert.doesNotMatch(reviewHtml, /add-spool-code-lookup/);
   assert.match(
     reviewHtml,
-    /<button class="primary-button" type="submit" disabled>\s*Add spool to inventory/,
+    /<button class="primary-button swatch-action-button" type="submit" disabled>\s*Add spool to inventory/,
   );
 
   state.borrowedInDraft = {
@@ -395,7 +397,7 @@ test("add filament task sheet requires explicit row selection for ambiguous Bamb
   assert.doesNotMatch(selectedHtml, /Choose a catalog row/);
   assert.doesNotMatch(
     selectedHtml,
-    /<button class="primary-button" type="submit" disabled>\s*Add spool to inventory/,
+    /<button class="primary-button swatch-action-button" type="submit" disabled>\s*Add spool to inventory/,
   );
 });
 
@@ -442,7 +444,7 @@ test("add filament task sheet surfaces discontinued-only Bambu code matches unde
   assert.doesNotMatch(selectedHtml, /Choose a catalog row/);
   assert.doesNotMatch(
     selectedHtml,
-    /<button class="primary-button" type="submit" disabled>\s*Add spool to inventory/,
+    /<button class="primary-button swatch-action-button" type="submit" disabled>\s*Add spool to inventory/,
   );
 });
 
@@ -476,7 +478,7 @@ test("add filament task sheet blocks Bambu filament codes with no catalog match"
   assert.doesNotMatch(html, /add-spool-code-lookup/);
   assert.match(
     html,
-    /<button class="primary-button" type="submit" disabled>\s*Add spool to inventory/,
+    /<button class="primary-button swatch-action-button" type="submit" disabled>\s*Add spool to inventory/,
   );
 });
 

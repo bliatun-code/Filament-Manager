@@ -84,6 +84,7 @@ test("loans shell renders outbound history as its own primary flow", () => {
   assert.match(html, /Return loan/);
   assert.match(html, /Track loans and finish returns\./);
   assert.match(html, /loan-card compact-loan-card swatch-surface/);
+  assert.match(html, /primary-button swatch-action-button loan-action-button/);
   assert.match(html, /data-action="start-loan-picker"/);
 });
 
@@ -166,6 +167,9 @@ test("loan create task sheet renders outgoing measured weight and slot warning",
   });
 
   assert.match(html, /Lend spool/);
+  assert.match(html, /surface-card compact-loan-card swatch-surface loan-create-card/);
+  assert.match(html, /primary-button swatch-action-button/);
+  assert.match(html, /data-action="loan-spool-form"/);
   assert.match(html, /Outgoing total weight incl\. spool \(g\)/);
   assert.match(html, /value="750"/);
   assert.match(html, /Loaded in slot 2 on Brutus/);

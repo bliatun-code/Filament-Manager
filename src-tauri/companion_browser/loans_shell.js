@@ -194,7 +194,7 @@ function renderLoanRows(options) {
               active
                 ? `
                   <button
-                    class="primary-button loan-action-button"
+                    class="primary-button swatch-action-button loan-action-button"
                     type="button"
                     data-action="toggle-loan-return"
                     data-loan-id="${escapeHtml(row.loan.id)}"
@@ -340,6 +340,7 @@ export function renderLoanCreateTaskSheetBody(options) {
   const reference = formatRollReference(selectedSpool.spool);
   const tareWeight = resolveSpoolTareWeight(selectedSpool.spool, selectedSpool.master.vendor);
   const defaultMeasuredWeight = Number(selectedSpool.spool.remaining_g ?? 0) + tareWeight;
+  const swatchStyle = styleObjectToString(swatchCssVars(selectedSpool.master.hex_color));
   const metadata = [
     selectedSpool.master.vendor || "",
     reference,
@@ -352,8 +353,8 @@ export function renderLoanCreateTaskSheetBody(options) {
   return `
     <div class="stack loan-return-task-sheet">
       <div
-        class="surface-card compact-loan-card swatch-surface"
-        style="${escapeHtml(styleObjectToString(swatchCssVars(selectedSpool.master.hex_color)))}"
+        class="surface-card compact-loan-card swatch-surface loan-create-card"
+        style="${escapeHtml(swatchStyle)}"
       >
         <div class="loan-card-head">
           <div class="stack loan-card-copy">
@@ -364,59 +365,59 @@ export function renderLoanCreateTaskSheetBody(options) {
             <div class="meta-line">${metadata}</div>
           </div>
         </div>
+        ${
+          selectedAssignment
+            ? `<div class="info-card">${escapeHtml(
+                t(
+                  locale,
+                  "detail.loadedInSlot",
+                  "Loaded in slot {slot} on {printer}. Creating the loan will clear that slot.",
+                  { slot: selectedAssignment.slotIndex, printer: selectedAssignment.printerName },
+                ),
+              )}</div>`
+            : ""
+        }
+        <form class="stack loan-return-sheet" data-action="loan-spool-form">
+          <input type="hidden" name="spool-id" value="${escapeHtml(selectedSpool.spool.id)}" />
+          <label class="stack detail-field">
+            <span class="muted">${escapeHtml(t(locale, "detail.borrowerName", "Borrower name"))}</span>
+            <input
+              class="text-input"
+              name="borrower-name"
+              type="text"
+              autocomplete="name"
+              placeholder="${escapeHtml(t(locale, "detail.borrowerPlaceholder", "Who is taking this spool?"))}"
+            />
+          </label>
+          <label class="stack detail-field">
+            <span class="muted">${escapeHtml(
+              t(locale, "detail.outgoingMeasuredWeight", "Outgoing total weight incl. spool (g)"),
+            )}</span>
+            <input
+              class="weight-input"
+              name="grams-out"
+              type="number"
+              min="0"
+              step="1"
+              value="${escapeHtml(defaultMeasuredWeight)}"
+            />
+          </label>
+          <label class="stack detail-field">
+            <span class="muted">${escapeHtml(t(locale, "detail.loanNoteOptional", "Loan note (optional)"))}</span>
+            <textarea
+              class="detail-textarea loan-return-textarea"
+              name="loan-note"
+              rows="3"
+              placeholder="${escapeHtml(t(locale, "detail.loanNotePlaceholder", "Project or return timing"))}"
+            ></textarea>
+          </label>
+          <div class="detail-actions form-action-block">
+            <button class="primary-button swatch-action-button" type="submit" ${state.busy ? "disabled" : ""}>
+              ${escapeHtml(t(locale, "detail.lendSpool", "Lend spool"))}
+            </button>
+          </div>
+        </form>
       </div>
-      ${
-        selectedAssignment
-          ? `<div class="info-card">${escapeHtml(
-              t(
-                locale,
-                "detail.loadedInSlot",
-                "Loaded in slot {slot} on {printer}. Creating the loan will clear that slot.",
-                { slot: selectedAssignment.slotIndex, printer: selectedAssignment.printerName },
-              ),
-            )}</div>`
-          : ""
-      }
-      <form class="stack loan-return-sheet" data-action="loan-spool-form">
-        <input type="hidden" name="spool-id" value="${escapeHtml(selectedSpool.spool.id)}" />
-        <label class="stack detail-field">
-          <span class="muted">${escapeHtml(t(locale, "detail.borrowerName", "Borrower name"))}</span>
-          <input
-            class="text-input"
-            name="borrower-name"
-            type="text"
-            autocomplete="name"
-            placeholder="${escapeHtml(t(locale, "detail.borrowerPlaceholder", "Who is taking this spool?"))}"
-          />
-        </label>
-        <label class="stack detail-field">
-          <span class="muted">${escapeHtml(
-            t(locale, "detail.outgoingMeasuredWeight", "Outgoing total weight incl. spool (g)"),
-          )}</span>
-          <input
-            class="weight-input"
-            name="grams-out"
-            type="number"
-            min="0"
-            step="1"
-            value="${escapeHtml(defaultMeasuredWeight)}"
-          />
-        </label>
-        <label class="stack detail-field">
-          <span class="muted">${escapeHtml(t(locale, "detail.loanNoteOptional", "Loan note (optional)"))}</span>
-          <textarea
-            class="detail-textarea loan-return-textarea"
-            name="loan-note"
-            rows="3"
-            placeholder="${escapeHtml(t(locale, "detail.loanNotePlaceholder", "Project or return timing"))}"
-          ></textarea>
-        </label>
-        <div class="detail-actions form-action-block">
-          <button class="primary-button" type="submit" ${state.busy ? "disabled" : ""}>
-            ${escapeHtml(t(locale, "detail.lendSpool", "Lend spool"))}
-          </button>
-        </div>
-      </form>
     </div>
   `;
 }
