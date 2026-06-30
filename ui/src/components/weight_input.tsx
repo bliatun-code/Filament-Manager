@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useI18n } from "../lib/i18n";
+import {
+  inventoryDetailFormControlClassName,
+  inventoryDetailSaveButtonClassName,
+} from "./inventory_detail_panel_class";
 
 type WeightInputProps = {
   label?: string;
@@ -50,7 +54,7 @@ export function WeightInput({
           max={max}
           value={displayValue}
           onChange={(event) => handleChange(Number(event.target.value))}
-          className="flex-1 accent-slate-900"
+          className="flex-1 accent-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-sky-100 dark:accent-slate-100 dark:focus-visible:ring-sky-500/20"
         />
         <input
           type="number"
@@ -58,12 +62,12 @@ export function WeightInput({
           max={max}
           value={displayValue}
           onChange={(event) => handleChange(Number(event.target.value))}
-          className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100"
+          className={`w-24 ${inventoryDetailFormControlClassName}`}
         />
         <button
           type="button"
           onClick={() => onSubmit?.(displayValue)}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-slate-300/25 transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white"
+          className={inventoryDetailSaveButtonClassName}
         >
           {t("common.save", "Save")}
         </button>
