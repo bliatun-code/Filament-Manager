@@ -8,6 +8,7 @@ function readComponentSource(fileName: string): string {
 
 test("inventory detail labels use shared detail typography classes", () => {
   const detailPanelClasses = readComponentSource("inventory_detail_panel_class.ts");
+  const catalogMetadataPanel = readComponentSource("inventory_catalog_metadata_panel.tsx");
   const detailModal = readComponentSource("inventory_spool_detail_modal.tsx");
   const maintenancePanels = readComponentSource("inventory_spool_maintenance_panels.tsx");
   const qrRfidPanel = readComponentSource("inventory_spool_qr_rfid_panel.tsx");
@@ -26,6 +27,7 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(detailPanelClasses, /inventoryDetailSaveButtonClassName/);
   assert.match(detailPanelClasses, /inventoryPanelToggleButtonClassName/);
   assert.match(detailPanelClasses, /focus-visible:border-sky-300/);
+  assert.match(catalogMetadataPanel, /inventoryDetailEyebrowClassName/);
   assert.match(detailModal, /inventoryDetailEyebrowClassName/);
   assert.match(maintenancePanels, /inventoryDetailEyebrowClassName/);
   assert.match(maintenancePanels, /inventoryDetailDangerActionButtonClassName/);
@@ -38,6 +40,7 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(rfidCapturePanels, /inventoryDetailSectionLabelClassName/);
   assert.match(rfidCapturePanels, /inventoryPanelToggleButtonClassName/);
   assert.match(rollHistoryPanel, /inventoryPanelToggleButtonClassName/);
+  assert.doesNotMatch(catalogMetadataPanel, rawEyebrowClass);
   assert.doesNotMatch(detailModal, rawEyebrowClass);
   assert.doesNotMatch(maintenancePanels, rawEyebrowClass);
   assert.doesNotMatch(
