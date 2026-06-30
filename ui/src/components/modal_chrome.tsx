@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import { CloseButton } from "./close_button";
 
+export const modalEyebrowClassName =
+  "text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400";
+
 export const modalDetailLabelClassName =
   "text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400";
 
@@ -41,7 +44,7 @@ export function ModalHeader({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           {eyebrow ? (
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+            <div className={modalEyebrowClassName}>
               {eyebrow}
             </div>
           ) : null}

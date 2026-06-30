@@ -2,6 +2,7 @@ import { type ReactNode, useEffect } from "react";
 import { useI18n } from "../lib/i18n";
 import { swatchCssBackground } from "../lib/color_utils";
 import { AppModal } from "./app_modal";
+import { modalEyebrowClassName } from "./modal_chrome";
 
 type SaveOnlyModalProps = {
   title: string;
@@ -61,7 +62,7 @@ export function SaveOnlyModal({
               </span>
             ) : null}
             <div className="min-w-0">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              <div className={modalEyebrowClassName}>
                 {t("common.save", "Save")}
               </div>
               <div className="mt-1 text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">

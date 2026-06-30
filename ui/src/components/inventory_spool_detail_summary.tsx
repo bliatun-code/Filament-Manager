@@ -1,6 +1,7 @@
 import { VendorBadge } from "./vendor_badge";
 import { CloseButton } from "./close_button";
 import { inventoryDetailLabelClassName } from "./inventory_detail_panel_class";
+import { modalEyebrowClassName } from "./modal_chrome";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
@@ -58,7 +59,7 @@ export function InventorySpoolDetailHeader({
           />
         </div>
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+          <div className={modalEyebrowClassName}>
             {t("inventory.selectedRoll", "Selected roll")}
           </div>
           <div className="mt-1 truncate text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
