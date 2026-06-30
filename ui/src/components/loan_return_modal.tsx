@@ -1,5 +1,6 @@
 import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
+import { modalFormInputClassName } from "./form_control_class";
 import { ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { VendorBadge } from "./vendor_badge";
@@ -168,7 +169,7 @@ export function LoanReturnModal({
             min={0}
             value={grams}
             onChange={(event) => onGramsChange(event.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100"
+            className={modalFormInputClassName}
             autoFocus
           />
         </div>
@@ -181,7 +182,7 @@ export function LoanReturnModal({
             type="text"
             value={note}
             onChange={(event) => onNoteChange(event.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100"
+            className={modalFormInputClassName}
             placeholder={t("loans.returnNoteOptional", "Return note (optional)")}
           />
         </div>
