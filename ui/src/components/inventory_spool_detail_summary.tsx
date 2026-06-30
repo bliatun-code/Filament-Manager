@@ -1,4 +1,5 @@
 import { VendorBadge } from "./vendor_badge";
+import { inventoryDetailLabelClassName } from "./inventory_detail_panel_class";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
@@ -114,7 +115,7 @@ export function InventorySpoolIdentityPanel({
     >
       <div className="grid gap-3 min-[760px]:grid-cols-2 2xl:grid-cols-3">
         <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 min-[760px]:col-span-2 2xl:col-span-1 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <div className={inventoryDetailLabelClassName}>
             {t("inventory.reference", "Reference")}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
@@ -141,7 +142,7 @@ export function InventorySpoolIdentityPanel({
           </div>
         </div>
         <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <div className={inventoryDetailLabelClassName}>
             {assignedSlot
               ? t("nav.printers", "Printers")
               : t("inventory.location", "Location")}
@@ -159,7 +160,7 @@ export function InventorySpoolIdentityPanel({
           ) : null}
         </div>
         <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <div className={inventoryDetailLabelClassName}>
             {t("inventory.ownership", "Ownership")}
           </div>
           <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
@@ -174,7 +175,7 @@ export function InventorySpoolIdentityPanel({
           ) : null}
         </div>
         <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <div className={inventoryDetailLabelClassName}>
             {t("inventory.initialWeight", "Initial weight (g)")}
           </div>
           <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-50">

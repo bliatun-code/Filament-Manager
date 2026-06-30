@@ -1,4 +1,5 @@
 import { swatchCssBackground } from "../lib/color_utils";
+import { inventoryDetailSectionLabelClassName } from "./inventory_detail_panel_class";
 import { useI18n } from "../lib/i18n";
 import type { InventorySpool } from "../lib/inventory_list_model";
 import {
@@ -137,7 +138,7 @@ export function InventoryRfidCaptureSlotPicker({
 
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:col-span-2 min-[900px]:col-span-4 dark:border-slate-700 dark:bg-slate-900/60">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+      <div className={inventoryDetailSectionLabelClassName}>
         {t("inventory.rfidSourceSlot", "RFID source slot")}
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -193,7 +194,7 @@ export function InventoryRfidCaptureSummaryCards({
   return (
     <>
       <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+        <div className={inventoryDetailSectionLabelClassName}>
           {t("inventory.rfidCurrentTag", "Saved RFID")}
         </div>
         <div className="mt-2 break-all font-mono text-sm text-slate-900 dark:text-slate-100">
@@ -201,7 +202,7 @@ export function InventoryRfidCaptureSummaryCards({
         </div>
       </div>
       <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+        <div className={inventoryDetailSectionLabelClassName}>
           {t("inventory.rfidObservedTag", "Observed RFID")}
         </div>
         <div className="mt-2 break-all font-mono text-sm text-slate-900 dark:text-slate-100">
@@ -209,7 +210,7 @@ export function InventoryRfidCaptureSummaryCards({
         </div>
       </div>
       <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+        <div className={inventoryDetailSectionLabelClassName}>
           {t("inventory.rfidObservedMaterial", "Observed filament")}
         </div>
         <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
@@ -222,7 +223,7 @@ export function InventoryRfidCaptureSummaryCards({
         ) : null}
       </div>
       <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+        <div className={inventoryDetailSectionLabelClassName}>
           {t("inventory.rfidObservedColor", "Observed color")}
         </div>
         <div className="mt-2 flex items-center gap-2 text-sm text-slate-900 dark:text-slate-100">
@@ -260,7 +261,7 @@ export function InventoryRfidCaptureDiagnostics({
   return (
     <div className="mt-4 grid gap-3 min-[900px]:grid-cols-2">
       <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900/60">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+        <div className={inventoryDetailSectionLabelClassName}>
           {t("inventory.rfidIdentitySignals", "RFID identity signals")}
         </div>
         <dl className="mt-3 space-y-2 text-xs">
@@ -270,7 +271,7 @@ export function InventoryRfidCaptureDiagnostics({
         </dl>
       </div>
       <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900/60">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+        <div className={inventoryDetailSectionLabelClassName}>
           {t("inventory.rfidCaptureStatus", "Capture status")}
         </div>
         <dl className="mt-3 space-y-2 text-xs">

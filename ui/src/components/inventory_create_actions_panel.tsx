@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { inventoryFormControlClassName } from "./form_control_class";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { useI18n } from "../lib/i18n";
 import type { OwnershipType } from "../lib/inventory_list_model";
@@ -84,7 +85,7 @@ export function InventoryCreateActionsPanel({
               value={borrowedFromName}
               onChange={(event) => onBorrowedFromNameChange(event.target.value)}
               placeholder={t("inventory.borrowedFrom", "Borrowed from")}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
+              className={inventoryFormControlClassName}
               disabled={!tauriAvailable}
             />
             <input
@@ -95,7 +96,7 @@ export function InventoryCreateActionsPanel({
                 "inventory.ownerContactOptional",
                 "Owner contact (optional)",
               )}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
+              className={inventoryFormControlClassName}
               disabled={!tauriAvailable}
             />
             <input
@@ -106,7 +107,7 @@ export function InventoryCreateActionsPanel({
                 "inventory.borrowedInNoteOptional",
                 "Borrowed-in note (optional)",
               )}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 md:col-span-2"
+              className={`${inventoryFormControlClassName} md:col-span-2`}
               disabled={!tauriAvailable}
             />
           </div>
@@ -118,7 +119,7 @@ export function InventoryCreateActionsPanel({
           value={initialWeight}
           onChange={(event) => onInitialWeightChange(event.target.value)}
           placeholder={t("inventory.initialWeight", "Initial weight (g)")}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
+          className={inventoryFormControlClassName}
           disabled={!tauriAvailable}
         />
         <input
@@ -126,7 +127,7 @@ export function InventoryCreateActionsPanel({
           value={location}
           onChange={(event) => onLocationChange(event.target.value)}
           placeholder={t("inventory.homeLocationOptional", "Home location (optional)")}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
+          className={inventoryFormControlClassName}
           disabled={!tauriAvailable}
         />
       </div>

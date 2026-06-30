@@ -3,3 +3,6 @@ export const formInputChromeClassName =
 
 export const modalFormInputClassName =
   `mt-1.5 w-full text-slate-800 ${formInputChromeClassName}`;
+
+export const inventoryFormControlClassName =
+  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100";

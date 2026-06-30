@@ -1,4 +1,5 @@
 import { SegmentedChoiceRow } from "./segmented_choice_row";
+import { inventoryFormControlClassName } from "./form_control_class";
 import { inlineStatusSignalClass, neutralChipClass } from "../lib/chip_styles";
 import { swatchCssBackground, toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
@@ -220,7 +221,7 @@ export function InventoryStockSourcePanel({
                 value={manualVendor}
                 onChange={(event) => onManualVendorChange(event.target.value)}
                 placeholder={t("wishlist.vendorPlaceholder", "Vendor")}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
+                className={inventoryFormControlClassName}
                 disabled={!tauriAvailable}
               />
               <input
@@ -228,7 +229,7 @@ export function InventoryStockSourcePanel({
                 value={manualMaterial}
                 onChange={(event) => onManualMaterialChange(event.target.value)}
                 placeholder={t("wishlist.materialPlaceholder", "Material")}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
+                className={inventoryFormControlClassName}
                 disabled={!tauriAvailable}
               />
               <input
@@ -236,7 +237,7 @@ export function InventoryStockSourcePanel({
                 value={manualFilamentName}
                 onChange={(event) => onManualFilamentNameChange(event.target.value)}
                 placeholder={t("wishlist.filamentName", "Filament name")}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
+                className={inventoryFormControlClassName}
                 disabled={!tauriAvailable}
               />
               <input
@@ -244,7 +245,7 @@ export function InventoryStockSourcePanel({
                 value={manualColorName}
                 onChange={(event) => onManualColorNameChange(event.target.value)}
                 placeholder={t("wishlist.colorName", "Color name")}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
+                className={inventoryFormControlClassName}
                 disabled={!tauriAvailable}
               />
             </div>
@@ -255,7 +256,7 @@ export function InventoryStockSourcePanel({
                 value={manualHexColor}
                 onChange={(event) => onManualHexColorChange(event.target.value)}
                 placeholder={t("wishlist.hexOptional", "Hex color")}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100"
+                className={inventoryFormControlClassName}
                 disabled={!tauriAvailable}
               />
               <input
