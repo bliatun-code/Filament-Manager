@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   settingsActionButtonClass,
+  settingsCompactFormControlClass,
   settingsCompactSelectClass,
   settingsFormControlClass,
   settingsSectionLabelClass,
@@ -37,6 +38,14 @@ test("settings compact selects share focus and disabled treatment", () => {
   assert.match(settingsCompactSelectClass, /text-xs text-slate-700/);
   assert.match(settingsCompactSelectClass, /focus-visible:border-sky-300\/70/);
   assert.match(settingsCompactSelectClass, /disabled:opacity-50/);
+});
+
+test("settings compact form controls share focus and disabled treatment", () => {
+  assert.match(settingsCompactFormControlClass, /rounded-xl border border-slate-200/);
+  assert.match(settingsCompactFormControlClass, /text-xs text-slate-900/);
+  assert.match(settingsCompactFormControlClass, /focus-visible:border-sky-300\/70/);
+  assert.match(settingsCompactFormControlClass, /focus-visible:ring-2/);
+  assert.match(settingsCompactFormControlClass, /disabled:opacity-50/);
 });
 
 test("settings text inputs use the shared form control chrome", () => {

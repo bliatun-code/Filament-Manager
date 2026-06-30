@@ -8,7 +8,11 @@ import { formatFilamentDisplayTitle } from "../lib/display_format";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import { SettingsMetricTile } from "./settings_ui";
-import { chipButtonClass, settingsActionButtonClass } from "../lib/settings_ui_classes";
+import {
+  chipButtonClass,
+  settingsActionButtonClass,
+  settingsCompactFormControlClass,
+} from "../lib/settings_ui_classes";
 
 type SettingsMissingSwatchesPanelProps = {
   busy: boolean;
@@ -173,7 +177,7 @@ export function SettingsMissingSwatchesPanel({
                         type="text"
                         value={draftHex}
                         onChange={(event) => onSwatchDraftChange(master.id, event.target.value)}
-                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
+                        className={settingsCompactFormControlClass}
                         placeholder="#RRGGBB / gradient(...) / multi(...)"
                         disabled={disabled}
                       />
