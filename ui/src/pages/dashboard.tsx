@@ -23,6 +23,9 @@ type DashboardPageProps = {
   onOpenCompanionSettings?: () => void;
 };
 
+const dashboardHeaderActionButtonClassName =
+  "inline-flex items-center gap-2 rounded-lg border border-slate-300/70 bg-white/86 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm shadow-slate-300/25 outline-none backdrop-blur transition hover:bg-white focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-200 dark:shadow-none dark:hover:bg-slate-900 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+
 export default function DashboardPage({
   onNavigate,
   onOpenLowStock,
@@ -91,7 +94,7 @@ export default function DashboardPage({
           <button
             type="button"
             onClick={() => onOpenCompanionSettings?.()}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300/70 bg-white/86 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm shadow-slate-300/25 backdrop-blur transition hover:bg-white dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-200 dark:shadow-none dark:hover:bg-slate-900"
+            className={dashboardHeaderActionButtonClassName}
             title={t("dashboard.openCompanionSettings", "Open companion settings")}
           >
             <span className={`h-2.5 w-2.5 rounded-full ${companionDotClass}`} />
