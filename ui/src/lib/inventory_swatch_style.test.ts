@@ -44,8 +44,8 @@ test("inventory catalog rows add neutral selected emphasis", () => {
   const selected = inventoryCatalogRowStyle("#2563EB", true, "dark");
 
   assert.equal(idle.borderColor, "rgba(37, 99, 235, 0.28)");
-  assert.equal(hovered.borderColor, "rgba(203, 213, 225, 0.95)");
-  assert.match(hovered.boxShadow, /rgba\(203, 213, 225, 0\.72\)/);
+  assert.equal(hovered.borderColor, "rgba(255, 255, 255, 0.98)");
+  assert.match(hovered.boxShadow, /0 0 0 1px rgba\(255, 255, 255, 0\.96\)/);
   assert.equal(selected.borderColor, "rgba(226, 232, 240, 0.54)");
   assert.match(selected.boxShadow, /rgba\(226, 232, 240, 0\.12\)/);
 });

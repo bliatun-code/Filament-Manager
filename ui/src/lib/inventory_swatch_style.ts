@@ -187,14 +187,14 @@ export function inventoryCatalogRowStyle(
       ...base,
       borderColor:
         resolvedTheme === "dark"
-          ? "rgba(148, 163, 184, 0.55)"
-          : "rgba(203, 213, 225, 0.95)",
-      boxShadow: `${base.boxShadow}, 0 0 0 2px ${
+          ? "rgba(248, 250, 252, 0.68)"
+          : "rgba(255, 255, 255, 0.98)",
+      boxShadow: `${base.boxShadow}, 0 0 0 1px ${
         resolvedTheme === "dark"
-          ? "rgba(148, 163, 184, 0.22)"
-          : "rgba(203, 213, 225, 0.72)"
-      }, 0 14px 28px -24px ${
-        resolvedTheme === "dark" ? "rgba(2, 6, 23, 0.54)" : "rgba(15, 23, 42, 0.2)"
+          ? "rgba(248, 250, 252, 0.38)"
+          : "rgba(255, 255, 255, 0.96)"
+      }, 0 12px 22px -24px ${
+        resolvedTheme === "dark" ? "rgba(2, 6, 23, 0.5)" : "rgba(15, 23, 42, 0.18)"
       }`,
     } as const;
   }
@@ -203,14 +203,14 @@ export function inventoryCatalogRowStyle(
       ...base,
       borderColor:
         resolvedTheme === "dark"
-          ? "rgba(226, 232, 240, 0.62)"
-          : "rgba(15, 23, 42, 0.2)",
-      boxShadow: `${base.boxShadow}, 0 0 0 2px ${
+          ? "rgba(248, 250, 252, 0.72)"
+          : "rgba(255, 255, 255, 0.98)",
+      boxShadow: `${base.boxShadow}, 0 0 0 1px ${
         resolvedTheme === "dark"
-          ? "rgba(226, 232, 240, 0.16)"
-          : "rgba(15, 23, 42, 0.1)"
-      }, 0 14px 28px -24px ${
-        resolvedTheme === "dark" ? "rgba(2, 6, 23, 0.58)" : "rgba(15, 23, 42, 0.22)"
+          ? "rgba(248, 250, 252, 0.42)"
+          : "rgba(255, 255, 255, 0.96)"
+      }, 0 12px 22px -24px ${
+        resolvedTheme === "dark" ? "rgba(2, 6, 23, 0.54)" : "rgba(15, 23, 42, 0.2)"
       }`,
     } as const;
   }
