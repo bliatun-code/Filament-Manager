@@ -37,6 +37,10 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(maintenancePanels, /inventoryDetailDangerActionButtonClassName/);
   assert.match(maintenancePanels, /inventoryDetailFormControlClassName/);
   assert.match(maintenancePanels, /inventoryDetailSaveButtonClassName/);
+  assert.match(maintenancePanels, /ownershipSegmentBaseClass/);
+  assert.match(maintenancePanels, /aria-pressed=\{typeValue === "OWNED"\}/);
+  assert.match(maintenancePanels, /aria-pressed=\{borrowed\}/);
+  assert.match(maintenancePanels, /focus-visible:border-sky-300/);
   assert.match(qrRfidPanel, /inventoryDetailActionButtonClassName/);
   assert.match(qrRfidPanel, /inventoryDetailEyebrowClassName/);
   assert.match(rollHistoryPanel, /inventoryDetailEyebrowClassName/);
@@ -58,6 +62,10 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.doesNotMatch(
     maintenancePanels,
     /w-full rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold/,
+  );
+  assert.doesNotMatch(
+    maintenancePanels,
+    /rounded-lg px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed/,
   );
   assert.doesNotMatch(maintenancePanels, /inventoryMaintenanceInputClass/);
   assert.doesNotMatch(maintenancePanels, /inventoryMaintenanceSaveButtonClass/);

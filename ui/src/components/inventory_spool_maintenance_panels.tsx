@@ -17,7 +17,7 @@ type SpoolMaintenancePanelBaseProps = {
 };
 
 const ownershipSegmentBaseClass =
-  "rounded-lg px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-lg border border-transparent px-3 py-2 text-sm font-semibold outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
 const ownershipSegmentActiveClass =
   "bg-[rgba(255,255,255,0.94)] text-slate-950 shadow-sm shadow-slate-900/10 ring-1 ring-slate-900/5 dark:bg-[rgba(30,41,59,0.92)] dark:text-slate-50 dark:shadow-none dark:ring-white/10";
 const ownershipSegmentIdleClass =
@@ -177,6 +177,7 @@ export function InventorySpoolOwnershipPanel({
       <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-100/70 p-1 dark:border-slate-700 dark:bg-slate-950/40">
         <button
           type="button"
+          aria-pressed={typeValue === "OWNED"}
           className={`${ownershipSegmentBaseClass} ${
             typeValue === "OWNED"
               ? ownershipSegmentActiveClass
@@ -189,6 +190,7 @@ export function InventorySpoolOwnershipPanel({
         </button>
         <button
           type="button"
+          aria-pressed={borrowed}
           className={`${ownershipSegmentBaseClass} ${
             borrowed ? ownershipSegmentActiveClass : ownershipSegmentIdleClass
           }`}
