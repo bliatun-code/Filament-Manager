@@ -1,6 +1,9 @@
 import { formatDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
-import { inventoryDetailPanelClassName } from "./inventory_detail_panel_class";
+import {
+  inventoryDetailPanelClassName,
+  inventoryPanelToggleButtonClassName,
+} from "./inventory_detail_panel_class";
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { SpoolHistoryEventRow } from "../lib/tauri_client";
@@ -41,7 +44,7 @@ export function InventoryRollHistoryPanel({
         </div>
         <button
           type="button"
-          className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-200"
+          className={inventoryPanelToggleButtonClassName}
           onClick={onToggle}
         >
           {showRollHistory ? t("common.hide", "Hide") : t("common.show", "Show")}

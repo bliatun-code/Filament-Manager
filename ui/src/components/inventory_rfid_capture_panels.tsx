@@ -1,6 +1,9 @@
 import { swatchCssBackground } from "../lib/color_utils";
 import { CloseButton } from "./close_button";
-import { inventoryDetailSectionLabelClassName } from "./inventory_detail_panel_class";
+import {
+  inventoryDetailSectionLabelClassName,
+  inventoryPanelToggleButtonClassName,
+} from "./inventory_detail_panel_class";
 import { modalActionButtonClassName } from "./modal_action_button_class";
 import { useI18n } from "../lib/i18n";
 import type { InventorySpool } from "../lib/inventory_list_model";
@@ -357,7 +360,7 @@ export function InventoryRfidCapturedFieldsPanel({
           </div>
           <button
             type="button"
-            className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-200"
+            className={inventoryPanelToggleButtonClassName}
             onClick={onToggle}
           >
             {show ? t("common.hide", "Hide") : t("common.show", "Show")}
