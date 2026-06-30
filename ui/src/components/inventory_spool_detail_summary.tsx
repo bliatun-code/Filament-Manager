@@ -110,13 +110,7 @@ export function InventorySpoolIdentityPanel({
 }: InventorySpoolIdentityPanelProps) {
   const { locale, t } = useI18n();
   const amsSighting = buildInventorySpoolAmsSighting(spool, assignedSlot);
-  const amsSightingHint =
-    amsSighting?.source === "live_activity"
-      ? t(
-          "inventory.rfidRegisteredLiveActivityHint",
-          "RFID remains tied to this Bambu roll. Because the roll is assigned to a loaded or active AMS slot, this sighting uses the printer's latest live AMS update when no newer RFID identity timestamp is available.",
-        )
-      : rfidBindingMeta.hint;
+  const showRfidBindingHint = amsSighting?.source !== "live_activity";
 
   return (
     <div
@@ -152,9 +146,11 @@ export function InventorySpoolIdentityPanel({
               </span>
             ) : null}
           </div>
-          <div className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-            {amsSightingHint}
-          </div>
+          {showRfidBindingHint ? (
+            <div className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+              {rfidBindingMeta.hint}
+            </div>
+          ) : null}
         </div>
         <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
           <div className={inventoryDetailLabelClassName}>

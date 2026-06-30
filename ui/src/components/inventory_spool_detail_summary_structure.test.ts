@@ -23,3 +23,9 @@ test("InventorySpoolIdentityPanel keeps long RFID reference content readable", (
   assert.doesNotMatch(source, /2xl:grid-cols-3/);
   assert.doesNotMatch(source, /2xl:col-span-1/);
 });
+
+test("InventorySpoolIdentityPanel keeps live AMS sighting copy compact", () => {
+  assert.match(source, /lastAmsSightingLiveActivity/);
+  assert.match(source, /showRfidBindingHint/);
+  assert.doesNotMatch(source, /rfidRegisteredLiveActivityHint/);
+});
