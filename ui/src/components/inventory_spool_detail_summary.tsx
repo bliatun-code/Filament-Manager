@@ -6,6 +6,10 @@ import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import {
+  buildInventorySpoolAmsSighting,
+  type InventorySpoolAmsSightingSlot,
+} from "../lib/inventory_spool_ams_sighting";
+import {
   formatInventoryOwnershipSummary,
   formatRollReference,
   type InventorySemanticTone,
@@ -28,11 +32,15 @@ type InventorySpoolDetailHeaderProps = {
 };
 
 type InventorySpoolIdentityPanelProps = {
-  assignedSlot: { printerName: string } | null;
+  assignedSlot: InventorySpoolDetailAssignedSlot | null;
   locationValue: string;
   rfidBindingMeta: { className: string; hint: string; label: string };
   resolvedTheme: ResolvedTheme;
   spool: InventorySpool;
+};
+
+export type InventorySpoolDetailAssignedSlot = InventorySpoolAmsSightingSlot & {
+  printerName: string;
 };
 
 export function InventorySpoolDetailHeader({
@@ -101,6 +109,14 @@ export function InventorySpoolIdentityPanel({
   spool,
 }: InventorySpoolIdentityPanelProps) {
   const { locale, t } = useI18n();
+  const amsSighting = buildInventorySpoolAmsSighting(spool, assignedSlot);
+  const amsSightingHint =
+    amsSighting?.source === "live_activity"
+      ? t(
+          "inventory.rfidRegisteredLiveActivityHint",
+          "RFID remains tied to this Bambu roll. Because the roll is assigned to a loaded or active AMS slot, this sighting uses the printer's latest live AMS update when no newer RFID identity timestamp is available.",
+        )
+      : rfidBindingMeta.hint;
 
   return (
     <div
@@ -124,15 +140,20 @@ export function InventorySpoolIdentityPanel({
           </div>
           <div className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
             {t("inventory.lastAmsIdentitySeen", "Last AMS sighting")}:{" "}
-            {spool.rfidObservedAt
-              ? `${formatCaptureTimestamp(spool.rfidObservedAt, locale)} (${formatObservedAge(
-                  spool.rfidObservedAt,
+            {amsSighting
+              ? `${formatCaptureTimestamp(amsSighting.observedAt, locale)} (${formatObservedAge(
+                  amsSighting.observedAt,
                   locale,
                 )})`
               : "-"}
+            {amsSighting?.source === "live_activity" ? (
+              <span className={`${inlineStatusSignalClass("success")} ml-2`}>
+                {t("inventory.lastAmsSightingLiveActivity", "Live slot")}
+              </span>
+            ) : null}
           </div>
           <div className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-            {rfidBindingMeta.hint}
+            {amsSightingHint}
           </div>
         </div>
         <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">

@@ -16,6 +16,7 @@ import { InventorySpoolQrRfidPanel } from "./inventory_spool_qr_rfid_panel";
 import {
   InventorySpoolDetailHeader,
   InventorySpoolIdentityPanel,
+  type InventorySpoolDetailAssignedSlot,
 } from "./inventory_spool_detail_summary";
 import {
   InventorySpoolHomeLocationPanel,
@@ -36,7 +37,7 @@ import type { ResolvedTheme } from "../lib/theme_mode";
 import type { SpoolHistoryEventRow, SpoolUsagePointRow } from "../lib/tauri_client";
 
 type InventorySpoolDetailModalProps = {
-  assignedSlot: { printerName: string } | null;
+  assignedSlot: InventorySpoolDetailAssignedSlot | null;
   colorName: string;
   confirmDelete: boolean;
   confirmPurge: boolean;

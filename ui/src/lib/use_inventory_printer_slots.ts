@@ -13,6 +13,8 @@ export type InventoryPrinterSlotOption = RfidCapturePrinterSlotLike & {
   spoolFilamentName?: string | null;
   spoolColorName?: string | null;
   spoolHexColor?: string | null;
+  liveIsActive?: boolean | null;
+  liveMatchedInventorySpoolId?: string | null;
   liveMqttConnected?: boolean | null;
 };
 
@@ -37,7 +39,9 @@ export function useInventoryPrinterSlots(
           spoolFilamentName: slot.spool_filament_name ?? null,
           spoolColorName: slot.spool_color_name ?? null,
           spoolHexColor: slot.spool_hex_color ?? null,
+          liveIsActive: slot.live_is_active ?? null,
           liveLoaded: slot.live_loaded ?? null,
+          liveMatchedInventorySpoolId: slot.live_matched_inventory_spool_id ?? null,
           liveObservedRfidTag: slot.live_observed_rfid_tag ?? null,
           liveTrayUuid: slot.live_tray_uuid ?? null,
           liveChipId: slot.live_chip_id ?? null,

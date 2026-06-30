@@ -447,6 +447,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       rfidRegistered: "RFID registered",
       rfidRegisteredHint:
         "This RFID stays tied to the Bambu roll until the roll is used up or the saved RFID is overwritten. The AMS sighting only shows when the printer last reported this identity.",
+      rfidRegisteredLiveActivityHint:
+        "RFID remains tied to this Bambu roll. Because the roll is assigned to a loaded or active AMS slot, this sighting uses the printer's latest live AMS update when no newer RFID identity timestamp is available.",
       rfidRegisteredUnseenHint:
         "An RFID is saved on this roll, but AMS has not reported a sighting timestamp for it yet.",
       rfidBambuUnregistered: "RFID not registered yet",
@@ -456,6 +458,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       rfidUnsupportedVendorHint:
         "AMS RFID identity is currently only exposed for Bambu rolls. Track this roll with QR, weight, location and printer assignment instead.",
       lastAmsIdentitySeen: "Last AMS sighting",
+      lastAmsSightingLiveActivity: "Live slot",
       rfidMatchExact: "Exact",
       rfidMatchExactHint: "Material and HEX swatch match.",
       rfidMatchPartial: "Partial",
@@ -2026,6 +2029,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       rfidRegistered: "RFID registrert",
       rfidRegisteredHint:
         "RFID-en er knyttet til denne Bambu-rullen til rullen er brukt opp eller lagret RFID overskrives. AMS-observasjonen viser bare når printeren sist rapporterte identiteten.",
+      rfidRegisteredLiveActivityHint:
+        "RFID-en er fortsatt knyttet til denne Bambu-rullen. Fordi rullen er tildelt et lastet eller aktivt AMS-spor, bruker denne visningen printerens nyeste live AMS-oppdatering når det ikke finnes en nyere RFID-identitet.",
       rfidRegisteredUnseenHint:
         "RFID er lagret på denne rullen, men AMS har ikke rapportert tidspunkt for siste observasjon ennå.",
       rfidBambuUnregistered: "RFID ikke registrert ennå",
@@ -2035,6 +2040,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       rfidUnsupportedVendorHint:
         "AMS RFID-identitet er foreløpig bare tilgjengelig for Bambu-ruller. Bruk QR, vekt, lokasjon og printertildeling for denne rullen.",
       lastAmsIdentitySeen: "Sist sett i AMS",
+      lastAmsSightingLiveActivity: "Live-spor",
       rfidMatchExact: "Sikker",
       rfidMatchExactHint: "Materiale og HEX-farge stemmer.",
       rfidMatchPartial: "Delvis",
