@@ -17,6 +17,8 @@ test("inventory detail labels use shared detail typography classes", () => {
   const rawEyebrowClass =
     /text-xs uppercase tracking-\[0\.2em\] text-slate-500 dark:text-slate-400/;
 
+  assert.match(detailPanelClasses, /inventoryDetailActionButtonClassName/);
+  assert.match(detailPanelClasses, /inventoryDetailDangerActionButtonClassName/);
   assert.match(detailPanelClasses, /inventoryDetailEyebrowClassName/);
   assert.match(detailPanelClasses, /inventoryDetailFormControlClassName/);
   assert.match(detailPanelClasses, /inventoryDetailLabelClassName/);
@@ -26,8 +28,10 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(detailPanelClasses, /focus-visible:border-sky-300/);
   assert.match(detailModal, /inventoryDetailEyebrowClassName/);
   assert.match(maintenancePanels, /inventoryDetailEyebrowClassName/);
+  assert.match(maintenancePanels, /inventoryDetailDangerActionButtonClassName/);
   assert.match(maintenancePanels, /inventoryDetailFormControlClassName/);
   assert.match(maintenancePanels, /inventoryDetailSaveButtonClassName/);
+  assert.match(qrRfidPanel, /inventoryDetailActionButtonClassName/);
   assert.match(qrRfidPanel, /inventoryDetailEyebrowClassName/);
   assert.match(rollHistoryPanel, /inventoryDetailEyebrowClassName/);
   assert.match(spoolDetailSummary, /inventoryDetailLabelClassName/);
@@ -36,8 +40,13 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(rollHistoryPanel, /inventoryPanelToggleButtonClassName/);
   assert.doesNotMatch(detailModal, rawEyebrowClass);
   assert.doesNotMatch(maintenancePanels, rawEyebrowClass);
+  assert.doesNotMatch(
+    maintenancePanels,
+    /w-full rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold/,
+  );
   assert.doesNotMatch(maintenancePanels, /inventoryMaintenanceInputClass/);
   assert.doesNotMatch(maintenancePanels, /inventoryMaintenanceSaveButtonClass/);
+  assert.doesNotMatch(qrRfidPanel, /qrRfidActionButtonClassName/);
   assert.doesNotMatch(qrRfidPanel, rawEyebrowClass);
   assert.doesNotMatch(rollHistoryPanel, rawEyebrowClass);
   assert.doesNotMatch(

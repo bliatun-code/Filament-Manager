@@ -1,5 +1,8 @@
 import { useI18n } from "../lib/i18n";
-import { inventoryDetailEyebrowClassName } from "./inventory_detail_panel_class";
+import {
+  inventoryDetailActionButtonClassName,
+  inventoryDetailEyebrowClassName,
+} from "./inventory_detail_panel_class";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 
@@ -18,9 +21,6 @@ type InventorySpoolQrRfidPanelProps = {
 
 const qrRfidInfoBoxClassName =
   "rounded-lg border border-slate-200/80 bg-white/80 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900/60";
-
-const qrRfidActionButtonClassName =
-  "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-100";
 
 export function InventorySpoolQrRfidPanel({
   companionAvailable,
@@ -87,7 +87,7 @@ export function InventorySpoolQrRfidPanel({
       <div className="mt-3">
         <button
           type="button"
-          className={qrRfidActionButtonClassName}
+          className={inventoryDetailActionButtonClassName}
           onClick={onPrintLabel}
           disabled={!runtimeAvailable || !companionAvailable || !dataUrl}
         >
@@ -97,7 +97,7 @@ export function InventorySpoolQrRfidPanel({
       <div className="mt-2">
         <button
           type="button"
-          className={qrRfidActionButtonClassName}
+          className={inventoryDetailActionButtonClassName}
           onClick={onStartRfidCapture}
           disabled={!runtimeAvailable || !supportsRfidCapture}
         >

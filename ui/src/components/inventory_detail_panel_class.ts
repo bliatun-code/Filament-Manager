@@ -16,5 +16,11 @@ export const inventoryDetailFormControlClassName =
 export const inventoryDetailSaveButtonClassName =
   "rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-slate-300/30 outline-none transition hover:bg-slate-800 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
 
+export const inventoryDetailActionButtonClassName =
+  "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-50 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800/60 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+
+export const inventoryDetailDangerActionButtonClassName =
+  "w-full rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 outline-none transition hover:bg-rose-100 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:border-rose-400/40 dark:bg-rose-500/15 dark:text-rose-200 dark:hover:bg-rose-500/25 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+
 export const inventoryPanelToggleButtonClassName =
   "rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 outline-none transition hover:bg-slate-50 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800/60 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";

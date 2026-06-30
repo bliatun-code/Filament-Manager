@@ -1,5 +1,6 @@
 import { useI18n } from "../lib/i18n";
 import {
+  inventoryDetailDangerActionButtonClassName,
   inventoryDetailEyebrowClassName,
   inventoryDetailFormControlClassName,
   inventoryDetailPanelClassName,
@@ -262,7 +263,7 @@ export function InventorySpoolLostStatusPanel({
       </div>
       <button
         type="button"
-        className="mt-3 w-full rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 disabled:opacity-50 dark:border-rose-400/40 dark:bg-rose-500/15 dark:text-rose-200"
+        className={`mt-3 ${inventoryDetailDangerActionButtonClassName}`}
         onClick={onToggle}
         disabled={disabled}
       >
