@@ -123,6 +123,25 @@ test("InventoryStockSourcePanel localizes the regular Bambu source without batch
   assert.doesNotMatch(html, /Add ready matches/);
 });
 
+test("InventoryStockSourcePanel labels catalog match counts", () => {
+  const masters = [
+    master({ id: "yellow", filament_name: "PLA Basic", color_name: "Yellow" }),
+    master({ id: "green", filament_name: "PLA Basic", color_name: "Green" }),
+  ];
+  const englishHtml = renderPanel({
+    mode: "bambu",
+    masters,
+  });
+  const norwegianHtml = renderPanel({
+    mode: "bambu",
+    masters,
+    locale: "nb",
+  });
+
+  assert.match(englishHtml, /2 matches/);
+  assert.match(norwegianHtml, /2 treff/);
+});
+
 test("InventoryStockSourcePanel renders the active Bambu code catalog row after search", () => {
   const html = renderPanel({
     mode: "bambu",

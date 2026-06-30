@@ -1,6 +1,10 @@
 import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { inventoryFormControlClassName } from "./form_control_class";
-import { inlineStatusSignalClass, neutralChipClass } from "../lib/chip_styles";
+import {
+  inlineStatusSignalClass,
+  neutralChipClass,
+  semanticChipClass,
+} from "../lib/chip_styles";
 import { swatchCssBackground, toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import { formatMasterDisplayTitle } from "../lib/inventory_list_model";
@@ -71,6 +75,16 @@ export function InventoryStockSourcePanel({
   tauriAvailable,
 }: InventoryStockSourcePanelProps) {
   const { t } = useI18n();
+  const catalogMatchCountLabel =
+    activeCatalogMasters.length === 1
+      ? t("inventory.catalogMatchCountSingular", "{count} match").replace(
+          "{count}",
+          String(activeCatalogMasters.length),
+        )
+      : t("inventory.catalogMatchCountPlural", "{count} matches").replace(
+          "{count}",
+          String(activeCatalogMasters.length),
+        );
 
   return (
     <div className="surface-card space-y-4">
@@ -99,8 +113,13 @@ export function InventoryStockSourcePanel({
               ]}
             />
             {isCatalogCreateMode ? (
-              <span className="shrink-0 text-[11px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
-                {activeCatalogMasters.length}
+              <span
+                className={semanticChipClass(
+                  "neutral",
+                  "shrink-0 px-2.5 py-1 text-[11px] tabular-nums",
+                )}
+              >
+                {catalogMatchCountLabel}
               </span>
             ) : null}
           </div>

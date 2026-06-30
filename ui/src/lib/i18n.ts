@@ -285,6 +285,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       stockEntryHelp:
         "Choose a vendor flow, pick a filament, then confirm stock details below.",
       vendorSource: "Vendor source",
+      catalogMatchCountSingular: "{count} match",
+      catalogMatchCountPlural: "{count} matches",
       searchVendorCatalog: "Search {{vendor}} material, filament or color",
       catalogRefreshFilter: "Catalog refresh & filter",
       catalogSelection: "Catalog selection",
@@ -1868,6 +1870,8 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       stockEntryHelp:
         "Velg leverandørflyt, plukk filamentet og bekreft lagerdetaljene under.",
       vendorSource: "Leverandørkilde",
+      catalogMatchCountSingular: "{count} treff",
+      catalogMatchCountPlural: "{count} treff",
       searchVendorCatalog: "Søk etter {{vendor}}-materiale, filament eller farge",
       catalogRefreshFilter: "Katalogoppdatering og filtrering",
       catalogSelection: "Katalogvalg",

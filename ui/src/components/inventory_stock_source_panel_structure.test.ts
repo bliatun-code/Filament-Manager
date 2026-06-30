@@ -10,6 +10,8 @@ const source = readFileSync(
 test("InventoryStockSourcePanel shares focus treatment for catalog and manual actions", () => {
   assert.match(source, /inventoryStockCatalogRowClassName/);
   assert.match(source, /inventoryStockManualFallbackButtonClassName/);
+  assert.match(source, /semanticChipClass/);
+  assert.match(source, /catalogMatchCountLabel/);
   assert.match(source, /focus-visible:border-sky-300/);
   assert.match(source, /disabled:cursor-not-allowed/);
   assert.doesNotMatch(
