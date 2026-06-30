@@ -87,6 +87,17 @@ type InventoryRfidCaptureActionsProps = {
   onSave: () => void;
 };
 
+function inventoryRfidCaptureSlotButtonClassName(active: boolean): string {
+  const base =
+    "rounded-lg border px-3 py-2 text-left text-sm font-semibold outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+
+  if (active) {
+    return `${base} border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-400/50 dark:bg-sky-500/15 dark:text-sky-200`;
+  }
+
+  return `${base} border-slate-200 text-slate-700 hover:bg-white dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-950/70`;
+}
+
 export function InventoryRfidCaptureHeader({
   displayTitle,
   matchMeta,
@@ -161,11 +172,7 @@ export function InventoryRfidCaptureSlotPicker({
             <button
               key={slot.slotId}
               type="button"
-              className={`rounded-lg border px-3 py-2 text-left text-sm font-semibold transition ${
-                active
-                  ? "border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-400/50 dark:bg-sky-500/15 dark:text-sky-200"
-                  : "border-slate-200 text-slate-700 hover:bg-white dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-950/70"
-              }`}
+              className={inventoryRfidCaptureSlotButtonClassName(active)}
               onClick={() => onSelectSlot(slot.slotId)}
             >
               <div className="flex items-center gap-2">
