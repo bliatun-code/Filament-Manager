@@ -27,6 +27,7 @@ import {
   detailLabelClassName,
   detailValueClassName,
   formInputClassName,
+  loanOutSpoolButtonClassName,
   panelCardClassName,
   panelSubtitleClassName,
   panelTitleClassName,
@@ -256,11 +257,7 @@ export function LoanOutModal({
                               : "",
                           );
                         }}
-                        className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-[13px] transition ${
-                          isActive
-                            ? "border-slate-300 shadow-sm dark:border-slate-500"
-                            : "border-slate-200/90 bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-950/40 dark:hover:border-slate-500"
-                        }`}
+                        className={loanOutSpoolButtonClassName(isActive)}
                         style={
                           isActive
                             ? swatchInsetStyle(spool.hexColor, resolvedTheme)

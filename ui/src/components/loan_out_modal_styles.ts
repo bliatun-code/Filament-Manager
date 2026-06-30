@@ -106,3 +106,14 @@ export const countPillClassName =
 export const detailLabelClassName =
   "text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400";
 export const detailValueClassName = "mt-1 text-sm font-semibold text-slate-900 dark:text-slate-50";
+
+export function loanOutSpoolButtonClassName(active: boolean): string {
+  const base =
+    "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-[13px] outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+
+  if (active) {
+    return `${base} border-slate-300 shadow-sm dark:border-slate-500`;
+  }
+
+  return `${base} border-slate-200/90 bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-950/40 dark:hover:border-slate-500`;
+}
