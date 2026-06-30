@@ -2,6 +2,7 @@ import { type ReactNode, useEffect } from "react";
 import { useI18n } from "../lib/i18n";
 import { swatchCssBackground } from "../lib/color_utils";
 import { AppModal } from "./app_modal";
+import { modalActionButtonClassName } from "./modal_action_button_class";
 import { modalEyebrowClassName } from "./modal_chrome";
 
 type SaveOnlyModalProps = {
@@ -82,7 +83,7 @@ export function SaveOnlyModal({
         <div className="border-t border-slate-200/80 bg-slate-50/95 px-5 py-4 dark:border-slate-700/80 dark:bg-slate-950/90">
           <button
             type="button"
-            className="w-full rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-slate-300/25 transition hover:bg-slate-800 disabled:opacity-60 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white"
+            className={`w-full ${modalActionButtonClassName("solid", "roomy")}`}
             onClick={() => void onSave()}
             disabled={saveDisabled}
           >

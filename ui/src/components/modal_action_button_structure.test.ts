@@ -11,6 +11,7 @@ test("modal action buttons share secondary and primary chrome", () => {
   const actionButtonClass = readComponentSource("modal_action_button_class.ts");
   const rfidCapturePanels = readComponentSource("inventory_rfid_capture_panels.tsx");
   const rfidOverrideModal = readComponentSource("rfid_override_modal.tsx");
+  const saveOnlyModal = readComponentSource("save_only_modal.tsx");
   const slotOnboardingModal = readComponentSource("slot_catalog_onboarding_modal.tsx");
   const rawSecondaryClass =
     /rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold/;
@@ -22,9 +23,12 @@ test("modal action buttons share secondary and primary chrome", () => {
   assert.match(actionButtonClass, /variant === "primary"/);
   assert.match(actionButtonClass, /variant === "solid"/);
   assert.match(actionButtonClass, /variant === "success"/);
+  assert.match(actionButtonClass, /size === "roomy" \? "px-4 py-3" : "px-4 py-2"/);
   assert.match(addPrinterModal, /modalActionButtonClassName\(\)/);
   assert.match(addPrinterModal, /modalActionButtonClassName\("solid"\)/);
+  assert.match(saveOnlyModal, /modalActionButtonClassName\("solid", "roomy"\)/);
   assert.doesNotMatch(addPrinterModal, /rounded-xl bg-slate-900 px-4 py-2/);
+  assert.doesNotMatch(saveOnlyModal, /rounded-lg border border-slate-800 bg-slate-900 px-4 py-3/);
   for (const source of [rfidCapturePanels, rfidOverrideModal, slotOnboardingModal]) {
     assert.match(source, /modalActionButtonClassName\(\)/);
     assert.match(source, /modalActionButtonClassName\("primary"\)/);

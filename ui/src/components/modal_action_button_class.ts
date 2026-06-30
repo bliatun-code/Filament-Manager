@@ -1,10 +1,13 @@
 export type ModalActionButtonVariant = "secondary" | "primary" | "solid" | "success";
+export type ModalActionButtonSize = "default" | "roomy";
 
 export function modalActionButtonClassName(
   variant: ModalActionButtonVariant = "secondary",
+  size: ModalActionButtonSize = "default",
 ): string {
+  const padding = size === "roomy" ? "px-4 py-3" : "px-4 py-2";
   const base =
-    "rounded-lg border px-4 py-2 text-sm font-semibold outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+    `rounded-lg border ${padding} text-sm font-semibold outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20`;
 
   if (variant === "primary") {
     return `${base} border-sky-300 bg-sky-600 text-white hover:bg-sky-700 dark:border-sky-400/40 dark:bg-sky-500 dark:hover:bg-sky-400`;
