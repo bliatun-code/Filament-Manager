@@ -11,7 +11,8 @@ test("statistics filter controls share focus-visible treatment", () => {
   assert.match(source, /statisticsFilterInputClass/);
   assert.match(source, /statisticsFilterSelectClass/);
   assert.match(source, /statisticsFilterButtonClass/);
-  assert.equal((source.match(/focus-visible:border-sky-300/g) ?? []).length, 3);
-  assert.equal((source.match(/focus-visible:ring-sky-100/g) ?? []).length, 3);
-  assert.equal((source.match(/dark:focus-visible:border-sky-400\/60/g) ?? []).length, 3);
+  assert.match(source, /statisticsInteractiveCardClass/);
+  assert.equal((source.match(/focus-visible:border-sky-300/g) ?? []).length, 4);
+  assert.equal((source.match(/focus-visible:ring-sky-100/g) ?? []).length, 4);
+  assert.equal((source.match(/dark:focus-visible:border-sky-400\/60/g) ?? []).length, 4);
 });

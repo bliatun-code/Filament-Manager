@@ -3,6 +3,7 @@ import type { TranslateFn } from "../lib/statistics_model";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { InventoryOverview, PrinterOverviewRow } from "../lib/tauri_client";
 import { StatisticsEmptyState, SummaryMetricTile } from "./statistics_primitives";
+import { statisticsInteractiveCardClass } from "./statistics_view_helpers";
 
 export function StatisticsOwnershipSnapshotPanel({
   ownershipOverview,
@@ -121,7 +122,7 @@ export function StatisticsPerPrinterUsagePanel({
         {printers.map((row) => (
           <div
             key={row.printer.id}
-            className="cursor-pointer rounded-lg border p-3.5 text-sm transition hover:-translate-y-0.5"
+            className={`rounded-lg border p-3.5 ${statisticsInteractiveCardClass}`}
             role="button"
             tabIndex={0}
             onClick={() => onOpenConsumption(row)}

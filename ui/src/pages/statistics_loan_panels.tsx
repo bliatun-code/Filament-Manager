@@ -2,6 +2,7 @@ import { neutralChipClass } from "../lib/chip_styles";
 import type { LoanUsageListFilter, TranslateFn } from "../lib/statistics_model";
 import type { LoanUsageByPersonRow } from "../lib/tauri_client";
 import { StatisticsEmptyState, SummaryMetricTile } from "./statistics_primitives";
+import { statisticsInteractiveCardClass } from "./statistics_view_helpers";
 
 export function StatisticsOutboundLoanUsagePanel({
   filteredLoanUsage,
@@ -142,7 +143,7 @@ function StatisticsLoanUsageRow({
 }) {
   return (
     <div
-      className="cursor-pointer rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3 text-sm transition hover:-translate-y-0.5 dark:border-slate-700 dark:bg-slate-950/45"
+      className={`rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3 dark:border-slate-700 dark:bg-slate-950/45 ${statisticsInteractiveCardClass}`}
       role="button"
       tabIndex={0}
       onClick={onOpen}
