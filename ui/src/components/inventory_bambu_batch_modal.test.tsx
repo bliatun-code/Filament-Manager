@@ -101,6 +101,10 @@ test("InventoryBambuBatchModal owns batch controls without stock workflow side p
     input: "53400",
   });
 
+  assert.match(source, /bambuBatchCodeFieldClassName/);
+  assert.match(source, /bambuBatchSecondaryButtonClassName/);
+  assert.match(source, /focus-visible:border-sky-300/);
+  assert.doesNotMatch(source, /focus:border-slate-400/);
   assert.match(html, /Batch add from boxes/);
   assert.match(html, /Bambu boxes/);
   assert.match(html, /Batch Filament Codes/);

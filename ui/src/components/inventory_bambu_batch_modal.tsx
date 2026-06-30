@@ -46,6 +46,10 @@ const CAMERA_READ_WARNING_THRESHOLD = 3;
 const CAMERA_SCAN_INITIAL_DELAY_MS = 350;
 const CAMERA_SCAN_INTERVAL_MS = 1200;
 const CAMERA_DUPLICATE_RESET_EMPTY_FRAME_COUNT = 5;
+const bambuBatchCodeFieldClassName =
+  "rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+const bambuBatchSecondaryButtonClassName =
+  "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-50 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
 
 function bambuBatchRowStatusLabel(
   row: BambuFilamentCodeBatchRow,
@@ -683,12 +687,12 @@ function BambuFilamentCodeBatchPanel({
               onChange={(event) => setScanInput(event.target.value)}
               placeholder={t("inventory.bambuBatchScanPlaceholder", "Scan or type one code")}
               aria-label={t("inventory.bambuBatchScanLabel", "Scan or type one code")}
-              className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500"
+              className={`min-w-0 flex-1 ${bambuBatchCodeFieldClassName}`}
               disabled={!tauriAvailable}
             />
             <button
               type="submit"
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80"
+              className={bambuBatchSecondaryButtonClassName}
               disabled={!tauriAvailable || !trimmedScanInput}
             >
               {t("inventory.bambuBatchAppendScan", "Add to batch")}
@@ -697,7 +701,7 @@ function BambuFilamentCodeBatchPanel({
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <label
-              className={`inline-flex cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80 ${
+              className={`cursor-pointer ${bambuBatchSecondaryButtonClassName} ${
                 !tauriAvailable || imageScanBusy ? "pointer-events-none opacity-50" : ""
               }`}
             >
@@ -714,7 +718,7 @@ function BambuFilamentCodeBatchPanel({
             </label>
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80"
+              className={bambuBatchSecondaryButtonClassName}
               onClick={cameraActive ? stopCamera : () => void startCamera()}
               disabled={!tauriAvailable || cameraStarting}
             >
@@ -822,7 +826,7 @@ function BambuFilamentCodeBatchPanel({
             onChange={(event) => onInputChange(event.target.value)}
             placeholder={t("inventory.bambuBatchPlaceholder", "53400\n53600\n65103")}
             rows={3}
-            className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500"
+            className={`w-full resize-y ${bambuBatchCodeFieldClassName}`}
             disabled={!tauriAvailable}
           />
 
