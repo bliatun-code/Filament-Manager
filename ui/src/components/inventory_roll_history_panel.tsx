@@ -1,6 +1,7 @@
 import { formatDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
 import {
+  inventoryDetailEyebrowClassName,
   inventoryDetailPanelClassName,
   inventoryPanelToggleButtonClassName,
 } from "./inventory_detail_panel_class";
@@ -39,7 +40,7 @@ export function InventoryRollHistoryPanel({
       style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
       <div className="flex items-center justify-between gap-3">
-        <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+        <div className={inventoryDetailEyebrowClassName}>
           {t("inventory.rollHistory", "Roll history")}
         </div>
         <button

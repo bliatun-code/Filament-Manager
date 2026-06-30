@@ -1,5 +1,8 @@
 import { AppModal } from "./app_modal";
-import { inventoryDetailPanelClassName } from "./inventory_detail_panel_class";
+import {
+  inventoryDetailEyebrowClassName,
+  inventoryDetailPanelClassName,
+} from "./inventory_detail_panel_class";
 import { FeedbackBanner } from "./feedback_banner";
 import { InventoryCatalogMetadataPanel } from "./inventory_catalog_metadata_panel";
 import { InventoryDangerZonePanel } from "./inventory_danger_zone_panel";
@@ -312,7 +315,7 @@ export function InventorySpoolDetailModal({
                 className={inventoryDetailPanelClassName}
                 style={inventorySwatchPanelStyle(spool.hexColor, resolvedTheme)}
               >
-                <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                <div className={inventoryDetailEyebrowClassName}>
                   {t("inventory.usageDiagram", "Usage diagram")}
                 </div>
                 <RollUsageChart

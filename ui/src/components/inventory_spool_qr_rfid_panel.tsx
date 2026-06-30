@@ -1,4 +1,5 @@
 import { useI18n } from "../lib/i18n";
+import { inventoryDetailEyebrowClassName } from "./inventory_detail_panel_class";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 
@@ -40,7 +41,7 @@ export function InventorySpoolQrRfidPanel({
       className="rounded-xl border border-slate-200 bg-slate-50 p-4"
       style={inventorySwatchInsetStyle(spoolHexColor, resolvedTheme)}
     >
-      <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+      <div className={inventoryDetailEyebrowClassName}>
         {t("inventory.qrLabel", "QR")}
       </div>
       <div className="mt-3">

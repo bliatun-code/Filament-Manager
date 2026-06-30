@@ -1,5 +1,8 @@
 import { useI18n } from "../lib/i18n";
-import { inventoryDetailPanelClassName } from "./inventory_detail_panel_class";
+import {
+  inventoryDetailEyebrowClassName,
+  inventoryDetailPanelClassName,
+} from "./inventory_detail_panel_class";
 import type { OwnershipType, SpoolStatus } from "../lib/inventory_list_model";
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
@@ -66,7 +69,7 @@ export function InventorySpoolTarePanel({
       className={inventoryDetailPanelClassName}
       style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
-      <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+      <div className={inventoryDetailEyebrowClassName}>
         {t("inventory.emptySpoolWeight", "Empty spool weight (g)")}
       </div>
       <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
@@ -114,7 +117,7 @@ export function InventorySpoolHomeLocationPanel({
       className={inventoryDetailPanelClassName}
       style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
-      <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+      <div className={inventoryDetailEyebrowClassName}>
         {t("inventory.editHomeLocation", "Home location")}
       </div>
       <div className="mt-3 flex items-center gap-3">
@@ -169,7 +172,7 @@ export function InventorySpoolOwnershipPanel({
       className={inventoryDetailPanelClassName}
       style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
-      <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+      <div className={inventoryDetailEyebrowClassName}>
         {t("inventory.editOwnership", "Ownership")}
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-100/70 p-1 dark:border-slate-700 dark:bg-slate-950/40">
@@ -256,7 +259,7 @@ export function InventorySpoolLostStatusPanel({
       className={inventoryDetailPanelClassName}
       style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
-      <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+      <div className={inventoryDetailEyebrowClassName}>
         {t("inventory.lostStatus", "Lost status")}
       </div>
       <button
