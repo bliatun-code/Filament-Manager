@@ -186,6 +186,7 @@ test("PrinterSlotAssignmentStatus offers one-click RFID registration for one unk
   );
   assert.match(html, /PLA Matte.*Black/);
   assert.match(html, /Save RFID/);
+  assert.match(html, /focus-visible:border-sky-300/);
   assert.doesNotMatch(html, /Add \+ save RFID/);
 });
 

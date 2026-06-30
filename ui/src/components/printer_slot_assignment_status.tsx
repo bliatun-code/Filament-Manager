@@ -40,6 +40,21 @@ type PrinterSlotAssignmentStatusProps = {
   ) => void;
 };
 
+type PrinterSlotMiniActionButtonPlacement = "candidate" | "inline";
+
+function printerSlotMiniActionButtonClassName(
+  placement: PrinterSlotMiniActionButtonPlacement,
+): string {
+  const base =
+    "shrink-0 rounded-md border border-slate-300/70 px-2 py-0.5 text-[10px] font-semibold text-slate-700 outline-none transition hover:border-sky-400/70 hover:text-sky-700 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:border-slate-600/70 dark:hover:border-sky-300/60 dark:hover:text-sky-200 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+
+  if (placement === "candidate") {
+    return `ml-auto ${base} bg-white/55 dark:bg-slate-900/45 dark:text-slate-200`;
+  }
+
+  return `${base} bg-transparent leading-none dark:text-slate-300`;
+}
+
 export function PrinterSlotAssignmentStatus({
   printer,
   slot,
@@ -140,7 +155,7 @@ export function PrinterSlotAssignmentStatus({
               {canCreateFromCatalog ? (
                 <button
                   type="button"
-                  className="ml-auto shrink-0 rounded-md border border-slate-300/70 bg-white/55 px-2 py-0.5 text-[10px] font-semibold text-slate-700 transition hover:border-sky-400/70 hover:text-sky-700 disabled:opacity-50 dark:border-slate-600/70 dark:bg-slate-900/45 dark:text-slate-200 dark:hover:border-sky-300/60 dark:hover:text-sky-200"
+                  className={printerSlotMiniActionButtonClassName("candidate")}
                   onClick={() =>
                     effectiveLiveTray &&
                     createLiveBambuCatalogSpool(printer, slot, effectiveLiveTray, master)
@@ -274,7 +289,7 @@ export function PrinterSlotAssignmentStatus({
                   canRegisterCandidate ? (
                     <button
                       type="button"
-                      className="ml-auto shrink-0 rounded-md border border-slate-300/70 bg-white/55 px-2 py-0.5 text-[10px] font-semibold text-slate-700 transition hover:border-sky-400/70 hover:text-sky-700 disabled:opacity-50 dark:border-slate-600/70 dark:bg-slate-900/45 dark:text-slate-200 dark:hover:border-sky-300/60 dark:hover:text-sky-200"
+                      className={printerSlotMiniActionButtonClassName("candidate")}
                       onClick={() => {
                         if (!effectiveLiveTray) {
                           return;
@@ -362,7 +377,7 @@ export function PrinterSlotAssignmentStatus({
             {rfidOverridden ? (
               <button
                 type="button"
-                className="rounded-md border border-slate-300/70 bg-transparent px-2 py-0.5 text-[10px] font-semibold leading-none text-slate-600 transition hover:border-sky-400/70 hover:text-sky-700 disabled:opacity-50 dark:border-slate-600/70 dark:text-slate-300 dark:hover:border-sky-300/60 dark:hover:text-sky-200"
+                className={printerSlotMiniActionButtonClassName("inline")}
                 onClick={() =>
                   effectiveLiveTray && openRfidOverrideDialog(printer, slot, effectiveLiveTray)
                 }
