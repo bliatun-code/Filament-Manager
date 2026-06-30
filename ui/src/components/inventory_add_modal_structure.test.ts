@@ -33,3 +33,9 @@ test("InventoryAddModal wires the separate Bambu batch modal from existing workf
   assert.match(source, /onCreateBatch=\{onCreateBambuCodeBatch\}/);
   assert.match(source, /onInputChange=\{onBambuBatchInputChange\}/);
 });
+
+test("InventoryAddModal feeds current stock selection into the action panel preview", () => {
+  assert.match(source, /buildInventoryCreateSelectionSummary/);
+  assert.match(source, /selectedCatalogMasterId/);
+  assert.match(source, /selectionSummary=\{selectionSummary\}/);
+});

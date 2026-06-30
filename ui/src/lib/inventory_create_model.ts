@@ -5,6 +5,13 @@ import { parsePositiveWeight } from "./weight_display";
 
 export type InventoryCreateMode = "bambu" | "esun" | "manual";
 
+export type InventoryCreateSelectionSummary = {
+  title: string;
+  detail: string;
+  hexColor: string | null;
+  initialWeightGrams: number;
+};
+
 export function isInventoryCatalogCreateMode(mode: InventoryCreateMode): boolean {
   return mode === "bambu" || mode === "esun";
 }
@@ -96,6 +103,51 @@ export function formatInventoryCreateAddedLabel(input: {
     return `${master.filament_name} · ${master.color_name}`;
   }
   return `${(input.manualFilamentName ?? "").trim()} · ${(input.manualColorName ?? "").trim()}`;
+}
+
+export function buildInventoryCreateSelectionSummary(input: {
+  mode: InventoryCreateMode;
+  selectedBambuMaster?: MasterCatalogRow | null;
+  selectedEsunMaster?: MasterCatalogRow | null;
+  manualVendor?: string | null;
+  manualMaterial?: string | null;
+  manualFilamentName?: string | null;
+  manualColorName?: string | null;
+  manualHexColor?: string | null;
+  initialWeightRaw: string;
+}): InventoryCreateSelectionSummary | null {
+  const master = selectedCatalogMasterForMode(
+    input.mode,
+    input.selectedBambuMaster ?? null,
+    input.selectedEsunMaster ?? null,
+  );
+  if (master) {
+    return {
+      title: `${master.filament_name} · ${master.color_name}`,
+      detail: `${master.vendor} · ${master.material}`,
+      hexColor: master.hex_color ?? null,
+      initialWeightGrams: parsePositiveWeight(input.initialWeightRaw, master.default_weight),
+    };
+  }
+
+  if (input.mode !== "manual") {
+    return null;
+  }
+
+  const filamentName = (input.manualFilamentName ?? "").trim();
+  const colorName = (input.manualColorName ?? "").trim();
+  if (!filamentName && !colorName) {
+    return null;
+  }
+
+  return {
+    title: [filamentName, colorName].filter(Boolean).join(" · "),
+    detail: `${(input.manualVendor ?? "").trim() || "Generic"} · ${
+      (input.manualMaterial ?? "").trim() || "PLA"
+    }`,
+    hexColor: normalizeSwatchValue(input.manualHexColor, { uppercase: true }),
+    initialWeightGrams: parsePositiveWeight(input.initialWeightRaw, 1000),
+  };
 }
 
 export type InventoryCreateSpoolError =

@@ -16,7 +16,10 @@ import type {
   BambuFilamentCodeBatch,
   BambuFilamentCodeBatchCreateState,
 } from "../lib/bambu_filament_code_batch";
-import type { InventoryCreateMode } from "../lib/inventory_create_model";
+import {
+  buildInventoryCreateSelectionSummary,
+  type InventoryCreateMode,
+} from "../lib/inventory_create_model";
 import type { OwnershipType } from "../lib/inventory_list_model";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { MasterCatalogRow, WishlistItemRow } from "../lib/tauri_client";
@@ -158,6 +161,20 @@ export function InventoryAddModal({
 }: InventoryAddModalProps) {
   const { t } = useI18n();
   const [bambuBatchModalOpen, setBambuBatchModalOpen] = useState(false);
+  const selectedCatalogMaster = selectedCatalogMasterId
+    ? (catalogMasterById.get(selectedCatalogMasterId) ?? null)
+    : null;
+  const selectionSummary = buildInventoryCreateSelectionSummary({
+    mode: createMode,
+    selectedBambuMaster: createMode === "bambu" ? selectedCatalogMaster : null,
+    selectedEsunMaster: createMode === "esun" ? selectedCatalogMaster : null,
+    manualVendor,
+    manualMaterial,
+    manualFilamentName,
+    manualColorName,
+    manualHexColor,
+    initialWeightRaw: initialWeight,
+  });
 
   if (!open) {
     return null;
@@ -268,6 +285,7 @@ export function InventoryAddModal({
                 onOwnershipTypeChange={onOwnershipTypeChange}
                 ownershipType={ownershipType}
                 panelStyle={panelStyle}
+                selectionSummary={selectionSummary}
                 tauriAvailable={tauriAvailable}
               />
 

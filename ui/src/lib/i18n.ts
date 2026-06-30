@@ -293,6 +293,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       catalogManagedInSettingsHelp:
         "Use the local catalogue below to add rolls directly to stock, wishlist, or on-order queues.",
       selectionPreview: "Selection preview",
+      noSelectionPreview: "Choose a catalog row or enter manual details before saving.",
       bambuCodeLabel: "Filament Code",
       bambuCodeHelp:
         "Use the five digit code printed as Filament Code on the Bambu box label.",
@@ -1871,6 +1872,7 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       catalogManagedInSettingsHelp:
         "Bruk den lokale katalogen under for å legge filament direkte på lager, i ønskelisten eller i bestillingskøen.",
       selectionPreview: "Valgt oppføring",
+      noSelectionPreview: "Velg en katalograd eller fyll inn manuelle detaljer før lagring.",
       bambuCodeLabel: "Filament Code",
       bambuCodeHelp:
         "Bruk den femsifrede koden som står som Filament Code på Bambu-etiketten.",

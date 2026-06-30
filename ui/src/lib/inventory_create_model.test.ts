@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   activeCatalogMastersForMode,
   buildBambuCatalogBatchCreateRequests,
+  buildInventoryCreateSelectionSummary,
   buildInventoryCreateSpoolRequest,
   currentCreateSwatchHexForMode,
   formatInventoryCreateAddedLabel,
@@ -157,6 +158,69 @@ test("formatInventoryCreateAddedLabel mirrors catalog and manual success labels"
       manualColorName: " Blue ",
     }),
     "Tough · Blue",
+  );
+});
+
+test("buildInventoryCreateSelectionSummary previews catalog selections", () => {
+  assert.deepEqual(
+    buildInventoryCreateSelectionSummary({
+      mode: "bambu",
+      selectedBambuMaster: master({
+        vendor: "Bambu",
+        material: "PETG HF",
+        filament_name: "PETG HF",
+        color_name: "Green",
+        hex_color: "#22AA55",
+        default_weight: 1000,
+      }),
+      initialWeightRaw: "1250",
+    }),
+    {
+      title: "PETG HF · Green",
+      detail: "Bambu · PETG HF",
+      hexColor: "#22AA55",
+      initialWeightGrams: 1250,
+    },
+  );
+});
+
+test("buildInventoryCreateSelectionSummary previews manual entries with defaults", () => {
+  assert.deepEqual(
+    buildInventoryCreateSelectionSummary({
+      mode: "manual",
+      manualVendor: " ",
+      manualMaterial: " ",
+      manualFilamentName: " Tough ",
+      manualColorName: " Blue ",
+      manualHexColor: "2563eb",
+      initialWeightRaw: "invalid",
+    }),
+    {
+      title: "Tough · Blue",
+      detail: "Generic · PLA",
+      hexColor: "#2563EB",
+      initialWeightGrams: 1000,
+    },
+  );
+});
+
+test("buildInventoryCreateSelectionSummary returns null until a selection exists", () => {
+  assert.equal(
+    buildInventoryCreateSelectionSummary({
+      mode: "bambu",
+      selectedBambuMaster: null,
+      initialWeightRaw: "1000",
+    }),
+    null,
+  );
+  assert.equal(
+    buildInventoryCreateSelectionSummary({
+      mode: "manual",
+      manualFilamentName: " ",
+      manualColorName: " ",
+      initialWeightRaw: "1000",
+    }),
+    null,
   );
 });
 
