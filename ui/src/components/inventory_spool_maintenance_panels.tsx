@@ -1,7 +1,9 @@
 import { useI18n } from "../lib/i18n";
 import {
   inventoryDetailEyebrowClassName,
+  inventoryDetailFormControlClassName,
   inventoryDetailPanelClassName,
+  inventoryDetailSaveButtonClassName,
 } from "./inventory_detail_panel_class";
 import type { OwnershipType, SpoolStatus } from "../lib/inventory_list_model";
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
@@ -13,10 +15,6 @@ type SpoolMaintenancePanelBaseProps = {
   spoolHexColor?: string | null;
 };
 
-const inventoryMaintenanceInputClass =
-  "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100";
-const inventoryMaintenanceSaveButtonClass =
-  "rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-slate-300/30 transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white";
 const ownershipSegmentBaseClass =
   "rounded-lg px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
 const ownershipSegmentActiveClass =
@@ -85,13 +83,13 @@ export function InventorySpoolTarePanel({
           step={1}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className={`w-28 ${inventoryMaintenanceInputClass}`}
+          className={`w-28 ${inventoryDetailFormControlClassName}`}
           disabled={disabled}
         />
         <button
           type="button"
           onClick={onSave}
-          className={inventoryMaintenanceSaveButtonClass}
+          className={inventoryDetailSaveButtonClassName}
           disabled={disabled}
         >
           {t("common.save", "Save")}
@@ -126,13 +124,13 @@ export function InventorySpoolHomeLocationPanel({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={t("inventory.homeLocationOptional", "Home location (optional)")}
-          className={`w-full ${inventoryMaintenanceInputClass}`}
+          className={`w-full ${inventoryDetailFormControlClassName}`}
           disabled={disabled}
         />
         <button
           type="button"
           onClick={onSave}
-          className={inventoryMaintenanceSaveButtonClass}
+          className={inventoryDetailSaveButtonClassName}
           disabled={disabled}
         >
           {t("common.save", "Save")}
@@ -206,7 +204,7 @@ export function InventorySpoolOwnershipPanel({
             value={ownerNameValue}
             onChange={(event) => onChangeName(event.target.value)}
             placeholder={t("inventory.ownerNameRequired", "Owner name (required)")}
-            className={`w-full ${inventoryMaintenanceInputClass}`}
+            className={`w-full ${inventoryDetailFormControlClassName}`}
             disabled={disabled}
           />
           <input
@@ -214,14 +212,14 @@ export function InventorySpoolOwnershipPanel({
             value={contactValue}
             onChange={(event) => onChangeContact(event.target.value)}
             placeholder={t("inventory.ownerContactOptional", "Contact (optional)")}
-            className={`w-full ${inventoryMaintenanceInputClass}`}
+            className={`w-full ${inventoryDetailFormControlClassName}`}
             disabled={disabled}
           />
           <textarea
             value={noteValue}
             onChange={(event) => onChangeNote(event.target.value)}
             placeholder={t("inventory.ownershipNoteOptional", "Note (optional)")}
-            className={`min-h-20 w-full resize-y ${inventoryMaintenanceInputClass}`}
+            className={`min-h-20 w-full resize-y ${inventoryDetailFormControlClassName}`}
             disabled={disabled}
           />
         </div>
@@ -236,7 +234,7 @@ export function InventorySpoolOwnershipPanel({
       <button
         type="button"
         onClick={onSave}
-        className={`mt-3 ${inventoryMaintenanceSaveButtonClass}`}
+        className={`mt-3 ${inventoryDetailSaveButtonClassName}`}
         disabled={disabled}
       >
         {t("inventory.saveOwnership", "Save ownership")}

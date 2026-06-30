@@ -18,12 +18,16 @@ test("inventory detail labels use shared detail typography classes", () => {
     /text-xs uppercase tracking-\[0\.2em\] text-slate-500 dark:text-slate-400/;
 
   assert.match(detailPanelClasses, /inventoryDetailEyebrowClassName/);
+  assert.match(detailPanelClasses, /inventoryDetailFormControlClassName/);
   assert.match(detailPanelClasses, /inventoryDetailLabelClassName/);
   assert.match(detailPanelClasses, /inventoryDetailSectionLabelClassName/);
+  assert.match(detailPanelClasses, /inventoryDetailSaveButtonClassName/);
   assert.match(detailPanelClasses, /inventoryPanelToggleButtonClassName/);
   assert.match(detailPanelClasses, /focus-visible:border-sky-300/);
   assert.match(detailModal, /inventoryDetailEyebrowClassName/);
   assert.match(maintenancePanels, /inventoryDetailEyebrowClassName/);
+  assert.match(maintenancePanels, /inventoryDetailFormControlClassName/);
+  assert.match(maintenancePanels, /inventoryDetailSaveButtonClassName/);
   assert.match(qrRfidPanel, /inventoryDetailEyebrowClassName/);
   assert.match(rollHistoryPanel, /inventoryDetailEyebrowClassName/);
   assert.match(spoolDetailSummary, /inventoryDetailLabelClassName/);
@@ -32,6 +36,8 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(rollHistoryPanel, /inventoryPanelToggleButtonClassName/);
   assert.doesNotMatch(detailModal, rawEyebrowClass);
   assert.doesNotMatch(maintenancePanels, rawEyebrowClass);
+  assert.doesNotMatch(maintenancePanels, /inventoryMaintenanceInputClass/);
+  assert.doesNotMatch(maintenancePanels, /inventoryMaintenanceSaveButtonClass/);
   assert.doesNotMatch(qrRfidPanel, rawEyebrowClass);
   assert.doesNotMatch(rollHistoryPanel, rawEyebrowClass);
   assert.doesNotMatch(
