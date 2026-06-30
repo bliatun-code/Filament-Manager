@@ -13,6 +13,7 @@ import {
 import type { BambuLiveObservedTray, PrinterAmsSlotRow } from "../lib/tauri_client";
 import { AppModal } from "./app_modal";
 import { modalFormInputClassName } from "./form_control_class";
+import { modalActionButtonClassName } from "./modal_action_button_class";
 import { ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
@@ -257,7 +258,7 @@ export function SlotCatalogOnboardingModal({
           <div className="flex flex-wrap justify-end gap-3">
             <button
               type="button"
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800/60"
+              className={modalActionButtonClassName()}
               onClick={onClose}
               disabled={busy}
             >
@@ -265,7 +266,7 @@ export function SlotCatalogOnboardingModal({
             </button>
             <button
               type="button"
-              className="rounded-lg border border-sky-300 bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50 dark:border-sky-400/40 dark:bg-sky-500 dark:hover:bg-sky-400"
+              className={modalActionButtonClassName("primary")}
               onClick={onSave}
               disabled={saveDisabled}
             >

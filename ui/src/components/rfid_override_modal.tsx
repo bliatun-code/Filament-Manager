@@ -8,6 +8,7 @@ import {
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
 import type { SlotRfidOverridePrompt } from "../lib/printer_slot_model";
 import { AppModal } from "./app_modal";
+import { modalActionButtonClassName } from "./modal_action_button_class";
 import { ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 
@@ -115,7 +116,7 @@ export function RfidOverrideModal({
           <div className="flex flex-wrap justify-end gap-3">
             <button
               type="button"
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-100"
+              className={modalActionButtonClassName()}
               onClick={onClose}
               disabled={busy}
             >
@@ -123,7 +124,7 @@ export function RfidOverrideModal({
             </button>
             <button
               type="button"
-              className="rounded-lg border border-sky-300 bg-sky-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:border-sky-400/40 dark:bg-sky-500"
+              className={modalActionButtonClassName("primary")}
               onClick={onSave}
               disabled={!observedRfid || busy}
             >
