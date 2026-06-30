@@ -22,6 +22,9 @@ type LoanHistoryCardProps = {
   onReturn: (loan: SpoolLoanDetailsRow) => void;
 };
 
+const loanHistoryReturnButtonClassName =
+  "shrink-0 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 shadow-sm shadow-emerald-200/25 outline-none transition hover:bg-emerald-100 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:shadow-none dark:hover:bg-emerald-500/25 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+
 export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) {
   const { t } = useI18n();
   const resolvedTheme = useResolvedTheme();
@@ -80,7 +83,7 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
                 type="button"
                 onClick={() => onReturn(loan)}
                 disabled={busy}
-                className="shrink-0 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 shadow-sm shadow-emerald-200/25 transition hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-400/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:shadow-none dark:hover:bg-emerald-500/25"
+                className={loanHistoryReturnButtonClassName}
               >
                 {isInbound
                   ? t("loans.handBackAction", "Hand back")
