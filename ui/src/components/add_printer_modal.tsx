@@ -10,6 +10,7 @@ import type { ResolvedTheme } from "../lib/theme_mode";
 import { useI18n } from "../lib/i18n";
 import { AppModal } from "./app_modal";
 import { modalFormInputClassName } from "./form_control_class";
+import { modalActionButtonClassName } from "./modal_action_button_class";
 import { ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { PrinterModelPreview } from "./printer_model_preview";
@@ -165,7 +166,7 @@ export function AddPrinterModal({
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100 dark:shadow-none dark:hover:bg-slate-800/70"
+              className={modalActionButtonClassName()}
               onClick={onClose}
               disabled={busy}
             >
@@ -173,7 +174,7 @@ export function AddPrinterModal({
             </button>
             <button
               type="button"
-              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-slate-300/30 transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white"
+              className={modalActionButtonClassName("solid")}
               onClick={onAddPrinter}
               disabled={!tauri || busy || !newPrinterModel || !newPrinterName.trim()}
             >

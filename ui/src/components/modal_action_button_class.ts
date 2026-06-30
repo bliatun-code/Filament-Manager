@@ -1,4 +1,4 @@
-export type ModalActionButtonVariant = "secondary" | "primary";
+export type ModalActionButtonVariant = "secondary" | "primary" | "solid";
 
 export function modalActionButtonClassName(
   variant: ModalActionButtonVariant = "secondary",
@@ -8,6 +8,9 @@ export function modalActionButtonClassName(
 
   if (variant === "primary") {
     return `${base} border-sky-300 bg-sky-600 text-white hover:bg-sky-700 dark:border-sky-400/40 dark:bg-sky-500 dark:hover:bg-sky-400`;
+  }
+  if (variant === "solid") {
+    return `${base} border-slate-900 bg-slate-900 text-white shadow-sm shadow-slate-300/30 hover:bg-slate-800 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white`;
   }
 
   return `${base} border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800/60`;
