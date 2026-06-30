@@ -1,6 +1,7 @@
 import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
 import { modalFormInputClassName } from "./form_control_class";
+import { modalActionButtonClassName } from "./modal_action_button_class";
 import { ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { VendorBadge } from "./vendor_badge";
@@ -192,7 +193,7 @@ export function LoanReturnModal({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm shadow-slate-300/25 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100 dark:shadow-none"
+            className={modalActionButtonClassName()}
           >
             {t("common.close", "Close")}
           </button>
@@ -200,7 +201,7 @@ export function LoanReturnModal({
             type="button"
             onClick={() => void onConfirm()}
             disabled={busy}
-            className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 shadow-sm shadow-emerald-200/25 disabled:opacity-50 dark:border-emerald-400/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:shadow-none"
+            className={modalActionButtonClassName("success")}
           >
             {isInbound
               ? t("loans.confirmHandBackAction", "Confirm hand-back")

@@ -21,6 +21,7 @@ test("modal action buttons share secondary and primary chrome", () => {
   assert.match(actionButtonClass, /focus-visible:border-sky-300/);
   assert.match(actionButtonClass, /variant === "primary"/);
   assert.match(actionButtonClass, /variant === "solid"/);
+  assert.match(actionButtonClass, /variant === "success"/);
   assert.match(addPrinterModal, /modalActionButtonClassName\(\)/);
   assert.match(addPrinterModal, /modalActionButtonClassName\("solid"\)/);
   assert.doesNotMatch(addPrinterModal, /rounded-xl bg-slate-900 px-4 py-2/);
