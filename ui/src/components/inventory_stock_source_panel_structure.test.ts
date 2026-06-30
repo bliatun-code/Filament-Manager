@@ -12,8 +12,10 @@ test("InventoryStockSourcePanel shares focus treatment for catalog and manual ac
   assert.match(source, /inventoryStockManualFallbackButtonClassName/);
   assert.match(source, /semanticChipClass/);
   assert.match(source, /catalogMatchCountLabel/);
-  assert.match(source, /hover:outline-slate-200\/80/);
-  assert.match(source, /dark:hover:outline-slate-500\/30/);
+  assert.match(source, /hoveredCatalogMasterId/);
+  assert.match(source, /setHoveredCatalogMasterId\(master\.id\)/);
+  assert.match(source, /setHoveredCatalogMasterId\(null\)/);
+  assert.match(source, /hoveredCatalogMasterId === master\.id/);
   assert.match(source, /focus-visible:outline-sky-300\/70/);
   assert.match(source, /focus-visible:border-sky-300/);
   assert.match(source, /disabled:cursor-not-allowed/);
