@@ -6,6 +6,7 @@ import {
   inventoryTwoColumnModalGridClassName,
   inventoryWideModalPanelClassName,
 } from "./inventory_modal_chrome";
+import { modalActionButtonClassName } from "./modal_action_button_class";
 import { ModalHeader } from "./modal_chrome";
 import { VendorBadge } from "./vendor_badge";
 import {
@@ -446,7 +447,7 @@ export function LoanOutModal({
                         type="button"
                         onClick={() => void handleSubmit()}
                         disabled={!tauri || busy}
-                        className="mt-4 w-full rounded-2xl border border-slate-800 bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-slate-300/40 transition hover:bg-slate-800 disabled:opacity-50 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white"
+                        className={`mt-4 w-full ${modalActionButtonClassName("solid", "roomy")}`}
                       >
                         {t("inventory.loanOutRoll", "Loan out roll")}
                       </button>
