@@ -203,7 +203,7 @@ export function SettingsMaintenanceTab({
             </div>
             <button
               type="button"
-              className="mt-3 w-full rounded-xl border border-amber-400 bg-amber-200 px-4 py-2 text-sm font-semibold text-amber-950 shadow-sm shadow-amber-200/30 disabled:opacity-50 dark:border-amber-400/50 dark:bg-amber-500/20 dark:text-amber-100 dark:shadow-none"
+              className={`mt-3 w-full ${settingsActionButtonClass("warning", "comfortable")}`}
               onClick={onResetCatalogs}
               disabled={hostOnlyActionDisabled}
             >
@@ -237,7 +237,7 @@ export function SettingsMaintenanceTab({
             </div>
             <button
               type="button"
-              className="mt-3 w-full rounded-xl border border-rose-400 bg-rose-200 px-4 py-2 text-sm font-semibold text-rose-950 shadow-sm shadow-rose-200/30 disabled:opacity-50 dark:border-rose-400/50 dark:bg-rose-500/20 dark:text-rose-100 dark:shadow-none"
+              className={`mt-3 w-full ${settingsActionButtonClass("danger", "comfortable")}`}
               onClick={onResetAppData}
               disabled={hostOnlyActionDisabled}
             >
