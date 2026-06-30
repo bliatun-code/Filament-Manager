@@ -16,6 +16,8 @@ test("LoanOutModal uses shared wide modal layout rhythm", () => {
   assert.match(source, /loanOutSpoolButtonClassName/);
   assert.match(stylesSource, /loanOutSpoolButtonClassName/);
   assert.match(stylesSource, /focus-visible:border-sky-300/);
+  assert.doesNotMatch(stylesSource, /focus:border-slate-400/);
+  assert.doesNotMatch(stylesSource, /dark:focus:border-slate-500/);
   assert.doesNotMatch(source, /modalPanelClassName\("wide"/);
   assert.doesNotMatch(source, /xl:grid-cols-\[minmax\(0,0\.96fr\)_minmax\(22rem,0\.9fr\)\]/);
   assert.doesNotMatch(source, /titleClassName="text-2xl"/);

@@ -96,7 +96,7 @@ export function swatchInsetStyle(
 }
 
 export const formInputClassName =
-  "mt-1.5 w-full rounded-2xl border border-slate-200/90 bg-white/90 px-3.5 py-2.5 text-sm text-slate-800 shadow-sm shadow-slate-200/20 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200/70 dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-100 dark:shadow-none dark:placeholder:text-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-700/70";
+  "mt-1.5 w-full rounded-2xl border border-slate-200/90 bg-white/90 px-3.5 py-2.5 text-sm text-slate-800 shadow-sm shadow-slate-200/20 outline-none transition placeholder:text-slate-400 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-100 dark:shadow-none dark:placeholder:text-slate-500 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
 export const panelCardClassName =
   "rounded-[1.75rem] border border-slate-200/85 bg-white/94 p-5 shadow-[0_18px_38px_-30px_rgba(71,85,105,0.16),0_4px_10px_rgba(148,163,184,0.08)] dark:border-slate-700/70 dark:bg-slate-950/45 dark:shadow-none";
 export const panelTitleClassName = "text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50";
