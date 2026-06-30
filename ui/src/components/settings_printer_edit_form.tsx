@@ -3,6 +3,10 @@ import {
   multiMaterialSlotsInputLabel,
   multiMaterialUnitsInputLabel,
 } from "../lib/printer_profiles";
+import {
+  settingsActionButtonClass,
+  settingsFormControlClass,
+} from "../lib/settings_ui_classes";
 
 type SettingsPrinterEditFormProps = {
   bambuLiveAccessCode: string;
@@ -29,9 +33,6 @@ type SettingsPrinterEditFormProps = {
   onSlotsPerUnitChange: (value: string) => void;
   onUnitsChange: (value: string) => void;
 };
-
-const textInputClass =
-  "rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100";
 
 export function SettingsPrinterEditForm({
   bambuLiveAccessCode,
@@ -70,7 +71,7 @@ export function SettingsPrinterEditForm({
           value={model}
           onChange={(event) => onModelChange(event.target.value)}
           list="printer-model-options"
-          className={textInputClass}
+          className={settingsFormControlClass}
           placeholder={t("settings.printerModel", "Printer model")}
           disabled={disabled}
         />
@@ -78,7 +79,7 @@ export function SettingsPrinterEditForm({
           type="text"
           value={name}
           onChange={(event) => onNameChange(event.target.value)}
-          className={textInputClass}
+          className={settingsFormControlClass}
           placeholder={t("settings.printerName", "Printer name")}
           disabled={disabled}
         />
@@ -88,7 +89,7 @@ export function SettingsPrinterEditForm({
           max={modelProfile.maxUnits}
           value={units}
           onChange={(event) => onUnitsChange(event.target.value)}
-          className={textInputClass}
+          className={settingsFormControlClass}
           title={multiMaterialUnitsInputLabel(t, model)}
           disabled={multiMaterialDisabled}
         />
@@ -98,13 +99,13 @@ export function SettingsPrinterEditForm({
           max={modelProfile.maxSlotsPerUnit}
           value={slotsPerUnit}
           onChange={(event) => onSlotsPerUnitChange(event.target.value)}
-          className={textInputClass}
+          className={settingsFormControlClass}
           title={multiMaterialSlotsInputLabel(t, model)}
           disabled={multiMaterialDisabled}
         />
         <button
           type="button"
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+          className={settingsActionButtonClass("primary")}
           onClick={onSave}
           disabled={disabled}
         >
@@ -152,7 +153,7 @@ export function SettingsPrinterEditForm({
                 type="text"
                 value={bambuLiveHost}
                 onChange={(event) => onBambuLiveHostChange(event.target.value)}
-                className={textInputClass}
+                className={settingsFormControlClass}
                 placeholder={t("settings.bambuLiveHost", "Printer host / IP")}
                 disabled={liveConfigDisabled}
               />
@@ -160,7 +161,7 @@ export function SettingsPrinterEditForm({
                 type="password"
                 value={bambuLiveAccessCode}
                 onChange={(event) => onBambuLiveAccessCodeChange(event.target.value)}
-                className={textInputClass}
+                className={settingsFormControlClass}
                 placeholder={t("settings.bambuLiveAccessCode", "Access code")}
                 disabled={liveConfigDisabled}
               />
@@ -168,7 +169,7 @@ export function SettingsPrinterEditForm({
                 type="text"
                 value={bambuLivePrinterSerial}
                 onChange={(event) => onBambuLivePrinterSerialChange(event.target.value)}
-                className={textInputClass}
+                className={settingsFormControlClass}
                 placeholder={t("settings.bambuLivePrinterSerial", "Printer serial")}
                 disabled={liveConfigDisabled}
               />

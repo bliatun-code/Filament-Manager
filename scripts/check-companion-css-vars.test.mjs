@@ -1,0 +1,70 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+
+import {
+  analyzeCompanionCssVariables,
+  formatCompanionCssVariableReport,
+} from "./check-companion-css-vars.mjs";
+
+function withCssFixture(files, callback) {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), "companion-css-vars-"));
+  const cssDirectory = join(fixtureRoot, "src-tauri", "companion_browser");
+  mkdirSync(cssDirectory, { recursive: true });
+
+  try {
+    for (const [fileName, source] of Object.entries(files)) {
+      const filePath = join(cssDirectory, fileName);
+      mkdirSync(join(filePath, ".."), { recursive: true });
+      writeFileSync(filePath, source);
+    }
+
+    return callback({ cssDirectory, fixtureRoot });
+  } finally {
+    rmSync(fixtureRoot, { force: true, recursive: true });
+  }
+}
+
+test("companion css variable analyzer reports missing variables with source files", () => {
+  withCssFixture(
+    {
+      "app.css": ":root { --defined: #fff; }\n.panel { color: var(--defined); border-color: var(--missing); }",
+      "nested/theme.css": ".chip { background: var(--nested-missing); }",
+    },
+    ({ cssDirectory, fixtureRoot }) => {
+      const result = analyzeCompanionCssVariables({
+        cssDirectory,
+        repoRoot: fixtureRoot,
+      });
+
+      assert.deepEqual(
+        result.missing.map((entry) => entry.name),
+        ["--missing", "--nested-missing"],
+      );
+      assert.deepEqual(result.missing[0].files, ["src-tauri/companion_browser/app.css"]);
+      assert.match(formatCompanionCssVariableReport(result), /--nested-missing/);
+    },
+  );
+});
+
+test("companion css variable analyzer reports success counts", () => {
+  withCssFixture(
+    {
+      "app.css": ":root { --defined: #fff; --also-defined: #000; }\n.panel { color: var(--defined); border-color: var(--also-defined); }",
+    },
+    ({ cssDirectory, fixtureRoot }) => {
+      const result = analyzeCompanionCssVariables({
+        cssDirectory,
+        repoRoot: fixtureRoot,
+      });
+
+      assert.equal(result.missing.length, 0);
+      assert.equal(
+        formatCompanionCssVariableReport(result),
+        "Companion CSS variables ok (2 used, 2 defined).",
+      );
+    },
+  );
+});

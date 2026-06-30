@@ -1,3 +1,5 @@
+import { settingsSectionLabelClass } from "../lib/settings_ui_classes";
+
 export function SettingsMetricTile({
   label,
   value,
@@ -13,9 +15,7 @@ export function SettingsMetricTile({
     <div
       className={`rounded-lg border border-slate-300/70 bg-white/58 px-4 py-3 dark:border-slate-700/72 dark:bg-slate-950/30 ${className}`.trim()}
     >
-      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-        {label}
-      </div>
+      <div className={settingsSectionLabelClass}>{label}</div>
       <div className="mt-2 break-words text-xl font-semibold leading-tight text-slate-900 dark:text-slate-100">
         {value}
       </div>

@@ -3,7 +3,11 @@ import type {
 } from "../pages/settings_companion_model";
 import type { TrustedLanInterfaceOption } from "../lib/tauri_client";
 import { SettingsMetricTile } from "./settings_ui";
-import { settingsActionButtonClass } from "../lib/settings_ui_classes";
+import {
+  settingsActionButtonClass,
+  settingsFormControlClass,
+  settingsSectionLabelClass,
+} from "../lib/settings_ui_classes";
 
 type SettingsTrustedLanServerPanelProps = {
   actionBusy: boolean;
@@ -100,11 +104,11 @@ export function SettingsTrustedLanServerPanel({
         <div className="surface-subtle px-4 py-4">
           <div className="grid gap-4">
             <label className="block">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
+              <div className={settingsSectionLabelClass}>
                 {t("settings.trustedLanInterfaceSelect", "Private interface")}
               </div>
               <select
-                className="mt-2 w-full rounded-lg border border-slate-200 bg-white/85 px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
+                className={`mt-2 ${settingsFormControlClass}`}
                 value={interfaceAddressDraft}
                 disabled={companionModel.configActionDisabled}
                 onChange={(event) => onInterfaceAddressChange(event.target.value)}
@@ -124,14 +128,14 @@ export function SettingsTrustedLanServerPanel({
 
             <div className="grid gap-3 sm:grid-cols-[140px_auto] sm:items-end">
               <label className="block">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
+                <div className={settingsSectionLabelClass}>
                   {t("settings.trustedLanPortInput", "Listener port")}
                 </div>
                 <input
                   type="number"
                   min={1}
                   max={65535}
-                  className="mt-2 w-full rounded-lg border border-slate-200 bg-white/85 px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
+                  className={`mt-2 ${settingsFormControlClass}`}
                   value={portDraft}
                   disabled={companionModel.configActionDisabled}
                   onChange={(event) => onPortChange(event.target.value)}

@@ -7,6 +7,11 @@ import {
 } from "../lib/diagnostic_capture";
 import { downloadTextFile } from "../lib/download_file";
 import { useI18n } from "../lib/i18n";
+import {
+  settingsActionButtonClass,
+  settingsCompactSelectClass,
+  settingsSectionLabelClass,
+} from "../lib/settings_ui_classes";
 import { formatSettingsDateTime } from "../lib/settings_utils";
 import type { SettingsBambuLiveDiagnosticGroup } from "../pages/settings_bambu_live_diagnostics_model";
 
@@ -51,7 +56,7 @@ export function SettingsBambuLiveCapturedFieldsPanel({
           <select
             value={diagnosticSort}
             onChange={(event) => onDiagnosticSortChange(event.target.value as DiagnosticSortKey)}
-            className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+            className={settingsCompactSelectClass}
           >
             <option value="path">{t("settings.bambuLiveSortPath", "Sort: Field")}</option>
             <option value="last_seen_desc">
@@ -70,7 +75,7 @@ export function SettingsBambuLiveCapturedFieldsPanel({
           <select
             value={diagnosticFilter}
             onChange={(event) => onDiagnosticFilterChange(event.target.value as DiagnosticFilterKey)}
-            className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+            className={settingsCompactSelectClass}
           >
             <option value="all">{t("settings.bambuLiveFilterAll", "Filter: All")}</option>
             <option value="changed">
@@ -86,7 +91,7 @@ export function SettingsBambuLiveCapturedFieldsPanel({
         </div>
         <button
           type="button"
-          className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 dark:border-slate-600 dark:text-slate-200"
+          className={settingsActionButtonClass("neutral", "compact")}
           onClick={handleExportCsv}
           disabled={!diagnosticSession || diagnosticSession.fields.length === 0}
         >
@@ -99,7 +104,7 @@ export function SettingsBambuLiveCapturedFieldsPanel({
             <div className="divide-y divide-slate-200 dark:divide-slate-800">
               {diagnosticGroups.map((group) => (
                 <div key={group.key}>
-                  <div className="bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 dark:bg-slate-900/80 dark:text-slate-300">
+                  <div className={`bg-slate-50 px-3 py-2 dark:bg-slate-900/80 ${settingsSectionLabelClass}`}>
                     {group.label}
                   </div>
                   <table className="min-w-full divide-y divide-slate-200 text-left text-[11px] dark:divide-slate-700">

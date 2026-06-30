@@ -2,6 +2,7 @@ import type {
   SettingsBambuLiveDiagnosticMetricCard,
   SettingsBambuLiveSignalQualityBucket,
 } from "../pages/settings_bambu_live_diagnostics_model";
+import { settingsTinyLabelClass } from "../lib/settings_ui_classes";
 
 type SettingsBambuLiveDiagnosticsSummaryProps = {
   metrics: SettingsBambuLiveDiagnosticMetricCard[];
@@ -22,7 +23,7 @@ export function SettingsBambuLiveDiagnosticsSummary({
             key={`${printerId}-${metric.key}`}
             className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60"
           >
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+            <div className={settingsTinyLabelClass}>
               {metric.label}
             </div>
             <div className="mt-1 text-[11px] text-slate-700 dark:text-slate-200">
@@ -38,7 +39,7 @@ export function SettingsBambuLiveDiagnosticsSummary({
               key={`${printerId}-${bucket.label}`}
               className="rounded border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900/60"
             >
-              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              <div className={settingsTinyLabelClass}>
                 {bucket.label}
               </div>
               <div className="mt-1 text-[11px] leading-4 text-slate-500 dark:text-slate-400">

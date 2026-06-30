@@ -1,7 +1,11 @@
 import type { Locale } from "../lib/i18n";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { formatTrustedLanPairingExpiry } from "../lib/settings_utils";
-import { settingsActionButtonClass } from "../lib/settings_ui_classes";
+import {
+  settingsActionButtonClass,
+  settingsFormControlClass,
+  settingsSectionLabelClass,
+} from "../lib/settings_ui_classes";
 
 type SettingsTrustedLanPairingPanelProps = {
   actionBusy: boolean;
@@ -62,12 +66,12 @@ export function SettingsTrustedLanPairingPanel({
         <div className={`mt-4 grid gap-4 ${pairingLink ? "lg:grid-cols-[1fr_220px]" : ""}`}>
           <div className="rounded-lg border border-slate-200 bg-white/85 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/55">
             <label className="block">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+              <div className={settingsSectionLabelClass}>
                 {t("settings.trustedLanPairingLabelInput", "Browser label")}
               </div>
               <input
                 type="text"
-                className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
+                className={`mt-2 ${settingsFormControlClass}`}
                 value={browserLabelDraft}
                 disabled={pairActionDisabled}
                 onChange={(event) => onBrowserLabelChange(event.target.value)}
@@ -103,7 +107,7 @@ export function SettingsTrustedLanPairingPanel({
                   </span>
                 </div>
 
-                <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                <div className={`mt-4 ${settingsSectionLabelClass}`}>
                   {t("settings.trustedLanLatestPairing", "Latest pairing link")}
                 </div>
                 <div className="mt-2 break-all rounded-lg border border-slate-200 bg-slate-50/85 px-3 py-3 text-sm font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-900/55 dark:text-slate-100">
@@ -125,7 +129,7 @@ export function SettingsTrustedLanPairingPanel({
 
           {pairingLink ? (
             <div className="rounded-lg border border-slate-200 bg-white/85 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/55">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+              <div className={settingsSectionLabelClass}>
                 {t("settings.trustedLanPairingQrTitle", "Pairing QR")}
               </div>
               <div className="surface-subtle mt-3 flex min-h-[208px] items-center justify-center border-dashed p-3">

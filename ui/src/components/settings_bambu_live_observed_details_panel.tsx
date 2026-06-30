@@ -4,6 +4,10 @@ import type {
   DiagnosticSortKey,
 } from "../lib/diagnostic_capture";
 import { useI18n } from "../lib/i18n";
+import {
+  settingsActionButtonClass,
+  settingsSectionLabelClass,
+} from "../lib/settings_ui_classes";
 import { formatSettingsDateTime } from "../lib/settings_utils";
 import type { BambuLiveIntegrationSettings } from "../lib/tauri_client";
 import type { SettingsBambuLiveDiagnosticsModel } from "../pages/settings_bambu_live_diagnostics_model";
@@ -127,11 +131,10 @@ export function SettingsBambuLiveObservedDetailsPanel({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className={`rounded border px-2 py-1 text-[11px] font-semibold disabled:opacity-50 ${
-                  captureActive
-                    ? "border-amber-300 text-amber-700 dark:border-amber-500/40 dark:text-amber-200"
-                    : "border-sky-300 text-sky-700 dark:border-sky-500/40 dark:text-sky-200"
-                }`}
+                className={settingsActionButtonClass(
+                  captureActive ? "warningQuiet" : "accent",
+                  "compact",
+                )}
                 onClick={onToggleCapture}
               >
                 {captureActive
@@ -149,7 +152,7 @@ export function SettingsBambuLiveObservedDetailsPanel({
             trays={diagnosticTrayCards}
           />
           <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-950/50">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+            <div className={settingsSectionLabelClass}>
               {t("settings.bambuLiveDiagnostics", "Diagnostics")}
             </div>
             <div className="mt-2 space-y-2 text-[11px] text-slate-600 dark:text-slate-300">

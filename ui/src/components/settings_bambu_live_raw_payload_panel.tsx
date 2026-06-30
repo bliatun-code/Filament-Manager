@@ -1,6 +1,7 @@
 import { copyTextToClipboard } from "../lib/clipboard";
 import { toErrorMessage } from "../lib/error_text";
 import { useI18n } from "../lib/i18n";
+import { settingsActionButtonClass } from "../lib/settings_ui_classes";
 import { formatDiagnosticJson } from "../lib/settings_utils";
 
 type SettingsBambuLiveRawPayloadPanelProps = {
@@ -44,7 +45,7 @@ export function SettingsBambuLiveRawPayloadPanel({
         </div>
         <button
           type="button"
-          className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200"
+          className={settingsActionButtonClass("neutral", "compact")}
           onClick={() => void handleCopyRawPayload()}
           disabled={!rawPayload}
         >

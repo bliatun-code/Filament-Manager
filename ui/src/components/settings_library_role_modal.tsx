@@ -1,6 +1,9 @@
 import { AppModal } from "./app_modal";
 import type { Locale } from "../lib/i18n";
-import { settingsActionButtonClass } from "../lib/settings_ui_classes";
+import {
+  settingsActionButtonClass,
+  settingsSectionLabelClass,
+} from "../lib/settings_ui_classes";
 import { formatSettingsDateTime } from "../lib/settings_utils";
 import type { LibrarySyncSettings } from "../lib/tauri_client";
 import type { LibraryRoleChangeState } from "../pages/settings_library_sync_model";
@@ -67,7 +70,7 @@ export function SettingsLibraryRoleModal({
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+            <div className={settingsSectionLabelClass}>
               {t("settings.libraryRoleLabel", "Library role")}
             </div>
             <div className="mt-1 text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
@@ -283,11 +286,10 @@ export function SettingsLibraryRoleModal({
           <button
             type="button"
             onClick={onConfirm}
-            className={`inline-flex items-center justify-center rounded-lg px-4 py-3 text-sm font-semibold shadow-sm transition disabled:opacity-50 ${
-              libraryRoleConfirmArmed
-                ? "border border-amber-300 bg-amber-500 text-slate-950 shadow-amber-900/20 hover:bg-amber-400 dark:border-amber-400/40 dark:bg-amber-400 dark:hover:bg-amber-300"
-                : "border border-indigo-300 bg-indigo-500 text-white shadow-indigo-900/20 hover:bg-indigo-600 dark:border-indigo-400/40 dark:bg-indigo-400 dark:text-slate-950 dark:hover:bg-indigo-300"
-            }`}
+            className={settingsActionButtonClass(
+              libraryRoleConfirmArmed ? "warning" : "primary",
+              "comfortable",
+            )}
             disabled={!tauri || librarySyncBusy || !roleChangeState.ready}
           >
             {librarySyncBusy

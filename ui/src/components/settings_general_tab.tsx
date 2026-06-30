@@ -8,7 +8,11 @@ import {
   sourceUrlForAppVersion,
 } from "../lib/app_metadata";
 import { openExternalUrl } from "../lib/tauri_maintenance_client";
-import { chipButtonClass, settingsActionButtonClass } from "../lib/settings_ui_classes";
+import {
+  chipButtonClass,
+  settingsActionButtonClass,
+  settingsSectionLabelClass,
+} from "../lib/settings_ui_classes";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -48,7 +52,7 @@ export function SettingsGeneralTab({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="surface-subtle px-4 py-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+            <div className={settingsSectionLabelClass}>
               {t("settings.version", "Version")}
             </div>
             <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -56,7 +60,7 @@ export function SettingsGeneralTab({
             </div>
           </div>
           <div className="surface-subtle px-4 py-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+            <div className={settingsSectionLabelClass}>
               {t("settings.license", "License")}
             </div>
             <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">

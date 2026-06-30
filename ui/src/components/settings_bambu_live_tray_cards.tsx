@@ -1,5 +1,6 @@
 import type { SettingsBambuLiveDiagnosticTrayCard } from "../pages/settings_bambu_live_diagnostics_model";
 import { swatchCssBackground } from "../lib/color_utils";
+import { settingsTinyLabelClass } from "../lib/settings_ui_classes";
 
 type SettingsBambuLiveTrayCardsProps = {
   moreCandidatesLabel: string;
@@ -45,7 +46,7 @@ export function SettingsBambuLiveTrayCards({
                 </span>
               ) : null}
             </div>
-            <div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+            <div className={`mt-1 ${settingsTinyLabelClass}`}>
               {tray.mqttTrayLabel}
             </div>
             <div className="mt-1 text-[11px] text-slate-600 dark:text-slate-300">

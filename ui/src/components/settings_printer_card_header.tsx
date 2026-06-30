@@ -2,6 +2,7 @@ import { describePrinterCapability } from "../lib/printer_profiles";
 import type { PrinterRow } from "../lib/tauri_client";
 import { inlineStatusSignalClass, type SemanticChipTone } from "../lib/chip_styles";
 import { useI18n } from "../lib/i18n";
+import { settingsActionButtonClass } from "../lib/settings_ui_classes";
 import { PrinterModelPreview } from "./printer_model_preview";
 
 type SettingsPrinterCardHeaderProps = {
@@ -67,7 +68,7 @@ export function SettingsPrinterCardHeader({
         {hasLiveIntegration ? (
           <button
             type="button"
-            className="rounded border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200"
+            className={settingsActionButtonClass("neutral", "compact")}
             onClick={onToggleDetails}
             disabled={!tauri}
           >
@@ -78,11 +79,7 @@ export function SettingsPrinterCardHeader({
         ) : null}
         <button
           type="button"
-          className={`rounded border px-2 py-1 text-xs font-semibold disabled:opacity-50 ${
-            isEditing
-              ? "border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-500 dark:bg-slate-700 dark:text-slate-100"
-              : "border-slate-200 text-slate-700 dark:border-slate-500 dark:text-slate-200"
-          }`}
+          className={settingsActionButtonClass(isEditing ? "accent" : "neutral", "compact")}
           onClick={onToggleEdit}
           disabled={!tauri || busy}
         >
@@ -90,11 +87,7 @@ export function SettingsPrinterCardHeader({
         </button>
         <button
           type="button"
-          className={`rounded border px-2 py-1 text-xs font-semibold disabled:opacity-50 ${
-            confirmDelete
-              ? "border-rose-500 bg-rose-600 text-white dark:border-rose-400 dark:bg-rose-500 dark:text-slate-900"
-              : "border-rose-200 text-rose-700 dark:border-rose-500/50 dark:text-rose-300"
-          }`}
+          className={settingsActionButtonClass(confirmDelete ? "danger" : "dangerQuiet", "compact")}
           onClick={onRemove}
           disabled={!tauri || busy}
         >

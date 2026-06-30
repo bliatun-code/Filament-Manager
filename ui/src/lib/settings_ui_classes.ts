@@ -9,8 +9,19 @@ export const settingsInfoPanelClass =
 export const settingsCompactInfoPanelClass =
   "surface-subtle px-3 py-3 text-sm leading-6 text-slate-700 dark:text-slate-200";
 
-export const settingsTextInputClass =
+export const settingsSectionLabelClass =
+  "text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400";
+
+export const settingsTinyLabelClass =
+  "text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400";
+
+export const settingsFormControlClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400/50 dark:focus:ring-indigo-500/20";
+
+export const settingsTextInputClass = settingsFormControlClass;
+
+export const settingsCompactSelectClass =
+  "rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 outline-none transition focus-visible:border-sky-300/70 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200";
 
 export const settingsValueBoxClass =
   "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200";
@@ -71,11 +82,45 @@ export function settingsWebappSwitchKnobClass(active: boolean): string {
   } ${active ? "settings-webapp-switch-knob-active" : "bg-white dark:bg-slate-950"}`;
 }
 
-export function settingsActionButtonClass(variant: "neutral" | "accent" = "neutral"): string {
+export type SettingsActionButtonVariant =
+  | "neutral"
+  | "accent"
+  | "primary"
+  | "warning"
+  | "warningQuiet"
+  | "danger"
+  | "dangerQuiet";
+export type SettingsActionButtonDensity = "default" | "compact" | "comfortable";
+
+export function settingsActionButtonClass(
+  variant: SettingsActionButtonVariant = "neutral",
+  density: SettingsActionButtonDensity = "default",
+): string {
+  const sizeClass =
+    density === "compact"
+      ? "px-2 py-1 text-xs"
+      : density === "comfortable"
+        ? "px-4 py-3 text-sm"
+        : "px-3 py-2 text-sm";
   const base =
-    "inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold outline-none transition focus-visible:border-sky-300/70 disabled:opacity-50";
+    `inline-flex items-center justify-center rounded-lg border ${sizeClass} font-semibold outline-none transition focus-visible:border-sky-300/70 disabled:opacity-50`;
   if (variant === "accent") {
     return `${base} border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-400/40 dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25`;
+  }
+  if (variant === "primary") {
+    return `${base} border-indigo-300 bg-indigo-500 text-white shadow-sm shadow-indigo-900/20 hover:bg-indigo-600 dark:border-indigo-400/40 dark:bg-indigo-400 dark:text-slate-950 dark:hover:bg-indigo-300`;
+  }
+  if (variant === "warning") {
+    return `${base} border-amber-300 bg-amber-500 text-slate-950 shadow-sm shadow-amber-900/20 hover:bg-amber-400 dark:border-amber-400/40 dark:bg-amber-400 dark:hover:bg-amber-300`;
+  }
+  if (variant === "warningQuiet") {
+    return `${base} border-amber-300 bg-transparent text-amber-700 hover:bg-amber-50 dark:border-amber-500/40 dark:text-amber-200 dark:hover:bg-amber-500/10`;
+  }
+  if (variant === "danger") {
+    return `${base} border-rose-500 bg-rose-600 text-white hover:bg-rose-700 dark:border-rose-400 dark:bg-rose-500 dark:text-slate-950 dark:hover:bg-rose-400`;
+  }
+  if (variant === "dangerQuiet") {
+    return `${base} border-rose-200 bg-transparent text-rose-700 hover:border-rose-300 hover:bg-rose-50 dark:border-rose-500/50 dark:text-rose-300 dark:hover:border-rose-400/70 dark:hover:bg-rose-500/10`;
   }
   return `${base} border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-900/80`;
 }
