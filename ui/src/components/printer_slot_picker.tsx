@@ -23,15 +23,17 @@ import { formInputChromeClassName } from "./form_control_class";
 
 const slotOptionSwatchClassName =
   "h-4.5 w-4.5 shrink-0 rounded border border-slate-200 dark:border-slate-600";
+const slotSelectorButtonClassName =
+  "flex w-full items-center justify-between gap-2 rounded-xl bg-white/70 px-2.5 py-2 text-left text-sm text-slate-800 outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-900/55 dark:text-slate-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
 
 function slotOptionButtonClassName(selected: boolean, selectedExtraClassName = ""): string {
+  const base =
+    "flex w-full items-center justify-between gap-2.5 rounded-xl px-3 text-left text-sm outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
   const selectedClasses =
     `border border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-50 ${selectedExtraClassName}`.trim();
   const idleClasses =
     "border border-transparent text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/70";
-  return `flex w-full items-center justify-between gap-2.5 rounded-xl px-3 text-left text-sm ${
-    selected ? selectedClasses : idleClasses
-  }`;
+  return `${base} ${selected ? selectedClasses : idleClasses}`;
 }
 
 type PrinterSlotPickerProps = {
@@ -84,7 +86,8 @@ export function PrinterSlotPicker({
     <div className="relative mt-2" data-slot-dropdown={slot.slot_id}>
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-2 rounded-xl bg-white/70 px-2.5 py-2 text-left text-sm text-slate-800 disabled:opacity-50 dark:bg-slate-900/55 dark:text-slate-100"
+        className={slotSelectorButtonClassName}
+        aria-expanded={isDropdownOpen}
         onClick={() =>
           setOpenDropdownSlotId((current) =>
             current === slot.slot_id ? null : slot.slot_id,
