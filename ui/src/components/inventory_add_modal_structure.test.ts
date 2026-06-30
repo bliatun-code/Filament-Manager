@@ -16,7 +16,13 @@ test("InventoryAddModal keeps the Bambu batch action in the header before the so
   assert.match(source, /<ModalHeader/);
   assert.match(source, /aside=\{/);
   assert.match(source, /inventoryTwoColumnModalGridClassName/);
+  assert.match(source, /inventoryAddModalHeaderActionButtonClassName/);
+  assert.match(source, /focus-visible:border-sky-300/);
   assert.doesNotMatch(source, /sm:text-\[2rem\]/);
+  assert.doesNotMatch(
+    source,
+    /inline-flex h-10 items-center justify-center whitespace-nowrap rounded-lg border border-slate-200\/80 bg-white\/85 px-3 text-xs font-semibold text-slate-700 shadow-sm shadow-slate-200\/25 backdrop-blur-sm transition/,
+  );
 });
 
 test("InventoryAddModal wires the separate Bambu batch modal from existing workflow state", () => {
