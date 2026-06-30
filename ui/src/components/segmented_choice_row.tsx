@@ -23,7 +23,7 @@ function segmentedChoiceButtonClass(
   active: boolean,
   sizeClasses = "px-3 py-2 text-xs",
 ): string {
-  return `inline-flex items-center gap-2 rounded-xl ${sizeClasses} font-semibold transition ${
+  return `inline-flex items-center gap-2 rounded-xl ${sizeClasses} font-semibold outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20 ${
     active
       ? "bg-slate-900 text-white shadow-sm shadow-slate-900/10 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none"
       : "text-slate-600 hover:bg-white/85 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900/80 dark:hover:text-slate-100"
@@ -61,7 +61,7 @@ export function SegmentedChoiceRow<T extends string>({
           {label}
         </div>
       ) : null}
-      <div className={segmentedChoiceGroupClass()}>
+      <div className={segmentedChoiceGroupClass()} role="group" aria-label={label}>
         {options.map((option) => {
           const active = option.value === value;
           const disabled = isOptionDisabled?.(option) ?? false;
@@ -69,6 +69,7 @@ export function SegmentedChoiceRow<T extends string>({
             <button
               key={option.value}
               type="button"
+              aria-pressed={active}
               onClick={() => onChange(option.value)}
               disabled={disabled}
               className={`${segmentedChoiceButtonClass(
