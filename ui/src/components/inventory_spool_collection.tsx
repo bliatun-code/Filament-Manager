@@ -77,6 +77,17 @@ function RemainingMeter({
   );
 }
 
+function inventorySpoolRollButtonClassName(mode: "single" | "compact"): string {
+  const base =
+    "rounded-xl border px-3.5 py-3 text-left outline-none transition hover:-translate-y-[1px] focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+
+  if (mode === "compact") {
+    return `flex w-full items-start justify-between gap-3 ${base}`;
+  }
+
+  return base;
+}
+
 export function InventorySpoolCollection({
   filteredSpools,
   groupedSpools,
@@ -177,7 +188,7 @@ export function InventorySpoolCollection({
                   <button
                     type="button"
                     onClick={() => onSelectRoll(singleVisibleRoll.id)}
-                    className="rounded-xl border px-3.5 py-3 text-left transition hover:-translate-y-[1px]"
+                    className={inventorySpoolRollButtonClassName("single")}
                     style={inventorySwatchInteractiveInsetStyle(
                       singleVisibleRoll.hexColor ?? group.hexColor,
                       resolvedTheme,
@@ -228,7 +239,7 @@ export function InventorySpoolCollection({
                           key={roll.id}
                           type="button"
                           onClick={() => onSelectRoll(roll.id)}
-                          className="flex w-full items-start justify-between gap-3 rounded-xl border px-3.5 py-3 text-left transition hover:-translate-y-[1px]"
+                          className={inventorySpoolRollButtonClassName("compact")}
                           style={inventorySwatchInteractiveInsetStyle(
                             roll.hexColor ?? group.hexColor,
                             resolvedTheme,
