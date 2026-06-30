@@ -39,7 +39,7 @@ type InventoryStockSourcePanelProps = {
 
 function inventoryStockCatalogRowClassName(selected: boolean): string {
   const base =
-    "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-[13px] outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+    "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-[13px] outline-none transition hover:outline hover:outline-2 hover:outline-offset-2 hover:outline-slate-200/80 focus-visible:border-sky-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300/70 focus-visible:ring-2 focus-visible:ring-sky-100 dark:hover:outline-slate-500/30 dark:focus-visible:border-sky-400/60 dark:focus-visible:outline-sky-400/45 dark:focus-visible:ring-sky-500/20";
 
   if (selected) {
     return `${base} border-slate-900/20 ring-1 ring-slate-900/10 dark:border-slate-400/50 dark:ring-slate-400/20`;
