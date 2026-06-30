@@ -16,3 +16,10 @@ test("InventorySpoolDetailHeader matches the shared modal header scale", () => {
   assert.doesNotMatch(source, /h-9 w-9/);
   assert.doesNotMatch(source, /&times;/);
 });
+
+test("InventorySpoolIdentityPanel keeps long RFID reference content readable", () => {
+  assert.match(source, /min-\[760px\]:grid-cols-2/);
+  assert.match(source, /min-\[760px\]:col-span-2/);
+  assert.doesNotMatch(source, /2xl:grid-cols-3/);
+  assert.doesNotMatch(source, /2xl:col-span-1/);
+});

@@ -123,8 +123,8 @@ export function InventorySpoolIdentityPanel({
       className="rounded-xl border border-slate-200 bg-slate-50 p-3.5"
       style={inventorySwatchInsetStyle(spool.hexColor, resolvedTheme)}
     >
-      <div className="grid gap-3 min-[760px]:grid-cols-2 2xl:grid-cols-3">
-        <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 min-[760px]:col-span-2 2xl:col-span-1 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
+      <div className="grid gap-3 min-[760px]:grid-cols-2">
+        <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 min-[760px]:col-span-2 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
           <div className={inventoryDetailLabelClassName}>
             {t("inventory.reference", "Reference")}
           </div>
