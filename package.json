@@ -39,7 +39,7 @@
     "better-sqlite3": "^12.10.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.3",
+    "@tauri-apps/cli": "^2.11.4",
     "tsx": "^4.22.3"
   }
 }
