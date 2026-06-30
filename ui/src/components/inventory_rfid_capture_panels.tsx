@@ -1,4 +1,5 @@
 import { swatchCssBackground } from "../lib/color_utils";
+import { CloseButton } from "./close_button";
 import { inventoryDetailSectionLabelClassName } from "./inventory_detail_panel_class";
 import { useI18n } from "../lib/i18n";
 import type { InventorySpool } from "../lib/inventory_list_model";
@@ -114,15 +115,7 @@ export function InventoryRfidCaptureHeader({
           </div>
         ) : null}
       </div>
-      <button
-        type="button"
-        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200/80 bg-white/85 text-base leading-none text-slate-600 shadow-sm shadow-slate-200/25 transition hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-300 dark:shadow-none dark:hover:bg-slate-800/70"
-        onClick={onClose}
-        aria-label={t("common.close", "Close")}
-        title={t("common.close", "Close")}
-      >
-        ×
-      </button>
+      <CloseButton label={t("common.close", "Close")} onClick={onClose} />
     </div>
   );
 }

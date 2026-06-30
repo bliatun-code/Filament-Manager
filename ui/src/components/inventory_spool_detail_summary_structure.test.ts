@@ -9,9 +9,9 @@ const source = readFileSync(
 
 test("InventorySpoolDetailHeader matches the shared modal header scale", () => {
   assert.match(source, /tracking-\[0\.14em\]/);
-  assert.match(source, /h-10 w-10/);
-  assert.match(source, /rounded-lg/);
+  assert.match(source, /CloseButton/);
   assert.match(source, /px-5 py-4/);
   assert.doesNotMatch(source, /tracking-\[0\.2em\]/);
   assert.doesNotMatch(source, /h-9 w-9/);
+  assert.doesNotMatch(source, /&times;/);
 });

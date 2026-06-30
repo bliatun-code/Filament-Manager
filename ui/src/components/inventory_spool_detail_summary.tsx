@@ -1,4 +1,5 @@
 import { VendorBadge } from "./vendor_badge";
+import { CloseButton } from "./close_button";
 import { inventoryDetailLabelClassName } from "./inventory_detail_panel_class";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { swatchCssBackground } from "../lib/color_utils";
@@ -85,15 +86,7 @@ export function InventorySpoolDetailHeader({
             {formatGrams(spool.remainingGrams)}
           </span>
         </div>
-        <button
-          type="button"
-          aria-label={t("common.close", "Close")}
-          title={t("common.close", "Close")}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200/80 bg-white/85 text-base leading-none text-slate-600 shadow-sm shadow-slate-200/25 transition hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-300 dark:shadow-none dark:hover:bg-slate-800/70"
-          onClick={onClose}
-        >
-          &times;
-        </button>
+        <CloseButton label={t("common.close", "Close")} onClick={onClose} />
       </div>
     </div>
   );

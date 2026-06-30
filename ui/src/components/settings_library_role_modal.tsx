@@ -1,4 +1,5 @@
 import { AppModal } from "./app_modal";
+import { CloseButton } from "./close_button";
 import type { Locale } from "../lib/i18n";
 import {
   settingsActionButtonClass,
@@ -107,13 +108,7 @@ export function SettingsLibraryRoleModal({
                         )}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white/85 text-[1.35rem] leading-none text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-800/60"
-          >
-            ×
-          </button>
+          <CloseButton label={t("common.close", "Close")} onClick={onClose} size="large" />
         </div>
 
         {roleChangeState.fromClient && roleChangeState.toHost ? (

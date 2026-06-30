@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { CloseButton } from "./close_button";
 
 type ModalHeaderProps = {
   eyebrow?: string;
@@ -69,16 +70,7 @@ export function ModalHeader({
         <div className="flex shrink-0 items-start gap-2">
           {aside}
           {onClose ? (
-            <button
-              type="button"
-              onClick={disabled ? undefined : onClose}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200/80 bg-white/85 text-base leading-none text-slate-600 shadow-sm shadow-slate-200/25 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-300 dark:shadow-none dark:hover:bg-slate-800/70"
-              aria-label={closeLabel}
-              title={closeLabel}
-              disabled={disabled}
-            >
-              ×
-            </button>
+            <CloseButton label={closeLabel} onClick={onClose} disabled={disabled} />
           ) : null}
         </div>
       </div>
