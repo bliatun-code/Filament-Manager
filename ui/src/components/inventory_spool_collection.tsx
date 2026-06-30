@@ -88,6 +88,23 @@ function inventorySpoolRollButtonClassName(mode: "single" | "compact"): string {
   return base;
 }
 
+type InventorySpoolListButtonState = "default" | "recent" | "selected";
+
+function inventorySpoolListButtonClassName(state: InventorySpoolListButtonState): string {
+  const base =
+    "w-full rounded-xl border px-4 py-3 text-left shadow-sm outline-none transition hover:-translate-y-[1px] focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+
+  if (state === "selected") {
+    return `${base} border-slate-900 ring-1 ring-slate-300 dark:border-slate-300 dark:ring-slate-600`;
+  }
+
+  if (state === "recent") {
+    return `${base} border-emerald-300 ring-2 ring-emerald-200 dark:border-emerald-400/60 dark:ring-emerald-400/20`;
+  }
+
+  return base;
+}
+
 export function InventorySpoolCollection({
   filteredSpools,
   groupedSpools,
@@ -286,18 +303,18 @@ export function InventorySpoolCollection({
             );
           })
         : filteredSpools.map((roll) => {
+            const listButtonState =
+              selectedSpoolId === roll.id
+                ? "selected"
+                : roll.id === recentlyAddedSpoolId
+                  ? "recent"
+                  : "default";
             return (
               <button
                 key={roll.id}
                 type="button"
                 onClick={() => onSelectRoll(roll.id)}
-                className={`w-full rounded-xl border px-4 py-3 text-left shadow-sm transition hover:-translate-y-[1px] ${
-                  selectedSpoolId === roll.id
-                    ? "border-slate-900 ring-1 ring-slate-300 dark:border-slate-300 dark:ring-slate-600"
-                    : roll.id === recentlyAddedSpoolId
-                      ? "border-emerald-300 ring-2 ring-emerald-200 dark:border-emerald-400/60 dark:ring-emerald-400/20"
-                      : ""
-                }`}
+                className={inventorySpoolListButtonClassName(listButtonState)}
                 style={inventorySwatchCardStyle(roll.hexColor, resolvedTheme)}
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
