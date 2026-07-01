@@ -2,8 +2,9 @@ import { type ReactNode, useEffect } from "react";
 import { useI18n } from "../lib/i18n";
 import { swatchCssBackground } from "../lib/color_utils";
 import { AppModal } from "./app_modal";
-import { modalActionButtonClassName } from "./modal_action_button_class";
+import { ModalActionButton } from "./modal_action_button";
 import { modalEyebrowClassName } from "./modal_chrome";
+import { useResolvedTheme } from "../lib/theme_mode";
 
 type SaveOnlyModalProps = {
   title: string;
@@ -33,6 +34,7 @@ export function SaveOnlyModal({
   children,
 }: SaveOnlyModalProps) {
   const { t } = useI18n();
+  const resolvedTheme = useResolvedTheme();
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -81,14 +83,18 @@ export function SaveOnlyModal({
         <div className="bg-white/95 px-5 py-5 dark:bg-slate-900/90">{children}</div>
 
         <div className="border-t border-slate-200/80 bg-slate-50/95 px-5 py-4 dark:border-slate-700/80 dark:bg-slate-950/90">
-          <button
+          <ModalActionButton
             type="button"
-            className={`w-full ${modalActionButtonClassName("solid", "roomy")}`}
+            fullWidth
+            variant="solid"
+            size="roomy"
+            swatchColor={swatchColor}
+            resolvedTheme={resolvedTheme}
             onClick={() => void onSave()}
             disabled={saveDisabled}
           >
             {saveLabel ?? t("common.save", "Save")}
-          </button>
+          </ModalActionButton>
         </div>
       </>
     </AppModal>

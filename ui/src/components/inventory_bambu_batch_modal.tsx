@@ -12,7 +12,7 @@ import {
   inventoryTwoColumnModalGridClassName,
   inventoryWideModalPanelClassName,
 } from "./inventory_modal_chrome";
-import { modalActionButtonClassName } from "./modal_action_button_class";
+import { ModalActionButton } from "./modal_action_button";
 import { ModalHeader } from "./modal_chrome";
 import { useI18n } from "../lib/i18n";
 import type {
@@ -877,15 +877,17 @@ function BambuFilamentCodeBatchPanel({
         </div>
 
         <div className="shrink-0 border-t border-slate-200/80 p-3 dark:border-slate-800/70">
-          <button
+          <ModalActionButton
             type="button"
-            className={`w-full ${modalActionButtonClassName("solid", "roomy")}`}
+            fullWidth
+            variant="solid"
+            size="roomy"
             onClick={onCreateBatch}
             disabled={disabledCreate}
           >
             {t("inventory.bambuBatchAddReady", "Add ready matches")} ·{" "}
             {batch.creatableRows.length}
-          </button>
+          </ModalActionButton>
         </div>
       </aside>
     </div>

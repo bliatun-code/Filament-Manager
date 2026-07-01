@@ -140,7 +140,7 @@ test("SlotCatalogOnboardingModal renders the owned catalog onboarding save path"
   assert.match(html, /Initial weight \(g\)/);
   assert.match(html, /Home location \(optional\)/);
   assert.doesNotMatch(html, /Borrowed from/);
-  assert.doesNotMatch(html, /disabled="">\s*Add \+ save RFID/);
+  assert.doesNotMatch(html, /<button(?=[^>]*disabled="")[^>]*>\s*Add \+ save RFID/);
 });
 
 test("SlotCatalogOnboardingModal marks discontinued catalog fallback rows", () => {
@@ -181,7 +181,10 @@ test("SlotCatalogOnboardingModal blocks borrowed-in catalog onboarding until own
     html,
     /Enter who the spool is borrowed from before registering it as borrowed-in\./,
   );
-  assert.match(html, /<button[^>]*disabled="">\s*Add borrowed-in \+ save RFID/);
+  assert.match(
+    html,
+    /<button(?=[^>]*disabled="")[^>]*>\s*Add borrowed-in \+ save RFID/,
+  );
 });
 
 test("SlotCatalogOnboardingModal renders the borrowed-in catalog onboarding save path", () => {
@@ -205,7 +208,10 @@ test("SlotCatalogOnboardingModal renders the borrowed-in catalog onboarding save
     html,
     /Enter who the spool is borrowed from before registering it as borrowed-in\./,
   );
-  assert.doesNotMatch(html, /<button[^>]*disabled="">\s*Add borrowed-in \+ save RFID/);
+  assert.doesNotMatch(
+    html,
+    /<button(?=[^>]*disabled="")[^>]*>\s*Add borrowed-in \+ save RFID/,
+  );
   assert.equal((html.match(/Add borrowed-in \+ save RFID/g) ?? []).length, 2);
   assert.match(html, />\s*Add borrowed-in \+ save RFID\s*<\/button>/);
 });
@@ -222,7 +228,7 @@ test("SlotCatalogOnboardingModal blocks catalog onboarding when the slot becomes
     html,
     /This slot now has a roll assigned\. Clear or swap it through the normal slot flow before adding a new roll from AMS\./,
   );
-  assert.match(html, /<button[^>]*disabled="">\s*Add \+ save RFID/);
+  assert.match(html, /<button(?=[^>]*disabled="")[^>]*>\s*Add \+ save RFID/);
 });
 
 test("SlotCatalogOnboardingModal blocks catalog onboarding when the live slot unloads", () => {
@@ -236,7 +242,7 @@ test("SlotCatalogOnboardingModal blocks catalog onboarding when the live slot un
     html,
     /AMS no longer reports a loaded roll in this slot\. Reopen the slot action when the roll is loaded\./,
   );
-  assert.match(html, /<button[^>]*disabled="">\s*Add \+ save RFID/);
+  assert.match(html, /<button(?=[^>]*disabled="")[^>]*>\s*Add \+ save RFID/);
 });
 
 test("SlotCatalogOnboardingModal blocks catalog onboarding when the live identity changes", () => {
@@ -250,5 +256,5 @@ test("SlotCatalogOnboardingModal blocks catalog onboarding when the live identit
     html,
     /The live AMS identity changed before saving\. Reopen the slot action and confirm the current roll\./,
   );
-  assert.match(html, /<button[^>]*disabled="">\s*Add \+ save RFID/);
+  assert.match(html, /<button(?=[^>]*disabled="")[^>]*>\s*Add \+ save RFID/);
 });

@@ -6,8 +6,10 @@ const source = readFileSync(new URL("./loan_return_modal.tsx", import.meta.url),
 
 test("LoanReturnModal uses shared modal form inputs", () => {
   assert.match(source, /modalFormInputClassName/);
-  assert.match(source, /modalActionButtonClassName\(\)/);
-  assert.match(source, /modalActionButtonClassName\("success"\)/);
+  assert.match(source, /<ModalActionButton/);
+  assert.match(source, /variant="success"/);
+  assert.match(source, /swatchColor=\{loan\.hex_color\}/);
+  assert.doesNotMatch(source, /modalActionButtonClassName/);
   assert.doesNotMatch(
     source,
     /mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800/,

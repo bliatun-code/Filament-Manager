@@ -4,7 +4,8 @@ import {
   inventoryDetailSectionLabelClassName,
   inventoryPanelToggleButtonClassName,
 } from "./inventory_detail_panel_class";
-import { modalActionButtonClassName } from "./modal_action_button_class";
+import { ModalActionButton } from "./modal_action_button";
+import { ModalFactCard } from "./modal_chrome";
 import { useI18n } from "../lib/i18n";
 import type { InventorySpool } from "../lib/inventory_list_model";
 import {
@@ -19,6 +20,7 @@ import {
 } from "../lib/inventory_rfid_capture";
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
 import type { BambuLiveIntegrationSettings } from "../lib/tauri_client";
+import { useResolvedTheme } from "../lib/theme_mode";
 
 type RfidCaptureMatchMeta = {
   className: string;
@@ -85,6 +87,7 @@ type InventoryRfidCaptureActionsProps = {
   manageBusy: boolean;
   onCancel: () => void;
   onSave: () => void;
+  spoolHexColor?: string | null;
 };
 
 function inventoryRfidCaptureSlotButtonClassName(active: boolean): string {
@@ -150,7 +153,7 @@ export function InventoryRfidCaptureSlotPicker({
   const { locale, t } = useI18n();
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:col-span-2 min-[900px]:col-span-4 dark:border-slate-700 dark:bg-slate-900/60">
+    <ModalFactCard compact className="sm:col-span-2 min-[900px]:col-span-4">
       <div className={inventoryDetailSectionLabelClassName}>
         {t("inventory.rfidSourceSlot", "RFID source slot")}
       </div>
@@ -203,7 +206,7 @@ export function InventoryRfidCaptureSlotPicker({
           );
         })}
       </div>
-    </div>
+    </ModalFactCard>
   );
 }
 
@@ -216,23 +219,23 @@ export function InventoryRfidCaptureSummaryCards({
 
   return (
     <>
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">
+      <ModalFactCard compact>
         <div className={inventoryDetailSectionLabelClassName}>
           {t("inventory.rfidCurrentTag", "Saved RFID")}
         </div>
         <div className="mt-2 break-all font-mono text-sm text-slate-900 dark:text-slate-100">
           {savedRfidTag?.trim() || "—"}
         </div>
-      </div>
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">
+      </ModalFactCard>
+      <ModalFactCard compact>
         <div className={inventoryDetailSectionLabelClassName}>
           {t("inventory.rfidObservedTag", "Observed RFID")}
         </div>
         <div className="mt-2 break-all font-mono text-sm text-slate-900 dark:text-slate-100">
           {summary.rfidTag || "—"}
         </div>
-      </div>
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">
+      </ModalFactCard>
+      <ModalFactCard compact>
         <div className={inventoryDetailSectionLabelClassName}>
           {t("inventory.rfidObservedMaterial", "Observed filament")}
         </div>
@@ -244,8 +247,8 @@ export function InventoryRfidCaptureSummaryCards({
             <span className={matchMeta.className}>{matchMeta.label}</span>
           </div>
         ) : null}
-      </div>
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">
+      </ModalFactCard>
+      <ModalFactCard compact>
         <div className={inventoryDetailSectionLabelClassName}>
           {t("inventory.rfidObservedColor", "Observed color")}
         </div>
@@ -258,7 +261,7 @@ export function InventoryRfidCaptureSummaryCards({
             {summary.colorHex || summary.trayColorRaw || "—"}
           </span>
         </div>
-      </div>
+      </ModalFactCard>
     </>
   );
 }
@@ -283,7 +286,7 @@ export function InventoryRfidCaptureDiagnostics({
 
   return (
     <div className="mt-4 grid gap-3 min-[900px]:grid-cols-2">
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900/60">
+      <ModalFactCard className="text-sm">
         <div className={inventoryDetailSectionLabelClassName}>
           {t("inventory.rfidIdentitySignals", "RFID identity signals")}
         </div>
@@ -292,8 +295,8 @@ export function InventoryRfidCaptureDiagnostics({
           <RfidDetailRow label="tray_uuid" value={summary.trayUuid} code />
           <RfidDetailRow label="chip_id" value={summary.chipId} code />
         </dl>
-      </div>
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900/60">
+      </ModalFactCard>
+      <ModalFactCard className="text-sm">
         <div className={inventoryDetailSectionLabelClassName}>
           {t("inventory.rfidCaptureStatus", "Capture status")}
         </div>
@@ -359,7 +362,7 @@ export function InventoryRfidCaptureDiagnostics({
             mono
           />
         </dl>
-      </div>
+      </ModalFactCard>
     </div>
   );
 }
@@ -473,26 +476,29 @@ export function InventoryRfidCaptureActions({
   manageBusy,
   onCancel,
   onSave,
+  spoolHexColor,
 }: InventoryRfidCaptureActionsProps) {
   const { t } = useI18n();
+  const resolvedTheme = useResolvedTheme();
 
   return (
     <div className="flex flex-wrap justify-end gap-3">
-      <button
+      <ModalActionButton
         type="button"
-        className={modalActionButtonClassName()}
         onClick={onCancel}
       >
         {t("common.cancel", "Cancel")}
-      </button>
-      <button
+      </ModalActionButton>
+      <ModalActionButton
         type="button"
-        className={modalActionButtonClassName("primary")}
+        variant="primary"
+        swatchColor={spoolHexColor}
+        resolvedTheme={resolvedTheme}
         onClick={onSave}
         disabled={!canSave || manageBusy}
       >
         {t("inventory.saveRfid", "Save RFID")}
-      </button>
+      </ModalActionButton>
     </div>
   );
 }

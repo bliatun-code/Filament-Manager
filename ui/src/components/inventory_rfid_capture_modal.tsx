@@ -151,6 +151,7 @@ export function InventoryRfidCaptureModal({
             manageBusy={manageBusy}
             onCancel={onCancel}
             onSave={onSave}
+            spoolHexColor={spool.hexColor}
           />
         </div>
       </div>

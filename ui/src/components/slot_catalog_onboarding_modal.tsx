@@ -13,10 +13,11 @@ import {
 import type { BambuLiveObservedTray, PrinterAmsSlotRow } from "../lib/tauri_client";
 import { AppModal } from "./app_modal";
 import { modalFormInputClassName } from "./form_control_class";
-import { modalActionButtonClassName } from "./modal_action_button_class";
-import { modalDetailLabelClassName, ModalHeader } from "./modal_chrome";
+import { ModalActionButton } from "./modal_action_button";
+import { ModalFactCard, modalDetailLabelClassName, ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
+import { useResolvedTheme } from "../lib/theme_mode";
 
 type SlotCatalogOnboardingModalProps = {
   busy: boolean;
@@ -50,6 +51,7 @@ export function SlotCatalogOnboardingModal({
   onSave,
 }: SlotCatalogOnboardingModalProps) {
   const { t } = useI18n();
+  const resolvedTheme = useResolvedTheme();
   const saveState = buildSlotCatalogOnboardingSaveState(prompt, {
     busy,
     currentSlot,
@@ -250,28 +252,29 @@ export function SlotCatalogOnboardingModal({
           </div>
 
           {saveBlockMessage ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+            <ModalFactCard className="text-sm leading-6 text-slate-600 dark:text-slate-300">
               {saveBlockMessage}
-            </div>
+            </ModalFactCard>
           ) : null}
 
           <div className="flex flex-wrap justify-end gap-3">
-            <button
+            <ModalActionButton
               type="button"
-              className={modalActionButtonClassName()}
               onClick={onClose}
               disabled={busy}
             >
               {t("common.cancel", "Cancel")}
-            </button>
-            <button
+            </ModalActionButton>
+            <ModalActionButton
               type="button"
-              className={modalActionButtonClassName("primary")}
+              variant="primary"
+              swatchColor={prompt.master.hex_color}
+              resolvedTheme={resolvedTheme}
               onClick={onSave}
               disabled={saveDisabled}
             >
               {primaryActionLabel}
-            </button>
+            </ModalActionButton>
           </div>
         </div>
       </div>

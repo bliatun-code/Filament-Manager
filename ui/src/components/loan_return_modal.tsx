@@ -1,7 +1,7 @@
 import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
 import { modalFormInputClassName } from "./form_control_class";
-import { modalActionButtonClassName } from "./modal_action_button_class";
+import { ModalActionButton } from "./modal_action_button";
 import { ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { VendorBadge } from "./vendor_badge";
@@ -189,24 +189,25 @@ export function LoanReturnModal({
         </div>
 
         <div className="flex justify-end gap-2">
-          <button
+          <ModalActionButton
             type="button"
             onClick={onClose}
             disabled={busy}
-            className={modalActionButtonClassName()}
           >
             {t("common.close", "Close")}
-          </button>
-          <button
+          </ModalActionButton>
+          <ModalActionButton
             type="button"
             onClick={() => void onConfirm()}
             disabled={busy}
-            className={modalActionButtonClassName("success")}
+            variant="success"
+            swatchColor={loan.hex_color}
+            resolvedTheme={resolvedTheme}
           >
             {isInbound
               ? t("loans.confirmHandBackAction", "Confirm hand-back")
               : t("loans.confirmReturnAction", "Confirm return")}
-          </button>
+          </ModalActionButton>
         </div>
       </div>
     </AppModal>

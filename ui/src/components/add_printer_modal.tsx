@@ -10,7 +10,7 @@ import type { ResolvedTheme } from "../lib/theme_mode";
 import { useI18n } from "../lib/i18n";
 import { AppModal } from "./app_modal";
 import { modalFormInputClassName } from "./form_control_class";
-import { modalActionButtonClassName } from "./modal_action_button_class";
+import { ModalActionButton } from "./modal_action_button";
 import { ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { PrinterModelPreview } from "./printer_model_preview";
@@ -164,22 +164,21 @@ export function AddPrinterModal({
           </div>
 
           <div className="flex justify-end gap-2">
-            <button
+            <ModalActionButton
               type="button"
-              className={modalActionButtonClassName()}
               onClick={onClose}
               disabled={busy}
             >
               {t("common.close", "Close")}
-            </button>
-            <button
+            </ModalActionButton>
+            <ModalActionButton
               type="button"
-              className={modalActionButtonClassName("solid")}
+              variant="solid"
               onClick={onAddPrinter}
               disabled={!tauri || busy || !newPrinterModel || !newPrinterName.trim()}
             >
               {t("settings.addPrinter", "Add printer")}
-            </button>
+            </ModalActionButton>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 import { CloseButton } from "./close_button";
 
 export const modalEyebrowClassName =
@@ -9,6 +9,9 @@ export const modalDetailLabelClassName =
 
 export const modalHeaderActionButtonClassName =
   "inline-flex h-10 items-center justify-center whitespace-nowrap rounded-lg border border-slate-200/80 bg-white/85 px-3 text-xs font-semibold text-slate-700 shadow-sm shadow-slate-200/25 outline-none backdrop-blur-sm transition hover:bg-slate-50 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 dark:shadow-none dark:hover:bg-slate-800/70 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20 sm:text-sm";
+
+export const modalFactCardClassName =
+  "rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60";
 
 type ModalHeaderActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
@@ -28,6 +31,33 @@ export function ModalHeaderActionButton({
     >
       {children}
     </button>
+  );
+}
+
+type ModalFactCardProps = HTMLAttributes<HTMLDivElement> & {
+  children: ReactNode;
+  compact?: boolean;
+};
+
+export function ModalFactCard({
+  children,
+  className,
+  compact = false,
+  ...divProps
+}: ModalFactCardProps) {
+  return (
+    <div
+      {...divProps}
+      className={[
+        modalFactCardClassName,
+        compact ? "px-3 py-3" : "px-4 py-3",
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {children}
+    </div>
   );
 }
 

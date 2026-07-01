@@ -8,9 +8,10 @@ import {
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
 import type { SlotRfidOverridePrompt } from "../lib/printer_slot_model";
 import { AppModal } from "./app_modal";
-import { modalActionButtonClassName } from "./modal_action_button_class";
+import { ModalActionButton } from "./modal_action_button";
 import { modalDetailLabelClassName, ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
+import { useResolvedTheme } from "../lib/theme_mode";
 
 type RfidOverrideModalProps = {
   busy: boolean;
@@ -28,6 +29,7 @@ export function RfidOverrideModal({
   onSave,
 }: RfidOverrideModalProps) {
   const { t } = useI18n();
+  const resolvedTheme = useResolvedTheme();
   const observedRfid = liveTrayIdentity(prompt.liveTray);
 
   return (
@@ -114,22 +116,23 @@ export function RfidOverrideModal({
           </div>
 
           <div className="flex flex-wrap justify-end gap-3">
-            <button
+            <ModalActionButton
               type="button"
-              className={modalActionButtonClassName()}
               onClick={onClose}
               disabled={busy}
             >
               {t("common.cancel", "Cancel")}
-            </button>
-            <button
+            </ModalActionButton>
+            <ModalActionButton
               type="button"
-              className={modalActionButtonClassName("primary")}
+              variant="primary"
+              swatchColor={prompt.spool.master.hex_color}
+              resolvedTheme={resolvedTheme}
               onClick={onSave}
               disabled={!observedRfid || busy}
             >
               {t("inventory.saveRfid", "Save RFID")}
-            </button>
+            </ModalActionButton>
           </div>
         </div>
       </div>

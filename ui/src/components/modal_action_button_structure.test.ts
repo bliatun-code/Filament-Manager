@@ -10,7 +10,10 @@ test("modal action buttons share secondary and primary chrome", () => {
   const addPrinterModal = readComponentSource("add_printer_modal.tsx");
   const actionButtonComponent = readComponentSource("modal_action_button.tsx");
   const actionButtonClass = readComponentSource("modal_action_button_class.ts");
+  const batchModal = readComponentSource("inventory_bambu_batch_modal.tsx");
   const createActions = readComponentSource("inventory_create_actions_panel.tsx");
+  const loanReturnModal = readComponentSource("loan_return_modal.tsx");
+  const modalChrome = readComponentSource("modal_chrome.tsx");
   const rfidCapturePanels = readComponentSource("inventory_rfid_capture_panels.tsx");
   const rfidOverrideModal = readComponentSource("rfid_override_modal.tsx");
   const saveOnlyModal = readComponentSource("save_only_modal.tsx");
@@ -28,20 +31,44 @@ test("modal action buttons share secondary and primary chrome", () => {
   assert.match(actionButtonClass, /size === "roomy" \? "px-4 py-3" : "px-4 py-2"/);
   assert.match(actionButtonComponent, /function ModalActionButton/);
   assert.match(actionButtonComponent, /inventorySwatchActionButtonStyle/);
-  assert.match(addPrinterModal, /modalActionButtonClassName\(\)/);
-  assert.match(addPrinterModal, /modalActionButtonClassName\("solid"\)/);
+  assert.match(modalChrome, /function ModalFactCard/);
+  assert.match(modalChrome, /modalFactCardClassName/);
   assert.match(createActions, /<ModalActionButton/);
   assert.match(createActions, /variant="solid"/);
   assert.match(createActions, /size="roomy"/);
   assert.match(createActions, /fullWidth/);
-  assert.match(saveOnlyModal, /modalActionButtonClassName\("solid", "roomy"\)/);
+  for (const source of [
+    addPrinterModal,
+    batchModal,
+    createActions,
+    loanReturnModal,
+    rfidCapturePanels,
+    rfidOverrideModal,
+    saveOnlyModal,
+    slotOnboardingModal,
+  ]) {
+    assert.match(source, /<ModalActionButton/);
+    assert.doesNotMatch(source, /modalActionButtonClassName/);
+  }
+  for (const source of [
+    loanReturnModal,
+    rfidCapturePanels,
+    rfidOverrideModal,
+    saveOnlyModal,
+    slotOnboardingModal,
+  ]) {
+    assert.match(source, /swatchColor=/);
+  }
+  assert.match(batchModal, /fullWidth/);
+  assert.match(batchModal, /variant="solid"/);
+  assert.match(batchModal, /size="roomy"/);
+  assert.match(rfidCapturePanels, /<ModalFactCard/);
   assert.doesNotMatch(addPrinterModal, /rounded-xl bg-slate-900 px-4 py-2/);
   assert.doesNotMatch(createActions, /rounded-xl border px-4 py-3 text-sm font-semibold/);
   assert.doesNotMatch(createActions, /rounded-xl border px-3 py-2\.5 text-sm font-semibold/);
   assert.doesNotMatch(saveOnlyModal, /rounded-lg border border-slate-800 bg-slate-900 px-4 py-3/);
   for (const source of [rfidCapturePanels, rfidOverrideModal, slotOnboardingModal]) {
-    assert.match(source, /modalActionButtonClassName\(\)/);
-    assert.match(source, /modalActionButtonClassName\("primary"\)/);
+    assert.match(source, /variant="primary"/);
     assert.doesNotMatch(source, rawSecondaryClass);
     assert.doesNotMatch(source, rawPrimaryClass);
   }
