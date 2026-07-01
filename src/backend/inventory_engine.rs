@@ -649,7 +649,7 @@ impl InventoryEngine {
         let should_preserve_current_location =
             self.db.spool_assigned_to_printer(&input.spool_id)?
                 || has_active_loan
-                || existing_spool.status.eq_ignore_ascii_case("BORROWED");
+                || SpoolStatus::from_raw(Some(&existing_spool.status)) == SpoolStatus::Borrowed;
         let should_sync_home_to_current_location = input.home_location.is_some()
             && !should_preserve_current_location
             && match (&resolved_location, &existing_spool.location_id) {

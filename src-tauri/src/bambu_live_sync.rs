@@ -8,6 +8,7 @@ use crate::backend::filament_database::{
     BambuLiveObservedStateRow, BambuLiveObservedTrayRow, FilamentDatabase, PrinterOverviewRow,
     SpoolWithMasterRow,
 };
+use crate::backend::inventory_domain::SpoolStatus;
 use crate::backend::printer_slot_live_mapping::bambu_live_slot_matches_tray;
 use crate::bambu_thermal::{
     is_below_extrusion_temp, is_print_capable_temp, nozzle_thermal_state_name,
@@ -355,15 +356,19 @@ fn find_inventory_candidates<'a>(
 
 fn spool_available_for_exact_live_rfid_match(row: &SpoolWithMasterRow) -> bool {
     !matches!(
-        row.spool.status.trim().to_ascii_uppercase().as_str(),
-        "LOST" | "MISSING" | "DELETED" | "BORROWED"
+        SpoolStatus::from_raw(Some(&row.spool.status)),
+        SpoolStatus::Lost | SpoolStatus::Missing | SpoolStatus::Deleted | SpoolStatus::Borrowed
     )
 }
 
 fn spool_available_for_live_metadata_match(row: &SpoolWithMasterRow) -> bool {
     !matches!(
-        row.spool.status.trim().to_ascii_uppercase().as_str(),
-        "EMPTY" | "LOST" | "MISSING" | "DELETED" | "BORROWED"
+        SpoolStatus::from_raw(Some(&row.spool.status)),
+        SpoolStatus::Empty
+            | SpoolStatus::Lost
+            | SpoolStatus::Missing
+            | SpoolStatus::Deleted
+            | SpoolStatus::Borrowed
     )
 }
 

@@ -1272,8 +1272,8 @@ pub(super) async fn handle_update_spool_details(
         .get_spool(spool_id)
         .map_err(CompanionApiError::from)?
         .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
-    let current_status = spool.spool.status.trim().to_ascii_uppercase();
-    if current_status == "BORROWED" {
+    let current_status = SpoolStatus::from_raw(Some(&spool.spool.status));
+    if current_status == SpoolStatus::Borrowed {
         return Err(CompanionApiError::BadRequest(
             "Loaned-out spools use the companion loan return flow instead of manual status/location edits"
                 .to_string(),
@@ -1289,10 +1289,8 @@ pub(super) async fn handle_update_spool_details(
         .map(|value| normalize_optional_text(value.map(String::as_str)));
     let editing_home_location_only = payload.home_location.is_set()
         && requested_location == spool.spool.location_id
-        && status == current_status;
-    if (current_status == "IN_USE"
-        || current_status == "ASSIGNED"
-        || state.spool_assigned_to_printer(spool_id)?)
+        && status == current_status.as_str();
+    if (current_status.is_assigned() || state.spool_assigned_to_printer(spool_id)?)
         && !editing_home_location_only
     {
         return Err(CompanionApiError::BadRequest(
