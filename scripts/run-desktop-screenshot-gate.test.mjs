@@ -104,6 +104,14 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
     normalizeDesktopVisualQaScenario("bambu-live-diagnostics"),
     "settings-printer-diagnostics",
   );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("bambu-live-diagnostics-fields"),
+    "settings-printer-diagnostics-fields",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("bambu-live-diagnostics-paused"),
+    "settings-printer-diagnostics-paused",
+  );
   assert.equal(normalizeDesktopVisualQaScenario("filament-catalog"), "settings-catalog");
   assert.equal(normalizeDesktopVisualQaScenario("program-maintenance"), "settings-maintenance");
   assert.equal(normalizeDesktopVisualQaScenario("usage-statistics"), "statistics-overview");
@@ -113,8 +121,13 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
 
 test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {
   assert.deepEqual(
-    parseDesktopVisualQaScenarios(["--scenario", "all", "--scenario", "bambu-live-diagnostics"]),
-    ["settings-printer-diagnostics"],
+    parseDesktopVisualQaScenarios([
+      "--scenario",
+      "all",
+      "--scenario",
+      "bambu-live-diagnostics-fields",
+    ]),
+    ["settings-printer-diagnostics-fields"],
   );
 });
 

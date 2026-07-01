@@ -99,12 +99,13 @@ export function useSettingsPrintersSection({
     printers,
   });
   const visualQaScenario = resolveDesktopVisualQaScenario();
+  const isDiagnosticsVisualQaScenario =
+    visualQaScenario === "settings-printer-diagnostics" ||
+    visualQaScenario === "settings-printer-diagnostics-fields" ||
+    visualQaScenario === "settings-printer-diagnostics-paused";
 
   useEffect(() => {
-    if (visualQaScenario !== "settings-printer-diagnostics") {
-      return;
-    }
-    if (expandedBambuDetailsPrinterId) {
+    if (!isDiagnosticsVisualQaScenario) {
       return;
     }
     const livePrinter = sortedPrinters.find(
@@ -113,16 +114,73 @@ export function useSettingsPrintersSection({
     if (!livePrinter) {
       return;
     }
-    ensureDiagnosticSession(livePrinter.id);
-    setExpandedBambuDetailsPrinterId(livePrinter.id);
+
+    if (expandedBambuDetailsPrinterId !== livePrinter.id) {
+      ensureDiagnosticSession(livePrinter.id);
+      setExpandedBambuDetailsPrinterId(livePrinter.id);
+      return;
+    }
+
+    if (
+      !diagnosticCaptureByPrinterId[livePrinter.id] ||
+      diagnosticCaptureActiveByPrinterId[livePrinter.id] == null
+    ) {
+      ensureDiagnosticSession(livePrinter.id);
+      return;
+    }
+
+    if (visualQaScenario === "settings-printer-diagnostics-fields") {
+      setDiagnosticSortByPrinterId((current) => {
+        if (current[livePrinter.id] === "change_count") {
+          return current;
+        }
+        return { ...current, [livePrinter.id]: "change_count" };
+      });
+      setDiagnosticFilterByPrinterId((current) => {
+        if (current[livePrinter.id] === "all") {
+          return current;
+        }
+        return { ...current, [livePrinter.id]: "all" };
+      });
+    }
+
+    if (
+      visualQaScenario === "settings-printer-diagnostics-paused" &&
+      diagnosticCaptureActiveByPrinterId[livePrinter.id] === true
+    ) {
+      toggleBambuLiveCapture(livePrinter.id, true);
+    }
   }, [
     bambuLiveIntegrations,
+    diagnosticCaptureActiveByPrinterId,
+    diagnosticCaptureByPrinterId,
     ensureDiagnosticSession,
     expandedBambuDetailsPrinterId,
+    isDiagnosticsVisualQaScenario,
+    setDiagnosticFilterByPrinterId,
+    setDiagnosticSortByPrinterId,
     setExpandedBambuDetailsPrinterId,
     sortedPrinters,
+    toggleBambuLiveCapture,
     visualQaScenario,
   ]);
+
+  useEffect(() => {
+    if (visualQaScenario !== "settings-printer-diagnostics-fields") {
+      return;
+    }
+    if (!expandedBambuDetailsPrinterId) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      document
+        .querySelector("[data-desktop-visual-qa-target='bambu-live-captured-fields']")
+        ?.scrollIntoView({ block: "center" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [diagnosticCaptureByPrinterId, expandedBambuDetailsPrinterId, visualQaScenario]);
 
   const { handleToggleBambuLiveCapture, handleToggleBambuLiveDetails } =
     useSettingsBambuLiveToggleActions({

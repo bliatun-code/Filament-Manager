@@ -17,6 +17,8 @@ export const DESKTOP_VISUAL_QA_SCENARIOS = [
   "settings-general",
   "settings-library",
   "settings-printer-diagnostics",
+  "settings-printer-diagnostics-fields",
+  "settings-printer-diagnostics-paused",
   "settings-catalog",
   "settings-maintenance",
   "statistics-overview",
@@ -99,6 +101,14 @@ export function normalizeDesktopVisualQaScenario(
     case "printer-diagnostics":
     case "bambu-live-diagnostics":
       return "settings-printer-diagnostics";
+    case "settings-printer-diagnostics-fields":
+    case "printer-diagnostics-fields":
+    case "bambu-live-diagnostics-fields":
+      return "settings-printer-diagnostics-fields";
+    case "settings-printer-diagnostics-paused":
+    case "printer-diagnostics-paused":
+    case "bambu-live-diagnostics-paused":
+      return "settings-printer-diagnostics-paused";
     case "settings-catalog":
     case "catalog-settings":
     case "filament-catalog":
@@ -160,6 +170,8 @@ export function desktopVisualQaInitialPage(
     scenario === "settings-general" ||
     scenario === "settings-library" ||
     scenario === "settings-printer-diagnostics" ||
+    scenario === "settings-printer-diagnostics-fields" ||
+    scenario === "settings-printer-diagnostics-paused" ||
     scenario === "settings-catalog" ||
     scenario === "settings-maintenance"
   ) {
@@ -184,6 +196,12 @@ export function desktopVisualQaInitialSettingsTab(
     return "LIBRARY";
   }
   if (scenario === "settings-printer-diagnostics") {
+    return "PRINTERS";
+  }
+  if (
+    scenario === "settings-printer-diagnostics-fields" ||
+    scenario === "settings-printer-diagnostics-paused"
+  ) {
     return "PRINTERS";
   }
   if (scenario === "settings-catalog") {

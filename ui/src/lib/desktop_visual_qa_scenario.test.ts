@@ -44,6 +44,14 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     normalizeDesktopVisualQaScenario("bambu-live-diagnostics"),
     "settings-printer-diagnostics",
   );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("bambu-live-diagnostics-fields"),
+    "settings-printer-diagnostics-fields",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("bambu-live-diagnostics-paused"),
+    "settings-printer-diagnostics-paused",
+  );
   assert.equal(normalizeDesktopVisualQaScenario("filament-catalog"), "settings-catalog");
   assert.equal(normalizeDesktopVisualQaScenario("program-maintenance"), "settings-maintenance");
   assert.equal(normalizeDesktopVisualQaScenario("usage-statistics"), "statistics-overview");
@@ -68,6 +76,14 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
     desktopVisualQaInitialPage("?bfm_visual_qa=settings-printer-diagnostics"),
     "settings",
   );
+  assert.equal(
+    desktopVisualQaInitialPage("?bfm_visual_qa=settings-printer-diagnostics-fields"),
+    "settings",
+  );
+  assert.equal(
+    desktopVisualQaInitialPage("?bfm_visual_qa=settings-printer-diagnostics-paused"),
+    "settings",
+  );
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-catalog"), "settings");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-maintenance"), "settings");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=statistics-overview"), "statistics");
@@ -80,6 +96,14 @@ test("desktop visual QA settings scenarios resolve to the intended tab", () => {
   assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-library"), "LIBRARY");
   assert.equal(
     desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-printer-diagnostics"),
+    "PRINTERS",
+  );
+  assert.equal(
+    desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-printer-diagnostics-fields"),
+    "PRINTERS",
+  );
+  assert.equal(
+    desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-printer-diagnostics-paused"),
     "PRINTERS",
   );
   assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-catalog"), "CATALOG");

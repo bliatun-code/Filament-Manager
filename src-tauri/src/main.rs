@@ -330,6 +330,12 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         "settings-printer-diagnostics" | "printer-diagnostics" | "bambu-live-diagnostics" => {
             Some("settings-printer-diagnostics")
         }
+        "settings-printer-diagnostics-fields"
+        | "printer-diagnostics-fields"
+        | "bambu-live-diagnostics-fields" => Some("settings-printer-diagnostics-fields"),
+        "settings-printer-diagnostics-paused"
+        | "printer-diagnostics-paused"
+        | "bambu-live-diagnostics-paused" => Some("settings-printer-diagnostics-paused"),
         "settings-catalog" | "catalog-settings" | "filament-catalog" => Some("settings-catalog"),
         "settings-maintenance" | "maintenance-settings" | "program-maintenance" => {
             Some("settings-maintenance")

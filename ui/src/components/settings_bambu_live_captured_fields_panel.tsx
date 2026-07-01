@@ -48,7 +48,10 @@ export function SettingsBambuLiveCapturedFieldsPanel({
 
   return (
     <>
-      <div className="mt-3 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+      <div
+        className="mt-3 text-[11px] font-semibold text-slate-700 dark:text-slate-200"
+        data-desktop-visual-qa-target="bambu-live-captured-fields"
+      >
         {t("settings.bambuLiveCapturedTable", "Captured live fields")}
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">

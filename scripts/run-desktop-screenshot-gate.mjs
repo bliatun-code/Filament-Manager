@@ -31,6 +31,8 @@ const DESKTOP_VISUAL_QA_SCENARIOS = [
   "settings-general",
   "settings-library",
   "settings-printer-diagnostics",
+  "settings-printer-diagnostics-fields",
+  "settings-printer-diagnostics-paused",
   "settings-catalog",
   "settings-maintenance",
   "statistics-overview",
@@ -121,6 +123,14 @@ export function normalizeDesktopVisualQaScenario(value) {
     case "printer-diagnostics":
     case "bambu-live-diagnostics":
       return "settings-printer-diagnostics";
+    case "settings-printer-diagnostics-fields":
+    case "printer-diagnostics-fields":
+    case "bambu-live-diagnostics-fields":
+      return "settings-printer-diagnostics-fields";
+    case "settings-printer-diagnostics-paused":
+    case "printer-diagnostics-paused":
+    case "bambu-live-diagnostics-paused":
+      return "settings-printer-diagnostics-paused";
     case "settings-catalog":
     case "catalog-settings":
     case "filament-catalog":
@@ -136,7 +146,7 @@ export function normalizeDesktopVisualQaScenario(value) {
       return "statistics-overview";
     default:
       throw new Error(
-        `Unknown desktop visual QA scenario "${value}". Use add-filament, loan-out, selected-roll, rfid-capture, return-loan, printer-board, printer-slot-assignment, printer-slot-onboarding, printer-slot-replacement, printer-slot-clear, bambu-batch-add, settings-general, settings-library, settings-printer-diagnostics, settings-catalog, settings-maintenance, or statistics-overview.`,
+        `Unknown desktop visual QA scenario "${value}". Use add-filament, loan-out, selected-roll, rfid-capture, return-loan, printer-board, printer-slot-assignment, printer-slot-onboarding, printer-slot-replacement, printer-slot-clear, bambu-batch-add, settings-general, settings-library, settings-printer-diagnostics, settings-printer-diagnostics-fields, settings-printer-diagnostics-paused, settings-catalog, settings-maintenance, or statistics-overview.`,
       );
   }
 }
