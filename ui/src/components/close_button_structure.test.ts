@@ -17,6 +17,9 @@ test("shared close button owns close affordance styling and accessibility", () =
   assert.match(closeButton, /title=\{label\}/);
   assert.match(closeButton, /aria-hidden="true"/);
   assert.match(modalChrome, /CloseButton/);
+  assert.match(modalChrome, /ModalHeaderActionButton/);
+  assert.match(modalChrome, /modalHeaderActionButtonClassName/);
+  assert.match(modalChrome, /focus-visible:border-sky-300/);
   assert.match(settingsRoleModal, /CloseButton/);
   assert.match(settingsRoleModal, /size="large"/);
   assert.doesNotMatch(modalChrome, />\s*×\s*<\/button>/);
