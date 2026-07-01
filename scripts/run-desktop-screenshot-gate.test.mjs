@@ -11,6 +11,7 @@ import {
   parseDesktopVisualQaScenarios,
   parseDesktopWindowList,
   parseDesktopWindowInfo,
+  shouldRetryDesktopLaunch,
   validateDesktopScreenshotMetrics,
   waitForDesktopWindow,
 } from "./run-desktop-screenshot-gate.mjs";
@@ -122,6 +123,24 @@ test("desktop screenshot gate names single scenario captures by scenario", () =>
     }),
     "custom",
   );
+});
+
+test("desktop screenshot gate retries only launched no-window failures", () => {
+  assert.equal(
+    shouldRetryDesktopLaunch({
+      errors: [
+        "No Filament Manager desktop window was found after launching Tauri dev. Visible windows: none.",
+      ],
+    }),
+    true,
+  );
+  assert.equal(
+    shouldRetryDesktopLaunch({
+      errors: ["Desktop screenshot has too little color diversity."],
+    }),
+    false,
+  );
+  assert.equal(shouldRetryDesktopLaunch({ errors: [] }), false);
 });
 
 test("desktop screenshot metric validation accepts rich desktop captures", () => {

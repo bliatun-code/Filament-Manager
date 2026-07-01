@@ -50,6 +50,10 @@ function parseNumberArg(argv, name, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseBooleanArg(argv, name) {
+  return argv.includes(name);
+}
+
 export function normalizeDesktopVisualQaScenario(value) {
   switch (String(value ?? "").trim().toLowerCase()) {
     case "":
@@ -110,6 +114,14 @@ export function desktopScreenshotNameForScenario({
     return baseName;
   }
   return scenarioCount > 1 || !explicitName ? `${baseName}-${scenario}` : baseName;
+}
+
+export function shouldRetryDesktopLaunch(result) {
+  return Boolean(
+    result?.errors?.some((error) =>
+      String(error).includes("No Filament Manager desktop window was found after launching"),
+    ),
+  );
 }
 
 function minimumFor(value, fallback) {
@@ -565,11 +577,31 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
       releaseChild(child);
     } else {
       await terminateChild(child);
+      const postTerminateDelayMs = options.postTerminateDelayMs ?? 1_200;
+      if (postTerminateDelayMs > 0) {
+        await wait(postTerminateDelayMs);
+      }
     }
     if (!options.keep && !database.live && !keepApp) {
       cleanupDatabase(database.targetPath);
     }
   }
+}
+
+async function runDesktopScreenshotGateWithLaunchRetry(options, attempts) {
+  let result = null;
+  const launchAttempts = Math.max(1, attempts);
+  for (let attempt = 1; attempt <= launchAttempts; attempt += 1) {
+    result = await runLaunchedDesktopScreenshotGate(options);
+    if (!shouldRetryDesktopLaunch(result) || attempt >= launchAttempts) {
+      return {
+        ...result,
+        launchAttempts: attempt,
+      };
+    }
+    await wait(options.relaunchDelayMs ?? 2_000);
+  }
+  return result;
 }
 
 export function formatDesktopScreenshotGateReport(result) {
@@ -627,16 +659,19 @@ async function runCli() {
   const argv = process.argv.slice(2);
   const scenarios = parseDesktopVisualQaScenarios(argv);
   const hasScenario = scenarios.some(Boolean);
+  const launch = parseBooleanArg(argv, "--launch");
   const explicitName = parseArgValue(argv, "--name");
   const baseName = explicitName ?? (hasScenario ? "desktop-scenario" : "desktop-window");
   const baseOptions = {
     captureDelayMs: parseIntegerArg(argv, "--capture-delay-ms", hasScenario ? 3_500 : 0),
-    keep: argv.includes("--keep"),
-    keepAppOnFail: argv.includes("--keep-app-on-fail"),
-    live: argv.includes("--live"),
+    keep: parseBooleanArg(argv, "--keep"),
+    keepAppOnFail: parseBooleanArg(argv, "--keep-app-on-fail"),
+    live: parseBooleanArg(argv, "--live"),
     name: baseName,
     outputDir: parseArgValue(argv, "--output-dir") ?? DEFAULT_OUTPUT_DIR,
+    postTerminateDelayMs: parseIntegerArg(argv, "--post-terminate-delay-ms", 1_200),
     profile: parseArgValue(argv, "--profile") ?? undefined,
+    relaunchDelayMs: parseIntegerArg(argv, "--relaunch-delay-ms", 2_000),
     sourcePath: parseArgValue(argv, "--source") ?? undefined,
     startupTimeoutMs: parseIntegerArg(argv, "--startup-timeout-ms", 45_000),
     processName: parseArgValue(argv, "--process-name") ?? DEFAULT_PROCESS_NAME,
@@ -649,6 +684,7 @@ async function runCli() {
       windowWidth: parseIntegerArg(argv, "--min-window-width", undefined),
     },
   };
+  const launchAttempts = parseIntegerArg(argv, "--launch-attempts", launch ? 2 : 1);
   const results = [];
   for (const scenario of scenarios) {
     const name = desktopScreenshotNameForScenario({
@@ -658,8 +694,8 @@ async function runCli() {
       scenarioCount: scenarios.length,
     });
     const options = { ...baseOptions, name, scenario };
-    const result = argv.includes("--launch")
-      ? await runLaunchedDesktopScreenshotGate(options)
+    const result = launch
+      ? await runDesktopScreenshotGateWithLaunchRetry(options, launchAttempts)
       : await runDesktopScreenshotGate(options);
     results.push(result);
   }
