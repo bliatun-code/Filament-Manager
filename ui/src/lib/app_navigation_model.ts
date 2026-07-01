@@ -1,4 +1,4 @@
-import { isInventoryDesktopVisualQaScenario } from "./desktop_visual_qa_scenario";
+import { desktopVisualQaInitialPage } from "./desktop_visual_qa_scenario";
 
 export const APP_PAGE_ORDER = [
   "dashboard",
@@ -23,8 +23,9 @@ export function resolveInitialPageFromSearch(
 ): PageKey {
   const params =
     typeof search === "string" ? new URLSearchParams(search) : search ?? new URLSearchParams();
-  return params.get("bfm_inventory_fixture") === "detail" ||
-    isInventoryDesktopVisualQaScenario(params)
-    ? "inventory"
-    : "dashboard";
+  const visualQaPage = desktopVisualQaInitialPage(params);
+  if (visualQaPage) {
+    return visualQaPage;
+  }
+  return params.get("bfm_inventory_fixture") === "detail" ? "inventory" : "dashboard";
 }

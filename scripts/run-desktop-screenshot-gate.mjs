@@ -21,6 +21,8 @@ const DESKTOP_VISUAL_QA_SCENARIOS = [
   "loan-out",
   "selected-roll",
   "rfid-capture",
+  "return-loan",
+  "printer-board",
 ];
 
 function parseArgValue(argv, name) {
@@ -63,9 +65,16 @@ export function normalizeDesktopVisualQaScenario(value) {
     case "rfid-capture":
     case "inventory-rfid":
       return "rfid-capture";
+    case "return-loan":
+    case "loan-return":
+    case "return":
+      return "return-loan";
+    case "printer-board":
+    case "printers":
+      return "printer-board";
     default:
       throw new Error(
-        `Unknown desktop visual QA scenario "${value}". Use add-filament, loan-out, selected-roll, or rfid-capture.`,
+        `Unknown desktop visual QA scenario "${value}". Use add-filament, loan-out, selected-roll, rfid-capture, return-loan, or printer-board.`,
       );
   }
 }

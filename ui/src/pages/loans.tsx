@@ -23,6 +23,7 @@ import {
 import { buildLoansCsv } from "../lib/loan_export";
 import { isLoanCurrentlyActive } from "../lib/loan_state";
 import { loadLoanRowsPage, returnInventoryLoan } from "../lib/loan_data_source";
+import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import { useClientWriteGuards } from "../lib/use_client_write_guards";
 import { useLibrarySyncState } from "./use_library_sync_state";
 
@@ -54,6 +55,10 @@ export default function LoansPage() {
   const [returnModalLoan, setReturnModalLoan] = useState<SpoolLoanDetailsRow | null>(null);
   const [returnModalGrams, setReturnModalGrams] = useState("");
   const [returnModalNote, setReturnModalNote] = useState("");
+  const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
+  const [desktopVisualQaReturnApplied, setDesktopVisualQaReturnApplied] = useState(
+    () => desktopVisualQaScenario !== "return-loan",
+  );
 
   const reload = useCallback(async () => {
     if (!tauri) {
@@ -148,7 +153,7 @@ export default function LoansPage() {
     }
   }
 
-  function openReturnModal(loan: SpoolLoanDetailsRow) {
+  const openReturnModal = useCallback((loan: SpoolLoanDetailsRow) => {
     if (!clientReadOnly && !ensureLocalWriteAllowed()) {
       return;
     }
@@ -171,7 +176,46 @@ export default function LoansPage() {
     setReturnModalNote("");
     setError(null);
     setInfo(null);
-  }
+  }, [
+    busy,
+    canUseClientHostWrite,
+    clientReadOnly,
+    ensureLocalWriteAllowed,
+    tauri,
+  ]);
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenario !== "return-loan" ||
+      desktopVisualQaReturnApplied ||
+      loading ||
+      busy ||
+      !tauri
+    ) {
+      return;
+    }
+    const activeLoan =
+      loans.find(
+        (loan) =>
+          normalizeLoanDirection(loan.loan.loan_direction) === "OUTBOUND" &&
+          isLoanCurrentlyActive(loan),
+      ) ?? loans.find(isLoanCurrentlyActive);
+    if (!activeLoan) {
+      return;
+    }
+    setFilter("ACTIVE");
+    setDirectionFilter("ALL");
+    openReturnModal(activeLoan);
+    setDesktopVisualQaReturnApplied(true);
+  }, [
+    busy,
+    desktopVisualQaReturnApplied,
+    desktopVisualQaScenario,
+    loading,
+    loans,
+    openReturnModal,
+    tauri,
+  ]);
 
   function closeReturnModal() {
     if (busy) {

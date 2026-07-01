@@ -88,6 +88,8 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
   assert.equal(normalizeDesktopVisualQaScenario("inventory-add"), "add-filament");
   assert.equal(normalizeDesktopVisualQaScenario("DETAIL"), "selected-roll");
   assert.equal(normalizeDesktopVisualQaScenario("inventory-rfid"), "rfid-capture");
+  assert.equal(normalizeDesktopVisualQaScenario("loan-return"), "return-loan");
+  assert.equal(normalizeDesktopVisualQaScenario("printers"), "printer-board");
   assert.equal(normalizeDesktopVisualQaScenario(""), null);
   assert.throws(() => normalizeDesktopVisualQaScenario("bad"), /Unknown desktop visual QA/);
 });

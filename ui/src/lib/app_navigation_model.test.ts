@@ -18,11 +18,13 @@ test("app page order keeps the primary navigation stable", () => {
   ] satisfies PageKey[]);
 });
 
-test("initial page resolver opens inventory for fixture and visual QA scenarios", () => {
+test("initial page resolver opens the page requested by fixtures and visual QA scenarios", () => {
   assert.equal(resolveInitialPageFromSearch("?bfm_inventory_fixture=detail"), "inventory");
   assert.equal(resolveInitialPageFromSearch("bfm_inventory_fixture=detail"), "inventory");
   assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=add-filament"), "inventory");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=rfid-capture"), "inventory");
+  assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=return-loan"), "loans");
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-board"), "printers");
   assert.equal(resolveInitialPageFromSearch("?bfm_inventory_fixture=list"), "dashboard");
   assert.equal(resolveInitialPageFromSearch(""), "dashboard");
   assert.equal(resolveInitialPageFromSearch(null), "dashboard");

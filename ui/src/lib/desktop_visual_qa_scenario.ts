@@ -7,9 +7,12 @@ export const DESKTOP_VISUAL_QA_SCENARIOS = [
   "loan-out",
   "selected-roll",
   "rfid-capture",
+  "return-loan",
+  "printer-board",
 ] as const;
 
 export type DesktopVisualQaScenario = (typeof DESKTOP_VISUAL_QA_SCENARIOS)[number];
+export type DesktopVisualQaInitialPage = "inventory" | "loans" | "printers";
 
 function isDevRuntime(): boolean {
   const env = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env;
@@ -33,6 +36,13 @@ export function normalizeDesktopVisualQaScenario(
     case "rfid-capture":
     case "inventory-rfid":
       return "rfid-capture";
+    case "return-loan":
+    case "loan-return":
+    case "return":
+      return "return-loan";
+    case "printer-board":
+    case "printers":
+      return "printer-board";
     default:
       return null;
   }
@@ -53,9 +63,25 @@ export function resolveDesktopVisualQaScenario(
 export function isInventoryDesktopVisualQaScenario(
   search: string | URLSearchParams | null | undefined,
 ): boolean {
+  return desktopVisualQaInitialPage(search) === "inventory";
+}
+
+export function desktopVisualQaInitialPage(
+  search: string | URLSearchParams | null | undefined,
+): DesktopVisualQaInitialPage | null {
   const params =
     typeof search === "string" ? new URLSearchParams(search) : search ?? new URLSearchParams();
-  return normalizeDesktopVisualQaScenario(params.get(DESKTOP_VISUAL_QA_QUERY_KEY)) !== null;
+  const scenario = normalizeDesktopVisualQaScenario(params.get(DESKTOP_VISUAL_QA_QUERY_KEY));
+  if (!scenario) {
+    return null;
+  }
+  if (scenario === "return-loan") {
+    return "loans";
+  }
+  if (scenario === "printer-board") {
+    return "printers";
+  }
+  return "inventory";
 }
 
 export function chooseDesktopVisualQaSpoolId(
