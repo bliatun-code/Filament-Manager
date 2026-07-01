@@ -1,5 +1,10 @@
 type TranslateFn = (key: string, fallback?: string) => string;
 
+export type PlacementLocation =
+  | { kind: "unassigned" }
+  | { kind: "freeform"; label: string }
+  | { kind: "printer_slot"; printerName: string; slotId: string };
+
 export function normalizeDisplayToken(value?: string | null): string | null {
   const trimmed = (value ?? "").trim();
   return trimmed.length > 0 ? trimmed : null;
@@ -84,26 +89,40 @@ export function formatSpoolReference(valueRaw?: string | null): string {
   return `#${normalized.slice(-6)}`;
 }
 
+export function parsePlacementLocation(locationRaw?: string | null): PlacementLocation {
+  const location = normalizeDisplayToken(locationRaw);
+  if (!location) {
+    return { kind: "unassigned" };
+  }
+
+  if (!location.startsWith("Printer:")) {
+    return { kind: "freeform", label: location };
+  }
+
+  const match = location.match(/^Printer:([^:]+):(.+)$/);
+  if (!match) {
+    return { kind: "freeform", label: location.replace(/^Printer:/, "") };
+  }
+
+  const [, printerName, slotId] = match;
+  return { kind: "printer_slot", printerName, slotId };
+}
+
 export function formatPlacementLabel(
   t: TranslateFn,
   locationRaw?: string | null,
   slotLabelById?: ReadonlyMap<string, string>,
 ): string {
-  const location = normalizeDisplayToken(locationRaw);
-  if (!location) {
+  const placement = parsePlacementLocation(locationRaw);
+  if (placement.kind === "unassigned") {
     return t("inventory.unassigned", "Unassigned");
   }
 
-  if (!location.startsWith("Printer:")) {
-    return location;
+  if (placement.kind === "freeform") {
+    return placement.label;
   }
 
-  const match = location.match(/^Printer:([^:]+):(.+)$/);
-  if (!match) {
-    return location.replace(/^Printer:/, "");
-  }
-
-  const [, printerName, rawSlotId] = match;
+  const { printerName, slotId: rawSlotId } = placement;
   const mappedLabel = slotLabelById?.get(rawSlotId);
   if (mappedLabel) {
     return mappedLabel;

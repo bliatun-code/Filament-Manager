@@ -1,12 +1,29 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { formatPlacementLabel } from "./display_format";
+import { formatPlacementLabel, parsePlacementLocation } from "./display_format";
 
 const t = (_key: string, fallback = "") => fallback;
 
 test("formatPlacementLabel keeps normal shelf locations unchanged", () => {
   assert.equal(formatPlacementLabel(t, " Shelf A "), "Shelf A");
   assert.equal(formatPlacementLabel(t, null), "Unassigned");
+});
+
+test("parsePlacementLocation separates freeform and printer slot locations", () => {
+  assert.deepEqual(parsePlacementLocation(null), { kind: "unassigned" });
+  assert.deepEqual(parsePlacementLocation(" Shelf A "), {
+    kind: "freeform",
+    label: "Shelf A",
+  });
+  assert.deepEqual(parsePlacementLocation("Printer:Brutus:ams_1_slot_2"), {
+    kind: "printer_slot",
+    printerName: "Brutus",
+    slotId: "ams_1_slot_2",
+  });
+  assert.deepEqual(parsePlacementLocation("Printer:MissingSlot"), {
+    kind: "freeform",
+    label: "MissingSlot",
+  });
 });
 
 test("formatPlacementLabel humanizes known printer slot ids", () => {
