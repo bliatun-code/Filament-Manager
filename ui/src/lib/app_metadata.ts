@@ -23,3 +23,12 @@ export const noticeUrlForAppVersion: AppVersionUrlBuilder = () => {
   // Legal documents were added after earlier release tags, so keep these links stable.
   return `${APP_REPOSITORY_URL}/blob/main/NOTICE.md`;
 };
+
+export function screenshotTourUrl(): string {
+  return `${APP_REPOSITORY_URL}/blob/main/docs/SCREENSHOTS.md`;
+}
+
+export function userGuideUrlForLocale(locale: "en" | "nb"): string {
+  const fileName = locale === "nb" ? "BRUKERVEILEDNING.md" : "USER_GUIDE.md";
+  return `${APP_REPOSITORY_URL}/blob/main/docs/${fileName}`;
+}

@@ -6,7 +6,9 @@ import {
   APP_REPOSITORY_URL,
   licenseUrlForAppVersion,
   noticeUrlForAppVersion,
+  screenshotTourUrl,
   sourceUrlForAppVersion,
+  userGuideUrlForLocale,
 } from "./app_metadata";
 
 test("app metadata exposes AGPL licensing and source links", () => {
@@ -22,5 +24,11 @@ test("app metadata exposes AGPL licensing and source links", () => {
   assert.equal(
     noticeUrlForAppVersion("0.16.0"),
     `${APP_REPOSITORY_URL}/blob/main/NOTICE.md`,
+  );
+  assert.equal(screenshotTourUrl(), `${APP_REPOSITORY_URL}/blob/main/docs/SCREENSHOTS.md`);
+  assert.equal(userGuideUrlForLocale("en"), `${APP_REPOSITORY_URL}/blob/main/docs/USER_GUIDE.md`);
+  assert.equal(
+    userGuideUrlForLocale("nb"),
+    `${APP_REPOSITORY_URL}/blob/main/docs/BRUKERVEILEDNING.md`,
   );
 });

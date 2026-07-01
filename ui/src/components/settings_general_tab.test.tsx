@@ -49,6 +49,8 @@ test("SettingsGeneralTab exposes license and versioned source links", () => {
   assert.match(html, /Source code/);
   assert.match(html, /View license/);
   assert.match(html, /Notices/);
+  assert.match(html, /Product tour/);
+  assert.match(html, /User manual/);
 });
 
 test("SettingsGeneralTab localizes license controls in Norwegian", () => {
@@ -58,4 +60,6 @@ test("SettingsGeneralTab localizes license controls in Norwegian", () => {
   assert.match(html, /Kildekode/);
   assert.match(html, /Vis lisens/);
   assert.match(html, /Notiser/);
+  assert.match(html, /Hjelp/);
+  assert.match(html, /Brukermanual/);
 });

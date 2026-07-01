@@ -986,6 +986,11 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       sourceCode: "Source code",
       viewLicense: "View license",
       viewNotices: "Notices",
+      help: "Help",
+      helpHint:
+        "Open the visual product tour for screenshots of the main desktop and Companion workflows, or use the text manual for step-by-step behavior.",
+      productTour: "Product tour",
+      userManual: "User manual",
       libraryTabTitle: "Library and web app",
       libraryTabHint: "",
       libraryRoleLabel: "Library role",
@@ -2572,6 +2577,11 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       sourceCode: "Kildekode",
       viewLicense: "Vis lisens",
       viewNotices: "Notiser",
+      help: "Hjelp",
+      helpHint:
+        "Åpne den visuelle product touren for skjermbilder av hovedflytene i desktop og Companion, eller bruk tekstmanualen for stegvis forklaring.",
+      productTour: "Product tour",
+      userManual: "Brukermanual",
       libraryTabTitle: "Bibliotek og webapp",
       libraryTabHint: "",
       libraryRoleLabel: "Bibliotekrolle",

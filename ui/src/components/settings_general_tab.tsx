@@ -5,7 +5,9 @@ import {
   APP_LICENSE_NAME,
   licenseUrlForAppVersion,
   noticeUrlForAppVersion,
+  screenshotTourUrl,
   sourceUrlForAppVersion,
+  userGuideUrlForLocale,
 } from "../lib/app_metadata";
 import { openExternalUrl } from "../lib/tauri_maintenance_client";
 import {
@@ -43,6 +45,8 @@ export function SettingsGeneralTab({
   const sourceUrl = sourceUrlForAppVersion(appVersion);
   const licenseUrl = licenseUrlForAppVersion(appVersion);
   const noticeUrl = noticeUrlForAppVersion(appVersion);
+  const tourUrl = screenshotTourUrl();
+  const userGuideUrl = userGuideUrlForLocale(locale);
 
   return (
     <>
@@ -102,6 +106,38 @@ export function SettingsGeneralTab({
             className={settingsActionButtonClass()}
           >
             {t("settings.viewNotices", "Notices")}
+          </button>
+        </div>
+      </section>
+
+      <section className="surface-card space-y-4">
+        <div className="section-eyebrow">
+          {t("settings.help", "Help")}
+        </div>
+        <div className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+          {t(
+            "settings.helpHint",
+            "Open the visual product tour for screenshots of the main desktop and Companion workflows, or use the text manual for step-by-step behavior.",
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              void openExternalUrl(tourUrl);
+            }}
+            className={settingsActionButtonClass("accent")}
+          >
+            {t("settings.productTour", "Product tour")}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void openExternalUrl(userGuideUrl);
+            }}
+            className={settingsActionButtonClass()}
+          >
+            {t("settings.userManual", "User manual")}
           </button>
         </div>
       </section>
