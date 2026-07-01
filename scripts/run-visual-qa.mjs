@@ -7,24 +7,34 @@ import {
   prepareVisualQaDatabase,
 } from "./visual-qa-db.mjs";
 
-function parseSourceArg(argv) {
-  const index = argv.indexOf("--source");
+function parseArgValue(argv, name) {
+  const index = argv.indexOf(name);
   return index >= 0 ? argv[index + 1] : null;
+}
+
+function quoteShellValue(value) {
+  return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
 
 async function runCli() {
   const argv = process.argv.slice(2);
-  const sourcePath = parseSourceArg(argv);
+  const sourcePath = parseArgValue(argv, "--source");
+  const profile = parseArgValue(argv, "--profile");
   const keep = argv.includes("--keep");
+  const live = argv.includes("--live");
   const prepareOnly = argv.includes("--prepare-only");
-  const result = await prepareVisualQaDatabase({ sourcePath });
+  const result = await prepareVisualQaDatabase({ live, profile, sourcePath });
 
   console.log(formatVisualQaDatasetReport(result));
   console.log(`Visual QA DB copy method: ${result.copyMethod}`);
-  console.log(`Visual QA uses a temporary DB copy. Live library is not modified.`);
+  console.log(
+    result.live
+      ? "Visual QA live DB mode: app changes affect the selected database."
+      : "Visual QA uses a temporary DB copy. Live library is not modified.",
+  );
 
   if (prepareOnly) {
-    console.log(`${APP_DB_PATH_ENV_VAR}=${result.targetPath}`);
+    console.log(`${APP_DB_PATH_ENV_VAR}=${quoteShellValue(result.targetPath)}`);
     return;
   }
 
@@ -38,7 +48,7 @@ async function runCli() {
   });
 
   child.on("exit", (code, signal) => {
-    if (!keep) {
+    if (!keep && !result.live) {
       cleanupVisualQaDatabase(result.targetPath);
     }
     if (signal) {
