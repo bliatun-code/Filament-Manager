@@ -96,6 +96,7 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
   assert.equal(normalizeDesktopVisualQaScenario("slot-assignment"), "printer-slot-assignment");
   assert.equal(normalizeDesktopVisualQaScenario("ams-onboarding"), "printer-slot-onboarding");
   assert.equal(normalizeDesktopVisualQaScenario("slot-swap"), "printer-slot-replacement");
+  assert.equal(normalizeDesktopVisualQaScenario("slot-unload"), "printer-slot-clear");
   assert.equal(normalizeDesktopVisualQaScenario("batch-add"), "bambu-batch-add");
   assert.equal(normalizeDesktopVisualQaScenario("general-settings"), "settings-general");
   assert.equal(normalizeDesktopVisualQaScenario("companion-settings"), "settings-library");

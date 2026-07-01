@@ -321,6 +321,9 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         "printer-slot-replacement" | "printer-slot-swap" | "slot-replacement" | "slot-swap" => {
             Some("printer-slot-replacement")
         }
+        "printer-slot-clear" | "printer-slot-unload" | "slot-clear" | "slot-unload" => {
+            Some("printer-slot-clear")
+        }
         "bambu-batch-add" | "batch-add" | "bambu-batch" => Some("bambu-batch-add"),
         "settings-general" | "general-settings" => Some("settings-general"),
         "settings-library" | "library-settings" | "companion-settings" => Some("settings-library"),
