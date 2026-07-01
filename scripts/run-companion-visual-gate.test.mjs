@@ -172,6 +172,9 @@ test("companion visual gate passes data-rich fixture responses", async () => {
     assert.equal(result.counts.livePrinterSlots, 1);
     assert.equal(result.session.authenticated, true);
     assert.equal(result.counts.protectedSpools, 2);
+    assert.equal(result.counts.protectedSlotCards, 1);
+    assert.equal(result.counts.protectedLoadedSlots, 1);
+    assert.ok(result.counts.protectedSwatchRows >= 1);
     assert.match(formatCompanionVisualGateReport(result), /Companion visual gate ok/);
   });
 });

@@ -13,9 +13,12 @@ export const DEFAULT_COMPANION_VISUAL_MINIMUMS = {
   swatchRows: 1,
   livePrinterSlots: 1,
   protectedDetail: 1,
+  protectedLoadedSlots: 1,
   protectedLoans: 1,
   protectedPrinters: 1,
+  protectedSlotCards: 1,
   protectedSpools: 1,
+  protectedSwatchRows: 1,
   wishlistRows: 1,
 };
 
@@ -150,6 +153,29 @@ function countLivePrinterSlots(printers) {
             slot?.live_observed_rfid_tag,
         ),
       ).length
+    );
+  }, 0);
+}
+
+function countPrinterSlots(printers) {
+  if (!Array.isArray(printers)) {
+    return 0;
+  }
+  return printers.reduce((total, printer) => {
+    const slots = Array.isArray(printer?.slots) ? printer.slots : [];
+    return total + slots.length;
+  }, 0);
+}
+
+function countLoadedPrinterSlots(printers) {
+  if (!Array.isArray(printers)) {
+    return 0;
+  }
+  return printers.reduce((total, printer) => {
+    const slots = Array.isArray(printer?.slots) ? printer.slots : [];
+    return (
+      total +
+      slots.filter((slot) => Boolean(slot?.spool_id || slot?.live_loaded)).length
     );
   }, 0);
 }
@@ -303,6 +329,13 @@ export async function runCompanionVisualGate(options = {}) {
   const detailUsageRows = Array.isArray(authenticatedData?.detail?.usage)
     ? authenticatedData.detail.usage.length
     : 0;
+  const protectedSlotCards = countPrinterSlots(authenticatedData?.printerOverview);
+  const protectedLoadedSlots = countLoadedPrinterSlots(authenticatedData?.printerOverview);
+  const protectedSwatchRows =
+    countHexValues(authenticatedData?.inventorySpools) +
+    countHexValues(authenticatedData?.protectedLoans) +
+    countHexValues(authenticatedData?.printerOverview) +
+    countHexValues(authenticatedData?.detail);
 
   if (authenticate && authenticatedData?.session?.authenticated !== true) {
     errors.push("QA authenticated companion session did not become authenticated");
@@ -326,8 +359,26 @@ export async function runCompanionVisualGate(options = {}) {
       protectedPrinterCount,
       minimums.protectedPrinters,
     );
+    assertAtLeast(
+      errors,
+      "protected printer slot cards",
+      protectedSlotCards,
+      minimums.protectedSlotCards,
+    );
+    assertAtLeast(
+      errors,
+      "protected loaded slots",
+      protectedLoadedSlots,
+      minimums.protectedLoadedSlots,
+    );
     assertAtLeast(errors, "protected loan rows", protectedLoanCount, minimums.protectedLoans);
     assertAtLeast(errors, "protected spool detail", detailLoaded, minimums.protectedDetail);
+    assertAtLeast(
+      errors,
+      "protected swatch-colored data",
+      protectedSwatchRows,
+      minimums.protectedSwatchRows,
+    );
   }
 
   return {
@@ -341,9 +392,12 @@ export async function runCompanionVisualGate(options = {}) {
       protectedDetail: detailLoaded,
       protectedDetailHistoryRows: detailHistoryRows,
       protectedDetailUsageRows: detailUsageRows,
+      protectedLoadedSlots,
       protectedLoans: protectedLoanCount,
       protectedPrinters: protectedPrinterCount,
+      protectedSlotCards,
       protectedSpools: protectedSpoolCount,
+      protectedSwatchRows,
       protectedWishlistRows: protectedWishlistCount,
       snapshotPrinters,
       snapshotSpools,
@@ -392,8 +446,11 @@ export function formatCompanionVisualGateReport(result) {
       }`,
       `  - protected spool rows sampled: ${result.counts.protectedSpools}`,
       `  - protected printer rows: ${result.counts.protectedPrinters}`,
+      `  - protected printer slot cards: ${result.counts.protectedSlotCards}`,
+      `  - protected loaded slots: ${result.counts.protectedLoadedSlots}`,
       `  - protected loan rows sampled: ${result.counts.protectedLoans}`,
       `  - protected wishlist rows sampled: ${result.counts.protectedWishlistRows}`,
+      `  - protected swatch-colored data points: ${result.counts.protectedSwatchRows}`,
       `  - detail loaded for: ${result.session.detailSpoolId ?? "none"}`,
       `  - detail history/usage rows: ${result.counts.protectedDetailHistoryRows}/${result.counts.protectedDetailUsageRows}`,
     );
