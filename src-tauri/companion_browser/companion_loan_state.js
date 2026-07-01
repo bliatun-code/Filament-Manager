@@ -1,12 +1,17 @@
-import { isSpoolStatusDeleted } from "./companion_domain.js";
+import {
+  isSpoolStatusDeleted,
+  normalizeLoanDirection as normalizeLoanDirectionValue,
+  normalizeLoanStatus as normalizeLoanStatusValue,
+} from "./companion_domain.js";
 
 const CLOSED_LOAN_STATUSES = new Set(["RETURNED", "LOST", "CANCELLED"]);
 
 export function normalizeLoanStatus(row) {
-  return String(row?.loan?.loan_status || "")
-    .trim()
-    .toUpperCase()
-    .replace(/[-\s]+/g, "_");
+  return normalizeLoanStatusValue(row?.loan?.loan_status, row?.loan?.returned_at);
+}
+
+export function normalizeLoanDirection(row) {
+  return normalizeLoanDirectionValue(row?.loan?.loan_direction);
 }
 
 export function loanHasDeletedSpool(row) {
@@ -14,11 +19,11 @@ export function loanHasDeletedSpool(row) {
 }
 
 export function isLoanReturned(row) {
-  return Boolean(row?.loan?.returned_at) || normalizeLoanStatus(row) === "RETURNED";
+  return normalizeLoanStatus(row) === "RETURNED";
 }
 
 export function isLoanClosed(row) {
-  return Boolean(row?.loan?.returned_at) || CLOSED_LOAN_STATUSES.has(normalizeLoanStatus(row));
+  return CLOSED_LOAN_STATUSES.has(normalizeLoanStatus(row));
 }
 
 export function isLoanCurrentlyActive(row) {
@@ -26,8 +31,9 @@ export function isLoanCurrentlyActive(row) {
 }
 
 export function isActiveOutboundLoan(row) {
-  const direction = String(row?.loan?.loan_direction || "OUTBOUND").trim().toUpperCase();
-  const status = normalizeLoanStatus(row);
-  const currentlyActive = isLoanCurrentlyActive(row);
-  return direction === "OUTBOUND" && currentlyActive && (status === "" || status === "ACTIVE");
+  return (
+    normalizeLoanDirection(row) === "OUTBOUND" &&
+    isLoanCurrentlyActive(row) &&
+    normalizeLoanStatus(row) === "ACTIVE"
+  );
 }

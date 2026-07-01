@@ -31,6 +31,21 @@ export function normalizeOwnershipType(value) {
   return normalizeDomainToken(value) === "BORROWED_IN" ? "BORROWED_IN" : "OWNED";
 }
 
+export function normalizeLoanDirection(value) {
+  return normalizeDomainToken(value) === "INBOUND" ? "INBOUND" : "OUTBOUND";
+}
+
+export function normalizeLoanStatus(value, returnedAt) {
+  const status = normalizeDomainToken(value);
+  if (status === "RETURNED" || String(returnedAt ?? "").trim()) {
+    return "RETURNED";
+  }
+  if (status === "LOST" || status === "CANCELLED") {
+    return status;
+  }
+  return "ACTIVE";
+}
+
 export function isBorrowedInOwnership(value) {
   return normalizeOwnershipType(value) === "BORROWED_IN";
 }

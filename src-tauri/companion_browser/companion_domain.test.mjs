@@ -8,6 +8,8 @@ import {
   isSpoolStatusLiveRfidCandidate,
   isSpoolStatusUnavailableForPrinterSlot,
   normalizeEditableSpoolStatus,
+  normalizeLoanDirection,
+  normalizeLoanStatus,
   normalizeOwnershipType,
   normalizeSpoolStatus,
   parseSpoolStatus,
@@ -41,4 +43,16 @@ test("companion domain normalizes ownership type aliases", () => {
   assert.equal(normalizeOwnershipType("borrowed in"), "BORROWED_IN");
   assert.equal(normalizeOwnershipType("borrowed-in"), "BORROWED_IN");
   assert.equal(normalizeOwnershipType(""), "OWNED");
+});
+
+test("companion domain normalizes loan tokens like the desktop boundary", () => {
+  assert.equal(normalizeLoanDirection("inbound"), "INBOUND");
+  assert.equal(normalizeLoanDirection("in bound"), "OUTBOUND");
+  assert.equal(normalizeLoanDirection(""), "OUTBOUND");
+  assert.equal(normalizeLoanStatus("returned"), "RETURNED");
+  assert.equal(normalizeLoanStatus("active", "2026-07-01 10:00:00"), "RETURNED");
+  assert.equal(normalizeLoanStatus("lost"), "LOST");
+  assert.equal(normalizeLoanStatus("cancelled"), "CANCELLED");
+  assert.equal(normalizeLoanStatus("loan-cancelled"), "ACTIVE");
+  assert.equal(normalizeLoanStatus(""), "ACTIVE");
 });

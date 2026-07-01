@@ -1,12 +1,16 @@
 import { t } from "./companion_i18n.js";
-import { isLoanCurrentlyActive, isLoanReturned } from "./companion_loan_state.js";
+import {
+  isLoanCurrentlyActive,
+  isLoanReturned,
+  normalizeLoanDirection,
+} from "./companion_loan_state.js";
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference } from "./formatters.js";
 import { suggestSwatchHex, swatchCssStyle, toSwatchColor } from "./companion_theme.js";
 
 function loanStateLabel(row, locale = "en") {
   const returned = isLoanReturned(row);
-  const direction = String(row?.loan?.loan_direction || "OUTBOUND").trim().toUpperCase();
+  const direction = normalizeLoanDirection(row);
   if (returned) {
     return t(locale, "loans.returned", "Returned");
   }
@@ -126,7 +130,7 @@ function renderLoanRows(options) {
 
   return loanRows
     .map((row) => {
-      const direction = String(row.loan.loan_direction || "OUTBOUND").trim().toUpperCase();
+      const direction = normalizeLoanDirection(row);
       const counterparty =
         row.loan.borrower_name ||
         row.loan.counterparty_name ||
@@ -246,7 +250,7 @@ export function renderLoanReturnTaskSheetBody(options) {
     loanRow.loan.borrower_name ||
     loanRow.loan.counterparty_name ||
     t(locale, "loans.unknownBorrower", "Unknown");
-  const direction = String(loanRow.loan.loan_direction || "OUTBOUND").trim().toUpperCase();
+  const direction = normalizeLoanDirection(loanRow);
   const tareWeight = resolveSpoolTareWeight(loanRow, loanRow.vendor);
   const defaultMeasuredReturnWeight =
     Number(loanRow.spool_remaining_g ?? loanRow.loan.grams_out ?? 0) + tareWeight;
