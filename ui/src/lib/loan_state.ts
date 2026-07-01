@@ -1,8 +1,12 @@
-import { normalizeLoanDirection, normalizeLoanStatus } from "./inventory_domain";
+import {
+  isSpoolStatusDeleted,
+  normalizeLoanDirection,
+  normalizeLoanStatus,
+} from "./inventory_domain";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
 
 export function loanHasDeletedSpool(row: Pick<SpoolLoanDetailsRow, "spool_status">): boolean {
-  return (row.spool_status ?? "").trim().toUpperCase() === "DELETED";
+  return isSpoolStatusDeleted(row.spool_status);
 }
 
 export function isLoanCurrentlyActive(

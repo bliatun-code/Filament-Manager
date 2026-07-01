@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   isSpoolStatusAssigned,
+  isSpoolStatusDeleted,
   isSpoolStatusEmptyOrLost,
   isSpoolStatusLoanable,
   isSpoolStatusMetadataMatchable,
@@ -33,6 +34,7 @@ test("inventory domain status helpers preserve contextual legacy semantics", () 
   assert.equal(isSpoolStatusAssigned("IN_USE"), true);
   assert.equal(isSpoolStatusLoanable("in-stock"), true);
   assert.equal(isSpoolStatusEmptyOrLost("lost"), true);
+  assert.equal(isSpoolStatusDeleted("deleted"), true);
   assert.equal(isSpoolStatusUnavailableForSlot("BORROWED"), true);
   assert.equal(isSpoolStatusUnavailableForSlot("MISSING"), true);
   assert.equal(isSpoolStatusUnavailableForSlot("LEGACY_ACTIVE"), false);
