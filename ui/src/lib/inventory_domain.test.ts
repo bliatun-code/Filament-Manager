@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  isSpoolStatusAssigned,
+  isSpoolStatusEmptyOrLost,
+  isSpoolStatusLoanable,
+  isSpoolStatusMetadataMatchable,
+  isSpoolStatusOnHand,
+  isSpoolStatusRfidMatchable,
+  isSpoolStatusUnavailableForSlot,
   normalizeLoanDirection,
   normalizeLoanStatus,
   normalizeOwnershipType,
@@ -17,6 +24,22 @@ test("inventory domain normalizers preserve legacy spool and ownership values", 
   assert.equal(normalizeSpoolStatus("unknown"), "IN_STOCK");
   assert.equal(normalizeOwnershipType("borrowed-in"), "BORROWED_IN");
   assert.equal(normalizeOwnershipType(null), "OWNED");
+});
+
+test("inventory domain status helpers preserve contextual legacy semantics", () => {
+  assert.equal(isSpoolStatusOnHand("IN_STOCK"), true);
+  assert.equal(isSpoolStatusOnHand("IN_USE"), true);
+  assert.equal(isSpoolStatusOnHand("LEGACY_ACTIVE"), false);
+  assert.equal(isSpoolStatusAssigned("IN_USE"), true);
+  assert.equal(isSpoolStatusLoanable("in-stock"), true);
+  assert.equal(isSpoolStatusEmptyOrLost("lost"), true);
+  assert.equal(isSpoolStatusUnavailableForSlot("BORROWED"), true);
+  assert.equal(isSpoolStatusUnavailableForSlot("MISSING"), true);
+  assert.equal(isSpoolStatusUnavailableForSlot("LEGACY_ACTIVE"), false);
+  assert.equal(isSpoolStatusRfidMatchable("EMPTY"), true);
+  assert.equal(isSpoolStatusRfidMatchable("DELETED"), false);
+  assert.equal(isSpoolStatusMetadataMatchable("EMPTY"), false);
+  assert.equal(isSpoolStatusMetadataMatchable("LEGACY_ACTIVE"), true);
 });
 
 test("inventory domain normalizers preserve loan direction and status semantics", () => {

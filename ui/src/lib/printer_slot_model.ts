@@ -13,7 +13,11 @@ import {
   type InventoryCreateSpoolError,
   type InventoryCreateSpoolRequest,
 } from "./inventory_create_model";
-import type { OwnershipType } from "./inventory_list_model";
+import {
+  isSpoolStatusAssigned,
+  isSpoolStatusUnavailableForSlot,
+  type OwnershipType,
+} from "./inventory_domain";
 import { isUnknownLiveRfid, liveTrayIdentity } from "./printer_live_display";
 import { resolveSpoolTareWeight } from "./spool_weight";
 
@@ -175,11 +179,7 @@ export function resolveLiveRfidObservedAt(input: {
 
 function rowCanReceiveLiveBambuRfid(row: SpoolWithMasterRow): boolean {
   const vendor = (row.master.vendor ?? "").trim().toLowerCase();
-  const status = (row.spool.status ?? "").trim().toUpperCase();
-  return (
-    vendor.includes("bambu") &&
-    !["EMPTY", "LOST", "MISSING", "DELETED", "BORROWED"].includes(status)
-  );
+  return vendor.includes("bambu") && !isSpoolStatusUnavailableForSlot(row.spool.status);
 }
 
 export type PreparedMeasuredWeightUpdate = {
@@ -237,20 +237,13 @@ export function filterAllowedSpoolsForSlot(
   slotSpoolId?: string | null,
 ): SpoolWithMasterRow[] {
   return sortedSpools.filter((row) => {
-    const status = (row.spool.status ?? "").trim().toUpperCase();
-    if (
-      status === "EMPTY" ||
-      status === "LOST" ||
-      status === "MISSING" ||
-      status === "DELETED" ||
-      status === "BORROWED"
-    ) {
+    if (isSpoolStatusUnavailableForSlot(row.spool.status)) {
       return false;
     }
     if (slotSpoolId && row.spool.id === slotSpoolId) {
       return true;
     }
-    if (status === "IN_USE" || status === "ASSIGNED") {
+    if (isSpoolStatusAssigned(row.spool.status)) {
       return false;
     }
     return true;

@@ -5,6 +5,8 @@ import {
 } from "./printer_profiles";
 import { isLoanCurrentlyActive } from "./loan_state";
 import {
+  isSpoolStatusAssigned,
+  isSpoolStatusOnHand,
   normalizeLoanDirection,
   normalizeOwnershipType,
   type LoanDirection,
@@ -220,9 +222,6 @@ export function deriveInventoryOverviewFromRows(
   owned_consumption_30d: number;
   borrowed_in_consumption_30d: number;
 } {
-  const includedStatuses = new Set(["IN_STOCK", "IN_USE", "ASSIGNED"]);
-  const inUseStatuses = new Set(["IN_USE", "ASSIGNED"]);
-
   let totalOwnedSpools = 0;
   let totalBorrowedInSpools = 0;
   let inUse = 0;
@@ -233,11 +232,12 @@ export function deriveInventoryOverviewFromRows(
   let borrowedInLowStock = 0;
 
   for (const row of spools) {
-    const status = (row.spool.status ?? "").trim().toUpperCase();
+    const isOnHand = isSpoolStatusOnHand(row.spool.status);
+    const isAssigned = isSpoolStatusAssigned(row.spool.status);
     const ownershipType = normalizeOwnershipType(row.spool.ownership_type);
     const remaining = row.spool.remaining_g ?? null;
 
-    if (includedStatuses.has(status)) {
+    if (isOnHand) {
       if (ownershipType === "BORROWED_IN") {
         totalBorrowedInSpools += 1;
       } else {
@@ -245,7 +245,7 @@ export function deriveInventoryOverviewFromRows(
       }
     }
 
-    if (inUseStatuses.has(status)) {
+    if (isAssigned) {
       inUse += 1;
       if (ownershipType === "BORROWED_IN") {
         borrowedInInUse += 1;
@@ -259,7 +259,7 @@ export function deriveInventoryOverviewFromRows(
       Number.isFinite(remaining) &&
       remaining > 0 &&
       remaining <= 200 &&
-      includedStatuses.has(status)
+      isOnHand
     ) {
       lowStock += 1;
       if (ownershipType === "BORROWED_IN") {

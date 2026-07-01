@@ -1,4 +1,5 @@
 import { fetchCachedLibrarySyncSpools } from "./tauri_client";
+import { isSpoolStatusLoanable, normalizeOwnershipType } from "./inventory_domain";
 import { loadPrinterOverviewData } from "./printer_data_source";
 import { loadSpoolRowsPage } from "./spool_data_source";
 import { sortSpoolsAlphabetically } from "./spool_sort";
@@ -47,15 +48,14 @@ export function buildLoanableSpoolCandidates(
 
   return sortSpoolsAlphabetically(spoolRows)
     .filter((row) => {
-      const status = (row.spool.status ?? "").trim().toUpperCase();
-      const ownershipType = (row.spool.ownership_type ?? "").trim().toUpperCase();
+      const ownershipType = normalizeOwnershipType(row.spool.ownership_type);
       if (assignedSpoolIds.has(row.spool.id)) {
         return false;
       }
       if (ownershipType === "BORROWED_IN") {
         return false;
       }
-      return status === "IN_STOCK";
+      return isSpoolStatusLoanable(row.spool.status);
     })
     .map((row) => ({
       id: row.spool.id,

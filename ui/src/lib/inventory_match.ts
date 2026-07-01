@@ -1,5 +1,11 @@
 import { normalizeHexColor, normalizeSwatchValue, parseSwatchSpec } from "./color_utils";
 import { formatBambuSettingsProfileSignal } from "./bambu_settings_profiles";
+import {
+  isSpoolStatusAssigned,
+  isSpoolStatusLoanable,
+  isSpoolStatusMetadataMatchable,
+  isSpoolStatusRfidMatchable,
+} from "./inventory_domain";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
 export type InventoryMatchResult =
@@ -224,23 +230,12 @@ function canUseSemanticOtherColorHint(row: SpoolWithMasterRow): boolean {
   return SEMANTIC_OTHER_COLOR_HINT_VENDORS.has(vendor);
 }
 
-function normalizeSpoolStatus(raw?: string | null): string {
-  return (raw ?? "").trim().toUpperCase();
-}
-
 function isExactRfidInventoryRow(row: SpoolWithMasterRow): boolean {
-  const status = normalizeSpoolStatus(row.spool.status);
-  return (
-    status !== "LOST" &&
-    status !== "MISSING" &&
-    status !== "DELETED" &&
-    status !== "BORROWED"
-  );
+  return isSpoolStatusRfidMatchable(row.spool.status);
 }
 
 function isMetadataVisibleInventoryRow(row: SpoolWithMasterRow): boolean {
-  const status = normalizeSpoolStatus(row.spool.status);
-  return isExactRfidInventoryRow(row) && status !== "EMPTY";
+  return isSpoolStatusMetadataMatchable(row.spool.status);
 }
 
 function isMetadataCandidateRow(
@@ -418,10 +413,9 @@ function metadataCandidateScore({
   if (semanticOtherColorHintMatchesObserved(row, observedColors)) {
     score += 60;
   }
-  const status = normalizeSpoolStatus(row.spool.status);
-  if (status === "ASSIGNED" || status === "IN_USE") {
+  if (isSpoolStatusAssigned(row.spool.status)) {
     score += 8;
-  } else if (status === "IN_STOCK") {
+  } else if (isSpoolStatusLoanable(row.spool.status)) {
     score += 4;
   }
   return score;
