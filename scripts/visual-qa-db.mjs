@@ -401,6 +401,18 @@ function chooseSlotOnboardingCatalogMaster(db) {
            WHEN 'pc' THEN 2
            ELSE 3
          END,
+         CASE
+           WHEN lower(m.color_name) LIKE '%black%'
+             OR lower(m.color_name) LIKE '%white%'
+             OR lower(m.color_name) LIKE '%gray%'
+             OR lower(m.color_name) LIKE '%grey%'
+             OR lower(m.color_name) LIKE '%silver%'
+             OR lower(m.color_name) LIKE '%transparent%'
+             OR lower(m.color_name) LIKE '%clear%'
+             OR lower(m.color_name) LIKE '%natural%'
+           THEN 1
+           ELSE 0
+         END,
          m.material,
          m.filament_name,
          m.color_name
@@ -424,7 +436,22 @@ function chooseSlotOnboardingCatalogMaster(db) {
            WHERE fs.master_id = m.id
              AND fs.deleted_at IS NULL
          )
-       ORDER BY m.material, m.filament_name, m.color_name
+       ORDER BY
+         CASE
+           WHEN lower(m.color_name) LIKE '%black%'
+             OR lower(m.color_name) LIKE '%white%'
+             OR lower(m.color_name) LIKE '%gray%'
+             OR lower(m.color_name) LIKE '%grey%'
+             OR lower(m.color_name) LIKE '%silver%'
+             OR lower(m.color_name) LIKE '%transparent%'
+             OR lower(m.color_name) LIKE '%clear%'
+             OR lower(m.color_name) LIKE '%natural%'
+           THEN 1
+           ELSE 0
+         END,
+         m.material,
+         m.filament_name,
+         m.color_name
        LIMIT 1`,
     )
     .get();

@@ -6,6 +6,7 @@ import {
   buildDesktopWindowLookupScript,
   desktopScreenshotScale,
   desktopScreenshotNameForScenario,
+  desktopVisualQaScenarioRequiresDatabaseFixture,
   formatDesktopScreenshotGateReport,
   normalizeDesktopVisualQaScenario,
   parseDesktopVisualQaScenarios,
@@ -120,6 +121,13 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
   assert.equal(normalizeDesktopVisualQaScenario("usage-statistics"), "statistics-overview");
   assert.equal(normalizeDesktopVisualQaScenario(""), null);
   assert.throws(() => normalizeDesktopVisualQaScenario("bad"), /Unknown desktop visual QA/);
+});
+
+test("desktop screenshot gate marks DB-fixture visual states", () => {
+  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("ams-onboarding"), true);
+  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("printer-slot-onboarding"), true);
+  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("printers"), false);
+  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture(null), false);
 });
 
 test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {

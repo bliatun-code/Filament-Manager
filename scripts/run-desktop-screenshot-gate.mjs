@@ -16,6 +16,7 @@ const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
 const DEFAULT_PROCESS_NAME = "bambu-filament-manager";
 const DEFAULT_WINDOW_TITLE = "Filament Manager";
 const VISUAL_QA_SCENARIO_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
+const DESKTOP_VISUAL_QA_DATABASE_FIXTURE_SCENARIOS = new Set(["printer-slot-onboarding"]);
 const DESKTOP_VISUAL_QA_SCENARIOS = [
   "dashboard-overview",
   "inventory-overview",
@@ -173,6 +174,11 @@ export function parseDesktopVisualQaScenarios(argv) {
     return DESKTOP_VISUAL_QA_SCENARIOS;
   }
   return [normalizeDesktopVisualQaScenario(raw)];
+}
+
+export function desktopVisualQaScenarioRequiresDatabaseFixture(scenario) {
+  const normalized = normalizeDesktopVisualQaScenario(scenario);
+  return normalized != null && DESKTOP_VISUAL_QA_DATABASE_FIXTURE_SCENARIOS.has(normalized);
 }
 
 export function desktopScreenshotNameForScenario({
@@ -585,12 +591,19 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
   const prepareDatabase = options.prepareVisualQaDatabase ?? prepareVisualQaDatabase;
   const cleanupDatabase = options.cleanupVisualQaDatabase ?? cleanupVisualQaDatabase;
   const spawnFn = options.spawnFn ?? spawn;
+  const forceCopyForFixture = Boolean(
+    options.live && desktopVisualQaScenarioRequiresDatabaseFixture(options.scenario),
+  );
   const database = await prepareDatabase({
-    live: Boolean(options.live),
+    live: Boolean(options.live) && !forceCopyForFixture,
     profile: options.profile,
     scenario: options.scenario,
     sourcePath: options.sourcePath,
   });
+  if (forceCopyForFixture) {
+    database.liveOverrideReason =
+      "Scenario requires a temporary DB fixture, so --live was ignored for this capture.";
+  }
   let outputTail = "";
   let childExit = null;
   const child = spawnTauriDev(spawnFn, options, database);
@@ -680,6 +693,9 @@ export function formatDesktopScreenshotGateReport(result) {
   const lines = [];
   if (result.database) {
     lines.push(formatVisualQaDatasetReport(result.database));
+    if (result.database.liveOverrideReason) {
+      lines.push(result.database.liveOverrideReason);
+    }
     lines.push(
       result.database.live
         ? "Desktop visual QA live DB mode: app changes affected the selected database."
