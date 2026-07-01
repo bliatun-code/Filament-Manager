@@ -6,6 +6,7 @@ import {
   inventoryDetailPanelClassName,
   inventoryDetailSaveButtonClassName,
 } from "./inventory_detail_panel_class";
+import { SegmentedChoiceRow } from "./segmented_choice_row";
 import type { OwnershipType, SpoolStatus } from "../lib/inventory_list_model";
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
@@ -15,13 +16,6 @@ type SpoolMaintenancePanelBaseProps = {
   resolvedTheme: ResolvedTheme;
   spoolHexColor?: string | null;
 };
-
-const ownershipSegmentBaseClass =
-  "rounded-lg border border-transparent px-3 py-2 text-sm font-semibold outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
-const ownershipSegmentActiveClass =
-  "bg-[rgba(255,255,255,0.94)] text-slate-950 shadow-sm shadow-slate-900/10 ring-1 ring-slate-900/5 dark:bg-[rgba(30,41,59,0.92)] dark:text-slate-50 dark:shadow-none dark:ring-white/10";
-const ownershipSegmentIdleClass =
-  "text-slate-600 hover:bg-[rgba(255,255,255,0.58)] hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800/55 dark:hover:text-slate-100";
 
 type InventorySpoolTarePanelProps = SpoolMaintenancePanelBaseProps & {
   onChange: (value: string) => void;
@@ -174,32 +168,24 @@ export function InventorySpoolOwnershipPanel({
       <div className={inventoryDetailEyebrowClassName}>
         {t("inventory.editOwnership", "Ownership")}
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-100/70 p-1 dark:border-slate-700 dark:bg-slate-950/40">
-        <button
-          type="button"
-          aria-pressed={typeValue === "OWNED"}
-          className={`${ownershipSegmentBaseClass} ${
-            typeValue === "OWNED"
-              ? ownershipSegmentActiveClass
-              : ownershipSegmentIdleClass
-          }`}
-          onClick={() => onChangeType("OWNED")}
-          disabled={disabled}
-        >
-          {t("inventory.ownedByUs", "Owned")}
-        </button>
-        <button
-          type="button"
-          aria-pressed={borrowed}
-          className={`${ownershipSegmentBaseClass} ${
-            borrowed ? ownershipSegmentActiveClass : ownershipSegmentIdleClass
-          }`}
-          onClick={() => onChangeType("BORROWED_IN")}
-          disabled={disabled}
-        >
-          {t("inventory.borrowedIn", "Borrowed in")}
-        </button>
-      </div>
+      <SegmentedChoiceRow
+        className="mt-3"
+        groupClassName="w-full"
+        optionSizeClassName="flex-1 justify-center px-3 py-2 text-sm"
+        value={typeValue}
+        onChange={onChangeType}
+        isOptionDisabled={() => disabled}
+        options={[
+          {
+            value: "OWNED",
+            label: t("inventory.ownedByUs", "Owned"),
+          },
+          {
+            value: "BORROWED_IN",
+            label: t("inventory.borrowedIn", "Borrowed in"),
+          },
+        ]}
+      />
       {borrowed ? (
         <div className="mt-3 space-y-2">
           <input
