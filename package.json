@@ -32,6 +32,7 @@
     "qa:visual:db": "node ./scripts/visual-qa-db.mjs",
     "qa:visual": "node ./scripts/run-visual-qa.mjs",
     "qa:visual:companion": "node ./scripts/run-companion-visual-gate.mjs",
+    "qa:visual:companion:screens": "node ./scripts/run-companion-screenshot-gate.mjs",
     "scrape": "node ./node_modules/tsx/dist/cli.mjs src/scraper/bambu_filament_scraper.ts",
     "scrape:auto": "node ./node_modules/tsx/dist/cli.mjs src/scraper/bambu_auto_scrape.ts",
     "scrape:safe": "npm run doctor && npm run scrape",
@@ -44,6 +45,7 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",
+    "playwright": "^1.61.1",
     "tsx": "^4.22.3"
   }
 }
