@@ -16,14 +16,16 @@ export function isLoanReturned(row: Pick<SpoolLoanDetailsRow, "loan">): boolean 
 export function isLoanCurrentlyActive(
   row: Pick<SpoolLoanDetailsRow, "loan" | "spool_status">,
 ): boolean {
-  return !isLoanReturned(row) && !loanHasDeletedSpool(row);
+  return (
+    normalizeLoanStatus(row.loan.loan_status, row.loan.returned_at) === "ACTIVE" &&
+    !loanHasDeletedSpool(row)
+  );
 }
 
 export function isActiveOutboundLoan(
   row: Pick<SpoolLoanDetailsRow, "loan" | "spool_status">,
 ): boolean {
-  const loanStatus = normalizeLoanStatus(row.loan.loan_status, row.loan.returned_at);
   const loanDirection = normalizeLoanDirection(row.loan.loan_direction);
   const currentlyActive = isLoanCurrentlyActive(row);
-  return loanDirection === "OUTBOUND" && currentlyActive && loanStatus === "ACTIVE";
+  return loanDirection === "OUTBOUND" && currentlyActive;
 }

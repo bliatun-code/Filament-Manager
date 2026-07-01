@@ -1,7 +1,7 @@
 export type SpoolStatus = "IN_STOCK" | "ASSIGNED" | "BORROWED" | "EMPTY" | "LOST";
 export type OwnershipType = "OWNED" | "BORROWED_IN";
 export type LoanDirection = "OUTBOUND" | "INBOUND";
-export type LoanStatus = "ACTIVE" | "RETURNED";
+export type LoanStatus = "ACTIVE" | "RETURNED" | "LOST" | "CANCELLED";
 
 const LEGACY_REMOVED_SPOOL_STATUS_TOKENS = new Set(["MISSING", "DELETED"]);
 
@@ -91,6 +91,9 @@ export function normalizeLoanStatus(
   const status = normalizeDomainToken(raw);
   if (status === "RETURNED" || (returnedAt ?? "").trim().length > 0) {
     return "RETURNED";
+  }
+  if (status === "LOST" || status === "CANCELLED") {
+    return status;
   }
   return "ACTIVE";
 }

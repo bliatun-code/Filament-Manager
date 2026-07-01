@@ -49,6 +49,8 @@ test("inventory domain normalizers preserve loan direction and status semantics"
   assert.equal(normalizeLoanDirection("sideways"), "OUTBOUND");
   assert.equal(normalizeLoanStatus("returned"), "RETURNED");
   assert.equal(normalizeLoanStatus("active"), "ACTIVE");
+  assert.equal(normalizeLoanStatus("lost"), "LOST");
+  assert.equal(normalizeLoanStatus("cancelled"), "CANCELLED");
   assert.equal(normalizeLoanStatus("ACTIVE", "2026-07-01 10:00:00"), "RETURNED");
   assert.equal(normalizeLoanStatus(""), "ACTIVE");
 });

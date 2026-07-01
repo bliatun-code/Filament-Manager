@@ -82,6 +82,28 @@ test("isLoanCurrentlyActive ignores legacy active rows for deleted spools", () =
     ),
     true,
   );
+  assert.equal(
+    isLoanCurrentlyActive(
+      loanRow("lost_loan", {
+        loan: {
+          loan_status: "LOST",
+          returned_at: null,
+        },
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    isLoanCurrentlyActive(
+      loanRow("cancelled_loan", {
+        loan: {
+          loan_status: "CANCELLED",
+          returned_at: null,
+        },
+      }),
+    ),
+    false,
+  );
 });
 
 test("isActiveOutboundLoan rejects returned, inbound, and deleted rows", () => {
@@ -122,6 +144,16 @@ test("isActiveOutboundLoan rejects returned, inbound, and deleted rows", () => {
     isActiveOutboundLoan(loanRow("deleted_outbound", { spool_status: "DELETED" })),
     false,
   );
+  assert.equal(
+    isActiveOutboundLoan(
+      loanRow("lost_outbound", {
+        loan: {
+          loan_status: "LOST",
+        },
+      }),
+    ),
+    false,
+  );
 });
 
 test("loan active filters and summaries skip deleted active rows", () => {
@@ -141,7 +173,17 @@ test("loan active filters and summaries skip deleted active rows", () => {
       consumed_grams: 80,
     },
   });
-  const rows = [active, deletedActive, returned, returnedStatusOnly];
+  const lost = loanRow("lost_spool", {
+    loan: {
+      loan_status: "LOST",
+    },
+  });
+  const cancelled = loanRow("cancelled_spool", {
+    loan: {
+      loan_status: "CANCELLED",
+    },
+  });
+  const rows = [active, deletedActive, returned, returnedStatusOnly, lost, cancelled];
 
   assert.deepEqual(
     filterLoans(rows, "OUTBOUND", "ACTIVE", "").map((row) => row.loan.spool_id),
@@ -160,5 +202,5 @@ test("loan active filters and summaries skip deleted active rows", () => {
   const byFilament = groupedLoanUsage(rows);
   assert.equal(byFilament.length, 1);
   assert.equal(byFilament[0].activeLoans, 1);
-  assert.equal(byFilament[0].loans, 4);
+  assert.equal(byFilament[0].loans, 6);
 });
