@@ -18,6 +18,7 @@ import {
   liveSlotObservedRfid,
 } from "./companion_live_rfid_candidates.js";
 import { formatPrinterSlotLabelForModel } from "./printer_slot_labels.js";
+import { renderCompanionActionButton } from "./shell_chrome.js";
 
 export function formatPrinterSlotLabel(slot, locale = "en", printerModel = "") {
   return formatPrinterSlotLabelForModel(slot, locale, printerModel);
@@ -357,6 +358,7 @@ export function renderPrinterWeightTaskSheetBody(options) {
       : mode === "assign"
         ? t(locale, "printers.loadFilament", "Load filament")
         : t(locale, "detail.saveWeight", "Save weight");
+  const actionSwatch = task.targetSwatchColor || task.currentSwatchColor;
 
   return `
     <div class="stack printer-weight-sheet">
@@ -453,7 +455,14 @@ export function renderPrinterWeightTaskSheetBody(options) {
             : ""
         }
         <div class="detail-actions form-action-block">
-          <button class="primary-button" type="submit" ${state.busy ? "disabled" : ""}>${escapeHtml(submitLabel)}</button>
+          ${renderCompanionActionButton({
+            type: "submit",
+            swatch: true,
+            disabled: state.busy,
+            attributes: { style: swatchCssStyle(actionSwatch) },
+            escapeHtml,
+            label: submitLabel,
+          })}
         </div>
       </form>
     </div>
@@ -698,52 +707,58 @@ function renderSlotCards(options) {
             ${
               slot.spool_id
                 ? `
-                  <button
-                    class="primary-button slot-button slot-button-primary"
-                    type="button"
-                    data-action="start-printer-weight-update"
-                    data-printer-task-mode="update"
-                    data-printer-id="${escapeHtml(activePrinter.printer.id)}"
-                    data-printer-name="${escapeHtml(activePrinter.printer.name)}"
-                    data-slot-id="${escapeHtml(slot.slot_id)}"
-                    data-slot-index="${escapeHtml(slot.slot_index)}"
-                    data-slot-label="${escapeHtml(slotLabel)}"
-                    data-spool-id="${escapeHtml(slot.spool_id)}"
-                  >
-                    ${escapeHtml(t(locale, "printers.updateWeight", "Update weight"))}
-                  </button>
-                  <button
-                    class="ghost-button slot-button"
-                    type="button"
-                    data-action="start-printer-weight-update"
-                    data-printer-task-mode="clear"
-                    data-printer-id="${escapeHtml(activePrinter.printer.id)}"
-                    data-printer-name="${escapeHtml(activePrinter.printer.name)}"
-                    data-slot-id="${escapeHtml(slot.slot_id)}"
-                    data-slot-index="${escapeHtml(slot.slot_index)}"
-                    data-slot-label="${escapeHtml(slotLabel)}"
-                    data-spool-id="${escapeHtml(slot.spool_id)}"
-                  >
-                    ${escapeHtml(t(locale, "printers.clearSlot", "Clear slot"))}
-                  </button>
+                  ${renderCompanionActionButton({
+                    swatch: true,
+                    className: "slot-button slot-button-primary",
+                    attributes: {
+                      "data-action": "start-printer-weight-update",
+                      "data-printer-task-mode": "update",
+                      "data-printer-id": activePrinter.printer.id,
+                      "data-printer-name": activePrinter.printer.name,
+                      "data-slot-id": slot.slot_id,
+                      "data-slot-index": slot.slot_index,
+                      "data-slot-label": slotLabel,
+                      "data-spool-id": slot.spool_id,
+                    },
+                    escapeHtml,
+                    label: t(locale, "printers.updateWeight", "Update weight"),
+                  })}
+                  ${renderCompanionActionButton({
+                    variant: "ghost",
+                    className: "slot-button",
+                    attributes: {
+                      "data-action": "start-printer-weight-update",
+                      "data-printer-task-mode": "clear",
+                      "data-printer-id": activePrinter.printer.id,
+                      "data-printer-name": activePrinter.printer.name,
+                      "data-slot-id": slot.slot_id,
+                      "data-slot-index": slot.slot_index,
+                      "data-slot-label": slotLabel,
+                      "data-spool-id": slot.spool_id,
+                    },
+                    escapeHtml,
+                    label: t(locale, "printers.clearSlot", "Clear slot"),
+                  })}
                 `
                 : ""
             }
             ${
               !slot.spool_id
                 ? `
-                  <button
-                    class="primary-button slot-button slot-button-primary slot-button-emphasis"
-                    type="button"
-                    data-action="start-printer-slot-assignment"
-                    data-printer-id="${escapeHtml(activePrinter.printer.id)}"
-                    data-printer-name="${escapeHtml(activePrinter.printer.name)}"
-                    data-slot-id="${escapeHtml(slot.slot_id)}"
-                    data-slot-index="${escapeHtml(slot.slot_index)}"
-                    data-slot-label="${escapeHtml(slotLabel)}"
-                  >
-                    ${escapeHtml(t(locale, "printers.loadFilament", "Load filament"))}
-                  </button>
+                  ${renderCompanionActionButton({
+                    swatch: slotHasLiveLoaded,
+                    className: "slot-button slot-button-primary slot-button-emphasis",
+                    attributes: {
+                      "data-action": "start-printer-slot-assignment",
+                      "data-printer-id": activePrinter.printer.id,
+                      "data-printer-name": activePrinter.printer.name,
+                      "data-slot-id": slot.slot_id,
+                      "data-slot-index": slot.slot_index,
+                      "data-slot-label": slotLabel,
+                    },
+                    escapeHtml,
+                    label: t(locale, "printers.loadFilament", "Load filament"),
+                  })}
                 `
                 : ""
             }

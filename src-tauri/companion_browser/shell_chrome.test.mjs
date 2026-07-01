@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  renderCompanionActionButton,
   renderDesktopRail,
   renderDetailModalShell,
   renderPhoneBottomNav,
@@ -15,6 +16,14 @@ const rootFlowItems = [
   { flow: "printers", label: "Printers", meta: "3 configured", compactMeta: "3" },
   { flow: "settings", label: "Settings", meta: "Trusted-LAN session", compactMeta: "On" },
 ];
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
 
 function createSelectedSpool() {
   return {
@@ -31,6 +40,29 @@ function createSelectedSpool() {
     },
   };
 }
+
+test("companion action helper renders variants, swatches and boolean attributes", () => {
+  const html = renderCompanionActionButton({
+    variant: "secondary",
+    type: "submit",
+    swatch: true,
+    disabled: true,
+    className: "loan-action-button",
+    attributes: {
+      "data-action": "save&go",
+      "aria-label": 'Save "now"',
+      hidden: false,
+    },
+    escapeHtml,
+    label: "Save <now>",
+  });
+
+  assert.equal(
+    html,
+    '<button class="secondary-button swatch-action-button loan-action-button" type="submit" data-action="save&amp;go" aria-label="Save &quot;now&quot;" disabled>Save &lt;now&gt;</button>',
+  );
+  assert.doesNotMatch(html, /hidden/);
+});
 
 test("topbar renders the tablet root switch with all primary flows", () => {
   const html = renderTopbar({

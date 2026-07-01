@@ -34,6 +34,42 @@ function renderStatusLine(statusMessage, statusTone, busy, escapeHtml, locale = 
   return `<div class="status-line app-status-line" data-tone="${escapeHtml(statusTone)}">${escapeHtml(message)}</div>`;
 }
 
+function renderAttributeMap(attributes, escapeHtml) {
+  return Object.entries(attributes)
+    .filter(([, value]) => value !== false && value != null)
+    .map(([name, value]) => (value === true ? name : `${name}="${escapeHtml(value)}"`))
+    .join(" ");
+}
+
+export function renderCompanionActionButton(options) {
+  const {
+    attributes = {},
+    className = "",
+    disabled = false,
+    escapeHtml,
+    label,
+    swatch = false,
+    type = "button",
+    variant = "primary",
+  } = options;
+  const escape = typeof escapeHtml === "function" ? escapeHtml : (value) => String(value ?? "");
+  const variantClass =
+    variant === "secondary"
+      ? "secondary-button"
+      : variant === "ghost"
+        ? "ghost-button"
+        : "primary-button";
+  const classes = [
+    variantClass,
+    swatch ? "swatch-action-button" : "",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const renderedAttributes = renderAttributeMap({ type, ...attributes, disabled }, escape);
+  return `<button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${escape(label)}</button>`;
+}
+
 function renderTabletRootSwitch(activeRootFlow, rootFlowItems, escapeHtml, locale = "en") {
   return `
     <div class="root-switch" role="tablist" aria-label="${escapeHtml(t(locale, "nav.primaryFlowsAria", "Primary flows"))}">

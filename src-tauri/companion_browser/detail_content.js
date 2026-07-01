@@ -6,6 +6,7 @@ import {
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference, formatStatusLabel } from "./formatters.js";
 import { swatchCssStyle } from "./companion_theme.js";
+import { renderCompanionActionButton } from "./shell_chrome.js";
 
 export function renderSelectedSpoolDetailBody(options) {
   const {
@@ -44,6 +45,7 @@ export function renderSelectedSpoolDetailBody(options) {
     selectedSpool.master.filament_name,
     selectedSpool.master.color_name,
   );
+  const detailSwatchStyle = swatchCssStyle(selectedSpool.master.hex_color);
   const detailReference = formatRollReference(selectedSpool.spool);
   const defaultMeasuredWeight =
     (selectedSpool?.spool?.remaining_g ?? selectedSpool?.spool?.current_weight_g ?? 0) +
@@ -73,7 +75,7 @@ export function renderSelectedSpoolDetailBody(options) {
     <div class="detail-stack">
       <div
         class="surface-card detail-summary-card detail-section-card swatch-surface"
-        style="${escapeHtml(swatchCssStyle(selectedSpool.master.hex_color))}"
+        style="${escapeHtml(detailSwatchStyle)}"
       >
         <div class="stack">
           <div class="detail-summary-head">
@@ -113,7 +115,14 @@ export function renderSelectedSpoolDetailBody(options) {
               <input class="weight-input" name="grams" type="number" min="0" step="1" value="${escapeHtml(defaultMeasuredWeight)}" />
             </label>
             <div class="detail-actions form-action-block">
-              <button class="primary-button" type="submit" ${busy ? "disabled" : ""}>${escapeHtml(t(locale, "detail.saveWeight", "Save weight"))}</button>
+              ${renderCompanionActionButton({
+                type: "submit",
+                swatch: true,
+                disabled: busy,
+                attributes: { style: detailSwatchStyle },
+                escapeHtml,
+                label: t(locale, "detail.saveWeight", "Save weight"),
+              })}
             </div>
           </form>
           <form
@@ -126,7 +135,14 @@ export function renderSelectedSpoolDetailBody(options) {
               <input class="weight-input" name="tare-grams" type="number" min="0" step="1" value="${escapeHtml(detailTareWeight)}" />
             </label>
             <div class="detail-actions form-action-block">
-              <button class="primary-button" type="submit" ${busy ? "disabled" : ""}>${escapeHtml(t(locale, "detail.saveEmptySpoolWeight", "Save empty spool weight"))}</button>
+              ${renderCompanionActionButton({
+                type: "submit",
+                swatch: true,
+                disabled: busy,
+                attributes: { style: detailSwatchStyle },
+                escapeHtml,
+                label: t(locale, "detail.saveEmptySpoolWeight", "Save empty spool weight"),
+              })}
             </div>
           </form>
         </div>
@@ -173,9 +189,14 @@ export function renderSelectedSpoolDetailBody(options) {
               <div class="meta-line">${escapeHtml(detailHomePlacementLabel)}</div>
             </label>
             <div class="detail-actions form-action-block">
-              <button class="primary-button" type="submit" ${busy ? "disabled" : ""}>
-                ${escapeHtml(t(locale, "detail.saveDetails", "Save details"))}
-              </button>
+              ${renderCompanionActionButton({
+                type: "submit",
+                swatch: true,
+                disabled: busy,
+                attributes: { style: detailSwatchStyle },
+                escapeHtml,
+                label: t(locale, "detail.saveDetails", "Save details"),
+              })}
             </div>
           </form>
           <div class="stack detail-form detail-edit-pane">
@@ -230,9 +251,14 @@ export function renderSelectedSpoolDetailBody(options) {
             <input type="hidden" name="rfid-tag" value="${escapeHtml(selectedCaptureSource?.rfidTag || "")}" />
             <input type="hidden" name="rfid-observed-at" value="${escapeHtml(selectedCaptureSource?.observedAt || "")}" />
             <div class="detail-actions form-action-block">
-              <button class="primary-button" type="submit" ${busy || !selectedCaptureSource?.rfidTag ? "disabled" : ""}>
-                ${escapeHtml(t(locale, "inventory.rfidSaveAction", "Save RFID"))}
-              </button>
+              ${renderCompanionActionButton({
+                type: "submit",
+                swatch: true,
+                disabled: busy || !selectedCaptureSource?.rfidTag,
+                attributes: { style: detailSwatchStyle },
+                escapeHtml,
+                label: t(locale, "inventory.rfidSaveAction", "Save RFID"),
+              })}
             </div>
           </form>
         </div>

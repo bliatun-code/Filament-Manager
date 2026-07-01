@@ -7,6 +7,7 @@ import {
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference } from "./formatters.js";
 import { suggestSwatchHex, swatchCssStyle, toSwatchColor } from "./companion_theme.js";
+import { renderCompanionActionButton } from "./shell_chrome.js";
 
 function loanStateLabel(row, locale = "en") {
   const returned = isLoanReturned(row);
@@ -66,13 +67,29 @@ function renderHiddenSelectionBanner(selectedSpool, loanRows, escapeHtml, format
       </div>
       <div class="selection-banner-summary meta-line">${summaryLine}</div>
       <div class="selection-banner-actions">
-        <button class="secondary-button" type="button" data-action="show-all-loans">
-          ${escapeHtml(t(locale, "loans.showAll", "Show all loans"))}
-        </button>
-        ${loanRows.length ? `<button class="ghost-button" type="button" data-action="set-root-flow" data-root-flow="storage">${escapeHtml(t(locale, "nav.storage", "Inventory"))}</button>` : ""}
-        <button class="ghost-button" type="button" data-action="open-current-detail">
-          ${escapeHtml(t(locale, "detail.openDetail", "Detail"))}
-        </button>
+        ${renderCompanionActionButton({
+          variant: "secondary",
+          swatch: true,
+          attributes: { "data-action": "show-all-loans" },
+          escapeHtml,
+          label: t(locale, "loans.showAll", "Show all loans"),
+        })}
+        ${
+          loanRows.length
+            ? renderCompanionActionButton({
+                variant: "ghost",
+                attributes: { "data-action": "set-root-flow", "data-root-flow": "storage" },
+                escapeHtml,
+                label: t(locale, "nav.storage", "Inventory"),
+              })
+            : ""
+        }
+        ${renderCompanionActionButton({
+          variant: "ghost",
+          attributes: { "data-action": "open-current-detail" },
+          escapeHtml,
+          label: t(locale, "detail.openDetail", "Detail"),
+        })}
       </div>
     </div>
   `;
@@ -196,20 +213,19 @@ function renderLoanRows(options) {
           <div class="loan-card-actions">
             ${
               active
-                ? `
-                  <button
-                    class="primary-button swatch-action-button loan-action-button"
-                    type="button"
-                    data-action="toggle-loan-return"
-                    data-loan-id="${escapeHtml(row.loan.id)}"
-                  >
-                    ${escapeHtml(
+                ? renderCompanionActionButton({
+                    swatch: true,
+                    className: "loan-action-button",
+                    attributes: {
+                      "data-action": "toggle-loan-return",
+                      "data-loan-id": row.loan.id,
+                    },
+                    escapeHtml,
+                    label:
                       direction === "INBOUND"
                         ? t(locale, "detail.handBackSpool", "Hand back spool")
                         : t(locale, "loans.returnLoan", "Return loan"),
-                    )}
-                  </button>
-                `
+                  })
                 : ""
             }
           </div>
@@ -254,6 +270,9 @@ export function renderLoanReturnTaskSheetBody(options) {
   const tareWeight = resolveSpoolTareWeight(loanRow, loanRow.vendor);
   const defaultMeasuredReturnWeight =
     Number(loanRow.spool_remaining_g ?? loanRow.loan.grams_out ?? 0) + tareWeight;
+  const actionSwatch =
+    loanRow.hex_color ||
+    suggestSwatchHex(loanRow.color_name, loanRow.filament_name, loanRow.vendor, loanRow.material);
 
   return `
     <div class="stack loan-return-task-sheet">
@@ -313,13 +332,17 @@ export function renderLoanReturnTaskSheetBody(options) {
           ></textarea>
         </label>
         <div class="detail-actions form-action-block">
-          <button class="primary-button" type="submit" ${state.busy ? "disabled" : ""}>
-            ${escapeHtml(
+          ${renderCompanionActionButton({
+            type: "submit",
+            swatch: true,
+            disabled: state.busy,
+            attributes: { style: swatchCssStyle(actionSwatch) },
+            escapeHtml,
+            label:
               direction === "INBOUND"
                 ? t(locale, "detail.handBackSpool", "Hand back spool")
                 : t(locale, "loans.completeReturn", "Complete return"),
-            )}
-          </button>
+          })}
         </div>
       </form>
     </div>
@@ -416,9 +439,13 @@ export function renderLoanCreateTaskSheetBody(options) {
             ></textarea>
           </label>
           <div class="detail-actions form-action-block">
-            <button class="primary-button swatch-action-button" type="submit" ${state.busy ? "disabled" : ""}>
-              ${escapeHtml(t(locale, "detail.lendSpool", "Lend spool"))}
-            </button>
+            ${renderCompanionActionButton({
+              type: "submit",
+              swatch: true,
+              disabled: state.busy,
+              escapeHtml,
+              label: t(locale, "detail.lendSpool", "Lend spool"),
+            })}
           </div>
         </form>
       </div>
@@ -482,12 +509,17 @@ export function renderLoansShell(options) {
             autocomplete="off"
           />
           <div class="toolbar-actions">
-            <button class="primary-button" type="button" data-action="start-loan-picker">
-              ${escapeHtml(t(locale, "detail.lendSpool", "Lend spool"))}
-            </button>
-            <button class="ghost-button" type="button" data-action="show-all-loans">
-              ${escapeHtml(t(locale, "loans.showAll", "Show all loans"))}
-            </button>
+            ${renderCompanionActionButton({
+              attributes: { "data-action": "start-loan-picker" },
+              escapeHtml,
+              label: t(locale, "detail.lendSpool", "Lend spool"),
+            })}
+            ${renderCompanionActionButton({
+              variant: "ghost",
+              attributes: { "data-action": "show-all-loans" },
+              escapeHtml,
+              label: t(locale, "loans.showAll", "Show all loans"),
+            })}
           </div>
         </div>
         <div class="loan-filter-row" role="group" aria-label="${escapeHtml(t(locale, "loans.filterAria", "Loan status filters"))}">

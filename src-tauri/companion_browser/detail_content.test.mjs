@@ -96,6 +96,7 @@ test("detail content keeps borrowed-in spools out of loan actions inside detail"
   assert.doesNotMatch(html, /loan-spool-form/);
   assert.doesNotMatch(html, /return-loan-form/);
   assert.match(html, /data-action="update-spool-details-form"/);
+  assert.match(html, /class="primary-button swatch-action-button" type="submit" style="--swatch-rgb:/);
   assert.match(html, /Shelf A/);
   assert.match(html, /name="home-location"/);
 });

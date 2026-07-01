@@ -148,6 +148,7 @@ test("loan return task sheet renders the compact return form", () => {
   });
 
   assert.match(html, /Complete return/);
+  assert.match(html, /class="primary-button swatch-action-button" type="submit" style="--swatch-rgb:/);
   assert.match(html, /Returned total weight incl\. spool \(g\)/);
   assert.match(html, /value="750"/);
   assert.doesNotMatch(html, /Marks the loan returned in local data\./);

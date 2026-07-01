@@ -133,6 +133,7 @@ test("printer workspace keeps the board focused on slots instead of readiness ba
   assert.match(html, /Load filament/);
   assert.match(html, /Update weight/);
   assert.match(html, /Clear slot/);
+  assert.match(html, /primary-button swatch-action-button slot-button slot-button-primary/);
   assert.match(html, /slot-card-loaded/);
   assert.match(html, /slot-card-empty/);
 });
@@ -824,6 +825,7 @@ test("printer workspace renders a dedicated weight task sheet body for loaded sl
 
   assert.match(html, /Utgående vekt \(g\)/);
   assert.match(html, /data-action="printer-slot-operation-form"/);
+  assert.match(html, /class="primary-button swatch-action-button" type="submit" style="--swatch-rgb:/);
   assert.match(html, /Brutus · AMS 1 · Spor 2/);
   assert.match(html, /1075/);
 });

@@ -12,6 +12,7 @@ import {
 import { suggestSwatchHex, swatchCssStyle, toSwatchColor } from "./companion_theme.js";
 import { t } from "./companion_i18n.js";
 import { isBorrowedInOwnership, normalizeDomainToken, parseSpoolStatus } from "./companion_domain.js";
+import { renderCompanionActionButton } from "./shell_chrome.js";
 
 function catalogMatchesSource(master, source) {
   const vendor = String(master?.vendor || "").trim().toLowerCase();
@@ -175,44 +176,48 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
           </div>
           ${item.note ? `<div class="section-copy add-spool-wishlist-note">${escapeHtml(item.note)}</div>` : ""}
           <div class="pill-row add-spool-wishlist-actions">
-            <button
-              class="ghost-button"
-              type="button"
-              data-action="wishlist-update-status"
-              data-wishlist-id="${escapeHtml(item.id)}"
-              data-wishlist-status="WISHLIST"
-              ${busy || item.status === "WISHLIST" ? "disabled" : ""}
-            >
-              ${escapeHtml(t(locale, "storage.wishlist", "Wishlist"))}
-            </button>
-            <button
-              class="ghost-button"
-              type="button"
-              data-action="wishlist-update-status"
-              data-wishlist-id="${escapeHtml(item.id)}"
-              data-wishlist-status="ON_ORDER"
-              ${busy || item.status === "ON_ORDER" ? "disabled" : ""}
-            >
-              ${escapeHtml(t(locale, "storage.onOrder", "On order"))}
-            </button>
-            <button
-              class="primary-button"
-              type="button"
-              data-action="wishlist-stock-now"
-              data-wishlist-id="${escapeHtml(item.id)}"
-              ${busy ? "disabled" : ""}
-            >
-              ${escapeHtml(t(locale, "storage.stockNow", "Stock now"))}
-            </button>
-            <button
-              class="ghost-button"
-              type="button"
-              data-action="wishlist-delete"
-              data-wishlist-id="${escapeHtml(item.id)}"
-              ${busy ? "disabled" : ""}
-            >
-              ${escapeHtml(t(locale, "storage.remove", "Remove"))}
-            </button>
+            ${renderCompanionActionButton({
+              variant: "ghost",
+              disabled: busy || item.status === "WISHLIST",
+              attributes: {
+                "data-action": "wishlist-update-status",
+                "data-wishlist-id": item.id,
+                "data-wishlist-status": "WISHLIST",
+              },
+              escapeHtml,
+              label: t(locale, "storage.wishlist", "Wishlist"),
+            })}
+            ${renderCompanionActionButton({
+              variant: "ghost",
+              disabled: busy || item.status === "ON_ORDER",
+              attributes: {
+                "data-action": "wishlist-update-status",
+                "data-wishlist-id": item.id,
+                "data-wishlist-status": "ON_ORDER",
+              },
+              escapeHtml,
+              label: t(locale, "storage.onOrder", "On order"),
+            })}
+            ${renderCompanionActionButton({
+              disabled: busy,
+              swatch: true,
+              attributes: {
+                "data-action": "wishlist-stock-now",
+                "data-wishlist-id": item.id,
+              },
+              escapeHtml,
+              label: t(locale, "storage.stockNow", "Stock now"),
+            })}
+            ${renderCompanionActionButton({
+              variant: "ghost",
+              disabled: busy,
+              attributes: {
+                "data-action": "wishlist-delete",
+                "data-wishlist-id": item.id,
+              },
+              escapeHtml,
+              label: t(locale, "storage.remove", "Remove"),
+            })}
           </div>
         </div>
       `;
@@ -492,13 +497,16 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
           </div>
 
           <div class="detail-actions form-action-block utility-sheet-actions">
-            <button class="primary-button swatch-action-button" type="submit" ${busy || catalogSelectionMissing ? "disabled" : ""}>
-              ${escapeHtml(
+            ${renderCompanionActionButton({
+              type: "submit",
+              swatch: true,
+              disabled: busy || catalogSelectionMissing,
+              escapeHtml,
+              label:
                 isBorrowedIn
                   ? t(locale, "storage.registerBorrowedIn", "Register borrowed-in spool")
                   : t(locale, "storage.addSpoolToInventory", "Add spool to inventory"),
-              )}
-            </button>
+            })}
           </div>
         </form>
 
@@ -536,9 +544,14 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
           </div>
 
           <div class="detail-actions form-action-block utility-sheet-actions">
-            <button class="secondary-button swatch-action-button" type="submit" ${busy || catalogSelectionMissing ? "disabled" : ""}>
-              ${escapeHtml(t(locale, "storage.addCurrentSelectionToWishlist", "Add current selection to wishlist"))}
-            </button>
+            ${renderCompanionActionButton({
+              variant: "secondary",
+              type: "submit",
+              swatch: true,
+              disabled: busy || catalogSelectionMissing,
+              escapeHtml,
+              label: t(locale, "storage.addCurrentSelectionToWishlist", "Add current selection to wishlist"),
+            })}
           </div>
         </form>
       </section>
@@ -636,17 +649,29 @@ function renderSelectedSpoolHiddenBanner(
       </div>
       <div class="selection-banner-summary meta-line">${summaryLine}</div>
       <div class="selection-banner-actions">
-        <button class="secondary-button" type="button" data-action="clear-inventory-search">
-          ${escapeHtml(t(locale, "storage.clearSearch", "Clear search"))}
-        </button>
+        ${renderCompanionActionButton({
+          variant: "secondary",
+          swatch: true,
+          attributes: { "data-action": "clear-inventory-search" },
+          escapeHtml,
+          label: t(locale, "storage.clearSearch", "Clear search"),
+        })}
         ${
           hasLoanHistory
-            ? `<button class="ghost-button" type="button" data-action="set-root-flow" data-root-flow="loans">${escapeHtml(t(locale, "loans.title", "Loans"))}</button>`
+            ? renderCompanionActionButton({
+                variant: "ghost",
+                attributes: { "data-action": "set-root-flow", "data-root-flow": "loans" },
+                escapeHtml,
+                label: t(locale, "loans.title", "Loans"),
+              })
             : ""
         }
-        <button class="ghost-button" type="button" data-action="open-current-detail">
-          ${escapeHtml(t(locale, "detail.openDetail", "Detail"))}
-        </button>
+        ${renderCompanionActionButton({
+          variant: "ghost",
+          attributes: { "data-action": "open-current-detail" },
+          escapeHtml,
+          label: t(locale, "detail.openDetail", "Detail"),
+        })}
       </div>
     </div>
   `;
@@ -779,9 +804,12 @@ export function renderStorageShell(options) {
             autocomplete="off"
           />
           <div class="toolbar-actions">
-            <button class="primary-button" type="button" data-action="toggle-add-spool-form" ${state.busy ? "disabled" : ""}>
-              ${escapeHtml(t(locale, "storage.addSpool", "Add spool"))}
-            </button>
+            ${renderCompanionActionButton({
+              disabled: state.busy,
+              attributes: { "data-action": "toggle-add-spool-form" },
+              escapeHtml,
+              label: t(locale, "storage.addSpool", "Add spool"),
+            })}
           </div>
         </div>
       </div>
