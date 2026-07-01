@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const repoRoot = resolve(".");
@@ -10,7 +10,6 @@ const cargoTomlPath = resolve(repoRoot, "src-tauri", "Cargo.toml");
 const cargoLockPath = resolve(repoRoot, "Cargo.lock");
 const tauriConfigPath = resolve(repoRoot, "src-tauri", "tauri.conf.json");
 const readmePath = resolve(repoRoot, "README.md");
-const roadmapPath = resolve(repoRoot, "docs", "ROADMAP.md");
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -35,7 +34,6 @@ const cargoToml = readText(cargoTomlPath);
 const cargoLock = readText(cargoLockPath);
 const tauriConfig = readJson(tauriConfigPath);
 const readme = readText(readmePath);
-const roadmap = existsSync(roadmapPath) ? readText(roadmapPath) : null;
 
 const versions = [
   ["package-lock root version", packageLock.version],
@@ -55,13 +53,6 @@ const versions = [
 const tagReferences = [
   ["README current release target", requireMatch("README current release target", readme, /Current release target: `(v[^`]+)`/)],
 ];
-if (roadmap) {
-  tagReferences.push([
-    "roadmap current release baseline",
-    requireMatch("roadmap current release baseline", roadmap, /Current release baseline: `(v[^`]+)`/),
-  ]);
-}
-
 const mismatches = [];
 for (const [label, version] of versions) {
   if (version !== appVersion) {

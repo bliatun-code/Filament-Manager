@@ -1,7 +1,11 @@
-# Camera And Batch Scanning Plan
+# Camera And Batch Scanning Status
 
-This is the working plan for future Bambu Filament Code intake from barcode,
-camera, image, or OCR sources.
+This document records the current Bambu Filament Code intake status and the
+remaining plan for OCR-style work.
+
+As of `v0.19.0`, desktop/client code lookup, manual batch entry, still-image
+barcode import, and live webcam scanning are implemented. Companion/webapp keeps
+manual code lookup only.
 
 ## Scope
 
@@ -9,8 +13,8 @@ camera, image, or OCR sources.
   and media-device access is intentionally out of scope there.
 - Do not assume a hardware barcode scanner. A scanner that acts like a keyboard
   should keep working through the existing manual batch input.
-- Start with five digit Bambu Filament Code detection. OCR for full labels is a
-  later, separate batch.
+- Five digit Bambu Filament Code detection is the implemented baseline. OCR for
+  full labels is a later, separate batch.
 - Never auto-create stock from ambiguous input. Reuse the existing catalog
   decision rules: one active match can be created, multiple active matches and
   discontinued-only matches require user review, and no-match stays manual.
@@ -37,19 +41,19 @@ camera, image, or OCR sources.
 - Batch create already applies ownership, borrowed-in owner/contact, weight, and
   location consistently to all ready rows.
 
-## Recommended Implementation Order
+## Remaining Implementation Order
 
-1. Keep manual batch input as the baseline and improve copy only where users get
-   stuck.
-2. Reuse the desktop/client scan-input adapter in future capture UI without
-   changing the batch decision rules.
-3. Prefer browser-native barcode detection when available, then fall back to the
-   bundled ZXing scanner before asking the user to paste or type manually.
-4. Keep still-image import and live webcam as explicit batch tools outside the
+1. Keep manual batch input as the fallback baseline and improve copy only where
+   users get stuck.
+2. Keep still-image import and live webcam as explicit batch tools outside the
    regular catalog search flow.
-5. Treat OCR as a later review-first workflow: detect possible codes, show the
+3. Reuse the desktop/client scan-input adapter in future capture UI without
+   changing the batch decision rules.
+4. Treat OCR as a later review-first workflow: detect possible codes, show the
    source image and candidate list, and require explicit confirmation before
    stock creation.
+5. Add real label fixtures before expanding beyond barcode/Filament Code
+   capture.
 
 ## Acceptance Checks
 
@@ -58,8 +62,9 @@ camera, image, or OCR sources.
 - The UI must show ready, review, and blocked rows exactly like manual batch
   input.
 - Borrowed-in batch creation must remain blocked until owner name is present.
-- Tests must cover one active match, multiple active matches, discontinued-only,
-  no match, duplicate scans, native and fallback barcode decoding, mixed image
-  scans, and invalid non-code barcode values.
+- Tests cover one active match, multiple active matches, discontinued-only, no
+  match, duplicate scans, native and fallback barcode decoding, mixed image
+  scans, and invalid non-code barcode values. Add new fixtures when OCR work
+  starts.
 - Companion tests must continue to assert that camera/webcam wording and flows
   are absent.

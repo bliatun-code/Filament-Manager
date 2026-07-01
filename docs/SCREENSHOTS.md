@@ -3,6 +3,10 @@
 This page shows the main desktop surfaces in Filament Manager. The smaller
 preview strip in the README links here for a fuller product walkthrough.
 
+Status note, 2026-07-01: these screenshots are still useful for orientation, but
+minor UI details may differ from the latest app while the interface continues to
+evolve.
+
 <p align="center">
   <a href="#dashboard"><img src="screenshots/dashboard-thumb.jpg" alt="Dashboard" width="150"></a>
   <a href="#inventory"><img src="screenshots/inventory-thumb.jpg" alt="Inventory" width="150"></a>
