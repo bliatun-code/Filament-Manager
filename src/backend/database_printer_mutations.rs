@@ -5,6 +5,7 @@ use rusqlite::{params, Connection};
 use super::bambu_live_settings::bambu_live_integration_setting_key;
 use super::database_result::require_rows;
 use super::database_result::{InventoryError, InventoryResult};
+use super::spool_defaults::SPOOL_STATUS_ASSIGNED_PREDICATE_SQL;
 
 pub(crate) fn upsert_printer_with_ams(
     conn: &Connection,
@@ -206,14 +207,16 @@ pub(crate) fn delete_printer(conn: &Connection, printer_id: &str) -> InventoryRe
 
 fn release_printer_spool(conn: &Connection, spool_id: &str) -> InventoryResult<()> {
     conn.execute(
-        "UPDATE filament_spools
-         SET status = CASE WHEN status IN ('IN_USE', 'ASSIGNED') THEN 'IN_STOCK' ELSE status END,
+        &format!(
+            "UPDATE filament_spools
+         SET status = CASE WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL} THEN 'IN_STOCK' ELSE status END,
              location_id = CASE
                  WHEN location_id LIKE 'Printer:%' THEN home_location_id
                  ELSE location_id
              END,
              updated_at = datetime('now')
-         WHERE id = ?1 AND deleted_at IS NULL",
+         WHERE id = ?1 AND deleted_at IS NULL"
+        ),
         params![spool_id],
     )?;
     Ok(())

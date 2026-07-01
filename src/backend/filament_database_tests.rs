@@ -695,6 +695,117 @@ fn delete_printer_removes_bambu_live_integration_setting() {
 }
 
 #[test]
+fn clearing_printer_slot_releases_legacy_assigned_status_tokens() {
+    let db_path = temp_db_path("clear-slot-legacy-assigned-status");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PLA",
+                filament_name: "Basic",
+                color_name: "Green",
+                hex_color: Some("#22C55E"),
+                product_url: None,
+                vendor: Some("Generic"),
+                default_weight: Some(1000),
+            })
+            .map_err(|error| error.to_string())?;
+
+        db.upsert_printer_with_ams("printer_1", "P1S", "Workshop", 1, 4)
+            .map_err(|error| error.to_string())?;
+
+        db.conn
+            .execute(
+                "INSERT INTO inventory_locations (id, name, type)
+                 VALUES ('Shelf A', 'Shelf A', 'SHELF')",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+
+        let slot_id = "printer_1_ams_1_slot_1";
+        let printer_location = format!("Printer:Workshop:{slot_id}");
+        db.conn
+            .execute(
+                "INSERT INTO inventory_locations (id, name, type)
+                 VALUES (?1, ?1, 'PRINTER_SLOT')",
+                [&printer_location],
+            )
+            .map_err(|error| error.to_string())?;
+
+        let spool = SpoolRow {
+            id: "legacy_assigned_spool".to_string(),
+            master_id,
+            qr_code: None,
+            rfid_tag: None,
+            rfid_observed_at: None,
+            status: "IN_STOCK".to_string(),
+            ownership_type: "OWNED".to_string(),
+            owner_name: None,
+            owner_contact: None,
+            ownership_note: None,
+            initial_weight_g: Some(1000),
+            current_weight_g: Some(940),
+            remaining_g: Some(940),
+            spool_tare_weight_g: None,
+            location_id: Some("Shelf A".to_string()),
+            home_location_id: Some("Shelf A".to_string()),
+            purchase_date: None,
+            purchase_price: None,
+            batch_code: None,
+            last_used_at: None,
+        };
+        db.insert_spool(&spool).map_err(|error| error.to_string())?;
+
+        db.conn
+            .execute(
+                "UPDATE filament_spools
+                 SET status = 'in-use',
+                     location_id = ?1,
+                     home_location_id = 'Shelf A'
+                 WHERE id = 'legacy_assigned_spool'",
+                [&printer_location],
+            )
+            .map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "UPDATE ams_slots
+                 SET spool_id = 'legacy_assigned_spool'
+                 WHERE id = ?1",
+                [slot_id],
+            )
+            .map_err(|error| error.to_string())?;
+
+        db.assign_spool_to_ams_slot("printer_1", slot_id, None, None, None, false)
+            .map_err(|error| error.to_string())?;
+
+        let released: (String, Option<String>) = db
+            .conn
+            .query_row(
+                "SELECT status, location_id
+                 FROM filament_spools
+                 WHERE id = 'legacy_assigned_spool'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            released,
+            ("IN_STOCK".to_string(), Some("Shelf A".to_string()))
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("clearing_printer_slot_releases_legacy_assigned_status_tokens failed: {message}");
+    }
+}
+
+#[test]
 fn list_active_spool_loans_hides_deleted_spools() {
     let db_path = temp_db_path("active-loans-hide-deleted");
 

@@ -1,5 +1,8 @@
 use super::inventory_domain::SpoolStatus;
 
+pub(crate) const SPOOL_STATUS_ASSIGNED_PREDICATE_SQL: &str =
+    "REPLACE(REPLACE(UPPER(TRIM(COALESCE(status, ''))), '-', '_'), ' ', '_') IN ('IN_USE', 'ASSIGNED')";
+
 pub(crate) fn normalize_spool_status(raw: Option<&str>) -> String {
     let status = raw
         .map(str::trim)

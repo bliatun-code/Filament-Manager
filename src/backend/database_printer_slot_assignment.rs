@@ -2,6 +2,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_text::normalize_optional_text;
+use super::spool_defaults::SPOOL_STATUS_ASSIGNED_PREDICATE_SQL;
 
 pub(crate) fn assign_spool_to_ams_slot(
     conn: &Connection,
@@ -91,14 +92,16 @@ fn ensure_spool_exists(conn: &Connection, spool_id: &str) -> InventoryResult<()>
 
 fn release_printer_spool(conn: &Connection, spool_id: &str) -> InventoryResult<()> {
     conn.execute(
-        "UPDATE filament_spools
-         SET status = CASE WHEN status IN ('IN_USE', 'ASSIGNED') THEN 'IN_STOCK' ELSE status END,
+        &format!(
+            "UPDATE filament_spools
+         SET status = CASE WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL} THEN 'IN_STOCK' ELSE status END,
              location_id = CASE
                  WHEN location_id LIKE 'Printer:%' THEN home_location_id
                  ELSE location_id
              END,
              updated_at = datetime('now')
-         WHERE id = ?1 AND deleted_at IS NULL",
+         WHERE id = ?1 AND deleted_at IS NULL"
+        ),
         params![spool_id],
     )?;
     Ok(())
