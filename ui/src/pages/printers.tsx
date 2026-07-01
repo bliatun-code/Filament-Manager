@@ -10,6 +10,7 @@ import { useI18n } from "../lib/i18n";
 import { formatDateTime } from "../lib/printer_live_display";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import { findPrinterSlotById } from "../lib/printer_slot_model";
+import { derivePrinterSlotDisplayState } from "../lib/printer_slot_display";
 import { useResolvedTheme } from "../lib/theme_mode";
 import { useClientWriteGuards } from "../lib/use_client_write_guards";
 import { listSupportedPrinterModels } from "../lib/printer_profiles";
@@ -23,8 +24,11 @@ export default function PrintersPage() {
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
   const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
+  const desktopVisualQaNeedsPrinterAction =
+    desktopVisualQaScenario === "printer-slot-assignment" ||
+    desktopVisualQaScenario === "printer-slot-onboarding";
   const [desktopVisualQaApplied, setDesktopVisualQaApplied] = useState(
-    () => desktopVisualQaScenario !== "printer-slot-assignment",
+    () => !desktopVisualQaNeedsPrinterAction,
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -204,6 +208,68 @@ export default function PrintersPage() {
     loading,
     printers,
     setOpenDropdownSlotId,
+    tauri,
+  ]);
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenario !== "printer-slot-onboarding" ||
+      desktopVisualQaApplied ||
+      loading ||
+      !tauri
+    ) {
+      return;
+    }
+    for (const printer of printers) {
+      for (const slot of printer.slots) {
+        const { liveConfig, tray } = findLiveTrayForSlot(printer.printer.id, slot);
+        const displayState = derivePrinterSlotDisplayState({
+          slot,
+          liveConfig,
+          liveTray: tray,
+          spoolRows: spools,
+          catalogRows: catalogMasters,
+          selectedTargetSpool: null,
+          clientReadOnly,
+          clientPrinterSource,
+          locale,
+          t,
+          findSpoolById,
+        });
+        if (
+          !displayState.effectiveLiveTray ||
+          (displayState.liveCatalogMatch.kind !== "catalog_single" &&
+            displayState.liveCatalogMatch.kind !== "catalog_multiple")
+        ) {
+          continue;
+        }
+        const [master] = displayState.liveCatalogMatch.candidates;
+        if (master) {
+          createLiveBambuCatalogSpool(
+            printer,
+            slot,
+            displayState.effectiveLiveTray,
+            master,
+          );
+          setDesktopVisualQaApplied(true);
+          return;
+        }
+      }
+    }
+  }, [
+    catalogMasters,
+    clientPrinterSource,
+    clientReadOnly,
+    createLiveBambuCatalogSpool,
+    desktopVisualQaApplied,
+    desktopVisualQaScenario,
+    findLiveTrayForSlot,
+    findSpoolById,
+    loading,
+    locale,
+    printers,
+    spools,
+    t,
     tauri,
   ]);
 

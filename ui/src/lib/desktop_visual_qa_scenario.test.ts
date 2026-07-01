@@ -34,6 +34,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
   assert.equal(normalizeDesktopVisualQaScenario("loan-return"), "return-loan");
   assert.equal(normalizeDesktopVisualQaScenario("printers"), "printer-board");
   assert.equal(normalizeDesktopVisualQaScenario("slot-assignment"), "printer-slot-assignment");
+  assert.equal(normalizeDesktopVisualQaScenario("ams-onboarding"), "printer-slot-onboarding");
   assert.equal(normalizeDesktopVisualQaScenario("batch-add"), "bambu-batch-add");
   assert.equal(normalizeDesktopVisualQaScenario("general-settings"), "settings-general");
   assert.equal(normalizeDesktopVisualQaScenario("companion-settings"), "settings-library");
@@ -56,6 +57,7 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=return-loan"), "loans");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-board"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-slot-assignment"), "printers");
+  assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-slot-onboarding"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-general"), "settings");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-library"), "settings");
   assert.equal(

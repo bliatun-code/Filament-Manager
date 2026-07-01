@@ -11,6 +11,7 @@ export const DESKTOP_VISUAL_QA_SCENARIOS = [
   "return-loan",
   "printer-board",
   "printer-slot-assignment",
+  "printer-slot-onboarding",
   "settings-general",
   "settings-library",
   "settings-printer-diagnostics",
@@ -66,6 +67,11 @@ export function normalizeDesktopVisualQaScenario(
     case "printer-slot-dropdown":
     case "slot-assignment":
       return "printer-slot-assignment";
+    case "printer-slot-onboarding":
+    case "slot-onboarding":
+    case "ams-onboarding":
+    case "printer-ams-onboarding":
+      return "printer-slot-onboarding";
     case "bambu-batch-add":
     case "batch-add":
     case "bambu-batch":
@@ -129,7 +135,11 @@ export function desktopVisualQaInitialPage(
   if (scenario === "return-loan") {
     return "loans";
   }
-  if (scenario === "printer-board" || scenario === "printer-slot-assignment") {
+  if (
+    scenario === "printer-board" ||
+    scenario === "printer-slot-assignment" ||
+    scenario === "printer-slot-onboarding"
+  ) {
     return "printers";
   }
   if (

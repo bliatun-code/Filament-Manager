@@ -9,6 +9,7 @@ export const VISUAL_QA_DB_PATH_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_DB_PATH";
 export const APP_DB_PATH_ENV_VAR = "FILAMENT_MANAGER_DB_PATH";
 export const VISUAL_QA_PROFILE_BASE = "base";
 export const VISUAL_QA_PROFILE_RICH = "rich";
+export const VISUAL_QA_FIXTURE_PRINTER_SLOT_ONBOARDING = "printer-slot-onboarding";
 
 const LOCAL_APP_SUPPORT_DB = process.env.HOME
   ? `${process.env.HOME}/Library/Application Support/no.bliatun.filamentmanager/filament-manager.db`
@@ -177,6 +178,18 @@ function safeJsonParse(raw) {
     return JSON.parse(raw);
   } catch {
     return null;
+  }
+}
+
+export function normalizeVisualQaDatabaseFixtureScenario(scenario) {
+  switch (String(scenario ?? "").trim().toLowerCase()) {
+    case "printer-slot-onboarding":
+    case "slot-onboarding":
+    case "ams-onboarding":
+    case "printer-ams-onboarding":
+      return VISUAL_QA_FIXTURE_PRINTER_SLOT_ONBOARDING;
+    default:
+      return null;
   }
 }
 
@@ -365,6 +378,210 @@ export async function inspectVisualQaDatabase(dbPath) {
   }
 }
 
+function chooseSlotOnboardingCatalogMaster(db) {
+  const strictRow = db
+    .prepare(
+      `SELECT m.id, m.vendor, m.material, m.filament_name, m.color_name, m.hex_color, m.default_weight
+       FROM filament_master_list m
+       WHERE lower(m.vendor) LIKE '%bambu%'
+         AND COALESCE(m.is_discontinued, 0) = 0
+         AND COALESCE(m.hex_color, '') <> ''
+         AND NOT EXISTS (
+           SELECT 1
+           FROM filament_spools fs
+           JOIN filament_master_list sm ON sm.id = fs.master_id
+           WHERE fs.deleted_at IS NULL
+             AND lower(sm.vendor) LIKE '%bambu%'
+             AND lower(sm.material) = lower(m.material)
+         )
+       ORDER BY
+         CASE lower(m.material)
+           WHEN 'asa' THEN 0
+           WHEN 'pa6' THEN 1
+           WHEN 'pc' THEN 2
+           ELSE 3
+         END,
+         m.material,
+         m.filament_name,
+         m.color_name
+       LIMIT 1`,
+    )
+    .get();
+  if (strictRow) {
+    return strictRow;
+  }
+
+  return db
+    .prepare(
+      `SELECT m.id, m.vendor, m.material, m.filament_name, m.color_name, m.hex_color, m.default_weight
+       FROM filament_master_list m
+       WHERE lower(m.vendor) LIKE '%bambu%'
+         AND COALESCE(m.is_discontinued, 0) = 0
+         AND COALESCE(m.hex_color, '') <> ''
+         AND NOT EXISTS (
+           SELECT 1
+           FROM filament_spools fs
+           WHERE fs.master_id = m.id
+             AND fs.deleted_at IS NULL
+         )
+       ORDER BY m.material, m.filament_name, m.color_name
+       LIMIT 1`,
+    )
+    .get();
+}
+
+function findSlotForObservedTray(db, printerId, tray) {
+  const trayIndex = Number(tray?.tray_index);
+  if (!Number.isFinite(trayIndex) || trayIndex < 0 || trayIndex >= 128) {
+    return null;
+  }
+  const slotIndex = trayIndex + 1;
+  const amsIndex = Number(tray?.ams_index);
+  const preferredAmsNumber = Number.isFinite(amsIndex) ? Math.max(1, amsIndex + 1) : 1;
+  return (
+    db
+      .prepare(
+        `SELECT s.id AS slot_id, s.ams_id, s.slot_index
+         FROM ams_slots s
+         JOIN ams_units u ON u.id = s.ams_id
+         WHERE u.printer_id = ?
+           AND u.id NOT LIKE '%_ext'
+           AND s.slot_index = ?
+         ORDER BY CASE WHEN u.id LIKE ? THEN 0 ELSE 1 END, u.id
+         LIMIT 1`,
+      )
+      .get(printerId, slotIndex, `%_ams_${preferredAmsNumber}`) ?? null
+  );
+}
+
+function findSlotOnboardingFixtureTarget(db) {
+  const rows = db
+    .prepare(
+      `SELECT key, value
+       FROM settings
+       WHERE key LIKE ? || '%'
+       ORDER BY key ASC`,
+    )
+    .all(BAMBU_LIVE_SETTING_PREFIX);
+  for (const row of rows) {
+    const printerId = String(row.key).slice(BAMBU_LIVE_SETTING_PREFIX.length);
+    const config = safeJsonParse(row.value);
+    const trays = config?.observed_state?.trays;
+    if (!printerId || !Array.isArray(trays)) {
+      continue;
+    }
+    for (let trayIndex = 0; trayIndex < trays.length; trayIndex += 1) {
+      const tray = trays[trayIndex];
+      if (!tray?.loaded) {
+        continue;
+      }
+      const slot = findSlotForObservedTray(db, printerId, tray);
+      if (slot) {
+        return {
+          config,
+          printerId,
+          settingKey: row.key,
+          slot,
+          tray,
+          trayArrayIndex: trayIndex,
+        };
+      }
+    }
+  }
+  return null;
+}
+
+async function applyPrinterSlotOnboardingFixtureWithBetterSqlite(dbPath, options = {}) {
+  const module = await import("better-sqlite3");
+  const Database = module.default ?? module;
+  const db = new Database(dbPath);
+  try {
+    const target = findSlotOnboardingFixtureTarget(db);
+    if (!target) {
+      throw new Error("No loaded Bambu Live AMS tray was found for printer slot onboarding QA.");
+    }
+    const master = chooseSlotOnboardingCatalogMaster(db);
+    if (!master) {
+      throw new Error("No unused Bambu catalog master was found for printer slot onboarding QA.");
+    }
+
+    const now = (options.now ?? new Date()).toISOString();
+    const fixtureIdentity = `VISUALQA-${target.slot.slot_id}`;
+    const nextTray = {
+      ...target.tray,
+      loaded: true,
+      filament_type: master.material,
+      filament_name: master.filament_name,
+      color_hex: master.hex_color,
+      remaining_percent: target.tray.remaining_percent ?? 88,
+      observed_rfid_tag: null,
+      tray_uuid: fixtureIdentity,
+      chip_id: null,
+      tray_info_idx: target.tray.tray_info_idx ?? null,
+      tray_id_name: `${master.filament_name} (${master.color_name})`,
+      last_identity_seen_at: now,
+      matched_inventory_spool_id: null,
+      matched_inventory_mode: null,
+      match_status: "unknown_rfid",
+      match_note: "Visual QA fixture: unknown Bambu RFID for catalog onboarding.",
+    };
+    const nextConfig = structuredClone(target.config);
+    nextConfig.observed_state = nextConfig.observed_state ?? {};
+    nextConfig.observed_state.online = true;
+    nextConfig.observed_state.mqtt_connected = true;
+    nextConfig.observed_state.last_seen_at = now;
+    nextConfig.observed_state.active_ams_index = nextTray.ams_index ?? null;
+    nextConfig.observed_state.active_tray_index = nextTray.tray_index;
+    nextConfig.observed_state.trays = [...(nextConfig.observed_state.trays ?? [])];
+    nextConfig.observed_state.trays[target.trayArrayIndex] = nextTray;
+
+    const transaction = db.transaction(() => {
+      db.prepare(
+        `UPDATE ams_slots
+         SET spool_id = NULL,
+             rfid_override_tray_uuid = NULL,
+             rfid_override_color_hex = NULL,
+             live_cache_cleared_at = NULL,
+             last_seen_at = ?
+         WHERE id = ?`,
+      ).run(now, target.slot.slot_id);
+      db.prepare("UPDATE settings SET value = ? WHERE key = ?").run(
+        JSON.stringify(nextConfig),
+        target.settingKey,
+      );
+    });
+    transaction();
+
+    return {
+      fixture: VISUAL_QA_FIXTURE_PRINTER_SLOT_ONBOARDING,
+      printerId: target.printerId,
+      slotId: target.slot.slot_id,
+      masterId: master.id,
+      material: master.material,
+      filamentName: master.filament_name,
+      colorName: master.color_name,
+      hexColor: master.hex_color,
+      rfid: fixtureIdentity,
+    };
+  } finally {
+    db.close();
+  }
+}
+
+export async function applyVisualQaDatabaseFixture(dbPath, scenario, options = {}) {
+  const fixture = normalizeVisualQaDatabaseFixtureScenario(scenario);
+  if (!fixture) {
+    return null;
+  }
+  if (options.live) {
+    return null;
+  }
+  if (fixture === VISUAL_QA_FIXTURE_PRINTER_SLOT_ONBOARDING) {
+    return applyPrinterSlotOnboardingFixtureWithBetterSqlite(dbPath, options);
+  }
+  return null;
+}
+
 export function assessVisualQaDataset(
   inspection,
   options = {},
@@ -446,6 +663,7 @@ export function assessVisualQaDataset(
 
 export function formatVisualQaDatasetReport({
   assessment,
+  fixtures = [],
   inspection,
   live = false,
   sourcePath,
@@ -491,6 +709,19 @@ export function formatVisualQaDatasetReport({
       }`,
     );
     lines.push(`  - Latest printer live event: ${details.latestPrinterLiveEventAt ?? "n/a"}`);
+  }
+
+  if (fixtures.length > 0) {
+    lines.push("Visual QA database fixtures:");
+    for (const fixture of fixtures) {
+      if (fixture.fixture === VISUAL_QA_FIXTURE_PRINTER_SLOT_ONBOARDING) {
+        lines.push(
+          `  - ${fixture.fixture}: ${fixture.slotId} -> ${fixture.material} ${fixture.filamentName} ${fixture.colorName}`,
+        );
+      } else {
+        lines.push(`  - ${fixture.fixture ?? "unknown"}`);
+      }
+    }
   }
 
   if (assessment.warnings.length > 0) {
@@ -558,6 +789,9 @@ export async function prepareVisualQaDatabase(options = {}) {
     options.targetPath ??
     visualQaTempDbPath(source.path, options.now ?? new Date());
   const copyMethod = await copySqliteDatabase(source.path, targetPath);
+  const fixture = await applyVisualQaDatabaseFixture(targetPath, options.scenario, {
+    now: options.now,
+  });
   const targetInspection = await inspectVisualQaDatabase(targetPath);
   const targetAssessment = assessVisualQaDataset(targetInspection, { ...options, profile });
   if (targetAssessment.errors.length > 0) {
@@ -574,6 +808,7 @@ export async function prepareVisualQaDatabase(options = {}) {
   return {
     assessment: targetAssessment,
     copyMethod,
+    fixtures: fixture ? [fixture] : [],
     inspection: targetInspection,
     live: false,
     sourcePath: source.path,
