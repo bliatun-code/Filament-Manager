@@ -172,6 +172,8 @@ pub mod library_sync_defaults;
 pub mod loan_defaults;
 #[path = "../../../src/backend/printer_slot_live_mapping.rs"]
 pub mod printer_slot_live_mapping;
+#[path = "../../../src/backend/printer_slot_location.rs"]
+pub mod printer_slot_location;
 #[path = "../../../src/backend/spool_defaults.rs"]
 pub mod spool_defaults;
 #[path = "../../../src/backend/statistics.rs"]

@@ -2,6 +2,9 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_text::normalize_optional_text;
+use super::printer_slot_location::{
+    format_printer_slot_location, PRINTER_SLOT_LOCATION_PREDICATE_SQL,
+};
 use super::spool_defaults::SPOOL_STATUS_ASSIGNED_PREDICATE_SQL;
 
 pub(crate) fn assign_spool_to_ams_slot(
@@ -91,19 +94,17 @@ fn ensure_spool_exists(conn: &Connection, spool_id: &str) -> InventoryResult<()>
 }
 
 fn release_printer_spool(conn: &Connection, spool_id: &str) -> InventoryResult<()> {
-    conn.execute(
-        &format!(
-            "UPDATE filament_spools
-         SET status = CASE WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL} THEN 'IN_STOCK' ELSE status END,
-             location_id = CASE
-                 WHEN location_id LIKE 'Printer:%' THEN home_location_id
-                 ELSE location_id
-             END,
-             updated_at = datetime('now')
-         WHERE id = ?1 AND deleted_at IS NULL"
-        ),
-        params![spool_id],
-    )?;
+    let sql = format!(
+        "UPDATE filament_spools
+             SET status = CASE WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL} THEN 'IN_STOCK' ELSE status END,
+                 location_id = CASE
+                     WHEN {PRINTER_SLOT_LOCATION_PREDICATE_SQL} THEN home_location_id
+                     ELSE location_id
+                 END,
+                 updated_at = datetime('now')
+             WHERE id = ?1 AND deleted_at IS NULL"
+    );
+    conn.execute(&sql, params![spool_id])?;
     Ok(())
 }
 
@@ -129,7 +130,7 @@ fn assign_spool_location(
     printer_name: &str,
     slot_id: &str,
 ) -> InventoryResult<()> {
-    let location = format!("Printer:{printer_name}:{slot_id}");
+    let location = format_printer_slot_location(printer_name, slot_id);
     conn.execute(
         "INSERT INTO inventory_locations (id, name, type)
          VALUES (?1, ?2, 'PRINTER_SLOT')
