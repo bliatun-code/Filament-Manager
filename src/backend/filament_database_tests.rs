@@ -788,6 +788,124 @@ fn list_active_spool_loans_hides_deleted_spools() {
 }
 
 #[test]
+fn active_loan_queries_ignore_closed_status_without_return_timestamp() {
+    let db_path = temp_db_path("active-loans-ignore-closed-status");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PETG",
+                filament_name: "Basic",
+                color_name: "Blue",
+                hex_color: Some("#3366ff"),
+                product_url: None,
+                vendor: Some("Generic"),
+                default_weight: Some(1000),
+            })
+            .map_err(|error| error.to_string())?;
+
+        let make_spool = |id: &str| SpoolRow {
+            id: id.to_string(),
+            master_id: master_id.clone(),
+            qr_code: None,
+            rfid_tag: None,
+            rfid_observed_at: None,
+            status: "IN_STOCK".to_string(),
+            ownership_type: "OWNED".to_string(),
+            owner_name: None,
+            owner_contact: None,
+            ownership_note: None,
+            initial_weight_g: Some(1000),
+            current_weight_g: Some(1000),
+            remaining_g: Some(1000),
+            spool_tare_weight_g: None,
+            location_id: None,
+            home_location_id: None,
+            purchase_date: None,
+            purchase_price: None,
+            batch_code: None,
+            last_used_at: None,
+        };
+
+        for spool in [
+            make_spool("active_spool"),
+            make_spool("cancelled_spool"),
+            make_spool("lost_spool"),
+        ] {
+            db.insert_spool(&spool).map_err(|error| error.to_string())?;
+        }
+
+        db.create_spool_loan("active_spool", "Alice", 700, None)
+            .map_err(|error| error.to_string())?;
+        db.create_spool_loan("cancelled_spool", "Bob", 650, None)
+            .map_err(|error| error.to_string())?;
+        db.create_spool_loan("lost_spool", "Carla", 600, None)
+            .map_err(|error| error.to_string())?;
+
+        db.conn
+            .execute(
+                "UPDATE spool_loans
+                 SET loan_status = 'CANCELLED'
+                 WHERE spool_id = 'cancelled_spool'",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "UPDATE spool_loans
+                 SET loan_status = 'LOST'
+                 WHERE spool_id = 'lost_spool'",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+
+        assert!(db
+            .spool_has_active_loan("active_spool")
+            .map_err(|error| error.to_string())?);
+        assert!(!db
+            .spool_has_active_loan("cancelled_spool")
+            .map_err(|error| error.to_string())?);
+        assert!(!db
+            .spool_has_active_loan("lost_spool")
+            .map_err(|error| error.to_string())?);
+
+        let active_loans = db
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(active_loans.len(), 1);
+        assert_eq!(active_loans[0].loan.spool_id, "active_spool");
+
+        let active_history = db
+            .list_spool_loans_for_direction(10, false, Some("OUTBOUND"))
+            .map_err(|error| error.to_string())?;
+        assert_eq!(active_history.len(), 1);
+        assert_eq!(active_history[0].loan.spool_id, "active_spool");
+
+        let all_history = db
+            .list_spool_loans_for_direction(10, true, Some("OUTBOUND"))
+            .map_err(|error| error.to_string())?;
+        assert!(all_history.iter().any(|row| {
+            row.loan.spool_id == "cancelled_spool" && row.loan.loan_status == "CANCELLED"
+        }));
+        assert!(all_history
+            .iter()
+            .any(|row| row.loan.spool_id == "lost_spool" && row.loan.loan_status == "LOST"));
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "active_loan_queries_ignore_closed_status_without_return_timestamp failed: {message}"
+        );
+    }
+}
+
+#[test]
 fn list_loan_usage_by_person_can_scope_to_inbound_and_outbound() {
     let db_path = temp_db_path("loan-usage-direction");
 

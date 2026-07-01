@@ -4,6 +4,7 @@ use crate::backend::filament_database::{
     FilamentMasterCatalogRow, PrinterOverviewRow, SpoolHistoryEventRow, SpoolLoanDetailsRow,
     SpoolLoanRow, SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow,
 };
+use crate::backend::inventory_domain::OwnershipType;
 use crate::backend::inventory_engine::{
     AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
     CreateWishlistItemInput, DeleteSpoolInput, InventoryEngine, LendSpoolInput, PurgeSpoolInput,
@@ -169,10 +170,7 @@ impl CompanionService {
             .into_iter()
             .find(|row| row.loan.spool_id == spool_id);
         let active_loan = if outbound_active_loan.is_some()
-            || !spool
-                .spool
-                .ownership_type
-                .eq_ignore_ascii_case("BORROWED_IN")
+            || !OwnershipType::from_raw(Some(&spool.spool.ownership_type)).is_borrowed_in()
         {
             outbound_active_loan
         } else {

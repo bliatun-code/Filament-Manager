@@ -1,5 +1,40 @@
 use crate::backend::inventory_domain::LoanDirection;
 
+pub(crate) const LOAN_STATUS_SELECT_SQL: &str = "CASE
+    WHEN returned_at IS NOT NULL THEN 'RETURNED'
+    WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(loan_status, ''))), '-', '_'), ' ', '_') IN ('RETURNED', 'LOST', 'CANCELLED')
+        THEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(loan_status, ''))), '-', '_'), ' ', '_')
+    ELSE 'ACTIVE'
+END";
+
+pub(crate) const LOAN_STATUS_SELECT_SQL_L: &str = "CASE
+    WHEN l.returned_at IS NOT NULL THEN 'RETURNED'
+    WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(l.loan_status, ''))), '-', '_'), ' ', '_') IN ('RETURNED', 'LOST', 'CANCELLED')
+        THEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(l.loan_status, ''))), '-', '_'), ' ', '_')
+    ELSE 'ACTIVE'
+END";
+
+pub(crate) const ACTIVE_LOAN_PREDICATE_SQL: &str = "CASE
+    WHEN returned_at IS NOT NULL THEN 'RETURNED'
+    WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(loan_status, ''))), '-', '_'), ' ', '_') IN ('RETURNED', 'LOST', 'CANCELLED')
+        THEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(loan_status, ''))), '-', '_'), ' ', '_')
+    ELSE 'ACTIVE'
+END = 'ACTIVE'";
+
+pub(crate) const ACTIVE_LOAN_PREDICATE_SQL_L: &str = "CASE
+    WHEN l.returned_at IS NOT NULL THEN 'RETURNED'
+    WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(l.loan_status, ''))), '-', '_'), ' ', '_') IN ('RETURNED', 'LOST', 'CANCELLED')
+        THEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(l.loan_status, ''))), '-', '_'), ' ', '_')
+    ELSE 'ACTIVE'
+END = 'ACTIVE'";
+
+pub(crate) const RETURNED_LOAN_PREDICATE_SQL_L: &str = "CASE
+    WHEN l.returned_at IS NOT NULL THEN 'RETURNED'
+    WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(l.loan_status, ''))), '-', '_'), ' ', '_') IN ('RETURNED', 'LOST', 'CANCELLED')
+        THEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(l.loan_status, ''))), '-', '_'), ' ', '_')
+    ELSE 'ACTIVE'
+END = 'RETURNED'";
+
 pub(crate) fn normalize_loan_direction_filter(raw: Option<&str>) -> String {
     let token = raw
         .map(str::trim)

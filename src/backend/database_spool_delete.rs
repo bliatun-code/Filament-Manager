@@ -2,16 +2,19 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 use super::database_result::require_rows;
 use super::database_result::{InventoryError, InventoryResult};
+use super::loan_defaults::ACTIVE_LOAN_PREDICATE_SQL;
 
 pub(crate) fn soft_delete_spool(conn: &Connection, spool_id: &str) -> InventoryResult<()> {
     let tx = conn.unchecked_transaction()?;
     let active_loan_exists: Option<i64> = tx
         .query_row(
-            "SELECT 1
+            &format!(
+                "SELECT 1
              FROM spool_loans
              WHERE spool_id = ?1
-               AND returned_at IS NULL
-             LIMIT 1",
+               AND {ACTIVE_LOAN_PREDICATE_SQL}
+             LIMIT 1"
+            ),
             params![spool_id],
             |row| row.get(0),
         )

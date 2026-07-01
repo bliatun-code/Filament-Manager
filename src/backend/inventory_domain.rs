@@ -106,18 +106,22 @@ impl LoanDirection {
 pub enum LoanStatus {
     Active,
     Returned,
+    Lost,
+    Cancelled,
 }
 
 impl LoanStatus {
     pub fn from_raw(value: Option<&str>, returned_at: Option<&str>) -> Self {
+        if returned_at
+            .map(str::trim)
+            .is_some_and(|value| !value.is_empty())
+        {
+            return Self::Returned;
+        }
         match normalize_domain_token(value, "ACTIVE").as_str() {
             "RETURNED" => Self::Returned,
-            _ if returned_at
-                .map(str::trim)
-                .is_some_and(|value| !value.is_empty()) =>
-            {
-                Self::Returned
-            }
+            "LOST" => Self::Lost,
+            "CANCELLED" => Self::Cancelled,
             _ => Self::Active,
         }
     }
@@ -126,7 +130,13 @@ impl LoanStatus {
         match self {
             Self::Active => "ACTIVE",
             Self::Returned => "RETURNED",
+            Self::Lost => "LOST",
+            Self::Cancelled => "CANCELLED",
         }
+    }
+
+    pub fn is_active(self) -> bool {
+        self == Self::Active
     }
 }
 
@@ -172,6 +182,11 @@ mod tests {
         assert_eq!(
             LoanStatus::from_raw(Some("ACTIVE"), Some("2026-07-01 10:00:00")),
             LoanStatus::Returned
+        );
+        assert_eq!(LoanStatus::from_raw(Some("lost"), None), LoanStatus::Lost);
+        assert_eq!(
+            LoanStatus::from_raw(Some("cancelled"), None),
+            LoanStatus::Cancelled
         );
     }
 }

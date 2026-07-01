@@ -6,16 +6,21 @@ use super::database_loan_models::{
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_rows::map_active_spool_loan_row;
 use super::inventory_domain::LoanDirection;
-use super::loan_defaults::normalize_loan_direction_filter;
+use super::loan_defaults::{
+    normalize_loan_direction_filter, ACTIVE_LOAN_PREDICATE_SQL, ACTIVE_LOAN_PREDICATE_SQL_L,
+    LOAN_STATUS_SELECT_SQL_L, RETURNED_LOAN_PREDICATE_SQL_L,
+};
 
 pub(crate) fn spool_has_active_loan(conn: &Connection, spool_id: &str) -> InventoryResult<bool> {
     let exists: Option<i64> = conn
         .query_row(
-            "SELECT 1
+            &format!(
+                "SELECT 1
              FROM spool_loans
              WHERE spool_id = ?1
-               AND returned_at IS NULL
-             LIMIT 1",
+               AND {ACTIVE_LOAN_PREDICATE_SQL}
+             LIMIT 1"
+            ),
             params![spool_id],
             |row| row.get(0),
         )
@@ -26,14 +31,11 @@ pub(crate) fn spool_has_active_loan(conn: &Connection, spool_id: &str) -> Invent
 pub(crate) fn list_active_spool_loans(
     conn: &Connection,
 ) -> InventoryResult<Vec<ActiveSpoolLoanRow>> {
-    let mut stmt = conn.prepare(
+    let mut stmt = conn.prepare(&format!(
         "SELECT
             l.id, l.spool_id, l.borrower_name,
             COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') AS loan_direction,
-            COALESCE(NULLIF(l.loan_status, ''), CASE
-                WHEN l.returned_at IS NULL THEN 'ACTIVE'
-                ELSE 'RETURNED'
-            END) AS loan_status,
+            {LOAN_STATUS_SELECT_SQL_L} AS loan_status,
             COALESCE(NULLIF(l.counterparty_name, ''), l.borrower_name) AS counterparty_name,
             l.counterparty_contact, l.counterparty_note, l.grams_out, l.lent_note, l.lent_at,
             l.expected_return_at, l.returned_at, l.returned_grams, l.consumed_grams, l.return_note,
@@ -43,10 +45,10 @@ pub(crate) fn list_active_spool_loans(
          JOIN filament_spools s ON s.id = l.spool_id
          JOIN filament_master_list m ON m.id = s.master_id
          WHERE COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') = 'OUTBOUND'
-           AND l.returned_at IS NULL
+           AND {ACTIVE_LOAN_PREDICATE_SQL_L}
            AND s.deleted_at IS NULL
          ORDER BY l.lent_at DESC",
-    )?;
+    ))?;
 
     let rows = stmt.query_map([], map_active_spool_loan_row)?;
     let mut output = Vec::new();
@@ -64,13 +66,11 @@ pub(crate) fn find_active_spool_loan_for_direction(
     let loan_direction = LoanDirection::from_raw(Some(direction)).as_str();
 
     conn.query_row(
-        "SELECT
+        &format!(
+            "SELECT
             l.id, l.spool_id, l.borrower_name,
             COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') AS loan_direction,
-            COALESCE(NULLIF(l.loan_status, ''), CASE
-                WHEN l.returned_at IS NULL THEN 'ACTIVE'
-                ELSE 'RETURNED'
-            END) AS loan_status,
+            {LOAN_STATUS_SELECT_SQL_L} AS loan_status,
             COALESCE(NULLIF(l.counterparty_name, ''), l.borrower_name) AS counterparty_name,
             l.counterparty_contact, l.counterparty_note, l.grams_out, l.lent_note, l.lent_at,
             l.expected_return_at, l.returned_at, l.returned_grams, l.consumed_grams, l.return_note,
@@ -81,9 +81,10 @@ pub(crate) fn find_active_spool_loan_for_direction(
          JOIN filament_master_list m ON m.id = s.master_id
          WHERE l.spool_id = ?1
            AND COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') = ?2
-           AND l.returned_at IS NULL
+           AND {ACTIVE_LOAN_PREDICATE_SQL_L}
            AND s.deleted_at IS NULL
-         LIMIT 1",
+         LIMIT 1"
+        ),
         params![spool_id, loan_direction],
         map_active_spool_loan_row,
     )
@@ -106,9 +107,9 @@ pub(crate) fn list_loan_usage_by_person_for_direction(
             COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') AS loan_direction,
             COALESCE(NULLIF(l.counterparty_name, ''), l.borrower_name) AS borrower_name,
             COALESCE(SUM(l.consumed_grams), 0) AS total_consumed_g,
-            COALESCE(SUM(CASE WHEN l.returned_at IS NOT NULL THEN 1 ELSE 0 END), 0) AS completed_loans,
+            COALESCE(SUM(CASE WHEN {returned_loan_predicate} THEN 1 ELSE 0 END), 0) AS completed_loans,
             COALESCE(SUM(CASE
-                WHEN l.returned_at IS NULL AND s.id IS NOT NULL AND s.deleted_at IS NULL THEN 1
+                WHEN {active_loan_predicate} AND s.id IS NOT NULL AND s.deleted_at IS NULL THEN 1
                 ELSE 0
             END), 0) AS active_loans
          FROM spool_loans l
@@ -122,7 +123,9 @@ pub(crate) fn list_loan_usage_by_person_for_direction(
             OR active_loans > 0
          ORDER BY total_consumed_g DESC, borrower_name ASC
          LIMIT ?1",
-        direction_clause
+        direction_clause,
+        returned_loan_predicate = RETURNED_LOAN_PREDICATE_SQL_L,
+        active_loan_predicate = ACTIVE_LOAN_PREDICATE_SQL_L
     ))?;
 
     let rows = stmt.query_map(params![limit], |row| {
@@ -153,18 +156,15 @@ pub(crate) fn list_spool_loans_for_direction(
         _ => "COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') = 'OUTBOUND'",
     };
     let status_clause = if include_returned {
-        "1 = 1"
+        "1 = 1".to_string()
     } else {
-        "l.returned_at IS NULL AND s.deleted_at IS NULL"
+        format!("{ACTIVE_LOAN_PREDICATE_SQL_L} AND s.deleted_at IS NULL")
     };
     let mut stmt = conn.prepare(&format!(
         "SELECT
             l.id, l.spool_id, l.borrower_name,
             COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') AS loan_direction,
-            COALESCE(NULLIF(l.loan_status, ''), CASE
-                WHEN l.returned_at IS NULL THEN 'ACTIVE'
-                ELSE 'RETURNED'
-            END) AS loan_status,
+            {LOAN_STATUS_SELECT_SQL_L} AS loan_status,
             COALESCE(NULLIF(l.counterparty_name, ''), l.borrower_name) AS counterparty_name,
             l.counterparty_contact, l.counterparty_note, l.grams_out, l.lent_note, l.lent_at,
             l.expected_return_at, l.returned_at, l.returned_grams, l.consumed_grams, l.return_note,

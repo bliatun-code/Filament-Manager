@@ -5,6 +5,7 @@ use super::database_loan_models::SpoolLoanRow;
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_rows::map_spool_loan_row;
 use super::database_text::normalize_optional_text;
+use super::loan_defaults::{ACTIVE_LOAN_PREDICATE_SQL, LOAN_STATUS_SELECT_SQL};
 
 pub(crate) fn create_spool_loan(
     conn: &Connection,
@@ -114,7 +115,13 @@ fn ensure_spool_can_be_loaned(conn: &Connection, spool_id: &str) -> InventoryRes
 
     let already_loaned: Option<i64> = conn
         .query_row(
-            "SELECT 1 FROM spool_loans WHERE spool_id = ?1 AND returned_at IS NULL LIMIT 1",
+            &format!(
+                "SELECT 1
+                 FROM spool_loans
+                 WHERE spool_id = ?1
+                   AND {ACTIVE_LOAN_PREDICATE_SQL}
+                 LIMIT 1"
+            ),
             params![spool_id],
             |row| row.get(0),
         )
@@ -129,18 +136,17 @@ fn ensure_spool_can_be_loaned(conn: &Connection, spool_id: &str) -> InventoryRes
 
 fn select_loan_by_id(conn: &Connection, loan_id: &str) -> InventoryResult<SpoolLoanRow> {
     conn.query_row(
-        "SELECT id, spool_id, borrower_name,
+        &format!(
+            "SELECT id, spool_id, borrower_name,
                 COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND') AS loan_direction,
-                COALESCE(NULLIF(loan_status, ''), CASE
-                    WHEN returned_at IS NULL THEN 'ACTIVE'
-                    ELSE 'RETURNED'
-                END) AS loan_status,
+                {LOAN_STATUS_SELECT_SQL} AS loan_status,
                 COALESCE(NULLIF(counterparty_name, ''), borrower_name) AS counterparty_name,
                 counterparty_contact, counterparty_note, grams_out, lent_note, lent_at,
                 expected_return_at, returned_at, returned_grams, consumed_grams, return_note
          FROM spool_loans
          WHERE id = ?1
-         LIMIT 1",
+         LIMIT 1"
+        ),
         params![loan_id],
         map_spool_loan_row,
     )
