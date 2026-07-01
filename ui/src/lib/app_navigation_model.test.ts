@@ -26,6 +26,7 @@ test("initial page resolver opens the page requested by fixtures and visual QA s
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=bambu-batch-add"), "inventory");
   assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=return-loan"), "loans");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-board"), "printers");
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-slot-assignment"), "printers");
   assert.equal(resolveInitialPageFromSearch("?bfm_inventory_fixture=list"), "dashboard");
   assert.equal(resolveInitialPageFromSearch(""), "dashboard");
   assert.equal(resolveInitialPageFromSearch(null), "dashboard");

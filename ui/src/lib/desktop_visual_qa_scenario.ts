@@ -10,6 +10,7 @@ export const DESKTOP_VISUAL_QA_SCENARIOS = [
   "rfid-capture",
   "return-loan",
   "printer-board",
+  "printer-slot-assignment",
 ] as const;
 
 export type DesktopVisualQaScenario = (typeof DESKTOP_VISUAL_QA_SCENARIOS)[number];
@@ -44,6 +45,10 @@ export function normalizeDesktopVisualQaScenario(
     case "printer-board":
     case "printers":
       return "printer-board";
+    case "printer-slot-assignment":
+    case "printer-slot-dropdown":
+    case "slot-assignment":
+      return "printer-slot-assignment";
     case "bambu-batch-add":
     case "batch-add":
     case "bambu-batch":
@@ -83,7 +88,7 @@ export function desktopVisualQaInitialPage(
   if (scenario === "return-loan") {
     return "loans";
   }
-  if (scenario === "printer-board") {
+  if (scenario === "printer-board" || scenario === "printer-slot-assignment") {
     return "printers";
   }
   return "inventory";

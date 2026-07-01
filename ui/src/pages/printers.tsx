@@ -8,6 +8,7 @@ import { RfidOverrideModal } from "../components/rfid_override_modal";
 import { SlotCatalogOnboardingModal } from "../components/slot_catalog_onboarding_modal";
 import { useI18n } from "../lib/i18n";
 import { formatDateTime } from "../lib/printer_live_display";
+import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import { findPrinterSlotById } from "../lib/printer_slot_model";
 import { useResolvedTheme } from "../lib/theme_mode";
 import { useClientWriteGuards } from "../lib/use_client_write_guards";
@@ -21,6 +22,10 @@ export default function PrintersPage() {
   const { t, locale } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
+  const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
+  const [desktopVisualQaApplied, setDesktopVisualQaApplied] = useState(
+    () => desktopVisualQaScenario !== "printer-slot-assignment",
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -172,6 +177,35 @@ export default function PrintersPage() {
   useEffect(() => {
     resetPrinterInteractionStateRef.current = resetPrinterInteractionState;
   }, [resetPrinterInteractionState]);
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenario !== "printer-slot-assignment" ||
+      desktopVisualQaApplied ||
+      loading ||
+      !tauri
+    ) {
+      return;
+    }
+    for (const printer of printers) {
+      const slot = printer.slots.find(
+        (candidate) => allowedSpoolsForSlot(candidate.spool_id).length > 0,
+      );
+      if (slot) {
+        setOpenDropdownSlotId(slot.slot_id);
+        setDesktopVisualQaApplied(true);
+        return;
+      }
+    }
+  }, [
+    allowedSpoolsForSlot,
+    desktopVisualQaApplied,
+    desktopVisualQaScenario,
+    loading,
+    printers,
+    setOpenDropdownSlotId,
+    tauri,
+  ]);
 
   return (
     <div className="page-shell">
