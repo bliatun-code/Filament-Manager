@@ -1,4 +1,5 @@
 import { suggestSwatchHex } from "./companion_theme.js";
+import { isBorrowedInOwnership } from "./companion_domain.js";
 
 export function createCompanionStockMutations({
   state,
@@ -15,6 +16,7 @@ export function createCompanionStockMutations({
 }) {
   async function submitManualSpoolRegistration(values) {
     const draft = normalizeAddSpoolValues(values);
+    const isBorrowedIn = isBorrowedInOwnership(draft.ownershipType);
     if (draft.source !== "manual" && !draft.master) {
       setStatus(tr("status.stockCatalogRequired", "Choose a catalog filament before adding stock."), "error");
       render();
@@ -35,7 +37,7 @@ export function createCompanionStockMutations({
       render();
       return;
     }
-    if (draft.ownershipType === "BORROWED_IN" && !draft.ownerName) {
+    if (isBorrowedIn && !draft.ownerName) {
       setStatus(tr("status.borrowedInOwnerRequired", "Enter who the borrowed-in spool is borrowed from."), "error");
       render();
       return;
@@ -58,7 +60,7 @@ export function createCompanionStockMutations({
     }
 
     const requestPath =
-      draft.ownershipType === "BORROWED_IN" ? "/api/v1/spools/borrowed-in" : "/api/v1/spools/owned";
+      isBorrowedIn ? "/api/v1/spools/borrowed-in" : "/api/v1/spools/owned";
     const requestBody =
       draft.source === "manual"
         ? {
@@ -76,7 +78,7 @@ export function createCompanionStockMutations({
                 draft.vendor,
                 draft.material,
               ),
-            ...(draft.ownershipType === "BORROWED_IN"
+            ...(isBorrowedIn
               ? {
                   owner_name: draft.ownerName,
                   owner_contact: draft.ownerContact || null,
@@ -88,7 +90,7 @@ export function createCompanionStockMutations({
             master_id: draft.master.id,
             initial_weight_g: draft.initialWeight,
             location: draft.location || null,
-            ...(draft.ownershipType === "BORROWED_IN"
+            ...(isBorrowedIn
               ? {
                   owner_name: draft.ownerName,
                   owner_contact: draft.ownerContact || null,
@@ -99,7 +101,7 @@ export function createCompanionStockMutations({
 
     setBusy(true);
     setStatus(
-      draft.ownershipType === "BORROWED_IN"
+      isBorrowedIn
         ? tr("status.borrowedInRegistering", "Registering borrowed-in spool...")
         : tr("status.stockAdding", "Adding spool to inventory..."),
       "default",
@@ -120,13 +122,13 @@ export function createCompanionStockMutations({
       if (spoolId) {
         setDetailFeedback(
           spoolId,
-          draft.ownershipType === "BORROWED_IN"
+          isBorrowedIn
             ? tr("status.borrowedInRegisteredJustNow", "Borrowed-in spool registered just now.")
             : tr("status.stockAddedJustNow", "Spool added to inventory just now."),
         );
       }
       setStatus(
-        draft.ownershipType === "BORROWED_IN"
+        isBorrowedIn
           ? tr("status.borrowedInRegistered", "Borrowed-in spool registered.")
           : tr("status.stockAdded", "Spool added to inventory."),
         "success",
@@ -134,7 +136,7 @@ export function createCompanionStockMutations({
     } catch (error) {
       setStatus(
         error.message ||
-          (draft.ownershipType === "BORROWED_IN"
+          (isBorrowedIn
             ? tr("status.borrowedInRegisterFailed", "Failed to register borrowed-in spool.")
             : tr("status.stockAddFailed", "Failed to add spool to inventory.")),
         "error",

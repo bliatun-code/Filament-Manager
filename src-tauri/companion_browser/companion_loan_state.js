@@ -1,3 +1,5 @@
+import { isSpoolStatusDeleted } from "./companion_domain.js";
+
 const CLOSED_LOAN_STATUSES = new Set(["RETURNED", "LOST", "CANCELLED"]);
 
 export function normalizeLoanStatus(row) {
@@ -8,7 +10,7 @@ export function normalizeLoanStatus(row) {
 }
 
 export function loanHasDeletedSpool(row) {
-  return String(row?.spool_status || "").trim().toUpperCase() === "DELETED";
+  return isSpoolStatusDeleted(row?.spool_status);
 }
 
 export function isLoanReturned(row) {

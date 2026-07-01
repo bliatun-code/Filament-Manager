@@ -25,6 +25,8 @@ function loanRow(overrides = {}) {
 
 test("companion loan state ignores legacy active rows for deleted spools", () => {
   assert.equal(loanHasDeletedSpool(loanRow({ spool_status: "DELETED" })), true);
+  assert.equal(loanHasDeletedSpool(loanRow({ spool_status: " deleted " })), true);
+  assert.equal(loanHasDeletedSpool(loanRow({ spool_status: "MISSING" })), false);
   assert.equal(isLoanCurrentlyActive(loanRow()), true);
   assert.equal(isLoanCurrentlyActive(loanRow({ spool_status: "DELETED" })), false);
   assert.equal(

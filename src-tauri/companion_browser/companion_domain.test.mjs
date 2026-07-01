@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   isEditableSpoolStatus,
   isSpoolStatusAssigned,
+  isSpoolStatusDeleted,
   isSpoolStatusLiveRfidCandidate,
   isSpoolStatusUnavailableForPrinterSlot,
   normalizeEditableSpoolStatus,
@@ -30,6 +31,8 @@ test("companion domain keeps editable status choices narrow", () => {
 test("companion domain filters unavailable printer and RFID candidates consistently", () => {
   assert.equal(isSpoolStatusUnavailableForPrinterSlot("borrowed"), true);
   assert.equal(isSpoolStatusUnavailableForPrinterSlot("missing"), true);
+  assert.equal(isSpoolStatusDeleted(" deleted "), true);
+  assert.equal(isSpoolStatusDeleted("missing"), false);
   assert.equal(isSpoolStatusLiveRfidCandidate("deleted"), false);
   assert.equal(isSpoolStatusLiveRfidCandidate("in-use"), true);
 });

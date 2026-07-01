@@ -39,6 +39,10 @@ export function isLegacyRemovedSpoolStatus(value) {
   return LEGACY_REMOVED_SPOOL_STATUS_TOKENS.has(normalizeDomainToken(value));
 }
 
+export function isSpoolStatusDeleted(value) {
+  return normalizeDomainToken(value) === "DELETED";
+}
+
 export function isSpoolStatusAssigned(value) {
   return parseSpoolStatus(value) === "ASSIGNED";
 }
