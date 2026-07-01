@@ -315,6 +315,10 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
             Some("printer-slot-assignment")
         }
         "bambu-batch-add" | "batch-add" | "bambu-batch" => Some("bambu-batch-add"),
+        "settings-library" | "library-settings" | "companion-settings" => Some("settings-library"),
+        "settings-printer-diagnostics" | "printer-diagnostics" | "bambu-live-diagnostics" => {
+            Some("settings-printer-diagnostics")
+        }
         _ => None,
     }
 }

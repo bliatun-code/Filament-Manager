@@ -5,6 +5,7 @@ import {
   type InventoryNavigationIntent,
   type PageKey,
 } from "./lib/app_navigation_model";
+import { desktopVisualQaInitialSettingsTab } from "./lib/desktop_visual_qa_scenario";
 import { useI18n } from "./lib/i18n";
 import { getThemeMode, onThemeModeChange } from "./lib/theme_mode";
 import { isTauri, setDockIconTheme, setWindowTitle } from "./lib/tauri_client";
@@ -26,6 +27,13 @@ function initialPageFromUrl(): PageKey {
   return resolveInitialPageFromSearch(window.location.search);
 }
 
+function initialSettingsTabFromUrl(): SettingsTabKey {
+  if (typeof window === "undefined") {
+    return "GENERAL";
+  }
+  return desktopVisualQaInitialSettingsTab(window.location.search) ?? "GENERAL";
+}
+
 export default function App() {
   const { t } = useI18n();
   const [activePage, setActivePage] = useState<PageKey>(() => initialPageFromUrl());
@@ -36,7 +44,8 @@ export default function App() {
   );
   const [inventoryNavigationIntent, setInventoryNavigationIntent] =
     useState<InventoryNavigationIntent>(null);
-  const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTabKey>("GENERAL");
+  const [settingsInitialTab, setSettingsInitialTab] =
+    useState<SettingsTabKey>(() => initialSettingsTabFromUrl());
 
   useEffect(() => {
     if (!isTauri()) {

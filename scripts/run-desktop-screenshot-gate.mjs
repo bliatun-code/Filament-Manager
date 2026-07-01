@@ -25,6 +25,8 @@ const DESKTOP_VISUAL_QA_SCENARIOS = [
   "return-loan",
   "printer-board",
   "printer-slot-assignment",
+  "settings-library",
+  "settings-printer-diagnostics",
 ];
 
 function parseArgValue(argv, name) {
@@ -86,9 +88,17 @@ export function normalizeDesktopVisualQaScenario(value) {
     case "batch-add":
     case "bambu-batch":
       return "bambu-batch-add";
+    case "settings-library":
+    case "library-settings":
+    case "companion-settings":
+      return "settings-library";
+    case "settings-printer-diagnostics":
+    case "printer-diagnostics":
+    case "bambu-live-diagnostics":
+      return "settings-printer-diagnostics";
     default:
       throw new Error(
-        `Unknown desktop visual QA scenario "${value}". Use add-filament, loan-out, selected-roll, rfid-capture, return-loan, printer-board, printer-slot-assignment, or bambu-batch-add.`,
+        `Unknown desktop visual QA scenario "${value}". Use add-filament, loan-out, selected-roll, rfid-capture, return-loan, printer-board, printer-slot-assignment, bambu-batch-add, settings-library, or settings-printer-diagnostics.`,
       );
   }
 }

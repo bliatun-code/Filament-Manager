@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   chooseDesktopVisualQaSpoolId,
   desktopVisualQaInitialPage,
+  desktopVisualQaInitialSettingsTab,
   normalizeDesktopVisualQaScenario,
   resolveDesktopVisualQaScenario,
 } from "./desktop_visual_qa_scenario";
@@ -34,6 +35,11 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
   assert.equal(normalizeDesktopVisualQaScenario("printers"), "printer-board");
   assert.equal(normalizeDesktopVisualQaScenario("slot-assignment"), "printer-slot-assignment");
   assert.equal(normalizeDesktopVisualQaScenario("batch-add"), "bambu-batch-add");
+  assert.equal(normalizeDesktopVisualQaScenario("companion-settings"), "settings-library");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("bambu-live-diagnostics"),
+    "settings-printer-diagnostics",
+  );
   assert.equal(normalizeDesktopVisualQaScenario("unknown"), null);
 
   assert.equal(resolveDesktopVisualQaScenario("?bfm_visual_qa=loan-out", true), "loan-out");
@@ -46,8 +52,23 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=return-loan"), "loans");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-board"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-slot-assignment"), "printers");
+  assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-library"), "settings");
+  assert.equal(
+    desktopVisualQaInitialPage("?bfm_visual_qa=settings-printer-diagnostics"),
+    "settings",
+  );
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=bambu-batch-add"), "inventory");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=unknown"), null);
+});
+
+test("desktop visual QA settings scenarios resolve to the intended tab", () => {
+  assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-library"), "LIBRARY");
+  assert.equal(
+    desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-printer-diagnostics"),
+    "PRINTERS",
+  );
+  assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=add-filament"), null);
+  assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=unknown"), null);
 });
 
 test("desktop visual QA spool chooser prefers assigned RFID rolls for RFID capture", () => {

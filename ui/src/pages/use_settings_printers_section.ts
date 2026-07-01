@@ -1,5 +1,6 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useEffect, type Dispatch, type SetStateAction } from "react";
 import type { Locale } from "../lib/i18n";
+import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import type {
   BambuLiveIntegrationEntry,
   MasterCatalogRow,
@@ -97,6 +98,31 @@ export function useSettingsPrintersSection({
     printerOverview,
     printers,
   });
+  const visualQaScenario = resolveDesktopVisualQaScenario();
+
+  useEffect(() => {
+    if (visualQaScenario !== "settings-printer-diagnostics") {
+      return;
+    }
+    if (expandedBambuDetailsPrinterId) {
+      return;
+    }
+    const livePrinter = sortedPrinters.find(
+      (printer) => bambuLiveIntegrations[printer.id]?.enabled,
+    );
+    if (!livePrinter) {
+      return;
+    }
+    ensureDiagnosticSession(livePrinter.id);
+    setExpandedBambuDetailsPrinterId(livePrinter.id);
+  }, [
+    bambuLiveIntegrations,
+    ensureDiagnosticSession,
+    expandedBambuDetailsPrinterId,
+    setExpandedBambuDetailsPrinterId,
+    sortedPrinters,
+    visualQaScenario,
+  ]);
 
   const { handleToggleBambuLiveCapture, handleToggleBambuLiveDetails } =
     useSettingsBambuLiveToggleActions({

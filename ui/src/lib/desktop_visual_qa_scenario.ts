@@ -11,10 +11,13 @@ export const DESKTOP_VISUAL_QA_SCENARIOS = [
   "return-loan",
   "printer-board",
   "printer-slot-assignment",
+  "settings-library",
+  "settings-printer-diagnostics",
 ] as const;
 
 export type DesktopVisualQaScenario = (typeof DESKTOP_VISUAL_QA_SCENARIOS)[number];
-export type DesktopVisualQaInitialPage = "inventory" | "loans" | "printers";
+export type DesktopVisualQaInitialPage = "inventory" | "loans" | "printers" | "settings";
+export type DesktopVisualQaInitialSettingsTab = "LIBRARY" | "PRINTERS";
 
 function isDevRuntime(): boolean {
   const env = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env;
@@ -53,6 +56,14 @@ export function normalizeDesktopVisualQaScenario(
     case "batch-add":
     case "bambu-batch":
       return "bambu-batch-add";
+    case "settings-library":
+    case "library-settings":
+    case "companion-settings":
+      return "settings-library";
+    case "settings-printer-diagnostics":
+    case "printer-diagnostics":
+    case "bambu-live-diagnostics":
+      return "settings-printer-diagnostics";
     default:
       return null;
   }
@@ -91,7 +102,25 @@ export function desktopVisualQaInitialPage(
   if (scenario === "printer-board" || scenario === "printer-slot-assignment") {
     return "printers";
   }
+  if (scenario === "settings-library" || scenario === "settings-printer-diagnostics") {
+    return "settings";
+  }
   return "inventory";
+}
+
+export function desktopVisualQaInitialSettingsTab(
+  search: string | URLSearchParams | null | undefined,
+): DesktopVisualQaInitialSettingsTab | null {
+  const params =
+    typeof search === "string" ? new URLSearchParams(search) : search ?? new URLSearchParams();
+  const scenario = normalizeDesktopVisualQaScenario(params.get(DESKTOP_VISUAL_QA_QUERY_KEY));
+  if (scenario === "settings-library") {
+    return "LIBRARY";
+  }
+  if (scenario === "settings-printer-diagnostics") {
+    return "PRINTERS";
+  }
+  return null;
 }
 
 export function chooseDesktopVisualQaSpoolId(
