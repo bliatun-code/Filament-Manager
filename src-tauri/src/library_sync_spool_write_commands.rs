@@ -1,3 +1,4 @@
+use crate::backend::inventory_domain::OwnershipType;
 use crate::library_sync_cache_refresh::refresh_library_sync_spool_cache;
 use crate::library_sync_command_support::{
     library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
@@ -173,19 +174,11 @@ pub(crate) fn create_library_sync_host_spool(
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
     let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
-    let explicit_ownership_type = trimmed_non_empty(input.ownership_type.as_deref());
-    let ownership_type = explicit_ownership_type.unwrap_or("OWNED").to_uppercase();
-
-    let path = if ownership_type == "BORROWED_IN"
-        || (explicit_ownership_type.is_none()
-            && trimmed_non_empty(input.owner_name.as_deref()).is_some())
-    {
-        "/api/v1/spools/borrowed-in"
-    } else if trimmed_non_empty(input.master_id.as_deref()).is_some() {
-        "/api/v1/spools/owned"
-    } else {
-        "/api/v1/spools/manual"
-    };
+    let path = library_sync_create_spool_path(
+        input.ownership_type.as_deref(),
+        input.master_id.as_deref(),
+        input.owner_name.as_deref(),
+    );
 
     let response: LibrarySyncCreateSpoolResponse = perform_library_sync_host_write_and_parse(
         &state,
@@ -213,4 +206,53 @@ pub(crate) fn create_library_sync_host_spool(
     save_library_sync_success(&state, &response.message, None)?;
 
     Ok(response.spool_id)
+}
+
+fn library_sync_create_spool_path(
+    ownership_type: Option<&str>,
+    master_id: Option<&str>,
+    owner_name: Option<&str>,
+) -> &'static str {
+    let explicit_ownership_type = trimmed_non_empty(ownership_type);
+    let normalized_ownership =
+        explicit_ownership_type.map(|raw| OwnershipType::from_raw(Some(raw)));
+
+    if normalized_ownership == Some(OwnershipType::BorrowedIn)
+        || (explicit_ownership_type.is_none() && trimmed_non_empty(owner_name).is_some())
+    {
+        "/api/v1/spools/borrowed-in"
+    } else if trimmed_non_empty(master_id).is_some() {
+        "/api/v1/spools/owned"
+    } else {
+        "/api/v1/spools/manual"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::library_sync_create_spool_path;
+
+    #[test]
+    fn library_sync_create_spool_path_uses_domain_ownership_tokens() {
+        assert_eq!(
+            library_sync_create_spool_path(Some("borrowed-in"), Some("master_1"), None),
+            "/api/v1/spools/borrowed-in"
+        );
+        assert_eq!(
+            library_sync_create_spool_path(None, Some("master_1"), Some("Ada")),
+            "/api/v1/spools/borrowed-in"
+        );
+        assert_eq!(
+            library_sync_create_spool_path(Some("owned"), Some("master_1"), Some("Ada")),
+            "/api/v1/spools/owned"
+        );
+        assert_eq!(
+            library_sync_create_spool_path(None, Some("master_1"), None),
+            "/api/v1/spools/owned"
+        );
+        assert_eq!(
+            library_sync_create_spool_path(None, None, None),
+            "/api/v1/spools/manual"
+        );
+    }
 }

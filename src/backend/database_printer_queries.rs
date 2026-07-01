@@ -4,6 +4,7 @@ use super::database_printer_models::{
     PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow, PrinterUsageRow,
 };
 use super::database_result::InventoryResult;
+use super::spool_defaults::SPOOL_OWNERSHIP_SELECT_SQL_SP;
 
 pub(crate) fn list_printers(conn: &Connection) -> InventoryResult<Vec<PrinterRow>> {
     let mut stmt = conn.prepare(
@@ -103,13 +104,13 @@ pub(crate) fn list_printer_overview(conn: &Connection) -> InventoryResult<Vec<Pr
                 .max(),
         };
 
-        let mut stmt = conn.prepare(
+        let mut stmt = conn.prepare(&format!(
             "SELECT
                 s.id, s.ams_id, s.slot_index, s.spool_id,
                 sp.status,
                 CASE
                     WHEN sp.id IS NULL THEN NULL
-                    ELSE COALESCE(NULLIF(sp.ownership_type, ''), 'OWNED')
+                    ELSE {SPOOL_OWNERSHIP_SELECT_SQL_SP}
                 END AS spool_ownership_type,
                 NULLIF(sp.owner_name, '') AS spool_owner_name,
                 sp.remaining_g,
@@ -133,7 +134,7 @@ pub(crate) fn list_printer_overview(conn: &Connection) -> InventoryResult<Vec<Pr
                 u.id COLLATE NOCASE ASC,
                 s.slot_index ASC,
                 s.id COLLATE NOCASE ASC",
-        )?;
+        ))?;
         let rows = stmt.query_map(params![&printer.id], |row| {
             Ok(PrinterAmsSlotRow {
                 slot_id: row.get(0)?,

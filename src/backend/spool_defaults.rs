@@ -8,6 +8,8 @@ pub(crate) const SPOOL_OWNERSHIP_SELECT_SQL: &str =
     "CASE WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(ownership_type, ''))), '-', '_'), ' ', '_') = 'BORROWED_IN' THEN 'BORROWED_IN' ELSE 'OWNED' END";
 pub(crate) const SPOOL_OWNERSHIP_SELECT_SQL_S: &str =
     "CASE WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(s.ownership_type, ''))), '-', '_'), ' ', '_') = 'BORROWED_IN' THEN 'BORROWED_IN' ELSE 'OWNED' END";
+pub(crate) const SPOOL_OWNERSHIP_SELECT_SQL_SP: &str =
+    "CASE WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(sp.ownership_type, ''))), '-', '_'), ' ', '_') = 'BORROWED_IN' THEN 'BORROWED_IN' ELSE 'OWNED' END";
 
 pub(crate) fn normalize_spool_status(raw: Option<&str>) -> String {
     let status = raw

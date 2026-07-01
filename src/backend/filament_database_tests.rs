@@ -806,6 +806,83 @@ fn clearing_printer_slot_releases_legacy_assigned_status_tokens() {
 }
 
 #[test]
+fn printer_overview_normalizes_slot_spool_ownership_tokens() {
+    let db_path = temp_db_path("printer-overview-normalized-ownership");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PETG",
+                filament_name: "Basic",
+                color_name: "Red",
+                hex_color: Some("#C1121F"),
+                product_url: None,
+                vendor: Some("Generic"),
+                default_weight: Some(1000),
+            })
+            .map_err(|error| error.to_string())?;
+
+        db.upsert_printer_with_ams("printer_1", "P1S", "Workshop", 1, 4)
+            .map_err(|error| error.to_string())?;
+
+        let spool = SpoolRow {
+            id: "borrowed_legacy_token_spool".to_string(),
+            master_id,
+            qr_code: None,
+            rfid_tag: None,
+            rfid_observed_at: None,
+            status: "IN_STOCK".to_string(),
+            ownership_type: "borrowed-in".to_string(),
+            owner_name: Some("Ada".to_string()),
+            owner_contact: None,
+            ownership_note: None,
+            initial_weight_g: Some(1000),
+            current_weight_g: Some(850),
+            remaining_g: Some(850),
+            spool_tare_weight_g: None,
+            location_id: None,
+            home_location_id: None,
+            purchase_date: None,
+            purchase_price: None,
+            batch_code: None,
+            last_used_at: None,
+        };
+        db.insert_spool(&spool).map_err(|error| error.to_string())?;
+
+        let slot_id = "printer_1_ams_1_slot_1";
+        db.conn
+            .execute(
+                "UPDATE ams_slots
+                 SET spool_id = 'borrowed_legacy_token_spool'
+                 WHERE id = ?1",
+                [slot_id],
+            )
+            .map_err(|error| error.to_string())?;
+
+        let overview = db
+            .list_printer_overview()
+            .map_err(|error| error.to_string())?;
+        let slot = overview[0]
+            .slots
+            .iter()
+            .find(|slot| slot.slot_id == slot_id)
+            .ok_or_else(|| "expected slot in printer overview".to_string())?;
+        assert_eq!(slot.spool_ownership_type.as_deref(), Some("BORROWED_IN"));
+        assert_eq!(slot.spool_owner_name.as_deref(), Some("Ada"));
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("printer_overview_normalizes_slot_spool_ownership_tokens failed: {message}");
+    }
+}
+
+#[test]
 fn list_active_spool_loans_hides_deleted_spools() {
     let db_path = temp_db_path("active-loans-hide-deleted");
 

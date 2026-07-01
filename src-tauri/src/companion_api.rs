@@ -4,6 +4,7 @@ use crate::backend::filament_database::{
     LibrarySyncSettingsRow, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
     WishlistItemRow,
 };
+use crate::backend::inventory_domain::{LoanDirection, OwnershipType, SpoolStatus};
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput,
     DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, RecordPrintUsageInput, ReturnSpoolLoanInput,
@@ -1106,8 +1107,11 @@ pub(super) async fn handle_update_printer_slot_assignment(
             .get_spool(next_spool_id)
             .map_err(CompanionApiError::from)?
             .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
-        let normalized_status = spool.spool.status.trim().to_ascii_uppercase();
-        if matches!(normalized_status.as_str(), "BORROWED" | "EMPTY" | "LOST") {
+        let spool_status = SpoolStatus::from_raw(Some(&spool.spool.status));
+        if matches!(
+            spool_status,
+            SpoolStatus::Borrowed | SpoolStatus::Empty | SpoolStatus::Lost
+        ) {
             return Err(CompanionApiError::BadRequest(
                 "Selected spool cannot be loaded into a printer slot from the browser companion"
                     .to_string(),
@@ -1401,18 +1405,17 @@ pub(super) async fn handle_lend_spool(
         .get_spool(spool_id)
         .map_err(CompanionApiError::from)?
         .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
-    if spool
-        .spool
-        .ownership_type
-        .eq_ignore_ascii_case("BORROWED_IN")
-    {
+    if OwnershipType::from_raw(Some(&spool.spool.ownership_type)).is_borrowed_in() {
         return Err(CompanionApiError::BadRequest(
             "Borrowed-in spools cannot be loaned out from the browser companion".to_string(),
         ));
     }
 
-    let normalized_status = spool.spool.status.trim().to_ascii_uppercase();
-    if matches!(normalized_status.as_str(), "BORROWED" | "EMPTY" | "LOST") {
+    let spool_status = SpoolStatus::from_raw(Some(&spool.spool.status));
+    if matches!(
+        spool_status,
+        SpoolStatus::Borrowed | SpoolStatus::Empty | SpoolStatus::Lost
+    ) {
         return Err(CompanionApiError::BadRequest(
             "Selected spool cannot be loaned out from the browser companion".to_string(),
         ));
@@ -1465,12 +1468,7 @@ pub(super) async fn handle_return_spool_loan(
         .into_iter()
         .find(|row| row.loan.id == loan_id)
         .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
-    if !active_loan
-        .loan
-        .loan_direction
-        .as_str()
-        .eq_ignore_ascii_case("OUTBOUND")
-    {
+    if LoanDirection::from_raw(Some(&active_loan.loan.loan_direction)) != LoanDirection::Outbound {
         return Err(CompanionApiError::BadRequest(
             "Inbound loan returns stay desktop-first for now".to_string(),
         ));
