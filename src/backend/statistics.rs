@@ -40,6 +40,15 @@ pub struct FilamentConsumptionRow {
     pub jobs: i64,
 }
 
+const SPOOL_STATUS_ON_HAND_SQL: &str =
+    "REPLACE(REPLACE(UPPER(TRIM(COALESCE(status, ''))), '-', '_'), ' ', '_') IN ('IN_STOCK', 'IN_USE', 'ASSIGNED')";
+const SPOOL_STATUS_ASSIGNED_SQL: &str =
+    "REPLACE(REPLACE(UPPER(TRIM(COALESCE(status, ''))), '-', '_'), ' ', '_') IN ('IN_USE', 'ASSIGNED')";
+const SPOOL_OWNERSHIP_SQL: &str =
+    "CASE WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(ownership_type, ''))), '-', '_'), ' ', '_') = 'BORROWED_IN' THEN 'BORROWED_IN' ELSE 'OWNED' END";
+const SPOOL_OWNERSHIP_SQL_S: &str =
+    "CASE WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(s.ownership_type, ''))), '-', '_'), ' ', '_') = 'BORROWED_IN' THEN 'BORROWED_IN' ELSE 'OWNED' END";
+
 pub struct StatisticsEngine {
     conn: Connection,
 }
@@ -63,54 +72,56 @@ impl StatisticsEngine {
             owned_low_stock,
             borrowed_in_low_stock,
         ): (i64, i64, i64, i64, i64, i64, i64, i64, i64) = self.conn.query_row(
-            "SELECT
+            &format!(
+                "SELECT
                 COUNT(*) AS total_spools,
                 COALESCE(SUM(CASE
-                    WHEN COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'OWNED'
-                     AND status IN ('IN_STOCK', 'IN_USE', 'ASSIGNED')
+                    WHEN {SPOOL_OWNERSHIP_SQL} = 'OWNED'
+                     AND {SPOOL_STATUS_ON_HAND_SQL}
                     THEN 1 ELSE 0
                 END), 0) AS total_owned_spools,
                 COALESCE(SUM(CASE
-                    WHEN COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'BORROWED_IN'
-                     AND status IN ('IN_STOCK', 'IN_USE', 'ASSIGNED')
+                    WHEN {SPOOL_OWNERSHIP_SQL} = 'BORROWED_IN'
+                     AND {SPOOL_STATUS_ON_HAND_SQL}
                     THEN 1 ELSE 0
                 END), 0) AS total_borrowed_in_spools,
-                COALESCE(SUM(CASE WHEN status IN ('IN_USE', 'ASSIGNED') THEN 1 ELSE 0 END), 0) AS in_use,
+                COALESCE(SUM(CASE WHEN {SPOOL_STATUS_ASSIGNED_SQL} THEN 1 ELSE 0 END), 0) AS in_use,
                 COALESCE(SUM(CASE
-                    WHEN status IN ('IN_USE', 'ASSIGNED')
-                     AND COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'OWNED'
+                    WHEN {SPOOL_STATUS_ASSIGNED_SQL}
+                     AND {SPOOL_OWNERSHIP_SQL} = 'OWNED'
                     THEN 1 ELSE 0
                 END), 0) AS owned_in_use,
                 COALESCE(SUM(CASE
-                    WHEN status IN ('IN_USE', 'ASSIGNED')
-                     AND COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'BORROWED_IN'
+                    WHEN {SPOOL_STATUS_ASSIGNED_SQL}
+                     AND {SPOOL_OWNERSHIP_SQL} = 'BORROWED_IN'
                     THEN 1 ELSE 0
                 END), 0) AS borrowed_in_in_use,
                 COALESCE(SUM(CASE
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
                      AND remaining_g <= 200
-                     AND status IN ('IN_STOCK', 'IN_USE', 'ASSIGNED')
+                     AND {SPOOL_STATUS_ON_HAND_SQL}
                     THEN 1 ELSE 0
                 END), 0) AS low_stock,
                 COALESCE(SUM(CASE
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
                      AND remaining_g <= 200
-                     AND status IN ('IN_STOCK', 'IN_USE', 'ASSIGNED')
-                     AND COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'OWNED'
+                     AND {SPOOL_STATUS_ON_HAND_SQL}
+                     AND {SPOOL_OWNERSHIP_SQL} = 'OWNED'
                     THEN 1 ELSE 0
                 END), 0) AS owned_low_stock,
                 COALESCE(SUM(CASE
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
                      AND remaining_g <= 200
-                     AND status IN ('IN_STOCK', 'IN_USE', 'ASSIGNED')
-                     AND COALESCE(NULLIF(ownership_type, ''), 'OWNED') = 'BORROWED_IN'
+                     AND {SPOOL_STATUS_ON_HAND_SQL}
+                     AND {SPOOL_OWNERSHIP_SQL} = 'BORROWED_IN'
                     THEN 1 ELSE 0
                 END), 0) AS borrowed_in_low_stock
              FROM filament_spools
-             WHERE deleted_at IS NULL",
+             WHERE deleted_at IS NULL"
+            ),
             [],
             |row| {
                 Ok((
@@ -131,7 +142,8 @@ impl StatisticsEngine {
             i64,
             i64,
         ) = self.conn.query_row(
-            "WITH usage_rows AS (
+            &format!(
+                "WITH usage_rows AS (
                 SELECT p.spool_id, p.started_at AS used_at, p.material_used_g AS used_g
                 FROM print_jobs p
                 UNION ALL
@@ -145,17 +157,18 @@ impl StatisticsEngine {
              SELECT
                 COALESCE(SUM(used_g), 0) AS total_consumption_30d,
                 COALESCE(SUM(CASE
-                    WHEN COALESCE(NULLIF(s.ownership_type, ''), 'OWNED') = 'OWNED'
+                    WHEN {SPOOL_OWNERSHIP_SQL_S} = 'OWNED'
                       OR s.id IS NULL
                     THEN u.used_g ELSE 0
                 END), 0) AS owned_consumption_30d,
                 COALESCE(SUM(CASE
-                    WHEN COALESCE(NULLIF(s.ownership_type, ''), 'OWNED') = 'BORROWED_IN'
+                    WHEN {SPOOL_OWNERSHIP_SQL_S} = 'BORROWED_IN'
                     THEN u.used_g ELSE 0
                 END), 0) AS borrowed_in_consumption_30d
              FROM usage_rows u
              LEFT JOIN filament_spools s ON s.id = u.spool_id
-             WHERE datetime(u.used_at) >= datetime('now', '-30 days')",
+             WHERE datetime(u.used_at) >= datetime('now', '-30 days')"
+            ),
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )?;
@@ -215,7 +228,7 @@ impl StatisticsEngine {
         limit: i64,
         printer_id: Option<&str>,
     ) -> Result<Vec<FilamentConsumptionRow>, rusqlite::Error> {
-        let mut stmt = self.conn.prepare(
+        let mut stmt = self.conn.prepare(&format!(
             "WITH usage_rows AS (
                 SELECT p.id AS usage_job_id,
                        p.printer_id,
@@ -239,9 +252,9 @@ impl StatisticsEngine {
                 COALESCE(NULLIF(m.color_name, ''), 'Unknown') AS color_name,
                 m.hex_color,
                 COALESCE(NULLIF(m.vendor, ''), 'Unknown') AS vendor,
-                COALESCE(NULLIF(s.ownership_type, ''), 'OWNED') AS ownership_type,
+                {SPOOL_OWNERSHIP_SQL_S} AS ownership_type,
                 NULLIF(CASE
-                    WHEN COALESCE(NULLIF(s.ownership_type, ''), 'OWNED') = 'BORROWED_IN'
+                    WHEN {SPOOL_OWNERSHIP_SQL_S} = 'BORROWED_IN'
                     THEN COALESCE(NULLIF(s.owner_name, ''), '')
                     ELSE ''
                 END, '') AS owner_name,
@@ -260,16 +273,16 @@ impl StatisticsEngine {
                m.color_name,
                m.hex_color,
                m.vendor,
-               COALESCE(NULLIF(s.ownership_type, ''), 'OWNED'),
+               {SPOOL_OWNERSHIP_SQL_S},
                CASE
-                   WHEN COALESCE(NULLIF(s.ownership_type, ''), 'OWNED') = 'BORROWED_IN'
+                   WHEN {SPOOL_OWNERSHIP_SQL_S} = 'BORROWED_IN'
                    THEN COALESCE(NULLIF(s.owner_name, ''), '')
                    ELSE ''
                END
              HAVING COALESCE(SUM(u.used_g), 0) > 0
              ORDER BY used_grams DESC
              LIMIT ?2",
-        )?;
+        ))?;
 
         let rows = stmt.query_map(params![printer_id, limit], |row| {
             Ok(FilamentConsumptionRow {
@@ -363,7 +376,7 @@ mod tests {
                 qr_code: None,
                 rfid_tag: None,
                 rfid_observed_at: None,
-                status: "IN_USE".to_string(),
+                status: "in-use".to_string(),
                 ownership_type: "OWNED".to_string(),
                 owner_name: None,
                 owner_contact: None,
@@ -387,8 +400,8 @@ mod tests {
                 qr_code: None,
                 rfid_tag: None,
                 rfid_observed_at: None,
-                status: "IN_USE".to_string(),
-                ownership_type: "BORROWED_IN".to_string(),
+                status: "assigned".to_string(),
+                ownership_type: "borrowed-in".to_string(),
                 owner_name: Some("Alice".to_string()),
                 owner_contact: None,
                 ownership_note: None,
@@ -906,7 +919,7 @@ mod tests {
                 rfid_tag: None,
                 rfid_observed_at: None,
                 status: "IN_USE".to_string(),
-                ownership_type: "BORROWED_IN".to_string(),
+                ownership_type: "borrowed-in".to_string(),
                 owner_name: Some("Alice".to_string()),
                 owner_contact: Some("alice@example.com".to_string()),
                 ownership_note: Some("Prototype batch".to_string()),
