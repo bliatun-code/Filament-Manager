@@ -121,6 +121,7 @@ pub(super) fn build_router(state: CompanionApiState) -> Router {
         .route("/api/v1/auth/session", get(handle_session_status))
         .route("/api/v1/auth/pair", post(handle_pair_session))
         .route("/api/v1/auth/renew", post(handle_renew_session))
+        .route("/api/v1/qa/session", get(handle_qa_session))
         .route("/api/v1/qa/expire-session", post(handle_qa_expire_session))
         .with_state(state)
         .nest("/api/v1", protected)

@@ -1442,6 +1442,89 @@ async fn companion_api_qa_route_can_expire_sessions() {
 }
 
 #[tokio::test]
+async fn companion_api_qa_session_bootstraps_protected_access_only_in_qa_mode() {
+    let db_path = temp_db_path("qa-session-bootstrap");
+    let result = async {
+        seed_db(&db_path)?;
+
+        let regular_router = build_router(test_state(&db_path));
+        let unavailable = regular_router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/qa/session")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(unavailable.status(), StatusCode::NOT_FOUND);
+
+        let router = build_router(qa_test_state(&db_path));
+        let session = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/qa/session")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(session.status(), StatusCode::OK);
+        let session_cookie = extract_named_cookie(session.headers(), COMPANION_SESSION_COOKIE)?;
+        assert!(
+            extract_named_cookie(session.headers(), COMPANION_TRUSTED_LAN_DEVICE_COOKIE).is_err(),
+            "QA session should not persist a trusted-LAN browser device"
+        );
+
+        let session_status = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/auth/session")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(session_status.status(), StatusCode::OK);
+        let status_body = to_bytes(session_status.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let status_text =
+            String::from_utf8(status_body.to_vec()).map_err(|error| error.to_string())?;
+        assert!(status_text.contains("\"authenticated\":true"));
+
+        let inventory = router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/inventory/spools?limit=10&offset=0")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(inventory.status(), StatusCode::OK);
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_api_qa_session_bootstraps_protected_access_only_in_qa_mode failed: {message}"
+        );
+    }
+}
+
+#[tokio::test]
 async fn companion_api_qa_delay_header_keeps_detail_route_working() {
     let db_path = temp_db_path("qa-delay-detail");
     let result = async {

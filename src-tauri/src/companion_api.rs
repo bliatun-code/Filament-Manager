@@ -29,8 +29,9 @@ use crate::companion_payload::{
     string_response, text_response, validate_initial_weight,
 };
 use crate::companion_session::{
-    build_authenticated_session_response, find_active_session, find_active_trusted_lan_browser,
-    generate_companion_spool_id, random_hex_token, unix_epoch_millis,
+    build_authenticated_session_response, build_qa_authenticated_session_response,
+    find_active_session, find_active_trusted_lan_browser, generate_companion_spool_id,
+    random_hex_token, unix_epoch_millis,
 };
 use crate::companion_state::CompanionApiState;
 use crate::library_sync_models::LibrarySyncFullBackupResponse;
@@ -431,6 +432,18 @@ pub(super) async fn handle_renew_session(
         None,
         origin.as_deref(),
     )
+}
+
+pub(super) async fn handle_qa_session(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+) -> Result<Response, CompanionApiError> {
+    if !state.runtime.qa_mode() {
+        return Err(CompanionApiError::NotFound("Record not found".to_string()));
+    }
+
+    require_allowed_host(&headers, &state.runtime)?;
+    build_qa_authenticated_session_response(&state.sessions)
 }
 
 pub(super) async fn handle_qa_expire_session(

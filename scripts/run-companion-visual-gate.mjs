@@ -12,6 +12,10 @@ export const DEFAULT_COMPANION_VISUAL_MINIMUMS = {
   spools: 1,
   swatchRows: 1,
   livePrinterSlots: 1,
+  protectedDetail: 1,
+  protectedLoans: 1,
+  protectedPrinters: 1,
+  protectedSpools: 1,
   wishlistRows: 1,
 };
 
@@ -42,6 +46,40 @@ function routeUrl(baseUrl, route) {
   return new URL(route, `${baseUrl}/`).toString();
 }
 
+function setCookieHeaders(headers) {
+  if (typeof headers.getSetCookie === "function") {
+    return headers.getSetCookie();
+  }
+  const combined = headers.get("set-cookie");
+  if (!combined) {
+    return [];
+  }
+  return combined.split(/,(?=\s*[^;,=]+=[^;,]+)/).map((value) => value.trim());
+}
+
+function storeResponseCookies(cookieJar, headers) {
+  if (!cookieJar) {
+    return;
+  }
+  for (const setCookie of setCookieHeaders(headers)) {
+    const cookiePair = setCookie.split(";")[0]?.trim();
+    const separatorIndex = cookiePair?.indexOf("=") ?? -1;
+    if (!cookiePair || separatorIndex <= 0) {
+      continue;
+    }
+    const name = cookiePair.slice(0, separatorIndex);
+    const value = cookiePair.slice(separatorIndex + 1);
+    cookieJar.set(name, value);
+  }
+}
+
+function cookieHeader(cookieJar) {
+  if (!cookieJar || cookieJar.size === 0) {
+    return null;
+  }
+  return [...cookieJar.entries()].map(([name, value]) => `${name}=${value}`).join("; ");
+}
+
 function createTimeoutSignal(timeoutMs) {
   if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
     return AbortSignal.timeout(timeoutMs);
@@ -51,12 +89,22 @@ function createTimeoutSignal(timeoutMs) {
   return controller.signal;
 }
 
-async function fetchText(baseUrl, route, timeoutMs) {
+async function fetchText(baseUrl, route, timeoutMs, options = {}) {
   const url = routeUrl(baseUrl, route);
+  const headers = {
+    accept: "text/html,application/json,text/css,application/javascript,*/*",
+    ...(options.headers ?? {}),
+  };
+  const cookie = cookieHeader(options.cookieJar);
+  if (cookie) {
+    headers.cookie = cookie;
+  }
   const response = await fetch(url, {
-    headers: { accept: "text/html,application/json,text/css,application/javascript,*/*" },
+    headers,
+    method: options.method ?? "GET",
     signal: createTimeoutSignal(timeoutMs),
   });
+  storeResponseCookies(options.cookieJar, response.headers);
   const text = await response.text();
   if (!response.ok) {
     throw new Error(`${route} returned HTTP ${response.status}: ${text.slice(0, 160)}`);
@@ -64,8 +112,8 @@ async function fetchText(baseUrl, route, timeoutMs) {
   return text;
 }
 
-async function fetchJson(baseUrl, route, timeoutMs) {
-  const text = await fetchText(baseUrl, route, timeoutMs);
+async function fetchJson(baseUrl, route, timeoutMs, options = {}) {
+  const text = await fetchText(baseUrl, route, timeoutMs, options);
   try {
     return JSON.parse(text);
   } catch (error) {
@@ -106,6 +154,53 @@ function countLivePrinterSlots(printers) {
   }, 0);
 }
 
+function firstSpoolId(spools) {
+  if (!Array.isArray(spools)) {
+    return null;
+  }
+  for (const entry of spools) {
+    const id = entry?.spool?.id ?? entry?.id;
+    if (typeof id === "string" && id.trim()) {
+      return id.trim();
+    }
+  }
+  return null;
+}
+
+async function readAuthenticatedCompanionData(baseUrl, timeoutMs) {
+  const cookieJar = new Map();
+  const qaSession = await fetchJson(baseUrl, "/api/v1/qa/session", timeoutMs, { cookieJar });
+  const session = await fetchJson(baseUrl, "/api/v1/auth/session", timeoutMs, { cookieJar });
+  const [inventorySpools, printerOverview, protectedLoans, protectedWishlist] = await Promise.all([
+    fetchJson(baseUrl, "/api/v1/inventory/spools?limit=24&offset=0", timeoutMs, { cookieJar }),
+    fetchJson(baseUrl, "/api/v1/printers/overview", timeoutMs, { cookieJar }),
+    fetchJson(baseUrl, "/api/v1/loans?limit=24&include_returned=true", timeoutMs, { cookieJar }),
+    fetchJson(baseUrl, "/api/v1/wishlist?limit=24", timeoutMs, { cookieJar }),
+  ]);
+
+  const detailSpoolId = firstSpoolId(inventorySpools);
+  const detail = detailSpoolId
+    ? await fetchJson(
+        baseUrl,
+        `/api/v1/spools/${encodeURIComponent(detailSpoolId)}?history_limit=12&usage_limit=12`,
+        timeoutMs,
+        { cookieJar },
+      )
+    : null;
+
+  return {
+    cookieCount: cookieJar.size,
+    detail,
+    detailSpoolId,
+    inventorySpools,
+    printerOverview,
+    protectedLoans,
+    protectedWishlist,
+    qaSession,
+    session,
+  };
+}
+
 function assertAtLeast(errors, label, actual, minimum) {
   if (actual < minimum) {
     errors.push(`${label} expected at least ${minimum}, found ${actual}`);
@@ -126,6 +221,7 @@ export async function runCompanionVisualGate(options = {}) {
     throw new Error("Companion visual gate needs a companion base URL.");
   }
   const timeoutMs = options.timeoutMs ?? 4_000;
+  const authenticate = options.authenticate !== false;
   const minimums = {
     ...DEFAULT_COMPANION_VISUAL_MINIMUMS,
     ...(options.minimums ?? {}),
@@ -146,6 +242,7 @@ export async function runCompanionVisualGate(options = {}) {
     ]);
 
   const errors = [];
+  let authenticatedData = null;
   assertIncludes(errors, "companion shell", shellHtml, [
     'id="app"',
     "/companion/app.css",
@@ -179,6 +276,38 @@ export async function runCompanionVisualGate(options = {}) {
     errors.push("library snapshot did not report ok=true");
   }
 
+  if (authenticate) {
+    try {
+      authenticatedData = await readAuthenticatedCompanionData(baseUrl, timeoutMs);
+    } catch (error) {
+      errors.push(`QA authenticated companion session failed: ${error.message}`);
+    }
+  }
+
+  const protectedSpoolCount = Array.isArray(authenticatedData?.inventorySpools)
+    ? authenticatedData.inventorySpools.length
+    : 0;
+  const protectedPrinterCount = Array.isArray(authenticatedData?.printerOverview)
+    ? authenticatedData.printerOverview.length
+    : 0;
+  const protectedLoanCount = Array.isArray(authenticatedData?.protectedLoans)
+    ? authenticatedData.protectedLoans.length
+    : 0;
+  const protectedWishlistCount = Array.isArray(authenticatedData?.protectedWishlist)
+    ? authenticatedData.protectedWishlist.length
+    : 0;
+  const detailLoaded = authenticatedData?.detail?.spool ? 1 : 0;
+  const detailHistoryRows = Array.isArray(authenticatedData?.detail?.history)
+    ? authenticatedData.detail.history.length
+    : 0;
+  const detailUsageRows = Array.isArray(authenticatedData?.detail?.usage)
+    ? authenticatedData.detail.usage.length
+    : 0;
+
+  if (authenticate && authenticatedData?.session?.authenticated !== true) {
+    errors.push("QA authenticated companion session did not become authenticated");
+  }
+
   assertAtLeast(errors, "snapshot inventory spools", snapshotSpools, minimums.spools);
   assertAtLeast(errors, "snapshot printers", snapshotPrinters, minimums.printers);
   assertAtLeast(errors, "active loans", activeLoans, minimums.activeLoans);
@@ -189,6 +318,17 @@ export async function runCompanionVisualGate(options = {}) {
   assertAtLeast(errors, "wishlist rows", wishlistCount, minimums.wishlistRows);
   assertAtLeast(errors, "swatch-colored rows", swatchRows, minimums.swatchRows);
   assertAtLeast(errors, "live printer slots", livePrinterSlots, minimums.livePrinterSlots);
+  if (authenticate) {
+    assertAtLeast(errors, "protected spool rows", protectedSpoolCount, minimums.protectedSpools);
+    assertAtLeast(
+      errors,
+      "protected printer rows",
+      protectedPrinterCount,
+      minimums.protectedPrinters,
+    );
+    assertAtLeast(errors, "protected loan rows", protectedLoanCount, minimums.protectedLoans);
+    assertAtLeast(errors, "protected spool detail", detailLoaded, minimums.protectedDetail);
+  }
 
   return {
     baseUrl,
@@ -198,6 +338,13 @@ export async function runCompanionVisualGate(options = {}) {
       livePrinterSlots,
       loans: loanCount,
       printers: printerCount,
+      protectedDetail: detailLoaded,
+      protectedDetailHistoryRows: detailHistoryRows,
+      protectedDetailUsageRows: detailUsageRows,
+      protectedLoans: protectedLoanCount,
+      protectedPrinters: protectedPrinterCount,
+      protectedSpools: protectedSpoolCount,
+      protectedWishlistRows: protectedWishlistCount,
       snapshotPrinters,
       snapshotSpools,
       spools: spoolCount,
@@ -209,6 +356,13 @@ export async function runCompanionVisualGate(options = {}) {
       accessMode: health?.access_mode ?? null,
       authMode: health?.auth_mode ?? null,
       syncMode: health?.sync_mode ?? null,
+    },
+    session: {
+      attempted: authenticate,
+      authenticated: authenticatedData?.session?.authenticated === true,
+      cookieCount: authenticatedData?.cookieCount ?? 0,
+      detailSpoolId: authenticatedData?.detailSpoolId ?? null,
+      ok: authenticatedData?.qaSession?.ok === true,
     },
   };
 }
@@ -231,6 +385,19 @@ export function formatCompanionVisualGateReport(result) {
     `  - wishlist rows sampled: ${result.counts.wishlistRows}`,
     `  - swatch-colored data points: ${result.counts.swatchRows}`,
   ];
+  if (result.session.attempted) {
+    lines.push(
+      `Companion QA session: ${
+        result.session.authenticated ? "authenticated" : "not authenticated"
+      }`,
+      `  - protected spool rows sampled: ${result.counts.protectedSpools}`,
+      `  - protected printer rows: ${result.counts.protectedPrinters}`,
+      `  - protected loan rows sampled: ${result.counts.protectedLoans}`,
+      `  - protected wishlist rows sampled: ${result.counts.protectedWishlistRows}`,
+      `  - detail loaded for: ${result.session.detailSpoolId ?? "none"}`,
+      `  - detail history/usage rows: ${result.counts.protectedDetailHistoryRows}/${result.counts.protectedDetailUsageRows}`,
+    );
+  }
   if (result.errors.length > 0) {
     lines.push("Companion visual gate errors:");
     for (const error of result.errors) {
@@ -248,6 +415,7 @@ async function runCli() {
   const sourcePath = parseArgValue(argv, "--source");
   const profile = parseArgValue(argv, "--profile");
   const timeoutMs = parseIntegerArg(argv, "--timeout-ms", 4_000);
+  const authenticate = !argv.includes("--skip-auth");
   const dbResult = await prepareVisualQaDatabase({
     live: true,
     profile,
@@ -258,7 +426,7 @@ async function runCli() {
   );
 
   console.log(formatVisualQaDatasetReport(dbResult));
-  const result = await runCompanionVisualGate({ baseUrl, timeoutMs });
+  const result = await runCompanionVisualGate({ authenticate, baseUrl, timeoutMs });
   console.log(formatCompanionVisualGateReport(result));
   if (result.errors.length > 0) {
     process.exit(1);

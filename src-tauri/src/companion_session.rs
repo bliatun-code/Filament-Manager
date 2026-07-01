@@ -24,6 +24,7 @@ pub(crate) struct CompanionSession {
     pub(crate) csrf_token: String,
     created_at_epoch_s: u64,
     paired_browser_id: Option<String>,
+    qa_session: bool,
 }
 
 #[derive(Serialize)]
@@ -110,6 +111,9 @@ pub(crate) fn find_active_session(
     }
 
     let Some(browser_id) = session.paired_browser_id.as_deref() else {
+        if session.qa_session {
+            return Ok(Some(session));
+        }
         return Ok(None);
     };
     let db = open_companion_db(db_path)?;
@@ -148,12 +152,37 @@ pub(crate) fn build_authenticated_session_response(
     device_token: Option<&str>,
     last_origin: Option<&str>,
 ) -> Result<Response, CompanionApiError> {
+    build_session_response(
+        sessions,
+        Some(db_path),
+        paired_browser_id,
+        device_token,
+        last_origin,
+        false,
+    )
+}
+
+pub(crate) fn build_qa_authenticated_session_response(
+    sessions: &CompanionSessionStore,
+) -> Result<Response, CompanionApiError> {
+    build_session_response(sessions, None, None, None, None, true)
+}
+
+fn build_session_response(
+    sessions: &CompanionSessionStore,
+    db_path: Option<&str>,
+    paired_browser_id: Option<String>,
+    device_token: Option<&str>,
+    last_origin: Option<&str>,
+    qa_session: bool,
+) -> Result<Response, CompanionApiError> {
     let session_id = random_hex_token(32);
     let csrf_token = random_hex_token(24);
     let session = CompanionSession {
         csrf_token: csrf_token.clone(),
         created_at_epoch_s: unix_epoch_seconds(),
         paired_browser_id: paired_browser_id.clone(),
+        qa_session,
     };
 
     sessions
@@ -162,6 +191,11 @@ pub(crate) fn build_authenticated_session_response(
         .insert(session_id.clone(), session);
 
     if let Some(browser_id) = paired_browser_id.as_deref() {
+        let Some(db_path) = db_path else {
+            return Err(CompanionApiError::Internal(
+                "Authenticated browser sessions require a database path".to_string(),
+            ));
+        };
         let db = open_companion_db(db_path)?;
         db.touch_trusted_lan_paired_browser(browser_id, last_origin)
             .map_err(CompanionApiError::from)?;

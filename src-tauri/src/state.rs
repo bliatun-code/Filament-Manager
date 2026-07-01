@@ -88,7 +88,7 @@ impl TrustedLanCompanionRuntime {
             })),
             status: Arc::new(RwLock::new(TrustedLanCompanionRuntimeStatus::default())),
             server: Arc::new(RwLock::new(None)),
-            qa_mode: false,
+            qa_mode: companion_visual_qa_enabled(),
         }
     }
 
@@ -303,6 +303,17 @@ fn normalize_trusted_lan_port(listen_port: u16) -> u16 {
     } else {
         listen_port
     }
+}
+
+fn companion_visual_qa_enabled() -> bool {
+    matches!(
+        std::env::var("FILAMENT_MANAGER_VISUAL_QA")
+            .unwrap_or_default()
+            .trim()
+            .to_ascii_lowercase()
+            .as_str(),
+        "1" | "true" | "yes" | "on"
+    )
 }
 
 #[cfg(test)]
