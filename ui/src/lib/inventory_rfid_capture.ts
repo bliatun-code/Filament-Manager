@@ -243,19 +243,13 @@ export function rfidBindingCopy(
     case "LINKED_SEEN":
       return {
         label: t("inventory.rfidRegistered", "RFID registered"),
-        hint: t(
-          "inventory.rfidRegisteredHint",
-          "This RFID stays tied to the Bambu roll until the roll is used up or the saved RFID is overwritten. The AMS sighting only shows when the printer last reported this identity.",
-        ),
+        hint: "",
         className: inlineStatusSignalClass("neutral"),
       };
     case "LINKED_UNSEEN":
       return {
         label: t("inventory.rfidRegistered", "RFID registered"),
-        hint: t(
-          "inventory.rfidRegisteredUnseenHint",
-          "An RFID is saved on this roll, but AMS has not reported a sighting timestamp for it yet.",
-        ),
+        hint: "",
         className: inlineStatusSignalClass("neutral"),
       };
     case "BAMBU_UNREGISTERED":

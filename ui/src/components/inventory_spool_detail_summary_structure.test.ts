@@ -27,5 +27,6 @@ test("InventorySpoolIdentityPanel keeps long RFID reference content readable", (
 test("InventorySpoolIdentityPanel keeps live AMS sighting copy compact", () => {
   assert.match(source, /lastAmsSightingLiveActivity/);
   assert.match(source, /showRfidBindingHint/);
+  assert.match(source, /rfidBindingMeta\.hint\.trim\(\)\.length > 0/);
   assert.doesNotMatch(source, /rfidRegisteredLiveActivityHint/);
 });

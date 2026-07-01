@@ -448,10 +448,6 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       rfidHintNeedsLive:
         "RFID capture needs a printer with Live Bambu status enabled and at least one AMS slot available.",
       rfidRegistered: "RFID registered",
-      rfidRegisteredHint:
-        "This RFID stays tied to the Bambu roll until the roll is used up or the saved RFID is overwritten. The AMS sighting only shows when the printer last reported this identity.",
-      rfidRegisteredUnseenHint:
-        "An RFID is saved on this roll, but AMS has not reported a sighting timestamp for it yet.",
       rfidBambuUnregistered: "RFID not registered yet",
       rfidBambuUnregisteredHint:
         "Bambu rolls can be linked automatically by loading the roll in AMS and saving the observed RFID identity.",
@@ -2037,10 +2033,6 @@ export const dictionaries: Record<Locale, DictionaryNode> = {
       rfidHintNeedsLive:
         "RFID-fangst trenger en printer med Live Bambu-status aktivert og minst ett tilgjengelig AMS-spor.",
       rfidRegistered: "RFID registrert",
-      rfidRegisteredHint:
-        "RFID-en er knyttet til denne Bambu-rullen til rullen er brukt opp eller lagret RFID overskrives. AMS-observasjonen viser bare når printeren sist rapporterte identiteten.",
-      rfidRegisteredUnseenHint:
-        "RFID er lagret på denne rullen, men AMS har ikke rapportert tidspunkt for siste observasjon ennå.",
       rfidBambuUnregistered: "RFID ikke registrert ennå",
       rfidBambuUnregisteredHint:
         "Bambu-ruller kan kobles automatisk ved å legge rullen i AMS og lagre observert RFID-identitet.",

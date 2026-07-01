@@ -164,6 +164,9 @@ test("RFID binding state separates Bambu registration from unsupported vendors",
 
 test("rfidBindingCopy avoids freshness language for saved RFID identities", () => {
   const t = (key: string, fallback: string) => `${key}:${fallback}`;
+  const linkedSeen = rfidBindingCopy("LINKED_SEEN", t);
+  const linkedUnseen = rfidBindingCopy("LINKED_UNSEEN", t);
+
   assert.equal(
     rfidBindingCopy("BAMBU_UNREGISTERED", t).label,
     "inventory.rfidBambuUnregistered:RFID not registered yet",
@@ -173,9 +176,11 @@ test("rfidBindingCopy avoids freshness language for saved RFID identities", () =
     "inventory.rfidUnsupportedVendor:AMS RFID not available",
   );
   assert.equal(
-    rfidBindingCopy("LINKED_SEEN", t).label,
+    linkedSeen.label,
     "inventory.rfidRegistered:RFID registered",
   );
+  assert.equal(linkedSeen.hint, "");
+  assert.equal(linkedUnseen.hint, "");
 });
 
 test("buildRfidCaptureSlotLiveStatus summarizes active identity sightings", () => {

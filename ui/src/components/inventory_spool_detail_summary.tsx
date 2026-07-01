@@ -110,7 +110,8 @@ export function InventorySpoolIdentityPanel({
 }: InventorySpoolIdentityPanelProps) {
   const { locale, t } = useI18n();
   const amsSighting = buildInventorySpoolAmsSighting(spool, assignedSlot);
-  const showRfidBindingHint = amsSighting?.source !== "live_activity";
+  const showRfidBindingHint =
+    rfidBindingMeta.hint.trim().length > 0 && amsSighting?.source !== "live_activity";
 
   return (
     <div
