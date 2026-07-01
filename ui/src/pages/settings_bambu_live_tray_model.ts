@@ -12,6 +12,7 @@ import {
   type BambuLiveCatalogMatchResult,
 } from "../lib/bambu_live_catalog_match";
 import { buildBambuLiveObservedInventoryMatchInput } from "../lib/bambu_live_observed_match";
+import { isBorrowedInOwnership } from "../lib/inventory_domain";
 import { liveTrayMatchesSlot } from "../lib/printer_live_display";
 import {
   formatBambuSettingsProfileSignal,
@@ -121,10 +122,9 @@ export function buildSettingsBambuLiveInventoryCandidateCards({
     const rfidLabel = candidate.spool.rfid_tag?.trim()
       ? t("settings.bambuLiveCandidateRfidSaved", "RFID saved")
       : t("settings.bambuLiveCandidateNoRfidSaved", "No RFID saved");
-    const ownershipType = (candidate.spool.ownership_type ?? "").trim().toUpperCase();
     const ownerName = candidate.spool.owner_name?.trim();
     const ownershipLabel =
-      ownershipType === "BORROWED_IN"
+      isBorrowedInOwnership(candidate.spool.ownership_type)
         ? ownerName
           ? `${t("inventory.borrowedIn", "Borrowed in")} · ${ownerName}`
           : t("inventory.borrowedIn", "Borrowed in")

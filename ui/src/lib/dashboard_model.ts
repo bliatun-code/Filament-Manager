@@ -1,10 +1,10 @@
 import type { ActivityItem } from "../components/dashboard_widgets";
 import { LOW_STOCK_GRAMS } from "./inventory_constants";
 import {
+  isBorrowedInOwnership,
   isSpoolStatusAssigned,
   isSpoolStatusEmptyOrLost,
   isSpoolStatusOnHand,
-  normalizeOwnershipType,
 } from "./inventory_domain";
 import { isActiveOutboundLoan } from "./loan_state";
 import { summarizeEffectivePrinterSlots } from "./printer_profiles";
@@ -83,10 +83,6 @@ type DashboardCompanionStatusInput = {
   running?: boolean | null;
   shell_reachable?: boolean | null;
 };
-
-function isBorrowedInOwnership(raw?: string | null): boolean {
-  return normalizeOwnershipType(raw) === "BORROWED_IN";
-}
 
 function progressRatio(current: number, target: number): number {
   if (target <= 0) {

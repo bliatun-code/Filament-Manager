@@ -5,6 +5,7 @@ import {
 } from "./printer_profiles";
 import { isLoanCurrentlyActive } from "./loan_state";
 import {
+  isBorrowedInOwnership,
   isSpoolStatusAssigned,
   isSpoolStatusOnHand,
   normalizeLoanDirection,
@@ -13,7 +14,12 @@ import {
   type OwnershipType,
 } from "./inventory_domain";
 export { toSwatchColor } from "./color_utils";
-export { normalizeLoanDirection, normalizeOwnershipType, type LoanDirection };
+export {
+  isBorrowedInOwnership,
+  normalizeLoanDirection,
+  normalizeOwnershipType,
+  type LoanDirection,
+};
 import type {
   FilamentConsumptionRow,
   LoanUsageByPersonRow,
@@ -131,7 +137,7 @@ export function matchesOwnershipFilter(filter: OwnershipFilter, raw?: string | n
 }
 
 export function ownershipBadgeClass(raw?: string | null): string {
-  return normalizeOwnershipType(raw) === "BORROWED_IN"
+  return isBorrowedInOwnership(raw)
     ? "border-amber-200/85 bg-amber-50/85 text-amber-800 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-200"
     : "border-sky-200/85 bg-sky-50/85 text-sky-800 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-200";
 }
@@ -141,7 +147,7 @@ export function ownershipLabel(
   ownershipType?: string | null,
   ownerName?: string | null,
 ): string {
-  if (normalizeOwnershipType(ownershipType) === "BORROWED_IN") {
+  if (isBorrowedInOwnership(ownershipType)) {
     const owner = (ownerName ?? "").trim();
     if (owner.length > 0) {
       return `${t("inventory.borrowedIn", "Borrowed in")} · ${owner}`;
@@ -234,11 +240,11 @@ export function deriveInventoryOverviewFromRows(
   for (const row of spools) {
     const isOnHand = isSpoolStatusOnHand(row.spool.status);
     const isAssigned = isSpoolStatusAssigned(row.spool.status);
-    const ownershipType = normalizeOwnershipType(row.spool.ownership_type);
+    const borrowedIn = isBorrowedInOwnership(row.spool.ownership_type);
     const remaining = row.spool.remaining_g ?? null;
 
     if (isOnHand) {
-      if (ownershipType === "BORROWED_IN") {
+      if (borrowedIn) {
         totalBorrowedInSpools += 1;
       } else {
         totalOwnedSpools += 1;
@@ -247,7 +253,7 @@ export function deriveInventoryOverviewFromRows(
 
     if (isAssigned) {
       inUse += 1;
-      if (ownershipType === "BORROWED_IN") {
+      if (borrowedIn) {
         borrowedInInUse += 1;
       } else {
         ownedInUse += 1;
@@ -262,7 +268,7 @@ export function deriveInventoryOverviewFromRows(
       isOnHand
     ) {
       lowStock += 1;
-      if (ownershipType === "BORROWED_IN") {
+      if (borrowedIn) {
         borrowedInLowStock += 1;
       } else {
         ownedLowStock += 1;
@@ -276,7 +282,7 @@ export function deriveInventoryOverviewFromRows(
   for (const row of consumptionRows) {
     const usedGrams = Math.max(0, row.used_grams);
     totalConsumption30d += usedGrams;
-    if (normalizeOwnershipType(row.ownership_type) === "BORROWED_IN") {
+    if (isBorrowedInOwnership(row.ownership_type)) {
       borrowedInConsumption30d += usedGrams;
     } else {
       ownedConsumption30d += usedGrams;
@@ -402,7 +408,7 @@ export function countActiveSlotOwnerships(rows: ActiveSlotDisplayRow[]) {
   let owned = 0;
   let borrowedIn = 0;
   for (const row of rows) {
-    if (normalizeOwnershipType(row.slot.spool_ownership_type) === "BORROWED_IN") {
+    if (isBorrowedInOwnership(row.slot.spool_ownership_type)) {
       borrowedIn += 1;
     } else {
       owned += 1;

@@ -3,6 +3,7 @@ import type {
   InventoryOverviewPrintLabels,
   InventoryOverviewPrintRow,
 } from "../lib/inventory_overview_print";
+import { isBorrowedInOwnership } from "../lib/inventory_domain";
 import type { SpoolWithMasterRow } from "../lib/tauri_client";
 
 export type SettingsInventoryPrintLabels = {
@@ -47,10 +48,9 @@ export async function buildSettingsInventoryOverviewPrintRows(input: {
       return {
         reference: row.spool.id || input.labels.unknown,
         vendor: row.master.vendor || input.labels.unknown,
-        ownershipMarker:
-          (row.spool.ownership_type ?? "OWNED").trim().toUpperCase() === "BORROWED_IN"
-            ? input.labels.borrowedIn
-            : null,
+        ownershipMarker: isBorrowedInOwnership(row.spool.ownership_type)
+          ? input.labels.borrowedIn
+          : null,
         material: row.master.material || input.labels.unknown,
         filamentName: row.master.filament_name || input.labels.unknown,
         colorName: row.master.color_name || input.labels.unknown,

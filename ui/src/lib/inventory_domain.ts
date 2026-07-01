@@ -80,6 +80,10 @@ export function normalizeOwnershipType(raw?: string | null): OwnershipType {
   return normalizeDomainToken(raw) === "BORROWED_IN" ? "BORROWED_IN" : "OWNED";
 }
 
+export function isBorrowedInOwnership(raw?: string | null): boolean {
+  return normalizeOwnershipType(raw) === "BORROWED_IN";
+}
+
 export function normalizeLoanDirection(raw?: string | null): LoanDirection {
   return normalizeDomainToken(raw) === "INBOUND" ? "INBOUND" : "OUTBOUND";
 }

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  isBorrowedInOwnership,
   isSpoolStatusAssigned,
   isSpoolStatusDeleted,
   isSpoolStatusEmptyOrLost,
@@ -27,6 +28,9 @@ test("inventory domain normalizers preserve legacy spool and ownership values", 
   assert.equal(normalizeOwnershipType("borrowed-in"), "BORROWED_IN");
   assert.equal(normalizeOwnershipType("borrowed in"), "BORROWED_IN");
   assert.equal(normalizeOwnershipType(null), "OWNED");
+  assert.equal(isBorrowedInOwnership("borrowed-in"), true);
+  assert.equal(isBorrowedInOwnership("borrowed in"), true);
+  assert.equal(isBorrowedInOwnership("owned"), false);
 });
 
 test("inventory domain status helpers preserve contextual legacy semantics", () => {
