@@ -3,6 +3,11 @@ use std::path::Path;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 
+use super::spool_defaults::{
+    SPOOL_OWNERSHIP_SELECT_SQL, SPOOL_OWNERSHIP_SELECT_SQL_S, SPOOL_STATUS_ASSIGNED_PREDICATE_SQL,
+    SPOOL_STATUS_ON_HAND_PREDICATE_SQL,
+};
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct InventoryOverview {
     pub total_spools: i64,
@@ -40,15 +45,6 @@ pub struct FilamentConsumptionRow {
     pub jobs: i64,
 }
 
-const SPOOL_STATUS_ON_HAND_SQL: &str =
-    "REPLACE(REPLACE(UPPER(TRIM(COALESCE(status, ''))), '-', '_'), ' ', '_') IN ('IN_STOCK', 'IN_USE', 'ASSIGNED')";
-const SPOOL_STATUS_ASSIGNED_SQL: &str =
-    "REPLACE(REPLACE(UPPER(TRIM(COALESCE(status, ''))), '-', '_'), ' ', '_') IN ('IN_USE', 'ASSIGNED')";
-const SPOOL_OWNERSHIP_SQL: &str =
-    "CASE WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(ownership_type, ''))), '-', '_'), ' ', '_') = 'BORROWED_IN' THEN 'BORROWED_IN' ELSE 'OWNED' END";
-const SPOOL_OWNERSHIP_SQL_S: &str =
-    "CASE WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(s.ownership_type, ''))), '-', '_'), ' ', '_') = 'BORROWED_IN' THEN 'BORROWED_IN' ELSE 'OWNED' END";
-
 pub struct StatisticsEngine {
     conn: Connection,
 }
@@ -76,47 +72,47 @@ impl StatisticsEngine {
                 "SELECT
                 COUNT(*) AS total_spools,
                 COALESCE(SUM(CASE
-                    WHEN {SPOOL_OWNERSHIP_SQL} = 'OWNED'
-                     AND {SPOOL_STATUS_ON_HAND_SQL}
+                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL} = 'OWNED'
+                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
                     THEN 1 ELSE 0
                 END), 0) AS total_owned_spools,
                 COALESCE(SUM(CASE
-                    WHEN {SPOOL_OWNERSHIP_SQL} = 'BORROWED_IN'
-                     AND {SPOOL_STATUS_ON_HAND_SQL}
+                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL} = 'BORROWED_IN'
+                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
                     THEN 1 ELSE 0
                 END), 0) AS total_borrowed_in_spools,
-                COALESCE(SUM(CASE WHEN {SPOOL_STATUS_ASSIGNED_SQL} THEN 1 ELSE 0 END), 0) AS in_use,
+                COALESCE(SUM(CASE WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL} THEN 1 ELSE 0 END), 0) AS in_use,
                 COALESCE(SUM(CASE
-                    WHEN {SPOOL_STATUS_ASSIGNED_SQL}
-                     AND {SPOOL_OWNERSHIP_SQL} = 'OWNED'
+                    WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL}
+                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'OWNED'
                     THEN 1 ELSE 0
                 END), 0) AS owned_in_use,
                 COALESCE(SUM(CASE
-                    WHEN {SPOOL_STATUS_ASSIGNED_SQL}
-                     AND {SPOOL_OWNERSHIP_SQL} = 'BORROWED_IN'
+                    WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL}
+                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'BORROWED_IN'
                     THEN 1 ELSE 0
                 END), 0) AS borrowed_in_in_use,
                 COALESCE(SUM(CASE
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
                      AND remaining_g <= 200
-                     AND {SPOOL_STATUS_ON_HAND_SQL}
+                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
                     THEN 1 ELSE 0
                 END), 0) AS low_stock,
                 COALESCE(SUM(CASE
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
                      AND remaining_g <= 200
-                     AND {SPOOL_STATUS_ON_HAND_SQL}
-                     AND {SPOOL_OWNERSHIP_SQL} = 'OWNED'
+                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
+                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'OWNED'
                     THEN 1 ELSE 0
                 END), 0) AS owned_low_stock,
                 COALESCE(SUM(CASE
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
                      AND remaining_g <= 200
-                     AND {SPOOL_STATUS_ON_HAND_SQL}
-                     AND {SPOOL_OWNERSHIP_SQL} = 'BORROWED_IN'
+                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
+                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'BORROWED_IN'
                     THEN 1 ELSE 0
                 END), 0) AS borrowed_in_low_stock
              FROM filament_spools
@@ -157,12 +153,12 @@ impl StatisticsEngine {
              SELECT
                 COALESCE(SUM(used_g), 0) AS total_consumption_30d,
                 COALESCE(SUM(CASE
-                    WHEN {SPOOL_OWNERSHIP_SQL_S} = 'OWNED'
+                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL_S} = 'OWNED'
                       OR s.id IS NULL
                     THEN u.used_g ELSE 0
                 END), 0) AS owned_consumption_30d,
                 COALESCE(SUM(CASE
-                    WHEN {SPOOL_OWNERSHIP_SQL_S} = 'BORROWED_IN'
+                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL_S} = 'BORROWED_IN'
                     THEN u.used_g ELSE 0
                 END), 0) AS borrowed_in_consumption_30d
              FROM usage_rows u
@@ -252,9 +248,9 @@ impl StatisticsEngine {
                 COALESCE(NULLIF(m.color_name, ''), 'Unknown') AS color_name,
                 m.hex_color,
                 COALESCE(NULLIF(m.vendor, ''), 'Unknown') AS vendor,
-                {SPOOL_OWNERSHIP_SQL_S} AS ownership_type,
+                {SPOOL_OWNERSHIP_SELECT_SQL_S} AS ownership_type,
                 NULLIF(CASE
-                    WHEN {SPOOL_OWNERSHIP_SQL_S} = 'BORROWED_IN'
+                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL_S} = 'BORROWED_IN'
                     THEN COALESCE(NULLIF(s.owner_name, ''), '')
                     ELSE ''
                 END, '') AS owner_name,
@@ -273,9 +269,9 @@ impl StatisticsEngine {
                m.color_name,
                m.hex_color,
                m.vendor,
-               {SPOOL_OWNERSHIP_SQL_S},
+               {SPOOL_OWNERSHIP_SELECT_SQL_S},
                CASE
-                   WHEN {SPOOL_OWNERSHIP_SQL_S} = 'BORROWED_IN'
+                   WHEN {SPOOL_OWNERSHIP_SELECT_SQL_S} = 'BORROWED_IN'
                    THEN COALESCE(NULLIF(s.owner_name, ''), '')
                    ELSE ''
                END
