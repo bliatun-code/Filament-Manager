@@ -1,12 +1,12 @@
 import { t } from "./companion_i18n.js";
 import {
+  isBorrowedInOwnership,
   isLegacyRemovedSpoolStatus,
   isSpoolStatusAssigned,
   isSpoolStatusEmpty,
   isSpoolStatusEmptyOrLost,
   isSpoolStatusLoanedOut,
   isSpoolStatusUnavailableForPrinterSlot,
-  normalizeOwnershipType,
 } from "./companion_domain.js";
 import { isLoanCurrentlyActive, isLoanReturned } from "./companion_loan_state.js";
 
@@ -227,7 +227,7 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
       };
     }
 
-    if (normalizeOwnershipType(row.spool?.ownership_type) === "BORROWED_IN") {
+    if (isBorrowedInOwnership(row.spool?.ownership_type)) {
       return {
         allowed: false,
         reason: t(

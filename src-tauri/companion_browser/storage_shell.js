@@ -11,7 +11,7 @@ import {
 } from "./bambu_filament_code_lookup.js";
 import { suggestSwatchHex, swatchCssStyle, toSwatchColor } from "./companion_theme.js";
 import { t } from "./companion_i18n.js";
-import { normalizeDomainToken, normalizeOwnershipType, parseSpoolStatus } from "./companion_domain.js";
+import { isBorrowedInOwnership, normalizeDomainToken, parseSpoolStatus } from "./companion_domain.js";
 
 function catalogMatchesSource(master, source) {
   const vendor = String(master?.vendor || "").trim().toLowerCase();
@@ -145,7 +145,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
   );
   const previewVendor = selection.vendor || t(locale, "storage.vendor", "Vendor");
   const previewWeight = selection.selectedMaster?.default_weight ? `${selection.selectedMaster.default_weight} g` : "";
-  const isBorrowedIn = normalizeOwnershipType(draft.ownershipType) === "BORROWED_IN";
+  const isBorrowedIn = isBorrowedInOwnership(draft.ownershipType);
   const catalogSelectionMissing = selection.requiresCatalogSelection;
   const wishlistRows = selection.visibleWishlistItems
     .map((item) => {
@@ -697,7 +697,7 @@ function renderSpoolRows(options) {
       if (rowStatus && rowStatus !== "IN_STOCK") {
         rowBadges.push(formatStatusLabel(rowStatus, locale));
       }
-      if (normalizeOwnershipType(row.spool.ownership_type) === "BORROWED_IN") {
+      if (isBorrowedInOwnership(row.spool.ownership_type)) {
         rowBadges.push(ownershipLabel(row.spool));
       }
       return `

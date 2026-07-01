@@ -1,7 +1,7 @@
 import { t } from "./companion_i18n.js";
 import {
+  isBorrowedInOwnership,
   normalizeEditableSpoolStatus,
-  normalizeOwnershipType,
 } from "./companion_domain.js";
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference, formatStatusLabel } from "./formatters.js";
@@ -30,8 +30,9 @@ export function renderSelectedSpoolDetailBody(options) {
   const detailStatusLabel = formatStatusLabel(detailStatus, locale);
   const detailStatusTone =
     detailStatus === "LOST" ? "danger" : detailStatus === "EMPTY" ? "warning" : "success";
-  const detailOwnershipTone =
-    normalizeOwnershipType(selectedSpool.spool.ownership_type) === "BORROWED_IN" ? "info" : "neutral";
+  const detailOwnershipTone = isBorrowedInOwnership(selectedSpool.spool.ownership_type)
+    ? "info"
+    : "neutral";
   const detailLocation = selectedSpool.spool.location_id || "";
   const detailHomeLocation = selectedSpool.spool.home_location_id || "";
   const detailPlacementLabel = formatPlacementLabel(detailLocation, locale);

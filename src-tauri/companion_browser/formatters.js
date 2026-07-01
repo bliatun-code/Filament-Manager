@@ -1,5 +1,5 @@
 import { normalizeCompanionLocale, t } from "./companion_i18n.js";
-import { normalizeDomainToken, normalizeOwnershipType, parseSpoolStatus } from "./companion_domain.js";
+import { isBorrowedInOwnership, normalizeDomainToken, parseSpoolStatus } from "./companion_domain.js";
 
 export function escapeHtml(value) {
   return String(value ?? "")
@@ -218,7 +218,7 @@ export function formatStatusLabel(value, locale = "en") {
 
 export function ownershipLabel(spool, locale = "en") {
   const normalizedLocale = normalizeCompanionLocale(locale);
-  return normalizeOwnershipType(spool?.ownership_type) === "BORROWED_IN"
+  return isBorrowedInOwnership(spool?.ownership_type)
     ? t(normalizedLocale, "format.borrowedIn", "Borrowed in")
     : t(normalizedLocale, "format.owned", "Owned");
 }
