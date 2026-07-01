@@ -15,6 +15,13 @@ const execFile = promisify(execFileCallback);
 const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
 const DEFAULT_PROCESS_NAME = "bambu-filament-manager";
 const DEFAULT_WINDOW_TITLE = "Filament Manager";
+const VISUAL_QA_SCENARIO_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
+const DESKTOP_VISUAL_QA_SCENARIOS = [
+  "add-filament",
+  "loan-out",
+  "selected-roll",
+  "rfid-capture",
+];
 
 function parseArgValue(argv, name) {
   const index = argv.indexOf(name);
@@ -37,6 +44,41 @@ function parseNumberArg(argv, name, fallback) {
   }
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+export function normalizeDesktopVisualQaScenario(value) {
+  switch (String(value ?? "").trim().toLowerCase()) {
+    case "":
+      return null;
+    case "add-filament":
+    case "inventory-add":
+      return "add-filament";
+    case "loan-out":
+    case "inventory-loan":
+      return "loan-out";
+    case "selected-roll":
+    case "detail":
+    case "inventory-detail":
+      return "selected-roll";
+    case "rfid-capture":
+    case "inventory-rfid":
+      return "rfid-capture";
+    default:
+      throw new Error(
+        `Unknown desktop visual QA scenario "${value}". Use add-filament, loan-out, selected-roll, or rfid-capture.`,
+      );
+  }
+}
+
+function parseDesktopVisualQaScenarios(argv) {
+  const raw = parseArgValue(argv, "--scenario");
+  if (raw == null || raw.trim() === "") {
+    return [null];
+  }
+  if (raw.trim().toLowerCase() === "all") {
+    return DESKTOP_VISUAL_QA_SCENARIOS;
+  }
+  return [normalizeDesktopVisualQaScenario(raw)];
 }
 
 function minimumFor(value, fallback) {
@@ -325,6 +367,7 @@ export async function runDesktopScreenshotGate(options = {}) {
     errors,
     metric,
     outputDir,
+    scenario: options.scenario ?? null,
   };
 }
 
@@ -414,6 +457,7 @@ function spawnTauriDev(spawnFn, options, database) {
       ...process.env,
       [APP_DB_PATH_ENV_VAR]: database.targetPath,
       FILAMENT_MANAGER_VISUAL_QA: "1",
+      ...(options.scenario ? { [VISUAL_QA_SCENARIO_ENV_VAR]: options.scenario } : {}),
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -468,6 +512,7 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
         launchOutputTail: outputTail.trim(),
         metric: { visibleWindows, window: null },
         outputDir: resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR),
+        scenario: options.scenario ?? null,
       };
     }
 
@@ -482,6 +527,7 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
       })),
       database,
       launchOutputTail: outputTail.trim(),
+      scenario: options.scenario ?? null,
     };
   } finally {
     if (keepApp) {
@@ -504,6 +550,9 @@ export function formatDesktopScreenshotGateReport(result) {
         ? "Desktop visual QA live DB mode: app changes affected the selected database."
         : "Desktop visual QA used a temporary DB copy. Live library was not modified.",
     );
+  }
+  if (result.scenario) {
+    lines.push(`Desktop visual QA scenario: ${result.scenario}`);
   }
   lines.push(`Desktop screenshot artifacts: ${result.outputDir}`);
   const metric = result.metric;
@@ -545,12 +594,16 @@ export function formatDesktopScreenshotGateReport(result) {
 
 async function runCli() {
   const argv = process.argv.slice(2);
+  const scenarios = parseDesktopVisualQaScenarios(argv);
+  const hasScenario = scenarios.some(Boolean);
+  const baseName =
+    parseArgValue(argv, "--name") ?? (scenarios.length > 1 ? "desktop-scenario" : "desktop-window");
   const baseOptions = {
-    captureDelayMs: parseIntegerArg(argv, "--capture-delay-ms", 0),
+    captureDelayMs: parseIntegerArg(argv, "--capture-delay-ms", hasScenario ? 3_500 : 0),
     keep: argv.includes("--keep"),
     keepAppOnFail: argv.includes("--keep-app-on-fail"),
     live: argv.includes("--live"),
-    name: parseArgValue(argv, "--name") ?? "desktop-window",
+    name: baseName,
     outputDir: parseArgValue(argv, "--output-dir") ?? DEFAULT_OUTPUT_DIR,
     profile: parseArgValue(argv, "--profile") ?? undefined,
     sourcePath: parseArgValue(argv, "--source") ?? undefined,
@@ -565,11 +618,18 @@ async function runCli() {
       windowWidth: parseIntegerArg(argv, "--min-window-width", undefined),
     },
   };
-  const result = argv.includes("--launch")
-    ? await runLaunchedDesktopScreenshotGate(baseOptions)
-    : await runDesktopScreenshotGate(baseOptions);
-  console.log(formatDesktopScreenshotGateReport(result));
-  if (result.errors.length > 0) {
+  const results = [];
+  for (const scenario of scenarios) {
+    const name = scenario && scenarios.length > 1 ? `${baseName}-${scenario}` : baseName;
+    const options = { ...baseOptions, name, scenario };
+    const result = argv.includes("--launch")
+      ? await runLaunchedDesktopScreenshotGate(options)
+      : await runDesktopScreenshotGate(options);
+    results.push(result);
+  }
+
+  console.log(results.map(formatDesktopScreenshotGateReport).join("\n\n"));
+  if (results.some((result) => result.errors.length > 0)) {
     process.exit(1);
   }
 }

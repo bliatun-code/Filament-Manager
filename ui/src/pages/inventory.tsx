@@ -5,6 +5,10 @@ import { InventorySpoolDetailModal } from "../components/inventory_spool_detail_
 import { LoanOutModal } from "../components/loan_out_modal";
 import type { InventoryNavigationIntent } from "../lib/app_navigation_model";
 import { useI18n } from "../lib/i18n";
+import {
+  chooseDesktopVisualQaSpoolId,
+  resolveDesktopVisualQaScenario,
+} from "../lib/desktop_visual_qa_scenario";
 import type { RfidCaptureField } from "../lib/inventory_rfid_capture";
 import {
   buildInventoryDetailVisualFixture,
@@ -48,6 +52,7 @@ export default function InventoryPage({
     () => (isInventoryDetailVisualFixtureEnabled() ? buildInventoryDetailVisualFixture() : null),
     [],
   );
+  const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
   const [error, setError] = useState<string | null>(null);
   const [rfidCaptureFieldsBySlotId, setRfidCaptureFieldsBySlotId] = useState<
     Record<string, RfidCaptureField[]>
@@ -132,6 +137,9 @@ export default function InventoryPage({
   const [manageBusy, setManageBusy] = useState(false);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [recentlyAddedSpoolId, setRecentlyAddedSpoolId] = useState<string | null>(null);
+  const [desktopVisualQaStage, setDesktopVisualQaStage] = useState<
+    "pending" | "detail-opened" | "done"
+  >(() => (desktopVisualQaScenario ? "pending" : "done"));
 
   const [selectedRfidCaptureSlotId, setSelectedRfidCaptureSlotId] = useState<string | null>(null);
   const [rfidCaptureError, setRfidCaptureError] = useState<string | null>(null);
@@ -285,6 +293,10 @@ export default function InventoryPage({
 
   const { printerNameById, printerSlotBySpoolId, printerSlotOptions, slotLabelById } =
     useInventoryPrinterSlots(printerOverview, t);
+  const assignedDesktopVisualQaSpoolIds = useMemo(
+    () => new Set(printerSlotBySpoolId.keys()),
+    [printerSlotBySpoolId],
+  );
 
   const selectedSpoolAssignedSlot = useMemo(
     () => (selectedSpool ? printerSlotBySpoolId.get(selectedSpool.id) ?? null : null),
@@ -541,6 +553,73 @@ export default function InventoryPage({
   const toggleRfidCapturedFields = useCallback(() => {
     setShowRfidCapturedFields((current) => !current);
   }, [setShowRfidCapturedFields]);
+
+  useEffect(() => {
+    if (!desktopVisualQaScenario || desktopVisualQaStage !== "pending" || loading) {
+      return;
+    }
+
+    if (desktopVisualQaScenario === "add-filament") {
+      openAddModal();
+      setDesktopVisualQaStage("done");
+      return;
+    }
+
+    if (desktopVisualQaScenario === "loan-out") {
+      if (loanTrackingCandidates.length === 0) {
+        return;
+      }
+      openLoanTrackingModal();
+      setDesktopVisualQaStage("done");
+      return;
+    }
+
+    const spoolId = chooseDesktopVisualQaSpoolId(
+      spools,
+      assignedDesktopVisualQaSpoolIds,
+      desktopVisualQaScenario,
+    );
+    if (!spoolId) {
+      return;
+    }
+
+    selectRollForManage(spoolId);
+    setDesktopVisualQaStage(
+      desktopVisualQaScenario === "rfid-capture" ? "detail-opened" : "done",
+    );
+  }, [
+    assignedDesktopVisualQaSpoolIds,
+    desktopVisualQaScenario,
+    desktopVisualQaStage,
+    loading,
+    loanTrackingCandidates.length,
+    openAddModal,
+    openLoanTrackingModal,
+    selectRollForManage,
+    spools,
+  ]);
+
+  useEffect(() => {
+    if (desktopVisualQaScenario !== "rfid-capture" || desktopVisualQaStage !== "detail-opened") {
+      return;
+    }
+    if (!showRollModal || !selectedSpool) {
+      return;
+    }
+    if (!selectedSpoolSupportsRfidCapture || selectedSpoolRfidCaptureSlots.length === 0) {
+      return;
+    }
+    handleStartRfidCapture();
+    setDesktopVisualQaStage("done");
+  }, [
+    desktopVisualQaScenario,
+    desktopVisualQaStage,
+    handleStartRfidCapture,
+    selectedSpool,
+    selectedSpoolRfidCaptureSlots.length,
+    selectedSpoolSupportsRfidCapture,
+    showRollModal,
+  ]);
 
   return (
     <div className="page-shell">

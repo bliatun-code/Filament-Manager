@@ -6,6 +6,7 @@ import {
   buildDesktopWindowLookupScript,
   desktopScreenshotScale,
   formatDesktopScreenshotGateReport,
+  normalizeDesktopVisualQaScenario,
   parseDesktopWindowList,
   parseDesktopWindowInfo,
   validateDesktopScreenshotMetrics,
@@ -81,6 +82,14 @@ test("desktop screenshot gate lookup script escapes quoted titles", () => {
   const activateScript = buildDesktopWindowActivateScript('Filament "Manager"');
   assert.match(activateScript, /Filament \\"Manager\\"/);
   assert.match(activateScript, /frontmost/);
+});
+
+test("desktop screenshot gate normalizes visual QA scenarios", () => {
+  assert.equal(normalizeDesktopVisualQaScenario("inventory-add"), "add-filament");
+  assert.equal(normalizeDesktopVisualQaScenario("DETAIL"), "selected-roll");
+  assert.equal(normalizeDesktopVisualQaScenario("inventory-rfid"), "rfid-capture");
+  assert.equal(normalizeDesktopVisualQaScenario(""), null);
+  assert.throws(() => normalizeDesktopVisualQaScenario("bad"), /Unknown desktop visual QA/);
 });
 
 test("desktop screenshot metric validation accepts rich desktop captures", () => {
@@ -161,8 +170,10 @@ test("desktop screenshot report lists window and artifact details", () => {
     errors: [],
     metric: createMetric(),
     outputDir: "/tmp/visual-qa",
+    scenario: "add-filament",
   });
 
+  assert.match(report, /Desktop visual QA scenario: add-filament/);
   assert.match(report, /Desktop window: Filament Manager/);
   assert.match(report, /Pixels: 1300x900 @1\.0x/);
   assert.match(report, /desktop-window\.png/);
