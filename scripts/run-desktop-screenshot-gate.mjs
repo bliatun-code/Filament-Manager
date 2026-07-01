@@ -209,6 +209,33 @@ function quoteAppleScriptString(value) {
   return String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
+export async function execFileWithTimeout(execFileFn, command, args, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 4_000;
+  const label = options.label ?? command;
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return await execFileFn(command, args);
+  }
+
+  let timer = null;
+  const timeoutGraceMs =
+    options.timeoutGraceMs ?? Math.min(250, Math.max(20, Math.round(timeoutMs * 0.1)));
+  try {
+    return await Promise.race([
+      execFileFn(command, args, { timeout: timeoutMs }),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${timeoutMs}ms.`));
+        }, timeoutMs + timeoutGraceMs);
+        timer.unref?.();
+      }),
+    ]);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+}
+
 export function buildDesktopWindowLookupScript(windowTitle = DEFAULT_WINDOW_TITLE) {
   const options =
     typeof windowTitle === "object" && windowTitle !== null
@@ -295,10 +322,15 @@ export function parseDesktopWindowList(raw) {
 
 export async function listDesktopWindows(options = {}) {
   const execFileFn = options.execFileFn ?? execFile;
-  const { stdout } = await execFileFn("osascript", [
-    "-e",
-    buildDesktopWindowListScript(),
-  ]);
+  const { stdout } = await execFileWithTimeout(
+    execFileFn,
+    "osascript",
+    ["-e", buildDesktopWindowListScript()],
+    {
+      label: "Desktop visible-window diagnostics",
+      timeoutMs: options.windowCommandTimeoutMs ?? options.desktopCommandTimeoutMs ?? 2_500,
+    },
+  );
   return parseDesktopWindowList(stdout);
 }
 
@@ -306,10 +338,15 @@ export async function findDesktopWindow(options = {}) {
   const execFileFn = options.execFileFn ?? execFile;
   const windowTitle = options.windowTitle ?? DEFAULT_WINDOW_TITLE;
   const processName = options.processName ?? DEFAULT_PROCESS_NAME;
-  const { stdout } = await execFileFn("osascript", [
-    "-e",
-    buildDesktopWindowLookupScript({ processName, windowTitle }),
-  ]);
+  const { stdout } = await execFileWithTimeout(
+    execFileFn,
+    "osascript",
+    ["-e", buildDesktopWindowLookupScript({ processName, windowTitle })],
+    {
+      label: "Desktop window lookup",
+      timeoutMs: options.windowCommandTimeoutMs ?? options.desktopCommandTimeoutMs ?? 2_500,
+    },
+  );
   return parseDesktopWindowInfo(stdout);
 }
 
@@ -344,10 +381,15 @@ export async function activateDesktopWindow(windowInfo, options = {}) {
     return;
   }
   const execFileFn = options.execFileFn ?? execFile;
-  await execFileFn("osascript", [
-    "-e",
-    buildDesktopWindowActivateScript(windowInfo.processName),
-  ]);
+  await execFileWithTimeout(
+    execFileFn,
+    "osascript",
+    ["-e", buildDesktopWindowActivateScript(windowInfo.processName)],
+    {
+      label: "Desktop window activation",
+      timeoutMs: options.windowCommandTimeoutMs ?? options.desktopCommandTimeoutMs ?? 2_500,
+    },
+  );
   await wait(options.waitAfterActivateMs ?? 350);
 }
 
@@ -366,7 +408,10 @@ export async function captureDesktopWindowScreenshot(windowInfo, options = {}) {
     Math.max(1, windowInfo.width),
     Math.max(1, windowInfo.height),
   ].join(",");
-  await execFileFn("screencapture", ["-x", "-R", region, path]);
+  await execFileWithTimeout(execFileFn, "screencapture", ["-x", "-R", region, path], {
+    label: "Desktop window screenshot capture",
+    timeoutMs: options.screenshotCommandTimeoutMs ?? options.desktopCommandTimeoutMs ?? 8_000,
+  });
   return {
     buffer: await readFile(path),
     path,
@@ -760,6 +805,9 @@ async function runCli() {
     postTerminateDelayMs: parseIntegerArg(argv, "--post-terminate-delay-ms", 1_200),
     profile: parseArgValue(argv, "--profile") ?? undefined,
     relaunchDelayMs: parseIntegerArg(argv, "--relaunch-delay-ms", 2_000),
+    desktopCommandTimeoutMs: parseIntegerArg(argv, "--desktop-command-timeout-ms", 4_000),
+    screenshotCommandTimeoutMs: parseIntegerArg(argv, "--screenshot-command-timeout-ms", 8_000),
+    windowCommandTimeoutMs: parseIntegerArg(argv, "--window-command-timeout-ms", 2_500),
     sourcePath: parseArgValue(argv, "--source") ?? undefined,
     startupTimeoutMs: parseIntegerArg(argv, "--startup-timeout-ms", 45_000),
     processName: parseArgValue(argv, "--process-name") ?? DEFAULT_PROCESS_NAME,

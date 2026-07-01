@@ -7,6 +7,7 @@ import {
   desktopScreenshotScale,
   desktopScreenshotNameForScenario,
   desktopVisualQaScenarioRequiresDatabaseFixture,
+  execFileWithTimeout,
   formatDesktopScreenshotGateReport,
   normalizeDesktopVisualQaScenario,
   parseDesktopVisualQaScenarios,
@@ -225,6 +226,22 @@ test("desktop screenshot gate wait can abort when launch exits", async () => {
 
   assert.equal(window, null);
   assert.equal(attempts, 2);
+});
+
+test("desktop screenshot gate times out stuck macOS helper commands", async () => {
+  await assert.rejects(
+    execFileWithTimeout(
+      () => new Promise(() => {}),
+      "osascript",
+      ["-e", "return \"\""],
+      {
+        label: "Desktop window lookup",
+        timeoutGraceMs: 1,
+        timeoutMs: 1,
+      },
+    ),
+    /Desktop window lookup timed out after 1ms/,
+  );
 });
 
 test("desktop screenshot metric validation rejects missing and flat captures", () => {
