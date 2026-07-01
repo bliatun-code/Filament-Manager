@@ -162,6 +162,8 @@ pub mod database_wishlist_models;
 pub mod filament_database;
 #[path = "../../../src/backend/filament_master_models.rs"]
 pub mod filament_master_models;
+#[path = "../../../src/backend/inventory_domain.rs"]
+pub mod inventory_domain;
 #[path = "../../../src/backend/inventory_engine.rs"]
 pub mod inventory_engine;
 #[path = "../../../src/backend/library_sync_defaults.rs"]

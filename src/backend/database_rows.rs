@@ -4,6 +4,7 @@ use super::database_loan_models::{ActiveSpoolLoanRow, SpoolLoanRow};
 use super::database_spool_models::{SpoolRow, SpoolWithMasterRow};
 use super::database_trusted_lan_models::TrustedLanPairedBrowserRow;
 use super::filament_master_models::FilamentMasterSummary;
+use super::inventory_domain::{LoanDirection, LoanStatus};
 
 pub(crate) fn map_spool_row(row: &Row<'_>) -> Result<SpoolRow, rusqlite::Error> {
     Ok(SpoolRow {
@@ -61,12 +62,19 @@ pub(crate) fn map_trusted_lan_paired_browser_row(
 }
 
 pub(crate) fn map_spool_loan_row(row: &Row<'_>) -> Result<SpoolLoanRow, rusqlite::Error> {
+    let loan_direction_raw: String = row.get(3)?;
+    let loan_status_raw: String = row.get(4)?;
+    let returned_at: Option<String> = row.get(12)?;
     Ok(SpoolLoanRow {
         id: row.get(0)?,
         spool_id: row.get(1)?,
         borrower_name: row.get(2)?,
-        loan_direction: row.get(3)?,
-        loan_status: row.get(4)?,
+        loan_direction: LoanDirection::from_raw(Some(&loan_direction_raw))
+            .as_str()
+            .to_string(),
+        loan_status: LoanStatus::from_raw(Some(&loan_status_raw), returned_at.as_deref())
+            .as_str()
+            .to_string(),
         counterparty_name: row.get(5)?,
         counterparty_contact: row.get(6)?,
         counterparty_note: row.get(7)?,
@@ -74,7 +82,7 @@ pub(crate) fn map_spool_loan_row(row: &Row<'_>) -> Result<SpoolLoanRow, rusqlite
         lent_note: row.get(9)?,
         lent_at: row.get(10)?,
         expected_return_at: row.get(11)?,
-        returned_at: row.get(12)?,
+        returned_at,
         returned_grams: row.get(13)?,
         consumed_grams: row.get(14)?,
         return_note: row.get(15)?,

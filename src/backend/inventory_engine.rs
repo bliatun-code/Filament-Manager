@@ -6,6 +6,7 @@ use crate::backend::filament_database::{
     SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow, SpoolUsagePointRow,
     SpoolWithMasterRow, WishlistItemRow,
 };
+use crate::backend::inventory_domain::{LoanDirection, OwnershipType, SpoolStatus};
 use crate::backend::printer_slot_live_mapping::bambu_live_slot_matches_tray;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -327,11 +328,12 @@ impl InventoryEngine {
 
     pub fn create_spool(&self, input: CreateSpoolInput) -> InventoryResult<()> {
         let spool_id = input.id.clone();
-        let ownership_type = normalize_ownership_type(input.ownership_type.as_deref());
+        let ownership_type_kind = OwnershipType::from_raw(input.ownership_type.as_deref());
+        let ownership_type = ownership_type_kind.as_str().to_string();
         let owner_name = normalize_optional_input_text(input.owner_name.as_deref());
         let owner_contact = normalize_optional_input_text(input.owner_contact.as_deref());
         let ownership_note = normalize_optional_input_text(input.ownership_note.as_deref());
-        if ownership_type == "BORROWED_IN" && owner_name.is_none() {
+        if ownership_type_kind.is_borrowed_in() && owner_name.is_none() {
             return Err(InventoryError::Db(
                 "borrowed-in spools require an owner/counterparty name".to_string(),
             ));
@@ -376,7 +378,7 @@ impl InventoryEngine {
                 "ownership_type": spool.ownership_type,
             }),
         )?;
-        if ownership_type == "BORROWED_IN" {
+        if ownership_type_kind.is_borrowed_in() {
             let loan = self.db.create_inbound_spool_loan(
                 &spool_id,
                 owner_name.as_deref().unwrap_or(""),
@@ -408,11 +410,12 @@ impl InventoryEngine {
 
     pub fn create_manual_spool(&self, input: CreateManualSpoolInput) -> InventoryResult<()> {
         let spool_id = input.id.clone();
-        let ownership_type = normalize_ownership_type(input.ownership_type.as_deref());
+        let ownership_type_kind = OwnershipType::from_raw(input.ownership_type.as_deref());
+        let ownership_type = ownership_type_kind.as_str().to_string();
         let owner_name = normalize_optional_input_text(input.owner_name.as_deref());
         let owner_contact = normalize_optional_input_text(input.owner_contact.as_deref());
         let ownership_note = normalize_optional_input_text(input.ownership_note.as_deref());
-        if ownership_type == "BORROWED_IN" && owner_name.is_none() {
+        if ownership_type_kind.is_borrowed_in() && owner_name.is_none() {
             return Err(InventoryError::Db(
                 "borrowed-in spools require an owner/counterparty name".to_string(),
             ));
@@ -469,7 +472,7 @@ impl InventoryEngine {
                 "vendor": vendor_label,
             }),
         )?;
-        if ownership_type == "BORROWED_IN" {
+        if ownership_type_kind.is_borrowed_in() {
             let loan = self.db.create_inbound_spool_loan(
                 &spool_id,
                 owner_name.as_deref().unwrap_or(""),
@@ -589,16 +592,15 @@ impl InventoryEngine {
     }
 
     pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {
-        if (status.eq_ignore_ascii_case("IN_USE") || status.eq_ignore_ascii_case("ASSIGNED"))
-            && !self.db.spool_assigned_to_printer(spool_id)?
-        {
+        let status_kind = SpoolStatus::from_raw(Some(status));
+        if status_kind.is_assigned() && !self.db.spool_assigned_to_printer(spool_id)? {
             return Err(InventoryError::Db(
                 "assign spool to a printer slot before setting ASSIGNED".to_string(),
             ));
         }
         self.db.update_spool_status(spool_id, status)?;
         self.log_spool_event(spool_id, "STATUS_UPDATED", json!({ "status": status }))?;
-        if status.eq_ignore_ascii_case("EMPTY") {
+        if status_kind == SpoolStatus::Empty {
             self.log_spool_event(spool_id, "USED_UP", json!({ "status": status }))?;
         }
         Ok(())
@@ -624,10 +626,8 @@ impl InventoryEngine {
     }
 
     pub fn update_spool_details(&self, input: UpdateSpoolDetailsInput) -> InventoryResult<()> {
-        if (input.status.eq_ignore_ascii_case("IN_USE")
-            || input.status.eq_ignore_ascii_case("ASSIGNED"))
-            && !self.db.spool_assigned_to_printer(&input.spool_id)?
-        {
+        let status_kind = SpoolStatus::from_raw(Some(&input.status));
+        if status_kind.is_assigned() && !self.db.spool_assigned_to_printer(&input.spool_id)? {
             return Err(InventoryError::Db(
                 "assign spool to a printer slot before setting ASSIGNED".to_string(),
             ));
@@ -727,11 +727,7 @@ impl InventoryEngine {
             .db
             .get_spool_with_master_by_id(spool_id)?
             .ok_or(InventoryError::NotFound)?;
-        if !spool
-            .spool
-            .ownership_type
-            .eq_ignore_ascii_case("BORROWED_IN")
-        {
+        if !OwnershipType::from_raw(Some(&spool.spool.ownership_type)).is_borrowed_in() {
             return Err(InventoryError::Db(
                 "this flow only supports borrowed-in spools".to_string(),
             ));
@@ -769,7 +765,7 @@ impl InventoryEngine {
         if spool_id.is_empty() {
             return Err(InventoryError::Db("spool id is required".to_string()));
         }
-        let next_ownership_type = normalize_ownership_type(Some(input.ownership_type.as_str()));
+        let next_ownership_type_kind = OwnershipType::from_raw(Some(input.ownership_type.as_str()));
         let owner_name = normalize_optional_input_text(input.owner_name.as_deref());
         let owner_contact = normalize_optional_input_text(input.owner_contact.as_deref());
         let ownership_note = normalize_optional_input_text(input.ownership_note.as_deref());
@@ -778,13 +774,15 @@ impl InventoryEngine {
             .db
             .get_spool_with_master_by_id(spool_id)?
             .ok_or(InventoryError::NotFound)?;
-        let previous_ownership_type = normalize_ownership_type(Some(&spool.spool.ownership_type));
+        let previous_ownership_type_kind =
+            OwnershipType::from_raw(Some(&spool.spool.ownership_type));
+        let previous_ownership_type = previous_ownership_type_kind.as_str().to_string();
 
-        if next_ownership_type == "BORROWED_IN" {
+        if next_ownership_type_kind.is_borrowed_in() {
             let owner_name = owner_name.ok_or(InventoryError::Db(
                 "borrowed-in spools require an owner/counterparty name".to_string(),
             ))?;
-            if previous_ownership_type == "BORROWED_IN" {
+            if previous_ownership_type_kind.is_borrowed_in() {
                 return self.update_borrowed_in_spool(UpdateBorrowedInSpoolInput {
                     spool_id: spool_id.to_string(),
                     owner_name,
@@ -800,7 +798,7 @@ impl InventoryEngine {
 
             self.db.update_spool_ownership(
                 spool_id,
-                "BORROWED_IN",
+                OwnershipType::BorrowedIn.as_str(),
                 Some(owner_name.as_str()),
                 owner_contact.as_deref(),
                 ownership_note.as_deref(),
@@ -823,7 +821,7 @@ impl InventoryEngine {
                 "OWNERSHIP_UPDATED",
                 json!({
                     "previous_ownership_type": previous_ownership_type,
-                    "ownership_type": "BORROWED_IN",
+                    "ownership_type": OwnershipType::BorrowedIn.as_str(),
                     "owner_name": owner_name,
                     "owner_contact": owner_contact,
                     "ownership_note": ownership_note,
@@ -834,7 +832,7 @@ impl InventoryEngine {
                 "BORROWED_IN_REGISTERED",
                 json!({
                     "loan_id": loan.id,
-                    "ownership_type": "BORROWED_IN",
+                    "ownership_type": OwnershipType::BorrowedIn.as_str(),
                     "owner_name": owner_name,
                     "owner_contact": owner_contact,
                     "ownership_note": ownership_note,
@@ -848,7 +846,7 @@ impl InventoryEngine {
 
         if self
             .db
-            .find_active_spool_loan_for_direction(spool_id, "OUTBOUND")?
+            .find_active_spool_loan_for_direction(spool_id, LoanDirection::Outbound.as_str())?
             .is_some()
         {
             return Err(InventoryError::Db(
@@ -858,15 +856,20 @@ impl InventoryEngine {
 
         let active_inbound = self
             .db
-            .find_active_spool_loan_for_direction(spool_id, "INBOUND")?;
-        self.db
-            .update_spool_ownership(spool_id, "OWNED", None, None, None)?;
+            .find_active_spool_loan_for_direction(spool_id, LoanDirection::Inbound.as_str())?;
+        self.db.update_spool_ownership(
+            spool_id,
+            OwnershipType::Owned.as_str(),
+            None,
+            None,
+            None,
+        )?;
         self.log_spool_event(
             spool_id,
             "OWNERSHIP_UPDATED",
             json!({
                 "previous_ownership_type": previous_ownership_type,
-                "ownership_type": "OWNED",
+                "ownership_type": OwnershipType::Owned.as_str(),
                 "owner_name": null,
                 "owner_contact": null,
                 "ownership_note": null,
@@ -1266,7 +1269,7 @@ impl InventoryEngine {
             .db
             .get_spool_by_id(&input.spool_id)?
             .ok_or(InventoryError::NotFound)?;
-        if spool.ownership_type.eq_ignore_ascii_case("BORROWED_IN") {
+        if OwnershipType::from_raw(Some(&spool.ownership_type)).is_borrowed_in() {
             return Err(InventoryError::Db(
                 "borrowed-in spools cannot be loaned out".to_string(),
             ));
@@ -1427,19 +1430,6 @@ fn normalize_optional_input_text(value: Option<&str>) -> Option<String> {
         .map(str::trim)
         .filter(|text| !text.is_empty())
         .map(|text| text.to_string())
-}
-
-fn normalize_ownership_type(value: Option<&str>) -> String {
-    let normalized = value
-        .map(str::trim)
-        .filter(|raw| !raw.is_empty())
-        .unwrap_or("OWNED")
-        .to_uppercase()
-        .replace(['-', ' '], "_");
-    match normalized.as_str() {
-        "BORROWED_IN" => "BORROWED_IN".to_string(),
-        _ => "OWNED".to_string(),
-    }
 }
 
 #[cfg(test)]

@@ -5,6 +5,7 @@ use super::database_loan_models::{
 };
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_rows::map_active_spool_loan_row;
+use super::inventory_domain::LoanDirection;
 use super::loan_defaults::normalize_loan_direction_filter;
 
 pub(crate) fn spool_has_active_loan(conn: &Connection, spool_id: &str) -> InventoryResult<bool> {
@@ -60,11 +61,7 @@ pub(crate) fn find_active_spool_loan_for_direction(
     spool_id: &str,
     direction: &str,
 ) -> InventoryResult<Option<ActiveSpoolLoanRow>> {
-    let loan_direction = if direction.trim().eq_ignore_ascii_case("INBOUND") {
-        "INBOUND"
-    } else {
-        "OUTBOUND"
-    };
+    let loan_direction = LoanDirection::from_raw(Some(direction)).as_str();
 
     conn.query_row(
         "SELECT

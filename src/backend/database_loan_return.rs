@@ -5,6 +5,7 @@ use super::database_loan_models::SpoolLoanRow;
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_rows::map_spool_loan_row;
 use super::database_text::normalize_optional_text;
+use super::inventory_domain::LoanDirection;
 
 pub(crate) fn return_spool_loan(
     conn: &Connection,
@@ -17,7 +18,7 @@ pub(crate) fn return_spool_loan(
     if loan.returned_at.is_some() {
         return Err(InventoryError::Db("loan already returned".to_string()));
     }
-    if !loan.loan_direction.eq_ignore_ascii_case("OUTBOUND") {
+    if LoanDirection::from_raw(Some(&loan.loan_direction)) != LoanDirection::Outbound {
         return Err(InventoryError::Db(
             "inbound loans require a dedicated return flow".to_string(),
         ));
@@ -85,7 +86,7 @@ pub(crate) fn return_inbound_spool_loan(
     if loan.returned_at.is_some() {
         return Err(InventoryError::Db("loan already returned".to_string()));
     }
-    if !loan.loan_direction.eq_ignore_ascii_case("INBOUND") {
+    if LoanDirection::from_raw(Some(&loan.loan_direction)) != LoanDirection::Inbound {
         return Err(InventoryError::Db(
             "this flow only supports inbound loans".to_string(),
         ));

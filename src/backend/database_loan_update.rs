@@ -4,6 +4,7 @@ use super::database_loan_models::SpoolLoanRow;
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_rows::map_spool_loan_row;
 use super::database_text::normalize_optional_text;
+use super::inventory_domain::LoanDirection;
 
 pub(crate) fn update_active_inbound_spool_loan_counterparty(
     conn: &Connection,
@@ -42,7 +43,7 @@ pub(crate) fn close_inbound_spool_loan_without_returning_spool(
     if loan.returned_at.is_some() {
         return Err(InventoryError::Db("loan already returned".to_string()));
     }
-    if !loan.loan_direction.eq_ignore_ascii_case("INBOUND") {
+    if LoanDirection::from_raw(Some(&loan.loan_direction)) != LoanDirection::Inbound {
         return Err(InventoryError::Db(
             "this flow only supports inbound loans".to_string(),
         ));
