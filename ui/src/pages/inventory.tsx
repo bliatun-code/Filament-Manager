@@ -185,6 +185,11 @@ export default function InventoryPage({
     wishlistItems,
     wishlistLoading,
   });
+  const { onBambuBatchInputChange } = addModalProps;
+  const inventoryAddModalProps = {
+    ...addModalProps,
+    autoOpenBambuBatch: desktopVisualQaScenario === "bambu-batch-add",
+  };
 
   useEffect(() => {
     if (navigationIntent?.kind !== "LOW_STOCK") {
@@ -559,7 +564,13 @@ export default function InventoryPage({
       return;
     }
 
-    if (desktopVisualQaScenario === "add-filament") {
+    if (
+      desktopVisualQaScenario === "add-filament" ||
+      desktopVisualQaScenario === "bambu-batch-add"
+    ) {
+      if (desktopVisualQaScenario === "bambu-batch-add") {
+        onBambuBatchInputChange("40500\n40200\n65103");
+      }
       openAddModal();
       setDesktopVisualQaStage("done");
       return;
@@ -593,6 +604,7 @@ export default function InventoryPage({
     desktopVisualQaStage,
     loading,
     loanTrackingCandidates.length,
+    onBambuBatchInputChange,
     openAddModal,
     openLoanTrackingModal,
     selectRollForManage,
@@ -736,7 +748,7 @@ export default function InventoryPage({
 
       <InventoryPageWorkspace
         addModalActive={addModalActive}
-        addModalProps={addModalProps}
+        addModalProps={inventoryAddModalProps}
         clientHostDeviceName={clientHostDeviceName}
         clientInventorySource={clientInventorySource}
         clientInventoryUpdatedAt={clientInventoryUpdatedAt}

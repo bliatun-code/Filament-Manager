@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
 import { InventoryBambuBatchModal } from "./inventory_bambu_batch_modal";
@@ -35,6 +35,7 @@ const inventoryAddModalHeaderActionButtonClassName =
 export type InventoryAddModalProps = {
   actionStyle?: CSSProperties;
   activeCatalogMasters: MasterCatalogRow[];
+  autoOpenBambuBatch?: boolean;
   bambuBatchInput: string;
   bambuBatchCreateState: BambuFilamentCodeBatchCreateState;
   bambuCodeBatch: BambuFilamentCodeBatch;
@@ -99,6 +100,7 @@ export type InventoryAddModalProps = {
 export function InventoryAddModal({
   actionStyle,
   activeCatalogMasters,
+  autoOpenBambuBatch = false,
   bambuBatchInput,
   bambuBatchCreateState,
   bambuCodeBatch,
@@ -161,6 +163,7 @@ export function InventoryAddModal({
 }: InventoryAddModalProps) {
   const { t } = useI18n();
   const [bambuBatchModalOpen, setBambuBatchModalOpen] = useState(false);
+  const [autoOpenedBambuBatch, setAutoOpenedBambuBatch] = useState(false);
   const selectedCatalogMaster = selectedCatalogMasterId
     ? (catalogMasterById.get(selectedCatalogMasterId) ?? null)
     : null;
@@ -176,16 +179,29 @@ export function InventoryAddModal({
     initialWeightRaw: initialWeight,
   });
 
-  if (!open) {
-    return null;
-  }
-
-  const openBambuBatchModal = () => {
+  const openBambuBatchModal = useCallback(() => {
     if (createMode !== "bambu") {
       onCreateModeChange("bambu");
     }
     setBambuBatchModalOpen(true);
-  };
+  }, [createMode, onCreateModeChange]);
+
+  useEffect(() => {
+    if (!open) {
+      setBambuBatchModalOpen(false);
+      setAutoOpenedBambuBatch(false);
+      return;
+    }
+    if (!autoOpenBambuBatch || autoOpenedBambuBatch) {
+      return;
+    }
+    openBambuBatchModal();
+    setAutoOpenedBambuBatch(true);
+  }, [autoOpenBambuBatch, autoOpenedBambuBatch, open, openBambuBatchModal]);
+
+  if (!open) {
+    return null;
+  }
 
   return (
     <AppModal

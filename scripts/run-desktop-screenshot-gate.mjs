@@ -18,6 +18,7 @@ const DEFAULT_WINDOW_TITLE = "Filament Manager";
 const VISUAL_QA_SCENARIO_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
 const DESKTOP_VISUAL_QA_SCENARIOS = [
   "add-filament",
+  "bambu-batch-add",
   "loan-out",
   "selected-roll",
   "rfid-capture",
@@ -26,7 +27,7 @@ const DESKTOP_VISUAL_QA_SCENARIOS = [
 ];
 
 function parseArgValue(argv, name) {
-  const index = argv.indexOf(name);
+  const index = argv.lastIndexOf(name);
   return index >= 0 ? argv[index + 1] : null;
 }
 
@@ -72,14 +73,18 @@ export function normalizeDesktopVisualQaScenario(value) {
     case "printer-board":
     case "printers":
       return "printer-board";
+    case "bambu-batch-add":
+    case "batch-add":
+    case "bambu-batch":
+      return "bambu-batch-add";
     default:
       throw new Error(
-        `Unknown desktop visual QA scenario "${value}". Use add-filament, loan-out, selected-roll, rfid-capture, return-loan, or printer-board.`,
+        `Unknown desktop visual QA scenario "${value}". Use add-filament, loan-out, selected-roll, rfid-capture, return-loan, printer-board, or bambu-batch-add.`,
       );
   }
 }
 
-function parseDesktopVisualQaScenarios(argv) {
+export function parseDesktopVisualQaScenarios(argv) {
   const raw = parseArgValue(argv, "--scenario");
   if (raw == null || raw.trim() === "") {
     return [null];
@@ -88,6 +93,18 @@ function parseDesktopVisualQaScenarios(argv) {
     return DESKTOP_VISUAL_QA_SCENARIOS;
   }
   return [normalizeDesktopVisualQaScenario(raw)];
+}
+
+export function desktopScreenshotNameForScenario({
+  baseName,
+  explicitName = false,
+  scenario,
+  scenarioCount,
+}) {
+  if (!scenario) {
+    return baseName;
+  }
+  return scenarioCount > 1 || !explicitName ? `${baseName}-${scenario}` : baseName;
 }
 
 function minimumFor(value, fallback) {
@@ -605,8 +622,8 @@ async function runCli() {
   const argv = process.argv.slice(2);
   const scenarios = parseDesktopVisualQaScenarios(argv);
   const hasScenario = scenarios.some(Boolean);
-  const baseName =
-    parseArgValue(argv, "--name") ?? (scenarios.length > 1 ? "desktop-scenario" : "desktop-window");
+  const explicitName = parseArgValue(argv, "--name");
+  const baseName = explicitName ?? (hasScenario ? "desktop-scenario" : "desktop-window");
   const baseOptions = {
     captureDelayMs: parseIntegerArg(argv, "--capture-delay-ms", hasScenario ? 3_500 : 0),
     keep: argv.includes("--keep"),
@@ -629,7 +646,12 @@ async function runCli() {
   };
   const results = [];
   for (const scenario of scenarios) {
-    const name = scenario && scenarios.length > 1 ? `${baseName}-${scenario}` : baseName;
+    const name = desktopScreenshotNameForScenario({
+      baseName,
+      explicitName: Boolean(explicitName),
+      scenario,
+      scenarioCount: scenarios.length,
+    });
     const options = { ...baseOptions, name, scenario };
     const result = argv.includes("--launch")
       ? await runLaunchedDesktopScreenshotGate(options)

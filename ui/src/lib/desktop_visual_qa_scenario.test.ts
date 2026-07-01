@@ -32,6 +32,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
   assert.equal(normalizeDesktopVisualQaScenario("inventory-rfid"), "rfid-capture");
   assert.equal(normalizeDesktopVisualQaScenario("loan-return"), "return-loan");
   assert.equal(normalizeDesktopVisualQaScenario("printers"), "printer-board");
+  assert.equal(normalizeDesktopVisualQaScenario("batch-add"), "bambu-batch-add");
   assert.equal(normalizeDesktopVisualQaScenario("unknown"), null);
 
   assert.equal(resolveDesktopVisualQaScenario("?bfm_visual_qa=loan-out", true), "loan-out");
@@ -43,6 +44,7 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=rfid-capture"), "inventory");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=return-loan"), "loans");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-board"), "printers");
+  assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=bambu-batch-add"), "inventory");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=unknown"), null);
 });
 

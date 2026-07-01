@@ -4,6 +4,7 @@ export const DESKTOP_VISUAL_QA_QUERY_KEY = "bfm_visual_qa";
 
 export const DESKTOP_VISUAL_QA_SCENARIOS = [
   "add-filament",
+  "bambu-batch-add",
   "loan-out",
   "selected-roll",
   "rfid-capture",
@@ -43,6 +44,10 @@ export function normalizeDesktopVisualQaScenario(
     case "printer-board":
     case "printers":
       return "printer-board";
+    case "bambu-batch-add":
+    case "batch-add":
+    case "bambu-batch":
+      return "bambu-batch-add";
     default:
       return null;
   }

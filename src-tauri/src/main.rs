@@ -311,6 +311,7 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         "rfid-capture" | "inventory-rfid" => Some("rfid-capture"),
         "return-loan" | "loan-return" | "return" => Some("return-loan"),
         "printer-board" | "printers" => Some("printer-board"),
+        "bambu-batch-add" | "batch-add" | "bambu-batch" => Some("bambu-batch-add"),
         _ => None,
     }
 }

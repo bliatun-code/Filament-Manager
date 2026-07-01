@@ -5,8 +5,10 @@ import {
   buildDesktopWindowListScript,
   buildDesktopWindowLookupScript,
   desktopScreenshotScale,
+  desktopScreenshotNameForScenario,
   formatDesktopScreenshotGateReport,
   normalizeDesktopVisualQaScenario,
+  parseDesktopVisualQaScenarios,
   parseDesktopWindowList,
   parseDesktopWindowInfo,
   validateDesktopScreenshotMetrics,
@@ -90,8 +92,35 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
   assert.equal(normalizeDesktopVisualQaScenario("inventory-rfid"), "rfid-capture");
   assert.equal(normalizeDesktopVisualQaScenario("loan-return"), "return-loan");
   assert.equal(normalizeDesktopVisualQaScenario("printers"), "printer-board");
+  assert.equal(normalizeDesktopVisualQaScenario("batch-add"), "bambu-batch-add");
   assert.equal(normalizeDesktopVisualQaScenario(""), null);
   assert.throws(() => normalizeDesktopVisualQaScenario("bad"), /Unknown desktop visual QA/);
+});
+
+test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {
+  assert.deepEqual(parseDesktopVisualQaScenarios(["--scenario", "all", "--scenario", "batch-add"]), [
+    "bambu-batch-add",
+  ]);
+});
+
+test("desktop screenshot gate names single scenario captures by scenario", () => {
+  assert.equal(
+    desktopScreenshotNameForScenario({
+      baseName: "desktop-scenario",
+      scenario: "bambu-batch-add",
+      scenarioCount: 1,
+    }),
+    "desktop-scenario-bambu-batch-add",
+  );
+  assert.equal(
+    desktopScreenshotNameForScenario({
+      baseName: "custom",
+      explicitName: true,
+      scenario: "bambu-batch-add",
+      scenarioCount: 1,
+    }),
+    "custom",
+  );
 });
 
 test("desktop screenshot metric validation accepts rich desktop captures", () => {
