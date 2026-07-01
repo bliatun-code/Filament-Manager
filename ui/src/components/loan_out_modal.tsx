@@ -6,7 +6,7 @@ import {
   inventoryTwoColumnModalGridClassName,
   inventoryWideModalPanelClassName,
 } from "./inventory_modal_chrome";
-import { modalActionButtonClassName } from "./modal_action_button_class";
+import { ModalActionButton } from "./modal_action_button";
 import { ModalHeader } from "./modal_chrome";
 import { VendorBadge } from "./vendor_badge";
 import {
@@ -18,7 +18,8 @@ import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import {
   inventoryCatalogRowStyle,
-  inventorySwatchActionButtonStyle,
+  inventorySwatchInsetStyle,
+  inventorySwatchPanelStyle,
 } from "../lib/inventory_swatch_style";
 import { useResolvedTheme } from "../lib/theme_mode";
 import { lendInventorySpool } from "../lib/loan_data_source";
@@ -35,8 +36,6 @@ import {
   panelCardClassName,
   panelSubtitleClassName,
   panelTitleClassName,
-  swatchInsetStyle,
-  swatchPanelStyle,
 } from "./loan_out_modal_styles";
 import {
   formatLoanOutGrams,
@@ -321,7 +320,7 @@ export function LoanOutModal({
                 {selectedSpool ? (
                   <div
                     className="rounded-[1.4rem] border px-4 py-4 shadow-sm shadow-slate-200/15 dark:shadow-none"
-                    style={swatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
+                    style={inventorySwatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
                   >
                     <div className="flex items-start gap-3">
                       <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/75 bg-white/65 p-2 shadow-sm shadow-slate-200/25 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
@@ -352,7 +351,7 @@ export function LoanOutModal({
                     <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.25fr)_minmax(132px,0.8fr)]">
                       <div
                         className="rounded-xl border px-3 py-2.5"
-                        style={swatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
+                        style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
                       >
                         <div className={detailLabelClassName}>
                           {t("inventory.reference", "Reference")}
@@ -366,7 +365,7 @@ export function LoanOutModal({
                       </div>
                       <div
                         className="rounded-xl border px-3 py-2.5"
-                        style={swatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
+                        style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
                       >
                         <div className={detailLabelClassName}>
                           {t("inventory.remaining", "Remaining")}
@@ -377,7 +376,7 @@ export function LoanOutModal({
                       </div>
                       <div
                         className="rounded-xl border px-3 py-2.5 sm:col-span-2"
-                        style={swatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
+                        style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
                       >
                         <div className={detailLabelClassName}>
                           {t("inventory.location", "Location")}
@@ -446,18 +445,18 @@ export function LoanOutModal({
                         />
                       </div>
 
-                      <button
-                        type="button"
+                      <ModalActionButton
                         onClick={() => void handleSubmit()}
                         disabled={!tauri || busy}
-                        className={`mt-4 w-full ${modalActionButtonClassName("solid", "roomy")}`}
-                        style={inventorySwatchActionButtonStyle(
-                          selectedSpool.hexColor,
-                          resolvedTheme,
-                        )}
+                        className="mt-4"
+                        fullWidth
+                        resolvedTheme={resolvedTheme}
+                        size="roomy"
+                        swatchColor={selectedSpool.hexColor}
+                        variant="solid"
                       >
                         {t("inventory.loanOutRoll", "Loan out roll")}
-                      </button>
+                      </ModalActionButton>
                     </div>
                   </div>
                 ) : (

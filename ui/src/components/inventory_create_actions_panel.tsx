@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { inventoryFormControlClassName } from "./form_control_class";
-import { modalActionButtonClassName } from "./modal_action_button_class";
+import { ModalActionButton } from "./modal_action_button";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
@@ -175,9 +175,11 @@ export function InventoryCreateActionsPanel({
           disabled={!tauriAvailable}
         />
       </div>
-      <button
-        type="button"
-        className={`mt-4 w-full ${modalActionButtonClassName("solid", "roomy")}`}
+      <ModalActionButton
+        className="mt-4"
+        fullWidth
+        size="roomy"
+        variant="solid"
         style={actionStyle}
         onClick={onCreateSpool}
         disabled={disabledCreate}
@@ -185,18 +187,17 @@ export function InventoryCreateActionsPanel({
         {ownershipType === "BORROWED_IN"
           ? t("inventory.registerBorrowedIn", "Register borrowed-in spool")
           : t("inventory.addSpool", "Add spool to inventory")}
-      </button>
+      </ModalActionButton>
 
       <div className="mt-4 border-t border-slate-200/80 pt-4 dark:border-slate-700/80">
-        <button
-          type="button"
-          className={`w-full ${modalActionButtonClassName()}`}
+        <ModalActionButton
+          fullWidth
           style={actionStyle}
           onClick={onAddCurrentToWishlist}
           disabled={disabledWishlistCreate}
         >
           {t("inventory.addCurrentSelectionToWishlist", "Add current selection to wishlist")}
-        </button>
+        </ModalActionButton>
       </div>
     </div>
   );

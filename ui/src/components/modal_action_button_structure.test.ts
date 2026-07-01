@@ -8,6 +8,7 @@ function readComponentSource(fileName: string): string {
 
 test("modal action buttons share secondary and primary chrome", () => {
   const addPrinterModal = readComponentSource("add_printer_modal.tsx");
+  const actionButtonComponent = readComponentSource("modal_action_button.tsx");
   const actionButtonClass = readComponentSource("modal_action_button_class.ts");
   const createActions = readComponentSource("inventory_create_actions_panel.tsx");
   const rfidCapturePanels = readComponentSource("inventory_rfid_capture_panels.tsx");
@@ -25,10 +26,14 @@ test("modal action buttons share secondary and primary chrome", () => {
   assert.match(actionButtonClass, /variant === "solid"/);
   assert.match(actionButtonClass, /variant === "success"/);
   assert.match(actionButtonClass, /size === "roomy" \? "px-4 py-3" : "px-4 py-2"/);
+  assert.match(actionButtonComponent, /function ModalActionButton/);
+  assert.match(actionButtonComponent, /inventorySwatchActionButtonStyle/);
   assert.match(addPrinterModal, /modalActionButtonClassName\(\)/);
   assert.match(addPrinterModal, /modalActionButtonClassName\("solid"\)/);
-  assert.match(createActions, /modalActionButtonClassName\(\)/);
-  assert.match(createActions, /modalActionButtonClassName\("solid", "roomy"\)/);
+  assert.match(createActions, /<ModalActionButton/);
+  assert.match(createActions, /variant="solid"/);
+  assert.match(createActions, /size="roomy"/);
+  assert.match(createActions, /fullWidth/);
   assert.match(saveOnlyModal, /modalActionButtonClassName\("solid", "roomy"\)/);
   assert.doesNotMatch(addPrinterModal, /rounded-xl bg-slate-900 px-4 py-2/);
   assert.doesNotMatch(createActions, /rounded-xl border px-4 py-3 text-sm font-semibold/);
