@@ -5,6 +5,7 @@ import {
   formatStatusLabel,
 } from "./formatters.js";
 import { t } from "./companion_i18n.js";
+import { normalizeOwnershipType } from "./companion_domain.js";
 import {
   printerBrandCssVars,
   styleObjectToString,
@@ -548,7 +549,7 @@ function renderLiveInventoryCandidateRows(slot, spoolRows, activePrinter, locale
             row.master.filament_name,
             row.master.color_name,
           );
-          const ownershipType = String(row?.spool?.ownership_type || "OWNED").trim().toUpperCase();
+          const ownershipType = normalizeOwnershipType(row?.spool?.ownership_type);
           const ownerName = String(row?.spool?.owner_name || "").trim();
           const ownershipLabel =
             ownershipType === "BORROWED_IN"

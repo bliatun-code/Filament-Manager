@@ -1,6 +1,10 @@
 import { renderSelectedSpoolDetailBody } from "./detail_content.js";
 import { formatCountLabel, t } from "./companion_i18n.js";
 import {
+  isSpoolStatusAssigned,
+  isSpoolStatusUnavailableForPrinterSlot,
+} from "./companion_domain.js";
+import {
   escapeHtml,
   formatDate,
   formatGrams,
@@ -452,20 +456,13 @@ export function createCompanionAppShellRenderer(options) {
         if (!row?.spool?.id) {
           return false;
         }
-        const status = String(row.spool.status || "").trim().toUpperCase();
-        if (
-          status === "EMPTY" ||
-          status === "LOST" ||
-          status === "DELETED" ||
-          status === "MISSING" ||
-          status === "BORROWED"
-        ) {
+        if (isSpoolStatusUnavailableForPrinterSlot(row.spool.status)) {
           return false;
         }
         if (currentTargetSlotSpoolId && String(row.spool.id).trim() === currentTargetSlotSpoolId) {
           return true;
         }
-        if (status === "IN_USE" || status === "ASSIGNED") {
+        if (isSpoolStatusAssigned(row.spool.status)) {
           return false;
         }
         return canLoadSpoolIntoPrinter(row);

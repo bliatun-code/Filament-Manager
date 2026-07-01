@@ -1,3 +1,5 @@
+import { isSpoolStatusLiveRfidCandidate } from "./companion_domain.js";
+
 function normalizedText(value) {
   return String(value || "")
     .trim()
@@ -106,11 +108,10 @@ export function liveSlotHasLoadedRoll(slot) {
 
 export function rowCanReceiveLiveBambuRfid(row) {
   const vendor = normalizedText(row?.master?.vendor);
-  const status = String(row?.spool?.status || "").trim().toUpperCase();
   return (
     vendor.includes("bambu") &&
     !String(row?.spool?.rfid_tag || "").trim() &&
-    !["EMPTY", "LOST", "DELETED", "MISSING", "BORROWED"].includes(status)
+    isSpoolStatusLiveRfidCandidate(row?.spool?.status)
   );
 }
 

@@ -11,6 +11,7 @@ import {
 } from "./bambu_filament_code_lookup.js";
 import { suggestSwatchHex, swatchCssStyle, toSwatchColor } from "./companion_theme.js";
 import { t } from "./companion_i18n.js";
+import { normalizeDomainToken, normalizeOwnershipType, parseSpoolStatus } from "./companion_domain.js";
 
 function catalogMatchesSource(master, source) {
   const vendor = String(master?.vendor || "").trim().toLowerCase();
@@ -144,7 +145,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
   );
   const previewVendor = selection.vendor || t(locale, "storage.vendor", "Vendor");
   const previewWeight = selection.selectedMaster?.default_weight ? `${selection.selectedMaster.default_weight} g` : "";
-  const isBorrowedIn = String(draft.ownershipType || "").trim().toUpperCase() === "BORROWED_IN";
+  const isBorrowedIn = normalizeOwnershipType(draft.ownershipType) === "BORROWED_IN";
   const catalogSelectionMissing = selection.requiresCatalogSelection;
   const wishlistRows = selection.visibleWishlistItems
     .map((item) => {
@@ -692,10 +693,11 @@ function renderSpoolRows(options) {
         .map((value) => escapeHtml(value))
         .join(" · ");
       const rowBadges = [];
-      if (row.spool.status && row.spool.status !== "IN_STOCK") {
-        rowBadges.push(formatStatusLabel(row.spool.status, locale));
+      const rowStatus = parseSpoolStatus(row.spool.status) || normalizeDomainToken(row.spool.status);
+      if (rowStatus && rowStatus !== "IN_STOCK") {
+        rowBadges.push(formatStatusLabel(rowStatus, locale));
       }
-      if (row.spool.ownership_type === "BORROWED_IN") {
+      if (normalizeOwnershipType(row.spool.ownership_type) === "BORROWED_IN") {
         rowBadges.push(ownershipLabel(row.spool));
       }
       return `

@@ -1,4 +1,5 @@
 import { normalizeCompanionLocale, t } from "./companion_i18n.js";
+import { normalizeDomainToken, normalizeOwnershipType, parseSpoolStatus } from "./companion_domain.js";
 
 export function escapeHtml(value) {
   return String(value ?? "")
@@ -192,7 +193,7 @@ export function formatPlacementLabel(value, locale = "en") {
 
 export function formatStatusLabel(value, locale = "en") {
   const normalizedLocale = normalizeCompanionLocale(locale);
-  const normalized = String(value || "").trim().toUpperCase();
+  const normalized = parseSpoolStatus(value) || normalizeDomainToken(value);
   switch (normalized) {
     case "IN_STOCK":
       return t(normalizedLocale, "format.inStock", "In stock");
@@ -217,7 +218,7 @@ export function formatStatusLabel(value, locale = "en") {
 
 export function ownershipLabel(spool, locale = "en") {
   const normalizedLocale = normalizeCompanionLocale(locale);
-  return spool?.ownership_type === "BORROWED_IN"
+  return normalizeOwnershipType(spool?.ownership_type) === "BORROWED_IN"
     ? t(normalizedLocale, "format.borrowedIn", "Borrowed in")
     : t(normalizedLocale, "format.owned", "Owned");
 }

@@ -1,4 +1,13 @@
 import { t } from "./companion_i18n.js";
+import {
+  isLegacyRemovedSpoolStatus,
+  isSpoolStatusAssigned,
+  isSpoolStatusEmpty,
+  isSpoolStatusEmptyOrLost,
+  isSpoolStatusLoanedOut,
+  isSpoolStatusUnavailableForPrinterSlot,
+  normalizeOwnershipType,
+} from "./companion_domain.js";
 import { isLoanCurrentlyActive, isLoanReturned } from "./companion_loan_state.js";
 
 export function createCompanionLogic({ state, sections, sectionLabels }) {
@@ -116,8 +125,7 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
 
   function filteredSpools() {
     const visibleRows = state.spools.filter((row) => {
-      const status = String(row?.spool?.status || "").trim().toUpperCase();
-      return status !== "EMPTY";
+      return !isSpoolStatusEmpty(row?.spool?.status);
     });
     const query = state.search.trim().toLowerCase();
     if (!query) {
@@ -208,8 +216,7 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
   }
 
   function canLoadSpoolIntoPrinter(row) {
-    const status = row?.spool?.status?.trim().toUpperCase() || "";
-    return !["BORROWED", "EMPTY", "LOST", "DELETED", "MISSING"].includes(status);
+    return !isSpoolStatusUnavailableForPrinterSlot(row?.spool?.status);
   }
 
   function loanActionState(row) {
@@ -220,8 +227,7 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
       };
     }
 
-    const ownership = row.spool?.ownership_type?.trim().toUpperCase() || "";
-    if (ownership === "BORROWED_IN") {
+    if (normalizeOwnershipType(row.spool?.ownership_type) === "BORROWED_IN") {
       return {
         allowed: false,
         reason: t(
@@ -232,20 +238,20 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
       };
     }
 
-    const status = row.spool?.status?.trim().toUpperCase() || "";
-    if (status === "IN_USE" || status === "ASSIGNED") {
+    const status = row.spool?.status;
+    if (isSpoolStatusAssigned(status)) {
       return {
         allowed: false,
         reason: t(locale(), "logic.loanInUseBlocked", "Spools that are loaded in printer slots cannot be loaned out."),
       };
     }
-    if (status === "BORROWED") {
+    if (isSpoolStatusLoanedOut(status)) {
       return {
         allowed: false,
         reason: t(locale(), "logic.loanAlreadyLoanedOut", "This spool is already loaned out."),
       };
     }
-    if (status === "EMPTY" || status === "LOST" || status === "MISSING") {
+    if (isSpoolStatusEmptyOrLost(status) || isLegacyRemovedSpoolStatus(status)) {
       return {
         allowed: false,
         reason: t(

@@ -1,5 +1,6 @@
 import { formatPrinterSlotLabelForModel } from "./printer_slot_labels.js";
 import { resolveSpoolRowTareWeight } from "./companion_spool_weight.js";
+import { normalizeOwnershipType } from "./companion_domain.js";
 
 const ROOT_FLOW_STORAGE = "storage";
 const ROOT_FLOW_PRINTERS = "printers";
@@ -20,12 +21,6 @@ function normalizeRootFlow(nextFlow) {
 
 function normalizeLoanStatusFilter(nextFilter) {
   return nextFilter === "RETURNED" || nextFilter === "ALL" ? nextFilter : "ACTIVE";
-}
-
-function normalizeOwnershipType(nextOwnershipType) {
-  return String(nextOwnershipType || "").trim().toUpperCase() === "BORROWED_IN"
-    ? "BORROWED_IN"
-    : "OWNED";
 }
 
 function normalizeAddSpoolSource(nextSource) {

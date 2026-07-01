@@ -3,6 +3,7 @@ import {
   liveSlotObservedRfid,
   rowCanReceiveLiveBambuRfid,
 } from "./companion_live_rfid_candidates.js";
+import { isEditableSpoolStatus, normalizeEditableSpoolStatus } from "./companion_domain.js";
 import { parseQrPayload } from "./qr_payload.js";
 
 export function createCompanionSpoolMutations({
@@ -112,11 +113,11 @@ export function createCompanionSpoolMutations({
 
   async function submitSpoolDetailsUpdate(spoolId, statusValue, locationValue, homeLocationValue) {
     const trimmedSpoolId = String(spoolId || "").trim();
-    const normalizedStatus = String(statusValue || "").trim().toUpperCase();
+    const normalizedStatus = normalizeEditableSpoolStatus(statusValue);
     const normalizedLocation = String(locationValue || "").trim();
     const normalizedHomeLocation = String(homeLocationValue || "").trim();
     const currentSpool = state.spools.find((row) => String(row?.spool?.id || "").trim() === trimmedSpoolId) || null;
-    const currentStatus = String(currentSpool?.spool?.status || "").trim().toUpperCase();
+    const currentStatus = normalizeEditableSpoolStatus(currentSpool?.spool?.status);
     const currentLocation = String(currentSpool?.spool?.location_id || "").trim();
     const currentHomeLocation = String(currentSpool?.spool?.home_location_id || "").trim();
     const homeLocationOnlyUpdate =
@@ -129,7 +130,7 @@ export function createCompanionSpoolMutations({
       render();
       return;
     }
-    if (!["IN_STOCK", "EMPTY", "LOST"].includes(normalizedStatus)) {
+    if (!isEditableSpoolStatus(statusValue)) {
       setStatus(tr("status.invalidDetailStatus", "Choose a valid status before saving details."), "error");
       render();
       return;

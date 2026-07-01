@@ -1,4 +1,8 @@
 import { t } from "./companion_i18n.js";
+import {
+  normalizeEditableSpoolStatus,
+  normalizeOwnershipType,
+} from "./companion_domain.js";
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference, formatStatusLabel } from "./formatters.js";
 import { swatchCssStyle } from "./companion_theme.js";
@@ -22,17 +26,12 @@ export function renderSelectedSpoolDetailBody(options) {
 
   const selectedAssignment = findAssignedSlotForSpool(selectedSpool.spool.id);
   const detailTareWeight = resolveSpoolTareWeight(selectedSpool.spool, selectedSpool.master?.vendor);
-  const normalizedDetailStatus = (selectedSpool.spool.status || "").trim().toUpperCase();
-  const detailStatus = ["IN_STOCK", "EMPTY", "LOST"].includes(normalizedDetailStatus)
-    ? normalizedDetailStatus
-    : "IN_STOCK";
+  const detailStatus = normalizeEditableSpoolStatus(selectedSpool.spool.status);
   const detailStatusLabel = formatStatusLabel(detailStatus, locale);
   const detailStatusTone =
     detailStatus === "LOST" ? "danger" : detailStatus === "EMPTY" ? "warning" : "success";
   const detailOwnershipTone =
-    String(selectedSpool.spool.ownership_type || "").trim().toUpperCase() === "BORROWED_IN"
-      ? "info"
-      : "neutral";
+    normalizeOwnershipType(selectedSpool.spool.ownership_type) === "BORROWED_IN" ? "info" : "neutral";
   const detailLocation = selectedSpool.spool.location_id || "";
   const detailHomeLocation = selectedSpool.spool.home_location_id || "";
   const detailPlacementLabel = formatPlacementLabel(detailLocation, locale);

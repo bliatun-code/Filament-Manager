@@ -1,4 +1,5 @@
 import { resolveSpoolRowTareWeight } from "./companion_spool_weight.js";
+import { normalizeOwnershipType } from "./companion_domain.js";
 import { normalizeHex } from "./companion_theme.js";
 
 function catalogMatchesSource(master, source) {
@@ -73,10 +74,7 @@ export function createCompanionMutationHelpers({ state, fetchJson, tr }) {
 
   function normalizeAddSpoolValues(values) {
     const source = String(values.source || "bambu").trim().toLowerCase();
-    const ownershipType =
-      String(values.ownershipType || "").trim().toUpperCase() === "BORROWED_IN"
-        ? "BORROWED_IN"
-        : "OWNED";
+    const ownershipType = normalizeOwnershipType(values.ownershipType);
     const ownerName = String(values.ownerName || "").trim();
     const ownerContact = String(values.ownerContact || "").trim();
     const note = String(values.note || "").trim();
