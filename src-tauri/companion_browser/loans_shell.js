@@ -1,11 +1,11 @@
 import { t } from "./companion_i18n.js";
-import { isLoanCurrentlyActive } from "./companion_loan_state.js";
+import { isLoanCurrentlyActive, isLoanReturned } from "./companion_loan_state.js";
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference } from "./formatters.js";
 import { suggestSwatchHex, swatchCssStyle, toSwatchColor } from "./companion_theme.js";
 
 function loanStateLabel(row, locale = "en") {
-  const returned = Boolean(row?.loan?.returned_at);
+  const returned = isLoanReturned(row);
   const direction = String(row?.loan?.loan_direction || "OUTBOUND").trim().toUpperCase();
   if (returned) {
     return t(locale, "loans.returned", "Returned");
@@ -131,7 +131,7 @@ function renderLoanRows(options) {
         row.loan.borrower_name ||
         row.loan.counterparty_name ||
         t(locale, "loans.unknownBorrower", "Unknown");
-      const returned = Boolean(row.loan.returned_at);
+      const returned = isLoanReturned(row);
       const active = isLoanCurrentlyActive(row);
       const isSelected = row.loan.spool_id === state.selectedSpoolId;
       const swatch =

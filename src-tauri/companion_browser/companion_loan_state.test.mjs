@@ -3,8 +3,11 @@ import assert from "node:assert/strict";
 
 import {
   isActiveOutboundLoan,
+  isLoanClosed,
   isLoanCurrentlyActive,
+  isLoanReturned,
   loanHasDeletedSpool,
+  normalizeLoanStatus,
 } from "./companion_loan_state.js";
 
 function loanRow(overrides = {}) {
@@ -35,6 +38,18 @@ test("companion loan state ignores legacy active rows for deleted spools", () =>
     ),
     false,
   );
+});
+
+test("companion loan state normalizes closed loan status tokens", () => {
+  assert.equal(normalizeLoanStatus(loanRow({ loan: { loan_status: "returned" } })), "RETURNED");
+  assert.equal(normalizeLoanStatus(loanRow({ loan: { loan_status: "loan-cancelled" } })), "LOAN_CANCELLED");
+  assert.equal(isLoanReturned(loanRow({ loan: { loan_status: "RETURNED", returned_at: null } })), true);
+  assert.equal(isLoanClosed(loanRow({ loan: { loan_status: "RETURNED", returned_at: null } })), true);
+  assert.equal(isLoanClosed(loanRow({ loan: { loan_status: "lost", returned_at: null } })), true);
+  assert.equal(isLoanClosed(loanRow({ loan: { loan_status: "cancelled", returned_at: null } })), true);
+  assert.equal(isLoanCurrentlyActive(loanRow({ loan: { loan_status: "RETURNED", returned_at: null } })), false);
+  assert.equal(isLoanCurrentlyActive(loanRow({ loan: { loan_status: "LOST", returned_at: null } })), false);
+  assert.equal(isLoanCurrentlyActive(loanRow({ loan: { loan_status: "CANCELLED", returned_at: null } })), false);
 });
 
 test("companion outbound active state rejects inbound, returned, and deleted rows", () => {

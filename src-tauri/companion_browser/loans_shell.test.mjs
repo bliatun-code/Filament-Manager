@@ -113,6 +113,27 @@ test("loans shell marks deleted active history inactive without return action", 
   assert.doesNotMatch(html, /on spool/);
 });
 
+test("loans shell treats returned status without timestamp as returned", () => {
+  const html = renderShell({
+    state: {
+      activeLoans: [],
+    },
+    loanRows: [
+      createLoanRow({
+        loan: {
+          loan_status: "RETURNED",
+          returned_at: null,
+        },
+      }),
+    ],
+    loanSummary: { active: 0, returned: 1, total: 1 },
+  });
+
+  assert.match(html, /Returned/);
+  assert.doesNotMatch(html, />\s*Return loan\s*</);
+  assert.doesNotMatch(html, /on spool/);
+});
+
 test("loan return task sheet renders the compact return form", () => {
   const state = {
     ...createInitialCompanionState(),

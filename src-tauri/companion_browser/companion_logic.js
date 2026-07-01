@@ -1,5 +1,5 @@
 import { t } from "./companion_i18n.js";
-import { isLoanCurrentlyActive } from "./companion_loan_state.js";
+import { isLoanCurrentlyActive, isLoanReturned } from "./companion_loan_state.js";
 
 export function createCompanionLogic({ state, sections, sectionLabels }) {
   const locale = () => state.locale || "en";
@@ -145,7 +145,7 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
         state.loanStatusFilter === "ALL"
           ? true
           : state.loanStatusFilter === "RETURNED"
-            ? Boolean(row.loan.returned_at)
+            ? isLoanReturned(row)
             : isLoanCurrentlyActive(row);
 
       if (!matchesStatus) {
@@ -173,7 +173,7 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
 
   function loanHistorySummary() {
     const active = state.loanHistory.filter(isLoanCurrentlyActive).length;
-    const returned = state.loanHistory.filter((row) => Boolean(row.loan.returned_at)).length;
+    const returned = state.loanHistory.filter(isLoanReturned).length;
     return {
       active,
       returned,

@@ -1,14 +1,31 @@
+const CLOSED_LOAN_STATUSES = new Set(["RETURNED", "LOST", "CANCELLED"]);
+
+export function normalizeLoanStatus(row) {
+  return String(row?.loan?.loan_status || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[-\s]+/g, "_");
+}
+
 export function loanHasDeletedSpool(row) {
   return String(row?.spool_status || "").trim().toUpperCase() === "DELETED";
 }
 
+export function isLoanReturned(row) {
+  return Boolean(row?.loan?.returned_at) || normalizeLoanStatus(row) === "RETURNED";
+}
+
+export function isLoanClosed(row) {
+  return Boolean(row?.loan?.returned_at) || CLOSED_LOAN_STATUSES.has(normalizeLoanStatus(row));
+}
+
 export function isLoanCurrentlyActive(row) {
-  return !row?.loan?.returned_at && !loanHasDeletedSpool(row);
+  return !isLoanClosed(row) && !loanHasDeletedSpool(row);
 }
 
 export function isActiveOutboundLoan(row) {
   const direction = String(row?.loan?.loan_direction || "OUTBOUND").trim().toUpperCase();
-  const status = String(row?.loan?.loan_status || "").trim().toUpperCase();
+  const status = normalizeLoanStatus(row);
   const currentlyActive = isLoanCurrentlyActive(row);
   return direction === "OUTBOUND" && currentlyActive && (status === "" || status === "ACTIVE");
 }

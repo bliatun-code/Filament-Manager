@@ -177,6 +177,18 @@ test("loan filters and summary ignore legacy active rows for deleted spools", ()
           returned_at: "2026-04-02 10:00:00",
         },
       }),
+      createLoanRow("status-returned-spool", {
+        loan: {
+          loan_status: "RETURNED",
+          returned_at: null,
+        },
+      }),
+      createLoanRow("lost-spool", {
+        loan: {
+          loan_status: "LOST",
+          returned_at: null,
+        },
+      }),
     ],
   });
 
@@ -186,20 +198,20 @@ test("loan filters and summary ignore legacy active rows for deleted spools", ()
   );
   assert.deepEqual(logic.loanHistorySummary(), {
     active: 1,
-    returned: 1,
-    total: 3,
+    returned: 2,
+    total: 5,
   });
 
   state.loanStatusFilter = "ALL";
   assert.deepEqual(
     logic.filteredLoanRows().map((row) => row.loan.spool_id),
-    ["active-spool", "deleted-spool", "returned-spool"],
+    ["active-spool", "deleted-spool", "returned-spool", "status-returned-spool", "lost-spool"],
   );
 
   state.loanStatusFilter = "RETURNED";
   assert.deepEqual(
     logic.filteredLoanRows().map((row) => row.loan.spool_id),
-    ["returned-spool"],
+    ["returned-spool", "status-returned-spool"],
   );
 });
 
