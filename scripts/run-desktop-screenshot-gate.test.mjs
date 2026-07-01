@@ -2,10 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   buildDesktopWindowActivateScript,
+  buildDesktopWindowListScript,
   buildDesktopWindowLookupScript,
+  desktopScreenshotScale,
   formatDesktopScreenshotGateReport,
+  parseDesktopWindowList,
   parseDesktopWindowInfo,
   validateDesktopScreenshotMetrics,
+  waitForDesktopWindow,
 } from "./run-desktop-screenshot-gate.mjs";
 
 function createMetric(overrides = {}) {
@@ -57,9 +61,21 @@ test("desktop screenshot gate parses macOS window lookup output", () => {
   assert.equal(parseDesktopWindowInfo("Filament Manager\tTitle\t0\t0\t0\t900"), null);
 });
 
+test("desktop screenshot gate parses visible window diagnostics", () => {
+  assert.deepEqual(
+    parseDesktopWindowList(
+      "Finder\tDesktop\t0\t0\t1440\t900\nFilament Manager\tFilament Manager\t20\t40\t1300\t900\n",
+    ).map((window) => window.title),
+    ["Desktop", "Filament Manager"],
+  );
+  assert.match(buildDesktopWindowListScript(), /windowRows/);
+});
+
 test("desktop screenshot gate lookup script escapes quoted titles", () => {
   const script = buildDesktopWindowLookupScript('Filament "Manager"');
   assert.match(script, /Filament \\"Manager\\"/);
+  assert.match(script, /bambu-filament-manager/);
+  assert.match(script, /processName contains/);
   assert.match(script, /application processes whose visible is true/);
 
   const activateScript = buildDesktopWindowActivateScript('Filament "Manager"');
@@ -69,6 +85,49 @@ test("desktop screenshot gate lookup script escapes quoted titles", () => {
 
 test("desktop screenshot metric validation accepts rich desktop captures", () => {
   assert.deepEqual(validateDesktopScreenshotMetrics(createMetric()), []);
+});
+
+test("desktop screenshot metric validation accepts retina desktop captures", () => {
+  const metric = createMetric({
+    screenshotPixels: {
+      height: 1800,
+      width: 2600,
+    },
+  });
+
+  assert.deepEqual(validateDesktopScreenshotMetrics(metric), []);
+  assert.equal(desktopScreenshotScale(metric)?.average, 2);
+});
+
+test("desktop screenshot gate waits for an appearing window", async () => {
+  let attempts = 0;
+  const window = await waitForDesktopWindow({
+    findWindowFn: async () => {
+      attempts += 1;
+      return attempts >= 3 ? createMetric().window : null;
+    },
+    intervalMs: 1,
+    timeoutMs: 50,
+  });
+
+  assert.equal(window?.title, "Filament Manager");
+  assert.equal(attempts, 3);
+});
+
+test("desktop screenshot gate wait can abort when launch exits", async () => {
+  let attempts = 0;
+  const window = await waitForDesktopWindow({
+    findWindowFn: async () => {
+      attempts += 1;
+      return null;
+    },
+    intervalMs: 1,
+    shouldAbort: () => attempts >= 2,
+    timeoutMs: 50,
+  });
+
+  assert.equal(window, null);
+  assert.equal(attempts, 2);
 });
 
 test("desktop screenshot metric validation rejects missing and flat captures", () => {
@@ -105,6 +164,30 @@ test("desktop screenshot report lists window and artifact details", () => {
   });
 
   assert.match(report, /Desktop window: Filament Manager/);
+  assert.match(report, /Pixels: 1300x900 @1\.0x/);
   assert.match(report, /desktop-window\.png/);
   assert.match(report, /Desktop screenshot gate ok/);
+});
+
+test("desktop screenshot report lists visible windows when launch misses the app", () => {
+  const report = formatDesktopScreenshotGateReport({
+    errors: ["No Filament Manager desktop window was found."],
+    metric: {
+      visibleWindows: [
+        {
+          height: 900,
+          processName: "Codex",
+          title: "Codex",
+          width: 1440,
+          x: 0,
+          y: 0,
+        },
+      ],
+      window: null,
+    },
+    outputDir: "/tmp/visual-qa",
+  });
+
+  assert.match(report, /Visible desktop windows/);
+  assert.match(report, /Codex: Codex/);
 });

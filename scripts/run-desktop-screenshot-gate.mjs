@@ -1,12 +1,19 @@
-import { execFile as execFileCallback } from "node:child_process";
+import { execFile as execFileCallback, spawn } from "node:child_process";
 import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
 import { measureScreenshotPixels } from "./screenshot-pixels.mjs";
+import {
+  APP_DB_PATH_ENV_VAR,
+  cleanupVisualQaDatabase,
+  formatVisualQaDatasetReport,
+  prepareVisualQaDatabase,
+} from "./visual-qa-db.mjs";
 
 const execFile = promisify(execFileCallback);
 const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
+const DEFAULT_PROCESS_NAME = "bambu-filament-manager";
 const DEFAULT_WINDOW_TITLE = "Filament Manager";
 
 function parseArgValue(argv, name) {
@@ -23,6 +30,15 @@ function parseIntegerArg(argv, name, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseNumberArg(argv, name, fallback) {
+  const value = parseArgValue(argv, name);
+  if (value == null) {
+    return fallback;
+  }
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 function minimumFor(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
@@ -32,21 +48,44 @@ function quoteAppleScriptString(value) {
 }
 
 export function buildDesktopWindowLookupScript(windowTitle = DEFAULT_WINDOW_TITLE) {
-  const title = quoteAppleScriptString(windowTitle);
+  const options =
+    typeof windowTitle === "object" && windowTitle !== null
+      ? windowTitle
+      : { windowTitle };
+  const title = quoteAppleScriptString(options.windowTitle ?? DEFAULT_WINDOW_TITLE);
+  const processName = quoteAppleScriptString(options.processName ?? DEFAULT_PROCESS_NAME);
   return `
 tell application "System Events"
   repeat with appProcess in (application processes whose visible is true)
+    set processName to name of appProcess as text
     repeat with appWindow in windows of appProcess
       set windowName to name of appWindow as text
-      if windowName contains "${title}" then
+      if windowName contains "${title}" or processName contains "${processName}" then
         set windowPosition to position of appWindow
         set windowSize to size of appWindow
-        return (name of appProcess as text) & tab & windowName & tab & (item 1 of windowPosition as text) & tab & (item 2 of windowPosition as text) & tab & (item 1 of windowSize as text) & tab & (item 2 of windowSize as text)
+        return processName & tab & windowName & tab & (item 1 of windowPosition as text) & tab & (item 2 of windowPosition as text) & tab & (item 1 of windowSize as text) & tab & (item 2 of windowSize as text)
       end if
     end repeat
   end repeat
 end tell
 return ""
+`.trim();
+}
+
+export function buildDesktopWindowListScript() {
+  return `
+set windowRows to ""
+tell application "System Events"
+  repeat with appProcess in (application processes whose visible is true)
+    repeat with appWindow in windows of appProcess
+      set windowName to name of appWindow as text
+      set windowPosition to position of appWindow
+      set windowSize to size of appWindow
+      set windowRows to windowRows & (name of appProcess as text) & tab & windowName & tab & (item 1 of windowPosition as text) & tab & (item 2 of windowPosition as text) & tab & (item 1 of windowSize as text) & tab & (item 2 of windowSize as text) & linefeed
+    end repeat
+  end repeat
+end tell
+return windowRows
 `.trim();
 }
 
@@ -85,12 +124,29 @@ export function parseDesktopWindowInfo(raw) {
   };
 }
 
+export function parseDesktopWindowList(raw) {
+  return String(raw ?? "")
+    .split(/\r?\n/)
+    .map(parseDesktopWindowInfo)
+    .filter((window) => window != null);
+}
+
+export async function listDesktopWindows(options = {}) {
+  const execFileFn = options.execFileFn ?? execFile;
+  const { stdout } = await execFileFn("osascript", [
+    "-e",
+    buildDesktopWindowListScript(),
+  ]);
+  return parseDesktopWindowList(stdout);
+}
+
 export async function findDesktopWindow(options = {}) {
   const execFileFn = options.execFileFn ?? execFile;
   const windowTitle = options.windowTitle ?? DEFAULT_WINDOW_TITLE;
+  const processName = options.processName ?? DEFAULT_PROCESS_NAME;
   const { stdout } = await execFileFn("osascript", [
     "-e",
-    buildDesktopWindowLookupScript(windowTitle),
+    buildDesktopWindowLookupScript({ processName, windowTitle }),
   ]);
   return parseDesktopWindowInfo(stdout);
 }
@@ -99,6 +155,26 @@ async function wait(ms) {
   await new Promise((resolveWait) => {
     setTimeout(resolveWait, ms);
   });
+}
+
+export async function waitForDesktopWindow(options = {}) {
+  const timeoutMs = options.timeoutMs ?? 45_000;
+  const intervalMs = options.intervalMs ?? 500;
+  const startedAt = Date.now();
+  const findWindowFn = options.findWindowFn ?? findDesktopWindow;
+
+  while (Date.now() - startedAt <= timeoutMs) {
+    if (options.shouldAbort?.()) {
+      return null;
+    }
+    const window = await findWindowFn(options).catch(() => null);
+    if (window) {
+      return window;
+    }
+    await wait(intervalMs);
+  }
+
+  return null;
 }
 
 export async function activateDesktopWindow(windowInfo, options = {}) {
@@ -136,6 +212,30 @@ export async function captureDesktopWindowScreenshot(windowInfo, options = {}) {
   };
 }
 
+export function desktopScreenshotScale(metric) {
+  if (!metric?.window || !metric?.screenshotPixels) {
+    return null;
+  }
+  const windowWidth = Number(metric.window.width);
+  const windowHeight = Number(metric.window.height);
+  const pixelWidth = Number(metric.screenshotPixels.width);
+  const pixelHeight = Number(metric.screenshotPixels.height);
+  if (![windowWidth, windowHeight, pixelWidth, pixelHeight].every(Number.isFinite)) {
+    return null;
+  }
+  if (windowWidth <= 0 || windowHeight <= 0 || pixelWidth <= 0 || pixelHeight <= 0) {
+    return null;
+  }
+  const x = pixelWidth / windowWidth;
+  const y = pixelHeight / windowHeight;
+  return {
+    average: (x + y) / 2,
+    delta: Math.abs(x - y),
+    x,
+    y,
+  };
+}
+
 export function validateDesktopScreenshotMetrics(metric, minimums = {}) {
   const errors = [];
   const minWindowWidth = minimumFor(minimums.windowWidth, 700);
@@ -158,12 +258,18 @@ export function validateDesktopScreenshotMetrics(metric, minimums = {}) {
     errors.push("Desktop screenshot is missing pixel metrics.");
     return errors;
   }
+  const screenshotScale = desktopScreenshotScale(metric);
   if (
-    metric.screenshotPixels.width !== metric.window.width ||
-    metric.screenshotPixels.height !== metric.window.height
+    !screenshotScale ||
+    screenshotScale.average < 0.95 ||
+    screenshotScale.average > 3.1 ||
+    screenshotScale.delta > 0.05
   ) {
+    const scaleDetail = screenshotScale
+      ? ` @${screenshotScale.average.toFixed(2)}x`
+      : "";
     errors.push(
-      `Desktop screenshot size ${metric.screenshotPixels.width}x${metric.screenshotPixels.height} does not match window ${metric.window.width}x${metric.window.height}.`,
+      `Desktop screenshot size ${metric.screenshotPixels.width}x${metric.screenshotPixels.height}${scaleDetail} is not a plausible capture for window ${metric.window.width}x${metric.window.height}.`,
     );
   }
   if (metric.screenshotPixels.colorBuckets < minColorBuckets) {
@@ -222,17 +328,203 @@ export async function runDesktopScreenshotGate(options = {}) {
   };
 }
 
+function appendOutputTail(tail, chunk, maxLength = 8_000) {
+  const next = `${tail}${chunk}`;
+  return next.length > maxLength ? next.slice(next.length - maxLength) : next;
+}
+
+function formatVisibleWindowSummary(windows) {
+  if (!Array.isArray(windows) || windows.length === 0) {
+    return "none";
+  }
+  return windows
+    .slice(0, 8)
+    .map((window) => `${window.processName}:${window.title} ${window.width}x${window.height}`)
+    .join("; ");
+}
+
+function signalChildProcessGroup(child, signal) {
+  if (!child?.pid) {
+    return;
+  }
+  try {
+    process.kill(-child.pid, signal);
+  } catch {
+    try {
+      child.kill(signal);
+    } catch {
+      // Best effort cleanup for a QA helper that is already exiting.
+    }
+  }
+}
+
+async function waitForChildExit(child, timeoutMs) {
+  if (!child || child.exitCode != null || child.signalCode != null) {
+    return true;
+  }
+  return await new Promise((resolveWait) => {
+    const onExit = () => {
+      clearTimeout(timer);
+      resolveWait(true);
+    };
+    const timer = setTimeout(() => {
+      child.off("exit", onExit);
+      resolveWait(false);
+    }, timeoutMs);
+    child.once("exit", onExit);
+  });
+}
+
+async function terminateChild(child) {
+  if (!child || child.exitCode != null || child.signalCode != null) {
+    return;
+  }
+  signalChildProcessGroup(child, "SIGTERM");
+  const exited = await waitForChildExit(child, 3_000);
+  if (!exited) {
+    signalChildProcessGroup(child, "SIGKILL");
+    await waitForChildExit(child, 1_000);
+  }
+  if (child.stdout) {
+    child.stdout.destroy();
+  }
+  if (child.stderr) {
+    child.stderr.destroy();
+  }
+}
+
+function releaseChild(child) {
+  if (!child) {
+    return;
+  }
+  child.unref?.();
+  if (child.stdout) {
+    child.stdout.destroy();
+  }
+  if (child.stderr) {
+    child.stderr.destroy();
+  }
+}
+
+function spawnTauriDev(spawnFn, options, database) {
+  return spawnFn("npm", ["run", "tauri", "--", "dev"], {
+    cwd: options.cwd ?? process.cwd(),
+    detached: true,
+    env: {
+      ...process.env,
+      [APP_DB_PATH_ENV_VAR]: database.targetPath,
+      FILAMENT_MANAGER_VISUAL_QA: "1",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
+export async function runLaunchedDesktopScreenshotGate(options = {}) {
+  if (process.platform !== "darwin" && !options.allowNonDarwin) {
+    throw new Error("Desktop screenshot gate currently supports macOS only.");
+  }
+
+  const prepareDatabase = options.prepareVisualQaDatabase ?? prepareVisualQaDatabase;
+  const cleanupDatabase = options.cleanupVisualQaDatabase ?? cleanupVisualQaDatabase;
+  const spawnFn = options.spawnFn ?? spawn;
+  const database = await prepareDatabase({
+    live: Boolean(options.live),
+    profile: options.profile,
+    sourcePath: options.sourcePath,
+  });
+  let outputTail = "";
+  let childExit = null;
+  const child = spawnTauriDev(spawnFn, options, database);
+
+  child.stdout?.on("data", (chunk) => {
+    outputTail = appendOutputTail(outputTail, chunk);
+  });
+  child.stderr?.on("data", (chunk) => {
+    outputTail = appendOutputTail(outputTail, chunk);
+  });
+  child.once("exit", (code, signal) => {
+    childExit = { code, signal };
+  });
+
+  let keepApp = false;
+  try {
+    const window = await waitForDesktopWindow({
+      ...options,
+      intervalMs: options.windowPollMs ?? 500,
+      timeoutMs: options.startupTimeoutMs ?? 45_000,
+      shouldAbort: () => childExit != null,
+    });
+    if (!window) {
+      keepApp = Boolean(options.keepAppOnFail);
+      const visibleWindows = await listDesktopWindows(options).catch(() => []);
+      const suffix = childExit
+        ? ` Tauri dev exited early (${childExit.signal ?? childExit.code ?? "unknown"}).`
+        : "";
+      return {
+        database,
+        errors: [
+          `No Filament Manager desktop window was found after launching Tauri dev.${suffix} Visible windows: ${formatVisibleWindowSummary(visibleWindows)}.`,
+        ],
+        launchOutputTail: outputTail.trim(),
+        metric: { visibleWindows, window: null },
+        outputDir: resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR),
+      };
+    }
+
+    if (options.captureDelayMs) {
+      await wait(options.captureDelayMs);
+    }
+
+    return {
+      ...(await runDesktopScreenshotGate({
+        ...options,
+        window,
+      })),
+      database,
+      launchOutputTail: outputTail.trim(),
+    };
+  } finally {
+    if (keepApp) {
+      releaseChild(child);
+    } else {
+      await terminateChild(child);
+    }
+    if (!options.keep && !database.live && !keepApp) {
+      cleanupDatabase(database.targetPath);
+    }
+  }
+}
+
 export function formatDesktopScreenshotGateReport(result) {
-  const lines = [`Desktop screenshot artifacts: ${result.outputDir}`];
+  const lines = [];
+  if (result.database) {
+    lines.push(formatVisualQaDatasetReport(result.database));
+    lines.push(
+      result.database.live
+        ? "Desktop visual QA live DB mode: app changes affected the selected database."
+        : "Desktop visual QA used a temporary DB copy. Live library was not modified.",
+    );
+  }
+  lines.push(`Desktop screenshot artifacts: ${result.outputDir}`);
   const metric = result.metric;
   if (metric.window) {
     lines.push(
       `Desktop window: ${metric.window.title} (${metric.window.processName}) ${metric.window.width}x${metric.window.height}`,
     );
   }
+  if (!metric.window && metric.visibleWindows?.length > 0) {
+    lines.push("Visible desktop windows:");
+    for (const window of metric.visibleWindows.slice(0, 8)) {
+      lines.push(`  - ${window.processName}: ${window.title} ${window.width}x${window.height}`);
+    }
+  }
   if (metric.screenshotPixels) {
+    const screenshotScale = desktopScreenshotScale(metric);
+    const scaleDetail = screenshotScale
+      ? ` @${screenshotScale.average.toFixed(1)}x`
+      : "";
     lines.push(
-      `Pixels: contrast ${metric.screenshotPixels.lumaStdDev.toFixed(1)}, colors ${metric.screenshotPixels.colorBuckets}, saturated ${(metric.screenshotPixels.saturatedPixelRatio * 100).toFixed(1)}%`,
+      `Pixels: ${metric.screenshotPixels.width}x${metric.screenshotPixels.height}${scaleDetail}, contrast ${metric.screenshotPixels.lumaStdDev.toFixed(1)}, colors ${metric.screenshotPixels.colorBuckets}, saturated ${(metric.screenshotPixels.saturatedPixelRatio * 100).toFixed(1)}%`,
       `${metric.screenshot}`,
     );
   }
@@ -240,6 +532,10 @@ export function formatDesktopScreenshotGateReport(result) {
     lines.push("Desktop screenshot gate errors:");
     for (const error of result.errors) {
       lines.push(`  - ${error}`);
+    }
+    if (result.launchOutputTail) {
+      lines.push("Tauri launch output tail:");
+      lines.push(result.launchOutputTail);
     }
   } else {
     lines.push("Desktop screenshot gate ok.");
@@ -249,18 +545,29 @@ export function formatDesktopScreenshotGateReport(result) {
 
 async function runCli() {
   const argv = process.argv.slice(2);
-  const result = await runDesktopScreenshotGate({
+  const baseOptions = {
+    captureDelayMs: parseIntegerArg(argv, "--capture-delay-ms", 0),
+    keep: argv.includes("--keep"),
+    keepAppOnFail: argv.includes("--keep-app-on-fail"),
+    live: argv.includes("--live"),
     name: parseArgValue(argv, "--name") ?? "desktop-window",
     outputDir: parseArgValue(argv, "--output-dir") ?? DEFAULT_OUTPUT_DIR,
+    profile: parseArgValue(argv, "--profile") ?? undefined,
+    sourcePath: parseArgValue(argv, "--source") ?? undefined,
+    startupTimeoutMs: parseIntegerArg(argv, "--startup-timeout-ms", 45_000),
+    processName: parseArgValue(argv, "--process-name") ?? DEFAULT_PROCESS_NAME,
     windowTitle: parseArgValue(argv, "--window-title") ?? DEFAULT_WINDOW_TITLE,
     minimums: {
-      colorBuckets: parseIntegerArg(argv, "--min-colors", undefined),
-      edgeDeltaMean: parseIntegerArg(argv, "--min-edge", undefined),
-      lumaStdDev: parseIntegerArg(argv, "--min-contrast", undefined),
+      colorBuckets: parseNumberArg(argv, "--min-colors", undefined),
+      edgeDeltaMean: parseNumberArg(argv, "--min-edge", undefined),
+      lumaStdDev: parseNumberArg(argv, "--min-contrast", undefined),
       windowHeight: parseIntegerArg(argv, "--min-window-height", undefined),
       windowWidth: parseIntegerArg(argv, "--min-window-width", undefined),
     },
-  });
+  };
+  const result = argv.includes("--launch")
+    ? await runLaunchedDesktopScreenshotGate(baseOptions)
+    : await runDesktopScreenshotGate(baseOptions);
   console.log(formatDesktopScreenshotGateReport(result));
   if (result.errors.length > 0) {
     process.exit(1);
