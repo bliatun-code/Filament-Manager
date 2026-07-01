@@ -11,8 +11,11 @@ export const DESKTOP_VISUAL_QA_SCENARIOS = [
   "return-loan",
   "printer-board",
   "printer-slot-assignment",
+  "settings-general",
   "settings-library",
   "settings-printer-diagnostics",
+  "settings-catalog",
+  "settings-maintenance",
   "statistics-overview",
 ] as const;
 
@@ -23,7 +26,12 @@ export type DesktopVisualQaInitialPage =
   | "printers"
   | "settings"
   | "statistics";
-export type DesktopVisualQaInitialSettingsTab = "LIBRARY" | "PRINTERS";
+export type DesktopVisualQaInitialSettingsTab =
+  | "GENERAL"
+  | "LIBRARY"
+  | "PRINTERS"
+  | "CATALOG"
+  | "MAINTENANCE";
 
 function isDevRuntime(): boolean {
   const env = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env;
@@ -62,6 +70,9 @@ export function normalizeDesktopVisualQaScenario(
     case "batch-add":
     case "bambu-batch":
       return "bambu-batch-add";
+    case "settings-general":
+    case "general-settings":
+      return "settings-general";
     case "settings-library":
     case "library-settings":
     case "companion-settings":
@@ -70,6 +81,14 @@ export function normalizeDesktopVisualQaScenario(
     case "printer-diagnostics":
     case "bambu-live-diagnostics":
       return "settings-printer-diagnostics";
+    case "settings-catalog":
+    case "catalog-settings":
+    case "filament-catalog":
+      return "settings-catalog";
+    case "settings-maintenance":
+    case "maintenance-settings":
+    case "program-maintenance":
+      return "settings-maintenance";
     case "statistics-overview":
     case "statistics":
     case "usage-statistics":
@@ -113,7 +132,13 @@ export function desktopVisualQaInitialPage(
   if (scenario === "printer-board" || scenario === "printer-slot-assignment") {
     return "printers";
   }
-  if (scenario === "settings-library" || scenario === "settings-printer-diagnostics") {
+  if (
+    scenario === "settings-general" ||
+    scenario === "settings-library" ||
+    scenario === "settings-printer-diagnostics" ||
+    scenario === "settings-catalog" ||
+    scenario === "settings-maintenance"
+  ) {
     return "settings";
   }
   if (scenario === "statistics-overview") {
@@ -128,11 +153,20 @@ export function desktopVisualQaInitialSettingsTab(
   const params =
     typeof search === "string" ? new URLSearchParams(search) : search ?? new URLSearchParams();
   const scenario = normalizeDesktopVisualQaScenario(params.get(DESKTOP_VISUAL_QA_QUERY_KEY));
+  if (scenario === "settings-general") {
+    return "GENERAL";
+  }
   if (scenario === "settings-library") {
     return "LIBRARY";
   }
   if (scenario === "settings-printer-diagnostics") {
     return "PRINTERS";
+  }
+  if (scenario === "settings-catalog") {
+    return "CATALOG";
+  }
+  if (scenario === "settings-maintenance") {
+    return "MAINTENANCE";
   }
   return null;
 }

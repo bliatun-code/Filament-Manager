@@ -27,11 +27,14 @@ test("initial page resolver opens the page requested by fixtures and visual QA s
   assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=return-loan"), "loans");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-board"), "printers");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-slot-assignment"), "printers");
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-general"), "settings");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-library"), "settings");
   assert.equal(
     resolveInitialPageFromSearch("bfm_visual_qa=settings-printer-diagnostics"),
     "settings",
   );
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-catalog"), "settings");
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-maintenance"), "settings");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=statistics-overview"), "statistics");
   assert.equal(resolveInitialPageFromSearch("?bfm_inventory_fixture=list"), "dashboard");
   assert.equal(resolveInitialPageFromSearch(""), "dashboard");
