@@ -6,7 +6,7 @@ export type LoanStatus = "ACTIVE" | "RETURNED" | "LOST" | "CANCELLED";
 const LEGACY_REMOVED_SPOOL_STATUS_TOKENS = new Set(["MISSING", "DELETED"]);
 
 function normalizeDomainToken(value?: string | null): string {
-  return (value ?? "").trim().toUpperCase().replaceAll("-", "_");
+  return (value ?? "").trim().toUpperCase().replace(/[-\s]+/g, "_");
 }
 
 export function parseSpoolStatus(raw?: string | null): SpoolStatus | null {
