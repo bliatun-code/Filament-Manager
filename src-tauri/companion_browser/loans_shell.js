@@ -2,7 +2,7 @@ import { t } from "./companion_i18n.js";
 import { isLoanCurrentlyActive } from "./companion_loan_state.js";
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference } from "./formatters.js";
-import { styleObjectToString, suggestSwatchHex, swatchCssVars, toSwatchColor } from "./companion_theme.js";
+import { suggestSwatchHex, swatchCssStyle, toSwatchColor } from "./companion_theme.js";
 
 function loanStateLabel(row, locale = "en") {
   const returned = Boolean(row?.loan?.returned_at);
@@ -50,7 +50,7 @@ function renderHiddenSelectionBanner(selectedSpool, loanRows, escapeHtml, format
   return `
     <div
       class="selection-banner selection-banner-muted compact-selection-banner storage-hidden-banner swatch-surface"
-      style="${escapeHtml(styleObjectToString(swatchCssVars(selectedSpool.master?.hex_color)))}"
+      style="${escapeHtml(swatchCssStyle(selectedSpool.master?.hex_color))}"
     >
       <div class="selection-banner-copy">
         <div class="list-title">${escapeHtml(t(locale, "storage.hiddenSelectedTitle", "Selected spool hidden"))}</div>
@@ -101,7 +101,7 @@ function renderLoanPickerRows(options) {
           type="button"
           data-action="select-loan-spool"
           data-spool-id="${escapeHtml(row.spool.id)}"
-          style="${escapeHtml(styleObjectToString(swatchCssVars(swatch)))}"
+          style="${escapeHtml(swatchCssStyle(swatch))}"
         >
           <div class="dense-list-main">
             <div class="swatch-line spool-row-title">
@@ -164,7 +164,7 @@ function renderLoanRows(options) {
         <article
           class="surface-card loan-card compact-loan-card swatch-surface"
           data-selected="${isSelected ? "true" : "false"}"
-          style="${escapeHtml(styleObjectToString(swatchCssVars(swatch)))}"
+          style="${escapeHtml(swatchCssStyle(swatch))}"
         >
           <div class="loan-card-head">
             <div class="stack loan-card-copy">
@@ -340,7 +340,7 @@ export function renderLoanCreateTaskSheetBody(options) {
   const reference = formatRollReference(selectedSpool.spool);
   const tareWeight = resolveSpoolTareWeight(selectedSpool.spool, selectedSpool.master.vendor);
   const defaultMeasuredWeight = Number(selectedSpool.spool.remaining_g ?? 0) + tareWeight;
-  const swatchStyle = styleObjectToString(swatchCssVars(selectedSpool.master.hex_color));
+  const swatchStyle = swatchCssStyle(selectedSpool.master.hex_color);
   const metadata = [
     selectedSpool.master.vendor || "",
     reference,

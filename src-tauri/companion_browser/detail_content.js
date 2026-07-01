@@ -1,7 +1,7 @@
 import { t } from "./companion_i18n.js";
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference, formatStatusLabel } from "./formatters.js";
-import { styleObjectToString, swatchCssVars } from "./companion_theme.js";
+import { swatchCssStyle } from "./companion_theme.js";
 
 export function renderSelectedSpoolDetailBody(options) {
   const {
@@ -73,7 +73,7 @@ export function renderSelectedSpoolDetailBody(options) {
     <div class="detail-stack">
       <div
         class="surface-card detail-summary-card detail-section-card swatch-surface"
-        style="${escapeHtml(styleObjectToString(swatchCssVars(selectedSpool.master.hex_color)))}"
+        style="${escapeHtml(swatchCssStyle(selectedSpool.master.hex_color))}"
       >
         <div class="stack">
           <div class="detail-summary-head">

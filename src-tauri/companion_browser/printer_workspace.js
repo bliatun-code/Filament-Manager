@@ -9,7 +9,7 @@ import {
   printerBrandCssVars,
   styleObjectToString,
   suggestSwatchHex,
-  swatchCssVars,
+  swatchCssStyle,
   toSwatchColor,
 } from "./companion_theme.js";
 import {
@@ -289,7 +289,7 @@ export function renderPrinterPickerTaskSheetBody(options) {
                       data-slot-id="${escapeHtml(pendingSlotTarget.slotId)}"
                       data-slot-index="${escapeHtml(pendingSlotTarget.slotIndex)}"
                       data-slot-label="${escapeHtml(pendingSlotTarget.slotLabel || `${t(locale, "printers.slot", "Slot")} ${pendingSlotTarget.slotIndex || "?"}`)}"
-                      style="${escapeHtml(styleObjectToString(swatchCssVars(swatch)))}"
+                      style="${escapeHtml(swatchCssStyle(swatch))}"
                     >
                       <div class="dense-list-main">
                         <div class="swatch-line spool-row-title">
@@ -622,7 +622,7 @@ function renderSlotCards(options) {
           "#ced8e3";
       const slotHasLiveLoaded = !slot.spool_id && Boolean(slot.live_loaded || slot.live_tray_uuid || slot.live_match_status);
       const slotToneStyle =
-        slot.spool_id || slotHasLiveLoaded ? styleObjectToString(swatchCssVars(slotSwatch)) : "";
+        slot.spool_id || slotHasLiveLoaded ? swatchCssStyle(slotSwatch) : "";
       const liveMaterialBits = formatInventoryDisplayTitle(
         slot.live_filament_type,
         slot.live_filament_name,

@@ -195,6 +195,10 @@ export function swatchCssVars(raw) {
   };
 }
 
+export function swatchCssStyle(raw) {
+  return styleObjectToString(swatchCssVars(raw));
+}
+
 export function resolvePrinterBrandTone(model) {
   const normalized = String(model || "").trim().toLowerCase();
   if (normalized.includes("bambu")) {

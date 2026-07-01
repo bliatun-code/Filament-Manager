@@ -9,7 +9,7 @@ import {
   buildBambuFilamentCodeLookup,
   catalogMasterMatchesBambuFilamentCode,
 } from "./bambu_filament_code_lookup.js";
-import { styleObjectToString, suggestSwatchHex, swatchCssVars, toSwatchColor } from "./companion_theme.js";
+import { suggestSwatchHex, swatchCssStyle, toSwatchColor } from "./companion_theme.js";
 import { t } from "./companion_i18n.js";
 
 function catalogMatchesSource(master, source) {
@@ -136,7 +136,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
   const locale = state.locale || "en";
   const selection = resolveAddSheetState(state);
   const draft = selection.draft;
-  const previewStyle = styleObjectToString(swatchCssVars(selection.previewHex));
+  const previewStyle = swatchCssStyle(selection.previewHex);
   const previewTitle = formatInventoryDisplayTitle(
     selection.material || t(locale, "storage.material", "Material"),
     selection.filamentName || t(locale, "storage.filament", "Filament"),
@@ -152,7 +152,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
         (master) => master.id === item.master_id,
       );
       const itemSwatch = linkedMaster?.hex_color || suggestSwatchHex(item.color_name, item.filament_name, item.vendor, item.material);
-      const itemStyle = styleObjectToString(swatchCssVars(itemSwatch));
+      const itemStyle = swatchCssStyle(itemSwatch);
       return `
         <div class="surface-card add-spool-wishlist-row swatch-surface" style="${escapeHtml(itemStyle)}">
           <div class="add-spool-wishlist-row-head">
@@ -320,7 +320,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
                       ? selection.visibleCatalogMasters
                           .map((master) => {
                             const selected = selection.selectedMaster?.id === master.id;
-                            const masterStyle = styleObjectToString(swatchCssVars(master.hex_color));
+                            const masterStyle = swatchCssStyle(master.hex_color);
                             return `
                               <button
                                 class="list-row dense-list-row spool-list-row swatch-surface add-spool-catalog-row"
@@ -619,7 +619,7 @@ function renderSelectedSpoolHiddenBanner(
   return `
     <div
       class="selection-banner selection-banner-muted compact-selection-banner storage-hidden-banner swatch-surface"
-      style="${escapeHtml(styleObjectToString(swatchCssVars(selectedSpool.master.hex_color)))}"
+      style="${escapeHtml(swatchCssStyle(selectedSpool.master.hex_color))}"
     >
       <div class="selection-banner-copy">
         <div class="list-title">
@@ -705,7 +705,7 @@ function renderSpoolRows(options) {
           data-active="${active ? "true" : "false"}"
           data-action="select-spool"
           data-spool-id="${escapeHtml(row.spool.id)}"
-          style="${escapeHtml(styleObjectToString(swatchCssVars(swatch)))}"
+          style="${escapeHtml(swatchCssStyle(swatch))}"
         >
           <div class="dense-list-main">
             <div class="swatch-line spool-row-title">

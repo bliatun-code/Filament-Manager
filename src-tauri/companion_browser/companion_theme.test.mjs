@@ -11,6 +11,7 @@ import {
   styleObjectToString,
   subscribeToMediaQueryChange,
   suggestSwatchHex,
+  swatchCssStyle,
   swatchCssVars,
 } from "./companion_theme.js";
 
@@ -27,6 +28,8 @@ test("suggestSwatchHex resolves common color names before hashing", () => {
 
 test("swatch and printer css vars serialize into inline style strings", () => {
   assert.match(styleObjectToString(swatchCssVars("#123456")), /--swatch-rgb:18 52 86/);
+  assert.match(swatchCssStyle("#123456"), /--swatch-rgb:18 52 86/);
+  assert.match(swatchCssStyle("#123456"), /--swatch-solid:#123456/);
   assert.match(styleObjectToString(printerBrandCssVars("Bambu X1 Carbon")), /--brand-rgb:0 177 64/);
 });
 
