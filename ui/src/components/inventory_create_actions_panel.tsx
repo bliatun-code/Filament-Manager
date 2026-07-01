@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import { inventoryFormControlClassName } from "./form_control_class";
 import { ModalActionButton } from "./modal_action_button";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
-import { swatchCssBackground } from "../lib/color_utils";
+import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { useI18n } from "../lib/i18n";
 import type { InventoryCreateSelectionSummary } from "../lib/inventory_create_model";
 import type { OwnershipType } from "../lib/inventory_list_model";
@@ -60,23 +60,11 @@ export function InventoryCreateActionsPanel({
       className="rounded-2xl border border-slate-200 bg-white/85 p-4 transition dark:border-slate-700 dark:bg-slate-950/70"
       style={panelStyle}
     >
-      <div className="flex items-start gap-3 border-b border-slate-200/80 pb-4 dark:border-slate-700/80">
-        <span
-          className={`mt-0.5 h-12 w-12 shrink-0 rounded-xl border ${
-            selectionSummary
-              ? "border-white/80 shadow-inner shadow-black/5 dark:border-white/10"
-              : "border-dashed border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-900"
-          }`}
-          style={
-            selectionSummary
-              ? { background: swatchCssBackground(selectionSummary.hexColor) }
-              : undefined
-          }
-        />
-        <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-            {t("inventory.selectionPreview", "Selection preview")}
-          </div>
+      <div className="border-b border-slate-200/80 pb-4 dark:border-slate-700/80">
+        <SwatchSelectionPreviewHeader
+          eyebrow={t("inventory.selectionPreview", "Selection preview")}
+          swatchColor={selectionSummary?.hexColor}
+        >
           {selectionSummary ? (
             <>
               <div className="mt-1 break-words text-sm font-semibold leading-snug text-slate-950 dark:text-slate-50">
@@ -95,7 +83,7 @@ export function InventoryCreateActionsPanel({
               )}
             </div>
           )}
-        </div>
+        </SwatchSelectionPreviewHeader>
       </div>
 
       <div className="mt-4 rounded-xl border border-slate-200/80 bg-white/65 p-3 dark:border-slate-700/80 dark:bg-slate-950/40">

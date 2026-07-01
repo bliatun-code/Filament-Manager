@@ -8,6 +8,7 @@ import {
 } from "./inventory_modal_chrome";
 import { ModalActionButton } from "./modal_action_button";
 import { ModalHeader } from "./modal_chrome";
+import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { VendorBadge } from "./vendor_badge";
 import {
   formatFilamentDisplayTitle,
@@ -322,31 +323,22 @@ export function LoanOutModal({
                     className="rounded-[1.4rem] border px-4 py-4 shadow-sm shadow-slate-200/15 dark:shadow-none"
                     style={inventorySwatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
                   >
-                    <div className="flex items-start gap-3">
-                      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/75 bg-white/65 p-2 shadow-sm shadow-slate-200/25 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
-                        <span
-                          className="h-full w-full rounded-xl border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
-                          style={{
-                            background: swatchCssBackground(selectedSpool.hexColor),
-                          }}
-                        />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-                          {t("inventory.selectionPreview", "Selection preview")}
+                    <SwatchSelectionPreviewHeader
+                      eyebrow={t("inventory.selectionPreview", "Selection preview")}
+                      size="large"
+                      swatchColor={selectedSpool.hexColor}
+                    >
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <div className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+                          {formatFilamentDisplayTitle(
+                            selectedSpool.material,
+                            selectedSpool.filamentName,
+                            selectedSpool.colorName,
+                          )}
                         </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-2">
-                          <div className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-                            {formatFilamentDisplayTitle(
-                              selectedSpool.material,
-                              selectedSpool.filamentName,
-                              selectedSpool.colorName,
-                            )}
-                          </div>
-                          <VendorBadge vendor={selectedSpool.vendor} compact />
-                        </div>
+                        <VendorBadge vendor={selectedSpool.vendor} compact />
                       </div>
-                    </div>
+                    </SwatchSelectionPreviewHeader>
 
                     <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.25fr)_minmax(132px,0.8fr)]">
                       <div

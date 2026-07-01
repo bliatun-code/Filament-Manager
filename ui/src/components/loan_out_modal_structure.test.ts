@@ -19,6 +19,7 @@ test("LoanOutModal uses shared wide modal layout rhythm", () => {
   assert.match(source, /inventoryCatalogRowStyle/);
   assert.match(source, /inventorySwatchPanelStyle/);
   assert.match(source, /inventorySwatchInsetStyle/);
+  assert.match(source, /SwatchSelectionPreviewHeader/);
   assert.match(source, /swatchColor=\{selectedSpool\.hexColor\}/);
   assert.match(source, /hoveredLoanSpoolId/);
   assert.match(source, /setHoveredLoanSpoolId\(spool\.id\)/);
