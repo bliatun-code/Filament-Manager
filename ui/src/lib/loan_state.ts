@@ -9,10 +9,14 @@ export function loanHasDeletedSpool(row: Pick<SpoolLoanDetailsRow, "spool_status
   return isSpoolStatusDeleted(row.spool_status);
 }
 
+export function isLoanReturned(row: Pick<SpoolLoanDetailsRow, "loan">): boolean {
+  return normalizeLoanStatus(row.loan.loan_status, row.loan.returned_at) === "RETURNED";
+}
+
 export function isLoanCurrentlyActive(
   row: Pick<SpoolLoanDetailsRow, "loan" | "spool_status">,
 ): boolean {
-  return !row.loan.returned_at && !loanHasDeletedSpool(row);
+  return !isLoanReturned(row) && !loanHasDeletedSpool(row);
 }
 
 export function isActiveOutboundLoan(

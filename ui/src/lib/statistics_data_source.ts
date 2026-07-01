@@ -20,7 +20,7 @@ import {
   type SpoolLoanDetailsRow,
 } from "./tauri_client";
 import { loadAllSpoolRows } from "./spool_data_source";
-import { isLoanCurrentlyActive } from "./loan_state";
+import { isLoanCurrentlyActive, isLoanReturned } from "./loan_state";
 import { deriveInventoryOverviewFromRows } from "./statistics_model";
 import { normalizeLoanDirection, type LoanDirection } from "./inventory_domain";
 import {
@@ -123,7 +123,7 @@ export function groupLoanUsageByPerson(
     grouped.set(partyName, {
       ...current,
       total_consumed_g: current.total_consumed_g + Math.max(0, row.loan.consumed_grams ?? 0),
-      completed_loans: current.completed_loans + (row.loan.returned_at ? 1 : 0),
+      completed_loans: current.completed_loans + (isLoanReturned(row) ? 1 : 0),
       active_loans: current.active_loans + (isLoanCurrentlyActive(row) ? 1 : 0),
     });
   }

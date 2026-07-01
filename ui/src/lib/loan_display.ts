@@ -5,7 +5,7 @@ import {
 } from "./color_utils";
 import { normalizeDisplayToken } from "./display_format";
 import { normalizeLoanDirection, type LoanDirection } from "./inventory_domain";
-import { isLoanCurrentlyActive } from "./loan_state";
+import { isLoanCurrentlyActive, isLoanReturned } from "./loan_state";
 import { resolveSpoolTareWeight } from "./spool_weight";
 import type { ResolvedTheme } from "./theme_mode";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
@@ -194,7 +194,7 @@ export function filterLoans(
         ? true
         : filter === "ACTIVE"
           ? isLoanCurrentlyActive(loan)
-          : Boolean(loan.loan.returned_at);
+          : isLoanReturned(loan);
     const searchMatch =
       term.length === 0
         ? true

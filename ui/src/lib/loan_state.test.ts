@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { filterLoans } from "./loan_display";
-import { isActiveOutboundLoan, isLoanCurrentlyActive } from "./loan_state";
+import { isActiveOutboundLoan, isLoanCurrentlyActive, isLoanReturned } from "./loan_state";
 import { groupLoanUsageByPerson } from "./statistics_data_source";
 import { groupedLoanUsage } from "./statistics_model";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
@@ -60,6 +60,28 @@ test("isLoanCurrentlyActive ignores legacy active rows for deleted spools", () =
     ),
     false,
   );
+  assert.equal(
+    isLoanCurrentlyActive(
+      loanRow("legacy_returned_status", {
+        loan: {
+          returned_at: null,
+          loan_status: "RETURNED",
+        },
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    isLoanReturned(
+      loanRow("legacy_returned_status", {
+        loan: {
+          returned_at: null,
+          loan_status: "RETURNED",
+        },
+      }),
+    ),
+    true,
+  );
 });
 
 test("isActiveOutboundLoan rejects returned, inbound, and deleted rows", () => {
@@ -112,20 +134,31 @@ test("loan active filters and summaries skip deleted active rows", () => {
       consumed_grams: 120,
     },
   });
-  const rows = [active, deletedActive, returned];
+  const returnedStatusOnly = loanRow("returned_status_only", {
+    loan: {
+      loan_status: "RETURNED",
+      returned_at: null,
+      consumed_grams: 80,
+    },
+  });
+  const rows = [active, deletedActive, returned, returnedStatusOnly];
 
   assert.deepEqual(
     filterLoans(rows, "OUTBOUND", "ACTIVE", "").map((row) => row.loan.spool_id),
     ["active_spool"],
   );
+  assert.deepEqual(
+    filterLoans(rows, "OUTBOUND", "RETURNED", "").map((row) => row.loan.spool_id),
+    ["returned_spool", "returned_status_only"],
+  );
 
   const byPerson = groupLoanUsageByPerson(rows, "OUTBOUND");
   assert.equal(byPerson.length, 1);
   assert.equal(byPerson[0].active_loans, 1);
-  assert.equal(byPerson[0].completed_loans, 1);
+  assert.equal(byPerson[0].completed_loans, 2);
 
   const byFilament = groupedLoanUsage(rows);
   assert.equal(byFilament.length, 1);
   assert.equal(byFilament[0].activeLoans, 1);
-  assert.equal(byFilament[0].loans, 3);
+  assert.equal(byFilament[0].loans, 4);
 });
