@@ -4,6 +4,7 @@ import {
   isBorrowedInOwnership,
   isSpoolStatusAssigned,
   isSpoolStatusDeleted,
+  isSpoolStatusEmpty,
   isSpoolStatusEmptyOrLost,
   isSpoolStatusLoanable,
   isSpoolStatusMetadataMatchable,
@@ -39,6 +40,8 @@ test("inventory domain status helpers preserve contextual legacy semantics", () 
   assert.equal(isSpoolStatusOnHand("LEGACY_ACTIVE"), false);
   assert.equal(isSpoolStatusAssigned("IN_USE"), true);
   assert.equal(isSpoolStatusLoanable("in-stock"), true);
+  assert.equal(isSpoolStatusEmpty("empty"), true);
+  assert.equal(isSpoolStatusEmpty("lost"), false);
   assert.equal(isSpoolStatusEmptyOrLost("lost"), true);
   assert.equal(isSpoolStatusDeleted("deleted"), true);
   assert.equal(isSpoolStatusUnavailableForSlot("BORROWED"), true);

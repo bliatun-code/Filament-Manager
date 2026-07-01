@@ -49,6 +49,10 @@ export function isSpoolStatusEmptyOrLost(raw?: string | null): boolean {
   return status === "EMPTY" || status === "LOST";
 }
 
+export function isSpoolStatusEmpty(raw?: string | null): boolean {
+  return parseSpoolStatus(raw) === "EMPTY";
+}
+
 export function isSpoolStatusDeleted(raw?: string | null): boolean {
   return normalizeDomainToken(raw) === "DELETED";
 }

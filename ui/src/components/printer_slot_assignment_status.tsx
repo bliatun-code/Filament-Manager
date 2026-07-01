@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { inlineStatusSignalClass, semanticChipClass } from "../lib/chip_styles";
 import { formatSpoolReference } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
+import { isBorrowedInOwnership } from "../lib/inventory_domain";
 import { liveTrayIdentity, swatchCssBackground } from "../lib/printer_live_display";
 import {
   buildLiveRfidCandidateRegistrationState,
@@ -280,7 +281,7 @@ export function PrinterSlotAssignmentStatus({
                     ? ` · ${t("printers.liveCandidateCurrent", "current")}`
                     : ""}
                 </span>
-                {row.spool.ownership_type === "BORROWED_IN" ? (
+                {isBorrowedInOwnership(row.spool.ownership_type) ? (
                   <span className="shrink-0 rounded-md border border-sky-200/80 bg-sky-50/80 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-200">
                     {t("inventory.borrowedIn", "Borrowed in")}
                   </span>
