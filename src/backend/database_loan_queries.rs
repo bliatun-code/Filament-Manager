@@ -8,7 +8,7 @@ use super::database_rows::map_active_spool_loan_row;
 use super::inventory_domain::LoanDirection;
 use super::loan_defaults::{
     normalize_loan_direction_filter, ACTIVE_LOAN_PREDICATE_SQL, ACTIVE_LOAN_PREDICATE_SQL_L,
-    LOAN_STATUS_SELECT_SQL_L, RETURNED_LOAN_PREDICATE_SQL_L,
+    LOAN_DIRECTION_SELECT_SQL_L, LOAN_STATUS_SELECT_SQL_L, RETURNED_LOAN_PREDICATE_SQL_L,
 };
 
 pub(crate) fn spool_has_active_loan(conn: &Connection, spool_id: &str) -> InventoryResult<bool> {
@@ -34,7 +34,7 @@ pub(crate) fn list_active_spool_loans(
     let mut stmt = conn.prepare(&format!(
         "SELECT
             l.id, l.spool_id, l.borrower_name,
-            COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') AS loan_direction,
+            {LOAN_DIRECTION_SELECT_SQL_L} AS loan_direction,
             {LOAN_STATUS_SELECT_SQL_L} AS loan_status,
             COALESCE(NULLIF(l.counterparty_name, ''), l.borrower_name) AS counterparty_name,
             l.counterparty_contact, l.counterparty_note, l.grams_out, l.lent_note, l.lent_at,
@@ -44,7 +44,7 @@ pub(crate) fn list_active_spool_loans(
          FROM spool_loans l
          JOIN filament_spools s ON s.id = l.spool_id
          JOIN filament_master_list m ON m.id = s.master_id
-         WHERE COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') = 'OUTBOUND'
+         WHERE {LOAN_DIRECTION_SELECT_SQL_L} = 'OUTBOUND'
            AND {ACTIVE_LOAN_PREDICATE_SQL_L}
            AND s.deleted_at IS NULL
          ORDER BY l.lent_at DESC",
@@ -69,7 +69,7 @@ pub(crate) fn find_active_spool_loan_for_direction(
         &format!(
             "SELECT
             l.id, l.spool_id, l.borrower_name,
-            COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') AS loan_direction,
+            {LOAN_DIRECTION_SELECT_SQL_L} AS loan_direction,
             {LOAN_STATUS_SELECT_SQL_L} AS loan_status,
             COALESCE(NULLIF(l.counterparty_name, ''), l.borrower_name) AS counterparty_name,
             l.counterparty_contact, l.counterparty_note, l.grams_out, l.lent_note, l.lent_at,
@@ -80,7 +80,7 @@ pub(crate) fn find_active_spool_loan_for_direction(
          JOIN filament_spools s ON s.id = l.spool_id
          JOIN filament_master_list m ON m.id = s.master_id
          WHERE l.spool_id = ?1
-           AND COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') = ?2
+           AND {LOAN_DIRECTION_SELECT_SQL_L} = ?2
            AND {ACTIVE_LOAN_PREDICATE_SQL_L}
            AND s.deleted_at IS NULL
          LIMIT 1"
@@ -98,13 +98,13 @@ pub(crate) fn list_loan_usage_by_person_for_direction(
     direction: Option<&str>,
 ) -> InventoryResult<Vec<LoanUsageByPersonRow>> {
     let direction_clause = match normalize_loan_direction_filter(direction).as_str() {
-        "INBOUND" => "COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') = 'INBOUND'",
-        "ALL" => "1 = 1",
-        _ => "COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') = 'OUTBOUND'",
+        "INBOUND" => format!("{LOAN_DIRECTION_SELECT_SQL_L} = 'INBOUND'"),
+        "ALL" => "1 = 1".to_string(),
+        _ => format!("{LOAN_DIRECTION_SELECT_SQL_L} = 'OUTBOUND'"),
     };
     let mut stmt = conn.prepare(&format!(
         "SELECT
-            COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') AS loan_direction,
+            {LOAN_DIRECTION_SELECT_SQL_L} AS loan_direction,
             COALESCE(NULLIF(l.counterparty_name, ''), l.borrower_name) AS borrower_name,
             COALESCE(SUM(l.consumed_grams), 0) AS total_consumed_g,
             COALESCE(SUM(CASE WHEN {returned_loan_predicate} THEN 1 ELSE 0 END), 0) AS completed_loans,
@@ -116,7 +116,7 @@ pub(crate) fn list_loan_usage_by_person_for_direction(
          LEFT JOIN filament_spools s ON s.id = l.spool_id
          WHERE {}
          GROUP BY
-            COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND'),
+            {LOAN_DIRECTION_SELECT_SQL_L},
             COALESCE(NULLIF(l.counterparty_name, ''), l.borrower_name)
          HAVING total_consumed_g > 0
             OR completed_loans > 0
@@ -151,9 +151,9 @@ pub(crate) fn list_spool_loans_for_direction(
     direction: Option<&str>,
 ) -> InventoryResult<Vec<SpoolLoanDetailsRow>> {
     let direction_clause = match normalize_loan_direction_filter(direction).as_str() {
-        "INBOUND" => "COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') = 'INBOUND'",
-        "ALL" => "1 = 1",
-        _ => "COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') = 'OUTBOUND'",
+        "INBOUND" => format!("{LOAN_DIRECTION_SELECT_SQL_L} = 'INBOUND'"),
+        "ALL" => "1 = 1".to_string(),
+        _ => format!("{LOAN_DIRECTION_SELECT_SQL_L} = 'OUTBOUND'"),
     };
     let status_clause = if include_returned {
         "1 = 1".to_string()
@@ -163,7 +163,7 @@ pub(crate) fn list_spool_loans_for_direction(
     let mut stmt = conn.prepare(&format!(
         "SELECT
             l.id, l.spool_id, l.borrower_name,
-            COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND') AS loan_direction,
+            {LOAN_DIRECTION_SELECT_SQL_L} AS loan_direction,
             {LOAN_STATUS_SELECT_SQL_L} AS loan_status,
             COALESCE(NULLIF(l.counterparty_name, ''), l.borrower_name) AS counterparty_name,
             l.counterparty_contact, l.counterparty_note, l.grams_out, l.lent_note, l.lent_at,

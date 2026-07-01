@@ -1,5 +1,11 @@
 use crate::backend::inventory_domain::LoanDirection;
 
+pub(crate) const LOAN_DIRECTION_SELECT_SQL: &str =
+    "COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND')";
+
+pub(crate) const LOAN_DIRECTION_SELECT_SQL_L: &str =
+    "COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND')";
+
 pub(crate) const LOAN_STATUS_SELECT_SQL: &str = "CASE
     WHEN returned_at IS NOT NULL THEN 'RETURNED'
     WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(loan_status, ''))), '-', '_'), ' ', '_') IN ('RETURNED', 'LOST', 'CANCELLED')

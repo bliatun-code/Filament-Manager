@@ -5,7 +5,9 @@ use super::database_result::{InventoryError, InventoryResult};
 use super::database_rows::map_spool_loan_row;
 use super::database_text::normalize_optional_text;
 use super::inventory_domain::{LoanDirection, LoanStatus};
-use super::loan_defaults::{ACTIVE_LOAN_PREDICATE_SQL, LOAN_STATUS_SELECT_SQL};
+use super::loan_defaults::{
+    ACTIVE_LOAN_PREDICATE_SQL, LOAN_DIRECTION_SELECT_SQL, LOAN_STATUS_SELECT_SQL,
+};
 
 pub(crate) fn update_active_inbound_spool_loan_counterparty(
     conn: &Connection,
@@ -23,7 +25,7 @@ pub(crate) fn update_active_inbound_spool_loan_counterparty(
              counterparty_note = ?3,
              lent_note = ?3
          WHERE spool_id = ?4
-           AND COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND') = 'INBOUND'
+           AND {LOAN_DIRECTION_SELECT_SQL} = 'INBOUND'
            AND {ACTIVE_LOAN_PREDICATE_SQL}"
         ),
         params![
@@ -93,7 +95,7 @@ fn select_loan_by_id(conn: &Connection, loan_id: &str) -> InventoryResult<SpoolL
 fn select_loan_by_id_sql() -> String {
     format!(
         "SELECT id, spool_id, borrower_name,
-        COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND') AS loan_direction,
+        {LOAN_DIRECTION_SELECT_SQL} AS loan_direction,
         {LOAN_STATUS_SELECT_SQL} AS loan_status,
         COALESCE(NULLIF(counterparty_name, ''), borrower_name) AS counterparty_name,
         counterparty_contact, counterparty_note, grams_out, lent_note, lent_at,
