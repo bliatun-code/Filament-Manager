@@ -318,6 +318,9 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         | "slot-onboarding"
         | "ams-onboarding"
         | "printer-ams-onboarding" => Some("printer-slot-onboarding"),
+        "printer-slot-replacement" | "printer-slot-swap" | "slot-replacement" | "slot-swap" => {
+            Some("printer-slot-replacement")
+        }
         "bambu-batch-add" | "batch-add" | "bambu-batch" => Some("bambu-batch-add"),
         "settings-general" | "general-settings" => Some("settings-general"),
         "settings-library" | "library-settings" | "companion-settings" => Some("settings-library"),

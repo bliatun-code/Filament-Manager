@@ -26,7 +26,8 @@ export default function PrintersPage() {
   const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
   const desktopVisualQaNeedsPrinterAction =
     desktopVisualQaScenario === "printer-slot-assignment" ||
-    desktopVisualQaScenario === "printer-slot-onboarding";
+    desktopVisualQaScenario === "printer-slot-onboarding" ||
+    desktopVisualQaScenario === "printer-slot-replacement";
   const [desktopVisualQaApplied, setDesktopVisualQaApplied] = useState(
     () => !desktopVisualQaNeedsPrinterAction,
   );
@@ -270,6 +271,40 @@ export default function PrintersPage() {
     printers,
     spools,
     t,
+    tauri,
+  ]);
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenario !== "printer-slot-replacement" ||
+      desktopVisualQaApplied ||
+      loading ||
+      !tauri
+    ) {
+      return;
+    }
+    for (const printer of printers) {
+      for (const slot of printer.slots) {
+        if (!slot.spool_id) {
+          continue;
+        }
+        const replacement = allowedSpoolsForSlot(slot.spool_id).find(
+          (row) => row.spool.id !== slot.spool_id,
+        );
+        if (replacement) {
+          openIncomingWeightDialog(printer.printer.id, slot, replacement);
+          setDesktopVisualQaApplied(true);
+          return;
+        }
+      }
+    }
+  }, [
+    allowedSpoolsForSlot,
+    desktopVisualQaApplied,
+    desktopVisualQaScenario,
+    loading,
+    openIncomingWeightDialog,
+    printers,
     tauri,
   ]);
 
