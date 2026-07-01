@@ -1,0 +1,128 @@
+import assert from "node:assert/strict";
+import { createServer } from "node:http";
+import { test } from "node:test";
+import {
+  formatCompanionVisualGateReport,
+  normalizeCompanionBaseUrl,
+  runCompanionVisualGate,
+} from "./run-companion-visual-gate.mjs";
+
+function jsonResponse(response, value) {
+  response.writeHead(200, { "content-type": "application/json" });
+  response.end(JSON.stringify(value));
+}
+
+async function withFixtureServer(handler, callback) {
+  const server = createServer(handler);
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address();
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+    return await callback(baseUrl);
+  } finally {
+    await new Promise((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
+}
+
+function companionFixtureHandler(request, response) {
+  const url = new URL(request.url ?? "/", "http://127.0.0.1");
+  if (url.pathname === "/companion") {
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end(
+      '<div id="app"></div><link rel="stylesheet" href="/companion/app.css"><script type="module" src="/companion/app.js"></script>',
+    );
+    return;
+  }
+  if (url.pathname === "/companion/app.css") {
+    response.writeHead(200, { "content-type": "text/css" });
+    response.end(".companion-shell{} .swatch-surface{} .list-row{}");
+    return;
+  }
+  if (url.pathname === "/companion/app.js") {
+    response.writeHead(200, { "content-type": "application/javascript" });
+    response.end("function createCompanionAppShellRenderer(){} function refreshOverview(){}");
+    return;
+  }
+  if (url.pathname === "/api/v1/health") {
+    jsonResponse(response, {
+      ok: true,
+      access_mode: "trusted-lan",
+      auth_mode: "trusted-lan",
+      sync_mode: "STANDALONE",
+    });
+    return;
+  }
+  if (url.pathname === "/api/v1/library/snapshot") {
+    jsonResponse(response, {
+      ok: true,
+      active_loans: 1,
+      printers: 1,
+      inventory: { total_spools: 2 },
+    });
+    return;
+  }
+  if (url.pathname === "/api/v1/library/spools") {
+    jsonResponse(response, [
+      { spool: { id: "spool_1" }, master: { hex_color: "#12AB34" } },
+      { spool: { id: "spool_2" }, master: { hex_color: "#000000" } },
+    ]);
+    return;
+  }
+  if (url.pathname === "/api/v1/library/printers") {
+    jsonResponse(response, [
+      {
+        printer: { id: "printer_1", name: "Brutus" },
+        slots: [{ slot_id: "slot_1", live_loaded: true }],
+      },
+    ]);
+    return;
+  }
+  if (url.pathname === "/api/v1/library/loans") {
+    jsonResponse(response, [{ loan: { id: "loan_1" }, hex_color: "#ABCDEF" }]);
+    return;
+  }
+  if (url.pathname === "/api/v1/library/statistics/filament-consumption") {
+    jsonResponse(response, [{ used_grams: 42, hex_color: "#123456" }]);
+    return;
+  }
+  if (url.pathname === "/api/v1/library/wishlist") {
+    jsonResponse(response, [{ id: "wish_1" }]);
+    return;
+  }
+  response.writeHead(404);
+  response.end();
+}
+
+test("normalizeCompanionBaseUrl accepts companion URLs and strips paths", () => {
+  assert.equal(
+    normalizeCompanionBaseUrl("http://192.168.1.50:4278/companion"),
+    "http://192.168.1.50:4278",
+  );
+  assert.equal(normalizeCompanionBaseUrl("  "), null);
+});
+
+test("companion visual gate passes data-rich fixture responses", async () => {
+  await withFixtureServer(companionFixtureHandler, async (baseUrl) => {
+    const result = await runCompanionVisualGate({ baseUrl, timeoutMs: 1_000 });
+    assert.deepEqual(result.errors, []);
+    assert.equal(result.counts.snapshotSpools, 2);
+    assert.equal(result.counts.livePrinterSlots, 1);
+    assert.match(formatCompanionVisualGateReport(result), /Companion visual gate ok/);
+  });
+});
+
+test("companion visual gate reports sparse live-printer data", async () => {
+  await withFixtureServer((request, response) => {
+    const url = new URL(request.url ?? "/", "http://127.0.0.1");
+    if (url.pathname === "/api/v1/library/printers") {
+      jsonResponse(response, [{ printer: { id: "printer_1" }, slots: [] }]);
+      return;
+    }
+    companionFixtureHandler(request, response);
+  }, async (baseUrl) => {
+    const result = await runCompanionVisualGate({ baseUrl, timeoutMs: 1_000 });
+    assert.ok(result.errors.some((error) => error.includes("live printer slots")));
+  });
+});
