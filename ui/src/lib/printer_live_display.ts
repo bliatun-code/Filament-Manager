@@ -6,6 +6,7 @@ import {
   type SwatchSurfaceStrength,
 } from "./color_utils";
 import { parseDateTimeMs } from "./date_time";
+import { parseSpoolStatus } from "./inventory_domain";
 import type {
   BambuLiveIntegrationEntry,
   BambuLiveObservedTray,
@@ -171,11 +172,10 @@ export function formatPrinterSpoolStatusLabel(
   status: string | null | undefined,
   t: TranslateFn,
 ): string {
-  switch ((status ?? "").trim().toUpperCase()) {
+  switch (parseSpoolStatus(status)) {
     case "IN_STOCK":
       return t("inventory.statusInStock", "In stock");
     case "ASSIGNED":
-    case "IN_USE":
       return t("inventory.statusAssigned", "Assigned");
     case "BORROWED":
       return t("inventory.statusBorrowed", "Loaned out");
@@ -189,9 +189,8 @@ export function formatPrinterSpoolStatusLabel(
 }
 
 export function formatPrinterSpoolStatusTone(status?: string | null) {
-  switch ((status ?? "").trim().toUpperCase()) {
+  switch (parseSpoolStatus(status)) {
     case "ASSIGNED":
-    case "IN_USE":
       return "success";
     case "IN_STOCK":
       return "info";

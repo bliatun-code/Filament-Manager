@@ -7,12 +7,23 @@ function normalizeDomainToken(value?: string | null): string {
   return (value ?? "").trim().toUpperCase().replaceAll("-", "_");
 }
 
-export function normalizeSpoolStatus(raw?: string | null): SpoolStatus {
+export function parseSpoolStatus(raw?: string | null): SpoolStatus | null {
   const status = normalizeDomainToken(raw);
   if (status === "IN_USE" || status === "ASSIGNED") {
     return "ASSIGNED";
   }
   if (status === "BORROWED" || status === "EMPTY" || status === "LOST") {
+    return status;
+  }
+  if (status === "IN_STOCK") {
+    return "IN_STOCK";
+  }
+  return null;
+}
+
+export function normalizeSpoolStatus(raw?: string | null): SpoolStatus {
+  const status = parseSpoolStatus(raw);
+  if (status) {
     return status;
   }
   return "IN_STOCK";

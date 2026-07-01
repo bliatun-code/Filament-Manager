@@ -148,6 +148,31 @@ test("buildDashboardDerivedState keeps borrowed rows out of inventory health sco
   assert.equal(result.health.score, 0);
 });
 
+test("buildDashboardDerivedState preserves unknown statuses outside on-hand counts", () => {
+  const result = buildDashboardDerivedState({
+    overview: overview(),
+    printers: [],
+    spoolRows: [
+      spoolRow("legacy-unknown", {
+        status: "LEGACY_ACTIVE",
+        current_weight_g: 120,
+        remaining_g: 120,
+      }),
+      spoolRow("legacy-borrowed-in", {
+        ownership_type: "borrowed-in",
+        status: "IN_USE",
+      }),
+    ],
+    loans: [],
+    wishlist: [],
+    t,
+  });
+
+  assert.equal(result.ownershipOnHand.total, 1);
+  assert.equal(result.ownershipOnHand.borrowedIn, 1);
+  assert.equal(result.ownershipLowStock.owned, 1);
+});
+
 test("buildDashboardDerivedState ignores EXT readiness for AMS/MMU printers", () => {
   const result = buildDashboardDerivedState({
     overview: overview(),

@@ -5,9 +5,12 @@ import {
   normalizeLoanStatus,
   normalizeOwnershipType,
   normalizeSpoolStatus,
+  parseSpoolStatus,
 } from "./inventory_domain";
 
 test("inventory domain normalizers preserve legacy spool and ownership values", () => {
+  assert.equal(parseSpoolStatus("IN_USE"), "ASSIGNED");
+  assert.equal(parseSpoolStatus("unknown"), null);
   assert.equal(normalizeSpoolStatus("IN_USE"), "ASSIGNED");
   assert.equal(normalizeSpoolStatus("assigned"), "ASSIGNED");
   assert.equal(normalizeSpoolStatus("borrowed"), "BORROWED");

@@ -1,5 +1,6 @@
 import type { ActivityItem } from "../components/dashboard_widgets";
 import { LOW_STOCK_GRAMS } from "./inventory_constants";
+import { normalizeOwnershipType, parseSpoolStatus } from "./inventory_domain";
 import { isActiveOutboundLoan } from "./loan_state";
 import { summarizeEffectivePrinterSlots } from "./printer_profiles";
 import type {
@@ -77,6 +78,24 @@ type DashboardCompanionStatusInput = {
   running?: boolean | null;
   shell_reachable?: boolean | null;
 };
+
+function isDashboardOnHandStatus(raw?: string | null): boolean {
+  const status = parseSpoolStatus(raw);
+  return status === "IN_STOCK" || status === "ASSIGNED";
+}
+
+function isDashboardAssignedStatus(raw?: string | null): boolean {
+  return parseSpoolStatus(raw) === "ASSIGNED";
+}
+
+function isDashboardUnavailableStatus(raw?: string | null): boolean {
+  const status = parseSpoolStatus(raw);
+  return status === "EMPTY" || status === "LOST";
+}
+
+function isBorrowedInOwnership(raw?: string | null): boolean {
+  return normalizeOwnershipType(raw) === "BORROWED_IN";
+}
 
 function progressRatio(current: number, target: number): number {
   if (target <= 0) {
@@ -235,28 +254,25 @@ export function buildDashboardDerivedState(params: {
   const onOrderCount = wishlist
     .filter((item) => item.status === "ON_ORDER")
     .reduce((sum, item) => sum + Math.max(1, item.quantity || 1), 0);
-  const onHandRows = spoolRows.filter((row) => {
-    const status = (row.spool.status ?? "").trim().toUpperCase();
-    return status === "IN_STOCK" || status === "IN_USE" || status === "ASSIGNED";
-  });
+  const onHandRows = spoolRows.filter((row) => isDashboardOnHandStatus(row.spool.status));
   const onHandTotal = onHandRows.length;
-  const onHandOwned = onHandRows.filter((row) => {
-    const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
-    return ownershipType !== "BORROWED_IN";
-  }).length;
-  const onHandBorrowedIn = onHandRows.filter((row) => {
-    const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
-    return ownershipType === "BORROWED_IN";
-  }).length;
-  const onHandInUse = onHandRows.filter((row) => {
-    const status = (row.spool.status ?? "").trim().toUpperCase();
-    return status === "IN_USE" || status === "ASSIGNED";
-  }).length;
+  const onHandOwned = onHandRows.filter(
+    (row) => !isBorrowedInOwnership(row.spool.ownership_type),
+  ).length;
+  const onHandBorrowedIn = onHandRows.filter((row) =>
+    isBorrowedInOwnership(row.spool.ownership_type),
+  ).length;
+  const onHandInUse = onHandRows.filter((row) =>
+    isDashboardAssignedStatus(row.spool.status),
+  ).length;
   const lowStockRows = spoolRows
     .filter((row) => {
-      const status = (row.spool.status ?? "").trim().toUpperCase();
       const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
-      return status !== "EMPTY" && status !== "LOST" && remaining > 0 && remaining <= LOW_STOCK_GRAMS;
+      return (
+        !isDashboardUnavailableStatus(row.spool.status) &&
+        remaining > 0 &&
+        remaining <= LOW_STOCK_GRAMS
+      );
     })
     .sort((left, right) => (left.spool.remaining_g ?? 0) - (right.spool.remaining_g ?? 0))
     .slice(0, 5)
@@ -268,16 +284,22 @@ export function buildDashboardDerivedState(params: {
     }));
   const lowStockCount = lowStockRows.length;
   const ownedLowStockCount = spoolRows.filter((row) => {
-    const status = (row.spool.status ?? "").trim().toUpperCase();
-    const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
     const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
-    return status !== "EMPTY" && status !== "LOST" && ownershipType !== "BORROWED_IN" && remaining > 0 && remaining <= LOW_STOCK_GRAMS;
+    return (
+      !isDashboardUnavailableStatus(row.spool.status) &&
+      !isBorrowedInOwnership(row.spool.ownership_type) &&
+      remaining > 0 &&
+      remaining <= LOW_STOCK_GRAMS
+    );
   }).length;
   const borrowedInLowStockCount = spoolRows.filter((row) => {
-    const status = (row.spool.status ?? "").trim().toUpperCase();
-    const ownershipType = (row.spool.ownership_type ?? "OWNED").trim().toUpperCase();
     const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
-    return status !== "EMPTY" && status !== "LOST" && ownershipType === "BORROWED_IN" && remaining > 0 && remaining <= LOW_STOCK_GRAMS;
+    return (
+      !isDashboardUnavailableStatus(row.spool.status) &&
+      isBorrowedInOwnership(row.spool.ownership_type) &&
+      remaining > 0 &&
+      remaining <= LOW_STOCK_GRAMS
+    );
   }).length;
 
   const activity: ActivityItem[] = [
@@ -346,8 +368,7 @@ export function buildDashboardDerivedState(params: {
         : [0, overview.total_consumption_30d];
 
   const activeSpoolRows = spoolRows.filter((row) => {
-    const status = row.spool.status.trim().toUpperCase();
-    return status !== "EMPTY" && status !== "LOST";
+    return !isDashboardUnavailableStatus(row.spool.status);
   });
   const goalMetrics: DashboardGoalMetrics = {
     activeSpools: activeSpoolRows.length,

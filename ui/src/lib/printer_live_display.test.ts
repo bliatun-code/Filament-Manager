@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   findLiveTrayForSlot,
+  formatPrinterSpoolStatusLabel,
+  formatPrinterSpoolStatusTone,
   isBambuExternalTrayIndex,
   isUnknownLiveRfid,
   liveActiveTrayMatchesSlot,
@@ -243,4 +245,13 @@ test("live connection indicator can use external slot live snapshots", () => {
       label: "Live connected",
     },
   );
+});
+
+test("printer spool status display uses shared domain parsing without hiding unknown values", () => {
+  assert.equal(formatPrinterSpoolStatusLabel("IN_USE", t), "Assigned");
+  assert.equal(formatPrinterSpoolStatusTone("IN_USE"), "success");
+  assert.equal(formatPrinterSpoolStatusLabel("borrowed", t), "Loaned out");
+  assert.equal(formatPrinterSpoolStatusTone("borrowed"), "warning");
+  assert.equal(formatPrinterSpoolStatusLabel("LEGACY_ACTIVE", t), "LEGACY_ACTIVE");
+  assert.equal(formatPrinterSpoolStatusTone("LEGACY_ACTIVE"), "neutral");
 });
