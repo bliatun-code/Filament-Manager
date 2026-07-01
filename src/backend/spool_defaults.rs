@@ -1,18 +1,31 @@
+use super::inventory_domain::SpoolStatus;
+
 pub(crate) fn normalize_spool_status(raw: Option<&str>) -> String {
     let status = raw
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .unwrap_or("IN_STOCK")
-        .to_uppercase();
+        .to_uppercase()
+        .replace(['-', ' '], "_");
     match status.as_str() {
-        "LOANED_OUT" | "BORROWED" | "LOANED" => "BORROWED".to_string(),
-        "IN_STOCK" | "IN_USE" | "ASSIGNED" | "EMPTY" | "ARCHIVED" | "LOST" | "DELETED" => {
-            if status == "IN_USE" {
-                "ASSIGNED".to_string()
-            } else {
-                status
-            }
-        }
-        _ => "IN_STOCK".to_string(),
+        "LOANED_OUT" | "LOANED" => SpoolStatus::Borrowed.as_str().to_string(),
+        "ARCHIVED" => status,
+        _ => SpoolStatus::from_raw(Some(&status)).as_str().to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_spool_status;
+
+    #[test]
+    fn normalizes_imported_spool_statuses_through_domain_values() {
+        assert_eq!(normalize_spool_status(Some("in-stock")), "IN_STOCK");
+        assert_eq!(normalize_spool_status(Some("IN_USE")), "ASSIGNED");
+        assert_eq!(normalize_spool_status(Some("loaned out")), "BORROWED");
+        assert_eq!(normalize_spool_status(Some("missing")), "MISSING");
+        assert_eq!(normalize_spool_status(Some("archived")), "ARCHIVED");
+        assert_eq!(normalize_spool_status(Some("unknown")), "IN_STOCK");
+        assert_eq!(normalize_spool_status(None), "IN_STOCK");
     }
 }

@@ -61,6 +61,18 @@ impl SpoolStatus {
         }
     }
 
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::InStock => "IN_STOCK",
+            Self::Assigned => "ASSIGNED",
+            Self::Borrowed => "BORROWED",
+            Self::Empty => "EMPTY",
+            Self::Lost => "LOST",
+            Self::Missing => "MISSING",
+            Self::Deleted => "DELETED",
+        }
+    }
+
     pub fn is_assigned(self) -> bool {
         self == Self::Assigned
     }
@@ -129,6 +141,7 @@ mod tests {
             SpoolStatus::from_raw(Some("assigned")),
             SpoolStatus::Assigned
         );
+        assert_eq!(SpoolStatus::Assigned.as_str(), "ASSIGNED");
         assert_eq!(SpoolStatus::from_raw(Some("missing")), SpoolStatus::Missing);
         assert_eq!(SpoolStatus::from_raw(Some("unknown")), SpoolStatus::InStock);
         assert_eq!(
