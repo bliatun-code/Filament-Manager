@@ -28,7 +28,10 @@ function spool(overrides: Partial<InventorySpool>): InventorySpool {
 }
 
 test("desktop visual QA scenario parser accepts stable aliases in dev only", () => {
+  assert.equal(normalizeDesktopVisualQaScenario("dashboard"), "dashboard-overview");
+  assert.equal(normalizeDesktopVisualQaScenario("inventory"), "inventory-overview");
   assert.equal(normalizeDesktopVisualQaScenario("inventory-add"), "add-filament");
+  assert.equal(normalizeDesktopVisualQaScenario("loan-history"), "loans-overview");
   assert.equal(normalizeDesktopVisualQaScenario("DETAIL"), "selected-roll");
   assert.equal(normalizeDesktopVisualQaScenario("inventory-rfid"), "rfid-capture");
   assert.equal(normalizeDesktopVisualQaScenario("loan-return"), "return-loan");
@@ -62,8 +65,11 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
 });
 
 test("desktop visual QA scenarios resolve to the page they exercise", () => {
+  assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=dashboard-overview"), "dashboard");
+  assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=inventory-overview"), "inventory");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=add-filament"), "inventory");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=rfid-capture"), "inventory");
+  assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=loans-overview"), "loans");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=return-loan"), "loans");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-board"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-slot-assignment"), "printers");
@@ -127,4 +133,13 @@ test("desktop visual QA spool chooser prefers assigned RFID rolls for RFID captu
     "assigned",
   );
   assert.equal(chooseDesktopVisualQaSpoolId(spools, new Set(), "selected-roll"), "stock");
+});
+
+test("desktop visual QA spool chooser prefers non-Bambu detail examples", () => {
+  const spools = [
+    spool({ id: "bambu", vendor: "Bambu" }),
+    spool({ id: "esun", vendor: "eSUN" }),
+  ];
+
+  assert.equal(chooseDesktopVisualQaSpoolId(spools, new Set(), "selected-roll"), "esun");
 });

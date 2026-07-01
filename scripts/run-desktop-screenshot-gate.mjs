@@ -17,8 +17,11 @@ const DEFAULT_PROCESS_NAME = "bambu-filament-manager";
 const DEFAULT_WINDOW_TITLE = "Filament Manager";
 const VISUAL_QA_SCENARIO_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
 const DESKTOP_VISUAL_QA_SCENARIOS = [
+  "dashboard-overview",
+  "inventory-overview",
   "add-filament",
   "bambu-batch-add",
+  "loans-overview",
   "loan-out",
   "selected-roll",
   "rfid-capture",
@@ -69,9 +72,19 @@ export function normalizeDesktopVisualQaScenario(value) {
   switch (String(value ?? "").trim().toLowerCase()) {
     case "":
       return null;
+    case "dashboard-overview":
+    case "dashboard":
+      return "dashboard-overview";
+    case "inventory-overview":
+    case "inventory":
+      return "inventory-overview";
     case "add-filament":
     case "inventory-add":
       return "add-filament";
+    case "loans-overview":
+    case "loans":
+    case "loan-history":
+      return "loans-overview";
     case "loan-out":
     case "inventory-loan":
       return "loan-out";
@@ -146,7 +159,7 @@ export function normalizeDesktopVisualQaScenario(value) {
       return "statistics-overview";
     default:
       throw new Error(
-        `Unknown desktop visual QA scenario "${value}". Use add-filament, loan-out, selected-roll, rfid-capture, return-loan, printer-board, printer-slot-assignment, printer-slot-onboarding, printer-slot-replacement, printer-slot-clear, bambu-batch-add, settings-general, settings-library, settings-printer-diagnostics, settings-printer-diagnostics-fields, settings-printer-diagnostics-paused, settings-catalog, settings-maintenance, or statistics-overview.`,
+        `Unknown desktop visual QA scenario "${value}". Use dashboard-overview, inventory-overview, add-filament, loan-out, loans-overview, selected-roll, rfid-capture, return-loan, printer-board, printer-slot-assignment, printer-slot-onboarding, printer-slot-replacement, printer-slot-clear, bambu-batch-add, settings-general, settings-library, settings-printer-diagnostics, settings-printer-diagnostics-fields, settings-printer-diagnostics-paused, settings-catalog, settings-maintenance, or statistics-overview.`,
       );
   }
 }

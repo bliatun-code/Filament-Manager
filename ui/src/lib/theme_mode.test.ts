@@ -20,8 +20,35 @@ function withLocalStorage<T>(storage: unknown, run: () => T): T {
   }
 }
 
+function withWindowSearch<T>(search: string, run: () => T): T {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      location: { search },
+    },
+  });
+  try {
+    return run();
+  } finally {
+    if (descriptor) {
+      Object.defineProperty(globalThis, "window", descriptor);
+    } else {
+      Reflect.deleteProperty(globalThis, "window");
+    }
+  }
+}
+
 test("getThemeMode returns stored supported mode", () => {
   const mode = withLocalStorage({ getItem: () => "dark" }, () => getThemeMode());
+
+  assert.equal(mode, "dark");
+});
+
+test("getThemeMode forces dark mode for desktop visual QA routes", () => {
+  const mode = withWindowSearch("?bfm_visual_qa=add-filament", () =>
+    withLocalStorage({ getItem: () => "light" }, () => getThemeMode()),
+  );
 
   assert.equal(mode, "dark");
 });

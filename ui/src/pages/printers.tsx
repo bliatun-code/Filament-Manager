@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { isTauri } from "../lib/tauri_client";
+import { isTauri, type SpoolWithMasterRow } from "../lib/tauri_client";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { AddPrinterModal } from "../components/add_printer_modal";
 import { IncomingWeightModal } from "../components/incoming_weight_modal";
@@ -18,6 +18,19 @@ import { usePrinterPageData } from "./use_printer_page_data";
 import { useLibrarySyncState } from "./use_library_sync_state";
 import { useAddPrinterWorkflow } from "./use_add_printer_workflow";
 import { usePrinterSlotInteractions } from "./use_printer_slot_interactions";
+
+function isNonBambuSpool(row: SpoolWithMasterRow | null | undefined): boolean {
+  return !row?.master.vendor.toLowerCase().includes("bambu");
+}
+
+function isColorfulNonBambuSpool(row: SpoolWithMasterRow | null | undefined): boolean {
+  return (
+    isNonBambuSpool(row) &&
+    !/\b(black|white|gray|grey|silver|transparent|clear|natural)\b/i.test(
+      row?.master.color_name ?? "",
+    )
+  );
+}
 
 export default function PrintersPage() {
   const { t, locale } = useI18n();
@@ -289,9 +302,12 @@ export default function PrintersPage() {
         if (!slot.spool_id) {
           continue;
         }
-        const replacement = allowedSpoolsForSlot(slot.spool_id).find(
+        const replacements = allowedSpoolsForSlot(slot.spool_id).filter(
           (row) => row.spool.id !== slot.spool_id,
         );
+        const replacement =
+          replacements.find(isColorfulNonBambuSpool) ??
+          replacements.find(isNonBambuSpool) ?? replacements[0] ?? null;
         if (replacement) {
           openIncomingWeightDialog(printer.printer.id, slot, replacement);
           setDesktopVisualQaApplied(true);
@@ -319,7 +335,14 @@ export default function PrintersPage() {
       return;
     }
     for (const printer of printers) {
-      const slot = printer.slots.find((candidate) => candidate.spool_id);
+      const slotsWithSpools = printer.slots.filter((candidate) => candidate.spool_id);
+      const slot =
+        slotsWithSpools.find((candidate) =>
+          isColorfulNonBambuSpool(findSpoolById(candidate.spool_id)),
+        ) ??
+        slotsWithSpools.find((candidate) => isNonBambuSpool(findSpoolById(candidate.spool_id))) ??
+        slotsWithSpools[0] ??
+        null;
       if (slot) {
         openEmptySlotWeightDialog(printer.printer.id, slot);
         setDesktopVisualQaApplied(true);
@@ -329,6 +352,7 @@ export default function PrintersPage() {
   }, [
     desktopVisualQaApplied,
     desktopVisualQaScenario,
+    findSpoolById,
     loading,
     openEmptySlotWeightDialog,
     printers,

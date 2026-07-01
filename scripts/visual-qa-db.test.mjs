@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { test } from "node:test";
 import Database from "better-sqlite3";
 import {
@@ -22,7 +22,7 @@ import {
 test("normalizeVisualQaPath trims and resolves relative paths", () => {
   assert.equal(normalizeVisualQaPath(""), null);
   assert.equal(normalizeVisualQaPath("   "), null);
-  assert.match(normalizeVisualQaPath("data/example.db", "/repo"), /\/repo\/data\/example\.db$/);
+  assert.equal(normalizeVisualQaPath("data/example.db", "/repo"), resolve("/repo", "data/example.db"));
 });
 
 test("normalizeVisualQaProfile defaults to rich and accepts base", () => {

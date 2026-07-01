@@ -4,9 +4,8 @@ This page is a visual product tour for Filament Manager. It complements the
 text guides by showing the main desktop workflows and the Companion webapp on
 wide, tablet, and phone screens.
 
-The desktop screenshots are captured from the real Tauri app. Companion
-screenshots require the Companion/webapp server to be enabled and running from
-the desktop app before a phone or tablet can use the local LAN address.
+The Companion/webapp server must be enabled, and the desktop app needs to stay
+running for Companion to work from a phone, tablet, or workshop browser.
 
 ## Quick Preview
 
@@ -39,9 +38,9 @@ ownership, and low-stock state.
 
 ### Add Filament
 
-Catalog-backed stock entry for Bambu, eSUN, and generic/manual rolls. The
-selection preview, ownership controls, starting weight, home location, and
-wishlist/order queue stay visible while choosing a filament.
+Catalog-backed stock entry for Bambu, eSUN, and generic/manual rolls. This
+tour uses eSUN for ordinary manual stock entry so the flow is recognizable even
+when a roll is not read automatically from a Bambu AMS.
 
 ![Add filament flow](screenshots/add-filament.jpg)
 
@@ -98,7 +97,10 @@ weight updates, RFID matching, and candidate suggestions.
 ### Slot Assignment
 
 Slot assignment filters compatible rolls, shows placement and remaining weight,
-and keeps the current slot context visible while changing assignment.
+and keeps the current slot context visible while changing assignment. With
+Bambu Live and Bambu RFID filament, much of this can be observed from the
+printer; other filament brands can still be assigned and weighed manually when
+you want usage and remaining weight to stay accurate.
 
 ![Printer slot assignment](screenshots/printer-slot-assignment.jpg)
 
@@ -111,15 +113,16 @@ onboarding can create the spool and save the observed RFID in one guarded flow.
 
 ### Slot Replacement Weight
 
-Replacing a loaded spool records outgoing and incoming measured totals so
-remaining filament and usage stay accurate.
+Replacing a loaded non-Bambu spool records outgoing and incoming measured
+totals so remaining filament and usage stay accurate when the printer cannot
+automatically identify or weigh the roll.
 
 ![Printer slot replacement](screenshots/printer-slot-replacement.jpg)
 
 ### Slot Clear Weight
 
-Clearing a loaded slot records the outgoing measured total and returns the spool
-to its home location when it is no longer loaded.
+Clearing a loaded non-Bambu slot records the outgoing measured total and
+returns the spool to its home location when it is no longer loaded.
 
 ![Printer slot clear](screenshots/printer-slot-clear.jpg)
 
@@ -184,10 +187,10 @@ tools live in the maintenance tab.
 
 ## Companion Webapp
 
-Companion is a local webapp served by the desktop app on the same LAN. Enable it
-in **Settings -> Library & web app**, pair the browser if required, and keep the
-desktop app running while using Companion from a phone, tablet, or workshop
-browser.
+Companion is a local webapp served by the desktop app on the same LAN. Enable
+the Companion/webapp server in **Settings -> Library & web app**, pair the
+browser if required, and keep the desktop app running while using Companion from
+a phone, tablet, or workshop browser.
 
 ### Wide Companion
 

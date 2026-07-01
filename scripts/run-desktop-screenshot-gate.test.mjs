@@ -88,7 +88,10 @@ test("desktop screenshot gate lookup script escapes quoted titles", () => {
 });
 
 test("desktop screenshot gate normalizes visual QA scenarios", () => {
+  assert.equal(normalizeDesktopVisualQaScenario("dashboard"), "dashboard-overview");
+  assert.equal(normalizeDesktopVisualQaScenario("inventory"), "inventory-overview");
   assert.equal(normalizeDesktopVisualQaScenario("inventory-add"), "add-filament");
+  assert.equal(normalizeDesktopVisualQaScenario("loan-history"), "loans-overview");
   assert.equal(normalizeDesktopVisualQaScenario("DETAIL"), "selected-roll");
   assert.equal(normalizeDesktopVisualQaScenario("inventory-rfid"), "rfid-capture");
   assert.equal(normalizeDesktopVisualQaScenario("loan-return"), "return-loan");

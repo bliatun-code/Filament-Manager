@@ -23,6 +23,7 @@ export const COMPANION_SCREENSHOT_VIEWPORTS = {
 };
 
 const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
+const COMPANION_THEME_STORAGE_KEY = "bfm-companion-theme-mode";
 
 function parseArgValue(argv, name) {
   const index = argv.indexOf(name);
@@ -309,10 +310,38 @@ async function readPageMetrics(page, scenario) {
   }, scenarioSummary);
 }
 
-async function runScenario(browser, baseUrl, scenario, outputDir, timeoutMs) {
-  const context = await browser.newContext({ viewport: scenario.viewport });
+async function chooseFirstNonBambuOption(locator) {
+  const count = await locator.count();
+  let fallback = null;
+  for (let index = 0; index < count; index += 1) {
+    const option = locator.nth(index);
+    const text = await option.innerText().catch(() => "");
+    if (/\bBambu\b/i.test(text)) {
+      continue;
+    }
+    fallback ??= option;
+    if (!/\b(black|white|gray|grey|silver|transparent|clear|natural)\b/i.test(text)) {
+      return option;
+    }
+  }
+  return fallback ?? (count > 0 ? locator.first() : null);
+}
+
+async function runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, options = {}) {
+  const context = await browser.newContext({
+    colorScheme: options.themeMode === "dark" ? "dark" : undefined,
+    viewport: scenario.viewport,
+  });
   const page = await context.newPage();
   try {
+    if (options.themeMode) {
+      await page.addInitScript(
+        ({ key, value }) => {
+          window.localStorage?.setItem(key, value);
+        },
+        { key: COMPANION_THEME_STORAGE_KEY, value: options.themeMode },
+      );
+    }
     await bootstrapCompanionSession(page, baseUrl, timeoutMs);
     await page.goto(routeUrl(baseUrl, "/companion"), {
       waitUntil: "domcontentloaded",
@@ -358,16 +387,30 @@ function buildScenarios() {
       prepare: async (page, timeoutMs) => {
         await page.locator('[data-action="toggle-add-spool-form"]').click({ timeout: timeoutMs });
         await page.waitForSelector(".task-sheet.add-filament-sheet", { timeout: timeoutMs });
+        await page
+          .locator('[data-action="set-filament-source"][data-filament-source="esun"]')
+          .click({ timeout: timeoutMs });
+        await page.waitForSelector(
+          '[data-action="set-filament-source"][data-filament-source="esun"][data-active="true"]',
+          { timeout: timeoutMs },
+        );
+        await page.locator('input[name="filament-catalog-search"]').fill("Dark Blue");
+        await page.waitForTimeout(150);
       },
     },
     {
       name: "phone-lend-spool",
       viewport: COMPANION_SCREENSHOT_VIEWPORTS.phone,
-      expectations: { inventory: true, sheet: true, swatches: true },
+      expectations: { sheet: true, swatches: true },
       prepare: async (page, timeoutMs) => {
         await page.locator('[data-root-flow="loans"]').click({ timeout: timeoutMs });
         await page.locator('[data-action="start-loan-picker"]').click({ timeout: timeoutMs });
         await page.waitForSelector(".task-sheet", { timeout: timeoutMs });
+        const option = await chooseFirstNonBambuOption(page.locator(".loan-picker-option"));
+        if (option) {
+          await option.click({ timeout: timeoutMs });
+          await page.waitForSelector(".loan-create-card", { timeout: timeoutMs });
+        }
       },
     },
     {
@@ -399,6 +442,7 @@ export async function runCompanionScreenshotGate(options = {}) {
 
   const timeoutMs = options.timeoutMs ?? 8_000;
   const outputDir = resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR);
+  const themeMode = options.themeMode ?? "dark";
   await mkdir(outputDir, { recursive: true });
 
   const browser = await chromium.launch({ headless: options.headless !== false });
@@ -406,7 +450,7 @@ export async function runCompanionScreenshotGate(options = {}) {
     const scenarios = options.scenarios ?? buildScenarios();
     const metrics = [];
     for (const scenario of scenarios) {
-      metrics.push(await runScenario(browser, baseUrl, scenario, outputDir, timeoutMs));
+      metrics.push(await runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, { themeMode }));
     }
     const errors = validateCompanionScreenshotMetrics(metrics, options.minimums ?? {});
     return {

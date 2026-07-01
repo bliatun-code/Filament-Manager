@@ -37,17 +37,23 @@ export function useInventoryLoanTrackingModal({
     setLoanTrackingSpoolId(null);
   }, []);
 
-  const openLoanTrackingModal = useCallback(() => {
+  const openLoanTrackingModal = useCallback((preferredOverride?: InventorySpool | null) => {
     if (!clientReadOnly && !ensureLocalWriteAllowed()) {
       return;
     }
     if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
-    const preferredSpool =
-      selectedSpool && loanTrackingCandidates.some((spool) => spool.id === selectedSpool.id)
-        ? selectedSpool
-        : loanTrackingCandidates[0] ?? null;
+    let preferredSpool: InventorySpool | null = loanTrackingCandidates[0] ?? null;
+    if (selectedSpool && loanTrackingCandidates.some((spool) => spool.id === selectedSpool.id)) {
+      preferredSpool = selectedSpool;
+    }
+    if (
+      preferredOverride &&
+      loanTrackingCandidates.some((spool) => spool.id === preferredOverride.id)
+    ) {
+      preferredSpool = preferredOverride;
+    }
     setLoanTrackingSpoolId(preferredSpool?.id ?? null);
     setShowLoanTrackingModal(true);
   }, [

@@ -3,8 +3,11 @@ import type { InventorySpool } from "./inventory_list_model";
 export const DESKTOP_VISUAL_QA_QUERY_KEY = "bfm_visual_qa";
 
 export const DESKTOP_VISUAL_QA_SCENARIOS = [
+  "dashboard-overview",
+  "inventory-overview",
   "add-filament",
   "bambu-batch-add",
+  "loans-overview",
   "loan-out",
   "selected-roll",
   "rfid-capture",
@@ -26,6 +29,7 @@ export const DESKTOP_VISUAL_QA_SCENARIOS = [
 
 export type DesktopVisualQaScenario = (typeof DESKTOP_VISUAL_QA_SCENARIOS)[number];
 export type DesktopVisualQaInitialPage =
+  | "dashboard"
   | "inventory"
   | "loans"
   | "printers"
@@ -47,9 +51,19 @@ export function normalizeDesktopVisualQaScenario(
   value: string | null | undefined,
 ): DesktopVisualQaScenario | null {
   switch (String(value ?? "").trim().toLowerCase()) {
+    case "dashboard-overview":
+    case "dashboard":
+      return "dashboard-overview";
+    case "inventory-overview":
+    case "inventory":
+      return "inventory-overview";
     case "add-filament":
     case "inventory-add":
       return "add-filament";
+    case "loans-overview":
+    case "loans":
+    case "loan-history":
+      return "loans-overview";
     case "loan-out":
     case "inventory-loan":
       return "loan-out";
@@ -154,7 +168,13 @@ export function desktopVisualQaInitialPage(
   if (!scenario) {
     return null;
   }
-  if (scenario === "return-loan") {
+  if (scenario === "dashboard-overview") {
+    return "dashboard";
+  }
+  if (scenario === "inventory-overview") {
+    return "inventory";
+  }
+  if (scenario === "loans-overview" || scenario === "return-loan") {
     return "loans";
   }
   if (
@@ -229,5 +249,26 @@ export function chooseDesktopVisualQaSpoolId(
       null
     );
   }
+  if (scenario === "selected-roll") {
+    return (
+      usableSpools.find(isColorfulNonBambuSpool)?.id ??
+      usableSpools.find(isNonBambuSpool)?.id ??
+      usableSpools[0]?.id ??
+      spools[0]?.id ??
+      null
+    );
+  }
   return usableSpools[0]?.id ?? spools[0]?.id ?? null;
+}
+
+function isNeutralColorName(value: string): boolean {
+  return /\b(black|white|gray|grey|silver|transparent|clear|natural)\b/i.test(value);
+}
+
+function isNonBambuSpool(spool: InventorySpool): boolean {
+  return !spool.vendor.toLowerCase().includes("bambu");
+}
+
+function isColorfulNonBambuSpool(spool: InventorySpool): boolean {
+  return isNonBambuSpool(spool) && !isNeutralColorName(spool.colorName);
 }

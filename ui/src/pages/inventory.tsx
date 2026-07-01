@@ -9,6 +9,7 @@ import {
   chooseDesktopVisualQaSpoolId,
   resolveDesktopVisualQaScenario,
 } from "../lib/desktop_visual_qa_scenario";
+import type { InventorySpool } from "../lib/inventory_list_model";
 import type { RfidCaptureField } from "../lib/inventory_rfid_capture";
 import {
   buildInventoryDetailVisualFixture,
@@ -40,6 +41,19 @@ type InventoryPageProps = {
   navigationIntent?: InventoryNavigationIntent;
   onConsumeNavigationIntent?: () => void;
 };
+
+function chooseNonBambuVisualQaSpool(spools: InventorySpool[]): InventorySpool | null {
+  return (
+    spools.find(
+      (spool) =>
+        !spool.vendor.toLowerCase().includes("bambu") &&
+        !/\b(black|white|gray|grey|silver|transparent|clear|natural)\b/i.test(spool.colorName),
+    ) ??
+    spools.find((spool) => !spool.vendor.toLowerCase().includes("bambu")) ??
+    spools[0] ??
+    null
+  );
+}
 
 export default function InventoryPage({
   navigationIntent = null,
@@ -138,7 +152,7 @@ export default function InventoryPage({
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [recentlyAddedSpoolId, setRecentlyAddedSpoolId] = useState<string | null>(null);
   const [desktopVisualQaStage, setDesktopVisualQaStage] = useState<
-    "pending" | "detail-opened" | "done"
+    "pending" | "add-esun-opened" | "detail-opened" | "done"
   >(() => (desktopVisualQaScenario ? "pending" : "done"));
 
   const [selectedRfidCaptureSlotId, setSelectedRfidCaptureSlotId] = useState<string | null>(null);
@@ -185,7 +199,7 @@ export default function InventoryPage({
     wishlistItems,
     wishlistLoading,
   });
-  const { onBambuBatchInputChange } = addModalProps;
+  const { onBambuBatchInputChange, onCatalogQueryChange, onCreateModeChange } = addModalProps;
   const inventoryAddModalProps = {
     ...addModalProps,
     autoOpenBambuBatch: desktopVisualQaScenario === "bambu-batch-add",
@@ -564,15 +578,24 @@ export default function InventoryPage({
       return;
     }
 
+    if (desktopVisualQaScenario === "inventory-overview") {
+      setDesktopVisualQaStage("done");
+      return;
+    }
+
     if (
       desktopVisualQaScenario === "add-filament" ||
       desktopVisualQaScenario === "bambu-batch-add"
     ) {
       if (desktopVisualQaScenario === "bambu-batch-add") {
         onBambuBatchInputChange("40500\n40200\n65103");
+      } else {
+        onCreateModeChange("esun");
       }
       openAddModal();
-      setDesktopVisualQaStage("done");
+      setDesktopVisualQaStage(
+        desktopVisualQaScenario === "add-filament" ? "add-esun-opened" : "done",
+      );
       return;
     }
 
@@ -580,7 +603,7 @@ export default function InventoryPage({
       if (loanTrackingCandidates.length === 0) {
         return;
       }
-      openLoanTrackingModal();
+      openLoanTrackingModal(chooseNonBambuVisualQaSpool(loanTrackingCandidates));
       setDesktopVisualQaStage("done");
       return;
     }
@@ -603,12 +626,30 @@ export default function InventoryPage({
     desktopVisualQaScenario,
     desktopVisualQaStage,
     loading,
-    loanTrackingCandidates.length,
+    loanTrackingCandidates,
     onBambuBatchInputChange,
+    onCreateModeChange,
     openAddModal,
     openLoanTrackingModal,
     selectRollForManage,
     spools,
+  ]);
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenario !== "add-filament" ||
+      desktopVisualQaStage !== "add-esun-opened" ||
+      !addModalActive
+    ) {
+      return;
+    }
+    onCatalogQueryChange("Dark Blue");
+    setDesktopVisualQaStage("done");
+  }, [
+    addModalActive,
+    desktopVisualQaScenario,
+    desktopVisualQaStage,
+    onCatalogQueryChange,
   ]);
 
   useEffect(() => {

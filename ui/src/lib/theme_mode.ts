@@ -5,8 +5,20 @@ export type ResolvedTheme = "light" | "dark";
 
 const STORAGE_KEY = "bfm-theme-mode";
 const CHANGE_EVENT = "bfm-theme-mode-change";
+const DESKTOP_VISUAL_QA_QUERY_KEY = "bfm_visual_qa";
 
 let mediaListenerAttached = false;
+
+function isDesktopVisualQaRoute(): boolean {
+  try {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return new URLSearchParams(window.location.search).has(DESKTOP_VISUAL_QA_QUERY_KEY);
+  } catch {
+    return false;
+  }
+}
 
 function resolveSystemDark(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -54,6 +66,9 @@ export function getResolvedTheme(mode: ThemeMode = getThemeMode()): ResolvedThem
 }
 
 export function getThemeMode(): ThemeMode {
+  if (isDesktopVisualQaRoute()) {
+    return "dark";
+  }
   let stored: string | null = null;
   try {
     if (typeof localStorage !== "undefined") {
