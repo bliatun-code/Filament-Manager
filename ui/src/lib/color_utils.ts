@@ -212,6 +212,48 @@ export function swatchRgba(raw: string | null | undefined, alpha: number): strin
   return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
 }
 
+export type SwatchSurfaceStrength = {
+  top: number;
+  mid: number;
+  bottom: number;
+  base: string;
+  shadow: number;
+  ambientShadow: string;
+  inset: string;
+  border?: number;
+};
+
+export type SwatchSurfaceStyleOptions = {
+  midStop?: string;
+  bottomStop?: string;
+  borderColor?: string;
+  shadowGeometry?: string;
+};
+
+export function buildSwatchSurfaceStyle(
+  raw: string | null | undefined,
+  strength: SwatchSurfaceStrength,
+  {
+    midStop = "38%",
+    bottomStop = "74%",
+    borderColor = swatchRgba(raw, strength.border ?? 0.18),
+    shadowGeometry = "0 18px 38px -34px",
+  }: SwatchSurfaceStyleOptions = {},
+) {
+  return {
+    backgroundColor: strength.base,
+    backgroundImage: `linear-gradient(180deg, ${swatchRgba(raw, strength.top)} 0%, ${swatchRgba(
+      raw,
+      strength.mid,
+    )} ${midStop}, ${swatchRgba(raw, strength.bottom)} ${bottomStop}, ${strength.base} 100%)`,
+    borderColor,
+    boxShadow: `inset 0 1px 0 ${strength.inset}, ${shadowGeometry} ${swatchRgba(
+      raw,
+      strength.shadow,
+    )}, 0 3px 10px ${strength.ambientShadow}`,
+  } as const;
+}
+
 export function swatchTextColor(raw: string | null | undefined): string {
   const rgb = hexToRgb(raw);
   if (!rgb) {

@@ -1,4 +1,10 @@
-import { blendSwatchColor, swatchRgba, swatchTextColor } from "./color_utils";
+import {
+  blendSwatchColor,
+  buildSwatchSurfaceStyle,
+  swatchRgba,
+  swatchTextColor,
+  type SwatchSurfaceStrength,
+} from "./color_utils";
 import { parseDateTimeMs } from "./date_time";
 import type {
   BambuLiveIntegrationEntry,
@@ -108,18 +114,11 @@ export function printerSwatchSurfaceStyle(
             inset: "rgba(255, 255, 255, 0.8)",
           };
 
-  return {
-    backgroundColor: strength.base,
-    backgroundImage: `linear-gradient(180deg, ${swatchRgba(raw, strength.top)} 0%, ${swatchRgba(
-      raw,
-      strength.mid,
-    )} ${darkTheme ? "24%" : "40%"}, ${swatchRgba(
-      raw,
-      strength.bottom,
-    )} ${darkTheme ? "66%" : "74%"}, ${strength.base} 100%)`,
-    borderColor: swatchRgba(raw, strength.border),
-    boxShadow: `inset 0 1px 0 ${strength.inset}, 0 16px 34px -30px ${swatchRgba(raw, strength.shadow)}, 0 3px 10px ${strength.ambientShadow}`,
-  } as const;
+  return buildSwatchSurfaceStyle(raw, strength satisfies SwatchSurfaceStrength, {
+    midStop: darkTheme ? "24%" : "40%",
+    bottomStop: darkTheme ? "66%" : "74%",
+    shadowGeometry: "0 16px 34px -30px",
+  });
 }
 
 export function printerSwatchInteractiveInsetStyle(

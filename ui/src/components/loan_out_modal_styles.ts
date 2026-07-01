@@ -1,16 +1,5 @@
-import { swatchRgba } from "../lib/color_utils";
+import { buildSwatchSurfaceStyle, type SwatchSurfaceStrength } from "../lib/color_utils";
 import type { ResolvedTheme } from "../lib/theme_mode";
-
-type SwatchSurfaceStrength = {
-  top: number;
-  mid: number;
-  bottom: number;
-  base: string;
-  shadow: number;
-  border: number;
-  ambientShadow: string;
-  inset: string;
-};
 
 const swatchPanelStrengths: Record<ResolvedTheme, SwatchSurfaceStrength> = {
   dark: {
@@ -58,41 +47,30 @@ const swatchInsetStrengths: Record<ResolvedTheme, SwatchSurfaceStrength> = {
   },
 };
 
-function buildSwatchSurfaceStyle(
+function buildLoanOutSwatchSurfaceStyle(
   raw: string | null | undefined,
   resolvedTheme: ResolvedTheme,
   strength: SwatchSurfaceStrength,
 ) {
   const darkTheme = resolvedTheme === "dark";
-  return {
-    backgroundColor: strength.base,
-    backgroundImage: `linear-gradient(180deg, ${swatchRgba(raw, strength.top)} 0%, ${swatchRgba(
-      raw,
-      strength.mid,
-    )} ${darkTheme ? "24%" : "38%"}, ${swatchRgba(
-      raw,
-      strength.bottom,
-    )} ${darkTheme ? "66%" : "74%"}, ${strength.base} 100%)`,
-    borderColor: swatchRgba(raw, strength.border),
-    boxShadow: `inset 0 1px 0 ${strength.inset}, 0 18px 38px -34px ${swatchRgba(
-      raw,
-      strength.shadow,
-    )}, 0 3px 10px ${strength.ambientShadow}`,
-  } as const;
+  return buildSwatchSurfaceStyle(raw, strength, {
+    midStop: darkTheme ? "24%" : "38%",
+    bottomStop: darkTheme ? "66%" : "74%",
+  });
 }
 
 export function swatchPanelStyle(
   raw: string | null | undefined,
   resolvedTheme: ResolvedTheme = "light",
 ) {
-  return buildSwatchSurfaceStyle(raw, resolvedTheme, swatchPanelStrengths[resolvedTheme]);
+  return buildLoanOutSwatchSurfaceStyle(raw, resolvedTheme, swatchPanelStrengths[resolvedTheme]);
 }
 
 export function swatchInsetStyle(
   raw: string | null | undefined,
   resolvedTheme: ResolvedTheme = "light",
 ) {
-  return buildSwatchSurfaceStyle(raw, resolvedTheme, swatchInsetStrengths[resolvedTheme]);
+  return buildLoanOutSwatchSurfaceStyle(raw, resolvedTheme, swatchInsetStrengths[resolvedTheme]);
 }
 
 export const formInputClassName =

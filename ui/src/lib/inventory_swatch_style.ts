@@ -1,8 +1,10 @@
 import {
   blendSwatchColor,
+  buildSwatchSurfaceStyle,
   hexToRgb,
   swatchRgba,
   swatchTextColor,
+  type SwatchSurfaceStrength,
 } from "./color_utils";
 import type { ResolvedTheme } from "./theme_mode";
 
@@ -99,18 +101,11 @@ function inventorySwatchSurfaceStyle(
               inset: "rgba(255, 255, 255, 0.8)",
             };
 
-  return {
-    backgroundColor: strength.base,
-    backgroundImage: `linear-gradient(180deg, ${swatchRgba(raw, strength.top)} 0%, ${swatchRgba(
-      raw,
-      strength.mid,
-    )} ${darkTheme ? "24%" : "38%"}, ${swatchRgba(
-      raw,
-      strength.bottom,
-    )} ${darkTheme ? "66%" : "74%"}, ${strength.base} 100%)`,
+  return buildSwatchSurfaceStyle(raw, strength satisfies SwatchSurfaceStrength, {
+    midStop: darkTheme ? "24%" : "38%",
+    bottomStop: darkTheme ? "66%" : "74%",
     borderColor: inventorySwatchBorderColor(raw, resolvedTheme),
-    boxShadow: `inset 0 1px 0 ${strength.inset}, 0 18px 38px -34px ${swatchRgba(raw, strength.shadow)}, 0 3px 10px ${strength.ambientShadow}`,
-  } as const;
+  });
 }
 
 export function inventorySwatchCardStyle(

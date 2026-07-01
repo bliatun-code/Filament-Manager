@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   DEFAULT_SWATCH_COLOR,
   blendSwatchColor,
+  buildSwatchSurfaceStyle,
   hexToRgb,
   isValidHexColor,
   isValidSwatchColor,
@@ -110,6 +111,33 @@ test("swatch primitive helpers build css colors and readable text colors", () =>
   assert.equal(swatchTextColor("#FFFFFF"), "#0F172A");
   assert.equal(swatchTextColor("#111111"), "#FFFFFF");
   assert.equal(blendSwatchColor("#000000", [255, 255, 255], 0.5), "rgb(128, 128, 128)");
+});
+
+test("buildSwatchSurfaceStyle centralizes tinted surface CSS", () => {
+  const style = buildSwatchSurfaceStyle(
+    "#2563EB",
+    {
+      top: 0.2,
+      mid: 0.1,
+      bottom: 0.04,
+      base: "rgb(10, 17, 31)",
+      shadow: 0.3,
+      border: 0.5,
+      ambientShadow: "rgba(2, 6, 23, 0.5)",
+      inset: "rgba(255, 255, 255, 0.03)",
+    },
+    {
+      midStop: "25%",
+      bottomStop: "70%",
+      shadowGeometry: "0 16px 34px -30px",
+    },
+  );
+
+  assert.equal(style.backgroundColor, "rgb(10, 17, 31)");
+  assert.match(style.backgroundImage, /rgba\(37, 99, 235, 0\.2\) 0%/);
+  assert.match(style.backgroundImage, /rgba\(37, 99, 235, 0\.1\) 25%/);
+  assert.equal(style.borderColor, "rgba(37, 99, 235, 0.5)");
+  assert.match(style.boxShadow, /0 16px 34px -30px rgba\(37, 99, 235, 0\.3\)/);
 });
 
 test("suggestHexFromColor resolves common color names before hashing", () => {
