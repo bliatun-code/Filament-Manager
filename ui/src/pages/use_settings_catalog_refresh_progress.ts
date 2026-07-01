@@ -5,6 +5,14 @@ import {
 } from "../lib/tauri_client";
 import type { SettingsCatalogVendor } from "./settings_catalog_model";
 
+function disposeCatalogRefreshProgressListener(unlisten: (() => void) | null) {
+  try {
+    unlisten?.();
+  } catch {
+    // Tauri can already have removed the listener while a late subscription resolves.
+  }
+}
+
 export function useSettingsCatalogRefreshProgress({
   initialMessage,
   tauri,
@@ -37,17 +45,15 @@ export function useSettingsCatalogRefreshProgress({
       setCatalogRefreshProgressMessage(payload.message);
     }).then((fn) => {
       if (disposed) {
-        fn();
+        disposeCatalogRefreshProgressListener(fn);
         return;
       }
       unlisten = fn;
-    });
+    }).catch(() => {});
 
     return () => {
       disposed = true;
-      if (unlisten) {
-        unlisten();
-      }
+      disposeCatalogRefreshProgressListener(unlisten);
     };
   }, [tauri]);
 

@@ -156,6 +156,7 @@ test("rich visual QA accepts production-like local context", () => {
       bambuLiveObservedStateCount: 1,
       bambuLiveObservedTrayCount: 4,
       trustedLanEnabled: true,
+      trustedLanCompanionUrl: "http://192.168.1.50:4278/companion",
       trustedLanInterfaceConfigured: true,
       usageEventCount: 122,
     },
@@ -183,6 +184,9 @@ test("formatVisualQaDatasetReport includes counts and errors", () => {
     },
     inspection: {
       counts: { filament_spools: 0, printers: 2 },
+      details: {
+        trustedLanCompanionUrl: "http://192.168.1.50:4278/companion",
+      },
       tables: ["filament_spools", "printers"],
     },
     sourcePath: "/tmp/source.db",
@@ -191,6 +195,8 @@ test("formatVisualQaDatasetReport includes counts and errors", () => {
 
   assert.match(report, /Visual QA database source: \/tmp\/source\.db/);
   assert.match(report, /Visual QA profile: base/);
+  assert.match(report, /Desktop app: use the Tauri desktop window/);
+  assert.match(report, /Companion: http:\/\/192\.168\.1\.50:4278\/companion/);
   assert.match(report, /filament_spools: 0/);
   assert.match(report, /expected at least 1/);
 });

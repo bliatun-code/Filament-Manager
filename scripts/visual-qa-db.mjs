@@ -219,12 +219,17 @@ function inspectVisualQaSettingsDetails(settingsRows, tables, counts) {
   }
 
   const trustedLanEnabled = parseBooleanSetting(settings.get(TRUSTED_LAN_KEYS.enabled));
+  const trustedLanInterfaceAddress =
+    settings.get(TRUSTED_LAN_KEYS.interfaceAddress)?.trim() || null;
   const trustedLanInterfaceConfigured = Boolean(
-    settings.get(TRUSTED_LAN_KEYS.interfaceName)?.trim() &&
-      settings.get(TRUSTED_LAN_KEYS.interfaceAddress)?.trim(),
+    settings.get(TRUSTED_LAN_KEYS.interfaceName)?.trim() && trustedLanInterfaceAddress,
   );
   const trustedLanPort =
     Number.parseInt(settings.get(TRUSTED_LAN_KEYS.port) ?? "", 10) || 4278;
+  const trustedLanCompanionUrl =
+    trustedLanEnabled && trustedLanInterfaceAddress
+      ? `http://${trustedLanInterfaceAddress}:${trustedLanPort}/companion`
+      : null;
 
   return {
     activeTrustedLanBrowserCount: safeCount(counts, "trusted_lan_paired_browsers"),
@@ -235,6 +240,7 @@ function inspectVisualQaSettingsDetails(settingsRows, tables, counts) {
     bambuLiveObservedTrayCount,
     bambuLiveOnlineCount,
     trustedLanEnabled,
+    trustedLanCompanionUrl,
     trustedLanInterfaceConfigured,
     trustedLanPort,
     usageEventCount:
@@ -449,6 +455,11 @@ export function formatVisualQaDatasetReport({
     `Visual QA database source: ${sourcePath}`,
     targetPath ? `Visual QA database ${live ? "target" : "copy"}: ${targetPath}` : null,
     `Visual QA profile: ${assessment.profile ?? VISUAL_QA_PROFILE_RICH}`,
+    "Visual QA targets:",
+    "  - Desktop app: use the Tauri desktop window; the Vite localhost URL is only a frontend dev server.",
+    inspection.details?.trustedLanCompanionUrl
+      ? `  - Companion: ${inspection.details.trustedLanCompanionUrl}`
+      : null,
     "Visual QA database counts:",
   ].filter(Boolean);
 
