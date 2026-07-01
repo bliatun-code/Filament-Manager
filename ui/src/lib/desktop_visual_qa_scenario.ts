@@ -13,10 +13,16 @@ export const DESKTOP_VISUAL_QA_SCENARIOS = [
   "printer-slot-assignment",
   "settings-library",
   "settings-printer-diagnostics",
+  "statistics-overview",
 ] as const;
 
 export type DesktopVisualQaScenario = (typeof DESKTOP_VISUAL_QA_SCENARIOS)[number];
-export type DesktopVisualQaInitialPage = "inventory" | "loans" | "printers" | "settings";
+export type DesktopVisualQaInitialPage =
+  | "inventory"
+  | "loans"
+  | "printers"
+  | "settings"
+  | "statistics";
 export type DesktopVisualQaInitialSettingsTab = "LIBRARY" | "PRINTERS";
 
 function isDevRuntime(): boolean {
@@ -64,6 +70,11 @@ export function normalizeDesktopVisualQaScenario(
     case "printer-diagnostics":
     case "bambu-live-diagnostics":
       return "settings-printer-diagnostics";
+    case "statistics-overview":
+    case "statistics":
+    case "usage-statistics":
+    case "print-statistics":
+      return "statistics-overview";
     default:
       return null;
   }
@@ -104,6 +115,9 @@ export function desktopVisualQaInitialPage(
   }
   if (scenario === "settings-library" || scenario === "settings-printer-diagnostics") {
     return "settings";
+  }
+  if (scenario === "statistics-overview") {
+    return "statistics";
   }
   return "inventory";
 }

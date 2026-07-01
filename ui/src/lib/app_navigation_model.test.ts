@@ -32,6 +32,7 @@ test("initial page resolver opens the page requested by fixtures and visual QA s
     resolveInitialPageFromSearch("bfm_visual_qa=settings-printer-diagnostics"),
     "settings",
   );
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=statistics-overview"), "statistics");
   assert.equal(resolveInitialPageFromSearch("?bfm_inventory_fixture=list"), "dashboard");
   assert.equal(resolveInitialPageFromSearch(""), "dashboard");
   assert.equal(resolveInitialPageFromSearch(null), "dashboard");

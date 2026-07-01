@@ -40,6 +40,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     normalizeDesktopVisualQaScenario("bambu-live-diagnostics"),
     "settings-printer-diagnostics",
   );
+  assert.equal(normalizeDesktopVisualQaScenario("usage-statistics"), "statistics-overview");
   assert.equal(normalizeDesktopVisualQaScenario("unknown"), null);
 
   assert.equal(resolveDesktopVisualQaScenario("?bfm_visual_qa=loan-out", true), "loan-out");
@@ -57,6 +58,7 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
     desktopVisualQaInitialPage("?bfm_visual_qa=settings-printer-diagnostics"),
     "settings",
   );
+  assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=statistics-overview"), "statistics");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=bambu-batch-add"), "inventory");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=unknown"), null);
 });

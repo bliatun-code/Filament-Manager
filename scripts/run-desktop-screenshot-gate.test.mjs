@@ -100,6 +100,7 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
     normalizeDesktopVisualQaScenario("bambu-live-diagnostics"),
     "settings-printer-diagnostics",
   );
+  assert.equal(normalizeDesktopVisualQaScenario("usage-statistics"), "statistics-overview");
   assert.equal(normalizeDesktopVisualQaScenario(""), null);
   assert.throws(() => normalizeDesktopVisualQaScenario("bad"), /Unknown desktop visual QA/);
 });

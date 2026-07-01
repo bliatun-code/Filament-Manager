@@ -319,6 +319,9 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         "settings-printer-diagnostics" | "printer-diagnostics" | "bambu-live-diagnostics" => {
             Some("settings-printer-diagnostics")
         }
+        "statistics-overview" | "statistics" | "usage-statistics" | "print-statistics" => {
+            Some("statistics-overview")
+        }
         _ => None,
     }
 }
