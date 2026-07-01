@@ -4,7 +4,14 @@ import {
   summarizeEffectivePrinterSlots,
 } from "./printer_profiles";
 import { isLoanCurrentlyActive } from "./loan_state";
+import {
+  normalizeLoanDirection,
+  normalizeOwnershipType,
+  type LoanDirection,
+  type OwnershipType,
+} from "./inventory_domain";
 export { toSwatchColor } from "./color_utils";
+export { normalizeLoanDirection, normalizeOwnershipType, type LoanDirection };
 import type {
   FilamentConsumptionRow,
   LoanUsageByPersonRow,
@@ -15,9 +22,8 @@ import type {
 } from "./tauri_client";
 
 export type ConsumptionSort = "USED_DESC" | "USED_ASC" | "NAME_ASC" | "JOBS_DESC";
-export type LoanDirection = "OUTBOUND" | "INBOUND";
 export type LoanUsageListFilter = "ALL" | "ACTIVE" | "COMPLETED";
-export type OwnershipFilter = "ALL" | "OWNED" | "BORROWED_IN";
+export type OwnershipFilter = "ALL" | OwnershipType;
 export type MetricModalKind = "LOGGED_JOBS" | "FAILED_JOBS" | "ACTIVE_SLOTS";
 export type ConsumptionPopupPrefs = {
   search: string;
@@ -71,10 +77,6 @@ export function gramsToKgText(value: number): string {
   return `${(value / 1000).toFixed(2)} kg`;
 }
 
-export function normalizeLoanDirection(value?: string | null): LoanDirection {
-  return (value ?? "").trim().toUpperCase() === "INBOUND" ? "INBOUND" : "OUTBOUND";
-}
-
 export function groupedLoanUsage(rows: SpoolLoanDetailsRow[]): BorrowerFilamentUsageRow[] {
   const grouped = new Map<string, BorrowerFilamentUsageRow>();
   for (const row of rows) {
@@ -120,10 +122,6 @@ export function parseOwnershipFilter(raw: unknown): OwnershipFilter {
     return raw;
   }
   return "ALL";
-}
-
-export function normalizeOwnershipType(raw?: string | null): Exclude<OwnershipFilter, "ALL"> {
-  return (raw ?? "").trim().toUpperCase() === "BORROWED_IN" ? "BORROWED_IN" : "OWNED";
 }
 
 export function matchesOwnershipFilter(filter: OwnershipFilter, raw?: string | null): boolean {

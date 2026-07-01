@@ -22,6 +22,7 @@ import {
 import { loadAllSpoolRows } from "./spool_data_source";
 import { isLoanCurrentlyActive } from "./loan_state";
 import { deriveInventoryOverviewFromRows } from "./statistics_model";
+import { normalizeLoanDirection, type LoanDirection } from "./inventory_domain";
 import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
@@ -100,13 +101,11 @@ export function deriveStatisticsLibrarySyncState(
 
 export function groupLoanUsageByPerson(
   rows: SpoolLoanDetailsRow[],
-  direction: "OUTBOUND" | "INBOUND",
+  direction: LoanDirection,
 ): LoanUsageByPersonRow[] {
   const grouped = new Map<string, LoanUsageByPersonRow>();
   for (const row of rows) {
-    const normalizedDirection =
-      (row.loan.loan_direction ?? "").trim().toUpperCase() === "INBOUND" ? "INBOUND" : "OUTBOUND";
-    if (normalizedDirection !== direction) {
+    if (normalizeLoanDirection(row.loan.loan_direction) !== direction) {
       continue;
     }
     const partyName =

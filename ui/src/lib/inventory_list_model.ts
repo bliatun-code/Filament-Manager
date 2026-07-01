@@ -4,12 +4,17 @@ import {
   formatSpoolReference,
   normalizeDisplayToken as normalizeSharedDisplayToken,
 } from "./display_format";
+import {
+  normalizeOwnershipType,
+  normalizeSpoolStatus,
+  type OwnershipType,
+  type SpoolStatus,
+} from "./inventory_domain";
 
-export type SpoolStatus = "IN_STOCK" | "ASSIGNED" | "BORROWED" | "EMPTY" | "LOST";
 export type StatusFilter = "ALL" | SpoolStatus;
-export type OwnershipType = "OWNED" | "BORROWED_IN";
 export type OwnershipFilter = "ALL" | OwnershipType;
 export type InventorySemanticTone = "neutral" | "info" | "success" | "warning" | "danger";
+export { normalizeOwnershipType, type OwnershipType, type SpoolStatus };
 
 type TranslateFn = (key: string, fallback?: string) => string;
 
@@ -50,22 +55,7 @@ export type SpoolGroup = {
 };
 
 export function normalizeStatus(status: string): SpoolStatus {
-  const upper = status.toUpperCase();
-  if (upper === "IN_USE" || upper === "ASSIGNED") {
-    return "ASSIGNED";
-  }
-  if (upper === "BORROWED" || upper === "EMPTY" || upper === "LOST") {
-    return upper;
-  }
-  return "IN_STOCK";
-}
-
-export function normalizeOwnershipType(raw?: string | null): OwnershipType {
-  const normalized = (raw ?? "").trim().toUpperCase().replaceAll("-", "_");
-  if (normalized === "BORROWED_IN") {
-    return "BORROWED_IN";
-  }
-  return "OWNED";
+  return normalizeSpoolStatus(status);
 }
 
 export function formatInventoryStatusLabel(t: TranslateFn, statusRaw: string): string {

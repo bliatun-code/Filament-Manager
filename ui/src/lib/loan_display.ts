@@ -4,25 +4,23 @@ import {
   type SwatchSurfaceStrength,
 } from "./color_utils";
 import { normalizeDisplayToken } from "./display_format";
+import { normalizeLoanDirection, type LoanDirection } from "./inventory_domain";
 import { isLoanCurrentlyActive } from "./loan_state";
 import { resolveSpoolTareWeight } from "./spool_weight";
 import type { ResolvedTheme } from "./theme_mode";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
 import { formatGrams as formatWeightGrams } from "./weight_display";
 export { formatDateTime } from "./date_time";
+export { normalizeLoanDirection, type LoanDirection };
 
 export type LoanFilter = "ALL" | "ACTIVE" | "RETURNED";
-export type LoanDirectionFilter = "ALL" | "OUTBOUND" | "INBOUND";
+export type LoanDirectionFilter = "ALL" | LoanDirection;
 type LoanSwatchSurfaceTone = "card" | "inset";
 
 export const loanFactLabelClassName =
   "text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400";
 export const loanFactValueClassName =
   "mt-1 text-[13px] font-semibold leading-snug text-slate-900 dark:text-slate-50";
-
-export function normalizeLoanDirection(value?: string | null): "OUTBOUND" | "INBOUND" {
-  return (value ?? "").trim().toUpperCase() === "INBOUND" ? "INBOUND" : "OUTBOUND";
-}
 
 export function formatGrams(value?: number | null): string {
   return formatWeightGrams(value, "zero");

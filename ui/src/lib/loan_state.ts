@@ -1,3 +1,4 @@
+import { normalizeLoanDirection, normalizeLoanStatus } from "./inventory_domain";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
 
 export function loanHasDeletedSpool(row: Pick<SpoolLoanDetailsRow, "spool_status">): boolean {
@@ -13,12 +14,8 @@ export function isLoanCurrentlyActive(
 export function isActiveOutboundLoan(
   row: Pick<SpoolLoanDetailsRow, "loan" | "spool_status">,
 ): boolean {
-  const loanStatus = (row.loan.loan_status ?? "").trim().toUpperCase();
-  const loanDirection = (row.loan.loan_direction ?? "OUTBOUND").trim().toUpperCase();
+  const loanStatus = normalizeLoanStatus(row.loan.loan_status, row.loan.returned_at);
+  const loanDirection = normalizeLoanDirection(row.loan.loan_direction);
   const currentlyActive = isLoanCurrentlyActive(row);
-  return (
-    loanDirection === "OUTBOUND" &&
-    currentlyActive &&
-    (loanStatus === "" || loanStatus === "ACTIVE")
-  );
+  return loanDirection === "OUTBOUND" && currentlyActive && loanStatus === "ACTIVE";
 }
