@@ -166,56 +166,8 @@
     }
   }
 
-  .header-button-primary {
-    @apply whitespace-nowrap rounded-lg border px-3.5 py-2 text-sm font-semibold transition disabled:opacity-50;
-    border-color: rgba(15, 23, 42, 0.92);
-    background-color: rgba(15, 23, 42, 0.98);
-    color: rgb(255 255 255);
-    box-shadow: 0 14px 28px -24px rgba(51, 65, 85, 0.45);
-  }
-
-  .header-button-primary:hover {
-    background-color: rgba(30, 41, 59, 0.98);
-  }
-
-  .header-button-secondary {
-    @apply whitespace-nowrap rounded-lg border px-3.5 py-2 text-sm font-semibold transition disabled:opacity-50;
-    border-color: rgba(71, 85, 105, 0.5);
-    background-color: rgba(255, 255, 255, 0.98);
-    color: rgb(15 23 42);
-    box-shadow: 0 14px 28px -22px rgba(51, 65, 85, 0.34);
-  }
-
-  .header-button-secondary:hover {
-    border-color: rgba(100, 116, 139, 0.52);
-    background-color: rgb(255, 255, 255);
-  }
-
-  html.dark .header-button-primary {
-    border-color: rgba(241, 245, 249, 0.95);
-    background-color: rgba(248, 250, 252, 0.98);
-    color: rgb(15 23 42);
-    box-shadow: none;
-  }
-
   html.dark .page-header-search {
     box-shadow: none;
-  }
-
-  html.dark .header-button-primary:hover {
-    background-color: rgba(255, 255, 255, 0.98);
-  }
-
-  html.dark .header-button-secondary {
-    border-color: rgba(71, 85, 105, 0.82);
-    background-color: rgba(15, 23, 42, 0.72);
-    color: rgb(241 245 249);
-    box-shadow: none;
-  }
-
-  html.dark .header-button-secondary:hover {
-    border-color: rgba(100, 116, 139, 0.9);
-    background-color: rgba(15, 23, 42, 0.82);
   }
 
   .surface-card {

@@ -42,8 +42,9 @@ test("inventory filters do not own header search and primary actions", () => {
 
   assert.match(headerActionsSource, /page-header-actions/);
   assert.match(headerActionsSource, /page-header-search/);
-  assert.match(headerActionsSource, /header-button-primary/);
+  assert.match(headerActionsSource, /PageHeaderButton/);
+  assert.match(headerActionsSource, /variant="primary"/);
   assert.doesNotMatch(filterPanelSource, /page-header-actions/);
   assert.doesNotMatch(filterPanelSource, /page-header-search/);
-  assert.doesNotMatch(filterPanelSource, /header-button-primary/);
+  assert.doesNotMatch(filterPanelSource, /PageHeaderButton/);
 });

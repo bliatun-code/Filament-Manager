@@ -3,6 +3,7 @@ import { isTauri, type SpoolWithMasterRow } from "../lib/tauri_client";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { AddPrinterModal } from "../components/add_printer_modal";
 import { IncomingWeightModal } from "../components/incoming_weight_modal";
+import { PageHeaderButton } from "../components/page_header_button";
 import { PrinterOverviewCard } from "../components/printer_overview_card";
 import { RfidOverrideModal } from "../components/rfid_override_modal";
 import { SlotCatalogOnboardingModal } from "../components/slot_catalog_onboarding_modal";
@@ -423,14 +424,13 @@ export default function PrintersPage() {
         </div>
         <div className="page-header-actions">
           <div className="page-header-tools">
-            <button
-              type="button"
-              className="header-button-primary w-full min-[920px]:w-auto"
+            <PageHeaderButton
+              variant="primary"
               onClick={openAddPrinterModal}
               disabled={!tauri || busy || (clientReadOnly ? !clientHostWritePaired : false)}
             >
               {t("settings.addPrinter", "Add printer")}
-            </button>
+            </PageHeaderButton>
           </div>
         </div>
       </div>

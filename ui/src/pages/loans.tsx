@@ -8,6 +8,7 @@ import { FeedbackBanner } from "../components/feedback_banner";
 import { LoanHistoryCard } from "../components/loan_history_card";
 import { LoanOutModal } from "../components/loan_out_modal";
 import { LoanReturnModal } from "../components/loan_return_modal";
+import { PageHeaderButton } from "../components/page_header_button";
 import { neutralChipClass } from "../lib/chip_styles";
 import { downloadTextFile } from "../lib/download_file";
 import { useI18n } from "../lib/i18n";
@@ -288,8 +289,7 @@ export default function LoansPage() {
         </div>
         <div className="page-header-actions page-header-action-grid">
           <div className="page-header-tools">
-            <button
-              type="button"
+            <PageHeaderButton
               onClick={() => {
                 if (!clientReadOnly && !ensureLocalWriteAllowed()) {
                   return;
@@ -300,18 +300,16 @@ export default function LoansPage() {
                 setShowLoanOutModal(true);
               }}
               disabled={!tauri || busy || (clientReadOnly && !clientHostWritePaired)}
-              className="header-button-primary w-full min-[920px]:w-auto"
+              variant="primary"
             >
               {t("inventory.loanOutRoll", "Loan out roll")}
-            </button>
-            <button
-              type="button"
+            </PageHeaderButton>
+            <PageHeaderButton
               onClick={() => void handleExportCsv()}
               disabled={!tauri || busy || (clientReadOnly && loans.length === 0)}
-              className="header-button-secondary w-full min-[920px]:w-auto"
             >
               {t("loans.exportCsv", "Export loans CSV")}
-            </button>
+            </PageHeaderButton>
           </div>
           <input
             type="search"

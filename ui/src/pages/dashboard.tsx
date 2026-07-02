@@ -5,6 +5,7 @@ import {
   StatCard,
   UsageChart,
 } from "../components/dashboard_widgets";
+import { PageHeaderButton } from "../components/page_header_button";
 import {
   buildDashboardBadges,
   buildDashboardCompanionPresentation,
@@ -22,9 +23,6 @@ type DashboardPageProps = {
   onOpenLowStock?: () => void;
   onOpenCompanionSettings?: () => void;
 };
-
-const dashboardHeaderActionButtonClassName =
-  "inline-flex items-center gap-2 rounded-lg border border-slate-300/70 bg-white/86 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm shadow-slate-300/25 outline-none backdrop-blur transition hover:bg-white focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-200 dark:shadow-none dark:hover:bg-slate-900 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
 
 export default function DashboardPage({
   onNavigate,
@@ -91,15 +89,16 @@ export default function DashboardPage({
           </div>
         </div>
         <div className="flex items-center gap-3 xl:pt-1">
-          <button
-            type="button"
+          <PageHeaderButton
             onClick={() => onOpenCompanionSettings?.()}
-            className={dashboardHeaderActionButtonClassName}
+            className="gap-2"
+            responsive={false}
             title={t("dashboard.openCompanionSettings", "Open companion settings")}
+            variant="soft"
           >
             <span className={`h-2.5 w-2.5 rounded-full ${companionDotClass}`} />
             {companionPresentation.label}
-          </button>
+          </PageHeaderButton>
           <div className="rounded-lg border border-slate-300/70 bg-white/72 px-3 py-2 text-sm text-slate-600 shadow-sm shadow-slate-300/20 backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/60 dark:text-slate-300 dark:shadow-none">
             {lastSyncLabel}
           </div>

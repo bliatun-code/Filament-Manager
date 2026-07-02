@@ -4,6 +4,7 @@ import { useI18n } from "../lib/i18n";
 import type { OwnershipFilter, StatusFilter } from "../lib/inventory_list_model";
 import type { InventoryViewMode } from "../lib/use_inventory_filters";
 import { materialTone } from "../lib/material_theme";
+import { PageHeaderButton } from "./page_header_button";
 
 export type { InventoryViewMode };
 
@@ -114,22 +115,19 @@ export function InventoryHeaderActions({
   return (
     <div className="page-header-actions">
       <div className="page-header-tools">
-        <button
-          type="button"
+        <PageHeaderButton
           onClick={onAddSpool}
-          className="header-button-primary w-full min-[920px]:w-auto"
+          variant="primary"
           disabled={primaryActionsDisabled}
         >
           {t("inventory.addSpoolAction", "Add spool")}
-        </button>
-        <button
-          type="button"
+        </PageHeaderButton>
+        <PageHeaderButton
           onClick={onLoanOutRoll}
-          className="header-button-secondary w-full min-[920px]:w-auto"
           disabled={primaryActionsDisabled}
         >
           {t("inventory.loanOutRoll", "Loan out roll")}
-        </button>
+        </PageHeaderButton>
       </div>
       <div className="flex w-full flex-col gap-2 min-[920px]:items-end">
         <input
