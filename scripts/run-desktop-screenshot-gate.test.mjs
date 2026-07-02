@@ -6,6 +6,7 @@ import {
   buildDesktopWindowLookupScript,
   desktopScreenshotScale,
   desktopScreenshotNameForScenario,
+  desktopVisualQaScenarioDefinition,
   desktopVisualQaScenarioRequiresDatabaseFixture,
   execFileWithTimeout,
   formatDesktopScreenshotGateReport,
@@ -133,6 +134,18 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
   assert.throws(() => normalizeDesktopVisualQaScenario("bad"), /Unknown desktop visual QA/);
 });
 
+test("desktop screenshot gate reads scenario metadata from the shared manifest", () => {
+  assert.deepEqual(desktopVisualQaScenarioDefinition("batch-add"), {
+    aliases: ["batch-add", "bambu-batch"],
+    category: "modal",
+    id: "bambu-batch-add",
+    page: "inventory",
+  });
+  assert.equal(desktopVisualQaScenarioDefinition("trusted-lan-details").settingsTab, "LIBRARY");
+  assert.equal(desktopVisualQaScenarioDefinition("missing-swatches").requiresDatabaseFixture, true);
+  assert.equal(desktopVisualQaScenarioDefinition("unknown"), null);
+});
+
 test("desktop screenshot gate marks DB-fixture visual states", () => {
   assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("ams-onboarding"), true);
   assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("printer-slot-onboarding"), true);
@@ -143,6 +156,7 @@ test("desktop screenshot gate marks DB-fixture visual states", () => {
 });
 
 test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {
+  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 25);
   assert.deepEqual(
     parseDesktopVisualQaScenarios([
       "--scenario",
@@ -290,6 +304,7 @@ test("desktop screenshot report lists window and artifact details", () => {
   });
 
   assert.match(report, /Desktop visual QA scenario: add-filament/);
+  assert.match(report, /Desktop visual QA scenario: add-filament \(inventory, modal\)/);
   assert.match(report, /Desktop window: Filament Manager/);
   assert.match(report, /Pixels: 1300x900 @1\.0x/);
   assert.match(report, /desktop-window\.png/);

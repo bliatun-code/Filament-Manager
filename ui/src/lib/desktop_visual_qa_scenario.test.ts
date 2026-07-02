@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   chooseDesktopVisualQaSpoolId,
+  DESKTOP_VISUAL_QA_SCENARIOS,
+  desktopVisualQaScenarioDefinition,
   desktopVisualQaInitialPage,
   desktopVisualQaInitialSettingsTab,
   normalizeDesktopVisualQaScenario,
@@ -28,6 +30,33 @@ function spool(overrides: Partial<InventorySpool>): InventorySpool {
 }
 
 test("desktop visual QA scenario parser accepts stable aliases in dev only", () => {
+  assert.deepEqual(DESKTOP_VISUAL_QA_SCENARIOS, [
+    "dashboard-overview",
+    "inventory-overview",
+    "add-filament",
+    "bambu-batch-add",
+    "loans-overview",
+    "loan-out",
+    "selected-roll",
+    "rfid-capture",
+    "return-loan",
+    "printer-board",
+    "printer-slot-assignment",
+    "printer-slot-onboarding",
+    "printer-rfid-override",
+    "printer-slot-replacement",
+    "printer-slot-clear",
+    "settings-general",
+    "settings-library",
+    "settings-library-network-details",
+    "settings-printer-diagnostics",
+    "settings-printer-diagnostics-fields",
+    "settings-printer-diagnostics-paused",
+    "settings-catalog",
+    "settings-catalog-swatch-review",
+    "settings-maintenance",
+    "statistics-overview",
+  ]);
   assert.equal(normalizeDesktopVisualQaScenario("dashboard"), "dashboard-overview");
   assert.equal(normalizeDesktopVisualQaScenario("inventory"), "inventory-overview");
   assert.equal(normalizeDesktopVisualQaScenario("inventory-add"), "add-filament");
@@ -71,6 +100,22 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
 
   assert.equal(resolveDesktopVisualQaScenario("?bfm_visual_qa=loan-out", true), "loan-out");
   assert.equal(resolveDesktopVisualQaScenario("?bfm_visual_qa=loan-out", false), null);
+});
+
+test("desktop visual QA scenario manifest describes routing and fixture states", () => {
+  assert.deepEqual(desktopVisualQaScenarioDefinition("inventory-add"), {
+    aliases: ["inventory-add"],
+    category: "modal",
+    id: "add-filament",
+    page: "inventory",
+  });
+  assert.equal(
+    desktopVisualQaScenarioDefinition("ams-onboarding")?.requiresDatabaseFixture,
+    true,
+  );
+  assert.equal(desktopVisualQaScenarioDefinition("trusted-lan-details")?.settingsTab, "LIBRARY");
+  assert.equal(desktopVisualQaScenarioDefinition("statistics")?.page, "statistics");
+  assert.equal(desktopVisualQaScenarioDefinition("unknown"), null);
 });
 
 test("desktop visual QA scenarios resolve to the page they exercise", () => {

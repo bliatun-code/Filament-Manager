@@ -1,4 +1,5 @@
 import { execFile as execFileCallback, spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
@@ -16,38 +17,14 @@ const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
 const DEFAULT_PROCESS_NAME = "bambu-filament-manager";
 const DEFAULT_WINDOW_TITLE = "Filament Manager";
 const VISUAL_QA_SCENARIO_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
-const DESKTOP_VISUAL_QA_DATABASE_FIXTURE_SCENARIOS = new Set([
-  "printer-slot-onboarding",
-  "printer-rfid-override",
-  "settings-catalog-swatch-review",
-]);
-const DESKTOP_VISUAL_QA_SCENARIOS = [
-  "dashboard-overview",
-  "inventory-overview",
-  "add-filament",
-  "bambu-batch-add",
-  "loans-overview",
-  "loan-out",
-  "selected-roll",
-  "rfid-capture",
-  "return-loan",
-  "printer-board",
-  "printer-slot-assignment",
-  "printer-slot-onboarding",
-  "printer-rfid-override",
-  "printer-slot-replacement",
-  "printer-slot-clear",
-  "settings-general",
-  "settings-library",
-  "settings-library-network-details",
-  "settings-printer-diagnostics",
-  "settings-printer-diagnostics-fields",
-  "settings-printer-diagnostics-paused",
-  "settings-catalog",
-  "settings-catalog-swatch-review",
-  "settings-maintenance",
-  "statistics-overview",
-];
+const DESKTOP_VISUAL_QA_SCENARIO_MANIFEST = JSON.parse(
+  readFileSync(resolve("ui", "src", "lib", "desktop_visual_qa_scenarios.json"), "utf8"),
+);
+const DESKTOP_VISUAL_QA_SCENARIO_DEFINITIONS =
+  DESKTOP_VISUAL_QA_SCENARIO_MANIFEST.scenarios ?? [];
+const DESKTOP_VISUAL_QA_SCENARIOS = DESKTOP_VISUAL_QA_SCENARIO_DEFINITIONS.map(
+  (scenario) => scenario.id,
+);
 
 function parseArgValue(argv, name) {
   const index = argv.lastIndexOf(name);
@@ -77,114 +54,28 @@ function parseBooleanArg(argv, name) {
 }
 
 export function normalizeDesktopVisualQaScenario(value) {
-  switch (String(value ?? "").trim().toLowerCase()) {
-    case "":
-      return null;
-    case "dashboard-overview":
-    case "dashboard":
-      return "dashboard-overview";
-    case "inventory-overview":
-    case "inventory":
-      return "inventory-overview";
-    case "add-filament":
-    case "inventory-add":
-      return "add-filament";
-    case "loans-overview":
-    case "loans":
-    case "loan-history":
-      return "loans-overview";
-    case "loan-out":
-    case "inventory-loan":
-      return "loan-out";
-    case "selected-roll":
-    case "detail":
-    case "inventory-detail":
-      return "selected-roll";
-    case "rfid-capture":
-    case "inventory-rfid":
-      return "rfid-capture";
-    case "return-loan":
-    case "loan-return":
-    case "return":
-      return "return-loan";
-    case "printer-board":
-    case "printers":
-      return "printer-board";
-    case "printer-slot-assignment":
-    case "printer-slot-dropdown":
-    case "slot-assignment":
-      return "printer-slot-assignment";
-    case "printer-slot-onboarding":
-    case "slot-onboarding":
-    case "ams-onboarding":
-    case "printer-ams-onboarding":
-      return "printer-slot-onboarding";
-    case "printer-rfid-override":
-    case "rfid-override":
-    case "slot-rfid-override":
-    case "printer-slot-rfid-override":
-      return "printer-rfid-override";
-    case "printer-slot-replacement":
-    case "printer-slot-swap":
-    case "slot-replacement":
-    case "slot-swap":
-      return "printer-slot-replacement";
-    case "printer-slot-clear":
-    case "printer-slot-unload":
-    case "slot-clear":
-    case "slot-unload":
-      return "printer-slot-clear";
-    case "bambu-batch-add":
-    case "batch-add":
-    case "bambu-batch":
-      return "bambu-batch-add";
-    case "settings-general":
-    case "general-settings":
-      return "settings-general";
-    case "settings-library":
-    case "library-settings":
-    case "companion-settings":
-      return "settings-library";
-    case "settings-library-network-details":
-    case "library-network-details":
-    case "companion-network-details":
-    case "trusted-lan-details":
-      return "settings-library-network-details";
-    case "settings-printer-diagnostics":
-    case "printer-diagnostics":
-    case "bambu-live-diagnostics":
-      return "settings-printer-diagnostics";
-    case "settings-printer-diagnostics-fields":
-    case "printer-diagnostics-fields":
-    case "bambu-live-diagnostics-fields":
-      return "settings-printer-diagnostics-fields";
-    case "settings-printer-diagnostics-paused":
-    case "printer-diagnostics-paused":
-    case "bambu-live-diagnostics-paused":
-      return "settings-printer-diagnostics-paused";
-    case "settings-catalog":
-    case "catalog-settings":
-    case "filament-catalog":
-      return "settings-catalog";
-    case "settings-catalog-swatch-review":
-    case "settings-catalog-missing-swatches":
-    case "catalog-swatch-review":
-    case "missing-swatches":
-      return "settings-catalog-swatch-review";
-    case "settings-maintenance":
-    case "maintenance-settings":
-    case "program-maintenance":
-      return "settings-maintenance";
-    case "statistics-overview":
-    case "statistics":
-    case "usage-statistics":
-    case "print-statistics":
-      return "statistics-overview";
-    default:
-      throw new Error(
-        `Unknown desktop visual QA scenario "${value}". Use dashboard-overview, inventory-overview, add-filament, loan-out, loans-overview, selected-roll, rfid-capture, return-loan, printer-board, printer-slot-assignment, printer-slot-onboarding, printer-rfid-override, printer-slot-replacement, printer-slot-clear, bambu-batch-add, settings-general, settings-library, settings-library-network-details, settings-printer-diagnostics, settings-printer-diagnostics-fields, settings-printer-diagnostics-paused, settings-catalog, settings-catalog-swatch-review, settings-maintenance, or statistics-overview.`,
-      );
+  const definition = desktopVisualQaScenarioDefinition(value);
+  if (definition) {
+    return definition.id;
   }
+  if (String(value ?? "").trim() === "") {
+    return null;
+  }
+  throw new Error(
+    `Unknown desktop visual QA scenario "${value}". Use ${DESKTOP_VISUAL_QA_SCENARIOS.join(", ")}.`,
+  );
+}
+
+export function desktopVisualQaScenarioDefinition(value) {
+  const token = String(value ?? "").trim().toLowerCase();
+  if (!token) {
+    return null;
+  }
+  return (
+    DESKTOP_VISUAL_QA_SCENARIO_DEFINITIONS.find(
+      (scenario) => scenario.id === token || scenario.aliases?.includes(token),
+    ) ?? null
+  );
 }
 
 export function parseDesktopVisualQaScenarios(argv) {
@@ -199,8 +90,7 @@ export function parseDesktopVisualQaScenarios(argv) {
 }
 
 export function desktopVisualQaScenarioRequiresDatabaseFixture(scenario) {
-  const normalized = normalizeDesktopVisualQaScenario(scenario);
-  return normalized != null && DESKTOP_VISUAL_QA_DATABASE_FIXTURE_SCENARIOS.has(normalized);
+  return Boolean(desktopVisualQaScenarioDefinition(scenario)?.requiresDatabaseFixture);
 }
 
 export function desktopScreenshotNameForScenario({
@@ -770,7 +660,18 @@ export function formatDesktopScreenshotGateReport(result) {
     );
   }
   if (result.scenario) {
-    lines.push(`Desktop visual QA scenario: ${result.scenario}`);
+    const definition = desktopVisualQaScenarioDefinition(result.scenario);
+    const details = [
+      definition?.page,
+      definition?.settingsTab ? `settings:${definition.settingsTab.toLowerCase()}` : null,
+      definition?.category,
+      definition?.requiresDatabaseFixture ? "db-fixture" : null,
+    ].filter(Boolean);
+    lines.push(
+      `Desktop visual QA scenario: ${result.scenario}${
+        details.length > 0 ? ` (${details.join(", ")})` : ""
+      }`,
+    );
   }
   lines.push(`Desktop screenshot artifacts: ${result.outputDir}`);
   const metric = result.metric;

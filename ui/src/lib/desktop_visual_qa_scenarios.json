@@ -1,0 +1,166 @@
+{
+  "scenarios": [
+    {
+      "id": "dashboard-overview",
+      "aliases": ["dashboard"],
+      "page": "dashboard",
+      "category": "overview"
+    },
+    {
+      "id": "inventory-overview",
+      "aliases": ["inventory"],
+      "page": "inventory",
+      "category": "overview"
+    },
+    {
+      "id": "add-filament",
+      "aliases": ["inventory-add"],
+      "page": "inventory",
+      "category": "modal"
+    },
+    {
+      "id": "bambu-batch-add",
+      "aliases": ["batch-add", "bambu-batch"],
+      "page": "inventory",
+      "category": "modal"
+    },
+    {
+      "id": "loans-overview",
+      "aliases": ["loans", "loan-history"],
+      "page": "loans",
+      "category": "overview"
+    },
+    {
+      "id": "loan-out",
+      "aliases": ["inventory-loan"],
+      "page": "inventory",
+      "category": "modal"
+    },
+    {
+      "id": "selected-roll",
+      "aliases": ["detail", "inventory-detail"],
+      "page": "inventory",
+      "category": "modal"
+    },
+    {
+      "id": "rfid-capture",
+      "aliases": ["inventory-rfid"],
+      "page": "inventory",
+      "category": "modal"
+    },
+    {
+      "id": "return-loan",
+      "aliases": ["loan-return", "return"],
+      "page": "loans",
+      "category": "modal"
+    },
+    {
+      "id": "printer-board",
+      "aliases": ["printers"],
+      "page": "printers",
+      "category": "overview"
+    },
+    {
+      "id": "printer-slot-assignment",
+      "aliases": ["printer-slot-dropdown", "slot-assignment"],
+      "page": "printers",
+      "category": "workflow"
+    },
+    {
+      "id": "printer-slot-onboarding",
+      "aliases": ["slot-onboarding", "ams-onboarding", "printer-ams-onboarding"],
+      "page": "printers",
+      "category": "modal",
+      "requiresDatabaseFixture": true
+    },
+    {
+      "id": "printer-rfid-override",
+      "aliases": ["rfid-override", "slot-rfid-override", "printer-slot-rfid-override"],
+      "page": "printers",
+      "category": "modal",
+      "requiresDatabaseFixture": true
+    },
+    {
+      "id": "printer-slot-replacement",
+      "aliases": ["printer-slot-swap", "slot-replacement", "slot-swap"],
+      "page": "printers",
+      "category": "modal"
+    },
+    {
+      "id": "printer-slot-clear",
+      "aliases": ["printer-slot-unload", "slot-clear", "slot-unload"],
+      "page": "printers",
+      "category": "modal"
+    },
+    {
+      "id": "settings-general",
+      "aliases": ["general-settings"],
+      "page": "settings",
+      "settingsTab": "GENERAL",
+      "category": "settings"
+    },
+    {
+      "id": "settings-library",
+      "aliases": ["library-settings", "companion-settings"],
+      "page": "settings",
+      "settingsTab": "LIBRARY",
+      "category": "settings"
+    },
+    {
+      "id": "settings-library-network-details",
+      "aliases": ["library-network-details", "companion-network-details", "trusted-lan-details"],
+      "page": "settings",
+      "settingsTab": "LIBRARY",
+      "category": "settings"
+    },
+    {
+      "id": "settings-printer-diagnostics",
+      "aliases": ["printer-diagnostics", "bambu-live-diagnostics"],
+      "page": "settings",
+      "settingsTab": "PRINTERS",
+      "category": "settings"
+    },
+    {
+      "id": "settings-printer-diagnostics-fields",
+      "aliases": ["printer-diagnostics-fields", "bambu-live-diagnostics-fields"],
+      "page": "settings",
+      "settingsTab": "PRINTERS",
+      "category": "settings"
+    },
+    {
+      "id": "settings-printer-diagnostics-paused",
+      "aliases": ["printer-diagnostics-paused", "bambu-live-diagnostics-paused"],
+      "page": "settings",
+      "settingsTab": "PRINTERS",
+      "category": "settings"
+    },
+    {
+      "id": "settings-catalog",
+      "aliases": ["catalog-settings", "filament-catalog"],
+      "page": "settings",
+      "settingsTab": "CATALOG",
+      "category": "settings"
+    },
+    {
+      "id": "settings-catalog-swatch-review",
+      "aliases": ["settings-catalog-missing-swatches", "catalog-swatch-review", "missing-swatches"],
+      "page": "settings",
+      "settingsTab": "CATALOG",
+      "category": "settings",
+      "requiresDatabaseFixture": true
+    },
+    {
+      "id": "settings-maintenance",
+      "aliases": ["maintenance-settings", "program-maintenance"],
+      "page": "settings",
+      "settingsTab": "MAINTENANCE",
+      "category": "settings"
+    },
+    {
+      "id": "statistics-overview",
+      "aliases": ["statistics", "usage-statistics", "print-statistics"],
+      "page": "statistics",
+      "category": "overview"
+    }
+  ]
+}
