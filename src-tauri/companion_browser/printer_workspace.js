@@ -10,7 +10,6 @@ import {
   printerBrandCssVars,
   styleObjectToString,
   suggestSwatchHex,
-  swatchCssStyle,
   toSwatchColor,
 } from "./companion_theme.js";
 import {
@@ -22,6 +21,7 @@ import {
   renderCompanionActionButton,
   renderSwatchListRow,
   renderSwatchSelectionCard,
+  renderSwatchSurface,
 } from "./shell_chrome.js";
 
 export function formatPrinterSlotLabel(slot, locale = "en", printerModel = "") {
@@ -620,8 +620,7 @@ function renderSlotCards(options) {
           suggestSwatchHex(slot.live_filament_name, slot.live_filament_type, "", slot.live_filament_type) ||
           "#ced8e3";
       const slotHasLiveLoaded = !slot.spool_id && Boolean(slot.live_loaded || slot.live_tray_uuid || slot.live_match_status);
-      const slotToneStyle =
-        slot.spool_id || slotHasLiveLoaded ? swatchCssStyle(slotSwatch) : "";
+      const slotUsesSwatchSurface = slot.spool_id || slotHasLiveLoaded;
       const liveMaterialBits = formatInventoryDisplayTitle(
         slot.live_filament_type,
         slot.live_filament_name,
@@ -670,14 +669,18 @@ function renderSlotCards(options) {
           : t(locale, "printers.empty", "Empty");
       const slotStateTone = slot.spool_id || slotHasLiveLoaded ? "info" : "neutral";
 
-      return `
-        <article
-          class="slot-card ${slot.spool_id || slotHasLiveLoaded ? "slot-card-loaded swatch-surface" : "slot-card-empty"}"
-          data-slot-selected="false"
-          data-slot-targeted="${slotIsPendingTarget ? "true" : "false"}"
-          data-slot-loaded="${slot.spool_id || slotHasLiveLoaded ? "true" : "false"}"
-          ${slotToneStyle ? `style="${escapeHtml(slotToneStyle)}"` : ""}
-        >
+      return renderSwatchSurface({
+        tag: "article",
+        surfaceClass: "",
+        className: `slot-card ${slotUsesSwatchSurface ? "slot-card-loaded" : "slot-card-empty"}`,
+        attributes: {
+          "data-slot-selected": "false",
+          "data-slot-targeted": slotIsPendingTarget ? "true" : "false",
+          "data-slot-loaded": slotUsesSwatchSurface ? "true" : "false",
+        },
+        escapeHtml,
+        swatch: slotUsesSwatchSurface ? slotSwatch : "",
+        body: `
           <div class="slot-card-head">
             <div>
               <div class="list-title">${escapeHtml(slotLabel)}</div>
@@ -749,11 +752,11 @@ function renderSlotCards(options) {
                     label: t(locale, "printers.loadFilament", "Load filament"),
                   })}
                 `
-                : ""
+              : ""
             }
           </div>
-        </article>
-      `;
+        `,
+      });
     })
     .join("");
 }

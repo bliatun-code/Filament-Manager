@@ -9,13 +9,14 @@ import {
   buildBambuFilamentCodeLookup,
   catalogMasterMatchesBambuFilamentCode,
 } from "./bambu_filament_code_lookup.js";
-import { suggestSwatchHex, swatchCssStyle, toSwatchColor } from "./companion_theme.js";
+import { suggestSwatchHex, toSwatchColor } from "./companion_theme.js";
 import { t } from "./companion_i18n.js";
 import { isBorrowedInOwnership, normalizeDomainToken, parseSpoolStatus } from "./companion_domain.js";
 import {
   renderCompanionActionButton,
   renderSwatchListRow,
   renderSwatchSelectionCard,
+  renderSwatchSurface,
 } from "./shell_chrome.js";
 
 function catalogMatchesSource(master, source) {
@@ -162,9 +163,11 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
         (master) => master.id === item.master_id,
       );
       const itemSwatch = linkedMaster?.hex_color || suggestSwatchHex(item.color_name, item.filament_name, item.vendor, item.material);
-      const itemStyle = swatchCssStyle(itemSwatch);
-      return `
-        <div class="surface-card add-spool-wishlist-row swatch-surface" style="${escapeHtml(itemStyle)}">
+      return renderSwatchSurface({
+        className: "add-spool-wishlist-row",
+        escapeHtml,
+        swatch: itemSwatch,
+        body: `
           <div class="add-spool-wishlist-row-head">
             <div class="stack add-spool-wishlist-row-copy">
               <div class="list-title">${escapeHtml(
@@ -227,8 +230,8 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
               label: t(locale, "storage.remove", "Remove"),
             })}
           </div>
-        </div>
-      `;
+        `,
+      });
     })
     .join("");
 
@@ -614,11 +617,13 @@ function renderSelectedSpoolHiddenBanner(
     .filter(Boolean)
     .map((value) => escapeHtml(value))
     .join(" · ");
-  return `
-    <div
-      class="selection-banner selection-banner-muted compact-selection-banner storage-hidden-banner swatch-surface"
-      style="${escapeHtml(swatchCssStyle(selectedSpool.master.hex_color))}"
-    >
+  return renderSwatchSurface({
+    cardSurface: false,
+    surfaceClass: "",
+    className: "selection-banner selection-banner-muted compact-selection-banner storage-hidden-banner",
+    escapeHtml,
+    swatch: selectedSpool.master.hex_color || "",
+    body: `
       <div class="selection-banner-copy">
         <div class="list-title">
           ${escapeHtml(t(locale, "storage.hiddenSelectedTitle", "Selected spool hidden"))}
@@ -657,8 +662,8 @@ function renderSelectedSpoolHiddenBanner(
           label: t(locale, "detail.openDetail", "Detail"),
         })}
       </div>
-    </div>
-  `;
+    `,
+  });
 }
 
 function renderSpoolRows(options) {

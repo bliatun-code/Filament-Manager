@@ -126,6 +126,39 @@ export function renderSwatchSelectionCard(options) {
   `;
 }
 
+export function renderSwatchSurface(options) {
+  const {
+    attributes = {},
+    body = "",
+    cardSurface = true,
+    className = "",
+    escapeHtml,
+    surfaceClass = "surface-card",
+    swatch,
+    tag = "div",
+  } = options;
+  const escape = typeof escapeHtml === "function" ? escapeHtml : (value) => String(value ?? "");
+  const tagName = ["article", "div", "section"].includes(tag) ? tag : "div";
+  const hasSwatch = typeof swatch === "string" && swatch.trim();
+  const classes = [
+    surfaceClass,
+    className,
+    hasSwatch ? "swatch-surface" : "",
+    hasSwatch && cardSurface ? "swatch-card-surface" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const renderedAttributes = renderAttributeMap(
+    {
+      ...attributes,
+      style: [hasSwatch ? swatchCssStyle(swatch) : "", attributes.style].filter(Boolean).join(";") || undefined,
+    },
+    escape,
+  );
+
+  return `<${tagName} class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${body}</${tagName}>`;
+}
+
 export function renderSwatchListRow(options) {
   const {
     action,

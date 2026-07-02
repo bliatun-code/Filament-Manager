@@ -51,6 +51,23 @@
     0 3px 10px var(--swatch-surface-ambient);
 }
 
+.swatch-card-surface.swatch-surface {
+  background-color: var(--swatch-surface-base);
+  background-image:
+    linear-gradient(
+      180deg,
+      rgb(var(--swatch-rgb) / calc(var(--swatch-surface-top) + 0.02)) 0%,
+      rgb(var(--swatch-rgb) / calc(var(--swatch-surface-mid) + 0.02)) 36%,
+      rgb(var(--swatch-rgb) / calc(var(--swatch-surface-bottom) + 0.02)) var(--swatch-card-bottom-stop, 72%),
+      var(--swatch-surface-base) 100%
+    );
+  border-color: rgb(var(--swatch-rgb) / calc(var(--swatch-surface-border) + var(--swatch-card-border-boost, 0.03)));
+  box-shadow:
+    inset 0 1px 0 var(--swatch-surface-inset),
+    0 16px 34px -32px rgb(var(--swatch-rgb) / calc(var(--swatch-surface-shadow) + var(--swatch-card-shadow-boost, 0.03))),
+    0 var(--swatch-card-ambient-y, 3px) 10px var(--swatch-surface-ambient);
+}
+
 .printer-brand-surface {
   background-color: var(--printer-surface-base);
   background-image:
@@ -438,7 +455,7 @@
 }
 
 .list-row.swatch-surface:hover,
-.loan-card.swatch-surface:hover {
+.swatch-card-surface.swatch-surface:hover {
   background-color: var(--swatch-surface-base);
   border-color: rgba(248, 250, 252, 0.68);
   box-shadow:
@@ -496,7 +513,7 @@
 }
 
 :root[data-theme-mode="light"] .list-row.swatch-surface:hover,
-:root[data-theme-mode="light"] .loan-card.swatch-surface:hover {
+:root[data-theme-mode="light"] .swatch-card-surface.swatch-surface:hover {
   border-color: rgba(255, 255, 255, 0.98);
   box-shadow:
     inset 3px 0 0 rgb(var(--swatch-rgb) / 0.56),
@@ -606,9 +623,9 @@
   }
 
   :root:not([data-theme-mode]) .list-row.swatch-surface:hover,
-  :root:not([data-theme-mode]) .loan-card.swatch-surface:hover,
+  :root:not([data-theme-mode]) .swatch-card-surface.swatch-surface:hover,
   :root[data-theme-mode="auto"] .list-row.swatch-surface:hover,
-  :root[data-theme-mode="auto"] .loan-card.swatch-surface:hover {
+  :root[data-theme-mode="auto"] .swatch-card-surface.swatch-surface:hover {
     border-color: rgba(255, 255, 255, 0.98);
     box-shadow:
       inset 3px 0 0 rgb(var(--swatch-rgb) / 0.56),
@@ -1353,23 +1370,6 @@
     border-color 180ms ease,
     background-color 180ms ease,
     box-shadow 180ms ease;
-}
-
-.loan-card.swatch-surface {
-  background-color: var(--swatch-surface-base);
-  background-image:
-    linear-gradient(
-      180deg,
-      rgb(var(--swatch-rgb) / calc(var(--swatch-surface-top) + 0.02)) 0%,
-      rgb(var(--swatch-rgb) / calc(var(--swatch-surface-mid) + 0.02)) 36%,
-      rgb(var(--swatch-rgb) / calc(var(--swatch-surface-bottom) + 0.02)) 72%,
-      var(--swatch-surface-base) 100%
-    );
-  border-color: rgb(var(--swatch-rgb) / calc(var(--swatch-surface-border) + 0.03));
-  box-shadow:
-    inset 0 1px 0 var(--swatch-surface-inset),
-    0 16px 34px -32px rgb(var(--swatch-rgb) / calc(var(--swatch-surface-shadow) + 0.03)),
-    0 3px 10px var(--swatch-surface-ambient);
 }
 
 .loan-card.swatch-surface .pill {
@@ -2503,29 +2503,11 @@
   align-items: start;
 }
 
-.slot-card-loaded {
-  border-color: rgb(var(--swatch-rgb) / 0.44);
-  box-shadow:
-    inset 0 1px 0 var(--swatch-surface-inset),
-    0 16px 34px -30px rgb(var(--swatch-rgb) / calc(var(--swatch-surface-shadow) + 0.08)),
-    0 4px 14px var(--swatch-surface-ambient);
-}
-
-.slot-card.swatch-surface {
-  background-color: var(--swatch-surface-base);
-  background-image:
-    linear-gradient(
-      180deg,
-      rgb(var(--swatch-rgb) / calc(var(--swatch-surface-top) + 0.02)) 0%,
-      rgb(var(--swatch-rgb) / calc(var(--swatch-surface-mid) + 0.02)) 36%,
-      rgb(var(--swatch-rgb) / calc(var(--swatch-surface-bottom) + 0.02)) 74%,
-      var(--swatch-surface-base) 100%
-    );
-  border-color: rgb(var(--swatch-rgb) / calc(var(--swatch-surface-border) + 0.06));
-  box-shadow:
-    inset 0 1px 0 var(--swatch-surface-inset),
-    0 16px 34px -30px rgb(var(--swatch-rgb) / calc(var(--swatch-surface-shadow) + 0.08)),
-    0 4px 14px var(--swatch-surface-ambient);
+.slot-card.swatch-card-surface {
+  --swatch-card-ambient-y: 4px;
+  --swatch-card-border-boost: 0.06;
+  --swatch-card-bottom-stop: 74%;
+  --swatch-card-shadow-boost: 0.08;
 }
 
 .slot-card-state {
@@ -3731,7 +3713,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .list-row:hover,
-  .loan-card.swatch-surface:hover,
+  .swatch-card-surface.swatch-surface:hover,
   .printer-roster-item:hover,
   .loan-filter-button:hover,
   .root-flow-button:hover,

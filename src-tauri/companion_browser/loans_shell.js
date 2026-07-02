@@ -6,11 +6,12 @@ import {
 } from "./companion_loan_state.js";
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference } from "./formatters.js";
-import { suggestSwatchHex, swatchCssStyle, toSwatchColor } from "./companion_theme.js";
+import { suggestSwatchHex, toSwatchColor } from "./companion_theme.js";
 import {
   renderCompanionActionButton,
   renderSwatchListRow,
   renderSwatchSelectionCard,
+  renderSwatchSurface,
 } from "./shell_chrome.js";
 
 function loanStateLabel(row, locale = "en") {
@@ -56,11 +57,13 @@ function renderHiddenSelectionBanner(selectedSpool, loanRows, escapeHtml, format
     .filter(Boolean)
     .map((value) => escapeHtml(value))
     .join(" · ");
-  return `
-    <div
-      class="selection-banner selection-banner-muted compact-selection-banner storage-hidden-banner swatch-surface"
-      style="${escapeHtml(swatchCssStyle(selectedSpool.master?.hex_color))}"
-    >
+  return renderSwatchSurface({
+    cardSurface: false,
+    surfaceClass: "",
+    className: "selection-banner selection-banner-muted compact-selection-banner storage-hidden-banner",
+    escapeHtml,
+    swatch: selectedSpool.master?.hex_color || "",
+    body: `
       <div class="selection-banner-copy">
         <div class="list-title">${escapeHtml(t(locale, "storage.hiddenSelectedTitle", "Selected spool hidden"))}</div>
         <div class="section-copy">${escapeHtml(
@@ -95,8 +98,8 @@ function renderHiddenSelectionBanner(selectedSpool, loanRows, escapeHtml, format
           label: t(locale, "detail.openDetail", "Detail"),
         })}
       </div>
-    </div>
-  `;
+    `,
+  });
 }
 
 function renderLoanPickerRows(options) {
@@ -174,12 +177,13 @@ function renderLoanRows(options) {
         .filter(Boolean)
         .map((value) => escapeHtml(value))
         .join(" · ");
-      return `
-        <article
-          class="surface-card loan-card compact-loan-card swatch-surface"
-          data-selected="${isSelected ? "true" : "false"}"
-          style="${escapeHtml(swatchCssStyle(swatch))}"
-        >
+      return renderSwatchSurface({
+        tag: "article",
+        className: "loan-card compact-loan-card",
+        attributes: { "data-selected": isSelected ? "true" : "false" },
+        escapeHtml,
+        swatch,
+        body: `
           <div class="loan-card-head">
             <div class="stack loan-card-copy">
               <div class="swatch-line">
@@ -219,11 +223,11 @@ function renderLoanRows(options) {
                         ? t(locale, "detail.handBackSpool", "Hand back spool")
                         : t(locale, "loans.returnLoan", "Return loan"),
                   })
-                : ""
+              : ""
             }
           </div>
-        </article>
-      `;
+        `,
+      });
     })
     .join("");
 }

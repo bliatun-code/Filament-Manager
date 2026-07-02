@@ -19,18 +19,19 @@ function readCssBundle(fileName = "./app.css", seen = new Set()) {
 test("loaded printer slot cards keep their swatch surface treatment", () => {
   const css = readCssBundle();
 
-  assert.match(css, /\.slot-card\.swatch-surface\s*\{/);
+  assert.match(css, /\.swatch-card-surface\.swatch-surface\s*\{/);
   assert.match(css, /rgb\(var\(--swatch-rgb\) \/ calc\(var\(--swatch-surface-top\) \+ 0\.02\)\)/);
+  assert.match(css, /\.slot-card\.swatch-card-surface\s*\{[\s\S]*--swatch-card-border-boost: 0\.06;/);
 });
 
 test("swatch filament rows keep the bright hover outline", () => {
   const css = readCssBundle();
 
-  assert.match(css, /\.list-row\.swatch-surface:hover,\s*\.loan-card\.swatch-surface:hover\s*\{/);
+  assert.match(css, /\.list-row\.swatch-surface:hover,\s*\.swatch-card-surface\.swatch-surface:hover\s*\{/);
   assert.match(css, /0 0 0 1px rgba\(248, 250, 252, 0\.38\)/);
   assert.match(
     css,
-    /:root\[data-theme-mode="light"\] \.list-row\.swatch-surface:hover,[\s\S]*0 0 0 1px rgba\(255, 255, 255, 0\.96\)/,
+    /:root\[data-theme-mode="light"\] \.list-row\.swatch-surface:hover,[\s\S]*\.swatch-card-surface\.swatch-surface:hover[\s\S]*0 0 0 1px rgba\(255, 255, 255, 0\.96\)/,
   );
 });
 

@@ -8,6 +8,7 @@ import {
   renderPhoneBottomNav,
   renderSwatchListRow,
   renderSwatchSelectionCard,
+  renderSwatchSurface,
   renderTopbar,
   renderTrustedLanPairingApp,
 } from "./shell_chrome.js";
@@ -93,6 +94,52 @@ test("swatch selection card helper owns selected filament preview chrome", () =>
   assert.match(html, /Selected/);
   assert.match(html, /--swatch-rgb:37 99 235/);
   assert.match(html, /data-action="save"/);
+});
+
+test("swatch surface helper owns card surface attributes", () => {
+  const html = renderSwatchSurface({
+    tag: "article",
+    className: "loan-card",
+    attributes: {
+      "data-selected": true,
+      "aria-label": "PLA <Green>",
+    },
+    body: "<span>Body</span>",
+    escapeHtml,
+    swatch: "#16A34A",
+  });
+
+  assert.equal(
+    html,
+    '<article class="surface-card loan-card swatch-surface swatch-card-surface" data-selected aria-label="PLA &lt;Green&gt;" style="--swatch-rgb:22 163 74;--swatch-solid:#16A34A"><span>Body</span></article>',
+  );
+
+  const emptySlotHtml = renderSwatchSurface({
+    tag: "article",
+    surfaceClass: "",
+    className: "slot-card slot-card-empty",
+    attributes: { "data-slot-loaded": "false" },
+    body: "Open",
+    escapeHtml,
+  });
+
+  assert.equal(
+    emptySlotHtml,
+    '<article class="slot-card slot-card-empty" data-slot-loaded="false">Open</article>',
+  );
+
+  const bannerHtml = renderSwatchSurface({
+    cardSurface: false,
+    surfaceClass: "",
+    className: "selection-banner",
+    body: "Hidden",
+    escapeHtml,
+    swatch: "#ef4444",
+  });
+  assert.equal(
+    bannerHtml,
+    '<div class="selection-banner swatch-surface" style="--swatch-rgb:239 68 68;--swatch-solid:#EF4444">Hidden</div>',
+  );
 });
 
 test("swatch list row helper owns filament row chrome", () => {
