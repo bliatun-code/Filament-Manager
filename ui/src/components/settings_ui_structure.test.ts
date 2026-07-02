@@ -7,6 +7,18 @@ const catalogRefreshPanelSource = readFileSync(
   new URL("../pages/settings_catalog_refresh_panel.tsx", import.meta.url),
   "utf8",
 );
+const catalogTabSource = readFileSync(
+  new URL("../pages/settings_catalog_tab.tsx", import.meta.url),
+  "utf8",
+);
+const generalTabSource = readFileSync(
+  new URL("./settings_general_tab.tsx", import.meta.url),
+  "utf8",
+);
+const libraryTabSource = readFileSync(
+  new URL("../pages/settings_library_tab.tsx", import.meta.url),
+  "utf8",
+);
 const maintenanceTabSource = readFileSync(
   new URL("./settings_maintenance_tab.tsx", import.meta.url),
   "utf8",
@@ -28,12 +40,26 @@ test("settings section chrome is owned by shared primitives", () => {
     "SettingsSectionBody",
     "SettingsSectionControls",
     "SettingsSectionEmptyState",
+    "SettingsSurfaceCard",
   ]) {
     assert.match(source, new RegExp(`export function ${exportName}`));
   }
   assert.match(source, /surface-subtle overflow-hidden p-0/);
   assert.match(source, /border-b border-slate-200\/80 px-5 py-5/);
   assert.match(source, /rounded-lg border border-slate-200 bg-white\/75 p-4/);
+});
+
+test("settings top-level tabs use the shared surface card primitive", () => {
+  for (const panelSource of [
+    catalogTabSource,
+    generalTabSource,
+    libraryTabSource,
+    maintenanceTabSource,
+    readFileSync(new URL("./settings_printers_tab.tsx", import.meta.url), "utf8"),
+  ]) {
+    assert.match(panelSource, /SettingsSurfaceCard/);
+    assert.doesNotMatch(panelSource, /<section className="surface-card/);
+  }
 });
 
 test("settings catalog and maintenance panels use shared section chrome", () => {

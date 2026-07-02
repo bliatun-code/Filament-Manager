@@ -19,6 +19,32 @@ export function SettingsSectionPanel({
   );
 }
 
+export function SettingsSurfaceCard({
+  children,
+  className,
+  description,
+  descriptionClassName = "text-slate-600 dark:text-slate-300",
+  eyebrow,
+}: {
+  children: ReactNode;
+  className?: string;
+  description?: ReactNode;
+  descriptionClassName?: string;
+  eyebrow?: ReactNode;
+}) {
+  return (
+    <section className={joinClassNames("surface-card", className)}>
+      {eyebrow ? <div className="section-eyebrow">{eyebrow}</div> : null}
+      {description ? (
+        <div className={joinClassNames("text-sm leading-6", descriptionClassName)}>
+          {description}
+        </div>
+      ) : null}
+      {children}
+    </section>
+  );
+}
+
 export function SettingsSectionHeader({
   children,
   description,

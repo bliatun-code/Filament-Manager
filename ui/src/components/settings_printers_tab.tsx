@@ -27,6 +27,7 @@ import {
   type SettingsPrinterLiveDiagnosticsActions,
   type SettingsPrinterLiveDiagnosticsState,
 } from "./settings_printer_card";
+import { SettingsSurfaceCard } from "./settings_ui";
 
 export type SettingsPrintersTabProps = {
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
@@ -139,11 +140,7 @@ export function SettingsPrintersTab({
   };
 
   return (
-    <section className="surface-card xl:col-span-2">
-      <div className="section-eyebrow">
-        {t("nav.printers", "Printers")}
-      </div>
-
+    <SettingsSurfaceCard className="xl:col-span-2" eyebrow={t("nav.printers", "Printers")}>
       <div className="mt-5 space-y-2">
         {loading ? (
           <div className="surface-subtle px-3 py-2 text-sm text-slate-600 dark:text-slate-300">
@@ -238,6 +235,6 @@ export function SettingsPrintersTab({
           );
         })}
       </div>
-    </section>
+    </SettingsSurfaceCard>
   );
 }

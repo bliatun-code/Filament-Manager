@@ -2,6 +2,7 @@ import type { ComponentProps } from "react";
 import { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_lan_browsers_panel";
 import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_lan_pairing_panel";
 import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_lan_server_panel";
+import { SettingsSurfaceCard } from "../components/settings_ui";
 import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
@@ -32,9 +33,7 @@ export function SettingsLibraryTab({
   webappControl,
 }: SettingsLibraryTabProps) {
   return (
-    <section className="surface-card xl:col-span-2 space-y-4">
-      <div className="section-eyebrow">{title}</div>
-
+    <SettingsSurfaceCard className="xl:col-span-2 space-y-4" eyebrow={title}>
       <div className="surface-subtle space-y-5 p-4">
         <SettingsLibraryRolePanel {...libraryRolePanel} />
         <SettingsLibraryWebappControl {...webappControl} />
@@ -44,6 +43,6 @@ export function SettingsLibraryTab({
 
       {showHostPanels ? <SettingsTrustedLanPairingPanel {...pairingPanel} /> : null}
       {showHostPanels ? <SettingsTrustedLanBrowsersPanel {...browsersPanel} /> : null}
-    </section>
+    </SettingsSurfaceCard>
   );
 }

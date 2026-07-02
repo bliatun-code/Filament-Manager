@@ -6,6 +6,7 @@ import {
   SettingsSectionControls,
   SettingsSectionHeader,
   SettingsSectionPanel,
+  SettingsSurfaceCard,
 } from "./settings_ui";
 import { settingsActionButtonClass } from "../lib/settings_ui_classes";
 import type { BackupValidationStats, CatalogResetStats } from "../lib/tauri_client";
@@ -73,10 +74,10 @@ export function SettingsMaintenanceTab({
     !tauri || busy || (settingsClientReadOnly && !settingsClientHostWritePaired);
 
   return (
-    <section className="surface-card xl:col-span-2">
-      <div className="section-eyebrow">
-        {t("settings.maintenance", "Maintenance")}
-      </div>
+    <SettingsSurfaceCard
+      className="xl:col-span-2"
+      eyebrow={t("settings.maintenance", "Maintenance")}
+    >
       <SettingsSectionPanel className="mt-4">
         <SettingsSectionHeader
           eyebrow={t("settings.backupTitle", "Backup")}
@@ -270,6 +271,6 @@ export function SettingsMaintenanceTab({
           {t("settings.reactivated", "Reactivated")}: {lastCatalogReset.reactivated_count}
         </div>
       ) : null}
-    </section>
+    </SettingsSurfaceCard>
   );
 }

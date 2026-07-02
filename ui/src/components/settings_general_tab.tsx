@@ -15,6 +15,7 @@ import {
   settingsActionButtonClass,
   settingsSectionLabelClass,
 } from "../lib/settings_ui_classes";
+import { SettingsSurfaceCard } from "./settings_ui";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -50,10 +51,7 @@ export function SettingsGeneralTab({
 
   return (
     <>
-      <section className="surface-card space-y-4">
-        <div className="section-eyebrow">
-          {t("settings.program", "Program")}
-        </div>
+      <SettingsSurfaceCard className="space-y-4" eyebrow={t("settings.program", "Program")}>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="surface-subtle px-4 py-3">
             <div className={settingsSectionLabelClass}>
@@ -108,18 +106,16 @@ export function SettingsGeneralTab({
             {t("settings.viewNotices", "Notices")}
           </button>
         </div>
-      </section>
+      </SettingsSurfaceCard>
 
-      <section className="surface-card space-y-4">
-        <div className="section-eyebrow">
-          {t("settings.help", "Help")}
-        </div>
-        <div className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-          {t(
-            "settings.helpHint",
-            "Open the visual product tour for screenshots of the main desktop and Companion workflows, or use the text manual for step-by-step behavior.",
-          )}
-        </div>
+      <SettingsSurfaceCard
+        className="space-y-4"
+        eyebrow={t("settings.help", "Help")}
+        description={t(
+          "settings.helpHint",
+          "Open the visual product tour for screenshots of the main desktop and Companion workflows, or use the text manual for step-by-step behavior.",
+        )}
+      >
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -140,15 +136,13 @@ export function SettingsGeneralTab({
             {t("settings.userManual", "User manual")}
           </button>
         </div>
-      </section>
+      </SettingsSurfaceCard>
 
-      <section className="surface-card space-y-4">
-        <div className="section-eyebrow">
-          {t("settings.appearance", "Appearance")}
-        </div>
-        <div className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-          {t("settings.autoHint", "Auto follows your system light/dark preference.")}
-        </div>
+      <SettingsSurfaceCard
+        className="space-y-4"
+        eyebrow={t("settings.appearance", "Appearance")}
+        description={t("settings.autoHint", "Auto follows your system light/dark preference.")}
+      >
         <div className="surface-subtle p-3">
           <div className="flex flex-wrap gap-2">
             {(["auto", "light", "dark"] as const).map((mode) => (
@@ -167,18 +161,16 @@ export function SettingsGeneralTab({
             ))}
           </div>
         </div>
-      </section>
+      </SettingsSurfaceCard>
 
-      <section className="surface-card space-y-4">
-        <div className="section-eyebrow">
-          {t("settings.language", "Language")}
-        </div>
-        <div className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-          {t(
-            "settings.languageHint",
-            "Choose app language. More sections will be localized incrementally.",
-          )}
-        </div>
+      <SettingsSurfaceCard
+        className="space-y-4"
+        eyebrow={t("settings.language", "Language")}
+        description={t(
+          "settings.languageHint",
+          "Choose app language. More sections will be localized incrementally.",
+        )}
+      >
         <div className="surface-subtle p-3">
           <div className="flex flex-wrap gap-2">
             <button
@@ -197,18 +189,16 @@ export function SettingsGeneralTab({
             </button>
           </div>
         </div>
-      </section>
+      </SettingsSurfaceCard>
 
-      <section className="surface-card space-y-4">
-        <div className="section-eyebrow">
-          {t("settings.inventoryOverviewPrint", "Inventory A4 overview")}
-        </div>
-        <div className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-          {t(
-            "settings.inventoryOverviewPrintHint",
-            "Print a material-sorted list with swatch, QR and filament details for all in-stock spools.",
-          )}
-        </div>
+      <SettingsSurfaceCard
+        className="space-y-4"
+        eyebrow={t("settings.inventoryOverviewPrint", "Inventory A4 overview")}
+        description={t(
+          "settings.inventoryOverviewPrintHint",
+          "Print a material-sorted list with swatch, QR and filament details for all in-stock spools.",
+        )}
+      >
         <button
           type="button"
           onClick={onPrintInventoryOverviewA4}
@@ -217,7 +207,7 @@ export function SettingsGeneralTab({
         >
           {t("settings.inventoryOverviewPrintAction", "Print A4 inventory overview")}
         </button>
-      </section>
+      </SettingsSurfaceCard>
     </>
   );
 }
