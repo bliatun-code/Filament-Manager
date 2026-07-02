@@ -1,84 +1,111 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-export function collectCssFiles(directory) {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const entryPath = join(directory, entry.name);
-    if (entry.isDirectory()) {
-      return collectCssFiles(entryPath);
-    }
-    return entry.isFile() && entry.name.endsWith(".css") ? [entryPath] : [];
-  });
-}
+import {
+  analyzeCssVariables,
+  collectCssFiles,
+  formatCssVariableReport,
+  normalizeCssSourcePath,
+  parseCssVariableDeclarations,
+} from "./css-variable-contract.mjs";
 
-export function normalizeCompanionCssSourcePath(filePath) {
-  return filePath.replaceAll("\\", "/");
-}
+export {
+  analyzeCssVariables,
+  collectCssFiles,
+  formatCssVariableReport,
+  normalizeCssSourcePath,
+};
 
-export function normalizeCssSourcePath(filePath) {
-  return normalizeCompanionCssSourcePath(filePath);
-}
+export const normalizeCompanionCssSourcePath = normalizeCssSourcePath;
 
-export function analyzeCssVariables(options = {}) {
-  const repoRoot = options.repoRoot ?? resolve(".");
-  const cssDirectory =
-    options.cssDirectory ?? resolve(repoRoot, "src-tauri", "companion_browser");
-  const ignoredPrefixes = options.ignoredPrefixes ?? [];
-  const definitions = new Set();
-  const usages = new Map();
+function extractCssBlockAfter(source, marker) {
+  const markerIndex = source.indexOf(marker);
+  if (markerIndex < 0) {
+    return null;
+  }
 
-  for (const file of collectCssFiles(cssDirectory)) {
-    const source = readFileSync(file, "utf8");
-    const relativePath = normalizeCssSourcePath(relative(repoRoot, file));
+  const openingBraceIndex = source.indexOf("{", markerIndex);
+  if (openingBraceIndex < 0) {
+    return null;
+  }
 
-    for (const match of source.matchAll(/(^|[;{\s])(--[a-zA-Z0-9-]+)\s*:/g)) {
-      const name = match[2];
-      if (!ignoredPrefixes.some((prefix) => name.startsWith(prefix))) {
-        definitions.add(name);
+  let depth = 0;
+  for (let index = openingBraceIndex; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === "{") {
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(openingBraceIndex + 1, index);
       }
-    }
-
-    for (const match of source.matchAll(/var\(\s*(--[a-zA-Z0-9-]+)/g)) {
-      const name = match[1];
-      if (ignoredPrefixes.some((prefix) => name.startsWith(prefix))) {
-        continue;
-      }
-      if (!usages.has(name)) {
-        usages.set(name, new Set());
-      }
-      usages.get(name).add(relativePath);
     }
   }
 
-  const missing = [...usages.keys()]
-    .filter((name) => !definitions.has(name))
-    .sort()
-    .map((name) => ({
-      files: [...usages.get(name)].sort(),
-      name,
-    }));
+  return null;
+}
 
-  return { definitions, missing, usages };
+export function analyzeCompanionThemeTokens(options = {}) {
+  const repoRoot = options.repoRoot ?? resolve(".");
+  const themePath =
+    options.themePath ??
+    resolve(repoRoot, "src-tauri", "companion_browser", "theme.css");
+  const source = readFileSync(themePath, "utf8");
+  const explicitDarkBlock = extractCssBlockAfter(source, ':root[data-theme-mode="dark"]');
+  const autoDarkBlock = extractCssBlockAfter(source, ":root:not([data-theme-mode])");
+  const missingBlocks = [];
+
+  if (explicitDarkBlock === null) {
+    missingBlocks.push(':root[data-theme-mode="dark"]');
+  }
+  if (autoDarkBlock === null) {
+    missingBlocks.push(":root:not([data-theme-mode]) / :root[data-theme-mode=\"auto\"]");
+  }
+
+  const explicitDark = parseCssVariableDeclarations(explicitDarkBlock ?? "");
+  const autoDark = parseCssVariableDeclarations(autoDarkBlock ?? "");
+  const names = [...new Set([...explicitDark.keys(), ...autoDark.keys()])].sort();
+  const mismatches = [];
+
+  for (const name of names) {
+    const explicitDarkValue = explicitDark.get(name) ?? null;
+    const autoDarkValue = autoDark.get(name) ?? null;
+    if (explicitDarkValue !== autoDarkValue) {
+      mismatches.push({
+        autoDark: autoDarkValue,
+        explicitDark: explicitDarkValue,
+        name,
+      });
+    }
+  }
+
+  return { autoDark, explicitDark, mismatches, missingBlocks };
 }
 
 export function analyzeCompanionCssVariables(options = {}) {
   return analyzeCssVariables(options);
 }
 
-export function formatCssVariableReport(result, label = "CSS") {
-  if (result.missing.length > 0) {
-    const lines = [`${label} variables used without definitions:`];
-    for (const missingVariable of result.missing) {
-      lines.push(`  - ${missingVariable.name}`);
-      for (const file of missingVariable.files) {
-        lines.push(`    ${file}`);
-      }
+export function formatCompanionThemeTokenReport(result) {
+  if (result.missingBlocks.length > 0) {
+    return [
+      "Companion theme dark token blocks missing:",
+      ...result.missingBlocks.map((selector) => `  - ${selector}`),
+    ].join("\n");
+  }
+
+  if (result.mismatches.length > 0) {
+    const lines = ["Companion theme dark token mismatch:"];
+    for (const mismatch of result.mismatches) {
+      lines.push(`  - ${mismatch.name}`);
+      lines.push(`    explicit dark: ${mismatch.explicitDark ?? "(missing)"}`);
+      lines.push(`    auto dark: ${mismatch.autoDark ?? "(missing)"}`);
     }
     return lines.join("\n");
   }
 
-  return `${label} variables ok (${result.usages.size} used, ${result.definitions.size} defined).`;
+  return `Companion theme dark tokens ok (${result.explicitDark.size} matched).`;
 }
 
 export function formatCompanionCssVariableReport(result) {
@@ -86,10 +113,18 @@ export function formatCompanionCssVariableReport(result) {
 }
 
 function runCli() {
-  const result = analyzeCompanionCssVariables();
-  const report = formatCompanionCssVariableReport(result);
+  const cssResult = analyzeCompanionCssVariables();
+  const themeResult = analyzeCompanionThemeTokens();
+  const report = [
+    formatCompanionCssVariableReport(cssResult),
+    formatCompanionThemeTokenReport(themeResult),
+  ].join("\n");
 
-  if (result.missing.length > 0) {
+  if (
+    cssResult.missing.length > 0 ||
+    themeResult.missingBlocks.length > 0 ||
+    themeResult.mismatches.length > 0
+  ) {
     console.error(report);
     process.exit(1);
   }

@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import {
   analyzeCssVariables,
   formatCssVariableReport,
-} from "./check-companion-css-vars.mjs";
+} from "./css-variable-contract.mjs";
 
 export function analyzeUiCssVariables(options = {}) {
   const repoRoot = options.repoRoot ?? resolve(".");
