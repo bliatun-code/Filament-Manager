@@ -5,6 +5,7 @@ import {
   lendInventorySpool,
   loadActiveLoanRows,
   loadLoanRowsPage,
+  normalizeLoanDetailsRow,
   returnInventoryLoan,
 } from "./loan_data_source";
 import type {
@@ -51,6 +52,22 @@ function loanDetailsRow(spoolId: string): SpoolLoanDetailsRow {
   };
 }
 
+test("normalizeLoanDetailsRow normalizes loan tokens without mutating raw rows", () => {
+  const raw = loanDetailsRow("legacy-loan");
+  raw.loan.loan_direction = "in-bound";
+  raw.loan.loan_status = "active";
+  raw.loan.returned_at = "2026-04-02 10:00:00";
+  raw.spool_status = "DELETED";
+
+  const normalized = normalizeLoanDetailsRow(raw);
+
+  assert.equal(normalized.loan.loan_direction, "INBOUND");
+  assert.equal(normalized.loan.loan_status, "RETURNED");
+  assert.equal(normalized.spool_status, "DELETED");
+  assert.equal(raw.loan.loan_direction, "in-bound");
+  assert.equal(raw.loan.loan_status, "active");
+});
+
 test("loadActiveLoanRows returns no local active loans in client mode", async () => {
   const rows = await loadActiveLoanRows(
     { clientReadOnly: true },
@@ -95,6 +112,8 @@ test("loadActiveLoanRows reuses cached active outbound loans in client mode", as
   );
 
   assert.deepEqual(rows.map((row) => row.loan.spool_id), ["active-outbound"]);
+  assert.equal(rows[0]?.loan.loan_direction, "OUTBOUND");
+  assert.equal(rows[0]?.loan.loan_status, "ACTIVE");
 });
 
 test("loadActiveLoanRows uses live host loans when a client target is complete", async () => {
@@ -206,6 +225,35 @@ test("loadLoanRowsPage uses live host rows and cached timestamp in client mode",
   assert.deepEqual(result.rows.map((row) => row.loan.spool_id), ["host-spool"]);
 });
 
+test("loadLoanRowsPage normalizes host loan direction and returned status", async () => {
+  const result = await loadLoanRowsPage(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+    },
+    {
+      fetchHostLoans: async () => [
+        {
+          ...loanDetailsRow("normalized-host-spool"),
+          loan: {
+            ...loanDetailsRow("normalized-host-spool").loan,
+            loan_direction: "in-bound",
+            loan_status: "active",
+            returned_at: "2026-04-02 10:00:00",
+          },
+        },
+      ],
+      fetchCachedLoans: async () => {
+        throw new Error("cache timestamp unavailable");
+      },
+    },
+  );
+
+  assert.equal(result.rows[0]?.loan.loan_direction, "INBOUND");
+  assert.equal(result.rows[0]?.loan.loan_status, "RETURNED");
+});
+
 test("loadLoanRowsPage falls back to cached client rows when host loans fail", async () => {
   const result = await loadLoanRowsPage(
     { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
@@ -224,6 +272,8 @@ test("loadLoanRowsPage falls back to cached client rows when host loans fail", a
   assert.equal(result.updatedAt, "cached-at");
   assert.equal(result.usedFallback, true);
   assert.deepEqual(result.rows.map((row) => row.loan.spool_id), ["cached-spool"]);
+  assert.equal(result.rows[0]?.loan.loan_direction, "OUTBOUND");
+  assert.equal(result.rows[0]?.loan.loan_status, "ACTIVE");
 });
 
 test("loadLoanRowsPage avoids local fallback when client host details are incomplete", async () => {
@@ -286,6 +336,8 @@ test("loadLoanRowsPage loads local rows outside client mode", async () => {
   assert.equal(result.source, "LIVE");
   assert.equal(result.usedFallback, false);
   assert.deepEqual(result.rows.map((row) => row.loan.spool_id), ["local-spool"]);
+  assert.equal(result.rows[0]?.loan.loan_direction, "OUTBOUND");
+  assert.equal(result.rows[0]?.loan.loan_status, "ACTIVE");
 });
 
 test("lendInventorySpool routes client writes to the host", async () => {

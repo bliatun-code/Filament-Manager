@@ -12,11 +12,13 @@ import {
   type LendSpoolInput,
   type ReturnSpoolLoanInput,
   type SpoolLoanDetailsRow,
+  type SpoolLoanRow,
 } from "./tauri_client";
 import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
 } from "./library_sync_state";
+import { normalizeLoanDirection, normalizeLoanStatus } from "./inventory_domain";
 import { isActiveOutboundLoan } from "./loan_state";
 import {
   requireClientHostWriteTarget,
@@ -68,16 +70,36 @@ type LoanWriteDependencies = {
 
 export const deriveLoanLibrarySyncState = deriveLibrarySyncPageState;
 
-function mapLoanDetailsToActiveRow(row: SpoolLoanDetailsRow): ActiveSpoolLoanRow {
+function normalizeLoanRow<T extends { loan: SpoolLoanRow }>(row: T): T {
   return {
-    loan: row.loan,
-    spool_status: row.spool_status ?? "",
-    spool_remaining_g: row.spool_remaining_g ?? null,
-    material: row.material ?? "",
-    filament_name: row.filament_name ?? "",
-    color_name: row.color_name ?? "",
-    vendor: row.vendor ?? "",
-    hex_color: row.hex_color ?? null,
+    ...row,
+    loan: {
+      ...row.loan,
+      loan_direction: normalizeLoanDirection(row.loan.loan_direction),
+      loan_status: normalizeLoanStatus(row.loan.loan_status, row.loan.returned_at),
+    },
+  };
+}
+
+export function normalizeLoanDetailsRow(row: SpoolLoanDetailsRow): SpoolLoanDetailsRow {
+  return normalizeLoanRow(row);
+}
+
+export function normalizeActiveLoanRow(row: ActiveSpoolLoanRow): ActiveSpoolLoanRow {
+  return normalizeLoanRow(row);
+}
+
+function mapLoanDetailsToActiveRow(row: SpoolLoanDetailsRow): ActiveSpoolLoanRow {
+  const normalized = normalizeLoanDetailsRow(row);
+  return {
+    loan: normalized.loan,
+    spool_status: normalized.spool_status ?? "",
+    spool_remaining_g: normalized.spool_remaining_g ?? null,
+    material: normalized.material ?? "",
+    filament_name: normalized.filament_name ?? "",
+    color_name: normalized.color_name ?? "",
+    vendor: normalized.vendor ?? "",
+    hex_color: normalized.hex_color ?? null,
   };
 }
 
@@ -101,17 +123,23 @@ export async function loadActiveLoanRows(
           hostTarget.libraryId,
           options.limit ?? 2000,
         );
-        return rows.filter(isActiveOutboundLoan).map(mapLoanDetailsToActiveRow);
+        return rows
+          .map(normalizeLoanDetailsRow)
+          .filter(isActiveOutboundLoan)
+          .map(mapLoanDetailsToActiveRow);
       } catch (loadError) {
         console.error(loadError);
       }
     }
     const cached = await fetchCachedLoans().catch(() => null);
-    return (cached?.rows ?? []).filter(isActiveOutboundLoan).map(mapLoanDetailsToActiveRow);
+    return (cached?.rows ?? [])
+      .map(normalizeLoanDetailsRow)
+      .filter(isActiveOutboundLoan)
+      .map(mapLoanDetailsToActiveRow);
   }
 
   const listLocalActiveLoans = dependencies.listLocalActiveLoans ?? listActiveSpoolLoans;
-  return listLocalActiveLoans();
+  return (await listLocalActiveLoans()).map(normalizeActiveLoanRow);
 }
 
 export async function loadLoanRowsPage(
@@ -129,7 +157,7 @@ export async function loadLoanRowsPage(
       const cached = await fetchCachedLoans().catch(() => null);
       if (cached) {
         return {
-          rows: cached.rows,
+          rows: cached.rows.map(normalizeLoanDetailsRow),
           source: "CACHED",
           updatedAt: cached.captured_at ?? null,
           usedFallback: true,
@@ -147,7 +175,7 @@ export async function loadLoanRowsPage(
       const rows = await fetchHostLoans(hostTarget.baseUrl, hostTarget.libraryId, limit);
       const cached = await fetchCachedLoans().catch(() => null);
       return {
-        rows,
+        rows: rows.map(normalizeLoanDetailsRow),
         source: "LIVE",
         updatedAt: cached?.captured_at ?? null,
         usedFallback: false,
@@ -157,7 +185,7 @@ export async function loadLoanRowsPage(
         const cached = await fetchCachedLoans();
         if (cached) {
           return {
-            rows: cached.rows,
+            rows: cached.rows.map(normalizeLoanDetailsRow),
             source: "CACHED",
             updatedAt: cached.captured_at ?? null,
             usedFallback: true,
@@ -177,7 +205,7 @@ export async function loadLoanRowsPage(
   }
 
   return {
-    rows: await listLocalLoans(limit, true, "ALL"),
+    rows: (await listLocalLoans(limit, true, "ALL")).map(normalizeLoanDetailsRow),
     source: "LIVE",
     updatedAt: null,
     usedFallback: false,

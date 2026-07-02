@@ -55,6 +55,8 @@ test("inventory domain status helpers preserve contextual legacy semantics", () 
 
 test("inventory domain normalizers preserve loan direction and status semantics", () => {
   assert.equal(normalizeLoanDirection("inbound"), "INBOUND");
+  assert.equal(normalizeLoanDirection("in-bound"), "INBOUND");
+  assert.equal(normalizeLoanDirection("out-bound"), "OUTBOUND");
   assert.equal(normalizeLoanDirection("sideways"), "OUTBOUND");
   assert.equal(normalizeLoanStatus("returned"), "RETURNED");
   assert.equal(normalizeLoanStatus("active"), "ACTIVE");

@@ -89,7 +89,11 @@ export function isBorrowedInOwnership(raw?: string | null): boolean {
 }
 
 export function normalizeLoanDirection(raw?: string | null): LoanDirection {
-  return normalizeDomainToken(raw) === "INBOUND" ? "INBOUND" : "OUTBOUND";
+  const direction = normalizeDomainToken(raw);
+  if (direction === "INBOUND" || direction === "IN_BOUND") {
+    return "INBOUND";
+  }
+  return "OUTBOUND";
 }
 
 export function normalizeLoanStatus(
