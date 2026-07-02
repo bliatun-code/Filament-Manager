@@ -38,6 +38,7 @@ const DESKTOP_VISUAL_QA_SCENARIOS = [
   "printer-slot-clear",
   "settings-general",
   "settings-library",
+  "settings-library-network-details",
   "settings-printer-diagnostics",
   "settings-printer-diagnostics-fields",
   "settings-printer-diagnostics-paused",
@@ -142,6 +143,11 @@ export function normalizeDesktopVisualQaScenario(value) {
     case "library-settings":
     case "companion-settings":
       return "settings-library";
+    case "settings-library-network-details":
+    case "library-network-details":
+    case "companion-network-details":
+    case "trusted-lan-details":
+      return "settings-library-network-details";
     case "settings-printer-diagnostics":
     case "printer-diagnostics":
     case "bambu-live-diagnostics":
@@ -169,7 +175,7 @@ export function normalizeDesktopVisualQaScenario(value) {
       return "statistics-overview";
     default:
       throw new Error(
-        `Unknown desktop visual QA scenario "${value}". Use dashboard-overview, inventory-overview, add-filament, loan-out, loans-overview, selected-roll, rfid-capture, return-loan, printer-board, printer-slot-assignment, printer-slot-onboarding, printer-rfid-override, printer-slot-replacement, printer-slot-clear, bambu-batch-add, settings-general, settings-library, settings-printer-diagnostics, settings-printer-diagnostics-fields, settings-printer-diagnostics-paused, settings-catalog, settings-maintenance, or statistics-overview.`,
+        `Unknown desktop visual QA scenario "${value}". Use dashboard-overview, inventory-overview, add-filament, loan-out, loans-overview, selected-roll, rfid-capture, return-loan, printer-board, printer-slot-assignment, printer-slot-onboarding, printer-rfid-override, printer-slot-replacement, printer-slot-clear, bambu-batch-add, settings-general, settings-library, settings-library-network-details, settings-printer-diagnostics, settings-printer-diagnostics-fields, settings-printer-diagnostics-paused, settings-catalog, settings-maintenance, or statistics-overview.`,
       );
   }
 }

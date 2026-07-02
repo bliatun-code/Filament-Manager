@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { SettingsTabKey } from "./settings_page_model";
+import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import { isTauri } from "../lib/tauri_client";
 import { useI18n } from "../lib/i18n";
 import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
@@ -26,6 +27,7 @@ type SettingsPageProps = {
 
 export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPageProps) {
   const tauri = isTauri();
+  const desktopVisualQaScenarioRef = useRef(resolveDesktopVisualQaScenario());
   const reloadSettingsRef = useRef<() => Promise<void>>(async () => undefined);
   const { locale, setLocale, t } = useI18n();
   const { busy, error, info, setBusy, setError, setInfo } = useSettingsFeedbackState();
@@ -111,6 +113,24 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanStatus,
   } = libraryRuntime;
   const messageGroups = useSettingsMessageGroups(t);
+
+  useEffect(() => {
+    if (desktopVisualQaScenarioRef.current !== "settings-library-network-details") {
+      return;
+    }
+    setActiveTab("LIBRARY");
+    setShowLibraryClientAdvanced(true);
+    setShowTrustedLanNetworkEditor(true);
+    setShowTrustedLanNetworkSummary(true);
+    setShowTrustedLanRevokedBrowsers(true);
+  }, [
+    setActiveTab,
+    setShowLibraryClientAdvanced,
+    setShowTrustedLanNetworkEditor,
+    setShowTrustedLanNetworkSummary,
+    setShowTrustedLanRevokedBrowsers,
+  ]);
+
   const {
     settingsBackupErrorMessageLabels,
     settingsBackupValidationMessageLabels,

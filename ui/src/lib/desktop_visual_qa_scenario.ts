@@ -20,6 +20,7 @@ export const DESKTOP_VISUAL_QA_SCENARIOS = [
   "printer-slot-clear",
   "settings-general",
   "settings-library",
+  "settings-library-network-details",
   "settings-printer-diagnostics",
   "settings-printer-diagnostics-fields",
   "settings-printer-diagnostics-paused",
@@ -117,6 +118,11 @@ export function normalizeDesktopVisualQaScenario(
     case "library-settings":
     case "companion-settings":
       return "settings-library";
+    case "settings-library-network-details":
+    case "library-network-details":
+    case "companion-network-details":
+    case "trusted-lan-details":
+      return "settings-library-network-details";
     case "settings-printer-diagnostics":
     case "printer-diagnostics":
     case "bambu-live-diagnostics":
@@ -196,6 +202,7 @@ export function desktopVisualQaInitialPage(
   if (
     scenario === "settings-general" ||
     scenario === "settings-library" ||
+    scenario === "settings-library-network-details" ||
     scenario === "settings-printer-diagnostics" ||
     scenario === "settings-printer-diagnostics-fields" ||
     scenario === "settings-printer-diagnostics-paused" ||
@@ -219,7 +226,7 @@ export function desktopVisualQaInitialSettingsTab(
   if (scenario === "settings-general") {
     return "GENERAL";
   }
-  if (scenario === "settings-library") {
+  if (scenario === "settings-library" || scenario === "settings-library-network-details") {
     return "LIBRARY";
   }
   if (scenario === "settings-printer-diagnostics") {

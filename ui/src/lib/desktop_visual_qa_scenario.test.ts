@@ -45,6 +45,10 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
   assert.equal(normalizeDesktopVisualQaScenario("general-settings"), "settings-general");
   assert.equal(normalizeDesktopVisualQaScenario("companion-settings"), "settings-library");
   assert.equal(
+    normalizeDesktopVisualQaScenario("trusted-lan-details"),
+    "settings-library-network-details",
+  );
+  assert.equal(
     normalizeDesktopVisualQaScenario("bambu-live-diagnostics"),
     "settings-printer-diagnostics",
   );
@@ -81,6 +85,10 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-general"), "settings");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-library"), "settings");
   assert.equal(
+    desktopVisualQaInitialPage("?bfm_visual_qa=settings-library-network-details"),
+    "settings",
+  );
+  assert.equal(
     desktopVisualQaInitialPage("?bfm_visual_qa=settings-printer-diagnostics"),
     "settings",
   );
@@ -102,6 +110,10 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
 test("desktop visual QA settings scenarios resolve to the intended tab", () => {
   assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-general"), "GENERAL");
   assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-library"), "LIBRARY");
+  assert.equal(
+    desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-library-network-details"),
+    "LIBRARY",
+  );
   assert.equal(
     desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-printer-diagnostics"),
     "PRINTERS",

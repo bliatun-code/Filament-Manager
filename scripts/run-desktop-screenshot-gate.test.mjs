@@ -107,6 +107,10 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
   assert.equal(normalizeDesktopVisualQaScenario("general-settings"), "settings-general");
   assert.equal(normalizeDesktopVisualQaScenario("companion-settings"), "settings-library");
   assert.equal(
+    normalizeDesktopVisualQaScenario("trusted-lan-details"),
+    "settings-library-network-details",
+  );
+  assert.equal(
     normalizeDesktopVisualQaScenario("bambu-live-diagnostics"),
     "settings-printer-diagnostics",
   );

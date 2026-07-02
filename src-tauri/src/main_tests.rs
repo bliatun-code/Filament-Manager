@@ -91,6 +91,21 @@ fn migration_probe_spool_count(path: &Path) -> Result<i64, String> {
 }
 
 #[test]
+#[cfg(debug_assertions)]
+fn visual_qa_scenario_normalizer_accepts_library_network_details() {
+    use super::normalize_visual_qa_scenario;
+
+    assert_eq!(
+        normalize_visual_qa_scenario("trusted-lan-details"),
+        Some("settings-library-network-details")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("settings-library-network-details"),
+        Some("settings-library-network-details")
+    );
+}
+
+#[test]
 fn app_db_path_override_prefers_current_env_var() {
     use super::{app_db_path_override_from_env, APP_DB_PATH_ENV_VAR, LEGACY_APP_DB_PATH_ENV_VAR};
 

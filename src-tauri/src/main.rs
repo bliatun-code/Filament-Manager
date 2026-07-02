@@ -334,6 +334,10 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         "bambu-batch-add" | "batch-add" | "bambu-batch" => Some("bambu-batch-add"),
         "settings-general" | "general-settings" => Some("settings-general"),
         "settings-library" | "library-settings" | "companion-settings" => Some("settings-library"),
+        "settings-library-network-details"
+        | "library-network-details"
+        | "companion-network-details"
+        | "trusted-lan-details" => Some("settings-library-network-details"),
         "settings-printer-diagnostics" | "printer-diagnostics" | "bambu-live-diagnostics" => {
             Some("settings-printer-diagnostics")
         }
