@@ -67,7 +67,16 @@ export function renderCompanionActionButton(options) {
   ]
     .filter(Boolean)
     .join(" ");
-  const renderedAttributes = renderAttributeMap({ type, ...attributes, disabled }, escape);
+  const swatchStyle = typeof swatch === "string" && swatch.trim() ? swatchCssStyle(swatch) : "";
+  const renderedAttributes = renderAttributeMap(
+    {
+      type,
+      ...attributes,
+      style: [swatchStyle, attributes.style].filter(Boolean).join(";") || undefined,
+      disabled,
+    },
+    escape,
+  );
   return `<button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${escape(label)}</button>`;
 }
 

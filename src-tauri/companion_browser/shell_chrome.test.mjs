@@ -64,6 +64,14 @@ test("companion action helper renders variants, swatches and boolean attributes"
     '<button class="secondary-button swatch-action-button loan-action-button" type="submit" data-action="save&amp;go" aria-label="Save &quot;now&quot;" disabled>Save &lt;now&gt;</button>',
   );
   assert.doesNotMatch(html, /hidden/);
+
+  const coloredHtml = renderCompanionActionButton({
+    swatch: "#16A34A",
+    escapeHtml,
+    label: "Save color",
+  });
+  assert.match(coloredHtml, /class="primary-button swatch-action-button"/);
+  assert.match(coloredHtml, /style="--swatch-rgb:22 163 74;--swatch-solid:#16A34A"/);
 });
 
 test("swatch selection card helper owns selected filament preview chrome", () => {

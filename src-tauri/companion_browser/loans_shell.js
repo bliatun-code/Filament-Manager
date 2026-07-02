@@ -327,9 +327,8 @@ export function renderLoanReturnTaskSheetBody(options) {
         <div class="detail-actions form-action-block">
           ${renderCompanionActionButton({
             type: "submit",
-            swatch: true,
+            swatch: actionSwatch,
             disabled: state.busy,
-            attributes: { style: swatchCssStyle(actionSwatch) },
             escapeHtml,
             label:
               direction === "INBOUND"

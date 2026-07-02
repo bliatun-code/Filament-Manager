@@ -5,7 +5,6 @@ import {
 } from "./companion_domain.js";
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference, formatStatusLabel } from "./formatters.js";
-import { swatchCssStyle } from "./companion_theme.js";
 import { renderCompanionActionButton, renderSwatchSelectionCard } from "./shell_chrome.js";
 
 export function renderSelectedSpoolDetailBody(options) {
@@ -45,7 +44,7 @@ export function renderSelectedSpoolDetailBody(options) {
     selectedSpool.master.filament_name,
     selectedSpool.master.color_name,
   );
-  const detailSwatchStyle = swatchCssStyle(selectedSpool.master.hex_color);
+  const detailSwatch = selectedSpool.master.hex_color || "#CBD5E1";
   const detailReference = formatRollReference(selectedSpool.spool);
   const defaultMeasuredWeight =
     (selectedSpool?.spool?.remaining_g ?? selectedSpool?.spool?.current_weight_g ?? 0) +
@@ -109,9 +108,8 @@ export function renderSelectedSpoolDetailBody(options) {
             <div class="detail-actions form-action-block">
               ${renderCompanionActionButton({
                 type: "submit",
-                swatch: true,
+                swatch: detailSwatch,
                 disabled: busy,
-                attributes: { style: detailSwatchStyle },
                 escapeHtml,
                 label: t(locale, "detail.saveWeight", "Save weight"),
               })}
@@ -129,9 +127,8 @@ export function renderSelectedSpoolDetailBody(options) {
             <div class="detail-actions form-action-block">
               ${renderCompanionActionButton({
                 type: "submit",
-                swatch: true,
+                swatch: detailSwatch,
                 disabled: busy,
-                attributes: { style: detailSwatchStyle },
                 escapeHtml,
                 label: t(locale, "detail.saveEmptySpoolWeight", "Save empty spool weight"),
               })}
@@ -141,7 +138,7 @@ export function renderSelectedSpoolDetailBody(options) {
         className: "detail-summary-card detail-section-card",
         escapeHtml,
         meta: detailSummaryBits,
-        swatch: selectedSpool.master.hex_color,
+        swatch: detailSwatch,
         title: detailTitle,
       })}
 
@@ -188,9 +185,8 @@ export function renderSelectedSpoolDetailBody(options) {
             <div class="detail-actions form-action-block">
               ${renderCompanionActionButton({
                 type: "submit",
-                swatch: true,
+                swatch: detailSwatch,
                 disabled: busy,
-                attributes: { style: detailSwatchStyle },
                 escapeHtml,
                 label: t(locale, "detail.saveDetails", "Save details"),
               })}
@@ -250,9 +246,8 @@ export function renderSelectedSpoolDetailBody(options) {
             <div class="detail-actions form-action-block">
               ${renderCompanionActionButton({
                 type: "submit",
-                swatch: true,
+                swatch: detailSwatch,
                 disabled: busy || !selectedCaptureSource?.rfidTag,
-                attributes: { style: detailSwatchStyle },
                 escapeHtml,
                 label: t(locale, "inventory.rfidSaveAction", "Save RFID"),
               })}
