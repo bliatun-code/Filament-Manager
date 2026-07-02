@@ -42,6 +42,26 @@ function renderAttributeMap(attributes, escapeHtml) {
     .join(" ");
 }
 
+function companionActionChrome(options) {
+  const { className = "", swatch = false, variant = "primary" } = options;
+  const variantClass =
+    variant === "secondary"
+      ? "secondary-button"
+      : variant === "ghost"
+        ? "ghost-button"
+        : "primary-button";
+  return {
+    classes: [
+      variantClass,
+      swatch ? "swatch-action-button" : "",
+      className,
+    ]
+      .filter(Boolean)
+      .join(" "),
+    swatchStyle: typeof swatch === "string" && swatch.trim() ? swatchCssStyle(swatch) : "",
+  };
+}
+
 export function renderCompanionActionButton(options) {
   const {
     attributes = {},
@@ -54,20 +74,7 @@ export function renderCompanionActionButton(options) {
     variant = "primary",
   } = options;
   const escape = typeof escapeHtml === "function" ? escapeHtml : (value) => String(value ?? "");
-  const variantClass =
-    variant === "secondary"
-      ? "secondary-button"
-      : variant === "ghost"
-        ? "ghost-button"
-        : "primary-button";
-  const classes = [
-    variantClass,
-    swatch ? "swatch-action-button" : "",
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const swatchStyle = typeof swatch === "string" && swatch.trim() ? swatchCssStyle(swatch) : "";
+  const { classes, swatchStyle } = companionActionChrome({ className, swatch, variant });
   const renderedAttributes = renderAttributeMap(
     {
       type,
@@ -78,6 +85,29 @@ export function renderCompanionActionButton(options) {
     escape,
   );
   return `<button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${escape(label)}</button>`;
+}
+
+export function renderCompanionActionLink(options) {
+  const {
+    attributes = {},
+    className = "",
+    escapeHtml,
+    href,
+    label,
+    swatch = false,
+    variant = "ghost",
+  } = options;
+  const escape = typeof escapeHtml === "function" ? escapeHtml : (value) => String(value ?? "");
+  const { classes, swatchStyle } = companionActionChrome({ className, swatch, variant });
+  const renderedAttributes = renderAttributeMap(
+    {
+      href,
+      ...attributes,
+      style: [swatchStyle, attributes.style].filter(Boolean).join(";") || undefined,
+    },
+    escape,
+  );
+  return `<a class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${escape(label)}</a>`;
 }
 
 export function renderSegmentedControl(options) {
@@ -549,9 +579,13 @@ export function renderTrustedLanPairingApp(options) {
                   "Waiting for a trusted-LAN pairing link.",
                 ),
             )}</div>
-            <button class="ghost-button" data-action="refresh" ${busy ? "disabled" : ""}>
-              ${escapeHtml(t(locale, "shell.refresh", "Refresh"))}
-            </button>
+            ${renderCompanionActionButton({
+              variant: "ghost",
+              attributes: { "data-action": "refresh" },
+              disabled: busy,
+              escapeHtml,
+              label: t(locale, "shell.refresh", "Refresh"),
+            })}
           </div>
         </section>
       </div>

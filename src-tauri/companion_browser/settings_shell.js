@@ -1,5 +1,10 @@
 import { t } from "./companion_i18n.js";
-import { renderSegmentedControl } from "./shell_chrome.js";
+import {
+  renderCompanionActionButton,
+  renderCompanionActionLink,
+  renderFormActionBlock,
+  renderSegmentedControl,
+} from "./shell_chrome.js";
 
 const APP_LICENSE_ID = "AGPL-3.0-or-later";
 const APP_LICENSE_URL = "https://github.com/bliatun-code/Filament-Manager/blob/main/LICENSE";
@@ -96,11 +101,15 @@ export function renderSettingsShell(options) {
           </div>
           <div class="stack">
             <div class="meta-line">${escapeHtml(connectionSummary)}</div>
-            <div class="detail-actions">
-              <button class="primary-button" type="button" data-action="refresh" ${busy ? "disabled" : ""}>
-                ${escapeHtml(t(locale, "shell.refreshCompanionData", "Refresh data"))}
-              </button>
-            </div>
+            ${renderFormActionBlock({
+              actions: renderCompanionActionButton({
+                attributes: { "data-action": "refresh" },
+                disabled: busy,
+                escapeHtml,
+                label: t(locale, "shell.refreshCompanionData", "Refresh data"),
+              }),
+              escapeHtml,
+            })}
           </div>
         </section>
 
@@ -116,15 +125,27 @@ export function renderSettingsShell(options) {
               <strong>${escapeHtml(APP_LICENSE_ID)}</strong>
             </div>
             <div class="detail-actions settings-license-links">
-              <a class="ghost-button companion-link-button" href="${escapeHtml(APP_SOURCE_URL)}" target="_blank" rel="noreferrer">
-                ${escapeHtml(t(locale, "settings.sourceCode", "Source code"))}
-              </a>
-              <a class="ghost-button companion-link-button" href="${escapeHtml(APP_LICENSE_URL)}" target="_blank" rel="noreferrer">
-                ${escapeHtml(t(locale, "settings.viewLicense", "View license"))}
-              </a>
-              <a class="ghost-button companion-link-button" href="${escapeHtml(APP_NOTICE_URL)}" target="_blank" rel="noreferrer">
-                ${escapeHtml(t(locale, "settings.viewNotices", "Notices"))}
-              </a>
+              ${renderCompanionActionLink({
+                attributes: { target: "_blank", rel: "noreferrer" },
+                className: "companion-link-button",
+                escapeHtml,
+                href: APP_SOURCE_URL,
+                label: t(locale, "settings.sourceCode", "Source code"),
+              })}
+              ${renderCompanionActionLink({
+                attributes: { target: "_blank", rel: "noreferrer" },
+                className: "companion-link-button",
+                escapeHtml,
+                href: APP_LICENSE_URL,
+                label: t(locale, "settings.viewLicense", "View license"),
+              })}
+              ${renderCompanionActionLink({
+                attributes: { target: "_blank", rel: "noreferrer" },
+                className: "companion-link-button",
+                escapeHtml,
+                href: APP_NOTICE_URL,
+                label: t(locale, "settings.viewNotices", "Notices"),
+              })}
             </div>
           </div>
         </section>

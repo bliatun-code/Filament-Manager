@@ -3325,8 +3325,10 @@
 
   .hero-actions > button,
   .detail-actions > button,
+  .detail-actions > .companion-link-button,
   .loan-card-actions > button,
-  .selection-banner-actions > button {
+  .selection-banner-actions > button,
+  .selection-banner-actions > .companion-link-button {
     width: 100%;
   }
 
@@ -3335,8 +3337,8 @@
     align-items: flex-start;
   }
 
-  .detail-actions > :not(button),
-  .selection-banner-actions > :not(button),
+  .detail-actions > :not(button):not(.companion-link-button),
+  .selection-banner-actions > :not(button):not(.companion-link-button),
   .detail-modal-actions .pill-row {
     align-self: flex-start;
   }

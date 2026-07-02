@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   renderCompanionActionButton,
+  renderCompanionActionLink,
   renderDesktopRail,
   renderDetailField,
   renderDetailModalShell,
@@ -77,6 +78,25 @@ test("companion action helper renders variants, swatches and boolean attributes"
   });
   assert.match(coloredHtml, /class="primary-button swatch-action-button"/);
   assert.match(coloredHtml, /style="--swatch-rgb:22 163 74;--swatch-solid:#16A34A"/);
+});
+
+test("companion action link helper renders external links with shared chrome", () => {
+  const html = renderCompanionActionLink({
+    attributes: {
+      target: "_blank",
+      rel: "noreferrer",
+      "aria-label": 'Open "docs"',
+    },
+    className: "companion-link-button",
+    escapeHtml,
+    href: "https://example.test/docs?x=1&y=2",
+    label: "Open <docs>",
+  });
+
+  assert.equal(
+    html,
+    '<a class="ghost-button companion-link-button" href="https://example.test/docs?x=1&amp;y=2" target="_blank" rel="noreferrer" aria-label="Open &quot;docs&quot;">Open &lt;docs&gt;</a>',
+  );
 });
 
 test("segmented control helper owns segment button chrome", () => {
