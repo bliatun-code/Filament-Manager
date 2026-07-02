@@ -13,10 +13,7 @@ import {
   inventorySwatchCardStyle,
   inventorySwatchInsetStyle,
 } from "../lib/inventory_swatch_style";
-import {
-  modalDetailLabelClassName,
-  modalDetailValueClassName,
-} from "./modal_chrome";
+import { ModalDetailItem } from "./modal_chrome";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
 import { useResolvedTheme } from "../lib/theme_mode";
 import type { SpoolLoanDetailsRow } from "../lib/tauri_client";
@@ -109,65 +106,46 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
         style={inventorySwatchInsetStyle(loan.hex_color, resolvedTheme)}
       >
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 min-[520px]:grid-cols-3">
-          <div className="min-w-0">
-            <div className={modalDetailLabelClassName}>
-              {t("inventory.reference", "Reference")}
-            </div>
-            <div
-              className={`${modalDetailValueClassName} break-all font-mono`}
-              title={`#${loan.loan.spool_id}`}
-            >
-              {referenceLabel}
-            </div>
-          </div>
-          <div>
-            <div className={modalDetailLabelClassName}>
-              {isInbound
-                ? t("loans.startWeight", "Start")
-                : t("loans.out", "Out")}
-            </div>
-            <div className={modalDetailValueClassName}>
-              {formatGrams(loan.loan.grams_out)}
-            </div>
-          </div>
-          <div className="min-w-0">
-            <div className={modalDetailLabelClassName}>
-              {isInbound
+          <ModalDetailItem
+            label={t("inventory.reference", "Reference")}
+            title={`#${loan.loan.spool_id}`}
+            valueClassName="break-all font-mono"
+          >
+            {referenceLabel}
+          </ModalDetailItem>
+          <ModalDetailItem
+            label={isInbound ? t("loans.startWeight", "Start") : t("loans.out", "Out")}
+          >
+            {formatGrams(loan.loan.grams_out)}
+          </ModalDetailItem>
+          <ModalDetailItem
+            label={
+              isInbound
                 ? t("loans.borrowedInAt", "Borrowed in")
-                : t("loans.lent", "Lent")}
-            </div>
-            <div className={modalDetailValueClassName}>
-              {compactLoanTimestamp(loan.loan.lent_at)}
-            </div>
-          </div>
+                : t("loans.lent", "Lent")
+            }
+          >
+            {compactLoanTimestamp(loan.loan.lent_at)}
+          </ModalDetailItem>
           {!isActive ? (
             <>
-              <div>
-                <div className={modalDetailLabelClassName}>
-                  {isInbound
+              <ModalDetailItem
+                label={
+                  isInbound
                     ? t("loans.handedBackAt", "Handed back")
-                    : t("loans.returned", "Returned")}
-                </div>
-                <div className={modalDetailValueClassName}>
-                  {compactLoanTimestamp(loan.loan.returned_at)}
-                </div>
-              </div>
-              <div>
-                <div className={modalDetailLabelClassName}>
-                  {isInbound ? t("loans.back", "Back") : t("loans.in", "In")}
-                </div>
-                <div className={modalDetailValueClassName}>
-                  {formatGrams(loan.loan.returned_grams)}
-                </div>
-              </div>
-              <div className="min-w-0">
-                <div className={modalDetailLabelClassName}>
-                  {t("loans.consumed", "Consumed")}
-                </div>
-                <div className={modalDetailValueClassName}>
-                  {formatGrams(loan.loan.consumed_grams)}
-                </div>
-              </div>
+                    : t("loans.returned", "Returned")
+                }
+              >
+                {compactLoanTimestamp(loan.loan.returned_at)}
+              </ModalDetailItem>
+              <ModalDetailItem
+                label={isInbound ? t("loans.back", "Back") : t("loans.in", "In")}
+              >
+                {formatGrams(loan.loan.returned_grams)}
+              </ModalDetailItem>
+              <ModalDetailItem label={t("loans.consumed", "Consumed")}>
+                {formatGrams(loan.loan.consumed_grams)}
+              </ModalDetailItem>
             </>
           ) : null}
         </div>

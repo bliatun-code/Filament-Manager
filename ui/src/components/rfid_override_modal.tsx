@@ -10,9 +10,10 @@ import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import { AppModal } from "./app_modal";
 import { ModalActionButton } from "./modal_action_button";
 import {
-  modalDetailLabelClassName,
-  modalDetailValueClassName,
+  ModalDetailGrid,
+  ModalDetailItem,
   ModalHeader,
+  ModalNotice,
 } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
@@ -63,12 +64,12 @@ export function RfidOverrideModal({
         />
 
         <div className="space-y-4 px-6 py-6">
-          <div className="rounded-2xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-100">
+          <ModalNotice tone="warning">
             {t(
               "printers.rfidOverrideDialogHint",
               "This slot is manually assigned while AMS still reports the same unregistered RFID identity. Save it on the selected roll when you are ready.",
             )}
-          </div>
+          </ModalNotice>
 
           <div
             className="surface-card space-y-3"
@@ -90,45 +91,34 @@ export function RfidOverrideModal({
                 {`${prompt.spool.master.vendor} · ${formatSpoolReference(prompt.spool.spool.id)}`}
               </div>
             </SwatchSelectionPreviewHeader>
-            <dl className="grid gap-3 text-sm sm:grid-cols-2">
-              <div>
-                <dt className={modalDetailLabelClassName}>
-                  {t("inventory.rfidCurrentTag", "Saved RFID")}
-                </dt>
-                <dd className={`${modalDetailValueClassName} break-all font-mono`}>
-                  {prompt.spool.spool.rfid_tag?.trim() || "-"}
-                </dd>
-              </div>
-              <div>
-                <dt className={modalDetailLabelClassName}>
-                  {t("inventory.rfidObservedTag", "Observed RFID")}
-                </dt>
-                <dd className={`${modalDetailValueClassName} break-all font-mono`}>
-                  {observedRfid || "-"}
-                </dd>
-              </div>
-              <div>
-                <dt className={modalDetailLabelClassName}>
-                  {t("inventory.rfidObservedColor", "Observed color")}
-                </dt>
-                <dd className="mt-1 flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                  <InventorySwatchChip
-                    className="h-5 w-5 rounded"
-                    swatchColor={prompt.liveTray.color_hex}
-                    tone="tiny"
-                  />
-                  <span className="font-mono">{prompt.liveTray.color_hex?.trim() || "-"}</span>
-                </dd>
-              </div>
-              <div>
-                <dt className={modalDetailLabelClassName}>
-                  {t("inventory.rfidLastSeen", "Last seen")}
-                </dt>
-                <dd className={modalDetailValueClassName}>
-                  {prompt.observedAt ? formatDateTime(prompt.observedAt, locale) : "-"}
-                </dd>
-              </div>
-            </dl>
+            <ModalDetailGrid className="gap-3">
+              <ModalDetailItem
+                label={t("inventory.rfidCurrentTag", "Saved RFID")}
+                valueClassName="break-all font-mono"
+              >
+                {prompt.spool.spool.rfid_tag?.trim() || "-"}
+              </ModalDetailItem>
+              <ModalDetailItem
+                label={t("inventory.rfidObservedTag", "Observed RFID")}
+                valueClassName="break-all font-mono"
+              >
+                {observedRfid || "-"}
+              </ModalDetailItem>
+              <ModalDetailItem
+                label={t("inventory.rfidObservedColor", "Observed color")}
+                valueClassName="flex items-center gap-2 text-slate-900 dark:text-slate-100"
+              >
+                <InventorySwatchChip
+                  className="h-5 w-5 rounded"
+                  swatchColor={prompt.liveTray.color_hex}
+                  tone="tiny"
+                />
+                <span className="font-mono">{prompt.liveTray.color_hex?.trim() || "-"}</span>
+              </ModalDetailItem>
+              <ModalDetailItem label={t("inventory.rfidLastSeen", "Last seen")}>
+                {prompt.observedAt ? formatDateTime(prompt.observedAt, locale) : "-"}
+              </ModalDetailItem>
+            </ModalDetailGrid>
           </div>
 
           <div className="flex flex-wrap justify-end gap-3">

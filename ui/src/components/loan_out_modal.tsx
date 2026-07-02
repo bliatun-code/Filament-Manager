@@ -9,9 +9,10 @@ import {
 import { modalFormInputClassName } from "./form_control_class";
 import { ModalActionButton } from "./modal_action_button";
 import {
+  ModalDetailGrid,
+  ModalDetailItem,
   ModalHeader,
-  modalDetailLabelClassName,
-  modalDetailValueClassName,
+  ModalNotice,
 } from "./modal_chrome";
 import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { VendorBadge } from "./vendor_badge";
@@ -227,16 +228,16 @@ export function LoanOutModal({
           ) : null}
 
           {loading ? (
-            <div className="surface-subtle border-dashed px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
+            <ModalNotice className="border-dashed">
               {t("inventory.loading", "Loading...")}
-            </div>
+            </ModalNotice>
           ) : spools.length === 0 ? (
-            <div className="surface-subtle border-dashed px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
+            <ModalNotice className="border-dashed">
               {t(
                 "inventory.noLoanableRolls",
                 "No rolls are currently available to loan out.",
               )}
-            </div>
+            </ModalNotice>
           ) : (
             <div className={inventoryTwoColumnModalGridClassName}>
               <div className={`${panelCardClassName} flex min-h-0 flex-col`}>
@@ -341,47 +342,32 @@ export function LoanOutModal({
                       </div>
                     </SwatchSelectionPreviewHeader>
 
-                    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.25fr)_minmax(132px,0.8fr)]">
-                      <div
+                    <ModalDetailGrid className="mt-4 sm:grid-cols-[minmax(0,1.25fr)_minmax(132px,0.8fr)]">
+                      <ModalDetailItem
+                        label={t("inventory.reference", "Reference")}
+                        title={`#${selectedSpool.id}`}
+                        valueClassName="font-mono"
                         className="rounded-xl border px-3 py-2.5"
                         style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
                       >
-                        <div className={modalDetailLabelClassName}>
-                          {t("inventory.reference", "Reference")}
-                        </div>
-                        <div
-                          className={`${modalDetailValueClassName} font-mono`}
-                          title={`#${selectedSpool.id}`}
-                        >
-                          {selectedReferenceLabel}
-                        </div>
-                      </div>
-                      <div
+                        {selectedReferenceLabel}
+                      </ModalDetailItem>
+                      <ModalDetailItem
+                        label={t("inventory.remaining", "Remaining")}
                         className="rounded-xl border px-3 py-2.5"
                         style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
                       >
-                        <div className={modalDetailLabelClassName}>
-                          {t("inventory.remaining", "Remaining")}
-                        </div>
-                        <div className={modalDetailValueClassName}>
-                          {formatLoanOutGrams(selectedSpool.remainingGrams)}
-                        </div>
-                      </div>
-                      <div
+                        {formatLoanOutGrams(selectedSpool.remainingGrams)}
+                      </ModalDetailItem>
+                      <ModalDetailItem
+                        label={t("inventory.location", "Location")}
+                        title={selectedPlacementLabel ?? ""}
                         className="rounded-xl border px-3 py-2.5 sm:col-span-2"
                         style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
                       >
-                        <div className={modalDetailLabelClassName}>
-                          {t("inventory.location", "Location")}
-                        </div>
-                        <div
-                          className={modalDetailValueClassName}
-                          title={selectedPlacementLabel ?? ""}
-                        >
-                          {selectedPlacementLabel}
-                        </div>
-                      </div>
-                    </div>
+                        {selectedPlacementLabel}
+                      </ModalDetailItem>
+                    </ModalDetailGrid>
 
                     <div className="mt-5 border-t border-white/60 pt-4 dark:border-white/10">
                       <div className={panelTitleClassName}>
@@ -456,7 +442,7 @@ export function LoanOutModal({
                     </div>
                   </div>
                 ) : (
-                  <div className="surface-subtle border-dashed px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
+                  <ModalNotice className="border-dashed">
                     {t("inventory.chooseRollToLoan", "Choose a roll to loan out.")}
                     {clientReadOnly ? (
                       <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
@@ -471,7 +457,7 @@ export function LoanOutModal({
                             )}
                       </div>
                     ) : null}
-                  </div>
+                  </ModalNotice>
                 )}
               </div>
             </div>

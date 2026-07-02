@@ -11,10 +11,11 @@ test("LoanHistoryCard return action keeps focus-visible treatment", () => {
   assert.match(source, /inventorySwatchCardStyle/);
   assert.match(source, /inventorySwatchInsetStyle/);
   assert.match(source, /InventorySwatchChip/);
-  assert.match(source, /modalDetailLabelClassName/);
-  assert.match(source, /modalDetailValueClassName/);
+  assert.match(source, /ModalDetailItem/);
   assert.doesNotMatch(source, /loanFactLabelClassName/);
   assert.doesNotMatch(source, /loanFactValueClassName/);
+  assert.doesNotMatch(source, /modalDetailLabelClassName/);
+  assert.doesNotMatch(source, /modalDetailValueClassName/);
   assert.doesNotMatch(source, /loanSwatchPreviewStyle/);
   assert.doesNotMatch(source, /loanSwatchSurfaceStyle/);
   assert.doesNotMatch(

@@ -3,9 +3,9 @@ import { FeedbackBanner } from "./feedback_banner";
 import { modalFormInputClassName } from "./form_control_class";
 import { ModalActionButton } from "./modal_action_button";
 import {
+  ModalDetailGrid,
+  ModalDetailItem,
   ModalHeader,
-  modalDetailLabelClassName,
-  modalDetailValueClassName,
 } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
@@ -116,29 +116,22 @@ export function LoanReturnModal({
             className="mt-3 rounded-[1.05rem] border px-3.5 py-3"
             style={inventorySwatchInsetStyle(loan.hex_color, resolvedTheme)}
           >
-            <div className="grid grid-cols-[minmax(0,1.45fr)_minmax(108px,0.9fr)] gap-x-4 gap-y-3">
-              <div className="min-w-0">
-                <div className={modalDetailLabelClassName}>
-                  {t("inventory.reference", "Reference")}
-                </div>
-                <div
-                  className={`${modalDetailValueClassName} break-all font-mono`}
-                  title={`#${loan.loan.spool_id}`}
-                >
-                  {formatLoanReference(loan.loan.spool_id)}
-                </div>
-              </div>
-              <div>
-                <div className={modalDetailLabelClassName}>
-                  {isInbound
-                    ? t("loans.startWeight", "Start")
-                    : t("loans.out", "Out")}
-                </div>
-                <div className={modalDetailValueClassName}>
-                  {formatGrams(toMeasuredTotalWeight(loan, loan.loan.grams_out))}
-                </div>
-              </div>
-            </div>
+            <ModalDetailGrid
+              className="grid-cols-[minmax(0,1.45fr)_minmax(108px,0.9fr)] gap-x-4 gap-y-3 sm:grid-cols-[minmax(0,1.45fr)_minmax(108px,0.9fr)]"
+            >
+              <ModalDetailItem
+                label={t("inventory.reference", "Reference")}
+                title={`#${loan.loan.spool_id}`}
+                valueClassName="break-all font-mono"
+              >
+                {formatLoanReference(loan.loan.spool_id)}
+              </ModalDetailItem>
+              <ModalDetailItem
+                label={isInbound ? t("loans.startWeight", "Start") : t("loans.out", "Out")}
+              >
+                {formatGrams(toMeasuredTotalWeight(loan, loan.loan.grams_out))}
+              </ModalDetailItem>
+            </ModalDetailGrid>
           </div>
         </div>
 

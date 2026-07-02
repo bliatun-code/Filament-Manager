@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
+import type { CSSProperties, ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 import { CloseButton } from "./close_button";
 
 export const modalEyebrowClassName =
@@ -15,6 +15,18 @@ export const modalHeaderActionButtonClassName =
 
 export const modalFactCardClassName =
   "rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60";
+
+export const modalNoticeClassName =
+  "rounded-xl border px-4 py-3 text-sm leading-6";
+
+type ModalNoticeTone = "neutral" | "warning";
+
+const modalNoticeToneClass: Record<ModalNoticeTone, string> = {
+  neutral:
+    "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200",
+  warning:
+    "border-amber-200/80 bg-amber-50/90 text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-100",
+};
 
 type ModalHeaderActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
@@ -60,6 +72,95 @@ export function ModalFactCard({
         .join(" ")}
     >
       {children}
+    </div>
+  );
+}
+
+type ModalNoticeProps = HTMLAttributes<HTMLDivElement> & {
+  children: ReactNode;
+  tone?: ModalNoticeTone;
+};
+
+export function ModalNotice({
+  children,
+  className,
+  tone = "neutral",
+  ...divProps
+}: ModalNoticeProps) {
+  return (
+    <div
+      {...divProps}
+      className={[
+        modalNoticeClassName,
+        modalNoticeToneClass[tone],
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {children}
+    </div>
+  );
+}
+
+type ModalDetailGridProps = HTMLAttributes<HTMLDivElement> & {
+  children: ReactNode;
+};
+
+export function ModalDetailGrid({
+  children,
+  className,
+  ...divProps
+}: ModalDetailGridProps) {
+  return (
+    <div
+      {...divProps}
+      className={[
+        "grid grid-cols-1 gap-2 text-sm sm:grid-cols-2",
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {children}
+    </div>
+  );
+}
+
+type ModalDetailItemProps = HTMLAttributes<HTMLDivElement> & {
+  children: ReactNode;
+  label: ReactNode;
+  valueClassName?: string;
+  valueStyle?: CSSProperties;
+};
+
+export function ModalDetailItem({
+  children,
+  className,
+  label,
+  style,
+  valueClassName,
+  valueStyle,
+  ...divProps
+}: ModalDetailItemProps) {
+  return (
+    <div
+      {...divProps}
+      className={["min-w-0", className ?? ""].filter(Boolean).join(" ")}
+      style={style}
+    >
+      <div className={modalDetailLabelClassName}>{label}</div>
+      <div
+        className={[
+          modalDetailValueClassName,
+          valueClassName ?? "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        style={valueStyle}
+      >
+        {children}
+      </div>
     </div>
   );
 }

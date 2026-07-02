@@ -13,10 +13,11 @@ import { AppModal } from "./app_modal";
 import { modalFormInputClassName } from "./form_control_class";
 import { ModalActionButton } from "./modal_action_button";
 import {
+  ModalDetailGrid,
+  ModalDetailItem,
   ModalFactCard,
-  modalDetailLabelClassName,
-  modalDetailValueClassName,
   ModalHeader,
+  ModalNotice,
 } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
@@ -122,12 +123,12 @@ export function SlotCatalogOnboardingModal({
 
         <div className="space-y-4 px-6 py-6">
           {slotAlreadyAssigned ? (
-            <div className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm leading-6 text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-100">
+            <ModalNotice tone="warning">
               {t(
                 "printers.slotOnboardingOccupied",
                 "This slot already has a roll assigned. Clear or swap it through the normal slot flow before creating a new roll from the live AMS signal.",
               )}
-            </div>
+            </ModalNotice>
           ) : null}
 
           <div
@@ -154,24 +155,17 @@ export function SlotCatalogOnboardingModal({
               </div>
             </SwatchSelectionPreviewHeader>
 
-            <dl className="grid gap-3 text-sm sm:grid-cols-2">
-              <div>
-                <dt className={modalDetailLabelClassName}>
-                  {t("inventory.rfidObservedTag", "Observed RFID")}
-                </dt>
-                <dd className={`${modalDetailValueClassName} break-all font-mono`}>
-                  {observedRfid || "-"}
-                </dd>
-              </div>
-              <div>
-                <dt className={modalDetailLabelClassName}>
-                  {t("inventory.rfidLastSeen", "Last seen")}
-                </dt>
-                <dd className={modalDetailValueClassName}>
-                  {prompt.observedAt ? formatDateTime(prompt.observedAt, locale) : "-"}
-                </dd>
-              </div>
-            </dl>
+            <ModalDetailGrid className="gap-3">
+              <ModalDetailItem
+                label={t("inventory.rfidObservedTag", "Observed RFID")}
+                valueClassName="break-all font-mono"
+              >
+                {observedRfid || "-"}
+              </ModalDetailItem>
+              <ModalDetailItem label={t("inventory.rfidLastSeen", "Last seen")}>
+                {prompt.observedAt ? formatDateTime(prompt.observedAt, locale) : "-"}
+              </ModalDetailItem>
+            </ModalDetailGrid>
           </div>
 
           <div className="rounded-xl border border-slate-200/90 bg-white/75 p-4 dark:border-slate-700/80 dark:bg-slate-950/45">
