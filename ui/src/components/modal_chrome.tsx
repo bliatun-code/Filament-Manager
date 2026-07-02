@@ -32,11 +32,17 @@ export const modalFactCardClassName =
 export const modalNoticeClassName =
   "rounded-xl border px-4 py-3 text-sm leading-6";
 
-type ModalNoticeTone = "neutral" | "warning";
+type ModalNoticeTone = "danger" | "info" | "neutral" | "success" | "warning";
 
 const modalNoticeToneClass: Record<ModalNoticeTone, string> = {
+  danger:
+    "border-rose-200/85 bg-rose-50/92 text-rose-900 dark:border-rose-400/40 dark:bg-rose-500/14 dark:text-rose-100",
+  info:
+    "border-sky-200/85 bg-sky-50/92 text-sky-900 dark:border-sky-400/40 dark:bg-sky-500/14 dark:text-sky-100",
   neutral:
     "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200",
+  success:
+    "border-emerald-200/85 bg-emerald-50/92 text-emerald-900 dark:border-emerald-400/40 dark:bg-emerald-500/14 dark:text-emerald-100",
   warning:
     "border-amber-200/80 bg-amber-50/90 text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-100",
 };

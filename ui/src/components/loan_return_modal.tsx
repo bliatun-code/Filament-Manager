@@ -1,5 +1,4 @@
 import { AppModal } from "./app_modal";
-import { FeedbackBanner } from "./feedback_banner";
 import { modalFormInputClassName } from "./form_control_class";
 import { ModalActionButton } from "./modal_action_button";
 import {
@@ -7,6 +6,7 @@ import {
   ModalDetailItem,
   ModalFormField,
   ModalHeader,
+  ModalNotice,
 } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
@@ -136,12 +136,12 @@ export function LoanReturnModal({
         </div>
 
         {isInbound ? (
-          <FeedbackBanner tone="warning" compact>
+          <ModalNotice tone="warning" className="px-3 py-2 text-sm">
             {t(
               "loans.handBackDialogHint",
               "Handing this back will remove the borrowed-in spool from active inventory but keep its loan history.",
             )}
-          </FeedbackBanner>
+          </ModalNotice>
         ) : null}
 
         <ModalFormField

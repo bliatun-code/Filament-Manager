@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppModal } from "./app_modal";
-import { FeedbackBanner } from "./feedback_banner";
 import {
   inventoryModalOverlayClassName,
   inventoryTwoColumnModalGridClassName,
@@ -222,248 +221,247 @@ export function LoanOutModal({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
           <div className="space-y-4">
-          {error ? (
-            <FeedbackBanner tone="danger">
-              {error}
-            </FeedbackBanner>
-          ) : null}
+            {error ? <ModalNotice tone="danger">{error}</ModalNotice> : null}
 
-          {loading ? (
-            <ModalNotice className="border-dashed">
-              {t("inventory.loading", "Loading...")}
-            </ModalNotice>
-          ) : spools.length === 0 ? (
-            <ModalNotice className="border-dashed">
-              {t(
-                "inventory.noLoanableRolls",
-                "No rolls are currently available to loan out.",
-              )}
-            </ModalNotice>
-          ) : (
-            <div className={inventoryTwoColumnModalGridClassName}>
-              <div className={`${panelCardClassName} flex min-h-0 flex-col`}>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className={panelTitleClassName}>
-                    {t("inventory.availableToLoan", "Available to loan")}
+            {loading ? (
+              <ModalNotice className="border-dashed">
+                {t("inventory.loading", "Loading...")}
+              </ModalNotice>
+            ) : spools.length === 0 ? (
+              <ModalNotice className="border-dashed">
+                {t(
+                  "inventory.noLoanableRolls",
+                  "No rolls are currently available to loan out.",
+                )}
+              </ModalNotice>
+            ) : (
+              <div className={inventoryTwoColumnModalGridClassName}>
+                <div className={`${panelCardClassName} flex min-h-0 flex-col`}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className={panelTitleClassName}>
+                      {t("inventory.availableToLoan", "Available to loan")}
+                    </div>
+                    <span className={countPillClassName}>{spools.length}</span>
                   </div>
-                  <span className={countPillClassName}>{spools.length}</span>
-                </div>
 
-                <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto pr-1 max-h-[min(58vh,40rem)]">
-                  {spools.map((spool) => {
-                    const isActive = selectedSpool?.id === spool.id;
-                    const placementLabel = formatPlacementLabel(t, spool.location);
-                    const referenceLabel = formatSpoolReference(spool.id);
-                    return (
-                      <button
-                        key={spool.id}
-                        type="button"
-                        onMouseEnter={() => setHoveredLoanSpoolId(spool.id)}
-                        onMouseLeave={() => setHoveredLoanSpoolId(null)}
-                        onClick={() => {
-                          setSelectedSpoolId(spool.id);
-                          setGramsOut(
-                            spool.remainingGrams != null
-                              ? String(toMeasuredTotalWeight(spool, spool.remainingGrams))
-                              : "",
-                          );
-                        }}
-                        className={loanOutSpoolButtonClassName(isActive)}
-                        style={inventoryCatalogRowStyle(
-                          spool.hexColor,
-                          isActive,
-                          resolvedTheme,
-                          hoveredLoanSpoolId === spool.id,
-                        )}
-                      >
-                        <span className="flex min-w-0 items-center gap-2.5">
-                          <InventorySwatchChip
-                            className="h-8 w-8 rounded-md"
-                            swatchColor={spool.hexColor}
-                            tone="tiny"
-                          />
-                          <span className="min-w-0 flex-1">
-                            <span
-                              className="block overflow-hidden break-words font-semibold leading-tight text-slate-900 [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] dark:text-slate-50"
-                              title={formatFilamentDisplayTitle(
-                                spool.material,
-                                spool.filamentName,
-                                spool.colorName,
-                              )}
-                            >
-                              {formatFilamentDisplayTitle(
-                                spool.material,
-                                spool.filamentName,
-                                spool.colorName,
-                              )}
-                            </span>
-                            <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                              <VendorBadge vendor={spool.vendor} compact />
-                              <span className="font-mono" title={`#${spool.id}`}>
-                                {referenceLabel}
+                  <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto pr-1 max-h-[min(58vh,40rem)]">
+                    {spools.map((spool) => {
+                      const isActive = selectedSpool?.id === spool.id;
+                      const placementLabel = formatPlacementLabel(t, spool.location);
+                      const referenceLabel = formatSpoolReference(spool.id);
+                      return (
+                        <button
+                          key={spool.id}
+                          type="button"
+                          onMouseEnter={() => setHoveredLoanSpoolId(spool.id)}
+                          onMouseLeave={() => setHoveredLoanSpoolId(null)}
+                          onClick={() => {
+                            setSelectedSpoolId(spool.id);
+                            setGramsOut(
+                              spool.remainingGrams != null
+                                ? String(toMeasuredTotalWeight(spool, spool.remainingGrams))
+                                : "",
+                            );
+                          }}
+                          className={loanOutSpoolButtonClassName(isActive)}
+                          style={inventoryCatalogRowStyle(
+                            spool.hexColor,
+                            isActive,
+                            resolvedTheme,
+                            hoveredLoanSpoolId === spool.id,
+                          )}
+                        >
+                          <span className="flex min-w-0 items-center gap-2.5">
+                            <InventorySwatchChip
+                              className="h-8 w-8 rounded-md"
+                              swatchColor={spool.hexColor}
+                              tone="tiny"
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span
+                                className="block overflow-hidden break-words font-semibold leading-tight text-slate-900 [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] dark:text-slate-50"
+                                title={formatFilamentDisplayTitle(
+                                  spool.material,
+                                  spool.filamentName,
+                                  spool.colorName,
+                                )}
+                              >
+                                {formatFilamentDisplayTitle(
+                                  spool.material,
+                                  spool.filamentName,
+                                  spool.colorName,
+                                )}
                               </span>
-                              <span>{formatLoanOutGrams(spool.remainingGrams)}</span>
-                              <span className="truncate max-w-[11rem]" title={placementLabel}>
-                                {placementLabel}
+                              <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                                <VendorBadge vendor={spool.vendor} compact />
+                                <span className="font-mono" title={`#${spool.id}`}>
+                                  {referenceLabel}
+                                </span>
+                                <span>{formatLoanOutGrams(spool.remainingGrams)}</span>
+                                <span className="truncate max-w-[11rem]" title={placementLabel}>
+                                  {placementLabel}
+                                </span>
                               </span>
                             </span>
                           </span>
-                        </span>
-                        {isActive ? (
-                          <span className="shrink-0 rounded-full border border-slate-300 bg-white/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-700 shadow-sm dark:border-slate-500 dark:bg-slate-900/80 dark:text-slate-100 dark:shadow-none">
-                            ✓ {t("common.selected", "Selected")}
-                          </span>
-                        ) : null}
-                      </button>
-                    );
-                  })}
+                          {isActive ? (
+                            <span className="shrink-0 rounded-full border border-slate-300 bg-white/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-700 shadow-sm dark:border-slate-500 dark:bg-slate-900/80 dark:text-slate-100 dark:shadow-none">
+                              ✓ {t("common.selected", "Selected")}
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
 
-              <div className={panelCardClassName}>
-                {selectedSpool ? (
-                  <div
-                    className="rounded-[1.4rem] border px-4 py-4 shadow-sm shadow-slate-200/15 dark:shadow-none"
-                    style={inventorySwatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
-                  >
-                    <SwatchSelectionPreviewHeader
-                      eyebrow={t("inventory.selectionPreview", "Selection preview")}
-                      size="large"
-                      swatchColor={selectedSpool.hexColor}
+                <div className={panelCardClassName}>
+                  {selectedSpool ? (
+                    <div
+                      className="rounded-[1.4rem] border px-4 py-4 shadow-sm shadow-slate-200/15 dark:shadow-none"
+                      style={inventorySwatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
                     >
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <div className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-                          {formatFilamentDisplayTitle(
-                            selectedSpool.material,
-                            selectedSpool.filamentName,
-                            selectedSpool.colorName,
+                      <SwatchSelectionPreviewHeader
+                        eyebrow={t("inventory.selectionPreview", "Selection preview")}
+                        size="large"
+                        swatchColor={selectedSpool.hexColor}
+                      >
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <div className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+                            {formatFilamentDisplayTitle(
+                              selectedSpool.material,
+                              selectedSpool.filamentName,
+                              selectedSpool.colorName,
+                            )}
+                          </div>
+                          <VendorBadge vendor={selectedSpool.vendor} compact />
+                        </div>
+                      </SwatchSelectionPreviewHeader>
+
+                      <ModalDetailGrid className="mt-4 sm:grid-cols-[minmax(0,1.25fr)_minmax(132px,0.8fr)]">
+                        <ModalDetailItem
+                          label={t("inventory.reference", "Reference")}
+                          title={`#${selectedSpool.id}`}
+                          valueClassName="font-mono"
+                          className="rounded-xl border px-3 py-2.5"
+                          style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
+                        >
+                          {selectedReferenceLabel}
+                        </ModalDetailItem>
+                        <ModalDetailItem
+                          label={t("inventory.remaining", "Remaining")}
+                          className="rounded-xl border px-3 py-2.5"
+                          style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
+                        >
+                          {formatLoanOutGrams(selectedSpool.remainingGrams)}
+                        </ModalDetailItem>
+                        <ModalDetailItem
+                          label={t("inventory.location", "Location")}
+                          title={selectedPlacementLabel ?? ""}
+                          className="rounded-xl border px-3 py-2.5 sm:col-span-2"
+                          style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
+                        >
+                          {selectedPlacementLabel}
+                        </ModalDetailItem>
+                      </ModalDetailGrid>
+
+                      <div className="mt-5 border-t border-white/60 pt-4 dark:border-white/10">
+                        <div className={panelTitleClassName}>
+                          {t("inventory.loanDetails", "Loan details")}
+                        </div>
+                        <div className={panelSubtitleClassName}>
+                          {t(
+                            "inventory.loanDetailsHelp",
+                            "Confirm the borrower and measured outgoing total weight including spool before saving the loan.",
                           )}
                         </div>
-                        <VendorBadge vendor={selectedSpool.vendor} compact />
-                      </div>
-                    </SwatchSelectionPreviewHeader>
 
-                    <ModalDetailGrid className="mt-4 sm:grid-cols-[minmax(0,1.25fr)_minmax(132px,0.8fr)]">
-                      <ModalDetailItem
-                        label={t("inventory.reference", "Reference")}
-                        title={`#${selectedSpool.id}`}
-                        valueClassName="font-mono"
-                        className="rounded-xl border px-3 py-2.5"
-                        style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
-                      >
-                        {selectedReferenceLabel}
-                      </ModalDetailItem>
-                      <ModalDetailItem
-                        label={t("inventory.remaining", "Remaining")}
-                        className="rounded-xl border px-3 py-2.5"
-                        style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
-                      >
-                        {formatLoanOutGrams(selectedSpool.remainingGrams)}
-                      </ModalDetailItem>
-                      <ModalDetailItem
-                        label={t("inventory.location", "Location")}
-                        title={selectedPlacementLabel ?? ""}
-                        className="rounded-xl border px-3 py-2.5 sm:col-span-2"
-                        style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
-                      >
-                        {selectedPlacementLabel}
-                      </ModalDetailItem>
-                    </ModalDetailGrid>
+                        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <ModalFormField label={t("inventory.borrowerName", "Borrower name")}>
+                            <input
+                              type="text"
+                              value={borrowerName}
+                              onChange={(event) => setBorrowerName(event.target.value)}
+                              className={modalFormInputClassName}
+                              placeholder={t("inventory.borrowerName", "Borrower name")}
+                              disabled={!tauri || busy}
+                            />
+                          </ModalFormField>
 
-                    <div className="mt-5 border-t border-white/60 pt-4 dark:border-white/10">
-                      <div className={panelTitleClassName}>
-                        {t("inventory.loanDetails", "Loan details")}
-                      </div>
-                      <div className={panelSubtitleClassName}>
-                        {t(
-                          "inventory.loanDetailsHelp",
-                          "Confirm the borrower and measured outgoing total weight including spool before saving the loan.",
-                        )}
-                      </div>
+                          <ModalFormField
+                            label={
+                              <>
+                                {t("inventory.maxAvailable", "Max available")}:{" "}
+                                {formatLoanOutGrams(
+                                  toMeasuredTotalWeight(
+                                    selectedSpool,
+                                    selectedSpool.remainingGrams,
+                                  ),
+                                )}
+                              </>
+                            }
+                          >
+                            <input
+                              type="number"
+                              min={0}
+                              value={gramsOut}
+                              onChange={(event) => setGramsOut(event.target.value)}
+                              className={modalFormInputClassName}
+                              placeholder={t("inventory.outG", "Out g")}
+                              disabled={!tauri || busy}
+                            />
+                          </ModalFormField>
+                        </div>
 
-                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <ModalFormField label={t("inventory.borrowerName", "Borrower name")}>
-                          <input
-                            type="text"
-                            value={borrowerName}
-                            onChange={(event) => setBorrowerName(event.target.value)}
-                            className={modalFormInputClassName}
-                            placeholder={t("inventory.borrowerName", "Borrower name")}
-                            disabled={!tauri || busy}
-                          />
-                        </ModalFormField>
+                        <div className="mt-3">
+                          <ModalFormField
+                            label={t("inventory.loanNoteOptional", "Loan note (optional)")}
+                          >
+                            <textarea
+                              value={note}
+                              onChange={(event) => setNote(event.target.value)}
+                              className={`${modalFormInputClassName} min-h-[104px] resize-y`}
+                              placeholder={t("inventory.loanNoteOptional", "Loan note (optional)")}
+                              disabled={!tauri || busy}
+                            />
+                          </ModalFormField>
+                        </div>
 
-                        <ModalFormField
-                          label={
-                            <>
-                              {t("inventory.maxAvailable", "Max available")}:{" "}
-                              {formatLoanOutGrams(
-                                toMeasuredTotalWeight(selectedSpool, selectedSpool.remainingGrams),
-                              )}
-                            </>
-                          }
+                        <ModalActionButton
+                          onClick={() => void handleSubmit()}
+                          disabled={!tauri || busy}
+                          className="mt-4"
+                          fullWidth
+                          resolvedTheme={resolvedTheme}
+                          size="roomy"
+                          swatchColor={selectedSpool.hexColor}
+                          variant="solid"
                         >
-                          <input
-                            type="number"
-                            min={0}
-                            value={gramsOut}
-                            onChange={(event) => setGramsOut(event.target.value)}
-                            className={modalFormInputClassName}
-                            placeholder={t("inventory.outG", "Out g")}
-                            disabled={!tauri || busy}
-                          />
-                        </ModalFormField>
+                          {t("inventory.loanOutRoll", "Loan out roll")}
+                        </ModalActionButton>
                       </div>
-
-                      <div className="mt-3">
-                        <ModalFormField
-                          label={t("inventory.loanNoteOptional", "Loan note (optional)")}
-                        >
-                          <textarea
-                            value={note}
-                            onChange={(event) => setNote(event.target.value)}
-                            className={`${modalFormInputClassName} min-h-[104px] resize-y`}
-                            placeholder={t("inventory.loanNoteOptional", "Loan note (optional)")}
-                            disabled={!tauri || busy}
-                          />
-                        </ModalFormField>
-                      </div>
-
-                      <ModalActionButton
-                        onClick={() => void handleSubmit()}
-                        disabled={!tauri || busy}
-                        className="mt-4"
-                        fullWidth
-                        resolvedTheme={resolvedTheme}
-                        size="roomy"
-                        swatchColor={selectedSpool.hexColor}
-                        variant="solid"
-                      >
-                        {t("inventory.loanOutRoll", "Loan out roll")}
-                      </ModalActionButton>
                     </div>
-                  </div>
-                ) : (
-                  <ModalNotice className="border-dashed">
-                    {t("inventory.chooseRollToLoan", "Choose a roll to loan out.")}
-                    {clientReadOnly ? (
-                      <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                        {clientHostWritePaired
-                          ? t(
-                              "inventory.clientLoanOutPairedHint",
-                              "Available rolls are loaded from the host and the loan is created there.",
-                            )
-                          : t(
-                              "inventory.clientLoanOutUnpairedHint",
-                              "Pair this desktop client with the host before creating a loan from this device.",
-                            )}
-                      </div>
-                    ) : null}
-                  </ModalNotice>
-                )}
+                  ) : (
+                    <ModalNotice className="border-dashed">
+                      {t("inventory.chooseRollToLoan", "Choose a roll to loan out.")}
+                      {clientReadOnly ? (
+                        <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                          {clientHostWritePaired
+                            ? t(
+                                "inventory.clientLoanOutPairedHint",
+                                "Available rolls are loaded from the host and the loan is created there.",
+                              )
+                            : t(
+                                "inventory.clientLoanOutUnpairedHint",
+                                "Pair this desktop client with the host before creating a loan from this device.",
+                              )}
+                        </div>
+                      ) : null}
+                    </ModalNotice>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
           </div>
         </div>
       </div>

@@ -1,14 +1,10 @@
 import { AppModal } from "./app_modal";
-import { CloseButton } from "./close_button";
 import type { Locale } from "../lib/i18n";
-import {
-  settingsActionButtonClass,
-  settingsSectionLabelClass,
-} from "../lib/settings_ui_classes";
+import { settingsActionButtonClass } from "../lib/settings_ui_classes";
 import { formatSettingsDateTime } from "../lib/settings_utils";
 import type { LibrarySyncSettings } from "../lib/tauri_client";
 import type { LibraryRoleChangeState } from "../pages/settings_library_sync_model";
-import { FeedbackBanner } from "./feedback_banner";
+import { ModalHeader, ModalNotice } from "./modal_chrome";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -68,59 +64,57 @@ export function SettingsLibraryRoleModal({
   return (
     <AppModal closeOnBackdrop onBackdropClose={onClose}>
       <div className="space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className={settingsSectionLabelClass}>
-              {t("settings.libraryRoleLabel", "Library role")}
-            </div>
-            <div className="mt-1 text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-              {roleChangeTarget === "HOST"
-                ? t("settings.librarySyncConfirmSwitchToHost", "Switch to Host")
-                : roleChangeTarget === "CLIENT"
-                  ? t("settings.librarySyncConfirmSwitchToClient", "Switch to Client")
-                  : t("settings.librarySyncConfirmSwitchToStandalone", "Switch to Standalone")}
-            </div>
-            <div className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              {roleChangeState.fromClient && roleChangeState.toHost
+        <ModalHeader
+          eyebrow={t("settings.libraryRoleLabel", "Library role")}
+          title={
+            roleChangeTarget === "HOST"
+              ? t("settings.librarySyncConfirmSwitchToHost", "Switch to Host")
+              : roleChangeTarget === "CLIENT"
+                ? t("settings.librarySyncConfirmSwitchToClient", "Switch to Client")
+                : t("settings.librarySyncConfirmSwitchToStandalone", "Switch to Standalone")
+          }
+          subtitle={
+            roleChangeState.fromClient && roleChangeState.toHost
+              ? t(
+                  "settings.librarySyncHostHint",
+                  "This device is prepared to host the library for other desktop or browser clients.",
+                )
+              : roleChangeState.fromClient && roleChangeState.toStandalone
                 ? t(
-                    "settings.librarySyncHostHint",
-                    "This device is prepared to host the library for other desktop or browser clients.",
+                    "settings.librarySyncStandaloneHint",
+                    "This device keeps using its own local library only.",
                   )
-                : roleChangeState.fromClient && roleChangeState.toStandalone
+                : roleChangeTarget === "HOST"
                   ? t(
-                      "settings.librarySyncStandaloneHint",
-                      "This device keeps using its own local library only.",
+                      "settings.librarySyncHostHint",
+                      "This device is prepared to host the library for other desktop or browser clients.",
                     )
-                  : roleChangeTarget === "HOST"
+                  : roleChangeTarget === "CLIENT"
                     ? t(
-                        "settings.librarySyncHostHint",
-                        "This device is prepared to host the library for other desktop or browser clients.",
+                        "settings.librarySyncClientHint",
+                        "This device connects to another host and keeps a read-only fallback cache when that host is unavailable.",
                       )
-                    : roleChangeTarget === "CLIENT"
-                      ? t(
-                          "settings.librarySyncClientHint",
-                          "This device connects to another host and keeps a read-only fallback cache when that host is unavailable.",
-                        )
-                      : t(
-                          "settings.librarySyncStandaloneHint",
-                          "This device keeps using its own local library only.",
-                        )}
-            </div>
-          </div>
-          <CloseButton label={t("common.close", "Close")} onClick={onClose} size="large" />
-        </div>
+                    : t(
+                        "settings.librarySyncStandaloneHint",
+                        "This device keeps using its own local library only.",
+                      )
+          }
+          closeLabel={t("common.close", "Close")}
+          onClose={onClose}
+          className="-mx-5 -mt-5"
+        />
 
         {roleChangeState.fromClient && roleChangeState.toHost ? (
-          <FeedbackBanner tone="neutral">
+          <ModalNotice>
             {t(
               "settings.librarySyncRoleChangeClientToHostHint",
               "This client becomes its own host after the switch. If you later want to move library data from the current host, create a full backup there and import it later under Program maintenance on this device.",
             )}
-          </FeedbackBanner>
+          </ModalNotice>
         ) : null}
 
         {roleChangeState.fromClient && roleChangeState.toStandalone ? (
-          <FeedbackBanner tone="neutral">
+          <ModalNotice>
             {locale === "nb"
               ? `Denne klienten forventer vanligvis at et vertsbibliotek er tilgjengelig. Du kan eksportere en full sikkerhetskopi på ${
                   librarySyncSettings?.host_device_name || t("common.unknown", "Ukjent")
@@ -128,16 +122,16 @@ export function SettingsLibraryRoleModal({
               : `This client normally expects a host library. You can export a full backup on ${
                   librarySyncSettings?.host_device_name || t("common.unknown", "Unknown")
                 } and import it later under Program maintenance if you want to continue locally.`}
-          </FeedbackBanner>
+          </ModalNotice>
         ) : null}
 
         {roleChangeState.toClient ? (
-          <FeedbackBanner tone="neutral">
+          <ModalNotice>
             {t(
               "settings.librarySyncRoleChangeClientHint",
               "Client mode expects a host connection. After switching, use Desktop client pairing to connect this device to the host you want to use.",
             )}
-          </FeedbackBanner>
+          </ModalNotice>
         ) : null}
 
         {(roleChangeState.requiresExport ||
@@ -260,12 +254,12 @@ export function SettingsLibraryRoleModal({
         ) : null}
 
         {libraryRoleConfirmArmed ? (
-          <FeedbackBanner tone="warning">
+          <ModalNotice tone="warning">
             {t(
               "settings.librarySyncConfirmArmedHint",
               "One more click confirms this role change.",
             )}
-          </FeedbackBanner>
+          </ModalNotice>
         ) : null}
 
         <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200/80 pt-4 dark:border-slate-700/80">

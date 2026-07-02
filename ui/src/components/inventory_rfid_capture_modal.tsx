@@ -131,7 +131,7 @@ export function InventoryRfidCaptureModal({
           />
 
           {error ? (
-            <ModalNotice className="mt-4 text-xs" tone="warning">
+            <ModalNotice className="mt-4 text-xs" tone="danger">
               {error}
             </ModalNotice>
           ) : null}

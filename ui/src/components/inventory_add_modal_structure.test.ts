@@ -15,8 +15,10 @@ test("InventoryAddModal keeps the Bambu batch action in the header before the so
   assert.match(source, /onCreateModeChange\("bambu"\)/);
   assert.match(source, /<ModalHeader/);
   assert.match(source, /<ModalHeaderActionButton/);
+  assert.match(source, /ModalNotice/);
   assert.match(source, /aside=\{/);
   assert.match(source, /inventoryTwoColumnModalGridClassName/);
+  assert.doesNotMatch(source, /FeedbackBanner/);
   assert.doesNotMatch(source, /inventoryAddModalHeaderActionButtonClassName/);
   assert.doesNotMatch(source, /sm:text-\[2rem\]/);
   assert.doesNotMatch(

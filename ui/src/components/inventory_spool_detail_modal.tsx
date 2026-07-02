@@ -3,7 +3,6 @@ import {
   inventoryDetailEyebrowClassName,
   inventoryDetailPanelClassName,
 } from "./inventory_detail_panel_class";
-import { FeedbackBanner } from "./feedback_banner";
 import { InventoryCatalogMetadataPanel } from "./inventory_catalog_metadata_panel";
 import { InventoryDangerZonePanel } from "./inventory_danger_zone_panel";
 import {
@@ -13,6 +12,7 @@ import {
 } from "./inventory_modal_chrome";
 import { InventoryRollHistoryPanel } from "./inventory_roll_history_panel";
 import { InventorySpoolQrRfidPanel } from "./inventory_spool_qr_rfid_panel";
+import { ModalNotice } from "./modal_chrome";
 import {
   InventorySpoolDetailHeader,
   InventorySpoolIdentityPanel,
@@ -212,12 +212,12 @@ export function InventorySpoolDetailModal({
             >
               <div className="space-y-5 text-sm text-slate-700 dark:text-slate-200">
                 {error ? (
-                  <div className="rounded-xl border border-rose-200/80 bg-rose-50/90 px-3 py-2 text-xs text-rose-700 dark:border-rose-400/40 dark:bg-rose-500/15 dark:text-rose-200">
+                  <ModalNotice className="px-3 py-2 text-xs" tone="danger">
                     {error}
-                  </div>
+                  </ModalNotice>
                 ) : null}
                 {!error && infoMessage ? (
-                  <FeedbackBanner tone="success">{infoMessage}</FeedbackBanner>
+                  <ModalNotice tone="success">{infoMessage}</ModalNotice>
                 ) : null}
 
                 <InventorySpoolIdentityPanel

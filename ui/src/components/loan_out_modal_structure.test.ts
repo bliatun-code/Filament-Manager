@@ -33,6 +33,7 @@ test("LoanOutModal uses shared wide modal layout rhythm", () => {
   assert.match(source, /loanOutSpoolButtonClassName/);
   assert.match(stylesSource, /loanOutSpoolButtonClassName/);
   assert.match(stylesSource, /focus-visible:border-sky-300/);
+  assert.doesNotMatch(source, /FeedbackBanner/);
   assert.doesNotMatch(stylesSource, /formInputClassName/);
   assert.doesNotMatch(stylesSource, /detailLabelClassName/);
   assert.doesNotMatch(stylesSource, /detailValueClassName/);
