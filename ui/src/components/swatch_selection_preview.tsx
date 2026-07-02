@@ -5,6 +5,8 @@ type SwatchSelectionPreviewHeaderSize = "compact" | "large";
 
 type SwatchSelectionPreviewHeaderProps = {
   children: ReactNode;
+  className?: string;
+  contentClassName?: string;
   eyebrow: string;
   size?: SwatchSelectionPreviewHeaderSize;
   swatchColor?: string | null;
@@ -26,6 +28,8 @@ function previewSwatchClassName(
 
 export function SwatchSelectionPreviewHeader({
   children,
+  className,
+  contentClassName,
   eyebrow,
   size = "compact",
   swatchColor,
@@ -39,7 +43,7 @@ export function SwatchSelectionPreviewHeader({
   );
 
   return (
-    <div className="flex items-start gap-3">
+    <div className={["flex items-start gap-3", className ?? ""].filter(Boolean).join(" ")}>
       {size === "large" ? (
         <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/75 bg-white/65 p-2 shadow-sm shadow-slate-200/25 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
           {swatch}
@@ -47,7 +51,7 @@ export function SwatchSelectionPreviewHeader({
       ) : (
         swatch
       )}
-      <div className="min-w-0 flex-1">
+      <div className={["min-w-0 flex-1", contentClassName ?? ""].filter(Boolean).join(" ")}>
         <div
           className={[
             "text-[11px] font-semibold uppercase text-slate-500 dark:text-slate-400",

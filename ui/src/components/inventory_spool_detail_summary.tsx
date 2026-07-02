@@ -1,9 +1,8 @@
 import { VendorBadge } from "./vendor_badge";
 import { CloseButton } from "./close_button";
 import { inventoryDetailLabelClassName } from "./inventory_detail_panel_class";
-import { modalEyebrowClassName } from "./modal_chrome";
+import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
-import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import {
   buildInventorySpoolAmsSighting,
@@ -57,35 +56,27 @@ export function InventorySpoolDetailHeader({
 
   return (
     <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200/80 bg-white/88 px-5 py-4 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-950/88 sm:px-6">
-      <div className="flex min-w-0 items-start gap-3.5">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/60 p-2 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/30 dark:shadow-none">
+      <SwatchSelectionPreviewHeader
+        className="min-w-0 flex-1"
+        eyebrow={t("inventory.selectedRoll", "Selected roll")}
+        size="large"
+        swatchColor={spool.hexColor}
+      >
+        <div className="mt-1 truncate text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
+          {displayTitle}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <VendorBadge vendor={spool.vendor} compact />
           <span
-            className="h-full w-full rounded-xl border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
-            style={{
-              background: swatchCssBackground(spool.hexColor),
-            }}
-          />
+            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${currentMaterialTone.badge} ${currentMaterialTone.badgeText}`}
+          >
+            {spool.material}
+          </span>
+          <span className={inlineStatusSignalClass(ownershipTone)}>
+            {ownershipLabel}
+          </span>
         </div>
-        <div className="min-w-0">
-          <div className={modalEyebrowClassName}>
-            {t("inventory.selectedRoll", "Selected roll")}
-          </div>
-          <div className="mt-1 truncate text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
-            {displayTitle}
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <VendorBadge vendor={spool.vendor} compact />
-            <span
-              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${currentMaterialTone.badge} ${currentMaterialTone.badgeText}`}
-            >
-              {spool.material}
-            </span>
-            <span className={inlineStatusSignalClass(ownershipTone)}>
-              {ownershipLabel}
-            </span>
-          </div>
-        </div>
-      </div>
+      </SwatchSelectionPreviewHeader>
       <div className="flex shrink-0 items-start gap-2">
         <div className="flex flex-wrap justify-end gap-2">
           <span className={inlineStatusSignalClass(statusTone, "text-xs")}>

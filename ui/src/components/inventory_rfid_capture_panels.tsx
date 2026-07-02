@@ -6,6 +6,7 @@ import {
 } from "./inventory_detail_panel_class";
 import { ModalActionButton } from "./modal_action_button";
 import { ModalFactCard } from "./modal_chrome";
+import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { useI18n } from "../lib/i18n";
 import type { InventorySpool } from "../lib/inventory_list_model";
 import {
@@ -113,15 +114,12 @@ export function InventoryRfidCaptureHeader({
 
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-          {t("inventory.rfidCaptureTitle", "RFID capture")}
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <span
-            className="h-5 w-5 rounded-md border border-slate-200 dark:border-slate-700"
-            style={{ background: swatchCssBackground(spoolHexColor) }}
-          />
+      <SwatchSelectionPreviewHeader
+        className="min-w-0 flex-1"
+        eyebrow={t("inventory.rfidCaptureTitle", "RFID capture")}
+        swatchColor={spoolHexColor}
+      >
+        <div className="mt-1 flex flex-wrap items-center gap-2">
           <div className="text-lg font-semibold text-slate-900 dark:text-slate-50">
             {displayTitle}
           </div>
@@ -137,7 +135,7 @@ export function InventoryRfidCaptureHeader({
             {matchMeta.hint}
           </div>
         ) : null}
-      </div>
+      </SwatchSelectionPreviewHeader>
       <CloseButton label={t("common.close", "Close")} onClick={onClose} />
     </div>
   );

@@ -8,11 +8,15 @@ const source = readFileSync(
 );
 
 test("InventorySpoolDetailHeader matches the shared modal header scale", () => {
-  assert.match(source, /modalEyebrowClassName/);
+  assert.match(source, /SwatchSelectionPreviewHeader/);
+  assert.match(source, /eyebrow=\{t\("inventory\.selectedRoll"/);
+  assert.match(source, /swatchColor=\{spool\.hexColor\}/);
   assert.match(source, /CloseButton/);
   assert.match(source, /px-5 py-4/);
+  assert.doesNotMatch(source, /swatchCssBackground/);
   assert.doesNotMatch(source, /text-\[11px\] font-semibold uppercase tracking-\[0\.14em\]/);
   assert.doesNotMatch(source, /tracking-\[0\.2em\]/);
+  assert.doesNotMatch(source, /h-14 w-14 shrink-0/);
   assert.doesNotMatch(source, /h-9 w-9/);
   assert.doesNotMatch(source, /&times;/);
 });

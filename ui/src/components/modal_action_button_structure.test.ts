@@ -18,6 +18,7 @@ test("modal action buttons share secondary and primary chrome", () => {
   const rfidOverrideModal = readComponentSource("rfid_override_modal.tsx");
   const saveOnlyModal = readComponentSource("save_only_modal.tsx");
   const slotOnboardingModal = readComponentSource("slot_catalog_onboarding_modal.tsx");
+  const spoolDetailSummary = readComponentSource("inventory_spool_detail_summary.tsx");
   const rawSecondaryClass =
     /rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold/;
   const rawPrimaryClass =
@@ -35,6 +36,9 @@ test("modal action buttons share secondary and primary chrome", () => {
   assert.match(modalChrome, /modalFactCardClassName/);
   assert.match(rfidOverrideModal, /inventorySwatchPanelStyle/);
   assert.match(rfidOverrideModal, /SwatchSelectionPreviewHeader/);
+  assert.match(rfidCapturePanels, /SwatchSelectionPreviewHeader/);
+  assert.match(saveOnlyModal, /SwatchSelectionPreviewHeader/);
+  assert.match(spoolDetailSummary, /SwatchSelectionPreviewHeader/);
   assert.match(slotOnboardingModal, /inventorySwatchPanelStyle/);
   assert.match(slotOnboardingModal, /SwatchSelectionPreviewHeader/);
   assert.match(createActions, /<ModalActionButton/);
