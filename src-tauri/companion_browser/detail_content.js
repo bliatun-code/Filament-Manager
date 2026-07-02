@@ -6,7 +6,7 @@ import {
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference, formatStatusLabel } from "./formatters.js";
 import { swatchCssStyle } from "./companion_theme.js";
-import { renderCompanionActionButton } from "./shell_chrome.js";
+import { renderCompanionActionButton, renderSwatchSelectionCard } from "./shell_chrome.js";
 
 export function renderSelectedSpoolDetailBody(options) {
   const {
@@ -71,25 +71,17 @@ export function renderSelectedSpoolDetailBody(options) {
   const usageTimeline = renderUsageTimeline(selectedDetail?.usage || [], { escapeHtml, formatDate, formatGrams, locale });
   const historyTimeline = renderHistoryTimeline(selectedDetail?.history || [], { escapeHtml, formatDate, locale });
   const selectedCaptureSource = rfidCaptureSources.find((source) => source.rfidTag) || rfidCaptureSources[0] || null;
+  const detailSummarySignals = `
+    <div class="detail-summary-signals">
+      <span class="inline-signal" data-tone="${escapeHtml(detailStatusTone)}">${escapeHtml(detailStatusLabel)}</span>
+      <span class="inline-signal" data-tone="${escapeHtml(detailOwnershipTone)}">${escapeHtml(ownershipLabel(selectedSpool.spool))}</span>
+    </div>
+  `;
   return `
     <div class="detail-stack">
-      <div
-        class="surface-card detail-summary-card detail-section-card swatch-surface"
-        style="${escapeHtml(detailSwatchStyle)}"
-      >
-        <div class="stack">
-          <div class="detail-summary-head">
-            <div class="detail-summary-copy">
-              <div class="detail-title">${escapeHtml(detailTitle)}</div>
-            </div>
-            <div class="detail-summary-signals">
-              <span class="inline-signal" data-tone="${escapeHtml(detailStatusTone)}">${escapeHtml(detailStatusLabel)}</span>
-              <span class="inline-signal" data-tone="${escapeHtml(detailOwnershipTone)}">${escapeHtml(ownershipLabel(selectedSpool.spool))}</span>
-            </div>
-          </div>
-          <div class="meta-line detail-summary-meta">
-            ${escapeHtml(detailSummaryBits.join(" · "))}
-          </div>
+      ${renderSwatchSelectionCard({
+        aside: detailSummarySignals,
+        body: `
           ${
             detailFeedback
               ? `<div class="info-card detail-feedback-card detail-feedback-success">${escapeHtml(detailFeedback)}</div>`
@@ -145,8 +137,13 @@ export function renderSelectedSpoolDetailBody(options) {
               })}
             </div>
           </form>
-        </div>
-      </div>
+        `,
+        className: "detail-summary-card detail-section-card",
+        escapeHtml,
+        meta: detailSummaryBits,
+        swatch: selectedSpool.master.hex_color,
+        title: detailTitle,
+      })}
 
       <details class="surface-card detail-section-card detail-collapsible" data-collapsible="details">
         <summary class="detail-collapsible-summary">

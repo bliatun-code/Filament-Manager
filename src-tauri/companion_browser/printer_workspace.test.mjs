@@ -825,6 +825,7 @@ test("printer workspace renders a dedicated weight task sheet body for loaded sl
 
   assert.match(html, /Utgående vekt \(g\)/);
   assert.match(html, /data-action="printer-slot-operation-form"/);
+  assert.match(html, /companion-selection-card swatch-surface detail-section-card printer-weight-summary/);
   assert.match(html, /class="primary-button swatch-action-button" type="submit" style="--swatch-rgb:/);
   assert.match(html, /Brutus · AMS 1 · Spor 2/);
   assert.match(html, /1075/);

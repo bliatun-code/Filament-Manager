@@ -12,7 +12,7 @@ import {
 import { suggestSwatchHex, swatchCssStyle, toSwatchColor } from "./companion_theme.js";
 import { t } from "./companion_i18n.js";
 import { isBorrowedInOwnership, normalizeDomainToken, parseSpoolStatus } from "./companion_domain.js";
-import { renderCompanionActionButton } from "./shell_chrome.js";
+import { renderCompanionActionButton, renderSwatchSelectionCard } from "./shell_chrome.js";
 
 function catalogMatchesSource(master, source) {
   const vendor = String(master?.vendor || "").trim().toLowerCase();
@@ -138,16 +138,20 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
   const locale = state.locale || "en";
   const selection = resolveAddSheetState(state);
   const draft = selection.draft;
-  const previewStyle = swatchCssStyle(selection.previewHex);
   const previewTitle = formatInventoryDisplayTitle(
     selection.material || t(locale, "storage.material", "Material"),
     selection.filamentName || t(locale, "storage.filament", "Filament"),
     selection.colorName || t(locale, "storage.color", "Color"),
   );
-  const previewVendor = selection.vendor || t(locale, "storage.vendor", "Vendor");
-  const previewWeight = selection.selectedMaster?.default_weight ? `${selection.selectedMaster.default_weight} g` : "";
+  const previewMeta = [
+    selection.vendor || t(locale, "storage.vendor", "Vendor"),
+    selection.selectedMaster?.default_weight ? `${selection.selectedMaster.default_weight} g` : "",
+  ].filter(Boolean);
   const isBorrowedIn = isBorrowedInOwnership(draft.ownershipType);
   const catalogSelectionMissing = selection.requiresCatalogSelection;
+  const selectionBadge = catalogSelectionMissing
+    ? t(locale, "storage.chooseCatalogRow", "Choose a catalog row")
+    : t(locale, "storage.selected", "Selected");
   const wishlistRows = selection.visibleWishlistItems
     .map((item) => {
       const linkedMaster = (Array.isArray(state.catalogMasters) ? state.catalogMasters : []).find(
@@ -376,21 +380,9 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
         }
       </section>
 
-      <section class="surface-card add-spool-section swatch-surface" style="${escapeHtml(previewStyle)}">
-        <div class="stack add-spool-section-head">
-          <div class="add-spool-selection-head">
-            <div class="stack add-spool-selection-copy">
-              <div class="list-title">${escapeHtml(previewTitle)}</div>
-              <div class="list-subtitle">${escapeHtml(previewVendor)}${previewWeight ? ` · ${escapeHtml(previewWeight)}` : ""}</div>
-            </div>
-            ${
-              catalogSelectionMissing
-                ? `<span class="pill">${escapeHtml(t(locale, "storage.chooseCatalogRow", "Choose a catalog row"))}</span>`
-                : `<span class="pill">${escapeHtml(t(locale, "storage.selected", "Selected"))}</span>`
-            }
-          </div>
-        </div>
-
+      ${renderSwatchSelectionCard({
+        badges: [selectionBadge],
+        body: `
         <form class="stack add-spool-action-form" data-action="add-spool-form">
           ${renderSelectionHiddenInputs(selection, escapeHtml)}
           <input type="hidden" name="filament-ownership-type" value="${escapeHtml(
@@ -554,7 +546,13 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
             })}
           </div>
         </form>
-      </section>
+        `,
+        className: "add-spool-section add-spool-selection-card",
+        escapeHtml,
+        meta: previewMeta,
+        swatch: selection.previewHex,
+        title: previewTitle,
+      })}
 
       <details class="surface-card add-spool-section detail-collapsible" data-collapsible="wishlist-queue">
         <summary class="detail-collapsible-summary">

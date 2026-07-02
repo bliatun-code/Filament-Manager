@@ -1,5 +1,6 @@
 import { formatInventoryDisplayTitle } from "./formatters.js";
 import { t } from "./companion_i18n.js";
+import { swatchCssStyle, toSwatchColor } from "./companion_theme.js";
 
 function renderRootFlowButton(activeRootFlow, item, escapeHtml) {
   return `
@@ -68,6 +69,52 @@ export function renderCompanionActionButton(options) {
     .join(" ");
   const renderedAttributes = renderAttributeMap({ type, ...attributes, disabled }, escape);
   return `<button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${escape(label)}</button>`;
+}
+
+export function renderSwatchSelectionCard(options) {
+  const {
+    actions = "",
+    aside = "",
+    badges = [],
+    body = "",
+    className = "",
+    escapeHtml,
+    meta = [],
+    swatch,
+    title,
+  } = options;
+  const escape = typeof escapeHtml === "function" ? escapeHtml : (value) => String(value ?? "");
+  const cleanedMeta = meta.filter(Boolean).map((value) => escape(value));
+  const cleanedBadges = badges.filter(Boolean).map((value) => escape(value));
+  const badgeHtml =
+    cleanedBadges.length > 0
+      ? `<div class="pill-row compact-pill-row">${cleanedBadges.map((badge) => `<span class="pill">${badge}</span>`).join("")}</div>`
+      : "";
+  const classes = [
+    "surface-card",
+    "companion-selection-card",
+    "swatch-surface",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return `
+    <div class="${escape(classes)}" style="${escape(swatchCssStyle(swatch))}">
+      <div class="companion-selection-card-head">
+        <div class="stack companion-selection-card-copy">
+          <div class="swatch-line">
+            <span class="swatch-dot" style="background:${escape(toSwatchColor(swatch))};"></span>
+            <span class="list-title">${escape(title)}</span>
+          </div>
+          ${cleanedMeta.length > 0 ? `<div class="meta-line">${cleanedMeta.join(" · ")}</div>` : ""}
+        </div>
+        ${aside || badgeHtml}
+      </div>
+      ${body}
+      ${actions ? `<div class="detail-actions form-action-block companion-selection-card-actions">${actions}</div>` : ""}
+    </div>
+  `;
 }
 
 function renderTabletRootSwitch(activeRootFlow, rootFlowItems, escapeHtml, locale = "en") {

@@ -40,7 +40,10 @@ test("swatch action buttons reuse the selected filament color", () => {
   assert.match(css, /\.primary-button\.swatch-action-button,\s*\.secondary-button\.swatch-action-button\s*\{/);
   assert.match(css, /rgb\(var\(--swatch-rgb\) \/ 0\.96\)/);
   assert.match(css, /0 18px 36px -24px rgb\(var\(--swatch-rgb\) \/ 0\.74\)/);
+  assert.match(css, /\.companion-selection-card\s*\{[\s\S]*display: grid;[\s\S]*gap: 0\.72rem;/);
+  assert.match(css, /\.companion-selection-card-head\s*\{[\s\S]*display: flex;[\s\S]*justify-content: space-between;/);
   assert.match(css, /\.loan-create-card\s*\{[\s\S]*display: grid;[\s\S]*gap: 0\.72rem;/);
+  assert.doesNotMatch(css, /add-spool-selection-head/);
 });
 
 test("companion shell defines reusable status and panel surface tokens", () => {

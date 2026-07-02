@@ -6,6 +6,7 @@ import {
   renderDesktopRail,
   renderDetailModalShell,
   renderPhoneBottomNav,
+  renderSwatchSelectionCard,
   renderTopbar,
   renderTrustedLanPairingApp,
 } from "./shell_chrome.js";
@@ -62,6 +63,27 @@ test("companion action helper renders variants, swatches and boolean attributes"
     '<button class="secondary-button swatch-action-button loan-action-button" type="submit" data-action="save&amp;go" aria-label="Save &quot;now&quot;" disabled>Save &lt;now&gt;</button>',
   );
   assert.doesNotMatch(html, /hidden/);
+});
+
+test("swatch selection card helper owns selected filament preview chrome", () => {
+  const html = renderSwatchSelectionCard({
+    badges: ["Selected"],
+    body: '<form data-action="save"></form>',
+    className: "loan-create-card",
+    escapeHtml,
+    meta: ["Bambu", "#12", "500 g"],
+    swatch: "#2563EB",
+    title: "PLA <Blue>",
+  });
+
+  assert.match(html, /surface-card companion-selection-card swatch-surface loan-create-card/);
+  assert.match(html, /companion-selection-card-head/);
+  assert.match(html, /swatch-dot/);
+  assert.match(html, /PLA &lt;Blue&gt;/);
+  assert.match(html, /Bambu · #12 · 500 g/);
+  assert.match(html, /Selected/);
+  assert.match(html, /--swatch-rgb:37 99 235/);
+  assert.match(html, /data-action="save"/);
 });
 
 test("topbar renders the tablet root switch with all primary flows", () => {

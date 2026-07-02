@@ -18,7 +18,7 @@ import {
   liveSlotObservedRfid,
 } from "./companion_live_rfid_candidates.js";
 import { formatPrinterSlotLabelForModel } from "./printer_slot_labels.js";
-import { renderCompanionActionButton } from "./shell_chrome.js";
+import { renderCompanionActionButton, renderSwatchSelectionCard } from "./shell_chrome.js";
 
 export function formatPrinterSlotLabel(slot, locale = "en", printerModel = "") {
   return formatPrinterSlotLabelForModel(slot, locale, printerModel);
@@ -364,38 +364,26 @@ export function renderPrinterWeightTaskSheetBody(options) {
     <div class="stack printer-weight-sheet">
       ${
         task.currentSpoolId
-          ? `
-            <div class="surface-card detail-section-card printer-weight-summary">
-              <div class="detail-header printer-weight-summary-header">
-                <div class="swatch-line spool-row-title">
-                  <span class="swatch-dot" style="background:${escapeHtml(toSwatchColor(task.currentSwatchColor))};"></span>
-                  <span class="list-title">${escapeHtml(task.currentSpoolTitle || t(locale, "detail.spoolDetailsFallback", "Spool details"))}</span>
-                </div>
-                <span class="pill">${escapeHtml(t(locale, "format.inUse", "In use"))}</span>
-              </div>
-              <div class="meta-line">${escapeHtml(printerLabel)}</div>
-              <div class="meta-line">${escapeHtml(currentSpoolMeta)}</div>
-              <div class="meta-line">${escapeHtml(currentPlacementLabel)}</div>
-            </div>
-          `
+          ? renderSwatchSelectionCard({
+              badges: [t(locale, "format.inUse", "In use")],
+              className: "detail-section-card printer-weight-summary",
+              escapeHtml,
+              meta: [printerLabel, currentSpoolMeta, currentPlacementLabel],
+              swatch: task.currentSwatchColor,
+              title: task.currentSpoolTitle || t(locale, "detail.spoolDetailsFallback", "Spool details"),
+            })
           : ""
       }
       ${
         requiresIncoming
-          ? `
-            <div class="surface-card detail-section-card printer-weight-summary">
-              <div class="detail-header printer-weight-summary-header">
-                <div class="swatch-line spool-row-title">
-                  <span class="swatch-dot" style="background:${escapeHtml(toSwatchColor(task.targetSwatchColor))};"></span>
-                  <span class="list-title">${escapeHtml(task.targetSpoolTitle || t(locale, "detail.spoolDetailsFallback", "Spool details"))}</span>
-                </div>
-                <span class="pill">${escapeHtml(t(locale, "printers.loadTarget", "Load target"))}</span>
-              </div>
-              <div class="meta-line">${escapeHtml(printerLabel)}</div>
-              <div class="meta-line">${escapeHtml(targetSpoolMeta)}</div>
-              <div class="meta-line">${escapeHtml(targetPlacementLabel)}</div>
-            </div>
-          `
+          ? renderSwatchSelectionCard({
+              badges: [t(locale, "printers.loadTarget", "Load target")],
+              className: "detail-section-card printer-weight-summary",
+              escapeHtml,
+              meta: [printerLabel, targetSpoolMeta, targetPlacementLabel],
+              swatch: task.targetSwatchColor,
+              title: task.targetSpoolTitle || t(locale, "detail.spoolDetailsFallback", "Spool details"),
+            })
           : ""
       }
 

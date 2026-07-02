@@ -1077,6 +1077,38 @@
   gap: 0.45rem;
 }
 
+.companion-selection-card {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.companion-selection-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7rem;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.companion-selection-card-copy {
+  min-width: 0;
+  gap: 0.22rem;
+}
+
+.companion-selection-card-copy .list-title {
+  white-space: normal;
+  line-height: 1.24;
+}
+
+.companion-selection-card-head > .pill-row {
+  flex-shrink: 0;
+  justify-content: flex-end;
+}
+
+.companion-selection-card-actions {
+  margin-top: 0.2rem;
+}
+
 .filament-preview-card {
   display: flex;
   justify-content: space-between;
@@ -1932,18 +1964,6 @@
   gap: 0.16rem;
 }
 
-.task-sheet.add-filament-sheet .add-spool-selection-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.6rem;
-  align-items: start;
-}
-
-.task-sheet.add-filament-sheet .add-spool-selection-copy {
-  min-width: 0;
-  gap: 0.16rem;
-}
-
 .task-sheet.add-filament-sheet .add-spool-action-form {
   gap: 0.72rem;
 }
@@ -2573,20 +2593,6 @@
   display: grid;
   gap: 0.72rem;
   padding: var(--content-card-padding);
-}
-
-.detail-summary-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  align-items: start;
-  flex-wrap: wrap;
-}
-
-.detail-summary-copy {
-  display: grid;
-  gap: 0.08rem;
-  min-width: 0;
 }
 
 .detail-summary-signals {
@@ -3431,7 +3437,8 @@
     justify-self: start;
   }
 
-  .loan-card-head {
+  .loan-card-head,
+  .companion-selection-card-head {
     flex-direction: column;
   }
 

@@ -7,7 +7,7 @@ import {
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference } from "./formatters.js";
 import { suggestSwatchHex, swatchCssStyle, toSwatchColor } from "./companion_theme.js";
-import { renderCompanionActionButton } from "./shell_chrome.js";
+import { renderCompanionActionButton, renderSwatchSelectionCard } from "./shell_chrome.js";
 
 function loanStateLabel(row, locale = "en") {
   const returned = isLoanReturned(row);
@@ -367,31 +367,16 @@ export function renderLoanCreateTaskSheetBody(options) {
   const reference = formatRollReference(selectedSpool.spool);
   const tareWeight = resolveSpoolTareWeight(selectedSpool.spool, selectedSpool.master.vendor);
   const defaultMeasuredWeight = Number(selectedSpool.spool.remaining_g ?? 0) + tareWeight;
-  const swatchStyle = swatchCssStyle(selectedSpool.master.hex_color);
   const metadata = [
     selectedSpool.master.vendor || "",
     reference,
     formatGrams(selectedSpool.spool.remaining_g),
-  ]
-    .filter(Boolean)
-    .map((value) => escapeHtml(value))
-    .join(" · ");
+  ].filter(Boolean);
 
   return `
     <div class="stack loan-return-task-sheet">
-      <div
-        class="surface-card compact-loan-card swatch-surface loan-create-card"
-        style="${escapeHtml(swatchStyle)}"
-      >
-        <div class="loan-card-head">
-          <div class="stack loan-card-copy">
-            <div class="swatch-line">
-              <span class="swatch-dot" style="background:${escapeHtml(toSwatchColor(selectedSpool.master.hex_color))};"></span>
-              <span class="list-title">${escapeHtml(displayTitle)}</span>
-            </div>
-            <div class="meta-line">${metadata}</div>
-          </div>
-        </div>
+      ${renderSwatchSelectionCard({
+        body: `
         ${
           selectedAssignment
             ? `<div class="info-card">${escapeHtml(
@@ -448,7 +433,13 @@ export function renderLoanCreateTaskSheetBody(options) {
             })}
           </div>
         </form>
-      </div>
+        `,
+        className: "compact-loan-card loan-create-card",
+        escapeHtml,
+        meta: metadata,
+        swatch: selectedSpool.master.hex_color,
+        title: displayTitle,
+      })}
     </div>
   `;
 }

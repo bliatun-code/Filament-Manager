@@ -189,7 +189,8 @@ test("loan create task sheet renders outgoing measured weight and slot warning",
   });
 
   assert.match(html, /Lend spool/);
-  assert.match(html, /surface-card compact-loan-card swatch-surface loan-create-card/);
+  assert.match(html, /surface-card companion-selection-card swatch-surface compact-loan-card loan-create-card/);
+  assert.match(html, /companion-selection-card-head/);
   assert.match(html, /primary-button swatch-action-button/);
   assert.match(html, /data-action="loan-spool-form"/);
   assert.match(html, /Outgoing total weight incl\. spool \(g\)/);

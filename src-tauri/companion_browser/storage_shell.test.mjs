@@ -172,6 +172,8 @@ test("add filament task sheet exposes stock and wishlist flows from the same sel
   assert.match(html, /data-action="wishlist-delete"/);
   assert.match(html, /data-action="add-spool-form"/);
   assert.match(html, /data-action="wishlist-item-form"/);
+  assert.match(html, /surface-card companion-selection-card swatch-surface add-spool-section add-spool-selection-card/);
+  assert.match(html, /companion-selection-card-head/);
   assert.match(html, /class="primary-button swatch-action-button" type="submit"/);
   assert.match(html, /class="secondary-button swatch-action-button" type="submit"/);
   assert.match(html, /Add spool to inventory/);
