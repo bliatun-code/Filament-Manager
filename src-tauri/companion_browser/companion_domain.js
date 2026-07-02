@@ -12,6 +12,9 @@ export function parseSpoolStatus(value) {
   if (status === "IN_USE" || status === "ASSIGNED") {
     return "ASSIGNED";
   }
+  if (status === "LOANED_OUT" || status === "LOANED") {
+    return "BORROWED";
+  }
   if (status === "IN_STOCK" || status === "BORROWED" || status === "EMPTY" || status === "LOST") {
     return status;
   }
@@ -32,7 +35,8 @@ export function normalizeOwnershipType(value) {
 }
 
 export function normalizeLoanDirection(value) {
-  return normalizeDomainToken(value) === "INBOUND" ? "INBOUND" : "OUTBOUND";
+  const direction = normalizeDomainToken(value);
+  return direction === "INBOUND" || direction === "IN_BOUND" ? "INBOUND" : "OUTBOUND";
 }
 
 export function normalizeLoanStatus(value, returnedAt) {

@@ -25,6 +25,7 @@ test("inventory domain normalizers preserve legacy spool and ownership values", 
   assert.equal(normalizeSpoolStatus("IN_USE"), "ASSIGNED");
   assert.equal(normalizeSpoolStatus("assigned"), "ASSIGNED");
   assert.equal(normalizeSpoolStatus("borrowed"), "BORROWED");
+  assert.equal(normalizeSpoolStatus("loaned out"), "BORROWED");
   assert.equal(normalizeSpoolStatus("unknown"), "IN_STOCK");
   assert.equal(normalizeOwnershipType("borrowed-in"), "BORROWED_IN");
   assert.equal(normalizeOwnershipType("borrowed in"), "BORROWED_IN");
@@ -45,6 +46,7 @@ test("inventory domain status helpers preserve contextual legacy semantics", () 
   assert.equal(isSpoolStatusEmptyOrLost("lost"), true);
   assert.equal(isSpoolStatusDeleted("deleted"), true);
   assert.equal(isSpoolStatusUnavailableForSlot("BORROWED"), true);
+  assert.equal(isSpoolStatusUnavailableForSlot("loaned out"), true);
   assert.equal(isSpoolStatusUnavailableForSlot("MISSING"), true);
   assert.equal(isSpoolStatusUnavailableForSlot("LEGACY_ACTIVE"), false);
   assert.equal(isSpoolStatusRfidMatchable("EMPTY"), true);

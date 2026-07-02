@@ -1,5 +1,10 @@
 import { fetchCachedLibrarySyncSpools } from "./tauri_client";
-import { isSpoolStatusLoanable, normalizeOwnershipType } from "./inventory_domain";
+import {
+  isSpoolStatusLoanable,
+  normalizeOwnershipType,
+  normalizeSpoolStatus,
+  type SpoolStatus,
+} from "./inventory_domain";
 import { loadPrinterOverviewData } from "./printer_data_source";
 import { loadSpoolRowsPage } from "./spool_data_source";
 import { sortSpoolsAlphabetically } from "./spool_sort";
@@ -24,7 +29,7 @@ export type LoanableSpool = {
   filamentName: string;
   colorName: string;
   hexColor?: string | null;
-  status: string;
+  status: SpoolStatus;
   remainingGrams?: number | null;
   spoolTareWeightGrams?: number | null;
   location?: string | null;
@@ -64,7 +69,7 @@ export function buildLoanableSpoolCandidates(
       filamentName: row.master.filament_name,
       colorName: row.master.color_name,
       hexColor: row.master.hex_color ?? null,
-      status: row.spool.status,
+      status: normalizeSpoolStatus(row.spool.status),
       remainingGrams: row.spool.remaining_g ?? row.spool.current_weight_g ?? null,
       spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
       location: row.spool.location_id ?? null,

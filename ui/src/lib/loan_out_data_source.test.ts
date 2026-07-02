@@ -83,7 +83,7 @@ test("buildLoanableSpoolCandidates skips assigned, borrowed-in, and unavailable 
   const candidates = buildLoanableSpoolCandidates(
     [
       spoolRow("spool-a"),
-      spoolRow("spool-b"),
+      spoolRow("spool-b", { status: "in-stock" }),
       spoolRow("spool-c", { ownership_type: "BORROWED_IN" }),
       spoolRow("spool-d", { status: "EMPTY" }),
     ],
@@ -91,6 +91,7 @@ test("buildLoanableSpoolCandidates skips assigned, borrowed-in, and unavailable 
   );
 
   assert.deepEqual(candidates.map((spool) => spool.id), ["spool-b"]);
+  assert.equal(candidates[0]?.status, "IN_STOCK");
   assert.equal(candidates[0]?.remainingGrams, 850);
   assert.equal(candidates[0]?.spoolTareWeightGrams, 200);
 });

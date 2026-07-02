@@ -14,6 +14,9 @@ export function parseSpoolStatus(raw?: string | null): SpoolStatus | null {
   if (status === "IN_USE" || status === "ASSIGNED") {
     return "ASSIGNED";
   }
+  if (status === "LOANED_OUT" || status === "LOANED") {
+    return "BORROWED";
+  }
   if (status === "BORROWED" || status === "EMPTY" || status === "LOST") {
     return status;
   }

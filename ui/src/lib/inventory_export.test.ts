@@ -78,3 +78,28 @@ test("buildInventoryExportJson mirrors the settings export payload", () => {
     },
   ]);
 });
+
+test("inventory export normalizes legacy spool status values", () => {
+  const legacyRow = createRow({ spool: { status: "loaned out" } });
+
+  assert.equal(
+    buildInventoryExportCsv([legacyRow]),
+    [
+      "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code",
+      "spool-1,PLA,Basic PLA,Blue,BORROWED,842,Shelf A,QR-1",
+    ].join("\n"),
+  );
+  assert.deepEqual(JSON.parse(buildInventoryExportJson([legacyRow])), [
+    {
+      spool_id: "spool-1",
+      material: "PLA",
+      filament_name: "Basic PLA",
+      color_name: "Blue",
+      status: "BORROWED",
+      remaining_g: 842,
+      location: "Shelf A",
+      qr_code: "QR-1",
+    },
+  ]);
+  assert.equal(legacyRow.spool.status, "loaned out");
+});
