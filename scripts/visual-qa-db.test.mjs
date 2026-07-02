@@ -7,6 +7,7 @@ import Database from "better-sqlite3";
 import {
   APP_DB_PATH_ENV_VAR,
   VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE,
+  VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES,
   VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE,
   VISUAL_QA_PROFILE_BASE,
   VISUAL_QA_PROFILE_RICH,
@@ -43,6 +44,10 @@ test("normalizeVisualQaDatabaseFixtureScenario accepts slot onboarding aliases",
   assert.equal(
     normalizeVisualQaDatabaseFixtureScenario("rfid-override"),
     VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE,
+  );
+  assert.equal(
+    normalizeVisualQaDatabaseFixtureScenario("missing-swatches"),
+    VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES,
   );
   assert.equal(normalizeVisualQaDatabaseFixtureScenario("settings-general"), null);
 });
@@ -593,6 +598,66 @@ test("applyVisualQaDatabaseFixture creates a printer RFID override state on copi
       assert.equal(tray.tray_uuid, slot.rfid_override_tray_uuid);
       assert.equal(tray.color_hex, slot.rfid_override_color_hex);
       assert.equal(tray.last_identity_seen_at, "2026-07-01T12:00:00.000Z");
+    } finally {
+      updatedDb.close();
+    }
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("applyVisualQaDatabaseFixture creates catalog missing-swatch review state on copies", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-catalog-swatch-"));
+  try {
+    const dbPath = join(dir, "fixture.db");
+    const db = new Database(dbPath);
+    db.exec(`
+      CREATE TABLE filament_master_list (
+        id TEXT PRIMARY KEY,
+        material TEXT NOT NULL,
+        filament_name TEXT NOT NULL,
+        color_name TEXT NOT NULL,
+        hex_color TEXT,
+        vendor TEXT NOT NULL DEFAULT 'Bambu',
+        is_discontinued INTEGER NOT NULL DEFAULT 0,
+        catalog_user_edited INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+    const insert = db.prepare(
+      `INSERT INTO filament_master_list
+       (id, vendor, material, filament_name, color_name, hex_color, is_discontinued)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    );
+    insert.run("esun_red", "eSUN", "PLA", "PLA+", "Fire Engine Red", "#C1121F", 0);
+    insert.run("bambu_green", "Bambu", "PLA", "PLA Basic", "Bambu Green", "#00AE42", 0);
+    insert.run("already_missing", "Bambu", "PETG", "PETG Basic", "No Color", null, 0);
+    insert.run("historical_blue", "eSUN", "PLA", "PLA+", "Old Blue", "#2255FF", 1);
+    db.close();
+
+    const fixture = await applyVisualQaDatabaseFixture(
+      dbPath,
+      "settings-catalog-swatch-review",
+    );
+    assert.equal(fixture?.fixture, VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES);
+    assert.equal(fixture?.count, 2);
+    assert.deepEqual(fixture?.vendors, ["eSUN", "Bambu"]);
+
+    const updatedDb = new Database(dbPath, { readonly: true });
+    try {
+      const rows = updatedDb
+        .prepare(
+          `SELECT id, hex_color, catalog_user_edited
+           FROM filament_master_list
+           ORDER BY id ASC`,
+        )
+        .all();
+      assert.deepEqual(rows, [
+        { id: "already_missing", hex_color: null, catalog_user_edited: 0 },
+        { id: "bambu_green", hex_color: null, catalog_user_edited: 1 },
+        { id: "esun_red", hex_color: null, catalog_user_edited: 1 },
+        { id: "historical_blue", hex_color: "#2255FF", catalog_user_edited: 0 },
+      ]);
     } finally {
       updatedDb.close();
     }

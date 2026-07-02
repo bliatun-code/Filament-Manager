@@ -53,6 +53,10 @@ test("initial page resolver opens the page requested by fixtures and visual QA s
     "settings",
   );
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-catalog"), "settings");
+  assert.equal(
+    resolveInitialPageFromSearch("bfm_visual_qa=settings-catalog-swatch-review"),
+    "settings",
+  );
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-maintenance"), "settings");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=statistics-overview"), "statistics");
   assert.equal(resolveInitialPageFromSearch("?bfm_inventory_fixture=list"), "dashboard");

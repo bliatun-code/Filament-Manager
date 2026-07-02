@@ -11,6 +11,8 @@ export const VISUAL_QA_PROFILE_BASE = "base";
 export const VISUAL_QA_PROFILE_RICH = "rich";
 export const VISUAL_QA_FIXTURE_PRINTER_SLOT_ONBOARDING = "printer-slot-onboarding";
 export const VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE = "printer-rfid-override";
+export const VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES =
+  "settings-catalog-missing-swatches";
 export const VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE = "trusted-lan-interface";
 
 const LOCAL_APP_SUPPORT_DB = process.env.HOME
@@ -195,6 +197,11 @@ export function normalizeVisualQaDatabaseFixtureScenario(scenario) {
     case "slot-rfid-override":
     case "printer-slot-rfid-override":
       return VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE;
+    case "settings-catalog-swatch-review":
+    case "settings-catalog-missing-swatches":
+    case "catalog-swatch-review":
+    case "missing-swatches":
+      return VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES;
     default:
       return null;
   }
@@ -855,6 +862,67 @@ async function applyPrinterRfidOverrideFixtureWithBetterSqlite(dbPath, options =
   }
 }
 
+async function applySettingsCatalogMissingSwatchesFixtureWithBetterSqlite(dbPath) {
+  const module = await import("better-sqlite3");
+  const Database = module.default ?? module;
+  const db = new Database(dbPath);
+  try {
+    const columns = new Set(
+      db
+        .prepare("PRAGMA table_info(filament_master_list)")
+        .all()
+        .map((row) => String(row.name)),
+    );
+    const rows = db
+      .prepare(
+        `SELECT id, vendor, material, filament_name, color_name
+         FROM filament_master_list
+         WHERE COALESCE(is_discontinued, 0) = 0
+           AND COALESCE(hex_color, '') <> ''
+         ORDER BY
+           CASE
+             WHEN lower(vendor) LIKE '%esun%' THEN 0
+             WHEN lower(vendor) LIKE '%bambu%' THEN 1
+             ELSE 2
+           END,
+           material,
+           filament_name,
+           color_name
+         LIMIT 8`,
+      )
+      .all();
+    if (rows.length === 0) {
+      throw new Error("No catalog masters with saved swatches were found for swatch-review QA.");
+    }
+
+    const updateParts = ["hex_color = NULL"];
+    if (columns.has("catalog_user_edited")) {
+      updateParts.push("catalog_user_edited = 1");
+    }
+    if (columns.has("updated_at")) {
+      updateParts.push("updated_at = datetime('now')");
+    }
+    const clearSwatch = db.prepare(
+      `UPDATE filament_master_list SET ${updateParts.join(", ")} WHERE id = ?`,
+    );
+    const transaction = db.transaction(() => {
+      for (const row of rows) {
+        clearSwatch.run(row.id);
+      }
+    });
+    transaction();
+
+    return {
+      fixture: VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES,
+      count: rows.length,
+      masterIds: rows.map((row) => String(row.id)),
+      vendors: [...new Set(rows.map((row) => String(row.vendor)).filter(Boolean))],
+    };
+  } finally {
+    db.close();
+  }
+}
+
 export async function applyVisualQaDatabaseFixture(dbPath, scenario, options = {}) {
   const fixture = normalizeVisualQaDatabaseFixtureScenario(scenario);
   if (!fixture) {
@@ -868,6 +936,9 @@ export async function applyVisualQaDatabaseFixture(dbPath, scenario, options = {
   }
   if (fixture === VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE) {
     return applyPrinterRfidOverrideFixtureWithBetterSqlite(dbPath, options);
+  }
+  if (fixture === VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES) {
+    return applySettingsCatalogMissingSwatchesFixtureWithBetterSqlite(dbPath);
   }
   return null;
 }
@@ -1019,6 +1090,9 @@ export function formatVisualQaDatasetReport({
         lines.push(
           `  - ${fixture.fixture}: ${fixture.interfaceName} ${fixture.interfaceAddress}${previous}`,
         );
+      } else if (fixture.fixture === VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES) {
+        const vendors = fixture.vendors?.length ? ` across ${fixture.vendors.join(", ")}` : "";
+        lines.push(`  - ${fixture.fixture}: cleared ${fixture.count} swatch(es)${vendors}`);
       } else {
         lines.push(`  - ${fixture.fixture ?? "unknown"}`);
       }

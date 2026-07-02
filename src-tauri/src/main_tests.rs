@@ -92,7 +92,7 @@ fn migration_probe_spool_count(path: &Path) -> Result<i64, String> {
 
 #[test]
 #[cfg(debug_assertions)]
-fn visual_qa_scenario_normalizer_accepts_library_network_details() {
+fn visual_qa_scenario_normalizer_accepts_stateful_settings_scenarios() {
     use super::normalize_visual_qa_scenario;
 
     assert_eq!(
@@ -102,6 +102,10 @@ fn visual_qa_scenario_normalizer_accepts_library_network_details() {
     assert_eq!(
         normalize_visual_qa_scenario("settings-library-network-details"),
         Some("settings-library-network-details")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("missing-swatches"),
+        Some("settings-catalog-swatch-review")
     );
 }
 

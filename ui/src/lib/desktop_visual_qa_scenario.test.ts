@@ -61,6 +61,10 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "settings-printer-diagnostics-paused",
   );
   assert.equal(normalizeDesktopVisualQaScenario("filament-catalog"), "settings-catalog");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("missing-swatches"),
+    "settings-catalog-swatch-review",
+  );
   assert.equal(normalizeDesktopVisualQaScenario("program-maintenance"), "settings-maintenance");
   assert.equal(normalizeDesktopVisualQaScenario("usage-statistics"), "statistics-overview");
   assert.equal(normalizeDesktopVisualQaScenario("unknown"), null);
@@ -101,6 +105,10 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
     "settings",
   );
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-catalog"), "settings");
+  assert.equal(
+    desktopVisualQaInitialPage("?bfm_visual_qa=settings-catalog-swatch-review"),
+    "settings",
+  );
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-maintenance"), "settings");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=statistics-overview"), "statistics");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=bambu-batch-add"), "inventory");
@@ -127,6 +135,10 @@ test("desktop visual QA settings scenarios resolve to the intended tab", () => {
     "PRINTERS",
   );
   assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-catalog"), "CATALOG");
+  assert.equal(
+    desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-catalog-swatch-review"),
+    "CATALOG",
+  );
   assert.equal(
     desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-maintenance"),
     "MAINTENANCE",

@@ -19,6 +19,7 @@ const VISUAL_QA_SCENARIO_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
 const DESKTOP_VISUAL_QA_DATABASE_FIXTURE_SCENARIOS = new Set([
   "printer-slot-onboarding",
   "printer-rfid-override",
+  "settings-catalog-swatch-review",
 ]);
 const DESKTOP_VISUAL_QA_SCENARIOS = [
   "dashboard-overview",
@@ -43,6 +44,7 @@ const DESKTOP_VISUAL_QA_SCENARIOS = [
   "settings-printer-diagnostics-fields",
   "settings-printer-diagnostics-paused",
   "settings-catalog",
+  "settings-catalog-swatch-review",
   "settings-maintenance",
   "statistics-overview",
 ];
@@ -164,6 +166,11 @@ export function normalizeDesktopVisualQaScenario(value) {
     case "catalog-settings":
     case "filament-catalog":
       return "settings-catalog";
+    case "settings-catalog-swatch-review":
+    case "settings-catalog-missing-swatches":
+    case "catalog-swatch-review":
+    case "missing-swatches":
+      return "settings-catalog-swatch-review";
     case "settings-maintenance":
     case "maintenance-settings":
     case "program-maintenance":
@@ -175,7 +182,7 @@ export function normalizeDesktopVisualQaScenario(value) {
       return "statistics-overview";
     default:
       throw new Error(
-        `Unknown desktop visual QA scenario "${value}". Use dashboard-overview, inventory-overview, add-filament, loan-out, loans-overview, selected-roll, rfid-capture, return-loan, printer-board, printer-slot-assignment, printer-slot-onboarding, printer-rfid-override, printer-slot-replacement, printer-slot-clear, bambu-batch-add, settings-general, settings-library, settings-library-network-details, settings-printer-diagnostics, settings-printer-diagnostics-fields, settings-printer-diagnostics-paused, settings-catalog, settings-maintenance, or statistics-overview.`,
+        `Unknown desktop visual QA scenario "${value}". Use dashboard-overview, inventory-overview, add-filament, loan-out, loans-overview, selected-roll, rfid-capture, return-loan, printer-board, printer-slot-assignment, printer-slot-onboarding, printer-rfid-override, printer-slot-replacement, printer-slot-clear, bambu-batch-add, settings-general, settings-library, settings-library-network-details, settings-printer-diagnostics, settings-printer-diagnostics-fields, settings-printer-diagnostics-paused, settings-catalog, settings-catalog-swatch-review, settings-maintenance, or statistics-overview.`,
       );
   }
 }

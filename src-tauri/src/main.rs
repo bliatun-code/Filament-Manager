@@ -348,6 +348,10 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         | "printer-diagnostics-paused"
         | "bambu-live-diagnostics-paused" => Some("settings-printer-diagnostics-paused"),
         "settings-catalog" | "catalog-settings" | "filament-catalog" => Some("settings-catalog"),
+        "settings-catalog-swatch-review"
+        | "settings-catalog-missing-swatches"
+        | "catalog-swatch-review"
+        | "missing-swatches" => Some("settings-catalog-swatch-review"),
         "settings-maintenance" | "maintenance-settings" | "program-maintenance" => {
             Some("settings-maintenance")
         }

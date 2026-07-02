@@ -25,6 +25,7 @@ export const DESKTOP_VISUAL_QA_SCENARIOS = [
   "settings-printer-diagnostics-fields",
   "settings-printer-diagnostics-paused",
   "settings-catalog",
+  "settings-catalog-swatch-review",
   "settings-maintenance",
   "statistics-overview",
 ] as const;
@@ -139,6 +140,11 @@ export function normalizeDesktopVisualQaScenario(
     case "catalog-settings":
     case "filament-catalog":
       return "settings-catalog";
+    case "settings-catalog-swatch-review":
+    case "settings-catalog-missing-swatches":
+    case "catalog-swatch-review":
+    case "missing-swatches":
+      return "settings-catalog-swatch-review";
     case "settings-maintenance":
     case "maintenance-settings":
     case "program-maintenance":
@@ -207,6 +213,7 @@ export function desktopVisualQaInitialPage(
     scenario === "settings-printer-diagnostics-fields" ||
     scenario === "settings-printer-diagnostics-paused" ||
     scenario === "settings-catalog" ||
+    scenario === "settings-catalog-swatch-review" ||
     scenario === "settings-maintenance"
   ) {
     return "settings";
@@ -238,7 +245,7 @@ export function desktopVisualQaInitialSettingsTab(
   ) {
     return "PRINTERS";
   }
-  if (scenario === "settings-catalog") {
+  if (scenario === "settings-catalog" || scenario === "settings-catalog-swatch-review") {
     return "CATALOG";
   }
   if (scenario === "settings-maintenance") {
