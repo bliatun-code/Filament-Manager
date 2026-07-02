@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import type { InventorySpool } from "./inventory_list_model";
-import { buildSpoolQrArtifacts } from "./spool_qr_artifacts";
+import type { SpoolQrArtifacts } from "./spool_qr_artifacts";
+
+type SpoolQrArtifactsModule = typeof import("./spool_qr_artifacts");
+
+let spoolQrArtifactsModulePromise: Promise<SpoolQrArtifactsModule> | null = null;
+
+function loadSpoolQrArtifactsModule(): Promise<SpoolQrArtifactsModule> {
+  spoolQrArtifactsModulePromise ??= import("./spool_qr_artifacts");
+  return spoolQrArtifactsModulePromise;
+}
 
 type InventorySpoolQrArtifactsInput = {
   clientHostBaseUrl: string | null;
@@ -20,7 +29,8 @@ export function useInventorySpoolQrArtifacts({
   const [target, setTarget] = useState<string | null>(null);
   const [companionShellUrl, setCompanionShellUrl] = useState<string | null>(null);
 
-  const buildArtifacts = useCallback(async (spool: InventorySpool) => {
+  const buildArtifacts = useCallback(async (spool: InventorySpool): Promise<SpoolQrArtifacts> => {
+    const { buildSpoolQrArtifacts } = await loadSpoolQrArtifactsModule();
     return buildSpoolQrArtifacts({
       spoolId: spool.id,
       clientReadOnly,
