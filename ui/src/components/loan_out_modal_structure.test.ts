@@ -21,6 +21,9 @@ test("LoanOutModal uses shared wide modal layout rhythm", () => {
   assert.match(source, /inventorySwatchInsetStyle/);
   assert.match(source, /SwatchSelectionPreviewHeader/);
   assert.match(source, /swatchColor=\{selectedSpool\.hexColor\}/);
+  assert.match(source, /modalFormInputClassName/);
+  assert.match(source, /modalDetailLabelClassName/);
+  assert.match(source, /modalDetailValueClassName/);
   assert.match(source, /hoveredLoanSpoolId/);
   assert.match(source, /setHoveredLoanSpoolId\(spool\.id\)/);
   assert.match(source, /setHoveredLoanSpoolId\(null\)/);
@@ -28,6 +31,9 @@ test("LoanOutModal uses shared wide modal layout rhythm", () => {
   assert.match(source, /loanOutSpoolButtonClassName/);
   assert.match(stylesSource, /loanOutSpoolButtonClassName/);
   assert.match(stylesSource, /focus-visible:border-sky-300/);
+  assert.doesNotMatch(stylesSource, /formInputClassName/);
+  assert.doesNotMatch(stylesSource, /detailLabelClassName/);
+  assert.doesNotMatch(stylesSource, /detailValueClassName/);
   assert.doesNotMatch(stylesSource, /focus:border-slate-400/);
   assert.doesNotMatch(stylesSource, /dark:focus:border-slate-500/);
   assert.doesNotMatch(source, /modalPanelClassName\("wide"/);

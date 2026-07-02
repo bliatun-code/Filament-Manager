@@ -7,6 +7,7 @@ import {
 } from "../lib/printer_live_display";
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
 import type { SlotRfidOverridePrompt } from "../lib/printer_slot_model";
+import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import { AppModal } from "./app_modal";
 import { ModalActionButton } from "./modal_action_button";
 import { modalDetailLabelClassName, ModalHeader } from "./modal_chrome";
@@ -64,7 +65,10 @@ export function RfidOverrideModal({
             )}
           </div>
 
-          <div className="surface-card space-y-3">
+          <div
+            className="surface-card space-y-3"
+            style={inventorySwatchPanelStyle(prompt.spool.master.hex_color, resolvedTheme)}
+          >
             <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
               {formatFilamentDisplayTitle(
                 prompt.spool.master.material,

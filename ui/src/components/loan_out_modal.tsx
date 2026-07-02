@@ -6,8 +6,13 @@ import {
   inventoryTwoColumnModalGridClassName,
   inventoryWideModalPanelClassName,
 } from "./inventory_modal_chrome";
+import { modalFormInputClassName } from "./form_control_class";
 import { ModalActionButton } from "./modal_action_button";
-import { ModalHeader } from "./modal_chrome";
+import {
+  ModalHeader,
+  modalDetailLabelClassName,
+  modalDetailValueClassName,
+} from "./modal_chrome";
 import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { VendorBadge } from "./vendor_badge";
 import {
@@ -30,9 +35,6 @@ import {
 } from "../lib/loan_out_data_source";
 import {
   countPillClassName,
-  detailLabelClassName,
-  detailValueClassName,
-  formInputClassName,
   loanOutSpoolButtonClassName,
   panelCardClassName,
   panelSubtitleClassName,
@@ -345,11 +347,11 @@ export function LoanOutModal({
                         className="rounded-xl border px-3 py-2.5"
                         style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
                       >
-                        <div className={detailLabelClassName}>
+                        <div className={modalDetailLabelClassName}>
                           {t("inventory.reference", "Reference")}
                         </div>
                         <div
-                          className={`${detailValueClassName} font-mono`}
+                          className={`${modalDetailValueClassName} font-mono`}
                           title={`#${selectedSpool.id}`}
                         >
                           {selectedReferenceLabel}
@@ -359,10 +361,10 @@ export function LoanOutModal({
                         className="rounded-xl border px-3 py-2.5"
                         style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
                       >
-                        <div className={detailLabelClassName}>
+                        <div className={modalDetailLabelClassName}>
                           {t("inventory.remaining", "Remaining")}
                         </div>
-                        <div className={detailValueClassName}>
+                        <div className={modalDetailValueClassName}>
                           {formatLoanOutGrams(selectedSpool.remainingGrams)}
                         </div>
                       </div>
@@ -370,10 +372,13 @@ export function LoanOutModal({
                         className="rounded-xl border px-3 py-2.5 sm:col-span-2"
                         style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
                       >
-                        <div className={detailLabelClassName}>
+                        <div className={modalDetailLabelClassName}>
                           {t("inventory.location", "Location")}
                         </div>
-                        <div className={detailValueClassName} title={selectedPlacementLabel ?? ""}>
+                        <div
+                          className={modalDetailValueClassName}
+                          title={selectedPlacementLabel ?? ""}
+                        >
                           {selectedPlacementLabel}
                         </div>
                       </div>
@@ -399,7 +404,7 @@ export function LoanOutModal({
                             type="text"
                             value={borrowerName}
                             onChange={(event) => setBorrowerName(event.target.value)}
-                            className={formInputClassName}
+                            className={modalFormInputClassName}
                             placeholder={t("inventory.borrowerName", "Borrower name")}
                             disabled={!tauri || busy}
                           />
@@ -417,7 +422,7 @@ export function LoanOutModal({
                             min={0}
                             value={gramsOut}
                             onChange={(event) => setGramsOut(event.target.value)}
-                            className={formInputClassName}
+                            className={modalFormInputClassName}
                             placeholder={t("inventory.outG", "Out g")}
                             disabled={!tauri || busy}
                           />
@@ -431,7 +436,7 @@ export function LoanOutModal({
                         <textarea
                           value={note}
                           onChange={(event) => setNote(event.target.value)}
-                          className={`${formInputClassName} min-h-[104px] resize-y`}
+                          className={`${modalFormInputClassName} min-h-[104px] resize-y`}
                           placeholder={t("inventory.loanNoteOptional", "Loan note (optional)")}
                           disabled={!tauri || busy}
                         />

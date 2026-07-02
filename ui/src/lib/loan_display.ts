@@ -1,9 +1,9 @@
-import {
-  buildSwatchSurfaceStyle,
-  toSwatchColor,
-  type SwatchSurfaceStrength,
-} from "./color_utils";
+import { swatchCssBackground } from "./color_utils";
 import { normalizeDisplayToken } from "./display_format";
+import {
+  inventorySwatchCardStyle,
+  inventorySwatchInsetStyle,
+} from "./inventory_swatch_style";
 import { normalizeLoanDirection, type LoanDirection } from "./inventory_domain";
 import { isLoanCurrentlyActive, isLoanReturned } from "./loan_state";
 import { resolveSpoolTareWeight } from "./spool_weight";
@@ -18,9 +18,9 @@ export type LoanDirectionFilter = "ALL" | LoanDirection;
 type LoanSwatchSurfaceTone = "card" | "inset";
 
 export const loanFactLabelClassName =
-  "text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400";
+  "text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400";
 export const loanFactValueClassName =
-  "mt-1 text-[13px] font-semibold leading-snug text-slate-900 dark:text-slate-50";
+  "mt-1 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-50";
 
 export function formatGrams(value?: number | null): string {
   return formatWeightGrams(value, "zero");
@@ -49,62 +49,14 @@ export function loanSwatchSurfaceStyle(
   tone: LoanSwatchSurfaceTone = "card",
   resolvedTheme: ResolvedTheme = "light",
 ) {
-  const darkTheme = resolvedTheme === "dark";
-  const strength =
-    darkTheme
-      ? tone === "inset"
-        ? {
-            top: 0.28,
-            mid: 0.14,
-            bottom: 0.06,
-            base: "rgb(13, 21, 39)",
-            shadow: 0.34,
-            border: 0.4,
-            ambientShadow: "rgba(2, 6, 23, 0.44)",
-            inset: "rgba(255, 255, 255, 0.028)",
-          }
-        : {
-            top: 0.32,
-            mid: 0.16,
-            bottom: 0.08,
-            base: "rgb(10, 17, 31)",
-            shadow: 0.38,
-            border: 0.44,
-            ambientShadow: "rgba(2, 6, 23, 0.5)",
-            inset: "rgba(255, 255, 255, 0.03)",
-          }
-      : tone === "inset"
-        ? {
-            top: 0.1,
-            mid: 0.05,
-            bottom: 0.02,
-            base: "rgba(253, 254, 255, 0.97)",
-            shadow: 0.2,
-            border: 0.16,
-            ambientShadow: "rgba(148, 163, 184, 0.08)",
-            inset: "rgba(255, 255, 255, 0.8)",
-          }
-        : {
-            top: 0.12,
-            mid: 0.06,
-            bottom: 0.022,
-            base: "rgba(252, 254, 255, 0.95)",
-            shadow: 0.24,
-            border: 0.18,
-            ambientShadow: "rgba(148, 163, 184, 0.08)",
-            inset: "rgba(255, 255, 255, 0.8)",
-          };
-
-  return buildSwatchSurfaceStyle(raw, strength satisfies SwatchSurfaceStrength, {
-    midStop: darkTheme ? "24%" : "38%",
-    bottomStop: darkTheme ? "66%" : "74%",
-  });
+  return tone === "inset"
+    ? inventorySwatchInsetStyle(raw, resolvedTheme)
+    : inventorySwatchCardStyle(raw, resolvedTheme);
 }
 
 export function loanSwatchPreviewStyle(raw: string | null | undefined) {
-  const swatch = toSwatchColor(raw);
   return {
-    background: `linear-gradient(145deg, ${swatch} 0%, ${swatch}CC 58%, #0f172a33 100%)`,
+    background: swatchCssBackground(raw),
   } as const;
 }
 

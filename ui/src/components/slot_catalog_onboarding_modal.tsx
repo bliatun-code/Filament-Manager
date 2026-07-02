@@ -1,6 +1,7 @@
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import { useI18n, type Locale } from "../lib/i18n";
 import type { OwnershipType } from "../lib/inventory_list_model";
+import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import {
   formatDateTime,
   swatchCssBackground,
@@ -126,7 +127,10 @@ export function SlotCatalogOnboardingModal({
             </div>
           ) : null}
 
-          <div className="surface-card space-y-4">
+          <div
+            className="surface-card space-y-4"
+            style={inventorySwatchPanelStyle(prompt.master.hex_color, resolvedTheme)}
+          >
             <div className="flex min-w-0 items-start gap-3">
               <span
                 className="mt-1 h-10 w-10 shrink-0 rounded-lg border border-slate-200 dark:border-slate-700"

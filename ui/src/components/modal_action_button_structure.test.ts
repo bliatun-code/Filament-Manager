@@ -33,6 +33,8 @@ test("modal action buttons share secondary and primary chrome", () => {
   assert.match(actionButtonComponent, /inventorySwatchActionButtonStyle/);
   assert.match(modalChrome, /function ModalFactCard/);
   assert.match(modalChrome, /modalFactCardClassName/);
+  assert.match(rfidOverrideModal, /inventorySwatchPanelStyle/);
+  assert.match(slotOnboardingModal, /inventorySwatchPanelStyle/);
   assert.match(createActions, /<ModalActionButton/);
   assert.match(createActions, /variant="solid"/);
   assert.match(createActions, /size="roomy"/);
