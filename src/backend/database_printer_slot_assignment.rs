@@ -3,7 +3,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_text::normalize_optional_text;
 use super::printer_slot_location::{
-    format_printer_slot_location, PRINTER_SLOT_LOCATION_PREDICATE_SQL,
+    format_printer_slot_location, is_printer_slot_location, PRINTER_SLOT_LOCATION_PREDICATE_SQL,
 };
 use super::spool_defaults::SPOOL_STATUS_ASSIGNED_PREDICATE_SQL;
 
@@ -131,6 +131,7 @@ fn assign_spool_location(
     slot_id: &str,
 ) -> InventoryResult<()> {
     let location = format_printer_slot_location(printer_name, slot_id);
+    debug_assert!(is_printer_slot_location(&location));
     conn.execute(
         "INSERT INTO inventory_locations (id, name, type)
          VALUES (?1, ?2, 'PRINTER_SLOT')
