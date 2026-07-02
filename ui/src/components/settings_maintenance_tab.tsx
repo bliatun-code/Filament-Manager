@@ -1,6 +1,12 @@
 import type { ChangeEvent, RefObject } from "react";
 import { SettingsBackupValidationSummary } from "./settings_backup_validation_summary";
-import { SettingsMetricTile } from "./settings_ui";
+import {
+  SettingsMetricTile,
+  SettingsSectionBody,
+  SettingsSectionControls,
+  SettingsSectionHeader,
+  SettingsSectionPanel,
+} from "./settings_ui";
 import { settingsActionButtonClass } from "../lib/settings_ui_classes";
 import type { BackupValidationStats, CatalogResetStats } from "../lib/tauri_client";
 
@@ -71,39 +77,37 @@ export function SettingsMaintenanceTab({
       <div className="section-eyebrow">
         {t("settings.maintenance", "Maintenance")}
       </div>
-      <div className="surface-subtle mt-4 overflow-hidden p-0">
-        <div className="border-b border-slate-200/80 px-5 py-5 dark:border-slate-700/80">
-          <div className="max-w-3xl">
-            <div className="section-eyebrow">
-              {t("settings.backupTitle", "Backup")}
-            </div>
-            <div className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+      <SettingsSectionPanel className="mt-4">
+        <SettingsSectionHeader
+          eyebrow={t("settings.backupTitle", "Backup")}
+          description={t(
+            "settings.backupDescription",
+            "Export a full JSON backup with inventory, history and configured printers.",
+          )}
+          descriptionClassName="text-slate-700 dark:text-slate-300"
+          metrics={
+            <>
+              <SettingsMetricTile label={t("nav.printers", "Printers")} value={printerCount} />
+              <SettingsMetricTile label={t("settings.totalCatalog", "Catalog")} value={catalogCount} />
+              <SettingsMetricTile
+                label={t("settings.missingSwatches", "Missing swatches")}
+                value={missingSwatchCount}
+              />
+            </>
+          }
+        >
+          {settingsClientReadOnly ? (
+            <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-900 dark:text-sky-100">
               {t(
-                "settings.backupDescription",
-                "Export a full JSON backup with inventory, history and configured printers.",
+                "settings.clientHostOnlyMaintenance",
+                "This device is a client. Full backup is exported from the paired host. Import, reset and repair actions must still be run on the host so library data stays in one place.",
               )}
             </div>
-            {settingsClientReadOnly ? (
-              <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-900 dark:text-sky-100">
-                {t(
-                  "settings.clientHostOnlyMaintenance",
-                  "This device is a client. Full backup is exported from the paired host. Import, reset and repair actions must still be run on the host so library data stays in one place.",
-                )}
-              </div>
-            ) : null}
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <SettingsMetricTile label={t("nav.printers", "Printers")} value={printerCount} />
-            <SettingsMetricTile label={t("settings.totalCatalog", "Catalog")} value={catalogCount} />
-            <SettingsMetricTile
-              label={t("settings.missingSwatches", "Missing swatches")}
-              value={missingSwatchCount}
-            />
-          </div>
-        </div>
+          ) : null}
+        </SettingsSectionHeader>
 
-        <div className="grid gap-4 p-5 lg:grid-cols-[1.15fr_0.95fr]">
-          <div className="rounded-lg border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
+        <SettingsSectionBody className="grid gap-4 p-5 lg:grid-cols-[1.15fr_0.95fr]">
+          <SettingsSectionControls>
             <div className="section-eyebrow">
               {t("settings.backupExportGroup", "Backup and export")}
             </div>
@@ -133,9 +137,9 @@ export function SettingsMaintenanceTab({
                 {t("settings.exportInventoryJson", "Export inventory JSON")}
               </button>
             </div>
-          </div>
+          </SettingsSectionControls>
 
-          <div className="rounded-lg border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
+          <SettingsSectionControls>
             <div className="section-eyebrow">
               {t("settings.backupImportGroup", "Import and validation")}
             </div>
@@ -173,8 +177,8 @@ export function SettingsMaintenanceTab({
                 t={t}
               />
             ) : null}
-          </div>
-        </div>
+          </SettingsSectionControls>
+        </SettingsSectionBody>
         <input
           ref={backupImportInputRef}
           type="file"
@@ -189,7 +193,7 @@ export function SettingsMaintenanceTab({
           className="hidden"
           onChange={onValidateBackupFile}
         />
-      </div>
+      </SettingsSectionPanel>
 
       <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-700">
         <div className="section-eyebrow">

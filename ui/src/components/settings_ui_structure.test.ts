@@ -3,8 +3,53 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const source = readFileSync(new URL("./settings_ui.tsx", import.meta.url), "utf8");
+const catalogRefreshPanelSource = readFileSync(
+  new URL("../pages/settings_catalog_refresh_panel.tsx", import.meta.url),
+  "utf8",
+);
+const maintenanceTabSource = readFileSync(
+  new URL("./settings_maintenance_tab.tsx", import.meta.url),
+  "utf8",
+);
+const missingSwatchesPanelSource = readFileSync(
+  new URL("./settings_missing_swatches_panel.tsx", import.meta.url),
+  "utf8",
+);
 
 test("Settings UI primitives use shared section label typography", () => {
   assert.match(source, /settingsSectionLabelClass/);
   assert.doesNotMatch(source, /tracking-\[0\.22em\]/);
+});
+
+test("settings section chrome is owned by shared primitives", () => {
+  for (const exportName of [
+    "SettingsSectionPanel",
+    "SettingsSectionHeader",
+    "SettingsSectionBody",
+    "SettingsSectionControls",
+    "SettingsSectionEmptyState",
+  ]) {
+    assert.match(source, new RegExp(`export function ${exportName}`));
+  }
+  assert.match(source, /surface-subtle overflow-hidden p-0/);
+  assert.match(source, /border-b border-slate-200\/80 px-5 py-5/);
+  assert.match(source, /rounded-lg border border-slate-200 bg-white\/75 p-4/);
+});
+
+test("settings catalog and maintenance panels use shared section chrome", () => {
+  for (const panelSource of [
+    catalogRefreshPanelSource,
+    maintenanceTabSource,
+    missingSwatchesPanelSource,
+  ]) {
+    assert.match(panelSource, /SettingsSectionPanel/);
+    assert.match(panelSource, /SettingsSectionHeader/);
+    assert.match(panelSource, /SettingsSectionBody/);
+    assert.doesNotMatch(panelSource, /surface-subtle mt-[46] overflow-hidden p-0/);
+    assert.doesNotMatch(panelSource, /border-b border-slate-200\/80 px-5 py-5/);
+    assert.doesNotMatch(
+      panelSource,
+      /rounded-lg border border-slate-200 bg-white\/75 p-4 shadow-sm/,
+    );
+  }
 });

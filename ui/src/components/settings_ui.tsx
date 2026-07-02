@@ -1,4 +1,105 @@
+import type { ReactNode } from "react";
 import { settingsSectionLabelClass } from "../lib/settings_ui_classes";
+
+function joinClassNames(...classNames: Array<string | undefined>): string {
+  return classNames.filter(Boolean).join(" ");
+}
+
+export function SettingsSectionPanel({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={joinClassNames("surface-subtle overflow-hidden p-0", className)}>
+      {children}
+    </div>
+  );
+}
+
+export function SettingsSectionHeader({
+  children,
+  description,
+  descriptionClassName = "text-slate-600 dark:text-slate-400",
+  eyebrow,
+  metrics,
+  status,
+}: {
+  children?: ReactNode;
+  description?: ReactNode;
+  descriptionClassName?: string;
+  eyebrow: ReactNode;
+  metrics?: ReactNode;
+  status?: ReactNode;
+}) {
+  return (
+    <div className="border-b border-slate-200/80 px-5 py-5 dark:border-slate-700/80">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="max-w-3xl">
+          <div className="section-eyebrow">{eyebrow}</div>
+          {description ? (
+            <div className={joinClassNames("mt-2 text-sm", descriptionClassName)}>
+              {description}
+            </div>
+          ) : null}
+          {children}
+        </div>
+        {status}
+      </div>
+      {metrics ? <div className="mt-4 grid gap-3 sm:grid-cols-3">{metrics}</div> : null}
+    </div>
+  );
+}
+
+export function SettingsSectionBody({
+  children,
+  className = "p-5",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={className}>{children}</div>;
+}
+
+export function SettingsSectionControls({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={joinClassNames(
+        "rounded-lg border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function SettingsSectionEmptyState({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={joinClassNames(
+        "surface-subtle mt-4 border-dashed px-4 py-6 text-center text-sm text-slate-600 dark:text-slate-300",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
 
 export function SettingsMetricTile({
   label,

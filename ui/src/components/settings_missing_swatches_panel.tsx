@@ -6,7 +6,14 @@ import {
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import type { MasterCatalogRow } from "../lib/tauri_client";
-import { SettingsMetricTile } from "./settings_ui";
+import {
+  SettingsMetricTile,
+  SettingsSectionBody,
+  SettingsSectionControls,
+  SettingsSectionEmptyState,
+  SettingsSectionHeader,
+  SettingsSectionPanel,
+} from "./settings_ui";
 import {
   chipButtonClass,
   settingsActionButtonClass,
@@ -56,41 +63,39 @@ export function SettingsMissingSwatchesPanel({
   const disabled = !tauri || busy || swatchBusy || catalogRefreshBusy;
 
   return (
-    <div className="surface-subtle mt-6 overflow-hidden p-0">
-      <div className="border-b border-slate-200/80 px-5 py-5 dark:border-slate-700/80">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="max-w-3xl">
-            <div className="section-eyebrow">{t("settings.swatchQuality", "Swatch quality")}</div>
-            <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-              {t(
-                "settings.swatchQualityHelp",
-                "Review missing swatches here, then save manual fixes or fill the visible list in bulk.",
-              )}
-            </div>
-          </div>
+    <SettingsSectionPanel className="mt-6">
+      <SettingsSectionHeader
+        eyebrow={t("settings.swatchQuality", "Swatch quality")}
+        description={t(
+          "settings.swatchQualityHelp",
+          "Review missing swatches here, then save manual fixes or fill the visible list in bulk.",
+        )}
+        status={
           <div className={inlineStatusSignalClass("neutral", "text-sm")}>
             {t("settings.missingSwatches", "Missing swatches")}: {missingSwatchCount}
           </div>
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <SettingsMetricTile
-            label={t("settings.missingSwatches", "Missing swatches")}
-            value={missingSwatchCount}
-          />
-          <SettingsMetricTile
-            label={t("settings.visibleMissing", "Visible missing")}
-            value={visibleMissingSwatchMasters.length}
-          />
-          <SettingsMetricTile
-            label={t("inventory.vendorGroup", "Vendor")}
-            value={visibleMissingSwatchVendorCount}
-            hint={t("settings.missingSwatches", "Missing swatches")}
-          />
-        </div>
-      </div>
+        }
+        metrics={
+          <>
+            <SettingsMetricTile
+              label={t("settings.missingSwatches", "Missing swatches")}
+              value={missingSwatchCount}
+            />
+            <SettingsMetricTile
+              label={t("settings.visibleMissing", "Visible missing")}
+              value={visibleMissingSwatchMasters.length}
+            />
+            <SettingsMetricTile
+              label={t("inventory.vendorGroup", "Vendor")}
+              value={visibleMissingSwatchVendorCount}
+              hint={t("settings.missingSwatches", "Missing swatches")}
+            />
+          </>
+        }
+      />
 
-      <div className="p-5">
-        <div className="rounded-lg border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
+      <SettingsSectionBody>
+        <SettingsSectionControls>
           <div className="flex flex-wrap items-center gap-2">
             {swatchVendorOptions.map((vendor) => (
               <button
@@ -133,12 +138,12 @@ export function SettingsMissingSwatchesPanel({
               )}
             </div>
           ) : null}
-        </div>
+        </SettingsSectionControls>
 
         {visibleMissingSwatchMasters.length === 0 ? (
-          <div className="surface-subtle mt-4 border-dashed px-4 py-6 text-center text-sm text-slate-600 dark:text-slate-300">
+          <SettingsSectionEmptyState>
             {t("settings.noMissingSwatches", "No missing swatches to fill.")}
-          </div>
+          </SettingsSectionEmptyState>
         ) : (
           <div className="mt-4 max-h-[460px] space-y-3 overflow-auto pr-1">
             {visibleMissingSwatchMasters.map((master) => {
@@ -204,7 +209,7 @@ export function SettingsMissingSwatchesPanel({
             })}
           </div>
         )}
-      </div>
-    </div>
+      </SettingsSectionBody>
+    </SettingsSectionPanel>
   );
 }

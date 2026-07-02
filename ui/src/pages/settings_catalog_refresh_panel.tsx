@@ -1,4 +1,10 @@
-import { SettingsMetricTile } from "../components/settings_ui";
+import {
+  SettingsMetricTile,
+  SettingsSectionBody,
+  SettingsSectionControls,
+  SettingsSectionHeader,
+  SettingsSectionPanel,
+} from "../components/settings_ui";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import {
   chipButtonClass,
@@ -64,49 +70,46 @@ export function SettingsCatalogRefreshPanel({
   onToggleCatalogRefreshMaterial,
 }: SettingsCatalogRefreshPanelProps) {
   return (
-    <div className="surface-subtle mt-4 overflow-hidden p-0">
-      <div className="border-b border-slate-200/80 px-5 py-5 dark:border-slate-700/80">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="max-w-3xl">
-            <div className="section-eyebrow">
-              {t("settings.catalogRefreshTitle", "Vendor catalog updates")}
-            </div>
-            <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-              {t(
-                "settings.catalogRefreshHelp",
-                "Choose vendor and refresh only the material families that need new products. A full vendor audit is slower and may mark unseen products as historical.",
-              )}
-            </div>
-            {settingsClientReadOnly ? (
-              <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-900 dark:text-sky-100">
-                {t(
-                  "settings.catalogRefreshClientHostOnly",
-                  "Vendor catalog updates run on the host. This client still shows the host catalog and can save swatch fixes there.",
-                )}
-              </div>
-            ) : null}
-          </div>
+    <SettingsSectionPanel className="mt-4">
+      <SettingsSectionHeader
+        eyebrow={t("settings.catalogRefreshTitle", "Vendor catalog updates")}
+        description={t(
+          "settings.catalogRefreshHelp",
+          "Choose vendor and refresh only the material families that need new products. A full vendor audit is slower and may mark unseen products as historical.",
+        )}
+        status={
           <div className={inlineStatusSignalClass("neutral", "text-sm")}>
             {t("settings.totalCatalog", "Catalog")}: {catalogCount}
           </div>
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <SettingsMetricTile label={t("settings.totalCatalog", "Catalog")} value={catalogCount} />
-          <SettingsMetricTile label={catalogVendor} value={activeCatalogMasterCount} />
-          <SettingsMetricTile
-            label={t("inventory.materialGroup", "Material")}
-            value={activeCatalogMaterialOptions.length}
-            hint={
-              activeCatalogRefreshMaterials.length > 0
-                ? activeCatalogRefreshMaterials.join(", ")
-                : t("settings.catalogAllTypes", "Full vendor audit")
-            }
-          />
-        </div>
-      </div>
+        }
+        metrics={
+          <>
+            <SettingsMetricTile label={t("settings.totalCatalog", "Catalog")} value={catalogCount} />
+            <SettingsMetricTile label={catalogVendor} value={activeCatalogMasterCount} />
+            <SettingsMetricTile
+              label={t("inventory.materialGroup", "Material")}
+              value={activeCatalogMaterialOptions.length}
+              hint={
+                activeCatalogRefreshMaterials.length > 0
+                  ? activeCatalogRefreshMaterials.join(", ")
+                  : t("settings.catalogAllTypes", "Full vendor audit")
+              }
+            />
+          </>
+        }
+      >
+        {settingsClientReadOnly ? (
+          <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-900 dark:text-sky-100">
+            {t(
+              "settings.catalogRefreshClientHostOnly",
+              "Vendor catalog updates run on the host. This client still shows the host catalog and can save swatch fixes there.",
+            )}
+          </div>
+        ) : null}
+      </SettingsSectionHeader>
 
-      <div className="p-5">
-        <div className="rounded-lg border border-slate-200 bg-white/75 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
+      <SettingsSectionBody>
+        <SettingsSectionControls>
           <div className="grid gap-4 lg:grid-cols-[0.7fr_1.3fr]">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
@@ -171,10 +174,10 @@ export function SettingsCatalogRefreshPanel({
             >
               {showCatalogRefreshLog
                 ? t("settings.hideRefreshLog", "Hide refresh log")
-                : t("wishlist.viewRefreshLog", "View refresh log")}
+              : t("wishlist.viewRefreshLog", "View refresh log")}
             </button>
           </div>
-        </div>
+        </SettingsSectionControls>
 
         {catalogRefreshBusy ? (
           <div className="mt-4 rounded-lg border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/60 dark:shadow-none">
@@ -270,7 +273,7 @@ export function SettingsCatalogRefreshPanel({
             </pre>
           </div>
         ) : null}
-      </div>
-    </div>
+      </SettingsSectionBody>
+    </SettingsSectionPanel>
   );
 }
