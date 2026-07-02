@@ -17,6 +17,7 @@ import {
   renderDetailField,
   renderFilterChipButton,
   renderFormActionBlock,
+  renderSelectionBanner,
   renderSegmentedControl,
   renderSwatchListRow,
   renderSwatchSelectionCard,
@@ -607,7 +608,7 @@ function renderSelectedSpoolHiddenBanner(
     selectedSpool.master.color_name,
   );
   const homeLocationId = selectedSpool.spool.home_location_id || "";
-  const summaryLine = [
+  const summaryItems = [
     formatRollReference(selectedSpool.spool),
     formatGrams(selectedSpool.spool.remaining_g),
     selectedSpool.spool.location_id ? formatPlacementLabel(selectedSpool.spool.location_id, locale) : "",
@@ -615,56 +616,41 @@ function renderSelectedSpoolHiddenBanner(
     homeLocationId !== selectedSpool.spool.location_id
       ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(homeLocationId, locale)}`
       : "",
-  ]
-    .filter(Boolean)
-    .map((value) => escapeHtml(value))
-    .join(" · ");
-  return renderSwatchSurface({
-    cardSurface: false,
-    surfaceClass: "",
-    className: "selection-banner selection-banner-muted compact-selection-banner storage-hidden-banner",
-    escapeHtml,
-    swatch: selectedSpool.master.hex_color || "",
-    body: `
-      <div class="selection-banner-copy">
-        <div class="list-title">
-          ${escapeHtml(t(locale, "storage.hiddenSelectedTitle", "Selected spool hidden"))}
-        </div>
-        <div class="section-copy">
-          ${escapeHtml(
-            t(locale, "storage.hiddenSelectedBody", "{title} stays selected for detail, slots, and loans.", {
-              title: displayTitle,
-            }),
-          )}
-        </div>
-      </div>
-      <div class="selection-banner-summary meta-line">${summaryLine}</div>
-      <div class="selection-banner-actions">
-        ${renderCompanionActionButton({
-          variant: "secondary",
-          swatch: true,
-          attributes: { "data-action": "clear-inventory-search" },
-          escapeHtml,
-          label: t(locale, "storage.clearSearch", "Clear search"),
-        })}
-        ${
-          hasLoanHistory
-            ? renderCompanionActionButton({
-                variant: "ghost",
-                attributes: { "data-action": "set-root-flow", "data-root-flow": "loans" },
-                escapeHtml,
-                label: t(locale, "loans.title", "Loans"),
-              })
-            : ""
-        }
-        ${renderCompanionActionButton({
-          variant: "ghost",
-          attributes: { "data-action": "open-current-detail" },
-          escapeHtml,
-          label: t(locale, "detail.openDetail", "Detail"),
-        })}
-      </div>
+  ].filter(Boolean);
+  return renderSelectionBanner({
+    actions: `
+      ${renderCompanionActionButton({
+        variant: "secondary",
+        swatch: true,
+        attributes: { "data-action": "clear-inventory-search" },
+        escapeHtml,
+        label: t(locale, "storage.clearSearch", "Clear search"),
+      })}
+      ${
+        hasLoanHistory
+          ? renderCompanionActionButton({
+              variant: "ghost",
+              attributes: { "data-action": "set-root-flow", "data-root-flow": "loans" },
+              escapeHtml,
+              label: t(locale, "loans.title", "Loans"),
+            })
+          : ""
+      }
+      ${renderCompanionActionButton({
+        variant: "ghost",
+        attributes: { "data-action": "open-current-detail" },
+        escapeHtml,
+        label: t(locale, "detail.openDetail", "Detail"),
+      })}
     `,
+    className: "storage-hidden-banner",
+    escapeHtml,
+    message: t(locale, "storage.hiddenSelectedBody", "{title} stays selected for detail, slots, and loans.", {
+      title: displayTitle,
+    }),
+    summary: summaryItems,
+    swatch: selectedSpool.master.hex_color || "",
+    title: t(locale, "storage.hiddenSelectedTitle", "Selected spool hidden"),
   });
 }
 

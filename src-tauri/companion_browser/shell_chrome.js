@@ -291,6 +291,38 @@ export function renderSwatchSurface(options) {
   return `<${tagName} class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${body}</${tagName}>`;
 }
 
+export function renderSelectionBanner(options) {
+  const {
+    actions = "",
+    className = "",
+    escapeHtml,
+    message = "",
+    summary = [],
+    swatch = "",
+    title,
+  } = options;
+  const escape = typeof escapeHtml === "function" ? escapeHtml : (value) => String(value ?? "");
+  const summaryItems = (Array.isArray(summary) ? summary : [summary]).filter(Boolean).map((value) => escape(value));
+
+  return renderSwatchSurface({
+    cardSurface: false,
+    surfaceClass: "",
+    className: ["selection-banner", "selection-banner-muted", "compact-selection-banner", className]
+      .filter(Boolean)
+      .join(" "),
+    escapeHtml: escape,
+    swatch,
+    body: `
+      <div class="selection-banner-copy">
+        <div class="list-title">${escape(title)}</div>
+        ${message ? `<div class="section-copy">${escape(message)}</div>` : ""}
+      </div>
+      ${summaryItems.length > 0 ? `<div class="selection-banner-summary meta-line">${summaryItems.join(" · ")}</div>` : ""}
+      ${actions ? `<div class="selection-banner-actions">${actions}</div>` : ""}
+    `,
+  });
+}
+
 export function renderSwatchListRow(options) {
   const {
     action,

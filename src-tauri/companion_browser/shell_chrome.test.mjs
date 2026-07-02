@@ -11,6 +11,7 @@ import {
   renderFormActionBlock,
   renderPhoneBottomNav,
   renderSegmentedControl,
+  renderSelectionBanner,
   renderSwatchListRow,
   renderSwatchSelectionCard,
   renderSwatchSurface,
@@ -239,6 +240,25 @@ test("swatch surface helper owns card surface attributes", () => {
     bannerHtml,
     '<div class="selection-banner swatch-surface" style="--swatch-rgb:239 68 68;--swatch-solid:#EF4444">Hidden</div>',
   );
+});
+
+test("selection banner helper owns hidden selection chrome", () => {
+  const html = renderSelectionBanner({
+    actions: "<button>Recover</button>",
+    className: "storage-hidden-banner",
+    escapeHtml,
+    message: "PLA <hidden> stays selected",
+    summary: ["#42", "850 g", "Shelf & A"],
+    swatch: "#16A34A",
+    title: "Selected <spool>",
+  });
+
+  assert.match(html, /class="selection-banner selection-banner-muted compact-selection-banner storage-hidden-banner swatch-surface"/);
+  assert.match(html, /style="--swatch-rgb:22 163 74;--swatch-solid:#16A34A"/);
+  assert.match(html, /Selected &lt;spool&gt;/);
+  assert.match(html, /PLA &lt;hidden&gt; stays selected/);
+  assert.match(html, /#42 · 850 g · Shelf &amp; A/);
+  assert.match(html, /<div class="selection-banner-actions"><button>Recover<\/button><\/div>/);
 });
 
 test("swatch list row helper owns filament row chrome", () => {

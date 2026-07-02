@@ -12,6 +12,7 @@ import {
   renderDetailField,
   renderFilterChipButton,
   renderFormActionBlock,
+  renderSelectionBanner,
   renderSwatchListRow,
   renderSwatchSelectionCard,
   renderSwatchSurface,
@@ -51,56 +52,45 @@ function renderHiddenSelectionBanner(selectedSpool, loanRows, escapeHtml, format
     selectedSpool.master?.filament_name,
     selectedSpool.master?.color_name,
   );
-  const summaryLine = [
+  const summaryItems = [
     formatRollReference(selectedSpool.spool),
     formatGrams(selectedSpool.spool?.remaining_g),
     selectedSpool.spool?.location_id || t(locale, "format.unassigned", "Unassigned"),
-  ]
-    .filter(Boolean)
-    .map((value) => escapeHtml(value))
-    .join(" · ");
-  return renderSwatchSurface({
-    cardSurface: false,
-    surfaceClass: "",
-    className: "selection-banner selection-banner-muted compact-selection-banner storage-hidden-banner",
-    escapeHtml,
-    swatch: selectedSpool.master?.hex_color || "",
-    body: `
-      <div class="selection-banner-copy">
-        <div class="list-title">${escapeHtml(t(locale, "storage.hiddenSelectedTitle", "Selected spool hidden"))}</div>
-        <div class="section-copy">${escapeHtml(
-          t(locale, "loans.hiddenSelectedMessage", "{title} stays selected for detail and loan actions.", {
-            title: displayTitle,
-          }),
-        )}</div>
-      </div>
-      <div class="selection-banner-summary meta-line">${summaryLine}</div>
-      <div class="selection-banner-actions">
-        ${renderCompanionActionButton({
-          variant: "secondary",
-          swatch: true,
-          attributes: { "data-action": "show-all-loans" },
-          escapeHtml,
-          label: t(locale, "loans.showAll", "Show all loans"),
-        })}
-        ${
-          loanRows.length
-            ? renderCompanionActionButton({
-                variant: "ghost",
-                attributes: { "data-action": "set-root-flow", "data-root-flow": "storage" },
-                escapeHtml,
-                label: t(locale, "nav.storage", "Inventory"),
-              })
-            : ""
-        }
-        ${renderCompanionActionButton({
-          variant: "ghost",
-          attributes: { "data-action": "open-current-detail" },
-          escapeHtml,
-          label: t(locale, "detail.openDetail", "Detail"),
-        })}
-      </div>
+  ].filter(Boolean);
+  return renderSelectionBanner({
+    actions: `
+      ${renderCompanionActionButton({
+        variant: "secondary",
+        swatch: true,
+        attributes: { "data-action": "show-all-loans" },
+        escapeHtml,
+        label: t(locale, "loans.showAll", "Show all loans"),
+      })}
+      ${
+        loanRows.length
+          ? renderCompanionActionButton({
+              variant: "ghost",
+              attributes: { "data-action": "set-root-flow", "data-root-flow": "storage" },
+              escapeHtml,
+              label: t(locale, "nav.storage", "Inventory"),
+            })
+          : ""
+      }
+      ${renderCompanionActionButton({
+        variant: "ghost",
+        attributes: { "data-action": "open-current-detail" },
+        escapeHtml,
+        label: t(locale, "detail.openDetail", "Detail"),
+      })}
     `,
+    className: "storage-hidden-banner",
+    escapeHtml,
+    message: t(locale, "loans.hiddenSelectedMessage", "{title} stays selected for detail and loan actions.", {
+      title: displayTitle,
+    }),
+    summary: summaryItems,
+    swatch: selectedSpool.master?.hex_color || "",
+    title: t(locale, "storage.hiddenSelectedTitle", "Selected spool hidden"),
   });
 }
 
