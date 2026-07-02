@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { swatchCssBackground } from "../lib/color_utils";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
 
 type SwatchSelectionPreviewHeaderSize = "compact" | "large";
 
@@ -35,11 +35,13 @@ export function SwatchSelectionPreviewHeader({
   swatchColor,
 }: SwatchSelectionPreviewHeaderProps) {
   const hasSwatch = Boolean(swatchColor);
-  const swatch = (
-    <span
+  const swatch = hasSwatch ? (
+    <InventorySwatchChip
       className={previewSwatchClassName(hasSwatch, size)}
-      style={hasSwatch ? { background: swatchCssBackground(swatchColor) } : undefined}
+      swatchColor={swatchColor}
     />
+  ) : (
+    <span className={previewSwatchClassName(hasSwatch, size)} />
   );
 
   return (

@@ -5,7 +5,9 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import {
+  analyzeCssVariables,
   analyzeCompanionCssVariables,
+  formatCssVariableReport,
   formatCompanionCssVariableReport,
   normalizeCompanionCssSourcePath,
 } from "./check-companion-css-vars.mjs";
@@ -45,6 +47,7 @@ test("companion css variable analyzer reports missing variables with source file
         ["--missing", "--nested-missing"],
       );
       assert.deepEqual(result.missing[0].files, ["src-tauri/companion_browser/app.css"]);
+      assert.match(formatCssVariableReport(result, "Fixture CSS"), /--nested-missing/);
       assert.match(formatCompanionCssVariableReport(result), /--nested-missing/);
     },
   );
@@ -66,6 +69,28 @@ test("companion css variable analyzer reports success counts", () => {
         formatCompanionCssVariableReport(result),
         "Companion CSS variables ok (2 used, 2 defined).",
       );
+    },
+  );
+});
+
+test("css variable analyzer can ignore generated variable prefixes", () => {
+  withCssFixture(
+    {
+      "app.css":
+        ".gradient { --defined: #fff; color: var(--defined); background: var(--tw-gradient-to); border-color: var(--missing); }",
+    },
+    ({ cssDirectory, fixtureRoot }) => {
+      const result = analyzeCssVariables({
+        cssDirectory,
+        ignoredPrefixes: ["--tw-"],
+        repoRoot: fixtureRoot,
+      });
+
+      assert.deepEqual(
+        result.missing.map((entry) => entry.name),
+        ["--missing"],
+      );
+      assert.equal(result.usages.has("--tw-gradient-to"), false);
     },
   );
 });

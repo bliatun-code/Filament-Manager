@@ -1,4 +1,4 @@
-import { swatchCssBackground, toSwatchColor } from "../lib/color_utils";
+import { toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import {
   inventoryDetailCompactActionButtonClassName,
@@ -7,6 +7,7 @@ import {
 } from "./inventory_detail_panel_class";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
 
 type InventoryCatalogMetadataPanelProps = {
   colorName: string;
@@ -129,9 +130,10 @@ export function InventoryCatalogMetadataPanel({
               className="h-7 w-10 rounded border border-slate-200 bg-white p-0.5"
               disabled={disabled}
             />
-            <span
-              className="h-7 w-7 rounded border border-slate-200"
-              style={{ background: swatchCssBackground(hexColor) }}
+            <InventorySwatchChip
+              className="h-7 w-7 rounded"
+              swatchColor={hexColor}
+              tone="tiny"
             />
           </div>
           <button

@@ -1,6 +1,6 @@
 import { VendorBadge } from "./vendor_badge";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
-import { swatchCssBackground } from "../lib/color_utils";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
 import { useI18n } from "../lib/i18n";
 import { formatInventoryDisplayTitle } from "../lib/inventory_list_model";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
@@ -142,11 +142,10 @@ export function WishlistQueuePanel({
               style={inventorySwatchInsetStyle(itemHex, resolvedTheme)}
             >
               <div className="flex items-start gap-3">
-                <span
-                  className="h-12 w-12 shrink-0 rounded-2xl border border-white/70 shadow-inner shadow-white/30 dark:border-white/10 dark:shadow-black/30"
-                  style={{
-                    background: swatchCssBackground(itemHex),
-                  }}
+                <InventorySwatchChip
+                  className="h-12 w-12 rounded-2xl"
+                  swatchColor={itemHex}
+                  tone="soft"
                 />
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold text-slate-900 dark:text-slate-50">

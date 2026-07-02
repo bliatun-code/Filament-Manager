@@ -9,6 +9,7 @@ const source = readFileSync(
 
 test("WishlistQueuePanel shares action button chrome across stock and remove actions", () => {
   assert.match(source, /wishlistQueueActionButtonClassName/);
+  assert.match(source, /InventorySwatchChip/);
   assert.match(source, /focus-visible:border-sky-300/);
   assert.match(source, /wishlistQueueActionButtonClassName\("stock"\)/);
   assert.match(source, /wishlistQueueActionButtonClassName\("remove"\)/);

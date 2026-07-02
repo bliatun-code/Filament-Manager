@@ -16,23 +16,34 @@ export function normalizeCompanionCssSourcePath(filePath) {
   return filePath.replaceAll("\\", "/");
 }
 
-export function analyzeCompanionCssVariables(options = {}) {
+export function normalizeCssSourcePath(filePath) {
+  return normalizeCompanionCssSourcePath(filePath);
+}
+
+export function analyzeCssVariables(options = {}) {
   const repoRoot = options.repoRoot ?? resolve(".");
   const cssDirectory =
     options.cssDirectory ?? resolve(repoRoot, "src-tauri", "companion_browser");
+  const ignoredPrefixes = options.ignoredPrefixes ?? [];
   const definitions = new Set();
   const usages = new Map();
 
   for (const file of collectCssFiles(cssDirectory)) {
     const source = readFileSync(file, "utf8");
-    const relativePath = normalizeCompanionCssSourcePath(relative(repoRoot, file));
+    const relativePath = normalizeCssSourcePath(relative(repoRoot, file));
 
     for (const match of source.matchAll(/(^|[;{\s])(--[a-zA-Z0-9-]+)\s*:/g)) {
-      definitions.add(match[2]);
+      const name = match[2];
+      if (!ignoredPrefixes.some((prefix) => name.startsWith(prefix))) {
+        definitions.add(name);
+      }
     }
 
     for (const match of source.matchAll(/var\(\s*(--[a-zA-Z0-9-]+)/g)) {
       const name = match[1];
+      if (ignoredPrefixes.some((prefix) => name.startsWith(prefix))) {
+        continue;
+      }
       if (!usages.has(name)) {
         usages.set(name, new Set());
       }
@@ -51,9 +62,13 @@ export function analyzeCompanionCssVariables(options = {}) {
   return { definitions, missing, usages };
 }
 
-export function formatCompanionCssVariableReport(result) {
+export function analyzeCompanionCssVariables(options = {}) {
+  return analyzeCssVariables(options);
+}
+
+export function formatCssVariableReport(result, label = "CSS") {
   if (result.missing.length > 0) {
-    const lines = ["Companion CSS variables used without definitions:"];
+    const lines = [`${label} variables used without definitions:`];
     for (const missingVariable of result.missing) {
       lines.push(`  - ${missingVariable.name}`);
       for (const file of missingVariable.files) {
@@ -63,7 +78,11 @@ export function formatCompanionCssVariableReport(result) {
     return lines.join("\n");
   }
 
-  return `Companion CSS variables ok (${result.usages.size} used, ${result.definitions.size} defined).`;
+  return `${label} variables ok (${result.usages.size} used, ${result.definitions.size} defined).`;
+}
+
+export function formatCompanionCssVariableReport(result) {
+  return formatCssVariableReport(result, "Companion CSS");
 }
 
 function runCli() {

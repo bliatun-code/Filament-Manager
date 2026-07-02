@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
-import { swatchCssBackground } from "../lib/color_utils";
+import { InventorySwatchChip } from "../components/inventory_swatch_chip";
 
 type MetricTone = "slate" | "sky" | "emerald" | "amber" | "rose";
 
@@ -74,9 +74,10 @@ export function StatisticsFilamentUsageRowCard({
     <div className="rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3 dark:border-slate-700 dark:bg-slate-950/45">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
-          <span
-            className="mt-0.5 h-5 w-5 flex-none rounded-md border border-slate-300/80 dark:border-slate-600"
-            style={{ background: swatchCssBackground(swatchColor) }}
+          <InventorySwatchChip
+            className="mt-0.5 h-5 w-5 rounded-md"
+            swatchColor={swatchColor}
+            tone="tiny"
           />
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">

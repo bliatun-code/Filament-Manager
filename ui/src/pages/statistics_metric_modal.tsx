@@ -1,7 +1,7 @@
 import { AppModal } from "../components/app_modal";
+import { InventorySwatchChip } from "../components/inventory_swatch_chip";
 import { ModalHeader } from "../components/modal_chrome";
 import { modalPanelClassName } from "../components/modal_panel_class";
-import { swatchCssBackground } from "../lib/color_utils";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import { printerBrandSurfaceStyle } from "../lib/printer_branding";
 import {
@@ -204,9 +204,10 @@ export function StatisticsMetricDetailModal({
                   >
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="flex min-w-0 items-start gap-3">
-                        <span
-                          className="mt-0.5 h-5 w-5 flex-none rounded-md border border-slate-300/80 dark:border-slate-600"
-                          style={{ background: swatchCssBackground(row.slot.spool_hex_color) }}
+                        <InventorySwatchChip
+                          className="mt-0.5 h-5 w-5 rounded-md"
+                          swatchColor={row.slot.spool_hex_color}
+                          tone="tiny"
                         />
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">

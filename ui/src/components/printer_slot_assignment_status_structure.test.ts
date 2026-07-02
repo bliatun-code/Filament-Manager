@@ -9,6 +9,7 @@ const source = readFileSync(
 
 test("PrinterSlotAssignmentStatus shares mini action button focus chrome", () => {
   assert.match(source, /printerSlotMiniActionButtonClassName/);
+  assert.match(source, /InventorySwatchChip/);
   assert.match(source, /focus-visible:border-sky-300/);
   assert.match(source, /printerSlotMiniActionButtonClassName\("candidate"\)/);
   assert.match(source, /printerSlotMiniActionButtonClassName\("inline"\)/);

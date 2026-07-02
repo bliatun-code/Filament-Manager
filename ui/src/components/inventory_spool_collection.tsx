@@ -1,6 +1,5 @@
 import { VendorBadge } from "./vendor_badge";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
-import { swatchCssBackground } from "../lib/color_utils";
 import { formatPlacementLabel } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
 import {
@@ -20,6 +19,7 @@ import {
 import { materialTone } from "../lib/material_theme";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import { formatGrams } from "../lib/weight_display";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
 import type { InventoryViewMode } from "./inventory_controls_panel";
 
 type InventorySpoolCollectionProps = {
@@ -155,11 +155,9 @@ export function InventorySpoolCollection({
               >
                 <div className="flex items-start gap-3.5">
                   <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/60 p-2 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
-                    <span
-                      className="h-full w-full rounded-xl border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
-                      style={{
-                        background: swatchCssBackground(group.hexColor),
-                      }}
+                    <InventorySwatchChip
+                      className="h-full w-full rounded-xl"
+                      swatchColor={group.hexColor}
                     />
                   </div>
 

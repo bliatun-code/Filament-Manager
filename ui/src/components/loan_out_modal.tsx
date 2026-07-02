@@ -20,7 +20,6 @@ import {
   formatPlacementLabel,
   formatSpoolReference,
 } from "../lib/display_format";
-import { swatchCssBackground } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import {
   inventoryCatalogRowStyle,
@@ -46,6 +45,7 @@ import {
   toMeasuredTotalWeight,
 } from "../lib/loan_out_weight_model";
 import { isTauri } from "../lib/tauri_client";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
 
 type LoanOutModalProps = {
   open: boolean;
@@ -275,11 +275,10 @@ export function LoanOutModal({
                         )}
                       >
                         <span className="flex min-w-0 items-center gap-2.5">
-                          <span
-                            className="h-8 w-8 shrink-0 rounded-md border border-slate-200 dark:border-slate-600"
-                            style={{
-                              background: swatchCssBackground(spool.hexColor),
-                            }}
+                          <InventorySwatchChip
+                            className="h-8 w-8 rounded-md"
+                            swatchColor={spool.hexColor}
+                            tone="tiny"
                           />
                           <span className="min-w-0 flex-1">
                             <span

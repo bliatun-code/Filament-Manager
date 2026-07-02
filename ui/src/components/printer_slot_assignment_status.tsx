@@ -3,11 +3,12 @@ import { inlineStatusSignalClass, semanticChipClass } from "../lib/chip_styles";
 import { formatSpoolReference } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
 import { isBorrowedInOwnership } from "../lib/inventory_domain";
-import { liveTrayIdentity, swatchCssBackground } from "../lib/printer_live_display";
+import { liveTrayIdentity } from "../lib/printer_live_display";
 import {
   buildLiveRfidCandidateRegistrationState,
   buildSlotCatalogOnboardingOpenState,
 } from "../lib/printer_slot_model";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
 import type { PrinterSlotDisplayState } from "../lib/printer_slot_display";
 import type {
   MasterCatalogRow,
@@ -141,9 +142,10 @@ export function PrinterSlotAssignmentStatus({
         <div className="mt-1 space-y-1">
           {visibleRows.map((master) => (
             <div key={master.id} className="flex min-w-0 items-center gap-1.5">
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-sm border border-slate-400/40 dark:border-slate-600"
-                style={{ background: swatchCssBackground(master.hex_color) }}
+              <InventorySwatchChip
+                className="h-2.5 w-2.5 rounded-sm"
+                swatchColor={master.hex_color}
+                tone="tiny"
               />
               <span className="truncate">
                 {master.filament_name} · {master.color_name}
@@ -268,9 +270,10 @@ export function PrinterSlotAssignmentStatus({
               !!effectiveLiveIdentity;
             return (
               <div key={row.spool.id} className="flex min-w-0 items-center gap-1.5">
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-sm border border-slate-400/40 dark:border-slate-600"
-                  style={{ background: swatchCssBackground(row.master.hex_color) }}
+                <InventorySwatchChip
+                  className="h-2.5 w-2.5 rounded-sm"
+                  swatchColor={row.master.hex_color}
+                  tone="tiny"
                 />
                 <span className="truncate">
                   {row.master.filament_name} · {row.master.color_name}
@@ -349,9 +352,10 @@ export function PrinterSlotAssignmentStatus({
       style={currentRollStyle}
     >
       <div className="flex items-start gap-2">
-        <span
-          className="mt-0.5 h-4.5 w-4.5 shrink-0 rounded border border-slate-500/20 shadow-inner shadow-black/10 dark:border-white/10 dark:shadow-black/20"
-          style={{ background: swatchCssBackground(slotSwatchHex) }}
+        <InventorySwatchChip
+          className="mt-0.5 h-4.5 w-4.5 rounded"
+          swatchColor={slotSwatchHex}
+          tone="current"
         />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5 text-slate-600 dark:text-slate-300">

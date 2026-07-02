@@ -6,13 +6,14 @@ import {
   neutralChipClass,
   semanticChipClass,
 } from "../lib/chip_styles";
-import { swatchCssBackground, toSwatchColor } from "../lib/color_utils";
+import { toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
 import { formatMasterDisplayTitle } from "../lib/inventory_list_model";
 import { inventoryCatalogRowStyle } from "../lib/inventory_swatch_style";
 import type { InventoryCreateMode } from "../lib/inventory_create_model";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { MasterCatalogRow } from "../lib/tauri_client";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
 
 type InventoryStockSourcePanelProps = {
   activeCatalogMasters: MasterCatalogRow[];
@@ -169,11 +170,10 @@ export function InventoryStockSourcePanel({
                   )}
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
-                    <span
-                      className="h-8 w-8 shrink-0 rounded-md border border-slate-200 dark:border-slate-600"
-                      style={{
-                        background: swatchCssBackground(master.hex_color),
-                      }}
+                    <InventorySwatchChip
+                      className="h-8 w-8 rounded-md"
+                      swatchColor={master.hex_color}
+                      tone="tiny"
                     />
                     <span className="min-w-0">
                       <span
@@ -302,9 +302,10 @@ export function InventoryStockSourcePanel({
                 className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-950/80"
                 disabled={!tauriAvailable}
               />
-              <span
-                className="h-10 w-10 rounded-lg border border-slate-200 dark:border-slate-600"
-                style={{ background: swatchCssBackground(manualHexColor) }}
+              <InventorySwatchChip
+                className="h-10 w-10 rounded-lg"
+                swatchColor={manualHexColor}
+                tone="soft"
               />
             </div>
           </div>

@@ -3,7 +3,6 @@ import { useI18n, type Locale } from "../lib/i18n";
 import {
   formatDateTime,
   liveTrayIdentity,
-  swatchCssBackground,
 } from "../lib/printer_live_display";
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
 import type { SlotRfidOverridePrompt } from "../lib/printer_slot_model";
@@ -18,6 +17,7 @@ import {
 import { modalPanelClassName } from "./modal_panel_class";
 import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { useResolvedTheme } from "../lib/theme_mode";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
 
 type RfidOverrideModalProps = {
   busy: boolean;
@@ -112,9 +112,10 @@ export function RfidOverrideModal({
                   {t("inventory.rfidObservedColor", "Observed color")}
                 </dt>
                 <dd className="mt-1 flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                  <span
-                    className="h-5 w-5 rounded border border-slate-200 dark:border-slate-700"
-                    style={{ background: swatchCssBackground(prompt.liveTray.color_hex) }}
+                  <InventorySwatchChip
+                    className="h-5 w-5 rounded"
+                    swatchColor={prompt.liveTray.color_hex}
+                    tone="tiny"
                   />
                   <span className="font-mono">{prompt.liveTray.color_hex?.trim() || "-"}</span>
                 </dd>

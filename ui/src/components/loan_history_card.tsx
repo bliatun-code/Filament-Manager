@@ -13,11 +13,11 @@ import {
   inventorySwatchCardStyle,
   inventorySwatchInsetStyle,
 } from "../lib/inventory_swatch_style";
-import { swatchCssBackground } from "../lib/color_utils";
 import {
   modalDetailLabelClassName,
   modalDetailValueClassName,
 } from "./modal_chrome";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
 import { useResolvedTheme } from "../lib/theme_mode";
 import type { SpoolLoanDetailsRow } from "../lib/tauri_client";
 
@@ -46,10 +46,7 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
     >
       <div className="flex items-start gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/70 bg-white/60 p-1.5 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
-          <span
-            className="h-full w-full rounded-lg border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
-            style={{ background: swatchCssBackground(loan.hex_color) }}
-          />
+          <InventorySwatchChip className="h-full w-full rounded-lg" swatchColor={loan.hex_color} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">

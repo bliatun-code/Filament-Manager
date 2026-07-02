@@ -1,4 +1,3 @@
-import { swatchCssBackground } from "../lib/color_utils";
 import { CloseButton } from "./close_button";
 import {
   inventoryDetailSectionLabelClassName,
@@ -22,6 +21,7 @@ import {
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
 import type { BambuLiveIntegrationSettings } from "../lib/tauri_client";
 import { useResolvedTheme } from "../lib/theme_mode";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
 
 type RfidCaptureMatchMeta = {
   className: string;
@@ -177,9 +177,10 @@ export function InventoryRfidCaptureSlotPicker({
               onClick={() => onSelectSlot(slot.slotId)}
             >
               <div className="flex items-center gap-2">
-                <span
-                  className="h-4 w-4 shrink-0 rounded border border-slate-200 dark:border-slate-700"
-                  style={{ background: swatchCssBackground(slotSummary.colorHex ?? spool.hexColor) }}
+                <InventorySwatchChip
+                  className="h-4 w-4 rounded"
+                  swatchColor={slotSummary.colorHex ?? spool.hexColor}
+                  tone="tiny"
                 />
                 <span>{label ?? `Slot ${slot.slotIndex}`}</span>
               </div>
@@ -251,9 +252,10 @@ export function InventoryRfidCaptureSummaryCards({
           {t("inventory.rfidObservedColor", "Observed color")}
         </div>
         <div className="mt-2 flex items-center gap-2 text-sm text-slate-900 dark:text-slate-100">
-          <span
-            className="h-5 w-5 rounded border border-slate-200 dark:border-slate-700"
-            style={{ background: swatchCssBackground(summary.colorHex ?? "#0F172A") }}
+          <InventorySwatchChip
+            className="h-5 w-5 rounded"
+            swatchColor={summary.colorHex ?? "#0F172A"}
+            tone="tiny"
           />
           <span className="font-mono">
             {summary.colorHex || summary.trayColorRaw || "—"}

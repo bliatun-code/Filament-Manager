@@ -1,6 +1,6 @@
 import type { SettingsBambuLiveDiagnosticTrayCard } from "../pages/settings_bambu_live_diagnostics_model";
-import { swatchCssBackground } from "../lib/color_utils";
 import { settingsTinyLabelClass } from "../lib/settings_ui_classes";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
 
 type SettingsBambuLiveTrayCardsProps = {
   moreCandidatesLabel: string;
@@ -57,9 +57,10 @@ export function SettingsBambuLiveTrayCards({
             </div>
             <div className="mt-2 rounded-md border border-slate-200/80 bg-slate-50/80 px-2 py-1.5 text-[11px] leading-4 text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
               <div className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-200">
-                <span
-                  className="h-3.5 w-3.5 rounded-sm border border-slate-300/80 dark:border-slate-600"
-                  style={{ background: swatchCssBackground(tray.matchSwatchColor) }}
+                <InventorySwatchChip
+                  className="h-3.5 w-3.5 rounded-sm"
+                  swatchColor={tray.matchSwatchColor}
+                  tone="tiny"
                 />
                 <span>{tray.matchLabel}</span>
               </div>
@@ -76,9 +77,10 @@ export function SettingsBambuLiveTrayCards({
                       key={candidate.key}
                       className="flex items-center gap-2 rounded border border-slate-200/80 bg-white/70 px-2 py-1 dark:border-slate-700 dark:bg-slate-950/40"
                     >
-                      <span
-                        className="h-3 w-3 rounded-sm border border-slate-300/80 dark:border-slate-600"
-                        style={{ background: swatchCssBackground(candidate.swatchColor) }}
+                      <InventorySwatchChip
+                        className="h-3 w-3 rounded-sm"
+                        swatchColor={candidate.swatchColor}
+                        tone="tiny"
                       />
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-[10px] font-medium text-slate-700 dark:text-slate-200">

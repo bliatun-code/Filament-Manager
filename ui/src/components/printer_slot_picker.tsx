@@ -8,7 +8,6 @@ import { useI18n } from "../lib/i18n";
 import {
   formatGrams,
   printerSwatchInteractiveInsetStyle,
-  swatchCssBackground,
 } from "../lib/printer_live_display";
 import {
   filterSlotOptionsBySearch,
@@ -20,6 +19,7 @@ import type {
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
 import { formInputChromeClassName } from "./form_control_class";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
 
 const slotOptionSwatchClassName =
   "h-4.5 w-4.5 shrink-0 rounded border border-slate-200 dark:border-slate-600";
@@ -97,9 +97,10 @@ export function PrinterSlotPicker({
         style={slotSelectorStyle}
       >
         <span className="flex min-w-0 items-center gap-2">
-          <span
-            className="h-4.5 w-4.5 shrink-0 rounded border border-slate-500/20 shadow-inner shadow-black/10 dark:border-white/10 dark:shadow-black/20"
-            style={{ background: swatchCssBackground(slotSwatchHex) }}
+          <InventorySwatchChip
+            className="h-4.5 w-4.5 rounded"
+            swatchColor={slotSwatchHex}
+            tone="current"
           />
           <span className="min-w-0">
             <span className="block truncate font-semibold">
@@ -202,9 +203,10 @@ export function PrinterSlotPicker({
                   disabled={!tauri || busy}
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
-                    <span
+                    <InventorySwatchChip
                       className={slotOptionSwatchClassName}
-                      style={{ background: swatchCssBackground(row.master.hex_color) }}
+                      swatchColor={row.master.hex_color}
+                      tone="tiny"
                     />
                     <span className="min-w-0">
                       <span className="block truncate font-semibold leading-tight">

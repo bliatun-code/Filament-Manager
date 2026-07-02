@@ -1,7 +1,6 @@
 import {
   normalizeSwatchValue,
   suggestHexFromColor,
-  swatchCssBackground,
   toSwatchColor,
 } from "../lib/color_utils";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
@@ -13,6 +12,7 @@ import {
   settingsActionButtonClass,
   settingsCompactFormControlClass,
 } from "../lib/settings_ui_classes";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
 
 type SettingsMissingSwatchesPanelProps = {
   busy: boolean;
@@ -153,10 +153,11 @@ export function SettingsMissingSwatchesPanel({
                 >
                   <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                     <div className="flex min-w-0 items-start gap-3">
-                      <span
-                        className="mt-0.5 h-11 w-11 shrink-0 rounded-lg border border-slate-200 shadow-inner dark:border-slate-700"
-                        style={{ background: swatchCssBackground(normalizedDraft) }}
+                      <InventorySwatchChip
+                        className="mt-0.5 h-11 w-11 rounded-lg"
+                        swatchColor={normalizedDraft}
                         title={normalizedDraft}
+                        tone="soft"
                       />
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
