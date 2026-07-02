@@ -80,6 +80,76 @@ export function renderCompanionActionButton(options) {
   return `<button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${escape(label)}</button>`;
 }
 
+export function renderSegmentedControl(options) {
+  const {
+    action,
+    activeValue,
+    ariaLabel = "",
+    className = "",
+    columns,
+    escapeHtml,
+    items = [],
+    valueAttribute,
+  } = options;
+  const escape = typeof escapeHtml === "function" ? escapeHtml : (value) => String(value ?? "");
+  const classes = ["segmented-control", className].filter(Boolean).join(" ");
+  const renderedAttributes = renderAttributeMap(
+    {
+      ...(columns ? { "data-columns": columns } : {}),
+      role: "group",
+      ...(ariaLabel ? { "aria-label": ariaLabel } : {}),
+    },
+    escape,
+  );
+  const buttons = items
+    .map((item) => {
+      const value = String(item.value ?? "");
+      const itemAttributes = item.attributes || {};
+      const buttonAttributes = renderAttributeMap(
+        {
+          type: "button",
+          ...itemAttributes,
+          ...(action ? { "data-action": action } : {}),
+          ...(valueAttribute ? { [valueAttribute]: value } : {}),
+          "data-active": String(activeValue) === value ? "true" : "false",
+          disabled: item.disabled,
+        },
+        escape,
+      );
+      return `
+        <button class="segment-button"${buttonAttributes ? ` ${buttonAttributes}` : ""}>
+          <span>${escape(item.label)}</span>
+          ${item.meta ? `<span class="segment-meta">${escape(item.meta)}</span>` : ""}
+        </button>
+      `;
+    })
+    .join("");
+
+  return `<div class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${buttons}</div>`;
+}
+
+export function renderFilterChipButton(options) {
+  const {
+    active = false,
+    attributes = {},
+    className = "",
+    escapeHtml,
+    label,
+    type = "button",
+  } = options;
+  const escape = typeof escapeHtml === "function" ? escapeHtml : (value) => String(value ?? "");
+  const classes = ["filter-chip-button", className].filter(Boolean).join(" ");
+  const renderedAttributes = renderAttributeMap(
+    {
+      type,
+      ...attributes,
+      "data-active": active ? "true" : "false",
+    },
+    escape,
+  );
+  return `<button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${escape(label)}</button>`;
+}
+
 export function renderSwatchSelectionCard(options) {
   const {
     actions = "",

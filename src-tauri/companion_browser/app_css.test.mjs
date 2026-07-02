@@ -74,6 +74,8 @@ test("companion controls use shared focus and radius primitives", () => {
   assert.match(css, /\.primary-button,\s*\.secondary-button,\s*\.ghost-button\s*\{[\s\S]*border-radius: var\(--control-radius\);/);
   assert.match(css, /\.search-input,\s*\.token-input,\s*\.weight-input,\s*\.text-input,\s*\.detail-textarea\s*\{[\s\S]*border-radius: var\(--control-radius\);/);
   assert.match(css, /\.root-flow-button,\s*\.segment-button\s*\{[\s\S]*border-radius: var\(--segmented-item-radius\);/);
+  assert.match(css, /\.filter-chip-button\s*\{[\s\S]*border-radius: 999px;/);
+  assert.match(css, /\.filter-chip-button\[data-active="true"\]\s*\{[\s\S]*background: var\(--accent-soft\);/);
   assert.match(css, /\.phone-nav-button\s*\{[\s\S]*border-radius: var\(--segmented-item-radius\);/);
 });
 

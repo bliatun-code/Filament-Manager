@@ -1,4 +1,5 @@
 import { t } from "./companion_i18n.js";
+import { renderSegmentedControl } from "./shell_chrome.js";
 
 const APP_LICENSE_ID = "AGPL-3.0-or-later";
 const APP_LICENSE_URL = "https://github.com/bliatun-code/Filament-Manager/blob/main/LICENSE";
@@ -52,63 +53,36 @@ export function renderSettingsShell(options) {
             </div>
           </div>
           <div class="stack">
-            <div class="segmented-control" data-columns="3" role="group" aria-label="${escapeHtml(t(locale, "settings.themeMode", "Theme mode"))}">
-              <button
-                class="segment-button"
-                type="button"
-                data-action="set-theme-mode"
-                data-theme-mode="auto"
-                data-active="${themeMode === "auto" ? "true" : "false"}"
-              >
-                <span>${escapeHtml(t(locale, "settings.auto", "Auto"))}</span>
-                <span class="segment-meta">${escapeHtml(t(locale, "settings.autoHelp", "Follow device"))}</span>
-              </button>
-              <button
-                class="segment-button"
-                type="button"
-                data-action="set-theme-mode"
-                data-theme-mode="light"
-                data-active="${themeMode === "light" ? "true" : "false"}"
-              >
-                <span>${escapeHtml(t(locale, "settings.light", "Light"))}</span>
-                <span class="segment-meta">${escapeHtml(t(locale, "settings.lightHelp", "Bright surfaces"))}</span>
-              </button>
-              <button
-                class="segment-button"
-                type="button"
-                data-action="set-theme-mode"
-                data-theme-mode="dark"
-                data-active="${themeMode === "dark" ? "true" : "false"}"
-              >
-                <span>${escapeHtml(t(locale, "settings.dark", "Dark"))}</span>
-                <span class="segment-meta">${escapeHtml(t(locale, "settings.darkHelp", "Low-light friendly"))}</span>
-              </button>
-            </div>
+            ${renderSegmentedControl({
+              action: "set-theme-mode",
+              activeValue: themeMode,
+              ariaLabel: t(locale, "settings.themeMode", "Theme mode"),
+              columns: 3,
+              escapeHtml,
+              items: [
+                { value: "auto", label: t(locale, "settings.auto", "Auto"), meta: t(locale, "settings.autoHelp", "Follow device") },
+                { value: "light", label: t(locale, "settings.light", "Light"), meta: t(locale, "settings.lightHelp", "Bright surfaces") },
+                { value: "dark", label: t(locale, "settings.dark", "Dark"), meta: t(locale, "settings.darkHelp", "Low-light friendly") },
+              ],
+              valueAttribute: "data-theme-mode",
+            })}
             <div class="meta-line">${escapeHtml(themeSummary)}</div>
             <div class="stack settings-language-block">
               <div>
                 <div class="list-title">${escapeHtml(t(locale, "settings.language", "Language"))}</div>
               </div>
-              <div class="segmented-control" data-columns="2" role="group" aria-label="${escapeHtml(t(locale, "settings.language", "Language"))}">
-                <button
-                  class="segment-button"
-                  type="button"
-                  data-action="set-locale"
-                  data-locale="nb"
-                  data-active="${locale === "nb" ? "true" : "false"}"
-                >
-                  <span>${escapeHtml(t(locale, "settings.norwegian", "Norwegian"))}</span>
-                </button>
-                <button
-                  class="segment-button"
-                  type="button"
-                  data-action="set-locale"
-                  data-locale="en"
-                  data-active="${locale === "en" ? "true" : "false"}"
-                >
-                  <span>${escapeHtml(t(locale, "settings.english", "English"))}</span>
-                </button>
-              </div>
+              ${renderSegmentedControl({
+                action: "set-locale",
+                activeValue: locale,
+                ariaLabel: t(locale, "settings.language", "Language"),
+                columns: 2,
+                escapeHtml,
+                items: [
+                  { value: "nb", label: t(locale, "settings.norwegian", "Norwegian") },
+                  { value: "en", label: t(locale, "settings.english", "English") },
+                ],
+                valueAttribute: "data-locale",
+              })}
             </div>
           </div>
         </section>

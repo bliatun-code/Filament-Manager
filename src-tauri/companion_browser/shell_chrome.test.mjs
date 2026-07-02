@@ -5,7 +5,9 @@ import {
   renderCompanionActionButton,
   renderDesktopRail,
   renderDetailModalShell,
+  renderFilterChipButton,
   renderPhoneBottomNav,
+  renderSegmentedControl,
   renderSwatchListRow,
   renderSwatchSelectionCard,
   renderSwatchSurface,
@@ -73,6 +75,45 @@ test("companion action helper renders variants, swatches and boolean attributes"
   });
   assert.match(coloredHtml, /class="primary-button swatch-action-button"/);
   assert.match(coloredHtml, /style="--swatch-rgb:22 163 74;--swatch-solid:#16A34A"/);
+});
+
+test("segmented control helper owns segment button chrome", () => {
+  const html = renderSegmentedControl({
+    action: "set-mode",
+    activeValue: "dark",
+    ariaLabel: "Theme <mode>",
+    columns: 3,
+    escapeHtml,
+    items: [
+      { value: "auto", label: "Auto", meta: "Follow device" },
+      { value: "dark", label: "Dark", meta: "Low <light>" },
+      { value: "light", label: "Light", disabled: true },
+    ],
+    valueAttribute: "data-theme-mode",
+  });
+
+  assert.match(html, /class="segmented-control" data-columns="3" role="group" aria-label="Theme &lt;mode&gt;"/);
+  assert.match(html, /class="segment-button" type="button" data-action="set-mode" data-theme-mode="dark" data-active="true"/);
+  assert.match(html, /Low &lt;light&gt;/);
+  assert.match(html, /data-theme-mode="light" data-active="false" disabled/);
+});
+
+test("filter chip helper owns compact filter button chrome", () => {
+  const html = renderFilterChipButton({
+    active: true,
+    attributes: {
+      "data-action": "set-filter",
+      "data-filter": "ACTIVE",
+    },
+    className: "loan-filter-button",
+    escapeHtml,
+    label: "Active <2>",
+  });
+
+  assert.equal(
+    html,
+    '<button class="filter-chip-button loan-filter-button" type="button" data-action="set-filter" data-filter="ACTIVE" data-active="true">Active &lt;2&gt;</button>',
+  );
 });
 
 test("swatch selection card helper owns selected filament preview chrome", () => {

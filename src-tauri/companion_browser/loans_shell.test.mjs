@@ -79,6 +79,7 @@ test("loans shell renders outbound history as its own primary flow", () => {
 
   assert.match(html, /Loans/);
   assert.match(html, /data-action="set-loan-status"/);
+  assert.match(html, /filter-chip-button loan-filter-button/);
   assert.match(html, /#1/);
   assert.match(html, /Active/);
   assert.match(html, /Return loan/);

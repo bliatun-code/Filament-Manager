@@ -9,6 +9,7 @@ import { formatInventoryDisplayTitle, formatRollReference } from "./formatters.j
 import { suggestSwatchHex, toSwatchColor } from "./companion_theme.js";
 import {
   renderCompanionActionButton,
+  renderFilterChipButton,
   renderSwatchListRow,
   renderSwatchSelectionCard,
   renderSwatchSurface,
@@ -29,17 +30,16 @@ function loanStateLabel(row, locale = "en") {
 }
 
 function renderLoanFilterButton(filterValue, label, active, escapeHtml) {
-  return `
-    <button
-      class="loan-filter-button"
-      type="button"
-      data-action="set-loan-status"
-      data-loan-status="${escapeHtml(filterValue)}"
-      data-active="${active ? "true" : "false"}"
-    >
-      ${escapeHtml(label)}
-    </button>
-  `;
+  return renderFilterChipButton({
+    active,
+    attributes: {
+      "data-action": "set-loan-status",
+      "data-loan-status": filterValue,
+    },
+    className: "loan-filter-button",
+    escapeHtml,
+    label,
+  });
 }
 
 function renderHiddenSelectionBanner(selectedSpool, loanRows, escapeHtml, formatGrams) {

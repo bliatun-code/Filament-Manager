@@ -226,7 +226,7 @@
 
 .secondary-button:disabled,
 .ghost-button:disabled,
-.loan-filter-button:disabled {
+.filter-chip-button:disabled {
   background: var(--button-disabled-surface-muted);
   color: var(--button-disabled-text-muted);
   border-color: var(--border);
@@ -1340,7 +1340,7 @@
   gap: 0.45rem;
 }
 
-.loan-filter-button {
+.filter-chip-button {
   min-height: 2.28rem;
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -1351,7 +1351,7 @@
   touch-action: manipulation;
 }
 
-.loan-filter-button[data-active="true"] {
+.filter-chip-button[data-active="true"] {
   border-color: var(--border-strong);
   background: var(--accent-soft);
   color: var(--text);
@@ -3072,7 +3072,7 @@
     width: auto;
   }
 
-  .loan-filter-button {
+  .loan-filter-row .filter-chip-button {
     width: auto;
   }
 
@@ -3346,7 +3346,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .loan-filter-button {
+  .loan-filter-row .filter-chip-button {
     width: 100%;
   }
 
@@ -3715,7 +3715,7 @@
   .list-row:hover,
   .swatch-card-surface.swatch-surface:hover,
   .printer-roster-item:hover,
-  .loan-filter-button:hover,
+  .filter-chip-button:hover,
   .root-flow-button:hover,
   .segment-button:hover,
   .phone-nav-button:hover {
@@ -3726,7 +3726,7 @@
 @media (hover: none) and (pointer: coarse) {
   .list-row:active,
   .printer-roster-item:active,
-  .loan-filter-button:active,
+  .filter-chip-button:active,
   .root-flow-button:active,
   .segment-button:active,
   .phone-nav-button:active,
@@ -3738,7 +3738,7 @@
 
   .list-row:active,
   .printer-roster-item:active,
-  .loan-filter-button:active,
+  .filter-chip-button:active,
   .root-flow-button:active,
   .segment-button:active,
   .phone-nav-button:active {

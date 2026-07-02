@@ -14,6 +14,8 @@ import { t } from "./companion_i18n.js";
 import { isBorrowedInOwnership, normalizeDomainToken, parseSpoolStatus } from "./companion_domain.js";
 import {
   renderCompanionActionButton,
+  renderFilterChipButton,
+  renderSegmentedControl,
   renderSwatchListRow,
   renderSwatchSelectionCard,
   renderSwatchSurface,
@@ -239,27 +241,18 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
     <div class="stack add-spool-sheet">
       <section class="surface-card add-spool-section">
         <div class="add-spool-source-head">
-          <div class="segmented-control" data-columns="3">
-            ${[
-              ["bambu", t(locale, "storage.vendorBambu", "Bambu")],
-              ["esun", t(locale, "storage.vendorEsun", "eSUN")],
-              ["manual", t(locale, "storage.vendorGeneric", "Generic")],
-            ]
-              .map(
-                ([sourceValue, label]) => `
-                  <button
-                    class="segment-button"
-                    type="button"
-                    data-action="set-filament-source"
-                    data-filament-source="${escapeHtml(sourceValue)}"
-                    data-active="${selection.source === sourceValue ? "true" : "false"}"
-                  >
-                    <span>${escapeHtml(label)}</span>
-                  </button>
-                `,
-              )
-              .join("")}
-          </div>
+          ${renderSegmentedControl({
+            action: "set-filament-source",
+            activeValue: selection.source,
+            columns: 3,
+            escapeHtml,
+            items: [
+              { value: "bambu", label: t(locale, "storage.vendorBambu", "Bambu") },
+              { value: "esun", label: t(locale, "storage.vendorEsun", "eSUN") },
+              { value: "manual", label: t(locale, "storage.vendorGeneric", "Generic") },
+            ],
+            valueAttribute: "data-filament-source",
+          })}
         </div>
 
         ${
@@ -382,26 +375,16 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
             <div class="list-title">${escapeHtml(t(locale, "storage.addSpool", "Add spool"))}</div>
           </div>
 
-          <div class="segmented-control">
-            ${[
-              ["OWNED", t(locale, "storage.owned", "Owned")],
-              ["BORROWED_IN", t(locale, "storage.borrowedInAction", "Borrowed-in")],
-            ]
-              .map(
-                ([ownershipType, label]) => `
-                  <button
-                    class="segment-button"
-                    type="button"
-                    data-action="set-filament-ownership"
-                    data-ownership-type="${escapeHtml(ownershipType)}"
-                    data-active="${isBorrowedIn === (ownershipType === "BORROWED_IN") ? "true" : "false"}"
-                  >
-                    <span>${escapeHtml(label)}</span>
-                  </button>
-                `,
-              )
-              .join("")}
-          </div>
+          ${renderSegmentedControl({
+            action: "set-filament-ownership",
+            activeValue: isBorrowedIn ? "BORROWED_IN" : "OWNED",
+            escapeHtml,
+            items: [
+              { value: "OWNED", label: t(locale, "storage.owned", "Owned") },
+              { value: "BORROWED_IN", label: t(locale, "storage.borrowedInAction", "Borrowed-in") },
+            ],
+            valueAttribute: "data-ownership-type",
+          })}
 
           ${
             isBorrowedIn
@@ -560,16 +543,17 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
               ["RECEIVED", `${t(locale, "storage.received", "Received")} ${selection.wishlistSummary.received}`],
             ]
               .map(
-                ([filter, label]) => `
-                  <button
-                    class="${selection.wishlistFilter === filter ? "secondary-button" : "ghost-button"}"
-                    type="button"
-                    data-action="set-wishlist-filter"
-                    data-wishlist-filter="${escapeHtml(filter)}"
-                  >
-                    ${escapeHtml(label)}
-                  </button>
-                `,
+                ([filter, label]) =>
+                  renderFilterChipButton({
+                    active: selection.wishlistFilter === filter,
+                    attributes: {
+                      "data-action": "set-wishlist-filter",
+                      "data-wishlist-filter": filter,
+                    },
+                    className: "add-spool-filter-button",
+                    escapeHtml,
+                    label,
+                  }),
               )
               .join("")}
           </div>
