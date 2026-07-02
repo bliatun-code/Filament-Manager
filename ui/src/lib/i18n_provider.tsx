@@ -18,7 +18,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   >(() => ({}));
 
   const activeDictionary = loadedDictionaries[locale] ?? getCachedLocaleDictionary(locale);
-  const fallbackDictionary = loadedDictionaries.en ?? getCachedLocaleDictionary("en");
+  const fallbackDictionary = locale === "en" ? activeDictionary : getCachedLocaleDictionary("en");
 
   useEffect(() => {
     if (activeDictionary) {
@@ -47,34 +47,6 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [activeDictionary, locale]);
-
-  useEffect(() => {
-    if (locale === "en" || fallbackDictionary) {
-      return;
-    }
-
-    let cancelled = false;
-
-    void loadLocaleDictionary("en").then((dictionary) => {
-      if (cancelled) {
-        return;
-      }
-      setLoadedDictionaries((current) =>
-        current.en === dictionary
-          ? current
-          : {
-              ...current,
-              en: dictionary,
-            },
-      );
-    }).catch((error: unknown) => {
-      console.error("Failed to load fallback English dictionary", error);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [fallbackDictionary, locale]);
 
   const setLocale = useCallback((nextLocale: Locale) => {
     setLocaleState(nextLocale);
