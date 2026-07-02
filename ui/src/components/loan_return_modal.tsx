@@ -5,6 +5,7 @@ import { ModalActionButton } from "./modal_action_button";
 import {
   ModalDetailGrid,
   ModalDetailItem,
+  ModalFormField,
   ModalHeader,
 } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
@@ -144,9 +145,9 @@ export function LoanReturnModal({
           </FeedbackBanner>
         ) : null}
 
-        <div>
-          <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-            {isInbound
+        <ModalFormField
+          label={
+            isInbound
               ? t(
                   "loans.handBackDialogWeightLabel",
                   "Weigh-in handed-back total weight incl. spool (g)",
@@ -154,8 +155,9 @@ export function LoanReturnModal({
               : t(
                   "loans.returnDialogWeightLabel",
                   "Weigh-in returned total weight incl. spool (g)",
-                )}
-          </label>
+                )
+          }
+        >
           <input
             type="number"
             min={0}
@@ -164,12 +166,9 @@ export function LoanReturnModal({
             className={modalFormInputClassName}
             autoFocus
           />
-        </div>
+        </ModalFormField>
 
-        <div>
-          <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-            {t("loans.returnNoteOptional", "Return note (optional)")}
-          </label>
+        <ModalFormField label={t("loans.returnNoteOptional", "Return note (optional)")}>
           <input
             type="text"
             value={note}
@@ -177,7 +176,7 @@ export function LoanReturnModal({
             className={modalFormInputClassName}
             placeholder={t("loans.returnNoteOptional", "Return note (optional)")}
           />
-        </div>
+        </ModalFormField>
 
         <div className="flex justify-end gap-2">
           <ModalActionButton

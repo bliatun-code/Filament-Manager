@@ -3,6 +3,7 @@ import { useI18n } from "../lib/i18n";
 import { toSwatchColor } from "../lib/printer_live_display";
 import type { IncomingWeightPrompt } from "../lib/printer_slot_model";
 import { modalFormInputClassName } from "./form_control_class";
+import { ModalFormField } from "./modal_chrome";
 import { SaveOnlyModal } from "./save_only_modal";
 
 type IncomingWeightModalProps = {
@@ -44,17 +45,14 @@ export function IncomingWeightModal({
     >
       <div className="space-y-3">
         {prompt.requiresOutgoingWeight ? (
-          <div>
-            <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-              {t("printers.outgoingWeight", "Outgoing weight (g)")}
-            </label>
-            <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-              {formatFilamentDisplayTitle(
-                prompt.currentMaterial,
-                prompt.currentFilamentName,
-                prompt.currentColorName,
-              )}
-            </div>
+          <ModalFormField
+            label={t("printers.outgoingWeight", "Outgoing weight (g)")}
+            hint={formatFilamentDisplayTitle(
+              prompt.currentMaterial,
+              prompt.currentFilamentName,
+              prompt.currentColorName,
+            )}
+          >
             <input
               type="number"
               min={0}
@@ -63,13 +61,10 @@ export function IncomingWeightModal({
               className={modalFormInputClassName}
               autoFocus={!prompt.requiresIncomingWeight}
             />
-          </div>
+          </ModalFormField>
         ) : null}
         {prompt.requiresIncomingWeight ? (
-          <div>
-            <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-              {t("printers.incomingWeightPromptLabel", "Measured weight (g)")}
-            </label>
+          <ModalFormField label={t("printers.incomingWeightPromptLabel", "Measured weight (g)")}>
             <input
               type="number"
               min={0}
@@ -78,7 +73,7 @@ export function IncomingWeightModal({
               className={modalFormInputClassName}
               autoFocus
             />
-          </div>
+          </ModalFormField>
         ) : null}
       </div>
     </SaveOnlyModal>

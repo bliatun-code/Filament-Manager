@@ -1,4 +1,10 @@
-import type { CSSProperties, ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
+import type {
+  ButtonHTMLAttributes,
+  CSSProperties,
+  HTMLAttributes,
+  LabelHTMLAttributes,
+  ReactNode,
+} from "react";
 import { CloseButton } from "./close_button";
 
 export const modalEyebrowClassName =
@@ -9,6 +15,12 @@ export const modalDetailLabelClassName =
 
 export const modalDetailValueClassName =
   "mt-1 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-50";
+
+export const modalFormLabelClassName =
+  "block text-xs font-medium text-slate-600 dark:text-slate-300";
+
+export const modalFormHintClassName =
+  "mt-1 block text-[11px] leading-5 text-slate-500 dark:text-slate-400";
 
 export const modalHeaderActionButtonClassName =
   "inline-flex h-10 items-center justify-center whitespace-nowrap rounded-lg border border-slate-200/80 bg-white/85 px-3 text-xs font-semibold text-slate-700 shadow-sm shadow-slate-200/25 outline-none backdrop-blur-sm transition hover:bg-slate-50 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 dark:shadow-none dark:hover:bg-slate-800/70 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20 sm:text-sm";
@@ -31,6 +43,35 @@ const modalNoticeToneClass: Record<ModalNoticeTone, string> = {
 type ModalHeaderActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
 };
+
+type ModalFormFieldProps = LabelHTMLAttributes<HTMLLabelElement> & {
+  children: ReactNode;
+  hint?: ReactNode;
+  label: ReactNode;
+};
+
+export function ModalFormField({
+  children,
+  className,
+  hint,
+  label,
+  ...labelProps
+}: ModalFormFieldProps) {
+  return (
+    <label
+      {...labelProps}
+      className={[modalFormLabelClassName, className ?? ""].filter(Boolean).join(" ")}
+    >
+      <span>{label}</span>
+      {hint ? (
+        <span className={modalFormHintClassName}>
+          {hint}
+        </span>
+      ) : null}
+      {children}
+    </label>
+  );
+}
 
 export function ModalHeaderActionButton({
   children,

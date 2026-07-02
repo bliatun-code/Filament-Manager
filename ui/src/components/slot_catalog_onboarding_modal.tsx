@@ -16,6 +16,7 @@ import {
   ModalDetailGrid,
   ModalDetailItem,
   ModalFactCard,
+  ModalFormField,
   ModalHeader,
   ModalNotice,
 } from "./modal_chrome";
@@ -195,8 +196,7 @@ export function SlotCatalogOnboardingModal({
 
             {isBorrowedIn ? (
               <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                  {t("inventory.borrowedFrom", "Borrowed from")}
+                <ModalFormField label={t("inventory.borrowedFrom", "Borrowed from")}>
                   <input
                     type="text"
                     value={prompt.borrowedFromName}
@@ -204,32 +204,34 @@ export function SlotCatalogOnboardingModal({
                     className={modalFormInputClassName}
                     autoFocus
                   />
-                </label>
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                  {t("inventory.ownerContactOptional", "Owner contact (optional)")}
+                </ModalFormField>
+                <ModalFormField
+                  label={t("inventory.ownerContactOptional", "Owner contact (optional)")}
+                >
                   <input
                     type="text"
                     value={prompt.borrowedFromContact}
                     onChange={(event) => onBorrowedFromContactChange(event.target.value)}
                     className={modalFormInputClassName}
                   />
-                </label>
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300 sm:col-span-2">
-                  {t("inventory.borrowedInNoteOptional", "Borrowed-in note (optional)")}
+                </ModalFormField>
+                <ModalFormField
+                  className="sm:col-span-2"
+                  label={t("inventory.borrowedInNoteOptional", "Borrowed-in note (optional)")}
+                >
                   <input
                     type="text"
                     value={prompt.borrowedInNote}
                     onChange={(event) => onBorrowedInNoteChange(event.target.value)}
                     className={modalFormInputClassName}
                   />
-                </label>
+                </ModalFormField>
               </div>
             ) : null}
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-              {t("inventory.initialWeight", "Initial weight (g)")}
+            <ModalFormField label={t("inventory.initialWeight", "Initial weight (g)")}>
               <input
                 type="number"
                 min={0}
@@ -238,16 +240,17 @@ export function SlotCatalogOnboardingModal({
                 className={modalFormInputClassName}
                 autoFocus={!isBorrowedIn}
               />
-            </label>
-            <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-              {t("inventory.homeLocationOptional", "Home location (optional)")}
+            </ModalFormField>
+            <ModalFormField
+              label={t("inventory.homeLocationOptional", "Home location (optional)")}
+            >
               <input
                 type="text"
                 value={prompt.location}
                 onChange={(event) => onLocationChange(event.target.value)}
                 className={modalFormInputClassName}
               />
-            </label>
+            </ModalFormField>
           </div>
 
           {saveBlockMessage ? (

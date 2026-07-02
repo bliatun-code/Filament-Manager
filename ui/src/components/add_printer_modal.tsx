@@ -11,7 +11,7 @@ import { useI18n } from "../lib/i18n";
 import { AppModal } from "./app_modal";
 import { modalFormInputClassName } from "./form_control_class";
 import { ModalActionButton } from "./modal_action_button";
-import { ModalHeader } from "./modal_chrome";
+import { ModalFormField, ModalHeader } from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { PrinterModelPreview } from "./printer_model_preview";
 
@@ -76,10 +76,7 @@ export function AddPrinterModal({
 
         <div className="space-y-4 px-6 py-6">
           <div className="surface-card space-y-4">
-            <div>
-              <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                {t("settings.selectPrinterModel", "Select printer model")}
-              </label>
+            <ModalFormField label={t("settings.selectPrinterModel", "Select printer model")}>
               <select
                 value={newPrinterModel}
                 onChange={(event) => onSelectPrinterModel(event.target.value)}
@@ -95,12 +92,9 @@ export function AddPrinterModal({
                   </option>
                 ))}
               </select>
-            </div>
+            </ModalFormField>
 
-            <div>
-              <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                {t("settings.printerName", "Printer name")}
-              </label>
+            <ModalFormField label={t("settings.printerName", "Printer name")}>
               <input
                 type="text"
                 value={newPrinterName}
@@ -109,13 +103,10 @@ export function AddPrinterModal({
                 className={modalFormInputClassName}
                 disabled={!tauri || busy}
               />
-            </div>
+            </ModalFormField>
 
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                  {multiMaterialUnitsInputLabel(t, newPrinterModel || "")}
-                </label>
+              <ModalFormField label={multiMaterialUnitsInputLabel(t, newPrinterModel || "")}>
                 <input
                   type="number"
                   min={0}
@@ -126,11 +117,8 @@ export function AddPrinterModal({
                   title={multiMaterialUnitsInputLabel(t, newPrinterModel || "")}
                   disabled={!tauri || busy || selectedModelProfile.maxUnits === 0}
                 />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                  {multiMaterialSlotsInputLabel(t, newPrinterModel || "")}
-                </label>
+              </ModalFormField>
+              <ModalFormField label={multiMaterialSlotsInputLabel(t, newPrinterModel || "")}>
                 <input
                   type="number"
                   min={1}
@@ -141,7 +129,7 @@ export function AddPrinterModal({
                   title={multiMaterialSlotsInputLabel(t, newPrinterModel || "")}
                   disabled={!tauri || busy || selectedModelProfile.maxUnits === 0}
                 />
-              </div>
+              </ModalFormField>
             </div>
 
             <div

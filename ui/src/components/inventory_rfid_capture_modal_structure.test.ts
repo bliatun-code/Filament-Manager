@@ -15,10 +15,12 @@ test("InventoryRfidCaptureModal uses the shared wide modal chrome and internal s
   assert.match(modalSource, /inventoryModalOverlayClassName/);
   assert.match(modalSource, /inventoryWideModalPanelClassName/);
   assert.match(modalSource, /closeOnBackdrop/);
+  assert.match(modalSource, /ModalNotice/);
   assert.match(modalSource, /zIndex=\{60\}/);
   assert.match(modalSource, /min-h-0 flex-1 overflow-y-auto/);
   assert.match(modalSource, /shrink-0 border-t/);
   assert.doesNotMatch(modalSource, /max-w-6xl rounded-3xl/);
+  assert.doesNotMatch(modalSource, /rounded-xl border border-amber-200\/80 bg-amber-50\/90/);
 });
 
 test("InventoryRfidCapture panels use the shared modal breakpoint language", () => {

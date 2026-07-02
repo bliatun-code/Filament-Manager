@@ -24,6 +24,7 @@ test("LoanOutModal uses shared wide modal layout rhythm", () => {
   assert.match(source, /modalFormInputClassName/);
   assert.match(source, /ModalDetailGrid/);
   assert.match(source, /ModalDetailItem/);
+  assert.match(source, /ModalFormField/);
   assert.match(source, /ModalNotice/);
   assert.match(source, /hoveredLoanSpoolId/);
   assert.match(source, /setHoveredLoanSpoolId\(spool\.id\)/);
