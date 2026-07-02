@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
+import { DESKTOP_VISUAL_QA_QUERY_KEY } from "./desktop_visual_qa_scenario";
 
 export type ThemeMode = "light" | "dark" | "auto";
 export type ResolvedTheme = "light" | "dark";
 
 const STORAGE_KEY = "bfm-theme-mode";
 const CHANGE_EVENT = "bfm-theme-mode-change";
-const DESKTOP_VISUAL_QA_QUERY_KEY = "bfm_visual_qa";
 
 let mediaListenerAttached = false;
 
