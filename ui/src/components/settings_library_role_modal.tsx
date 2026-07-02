@@ -8,11 +8,10 @@ import {
 import { formatSettingsDateTime } from "../lib/settings_utils";
 import type { LibrarySyncSettings } from "../lib/tauri_client";
 import type { LibraryRoleChangeState } from "../pages/settings_library_sync_model";
+import { FeedbackBanner } from "./feedback_banner";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
-const roleNoticeClass =
-  "surface-subtle px-4 py-3 text-sm leading-6 text-slate-700 dark:text-slate-200";
 const migrationStepClass = "surface-subtle px-4 py-3";
 
 function migrationStepBadgeClass(done: boolean): string {
@@ -112,16 +111,16 @@ export function SettingsLibraryRoleModal({
         </div>
 
         {roleChangeState.fromClient && roleChangeState.toHost ? (
-          <div className={roleNoticeClass}>
+          <FeedbackBanner tone="neutral">
             {t(
               "settings.librarySyncRoleChangeClientToHostHint",
               "This client becomes its own host after the switch. If you later want to move library data from the current host, create a full backup there and import it later under Program maintenance on this device.",
             )}
-          </div>
+          </FeedbackBanner>
         ) : null}
 
         {roleChangeState.fromClient && roleChangeState.toStandalone ? (
-          <div className={roleNoticeClass}>
+          <FeedbackBanner tone="neutral">
             {locale === "nb"
               ? `Denne klienten forventer vanligvis at et vertsbibliotek er tilgjengelig. Du kan eksportere en full sikkerhetskopi på ${
                   librarySyncSettings?.host_device_name || t("common.unknown", "Ukjent")
@@ -129,16 +128,16 @@ export function SettingsLibraryRoleModal({
               : `This client normally expects a host library. You can export a full backup on ${
                   librarySyncSettings?.host_device_name || t("common.unknown", "Unknown")
                 } and import it later under Program maintenance if you want to continue locally.`}
-          </div>
+          </FeedbackBanner>
         ) : null}
 
         {roleChangeState.toClient ? (
-          <div className={roleNoticeClass}>
+          <FeedbackBanner tone="neutral">
             {t(
               "settings.librarySyncRoleChangeClientHint",
               "Client mode expects a host connection. After switching, use Desktop client pairing to connect this device to the host you want to use.",
             )}
-          </div>
+          </FeedbackBanner>
         ) : null}
 
         {(roleChangeState.requiresExport ||
@@ -261,12 +260,12 @@ export function SettingsLibraryRoleModal({
         ) : null}
 
         {libraryRoleConfirmArmed ? (
-          <div className="rounded-xl border border-amber-300/80 bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-100">
+          <FeedbackBanner tone="warning">
             {t(
               "settings.librarySyncConfirmArmedHint",
               "One more click confirms this role change.",
             )}
-          </div>
+          </FeedbackBanner>
         ) : null}
 
         <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200/80 pt-4 dark:border-slate-700/80">

@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 
-type FeedbackTone = "warning" | "danger" | "success";
+export type FeedbackTone = "neutral" | "warning" | "danger" | "success";
 
 const toneClassName: Record<FeedbackTone, string> = {
+  neutral:
+    "border-slate-200/85 bg-white/72 text-slate-700 dark:border-slate-700/80 dark:bg-slate-900/55 dark:text-slate-200",
   warning:
     "border-amber-200/85 bg-amber-50/92 text-amber-950 dark:border-amber-400/40 dark:bg-amber-500/14 dark:text-amber-100",
   danger:

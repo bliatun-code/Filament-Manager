@@ -1,3 +1,4 @@
+import { FeedbackBanner, type FeedbackTone } from "../components/feedback_banner";
 import { SettingsMetricTile } from "../components/settings_ui";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import {
@@ -17,6 +18,19 @@ import type { Locale } from "../lib/i18n";
 import type { LibrarySyncVisibilityState } from "./settings_library_sync_model";
 
 type TranslateFn = (key: string, fallback: string) => string;
+
+function librarySyncValidationFeedbackTone(
+  validation: LibrarySyncHostValidationResult,
+): FeedbackTone {
+  if (
+    validation.ok &&
+    validation.matches_library_id &&
+    (!validation.pairing_checked || validation.pairing_valid)
+  ) {
+    return "success";
+  }
+  return validation.ok || validation.reachable ? "warning" : "danger";
+}
 
 type SettingsLibraryClientPanelProps = {
   librarySyncBusy: boolean;
@@ -191,16 +205,9 @@ export function SettingsLibraryClientPanel({
         )}
 
         {librarySyncValidation ? (
-          <div
-            className={`mt-3 rounded-lg border px-4 py-3 text-sm leading-6 ${
-              librarySyncValidation.ok &&
-              librarySyncValidation.matches_library_id &&
-              (!librarySyncValidation.pairing_checked || librarySyncValidation.pairing_valid)
-                ? "border-emerald-200 bg-emerald-50/80 text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-100"
-                : librarySyncValidation.ok || librarySyncValidation.reachable
-                  ? "border-amber-200 bg-amber-50/80 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-100"
-                  : "border-rose-200 bg-rose-50/80 text-rose-900 dark:border-rose-400/30 dark:bg-rose-500/10 dark:text-rose-100"
-            }`}
+          <FeedbackBanner
+            tone={librarySyncValidationFeedbackTone(librarySyncValidation)}
+            className="mt-3"
           >
             <div className="font-semibold">
               {librarySyncValidation.pairing_checked && !librarySyncValidation.pairing_valid
@@ -210,7 +217,7 @@ export function SettingsLibraryClientPanel({
                   )
                 : librarySyncValidation.message}
             </div>
-          </div>
+          </FeedbackBanner>
         ) : null}
       </div>
 
