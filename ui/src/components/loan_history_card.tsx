@@ -6,13 +6,18 @@ import {
   compactLoanTitle,
   formatGrams,
   formatLoanReference,
-  loanFactLabelClassName,
-  loanFactValueClassName,
-  loanSwatchPreviewStyle,
-  loanSwatchSurfaceStyle,
   normalizeLoanDirection,
 } from "../lib/loan_display";
 import { isLoanCurrentlyActive } from "../lib/loan_state";
+import {
+  inventorySwatchCardStyle,
+  inventorySwatchInsetStyle,
+} from "../lib/inventory_swatch_style";
+import { swatchCssBackground } from "../lib/color_utils";
+import {
+  modalDetailLabelClassName,
+  modalDetailValueClassName,
+} from "./modal_chrome";
 import { useResolvedTheme } from "../lib/theme_mode";
 import type { SpoolLoanDetailsRow } from "../lib/tauri_client";
 
@@ -37,13 +42,13 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
   return (
     <div
       className="rounded-xl border border-slate-300/80 p-3.5 shadow-sm shadow-slate-300/25 dark:border-slate-700/80 dark:shadow-none"
-      style={loanSwatchSurfaceStyle(loan.hex_color, "card", resolvedTheme)}
+      style={inventorySwatchCardStyle(loan.hex_color, resolvedTheme)}
     >
       <div className="flex items-start gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/70 bg-white/60 p-1.5 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
           <span
             className="h-full w-full rounded-lg border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
-            style={loanSwatchPreviewStyle(loan.hex_color)}
+            style={{ background: swatchCssBackground(loan.hex_color) }}
           />
         </div>
         <div className="min-w-0 flex-1">
@@ -104,65 +109,65 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
 
       <div
         className="mt-3 rounded-xl border px-3 py-2.5"
-        style={loanSwatchSurfaceStyle(loan.hex_color, "inset", resolvedTheme)}
+        style={inventorySwatchInsetStyle(loan.hex_color, resolvedTheme)}
       >
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 min-[520px]:grid-cols-3">
           <div className="min-w-0">
-            <div className={loanFactLabelClassName}>
+            <div className={modalDetailLabelClassName}>
               {t("inventory.reference", "Reference")}
             </div>
             <div
-              className={`${loanFactValueClassName} break-all font-mono`}
+              className={`${modalDetailValueClassName} break-all font-mono`}
               title={`#${loan.loan.spool_id}`}
             >
               {referenceLabel}
             </div>
           </div>
           <div>
-            <div className={loanFactLabelClassName}>
+            <div className={modalDetailLabelClassName}>
               {isInbound
                 ? t("loans.startWeight", "Start")
                 : t("loans.out", "Out")}
             </div>
-            <div className={loanFactValueClassName}>
+            <div className={modalDetailValueClassName}>
               {formatGrams(loan.loan.grams_out)}
             </div>
           </div>
           <div className="min-w-0">
-            <div className={loanFactLabelClassName}>
+            <div className={modalDetailLabelClassName}>
               {isInbound
                 ? t("loans.borrowedInAt", "Borrowed in")
                 : t("loans.lent", "Lent")}
             </div>
-            <div className={loanFactValueClassName}>
+            <div className={modalDetailValueClassName}>
               {compactLoanTimestamp(loan.loan.lent_at)}
             </div>
           </div>
           {!isActive ? (
             <>
               <div>
-                <div className={loanFactLabelClassName}>
+                <div className={modalDetailLabelClassName}>
                   {isInbound
                     ? t("loans.handedBackAt", "Handed back")
                     : t("loans.returned", "Returned")}
                 </div>
-                <div className={loanFactValueClassName}>
+                <div className={modalDetailValueClassName}>
                   {compactLoanTimestamp(loan.loan.returned_at)}
                 </div>
               </div>
               <div>
-                <div className={loanFactLabelClassName}>
+                <div className={modalDetailLabelClassName}>
                   {isInbound ? t("loans.back", "Back") : t("loans.in", "In")}
                 </div>
-                <div className={loanFactValueClassName}>
+                <div className={modalDetailValueClassName}>
                   {formatGrams(loan.loan.returned_grams)}
                 </div>
               </div>
               <div className="min-w-0">
-                <div className={loanFactLabelClassName}>
+                <div className={modalDetailLabelClassName}>
                   {t("loans.consumed", "Consumed")}
                 </div>
-                <div className={loanFactValueClassName}>
+                <div className={modalDetailValueClassName}>
                   {formatGrams(loan.loan.consumed_grams)}
                 </div>
               </div>

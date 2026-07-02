@@ -10,8 +10,13 @@ import type { SlotRfidOverridePrompt } from "../lib/printer_slot_model";
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import { AppModal } from "./app_modal";
 import { ModalActionButton } from "./modal_action_button";
-import { modalDetailLabelClassName, ModalHeader } from "./modal_chrome";
+import {
+  modalDetailLabelClassName,
+  modalDetailValueClassName,
+  ModalHeader,
+} from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
+import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { useResolvedTheme } from "../lib/theme_mode";
 
 type RfidOverrideModalProps = {
@@ -69,22 +74,28 @@ export function RfidOverrideModal({
             className="surface-card space-y-3"
             style={inventorySwatchPanelStyle(prompt.spool.master.hex_color, resolvedTheme)}
           >
-            <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-              {formatFilamentDisplayTitle(
-                prompt.spool.master.material,
-                prompt.spool.master.filament_name,
-                prompt.spool.master.color_name,
-              )}
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              {`${prompt.spool.master.vendor} · ${formatSpoolReference(prompt.spool.spool.id)}`}
-            </div>
+            <SwatchSelectionPreviewHeader
+              eyebrow={t("inventory.selectionPreview", "Selection preview")}
+              size="large"
+              swatchColor={prompt.spool.master.hex_color}
+            >
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                {formatFilamentDisplayTitle(
+                  prompt.spool.master.material,
+                  prompt.spool.master.filament_name,
+                  prompt.spool.master.color_name,
+                )}
+              </div>
+              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {`${prompt.spool.master.vendor} · ${formatSpoolReference(prompt.spool.spool.id)}`}
+              </div>
+            </SwatchSelectionPreviewHeader>
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
               <div>
                 <dt className={modalDetailLabelClassName}>
                   {t("inventory.rfidCurrentTag", "Saved RFID")}
                 </dt>
-                <dd className="mt-1 break-all font-mono text-slate-900 dark:text-slate-100">
+                <dd className={`${modalDetailValueClassName} break-all font-mono`}>
                   {prompt.spool.spool.rfid_tag?.trim() || "-"}
                 </dd>
               </div>
@@ -92,7 +103,7 @@ export function RfidOverrideModal({
                 <dt className={modalDetailLabelClassName}>
                   {t("inventory.rfidObservedTag", "Observed RFID")}
                 </dt>
-                <dd className="mt-1 break-all font-mono text-slate-900 dark:text-slate-100">
+                <dd className={`${modalDetailValueClassName} break-all font-mono`}>
                   {observedRfid || "-"}
                 </dd>
               </div>
@@ -112,7 +123,7 @@ export function RfidOverrideModal({
                 <dt className={modalDetailLabelClassName}>
                   {t("inventory.rfidLastSeen", "Last seen")}
                 </dt>
-                <dd className="mt-1 text-slate-900 dark:text-slate-100">
+                <dd className={modalDetailValueClassName}>
                   {prompt.observedAt ? formatDateTime(prompt.observedAt, locale) : "-"}
                 </dd>
               </div>

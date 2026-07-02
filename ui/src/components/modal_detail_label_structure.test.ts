@@ -18,9 +18,12 @@ test("modal detail labels share compact metadata typography", () => {
 
   assert.match(modalChrome, /modalEyebrowClassName/);
   assert.match(modalChrome, /modalDetailLabelClassName/);
+  assert.match(modalChrome, /modalDetailValueClassName/);
   assert.match(rfidOverrideModal, /modalDetailLabelClassName/);
+  assert.match(rfidOverrideModal, /modalDetailValueClassName/);
   assert.match(saveOnlyModal, /modalEyebrowClassName/);
   assert.match(slotOnboardingModal, /modalDetailLabelClassName/);
+  assert.match(slotOnboardingModal, /modalDetailValueClassName/);
   assert.doesNotMatch(saveOnlyModal, rawEyebrowClass);
   assert.doesNotMatch(rfidOverrideModal, rawDetailLabelClass);
   assert.doesNotMatch(slotOnboardingModal, rawDetailLabelClass);

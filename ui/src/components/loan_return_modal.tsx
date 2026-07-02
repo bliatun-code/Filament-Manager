@@ -2,21 +2,26 @@ import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
 import { modalFormInputClassName } from "./form_control_class";
 import { ModalActionButton } from "./modal_action_button";
-import { ModalHeader } from "./modal_chrome";
+import {
+  ModalHeader,
+  modalDetailLabelClassName,
+  modalDetailValueClassName,
+} from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
+import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { VendorBadge } from "./vendor_badge";
 import { useI18n } from "../lib/i18n";
 import {
   compactLoanTitle,
   formatGrams,
   formatLoanReference,
-  loanFactLabelClassName,
-  loanFactValueClassName,
-  loanSwatchPreviewStyle,
-  loanSwatchSurfaceStyle,
   normalizeLoanDirection,
   toMeasuredTotalWeight,
 } from "../lib/loan_display";
+import {
+  inventorySwatchCardStyle,
+  inventorySwatchInsetStyle,
+} from "../lib/inventory_swatch_style";
 import { useResolvedTheme } from "../lib/theme_mode";
 import type { SpoolLoanDetailsRow } from "../lib/tauri_client";
 
@@ -83,61 +88,54 @@ export function LoanReturnModal({
 
         <div
           className="rounded-2xl border border-slate-300/80 px-3.5 py-3 text-xs text-slate-700 shadow-sm shadow-slate-300/20 dark:border-slate-700/80 dark:text-slate-300 dark:shadow-none"
-          style={loanSwatchSurfaceStyle(loan.hex_color, "inset", resolvedTheme)}
+          style={inventorySwatchCardStyle(loan.hex_color, resolvedTheme)}
         >
-          <div className="flex items-start gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/60 p-2 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
-              <span
-                className="h-full w-full rounded-xl border border-white/70 shadow-inner shadow-black/5 dark:border-white/10 dark:shadow-none"
-                style={loanSwatchPreviewStyle(loan.hex_color)}
-              />
+          <SwatchSelectionPreviewHeader
+            eyebrow={t("inventory.selectionPreview", "Selection preview")}
+            size="large"
+            swatchColor={loan.hex_color}
+          >
+            <div className="font-semibold text-slate-900 dark:text-slate-50">
+              {compactLoanTitle(loan, t("common.unknown", "Unknown"))}
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="font-semibold text-slate-900 dark:text-slate-50">
-                {compactLoanTitle(loan, t("common.unknown", "Unknown"))}
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+              <VendorBadge
+                vendor={loan.vendor?.trim() || t("common.unknown", "Unknown")}
+                compact
+              />
+              <span>
+                {isInbound
+                  ? t("inventory.borrowedFrom", "Borrowed from")
+                  : t("loans.borrower", "Borrower")}
+                : {loan.loan.counterparty_name ?? loan.loan.borrower_name}
+              </span>
+            </div>
+          </SwatchSelectionPreviewHeader>
+
+          <div
+            className="mt-3 rounded-[1.05rem] border px-3.5 py-3"
+            style={inventorySwatchInsetStyle(loan.hex_color, resolvedTheme)}
+          >
+            <div className="grid grid-cols-[minmax(0,1.45fr)_minmax(108px,0.9fr)] gap-x-4 gap-y-3">
+              <div className="min-w-0">
+                <div className={modalDetailLabelClassName}>
+                  {t("inventory.reference", "Reference")}
+                </div>
+                <div
+                  className={`${modalDetailValueClassName} break-all font-mono`}
+                  title={`#${loan.loan.spool_id}`}
+                >
+                  {formatLoanReference(loan.loan.spool_id)}
+                </div>
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                <VendorBadge
-                  vendor={loan.vendor?.trim() || t("common.unknown", "Unknown")}
-                  compact
-                />
-                <span>
+              <div>
+                <div className={modalDetailLabelClassName}>
                   {isInbound
-                    ? t("inventory.borrowedFrom", "Borrowed from")
-                    : t("loans.borrower", "Borrower")}
-                  : {loan.loan.counterparty_name ?? loan.loan.borrower_name}
-                </span>
-              </div>
-              <div
-                className="mt-3 rounded-[1.05rem] border px-3.5 py-3"
-                style={loanSwatchSurfaceStyle(
-                  loan.hex_color,
-                  "inset",
-                  resolvedTheme,
-                )}
-              >
-                <div className="grid grid-cols-[minmax(0,1.45fr)_minmax(108px,0.9fr)] gap-x-4 gap-y-3">
-                  <div className="min-w-0">
-                    <div className={loanFactLabelClassName}>
-                      {t("inventory.reference", "Reference")}
-                    </div>
-                    <div
-                      className={`${loanFactValueClassName} break-all font-mono`}
-                      title={`#${loan.loan.spool_id}`}
-                    >
-                      {formatLoanReference(loan.loan.spool_id)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className={loanFactLabelClassName}>
-                      {isInbound
-                        ? t("loans.startWeight", "Start")
-                        : t("loans.out", "Out")}
-                    </div>
-                    <div className={loanFactValueClassName}>
-                      {formatGrams(toMeasuredTotalWeight(loan, loan.loan.grams_out))}
-                    </div>
-                  </div>
+                    ? t("loans.startWeight", "Start")
+                    : t("loans.out", "Out")}
+                </div>
+                <div className={modalDetailValueClassName}>
+                  {formatGrams(toMeasuredTotalWeight(loan, loan.loan.grams_out))}
                 </div>
               </div>
             </div>

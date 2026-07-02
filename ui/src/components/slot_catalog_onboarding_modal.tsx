@@ -2,10 +2,7 @@ import { formatFilamentDisplayTitle } from "../lib/display_format";
 import { useI18n, type Locale } from "../lib/i18n";
 import type { OwnershipType } from "../lib/inventory_list_model";
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
-import {
-  formatDateTime,
-  swatchCssBackground,
-} from "../lib/printer_live_display";
+import { formatDateTime } from "../lib/printer_live_display";
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
 import {
   buildSlotCatalogOnboardingSaveState,
@@ -15,9 +12,15 @@ import type { BambuLiveObservedTray, PrinterAmsSlotRow } from "../lib/tauri_clie
 import { AppModal } from "./app_modal";
 import { modalFormInputClassName } from "./form_control_class";
 import { ModalActionButton } from "./modal_action_button";
-import { ModalFactCard, modalDetailLabelClassName, ModalHeader } from "./modal_chrome";
+import {
+  ModalFactCard,
+  modalDetailLabelClassName,
+  modalDetailValueClassName,
+  ModalHeader,
+} from "./modal_chrome";
 import { modalPanelClassName } from "./modal_panel_class";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
+import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { useResolvedTheme } from "../lib/theme_mode";
 
 type SlotCatalogOnboardingModalProps = {
@@ -131,34 +134,32 @@ export function SlotCatalogOnboardingModal({
             className="surface-card space-y-4"
             style={inventorySwatchPanelStyle(prompt.master.hex_color, resolvedTheme)}
           >
-            <div className="flex min-w-0 items-start gap-3">
-              <span
-                className="mt-1 h-10 w-10 shrink-0 rounded-lg border border-slate-200 dark:border-slate-700"
-                style={{ background: swatchCssBackground(prompt.master.hex_color) }}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                  {formatFilamentDisplayTitle(
-                    prompt.master.material,
-                    prompt.master.filament_name,
-                    prompt.master.color_name,
-                  )}
-                </div>
-                <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                  {prompt.master.vendor} · {prompt.master.default_weight} g
-                  {prompt.master.is_discontinued
-                    ? ` · ${t("common.discontinued", "Discontinued")}`
-                    : ""}
-                </div>
+            <SwatchSelectionPreviewHeader
+              eyebrow={t("inventory.selectionPreview", "Selection preview")}
+              size="large"
+              swatchColor={prompt.master.hex_color}
+            >
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                {formatFilamentDisplayTitle(
+                  prompt.master.material,
+                  prompt.master.filament_name,
+                  prompt.master.color_name,
+                )}
               </div>
-            </div>
+              <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                {prompt.master.vendor} · {prompt.master.default_weight} g
+                {prompt.master.is_discontinued
+                  ? ` · ${t("common.discontinued", "Discontinued")}`
+                  : ""}
+              </div>
+            </SwatchSelectionPreviewHeader>
 
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
               <div>
                 <dt className={modalDetailLabelClassName}>
                   {t("inventory.rfidObservedTag", "Observed RFID")}
                 </dt>
-                <dd className="mt-1 break-all font-mono text-slate-900 dark:text-slate-100">
+                <dd className={`${modalDetailValueClassName} break-all font-mono`}>
                   {observedRfid || "-"}
                 </dd>
               </div>
@@ -166,7 +167,7 @@ export function SlotCatalogOnboardingModal({
                 <dt className={modalDetailLabelClassName}>
                   {t("inventory.rfidLastSeen", "Last seen")}
                 </dt>
-                <dd className="mt-1 text-slate-900 dark:text-slate-100">
+                <dd className={modalDetailValueClassName}>
                   {prompt.observedAt ? formatDateTime(prompt.observedAt, locale) : "-"}
                 </dd>
               </div>

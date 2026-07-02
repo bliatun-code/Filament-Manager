@@ -2,42 +2,72 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  inventorySwatchCardStyle,
-  inventorySwatchInsetStyle,
-} from "./inventory_swatch_style";
-import {
-  loanFactLabelClassName,
-  loanFactValueClassName,
-  loanSwatchPreviewStyle,
-  loanSwatchSurfaceStyle,
+  compactLoanTimestamp,
+  compactLoanTitle,
+  formatGrams,
+  formatLoanReference,
+  toMeasuredTotalWeight,
+  toReturnedFilamentWeight,
 } from "./loan_display";
+import type { SpoolLoanDetailsRow } from "./tauri_client";
 
-test("loan swatch surfaces share the inventory swatch contract", () => {
-  assert.deepEqual(
-    loanSwatchSurfaceStyle("#B91C1C", "card", "dark"),
-    inventorySwatchCardStyle("#B91C1C", "dark"),
+function loanRow(overrides: Partial<SpoolLoanDetailsRow> = {}): SpoolLoanDetailsRow {
+  return {
+    spool_status: "BORROWED",
+    spool_remaining_g: 700,
+    spool_tare_weight_g: 200,
+    material: "PETG",
+    filament_name: "PETG Basic",
+    color_name: "Red (30201)",
+    vendor: "Bambu",
+    hex_color: "#C00028",
+    ...overrides,
+    loan: {
+      id: "loan_1",
+      spool_id: "spool_1775434431270",
+      borrower_name: "Ada",
+      loan_direction: "OUTBOUND",
+      loan_status: "ACTIVE",
+      counterparty_name: "Ada",
+      counterparty_contact: null,
+      counterparty_note: null,
+      grams_out: 630,
+      lent_note: null,
+      lent_at: "2026-07-01 21:45:10",
+      expected_return_at: null,
+      returned_at: null,
+      returned_grams: null,
+      consumed_grams: null,
+      return_note: null,
+      ...overrides.loan,
+    },
+  };
+}
+
+test("loan display keeps compact title and reference formatting", () => {
+  assert.equal(compactLoanTitle(loanRow(), "Unknown"), "PETG Basic · Red (30201)");
+  assert.equal(
+    compactLoanTitle(
+      loanRow({
+        filament_name: "PLA",
+        material: "PLA",
+        color_name: "PLA Green (10502)",
+      }),
+      "Unknown",
+    ),
+    "PLA Green (10502)",
   );
-  assert.deepEqual(
-    loanSwatchSurfaceStyle("#B91C1C", "inset", "light"),
-    inventorySwatchInsetStyle("#B91C1C", "light"),
-  );
+  assert.equal(formatLoanReference("spool_1775434431270"), "#431270");
+  assert.equal(formatLoanReference(null), "—");
 });
 
-test("loan swatch preview uses the shared swatch gradient language", () => {
-  assert.equal(loanSwatchPreviewStyle("#B91C1C").background, "#B91C1C");
-  assert.match(
-    loanSwatchPreviewStyle("gradient(#B91C1C,#2563EB)").background,
-    /^linear-gradient\(145deg, /,
-  );
-});
+test("loan display formats timestamps, grams, and measured totals", () => {
+  const row = loanRow();
 
-test("loan fact typography matches modal detail scale", () => {
-  assert.equal(
-    loanFactLabelClassName,
-    "text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400",
-  );
-  assert.equal(
-    loanFactValueClassName,
-    "mt-1 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-50",
-  );
+  assert.equal(compactLoanTimestamp(row.loan.lent_at), "01.07 21:45");
+  assert.equal(compactLoanTimestamp(null), "—");
+  assert.equal(formatGrams(0), "0 g");
+  assert.equal(formatGrams(null), "0 g");
+  assert.equal(toMeasuredTotalWeight(row, row.loan.grams_out), 830);
+  assert.equal(toReturnedFilamentWeight(row, 760), 560);
 });
