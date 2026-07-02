@@ -1,6 +1,8 @@
 import { normalizeCompanionLocale, t } from "./companion_i18n.js";
 import { isBorrowedInOwnership, normalizeDomainToken, parseSpoolStatus } from "./companion_domain.js";
 
+const PRINTER_SLOT_LOCATION_PREFIX = "Printer:";
+
 export function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -137,58 +139,104 @@ export function formatDate(value) {
   }).format(date);
 }
 
-export function formatPlacementLabel(value, locale = "en") {
+export function formatPrinterSlotLocation(printerName, slotId) {
+  return `${PRINTER_SLOT_LOCATION_PREFIX}${normalizeDisplayToken(printerName)}:${normalizeDisplayToken(slotId)}`;
+}
+
+export function parsePlacementLocation(value) {
+  const placement = normalizeDisplayToken(value);
+  if (!placement) {
+    return { kind: "unassigned" };
+  }
+  if (!placement.startsWith(PRINTER_SLOT_LOCATION_PREFIX)) {
+    return { kind: "freeform", label: placement };
+  }
+
+  const match = placement.match(/^Printer:([^:]+):(.+)$/);
+  if (!match) {
+    return {
+      kind: "freeform",
+      label: placement.replace(new RegExp(`^${PRINTER_SLOT_LOCATION_PREFIX}`), ""),
+    };
+  }
+
+  const printerName = normalizeDisplayToken(match[1]);
+  const slotId = normalizeDisplayToken(match[2]);
+  if (!printerName || !slotId) {
+    return {
+      kind: "freeform",
+      label: placement.replace(new RegExp(`^${PRINTER_SLOT_LOCATION_PREFIX}`), ""),
+    };
+  }
+
+  return { kind: "printer_slot", printerName, slotId };
+}
+
+export function formatPrinterSlotTokenLabel(token, locale = "en") {
   const normalizedLocale = normalizeCompanionLocale(locale);
   const slotLabel = t(normalizedLocale, "printers.slot", normalizedLocale === "nb" ? "Spor" : "Slot");
   const extSlotLabel = t(normalizedLocale, "printers.extSlot", normalizedLocale === "nb" ? "EXT-spor" : "EXT Slot");
-  const placement = String(value || "").trim();
-  if (!placement) {
+  const channelLabel = t(normalizedLocale, "printers.channel", normalizedLocale === "nb" ? "Kanal" : "Channel");
+  const toolheadLabel = t(normalizedLocale, "printers.toolhead", normalizedLocale === "nb" ? "Verktøyhode" : "Toolhead");
+  const normalized = normalizeDisplayToken(token);
+  if (!normalized) {
+    return "";
+  }
+
+  const extMatch = normalized.match(/(?:^|_)(?:ext|external)(?:_slot(?:_(\d+))?)?$/i);
+  if (extMatch) {
+    const extSlotIndex = Number.parseInt(extMatch[1] || "", 10);
+    if (!Number.isNaN(extSlotIndex)) {
+      return `${extSlotLabel} ${extSlotIndex}`;
+    }
+    return extSlotLabel;
+  }
+
+  const amsMatch = normalized.match(/(?:^|_)ams[_-](\d+)[_-]slot[_-](\d+)$/i);
+  if (amsMatch) {
+    return `AMS ${Number.parseInt(amsMatch[1], 10)} · ${slotLabel} ${Number.parseInt(amsMatch[2], 10)}`;
+  }
+
+  const mmuMatch = normalized.match(/(?:^|_)mmu3?[_-](?:channel|slot)[_-](\d+)$/i);
+  if (mmuMatch) {
+    return `MMU3 · ${channelLabel} ${Number.parseInt(mmuMatch[1], 10)}`;
+  }
+
+  const toolheadMatch = normalized.match(/(?:^|_)toolhead[_-](\d+)$/i);
+  if (toolheadMatch) {
+    return `${toolheadLabel} ${Number.parseInt(toolheadMatch[1], 10)}`;
+  }
+
+  return normalized;
+}
+
+function formatFreeformPlacementLabel(label, locale = "en") {
+  const rawPrinterSlotMatch = String(label || "").match(
+    /printer_[A-Za-z0-9_]+(?:_ams_\d+_slot_\d+|(?:_ext|_external)(?:_slot(?:_\d+)?)?|_mmu3?_(?:channel|slot)_\d+|_toolhead_\d+)/i,
+  );
+  if (!rawPrinterSlotMatch) {
+    return label;
+  }
+
+  const slotLabel = formatPrinterSlotTokenLabel(rawPrinterSlotMatch[0], locale);
+  if (!slotLabel) {
+    return label;
+  }
+  return label.replace(rawPrinterSlotMatch[0], slotLabel);
+}
+
+export function formatPlacementLabel(value, locale = "en") {
+  const normalizedLocale = normalizeCompanionLocale(locale);
+  const placement = parsePlacementLocation(value);
+  if (placement.kind === "unassigned") {
     return t(normalizedLocale, "format.unassigned", "Unassigned");
   }
 
-  const humanizePrinterSlotToken = (token) => {
-    const normalized = String(token || "").trim();
-    if (!normalized) {
-      return "";
-    }
-    if (/printer_[^\s]+_ams_(\d+)_slot_(\d+)$/i.test(normalized)) {
-      const match = normalized.match(/_ams_(\d+)_slot_(\d+)$/i);
-      if (match) {
-        return `AMS ${Number.parseInt(match[1], 10)} · ${slotLabel} ${Number.parseInt(match[2], 10)}`;
-      }
-    }
-    if (/printer_[^\s]+(?:_ext|_external)(?:_slot(?:_\d+)?)?$/i.test(normalized)) {
-      const extMatch = normalized.match(/(?:_ext|_external)(?:_slot(?:_(\d+))?)?$/i);
-      const extSlotIndex = Number.parseInt(extMatch?.[1] || "", 10);
-      if (!Number.isNaN(extSlotIndex)) {
-        return `${extSlotLabel} ${extSlotIndex}`;
-      }
-      return extSlotLabel;
-    }
-    if (/^ams_(\d+)_slot_(\d+)$/i.test(normalized)) {
-      const match = normalized.match(/^ams_(\d+)_slot_(\d+)$/i);
-      if (match) {
-        return `AMS ${Number.parseInt(match[1], 10)} · ${slotLabel} ${Number.parseInt(match[2], 10)}`;
-      }
-    }
-    return normalized;
-  };
-
-  if (placement.startsWith("Printer:")) {
-    const match = placement.match(/^Printer:([^:]+):(.+)$/);
-    if (match) {
-      return `${match[1]} · ${humanizePrinterSlotToken(match[2])}`;
-    }
+  if (placement.kind === "freeform") {
+    return formatFreeformPlacementLabel(placement.label, normalizedLocale);
   }
 
-  const rawPrinterSlotMatch = placement.match(
-    /printer_[A-Za-z0-9_]+(?:_ams_\d+_slot_\d+|(?:_ext|_external)(?:_slot(?:_\d+)?)?)/i,
-  );
-  if (rawPrinterSlotMatch) {
-    return placement.replace(rawPrinterSlotMatch[0], humanizePrinterSlotToken(rawPrinterSlotMatch[0]));
-  }
-
-  return placement;
+  return `${placement.printerName} · ${formatPrinterSlotTokenLabel(placement.slotId, normalizedLocale)}`;
 }
 
 export function formatStatusLabel(value, locale = "en") {

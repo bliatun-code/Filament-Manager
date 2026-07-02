@@ -3,9 +3,45 @@ import assert from "node:assert/strict";
 
 import {
   formatPlacementLabel,
+  formatPrinterSlotLocation,
+  formatPrinterSlotTokenLabel,
+  parsePlacementLocation,
   sortCatalogMastersAlphabetically,
   sortSpoolRowsAlphabetically,
 } from "./formatters.js";
+
+test("formatPrinterSlotLocation preserves the stored printer-slot contract", () => {
+  assert.equal(
+    formatPrinterSlotLocation("Brutus", "printer_1_ams_1_slot_2"),
+    "Printer:Brutus:printer_1_ams_1_slot_2",
+  );
+});
+
+test("parsePlacementLocation separates freeform and printer slot locations", () => {
+  assert.deepEqual(parsePlacementLocation(null), { kind: "unassigned" });
+  assert.deepEqual(parsePlacementLocation(" Shelf A "), { kind: "freeform", label: "Shelf A" });
+  assert.deepEqual(parsePlacementLocation("Printer:Brutus:ams_1_slot_2"), {
+    kind: "printer_slot",
+    printerName: "Brutus",
+    slotId: "ams_1_slot_2",
+  });
+  assert.deepEqual(parsePlacementLocation("Printer:MissingSlot"), {
+    kind: "freeform",
+    label: "MissingSlot",
+  });
+  assert.deepEqual(parsePlacementLocation("Printer:Brutus:"), {
+    kind: "freeform",
+    label: "Brutus:",
+  });
+});
+
+test("formatPrinterSlotTokenLabel humanizes persisted printer slot ids", () => {
+  assert.equal(formatPrinterSlotTokenLabel("printer_177_ams_2_slot_4"), "AMS 2 · Slot 4");
+  assert.equal(formatPrinterSlotTokenLabel("printer_177_ext_slot_1"), "EXT Slot 1");
+  assert.equal(formatPrinterSlotTokenLabel("printer_177_external"), "EXT Slot");
+  assert.equal(formatPrinterSlotTokenLabel("printer_177_mmu3_channel_5"), "MMU3 · Channel 5");
+  assert.equal(formatPrinterSlotTokenLabel("printer_177_toolhead_2"), "Toolhead 2");
+});
 
 test("formatPlacementLabel humanizes raw printer slot ids inside placement strings", () => {
   assert.equal(
@@ -33,6 +69,11 @@ test("formatPlacementLabel humanizes Printer-prefixed external slot ids in norwe
     formatPlacementLabel("Printer:Prusan:printer_1775235638366_ext_slot_1", "nb"),
     "Prusan · EXT-spor 1",
   );
+});
+
+test("formatPlacementLabel humanizes less common printer slot families", () => {
+  assert.equal(formatPlacementLabel("Printer:MK4:printer_177_mmu3_channel_5"), "MK4 · MMU3 · Channel 5");
+  assert.equal(formatPlacementLabel("Printer:XL:printer_177_toolhead_2"), "XL · Toolhead 2");
 });
 
 test("sortCatalogMastersAlphabetically follows the same deduplicated display title ordering", () => {
