@@ -1,4 +1,5 @@
 import {
+  settingsGroupLabelClass,
   settingsInfoPanelClass,
   settingsLibraryRoleButtonClass,
   settingsTextInputClass,
@@ -45,7 +46,7 @@ export function SettingsLibraryRolePanel({
   return (
     <>
       <div className="space-y-2">
-        <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+        <div className={settingsGroupLabelClass}>
           {t("settings.libraryRoleLabel", "Library role")}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -94,7 +95,7 @@ export function SettingsLibraryRolePanel({
       {libraryVisibility.showDeviceFields ? (
         <div className="grid gap-4 md:grid-cols-2">
           <label className="space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+            <div className={settingsGroupLabelClass}>
               {t("settings.librarySyncDeviceName", "Device name")}
             </div>
             <input
@@ -108,7 +109,7 @@ export function SettingsLibraryRolePanel({
           </label>
 
           <div className="space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+            <div className={settingsGroupLabelClass}>
               {t("settings.librarySyncLibraryId", "Library ID")}
             </div>
             <div className={settingsValueBoxClass}>

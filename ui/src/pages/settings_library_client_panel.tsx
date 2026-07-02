@@ -4,6 +4,7 @@ import { inlineStatusSignalClass } from "../lib/chip_styles";
 import {
   settingsActionButtonClass,
   settingsCompactInfoPanelClass,
+  settingsGroupLabelClass,
   settingsSurfacePanelClass,
   settingsTextInputClass,
   settingsValueBoxClass,
@@ -101,7 +102,7 @@ export function SettingsLibraryClientPanel({
         </div>
         <div className="mt-3">
           <label className="space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+            <div className={settingsGroupLabelClass}>
               {t("settings.librarySyncDeviceName", "Device name")}
             </div>
             <input
@@ -117,7 +118,7 @@ export function SettingsLibraryClientPanel({
         {!settingsClientHostWritePaired ? (
           <>
             <label className="mt-3 block space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+              <div className={settingsGroupLabelClass}>
                 {t("settings.librarySyncClientAuthInput", "Pairing link")}
               </div>
               <input
@@ -251,7 +252,7 @@ export function SettingsLibraryClientPanel({
             <div className={settingsSurfacePanelClass}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+                  <div className={settingsGroupLabelClass}>
                     {t("settings.librarySyncLibraryId", "Library ID")}
                   </div>
                   <div className={`mt-2 break-all ${settingsValueBoxClass}`}>

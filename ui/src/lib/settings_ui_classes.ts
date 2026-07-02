@@ -12,6 +12,9 @@ export const settingsCompactInfoPanelClass =
 export const settingsSectionLabelClass =
   "text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400";
 
+export const settingsGroupLabelClass =
+  "text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400";
+
 export const settingsTinyLabelClass =
   "text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400";
 

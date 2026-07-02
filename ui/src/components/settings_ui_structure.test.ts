@@ -19,6 +19,18 @@ const libraryTabSource = readFileSync(
   new URL("../pages/settings_library_tab.tsx", import.meta.url),
   "utf8",
 );
+const libraryClientPanelSource = readFileSync(
+  new URL("../pages/settings_library_client_panel.tsx", import.meta.url),
+  "utf8",
+);
+const libraryRolePanelSource = readFileSync(
+  new URL("../pages/settings_library_role_panel.tsx", import.meta.url),
+  "utf8",
+);
+const libraryWebappControlSource = readFileSync(
+  new URL("../pages/settings_library_webapp_control.tsx", import.meta.url),
+  "utf8",
+);
 const maintenanceTabSource = readFileSync(
   new URL("./settings_maintenance_tab.tsx", import.meta.url),
   "utf8",
@@ -59,6 +71,17 @@ test("settings top-level tabs use the shared surface card primitive", () => {
   ]) {
     assert.match(panelSource, /SettingsSurfaceCard/);
     assert.doesNotMatch(panelSource, /<section className="surface-card/);
+  }
+});
+
+test("settings library panels use shared wide group labels", () => {
+  for (const panelSource of [
+    libraryClientPanelSource,
+    libraryRolePanelSource,
+    libraryWebappControlSource,
+  ]) {
+    assert.match(panelSource, /settingsGroupLabelClass/);
+    assert.doesNotMatch(panelSource, /tracking-\[0\.28em\]/);
   }
 });
 

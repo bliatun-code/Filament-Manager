@@ -6,6 +6,7 @@ import {
   settingsCompactFormControlClass,
   settingsCompactSelectClass,
   settingsFormControlClass,
+  settingsGroupLabelClass,
   settingsSectionLabelClass,
   settingsTextInputClass,
   settingsTinyLabelClass,
@@ -59,6 +60,12 @@ test("settings section labels keep compact uppercase typography", () => {
   assert.match(settingsSectionLabelClass, /text-\[11px\] font-semibold uppercase/);
   assert.match(settingsSectionLabelClass, /tracking-\[0\.18em\]/);
   assert.match(settingsSectionLabelClass, /text-slate-500/);
+});
+
+test("settings group labels keep wide uppercase typography", () => {
+  assert.match(settingsGroupLabelClass, /text-xs font-semibold uppercase/);
+  assert.match(settingsGroupLabelClass, /tracking-\[0\.28em\]/);
+  assert.match(settingsGroupLabelClass, /text-slate-500/);
 });
 
 test("settings tiny labels keep diagnostic metadata typography", () => {

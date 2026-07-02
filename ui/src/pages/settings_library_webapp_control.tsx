@@ -1,5 +1,6 @@
 import {
   settingsChoiceButtonClass,
+  settingsGroupLabelClass,
   settingsWebappStatusClass,
   settingsWebappSwitchClass,
   settingsWebappSwitchKnobClass,
@@ -33,7 +34,7 @@ export function SettingsLibraryWebappControl({
 }: SettingsLibraryWebappControlProps) {
   return (
     <div className="space-y-2">
-      <div className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+      <div className={settingsGroupLabelClass}>
         {t("settings.libraryWebappLabel", "Web app")}
       </div>
       {librarySyncModeDraft === "CLIENT" ? (
