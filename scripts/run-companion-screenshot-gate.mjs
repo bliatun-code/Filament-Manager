@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -12,6 +13,8 @@ import {
   summarizeScreenshotPixels,
 } from "./screenshot-pixels.mjs";
 import {
+  APP_DB_PATH_ENV_VAR,
+  cleanupVisualQaDatabase,
   formatVisualQaDatasetReport,
   prepareVisualQaDatabase,
 } from "./visual-qa-db.mjs";
@@ -39,6 +42,10 @@ function parseIntegerArg(argv, name, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseBooleanArg(argv, name) {
+  return argv.includes(name);
+}
+
 function routeUrl(baseUrl, route) {
   return new URL(route, `${baseUrl}/`).toString();
 }
@@ -49,6 +56,128 @@ function screenshotPath(outputDir, scenarioName) {
 
 function minimumFor(value, fallback = 1) {
   return Number.isFinite(value) ? value : fallback;
+}
+
+function createTimeoutSignal(timeoutMs) {
+  if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+    return AbortSignal.timeout(timeoutMs);
+  }
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), timeoutMs).unref?.();
+  return controller.signal;
+}
+
+async function wait(ms) {
+  await new Promise((resolveWait) => {
+    setTimeout(resolveWait, ms);
+  });
+}
+
+function appendOutputTail(tail, chunk, maxLength = 8_000) {
+  const next = `${tail}${chunk}`;
+  return next.length > maxLength ? next.slice(next.length - maxLength) : next;
+}
+
+function signalChildProcessGroup(child, signal) {
+  if (!child?.pid) {
+    return;
+  }
+  try {
+    process.kill(-child.pid, signal);
+  } catch {
+    try {
+      child.kill(signal);
+    } catch {
+      // Best-effort cleanup for a helper process that may already be gone.
+    }
+  }
+}
+
+async function waitForChildExit(child, timeoutMs) {
+  if (!child || child.exitCode != null || child.signalCode != null) {
+    return true;
+  }
+  return await new Promise((resolveWait) => {
+    const onExit = () => {
+      clearTimeout(timer);
+      resolveWait(true);
+    };
+    const timer = setTimeout(() => {
+      child.off("exit", onExit);
+      resolveWait(false);
+    }, timeoutMs);
+    child.once("exit", onExit);
+  });
+}
+
+async function terminateChild(child) {
+  if (!child || child.exitCode != null || child.signalCode != null) {
+    return;
+  }
+  signalChildProcessGroup(child, "SIGTERM");
+  const exited = await waitForChildExit(child, 3_000);
+  if (!exited) {
+    signalChildProcessGroup(child, "SIGKILL");
+    await waitForChildExit(child, 1_000);
+  }
+  child.stdout?.destroy();
+  child.stderr?.destroy();
+}
+
+function releaseChild(child) {
+  if (!child) {
+    return;
+  }
+  child.unref?.();
+  child.stdout?.destroy();
+  child.stderr?.destroy();
+}
+
+function spawnTauriDev(spawnFn, options, database) {
+  return spawnFn("npm", ["run", "tauri", "--", "dev"], {
+    cwd: options.cwd ?? process.cwd(),
+    detached: true,
+    env: {
+      ...process.env,
+      [APP_DB_PATH_ENV_VAR]: database.targetPath,
+      FILAMENT_MANAGER_VISUAL_QA: "1",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
+async function probeCompanionHealth(baseUrl, timeoutMs) {
+  const response = await fetch(routeUrl(baseUrl, "/api/v1/health"), {
+    headers: { accept: "application/json" },
+    signal: createTimeoutSignal(timeoutMs),
+  });
+  if (!response.ok) {
+    throw new Error(`/api/v1/health returned HTTP ${response.status}`);
+  }
+  return true;
+}
+
+export async function waitForCompanionServer(baseUrl, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 45_000;
+  const intervalMs = options.intervalMs ?? 500;
+  const probeTimeoutMs = options.probeTimeoutMs ?? Math.min(2_000, Math.max(500, intervalMs));
+  const startedAt = Date.now();
+  let lastError = null;
+
+  while (Date.now() - startedAt <= timeoutMs) {
+    if (options.shouldAbort?.()) {
+      return { lastError, ready: false };
+    }
+    try {
+      await probeCompanionHealth(baseUrl, probeTimeoutMs);
+      return { lastError: null, ready: true };
+    } catch (error) {
+      lastError = error;
+      await wait(intervalMs);
+    }
+  }
+
+  return { lastError, ready: false };
 }
 
 export function summarizeCompanionScreenshotPixels(image, sampleBoxes = []) {
@@ -464,6 +593,165 @@ export async function runCompanionScreenshotGate(options = {}) {
   }
 }
 
+export function companionScreenshotGateNeedsLaunch(error) {
+  const message = String(error?.message ?? error ?? "");
+  return (
+    message.includes("fetch failed") ||
+    message.includes("ECONNREFUSED") ||
+    message.includes("ECONNRESET") ||
+    message.includes("ENOTFOUND") ||
+    message.includes("The operation was aborted") ||
+    message.includes("timed out")
+  );
+}
+
+export async function runLaunchedCompanionScreenshotGate(options = {}) {
+  const prepareDatabase = options.prepareVisualQaDatabase ?? prepareVisualQaDatabase;
+  const cleanupDatabase = options.cleanupVisualQaDatabase ?? cleanupVisualQaDatabase;
+  const spawnFn = options.spawnFn ?? spawn;
+  const waitForServerFn = options.waitForCompanionServer ?? waitForCompanionServer;
+  const visualGateFn = options.runCompanionVisualGate ?? runCompanionVisualGate;
+  const screenshotGateFn = options.runCompanionScreenshotGate ?? runCompanionScreenshotGate;
+  const database = await prepareDatabase({
+    live: Boolean(options.live),
+    profile: options.profile,
+    sourcePath: options.sourcePath,
+  });
+  const baseUrl = normalizeCompanionBaseUrl(
+    options.baseUrl || database.inspection.details?.trustedLanCompanionUrl,
+  );
+  if (!baseUrl) {
+    if (!options.keep && !database.live) {
+      cleanupDatabase(database.targetPath);
+    }
+    throw new Error("Companion screenshot launch needs a companion base URL from --url or trusted-LAN settings.");
+  }
+
+  let outputTail = "";
+  let childExit = null;
+  const child = spawnTauriDev(spawnFn, options, database);
+  child.stdout?.on("data", (chunk) => {
+    outputTail = appendOutputTail(outputTail, chunk);
+  });
+  child.stderr?.on("data", (chunk) => {
+    outputTail = appendOutputTail(outputTail, chunk);
+  });
+  child.once("exit", (code, signal) => {
+    childExit = { code, signal };
+  });
+
+  let keepApp = false;
+  try {
+    const readiness = await waitForServerFn(baseUrl, {
+      intervalMs: options.serverPollMs ?? 500,
+      timeoutMs: options.startupTimeoutMs ?? 45_000,
+      shouldAbort: () => childExit != null,
+    });
+    if (!readiness.ready) {
+      keepApp = Boolean(options.keepAppOnFail);
+      const suffix = childExit
+        ? ` Tauri dev exited early (${childExit.signal ?? childExit.code ?? "unknown"}).`
+        : "";
+      const reason = readiness.lastError?.message ? ` Last probe: ${readiness.lastError.message}.` : "";
+      return {
+        baseUrl,
+        database,
+        errors: [
+          `Companion server did not become reachable at ${baseUrl}/companion after launching Tauri dev.${suffix}${reason}`,
+        ],
+        launchOutputTail: outputTail.trim(),
+        outputDir: resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR),
+        screenshotGate: null,
+        visualGate: null,
+      };
+    }
+
+    let visualGate = null;
+    let screenshotGate = null;
+    try {
+      visualGate = await visualGateFn({
+        baseUrl,
+        timeoutMs: options.timeoutMs,
+      });
+      screenshotGate =
+        visualGate.errors.length > 0
+          ? null
+          : await screenshotGateFn({
+              baseUrl,
+              outputDir: options.outputDir,
+              timeoutMs: options.timeoutMs,
+              themeMode: options.themeMode,
+            });
+    } catch (error) {
+      return {
+        baseUrl,
+        database,
+        errors: [`Companion launched screenshot gate failed after server readiness: ${error.message}`],
+        launchOutputTail: outputTail.trim(),
+        outputDir: resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR),
+        screenshotGate,
+        visualGate,
+      };
+    }
+    return {
+      baseUrl,
+      database,
+      errors: [...visualGate.errors, ...(screenshotGate?.errors ?? [])],
+      launchOutputTail: outputTail.trim(),
+      outputDir: resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR),
+      screenshotGate,
+      visualGate,
+    };
+  } finally {
+    if (keepApp) {
+      releaseChild(child);
+    } else {
+      await terminateChild(child);
+      const postTerminateDelayMs = options.postTerminateDelayMs ?? 1_200;
+      if (postTerminateDelayMs > 0) {
+        await wait(postTerminateDelayMs);
+      }
+    }
+    if (!options.keep && !database.live && !keepApp) {
+      cleanupDatabase(database.targetPath);
+    }
+  }
+}
+
+export function formatLaunchedCompanionScreenshotGateReport(result) {
+  const lines = [];
+  if (result.database) {
+    lines.push(formatVisualQaDatasetReport(result.database));
+    lines.push(
+      result.database.live
+        ? "Companion screenshot QA live DB mode: app changes affected the selected database."
+        : "Companion screenshot QA used a temporary DB copy. Live library was not modified.",
+    );
+  }
+  if (result.visualGate) {
+    lines.push(formatCompanionVisualGateReport(result.visualGate));
+  }
+  if (result.screenshotGate) {
+    lines.push(formatCompanionScreenshotGateReport(result.screenshotGate));
+  } else {
+    lines.push(`Companion screenshot gate target: ${result.baseUrl}/companion`);
+    lines.push(`Companion screenshot artifacts: ${result.outputDir}`);
+  }
+  if (result.errors.length > 0) {
+    lines.push("Companion launched screenshot gate errors:");
+    for (const error of result.errors) {
+      lines.push(`  - ${error}`);
+    }
+    if (result.launchOutputTail) {
+      lines.push("Tauri launch output tail:");
+      lines.push(result.launchOutputTail);
+    }
+  } else {
+    lines.push("Companion launched screenshot gate ok.");
+  }
+  return lines.join("\n");
+}
+
 async function runCli() {
   const argv = process.argv.slice(2);
   const urlArg = parseArgValue(argv, "--url");
@@ -471,6 +759,30 @@ async function runCli() {
   const profile = parseArgValue(argv, "--profile");
   const outputDir = parseArgValue(argv, "--out-dir") ?? DEFAULT_OUTPUT_DIR;
   const timeoutMs = parseIntegerArg(argv, "--timeout-ms", 8_000);
+  const launch = parseBooleanArg(argv, "--launch");
+  const launchOptions = {
+    baseUrl: urlArg,
+    keep: parseBooleanArg(argv, "--keep"),
+    keepAppOnFail: parseBooleanArg(argv, "--keep-app-on-fail"),
+    live: parseBooleanArg(argv, "--live"),
+    outputDir,
+    postTerminateDelayMs: parseIntegerArg(argv, "--post-terminate-delay-ms", 1_200),
+    profile,
+    serverPollMs: parseIntegerArg(argv, "--server-poll-ms", 500),
+    sourcePath,
+    startupTimeoutMs: parseIntegerArg(argv, "--startup-timeout-ms", 45_000),
+    themeMode: parseArgValue(argv, "--theme") ?? "dark",
+    timeoutMs,
+  };
+
+  if (launch) {
+    const result = await runLaunchedCompanionScreenshotGate(launchOptions);
+    console.log(formatLaunchedCompanionScreenshotGateReport(result));
+    if (result.errors.length > 0) {
+      process.exit(1);
+    }
+    return;
+  }
 
   const dbResult = await prepareVisualQaDatabase({
     live: true,
@@ -482,7 +794,17 @@ async function runCli() {
   );
 
   console.log(formatVisualQaDatasetReport(dbResult));
-  const visualGate = await runCompanionVisualGate({ baseUrl, timeoutMs });
+  let visualGate = null;
+  try {
+    visualGate = await runCompanionVisualGate({ baseUrl, timeoutMs });
+  } catch (error) {
+    if (companionScreenshotGateNeedsLaunch(error)) {
+      throw new Error(
+        `Companion server is not reachable at ${baseUrl}/companion (${error.message}). Start the desktop app with Companion enabled, or rerun with --launch to let this gate start Tauri dev against a visual-QA database.`,
+      );
+    }
+    throw error;
+  }
   console.log(formatCompanionVisualGateReport(visualGate));
   if (visualGate.errors.length > 0) {
     process.exit(1);

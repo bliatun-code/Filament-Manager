@@ -33,6 +33,7 @@
     "qa:visual": "node ./scripts/run-visual-qa.mjs",
     "qa:visual:companion": "node ./scripts/run-companion-visual-gate.mjs",
     "qa:visual:companion:screens": "node ./scripts/run-companion-screenshot-gate.mjs",
+    "qa:visual:companion:screens:launch": "node ./scripts/run-companion-screenshot-gate.mjs --launch",
     "qa:visual:desktop:screens": "node ./scripts/run-desktop-screenshot-gate.mjs",
     "qa:visual:desktop:scenarios": "node ./scripts/run-desktop-screenshot-gate.mjs --launch --scenario all",
     "scrape": "node ./node_modules/tsx/dist/cli.mjs src/scraper/bambu_filament_scraper.ts",

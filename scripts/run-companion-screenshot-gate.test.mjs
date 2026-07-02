@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
 import { test } from "node:test";
 import {
+  companionScreenshotGateNeedsLaunch,
   formatCompanionScreenshotGateReport,
+  formatLaunchedCompanionScreenshotGateReport,
+  runLaunchedCompanionScreenshotGate,
   summarizeCompanionScreenshotPixels,
   validateCompanionScreenshotMetrics,
 } from "./run-companion-screenshot-gate.mjs";
@@ -61,6 +66,55 @@ function createMetric(overrides = {}) {
     },
     ...overrides,
   };
+}
+
+function createVisualQaDatabase(overrides = {}) {
+  return {
+    assessment: {
+      errors: [],
+      profile: "rich",
+      warnings: [],
+    },
+    copyMethod: "test-copy",
+    inspection: {
+      counts: {
+        filament_spools: 12,
+        printers: 1,
+      },
+      details: {
+        bambuLiveEnabledCount: 1,
+        bambuLiveIntegrationCount: 1,
+        bambuLiveObservedStateCount: 1,
+        bambuLiveObservedTrayCount: 4,
+        trustedLanEnabled: true,
+        trustedLanCompanionUrl: "http://127.0.0.1:4278/companion",
+        trustedLanInterfaceConfigured: true,
+        trustedLanPort: 4278,
+        usageEventCount: 1,
+      },
+      tables: ["filament_spools", "printers"],
+    },
+    live: false,
+    sourcePath: "/tmp/source.db",
+    targetPath: "/tmp/visual.db",
+    ...overrides,
+  };
+}
+
+function createFakeChild() {
+  const child = new EventEmitter();
+  child.pid = 12345;
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+  child.kill = (signal) => {
+    child.killedSignal = signal;
+    child.exitCode = 0;
+    child.signalCode = signal;
+    queueMicrotask(() => child.emit("exit", 0, signal));
+    return true;
+  };
+  child.unref = () => {};
+  return child;
 }
 
 test("companion screenshot metric validation accepts rich rendered surfaces", () => {
@@ -154,6 +208,111 @@ test("companion screenshot pixel summary measures contrast and swatch samples", 
   assert.ok(summary.lumaStdDev > 10);
   assert.equal(summary.swatchSamples.visible, 1);
   assert.equal(summary.swatchSamples.colorful, 1);
+});
+
+test("companion screenshot launch need detection covers unreachable server failures", () => {
+  assert.equal(companionScreenshotGateNeedsLaunch(new Error("fetch failed")), true);
+  assert.equal(companionScreenshotGateNeedsLaunch(new Error("connect ECONNREFUSED 127.0.0.1:4278")), true);
+  assert.equal(companionScreenshotGateNeedsLaunch(new Error("layout overflow")), false);
+});
+
+test("launched companion screenshot gate starts Tauri dev and cleans up temp DB", async () => {
+  const child = createFakeChild();
+  const calls = {
+    cleanup: [],
+    prepare: [],
+    screenshot: [],
+    spawn: [],
+    visual: [],
+    wait: [],
+  };
+  const result = await runLaunchedCompanionScreenshotGate({
+    cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
+    outputDir: "/tmp/visual-qa",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async (options) => {
+      calls.prepare.push(options);
+      return createVisualQaDatabase();
+    },
+    runCompanionScreenshotGate: async (options) => {
+      calls.screenshot.push(options);
+      return {
+        baseUrl: options.baseUrl,
+        errors: [],
+        metrics: [createMetric()],
+        outputDir: options.outputDir,
+      };
+    },
+    runCompanionVisualGate: async (options) => {
+      calls.visual.push(options);
+      return { baseUrl: options.baseUrl, errors: [], metrics: { spools: 12 } };
+    },
+    spawnFn: (command, args, options) => {
+      calls.spawn.push({ args, command, options });
+      child.stderr.write("ready soon\n");
+      return child;
+    },
+    themeMode: "dark",
+    timeoutMs: 1234,
+    waitForCompanionServer: async (baseUrl, options) => {
+      calls.wait.push({ baseUrl, options });
+      return { ready: true };
+    },
+  });
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.baseUrl, "http://127.0.0.1:4278");
+  assert.deepEqual(calls.prepare, [{ live: false, profile: undefined, sourcePath: undefined }]);
+  assert.equal(calls.spawn[0]?.command, "npm");
+  assert.deepEqual(calls.spawn[0]?.args, ["run", "tauri", "--", "dev"]);
+  assert.equal(calls.spawn[0]?.options.env.FILAMENT_MANAGER_DB_PATH, "/tmp/visual.db");
+  assert.equal(calls.spawn[0]?.options.env.FILAMENT_MANAGER_VISUAL_QA, "1");
+  assert.equal(calls.wait[0]?.baseUrl, "http://127.0.0.1:4278");
+  assert.equal(calls.visual[0]?.timeoutMs, 1234);
+  assert.equal(calls.screenshot[0]?.themeMode, "dark");
+  assert.deepEqual(calls.cleanup, ["/tmp/visual.db"]);
+  assert.equal(child.killedSignal, "SIGTERM");
+});
+
+test("launched companion screenshot gate reports startup failures with launch output", async () => {
+  const child = createFakeChild();
+  const result = await runLaunchedCompanionScreenshotGate({
+    cleanupVisualQaDatabase: () => {},
+    outputDir: "/tmp/visual-qa",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+    spawnFn: () => {
+      queueMicrotask(() => child.stdout.write("boot line\n"));
+      return child;
+    },
+    waitForCompanionServer: async () => ({
+      lastError: new Error("fetch failed"),
+      ready: false,
+    }),
+  });
+
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0], /did not become reachable/);
+  assert.match(result.errors[0], /fetch failed/);
+  assert.match(result.launchOutputTail, /boot line/);
+  assert.equal(result.screenshotGate, null);
+  assert.equal(result.visualGate, null);
+});
+
+test("launched companion screenshot report includes launch diagnostics", () => {
+  const report = formatLaunchedCompanionScreenshotGateReport({
+    baseUrl: "http://127.0.0.1:4278",
+    database: createVisualQaDatabase(),
+    errors: ["broken"],
+    launchOutputTail: "tail output",
+    outputDir: "/tmp/visual-qa",
+    screenshotGate: null,
+    visualGate: null,
+  });
+
+  assert.match(report, /Companion screenshot QA used a temporary DB copy/);
+  assert.match(report, /Companion launched screenshot gate errors/);
+  assert.match(report, /tail output/);
 });
 
 test("companion screenshot report lists artifact paths", () => {
