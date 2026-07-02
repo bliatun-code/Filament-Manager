@@ -6,6 +6,7 @@ import {
   renderDesktopRail,
   renderDetailModalShell,
   renderPhoneBottomNav,
+  renderSwatchListRow,
   renderSwatchSelectionCard,
   renderTopbar,
   renderTrustedLanPairingApp,
@@ -84,6 +85,35 @@ test("swatch selection card helper owns selected filament preview chrome", () =>
   assert.match(html, /Selected/);
   assert.match(html, /--swatch-rgb:37 99 235/);
   assert.match(html, /data-action="save"/);
+});
+
+test("swatch list row helper owns filament row chrome", () => {
+  const html = renderSwatchListRow({
+    action: "select-spool",
+    active: true,
+    attributes: {
+      "data-spool-id": "spool-1",
+    },
+    badges: ["Borrowed <in>"],
+    className: "loan-picker-option",
+    escapeHtml,
+    meta: ["Bambu", "#123"],
+    subtitle: "Shelf & box",
+    swatch: "#16A34A",
+    title: "PLA <Green>",
+    weight: "500 g",
+  });
+
+  assert.match(html, /list-row dense-list-row spool-list-row swatch-surface loan-picker-option/);
+  assert.match(html, /data-action="select-spool"/);
+  assert.match(html, /data-active="true"/);
+  assert.match(html, /data-spool-id="spool-1"/);
+  assert.match(html, /--swatch-rgb:22 163 74/);
+  assert.match(html, /PLA &lt;Green&gt;/);
+  assert.match(html, /Shelf &amp; box/);
+  assert.match(html, /Bambu · #123/);
+  assert.match(html, /500 g/);
+  assert.match(html, /Borrowed &lt;in&gt;/);
 });
 
 test("topbar renders the tablet root switch with all primary flows", () => {

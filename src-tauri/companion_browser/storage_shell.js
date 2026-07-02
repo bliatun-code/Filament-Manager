@@ -12,7 +12,11 @@ import {
 import { suggestSwatchHex, swatchCssStyle, toSwatchColor } from "./companion_theme.js";
 import { t } from "./companion_i18n.js";
 import { isBorrowedInOwnership, normalizeDomainToken, parseSpoolStatus } from "./companion_domain.js";
-import { renderCompanionActionButton, renderSwatchSelectionCard } from "./shell_chrome.js";
+import {
+  renderCompanionActionButton,
+  renderSwatchListRow,
+  renderSwatchSelectionCard,
+} from "./shell_chrome.js";
 
 function catalogMatchesSource(master, source) {
   const vendor = String(master?.vendor || "").trim().toLowerCase();
@@ -330,44 +334,26 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
                       ? selection.visibleCatalogMasters
                           .map((master) => {
                             const selected = selection.selectedMaster?.id === master.id;
-                            const masterStyle = swatchCssStyle(master.hex_color);
-                            return `
-                              <button
-                                class="list-row dense-list-row spool-list-row swatch-surface add-spool-catalog-row"
-                                type="button"
-                                data-action="select-master"
-                                data-master-id="${escapeHtml(master.id)}"
-                                data-active="${selected ? "true" : "false"}"
-                                style="${escapeHtml(masterStyle)}"
-                              >
-                                <div class="dense-list-main">
-                                  <div class="swatch-line spool-row-title">
-                                    <span class="swatch-dot" style="background:${escapeHtml(
-                                      toSwatchColor(master.hex_color),
-                                    )};"></span>
-                                    <span class="list-title">${escapeHtml(
-                                      formatInventoryDisplayTitle(
-                                        master.material,
-                                        master.filament_name,
-                                        master.color_name,
-                                      ),
-                                    )}</span>
-                                  </div>
-                                </div>
-                                <div class="dense-list-side">
-                                  ${
-                                    selected
-                                      ? `<span class="pill">${escapeHtml(t(locale, "storage.selected", "Selected"))}</span>`
-                                      : ""
-                                  }
-                                  ${
-                                    master.is_discontinued
-                                      ? `<span class="pill">${escapeHtml(t(locale, "storage.discontinued", "Discontinued"))}</span>`
-                                      : ""
-                                  }
-                                </div>
-                              </button>
-                            `;
+                            const badges = [
+                              selected ? t(locale, "storage.selected", "Selected") : "",
+                              master.is_discontinued
+                                ? t(locale, "storage.discontinued", "Discontinued")
+                                : "",
+                            ].filter(Boolean);
+                            return renderSwatchListRow({
+                              action: "select-master",
+                              active: selected,
+                              attributes: { "data-master-id": master.id },
+                              badges,
+                              className: "add-spool-catalog-row",
+                              escapeHtml,
+                              swatch: master.hex_color,
+                              title: formatInventoryDisplayTitle(
+                                master.material,
+                                master.filament_name,
+                                master.color_name,
+                              ),
+                            });
                           })
                           .join("")
                       : `<div class="empty-card">${escapeHtml(
@@ -701,7 +687,6 @@ function renderSpoolRows(options) {
       );
       const subtitleBits = [row.master.vendor || "Unknown vendor", formatRollReference(row.spool)]
         .filter(Boolean)
-        .map((value) => escapeHtml(value))
         .join(" · ");
       const metaBits = [
         row.spool.location_id ? formatPlacementLabel(row.spool.location_id, locale) : "",
@@ -711,10 +696,7 @@ function renderSpoolRows(options) {
         row.spool.owner_name
           ? t(locale, "loans.borrowedFrom", "Borrowed from {name}", { name: row.spool.owner_name })
           : "",
-      ]
-        .filter(Boolean)
-        .map((value) => escapeHtml(value))
-        .join(" · ");
+      ].filter(Boolean);
       const rowBadges = [];
       const rowStatus = parseSpoolStatus(row.spool.status) || normalizeDomainToken(row.spool.status);
       if (rowStatus && rowStatus !== "IN_STOCK") {
@@ -723,37 +705,18 @@ function renderSpoolRows(options) {
       if (isBorrowedInOwnership(row.spool.ownership_type)) {
         rowBadges.push(ownershipLabel(row.spool));
       }
-      return `
-        <button
-          class="list-row dense-list-row spool-list-row swatch-surface"
-          type="button"
-          data-active="${active ? "true" : "false"}"
-          data-action="select-spool"
-          data-spool-id="${escapeHtml(row.spool.id)}"
-          style="${escapeHtml(swatchCssStyle(swatch))}"
-        >
-          <div class="dense-list-main">
-            <div class="swatch-line spool-row-title">
-              <span class="swatch-dot" style="background:${escapeHtml(swatch)};"></span>
-              <span class="list-title">${escapeHtml(displayTitle)}</span>
-            </div>
-            <div class="list-subtitle">${subtitleBits}</div>
-            ${metaBits ? `<div class="meta-line spool-row-meta">${metaBits}</div>` : ""}
-          </div>
-          <div class="dense-list-side">
-            <div class="spool-row-weight">${escapeHtml(formatGrams(row.spool.remaining_g))}</div>
-            ${
-              rowBadges.length > 0
-                ? `
-                  <div class="pill-row compact-pill-row">
-                    ${rowBadges.map((label) => `<span class="pill">${escapeHtml(label)}</span>`).join("")}
-                  </div>
-                `
-                : ""
-            }
-          </div>
-        </button>
-      `;
+      return renderSwatchListRow({
+        action: "select-spool",
+        active,
+        attributes: { "data-spool-id": row.spool.id },
+        badges: rowBadges,
+        escapeHtml,
+        meta: metaBits,
+        subtitle: subtitleBits,
+        swatch,
+        title: displayTitle,
+        weight: formatGrams(row.spool.remaining_g),
+      });
     })
     .join("");
 }

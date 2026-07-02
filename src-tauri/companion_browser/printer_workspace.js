@@ -18,7 +18,11 @@ import {
   liveSlotObservedRfid,
 } from "./companion_live_rfid_candidates.js";
 import { formatPrinterSlotLabelForModel } from "./printer_slot_labels.js";
-import { renderCompanionActionButton, renderSwatchSelectionCard } from "./shell_chrome.js";
+import {
+  renderCompanionActionButton,
+  renderSwatchListRow,
+  renderSwatchSelectionCard,
+} from "./shell_chrome.js";
 
 export function formatPrinterSlotLabel(slot, locale = "en", printerModel = "") {
   return formatPrinterSlotLabelForModel(slot, locale, printerModel);
@@ -279,32 +283,30 @@ export function renderPrinterPickerTaskSheetBody(options) {
                       : "",
                   ]
                     .filter(Boolean)
-                    .join(" · ");
-                  return `
-                    <button
-                      class="list-row dense-list-row spool-list-row printer-picker-row swatch-surface"
-                      type="button"
-                      data-action="assign-selected-spool"
-                      data-spool-id="${escapeHtml(row.spool.id)}"
-                      data-printer-id="${escapeHtml(pendingSlotTarget.printerId)}"
-                      data-printer-name="${escapeHtml(pendingSlotTarget.printerName)}"
-                      data-slot-id="${escapeHtml(pendingSlotTarget.slotId)}"
-                      data-slot-index="${escapeHtml(pendingSlotTarget.slotIndex)}"
-                      data-slot-label="${escapeHtml(pendingSlotTarget.slotLabel || `${t(locale, "printers.slot", "Slot")} ${pendingSlotTarget.slotIndex || "?"}`)}"
-                      style="${escapeHtml(swatchCssStyle(swatch))}"
-                    >
-                      <div class="dense-list-main">
-                        <div class="swatch-line spool-row-title">
-                          <span class="swatch-dot" style="background:${escapeHtml(toSwatchColor(swatch))};"></span>
-                          <span class="list-title">${escapeHtml(formatInventoryDisplayTitle(row.master.material, row.master.filament_name, row.master.color_name))}</span>
-                        </div>
-                        <div class="meta-line spool-row-meta printer-picker-row-meta">${escapeHtml(rowMeta)}</div>
-                      </div>
-                      <div class="dense-list-side">
-                        <div class="spool-row-weight">${escapeHtml(formatGrams(row.spool.remaining_g))}</div>
-                      </div>
-                    </button>
-                  `;
+                  return renderSwatchListRow({
+                    action: "assign-selected-spool",
+                    attributes: {
+                      "data-spool-id": row.spool.id,
+                      "data-printer-id": pendingSlotTarget.printerId,
+                      "data-printer-name": pendingSlotTarget.printerName,
+                      "data-slot-id": pendingSlotTarget.slotId,
+                      "data-slot-index": pendingSlotTarget.slotIndex,
+                      "data-slot-label":
+                        pendingSlotTarget.slotLabel ||
+                        `${t(locale, "printers.slot", "Slot")} ${pendingSlotTarget.slotIndex || "?"}`,
+                    },
+                    className: "printer-picker-row",
+                    escapeHtml,
+                    meta: rowMeta,
+                    metaClassName: "printer-picker-row-meta",
+                    swatch,
+                    title: formatInventoryDisplayTitle(
+                      row.master.material,
+                      row.master.filament_name,
+                      row.master.color_name,
+                    ),
+                    weight: formatGrams(row.spool.remaining_g),
+                  });
                 })
                 .join("")
             : `<div class="empty-card">${escapeHtml(t(locale, "printers.noReadyMatch", "No ready-to-load spools matched this search."))}</div>`

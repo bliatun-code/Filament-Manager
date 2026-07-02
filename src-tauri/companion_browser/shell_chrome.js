@@ -117,6 +117,75 @@ export function renderSwatchSelectionCard(options) {
   `;
 }
 
+export function renderSwatchListRow(options) {
+  const {
+    action,
+    active,
+    attributes = {},
+    badges = [],
+    className = "",
+    escapeHtml,
+    meta = [],
+    metaClassName = "",
+    subtitle = "",
+    swatch,
+    title,
+    type = "button",
+    weight = "",
+  } = options;
+  const escape = typeof escapeHtml === "function" ? escapeHtml : (value) => String(value ?? "");
+  const cleanedMeta = meta.filter(Boolean).map((value) => escape(value));
+  const cleanedBadges = badges.filter(Boolean).map((value) => escape(value));
+  const classes = [
+    "list-row",
+    "dense-list-row",
+    "spool-list-row",
+    "swatch-surface",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const rowStyle = [swatchCssStyle(swatch), attributes.style].filter(Boolean).join(";");
+  const renderedAttributes = renderAttributeMap(
+    {
+      type,
+      ...attributes,
+      ...(active == null ? {} : { "data-active": active ? "true" : "false" }),
+      ...(action ? { "data-action": action } : {}),
+      style: rowStyle,
+    },
+    escape,
+  );
+  const metaClasses = ["meta-line", "spool-row-meta", metaClassName].filter(Boolean).join(" ");
+  const sideHtml =
+    weight || cleanedBadges.length > 0
+      ? `
+        <div class="dense-list-side">
+          ${weight ? `<div class="spool-row-weight">${escape(weight)}</div>` : ""}
+          ${
+            cleanedBadges.length > 0
+              ? `<div class="pill-row compact-pill-row">${cleanedBadges.map((badge) => `<span class="pill">${badge}</span>`).join("")}</div>`
+              : ""
+          }
+        </div>
+      `
+      : "";
+
+  return `
+    <button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>
+      <div class="dense-list-main">
+        <div class="swatch-line spool-row-title">
+          <span class="swatch-dot" style="background:${escape(toSwatchColor(swatch))};"></span>
+          <span class="list-title">${escape(title)}</span>
+        </div>
+        ${subtitle ? `<div class="list-subtitle">${escape(subtitle)}</div>` : ""}
+        ${cleanedMeta.length > 0 ? `<div class="${escape(metaClasses)}">${cleanedMeta.join(" · ")}</div>` : ""}
+      </div>
+      ${sideHtml}
+    </button>
+  `;
+}
+
 function renderTabletRootSwitch(activeRootFlow, rootFlowItems, escapeHtml, locale = "en") {
   return `
     <div class="root-switch" role="tablist" aria-label="${escapeHtml(t(locale, "nav.primaryFlowsAria", "Primary flows"))}">

@@ -7,7 +7,11 @@ import {
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference } from "./formatters.js";
 import { suggestSwatchHex, swatchCssStyle, toSwatchColor } from "./companion_theme.js";
-import { renderCompanionActionButton, renderSwatchSelectionCard } from "./shell_chrome.js";
+import {
+  renderCompanionActionButton,
+  renderSwatchListRow,
+  renderSwatchSelectionCard,
+} from "./shell_chrome.js";
 
 function loanStateLabel(row, locale = "en") {
   const returned = isLoanReturned(row);
@@ -112,27 +116,16 @@ function renderLoanPickerRows(options) {
         formatRollReference(row.spool),
         formatGrams(row.spool?.remaining_g),
         row.spool?.location_id || t(locale, "format.unassigned", "Unassigned"),
-      ]
-        .filter(Boolean)
-        .map((value) => escapeHtml(value))
-        .join(" · ");
-      return `
-        <button
-          class="list-row dense-list-row spool-list-row swatch-surface loan-picker-option"
-          type="button"
-          data-action="select-loan-spool"
-          data-spool-id="${escapeHtml(row.spool.id)}"
-          style="${escapeHtml(swatchCssStyle(swatch))}"
-        >
-          <div class="dense-list-main">
-            <div class="swatch-line spool-row-title">
-              <span class="swatch-dot" style="background:${escapeHtml(toSwatchColor(swatch))};"></span>
-              <span class="list-title">${escapeHtml(displayTitle)}</span>
-            </div>
-            <div class="meta-line spool-row-meta">${metadata}</div>
-          </div>
-        </button>
-      `;
+      ].filter(Boolean);
+      return renderSwatchListRow({
+        action: "select-loan-spool",
+        attributes: { "data-spool-id": row.spool.id },
+        className: "loan-picker-option",
+        escapeHtml,
+        meta: metadata,
+        swatch,
+        title: displayTitle,
+      });
     })
     .join("");
 }
