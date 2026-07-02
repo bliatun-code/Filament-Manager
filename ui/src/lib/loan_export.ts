@@ -1,5 +1,6 @@
 import type { SpoolLoanDetailsRow } from "./tauri_client";
-import { normalizeLoanDirection, type LoanDirectionFilter } from "./loan_display";
+import type { LoanDirectionFilter } from "./loan_display";
+import { normalizeLoanDetailsRow } from "./loan_row_normalization";
 
 const LOAN_CSV_HEADER =
   "loan_id,spool_id,direction,counterparty,grams_out,lent_at,returned_at,returned_grams,consumed_grams,material,filament,color,vendor,status";
@@ -23,10 +24,11 @@ export function buildLoansCsv(
   rows: SpoolLoanDetailsRow[],
   directionFilter: LoanDirectionFilter = "ALL",
 ) {
+  const normalizedRows = rows.map(normalizeLoanDetailsRow);
   const selectedRows =
     directionFilter === "ALL"
-      ? rows
-      : rows.filter((row) => normalizeLoanDirection(row.loan.loan_direction) === directionFilter);
+      ? normalizedRows
+      : normalizedRows.filter((row) => row.loan.loan_direction === directionFilter);
   const lines = selectedRows.map((row) =>
     [
       csvText(row.loan.id),

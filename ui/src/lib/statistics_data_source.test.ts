@@ -188,6 +188,10 @@ test("loadFilamentConsumptionBreakdown avoids local fallback for incomplete clie
 
 test("loadLoanBreakdownRows reuses cached client loan details", async () => {
   const cachedRows = [loanRow("client-spool")];
+  const cachedRow = cachedRows[0]!;
+  cachedRow.loan.loan_direction = "in-bound";
+  cachedRow.loan.loan_status = "active";
+  cachedRow.loan.returned_at = "2026-04-02 10:00:00";
   const rows = await loadLoanBreakdownRows(
     { clientReadOnly: true, cachedLoanDetails: cachedRows, direction: "OUTBOUND" },
     {
@@ -197,7 +201,11 @@ test("loadLoanBreakdownRows reuses cached client loan details", async () => {
     },
   );
 
-  assert.equal(rows, cachedRows);
+  assert.notEqual(rows[0], cachedRows[0]);
+  assert.equal(rows[0]?.loan.loan_direction, "INBOUND");
+  assert.equal(rows[0]?.loan.loan_status, "RETURNED");
+  assert.equal(cachedRow.loan.loan_direction, "in-bound");
+  assert.equal(cachedRow.loan.loan_status, "active");
 });
 
 test("loadLoanBreakdownRows loads local loans outside client mode", async () => {
@@ -207,13 +215,19 @@ test("loadLoanBreakdownRows loads local loans outside client mode", async () => 
     {
       listLocalLoans: async (limit, includeReturned, direction) => {
         calls.push({ limit, includeReturned, direction });
-        return [loanRow("local-spool")];
+        const row = loanRow("local-spool");
+        row.loan.loan_direction = "in-bound";
+        row.loan.loan_status = "active";
+        row.loan.returned_at = "2026-04-02 10:00:00";
+        return [row];
       },
     },
   );
 
   assert.deepEqual(calls, [{ limit: 50, includeReturned: true, direction: "INBOUND" }]);
   assert.deepEqual(rows.map((row) => row.loan.spool_id), ["local-spool"]);
+  assert.equal(rows[0]?.loan.loan_direction, "INBOUND");
+  assert.equal(rows[0]?.loan.loan_status, "RETURNED");
 });
 
 test("loadStatisticsPageData loads sync settings once and returns derived sync state", async () => {
@@ -385,6 +399,32 @@ test("loadStatisticsData marks local statistics loads as live", async () => {
   assert.deepEqual(result.printers.map((row) => row.printer.id), ["local-printer"]);
   assert.deepEqual(result.loanUsage.map((row) => row.borrower_name), ["Ada"]);
   assert.deepEqual(result.inboundLoanUsage.map((row) => row.borrower_name), ["Borrower"]);
+});
+
+test("loadStatisticsData normalizes cached client loan details", async () => {
+  const cachedLoan = loanRow("cached-inbound");
+  cachedLoan.loan.loan_direction = "in-bound";
+  cachedLoan.loan.loan_status = "active";
+  cachedLoan.loan.returned_at = "2026-04-02 10:00:00";
+
+  const result = await loadStatisticsData(
+    syncSettings({
+      mode: "CLIENT",
+      cached_loans: {
+        captured_at: "loan-cache",
+        rows: [cachedLoan],
+      },
+    }),
+  );
+
+  assert.equal(result.source, "CACHED");
+  assert.equal(result.updatedAt, "loan-cache");
+  assert.equal(result.loanDetails[0]?.loan.loan_direction, "INBOUND");
+  assert.equal(result.loanDetails[0]?.loan.loan_status, "RETURNED");
+  assert.deepEqual(result.loanUsage, []);
+  assert.deepEqual(result.inboundLoanUsage.map((row) => row.borrower_name), ["Ada"]);
+  assert.equal(cachedLoan.loan.loan_direction, "in-bound");
+  assert.equal(cachedLoan.loan.loan_status, "active");
 });
 
 test("loadStatisticsData keeps partial client host data and cache when host calls fail", async () => {

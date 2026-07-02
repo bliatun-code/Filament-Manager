@@ -23,6 +23,7 @@ import { loadAllSpoolRows } from "./spool_data_source";
 import { isLoanCurrentlyActive, isLoanReturned } from "./loan_state";
 import { deriveInventoryOverviewFromRows } from "./statistics_model";
 import { normalizeLoanDirection, type LoanDirection } from "./inventory_domain";
+import { normalizeLoanDetailsRow } from "./loan_row_normalization";
 import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
@@ -92,6 +93,10 @@ type StatisticsDataDependencies = {
   listLocalLoanUsageByPerson?: typeof listLoanUsageByPerson;
   listLocalPrinterOverview?: typeof listPrinterOverview;
 };
+
+function normalizeLoanDetailsRows(rows: SpoolLoanDetailsRow[]): SpoolLoanDetailsRow[] {
+  return rows.map(normalizeLoanDetailsRow);
+}
 
 export function deriveStatisticsLibrarySyncState(
   syncSettings: LibrarySyncSettings,
@@ -180,11 +185,13 @@ export async function loadLoanBreakdownRows(
   dependencies: LoanBreakdownRowsDependencies = {},
 ): Promise<SpoolLoanDetailsRow[]> {
   if (options.clientReadOnly) {
-    return options.cachedLoanDetails;
+    return normalizeLoanDetailsRows(options.cachedLoanDetails);
   }
 
   const listLocalLoans = dependencies.listLocalLoans ?? listSpoolLoans;
-  return listLocalLoans(options.limit ?? 2000, true, options.direction ?? null);
+  return normalizeLoanDetailsRows(
+    await listLocalLoans(options.limit ?? 2000, true, options.direction ?? null),
+  );
 }
 
 export async function loadStatisticsData(
@@ -273,9 +280,10 @@ export async function loadStatisticsData(
     const resolvedPrinters = printersResult.ok
       ? printersResult.value
       : cachedPrinters?.rows ?? syncSettings.cached_printers?.rows ?? [];
-    const resolvedLoans = loansResult.ok
+    const resolvedLoanRows = loansResult.ok
       ? loansResult.value
       : cachedLoans?.rows ?? syncSettings.cached_loans?.rows ?? [];
+    const resolvedLoans = normalizeLoanDetailsRows(resolvedLoanRows);
     const resolvedSpoolRows = spoolsResult.ok
       ? spoolsResult.value
       : cachedSpools?.rows ?? syncSettings.cached_spools?.rows ?? [];
@@ -344,7 +352,7 @@ export async function loadStatisticsData(
 
   if (syncState.clientReadOnly) {
     const spoolRows = syncSettings.cached_spools?.rows ?? [];
-    const loanRows = syncSettings.cached_loans?.rows ?? [];
+    const loanRows = normalizeLoanDetailsRows(syncSettings.cached_loans?.rows ?? []);
     const spoolRowsOverview =
       spoolRows.length > 0 ? deriveInventoryOverviewFromRows(spoolRows, []) : null;
     const overview = spoolRowsOverview ?? syncSettings.cached_snapshot?.inventory ?? null;

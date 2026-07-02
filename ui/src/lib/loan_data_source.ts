@@ -12,14 +12,16 @@ import {
   type LendSpoolInput,
   type ReturnSpoolLoanInput,
   type SpoolLoanDetailsRow,
-  type SpoolLoanRow,
 } from "./tauri_client";
 import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
 } from "./library_sync_state";
-import { normalizeLoanDirection, normalizeLoanStatus } from "./inventory_domain";
 import { isActiveOutboundLoan } from "./loan_state";
+import {
+  normalizeActiveLoanRow,
+  normalizeLoanDetailsRow,
+} from "./loan_row_normalization";
 import {
   requireClientHostWriteTarget,
   resolveClientHostTarget,
@@ -69,25 +71,7 @@ type LoanWriteDependencies = {
 };
 
 export const deriveLoanLibrarySyncState = deriveLibrarySyncPageState;
-
-function normalizeLoanRow<T extends { loan: SpoolLoanRow }>(row: T): T {
-  return {
-    ...row,
-    loan: {
-      ...row.loan,
-      loan_direction: normalizeLoanDirection(row.loan.loan_direction),
-      loan_status: normalizeLoanStatus(row.loan.loan_status, row.loan.returned_at),
-    },
-  };
-}
-
-export function normalizeLoanDetailsRow(row: SpoolLoanDetailsRow): SpoolLoanDetailsRow {
-  return normalizeLoanRow(row);
-}
-
-export function normalizeActiveLoanRow(row: ActiveSpoolLoanRow): ActiveSpoolLoanRow {
-  return normalizeLoanRow(row);
-}
+export { normalizeActiveLoanRow, normalizeLoanDetailsRow } from "./loan_row_normalization";
 
 function mapLoanDetailsToActiveRow(row: SpoolLoanDetailsRow): ActiveSpoolLoanRow {
   const normalized = normalizeLoanDetailsRow(row);

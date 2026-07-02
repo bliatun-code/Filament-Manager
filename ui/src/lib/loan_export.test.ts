@@ -64,3 +64,19 @@ test("buildLoansCsv can export one loan direction from loaded host rows", () => 
   assert.match(csv, /loan-2/);
   assert.doesNotMatch(csv, /loan-1/);
 });
+
+test("buildLoansCsv normalizes legacy loan direction values before export", () => {
+  const inboundRow = rows[1]!;
+  const legacyRow: SpoolLoanDetailsRow = {
+    ...inboundRow,
+    loan: {
+      ...inboundRow.loan,
+      loan_direction: "in-bound",
+    },
+  };
+
+  const csv = buildLoansCsv([legacyRow], "INBOUND");
+
+  assert.match(csv, /loan-2,spool-2,INBOUND/);
+  assert.equal(legacyRow.loan.loan_direction, "in-bound");
+});
