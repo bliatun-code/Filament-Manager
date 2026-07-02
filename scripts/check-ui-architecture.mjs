@@ -17,6 +17,8 @@ const lazyOnlyModules = new Set(
     "ui/src/lib/filament_label_print.ts",
     "ui/src/lib/filament_qr_payload.ts",
     "ui/src/lib/inventory_overview_print.ts",
+    "ui/src/lib/i18n_locales/locales/en.ts",
+    "ui/src/lib/i18n_locales/locales/nb.ts",
     "ui/src/lib/spool_qr_artifacts.ts",
   ].map((file) => resolve(repoRoot, file)),
 );
@@ -79,7 +81,7 @@ if (appImporters.length > 0) {
 
 if (staticLazyOnlyImporters.length > 0) {
   console.error(
-    "UI runtime code must lazy-load print, QR, and scanner helpers instead of statically importing them:",
+    "UI runtime code must lazy-load print, QR, scanner helpers, and locale dictionaries instead of statically importing them:",
   );
   for (const entry of staticLazyOnlyImporters.sort((left, right) =>
     `${left.from}:${left.to}`.localeCompare(`${right.from}:${right.to}`),

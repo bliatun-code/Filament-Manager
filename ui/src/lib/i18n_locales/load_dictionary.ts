@@ -1,29 +1,33 @@
 import type { DictionaryNode, Locale } from "../i18n_types";
-import { enDictionary } from "./locales/en";
 
-const dictionaryCache: Partial<Record<Locale, DictionaryNode>> = {
-  en: enDictionary,
+const dictionaryCache: Partial<Record<Locale, DictionaryNode>> = {};
+const dictionaryPromises: Partial<Record<Locale, Promise<DictionaryNode>>> = {};
+
+const dictionaryLoaders: Record<Locale, () => Promise<DictionaryNode>> = {
+  en: () => import("./locales/en").then(({ enDictionary }) => enDictionary),
+  nb: () => import("./locales/nb").then(({ nbDictionary }) => nbDictionary),
 };
-
-let nbDictionaryPromise: Promise<DictionaryNode> | null = null;
-
-export function getEnglishDictionary(): DictionaryNode {
-  return enDictionary;
-}
 
 export function getCachedLocaleDictionary(locale: Locale): DictionaryNode | null {
   return dictionaryCache[locale] ?? null;
 }
 
 export function loadLocaleDictionary(locale: Locale): Promise<DictionaryNode> {
-  if (locale === "en") {
-    return Promise.resolve(enDictionary);
+  const cachedDictionary = dictionaryCache[locale];
+  if (cachedDictionary) {
+    return Promise.resolve(cachedDictionary);
   }
 
-  nbDictionaryPromise ??= import("./locales/nb").then(({ nbDictionary }) => {
-    dictionaryCache.nb = nbDictionary;
-    return nbDictionary;
-  });
+  dictionaryPromises[locale] ??= dictionaryLoaders[locale]().then(
+    (dictionary) => {
+      dictionaryCache[locale] = dictionary;
+      return dictionary;
+    },
+    (error: unknown) => {
+      delete dictionaryPromises[locale];
+      throw error;
+    },
+  );
 
-  return nbDictionaryPromise;
+  return dictionaryPromises[locale];
 }

@@ -3,24 +3,21 @@ import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import {
-  I18nContext,
-  lookup,
-  type I18nContextValue,
-  type Locale,
-} from "../lib/i18n";
-import { enDictionary } from "../lib/i18n_locales/locales/en";
-import { nbDictionary } from "../lib/i18n_locales/locales/nb";
+import { I18nContext, type I18nContextValue, type Locale } from "../lib/i18n";
 import type { InventoryCreateMode } from "../lib/inventory_create_model";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import { InventoryStockSourcePanel } from "./inventory_stock_source_panel";
 
+const norwegianMessages: Record<string, string> = {
+  "inventory.catalogMatchCountPlural": "{count} treff",
+  "wishlist.searchBambu": "Søk Bambu materiale/farge eller filamentkode",
+};
+
 function i18nValue(locale: Locale = "en"): I18nContextValue {
-  const dictionary = locale === "nb" ? nbDictionary : enDictionary;
   return {
     locale,
     setLocale: () => {},
-    t: (key, fallback = "") => lookup(dictionary, key) ?? fallback,
+    t: (key, fallback = "") => (locale === "nb" ? norwegianMessages[key] ?? fallback : fallback),
   };
 }
 

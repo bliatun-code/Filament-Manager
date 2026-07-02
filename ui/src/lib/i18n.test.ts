@@ -3,7 +3,6 @@ import test from "node:test";
 
 import {
   getCachedLocaleDictionary,
-  getEnglishDictionary,
   loadLocaleDictionary,
   lookup,
   persistLocale,
@@ -37,8 +36,11 @@ test("resolveInitialLocale uses stored supported locale", () => {
   assert.equal(locale, "nb");
 });
 
-test("locale dictionaries keep english sync and lazy-load norwegian", async () => {
-  assert.equal(lookup(getEnglishDictionary(), "app.title"), "Filament Manager");
+test("locale dictionaries lazy-load and cache supported locales", async () => {
+  const enDictionary = await loadLocaleDictionary("en");
+
+  assert.equal(lookup(enDictionary, "app.title"), "Filament Manager");
+  assert.equal(getCachedLocaleDictionary("en"), enDictionary);
 
   const nbDictionary = await loadLocaleDictionary("nb");
 

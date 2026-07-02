@@ -1,5 +1,6 @@
 import { Suspense, lazy, startTransition, useEffect, useMemo, useState } from "react";
 import {
+  APP_PAGE_LABEL_FALLBACKS,
   APP_PAGE_ORDER,
   resolveInitialPageFromSearch,
   type InventoryNavigationIntent,
@@ -78,7 +79,7 @@ export default function App() {
     () =>
       APP_PAGE_ORDER.map((key) => ({
         key,
-        label: t(`nav.${key}`),
+        label: t(`nav.${key}`, APP_PAGE_LABEL_FALLBACKS[key]),
       })),
     [t],
   );

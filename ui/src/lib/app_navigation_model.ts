@@ -11,6 +11,15 @@ export const APP_PAGE_ORDER = [
 
 export type PageKey = (typeof APP_PAGE_ORDER)[number];
 
+export const APP_PAGE_LABEL_FALLBACKS = {
+  dashboard: "Dashboard",
+  inventory: "Inventory",
+  loans: "Loans",
+  printers: "Printers",
+  statistics: "Statistics",
+  settings: "Settings",
+} satisfies Record<PageKey, string>;
+
 export type InventoryNavigationIntent =
   | {
       kind: "LOW_STOCK";

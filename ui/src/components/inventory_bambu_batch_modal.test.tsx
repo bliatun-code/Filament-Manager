@@ -8,14 +8,7 @@ import {
   buildBambuFilamentCodeBatch,
   buildBambuFilamentCodeBatchCreateState,
 } from "../lib/bambu_filament_code_batch";
-import {
-  I18nContext,
-  lookup,
-  type I18nContextValue,
-  type Locale,
-} from "../lib/i18n";
-import { enDictionary } from "../lib/i18n_locales/locales/en";
-import { nbDictionary } from "../lib/i18n_locales/locales/nb";
+import { I18nContext, type I18nContextValue, type Locale } from "../lib/i18n";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import { InventoryBambuBatchModal } from "./inventory_bambu_batch_modal";
 
@@ -24,12 +17,24 @@ const source = readFileSync(
   "utf8",
 );
 
+const norwegianMessages: Record<string, string> = {
+  "inventory.bambuBatchModalEyebrow": "Bambu-esker",
+  "inventory.bambuBatchModalTitle": "Batch legg inn fra esker",
+  "inventory.bambuBatchTitle": "Filament Code-batch",
+  "inventory.bambuBatchScanTitle": "Skann eller legg inn koder",
+  "inventory.bambuBatchAppendScan": "Legg til i batch",
+  "inventory.bambuBatchImageAction": "Legg til fra bilde",
+  "inventory.bambuBatchCameraAction": "Bruk webkamera",
+  "inventory.bambuBatchAllReady": "Alle innlimte koder er klare.",
+  "inventory.bambuBatchAddReady": "Legg til klare treff",
+  "inventory.bambuBatchReadyShort": "kan legges til",
+};
+
 function i18nValue(locale: Locale = "en"): I18nContextValue {
-  const dictionary = locale === "nb" ? nbDictionary : enDictionary;
   return {
     locale,
     setLocale: () => {},
-    t: (key, fallback = "") => lookup(dictionary, key) ?? fallback,
+    t: (key, fallback = "") => (locale === "nb" ? norwegianMessages[key] ?? fallback : fallback),
   };
 }
 

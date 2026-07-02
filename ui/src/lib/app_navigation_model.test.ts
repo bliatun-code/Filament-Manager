@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  APP_PAGE_LABEL_FALLBACKS,
   APP_PAGE_ORDER,
   resolveInitialPageFromSearch,
   type PageKey,
@@ -16,6 +17,14 @@ test("app page order keeps the primary navigation stable", () => {
     "statistics",
     "settings",
   ] satisfies PageKey[]);
+  assert.deepEqual(APP_PAGE_LABEL_FALLBACKS, {
+    dashboard: "Dashboard",
+    inventory: "Inventory",
+    loans: "Loans",
+    printers: "Printers",
+    statistics: "Statistics",
+    settings: "Settings",
+  } satisfies Record<PageKey, string>);
 });
 
 test("initial page resolver opens the page requested by fixtures and visual QA scenarios", () => {

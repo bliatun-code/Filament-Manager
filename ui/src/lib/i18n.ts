@@ -4,7 +4,6 @@ import type { DictionaryNode, I18nContextValue, Locale } from "./i18n_types";
 export type { DictionaryNode, I18nContextValue, Locale } from "./i18n_types";
 export {
   getCachedLocaleDictionary,
-  getEnglishDictionary,
   loadLocaleDictionary,
 } from "./i18n_locales/load_dictionary";
 

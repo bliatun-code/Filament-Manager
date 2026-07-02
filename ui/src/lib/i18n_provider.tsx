@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   getCachedLocaleDictionary,
-  getEnglishDictionary,
   I18nContext,
   loadLocaleDictionary,
   lookup,
@@ -16,12 +15,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => resolveInitialLocale());
   const [loadedDictionaries, setLoadedDictionaries] = useState<
     Partial<Record<Locale, DictionaryNode>>
-  >(() => ({
-    en: getEnglishDictionary(),
-  }));
+  >(() => ({}));
 
   const activeDictionary = loadedDictionaries[locale] ?? getCachedLocaleDictionary(locale);
-  const fallbackDictionary = loadedDictionaries.en ?? getEnglishDictionary();
+  const fallbackDictionary = loadedDictionaries.en ?? getCachedLocaleDictionary("en");
 
   useEffect(() => {
     if (activeDictionary) {
@@ -42,12 +39,42 @@ export function I18nProvider({ children }: { children: ReactNode }) {
               [locale]: dictionary,
             },
       );
+    }).catch((error: unknown) => {
+      console.error(`Failed to load ${locale} dictionary`, error);
     });
 
     return () => {
       cancelled = true;
     };
   }, [activeDictionary, locale]);
+
+  useEffect(() => {
+    if (locale === "en" || fallbackDictionary) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void loadLocaleDictionary("en").then((dictionary) => {
+      if (cancelled) {
+        return;
+      }
+      setLoadedDictionaries((current) =>
+        current.en === dictionary
+          ? current
+          : {
+              ...current,
+              en: dictionary,
+            },
+      );
+    }).catch((error: unknown) => {
+      console.error("Failed to load fallback English dictionary", error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fallbackDictionary, locale]);
 
   const setLocale = useCallback((nextLocale: Locale) => {
     setLocaleState(nextLocale);
@@ -58,7 +85,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     (key: string, fallback?: string) => {
       const message =
         (activeDictionary ? lookup(activeDictionary, key) : undefined) ??
-        lookup(fallbackDictionary, key);
+        (fallbackDictionary ? lookup(fallbackDictionary, key) : undefined);
       return message ?? fallback ?? key;
     },
     [activeDictionary, fallbackDictionary],

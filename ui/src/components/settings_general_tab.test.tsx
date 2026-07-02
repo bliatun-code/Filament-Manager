@@ -3,22 +3,23 @@ import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import {
-  I18nContext,
-  lookup,
-  type I18nContextValue,
-  type Locale,
-} from "../lib/i18n";
-import { enDictionary } from "../lib/i18n_locales/locales/en";
-import { nbDictionary } from "../lib/i18n_locales/locales/nb";
+import { I18nContext, type I18nContextValue, type Locale } from "../lib/i18n";
 import { SettingsGeneralTab } from "./settings_general_tab";
 
+const norwegianMessages: Record<string, string> = {
+  "settings.license": "Lisens",
+  "settings.sourceCode": "Kildekode",
+  "settings.viewLicense": "Vis lisens",
+  "settings.viewNotices": "Notiser",
+  "settings.help": "Hjelp",
+  "settings.userManual": "Brukermanual",
+};
+
 function i18nValue(locale: Locale = "en"): I18nContextValue {
-  const dictionary = locale === "nb" ? nbDictionary : enDictionary;
   return {
     locale,
     setLocale: () => {},
-    t: (key, fallback = "") => lookup(dictionary, key) ?? fallback,
+    t: (key, fallback = "") => (locale === "nb" ? norwegianMessages[key] ?? fallback : fallback),
   };
 }
 
