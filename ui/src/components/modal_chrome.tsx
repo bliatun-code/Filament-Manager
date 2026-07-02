@@ -6,6 +6,7 @@ import type {
   ReactNode,
 } from "react";
 import { CloseButton } from "./close_button";
+import { appSoftButtonClassName, joinClassNames } from "./ui_class_names";
 
 export const modalEyebrowClassName =
   "text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400";
@@ -22,8 +23,8 @@ export const modalFormLabelClassName =
 export const modalFormHintClassName =
   "mt-1 block text-[11px] leading-5 text-slate-500 dark:text-slate-400";
 
-export const modalHeaderActionButtonClassName =
-  "inline-flex h-10 items-center justify-center whitespace-nowrap rounded-lg border border-slate-200/80 bg-white/85 px-3 text-xs font-semibold text-slate-700 shadow-sm shadow-slate-200/25 outline-none backdrop-blur-sm transition hover:bg-slate-50 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 dark:shadow-none dark:hover:bg-slate-800/70 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20 sm:text-sm";
+const modalHeaderActionButtonClassName =
+  joinClassNames(appSoftButtonClassName, "h-10 whitespace-nowrap px-3 text-xs sm:text-sm");
 
 export const modalFactCardClassName =
   "rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60";
@@ -60,7 +61,7 @@ export function ModalFormField({
   return (
     <label
       {...labelProps}
-      className={[modalFormLabelClassName, className ?? ""].filter(Boolean).join(" ")}
+      className={joinClassNames(modalFormLabelClassName, className)}
     >
       <span>{label}</span>
       {hint ? (
@@ -83,7 +84,7 @@ export function ModalHeaderActionButton({
     <button
       {...buttonProps}
       type={type}
-      className={[modalHeaderActionButtonClassName, className ?? ""].filter(Boolean).join(" ")}
+      className={joinClassNames(modalHeaderActionButtonClassName, className)}
     >
       {children}
     </button>
@@ -107,10 +108,8 @@ export function ModalFactCard({
       className={[
         modalFactCardClassName,
         compact ? "px-3 py-3" : "px-4 py-3",
-        className ?? "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+        className,
+      ].filter(Boolean).join(" ")}
     >
       {children}
     </div>
@@ -134,10 +133,8 @@ export function ModalNotice({
       className={[
         modalNoticeClassName,
         modalNoticeToneClass[tone],
-        className ?? "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+        className,
+      ].filter(Boolean).join(" ")}
     >
       {children}
     </div>
@@ -158,10 +155,8 @@ export function ModalDetailGrid({
       {...divProps}
       className={[
         "grid grid-cols-1 gap-2 text-sm sm:grid-cols-2",
-        className ?? "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+        className,
+      ].filter(Boolean).join(" ")}
     >
       {children}
     </div>
@@ -187,7 +182,7 @@ export function ModalDetailItem({
   return (
     <div
       {...divProps}
-      className={["min-w-0", className ?? ""].filter(Boolean).join(" ")}
+      className={joinClassNames("min-w-0", className)}
       style={style}
     >
       <div className={modalDetailLabelClassName}>{label}</div>
@@ -195,9 +190,7 @@ export function ModalDetailItem({
         className={[
           modalDetailValueClassName,
           valueClassName ?? "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
+        ].filter(Boolean).join(" ")}
         style={valueStyle}
       >
         {children}
@@ -233,12 +226,10 @@ export function ModalHeader({
 }: ModalHeaderProps) {
   return (
     <div
-      className={[
+      className={joinClassNames(
         "border-b border-slate-200/80 bg-white/92 px-5 py-4 dark:border-slate-800/70 dark:bg-slate-950/55 sm:px-6",
-        className ?? "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+        className,
+      )}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
@@ -248,24 +239,20 @@ export function ModalHeader({
             </div>
           ) : null}
           <div
-            className={[
+            className={joinClassNames(
               "font-semibold tracking-tight text-slate-950 dark:text-slate-50",
               eyebrow ? "mt-1 text-xl" : "text-lg",
-              titleClassName ?? "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
+              titleClassName,
+            )}
           >
             {title}
           </div>
           {subtitle ? (
             <div
-              className={[
+              className={joinClassNames(
                 "mt-1 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300",
-                subtitleClassName ?? "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
+                subtitleClassName,
+              )}
             >
               {subtitle}
             </div>

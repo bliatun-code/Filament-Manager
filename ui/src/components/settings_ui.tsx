@@ -1,9 +1,6 @@
 import type { ReactNode } from "react";
 import { settingsSectionLabelClass } from "../lib/settings_ui_classes";
-
-function joinClassNames(...classNames: Array<string | undefined>): string {
-  return classNames.filter(Boolean).join(" ");
-}
+import { joinClassNames } from "./ui_class_names";
 
 export function SettingsSectionPanel({
   children,

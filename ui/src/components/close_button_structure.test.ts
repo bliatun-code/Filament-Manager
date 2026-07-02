@@ -12,14 +12,16 @@ test("shared close button owns close affordance styling and accessibility", () =
   const settingsRoleModal = readComponentSource("settings_library_role_modal.tsx");
 
   assert.match(closeButton, /closeButtonBaseClassName/);
-  assert.match(closeButton, /focus-visible:border-sky-300/);
+  assert.match(closeButton, /appSoftControlChromeClassName/);
+  assert.match(closeButton, /appControlFocusClassName/);
+  assert.match(closeButton, /appControlDisabledClassName/);
   assert.match(closeButton, /aria-label=\{label\}/);
   assert.match(closeButton, /title=\{label\}/);
   assert.match(closeButton, /aria-hidden="true"/);
   assert.match(modalChrome, /CloseButton/);
   assert.match(modalChrome, /ModalHeaderActionButton/);
   assert.match(modalChrome, /modalHeaderActionButtonClassName/);
-  assert.match(modalChrome, /focus-visible:border-sky-300/);
+  assert.match(modalChrome, /appSoftButtonClassName/);
   assert.match(settingsRoleModal, /CloseButton/);
   assert.match(settingsRoleModal, /size="large"/);
   assert.doesNotMatch(modalChrome, />\s*×\s*<\/button>/);

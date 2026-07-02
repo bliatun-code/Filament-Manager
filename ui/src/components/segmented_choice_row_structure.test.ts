@@ -10,8 +10,9 @@ test("SegmentedChoiceRow exposes pressed state and keyboard focus treatment", ()
   assert.match(source, /aria-pressed=\{active\}/);
   assert.match(source, /groupClassName = ""/);
   assert.match(source, /segmentedChoiceGroupClass\(groupClassName\)/);
-  assert.match(source, /focus-visible:border-sky-300/);
-  assert.match(source, /focus-visible:ring-2/);
+  assert.match(source, /appControlFocusClassName/);
+  assert.match(source, /appControlDisabledClassName/);
+  assert.match(source, /joinClassNames/);
   assert.doesNotMatch(
     source,
     /inline-flex items-center gap-2 rounded-xl \$\{sizeClasses\} font-semibold transition/,

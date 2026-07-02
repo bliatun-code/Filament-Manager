@@ -25,7 +25,8 @@ test("modal action buttons share secondary and primary chrome", () => {
     /rounded-lg border border-sky-300 bg-sky-600 px-4 py-2 text-sm font-semibold/;
 
   assert.match(actionButtonClass, /modalActionButtonClassName/);
-  assert.match(actionButtonClass, /focus-visible:border-sky-300/);
+  assert.match(actionButtonClass, /appControlFocusClassName/);
+  assert.match(actionButtonClass, /joinClassNames/);
   assert.match(actionButtonClass, /variant === "primary"/);
   assert.match(actionButtonClass, /variant === "solid"/);
   assert.match(actionButtonClass, /variant === "success"/);
