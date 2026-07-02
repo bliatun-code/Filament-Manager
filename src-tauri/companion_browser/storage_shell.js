@@ -14,7 +14,9 @@ import { t } from "./companion_i18n.js";
 import { isBorrowedInOwnership, normalizeDomainToken, parseSpoolStatus } from "./companion_domain.js";
 import {
   renderCompanionActionButton,
+  renderDetailField,
   renderFilterChipButton,
+  renderFormActionBlock,
   renderSegmentedControl,
   renderSwatchListRow,
   renderSwatchSelectionCard,
@@ -259,55 +261,60 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
           selection.source === "manual"
             ? `
               <div class="borrowed-in-grid add-spool-grid">
-                <label class="stack detail-field">
-                  <span class="muted">${escapeHtml(t(locale, "storage.vendor", "Vendor"))}</span>
-                  <input
+                ${renderDetailField({
+                  escapeHtml,
+                  label: t(locale, "storage.vendor", "Vendor"),
+                  body: `<input
                     class="text-input"
                     name="filament-manual-vendor"
                     type="text"
                     value="${escapeHtml(String(draft.manualVendor || ""))}"
                     placeholder="${escapeHtml(t(locale, "storage.vendorPlaceholder", "Bambu, eSUN, Generic..."))}"
-                  />
-                </label>
-                <label class="stack detail-field">
-                  <span class="muted">${escapeHtml(t(locale, "storage.material", "Material"))}</span>
-                  <input
+                  />`,
+                })}
+                ${renderDetailField({
+                  escapeHtml,
+                  label: t(locale, "storage.material", "Material"),
+                  body: `<input
                     class="text-input"
                     name="filament-material"
                     type="text"
                     value="${escapeHtml(String(draft.material || ""))}"
                     placeholder="${escapeHtml(t(locale, "storage.materialPlaceholder", "PLA, PETG, TPU..."))}"
-                  />
-                </label>
-                <label class="stack detail-field">
-                  <span class="muted">${escapeHtml(t(locale, "storage.filamentName", "Filament name"))}</span>
-                  <input
+                  />`,
+                })}
+                ${renderDetailField({
+                  escapeHtml,
+                  label: t(locale, "storage.filamentName", "Filament name"),
+                  body: `<input
                     class="text-input"
                     name="filament-name"
                     type="text"
                     value="${escapeHtml(String(draft.filamentName || ""))}"
                     placeholder="${escapeHtml(t(locale, "storage.filamentNamePlaceholder", "Basic, Matte, Prototype..."))}"
-                  />
-                </label>
-                <label class="stack detail-field">
-                  <span class="muted">${escapeHtml(t(locale, "storage.color", "Color"))}</span>
-                  <input
+                  />`,
+                })}
+                ${renderDetailField({
+                  escapeHtml,
+                  label: t(locale, "storage.color", "Color"),
+                  body: `<input
                     class="text-input"
                     name="filament-color-name"
                     type="text"
                     value="${escapeHtml(String(draft.colorName || ""))}"
                     placeholder="${escapeHtml(t(locale, "storage.colorPlaceholder", "Blue, White, Carbon..."))}"
-                  />
-                </label>
-                <label class="stack detail-field">
-                  <span class="muted">${escapeHtml(t(locale, "storage.swatch", "Swatch"))}</span>
-                  <input
+                  />`,
+                })}
+                ${renderDetailField({
+                  escapeHtml,
+                  label: t(locale, "storage.swatch", "Swatch"),
+                  body: `<input
                     class="swatch-input"
                     name="filament-hex-color"
                     type="color"
                     value="${escapeHtml(toSwatchColor(selection.previewHex))}"
-                  />
-                </label>
+                  />`,
+                })}
               </div>
             `
             : `
@@ -390,9 +397,10 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
             isBorrowedIn
               ? `
                 <div class="borrowed-in-grid add-spool-grid">
-                  <label class="stack detail-field">
-                    <span class="muted">${escapeHtml(t(locale, "storage.borrowedFrom", "Borrowed from"))}</span>
-                    <input
+                  ${renderDetailField({
+                    escapeHtml,
+                    label: t(locale, "storage.borrowedFrom", "Borrowed from"),
+                    body: `<input
                       class="text-input"
                       name="filament-owner-name"
                       type="text"
@@ -401,11 +409,12 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
                       placeholder="${escapeHtml(
                         t(locale, "storage.borrowedFromPlaceholder", "Owner or counterparty name"),
                       )}"
-                    />
-                  </label>
-                  <label class="stack detail-field">
-                    <span class="muted">${escapeHtml(t(locale, "storage.ownerContactOptional", "Owner contact (optional)"))}</span>
-                    <input
+                    />`,
+                  })}
+                  ${renderDetailField({
+                    escapeHtml,
+                    label: t(locale, "storage.ownerContactOptional", "Owner contact (optional)"),
+                    body: `<input
                       class="text-input"
                       name="filament-owner-contact"
                       type="text"
@@ -414,54 +423,58 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
                       placeholder="${escapeHtml(
                         t(locale, "storage.ownerContactPlaceholder", "Phone, email, or handle"),
                       )}"
-                    />
-                  </label>
+                    />`,
+                  })}
                 </div>
               `
               : ""
           }
 
           <div class="borrowed-in-grid add-spool-grid">
-            <label class="stack detail-field">
-              <span class="muted">${escapeHtml(t(locale, "storage.startingWeight", "Starting weight (grams)"))}</span>
-              <input
+            ${renderDetailField({
+              escapeHtml,
+              label: t(locale, "storage.startingWeight", "Starting weight (grams)"),
+              body: `<input
                 class="weight-input"
                 name="filament-initial-weight"
                 type="number"
                 min="0"
                 step="1"
                 value="${escapeHtml(String(draft.initialWeight || selection.selectedMaster?.default_weight || 1000))}"
-              />
-            </label>
-            <label class="stack detail-field">
-              <span class="muted">${escapeHtml(t(locale, "storage.homeLocationOptional", "Home location (optional)"))}</span>
-              <input
+              />`,
+            })}
+            ${renderDetailField({
+              escapeHtml,
+              label: t(locale, "storage.homeLocationOptional", "Home location (optional)"),
+              body: `<input
                 class="text-input"
                 name="filament-location"
                 type="text"
                 value="${escapeHtml(String(draft.location || ""))}"
                 placeholder="${escapeHtml(t(locale, "storage.homeLocationPlaceholder", "Shelf, bin, drawer, cart..."))}"
-              />
-            </label>
+              />`,
+            })}
             ${
               isBorrowedIn
-                ? `
-                  <label class="stack detail-field borrowed-in-field-wide">
-                    <span class="muted">${escapeHtml(t(locale, "storage.noteOptional", "Note (optional)"))}</span>
-                    <textarea
+                ? renderDetailField({
+                    className: "borrowed-in-field-wide",
+                    escapeHtml,
+                    label: t(locale, "storage.noteOptional", "Note (optional)"),
+                    body: `<textarea
                       class="detail-textarea borrowed-note-textarea"
                       name="filament-note"
                       rows="3"
                       placeholder="${escapeHtml(t(locale, "storage.notePlaceholder", "Return timing or other context"))}"
-                    >${escapeHtml(String(draft.note || ""))}</textarea>
-                  </label>
-                `
+                    >${escapeHtml(String(draft.note || ""))}</textarea>`,
+                  })
                 : ""
             }
           </div>
 
-          <div class="detail-actions form-action-block utility-sheet-actions">
-            ${renderCompanionActionButton({
+          ${renderFormActionBlock({
+            className: "utility-sheet-actions",
+            escapeHtml,
+            actions: renderCompanionActionButton({
               type: "submit",
               swatch: true,
               disabled: busy || catalogSelectionMissing,
@@ -470,8 +483,8 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
                 isBorrowedIn
                   ? t(locale, "storage.registerBorrowedIn", "Register borrowed-in spool")
                   : t(locale, "storage.addSpoolToInventory", "Add spool to inventory"),
-            })}
-          </div>
+            }),
+          })}
         </form>
 
         <div class="add-spool-action-divider"></div>
@@ -484,39 +497,44 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
           </div>
 
           <div class="borrowed-in-grid add-spool-grid">
-            <label class="stack detail-field">
-              <span class="muted">${escapeHtml(t(locale, "storage.quantity", "Qty"))}</span>
-              <input
+            ${renderDetailField({
+              escapeHtml,
+              label: t(locale, "storage.quantity", "Qty"),
+              body: `<input
                 class="weight-input"
                 name="wishlist-quantity"
                 type="number"
                 min="1"
                 step="1"
                 value="${escapeHtml(String(draft.wishlistQuantity || "1"))}"
-              />
-            </label>
-            <label class="stack detail-field borrowed-in-field-wide">
-              <span class="muted">${escapeHtml(t(locale, "storage.noteOptional", "Note (optional)"))}</span>
-              <input
+              />`,
+            })}
+            ${renderDetailField({
+              className: "borrowed-in-field-wide",
+              escapeHtml,
+              label: t(locale, "storage.noteOptional", "Note (optional)"),
+              body: `<input
                 class="text-input"
                 name="wishlist-note"
                 type="text"
                 value="${escapeHtml(String(draft.wishlistNote || ""))}"
                 placeholder="${escapeHtml(t(locale, "storage.notePlaceholder", "Return timing or other context"))}"
-              />
-            </label>
+              />`,
+            })}
           </div>
 
-          <div class="detail-actions form-action-block utility-sheet-actions">
-            ${renderCompanionActionButton({
+          ${renderFormActionBlock({
+            className: "utility-sheet-actions",
+            escapeHtml,
+            actions: renderCompanionActionButton({
               variant: "secondary",
               type: "submit",
               swatch: true,
               disabled: busy || catalogSelectionMissing,
               escapeHtml,
               label: t(locale, "storage.addCurrentSelectionToWishlist", "Add current selection to wishlist"),
-            })}
-          </div>
+            }),
+          })}
         </form>
         `,
         className: "add-spool-section add-spool-selection-card",

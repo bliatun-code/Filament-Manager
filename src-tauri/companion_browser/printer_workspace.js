@@ -19,6 +19,8 @@ import {
 import { formatPrinterSlotLabelForModel } from "./printer_slot_labels.js";
 import {
   renderCompanionActionButton,
+  renderDetailField,
+  renderFormActionBlock,
   renderSwatchListRow,
   renderSwatchSelectionCard,
   renderSwatchSurface,
@@ -392,10 +394,10 @@ export function renderPrinterWeightTaskSheetBody(options) {
       <form class="stack detail-form" data-action="printer-slot-operation-form">
         ${
           mode === "update"
-            ? `
-              <label class="stack detail-field">
-                <span class="muted">${escapeHtml(t(locale, "detail.measuredWeightGrams", "Measured total weight (g)"))}</span>
-                <input
+            ? renderDetailField({
+                escapeHtml,
+                label: t(locale, "detail.measuredWeightGrams", "Measured total weight (g)"),
+                body: `<input
                   class="weight-input"
                   name="current-grams"
                   type="number"
@@ -403,17 +405,16 @@ export function renderPrinterWeightTaskSheetBody(options) {
                   step="1"
                   value="${escapeHtml(defaultCurrentMeasuredWeight)}"
                   ${state.busy ? "disabled" : ""}
-                />
-              </label>
-            `
+                />`,
+              })
             : ""
         }
         ${
           requiresOutgoing
-            ? `
-              <label class="stack detail-field">
-                <span class="muted">${escapeHtml(t(locale, "printers.outgoingWeight", "Outgoing weight (g)"))}</span>
-                <input
+            ? renderDetailField({
+                escapeHtml,
+                label: t(locale, "printers.outgoingWeight", "Outgoing weight (g)"),
+                body: `<input
                   class="weight-input"
                   name="outgoing-grams"
                   type="number"
@@ -421,17 +422,16 @@ export function renderPrinterWeightTaskSheetBody(options) {
                   step="1"
                   value="${escapeHtml(defaultCurrentMeasuredWeight)}"
                   ${state.busy ? "disabled" : ""}
-                />
-              </label>
-            `
+                />`,
+              })
             : ""
         }
         ${
           requiresIncoming
-            ? `
-              <label class="stack detail-field">
-                <span class="muted">${escapeHtml(t(locale, "detail.measuredWeightGrams", "Measured total weight (g)"))}</span>
-                <input
+            ? renderDetailField({
+                escapeHtml,
+                label: t(locale, "detail.measuredWeightGrams", "Measured total weight (g)"),
+                body: `<input
                   class="weight-input"
                   name="incoming-grams"
                   type="number"
@@ -439,20 +439,20 @@ export function renderPrinterWeightTaskSheetBody(options) {
                   step="1"
                   value="${escapeHtml(defaultIncomingMeasuredWeight)}"
                   ${state.busy ? "disabled" : ""}
-                />
-              </label>
-            `
+                />`,
+              })
             : ""
         }
-        <div class="detail-actions form-action-block">
-          ${renderCompanionActionButton({
+        ${renderFormActionBlock({
+          escapeHtml,
+          actions: renderCompanionActionButton({
             type: "submit",
             swatch: actionSwatch,
             disabled: state.busy,
             escapeHtml,
             label: submitLabel,
-          })}
-        </div>
+          }),
+        })}
       </form>
     </div>
   `;

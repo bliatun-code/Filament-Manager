@@ -150,6 +150,32 @@ export function renderFilterChipButton(options) {
   return `<button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${escape(label)}</button>`;
 }
 
+export function renderDetailField(options) {
+  const {
+    body = "",
+    className = "",
+    escapeHtml,
+    label = "",
+    tag = "label",
+  } = options;
+  const escape = typeof escapeHtml === "function" ? escapeHtml : (value) => String(value ?? "");
+  const tagName = tag === "div" ? "div" : "label";
+  const classes = ["stack", "detail-field", className].filter(Boolean).join(" ");
+  return `
+    <${tagName} class="${escape(classes)}">
+      ${label ? `<span class="muted">${escape(label)}</span>` : ""}
+      ${body}
+    </${tagName}>
+  `;
+}
+
+export function renderFormActionBlock(options) {
+  const { actions = "", className = "", escapeHtml } = options;
+  const escape = typeof escapeHtml === "function" ? escapeHtml : (value) => String(value ?? "");
+  const classes = ["detail-actions", "form-action-block", className].filter(Boolean).join(" ");
+  return `<div class="${escape(classes)}">${actions}</div>`;
+}
+
 export function renderSwatchSelectionCard(options) {
   const {
     actions = "",
@@ -191,7 +217,13 @@ export function renderSwatchSelectionCard(options) {
         ${aside || badgeHtml}
       </div>
       ${body}
-      ${actions ? `<div class="detail-actions form-action-block companion-selection-card-actions">${actions}</div>` : ""}
+      ${actions
+        ? renderFormActionBlock({
+            actions,
+            className: "companion-selection-card-actions",
+            escapeHtml: escape,
+          })
+        : ""}
     </div>
   `;
 }

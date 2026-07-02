@@ -9,7 +9,9 @@ import { formatInventoryDisplayTitle, formatRollReference } from "./formatters.j
 import { suggestSwatchHex, toSwatchColor } from "./companion_theme.js";
 import {
   renderCompanionActionButton,
+  renderDetailField,
   renderFilterChipButton,
+  renderFormActionBlock,
   renderSwatchListRow,
   renderSwatchSelectionCard,
   renderSwatchSurface,
@@ -296,28 +298,28 @@ export function renderLoanReturnTaskSheetBody(options) {
       <form class="stack loan-return-sheet" data-action="${escapeHtml(direction === "INBOUND" ? "hand-back-loan-form" : "return-loan-history-form")}">
         <input type="hidden" name="loan-id" value="${escapeHtml(loanRow.loan.id)}" />
         <input type="hidden" name="spool-id" value="${escapeHtml(loanRow.loan.spool_id)}" />
-        <label class="stack detail-field">
-          <span class="muted">${escapeHtml(
+        ${renderDetailField({
+          escapeHtml,
+          label:
             direction === "INBOUND"
               ? t(locale, "detail.handBackMeasuredWeight", "Hand-back total weight incl. spool (g)")
               : t(locale, "loans.returnedMeasuredWeight", "Returned total weight incl. spool (g)"),
-          )}</span>
-          <input
+          body: `<input
             class="weight-input"
             name="returned-grams"
             type="number"
             min="0"
             step="1"
             value="${escapeHtml(defaultMeasuredReturnWeight)}"
-          />
-        </label>
-        <label class="stack detail-field">
-          <span class="muted">${escapeHtml(
+          />`,
+        })}
+        ${renderDetailField({
+          escapeHtml,
+          label:
             direction === "INBOUND"
               ? t(locale, "detail.handBackNoteOptional", "Hand-back note (optional)")
               : t(locale, "loans.returnNoteOptional", "Return note (optional)"),
-          )}</span>
-          <textarea
+          body: `<textarea
             class="detail-textarea loan-return-textarea"
             name="return-note"
             rows="3"
@@ -326,10 +328,11 @@ export function renderLoanReturnTaskSheetBody(options) {
                 ? t(locale, "detail.handBackPlaceholder", "Condition or hand-back note")
                 : t(locale, "loans.returnPlaceholder", "Condition or handoff note"),
             )}"
-          ></textarea>
-        </label>
-        <div class="detail-actions form-action-block">
-          ${renderCompanionActionButton({
+          ></textarea>`,
+        })}
+        ${renderFormActionBlock({
+          escapeHtml,
+          actions: renderCompanionActionButton({
             type: "submit",
             swatch: actionSwatch,
             disabled: state.busy,
@@ -338,8 +341,8 @@ export function renderLoanReturnTaskSheetBody(options) {
               direction === "INBOUND"
                 ? t(locale, "detail.handBackSpool", "Hand back spool")
                 : t(locale, "loans.completeReturn", "Complete return"),
-          })}
-        </div>
+          }),
+        })}
       </form>
     </div>
   `;
@@ -387,47 +390,49 @@ export function renderLoanCreateTaskSheetBody(options) {
         }
         <form class="stack loan-return-sheet" data-action="loan-spool-form">
           <input type="hidden" name="spool-id" value="${escapeHtml(selectedSpool.spool.id)}" />
-          <label class="stack detail-field">
-            <span class="muted">${escapeHtml(t(locale, "detail.borrowerName", "Borrower name"))}</span>
-            <input
+          ${renderDetailField({
+            escapeHtml,
+            label: t(locale, "detail.borrowerName", "Borrower name"),
+            body: `<input
               class="text-input"
               name="borrower-name"
               type="text"
               autocomplete="name"
               placeholder="${escapeHtml(t(locale, "detail.borrowerPlaceholder", "Who is taking this spool?"))}"
-            />
-          </label>
-          <label class="stack detail-field">
-            <span class="muted">${escapeHtml(
-              t(locale, "detail.outgoingMeasuredWeight", "Outgoing total weight incl. spool (g)"),
-            )}</span>
-            <input
+            />`,
+          })}
+          ${renderDetailField({
+            escapeHtml,
+            label: t(locale, "detail.outgoingMeasuredWeight", "Outgoing total weight incl. spool (g)"),
+            body: `<input
               class="weight-input"
               name="grams-out"
               type="number"
               min="0"
               step="1"
               value="${escapeHtml(defaultMeasuredWeight)}"
-            />
-          </label>
-          <label class="stack detail-field">
-            <span class="muted">${escapeHtml(t(locale, "detail.loanNoteOptional", "Loan note (optional)"))}</span>
-            <textarea
+            />`,
+          })}
+          ${renderDetailField({
+            escapeHtml,
+            label: t(locale, "detail.loanNoteOptional", "Loan note (optional)"),
+            body: `<textarea
               class="detail-textarea loan-return-textarea"
               name="loan-note"
               rows="3"
               placeholder="${escapeHtml(t(locale, "detail.loanNotePlaceholder", "Project or return timing"))}"
-            ></textarea>
-          </label>
-          <div class="detail-actions form-action-block">
-            ${renderCompanionActionButton({
+            ></textarea>`,
+          })}
+          ${renderFormActionBlock({
+            escapeHtml,
+            actions: renderCompanionActionButton({
               type: "submit",
               swatch: true,
               disabled: state.busy,
               escapeHtml,
               label: t(locale, "detail.lendSpool", "Lend spool"),
-            })}
-          </div>
+            }),
+          })}
         </form>
         `,
         className: "compact-loan-card loan-create-card",

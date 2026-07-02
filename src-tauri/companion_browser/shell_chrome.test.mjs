@@ -4,8 +4,10 @@ import assert from "node:assert/strict";
 import {
   renderCompanionActionButton,
   renderDesktopRail,
+  renderDetailField,
   renderDetailModalShell,
   renderFilterChipButton,
+  renderFormActionBlock,
   renderPhoneBottomNav,
   renderSegmentedControl,
   renderSwatchListRow,
@@ -113,6 +115,42 @@ test("filter chip helper owns compact filter button chrome", () => {
   assert.equal(
     html,
     '<button class="filter-chip-button loan-filter-button" type="button" data-action="set-filter" data-filter="ACTIVE" data-active="true">Active &lt;2&gt;</button>',
+  );
+});
+
+test("detail field helper owns task sheet field chrome", () => {
+  const html = renderDetailField({
+    className: "loan-field",
+    escapeHtml,
+    label: "Measured <weight>",
+    body: '<input name="grams" />',
+  });
+
+  assert.match(html, /class="stack detail-field loan-field"/);
+  assert.match(html, /Measured &lt;weight&gt;/);
+  assert.match(html, /<input name="grams" \/>/);
+
+  const divHtml = renderDetailField({
+    tag: "div",
+    escapeHtml,
+    label: "Read-only",
+    body: "<strong>Value</strong>",
+  });
+
+  assert.match(divHtml.trim(), /^<div class="stack detail-field">/);
+  assert.match(divHtml, /<strong>Value<\/strong>/);
+});
+
+test("form action block helper owns task sheet action chrome", () => {
+  const html = renderFormActionBlock({
+    className: "sticky-actions",
+    escapeHtml,
+    actions: '<button type="submit">Save</button>',
+  });
+
+  assert.equal(
+    html,
+    '<div class="detail-actions form-action-block sticky-actions"><button type="submit">Save</button></div>',
   );
 });
 
