@@ -1,3 +1,4 @@
+import { isSpoolStatusEmptyOrLost } from "./inventory_domain";
 import type { InventorySpool } from "./inventory_list_model";
 
 export const DESKTOP_VISUAL_QA_QUERY_KEY = "bfm_visual_qa";
@@ -259,9 +260,7 @@ export function chooseDesktopVisualQaSpoolId(
   assignedSpoolIds: ReadonlySet<string>,
   scenario: DesktopVisualQaScenario,
 ): string | null {
-  const usableSpools = spools.filter(
-    (spool) => spool.status !== "EMPTY" && spool.status !== "LOST",
-  );
+  const usableSpools = spools.filter((spool) => !isSpoolStatusEmptyOrLost(spool.status));
   if (scenario === "rfid-capture") {
     return (
       usableSpools.find((spool) => assignedSpoolIds.has(spool.id) && spool.rfidTag)?.id ??

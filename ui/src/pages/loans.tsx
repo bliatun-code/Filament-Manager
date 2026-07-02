@@ -14,14 +14,13 @@ import { useI18n } from "../lib/i18n";
 import {
   filterLoans,
   formatDateTime,
-  normalizeLoanDirection,
   type LoanDirectionFilter,
   type LoanFilter,
   toMeasuredTotalWeight,
   toReturnedFilamentWeight,
 } from "../lib/loan_display";
 import { buildLoansCsv } from "../lib/loan_export";
-import { isLoanCurrentlyActive } from "../lib/loan_state";
+import { isInboundLoan, isLoanCurrentlyActive, isOutboundLoan } from "../lib/loan_state";
 import { loadLoanRowsPage, returnInventoryLoan } from "../lib/loan_data_source";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import { useClientWriteGuards } from "../lib/use_client_write_guards";
@@ -163,13 +162,13 @@ export default function LoansPage() {
     if (!tauri || busy || !isLoanCurrentlyActive(loan)) {
       return;
     }
-    const loanDirection = normalizeLoanDirection(loan.loan.loan_direction);
+    const isInbound = isInboundLoan(loan);
     setReturnModalLoan(loan);
     setReturnModalGrams(
       String(
         toMeasuredTotalWeight(
           loan,
-          loanDirection === "INBOUND" ? loan.spool_remaining_g ?? loan.loan.grams_out : loan.loan.grams_out,
+          isInbound ? loan.spool_remaining_g ?? loan.loan.grams_out : loan.loan.grams_out,
         ),
       ),
     );
@@ -195,11 +194,8 @@ export default function LoansPage() {
       return;
     }
     const activeLoan =
-      loans.find(
-        (loan) =>
-          normalizeLoanDirection(loan.loan.loan_direction) === "OUTBOUND" &&
-          isLoanCurrentlyActive(loan),
-      ) ?? loans.find(isLoanCurrentlyActive);
+      loans.find((loan) => isOutboundLoan(loan) && isLoanCurrentlyActive(loan)) ??
+      loans.find(isLoanCurrentlyActive);
     if (!activeLoan) {
       return;
     }
@@ -248,20 +244,20 @@ export default function LoansPage() {
     setError(null);
     setInfo(null);
     try {
-      const loanDirection = normalizeLoanDirection(returnModalLoan.loan.loan_direction);
+      const isInbound = isInboundLoan(returnModalLoan);
       const returnedFilamentGrams = toReturnedFilamentWeight(returnModalLoan, measuredTotalGrams);
       await returnInventoryLoan(
         {
           loan_id: returnModalLoan.loan.id,
           returned_grams: returnedFilamentGrams,
           note: returnModalNote.trim() || null,
-          inbound: loanDirection === "INBOUND",
+          inbound: isInbound,
         },
         { clientReadOnly, clientHostBaseUrl, clientLibraryId },
       );
       await reload();
       setInfo(
-        loanDirection === "INBOUND"
+        isInbound
           ? `${t("loans.markedHandedBackTo", "Marked borrowed-in spool as handed back to")} ${returnModalLoan.loan.counterparty_name ?? returnModalLoan.loan.borrower_name}.`
           : `${t("loans.markedReturnedFor", "Marked loan as returned for")} ${returnModalLoan.loan.borrower_name}.`,
       );
@@ -269,7 +265,7 @@ export default function LoansPage() {
     } catch (returnError) {
       console.error(returnError);
       setError(
-        normalizeLoanDirection(returnModalLoan.loan.loan_direction) === "INBOUND"
+        isInboundLoan(returnModalLoan)
           ? t("loans.error.handBack", "Failed to hand back borrowed-in spool.")
           : t("loans.error.return", "Failed to return loan."),
       );

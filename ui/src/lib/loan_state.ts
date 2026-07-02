@@ -22,10 +22,17 @@ export function isLoanCurrentlyActive(
   );
 }
 
+export function isInboundLoan(row: Pick<SpoolLoanDetailsRow, "loan">): boolean {
+  return normalizeLoanDirection(row.loan.loan_direction) === "INBOUND";
+}
+
+export function isOutboundLoan(row: Pick<SpoolLoanDetailsRow, "loan">): boolean {
+  return normalizeLoanDirection(row.loan.loan_direction) === "OUTBOUND";
+}
+
 export function isActiveOutboundLoan(
   row: Pick<SpoolLoanDetailsRow, "loan" | "spool_status">,
 ): boolean {
-  const loanDirection = normalizeLoanDirection(row.loan.loan_direction);
   const currentlyActive = isLoanCurrentlyActive(row);
-  return loanDirection === "OUTBOUND" && currentlyActive;
+  return isOutboundLoan(row) && currentlyActive;
 }

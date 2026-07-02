@@ -16,7 +16,6 @@ import {
   compactLoanTitle,
   formatGrams,
   formatLoanReference,
-  normalizeLoanDirection,
   toMeasuredTotalWeight,
 } from "../lib/loan_display";
 import {
@@ -24,6 +23,7 @@ import {
   inventorySwatchInsetStyle,
 } from "../lib/inventory_swatch_style";
 import { useResolvedTheme } from "../lib/theme_mode";
+import { isInboundLoan } from "../lib/loan_state";
 import type { SpoolLoanDetailsRow } from "../lib/tauri_client";
 
 type LoanReturnModalProps = {
@@ -54,8 +54,7 @@ export function LoanReturnModal({
     return null;
   }
 
-  const loanDirection = normalizeLoanDirection(loan.loan.loan_direction);
-  const isInbound = loanDirection === "INBOUND";
+  const isInbound = isInboundLoan(loan);
 
   return (
     <AppModal

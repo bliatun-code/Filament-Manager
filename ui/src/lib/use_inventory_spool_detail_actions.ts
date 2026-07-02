@@ -2,7 +2,12 @@ import type { Dispatch, SetStateAction } from "react";
 import { isValidSwatchColor, normalizeSwatchValue } from "./color_utils";
 import { commandErrorText } from "./error_text";
 import type { useI18n } from "./i18n";
-import type { InventorySpool, OwnershipType, SpoolStatus } from "./inventory_list_model";
+import type { InventorySpool, OwnershipType } from "./inventory_list_model";
+import {
+  canRefillSpoolStatus,
+  nextLostToggleStatus,
+  shouldReactivateSpoolFromMeasuredTotal,
+} from "./inventory_spool_detail_actions_model";
 import {
   deleteInventorySpool,
   purgeInventorySpool,
@@ -415,7 +420,7 @@ export function useInventorySpoolDetailActions({
     if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
-    if (selectedSpool.status !== "EMPTY") {
+    if (!canRefillSpoolStatus(selectedSpool.status)) {
       return;
     }
     if ((selectedSpool.remainingGrams ?? 0) <= 0) {
@@ -465,7 +470,7 @@ export function useInventorySpoolDetailActions({
     if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
-    const nextStatus: SpoolStatus = selectedSpool.status === "LOST" ? "IN_STOCK" : "LOST";
+    const nextStatus = nextLostToggleStatus(selectedSpool.status);
     setManageBusy(true);
     setError(null);
     try {
@@ -576,8 +581,13 @@ export function useInventorySpoolDetailActions({
       } else {
         await updateInventorySpoolWeight(selectedSpool.id, safeGrams, hostWriteTarget);
       }
-      const calculatedRemaining = Math.max(0, safeGrams - selectedSpoolResolvedTare);
-      if (selectedSpool.status === "EMPTY" && calculatedRemaining > 0) {
+      if (
+        shouldReactivateSpoolFromMeasuredTotal(
+          selectedSpool.status,
+          safeGrams,
+          selectedSpoolResolvedTare,
+        )
+      ) {
         await updateInventorySpoolStatus(
           {
             spool_id: selectedSpool.id,

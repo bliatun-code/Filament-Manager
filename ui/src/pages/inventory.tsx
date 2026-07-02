@@ -9,7 +9,10 @@ import {
   chooseDesktopVisualQaSpoolId,
   resolveDesktopVisualQaScenario,
 } from "../lib/desktop_visual_qa_scenario";
-import type { InventorySpool } from "../lib/inventory_list_model";
+import {
+  isInventorySpoolLoanTrackingCandidate,
+  type InventorySpool,
+} from "../lib/inventory_list_model";
 import type { RfidCaptureField } from "../lib/inventory_rfid_capture";
 import {
   buildInventoryDetailVisualFixture,
@@ -350,12 +353,8 @@ export default function InventoryPage({
 
   const loanTrackingCandidates = useMemo(
     () =>
-      spools.filter(
-        (spool) =>
-          spool.ownershipType !== "BORROWED_IN" &&
-          spool.status !== "EMPTY" &&
-          spool.status !== "LOST" &&
-          !activeLoanSpoolIds.has(spool.id),
+      spools.filter((spool) =>
+        isInventorySpoolLoanTrackingCandidate(spool, activeLoanSpoolIds),
       ),
     [activeLoanSpoolIds, spools],
   );

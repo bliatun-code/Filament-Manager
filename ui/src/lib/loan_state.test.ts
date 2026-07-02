@@ -2,7 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { filterLoans } from "./loan_display";
-import { isActiveOutboundLoan, isLoanCurrentlyActive, isLoanReturned } from "./loan_state";
+import {
+  isActiveOutboundLoan,
+  isInboundLoan,
+  isLoanCurrentlyActive,
+  isLoanReturned,
+  isOutboundLoan,
+} from "./loan_state";
 import { groupLoanUsageByPerson } from "./statistics_data_source";
 import { groupedLoanUsage } from "./statistics_model";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
@@ -154,6 +160,13 @@ test("isActiveOutboundLoan rejects returned, inbound, and deleted rows", () => {
     ),
     false,
   );
+});
+
+test("loan direction helpers normalize legacy inbound and outbound values", () => {
+  assert.equal(isInboundLoan(loanRow("inbound", { loan: { loan_direction: "in-bound" } })), true);
+  assert.equal(isOutboundLoan(loanRow("inbound", { loan: { loan_direction: "in-bound" } })), false);
+  assert.equal(isOutboundLoan(loanRow("outbound", { loan: { loan_direction: "OUTBOUND" } })), true);
+  assert.equal(isInboundLoan(loanRow("sideways", { loan: { loan_direction: "sideways" } })), false);
 });
 
 test("loan active filters and summaries skip deleted active rows", () => {

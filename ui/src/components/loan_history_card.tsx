@@ -6,9 +6,8 @@ import {
   compactLoanTitle,
   formatGrams,
   formatLoanReference,
-  normalizeLoanDirection,
 } from "../lib/loan_display";
-import { isLoanCurrentlyActive } from "../lib/loan_state";
+import { isInboundLoan, isLoanCurrentlyActive } from "../lib/loan_state";
 import {
   inventorySwatchCardStyle,
   inventorySwatchInsetStyle,
@@ -31,8 +30,7 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
   const { t } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const isActive = isLoanCurrentlyActive(loan);
-  const loanDirection = normalizeLoanDirection(loan.loan.loan_direction);
-  const isInbound = loanDirection === "INBOUND";
+  const isInbound = isInboundLoan(loan);
   const loanTitle = compactLoanTitle(loan, t("common.unknown", "Unknown"));
   const referenceLabel = formatLoanReference(loan.loan.spool_id);
 

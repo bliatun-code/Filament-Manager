@@ -5,6 +5,8 @@ import {
   normalizeDisplayToken as normalizeSharedDisplayToken,
 } from "./display_format";
 import {
+  isSpoolStatusEmpty,
+  isSpoolStatusEmptyOrLost,
   normalizeOwnershipType,
   normalizeSpoolStatus,
   type OwnershipType,
@@ -180,19 +182,11 @@ export function filterInventorySpools(
   const { search, statusFilter, ownershipFilter, materialFilter, vendorFilter, lowStockOnly } = options;
   const term = search.trim().toLowerCase();
   return spools.filter((spool) => {
-    const normalizedStatus = normalizeStatus(spool.status);
-    const remaining = Math.max(0, spool.remainingGrams ?? spool.initialWeightGrams ?? 0);
-    const statusMatch =
-      statusFilter === "ALL" ? normalizedStatus !== "EMPTY" : normalizedStatus === statusFilter;
+    const statusMatch = isInventorySpoolVisibleForStatusFilter(spool, statusFilter);
     const ownershipMatch = ownershipFilter === "ALL" ? true : spool.ownershipType === ownershipFilter;
     const materialMatch = materialFilter === "ALL" ? true : spool.material === materialFilter;
     const vendorMatch = vendorFilter === "ALL" ? true : spool.vendor === vendorFilter;
-    const lowStockMatch = lowStockOnly
-      ? normalizedStatus !== "EMPTY" &&
-        normalizedStatus !== "LOST" &&
-        remaining > 0 &&
-        remaining <= LOW_STOCK_GRAMS
-      : true;
+    const lowStockMatch = lowStockOnly ? isInventorySpoolLowStockCandidate(spool) : true;
     const searchMatch =
       term.length === 0
         ? true
@@ -214,6 +208,39 @@ export function filterInventorySpools(
       searchMatch
     );
   });
+}
+
+export function isInventorySpoolVisibleForStatusFilter(
+  spool: Pick<InventorySpool, "status">,
+  statusFilter: StatusFilter,
+): boolean {
+  const normalizedStatus = normalizeStatus(spool.status);
+  return statusFilter === "ALL"
+    ? !isSpoolStatusEmpty(normalizedStatus)
+    : normalizedStatus === statusFilter;
+}
+
+export function isInventorySpoolLowStockCandidate(
+  spool: Pick<InventorySpool, "initialWeightGrams" | "remainingGrams" | "status">,
+): boolean {
+  const normalizedStatus = normalizeStatus(spool.status);
+  const remaining = Math.max(0, spool.remainingGrams ?? spool.initialWeightGrams ?? 0);
+  return (
+    !isSpoolStatusEmptyOrLost(normalizedStatus) &&
+    remaining > 0 &&
+    remaining <= LOW_STOCK_GRAMS
+  );
+}
+
+export function isInventorySpoolLoanTrackingCandidate(
+  spool: Pick<InventorySpool, "id" | "ownershipType" | "status">,
+  activeLoanSpoolIds: ReadonlySet<string>,
+): boolean {
+  return (
+    normalizeOwnershipType(spool.ownershipType) !== "BORROWED_IN" &&
+    !isSpoolStatusEmptyOrLost(spool.status) &&
+    !activeLoanSpoolIds.has(spool.id)
+  );
 }
 
 export function spoolRemainingRatio(

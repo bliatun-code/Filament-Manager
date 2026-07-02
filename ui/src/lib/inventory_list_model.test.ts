@@ -9,12 +9,32 @@ import {
   formatRollReference,
   inventoryOwnershipTone,
   inventoryStatusTone,
+  isInventorySpoolLoanTrackingCandidate,
+  isInventorySpoolLowStockCandidate,
+  isInventorySpoolVisibleForStatusFilter,
   normalizeDisplayToken,
   remainingBarClass,
   spoolRemainingRatio,
+  type InventorySpool,
 } from "./inventory_list_model";
 
 const t = (_key: string, fallback = "") => fallback;
+
+function spool(overrides: Partial<InventorySpool> = {}): InventorySpool {
+  return {
+    id: "spool_1",
+    masterId: "master_1",
+    vendor: "Generic",
+    material: "PLA",
+    filamentName: "Basic",
+    colorName: "Blue",
+    initialWeightGrams: 1000,
+    status: "IN_STOCK",
+    ownershipType: "OWNED",
+    remainingGrams: 500,
+    ...overrides,
+  };
+}
 
 test("formatRollReference keeps the short user-facing spool suffix", () => {
   assert.equal(formatRollReference({ id: "spool_1234567890" }), "#567890");
@@ -95,6 +115,52 @@ test("inventory ownership labels, summaries, and tones normalize borrowed-in met
       ownerName: "Ada",
     }),
     "Borrowed from: Ada",
+  );
+});
+
+test("inventory spool status predicates centralize list visibility and low-stock rules", () => {
+  assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "IN_STOCK" }), "ALL"), true);
+  assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "ASSIGNED" }), "ALL"), true);
+  assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "LOST" }), "ALL"), true);
+  assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "EMPTY" }), "ALL"), false);
+  assert.equal(
+    isInventorySpoolVisibleForStatusFilter(spool({ status: "ASSIGNED" }), "ASSIGNED"),
+    true,
+  );
+  assert.equal(
+    isInventorySpoolVisibleForStatusFilter(spool({ status: "IN_STOCK" }), "ASSIGNED"),
+    false,
+  );
+
+  assert.equal(isInventorySpoolLowStockCandidate(spool({ remainingGrams: 90 })), true);
+  assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "ASSIGNED", remainingGrams: 90 })), true);
+  assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "BORROWED", remainingGrams: 90 })), true);
+  assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "EMPTY", remainingGrams: 90 })), false);
+  assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "LOST", remainingGrams: 90 })), false);
+  assert.equal(isInventorySpoolLowStockCandidate(spool({ remainingGrams: 0 })), false);
+});
+
+test("inventory loan tracking candidates normalize ownership and excluded states", () => {
+  const activeLoanIds = new Set(["loaned"]);
+  assert.equal(isInventorySpoolLoanTrackingCandidate(spool(), activeLoanIds), true);
+  assert.equal(
+    isInventorySpoolLoanTrackingCandidate(
+      spool({ id: "borrowed-in", ownershipType: "BORROWED_IN" }),
+      activeLoanIds,
+    ),
+    false,
+  );
+  assert.equal(
+    isInventorySpoolLoanTrackingCandidate(spool({ id: "empty", status: "EMPTY" }), activeLoanIds),
+    false,
+  );
+  assert.equal(
+    isInventorySpoolLoanTrackingCandidate(spool({ id: "lost", status: "LOST" }), activeLoanIds),
+    false,
+  );
+  assert.equal(
+    isInventorySpoolLoanTrackingCandidate(spool({ id: "loaned" }), activeLoanIds),
+    false,
   );
 });
 
