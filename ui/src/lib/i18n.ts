@@ -2,7 +2,11 @@ import { createContext, useContext } from "react";
 import type { DictionaryNode, I18nContextValue, Locale } from "./i18n_types";
 
 export type { DictionaryNode, I18nContextValue, Locale } from "./i18n_types";
-export { dictionaries } from "./i18n_locales/dictionaries";
+export {
+  getCachedLocaleDictionary,
+  getEnglishDictionary,
+  loadLocaleDictionary,
+} from "./i18n_locales/load_dictionary";
 
 export const I18N_STORAGE_KEY = "bfm-locale";
 

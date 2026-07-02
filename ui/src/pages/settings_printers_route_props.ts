@@ -1,7 +1,4 @@
-import type { ComponentProps } from "react";
-import { SettingsPrintersRoute } from "./settings_printers_route";
-
-type SettingsPrintersRouteProps = ComponentProps<typeof SettingsPrintersRoute>;
+import type { SettingsPrintersRouteProps } from "./settings_printers_route";
 type SettingsPrintersTabProps = SettingsPrintersRouteProps["tab"];
 
 type AsyncPrinterActionKeys = "onDeletePrinter" | "onSavePrinterReconfigure";

@@ -9,12 +9,13 @@ import {
   buildBambuFilamentCodeBatchCreateState,
 } from "../lib/bambu_filament_code_batch";
 import {
-  dictionaries,
   I18nContext,
   lookup,
   type I18nContextValue,
   type Locale,
 } from "../lib/i18n";
+import { enDictionary } from "../lib/i18n_locales/locales/en";
+import { nbDictionary } from "../lib/i18n_locales/locales/nb";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import { InventoryBambuBatchModal } from "./inventory_bambu_batch_modal";
 
@@ -24,10 +25,11 @@ const source = readFileSync(
 );
 
 function i18nValue(locale: Locale = "en"): I18nContextValue {
+  const dictionary = locale === "nb" ? nbDictionary : enDictionary;
   return {
     locale,
     setLocale: () => {},
-    t: (key, fallback = "") => lookup(dictionaries[locale], key) ?? fallback,
+    t: (key, fallback = "") => lookup(dictionary, key) ?? fallback,
   };
 }
 
@@ -101,6 +103,12 @@ test("InventoryBambuBatchModal owns batch controls without stock workflow side p
     input: "53400",
   });
 
+  assert.match(source, /loadBambuBatchCameraScanModule/);
+  assert.match(source, /loadBambuBatchImageScanModule/);
+  assert.doesNotMatch(
+    source,
+    /import\s+[\s\S]*from "\.\.\/lib\/bambu_filament_code_(?:camera|image)_scan"/,
+  );
   assert.match(source, /bambuBatchCodeFieldClassName/);
   assert.match(source, /bambuBatchSecondaryButtonClassName/);
   assert.match(source, /<ModalActionButton/);

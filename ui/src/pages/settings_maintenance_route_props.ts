@@ -1,7 +1,4 @@
-import type { ComponentProps } from "react";
-import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
-
-type SettingsMaintenanceRouteProps = ComponentProps<typeof SettingsMaintenanceRoute>;
+import type { SettingsMaintenanceRouteProps } from "./settings_maintenance_route";
 type SettingsMaintenanceTabProps = SettingsMaintenanceRouteProps["tab"];
 
 type AsyncMaintenanceActionKeys =

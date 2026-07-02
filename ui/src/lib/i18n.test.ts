@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { dictionaries, lookup, persistLocale, resolveInitialLocale } from "./i18n";
+import {
+  getCachedLocaleDictionary,
+  getEnglishDictionary,
+  loadLocaleDictionary,
+  lookup,
+  persistLocale,
+  resolveInitialLocale,
+} from "./i18n";
 
 function withGlobalValue<T>(key: "localStorage" | "navigator", value: unknown, run: () => T): T {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, key);
@@ -30,9 +37,13 @@ test("resolveInitialLocale uses stored supported locale", () => {
   assert.equal(locale, "nb");
 });
 
-test("public dictionaries resolve both locale modules", () => {
-  assert.equal(lookup(dictionaries.en, "app.title"), "Filament Manager");
-  assert.equal(lookup(dictionaries.nb, "nav.inventory"), "Lager");
+test("locale dictionaries keep english sync and lazy-load norwegian", async () => {
+  assert.equal(lookup(getEnglishDictionary(), "app.title"), "Filament Manager");
+
+  const nbDictionary = await loadLocaleDictionary("nb");
+
+  assert.equal(lookup(nbDictionary, "nav.inventory"), "Lager");
+  assert.equal(getCachedLocaleDictionary("nb"), nbDictionary);
 });
 
 test("resolveInitialLocale falls back when localStorage throws", () => {

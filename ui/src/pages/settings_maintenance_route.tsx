@@ -1,8 +1,10 @@
-import type { ComponentProps } from "react";
-import { SettingsMaintenanceTab } from "../components/settings_maintenance_tab";
+import {
+  SettingsMaintenanceTab,
+  type SettingsMaintenanceTabProps,
+} from "../components/settings_maintenance_tab";
 
-type SettingsMaintenanceRouteProps = {
-  tab: ComponentProps<typeof SettingsMaintenanceTab>;
+export type SettingsMaintenanceRouteProps = {
+  tab: SettingsMaintenanceTabProps;
 };
 
 export function SettingsMaintenanceRoute({ tab }: SettingsMaintenanceRouteProps) {

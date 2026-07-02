@@ -1,16 +1,53 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  dictionaries,
+  getCachedLocaleDictionary,
+  getEnglishDictionary,
   I18nContext,
+  loadLocaleDictionary,
   lookup,
   persistLocale,
   resolveInitialLocale,
+  type DictionaryNode,
   type Locale,
   type I18nContextValue,
 } from "./i18n";
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => resolveInitialLocale());
+  const [loadedDictionaries, setLoadedDictionaries] = useState<
+    Partial<Record<Locale, DictionaryNode>>
+  >(() => ({
+    en: getEnglishDictionary(),
+  }));
+
+  const activeDictionary = loadedDictionaries[locale] ?? getCachedLocaleDictionary(locale);
+  const fallbackDictionary = loadedDictionaries.en ?? getEnglishDictionary();
+
+  useEffect(() => {
+    if (activeDictionary) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void loadLocaleDictionary(locale).then((dictionary) => {
+      if (cancelled) {
+        return;
+      }
+      setLoadedDictionaries((current) =>
+        current[locale] === dictionary
+          ? current
+          : {
+              ...current,
+              [locale]: dictionary,
+            },
+      );
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeDictionary, locale]);
 
   const setLocale = useCallback((nextLocale: Locale) => {
     setLocaleState(nextLocale);
@@ -20,10 +57,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const t = useCallback(
     (key: string, fallback?: string) => {
       const message =
-        lookup(dictionaries[locale], key) ?? lookup(dictionaries.en, key);
+        (activeDictionary ? lookup(activeDictionary, key) : undefined) ??
+        lookup(fallbackDictionary, key);
       return message ?? fallback ?? key;
     },
-    [locale],
+    [activeDictionary, fallbackDictionary],
   );
 
   const value = useMemo<I18nContextValue>(

@@ -21,14 +21,6 @@ import type {
   BambuFilamentCodeBatchRow,
 } from "../lib/bambu_filament_code_batch";
 import { appendBambuFilamentCodeBatchScanInput } from "../lib/bambu_filament_code_batch";
-import {
-  appendBambuFilamentCodeCameraScanValues,
-  bambuFilamentCodeCameraScanSupport,
-  createBambuFilamentCodeCameraDetector,
-  requestBambuFilamentCodeCameraStream,
-  scanBambuFilamentCodeCameraFrame,
-} from "../lib/bambu_filament_code_camera_scan";
-import { scanBambuFilamentCodesFromImage } from "../lib/bambu_filament_code_image_scan";
 import { formatMasterDisplayTitle } from "../lib/inventory_list_model";
 
 type InventoryBambuBatchModalProps = {
@@ -51,6 +43,25 @@ const bambuBatchCodeFieldClassName =
   "rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
 const bambuBatchSecondaryButtonClassName =
   "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-50 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+
+type BambuBatchCameraScanModule = typeof import("../lib/bambu_filament_code_camera_scan");
+type BambuBatchImageScanModule = typeof import("../lib/bambu_filament_code_image_scan");
+type BambuBatchCameraDetector = Awaited<
+  ReturnType<BambuBatchCameraScanModule["createBambuFilamentCodeCameraDetector"]>
+>;
+
+let bambuBatchCameraScanModulePromise: Promise<BambuBatchCameraScanModule> | null = null;
+let bambuBatchImageScanModulePromise: Promise<BambuBatchImageScanModule> | null = null;
+
+function loadBambuBatchCameraScanModule() {
+  bambuBatchCameraScanModulePromise ??= import("../lib/bambu_filament_code_camera_scan");
+  return bambuBatchCameraScanModulePromise;
+}
+
+function loadBambuBatchImageScanModule() {
+  bambuBatchImageScanModulePromise ??= import("../lib/bambu_filament_code_image_scan");
+  return bambuBatchImageScanModulePromise;
+}
 
 function bambuBatchRowStatusLabel(
   row: BambuFilamentCodeBatchRow,
@@ -283,9 +294,8 @@ function BambuFilamentCodeBatchPanel({
   const [cameraMessage, setCameraMessage] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const detectorRef = useRef<Awaited<
-    ReturnType<typeof createBambuFilamentCodeCameraDetector>
-  > | null>(null);
+  const cameraScanModuleRef = useRef<BambuBatchCameraScanModule | null>(null);
+  const detectorRef = useRef<BambuBatchCameraDetector | null>(null);
   const seenCameraKeysRef = useRef<Set<string>>(new Set());
   const emptyCameraFrameCountRef = useRef(0);
   const readErrorFrameCountRef = useRef(0);
@@ -370,13 +380,14 @@ function BambuFilamentCodeBatchPanel({
     }
     const video = videoRef.current;
     const detector = detectorRef.current;
-    if (!video || !detector || video.readyState < 2) {
+    const cameraScanModule = cameraScanModuleRef.current;
+    if (!video || !detector || !cameraScanModule || video.readyState < 2) {
       return;
     }
 
     scanBusyRef.current = true;
     try {
-      const frame = await scanBambuFilamentCodeCameraFrame({
+      const frame = await cameraScanModule.scanBambuFilamentCodeCameraFrame({
         detector,
         videoFrame: video,
       });
@@ -410,7 +421,7 @@ function BambuFilamentCodeBatchPanel({
 
       emptyCameraFrameCountRef.current = 0;
       readErrorFrameCountRef.current = 0;
-      const append = appendBambuFilamentCodeCameraScanValues({
+      const append = cameraScanModule.appendBambuFilamentCodeCameraScanValues({
         currentInput: inputRef.current,
         rawValues: frame.rawValues,
         seenKeys: seenCameraKeysRef.current,
@@ -519,20 +530,23 @@ function BambuFilamentCodeBatchPanel({
     setCameraStatus("starting");
     setCameraMessage(t("inventory.bambuBatchCameraStartingMessage", "Starting camera..."));
 
-    const support = bambuFilamentCodeCameraScanSupport();
-    if (!support.available) {
-      setCameraStatus("unsupported");
-      setCameraMessage(
-        t(
-          "inventory.bambuBatchCameraUnsupported",
-          "Camera access is not available here. Use image import or type the code instead.",
-        ),
-      );
-      return;
-    }
-
     try {
-      const detector = await createBambuFilamentCodeCameraDetector();
+      const cameraScanModule = await loadBambuBatchCameraScanModule();
+      cameraScanModuleRef.current = cameraScanModule;
+
+      const support = cameraScanModule.bambuFilamentCodeCameraScanSupport();
+      if (!support.available) {
+        setCameraStatus("unsupported");
+        setCameraMessage(
+          t(
+            "inventory.bambuBatchCameraUnsupported",
+            "Camera access is not available here. Use image import or type the code instead.",
+          ),
+        );
+        return;
+      }
+
+      const detector = await cameraScanModule.createBambuFilamentCodeCameraDetector();
       if (!mountedRef.current) {
         return;
       }
@@ -547,7 +561,7 @@ function BambuFilamentCodeBatchPanel({
         return;
       }
 
-      const stream = await requestBambuFilamentCodeCameraStream();
+      const stream = await cameraScanModule.requestBambuFilamentCodeCameraStream();
       if (!mountedRef.current) {
         stream?.getTracks().forEach((track) => track.stop());
         return;
@@ -616,7 +630,8 @@ function BambuFilamentCodeBatchPanel({
     setImageScanBusy(true);
     setImageScanMessage(t("inventory.bambuBatchImageScanning", "Reading image..."));
     try {
-      const result = await scanBambuFilamentCodesFromImage({
+      const imageScanModule = await loadBambuBatchImageScanModule();
+      const result = await imageScanModule.scanBambuFilamentCodesFromImage({
         currentInput: input,
         file,
       });

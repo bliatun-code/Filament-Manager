@@ -6,7 +6,7 @@ import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 
-type SettingsLibraryTabProps = {
+export type SettingsLibraryTabProps = {
   browsersPanel: ComponentProps<typeof SettingsTrustedLanBrowsersPanel>;
   clientPanel: ComponentProps<typeof SettingsLibraryClientPanel>;
   libraryRolePanel: ComponentProps<typeof SettingsLibraryRolePanel>;

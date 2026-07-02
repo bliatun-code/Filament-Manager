@@ -1,9 +1,9 @@
 import type { ComponentProps } from "react";
-import { SettingsCatalogTab } from "./settings_catalog_tab";
+import type { SettingsCatalogTabProps } from "./settings_catalog_tab";
 import { SettingsCatalogRefreshPanel } from "./settings_catalog_refresh_panel";
 import { SettingsMissingSwatchesPanel } from "../components/settings_missing_swatches_panel";
 
-type SettingsCatalogRouteProps = ComponentProps<typeof SettingsCatalogTab>;
+type SettingsCatalogRouteProps = SettingsCatalogTabProps;
 type CatalogRefreshPanelProps = ComponentProps<typeof SettingsCatalogRefreshPanel>;
 type MissingSwatchesPanelProps = ComponentProps<typeof SettingsMissingSwatchesPanel>;
 

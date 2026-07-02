@@ -4,19 +4,21 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
-  dictionaries,
   I18nContext,
   lookup,
   type I18nContextValue,
   type Locale,
 } from "../lib/i18n";
+import { enDictionary } from "../lib/i18n_locales/locales/en";
+import { nbDictionary } from "../lib/i18n_locales/locales/nb";
 import { SettingsGeneralTab } from "./settings_general_tab";
 
 function i18nValue(locale: Locale = "en"): I18nContextValue {
+  const dictionary = locale === "nb" ? nbDictionary : enDictionary;
   return {
     locale,
     setLocale: () => {},
-    t: (key, fallback = "") => lookup(dictionaries[locale], key) ?? fallback,
+    t: (key, fallback = "") => lookup(dictionary, key) ?? fallback,
   };
 }
 

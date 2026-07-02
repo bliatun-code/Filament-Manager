@@ -1,8 +1,10 @@
-import type { ComponentProps } from "react";
-import { SettingsGeneralTab } from "../components/settings_general_tab";
+import {
+  SettingsGeneralTab,
+  type SettingsGeneralTabProps,
+} from "../components/settings_general_tab";
 
-type SettingsGeneralRouteProps = {
-  tab: ComponentProps<typeof SettingsGeneralTab>;
+export type SettingsGeneralRouteProps = {
+  tab: SettingsGeneralTabProps;
 };
 
 export function SettingsGeneralRoute({ tab }: SettingsGeneralRouteProps) {

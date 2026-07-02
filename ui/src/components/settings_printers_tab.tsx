@@ -28,7 +28,7 @@ import {
   type SettingsPrinterLiveDiagnosticsState,
 } from "./settings_printer_card";
 
-type SettingsPrintersTabProps = {
+export type SettingsPrintersTabProps = {
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
   busy: boolean;
   catalogRows: MasterCatalogRow[];

@@ -1,4 +1,3 @@
-import { buildFilamentLabelQrDataUrl } from "./filament_label_print";
 import {
   buildFilamentQrPayload,
   resolvePreferredCompanionShellUrl,
@@ -38,6 +37,11 @@ async function loadTrustedLanShellUrl(
   }
 }
 
+async function buildDefaultFilamentLabelQrDataUrl(payload: string): Promise<string> {
+  const { buildFilamentLabelQrDataUrl } = await import("./filament_label_print");
+  return buildFilamentLabelQrDataUrl(payload);
+}
+
 export async function resolveSpoolQrCompanionShellUrl(
   options: Omit<SpoolQrArtifactsOptions, "spoolId"> = {},
   dependencies: SpoolQrArtifactsDependencies = {},
@@ -59,7 +63,7 @@ export async function buildSpoolQrArtifacts(
   options: SpoolQrArtifactsOptions,
   dependencies: SpoolQrArtifactsDependencies = {},
 ): Promise<SpoolQrArtifacts> {
-  const buildQrDataUrl = dependencies.buildQrDataUrl ?? buildFilamentLabelQrDataUrl;
+  const buildQrDataUrl = dependencies.buildQrDataUrl ?? buildDefaultFilamentLabelQrDataUrl;
   const qrReference = options.spoolId.trim();
   const companionShellUrl = await resolveSpoolQrCompanionShellUrl(options, dependencies);
   const qr = buildFilamentQrPayload(qrReference, {

@@ -1,6 +1,5 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { commandErrorText } from "./error_text";
-import { buildFilamentLabelHtml } from "./filament_label_print";
 import type { useI18n } from "./i18n";
 import type { InventorySpool } from "./inventory_list_model";
 import type { RfidCaptureSummary } from "./inventory_rfid_capture";
@@ -76,6 +75,7 @@ export function useInventorySpoolDetailUtilityActions({
       const { qrReference, qrPayload, qrDataUrl } = await buildSelectedSpoolQrArtifacts(
         selectedSpool,
       );
+      const { buildFilamentLabelHtml } = await import("./filament_label_print");
       const html = buildFilamentLabelHtml({
         vendor: selectedSpool.vendor,
         material: selectedSpool.material,

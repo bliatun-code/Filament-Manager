@@ -1,7 +1,4 @@
-import type { ComponentProps } from "react";
-import { SettingsGeneralRoute } from "./settings_general_route";
-
-type SettingsGeneralRouteProps = ComponentProps<typeof SettingsGeneralRoute>;
+import type { SettingsGeneralRouteProps } from "./settings_general_route";
 type SettingsGeneralTabProps = SettingsGeneralRouteProps["tab"];
 
 type BuildSettingsGeneralRoutePropsInput = Omit<

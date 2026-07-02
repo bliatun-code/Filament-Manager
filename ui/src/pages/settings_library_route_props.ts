@@ -1,7 +1,6 @@
-import type { ComponentProps } from "react";
-import { SettingsLibraryTab } from "./settings_library_tab";
+import type { SettingsLibraryTabProps } from "./settings_library_tab";
 
-type SettingsLibraryRouteProps = ComponentProps<typeof SettingsLibraryTab>;
+type SettingsLibraryRouteProps = SettingsLibraryTabProps;
 
 export function buildSettingsLibraryRouteProps(
   props: SettingsLibraryRouteProps,

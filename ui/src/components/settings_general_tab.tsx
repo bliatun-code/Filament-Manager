@@ -18,7 +18,7 @@ import {
 
 type TranslateFn = (key: string, fallback: string) => string;
 
-type SettingsGeneralTabProps = {
+export type SettingsGeneralTabProps = {
   appVersion: string | null;
   busy: boolean;
   locale: Locale;

@@ -1,19 +1,24 @@
-import type { ComponentProps } from "react";
-import { SettingsCatalogTab } from "./settings_catalog_tab";
-import { SettingsGeneralRoute } from "./settings_general_route";
-import { SettingsLibraryTab } from "./settings_library_tab";
-import { SettingsMaintenanceRoute } from "./settings_maintenance_route";
-import { SettingsPrintersRoute } from "./settings_printers_route";
-import { SettingsRouteOutlet } from "./settings_route_outlet";
-
-type SettingsRouteOutletProps = ComponentProps<typeof SettingsRouteOutlet>;
+import type { ReactNode } from "react";
+import type { SettingsCatalogTabProps } from "./settings_catalog_tab";
+import type { SettingsGeneralRouteProps } from "./settings_general_route";
+import {
+  SettingsCatalogTab,
+  SettingsGeneralRoute,
+  SettingsLibraryTab,
+  SettingsMaintenanceRoute,
+  SettingsPrintersRoute,
+} from "./settings_lazy_routes";
+import type { SettingsLibraryTabProps } from "./settings_library_tab";
+import type { SettingsMaintenanceRouteProps } from "./settings_maintenance_route";
+import type { SettingsTabKey } from "./settings_page_model";
+import type { SettingsPrintersRouteProps } from "./settings_printers_route";
 
 type BuildSettingsRouteMapPropsInput = {
-  catalog: ComponentProps<typeof SettingsCatalogTab>;
-  general: ComponentProps<typeof SettingsGeneralRoute>;
-  library: ComponentProps<typeof SettingsLibraryTab>;
-  maintenance: ComponentProps<typeof SettingsMaintenanceRoute>;
-  printers: ComponentProps<typeof SettingsPrintersRoute>;
+  catalog: SettingsCatalogTabProps;
+  general: SettingsGeneralRouteProps;
+  library: SettingsLibraryTabProps;
+  maintenance: SettingsMaintenanceRouteProps;
+  printers: SettingsPrintersRouteProps;
 };
 
 export function buildSettingsRouteMapProps({
@@ -22,7 +27,7 @@ export function buildSettingsRouteMapProps({
   library,
   maintenance,
   printers,
-}: BuildSettingsRouteMapPropsInput): SettingsRouteOutletProps["routes"] {
+}: BuildSettingsRouteMapPropsInput): Record<SettingsTabKey, ReactNode> {
   return {
     CATALOG: <SettingsCatalogTab {...catalog} />,
     GENERAL: <SettingsGeneralRoute {...general} />,

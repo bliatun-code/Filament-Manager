@@ -7,7 +7,7 @@ import type { BackupValidationStats, CatalogResetStats } from "../lib/tauri_clie
 type TranslateFn = (key: string, fallback: string) => string;
 type ResetConfirmAction = "APP" | "CATALOG";
 
-type SettingsMaintenanceTabProps = {
+export type SettingsMaintenanceTabProps = {
   backupImportInputRef: RefObject<HTMLInputElement | null>;
   backupValidateInputRef: RefObject<HTMLInputElement | null>;
   backupValidationHasExtraTables: boolean;
