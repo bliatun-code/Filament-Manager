@@ -1,15 +1,14 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
-use super::database_loan_models::{
-    ActiveSpoolLoanRow, LoanUsageByPersonRow, SpoolLoanDetailsRow, SpoolLoanRow,
-};
+use super::database_loan_models::{ActiveSpoolLoanRow, LoanUsageByPersonRow, SpoolLoanDetailsRow};
 use super::database_result::{InventoryError, InventoryResult};
-use super::database_rows::map_active_spool_loan_row;
+use super::database_rows::{map_active_spool_loan_row, map_spool_loan_row_at};
 use super::inventory_domain::LoanDirection;
 use super::loan_defaults::{
     normalize_loan_direction_filter, ACTIVE_LOAN_PREDICATE_SQL, ACTIVE_LOAN_PREDICATE_SQL_L,
     LOAN_DIRECTION_SELECT_SQL_L, LOAN_STATUS_SELECT_SQL_L, RETURNED_LOAN_PREDICATE_SQL_L,
 };
+use super::spool_defaults::normalize_spool_status;
 
 pub(crate) fn spool_has_active_loan(conn: &Connection, spool_id: &str) -> InventoryResult<bool> {
     let exists: Option<i64> = conn
@@ -129,8 +128,11 @@ pub(crate) fn list_loan_usage_by_person_for_direction(
     ))?;
 
     let rows = stmt.query_map(params![limit], |row| {
+        let loan_direction_raw: String = row.get(0)?;
         Ok(LoanUsageByPersonRow {
-            loan_direction: row.get(0)?,
+            loan_direction: LoanDirection::from_raw(Some(&loan_direction_raw))
+                .as_str()
+                .to_string(),
             borrower_name: row.get(1)?,
             total_consumed_g: row.get(2)?,
             completed_loans: row.get(3)?,
@@ -181,26 +183,12 @@ pub(crate) fn list_spool_loans_for_direction(
     ))?;
 
     let rows = stmt.query_map(params![limit], |row| {
+        let spool_status_raw: Option<String> = row.get(16)?;
         Ok(SpoolLoanDetailsRow {
-            loan: SpoolLoanRow {
-                id: row.get(0)?,
-                spool_id: row.get(1)?,
-                borrower_name: row.get(2)?,
-                loan_direction: row.get(3)?,
-                loan_status: row.get(4)?,
-                counterparty_name: row.get(5)?,
-                counterparty_contact: row.get(6)?,
-                counterparty_note: row.get(7)?,
-                grams_out: row.get(8)?,
-                lent_note: row.get(9)?,
-                lent_at: row.get(10)?,
-                expected_return_at: row.get(11)?,
-                returned_at: row.get(12)?,
-                returned_grams: row.get(13)?,
-                consumed_grams: row.get(14)?,
-                return_note: row.get(15)?,
-            },
-            spool_status: row.get(16)?,
+            loan: map_spool_loan_row_at(row, 0)?,
+            spool_status: spool_status_raw
+                .as_deref()
+                .map(|status| normalize_spool_status(Some(status))),
             spool_remaining_g: row.get(17)?,
             spool_tare_weight_g: row.get(18)?,
             material: row.get(19)?,

@@ -88,12 +88,16 @@ test("inventory status labels and tones normalize legacy status values", () => {
   assert.equal(formatInventoryStatusLabel(t, "IN_USE"), "Assigned");
   assert.equal(formatInventoryStatusLabel(t, "BORROWED"), "Loaned out");
   assert.equal(formatInventoryStatusLabel(t, "EMPTY"), "Empty");
+  assert.equal(formatInventoryStatusLabel(t, "MISSING"), "Missing");
+  assert.equal(formatInventoryStatusLabel(t, "DELETED"), "Deleted");
   assert.equal(formatInventoryStatusLabel(t, "unknown"), "In stock");
   assert.equal(inventoryStatusTone("IN_STOCK"), "success");
   assert.equal(inventoryStatusTone("ASSIGNED"), "info");
   assert.equal(inventoryStatusTone("BORROWED"), "warning");
   assert.equal(inventoryStatusTone("EMPTY"), "neutral");
   assert.equal(inventoryStatusTone("LOST"), "danger");
+  assert.equal(inventoryStatusTone("MISSING"), "danger");
+  assert.equal(inventoryStatusTone("DELETED"), "danger");
 });
 
 test("inventory ownership labels, summaries, and tones normalize borrowed-in metadata", () => {

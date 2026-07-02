@@ -1,4 +1,6 @@
-export type SpoolStatus = "IN_STOCK" | "ASSIGNED" | "BORROWED" | "EMPTY" | "LOST";
+export type ActiveSpoolStatus = "IN_STOCK" | "ASSIGNED" | "BORROWED" | "EMPTY" | "LOST";
+export type RemovedSpoolStatus = "MISSING" | "DELETED";
+export type SpoolStatus = ActiveSpoolStatus | RemovedSpoolStatus;
 export type OwnershipType = "OWNED" | "BORROWED_IN";
 export type LoanDirection = "OUTBOUND" | "INBOUND";
 export type LoanStatus = "ACTIVE" | "RETURNED" | "LOST" | "CANCELLED";
@@ -17,7 +19,13 @@ export function parseSpoolStatus(raw?: string | null): SpoolStatus | null {
   if (status === "LOANED_OUT" || status === "LOANED") {
     return "BORROWED";
   }
-  if (status === "BORROWED" || status === "EMPTY" || status === "LOST") {
+  if (
+    status === "BORROWED" ||
+    status === "EMPTY" ||
+    status === "LOST" ||
+    status === "MISSING" ||
+    status === "DELETED"
+  ) {
     return status;
   }
   if (status === "IN_STOCK") {
@@ -57,7 +65,7 @@ export function isSpoolStatusEmpty(raw?: string | null): boolean {
 }
 
 export function isSpoolStatusDeleted(raw?: string | null): boolean {
-  return normalizeDomainToken(raw) === "DELETED";
+  return parseSpoolStatus(raw) === "DELETED";
 }
 
 export function isSpoolStatusUnavailableForSlot(raw?: string | null): boolean {
@@ -66,6 +74,8 @@ export function isSpoolStatusUnavailableForSlot(raw?: string | null): boolean {
     status === "EMPTY" ||
     status === "LOST" ||
     status === "BORROWED" ||
+    status === "MISSING" ||
+    status === "DELETED" ||
     LEGACY_REMOVED_SPOOL_STATUS_TOKENS.has(normalizeDomainToken(raw))
   );
 }

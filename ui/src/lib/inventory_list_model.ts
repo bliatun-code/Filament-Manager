@@ -10,11 +10,12 @@ import {
   isBorrowedInOwnership,
   normalizeOwnershipType,
   normalizeSpoolStatus,
+  type ActiveSpoolStatus,
   type OwnershipType,
   type SpoolStatus,
 } from "./inventory_domain";
 
-export type StatusFilter = "ALL" | SpoolStatus;
+export type StatusFilter = "ALL" | ActiveSpoolStatus;
 export type OwnershipFilter = "ALL" | OwnershipType;
 export type InventorySemanticTone = "neutral" | "info" | "success" | "warning" | "danger";
 export { normalizeOwnershipType, type OwnershipType, type SpoolStatus };
@@ -75,7 +76,13 @@ export function formatInventoryStatusLabel(t: TranslateFn, statusRaw: string): s
   if (status === "EMPTY") {
     return t("inventory.statusEmpty", "Empty");
   }
-  return t("inventory.statusLost", "Lost");
+  if (status === "LOST") {
+    return t("inventory.statusLost", "Lost");
+  }
+  if (status === "MISSING") {
+    return t("inventory.statusMissing", "Missing");
+  }
+  return t("inventory.statusDeleted", "Deleted");
 }
 
 export function inventoryStatusTone(statusRaw: string): InventorySemanticTone {

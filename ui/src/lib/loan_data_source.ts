@@ -8,7 +8,6 @@ import {
   returnInboundSpoolLoan,
   returnLibrarySyncHostLoan,
   returnSpoolLoan,
-  type ActiveSpoolLoanRow,
   type LendSpoolInput,
   type ReturnSpoolLoanInput,
   type SpoolLoanDetailsRow,
@@ -21,6 +20,8 @@ import { isActiveOutboundLoan } from "./loan_state";
 import {
   normalizeActiveLoanRow,
   normalizeLoanDetailsRow,
+  type NormalizedActiveLoanRow,
+  type NormalizedLoanDetailsRow,
 } from "./loan_row_normalization";
 import {
   requireClientHostWriteTarget,
@@ -38,7 +39,7 @@ export type LoanDataSourceOptions = {
 };
 
 export type LoanDataLoadResult = {
-  rows: SpoolLoanDetailsRow[];
+  rows: NormalizedLoanDetailsRow[];
   source: LoanSnapshotSource;
   updatedAt: string | null;
   usedFallback: boolean;
@@ -71,9 +72,14 @@ type LoanWriteDependencies = {
 };
 
 export const deriveLoanLibrarySyncState = deriveLibrarySyncPageState;
-export { normalizeActiveLoanRow, normalizeLoanDetailsRow } from "./loan_row_normalization";
+export {
+  normalizeActiveLoanRow,
+  normalizeLoanDetailsRow,
+  type NormalizedActiveLoanRow,
+  type NormalizedLoanDetailsRow,
+} from "./loan_row_normalization";
 
-function mapLoanDetailsToActiveRow(row: SpoolLoanDetailsRow): ActiveSpoolLoanRow {
+function mapLoanDetailsToActiveRow(row: SpoolLoanDetailsRow): NormalizedActiveLoanRow {
   const normalized = normalizeLoanDetailsRow(row);
   return {
     loan: normalized.loan,
@@ -95,7 +101,7 @@ export async function loadActiveLoanRows(
     limit?: number;
   },
   dependencies: ActiveLoanRowsDependencies = {},
-): Promise<ActiveSpoolLoanRow[]> {
+): Promise<NormalizedActiveLoanRow[]> {
   if (options.clientReadOnly) {
     const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
     const fetchCachedLoans = dependencies.fetchCachedLoans ?? fetchCachedLibrarySyncLoans;

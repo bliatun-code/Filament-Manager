@@ -330,6 +330,9 @@ impl InventoryEngine {
         let spool_id = input.id.clone();
         let ownership_type_kind = OwnershipType::from_raw(input.ownership_type.as_deref());
         let ownership_type = ownership_type_kind.as_str().to_string();
+        let status = SpoolStatus::from_raw(Some(&input.status))
+            .as_str()
+            .to_string();
         let owner_name = normalize_optional_input_text(input.owner_name.as_deref());
         let owner_contact = normalize_optional_input_text(input.owner_contact.as_deref());
         let ownership_note = normalize_optional_input_text(input.ownership_note.as_deref());
@@ -353,7 +356,7 @@ impl InventoryEngine {
             qr_code: input.qr_code,
             rfid_tag: None,
             rfid_observed_at: None,
-            status: input.status,
+            status,
             ownership_type: ownership_type.clone(),
             owner_name: owner_name.clone(),
             owner_contact: owner_contact.clone(),
@@ -433,7 +436,9 @@ impl InventoryEngine {
             .initial_weight_g
             .or(input.default_weight_g)
             .or(Some(1000));
-        let status = input.status.unwrap_or_else(|| "IN_STOCK".to_string());
+        let status = SpoolStatus::from_raw(input.status.as_deref())
+            .as_str()
+            .to_string();
         let vendor_label = input.vendor.clone().unwrap_or_else(|| "Manual".to_string());
         let spool = SpoolRow {
             id: spool_id.clone(),
@@ -593,15 +598,20 @@ impl InventoryEngine {
 
     pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {
         let status_kind = SpoolStatus::from_raw(Some(status));
+        let normalized_status = status_kind.as_str();
         if status_kind.is_assigned() && !self.db.spool_assigned_to_printer(spool_id)? {
             return Err(InventoryError::Db(
                 "assign spool to a printer slot before setting ASSIGNED".to_string(),
             ));
         }
-        self.db.update_spool_status(spool_id, status)?;
-        self.log_spool_event(spool_id, "STATUS_UPDATED", json!({ "status": status }))?;
+        self.db.update_spool_status(spool_id, normalized_status)?;
+        self.log_spool_event(
+            spool_id,
+            "STATUS_UPDATED",
+            json!({ "status": normalized_status }),
+        )?;
         if status_kind == SpoolStatus::Empty {
-            self.log_spool_event(spool_id, "USED_UP", json!({ "status": status }))?;
+            self.log_spool_event(spool_id, "USED_UP", json!({ "status": normalized_status }))?;
         }
         Ok(())
     }
@@ -627,6 +637,7 @@ impl InventoryEngine {
 
     pub fn update_spool_details(&self, input: UpdateSpoolDetailsInput) -> InventoryResult<()> {
         let status_kind = SpoolStatus::from_raw(Some(&input.status));
+        let status = status_kind.as_str().to_string();
         if status_kind.is_assigned() && !self.db.spool_assigned_to_printer(&input.spool_id)? {
             return Err(InventoryError::Db(
                 "assign spool to a printer slot before setting ASSIGNED".to_string(),
@@ -669,7 +680,7 @@ impl InventoryEngine {
         self.db.update_spool_details(
             &input.spool_id,
             input.qr_code.as_deref(),
-            &input.status,
+            &status,
             effective_location.as_deref(),
             resolved_home_location.as_deref(),
         )?;
@@ -677,7 +688,7 @@ impl InventoryEngine {
             &input.spool_id,
             "DETAILS_UPDATED",
             json!({
-                "status": input.status,
+                "status": status,
                 "qr_code": input.qr_code,
                 "location": effective_location,
                 "home_location": resolved_home_location

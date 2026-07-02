@@ -183,6 +183,10 @@ export function formatPrinterSpoolStatusLabel(
       return t("inventory.statusEmpty", "Empty");
     case "LOST":
       return t("inventory.statusLost", "Lost");
+    case "MISSING":
+      return t("inventory.statusMissing", "Missing");
+    case "DELETED":
+      return t("inventory.statusDeleted", "Deleted");
     default:
       return status?.trim() || t("common.unknown", "Unknown");
   }
@@ -199,6 +203,8 @@ export function formatPrinterSpoolStatusTone(status?: string | null) {
     case "EMPTY":
       return "neutral";
     case "LOST":
+    case "MISSING":
+    case "DELETED":
       return "danger";
     default:
       return "neutral";

@@ -134,6 +134,75 @@ fn create_manual_borrowed_in_spool_registers_inbound_loan() {
 }
 
 #[test]
+fn create_and_update_spool_status_write_canonical_tokens() {
+    let db_path = temp_db_path("canonical-status-write-boundary");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "spool_legacy_status".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Blue".to_string(),
+                hex_color: Some("#2563EB".to_string()),
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: Some("legacy-status-qr".to_string()),
+                status: Some("lost".to_string()),
+                ownership_type: Some("borrowed-in".to_string()),
+                owner_name: Some("Ada".to_string()),
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(900),
+                location: Some("Shelf A".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+
+        let created_spool = engine
+            .db
+            .get_spool_by_id("spool_legacy_status")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected created spool".to_string())?;
+        assert_eq!(created_spool.status, "LOST");
+        assert_eq!(created_spool.ownership_type, "BORROWED_IN");
+
+        engine
+            .update_spool_status("spool_legacy_status", "loaned out")
+            .map_err(|error| error.to_string())?;
+        let updated_spool = engine
+            .db
+            .get_spool_by_id("spool_legacy_status")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected updated spool".to_string())?;
+        assert_eq!(updated_spool.status, "BORROWED");
+
+        let history_rows = engine
+            .list_spool_history("spool_legacy_status", 20)
+            .map_err(|error| error.to_string())?;
+        assert!(history_rows.iter().any(|row| {
+            row.event_type == "STATUS_UPDATED"
+                && row
+                    .payload_json
+                    .get("status")
+                    .and_then(|value| value.as_str())
+                    == Some("BORROWED")
+        }));
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("create_and_update_spool_status_write_canonical_tokens failed: {message}");
+    }
+}
+
+#[test]
 fn create_spool_with_location_persists_location_and_home_location() {
     let db_path = temp_db_path("create-spool-with-location");
 

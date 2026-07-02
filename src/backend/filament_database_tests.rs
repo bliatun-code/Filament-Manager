@@ -511,6 +511,85 @@ fn apply_schema_backfills_borrowed_in_groundwork_columns() {
 }
 
 #[test]
+fn row_read_boundaries_canonicalize_legacy_domain_tokens() {
+    let db_path = temp_db_path("canonical-domain-row-boundaries");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor
+                 ) VALUES ('master_legacy_tokens', 'PLA', 'Legacy Basic', 'Blue', 1000, 'Manual')",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "INSERT INTO filament_spools (
+                    id, master_id, qr_code, status, ownership_type,
+                    initial_weight_g, current_weight_g, remaining_g
+                 ) VALUES (
+                    'spool_legacy_tokens', 'master_legacy_tokens', 'legacy-token-qr',
+                    'IN_USE', 'borrowed-in', 1000, 880, 880
+                 )",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "INSERT INTO spool_loans (
+                    id, spool_id, borrower_name, loan_direction, loan_status, counterparty_name,
+                    grams_out, lent_note, lent_at
+                 ) VALUES (
+                    'loan_legacy_tokens', 'spool_legacy_tokens', 'Ada',
+                    'out-bound', 'active', 'Ada', 880, 'legacy tokens', datetime('now')
+                 )",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+
+        let spool = db
+            .get_spool_by_id("spool_legacy_tokens")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected legacy spool".to_string())?;
+        assert_eq!(spool.status, "ASSIGNED");
+        assert_eq!(spool.ownership_type, "BORROWED_IN");
+
+        let active_loans = db
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(active_loans.len(), 1);
+        assert_eq!(active_loans[0].loan.loan_direction, "OUTBOUND");
+        assert_eq!(active_loans[0].loan.loan_status, "ACTIVE");
+        assert_eq!(active_loans[0].spool_status, "ASSIGNED");
+
+        db.conn
+            .execute(
+                "UPDATE spool_loans
+                 SET returned_at = datetime('now'), loan_status = 'active'
+                 WHERE id = 'loan_legacy_tokens'",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+        let returned_loans = db
+            .list_spool_loans_for_direction(10, true, Some("ALL"))
+            .map_err(|error| error.to_string())?;
+        assert_eq!(returned_loans.len(), 1);
+        assert_eq!(returned_loans[0].loan.loan_status, "RETURNED");
+        assert_eq!(returned_loans[0].spool_status.as_deref(), Some("ASSIGNED"));
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("row_read_boundaries_canonicalize_legacy_domain_tokens failed: {message}");
+    }
+}
+
+#[test]
 fn apply_schema_backfills_official_bambu_composite_swatches_safely() {
     let db_path = temp_db_path("bambu-composite-swatch-backfill");
 

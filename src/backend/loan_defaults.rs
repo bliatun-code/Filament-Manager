@@ -1,10 +1,16 @@
 use crate::backend::inventory_domain::LoanDirection;
 
-pub(crate) const LOAN_DIRECTION_SELECT_SQL: &str =
-    "COALESCE(NULLIF(loan_direction, ''), 'OUTBOUND')";
+pub(crate) const LOAN_DIRECTION_SELECT_SQL: &str = "CASE
+    WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(loan_direction, ''))), '-', '_'), ' ', '_') IN ('INBOUND', 'IN_BOUND')
+        THEN 'INBOUND'
+    ELSE 'OUTBOUND'
+END";
 
-pub(crate) const LOAN_DIRECTION_SELECT_SQL_L: &str =
-    "COALESCE(NULLIF(l.loan_direction, ''), 'OUTBOUND')";
+pub(crate) const LOAN_DIRECTION_SELECT_SQL_L: &str = "CASE
+    WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(l.loan_direction, ''))), '-', '_'), ' ', '_') IN ('INBOUND', 'IN_BOUND')
+        THEN 'INBOUND'
+    ELSE 'OUTBOUND'
+END";
 
 pub(crate) const LOAN_STATUS_SELECT_SQL: &str = "CASE
     WHEN returned_at IS NOT NULL THEN 'RETURNED'

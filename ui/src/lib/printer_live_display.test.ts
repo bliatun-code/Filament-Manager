@@ -252,6 +252,8 @@ test("printer spool status display uses shared domain parsing without hiding unk
   assert.equal(formatPrinterSpoolStatusTone("IN_USE"), "success");
   assert.equal(formatPrinterSpoolStatusLabel("borrowed", t), "Loaned out");
   assert.equal(formatPrinterSpoolStatusTone("borrowed"), "warning");
+  assert.equal(formatPrinterSpoolStatusLabel("MISSING", t), "Missing");
+  assert.equal(formatPrinterSpoolStatusTone("DELETED"), "danger");
   assert.equal(formatPrinterSpoolStatusLabel("LEGACY_ACTIVE", t), "LEGACY_ACTIVE");
   assert.equal(formatPrinterSpoolStatusTone("LEGACY_ACTIVE"), "neutral");
 });
