@@ -52,6 +52,7 @@ impl SpoolStatus {
     pub fn from_raw(value: Option<&str>) -> Self {
         match normalize_domain_token(value, "IN_STOCK").as_str() {
             "IN_USE" | "ASSIGNED" => Self::Assigned,
+            "LOANED_OUT" | "LOANED" => Self::Borrowed,
             "BORROWED" => Self::Borrowed,
             "EMPTY" => Self::Empty,
             "LOST" => Self::Lost,
@@ -88,7 +89,7 @@ pub enum LoanDirection {
 impl LoanDirection {
     pub fn from_raw(value: Option<&str>) -> Self {
         match normalize_domain_token(value, "OUTBOUND").as_str() {
-            "INBOUND" => Self::Inbound,
+            "INBOUND" | "IN_BOUND" => Self::Inbound,
             _ => Self::Outbound,
         }
     }
@@ -151,6 +152,11 @@ mod tests {
             SpoolStatus::from_raw(Some("assigned")),
             SpoolStatus::Assigned
         );
+        assert_eq!(
+            SpoolStatus::from_raw(Some("loaned out")),
+            SpoolStatus::Borrowed
+        );
+        assert_eq!(SpoolStatus::from_raw(Some("loaned")), SpoolStatus::Borrowed);
         assert_eq!(SpoolStatus::Assigned.as_str(), "ASSIGNED");
         assert_eq!(SpoolStatus::from_raw(Some("missing")), SpoolStatus::Missing);
         assert_eq!(SpoolStatus::from_raw(Some("unknown")), SpoolStatus::InStock);
@@ -165,6 +171,14 @@ mod tests {
     fn normalizes_loan_direction_and_status_values() {
         assert_eq!(
             LoanDirection::from_raw(Some("inbound")),
+            LoanDirection::Inbound
+        );
+        assert_eq!(
+            LoanDirection::from_raw(Some("in bound")),
+            LoanDirection::Inbound
+        );
+        assert_eq!(
+            LoanDirection::from_raw(Some("in-bound")),
             LoanDirection::Inbound
         );
         assert_eq!(
