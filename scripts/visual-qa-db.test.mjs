@@ -12,6 +12,7 @@ import {
   VISUAL_QA_PROFILE_BASE,
   VISUAL_QA_PROFILE_RICH,
   VISUAL_QA_DB_PATH_ENV_VAR,
+  VISUAL_QA_TRUSTED_LAN_PORT,
   applyTrustedLanInterfaceFixture,
   applyVisualQaDatabaseFixture,
   assessVisualQaDataset,
@@ -267,6 +268,8 @@ test("applyTrustedLanInterfaceFixture retargets trusted LAN settings on database
     assert.equal(fixture?.previousInterfaceAddress, "192.168.86.25");
     assert.equal(fixture?.interfaceAddress, "172.20.10.7");
     assert.equal(fixture?.interfaceName, "en0");
+    assert.equal(fixture?.previousPort, "4278");
+    assert.equal(fixture?.port, String(VISUAL_QA_TRUSTED_LAN_PORT));
 
     const updatedDb = new Database(dbPath, { readonly: true });
     try {
@@ -281,6 +284,12 @@ test("applyTrustedLanInterfaceFixture retargets trusted LAN settings on database
           .prepare("SELECT value FROM settings WHERE key = ?")
           .get("trusted_lan_interface_address").value,
         "172.20.10.7",
+      );
+      assert.equal(
+        updatedDb
+          .prepare("SELECT value FROM settings WHERE key = ?")
+          .get("trusted_lan_port").value,
+        String(VISUAL_QA_TRUSTED_LAN_PORT),
       );
     } finally {
       updatedDb.close();

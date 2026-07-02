@@ -14,6 +14,7 @@ export const VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE = "printer-rfid-override";
 export const VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES =
   "settings-catalog-missing-swatches";
 export const VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE = "trusted-lan-interface";
+export const VISUAL_QA_TRUSTED_LAN_PORT = 4279;
 
 const LOCAL_APP_SUPPORT_DB = process.env.HOME
   ? `${process.env.HOME}/Library/Application Support/no.bliatun.filamentmanager/filament-manager.db`
@@ -298,13 +299,20 @@ async function applyTrustedLanInterfaceFixtureWithBetterSqlite(dbPath, options =
 
     const previousName = String(readSetting(db, TRUSTED_LAN_KEYS.interfaceName) ?? "").trim();
     const previousAddress = String(readSetting(db, TRUSTED_LAN_KEYS.interfaceAddress) ?? "").trim();
-    if (previousName === selectedInterface.name && previousAddress === selectedInterface.address) {
+    const previousPort = String(readSetting(db, TRUSTED_LAN_KEYS.port) ?? "").trim();
+    const fixturePort = String(options.trustedLanPort ?? VISUAL_QA_TRUSTED_LAN_PORT);
+    if (
+      previousName === selectedInterface.name &&
+      previousAddress === selectedInterface.address &&
+      previousPort === fixturePort
+    ) {
       return null;
     }
 
     const transaction = db.transaction(() => {
       writeSetting(db, TRUSTED_LAN_KEYS.interfaceName, selectedInterface.name);
       writeSetting(db, TRUSTED_LAN_KEYS.interfaceAddress, selectedInterface.address);
+      writeSetting(db, TRUSTED_LAN_KEYS.port, fixturePort);
     });
     transaction();
 
@@ -314,6 +322,8 @@ async function applyTrustedLanInterfaceFixtureWithBetterSqlite(dbPath, options =
       interfaceName: selectedInterface.name,
       previousInterfaceAddress: previousAddress || null,
       previousInterfaceName: previousName || null,
+      previousPort: previousPort || null,
+      port: fixturePort,
     };
   } finally {
     db.close();
@@ -1088,7 +1098,7 @@ export function formatVisualQaDatasetReport({
           ? ` from ${fixture.previousInterfaceAddress}`
           : "";
         lines.push(
-          `  - ${fixture.fixture}: ${fixture.interfaceName} ${fixture.interfaceAddress}${previous}`,
+          `  - ${fixture.fixture}: ${fixture.interfaceName} ${fixture.interfaceAddress}:${fixture.port ?? 4278}${previous}`,
         );
       } else if (fixture.fixture === VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES) {
         const vendors = fixture.vendors?.length ? ` across ${fixture.vendors.join(", ")}` : "";
@@ -1166,6 +1176,7 @@ export async function prepareVisualQaDatabase(options = {}) {
   const copyMethod = await copySqliteDatabase(source.path, targetPath);
   const trustedLanFixture = await applyTrustedLanInterfaceFixture(targetPath, {
     interfaces: options.interfaces,
+    trustedLanPort: options.trustedLanPort,
   });
   const fixture = await applyVisualQaDatabaseFixture(targetPath, options.scenario, {
     now: options.now,
