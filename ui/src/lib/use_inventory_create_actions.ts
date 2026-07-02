@@ -1,6 +1,7 @@
 import { useMemo, type Dispatch, type SetStateAction } from "react";
 import { commandErrorText } from "./error_text";
 import type { BambuFilamentCodeBatch } from "./bambu_filament_code_batch";
+import { isBorrowedInOwnership } from "./inventory_domain";
 import {
   buildBambuCatalogBatchCreateRequests,
   buildInventoryCreateSpoolRequest,
@@ -102,6 +103,7 @@ export function useInventoryCreateActions({
   t,
 }: InventoryCreateActionsInput) {
   const hostWriteTarget = { clientReadOnly, clientHostBaseUrl, clientLibraryId };
+  const newSpoolBorrowedIn = isBorrowedInOwnership(newOwnershipType);
   const currentCreateDraft = useMemo(
     () =>
       buildWishlistDraft({
@@ -205,7 +207,7 @@ export function useInventoryCreateActions({
       setRecentlyAddedSpoolId(createdSpoolId);
       setInfoMessage(
         `${
-          newOwnershipType === "BORROWED_IN"
+          newSpoolBorrowedIn
             ? t("inventory.borrowedInRegistered", "Borrowed-in spool registered")
             : t("inventory.addedToInventory", "Added to inventory")
         }: ${createRequest.addedLabel}`,
@@ -277,7 +279,7 @@ export function useInventoryCreateActions({
       }
       setInfoMessage(
         `${
-          newOwnershipType === "BORROWED_IN"
+          newSpoolBorrowedIn
             ? t("inventory.borrowedInBatchRegistered", "Borrowed-in batch registered")
             : t("inventory.bambuBatchAdded", "Bambu code batch added")
         }: ${batchRequest.requests.length}`,

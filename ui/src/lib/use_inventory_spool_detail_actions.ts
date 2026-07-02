@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { isValidSwatchColor, normalizeSwatchValue } from "./color_utils";
 import { commandErrorText } from "./error_text";
 import type { useI18n } from "./i18n";
+import { isBorrowedInOwnership } from "./inventory_domain";
 import type { InventorySpool, OwnershipType } from "./inventory_list_model";
 import {
   canRefillSpoolStatus,
@@ -236,7 +237,8 @@ export function useInventorySpoolDetailActions({
     const ownerName = selectedSpoolOwnerNameDraft.trim();
     const ownerContact = selectedSpoolOwnerContactDraft.trim();
     const ownershipNote = selectedSpoolOwnershipNoteDraft.trim();
-    if (selectedSpoolOwnershipDraft === "BORROWED_IN" && !ownerName) {
+    const borrowedIn = isBorrowedInOwnership(selectedSpoolOwnershipDraft);
+    if (borrowedIn && !ownerName) {
       setError(
         t(
           "inventory.error.ownerNameRequired",
@@ -255,15 +257,15 @@ export function useInventorySpoolDetailActions({
         {
           spool_id: selectedSpool.id,
           ownership_type: selectedSpoolOwnershipDraft,
-          owner_name: selectedSpoolOwnershipDraft === "BORROWED_IN" ? ownerName : null,
-          owner_contact: selectedSpoolOwnershipDraft === "BORROWED_IN" ? ownerContact || null : null,
-          ownership_note: selectedSpoolOwnershipDraft === "BORROWED_IN" ? ownershipNote || null : null,
+          owner_name: borrowedIn ? ownerName : null,
+          owner_contact: borrowedIn ? ownerContact || null : null,
+          ownership_note: borrowedIn ? ownershipNote || null : null,
         },
         hostWriteTarget,
       );
       await reloadInventorySurfaces();
       await reloadSpoolDetail(selectedSpool.id);
-      if (selectedSpoolOwnershipDraft === "OWNED") {
+      if (!borrowedIn) {
         setSelectedSpoolOwnerNameDraft("");
         setSelectedSpoolOwnerContactDraft("");
         setSelectedSpoolOwnershipNoteDraft("");

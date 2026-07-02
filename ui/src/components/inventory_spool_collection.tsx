@@ -2,6 +2,7 @@ import { VendorBadge } from "./vendor_badge";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { formatPlacementLabel } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
+import { isBorrowedInOwnership } from "../lib/inventory_domain";
 import {
   formatInventoryDisplayTitle,
   formatInventoryOwnershipLabel,
@@ -47,7 +48,7 @@ function OwnershipChip({
   ownershipType: InventorySpool["ownershipType"];
   t: ReturnType<typeof useI18n>["t"];
 }) {
-  if (ownershipType !== "BORROWED_IN") {
+  if (!isBorrowedInOwnership(ownershipType)) {
     return null;
   }
   return (
@@ -191,7 +192,7 @@ export function InventorySpoolCollection({
                         {t("inventory.total", "Total")}: {formatGrams(group.totalRemaining)}
                       </span>
                     </div>
-                    {group.ownershipType === "BORROWED_IN" && group.ownerName ? (
+                    {isBorrowedInOwnership(group.ownershipType) && group.ownerName ? (
                       <div className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
                         {t("inventory.borrowedFrom", "Borrowed from")}: {group.ownerName}
                       </div>
@@ -221,7 +222,7 @@ export function InventorySpoolCollection({
                         </div>
                         <div className="mt-1 truncate text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
                           {formatRollReference(singleVisibleRoll)}
-                          {singleVisibleRoll.ownershipType === "BORROWED_IN" &&
+                          {isBorrowedInOwnership(singleVisibleRoll.ownershipType) &&
                           singleVisibleRoll.ownerName
                             ? ` · ${t("inventory.borrowedFrom", "Borrowed from")}: ${
                                 singleVisibleRoll.ownerName
@@ -271,7 +272,7 @@ export function InventorySpoolCollection({
                             <div className="mt-1 truncate text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
                               {formatRollReference(roll)}
                             </div>
-                            {roll.ownershipType === "BORROWED_IN" && roll.ownerName ? (
+                            {isBorrowedInOwnership(roll.ownershipType) && roll.ownerName ? (
                               <div className="mt-1 truncate text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
                                 {t("inventory.borrowedFrom", "Borrowed from")}: {roll.ownerName}
                               </div>
@@ -336,7 +337,7 @@ export function InventorySpoolCollection({
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                       {formatInventoryPlacement(t, roll.location)} · {formatRollReference(roll)}
                     </div>
-                    {roll.ownershipType === "BORROWED_IN" && roll.ownerName ? (
+                    {isBorrowedInOwnership(roll.ownershipType) && roll.ownerName ? (
                       <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                         {t("inventory.borrowedFrom", "Borrowed from")}: {roll.ownerName}
                       </div>

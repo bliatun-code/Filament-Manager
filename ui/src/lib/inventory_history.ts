@@ -1,3 +1,4 @@
+import { isBorrowedInOwnership, normalizeOwnershipType } from "./inventory_domain";
 import type { Locale } from "./i18n";
 import type { SpoolHistoryEventRow } from "./tauri_client";
 
@@ -300,9 +301,9 @@ export function formatInventoryHistoryEventDetails(
     if (status) {
       details.push(`${t("inventory.status", "Status")}: ${formatStatusLabel(status)}`);
     }
-    if (ownershipType === "OWNED") {
+    if (ownershipType && normalizeOwnershipType(ownershipType) === "OWNED") {
       details.push(t("inventory.ownedByUs", "Owned"));
-    } else if (ownershipType === "BORROWED_IN") {
+    } else if (isBorrowedInOwnership(ownershipType)) {
       details.push(t("inventory.borrowedInRegistered", "Borrowed-in spool registered"));
     }
     if (vendor) {

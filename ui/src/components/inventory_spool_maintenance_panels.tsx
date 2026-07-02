@@ -7,6 +7,7 @@ import {
   inventoryDetailSaveButtonClassName,
 } from "./inventory_detail_panel_class";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
+import { isBorrowedInOwnership } from "../lib/inventory_domain";
 import type { OwnershipType, SpoolStatus } from "../lib/inventory_list_model";
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
@@ -158,7 +159,7 @@ export function InventorySpoolOwnershipPanel({
   typeValue,
 }: InventorySpoolOwnershipPanelProps) {
   const { t } = useI18n();
-  const borrowed = typeValue === "BORROWED_IN";
+  const borrowed = isBorrowedInOwnership(typeValue);
 
   return (
     <div

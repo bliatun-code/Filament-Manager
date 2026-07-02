@@ -301,6 +301,42 @@ test("buildInventoryCreateSpoolRequest builds manual create payloads with defaul
   );
 });
 
+test("buildInventoryCreateSpoolRequest clears owner fields for owned spools", () => {
+  assert.deepEqual(
+    buildInventoryCreateSpoolRequest({
+      id: "spool-owned",
+      mode: "bambu",
+      selectedBambuMaster: master({ id: "master-owned" }),
+      initialWeightRaw: "1000",
+      ownershipType: "OWNED",
+      borrowedFromName: " Ada ",
+      borrowedFromContact: " ada@example.com ",
+      borrowedInNote: " Return later ",
+    }),
+    {
+      ok: true,
+      kind: "catalog",
+      addedLabel: "PLA Basic · Gray",
+      input: {
+        id: "spool-owned",
+        master_id: "master-owned",
+        qr_code: null,
+        status: "IN_STOCK",
+        ownership_type: "OWNED",
+        owner_name: null,
+        owner_contact: null,
+        ownership_note: null,
+        initial_weight_g: 1000,
+        current_weight_g: 1000,
+        location_id: null,
+        purchase_date: null,
+        purchase_price: null,
+        batch_code: null,
+      },
+    },
+  );
+});
+
 test("buildInventoryCreateSpoolRequest reports validation failures", () => {
   assert.deepEqual(
     buildInventoryCreateSpoolRequest({

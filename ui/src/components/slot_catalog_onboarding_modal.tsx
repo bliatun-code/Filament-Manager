@@ -1,5 +1,6 @@
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import { useI18n, type Locale } from "../lib/i18n";
+import { isBorrowedInOwnership } from "../lib/inventory_domain";
 import type { OwnershipType } from "../lib/inventory_list_model";
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import { formatDateTime } from "../lib/printer_live_display";
@@ -64,7 +65,7 @@ export function SlotCatalogOnboardingModal({
     currentLiveTray,
   });
   const observedRfid = saveState.observedRfid;
-  const isBorrowedIn = prompt.ownershipType === "BORROWED_IN";
+  const isBorrowedIn = isBorrowedInOwnership(prompt.ownershipType);
   const primaryActionLabel = isBorrowedIn
     ? t("printers.addBorrowedCatalogRollAndSaveRfid", "Add borrowed-in + save RFID")
     : t("printers.addCatalogRollAndSaveRfid", "Add + save RFID");

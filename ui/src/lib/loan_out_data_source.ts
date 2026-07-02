@@ -1,5 +1,6 @@
 import { fetchCachedLibrarySyncSpools } from "./tauri_client";
 import {
+  isBorrowedInOwnership,
   isSpoolStatusLoanable,
   normalizeOwnershipType,
   normalizeSpoolStatus,
@@ -57,7 +58,7 @@ export function buildLoanableSpoolCandidates(
       if (assignedSpoolIds.has(row.spool.id)) {
         return false;
       }
-      if (ownershipType === "BORROWED_IN") {
+      if (isBorrowedInOwnership(ownershipType)) {
         return false;
       }
       return isSpoolStatusLoanable(row.spool.status);

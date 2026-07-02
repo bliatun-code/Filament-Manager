@@ -1,4 +1,5 @@
 import { normalizeSwatchValue } from "./color_utils";
+import { isBorrowedInOwnership } from "./inventory_domain";
 import type { OwnershipType } from "./inventory_list_model";
 import type { CreateManualSpoolInput, CreateSpoolInput, MasterCatalogRow } from "./tauri_client";
 import { parsePositiveWeight } from "./weight_display";
@@ -84,7 +85,7 @@ export function isInventoryCreateDisabled(input: {
     return true;
   }
 
-  return input.ownershipType === "BORROWED_IN" && !(input.borrowedFromName ?? "").trim();
+  return isBorrowedInOwnership(input.ownershipType) && !(input.borrowedFromName ?? "").trim();
 }
 
 export function formatInventoryCreateAddedLabel(input: {
@@ -207,7 +208,8 @@ export function buildInventoryCreateSpoolRequest(input: {
   location?: string | null;
 }): InventoryCreateSpoolRequest {
   const ownerName = (input.borrowedFromName ?? "").trim();
-  if (input.ownershipType === "BORROWED_IN" && !ownerName) {
+  const borrowedIn = isBorrowedInOwnership(input.ownershipType);
+  if (borrowedIn && !ownerName) {
     return { ok: false, error: "BORROWED_OWNER_REQUIRED" };
   }
 
@@ -215,9 +217,9 @@ export function buildInventoryCreateSpoolRequest(input: {
   const ownershipNote = (input.borrowedInNote ?? "").trim();
   const ownershipFields = {
     ownership_type: input.ownershipType,
-    owner_name: ownerName || null,
-    owner_contact: ownerContact || null,
-    ownership_note: ownershipNote || null,
+    owner_name: borrowedIn ? ownerName || null : null,
+    owner_contact: borrowedIn ? ownerContact || null : null,
+    ownership_note: borrowedIn ? ownershipNote || null : null,
   };
 
   const location = (input.location ?? "").trim() || null;

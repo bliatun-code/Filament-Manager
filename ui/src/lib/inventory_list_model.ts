@@ -7,6 +7,7 @@ import {
 import {
   isSpoolStatusEmpty,
   isSpoolStatusEmptyOrLost,
+  isBorrowedInOwnership,
   normalizeOwnershipType,
   normalizeSpoolStatus,
   type OwnershipType,
@@ -110,7 +111,7 @@ export function inventoryOwnershipTone(ownershipRaw?: string | null): InventoryS
 }
 
 export function formatInventoryOwnershipSummary(t: TranslateFn, spool: InventorySpool): string {
-  if (spool.ownershipType === "BORROWED_IN") {
+  if (isBorrowedInOwnership(spool.ownershipType)) {
     return spool.ownerName?.trim()
       ? `${t("inventory.borrowedFrom", "Borrowed from")}: ${spool.ownerName.trim()}`
       : t("inventory.borrowedIn", "Borrowed in");
@@ -195,7 +196,7 @@ export function filterInventorySpools(
           } ${spool.location ?? ""} ${spool.qrCode ?? ""} ${spool.rfidTag ?? ""} ${
             spool.ownerName ?? ""
           } ${spool.ownerContact ?? ""} ${
-            spool.ownershipType === "BORROWED_IN" ? "borrowed in" : "owned"
+            isBorrowedInOwnership(spool.ownershipType) ? "borrowed in" : "owned"
           }`
             .toLowerCase()
             .includes(term);

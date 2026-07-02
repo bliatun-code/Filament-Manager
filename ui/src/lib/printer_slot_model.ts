@@ -14,6 +14,7 @@ import {
   type InventoryCreateSpoolRequest,
 } from "./inventory_create_model";
 import {
+  isBorrowedInOwnership,
   isSpoolStatusAssigned,
   isSpoolStatusUnavailableForSlot,
   type OwnershipType,
@@ -407,7 +408,7 @@ export function buildSlotCatalogOnboardingSaveState(
   let reason: SlotCatalogOnboardingSaveBlockReason | null = openState.reason;
   if (
     !reason &&
-    prompt.ownershipType === "BORROWED_IN" &&
+    isBorrowedInOwnership(prompt.ownershipType) &&
     !prompt.borrowedFromName.trim()
   ) {
     reason = "borrowed_owner_required";

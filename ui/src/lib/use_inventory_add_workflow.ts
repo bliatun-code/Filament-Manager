@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { InventoryAddModalProps } from "../components/inventory_add_modal";
 import { buildBambuFilamentCodeBatchCreateState } from "./bambu_filament_code_batch";
+import { isBorrowedInOwnership } from "./inventory_domain";
 import { isInventoryCreateDisabled } from "./inventory_create_model";
 import {
   inventoryCreatePreviewPanelStyle,
@@ -242,12 +243,13 @@ export function useInventoryAddWorkflow({
     ? inventorySwatchActionButtonStyle(currentCreateSwatchHex, resolvedTheme)
     : undefined;
   const disableWishlistCreate = !tauriAvailable || busy || !currentCreateDraft;
+  const newSpoolBorrowedIn = isBorrowedInOwnership(newOwnershipType);
   const bambuBatchCreateState = buildBambuFilamentCodeBatchCreateState({
     batch: bambuCodeBatch,
     tauriAvailable,
     busy,
     isBambuMode: createMode === "bambu",
-    borrowedOwnerRequired: newOwnershipType === "BORROWED_IN" && !borrowedFromName.trim(),
+    borrowedOwnerRequired: newSpoolBorrowedIn && !borrowedFromName.trim(),
   });
   const addModalActive = showAddModal && sidePanelMode === "ADD";
 

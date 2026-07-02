@@ -4,6 +4,7 @@ import { ModalActionButton } from "./modal_action_button";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { useI18n } from "../lib/i18n";
+import { isBorrowedInOwnership } from "../lib/inventory_domain";
 import type { InventoryCreateSelectionSummary } from "../lib/inventory_create_model";
 import type { OwnershipType } from "../lib/inventory_list_model";
 import { formatGrams } from "../lib/weight_display";
@@ -54,6 +55,7 @@ export function InventoryCreateActionsPanel({
   tauriAvailable,
 }: InventoryCreateActionsPanelProps) {
   const { t } = useI18n();
+  const borrowedIn = isBorrowedInOwnership(ownershipType);
 
   return (
     <div
@@ -103,14 +105,14 @@ export function InventoryCreateActionsPanel({
           ]}
         />
         <div className="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
-          {ownershipType === "BORROWED_IN"
+          {borrowedIn
             ? t(
                 "inventory.borrowedInHelp",
                 "Register this spool as borrowed from someone else. It can still be used in printers, but it will not appear in loan-out candidates.",
               )
             : t("inventory.ownedByUsDetail", "Owned by us")}
         </div>
-        {ownershipType === "BORROWED_IN" ? (
+        {borrowedIn ? (
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
             <input
               type="text"
@@ -172,7 +174,7 @@ export function InventoryCreateActionsPanel({
         onClick={onCreateSpool}
         disabled={disabledCreate}
       >
-        {ownershipType === "BORROWED_IN"
+        {borrowedIn
           ? t("inventory.registerBorrowedIn", "Register borrowed-in spool")
           : t("inventory.addSpool", "Add spool to inventory")}
       </ModalActionButton>

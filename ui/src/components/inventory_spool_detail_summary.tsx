@@ -8,6 +8,7 @@ import {
   buildInventorySpoolAmsSighting,
   type InventorySpoolAmsSightingSlot,
 } from "../lib/inventory_spool_ams_sighting";
+import { isBorrowedInOwnership } from "../lib/inventory_domain";
 import {
   formatInventoryOwnershipSummary,
   formatRollReference,
@@ -101,6 +102,7 @@ export function InventorySpoolIdentityPanel({
 }: InventorySpoolIdentityPanelProps) {
   const { locale, t } = useI18n();
   const amsSighting = buildInventorySpoolAmsSighting(spool, assignedSlot);
+  const spoolBorrowedIn = isBorrowedInOwnership(spool.ownershipType);
   const showRfidBindingHint =
     rfidBindingMeta.hint.trim().length > 0 && amsSighting?.source !== "live_activity";
 
@@ -169,8 +171,7 @@ export function InventorySpoolIdentityPanel({
           <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
             {formatInventoryOwnershipSummary(t, spool)}
           </div>
-          {spool.ownershipType === "BORROWED_IN" &&
-          (spool.ownerContact || spool.ownershipNote) ? (
+          {spoolBorrowedIn && (spool.ownerContact || spool.ownershipNote) ? (
             <div className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
               {spool.ownerContact ? <div>{spool.ownerContact}</div> : null}
               {spool.ownershipNote ? <div>{spool.ownershipNote}</div> : null}
