@@ -16,7 +16,10 @@ const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
 const DEFAULT_PROCESS_NAME = "bambu-filament-manager";
 const DEFAULT_WINDOW_TITLE = "Filament Manager";
 const VISUAL_QA_SCENARIO_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
-const DESKTOP_VISUAL_QA_DATABASE_FIXTURE_SCENARIOS = new Set(["printer-slot-onboarding"]);
+const DESKTOP_VISUAL_QA_DATABASE_FIXTURE_SCENARIOS = new Set([
+  "printer-slot-onboarding",
+  "printer-rfid-override",
+]);
 const DESKTOP_VISUAL_QA_SCENARIOS = [
   "dashboard-overview",
   "inventory-overview",
@@ -30,6 +33,7 @@ const DESKTOP_VISUAL_QA_SCENARIOS = [
   "printer-board",
   "printer-slot-assignment",
   "printer-slot-onboarding",
+  "printer-rfid-override",
   "printer-slot-replacement",
   "printer-slot-clear",
   "settings-general",
@@ -112,6 +116,11 @@ export function normalizeDesktopVisualQaScenario(value) {
     case "ams-onboarding":
     case "printer-ams-onboarding":
       return "printer-slot-onboarding";
+    case "printer-rfid-override":
+    case "rfid-override":
+    case "slot-rfid-override":
+    case "printer-slot-rfid-override":
+      return "printer-rfid-override";
     case "printer-slot-replacement":
     case "printer-slot-swap":
     case "slot-replacement":
@@ -160,7 +169,7 @@ export function normalizeDesktopVisualQaScenario(value) {
       return "statistics-overview";
     default:
       throw new Error(
-        `Unknown desktop visual QA scenario "${value}". Use dashboard-overview, inventory-overview, add-filament, loan-out, loans-overview, selected-roll, rfid-capture, return-loan, printer-board, printer-slot-assignment, printer-slot-onboarding, printer-slot-replacement, printer-slot-clear, bambu-batch-add, settings-general, settings-library, settings-printer-diagnostics, settings-printer-diagnostics-fields, settings-printer-diagnostics-paused, settings-catalog, settings-maintenance, or statistics-overview.`,
+        `Unknown desktop visual QA scenario "${value}". Use dashboard-overview, inventory-overview, add-filament, loan-out, loans-overview, selected-roll, rfid-capture, return-loan, printer-board, printer-slot-assignment, printer-slot-onboarding, printer-rfid-override, printer-slot-replacement, printer-slot-clear, bambu-batch-add, settings-general, settings-library, settings-printer-diagnostics, settings-printer-diagnostics-fields, settings-printer-diagnostics-paused, settings-catalog, settings-maintenance, or statistics-overview.`,
       );
   }
 }

@@ -10,6 +10,7 @@ export const APP_DB_PATH_ENV_VAR = "FILAMENT_MANAGER_DB_PATH";
 export const VISUAL_QA_PROFILE_BASE = "base";
 export const VISUAL_QA_PROFILE_RICH = "rich";
 export const VISUAL_QA_FIXTURE_PRINTER_SLOT_ONBOARDING = "printer-slot-onboarding";
+export const VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE = "printer-rfid-override";
 
 const LOCAL_APP_SUPPORT_DB = process.env.HOME
   ? `${process.env.HOME}/Library/Application Support/no.bliatun.filamentmanager/filament-manager.db`
@@ -188,6 +189,11 @@ export function normalizeVisualQaDatabaseFixtureScenario(scenario) {
     case "ams-onboarding":
     case "printer-ams-onboarding":
       return VISUAL_QA_FIXTURE_PRINTER_SLOT_ONBOARDING;
+    case "printer-rfid-override":
+    case "rfid-override":
+    case "slot-rfid-override":
+    case "printer-slot-rfid-override":
+      return VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE;
     default:
       return null;
   }
@@ -468,7 +474,7 @@ function findSlotForObservedTray(db, printerId, tray) {
   return (
     db
       .prepare(
-        `SELECT s.id AS slot_id, s.ams_id, s.slot_index
+        `SELECT s.id AS slot_id, s.ams_id, s.slot_index, s.spool_id
          FROM ams_slots s
          JOIN ams_units u ON u.id = s.ams_id
          WHERE u.printer_id = ?
@@ -595,6 +601,143 @@ async function applyPrinterSlotOnboardingFixtureWithBetterSqlite(dbPath, options
   }
 }
 
+function chooseRfidOverrideFixtureSpool(db, preferredSpoolId) {
+  if (preferredSpoolId) {
+    const preferred = db
+      .prepare(
+        `SELECT fs.id AS spool_id,
+                m.id AS master_id,
+                m.vendor,
+                m.material,
+                m.filament_name,
+                m.color_name,
+                m.hex_color
+         FROM filament_spools fs
+         JOIN filament_master_list m ON m.id = fs.master_id
+         WHERE fs.id = ?
+           AND fs.deleted_at IS NULL
+         LIMIT 1`,
+      )
+      .get(preferredSpoolId);
+    if (preferred) {
+      return preferred;
+    }
+  }
+
+  return db
+    .prepare(
+      `SELECT fs.id AS spool_id,
+              m.id AS master_id,
+              m.vendor,
+              m.material,
+              m.filament_name,
+              m.color_name,
+              m.hex_color
+       FROM filament_spools fs
+       JOIN filament_master_list m ON m.id = fs.master_id
+       WHERE fs.deleted_at IS NULL
+       ORDER BY
+         CASE WHEN COALESCE(m.hex_color, '') <> '' THEN 0 ELSE 1 END,
+         CASE
+           WHEN lower(m.color_name) LIKE '%black%'
+             OR lower(m.color_name) LIKE '%white%'
+             OR lower(m.color_name) LIKE '%gray%'
+             OR lower(m.color_name) LIKE '%grey%'
+             OR lower(m.color_name) LIKE '%silver%'
+             OR lower(m.color_name) LIKE '%transparent%'
+             OR lower(m.color_name) LIKE '%clear%'
+             OR lower(m.color_name) LIKE '%natural%'
+           THEN 1
+           ELSE 0
+         END,
+         lower(m.vendor) LIKE '%bambu%' DESC,
+         m.material,
+         m.filament_name,
+         m.color_name
+       LIMIT 1`,
+    )
+    .get();
+}
+
+async function applyPrinterRfidOverrideFixtureWithBetterSqlite(dbPath, options = {}) {
+  const module = await import("better-sqlite3");
+  const Database = module.default ?? module;
+  const db = new Database(dbPath);
+  try {
+    const target = findSlotOnboardingFixtureTarget(db);
+    if (!target) {
+      throw new Error("No loaded Bambu Live AMS tray was found for printer RFID override QA.");
+    }
+    const spool = chooseRfidOverrideFixtureSpool(db, target.slot.spool_id);
+    if (!spool) {
+      throw new Error("No existing spool was found for printer RFID override QA.");
+    }
+
+    const now = (options.now ?? new Date()).toISOString();
+    const fixtureIdentity = `VISUALQA-OVERRIDE-${target.slot.slot_id}`;
+    const fixtureColor = spool.hex_color || target.tray.color_hex || "#64748B";
+    const nextTray = {
+      ...target.tray,
+      loaded: true,
+      filament_type: spool.material,
+      filament_name: spool.filament_name,
+      color_hex: fixtureColor,
+      remaining_percent: target.tray.remaining_percent ?? 76,
+      observed_rfid_tag: null,
+      tray_uuid: fixtureIdentity,
+      chip_id: null,
+      tray_info_idx: target.tray.tray_info_idx ?? null,
+      tray_id_name: `${spool.filament_name} (${spool.color_name})`,
+      last_identity_seen_at: now,
+      matched_inventory_spool_id: null,
+      matched_inventory_mode: null,
+      match_status: "unknown_rfid",
+      match_note: "Visual QA fixture: manual RFID override for an unknown live identity.",
+    };
+    const nextConfig = structuredClone(target.config);
+    nextConfig.observed_state = nextConfig.observed_state ?? {};
+    nextConfig.observed_state.online = true;
+    nextConfig.observed_state.mqtt_connected = true;
+    nextConfig.observed_state.last_seen_at = now;
+    nextConfig.observed_state.active_ams_index = nextTray.ams_index ?? null;
+    nextConfig.observed_state.active_tray_index = nextTray.tray_index;
+    nextConfig.observed_state.trays = [...(nextConfig.observed_state.trays ?? [])];
+    nextConfig.observed_state.trays[target.trayArrayIndex] = nextTray;
+
+    const transaction = db.transaction(() => {
+      db.prepare(
+        `UPDATE ams_slots
+         SET spool_id = ?,
+             rfid_override_tray_uuid = ?,
+             rfid_override_color_hex = ?,
+             live_cache_cleared_at = NULL,
+             last_seen_at = ?
+         WHERE id = ?`,
+      ).run(spool.spool_id, fixtureIdentity, fixtureColor, now, target.slot.slot_id);
+      db.prepare("UPDATE settings SET value = ? WHERE key = ?").run(
+        JSON.stringify(nextConfig),
+        target.settingKey,
+      );
+    });
+    transaction();
+
+    return {
+      fixture: VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE,
+      printerId: target.printerId,
+      slotId: target.slot.slot_id,
+      spoolId: spool.spool_id,
+      masterId: spool.master_id,
+      material: spool.material,
+      filamentName: spool.filament_name,
+      colorName: spool.color_name,
+      hexColor: fixtureColor,
+      rfid: fixtureIdentity,
+    };
+  } finally {
+    db.close();
+  }
+}
+
 export async function applyVisualQaDatabaseFixture(dbPath, scenario, options = {}) {
   const fixture = normalizeVisualQaDatabaseFixtureScenario(scenario);
   if (!fixture) {
@@ -605,6 +748,9 @@ export async function applyVisualQaDatabaseFixture(dbPath, scenario, options = {
   }
   if (fixture === VISUAL_QA_FIXTURE_PRINTER_SLOT_ONBOARDING) {
     return applyPrinterSlotOnboardingFixtureWithBetterSqlite(dbPath, options);
+  }
+  if (fixture === VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE) {
+    return applyPrinterRfidOverrideFixtureWithBetterSqlite(dbPath, options);
   }
   return null;
 }
@@ -742,6 +888,10 @@ export function formatVisualQaDatasetReport({
     lines.push("Visual QA database fixtures:");
     for (const fixture of fixtures) {
       if (fixture.fixture === VISUAL_QA_FIXTURE_PRINTER_SLOT_ONBOARDING) {
+        lines.push(
+          `  - ${fixture.fixture}: ${fixture.slotId} -> ${fixture.material} ${fixture.filamentName} ${fixture.colorName}`,
+        );
+      } else if (fixture.fixture === VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE) {
         lines.push(
           `  - ${fixture.fixture}: ${fixture.slotId} -> ${fixture.material} ${fixture.filamentName} ${fixture.colorName}`,
         );

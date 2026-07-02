@@ -100,6 +100,7 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
   assert.equal(normalizeDesktopVisualQaScenario("printers"), "printer-board");
   assert.equal(normalizeDesktopVisualQaScenario("slot-assignment"), "printer-slot-assignment");
   assert.equal(normalizeDesktopVisualQaScenario("ams-onboarding"), "printer-slot-onboarding");
+  assert.equal(normalizeDesktopVisualQaScenario("rfid-override"), "printer-rfid-override");
   assert.equal(normalizeDesktopVisualQaScenario("slot-swap"), "printer-slot-replacement");
   assert.equal(normalizeDesktopVisualQaScenario("slot-unload"), "printer-slot-clear");
   assert.equal(normalizeDesktopVisualQaScenario("batch-add"), "bambu-batch-add");
@@ -127,6 +128,7 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
 test("desktop screenshot gate marks DB-fixture visual states", () => {
   assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("ams-onboarding"), true);
   assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("printer-slot-onboarding"), true);
+  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("rfid-override"), true);
   assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("printers"), false);
   assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture(null), false);
 });

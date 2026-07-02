@@ -15,6 +15,7 @@ export const DESKTOP_VISUAL_QA_SCENARIOS = [
   "printer-board",
   "printer-slot-assignment",
   "printer-slot-onboarding",
+  "printer-rfid-override",
   "printer-slot-replacement",
   "printer-slot-clear",
   "settings-general",
@@ -90,6 +91,11 @@ export function normalizeDesktopVisualQaScenario(
     case "ams-onboarding":
     case "printer-ams-onboarding":
       return "printer-slot-onboarding";
+    case "printer-rfid-override":
+    case "rfid-override":
+    case "slot-rfid-override":
+    case "printer-slot-rfid-override":
+      return "printer-rfid-override";
     case "printer-slot-replacement":
     case "printer-slot-swap":
     case "slot-replacement":
@@ -181,6 +187,7 @@ export function desktopVisualQaInitialPage(
     scenario === "printer-board" ||
     scenario === "printer-slot-assignment" ||
     scenario === "printer-slot-onboarding" ||
+    scenario === "printer-rfid-override" ||
     scenario === "printer-slot-replacement" ||
     scenario === "printer-slot-clear"
   ) {

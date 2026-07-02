@@ -6,6 +6,7 @@ import { test } from "node:test";
 import Database from "better-sqlite3";
 import {
   APP_DB_PATH_ENV_VAR,
+  VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE,
   VISUAL_QA_PROFILE_BASE,
   VISUAL_QA_PROFILE_RICH,
   VISUAL_QA_DB_PATH_ENV_VAR,
@@ -35,6 +36,10 @@ test("normalizeVisualQaDatabaseFixtureScenario accepts slot onboarding aliases",
   assert.equal(
     normalizeVisualQaDatabaseFixtureScenario("ams-onboarding"),
     "printer-slot-onboarding",
+  );
+  assert.equal(
+    normalizeVisualQaDatabaseFixtureScenario("rfid-override"),
+    VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE,
   );
   assert.equal(normalizeVisualQaDatabaseFixtureScenario("settings-general"), null);
 });
@@ -345,6 +350,145 @@ test("applyVisualQaDatabaseFixture creates a printer slot onboarding state on co
       assert.equal(tray.filament_type, "ASA");
       assert.equal(tray.filament_name, "ASA");
       assert.equal(tray.color_hex, "#00A6A0");
+      assert.equal(tray.last_identity_seen_at, "2026-07-01T12:00:00.000Z");
+    } finally {
+      updatedDb.close();
+    }
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("applyVisualQaDatabaseFixture creates a printer RFID override state on copies", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-rfid-override-"));
+  try {
+    const dbPath = join(dir, "fixture.db");
+    const db = new Database(dbPath);
+    db.exec(`
+      CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      CREATE TABLE printers (id TEXT PRIMARY KEY, model TEXT NOT NULL, name TEXT NOT NULL);
+      CREATE TABLE ams_units (id TEXT PRIMARY KEY, printer_id TEXT NOT NULL);
+      CREATE TABLE ams_slots (
+        id TEXT PRIMARY KEY,
+        ams_id TEXT NOT NULL,
+        slot_index INTEGER NOT NULL,
+        spool_id TEXT,
+        last_seen_at TEXT,
+        rfid_override_tray_uuid TEXT,
+        rfid_override_color_hex TEXT,
+        live_cache_cleared_at TEXT
+      );
+      CREATE TABLE filament_master_list (
+        id TEXT PRIMARY KEY,
+        material TEXT NOT NULL,
+        filament_name TEXT NOT NULL,
+        color_name TEXT NOT NULL,
+        hex_color TEXT,
+        default_weight INTEGER NOT NULL DEFAULT 1000,
+        vendor TEXT NOT NULL DEFAULT 'Bambu',
+        is_discontinued INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE filament_spools (
+        id TEXT PRIMARY KEY,
+        master_id TEXT NOT NULL,
+        deleted_at TEXT
+      );
+    `);
+    db.prepare("INSERT INTO printers (id, model, name) VALUES (?, ?, ?)").run(
+      "printer_1",
+      "Bambu Lab P1S",
+      "Brutus",
+    );
+    db.prepare("INSERT INTO ams_units (id, printer_id) VALUES (?, ?)").run(
+      "printer_1_ams_1",
+      "printer_1",
+    );
+    db.prepare(
+      `INSERT INTO ams_slots
+       (id, ams_id, slot_index, spool_id, rfid_override_tray_uuid, rfid_override_color_hex, live_cache_cleared_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run("printer_1_ams_1_slot_1", "printer_1_ams_1", 1, "spool_loaded", null, null, "old");
+    db.prepare(
+      `INSERT INTO filament_master_list
+       (id, vendor, material, filament_name, color_name, hex_color, default_weight, is_discontinued)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      "master_loaded",
+      "Bambu",
+      "PLA",
+      "PLA Basic",
+      "Mistletoe Green (10502)",
+      "#00A6A0",
+      1000,
+      0,
+    );
+    db.prepare("INSERT INTO filament_spools (id, master_id, deleted_at) VALUES (?, ?, NULL)").run(
+      "spool_loaded",
+      "master_loaded",
+    );
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+      "bambu_live_integration:printer_1",
+      JSON.stringify({
+        enabled: true,
+        host: "192.168.1.20",
+        observed_state: {
+          online: true,
+          last_seen_at: "2026-07-01T00:00:00Z",
+          mqtt_connected: true,
+          active_ams_index: 0,
+          active_tray_index: 0,
+          trays: [
+            {
+              ams_index: 0,
+              tray_index: 0,
+              loaded: true,
+              tray_uuid: "OLD-RFID",
+              filament_type: "PLA",
+              filament_name: "PLA Basic",
+              color_hex: "#00A6A0",
+              match_status: "clear_match",
+              matched_inventory_spool_id: "spool_loaded",
+              matched_inventory_mode: "exact_rfid",
+              last_identity_seen_at: "2026-07-01T00:00:00Z",
+            },
+          ],
+        },
+      }),
+    );
+    db.close();
+
+    const fixture = await applyVisualQaDatabaseFixture(dbPath, "rfid-override", {
+      now: new Date("2026-07-01T12:00:00Z"),
+    });
+    assert.equal(fixture?.fixture, VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE);
+    assert.equal(fixture?.slotId, "printer_1_ams_1_slot_1");
+    assert.equal(fixture?.spoolId, "spool_loaded");
+
+    const updatedDb = new Database(dbPath, { readonly: true });
+    try {
+      const slot = updatedDb
+        .prepare(
+          `SELECT spool_id, rfid_override_tray_uuid, rfid_override_color_hex, live_cache_cleared_at
+           FROM ams_slots
+           WHERE id = ?`,
+        )
+        .get("printer_1_ams_1_slot_1");
+      assert.equal(slot.spool_id, "spool_loaded");
+      assert.equal(slot.rfid_override_tray_uuid, "VISUALQA-OVERRIDE-printer_1_ams_1_slot_1");
+      assert.equal(slot.rfid_override_color_hex, "#00A6A0");
+      assert.equal(slot.live_cache_cleared_at, null);
+
+      const config = JSON.parse(
+        updatedDb
+          .prepare("SELECT value FROM settings WHERE key = ?")
+          .get("bambu_live_integration:printer_1").value,
+      );
+      const tray = config.observed_state.trays[0];
+      assert.equal(tray.match_status, "unknown_rfid");
+      assert.equal(tray.matched_inventory_spool_id, null);
+      assert.equal(tray.matched_inventory_mode, null);
+      assert.equal(tray.tray_uuid, slot.rfid_override_tray_uuid);
+      assert.equal(tray.color_hex, slot.rfid_override_color_hex);
       assert.equal(tray.last_identity_seen_at, "2026-07-01T12:00:00.000Z");
     } finally {
       updatedDb.close();

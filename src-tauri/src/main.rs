@@ -321,6 +321,10 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         | "slot-onboarding"
         | "ams-onboarding"
         | "printer-ams-onboarding" => Some("printer-slot-onboarding"),
+        "printer-rfid-override"
+        | "rfid-override"
+        | "slot-rfid-override"
+        | "printer-slot-rfid-override" => Some("printer-rfid-override"),
         "printer-slot-replacement" | "printer-slot-swap" | "slot-replacement" | "slot-swap" => {
             Some("printer-slot-replacement")
         }

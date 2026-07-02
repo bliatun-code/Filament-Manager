@@ -40,6 +40,7 @@ export default function PrintersPage() {
   const desktopVisualQaNeedsPrinterAction =
     desktopVisualQaScenario === "printer-slot-assignment" ||
     desktopVisualQaScenario === "printer-slot-onboarding" ||
+    desktopVisualQaScenario === "printer-rfid-override" ||
     desktopVisualQaScenario === "printer-slot-replacement" ||
     desktopVisualQaScenario === "printer-slot-clear";
   const [desktopVisualQaApplied, setDesktopVisualQaApplied] = useState(
@@ -282,6 +283,55 @@ export default function PrintersPage() {
     findSpoolById,
     loading,
     locale,
+    printers,
+    spools,
+    t,
+    tauri,
+  ]);
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenario !== "printer-rfid-override" ||
+      desktopVisualQaApplied ||
+      loading ||
+      !tauri
+    ) {
+      return;
+    }
+    for (const printer of printers) {
+      for (const slot of printer.slots) {
+        const { liveConfig, tray } = findLiveTrayForSlot(printer.printer.id, slot);
+        const displayState = derivePrinterSlotDisplayState({
+          slot,
+          liveConfig,
+          liveTray: tray,
+          spoolRows: spools,
+          catalogRows: catalogMasters,
+          selectedTargetSpool: null,
+          clientReadOnly,
+          clientPrinterSource,
+          locale,
+          t,
+          findSpoolById,
+        });
+        if (displayState.rfidOverridden && displayState.effectiveLiveTray) {
+          openRfidOverrideDialog(printer, slot, displayState.effectiveLiveTray);
+          setDesktopVisualQaApplied(true);
+          return;
+        }
+      }
+    }
+  }, [
+    catalogMasters,
+    clientPrinterSource,
+    clientReadOnly,
+    desktopVisualQaApplied,
+    desktopVisualQaScenario,
+    findLiveTrayForSlot,
+    findSpoolById,
+    loading,
+    locale,
+    openRfidOverrideDialog,
     printers,
     spools,
     t,
