@@ -7,12 +7,15 @@ import Database from "better-sqlite3";
 import {
   APP_DB_PATH_ENV_VAR,
   VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE,
+  VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE,
   VISUAL_QA_PROFILE_BASE,
   VISUAL_QA_PROFILE_RICH,
   VISUAL_QA_DB_PATH_ENV_VAR,
+  applyTrustedLanInterfaceFixture,
   applyVisualQaDatabaseFixture,
   assessVisualQaDataset,
   formatVisualQaDatasetReport,
+  listPrivateVisualQaNetworkInterfaces,
   normalizeVisualQaDatabaseFixtureScenario,
   normalizeVisualQaPath,
   normalizeVisualQaProfile,
@@ -85,6 +88,22 @@ test("resolveVisualQaDbSource falls back to candidate paths", () => {
   } finally {
     rmSync(dir, { force: true, recursive: true });
   }
+});
+
+test("listPrivateVisualQaNetworkInterfaces prefers physical private IPv4 interfaces", () => {
+  const interfaces = listPrivateVisualQaNetworkInterfaces({
+    bridge100: [{ address: "192.168.64.1", family: "IPv4", internal: false }],
+    en0: [{ address: "172.20.10.7", family: "IPv4", internal: false }],
+    lo0: [{ address: "127.0.0.1", family: "IPv4", internal: true }],
+    utun1: [{ address: "10.11.12.13", family: "IPv4", internal: false }],
+    wan0: [{ address: "8.8.8.8", family: "IPv4", internal: false }],
+  });
+
+  assert.deepEqual(interfaces, [
+    { address: "172.20.10.7", name: "en0" },
+    { address: "192.168.64.1", name: "bridge100" },
+    { address: "10.11.12.13", name: "utun1" },
+  ]);
 });
 
 test("assessVisualQaDataset rejects empty shells", () => {
@@ -215,6 +234,90 @@ test("formatVisualQaDatasetReport includes counts and errors", () => {
   assert.match(report, /Companion: http:\/\/192\.168\.1\.50:4278\/companion/);
   assert.match(report, /filament_spools: 0/);
   assert.match(report, /expected at least 1/);
+});
+
+test("applyTrustedLanInterfaceFixture retargets trusted LAN settings on database copies", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-trusted-lan-"));
+  try {
+    const dbPath = join(dir, "fixture.db");
+    const db = new Database(dbPath);
+    db.exec("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);");
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("trusted_lan_enabled", "1");
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+      "trusted_lan_interface_name",
+      "Wi-Fi",
+    );
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+      "trusted_lan_interface_address",
+      "192.168.86.25",
+    );
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("trusted_lan_port", "4278");
+    db.close();
+
+    const fixture = await applyTrustedLanInterfaceFixture(dbPath, {
+      interfaces: [{ address: "172.20.10.7", name: "en0" }],
+    });
+
+    assert.equal(fixture?.fixture, VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE);
+    assert.equal(fixture?.previousInterfaceAddress, "192.168.86.25");
+    assert.equal(fixture?.interfaceAddress, "172.20.10.7");
+    assert.equal(fixture?.interfaceName, "en0");
+
+    const updatedDb = new Database(dbPath, { readonly: true });
+    try {
+      assert.equal(
+        updatedDb
+          .prepare("SELECT value FROM settings WHERE key = ?")
+          .get("trusted_lan_interface_name").value,
+        "en0",
+      );
+      assert.equal(
+        updatedDb
+          .prepare("SELECT value FROM settings WHERE key = ?")
+          .get("trusted_lan_interface_address").value,
+        "172.20.10.7",
+      );
+    } finally {
+      updatedDb.close();
+    }
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("applyTrustedLanInterfaceFixture leaves live databases untouched", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-trusted-lan-live-"));
+  try {
+    const dbPath = join(dir, "fixture.db");
+    const db = new Database(dbPath);
+    db.exec("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);");
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("trusted_lan_enabled", "1");
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+      "trusted_lan_interface_address",
+      "192.168.86.25",
+    );
+    db.close();
+
+    const fixture = await applyTrustedLanInterfaceFixture(dbPath, {
+      interfaces: [{ address: "172.20.10.7", name: "en0" }],
+      live: true,
+    });
+
+    assert.equal(fixture, null);
+    const updatedDb = new Database(dbPath, { readonly: true });
+    try {
+      assert.equal(
+        updatedDb
+          .prepare("SELECT value FROM settings WHERE key = ?")
+          .get("trusted_lan_interface_address").value,
+        "192.168.86.25",
+      );
+    } finally {
+      updatedDb.close();
+    }
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
 });
 
 test("visualQaTempDbPath creates a stable temp db name", () => {

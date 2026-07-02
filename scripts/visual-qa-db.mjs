@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { copyFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { networkInterfaces, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
@@ -11,6 +11,7 @@ export const VISUAL_QA_PROFILE_BASE = "base";
 export const VISUAL_QA_PROFILE_RICH = "rich";
 export const VISUAL_QA_FIXTURE_PRINTER_SLOT_ONBOARDING = "printer-slot-onboarding";
 export const VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE = "printer-rfid-override";
+export const VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE = "trusted-lan-interface";
 
 const LOCAL_APP_SUPPORT_DB = process.env.HOME
   ? `${process.env.HOME}/Library/Application Support/no.bliatun.filamentmanager/filament-manager.db`
@@ -201,6 +202,122 @@ export function normalizeVisualQaDatabaseFixtureScenario(scenario) {
 
 function safeCount(counts, table) {
   return Number(counts?.[table] ?? 0);
+}
+
+function isPrivateIpv4Address(address) {
+  const parts = String(address ?? "")
+    .split(".")
+    .map((part) => Number.parseInt(part, 10));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return false;
+  }
+  const [first, second] = parts;
+  return first === 10 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168);
+}
+
+function networkInterfacePreference(name) {
+  const normalized = String(name ?? "").toLowerCase();
+  if (/^(en|eth|wlan|wi-?fi|ethernet)/.test(normalized)) {
+    return 0;
+  }
+  if (/(bridge|docker|vmnet|vbox|utun|awdl|llw|anpi|stf)/.test(normalized)) {
+    return 50;
+  }
+  return 20;
+}
+
+export function listPrivateVisualQaNetworkInterfaces(interfaces = networkInterfaces()) {
+  const options = [];
+  for (const [name, entries] of Object.entries(interfaces ?? {})) {
+    for (const entry of entries ?? []) {
+      const family = typeof entry.family === "string" ? entry.family : `IPv${entry.family}`;
+      if (family !== "IPv4" || entry.internal || !isPrivateIpv4Address(entry.address)) {
+        continue;
+      }
+      options.push({
+        address: entry.address,
+        name,
+        preference: networkInterfacePreference(name),
+      });
+    }
+  }
+  return options
+    .sort((left, right) =>
+      left.preference - right.preference ||
+      left.name.localeCompare(right.name) ||
+      left.address.localeCompare(right.address),
+    )
+    .map(({ address, name }) => ({ address, name }));
+}
+
+function readSetting(db, key) {
+  try {
+    return db.prepare("SELECT value FROM settings WHERE key = ? LIMIT 1").get(key)?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSetting(db, key, value) {
+  db.prepare(
+    `INSERT INTO settings (key, value)
+     VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+  ).run(key, value);
+}
+
+async function applyTrustedLanInterfaceFixtureWithBetterSqlite(dbPath, options = {}) {
+  const availableInterfaces = options.interfaces ?? listPrivateVisualQaNetworkInterfaces();
+  const selectedInterface = availableInterfaces[0] ?? null;
+  if (!selectedInterface) {
+    return null;
+  }
+
+  const module = await import("better-sqlite3");
+  const Database = module.default ?? module;
+  const db = new Database(dbPath);
+  try {
+    const settingsTable = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'settings' LIMIT 1")
+      .get();
+    if (!settingsTable) {
+      return null;
+    }
+
+    const enabled = parseBooleanSetting(readSetting(db, TRUSTED_LAN_KEYS.enabled));
+    if (!enabled) {
+      return null;
+    }
+
+    const previousName = String(readSetting(db, TRUSTED_LAN_KEYS.interfaceName) ?? "").trim();
+    const previousAddress = String(readSetting(db, TRUSTED_LAN_KEYS.interfaceAddress) ?? "").trim();
+    if (previousName === selectedInterface.name && previousAddress === selectedInterface.address) {
+      return null;
+    }
+
+    const transaction = db.transaction(() => {
+      writeSetting(db, TRUSTED_LAN_KEYS.interfaceName, selectedInterface.name);
+      writeSetting(db, TRUSTED_LAN_KEYS.interfaceAddress, selectedInterface.address);
+    });
+    transaction();
+
+    return {
+      fixture: VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE,
+      interfaceAddress: selectedInterface.address,
+      interfaceName: selectedInterface.name,
+      previousInterfaceAddress: previousAddress || null,
+      previousInterfaceName: previousName || null,
+    };
+  } finally {
+    db.close();
+  }
+}
+
+export async function applyTrustedLanInterfaceFixture(dbPath, options = {}) {
+  if (options.live) {
+    return null;
+  }
+  return applyTrustedLanInterfaceFixtureWithBetterSqlite(dbPath, options);
 }
 
 function inspectVisualQaSettingsDetails(settingsRows, tables, counts) {
@@ -895,6 +1012,13 @@ export function formatVisualQaDatasetReport({
         lines.push(
           `  - ${fixture.fixture}: ${fixture.slotId} -> ${fixture.material} ${fixture.filamentName} ${fixture.colorName}`,
         );
+      } else if (fixture.fixture === VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE) {
+        const previous = fixture.previousInterfaceAddress
+          ? ` from ${fixture.previousInterfaceAddress}`
+          : "";
+        lines.push(
+          `  - ${fixture.fixture}: ${fixture.interfaceName} ${fixture.interfaceAddress}${previous}`,
+        );
       } else {
         lines.push(`  - ${fixture.fixture ?? "unknown"}`);
       }
@@ -966,6 +1090,9 @@ export async function prepareVisualQaDatabase(options = {}) {
     options.targetPath ??
     visualQaTempDbPath(source.path, options.now ?? new Date());
   const copyMethod = await copySqliteDatabase(source.path, targetPath);
+  const trustedLanFixture = await applyTrustedLanInterfaceFixture(targetPath, {
+    interfaces: options.interfaces,
+  });
   const fixture = await applyVisualQaDatabaseFixture(targetPath, options.scenario, {
     now: options.now,
   });
@@ -985,7 +1112,7 @@ export async function prepareVisualQaDatabase(options = {}) {
   return {
     assessment: targetAssessment,
     copyMethod,
-    fixtures: fixture ? [fixture] : [],
+    fixtures: [trustedLanFixture, fixture].filter(Boolean),
     inspection: targetInspection,
     live: false,
     sourcePath: source.path,
