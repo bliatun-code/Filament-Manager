@@ -9,7 +9,8 @@ const source = readFileSync(
 
 test("InventoryDangerZonePanel uses shared danger-zone button tones", () => {
   assert.match(source, /inventoryDangerZoneButtonClassName/);
-  assert.match(source, /focus-visible:border-sky-300/);
+  assert.match(source, /modalActionButtonClassName/);
+  assert.match(source, /dangerZoneButtonVariant/);
   assert.match(source, /inventoryDangerZoneButtonClassName\("success"\)/);
   assert.match(source, /inventoryDangerZoneButtonClassName\("quietDanger"\)/);
   assert.match(source, /inventoryDangerZoneButtonClassName\("danger"\)/);

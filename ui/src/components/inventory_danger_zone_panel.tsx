@@ -1,5 +1,9 @@
 import { useI18n } from "../lib/i18n";
 import type { SpoolStatus } from "../lib/inventory_list_model";
+import {
+  modalActionButtonClassName,
+  type ModalActionButtonVariant,
+} from "./modal_action_button_class";
 
 type InventoryDangerZonePanelProps = {
   confirmDelete: boolean;
@@ -15,20 +19,18 @@ type InventoryDangerZonePanelProps = {
 
 type InventoryDangerZoneButtonTone = "success" | "quietDanger" | "danger" | "critical";
 
-function inventoryDangerZoneButtonClassName(tone: InventoryDangerZoneButtonTone): string {
-  const base =
-    "rounded-lg border px-4 py-2 text-sm font-semibold outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+const dangerZoneButtonVariant: Record<
+  InventoryDangerZoneButtonTone,
+  ModalActionButtonVariant
+> = {
+  critical: "critical",
+  danger: "danger",
+  quietDanger: "dangerQuiet",
+  success: "success",
+};
 
-  if (tone === "success") {
-    return `${base} border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/25`;
-  }
-  if (tone === "critical") {
-    return `${base} border-red-400 bg-red-600 text-white hover:bg-red-700 dark:border-red-400/45 dark:bg-red-500/85 dark:text-white dark:hover:bg-red-500`;
-  }
-  if (tone === "danger") {
-    return `${base} border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-400/40 dark:bg-rose-500/15 dark:text-rose-200 dark:hover:bg-rose-500/25`;
-  }
-  return `${base} border-rose-200 bg-white text-rose-600 hover:bg-rose-50 dark:border-rose-400/35 dark:bg-slate-950/55 dark:text-rose-200 dark:hover:bg-rose-500/10`;
+function inventoryDangerZoneButtonClassName(tone: InventoryDangerZoneButtonTone): string {
+  return modalActionButtonClassName(dangerZoneButtonVariant[tone]);
 }
 
 export function InventoryDangerZonePanel({
