@@ -143,6 +143,18 @@ export function formatPrinterSlotLocation(printerName, slotId) {
   return `${PRINTER_SLOT_LOCATION_PREFIX}${normalizeDisplayToken(printerName)}:${normalizeDisplayToken(slotId)}`;
 }
 
+function parsePrinterSlotPlacementPayload(placement) {
+  const payload = placement.slice(PRINTER_SLOT_LOCATION_PREFIX.length);
+  const separatorIndex = payload.lastIndexOf(":");
+  if (separatorIndex < 0) {
+    return { printerName: "", slotId: "" };
+  }
+  return {
+    printerName: normalizeDisplayToken(payload.slice(0, separatorIndex)),
+    slotId: normalizeDisplayToken(payload.slice(separatorIndex + 1)),
+  };
+}
+
 export function parsePlacementLocation(value) {
   const placement = normalizeDisplayToken(value);
   if (!placement) {
@@ -152,16 +164,7 @@ export function parsePlacementLocation(value) {
     return { kind: "freeform", label: placement };
   }
 
-  const match = placement.match(/^Printer:([^:]+):(.+)$/);
-  if (!match) {
-    return {
-      kind: "freeform",
-      label: placement.replace(new RegExp(`^${PRINTER_SLOT_LOCATION_PREFIX}`), ""),
-    };
-  }
-
-  const printerName = normalizeDisplayToken(match[1]);
-  const slotId = normalizeDisplayToken(match[2]);
+  const { printerName, slotId } = parsePrinterSlotPlacementPayload(placement);
   if (!printerName || !slotId) {
     return {
       kind: "freeform",

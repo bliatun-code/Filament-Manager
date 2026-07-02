@@ -32,6 +32,11 @@ test("parsePlacementLocation separates freeform and printer slot locations", () 
     printerName: "Brutus",
     slotId: "ams_1_slot_2",
   });
+  assert.deepEqual(parsePlacementLocation("Printer:Lab:North:ams_1_slot_2"), {
+    kind: "printer_slot",
+    printerName: "Lab:North",
+    slotId: "ams_1_slot_2",
+  });
   assert.deepEqual(parsePlacementLocation("Printer:MissingSlot"), {
     kind: "freeform",
     label: "MissingSlot",
@@ -54,6 +59,10 @@ test("formatPlacementLabel humanizes known printer slot ids", () => {
   assert.equal(
     formatPlacementLabel(t, "Printer:X1C:ams_1_slot_3"),
     "X1C · AMS 1 · Slot 3",
+  );
+  assert.equal(
+    formatPlacementLabel(t, "Printer:Lab:North:ams_1_slot_3"),
+    "Lab:North · AMS 1 · Slot 3",
   );
   assert.equal(
     formatPlacementLabel(t, "Printer:MK4:mmu3_channel_4"),

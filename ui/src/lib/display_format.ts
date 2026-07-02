@@ -97,6 +97,22 @@ export function formatPrinterSlotLocation(printerNameRaw: string, slotIdRaw: str
   return `${PRINTER_SLOT_LOCATION_PREFIX}${printerName}:${slotId}`;
 }
 
+function parsePrinterSlotPlacementPayload(location: string): {
+  printerName: string | null;
+  slotId: string | null;
+} {
+  const payload = location.slice(PRINTER_SLOT_LOCATION_PREFIX.length);
+  const separatorIndex = payload.lastIndexOf(":");
+  if (separatorIndex < 0) {
+    return { printerName: null, slotId: null };
+  }
+
+  return {
+    printerName: normalizeDisplayToken(payload.slice(0, separatorIndex)),
+    slotId: normalizeDisplayToken(payload.slice(separatorIndex + 1)),
+  };
+}
+
 export function parsePlacementLocation(locationRaw?: string | null): PlacementLocation {
   const location = normalizeDisplayToken(locationRaw);
   if (!location) {
@@ -107,15 +123,7 @@ export function parsePlacementLocation(locationRaw?: string | null): PlacementLo
     return { kind: "freeform", label: location };
   }
 
-  const match = location.match(/^Printer:([^:]+):(.+)$/);
-  if (!match) {
-    return {
-      kind: "freeform",
-      label: location.replace(new RegExp(`^${PRINTER_SLOT_LOCATION_PREFIX}`), ""),
-    };
-  }
-
-  const [, printerName, slotId] = match;
+  const { printerName, slotId } = parsePrinterSlotPlacementPayload(location);
   const normalizedPrinterName = normalizeDisplayToken(printerName);
   const normalizedSlotId = normalizeDisplayToken(slotId);
   if (!normalizedPrinterName || !normalizedSlotId) {
