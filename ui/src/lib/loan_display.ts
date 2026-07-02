@@ -1,5 +1,9 @@
 import { normalizeDisplayToken } from "./display_format";
-import { normalizeLoanDirection, type LoanDirection } from "./inventory_domain";
+import {
+  isLoanDirection,
+  normalizeLoanDirection,
+  type LoanDirection,
+} from "./inventory_domain";
 import { isLoanCurrentlyActive, isLoanReturned } from "./loan_state";
 import { resolveSpoolTareWeight } from "./spool_weight";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
@@ -108,7 +112,7 @@ export function filterLoans(
   const directionScopedLoans = loans.filter((loan) =>
     directionFilter === "ALL"
       ? true
-      : normalizeLoanDirection(loan.loan.loan_direction) === directionFilter,
+      : isLoanDirection(loan.loan.loan_direction, directionFilter),
   );
 
   const term = search.trim().toLowerCase();

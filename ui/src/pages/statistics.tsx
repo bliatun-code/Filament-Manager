@@ -12,9 +12,10 @@ import {
   filterLoanUsageRows,
   gramsToKgText,
   groupedLoanUsage,
+  isInboundLoanDirection,
+  isLoanDirection,
   listConsumptionMaterialOptions,
   listConsumptionVendorOptions,
-  normalizeLoanDirection,
   readBorrowerPopupPrefs,
   readConsumptionPopupPrefs,
   sortFailedPrinterRows,
@@ -237,9 +238,10 @@ export default function StatisticsPage() {
         return;
       }
       setBorrowerModalDirection(direction);
+      const inboundDirection = isInboundLoanDirection(direction);
       setBorrowerModalTitle(
         `${
-          direction === "INBOUND"
+          inboundDirection
             ? t("statistics.inboundUsageByFilament", "Borrowed-in usage by filament")
             : t("statistics.borrowerUsageByFilament", "Loan usage by filament")
         } · ${borrowerName}`,
@@ -256,14 +258,14 @@ export default function StatisticsPage() {
         });
         const borrowerLoanRows = loanRows.filter(
           (row) =>
-            normalizeLoanDirection(row.loan.loan_direction) === direction &&
+            isLoanDirection(row.loan.loan_direction, direction) &&
             loanPartyName(row) === borrowerName,
         );
         setBorrowerRows(groupedLoanUsage(borrowerLoanRows));
       } catch (loadError) {
         console.error(loadError);
         setBorrowerError(
-          direction === "INBOUND"
+          inboundDirection
             ? t("statistics.error.loadInboundBreakdown", "Failed to load owner breakdown.")
             : t("statistics.error.loadBorrowerBreakdown", "Failed to load borrower breakdown."),
         );

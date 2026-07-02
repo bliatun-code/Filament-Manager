@@ -1,6 +1,7 @@
 import {
+  isInboundLoanDirection,
+  isOutboundLoanDirection,
   isSpoolStatusDeleted,
-  normalizeLoanDirection,
   normalizeLoanStatus,
 } from "./inventory_domain";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
@@ -23,11 +24,11 @@ export function isLoanCurrentlyActive(
 }
 
 export function isInboundLoan(row: Pick<SpoolLoanDetailsRow, "loan">): boolean {
-  return normalizeLoanDirection(row.loan.loan_direction) === "INBOUND";
+  return isInboundLoanDirection(row.loan.loan_direction);
 }
 
 export function isOutboundLoan(row: Pick<SpoolLoanDetailsRow, "loan">): boolean {
-  return normalizeLoanDirection(row.loan.loan_direction) === "OUTBOUND";
+  return isOutboundLoanDirection(row.loan.loan_direction);
 }
 
 export function isActiveOutboundLoan(

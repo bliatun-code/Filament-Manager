@@ -22,7 +22,7 @@ import {
 import { loadAllSpoolRows } from "./spool_data_source";
 import { isLoanCurrentlyActive, isLoanReturned } from "./loan_state";
 import { deriveInventoryOverviewFromRows } from "./statistics_model";
-import { normalizeLoanDirection, type LoanDirection } from "./inventory_domain";
+import { isLoanDirection, type LoanDirection } from "./inventory_domain";
 import { normalizeLoanDetailsRow } from "./loan_row_normalization";
 import {
   deriveLibrarySyncPageState,
@@ -110,7 +110,7 @@ export function groupLoanUsageByPerson(
 ): LoanUsageByPersonRow[] {
   const grouped = new Map<string, LoanUsageByPersonRow>();
   for (const row of rows) {
-    if (normalizeLoanDirection(row.loan.loan_direction) !== direction) {
+    if (!isLoanDirection(row.loan.loan_direction, direction)) {
       continue;
     }
     const partyName =

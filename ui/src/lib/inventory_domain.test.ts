@@ -2,6 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   isBorrowedInOwnership,
+  isInboundLoanDirection,
+  isLoanDirection,
+  isOutboundLoanDirection,
   isSpoolStatusAssigned,
   isSpoolStatusDeleted,
   isSpoolStatusEmpty,
@@ -60,6 +63,10 @@ test("inventory domain normalizers preserve loan direction and status semantics"
   assert.equal(normalizeLoanDirection("in-bound"), "INBOUND");
   assert.equal(normalizeLoanDirection("out-bound"), "OUTBOUND");
   assert.equal(normalizeLoanDirection("sideways"), "OUTBOUND");
+  assert.equal(isInboundLoanDirection("in-bound"), true);
+  assert.equal(isOutboundLoanDirection("sideways"), true);
+  assert.equal(isLoanDirection("in bound", "INBOUND"), true);
+  assert.equal(isLoanDirection("outbound", "INBOUND"), false);
   assert.equal(normalizeLoanStatus("returned"), "RETURNED");
   assert.equal(normalizeLoanStatus("active"), "ACTIVE");
   assert.equal(normalizeLoanStatus("lost"), "LOST");

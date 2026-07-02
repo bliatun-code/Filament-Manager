@@ -1,5 +1,9 @@
 import { neutralChipClass } from "../lib/chip_styles";
-import type { LoanUsageListFilter, TranslateFn } from "../lib/statistics_model";
+import {
+  isInboundLoanDirection,
+  type LoanUsageListFilter,
+  type TranslateFn,
+} from "../lib/statistics_model";
 import type { LoanUsageByPersonRow } from "../lib/tauri_client";
 import { StatisticsEmptyState, SummaryMetricTile } from "./statistics_primitives";
 import { statisticsInteractiveCardClass } from "./statistics_view_helpers";
@@ -160,7 +164,7 @@ function StatisticsLoanUsageRow({
             {row.borrower_name}
           </div>
           <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            {row.loan_direction === "INBOUND"
+            {isInboundLoanDirection(row.loan_direction)
               ? t(
                   "statistics.inboundBreakdownHint",
                   "Borrowed-in totals across active and completed rolls.",

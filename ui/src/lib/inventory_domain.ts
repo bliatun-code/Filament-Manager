@@ -99,6 +99,21 @@ export function normalizeLoanDirection(raw?: string | null): LoanDirection {
   return "OUTBOUND";
 }
 
+export function isLoanDirection(
+  raw: string | null | undefined,
+  expected: LoanDirection,
+): boolean {
+  return normalizeLoanDirection(raw) === expected;
+}
+
+export function isInboundLoanDirection(raw?: string | null): boolean {
+  return isLoanDirection(raw, "INBOUND");
+}
+
+export function isOutboundLoanDirection(raw?: string | null): boolean {
+  return isLoanDirection(raw, "OUTBOUND");
+}
+
 export function normalizeLoanStatus(
   raw?: string | null,
   returnedAt?: string | null,

@@ -6,9 +6,10 @@ import {
 import { isLoanCurrentlyActive } from "./loan_state";
 import {
   isBorrowedInOwnership,
+  isInboundLoanDirection,
+  isLoanDirection,
   isSpoolStatusAssigned,
   isSpoolStatusOnHand,
-  normalizeLoanDirection,
   normalizeOwnershipType,
   type LoanDirection,
   type OwnershipType,
@@ -16,7 +17,8 @@ import {
 export { toSwatchColor } from "./color_utils";
 export {
   isBorrowedInOwnership,
-  normalizeLoanDirection,
+  isInboundLoanDirection,
+  isLoanDirection,
   normalizeOwnershipType,
   type LoanDirection,
 };

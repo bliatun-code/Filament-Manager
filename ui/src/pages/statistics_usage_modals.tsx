@@ -7,6 +7,7 @@ import type { I18nContextValue } from "../lib/i18n";
 import {
   DEFAULT_BORROWER_PREFS,
   DEFAULT_CONSUMPTION_PREFS,
+  isInboundLoanDirection,
   ownershipBadgeClass,
   ownershipLabel,
   parseConsumptionSort,
@@ -253,6 +254,8 @@ export function StatisticsBorrowerUsageModal({
   setBorrowerPrefs: Dispatch<SetStateAction<BorrowerPopupPrefs>>;
   t: Translate;
 }) {
+  const inboundDirection = isInboundLoanDirection(borrowerModalDirection);
+
   return (
     <AppModal
       closeOnBackdrop
@@ -261,7 +264,7 @@ export function StatisticsBorrowerUsageModal({
     >
       <ModalHeader
         eyebrow={
-          borrowerModalDirection === "INBOUND"
+          inboundDirection
             ? t("statistics.inboundUsage", "Borrowed-in usage by owner")
             : t("statistics.borrowerUsage", "Loan usage by person")
         }
@@ -273,7 +276,7 @@ export function StatisticsBorrowerUsageModal({
 
       {borrowerLoading ? (
         <div className="mt-4 text-sm text-slate-500">
-          {borrowerModalDirection === "INBOUND"
+          {inboundDirection
             ? t("statistics.loadingInboundBreakdown", "Loading owner breakdown...")
             : t("statistics.loadingBorrowerBreakdown", "Loading borrower breakdown...")}
         </div>
@@ -315,7 +318,7 @@ export function StatisticsBorrowerUsageModal({
       ) : null}
       {!borrowerLoading && !borrowerError && borrowerRows.length === 0 ? (
         <StatisticsEmptyState>
-          {borrowerModalDirection === "INBOUND"
+          {inboundDirection
             ? t("statistics.noInboundBreakdown", "No borrowed-in owner usage recorded yet.")
             : t("statistics.noBorrowerBreakdown", "No borrower usage recorded yet.")}
         </StatisticsEmptyState>
@@ -347,7 +350,7 @@ export function StatisticsBorrowerUsageModal({
               />
               <SummaryMetricTile
                 label={
-                  borrowerModalDirection === "INBOUND"
+                  inboundDirection
                     ? t("statistics.borrowedInShort", "In")
                     : t("statistics.lentOutShort", "Out")
                 }
