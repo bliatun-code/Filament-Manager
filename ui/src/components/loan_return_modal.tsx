@@ -20,9 +20,9 @@ import {
   toMeasuredTotalWeight,
 } from "../lib/loan_display";
 import {
-  inventorySwatchCardStyle,
-  inventorySwatchInsetStyle,
-} from "../lib/inventory_swatch_style";
+  LoanSwatchCard,
+  LoanSwatchInsetCard,
+} from "./loan_swatch_card";
 import { useResolvedTheme } from "../lib/theme_mode";
 import { isInboundLoan } from "../lib/loan_state";
 import type { SpoolLoanDetailsRow } from "../lib/tauri_client";
@@ -87,9 +87,10 @@ export function LoanReturnModal({
           className="-mx-5 -mt-5"
         />
 
-        <div
-          className="rounded-2xl border border-slate-300/80 px-3.5 py-3 text-xs text-slate-700 shadow-sm shadow-slate-300/20 dark:border-slate-700/80 dark:text-slate-300 dark:shadow-none"
-          style={inventorySwatchCardStyle(loan.hex_color, resolvedTheme)}
+        <LoanSwatchCard
+          variant="modal"
+          swatchColor={loan.hex_color}
+          resolvedTheme={resolvedTheme}
         >
           <SwatchSelectionPreviewHeader
             eyebrow={t("inventory.selectionPreview", "Selection preview")}
@@ -113,9 +114,11 @@ export function LoanReturnModal({
             </div>
           </SwatchSelectionPreviewHeader>
 
-          <div
-            className="mt-3 rounded-[1.05rem] border px-3.5 py-3"
-            style={inventorySwatchInsetStyle(loan.hex_color, resolvedTheme)}
+          <LoanSwatchInsetCard
+            variant="modal"
+            className="mt-3"
+            swatchColor={loan.hex_color}
+            resolvedTheme={resolvedTheme}
           >
             <ModalDetailGrid
               className="grid-cols-[minmax(0,1.45fr)_minmax(108px,0.9fr)] gap-x-4 gap-y-3 sm:grid-cols-[minmax(0,1.45fr)_minmax(108px,0.9fr)]"
@@ -133,8 +136,8 @@ export function LoanReturnModal({
                 {formatGrams(toMeasuredTotalWeight(loan, loan.loan.grams_out))}
               </ModalDetailItem>
             </ModalDetailGrid>
-          </div>
-        </div>
+          </LoanSwatchInsetCard>
+        </LoanSwatchCard>
 
         {isInbound ? (
           <ModalNotice tone="warning" className="px-3 py-2 text-sm">

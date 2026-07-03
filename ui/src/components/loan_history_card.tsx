@@ -8,12 +8,9 @@ import {
   formatLoanReference,
 } from "../lib/loan_display";
 import { isInboundLoan, isLoanCurrentlyActive } from "../lib/loan_state";
-import {
-  inventorySwatchCardStyle,
-  inventorySwatchInsetStyle,
-} from "../lib/inventory_swatch_style";
 import { ModalDetailItem } from "./modal_chrome";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
+import { LoanSwatchCard, LoanSwatchInsetCard } from "./loan_swatch_card";
 import { useResolvedTheme } from "../lib/theme_mode";
 import type { SpoolLoanDetailsRow } from "../lib/tauri_client";
 
@@ -35,10 +32,7 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
   const referenceLabel = formatLoanReference(loan.loan.spool_id);
 
   return (
-    <div
-      className="rounded-xl border border-slate-300/80 p-3.5 shadow-sm shadow-slate-300/25 dark:border-slate-700/80 dark:shadow-none"
-      style={inventorySwatchCardStyle(loan.hex_color, resolvedTheme)}
-    >
+    <LoanSwatchCard swatchColor={loan.hex_color} resolvedTheme={resolvedTheme}>
       <div className="flex items-start gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/70 bg-white/60 p-1.5 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
           <InventorySwatchChip className="h-full w-full rounded-lg" swatchColor={loan.hex_color} />
@@ -99,9 +93,10 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
         </div>
       </div>
 
-      <div
-        className="mt-3 rounded-xl border px-3 py-2.5"
-        style={inventorySwatchInsetStyle(loan.hex_color, resolvedTheme)}
+      <LoanSwatchInsetCard
+        className="mt-3"
+        swatchColor={loan.hex_color}
+        resolvedTheme={resolvedTheme}
       >
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 min-[520px]:grid-cols-3">
           <ModalDetailItem
@@ -147,7 +142,7 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
             </>
           ) : null}
         </div>
-      </div>
-    </div>
+      </LoanSwatchInsetCard>
+    </LoanSwatchCard>
   );
 }
