@@ -1,6 +1,6 @@
 import { VendorBadge } from "./vendor_badge";
 import { CloseButton } from "./close_button";
-import { inventoryDetailLabelClassName } from "./inventory_detail_panel_class";
+import { InventoryDetailFactCard } from "./inventory_detail_fact_card";
 import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { useI18n } from "../lib/i18n";
@@ -112,10 +112,10 @@ export function InventorySpoolIdentityPanel({
       style={inventorySwatchInsetStyle(spool.hexColor, resolvedTheme)}
     >
       <div className="grid gap-3 min-[760px]:grid-cols-2">
-        <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 min-[760px]:col-span-2 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
-          <div className={inventoryDetailLabelClassName}>
-            {t("inventory.reference", "Reference")}
-          </div>
+        <InventoryDetailFactCard
+          label={t("inventory.reference", "Reference")}
+          className="min-[760px]:col-span-2"
+        >
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
             {formatRollReference(spool)}
           </div>
@@ -145,13 +145,14 @@ export function InventorySpoolIdentityPanel({
               {rfidBindingMeta.hint}
             </div>
           ) : null}
-        </div>
-        <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
-          <div className={inventoryDetailLabelClassName}>
-            {assignedSlot
+        </InventoryDetailFactCard>
+        <InventoryDetailFactCard
+          label={
+            assignedSlot
               ? t("nav.printers", "Printers")
-              : t("inventory.location", "Location")}
-          </div>
+              : t("inventory.location", "Location")
+          }
+        >
           <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
             {locationValue}
           </div>
@@ -163,11 +164,8 @@ export function InventorySpoolIdentityPanel({
               )}
             </div>
           ) : null}
-        </div>
-        <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
-          <div className={inventoryDetailLabelClassName}>
-            {t("inventory.ownership", "Ownership")}
-          </div>
+        </InventoryDetailFactCard>
+        <InventoryDetailFactCard label={t("inventory.ownership", "Ownership")}>
           <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
             {formatInventoryOwnershipSummary(t, spool)}
           </div>
@@ -177,15 +175,12 @@ export function InventorySpoolIdentityPanel({
               {spool.ownershipNote ? <div>{spool.ownershipNote}</div> : null}
             </div>
           ) : null}
-        </div>
-        <div className="rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none">
-          <div className={inventoryDetailLabelClassName}>
-            {t("inventory.initialWeight", "Initial weight (g)")}
-          </div>
+        </InventoryDetailFactCard>
+        <InventoryDetailFactCard label={t("inventory.initialWeight", "Initial weight (g)")}>
           <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
             {formatGrams(spool.initialWeightGrams)}
           </div>
-        </div>
+        </InventoryDetailFactCard>
       </div>
     </div>
   );

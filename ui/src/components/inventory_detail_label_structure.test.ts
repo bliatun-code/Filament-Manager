@@ -10,6 +10,7 @@ test("inventory detail labels use shared detail typography classes", () => {
   const detailPanelClasses = readComponentSource("inventory_detail_panel_class.ts");
   const catalogMetadataPanel = readComponentSource("inventory_catalog_metadata_panel.tsx");
   const detailModal = readComponentSource("inventory_spool_detail_modal.tsx");
+  const detailFactCard = readComponentSource("inventory_detail_fact_card.tsx");
   const maintenancePanels = readComponentSource("inventory_spool_maintenance_panels.tsx");
   const qrRfidPanel = readComponentSource("inventory_spool_qr_rfid_panel.tsx");
   const rfidCapturePanels = readComponentSource("inventory_rfid_capture_panels.tsx");
@@ -32,6 +33,9 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(catalogMetadataPanel, /inventoryDetailCompactActionButtonClassName/);
   assert.match(catalogMetadataPanel, /inventoryDetailCompactFormControlClassName/);
   assert.match(catalogMetadataPanel, /inventoryDetailEyebrowClassName/);
+  assert.match(detailFactCard, /inventoryDetailFactCardClassName/);
+  assert.match(detailFactCard, /inventoryDetailLabelClassName/);
+  assert.match(detailFactCard, /joinClassNames/);
   assert.match(detailModal, /inventoryDetailEyebrowClassName/);
   assert.match(maintenancePanels, /inventoryDetailEyebrowClassName/);
   assert.match(maintenancePanels, /inventoryDetailDangerActionButtonClassName/);
@@ -43,7 +47,7 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(qrRfidPanel, /inventoryDetailActionButtonClassName/);
   assert.match(qrRfidPanel, /inventoryDetailEyebrowClassName/);
   assert.match(rollHistoryPanel, /inventoryDetailEyebrowClassName/);
-  assert.match(spoolDetailSummary, /inventoryDetailLabelClassName/);
+  assert.match(spoolDetailSummary, /InventoryDetailFactCard/);
   assert.match(rfidCapturePanels, /inventoryDetailSectionLabelClassName/);
   assert.match(rfidCapturePanels, /inventoryPanelToggleButtonClassName/);
   assert.match(rollHistoryPanel, /inventoryPanelToggleButtonClassName/);
@@ -75,6 +79,10 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.doesNotMatch(
     spoolDetailSummary,
     /text-\[10px\] font-semibold uppercase tracking-\[0\.18em\]/,
+  );
+  assert.doesNotMatch(
+    spoolDetailSummary,
+    /rounded-xl border border-white\/70 bg-white\/70 px-3\.5 py-3/,
   );
   assert.doesNotMatch(
     rfidCapturePanels,
