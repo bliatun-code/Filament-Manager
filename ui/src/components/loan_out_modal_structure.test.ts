@@ -13,6 +13,10 @@ test("LoanOutModal uses shared wide modal layout rhythm", () => {
   assert.match(source, /inventoryTwoColumnModalGridClassName/);
   assert.match(source, /inventoryWideModalPanelClassName/);
   assert.match(source, /<ModalBody/);
+  assert.match(source, /<ModalBody scroll=\{false\}/);
+  assert.match(source, /flex min-h-0 flex-1 flex-col space-y-4/);
+  assert.match(source, /flex min-h-0 flex-col overflow-hidden/);
+  assert.match(source, /min-h-0 overflow-y-auto rounded-\[1\.4rem\]/);
   assert.match(source, /<ModalActionButton/);
   assert.match(source, /variant="solid"/);
   assert.match(source, /size="roomy"/);

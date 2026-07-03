@@ -220,8 +220,8 @@ export function LoanOutModal({
           className="px-6 py-4"
         />
 
-        <ModalBody className="px-6 py-6">
-          <div className="space-y-4">
+        <ModalBody scroll={false} className="px-6 py-6">
+          <div className="flex min-h-0 flex-1 flex-col space-y-4">
             {error ? <ModalNotice tone="danger">{error}</ModalNotice> : null}
 
             {loading ? (
@@ -236,7 +236,7 @@ export function LoanOutModal({
                 )}
               </ModalNotice>
             ) : (
-              <div className={inventoryTwoColumnModalGridClassName}>
+              <div className={`${inventoryTwoColumnModalGridClassName} min-h-0 flex-1`}>
                 <div className={`${panelCardClassName} flex min-h-0 flex-col`}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className={panelTitleClassName}>
@@ -316,10 +316,10 @@ export function LoanOutModal({
                   </div>
                 </div>
 
-                <div className={panelCardClassName}>
+                <div className={`${panelCardClassName} flex min-h-0 flex-col overflow-hidden`}>
                   {selectedSpool ? (
                     <div
-                      className="rounded-[1.4rem] border px-4 py-4 shadow-sm shadow-slate-200/15 dark:shadow-none"
+                      className="min-h-0 overflow-y-auto rounded-[1.4rem] border px-4 py-4 shadow-sm shadow-slate-200/15 dark:shadow-none"
                       style={inventorySwatchPanelStyle(selectedSpool.hexColor, resolvedTheme)}
                     >
                       <SwatchSelectionPreviewHeader
@@ -339,7 +339,7 @@ export function LoanOutModal({
                         </div>
                       </SwatchSelectionPreviewHeader>
 
-                      <ModalDetailGrid className="mt-4 sm:grid-cols-[minmax(0,1.25fr)_minmax(132px,0.8fr)]">
+                      <ModalDetailGrid className="mt-3 sm:grid-cols-[minmax(0,1.25fr)_minmax(132px,0.8fr)]">
                         <ModalDetailItem
                           card
                           label={t("inventory.reference", "Reference")}
@@ -367,7 +367,7 @@ export function LoanOutModal({
                         </ModalDetailItem>
                       </ModalDetailGrid>
 
-                      <div className="mt-5 border-t border-white/60 pt-4 dark:border-white/10">
+                      <div className="mt-4 border-t border-white/60 pt-4 dark:border-white/10">
                         <div className={panelTitleClassName}>
                           {t("inventory.loanDetails", "Loan details")}
                         </div>
@@ -378,7 +378,7 @@ export function LoanOutModal({
                           )}
                         </div>
 
-                        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <ModalFormField label={t("inventory.borrowerName", "Borrower name")}>
                             <input
                               type="text"
@@ -422,7 +422,7 @@ export function LoanOutModal({
                             <textarea
                               value={note}
                               onChange={(event) => setNote(event.target.value)}
-                              className={`${modalFormInputClassName} min-h-[104px] resize-y`}
+                              className={`${modalFormInputClassName} min-h-[88px] resize-y`}
                               placeholder={t("inventory.loanNoteOptional", "Loan note (optional)")}
                               disabled={!tauri || busy}
                             />
