@@ -27,7 +27,21 @@ const modalHeaderActionButtonClassName =
   joinClassNames(appSoftButtonClassName, "h-10 whitespace-nowrap px-3 text-xs sm:text-sm");
 
 export const modalFactCardClassName =
-  "rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60";
+  "rounded-xl border";
+
+type ModalFactCardPadding = "compact" | "default" | "none";
+type ModalFactCardSurface = "neutral" | "plain";
+
+const modalFactCardPaddingClass: Record<ModalFactCardPadding, string> = {
+  compact: "px-3 py-3",
+  default: "px-4 py-3",
+  none: "",
+};
+
+const modalFactCardSurfaceClass: Record<ModalFactCardSurface, string> = {
+  neutral: "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60",
+  plain: "",
+};
 
 export const modalNoticeClassName =
   "rounded-xl border px-4 py-3 text-sm leading-6";
@@ -155,22 +169,28 @@ export function ModalFooter({
 type ModalFactCardProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
   compact?: boolean;
+  padding?: ModalFactCardPadding;
+  surface?: ModalFactCardSurface;
 };
 
 export function ModalFactCard({
   children,
   className,
   compact = false,
+  padding,
+  surface = "neutral",
   ...divProps
 }: ModalFactCardProps) {
+  const resolvedPadding = padding ?? (compact ? "compact" : "default");
   return (
     <div
       {...divProps}
-      className={[
+      className={joinClassNames(
         modalFactCardClassName,
-        compact ? "px-3 py-3" : "px-4 py-3",
+        modalFactCardSurfaceClass[surface],
+        modalFactCardPaddingClass[resolvedPadding],
         className,
-      ].filter(Boolean).join(" ")}
+      )}
     >
       {children}
     </div>
@@ -225,6 +245,7 @@ export function ModalDetailGrid({
 }
 
 type ModalDetailItemProps = HTMLAttributes<HTMLDivElement> & {
+  card?: boolean;
   children: ReactNode;
   label: ReactNode;
   valueClassName?: string;
@@ -232,6 +253,7 @@ type ModalDetailItemProps = HTMLAttributes<HTMLDivElement> & {
 };
 
 export function ModalDetailItem({
+  card = false,
   children,
   className,
   label,
@@ -243,7 +265,11 @@ export function ModalDetailItem({
   return (
     <div
       {...divProps}
-      className={joinClassNames("min-w-0", className)}
+      className={joinClassNames(
+        "min-w-0",
+        card ? "rounded-xl border px-3 py-2.5" : "",
+        className,
+      )}
       style={style}
     >
       <div className={modalDetailLabelClassName}>{label}</div>

@@ -30,6 +30,12 @@ test("modal detail labels share compact metadata typography", () => {
   assert.match(modalChrome, /shrink = true/);
   assert.match(modalChrome, /ModalDetailGrid/);
   assert.match(modalChrome, /ModalDetailItem/);
+  assert.match(modalChrome, /card\?: boolean/);
+  assert.match(modalChrome, /card \? "rounded-xl border px-3 py-2\.5" : ""/);
+  assert.match(modalChrome, /type ModalFactCardPadding = "compact" \| "default" \| "none"/);
+  assert.match(modalChrome, /type ModalFactCardSurface = "neutral" \| "plain"/);
+  assert.match(modalChrome, /modalFactCardPaddingClass/);
+  assert.match(modalChrome, /modalFactCardSurfaceClass/);
   assert.match(modalChrome, /ModalNotice/);
   assert.match(
     modalChrome,
@@ -39,6 +45,8 @@ test("modal detail labels share compact metadata typography", () => {
   assert.match(inventoryAddModal, /ModalNotice/);
   assert.match(inventorySpoolDetailModal, /ModalNotice/);
   assert.match(loanOutModal, /ModalNotice/);
+  assert.match(loanOutModal, /<ModalDetailItem\s+card\s+label=\{t\("inventory\.reference"/);
+  assert.doesNotMatch(loanOutModal, /className="rounded-xl border px-3 py-2\.5/);
   assert.match(loanReturnModal, /ModalNotice/);
   assert.match(loanReturnModal, /<ModalFooter border=\{false\}/);
   assert.match(rfidOverrideModal, /ModalDetailGrid/);
@@ -50,6 +58,7 @@ test("modal detail labels share compact metadata typography", () => {
   assert.match(settingsLibraryRoleModal, /<ModalFooter/);
   assert.match(slotOnboardingModal, /ModalDetailGrid/);
   assert.match(slotOnboardingModal, /ModalDetailItem/);
+  assert.match(slotOnboardingModal, /<ModalFactCard\s+padding="none"\s+surface="plain"/);
   assert.match(slotOnboardingModal, /ModalNotice/);
   assert.doesNotMatch(inventoryAddModal, /FeedbackBanner/);
   assert.doesNotMatch(inventorySpoolDetailModal, /FeedbackBanner/);
@@ -64,5 +73,9 @@ test("modal detail labels share compact metadata typography", () => {
     /flex flex-wrap justify-end gap-2 border-t border-slate-200\/80/,
   );
   assert.doesNotMatch(rfidOverrideModal, rawDetailLabelClass);
+  assert.doesNotMatch(
+    slotOnboardingModal,
+    /rounded-xl border border-slate-200\/90 bg-white\/75 p-4/,
+  );
   assert.doesNotMatch(slotOnboardingModal, rawDetailLabelClass);
 });

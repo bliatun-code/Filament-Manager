@@ -170,7 +170,11 @@ export function SlotCatalogOnboardingModal({
             </ModalDetailGrid>
           </div>
 
-          <div className="rounded-xl border border-slate-200/90 bg-white/75 p-4 dark:border-slate-700/80 dark:bg-slate-950/45">
+          <ModalFactCard
+            padding="none"
+            surface="plain"
+            className="border-slate-200/90 bg-white/75 p-4 dark:border-slate-700/80 dark:bg-slate-950/45"
+          >
             <SegmentedChoiceRow
               label={t("inventory.ownership", "Ownership")}
               value={prompt.ownershipType}
@@ -229,7 +233,7 @@ export function SlotCatalogOnboardingModal({
                 </ModalFormField>
               </div>
             ) : null}
-          </div>
+          </ModalFactCard>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <ModalFormField label={t("inventory.initialWeight", "Initial weight (g)")}>

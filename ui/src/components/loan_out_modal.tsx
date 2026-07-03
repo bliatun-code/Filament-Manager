@@ -341,25 +341,26 @@ export function LoanOutModal({
 
                       <ModalDetailGrid className="mt-4 sm:grid-cols-[minmax(0,1.25fr)_minmax(132px,0.8fr)]">
                         <ModalDetailItem
+                          card
                           label={t("inventory.reference", "Reference")}
                           title={`#${selectedSpool.id}`}
                           valueClassName="font-mono"
-                          className="rounded-xl border px-3 py-2.5"
                           style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
                         >
                           {selectedReferenceLabel}
                         </ModalDetailItem>
                         <ModalDetailItem
+                          card
                           label={t("inventory.remaining", "Remaining")}
-                          className="rounded-xl border px-3 py-2.5"
                           style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
                         >
                           {formatLoanOutGrams(selectedSpool.remainingGrams)}
                         </ModalDetailItem>
                         <ModalDetailItem
+                          card
                           label={t("inventory.location", "Location")}
                           title={selectedPlacementLabel ?? ""}
-                          className="rounded-xl border px-3 py-2.5 sm:col-span-2"
+                          className="sm:col-span-2"
                           style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
                         >
                           {selectedPlacementLabel}
