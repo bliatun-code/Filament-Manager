@@ -78,7 +78,9 @@ test("companion action helper renders variants, swatches and boolean attributes"
     label: "Save color",
   });
   assert.match(coloredHtml, /class="primary-button swatch-action-button"/);
-  assert.match(coloredHtml, /style="--swatch-rgb:22 163 74;--swatch-solid:#16A34A"/);
+  assert.match(coloredHtml, /style="--swatch-rgb:22 163 74;--swatch-solid:#16A34A;/);
+  assert.match(coloredHtml, /--swatch-action-start:rgb\(41 170 88\)/);
+  assert.match(coloredHtml, /--swatch-action-contrast:#FFFFFF/);
 });
 
 test("companion action link helper renders external links with shared chrome", () => {
@@ -209,10 +211,13 @@ test("swatch surface helper owns card surface attributes", () => {
     swatch: "#16A34A",
   });
 
-  assert.equal(
+  assert.match(
     html,
-    '<article class="surface-card loan-card swatch-surface swatch-card-surface" data-selected aria-label="PLA &lt;Green&gt;" style="--swatch-rgb:22 163 74;--swatch-solid:#16A34A"><span>Body</span></article>',
+    /^<article class="surface-card loan-card swatch-surface swatch-card-surface" data-selected aria-label="PLA &lt;Green&gt;" style="--swatch-rgb:22 163 74;--swatch-solid:#16A34A;/,
   );
+  assert.match(html, /--swatch-action-start:rgb\(41 170 88\)/);
+  assert.match(html, /--swatch-action-contrast:#FFFFFF/);
+  assert.match(html, /"><span>Body<\/span><\/article>$/);
 
   const emptySlotHtml = renderSwatchSurface({
     tag: "article",
@@ -238,7 +243,7 @@ test("swatch surface helper owns card surface attributes", () => {
   });
   assert.equal(
     bannerHtml,
-    '<div class="selection-banner swatch-surface" style="--swatch-rgb:239 68 68;--swatch-solid:#EF4444">Hidden</div>',
+    '<div class="selection-banner swatch-surface" style="--swatch-rgb:239 68 68;--swatch-solid:#EF4444;--swatch-action-start:rgb(240 83 83);--swatch-action-end:rgb(167 54 60);--swatch-action-border:rgb(243 113 113);--swatch-action-contrast:#FFFFFF;--swatch-action-inner:rgba(255, 255, 255, 0.18);--swatch-action-shadow-rgb:239 68 68">Hidden</div>',
   );
 });
 
@@ -254,7 +259,8 @@ test("selection banner helper owns hidden selection chrome", () => {
   });
 
   assert.match(html, /class="selection-banner selection-banner-muted compact-selection-banner storage-hidden-banner swatch-surface"/);
-  assert.match(html, /style="--swatch-rgb:22 163 74;--swatch-solid:#16A34A"/);
+  assert.match(html, /style="--swatch-rgb:22 163 74;--swatch-solid:#16A34A;/);
+  assert.match(html, /--swatch-action-start:rgb\(41 170 88\)/);
   assert.match(html, /Selected &lt;spool&gt;/);
   assert.match(html, /PLA &lt;hidden&gt; stays selected/);
   assert.match(html, /#42 · 850 g · Shelf &amp; A/);

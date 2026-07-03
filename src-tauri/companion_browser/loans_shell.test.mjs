@@ -149,9 +149,15 @@ test("loan return task sheet renders the compact return form", () => {
   });
 
   assert.match(html, /Complete return/);
+  assert.match(html, /surface-card companion-selection-card swatch-surface compact-loan-card loan-return-card/);
+  assert.match(html, /companion-selection-card-head/);
+  assert.match(html, /PLA · Basic · White/);
+  assert.match(html, /Bambu · #1 · Borrower: Alex/);
   assert.match(html, /class="primary-button swatch-action-button" type="submit" style="--swatch-rgb:/);
+  assert.match(html, /class="metric-card loan-date-metric"/);
   assert.match(html, /Returned total weight incl\. spool \(g\)/);
   assert.match(html, /value="750"/);
+  assert.doesNotMatch(html, /^\s*<div class="stack loan-return-task-sheet">\s*<div class="metric-grid compact-loan-metadata">/);
   assert.doesNotMatch(html, /Marks the loan returned in local data\./);
 });
 

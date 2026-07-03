@@ -30,6 +30,9 @@ test("swatch and printer css vars serialize into inline style strings", () => {
   assert.match(styleObjectToString(swatchCssVars("#123456")), /--swatch-rgb:18 52 86/);
   assert.match(swatchCssStyle("#123456"), /--swatch-rgb:18 52 86/);
   assert.match(swatchCssStyle("#123456"), /--swatch-solid:#123456/);
+  assert.match(swatchCssStyle("#123456"), /--swatch-action-start:rgb\(/);
+  assert.match(swatchCssStyle("#123456"), /--swatch-action-contrast:#FFFFFF/);
+  assert.match(swatchCssStyle("#FFFFFF"), /--swatch-action-contrast:#0F172A/);
   assert.match(styleObjectToString(printerBrandCssVars("Bambu X1 Carbon")), /--brand-rgb:0 177 64/);
 });
 

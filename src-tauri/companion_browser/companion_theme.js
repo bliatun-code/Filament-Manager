@@ -155,6 +155,67 @@ export function hexToRgb(raw) {
   return [red, green, blue];
 }
 
+function mixRgb(source, target, amount) {
+  const ratio = Math.max(0, Math.min(1, amount));
+  return source.map((channel, index) =>
+    Math.round(channel * (1 - ratio) + target[index] * ratio),
+  );
+}
+
+function rgbToCssColor(rgb) {
+  return `rgb(${rgb[0]} ${rgb[1]} ${rgb[2]})`;
+}
+
+function relativeLuminance(rgb) {
+  const [red, green, blue] = rgb.map((channel) => {
+    const normalized = channel / 255;
+    return normalized <= 0.03928
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+function swatchActionVars(rgb) {
+  const luminance = relativeLuminance(rgb);
+  const white = [255, 255, 255];
+  const slate50 = [248, 250, 252];
+  const slate300 = [203, 213, 225];
+  const slate500 = [100, 116, 139];
+  const slate900 = [15, 23, 42];
+
+  if (luminance > 0.62) {
+    return {
+      "--swatch-action-start": rgbToCssColor(mixRgb(rgb, white, 0.12)),
+      "--swatch-action-end": rgbToCssColor(mixRgb(rgb, slate300, 0.38)),
+      "--swatch-action-border": rgbToCssColor(mixRgb(rgb, slate900, 0.18)),
+      "--swatch-action-contrast": "#0F172A",
+      "--swatch-action-inner": "rgba(255, 255, 255, 0.48)",
+      "--swatch-action-shadow-rgb": `${rgb[0]} ${rgb[1]} ${rgb[2]}`,
+    };
+  }
+
+  if (luminance < 0.1) {
+    return {
+      "--swatch-action-start": rgbToCssColor(mixRgb(rgb, slate500, 0.62)),
+      "--swatch-action-end": rgbToCssColor(mixRgb(rgb, slate900, 0.46)),
+      "--swatch-action-border": rgbToCssColor(mixRgb(rgb, slate50, 0.36)),
+      "--swatch-action-contrast": "#FFFFFF",
+      "--swatch-action-inner": "rgba(255, 255, 255, 0.16)",
+      "--swatch-action-shadow-rgb": `${rgb[0]} ${rgb[1]} ${rgb[2]}`,
+    };
+  }
+
+  return {
+    "--swatch-action-start": rgbToCssColor(mixRgb(rgb, white, 0.08)),
+    "--swatch-action-end": rgbToCssColor(mixRgb(rgb, slate900, 0.32)),
+    "--swatch-action-border": rgbToCssColor(mixRgb(rgb, white, 0.24)),
+    "--swatch-action-contrast": "#FFFFFF",
+    "--swatch-action-inner": "rgba(255, 255, 255, 0.18)",
+    "--swatch-action-shadow-rgb": `${rgb[0]} ${rgb[1]} ${rgb[2]}`,
+  };
+}
+
 export function suggestSwatchHex(colorName, filamentName = "", vendor = "", material = "") {
   const source = `${colorName || ""} ${filamentName || ""}`.toLowerCase();
   const named = [
@@ -192,6 +253,7 @@ export function swatchCssVars(raw) {
   return {
     "--swatch-rgb": `${rgb[0]} ${rgb[1]} ${rgb[2]}`,
     "--swatch-solid": color,
+    ...swatchActionVars(rgb),
   };
 }
 

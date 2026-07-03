@@ -50,6 +50,12 @@
   --compact-card-padding: 0.78rem 0.82rem;
   --swatch-rgb: 203 213 225;
   --brand-rgb: 203 213 225;
+  --swatch-action-start: rgb(223 230 238);
+  --swatch-action-end: rgb(132 148 166);
+  --swatch-action-border: rgb(153 171 190);
+  --swatch-action-contrast: #0f172a;
+  --swatch-action-inner: rgba(255, 255, 255, 0.48);
+  --swatch-action-shadow-rgb: 203 213 225;
   --swatch-surface-base: rgba(252, 254, 255, 0.99);
   --swatch-surface-top: 0.24;
   --swatch-surface-mid: 0.14;
@@ -110,6 +116,12 @@
   --input-bg: rgba(17, 28, 45, 0.96);
   --overlay-backdrop-strong: rgba(7, 13, 24, 0.72);
   --overlay-backdrop-soft: rgba(7, 13, 24, 0.52);
+  --swatch-action-start: rgb(223 230 238);
+  --swatch-action-end: rgb(132 148 166);
+  --swatch-action-border: rgb(153 171 190);
+  --swatch-action-contrast: #0f172a;
+  --swatch-action-inner: rgba(255, 255, 255, 0.48);
+  --swatch-action-shadow-rgb: 203 213 225;
   --swatch-surface-base: rgb(10, 17, 31);
   --swatch-surface-top: 0.3;
   --swatch-surface-mid: 0.15;
@@ -172,6 +184,12 @@
     --input-bg: rgba(17, 28, 45, 0.96);
     --overlay-backdrop-strong: rgba(7, 13, 24, 0.72);
     --overlay-backdrop-soft: rgba(7, 13, 24, 0.52);
+    --swatch-action-start: rgb(223 230 238);
+    --swatch-action-end: rgb(132 148 166);
+    --swatch-action-border: rgb(153 171 190);
+    --swatch-action-contrast: #0f172a;
+    --swatch-action-inner: rgba(255, 255, 255, 0.48);
+    --swatch-action-shadow-rgb: 203 213 225;
     --swatch-surface-base: rgb(10, 17, 31);
     --swatch-surface-top: 0.3;
     --swatch-surface-mid: 0.15;

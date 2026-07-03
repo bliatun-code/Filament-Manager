@@ -262,78 +262,100 @@ export function renderLoanReturnTaskSheetBody(options) {
   const actionSwatch =
     loanRow.hex_color ||
     suggestSwatchHex(loanRow.color_name, loanRow.filament_name, loanRow.vendor, loanRow.material);
+  const displayTitle = formatInventoryDisplayTitle(
+    loanRow.material,
+    loanRow.filament_name,
+    loanRow.color_name,
+  );
+  const reference = formatRollReference({ id: loanRow.loan.spool_id });
+  const metadata = [
+    loanRow.vendor || t(locale, "loans.unknownVendor", "Unknown vendor"),
+    reference,
+    direction === "INBOUND"
+      ? `${t(locale, "detail.borrowedFrom", "Borrowed from")}: ${counterparty}`
+      : `${t(locale, "loans.borrower", "Borrower")}: ${counterparty}`,
+  ].filter(Boolean);
 
   return `
     <div class="stack loan-return-task-sheet">
-      <div class="metric-grid compact-loan-metadata">
-        <div class="metric-card">
-          <div class="metric-label">${escapeHtml(
-            direction === "INBOUND" ? t(locale, "detail.borrowedFrom", "Borrowed from") : t(locale, "loans.borrower", "Borrower"),
-          )}</div>
-          <div class="metric-value">${escapeHtml(counterparty)}</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">${escapeHtml(
-            direction === "INBOUND" ? t(locale, "detail.borrowedInDate", "Borrowed in") : t(locale, "loans.lentOut", "Lent out"),
-          )}</div>
-          <div class="metric-value">${escapeHtml(
-            direction === "INBOUND" ? formatDate(loanRow.loan.lent_at) : formatGrams(loanRow.loan.grams_out),
-          )}</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">${escapeHtml(t(locale, "loans.lentAtLabel", "Lent at"))}</div>
-          <div class="metric-value">${escapeHtml(formatDate(loanRow.loan.lent_at))}</div>
-        </div>
-      </div>
-      <form class="stack loan-return-sheet" data-action="${escapeHtml(direction === "INBOUND" ? "hand-back-loan-form" : "return-loan-history-form")}">
-        <input type="hidden" name="loan-id" value="${escapeHtml(loanRow.loan.id)}" />
-        <input type="hidden" name="spool-id" value="${escapeHtml(loanRow.loan.spool_id)}" />
-        ${renderDetailField({
-          escapeHtml,
-          label:
-            direction === "INBOUND"
-              ? t(locale, "detail.handBackMeasuredWeight", "Hand-back total weight incl. spool (g)")
-              : t(locale, "loans.returnedMeasuredWeight", "Returned total weight incl. spool (g)"),
-          body: `<input
-            class="weight-input"
-            name="returned-grams"
-            type="number"
-            min="0"
-            step="1"
-            value="${escapeHtml(defaultMeasuredReturnWeight)}"
-          />`,
-        })}
-        ${renderDetailField({
-          escapeHtml,
-          label:
-            direction === "INBOUND"
-              ? t(locale, "detail.handBackNoteOptional", "Hand-back note (optional)")
-              : t(locale, "loans.returnNoteOptional", "Return note (optional)"),
-          body: `<textarea
-            class="detail-textarea loan-return-textarea"
-            name="return-note"
-            rows="3"
-            placeholder="${escapeHtml(
-              direction === "INBOUND"
-                ? t(locale, "detail.handBackPlaceholder", "Condition or hand-back note")
-                : t(locale, "loans.returnPlaceholder", "Condition or handoff note"),
-            )}"
-          ></textarea>`,
-        })}
-        ${renderFormActionBlock({
-          escapeHtml,
-          actions: renderCompanionActionButton({
-            type: "submit",
-            swatch: actionSwatch,
-            disabled: state.busy,
-            escapeHtml,
-            label:
-              direction === "INBOUND"
-                ? t(locale, "detail.handBackSpool", "Hand back spool")
-                : t(locale, "loans.completeReturn", "Complete return"),
-          }),
-        })}
-      </form>
+      ${renderSwatchSelectionCard({
+        body: `
+          <div class="metric-grid compact-loan-metadata">
+            <div class="metric-card">
+              <div class="metric-label">${escapeHtml(
+                direction === "INBOUND" ? t(locale, "detail.borrowedFrom", "Borrowed from") : t(locale, "loans.borrower", "Borrower"),
+              )}</div>
+              <div class="metric-value">${escapeHtml(counterparty)}</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">${escapeHtml(
+                direction === "INBOUND" ? t(locale, "detail.borrowedInDate", "Borrowed in") : t(locale, "loans.lentOut", "Lent out"),
+              )}</div>
+              <div class="metric-value">${escapeHtml(
+                direction === "INBOUND" ? formatDate(loanRow.loan.lent_at) : formatGrams(loanRow.loan.grams_out),
+              )}</div>
+            </div>
+            <div class="metric-card loan-date-metric">
+              <div class="metric-label">${escapeHtml(t(locale, "loans.lentAtLabel", "Lent at"))}</div>
+              <div class="metric-value">${escapeHtml(formatDate(loanRow.loan.lent_at))}</div>
+            </div>
+          </div>
+          <form class="stack loan-return-sheet" data-action="${escapeHtml(direction === "INBOUND" ? "hand-back-loan-form" : "return-loan-history-form")}">
+            <input type="hidden" name="loan-id" value="${escapeHtml(loanRow.loan.id)}" />
+            <input type="hidden" name="spool-id" value="${escapeHtml(loanRow.loan.spool_id)}" />
+            ${renderDetailField({
+              escapeHtml,
+              label:
+                direction === "INBOUND"
+                  ? t(locale, "detail.handBackMeasuredWeight", "Hand-back total weight incl. spool (g)")
+                  : t(locale, "loans.returnedMeasuredWeight", "Returned total weight incl. spool (g)"),
+              body: `<input
+                class="weight-input"
+                name="returned-grams"
+                type="number"
+                min="0"
+                step="1"
+                value="${escapeHtml(defaultMeasuredReturnWeight)}"
+              />`,
+            })}
+            ${renderDetailField({
+              escapeHtml,
+              label:
+                direction === "INBOUND"
+                  ? t(locale, "detail.handBackNoteOptional", "Hand-back note (optional)")
+                  : t(locale, "loans.returnNoteOptional", "Return note (optional)"),
+              body: `<textarea
+                class="detail-textarea loan-return-textarea"
+                name="return-note"
+                rows="3"
+                placeholder="${escapeHtml(
+                  direction === "INBOUND"
+                    ? t(locale, "detail.handBackPlaceholder", "Condition or hand-back note")
+                    : t(locale, "loans.returnPlaceholder", "Condition or handoff note"),
+                )}"
+              ></textarea>`,
+            })}
+            ${renderFormActionBlock({
+              escapeHtml,
+              actions: renderCompanionActionButton({
+                type: "submit",
+                swatch: actionSwatch,
+                disabled: state.busy,
+                escapeHtml,
+                label:
+                  direction === "INBOUND"
+                    ? t(locale, "detail.handBackSpool", "Hand back spool")
+                    : t(locale, "loans.completeReturn", "Complete return"),
+              }),
+            })}
+          </form>
+        `,
+        className: "compact-loan-card loan-return-card",
+        escapeHtml,
+        meta: metadata,
+        swatch: actionSwatch,
+        title: displayTitle,
+      })}
     </div>
   `;
 }
