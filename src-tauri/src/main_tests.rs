@@ -110,6 +110,20 @@ fn visual_qa_scenario_normalizer_accepts_stateful_settings_scenarios() {
 }
 
 #[test]
+#[cfg(debug_assertions)]
+fn visual_qa_locale_normalizer_defaults_to_english() {
+    use super::normalize_visual_qa_locale;
+
+    assert_eq!(normalize_visual_qa_locale("nb"), "nb");
+    assert_eq!(normalize_visual_qa_locale("no"), "nb");
+    assert_eq!(normalize_visual_qa_locale("nb-NO"), "nb");
+    assert_eq!(normalize_visual_qa_locale("en"), "en");
+    assert_eq!(normalize_visual_qa_locale("en-US"), "en");
+    assert_eq!(normalize_visual_qa_locale(""), "en");
+    assert_eq!(normalize_visual_qa_locale("bad"), "en");
+}
+
+#[test]
 fn app_db_path_override_prefers_current_env_var() {
     use super::{app_db_path_override_from_env, APP_DB_PATH_ENV_VAR, LEGACY_APP_DB_PATH_ENV_VAR};
 

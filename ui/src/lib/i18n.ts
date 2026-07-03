@@ -9,12 +9,29 @@ export {
 
 export const I18N_STORAGE_KEY = "bfm-locale";
 
-function readStoredLocale(): string | null {
+function normalizeLocale(value: unknown): Locale | null {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return normalized === "en" || normalized === "nb" ? normalized : null;
+}
+
+function readQueryLocale(): Locale | null {
+  try {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    const params = new URLSearchParams(window.location.search);
+    return normalizeLocale(params.get("bfm_locale"));
+  } catch {
+    return null;
+  }
+}
+
+function readStoredLocale(): Locale | null {
   try {
     if (typeof localStorage === "undefined") {
       return null;
     }
-    return localStorage.getItem(I18N_STORAGE_KEY);
+    return normalizeLocale(localStorage.getItem(I18N_STORAGE_KEY));
   } catch {
     return null;
   }
@@ -42,8 +59,12 @@ export function persistLocale(locale: Locale): void {
 }
 
 export function resolveInitialLocale(): Locale {
+  const queryLocale = readQueryLocale();
+  if (queryLocale) {
+    return queryLocale;
+  }
   const stored = readStoredLocale();
-  if (stored === "en" || stored === "nb") {
+  if (stored) {
     return stored;
   }
   const language = resolveNavigatorLanguage().toLowerCase();

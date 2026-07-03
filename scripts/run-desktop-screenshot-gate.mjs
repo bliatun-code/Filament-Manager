@@ -17,6 +17,7 @@ const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
 const DEFAULT_PROCESS_NAME = "bambu-filament-manager";
 const DEFAULT_WINDOW_TITLE = "Filament Manager";
 const VISUAL_QA_SCENARIO_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
+const VISUAL_QA_LOCALE_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_LOCALE";
 const DESKTOP_VISUAL_QA_SCENARIO_MANIFEST = JSON.parse(
   readFileSync(resolve("ui", "src", "lib", "desktop_visual_qa_scenarios.json"), "utf8"),
 );
@@ -51,6 +52,14 @@ function parseNumberArg(argv, name, fallback) {
 
 function parseBooleanArg(argv, name) {
   return argv.includes(name);
+}
+
+export function normalizeVisualQaLocale(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "nb" || normalized === "no" || normalized === "nb-no") {
+    return "nb";
+  }
+  return "en";
 }
 
 export function normalizeDesktopVisualQaScenario(value) {
@@ -534,6 +543,7 @@ function spawnTauriDev(spawnFn, options, database) {
       ...process.env,
       [APP_DB_PATH_ENV_VAR]: database.targetPath,
       FILAMENT_MANAGER_VISUAL_QA: "1",
+      [VISUAL_QA_LOCALE_ENV_VAR]: normalizeVisualQaLocale(options.locale),
       ...(options.scenario ? { [VISUAL_QA_SCENARIO_ENV_VAR]: options.scenario } : {}),
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -723,6 +733,7 @@ async function runCli() {
     keep: parseBooleanArg(argv, "--keep"),
     keepAppOnFail: parseBooleanArg(argv, "--keep-app-on-fail"),
     live: parseBooleanArg(argv, "--live"),
+    locale: normalizeVisualQaLocale(parseArgValue(argv, "--locale")),
     name: baseName,
     outputDir: parseArgValue(argv, "--output-dir") ?? DEFAULT_OUTPUT_DIR,
     postTerminateDelayMs: parseIntegerArg(argv, "--post-terminate-delay-ms", 1_200),

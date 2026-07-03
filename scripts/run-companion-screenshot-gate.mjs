@@ -27,6 +27,7 @@ export const COMPANION_SCREENSHOT_VIEWPORTS = {
 
 const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
 const COMPANION_THEME_STORAGE_KEY = "bfm-companion-theme-mode";
+const COMPANION_LOCALE_STORAGE_KEY = "bfm-locale";
 
 function parseArgValue(argv, name) {
   const index = argv.indexOf(name);
@@ -44,6 +45,14 @@ function parseIntegerArg(argv, name, fallback) {
 
 function parseBooleanArg(argv, name) {
   return argv.includes(name);
+}
+
+export function normalizeCompanionScreenshotLocale(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "nb" || normalized === "no" || normalized === "nb-no") {
+    return "nb";
+  }
+  return "en";
 }
 
 function routeUrl(baseUrl, route) {
@@ -510,20 +519,28 @@ async function prepareSettingsScenario(page, timeoutMs) {
 }
 
 async function runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, options = {}) {
+  const locale = normalizeCompanionScreenshotLocale(options.locale);
   const context = await browser.newContext({
     colorScheme: options.themeMode === "dark" ? "dark" : undefined,
+    locale: locale === "nb" ? "nb-NO" : "en-US",
     viewport: scenario.viewport,
   });
   const page = await context.newPage();
   try {
-    if (options.themeMode) {
-      await page.addInitScript(
-        ({ key, value }) => {
-          window.localStorage?.setItem(key, value);
-        },
-        { key: COMPANION_THEME_STORAGE_KEY, value: options.themeMode },
-      );
-    }
+    await page.addInitScript(
+      ({ localeKey, localeValue, themeKey, themeValue }) => {
+        window.localStorage?.setItem(localeKey, localeValue);
+        if (themeValue) {
+          window.localStorage?.setItem(themeKey, themeValue);
+        }
+      },
+      {
+        localeKey: COMPANION_LOCALE_STORAGE_KEY,
+        localeValue: locale,
+        themeKey: COMPANION_THEME_STORAGE_KEY,
+        themeValue: options.themeMode ?? "",
+      },
+    );
     await bootstrapCompanionSession(page, baseUrl, timeoutMs);
     await page.goto(routeUrl(baseUrl, "/companion"), {
       waitUntil: "domcontentloaded",
@@ -626,6 +643,7 @@ export async function runCompanionScreenshotGate(options = {}) {
   const timeoutMs = options.timeoutMs ?? 8_000;
   const outputDir = resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR);
   const themeMode = options.themeMode ?? "dark";
+  const locale = normalizeCompanionScreenshotLocale(options.locale);
   await mkdir(outputDir, { recursive: true });
 
   const browser = await chromium.launch({ headless: options.headless !== false });
@@ -633,7 +651,9 @@ export async function runCompanionScreenshotGate(options = {}) {
     const scenarios = options.scenarios ?? buildCompanionScreenshotScenarios();
     const metrics = [];
     for (const scenario of scenarios) {
-      metrics.push(await runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, { themeMode }));
+      metrics.push(
+        await runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, { locale, themeMode }),
+      );
     }
     const errors = validateCompanionScreenshotMetrics(metrics, options.minimums ?? {});
     return {
@@ -732,6 +752,7 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
           ? null
           : await screenshotGateFn({
               baseUrl,
+              locale: options.locale,
               outputDir: options.outputDir,
               timeoutMs: options.timeoutMs,
               themeMode: options.themeMode,
@@ -813,11 +834,13 @@ async function runCli() {
   const profile = parseArgValue(argv, "--profile");
   const outputDir = parseArgValue(argv, "--out-dir") ?? DEFAULT_OUTPUT_DIR;
   const timeoutMs = parseIntegerArg(argv, "--timeout-ms", 8_000);
+  const locale = normalizeCompanionScreenshotLocale(parseArgValue(argv, "--locale"));
   const launch = parseBooleanArg(argv, "--launch");
   const launchOptions = {
     baseUrl: urlArg,
     keep: parseBooleanArg(argv, "--keep"),
     keepAppOnFail: parseBooleanArg(argv, "--keep-app-on-fail"),
+    locale,
     live: parseBooleanArg(argv, "--live"),
     outputDir,
     postTerminateDelayMs: parseIntegerArg(argv, "--post-terminate-delay-ms", 1_200),
@@ -866,6 +889,7 @@ async function runCli() {
 
   const screenshotGate = await runCompanionScreenshotGate({
     baseUrl,
+    locale,
     outputDir,
     timeoutMs,
   });

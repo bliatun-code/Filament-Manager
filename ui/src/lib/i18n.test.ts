@@ -9,7 +9,11 @@ import {
   resolveInitialLocale,
 } from "./i18n";
 
-function withGlobalValue<T>(key: "localStorage" | "navigator", value: unknown, run: () => T): T {
+function withGlobalValue<T>(
+  key: "localStorage" | "navigator" | "window",
+  value: unknown,
+  run: () => T,
+): T {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, key);
   Object.defineProperty(globalThis, key, {
     configurable: true,
@@ -34,6 +38,23 @@ test("resolveInitialLocale uses stored supported locale", () => {
   const locale = withGlobalValue("localStorage", storage, () => resolveInitialLocale());
 
   assert.equal(locale, "nb");
+});
+
+test("resolveInitialLocale lets screenshot URLs override stored locale", () => {
+  const storage = {
+    getItem: () => "nb",
+  };
+  const windowRef = {
+    location: {
+      search: "?bfm_locale=en",
+    },
+  };
+
+  const locale = withGlobalValue("window", windowRef, () =>
+    withGlobalValue("localStorage", storage, () => resolveInitialLocale()),
+  );
+
+  assert.equal(locale, "en");
 });
 
 test("locale dictionaries lazy-load and cache supported locales", async () => {

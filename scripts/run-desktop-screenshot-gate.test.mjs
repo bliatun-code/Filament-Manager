@@ -11,6 +11,7 @@ import {
   execFileWithTimeout,
   formatDesktopScreenshotGateReport,
   normalizeDesktopVisualQaScenario,
+  normalizeVisualQaLocale,
   parseDesktopVisualQaScenarios,
   parseDesktopWindowList,
   parseDesktopWindowInfo,
@@ -132,6 +133,16 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
   assert.equal(normalizeDesktopVisualQaScenario("usage-statistics"), "statistics-overview");
   assert.equal(normalizeDesktopVisualQaScenario(""), null);
   assert.throws(() => normalizeDesktopVisualQaScenario("bad"), /Unknown desktop visual QA/);
+});
+
+test("desktop screenshot gate normalizes screenshot locale overrides", () => {
+  assert.equal(normalizeVisualQaLocale("nb"), "nb");
+  assert.equal(normalizeVisualQaLocale("no"), "nb");
+  assert.equal(normalizeVisualQaLocale("nb-NO"), "nb");
+  assert.equal(normalizeVisualQaLocale("en"), "en");
+  assert.equal(normalizeVisualQaLocale("en-US"), "en");
+  assert.equal(normalizeVisualQaLocale(""), "en");
+  assert.equal(normalizeVisualQaLocale("bad"), "en");
 });
 
 test("desktop screenshot gate reads scenario metadata from the shared manifest", () => {

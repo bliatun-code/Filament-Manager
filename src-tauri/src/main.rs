@@ -87,6 +87,8 @@ pub(crate) const APP_DB_FILE_NAME: &str = "filament-manager.db";
 pub(crate) const APP_DB_PATH_ENV_VAR: &str = "FILAMENT_MANAGER_DB_PATH";
 #[cfg(debug_assertions)]
 const VISUAL_QA_SCENARIO_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
+#[cfg(debug_assertions)]
+const VISUAL_QA_LOCALE_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_LOCALE";
 pub(crate) const LEGACY_APP_DB_FILE_NAME: &str = "bambu.db";
 pub(crate) const LEGACY_APP_DATA_DIR_NAME: &str = "com.bambu.filament.manager";
 pub(crate) const LEGACY_APP_DB_PATH_ENV_VAR: &str = "BAMBU_DB_PATH";
@@ -369,6 +371,22 @@ fn visual_qa_scenario_from_env() -> Option<&'static str> {
 }
 
 #[cfg(debug_assertions)]
+fn normalize_visual_qa_locale(value: &str) -> &'static str {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "nb" | "no" | "nb-no" => "nb",
+        _ => "en",
+    }
+}
+
+#[cfg(debug_assertions)]
+fn visual_qa_locale_from_env() -> &'static str {
+    std::env::var(VISUAL_QA_LOCALE_ENV_VAR)
+        .ok()
+        .map(|value| normalize_visual_qa_locale(&value))
+        .unwrap_or("en")
+}
+
+#[cfg(debug_assertions)]
 fn apply_visual_qa_scenario_url(app: &tauri::App) -> Result<(), String> {
     let Some(scenario) = visual_qa_scenario_from_env() else {
         return Ok(());
@@ -377,7 +395,9 @@ fn apply_visual_qa_scenario_url(app: &tauri::App) -> Result<(), String> {
         return Ok(());
     };
     let mut url = window.url().map_err(|error| error.to_string())?;
-    url.query_pairs_mut().append_pair("bfm_visual_qa", scenario);
+    url.query_pairs_mut()
+        .append_pair("bfm_visual_qa", scenario)
+        .append_pair("bfm_locale", visual_qa_locale_from_env());
     window.navigate(url).map_err(|error| error.to_string())
 }
 

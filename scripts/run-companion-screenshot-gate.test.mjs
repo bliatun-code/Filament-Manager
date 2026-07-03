@@ -8,6 +8,7 @@ import {
   COMPANION_SCREENSHOT_VIEWPORTS,
   formatCompanionScreenshotGateReport,
   formatLaunchedCompanionScreenshotGateReport,
+  normalizeCompanionScreenshotLocale,
   runLaunchedCompanionScreenshotGate,
   summarizeCompanionScreenshotPixels,
   validateCompanionScreenshotMetrics,
@@ -179,6 +180,16 @@ test("companion screenshot scenarios cover tablet and phone task surfaces", () =
     scenarios.find((scenario) => scenario.name === "tablet-settings")?.expectations,
     { settings: true },
   );
+});
+
+test("companion screenshot gate normalizes screenshot locale overrides", () => {
+  assert.equal(normalizeCompanionScreenshotLocale("nb"), "nb");
+  assert.equal(normalizeCompanionScreenshotLocale("no"), "nb");
+  assert.equal(normalizeCompanionScreenshotLocale("nb-NO"), "nb");
+  assert.equal(normalizeCompanionScreenshotLocale("en"), "en");
+  assert.equal(normalizeCompanionScreenshotLocale("en-US"), "en");
+  assert.equal(normalizeCompanionScreenshotLocale(""), "en");
+  assert.equal(normalizeCompanionScreenshotLocale("bad"), "en");
 });
 
 test("companion screenshot metric validation rejects pairing and overflow shells", () => {
