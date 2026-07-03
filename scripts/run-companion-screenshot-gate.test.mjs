@@ -3,7 +3,9 @@ import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { test } from "node:test";
 import {
+  buildCompanionScreenshotScenarios,
   companionScreenshotGateNeedsLaunch,
+  COMPANION_SCREENSHOT_VIEWPORTS,
   formatCompanionScreenshotGateReport,
   formatLaunchedCompanionScreenshotGateReport,
   runLaunchedCompanionScreenshotGate,
@@ -19,6 +21,7 @@ function createMetric(overrides = {}) {
       listRows: 12,
       loanCards: 3,
       phoneNavButtons: 4,
+      settingsCards: 3,
       slotCards: 5,
       swatchSurfaces: 10,
       taskSheets: 0,
@@ -130,9 +133,52 @@ test("companion screenshot metric validation accepts rich rendered surfaces", ()
       expectations: { detail: true, swatches: true },
       name: "phone-detail",
     }),
+    createMetric({
+      counts: { settingsCards: 3 },
+      expectations: { settings: true },
+      name: "phone-settings",
+    }),
   ]);
 
   assert.deepEqual(errors, []);
+});
+
+test("companion screenshot scenarios cover tablet and phone task surfaces", () => {
+  const scenarios = buildCompanionScreenshotScenarios();
+
+  assert.deepEqual(
+    scenarios.map((scenario) => scenario.name),
+    [
+      "wide-inventory",
+      "tablet-inventory",
+      "tablet-add-spool",
+      "tablet-lend-spool",
+      "tablet-return-loan",
+      "tablet-detail",
+      "tablet-printers",
+      "tablet-settings",
+      "phone-inventory",
+      "phone-add-spool",
+      "phone-lend-spool",
+      "phone-return-loan",
+      "phone-detail",
+      "phone-printers",
+      "phone-settings",
+    ],
+  );
+
+  assert.equal(
+    scenarios.find((scenario) => scenario.name === "tablet-add-spool")?.viewport.width,
+    COMPANION_SCREENSHOT_VIEWPORTS.tablet.width,
+  );
+  assert.deepEqual(
+    scenarios.find((scenario) => scenario.name === "phone-return-loan")?.expectations,
+    { loans: true, sheet: true },
+  );
+  assert.deepEqual(
+    scenarios.find((scenario) => scenario.name === "tablet-settings")?.expectations,
+    { settings: true },
+  );
 });
 
 test("companion screenshot metric validation rejects pairing and overflow shells", () => {
@@ -153,6 +199,18 @@ test("companion screenshot metric validation rejects pairing and overflow shells
   assert.ok(errors.some((error) => error.includes("horizontal overflow")));
   assert.ok(errors.some((error) => error.includes("outside viewport")));
   assert.ok(errors.some((error) => error.includes("text overflow")));
+});
+
+test("companion screenshot metric validation rejects missing settings cards", () => {
+  const errors = validateCompanionScreenshotMetrics([
+    createMetric({
+      counts: { settingsCards: 0 },
+      expectations: { settings: true },
+      name: "phone-settings",
+    }),
+  ]);
+
+  assert.ok(errors.some((error) => error.includes("expected settings cards")));
 });
 
 test("companion screenshot metric validation rejects flat raster captures", () => {
@@ -325,5 +383,6 @@ test("companion screenshot report lists artifact paths", () => {
 
   assert.match(report, /Companion screenshot gate target/);
   assert.match(report, /companion-phone-inventory\.png/);
+  assert.match(report, /settings 3/);
   assert.match(report, /Companion screenshot gate ok/);
 });

@@ -194,6 +194,7 @@ export function validateCompanionScreenshotMetrics(metrics, minimums = {}) {
   const minSwatches = minimumFor(minimums.swatches);
   const minLoanCards = minimumFor(minimums.loanCards);
   const minSlotCards = minimumFor(minimums.slotCards);
+  const minSettingsCards = minimumFor(minimums.settingsCards);
   const minColorBuckets = minimumFor(minimums.colorBuckets, 24);
   const minEdgeDeltaMean = minimumFor(minimums.edgeDeltaMean, 1.2);
   const minLumaStdDev = minimumFor(minimums.lumaStdDev, 5);
@@ -236,6 +237,9 @@ export function validateCompanionScreenshotMetrics(metrics, minimums = {}) {
     if (entry.expectations?.printers && entry.counts.slotCards < minSlotCards) {
       errors.push(`${prefix} expected printer slot cards, found ${entry.counts.slotCards}`);
     }
+    if (entry.expectations?.settings && entry.counts.settingsCards < minSettingsCards) {
+      errors.push(`${prefix} expected settings cards, found ${entry.counts.settingsCards}`);
+    }
     if (!entry.screenshotPixels) {
       errors.push(`${prefix} is missing screenshot pixel metrics`);
     } else {
@@ -277,6 +281,7 @@ export function formatCompanionScreenshotGateReport(result) {
   for (const metric of result.metrics) {
     lines.push(
       `  - ${metric.name}: ${metric.viewport.width}x${metric.viewport.height}, rows ${metric.counts.listRows}, swatches ${metric.counts.swatchSurfaces}, loans ${metric.counts.loanCards}, slots ${metric.counts.slotCards}`,
+      `    settings ${metric.counts.settingsCards}`,
       `    pixels: contrast ${metric.screenshotPixels.lumaStdDev.toFixed(1)}, colors ${metric.screenshotPixels.colorBuckets}, swatch pixels ${metric.screenshotPixels.swatchSamples.visible}/${metric.screenshotPixels.swatchSamples.total}`,
       `    ${metric.screenshot}`,
     );
@@ -391,6 +396,7 @@ async function readPageMetrics(page, scenario) {
         listRows: document.querySelectorAll(".list-row").length,
         loanCards: document.querySelectorAll(".loan-card").length,
         phoneNavButtons: document.querySelectorAll(".phone-nav-button").length,
+        settingsCards: document.querySelectorAll(".settings-card").length,
         slotCards: document.querySelectorAll(".slot-card").length,
         swatchSurfaces: document.querySelectorAll(".swatch-surface").length,
         taskSheets: document.querySelectorAll(".task-sheet").length,
@@ -456,6 +462,53 @@ async function chooseFirstNonBambuOption(locator) {
   return fallback ?? (count > 0 ? locator.first() : null);
 }
 
+async function prepareAddSpoolScenario(page, timeoutMs) {
+  await page.locator('[data-action="toggle-add-spool-form"]').click({ timeout: timeoutMs });
+  await page.waitForSelector(".task-sheet.add-filament-sheet", { timeout: timeoutMs });
+  await page
+    .locator('[data-action="set-filament-source"][data-filament-source="esun"]')
+    .click({ timeout: timeoutMs });
+  await page.waitForSelector(
+    '[data-action="set-filament-source"][data-filament-source="esun"][data-active="true"]',
+    { timeout: timeoutMs },
+  );
+  await page.locator('input[name="filament-catalog-search"]').fill("Dark Blue");
+  await page.waitForTimeout(150);
+}
+
+async function prepareLendSpoolScenario(page, timeoutMs) {
+  await page.locator('[data-root-flow="loans"]').click({ timeout: timeoutMs });
+  await page.locator('[data-action="start-loan-picker"]').click({ timeout: timeoutMs });
+  await page.waitForSelector(".task-sheet", { timeout: timeoutMs });
+  const option = await chooseFirstNonBambuOption(page.locator(".loan-picker-option"));
+  if (option) {
+    await option.click({ timeout: timeoutMs });
+    await page.waitForSelector(".loan-create-card", { timeout: timeoutMs });
+  }
+}
+
+async function prepareReturnLoanScenario(page, timeoutMs) {
+  await page.locator('[data-root-flow="loans"]').click({ timeout: timeoutMs });
+  await page.waitForSelector(".loan-card", { timeout: timeoutMs });
+  await page.locator('[data-action="toggle-loan-return"]').first().click({ timeout: timeoutMs });
+  await page.waitForSelector(".loan-return-task-sheet", { timeout: timeoutMs });
+}
+
+async function prepareDetailScenario(page, timeoutMs) {
+  await page.locator('[data-action="select-spool"]').first().click({ timeout: timeoutMs });
+  await page.waitForSelector(".detail-modal", { timeout: timeoutMs });
+}
+
+async function preparePrintersScenario(page, timeoutMs) {
+  await page.locator('[data-root-flow="printers"]').click({ timeout: timeoutMs });
+  await page.waitForSelector(".slot-card", { timeout: timeoutMs });
+}
+
+async function prepareSettingsScenario(page, timeoutMs) {
+  await page.locator('[data-root-flow="settings"]').click({ timeout: timeoutMs });
+  await page.waitForSelector(".settings-card", { timeout: timeoutMs });
+}
+
 async function runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, options = {}) {
   const context = await browser.newContext({
     colorScheme: options.themeMode === "dark" ? "dark" : undefined,
@@ -492,7 +545,57 @@ async function runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, opt
   }
 }
 
-function buildScenarios() {
+function viewportScenario(viewportName, suffix, expectations, prepare = null) {
+  return {
+    name: `${viewportName}-${suffix}`,
+    viewport: COMPANION_SCREENSHOT_VIEWPORTS[viewportName],
+    expectations,
+    ...(prepare ? { prepare } : {}),
+  };
+}
+
+function buildCompanionTaskScenarios(viewportName) {
+  return [
+    viewportScenario(
+      viewportName,
+      "add-spool",
+      { inventory: true, sheet: true, swatches: true },
+      prepareAddSpoolScenario,
+    ),
+    viewportScenario(
+      viewportName,
+      "lend-spool",
+      { sheet: true, swatches: true },
+      prepareLendSpoolScenario,
+    ),
+    viewportScenario(
+      viewportName,
+      "return-loan",
+      { loans: true, sheet: true },
+      prepareReturnLoanScenario,
+    ),
+    viewportScenario(
+      viewportName,
+      "detail",
+      { detail: true, swatches: true },
+      prepareDetailScenario,
+    ),
+    viewportScenario(
+      viewportName,
+      "printers",
+      { printers: true, swatches: true },
+      preparePrintersScenario,
+    ),
+    viewportScenario(
+      viewportName,
+      "settings",
+      { settings: true },
+      prepareSettingsScenario,
+    ),
+  ];
+}
+
+export function buildCompanionScreenshotScenarios() {
   return [
     {
       name: "wide-inventory",
@@ -504,62 +607,13 @@ function buildScenarios() {
       viewport: COMPANION_SCREENSHOT_VIEWPORTS.tablet,
       expectations: { inventory: true, swatches: true },
     },
+    ...buildCompanionTaskScenarios("tablet"),
     {
       name: "phone-inventory",
       viewport: COMPANION_SCREENSHOT_VIEWPORTS.phone,
       expectations: { inventory: true, swatches: true },
     },
-    {
-      name: "phone-add-spool",
-      viewport: COMPANION_SCREENSHOT_VIEWPORTS.phone,
-      expectations: { inventory: true, sheet: true, swatches: true },
-      prepare: async (page, timeoutMs) => {
-        await page.locator('[data-action="toggle-add-spool-form"]').click({ timeout: timeoutMs });
-        await page.waitForSelector(".task-sheet.add-filament-sheet", { timeout: timeoutMs });
-        await page
-          .locator('[data-action="set-filament-source"][data-filament-source="esun"]')
-          .click({ timeout: timeoutMs });
-        await page.waitForSelector(
-          '[data-action="set-filament-source"][data-filament-source="esun"][data-active="true"]',
-          { timeout: timeoutMs },
-        );
-        await page.locator('input[name="filament-catalog-search"]').fill("Dark Blue");
-        await page.waitForTimeout(150);
-      },
-    },
-    {
-      name: "phone-lend-spool",
-      viewport: COMPANION_SCREENSHOT_VIEWPORTS.phone,
-      expectations: { sheet: true, swatches: true },
-      prepare: async (page, timeoutMs) => {
-        await page.locator('[data-root-flow="loans"]').click({ timeout: timeoutMs });
-        await page.locator('[data-action="start-loan-picker"]').click({ timeout: timeoutMs });
-        await page.waitForSelector(".task-sheet", { timeout: timeoutMs });
-        const option = await chooseFirstNonBambuOption(page.locator(".loan-picker-option"));
-        if (option) {
-          await option.click({ timeout: timeoutMs });
-          await page.waitForSelector(".loan-create-card", { timeout: timeoutMs });
-        }
-      },
-    },
-    {
-      name: "phone-detail",
-      viewport: COMPANION_SCREENSHOT_VIEWPORTS.phone,
-      expectations: { detail: true, swatches: true },
-      prepare: async (page, timeoutMs) => {
-        await page.locator('[data-action="select-spool"]').first().click({ timeout: timeoutMs });
-        await page.waitForSelector(".detail-modal", { timeout: timeoutMs });
-      },
-    },
-    {
-      name: "phone-printers",
-      viewport: COMPANION_SCREENSHOT_VIEWPORTS.phone,
-      expectations: { printers: true, swatches: true },
-      prepare: async (page, timeoutMs) => {
-        await page.locator('[data-root-flow="printers"]').click({ timeout: timeoutMs });
-        await page.waitForSelector(".slot-card", { timeout: timeoutMs });
-      },
-    },
+    ...buildCompanionTaskScenarios("phone"),
   ];
 }
 
@@ -576,7 +630,7 @@ export async function runCompanionScreenshotGate(options = {}) {
 
   const browser = await chromium.launch({ headless: options.headless !== false });
   try {
-    const scenarios = options.scenarios ?? buildScenarios();
+    const scenarios = options.scenarios ?? buildCompanionScreenshotScenarios();
     const metrics = [];
     for (const scenario of scenarios) {
       metrics.push(await runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, { themeMode }));
