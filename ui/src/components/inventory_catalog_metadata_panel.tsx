@@ -5,6 +5,7 @@ import {
   inventoryDetailCompactFormControlClassName,
   inventoryDetailEyebrowClassName,
 } from "./inventory_detail_panel_class";
+import { InventoryDetailTintPanel } from "./inventory_detail_fact_card";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
@@ -49,8 +50,8 @@ export function InventoryCatalogMetadataPanel({
   const { t } = useI18n();
 
   return (
-    <div
-      className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+    <InventoryDetailTintPanel
+      className="p-4"
       style={inventorySwatchInsetStyle(spoolHexColor, resolvedTheme)}
     >
       <div className="flex items-center justify-between gap-2">
@@ -146,6 +147,6 @@ export function InventoryCatalogMetadataPanel({
           </button>
         </div>
       ) : null}
-    </div>
+    </InventoryDetailTintPanel>
   );
 }

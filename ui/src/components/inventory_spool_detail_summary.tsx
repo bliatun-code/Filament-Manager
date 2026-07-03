@@ -1,6 +1,9 @@
 import { VendorBadge } from "./vendor_badge";
 import { CloseButton } from "./close_button";
-import { InventoryDetailFactCard } from "./inventory_detail_fact_card";
+import {
+  InventoryDetailFactCard,
+  InventoryDetailTintPanel,
+} from "./inventory_detail_fact_card";
 import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { useI18n } from "../lib/i18n";
@@ -107,8 +110,8 @@ export function InventorySpoolIdentityPanel({
     rfidBindingMeta.hint.trim().length > 0 && amsSighting?.source !== "live_activity";
 
   return (
-    <div
-      className="rounded-xl border border-slate-200 bg-slate-50 p-3.5"
+    <InventoryDetailTintPanel
+      className="p-3.5"
       style={inventorySwatchInsetStyle(spool.hexColor, resolvedTheme)}
     >
       <div className="grid gap-3 min-[760px]:grid-cols-2">
@@ -182,6 +185,6 @@ export function InventorySpoolIdentityPanel({
           </div>
         </InventoryDetailFactCard>
       </div>
-    </div>
+    </InventoryDetailTintPanel>
   );
 }

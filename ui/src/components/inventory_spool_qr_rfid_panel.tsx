@@ -3,6 +3,7 @@ import {
   inventoryDetailActionButtonClassName,
   inventoryDetailEyebrowClassName,
 } from "./inventory_detail_panel_class";
+import { InventoryDetailTintPanel } from "./inventory_detail_fact_card";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 
@@ -37,8 +38,8 @@ export function InventorySpoolQrRfidPanel({
   const { t } = useI18n();
 
   return (
-    <div
-      className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+    <InventoryDetailTintPanel
+      className="p-4"
       style={inventorySwatchInsetStyle(spoolHexColor, resolvedTheme)}
     >
       <div className={inventoryDetailEyebrowClassName}>
@@ -115,6 +116,6 @@ export function InventorySpoolQrRfidPanel({
               "RFID capture needs a printer with Live Bambu status enabled and at least one AMS slot available.",
             )}
       </div>
-    </div>
+    </InventoryDetailTintPanel>
   );
 }

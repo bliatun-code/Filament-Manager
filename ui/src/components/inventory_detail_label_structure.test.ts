@@ -34,8 +34,11 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(catalogMetadataPanel, /inventoryDetailCompactFormControlClassName/);
   assert.match(catalogMetadataPanel, /inventoryDetailEyebrowClassName/);
   assert.match(detailFactCard, /inventoryDetailFactCardClassName/);
+  assert.match(detailFactCard, /inventoryDetailTintPanelClassName/);
+  assert.match(detailFactCard, /function InventoryDetailTintPanel/);
   assert.match(detailFactCard, /inventoryDetailLabelClassName/);
   assert.match(detailFactCard, /joinClassNames/);
+  assert.match(catalogMetadataPanel, /InventoryDetailTintPanel/);
   assert.match(detailModal, /inventoryDetailEyebrowClassName/);
   assert.match(maintenancePanels, /inventoryDetailEyebrowClassName/);
   assert.match(maintenancePanels, /inventoryDetailDangerActionButtonClassName/);
@@ -46,6 +49,7 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(maintenancePanels, /optionSizeClassName="flex-1 justify-center px-3 py-2 text-sm"/);
   assert.match(qrRfidPanel, /inventoryDetailActionButtonClassName/);
   assert.match(qrRfidPanel, /inventoryDetailEyebrowClassName/);
+  assert.match(qrRfidPanel, /InventoryDetailTintPanel/);
   assert.match(rollHistoryPanel, /inventoryDetailEyebrowClassName/);
   assert.match(spoolDetailSummary, /InventoryDetailFactCard/);
   assert.match(rfidCapturePanels, /inventoryDetailSectionLabelClassName/);
@@ -59,6 +63,10 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.doesNotMatch(
     catalogMetadataPanel,
     /rounded-lg border border-slate-200 bg-white px-3 py-1\.5 text-xs font-semibold/,
+  );
+  assert.doesNotMatch(
+    catalogMetadataPanel,
+    /rounded-xl border border-slate-200 bg-slate-50 p-4/,
   );
   assert.doesNotMatch(detailModal, rawEyebrowClass);
   assert.doesNotMatch(maintenancePanels, rawEyebrowClass);
@@ -74,6 +82,7 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.doesNotMatch(maintenancePanels, /inventoryMaintenanceInputClass/);
   assert.doesNotMatch(maintenancePanels, /inventoryMaintenanceSaveButtonClass/);
   assert.doesNotMatch(qrRfidPanel, /qrRfidActionButtonClassName/);
+  assert.doesNotMatch(qrRfidPanel, /rounded-xl border border-slate-200 bg-slate-50 p-4/);
   assert.doesNotMatch(qrRfidPanel, rawEyebrowClass);
   assert.doesNotMatch(rollHistoryPanel, rawEyebrowClass);
   assert.doesNotMatch(
@@ -83,6 +92,10 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.doesNotMatch(
     spoolDetailSummary,
     /rounded-xl border border-white\/70 bg-white\/70 px-3\.5 py-3/,
+  );
+  assert.doesNotMatch(
+    spoolDetailSummary,
+    /rounded-xl border border-slate-200 bg-slate-50 p-3\.5/,
   );
   assert.doesNotMatch(
     rfidCapturePanels,
