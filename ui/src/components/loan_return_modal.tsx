@@ -4,6 +4,7 @@ import { ModalActionButton } from "./modal_action_button";
 import {
   ModalDetailGrid,
   ModalDetailItem,
+  ModalFooter,
   ModalFormField,
   ModalHeader,
   ModalNotice,
@@ -177,7 +178,7 @@ export function LoanReturnModal({
           />
         </ModalFormField>
 
-        <div className="flex justify-end gap-2">
+        <ModalFooter border={false} className="flex justify-end gap-2">
           <ModalActionButton
             type="button"
             onClick={onClose}
@@ -197,7 +198,7 @@ export function LoanReturnModal({
               ? t("loans.confirmHandBackAction", "Confirm hand-back")
               : t("loans.confirmReturnAction", "Confirm return")}
           </ModalActionButton>
-        </div>
+        </ModalFooter>
       </div>
     </AppModal>
   );

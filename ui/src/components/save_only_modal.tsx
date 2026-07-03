@@ -2,7 +2,7 @@ import { type ReactNode, useEffect } from "react";
 import { useI18n } from "../lib/i18n";
 import { AppModal } from "./app_modal";
 import { ModalActionButton } from "./modal_action_button";
-import { modalEyebrowClassName } from "./modal_chrome";
+import { ModalFooter, modalEyebrowClassName } from "./modal_chrome";
 import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { useResolvedTheme } from "../lib/theme_mode";
 
@@ -83,7 +83,7 @@ export function SaveOnlyModal({
 
         <div className="bg-white/95 px-5 py-5 dark:bg-slate-900/90">{children}</div>
 
-        <div className="border-t border-slate-200/80 bg-slate-50/95 px-5 py-4 dark:border-slate-700/80 dark:bg-slate-950/90">
+        <ModalFooter className="bg-slate-50/95 px-5 py-4 dark:bg-slate-950/90">
           <ModalActionButton
             type="button"
             fullWidth
@@ -96,7 +96,7 @@ export function SaveOnlyModal({
           >
             {saveLabel ?? t("common.save", "Save")}
           </ModalActionButton>
-        </div>
+        </ModalFooter>
       </>
     </AppModal>
   );

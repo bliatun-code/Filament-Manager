@@ -64,7 +64,9 @@ type ModalBodyProps = HTMLAttributes<HTMLDivElement> & {
 };
 
 type ModalFooterProps = HTMLAttributes<HTMLDivElement> & {
+  border?: boolean;
   children: ReactNode;
+  shrink?: boolean;
 };
 
 export function ModalFormField({
@@ -130,15 +132,18 @@ export function ModalBody({
 }
 
 export function ModalFooter({
+  border = true,
   children,
   className,
+  shrink = true,
   ...divProps
 }: ModalFooterProps) {
   return (
     <div
       {...divProps}
       className={joinClassNames(
-        "shrink-0 border-t border-slate-200/80 dark:border-slate-800/70",
+        shrink ? "shrink-0" : "",
+        border ? "border-t border-slate-200/80 dark:border-slate-800/70" : "",
         className,
       )}
     >

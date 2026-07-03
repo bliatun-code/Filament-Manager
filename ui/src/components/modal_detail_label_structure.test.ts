@@ -26,6 +26,8 @@ test("modal detail labels share compact metadata typography", () => {
   assert.match(modalChrome, /modalDetailValueClassName/);
   assert.match(modalChrome, /function ModalBody/);
   assert.match(modalChrome, /function ModalFooter/);
+  assert.match(modalChrome, /border = true/);
+  assert.match(modalChrome, /shrink = true/);
   assert.match(modalChrome, /ModalDetailGrid/);
   assert.match(modalChrome, /ModalDetailItem/);
   assert.match(modalChrome, /ModalNotice/);
@@ -38,11 +40,14 @@ test("modal detail labels share compact metadata typography", () => {
   assert.match(inventorySpoolDetailModal, /ModalNotice/);
   assert.match(loanOutModal, /ModalNotice/);
   assert.match(loanReturnModal, /ModalNotice/);
+  assert.match(loanReturnModal, /<ModalFooter border=\{false\}/);
   assert.match(rfidOverrideModal, /ModalDetailGrid/);
   assert.match(rfidOverrideModal, /ModalDetailItem/);
   assert.match(rfidOverrideModal, /ModalNotice/);
   assert.match(saveOnlyModal, /modalEyebrowClassName/);
+  assert.match(saveOnlyModal, /<ModalFooter/);
   assert.match(settingsLibraryRoleModal, /ModalNotice/);
+  assert.match(settingsLibraryRoleModal, /<ModalFooter/);
   assert.match(slotOnboardingModal, /ModalDetailGrid/);
   assert.match(slotOnboardingModal, /ModalDetailItem/);
   assert.match(slotOnboardingModal, /ModalNotice/);
@@ -53,6 +58,11 @@ test("modal detail labels share compact metadata typography", () => {
   assert.doesNotMatch(loanReturnModal, /FeedbackBanner/);
   assert.doesNotMatch(settingsLibraryRoleModal, /FeedbackBanner/);
   assert.doesNotMatch(saveOnlyModal, rawEyebrowClass);
+  assert.doesNotMatch(saveOnlyModal, /border-t border-slate-200\/80 bg-slate-50\/95/);
+  assert.doesNotMatch(
+    settingsLibraryRoleModal,
+    /flex flex-wrap justify-end gap-2 border-t border-slate-200\/80/,
+  );
   assert.doesNotMatch(rfidOverrideModal, rawDetailLabelClass);
   assert.doesNotMatch(slotOnboardingModal, rawDetailLabelClass);
 });

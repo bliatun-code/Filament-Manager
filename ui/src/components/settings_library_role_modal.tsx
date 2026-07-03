@@ -4,7 +4,7 @@ import { settingsActionButtonClass } from "../lib/settings_ui_classes";
 import { formatSettingsDateTime } from "../lib/settings_utils";
 import type { LibrarySyncSettings } from "../lib/tauri_client";
 import type { LibraryRoleChangeState } from "../pages/settings_library_sync_model";
-import { ModalHeader, ModalNotice } from "./modal_chrome";
+import { ModalFooter, ModalHeader, ModalNotice } from "./modal_chrome";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -262,7 +262,10 @@ export function SettingsLibraryRoleModal({
           </ModalNotice>
         ) : null}
 
-        <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200/80 pt-4 dark:border-slate-700/80">
+        <ModalFooter
+          shrink={false}
+          className="flex flex-wrap justify-end gap-2 pt-4"
+        >
           <button
             type="button"
             onClick={onClose}
@@ -284,13 +287,13 @@ export function SettingsLibraryRoleModal({
               ? t("settings.librarySyncSaving", "Saving...")
               : libraryRoleConfirmArmed
                 ? t("settings.librarySyncConfirmAgain", "Click again to confirm")
-                : roleChangeTarget === "HOST"
-                  ? t("settings.librarySyncConfirmSwitchToHost", "Switch to Host")
-                  : roleChangeTarget === "CLIENT"
-                    ? t("settings.librarySyncConfirmSwitchToClient", "Switch to Client")
-                    : t("settings.librarySyncConfirmSwitchToStandalone", "Switch to Standalone")}
+              : roleChangeTarget === "HOST"
+                ? t("settings.librarySyncConfirmSwitchToHost", "Switch to Host")
+                : roleChangeTarget === "CLIENT"
+                  ? t("settings.librarySyncConfirmSwitchToClient", "Switch to Client")
+                  : t("settings.librarySyncConfirmSwitchToStandalone", "Switch to Standalone")}
           </button>
-        </div>
+        </ModalFooter>
       </div>
     </AppModal>
   );
