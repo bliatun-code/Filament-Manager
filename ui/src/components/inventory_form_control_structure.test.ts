@@ -19,8 +19,13 @@ test("inventory form controls share the inventory input chrome", () => {
   assert.match(createActions, /inventoryFormControlClassName/);
   assert.match(createActions, /selectionSummary/);
   assert.match(createActions, /SwatchSelectionPreviewHeader/);
+  assert.match(createActions, /<ModalFactCard\s+padding="none"\s+surface="plain"/);
   assert.match(createActions, /selectionPreview/);
   assert.match(stockSource, /inventoryFormControlClassName/);
   assert.doesNotMatch(createActions, rawInventoryInputClass);
+  assert.doesNotMatch(
+    createActions,
+    /rounded-xl border border-slate-200\/80 bg-white\/65 p-3/,
+  );
   assert.doesNotMatch(stockSource, rawInventoryInputClass);
 });

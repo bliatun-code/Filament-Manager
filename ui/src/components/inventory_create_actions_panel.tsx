@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { inventoryFormControlClassName } from "./form_control_class";
 import { ModalActionButton } from "./modal_action_button";
+import { ModalFactCard } from "./modal_chrome";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
 import { useI18n } from "../lib/i18n";
@@ -88,7 +89,11 @@ export function InventoryCreateActionsPanel({
         </SwatchSelectionPreviewHeader>
       </div>
 
-      <div className="mt-4 rounded-xl border border-slate-200/80 bg-white/65 p-3 dark:border-slate-700/80 dark:bg-slate-950/40">
+      <ModalFactCard
+        padding="none"
+        surface="plain"
+        className="mt-4 border-slate-200/80 bg-white/65 p-3 dark:border-slate-700/80 dark:bg-slate-950/40"
+      >
         <SegmentedChoiceRow
           label={t("inventory.ownership", "Ownership")}
           value={ownershipType}
@@ -146,7 +151,7 @@ export function InventoryCreateActionsPanel({
             />
           </div>
         ) : null}
-      </div>
+      </ModalFactCard>
       <div className="mt-3 grid grid-cols-1 gap-3">
         <input
           type="number"
