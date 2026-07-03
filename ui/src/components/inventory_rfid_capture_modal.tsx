@@ -3,7 +3,7 @@ import {
   inventoryModalOverlayClassName,
   inventoryWideModalPanelClassName,
 } from "./inventory_modal_chrome";
-import { ModalNotice } from "./modal_chrome";
+import { ModalBody, ModalFooter, ModalNotice } from "./modal_chrome";
 import {
   InventoryRfidCapturedFieldsPanel,
   InventoryRfidCaptureActions,
@@ -105,7 +105,7 @@ export function InventoryRfidCaptureModal({
           />
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+        <ModalBody className="px-5 py-4 sm:px-6">
           <div className="grid gap-3 sm:grid-cols-2 min-[900px]:grid-cols-4">
             <InventoryRfidCaptureSlotPicker
               onSelectSlot={onSelectSlot}
@@ -144,9 +144,9 @@ export function InventoryRfidCaptureModal({
             show={showCapturedFields}
             supportsRfidCapture={supportsRfidCapture}
           />
-        </div>
+        </ModalBody>
 
-        <div className="shrink-0 border-t border-slate-200/80 px-5 py-4 dark:border-slate-800/70 sm:px-6">
+        <ModalFooter className="px-5 py-4 sm:px-6">
           <InventoryRfidCaptureActions
             canSave={canSave}
             manageBusy={manageBusy}
@@ -154,7 +154,7 @@ export function InventoryRfidCaptureModal({
             onSave={onSave}
             spoolHexColor={spool.hexColor}
           />
-        </div>
+        </ModalFooter>
       </div>
     </AppModal>
   );

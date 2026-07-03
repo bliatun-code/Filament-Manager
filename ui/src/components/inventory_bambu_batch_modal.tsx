@@ -13,7 +13,7 @@ import {
   inventoryWideModalPanelClassName,
 } from "./inventory_modal_chrome";
 import { ModalActionButton } from "./modal_action_button";
-import { ModalHeader } from "./modal_chrome";
+import { ModalBody, ModalFooter, ModalHeader } from "./modal_chrome";
 import { useI18n } from "../lib/i18n";
 import type {
   BambuFilamentCodeBatch,
@@ -836,7 +836,7 @@ function BambuFilamentCodeBatchPanel({
           ) : null}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
+        <ModalBody overscrollContain className="p-3">
           <textarea
             value={input}
             onChange={(event) => onInputChange(event.target.value)}
@@ -889,9 +889,9 @@ function BambuFilamentCodeBatchPanel({
               )}
             </div>
           )}
-        </div>
+        </ModalBody>
 
-        <div className="shrink-0 border-t border-slate-200/80 p-3 dark:border-slate-800/70">
+        <ModalFooter className="p-3">
           <ModalActionButton
             type="button"
             fullWidth
@@ -903,7 +903,7 @@ function BambuFilamentCodeBatchPanel({
             {t("inventory.bambuBatchAddReady", "Add ready matches")} ·{" "}
             {batch.creatableRows.length}
           </ModalActionButton>
-        </div>
+        </ModalFooter>
       </aside>
     </div>
   );
@@ -963,7 +963,7 @@ export function InventoryBambuBatchModal({
           subtitleClassName="max-w-3xl text-xs leading-4"
         />
 
-        <div className="min-h-0 flex-1 overflow-hidden px-3 py-3 sm:px-4">
+        <ModalBody scroll={false} className="px-3 py-3 sm:px-4">
           <BambuFilamentCodeBatchPanel
             batch={batch}
             createState={createState}
@@ -973,7 +973,7 @@ export function InventoryBambuBatchModal({
             onInputChange={onInputChange}
             tauriAvailable={tauriAvailable}
           />
-        </div>
+        </ModalBody>
       </>
     </AppModal>
   );

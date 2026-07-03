@@ -8,7 +8,7 @@ import {
   inventoryWideModalPanelClassName,
 } from "./inventory_modal_chrome";
 import { InventoryStockSourcePanel } from "./inventory_stock_source_panel";
-import { ModalHeader, ModalHeaderActionButton, ModalNotice } from "./modal_chrome";
+import { ModalBody, ModalHeader, ModalHeaderActionButton, ModalNotice } from "./modal_chrome";
 import { WishlistQueuePanel } from "./wishlist_queue_panel";
 import { useI18n } from "../lib/i18n";
 import type {
@@ -235,7 +235,7 @@ export function InventoryAddModal({
           }
         />
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+        <ModalBody className="px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
           {error ? (
             <ModalNotice tone="danger" className="mb-4">
               {error}
@@ -317,7 +317,7 @@ export function InventoryAddModal({
               />
             </div>
           </div>
-        </div>
+        </ModalBody>
         <InventoryBambuBatchModal
           batch={bambuCodeBatch}
           createState={bambuBatchCreateState}

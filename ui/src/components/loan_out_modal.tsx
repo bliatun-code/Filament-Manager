@@ -10,6 +10,7 @@ import { ModalActionButton } from "./modal_action_button";
 import {
   ModalDetailGrid,
   ModalDetailItem,
+  ModalBody,
   ModalFormField,
   ModalHeader,
   ModalNotice,
@@ -219,7 +220,7 @@ export function LoanOutModal({
           className="px-6 py-4"
         />
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+        <ModalBody className="px-6 py-6">
           <div className="space-y-4">
             {error ? <ModalNotice tone="danger">{error}</ModalNotice> : null}
 
@@ -463,7 +464,7 @@ export function LoanOutModal({
               </div>
             )}
           </div>
-        </div>
+        </ModalBody>
       </div>
     </AppModal>
   );

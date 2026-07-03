@@ -12,6 +12,7 @@ test("LoanOutModal uses shared wide modal layout rhythm", () => {
   assert.match(source, /inventoryModalOverlayClassName/);
   assert.match(source, /inventoryTwoColumnModalGridClassName/);
   assert.match(source, /inventoryWideModalPanelClassName/);
+  assert.match(source, /<ModalBody/);
   assert.match(source, /<ModalActionButton/);
   assert.match(source, /variant="solid"/);
   assert.match(source, /size="roomy"/);
@@ -34,6 +35,7 @@ test("LoanOutModal uses shared wide modal layout rhythm", () => {
   assert.match(stylesSource, /loanOutSpoolButtonClassName/);
   assert.match(stylesSource, /focus-visible:border-sky-300/);
   assert.doesNotMatch(source, /FeedbackBanner/);
+  assert.doesNotMatch(source, /min-h-0 flex-1 overflow-y-auto/);
   assert.doesNotMatch(stylesSource, /formInputClassName/);
   assert.doesNotMatch(stylesSource, /detailLabelClassName/);
   assert.doesNotMatch(stylesSource, /detailValueClassName/);

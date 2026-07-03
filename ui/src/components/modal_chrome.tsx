@@ -57,6 +57,16 @@ type ModalFormFieldProps = LabelHTMLAttributes<HTMLLabelElement> & {
   label: ReactNode;
 };
 
+type ModalBodyProps = HTMLAttributes<HTMLDivElement> & {
+  children: ReactNode;
+  overscrollContain?: boolean;
+  scroll?: boolean;
+};
+
+type ModalFooterProps = HTMLAttributes<HTMLDivElement> & {
+  children: ReactNode;
+};
+
 export function ModalFormField({
   children,
   className,
@@ -94,6 +104,46 @@ export function ModalHeaderActionButton({
     >
       {children}
     </button>
+  );
+}
+
+export function ModalBody({
+  children,
+  className,
+  overscrollContain = false,
+  scroll = true,
+  ...divProps
+}: ModalBodyProps) {
+  return (
+    <div
+      {...divProps}
+      className={joinClassNames(
+        "min-h-0 flex-1",
+        scroll ? "overflow-y-auto" : "overflow-hidden",
+        overscrollContain ? "overscroll-contain" : "",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function ModalFooter({
+  children,
+  className,
+  ...divProps
+}: ModalFooterProps) {
+  return (
+    <div
+      {...divProps}
+      className={joinClassNames(
+        "shrink-0 border-t border-slate-200/80 dark:border-slate-800/70",
+        className,
+      )}
+    >
+      {children}
+    </div>
   );
 }
 

@@ -24,6 +24,8 @@ test("modal detail labels share compact metadata typography", () => {
   assert.match(modalChrome, /modalEyebrowClassName/);
   assert.match(modalChrome, /modalDetailLabelClassName/);
   assert.match(modalChrome, /modalDetailValueClassName/);
+  assert.match(modalChrome, /function ModalBody/);
+  assert.match(modalChrome, /function ModalFooter/);
   assert.match(modalChrome, /ModalDetailGrid/);
   assert.match(modalChrome, /ModalDetailItem/);
   assert.match(modalChrome, /ModalNotice/);
