@@ -1,9 +1,8 @@
 import {
-  blendSwatchColor,
+  buildSwatchActionButtonStyle,
   buildSwatchSurfaceStyle,
   hexToRgb,
   swatchRgba,
-  swatchTextColor,
   type SwatchSurfaceStrength,
 } from "./color_utils";
 import type { ResolvedTheme } from "./theme_mode";
@@ -229,26 +228,7 @@ export function inventorySwatchActionButtonStyle(
   raw: string | null | undefined,
   resolvedTheme: ResolvedTheme,
 ) {
-  return {
-    background:
-      resolvedTheme === "dark"
-        ? `linear-gradient(135deg, ${blendSwatchColor(raw, [255, 255, 255], 0.04)} 0%, ${blendSwatchColor(
-            raw,
-            [15, 23, 42],
-            0.42,
-          )} 100%)`
-        : `linear-gradient(135deg, ${blendSwatchColor(raw, [255, 255, 255], 0.08)} 0%, ${blendSwatchColor(
-            raw,
-            [15, 23, 42],
-            0.2,
-          )} 100%)`,
-    borderColor: swatchRgba(raw, resolvedTheme === "dark" ? 0.6 : 0.48),
-    color: swatchTextColor(raw),
-    boxShadow:
-      resolvedTheme === "dark"
-        ? `0 18px 36px -24px ${swatchRgba(raw, 0.74)}, inset 0 1px 0 rgba(255, 255, 255, 0.1)`
-        : `0 18px 36px -24px ${swatchRgba(raw, 0.62)}, inset 0 1px 0 rgba(255, 255, 255, 0.18)`,
-    } as const;
+  return buildSwatchActionButtonStyle(raw, resolvedTheme);
 }
 
 export function inventoryCreatePreviewPanelStyle(

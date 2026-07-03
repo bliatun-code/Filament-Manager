@@ -53,6 +53,10 @@ test("inventory catalog rows add neutral selected emphasis", () => {
 test("inventory swatch action buttons derive contrast from the swatch", () => {
   assert.equal(inventorySwatchActionButtonStyle("#F8FAFC", "light").color, "#0F172A");
   assert.equal(inventorySwatchActionButtonStyle("#0F172A", "dark").color, "#FFFFFF");
+  assert.match(
+    inventorySwatchActionButtonStyle("#000000", "dark").background,
+    /rgb\(62, 72, 86\) 0%, rgb\(7, 11, 19\) 100%/,
+  );
 });
 
 test("inventory create preview panel adds stronger create emphasis", () => {

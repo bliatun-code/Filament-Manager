@@ -1,8 +1,7 @@
 import {
-  blendSwatchColor,
+  buildSwatchActionButtonStyle,
   buildSwatchSurfaceStyle,
   swatchRgba,
-  swatchTextColor,
   type SwatchSurfaceStrength,
 } from "./color_utils";
 import { parseDateTimeMs } from "./date_time";
@@ -146,26 +145,7 @@ export function printerSwatchActionButtonStyle(
   raw: string | null | undefined,
   resolvedTheme: ResolvedTheme,
 ) {
-  return {
-    background:
-      resolvedTheme === "dark"
-        ? `linear-gradient(135deg, ${blendSwatchColor(raw, [255, 255, 255], 0.04)} 0%, ${blendSwatchColor(
-            raw,
-            [15, 23, 42],
-            0.44,
-          )} 100%)`
-        : `linear-gradient(135deg, ${blendSwatchColor(raw, [255, 255, 255], 0.08)} 0%, ${blendSwatchColor(
-            raw,
-            [15, 23, 42],
-            0.22,
-          )} 100%)`,
-    borderColor: swatchRgba(raw, resolvedTheme === "dark" ? 0.62 : 0.46),
-    color: swatchTextColor(raw),
-    boxShadow:
-      resolvedTheme === "dark"
-        ? `0 18px 36px -24px ${swatchRgba(raw, 0.72)}, inset 0 1px 0 rgba(255, 255, 255, 0.08)`
-        : `0 18px 36px -24px ${swatchRgba(raw, 0.54)}, inset 0 1px 0 rgba(255, 255, 255, 0.18)`,
-  } as const;
+  return buildSwatchActionButtonStyle(raw, resolvedTheme);
 }
 
 export function formatPrinterSpoolStatusLabel(

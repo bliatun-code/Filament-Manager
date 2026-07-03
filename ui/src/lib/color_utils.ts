@@ -263,6 +263,91 @@ export function swatchTextColor(raw: string | null | undefined): string {
   return brightness >= 170 ? "#0F172A" : "#FFFFFF";
 }
 
+function relativeLuminance(rgb: [number, number, number]): number {
+  const [red, green, blue] = rgb.map((channel) => {
+    const normalized = channel / 255;
+    return normalized <= 0.03928
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+function mixRgb(
+  source: [number, number, number],
+  target: [number, number, number],
+  amount: number,
+): [number, number, number] {
+  const ratio = Math.max(0, Math.min(1, amount));
+  return source.map((channel, index) =>
+    Math.round(channel * (1 - ratio) + target[index] * ratio),
+  ) as [number, number, number];
+}
+
+function rgbColor(rgb: [number, number, number]): string {
+  return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+}
+
+function rgbaColor(rgb: [number, number, number], alpha: number): string {
+  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
+}
+
+export function buildSwatchActionButtonStyle(
+  raw: string | null | undefined,
+  resolvedTheme: "light" | "dark",
+) {
+  const rgb = hexToRgb(raw) ?? hexToRgb(DEFAULT_SWATCH_COLOR) ?? [203, 213, 225];
+  const luminance = relativeLuminance(rgb);
+  const white: [number, number, number] = [255, 255, 255];
+  const slate50: [number, number, number] = [248, 250, 252];
+  const slate300: [number, number, number] = [203, 213, 225];
+  const slate500: [number, number, number] = [100, 116, 139];
+  const slate900: [number, number, number] = [15, 23, 42];
+
+  if (luminance > 0.62) {
+    const start = mixRgb(rgb, white, 0.12);
+    const end = mixRgb(rgb, slate300, 0.38);
+    const border = mixRgb(rgb, slate900, 0.18);
+    return {
+      background: `linear-gradient(135deg, ${rgbColor(start)} 0%, ${rgbColor(end)} 100%)`,
+      borderColor: rgbColor(border),
+      color: "#0F172A",
+      boxShadow:
+        resolvedTheme === "dark"
+          ? `0 18px 36px -24px ${rgbaColor(rgb, 0.56)}, inset 0 1px 0 rgba(255, 255, 255, 0.42)`
+          : `0 18px 36px -24px ${rgbaColor(rgb, 0.46)}, inset 0 1px 0 rgba(255, 255, 255, 0.54)`,
+    } as const;
+  }
+
+  if (luminance < 0.1) {
+    const start = mixRgb(rgb, slate500, 0.62);
+    const end = mixRgb(rgb, slate900, 0.46);
+    const border = mixRgb(rgb, slate50, 0.36);
+    return {
+      background: `linear-gradient(135deg, ${rgbColor(start)} 0%, ${rgbColor(end)} 100%)`,
+      borderColor: rgbColor(border),
+      color: "#FFFFFF",
+      boxShadow:
+        resolvedTheme === "dark"
+          ? `0 18px 36px -24px ${rgbaColor(rgb, 0.72)}, inset 0 1px 0 rgba(255, 255, 255, 0.16)`
+          : `0 18px 36px -24px ${rgbaColor(rgb, 0.52)}, inset 0 1px 0 rgba(255, 255, 255, 0.18)`,
+    } as const;
+  }
+
+  const start = mixRgb(rgb, white, 0.08);
+  const end = mixRgb(rgb, slate900, resolvedTheme === "dark" ? 0.34 : 0.28);
+  const border = mixRgb(rgb, white, 0.24);
+  return {
+    background: `linear-gradient(135deg, ${rgbColor(start)} 0%, ${rgbColor(end)} 100%)`,
+    borderColor: rgbColor(border),
+    color: "#FFFFFF",
+    boxShadow:
+      resolvedTheme === "dark"
+        ? `0 18px 36px -24px ${rgbaColor(rgb, 0.72)}, inset 0 1px 0 rgba(255, 255, 255, 0.14)`
+        : `0 18px 36px -24px ${rgbaColor(rgb, 0.58)}, inset 0 1px 0 rgba(255, 255, 255, 0.18)`,
+  } as const;
+}
+
 export function blendSwatchColor(
   raw: string | null | undefined,
   target: [number, number, number],

@@ -40,7 +40,7 @@ test("printer slot card styles tint selectable controls from the active swatch",
 
 test("printer slot card styles only show current roll emphasis for assigned slots", () => {
   const styles = buildPrinterSlotCardStyles({
-    slotSwatchHex: "#f59e0b",
+    slotSwatchHex: "#000000",
     hasAssignedSpool: false,
     hasSelectedTargetSpool: false,
     resolvedTheme: "dark",
@@ -49,5 +49,6 @@ test("printer slot card styles only show current roll emphasis for assigned slot
   assert.ok(styles.selectorStyle);
   assert.equal(styles.currentRollStyle, undefined);
   assert.ok(styles.actionStyle);
+  assert.match(String(styles.actionStyle.background), /rgb\(62, 72, 86\) 0%, rgb\(7, 11, 19\) 100%/);
   assert.ok(styles.panelStyle);
 });

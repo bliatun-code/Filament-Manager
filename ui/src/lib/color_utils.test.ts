@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   DEFAULT_SWATCH_COLOR,
   blendSwatchColor,
+  buildSwatchActionButtonStyle,
   buildSwatchSurfaceStyle,
   hexToRgb,
   isValidHexColor,
@@ -111,6 +112,18 @@ test("swatch primitive helpers build css colors and readable text colors", () =>
   assert.equal(swatchTextColor("#FFFFFF"), "#0F172A");
   assert.equal(swatchTextColor("#111111"), "#FFFFFF");
   assert.equal(blendSwatchColor("#000000", [255, 255, 255], 0.5), "rgb(128, 128, 128)");
+});
+
+test("buildSwatchActionButtonStyle keeps edge swatches readable", () => {
+  const white = buildSwatchActionButtonStyle("#FFFFFF", "light");
+  assert.equal(white.color, "#0F172A");
+  assert.equal(white.borderColor, "rgb(212, 213, 217)");
+  assert.match(white.background, /rgb\(255, 255, 255\) 0%, rgb\(235, 239, 244\) 100%/);
+
+  const black = buildSwatchActionButtonStyle("#000000", "dark");
+  assert.equal(black.color, "#FFFFFF");
+  assert.equal(black.borderColor, "rgb(89, 90, 91)");
+  assert.match(black.background, /rgb\(62, 72, 86\) 0%, rgb\(7, 11, 19\) 100%/);
 });
 
 test("buildSwatchSurfaceStyle centralizes tinted surface CSS", () => {
