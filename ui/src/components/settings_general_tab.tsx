@@ -122,7 +122,7 @@ export function SettingsGeneralTab({
             onClick={() => {
               void openExternalUrl(tourUrl);
             }}
-            className={settingsActionButtonClass("accent")}
+            className={settingsActionButtonClass()}
           >
             {t("settings.productTour", "Product tour")}
           </button>

@@ -281,10 +281,10 @@ I Bambu-flyten:
 
 - skriv eller lim inn koden i katalogsøket for å velge én aktiv katalogmatch
 - velg manuelt hvis samme kode finnes på flere aktive katalogelementer
-- kontroller treff som bare finnes på utgåtte katalogelementer før du legger til lager
+- legg inn ett entydig utgått treff som old stock, eller velg riktig rad når en utgått kode har flere katalogtreff
 - bruk manuell registrering hvis ingen katalogelementer bruker koden ennå
 
-Desktop/client har også en Filament Code-batchmodal i Bambu-flyten. Lim inn én kode per linje, bruk det lille skann/skriv-feltet for å legge til én oppdaget kode om gangen, legg til strekkodeverdier fra et stillbilde, eller la webkameraet stå på mens du viser Bambu-eskeetiketter én etter én. Live-skanning gir tilbakemelding i video-overlayet når en kode legges til, fortsetter å skanne etter neste etikett og unngår å gjenta samme synlige etikett før du flytter den bort. Hvis en strekkode inneholder en femsifret Filament Code, legges koden inn som en klar rad eller vurderingsrad; hvis den bare inneholder en annen strekkodeverdi, blir råverdien stående synlig for manuell vurdering. Programmet viser hvilke rader som er klare og oppretter bare radene som har ett aktivt katalogtreff. Tvetydige, utgåtte, ugyldige eller manglende koder blir stående for manuell vurdering.
+Desktop/client har også en Filament Code-batchmodal i Bambu-flyten. Lim inn én kode per linje, bruk det lille skann/skriv-feltet for å legge til én oppdaget kode om gangen, legg til strekkodeverdier fra et stillbilde, eller la webkameraet stå på mens du viser Bambu-eskeetiketter én etter én. Live-skanning gir tilbakemelding i video-overlayet når en kode legges til, fortsetter å skanne etter neste etikett og unngår å gjenta samme synlige etikett før du flytter den bort. Hvis en strekkode inneholder en femsifret Filament Code, legges koden inn som en klar rad eller vurderingsrad; hvis den bare inneholder en annen strekkodeverdi, blir råverdien stående synlig for manuell vurdering. Programmet viser hvilke rader som er klare og oppretter rader med et klart katalogtreff, inkludert ett entydig utgått old-stock-treff. Tvetydige aktive treff, utgåtte koder med flere mulige katalograder, ugyldige koder eller manglende koder blir stående for manuell vurdering.
 
 Batch-opprettede Bambu-ruller bruker lagerdetaljene på høyre side av modalen, inkludert eierskap, eier/kontakt for Innlånt, vekt og plassering. Companion/webapp bruker samme kataloglogikk for manuelt kodeoppslag, men bruker ikke kamera eller webcam-scanning.
 

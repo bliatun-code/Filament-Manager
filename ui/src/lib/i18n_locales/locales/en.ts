@@ -363,6 +363,7 @@ export const enDictionary: DictionaryNode = {
       bambuBatchReadyShort: "ready",
       bambuBatchNeedsReview: "review",
       bambuBatchAmbiguous: "Choose manually",
+      bambuBatchChooseMatch: "Choose catalog row",
       bambuBatchNoMatch: "No match",
       bambuBatchNoCode: "No code",
       bambuBatchMoreRows: "more",
@@ -370,7 +371,7 @@ export const enDictionary: DictionaryNode = {
       bambuBatchBorrowedOwnerRequired:
         "Enter who the spools are borrowed from before creating this borrowed-in batch.",
       bambuBatchNoneReady:
-        "No rows are ready yet. Review ambiguous, discontinued or missing codes manually.",
+        "No rows are ready yet. Choose ambiguous or discontinued matches, or review missing codes manually.",
       bambuBatchPartialReady: "Only ready rows will be added; review rows are skipped.",
       bambuBatchAllReady: "All pasted codes are ready.",
       bambuBatchAddReady: "Add ready matches",
@@ -541,7 +542,7 @@ export const enDictionary: DictionaryNode = {
         manualNeedsFields: "Manual create needs filament name and color.",
         createSpool: "Failed to create spool. Check QR uniqueness and values.",
         bambuBatchEmpty:
-          "Paste at least one Bambu Filament Code with a single active catalog match.",
+          "Paste at least one Bambu Filament Code with a ready catalog match.",
         bambuBatchWrongMode:
           "Switch to Bambu source before creating a Filament Code batch.",
         createBambuBatch:

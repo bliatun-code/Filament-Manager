@@ -28,6 +28,7 @@ const norwegianMessages: Record<string, string> = {
   "inventory.bambuBatchAllReady": "Alle innlimte koder er klare.",
   "inventory.bambuBatchAddReady": "Legg til klare treff",
   "inventory.bambuBatchReadyShort": "kan legges til",
+  "inventory.bambuBatchChooseMatch": "Velg katalograd",
 };
 
 function i18nValue(locale: Locale = "en"): I18nContextValue {
@@ -69,12 +70,14 @@ function renderBatchModal(options: {
   input?: string;
   locale?: Locale;
   masters?: MasterCatalogRow[];
+  selectedMasterIds?: Record<string, string>;
 }) {
   const masters = options.masters ?? [master()];
   const input = options.input ?? "";
   const batch = buildBambuFilamentCodeBatch({
     masters,
     rawInput: input,
+    selectedMasterIds: options.selectedMasterIds,
   });
   const createState = buildBambuFilamentCodeBatchCreateState({
     batch,
@@ -96,6 +99,7 @@ function renderBatchModal(options: {
         onClose: () => {},
         onCreateBatch: () => {},
         onInputChange: () => {},
+        onRowSelectionChange: () => {},
         open: true,
         tauriAvailable: true,
       }),
@@ -115,6 +119,7 @@ test("InventoryBambuBatchModal owns batch controls without stock workflow side p
     /import\s+[\s\S]*from "\.\.\/lib\/bambu_filament_code_(?:camera|image)_scan"/,
   );
   assert.match(source, /bambuBatchCodeFieldClassName/);
+  assert.match(source, /bambuBatchRowSelectClassName/);
   assert.match(source, /bambuBatchSecondaryButtonClassName/);
   assert.match(source, /bambuBatchPanelClassName/);
   assert.match(source, /bambuBatchScanPanelClassName/);
@@ -213,4 +218,49 @@ test("InventoryBambuBatchModal keeps review rows visible before batch creation",
   assert.match(html, /Choose manually/);
   assert.match(html, /No match/);
   assert.match(html, /Only ready rows will be added; review rows are skipped/);
+  assert.match(html, /Choose catalog row/);
+});
+
+test("InventoryBambuBatchModal lets discontinued batch rows choose a catalog row", () => {
+  const masters = [
+    master({
+      id: "petg-old",
+      material: "PETG",
+      filament_name: "PETG Basic",
+      color_name: "Black (65103)",
+      hex_color: "#111111",
+      is_discontinued: true,
+    }),
+    master({
+      id: "pla-old",
+      material: "PLA",
+      filament_name: "PLA Basic",
+      color_name: "Black (65103)",
+      hex_color: "#000000",
+      is_discontinued: true,
+    }),
+  ];
+  const pending = buildBambuFilamentCodeBatch({ masters, rawInput: "65103" });
+  const rowKey = pending.rows[0]?.key;
+
+  assert.ok(rowKey);
+
+  const reviewHtml = renderBatchModal({
+    input: "65103",
+    masters,
+  });
+  const selectedHtml = renderBatchModal({
+    input: "65103",
+    masters,
+    selectedMasterIds: { [rowKey]: "petg-old" },
+  });
+
+  assert.match(reviewHtml, /0 ready/);
+  assert.match(reviewHtml, /1 review/);
+  assert.match(reviewHtml, /Choose manually/);
+  assert.match(reviewHtml, /Choose catalog row/);
+  assert.match(reviewHtml, /PLA Basic · Black \(65103\) · Discontinued/);
+  assert.match(selectedHtml, /1 ready/);
+  assert.doesNotMatch(selectedHtml, /1 review/);
+  assert.match(selectedHtml, /PETG Basic · Black \(65103\)/);
 });

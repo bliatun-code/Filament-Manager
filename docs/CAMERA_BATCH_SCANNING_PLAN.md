@@ -16,8 +16,9 @@ manual code lookup only.
 - Five digit Bambu Filament Code detection is the implemented baseline. OCR for
   full labels is a later, separate batch.
 - Never auto-create stock from ambiguous input. Reuse the existing catalog
-  decision rules: one active match can be created, multiple active matches and
-  discontinued-only matches require user review, and no-match stays manual.
+  decision rules: one active match or one discontinued-only old-stock match can
+  be created, multiple possible catalog rows require user review, and no-match
+  stays manual.
 
 ## Current Foundation
 
@@ -62,9 +63,9 @@ manual code lookup only.
 - The UI must show ready, review, and blocked rows exactly like manual batch
   input.
 - Borrowed-in batch creation must remain blocked until owner name is present.
-- Tests cover one active match, multiple active matches, discontinued-only, no
-  match, duplicate scans, native and fallback barcode decoding, mixed image
-  scans, and invalid non-code barcode values. Add new fixtures when OCR work
-  starts.
+- Tests cover one active match, multiple active matches, single and multiple
+  discontinued-only matches, no match, duplicate scans, native and fallback
+  barcode decoding, mixed image scans, and invalid non-code barcode values. Add
+  new fixtures when OCR work starts.
 - Companion tests must continue to assert that camera/webcam wording and flows
   are absent.

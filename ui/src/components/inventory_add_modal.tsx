@@ -61,6 +61,7 @@ export type InventoryAddModalProps = {
   onBorrowedFromNameChange: (value: string) => void;
   onBorrowedInNoteChange: (value: string) => void;
   onBambuBatchInputChange: (value: string) => void;
+  onBambuBatchRowSelectionChange: (rowKey: string, masterId: string | null) => void;
   onCatalogQueryChange: (value: string) => void;
   onClose: () => void;
   onCreateBambuCodeBatch: () => void;
@@ -126,6 +127,7 @@ export function InventoryAddModal({
   onBorrowedFromNameChange,
   onBorrowedInNoteChange,
   onBambuBatchInputChange,
+  onBambuBatchRowSelectionChange,
   onCatalogQueryChange,
   onClose,
   onCreateBambuCodeBatch,
@@ -326,6 +328,7 @@ export function InventoryAddModal({
           onClose={() => setBambuBatchModalOpen(false)}
           onCreateBatch={onCreateBambuCodeBatch}
           onInputChange={onBambuBatchInputChange}
+          onRowSelectionChange={onBambuBatchRowSelectionChange}
           open={bambuBatchModalOpen}
           tauriAvailable={tauriAvailable}
         />

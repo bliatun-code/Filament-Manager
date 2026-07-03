@@ -65,6 +65,9 @@ export function useInventoryCreateDraft(masters: MasterCatalogRow[]) {
   const [createMode, setCreateMode] = useState<InventoryCreateMode>("bambu");
   const [bambuCatalogQuery, setBambuCatalogQuery] = useState("");
   const [bambuBatchInput, setBambuBatchInput] = useState("");
+  const [bambuBatchSelections, setBambuBatchSelections] = useState<Record<string, string>>(
+    {},
+  );
   const [newBambuMasterId, setNewBambuMasterId] = useState("");
   const [newInitialWeight, setNewInitialWeight] = useState("");
   const [newLocation, setNewLocation] = useState("");
@@ -93,8 +96,13 @@ export function useInventoryCreateDraft(masters: MasterCatalogRow[]) {
   const bambuCodeRequiresExplicitSelection =
     bambuFilamentCodeLookupRequiresExplicitSelection(bambuCodeLookup);
   const bambuCodeBatch: BambuFilamentCodeBatch = useMemo(
-    () => buildBambuFilamentCodeBatch({ masters, rawInput: bambuBatchInput }),
-    [bambuBatchInput, masters],
+    () =>
+      buildBambuFilamentCodeBatch({
+        masters,
+        rawInput: bambuBatchInput,
+        selectedMasterIds: bambuBatchSelections,
+      }),
+    [bambuBatchInput, bambuBatchSelections, masters],
   );
   const selectedBambuMaster = useMemo(
     () =>
@@ -212,7 +220,23 @@ export function useInventoryCreateDraft(masters: MasterCatalogRow[]) {
 
   const resetBambuBatchInput = useCallback(() => {
     setBambuBatchInput("");
+    setBambuBatchSelections({});
   }, []);
+
+  const setBambuBatchRowSelection = useCallback(
+    (rowKey: string, masterId: string | null) => {
+      setBambuBatchSelections((current) => {
+        const next = { ...current };
+        if (masterId) {
+          next[rowKey] = masterId;
+        } else {
+          delete next[rowKey];
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   const handleCatalogQueryChange = useCallback(
     (value: string) => {
@@ -287,6 +311,7 @@ export function useInventoryCreateDraft(masters: MasterCatalogRow[]) {
     setBorrowedFromName,
     setBorrowedInNote,
     setBambuBatchInput,
+    setBambuBatchRowSelection,
     setCreateMode,
     setManualColorName,
     setManualFilamentName,

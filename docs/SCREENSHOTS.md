@@ -47,7 +47,8 @@ when a roll is not read automatically from a Bambu AMS.
 ### Batch Add From Bambu Boxes
 
 Batch entry lets you paste or scan several Bambu Filament Codes, review
-ambiguous/discontinued rows, and add all ready matches in one action.
+ambiguous rows, choose among discontinued old-stock matches when needed, and add
+all ready matches in one action.
 
 ![Bambu batch add](screenshots/bambu-batch-add.jpg)
 

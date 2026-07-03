@@ -281,10 +281,10 @@ In the Bambu source flow:
 
 - type or paste the code in the catalog search field to select one matching active catalog item
 - choose manually if the same code appears on several active catalog items
-- review discontinued-only matches before adding stock
+- add a single discontinued-only match as old stock, or choose the correct row when a discontinued code has several catalog matches
 - use manual entry if no catalog item uses the code yet
 
-Desktop/client also has a batch Filament Code modal in the Bambu flow. Paste one code per line, use the small scan/type field to append one detected code at a time, add barcode values from a still image, or keep the webcam running while you show Bambu box labels one after another. Live scanning gives feedback in the video overlay when a code is added, keeps scanning for the next label, and avoids repeating the same visible label until you move it away. If a barcode contains a five digit Filament Code, that code is added as a ready/review row; if it only contains another barcode value, that raw value stays visible for manual review. The app lists which rows are ready and only creates the rows with a single active catalog match. Ambiguous, discontinued-only, invalid, or missing codes stay visible for manual review.
+Desktop/client also has a batch Filament Code modal in the Bambu flow. Paste one code per line, use the small scan/type field to append one detected code at a time, add barcode values from a still image, or keep the webcam running while you show Bambu box labels one after another. Live scanning gives feedback in the video overlay when a code is added, keeps scanning for the next label, and avoids repeating the same visible label until you move it away. If a barcode contains a five digit Filament Code, that code is added as a ready/review row; if it only contains another barcode value, that raw value stays visible for manual review. The app lists which rows are ready and creates rows with a ready catalog match, including a single discontinued-only old-stock match. Ambiguous active matches, discontinued codes with several possible catalog rows, invalid codes, or missing codes stay visible for manual review.
 
 Batch-created Bambu spools use the stock details on the right side of the modal, including ownership, owner/contact fields for Borrowed in, weight, and location. Companion/webapp uses the same catalog matching rules for manual code lookup, but does not use camera or webcam scanning.
 

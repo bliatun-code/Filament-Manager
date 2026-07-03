@@ -31,6 +31,7 @@ type InventoryBambuBatchModalProps = {
   onClose: () => void;
   onCreateBatch: () => void;
   onInputChange: (value: string) => void;
+  onRowSelectionChange: (rowKey: string, masterId: string | null) => void;
   open: boolean;
   tauriAvailable: boolean;
 };
@@ -43,6 +44,8 @@ const bambuBatchCodeFieldClassName =
   "rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
 const bambuBatchSecondaryButtonClassName =
   "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-50 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+const bambuBatchRowSelectClassName =
+  "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 outline-none transition focus-visible:border-sky-300/70 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
 const bambuBatchPanelClassName =
   "rounded-2xl border border-slate-200/90 bg-white/72 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45";
 const bambuBatchScanPanelClassName = `shrink-0 p-3 ${bambuBatchPanelClassName}`;
@@ -78,7 +81,9 @@ function bambuBatchRowStatusLabel(
     return t("inventory.bambuBatchAmbiguous", "Choose manually");
   }
   if (row.lookup.status === "discontinued_only") {
-    return t("common.discontinued", "Discontinued");
+    return row.lookup.discontinuedMatches.length > 1
+      ? t("inventory.bambuBatchAmbiguous", "Choose manually")
+      : t("common.discontinued", "Discontinued");
   }
   if (row.lookup.status === "no_match") {
     return t("inventory.bambuBatchNoMatch", "No match");
@@ -102,6 +107,16 @@ function bambuBatchRowPreview(row: BambuFilamentCodeBatchRow): string {
     .map((master) => formatMasterDisplayTitle(master))
     .join(", ");
   return matches.length > 2 ? `${preview} +${matches.length - 2}` : preview;
+}
+
+function bambuBatchSelectionOptionLabel(
+  master: BambuFilamentCodeBatchRow["selectionMatches"][number],
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  const title = formatMasterDisplayTitle(master);
+  return master.is_discontinued
+    ? `${title} · ${t("common.discontinued", "Discontinued")}`
+    : title;
 }
 
 function bambuBatchCreateStateMessage(
@@ -279,6 +294,7 @@ function BambuFilamentCodeBatchPanel({
   input,
   onCreateBatch,
   onInputChange,
+  onRowSelectionChange,
   tauriAvailable,
 }: {
   batch: BambuFilamentCodeBatch;
@@ -287,6 +303,7 @@ function BambuFilamentCodeBatchPanel({
   input: string;
   onCreateBatch: () => void;
   onInputChange: (value: string) => void;
+  onRowSelectionChange: (rowKey: string, masterId: string | null) => void;
   tauriAvailable: boolean;
 }) {
   const { t } = useI18n();
@@ -854,18 +871,49 @@ function BambuFilamentCodeBatchPanel({
             <div className="mt-3 space-y-1.5">
               {visibleRows.map((row) => {
                 const ready = Boolean(row.master);
+                const selectable = row.selectionMatches.length > 1;
                 return (
                   <div
                     key={row.key}
                     className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white/75 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-950/55"
                   >
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="font-mono font-semibold text-slate-800 dark:text-slate-100">
                         {row.code ?? row.sourceText}
                       </div>
                       <div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-slate-500 dark:text-slate-400">
                         {bambuBatchRowPreview(row)}
                       </div>
+                      {selectable ? (
+                        <label className="mt-2 block">
+                          <span className="sr-only">
+                            {t(
+                              "inventory.bambuBatchChooseMatch",
+                              "Choose catalog row",
+                            )}
+                          </span>
+                          <select
+                            value={row.master?.id ?? ""}
+                            onChange={(event) =>
+                              onRowSelectionChange(row.key, event.currentTarget.value || null)
+                            }
+                            className={bambuBatchRowSelectClassName}
+                            disabled={!tauriAvailable}
+                          >
+                            <option value="">
+                              {t(
+                                "inventory.bambuBatchChooseMatch",
+                                "Choose catalog row",
+                              )}
+                            </option>
+                            {row.selectionMatches.map((master) => (
+                              <option key={master.id} value={master.id}>
+                                {bambuBatchSelectionOptionLabel(master, t)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
                     </div>
                     <span
                       className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-semibold ${
@@ -921,6 +969,7 @@ export function InventoryBambuBatchModal({
   onClose,
   onCreateBatch,
   onInputChange,
+  onRowSelectionChange,
   open,
   tauriAvailable,
 }: InventoryBambuBatchModalProps) {
@@ -975,6 +1024,7 @@ export function InventoryBambuBatchModal({
             input={input}
             onCreateBatch={onCreateBatch}
             onInputChange={onInputChange}
+            onRowSelectionChange={onRowSelectionChange}
             tauriAvailable={tauriAvailable}
           />
         </ModalBody>

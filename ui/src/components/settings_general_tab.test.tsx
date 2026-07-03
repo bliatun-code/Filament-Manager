@@ -54,6 +54,14 @@ test("SettingsGeneralTab exposes license and versioned source links", () => {
   assert.match(html, /Notices/);
   assert.match(html, /Product tour/);
   assert.match(html, /User manual/);
+  assert.match(
+    html,
+    /class="[^"]*border-slate-200[^"]*bg-white[^"]*text-slate-700[^"]*"[^>]*>Product tour/,
+  );
+  assert.doesNotMatch(
+    html,
+    /class="[^"]*border-indigo-200[^"]*bg-indigo-50[^"]*"[^>]*>Product tour/,
+  );
 });
 
 test("SettingsGeneralTab localizes license controls in Norwegian", () => {

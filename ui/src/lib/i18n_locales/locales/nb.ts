@@ -365,6 +365,7 @@ export const nbDictionary: DictionaryNode = {
       bambuBatchReadyShort: "kan legges til",
       bambuBatchNeedsReview: "til sjekk",
       bambuBatchAmbiguous: "Velg manuelt",
+      bambuBatchChooseMatch: "Velg katalograd",
       bambuBatchNoMatch: "Ingen treff",
       bambuBatchNoCode: "Ingen kode",
       bambuBatchMoreRows: "til",
@@ -372,7 +373,7 @@ export const nbDictionary: DictionaryNode = {
       bambuBatchBorrowedOwnerRequired:
         "Oppgi hvem filamentene er lånt fra før du oppretter denne innlånte batchen.",
       bambuBatchNoneReady:
-        "Ingen rader er klare ennå. Avklar tvetydige, utgåtte eller manglende koder manuelt.",
+        "Ingen rader er klare ennå. Velg tvetydige eller utgåtte treff, eller avklar manglende koder manuelt.",
       bambuBatchPartialReady:
         "Bare klare rader blir lagt til; rader til sjekk hoppes over.",
       bambuBatchAllReady: "Alle innlimte koder er klare.",
@@ -545,7 +546,7 @@ export const nbDictionary: DictionaryNode = {
         manualNeedsFields: "Manuell oppretting krever filamentnavn og farge.",
         createSpool: "Kunne ikke opprette filament. Sjekk QR-unikhet og verdier.",
         bambuBatchEmpty:
-          "Lim inn minst én Bambu Filament Code med ett aktivt katalogtreff.",
+          "Lim inn minst én Bambu Filament Code med et klart katalogtreff.",
         bambuBatchWrongMode:
           "Bytt til Bambu-kilde før du oppretter en Filament Code-batch.",
         createBambuBatch:

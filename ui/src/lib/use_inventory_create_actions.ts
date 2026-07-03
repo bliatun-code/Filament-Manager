@@ -152,7 +152,7 @@ export function useInventoryCreateActions({
       setError(
         t(
           "inventory.error.bambuBatchEmpty",
-          "Paste at least one Bambu Filament Code with a single active catalog match.",
+          "Paste at least one Bambu Filament Code with a ready catalog match.",
         ),
       );
     } else {

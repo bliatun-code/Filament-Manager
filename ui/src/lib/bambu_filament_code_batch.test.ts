@@ -85,12 +85,34 @@ test("buildBambuFilamentCodeBatch creates the active row when a code has discont
   assert.equal(batch.blockedRows.length, 0);
 });
 
-test("buildBambuFilamentCodeBatch blocks ambiguous, discontinued-only, missing, and invalid rows", () => {
+test("buildBambuFilamentCodeBatch creates single discontinued-only rows as old stock", () => {
+  const batch = buildBambuFilamentCodeBatch({
+    masters: [
+      master({
+        id: "old-black",
+        filament_name: "PETG Basic",
+        color_name: "Black (65103)",
+        is_discontinued: true,
+      }),
+    ],
+    rawInput: "65103",
+  });
+
+  assert.equal(batch.rows[0]?.lookup.status, "discontinued_only");
+  assert.deepEqual(
+    batch.creatableRows.map((row) => row.master?.id),
+    ["old-black"],
+  );
+  assert.equal(batch.blockedRows.length, 0);
+});
+
+test("buildBambuFilamentCodeBatch blocks ambiguous, multiple discontinued, missing, and invalid rows", () => {
   const batch = buildBambuFilamentCodeBatch({
     masters: [
       master({ id: "petg-black", material: "PETG", color_name: "Black (65103)" }),
       master({ id: "pla-black", material: "PLA", color_name: "Black (65103)" }),
-      master({ id: "old", color_name: "Old (12345)", is_discontinued: true }),
+      master({ id: "old-petg", material: "PETG", color_name: "Old (12345)", is_discontinued: true }),
+      master({ id: "old-pla", material: "PLA", color_name: "Old (12345)", is_discontinued: true }),
     ],
     rawInput: "65103\n12345\n99999\nnot a code",
   });
@@ -100,6 +122,51 @@ test("buildBambuFilamentCodeBatch blocks ambiguous, discontinued-only, missing, 
     batch.blockedRows.map((row) => row.lookup.status),
     ["multiple_active", "discontinued_only", "no_match", "no_code"],
   );
+});
+
+test("buildBambuFilamentCodeBatch creates a review row after a manual catalog selection", () => {
+  const masters = [
+    master({
+      id: "old-petg",
+      material: "PETG",
+      filament_name: "PETG Basic",
+      color_name: "Black (65103)",
+      is_discontinued: true,
+    }),
+    master({
+      id: "old-pla",
+      material: "PLA",
+      filament_name: "PLA Basic",
+      color_name: "Black (65103)",
+      is_discontinued: true,
+    }),
+  ];
+  const pending = buildBambuFilamentCodeBatch({
+    masters,
+    rawInput: "65103",
+  });
+  const rowKey = pending.rows[0]?.key;
+
+  assert.equal(pending.rows[0]?.lookup.status, "discontinued_only");
+  assert.deepEqual(
+    pending.rows[0]?.selectionMatches.map((match) => match.id),
+    ["old-petg", "old-pla"],
+  );
+  assert.equal(pending.creatableRows.length, 0);
+  assert.equal(pending.blockedRows.length, 1);
+  assert.ok(rowKey);
+
+  const selected = buildBambuFilamentCodeBatch({
+    masters,
+    rawInput: "65103",
+    selectedMasterIds: { [rowKey]: "old-petg" },
+  });
+
+  assert.deepEqual(
+    selected.creatableRows.map((row) => row.master?.id),
+    ["old-petg"],
+  );
+  assert.equal(selected.blockedRows.length, 0);
 });
 
 test("buildBambuFilamentCodeBatch blocks non-code barcode values", () => {

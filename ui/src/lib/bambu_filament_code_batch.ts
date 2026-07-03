@@ -12,6 +12,7 @@ export type BambuFilamentCodeBatchRow = {
   code: string | null;
   lookup: BambuFilamentCodeLookup;
   master: MasterCatalogRow | null;
+  selectionMatches: MasterCatalogRow[];
 };
 
 export type BambuFilamentCodeBatch = {
@@ -219,20 +220,33 @@ export function appendBambuFilamentCodeBatchScanValuesOnce(input: {
 export function buildBambuFilamentCodeBatch(input: {
   masters: MasterCatalogRow[];
   rawInput: string;
+  selectedMasterIds?: Readonly<Record<string, string>>;
 }): BambuFilamentCodeBatch {
   const rows = parseBambuFilamentCodeBatchEntries(input.rawInput).map((entry, index) => {
     const lookup = buildBambuFilamentCodeLookup(
       input.masters,
       entry.code ?? entry.sourceText,
     );
+    const key = `${index}-${entry.code ?? entry.sourceText}`;
+    const selectedMasterId = input.selectedMasterIds?.[key] ?? null;
+    const selectedMaster = selectedMasterId
+      ? lookup.matches.find((master) => master.id === selectedMasterId) ?? null
+      : null;
     const master =
-      lookup.status === "single_active" ? lookup.activeMatches[0] ?? null : null;
+      selectedMaster ??
+      (lookup.status === "single_active"
+        ? lookup.activeMatches[0] ?? null
+        : lookup.status === "discontinued_only" &&
+            lookup.discontinuedMatches.length === 1
+          ? lookup.discontinuedMatches[0] ?? null
+          : null);
     return {
-      key: `${index}-${entry.code ?? entry.sourceText}`,
+      key,
       sourceText: entry.sourceText,
       code: entry.code,
       lookup,
       master,
+      selectionMatches: lookup.matches.length > 1 ? lookup.matches : [],
     };
   });
   const creatableRows = rows.filter((row) => row.master);
