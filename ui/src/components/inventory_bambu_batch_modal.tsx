@@ -43,6 +43,10 @@ const bambuBatchCodeFieldClassName =
   "rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
 const bambuBatchSecondaryButtonClassName =
   "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-50 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/80 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+const bambuBatchPanelClassName =
+  "rounded-2xl border border-slate-200/90 bg-white/72 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45";
+const bambuBatchScanPanelClassName = `shrink-0 p-3 ${bambuBatchPanelClassName}`;
+const bambuBatchReviewPanelClassName = `flex min-h-0 flex-col ${bambuBatchPanelClassName}`;
 
 type BambuBatchCameraScanModule = typeof import("../lib/bambu_filament_code_camera_scan");
 type BambuBatchImageScanModule = typeof import("../lib/bambu_filament_code_image_scan");
@@ -666,7 +670,7 @@ function BambuFilamentCodeBatchPanel({
       className={`${inventoryTwoColumnModalGridClassName} min-h-0 overflow-y-auto overscroll-contain min-[900px]:h-full min-[900px]:overflow-hidden`}
     >
       <section className="flex min-h-0 flex-col gap-3 min-[900px]:overflow-hidden">
-        <div className="shrink-0 rounded-2xl border border-slate-200/90 bg-white/72 p-3 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45">
+        <div className={bambuBatchScanPanelClassName}>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
@@ -799,7 +803,7 @@ function BambuFilamentCodeBatchPanel({
         </div>
       </section>
 
-      <aside className="flex min-h-0 flex-col rounded-2xl border border-slate-200/90 bg-white/72 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45">
+      <aside className={bambuBatchReviewPanelClassName}>
         <div className="shrink-0 border-b border-slate-200/80 p-3 dark:border-slate-800/70">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>

@@ -116,6 +116,9 @@ test("InventoryBambuBatchModal owns batch controls without stock workflow side p
   );
   assert.match(source, /bambuBatchCodeFieldClassName/);
   assert.match(source, /bambuBatchSecondaryButtonClassName/);
+  assert.match(source, /bambuBatchPanelClassName/);
+  assert.match(source, /bambuBatchScanPanelClassName/);
+  assert.match(source, /bambuBatchReviewPanelClassName/);
   assert.match(source, /<ModalBody/);
   assert.match(source, /<ModalFooter/);
   assert.match(source, /scroll=\{false\}/);
@@ -130,6 +133,14 @@ test("InventoryBambuBatchModal owns batch controls without stock workflow side p
   assert.doesNotMatch(source, /shrink-0 border-t/);
   assert.doesNotMatch(source, /focus:border-slate-400/);
   assert.doesNotMatch(source, /rounded-xl border border-slate-900 bg-slate-900 px-3 py-2\.5/);
+  assert.doesNotMatch(
+    source,
+    /shrink-0 rounded-2xl border border-slate-200\/90 bg-white\/72 p-3/,
+  );
+  assert.doesNotMatch(
+    source,
+    /flex min-h-0 flex-col rounded-2xl border border-slate-200\/90 bg-white\/72/,
+  );
   assert.match(html, /Batch add from boxes/);
   assert.match(html, /Bambu boxes/);
   assert.match(html, /Batch Filament Codes/);

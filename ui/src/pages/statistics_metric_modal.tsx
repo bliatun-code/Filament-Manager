@@ -3,7 +3,6 @@ import { InventorySwatchChip } from "../components/inventory_swatch_chip";
 import { ModalHeader } from "../components/modal_chrome";
 import { modalPanelClassName } from "../components/modal_panel_class";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
-import { printerBrandSurfaceStyle } from "../lib/printer_branding";
 import {
   formatActiveSlotLabel,
   ownershipBadgeClass,
@@ -16,7 +15,11 @@ import {
 } from "../lib/statistics_model";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { PrinterOverviewRow } from "../lib/tauri_client";
-import { StatisticsEmptyState, SummaryMetricTile } from "./statistics_primitives";
+import {
+  StatisticsEmptyState,
+  StatisticsPrinterMetricCard,
+  SummaryMetricTile,
+} from "./statistics_primitives";
 import { statisticsFilterSelectClass } from "./statistics_view_helpers";
 
 export function StatisticsMetricDetailModal({
@@ -68,45 +71,35 @@ export function StatisticsMetricDetailModal({
         ) : (
           <div className="mt-4 max-h-[420px] space-y-3 overflow-auto pr-1">
             {loggedPrinterRows.map((row) => (
-              <div
+              <StatisticsPrinterMetricCard
                 key={row.printer.id}
-                className="rounded-2xl border p-4"
-                style={printerBrandSurfaceStyle(row.printer.model, "compact", resolvedTheme)}
+                printerName={row.printer.name}
+                printerModel={row.printer.model}
+                resolvedTheme={resolvedTheme}
+                metricsClassName="grid w-full grid-cols-2 gap-2 min-[960px]:w-auto min-[960px]:min-w-[18rem] min-[960px]:grid-cols-4"
               >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
-                      {row.printer.name}
-                    </div>
-                    <div className="truncate text-xs text-slate-500 dark:text-slate-400">
-                      {row.printer.model}
-                    </div>
-                  </div>
-                  <div className="grid w-full grid-cols-2 gap-2 min-[960px]:w-auto min-[960px]:min-w-[18rem] min-[960px]:grid-cols-4">
-                    <SummaryMetricTile
-                      label={t("printers.jobs", "Jobs")}
-                      value={row.usage.total_jobs.toString()}
-                      tone="sky"
-                    />
-                    <SummaryMetricTile
-                      label={t("printers.success", "Success")}
-                      value={row.usage.successful_jobs.toString()}
-                      tone="emerald"
-                    />
-                    <SummaryMetricTile
-                      label={t("printers.failed", "Failed")}
-                      value={row.usage.failed_jobs.toString()}
-                      tone="rose"
-                    />
-                    <SummaryMetricTile
-                      label={t("printers.used", "Used")}
-                      value={`${row.usage.total_used_g} g`}
-                      tone="amber"
-                      className="col-span-2 min-[960px]:col-span-1"
-                    />
-                  </div>
-                </div>
-              </div>
+                <SummaryMetricTile
+                  label={t("printers.jobs", "Jobs")}
+                  value={row.usage.total_jobs.toString()}
+                  tone="sky"
+                />
+                <SummaryMetricTile
+                  label={t("printers.success", "Success")}
+                  value={row.usage.successful_jobs.toString()}
+                  tone="emerald"
+                />
+                <SummaryMetricTile
+                  label={t("printers.failed", "Failed")}
+                  value={row.usage.failed_jobs.toString()}
+                  tone="rose"
+                />
+                <SummaryMetricTile
+                  label={t("printers.used", "Used")}
+                  value={`${row.usage.total_used_g} g`}
+                  tone="amber"
+                  className="col-span-2 min-[960px]:col-span-1"
+                />
+              </StatisticsPrinterMetricCard>
             ))}
           </div>
         )
@@ -125,34 +118,24 @@ export function StatisticsMetricDetailModal({
                   ? Math.round((row.usage.failed_jobs / row.usage.total_jobs) * 100)
                   : 0;
               return (
-                <div
+                <StatisticsPrinterMetricCard
                   key={row.printer.id}
-                  className="rounded-2xl border p-4"
-                  style={printerBrandSurfaceStyle(row.printer.model, "compact", resolvedTheme)}
+                  printerName={row.printer.name}
+                  printerModel={row.printer.model}
+                  resolvedTheme={resolvedTheme}
+                  metricsClassName="grid w-full grid-cols-2 gap-2 min-[960px]:w-auto min-[960px]:min-w-[12rem]"
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
-                        {row.printer.name}
-                      </div>
-                      <div className="truncate text-xs text-slate-500 dark:text-slate-400">
-                        {row.printer.model}
-                      </div>
-                    </div>
-                    <div className="grid w-full grid-cols-2 gap-2 min-[960px]:w-auto min-[960px]:min-w-[12rem]">
-                      <SummaryMetricTile
-                        label={t("printers.failed", "Failed")}
-                        value={row.usage.failed_jobs.toString()}
-                        tone="rose"
-                      />
-                      <SummaryMetricTile
-                        label={t("statistics.failureRate", "Failure rate")}
-                        value={`${failureRate}%`}
-                        tone="amber"
-                      />
-                    </div>
-                  </div>
-                </div>
+                  <SummaryMetricTile
+                    label={t("printers.failed", "Failed")}
+                    value={row.usage.failed_jobs.toString()}
+                    tone="rose"
+                  />
+                  <SummaryMetricTile
+                    label={t("statistics.failureRate", "Failure rate")}
+                    value={`${failureRate}%`}
+                    tone="amber"
+                  />
+                </StatisticsPrinterMetricCard>
               );
             })}
           </div>

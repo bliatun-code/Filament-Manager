@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import { InventorySwatchChip } from "../components/inventory_swatch_chip";
+import { printerBrandSurfaceStyle } from "../lib/printer_branding";
+import type { ResolvedTheme } from "../lib/theme_mode";
 
 type MetricTone = "slate" | "sky" | "emerald" | "amber" | "rose";
 
@@ -87,6 +89,39 @@ export function StatisticsFilamentUsageRowCard({
               {vendor}
             </div>
             {meta ? <div className="mt-2">{meta}</div> : null}
+          </div>
+        </div>
+        <div className={metricsClassName}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+export function StatisticsPrinterMetricCard({
+  children,
+  metricsClassName,
+  printerModel,
+  printerName,
+  resolvedTheme,
+}: {
+  children: ReactNode;
+  metricsClassName: string;
+  printerModel: string;
+  printerName: string;
+  resolvedTheme: ResolvedTheme;
+}) {
+  return (
+    <div
+      className="rounded-2xl border p-4"
+      style={printerBrandSurfaceStyle(printerModel, "compact", resolvedTheme)}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
+            {printerName}
+          </div>
+          <div className="truncate text-xs text-slate-500 dark:text-slate-400">
+            {printerModel}
           </div>
         </div>
         <div className={metricsClassName}>{children}</div>
