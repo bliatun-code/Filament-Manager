@@ -8,6 +8,7 @@ import { inlineStatusSignalClass } from "../lib/chip_styles";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import {
   SettingsMetricTile,
+  SettingsNotice,
   SettingsSectionBody,
   SettingsSectionControls,
   SettingsSectionEmptyState,
@@ -131,12 +132,12 @@ export function SettingsMissingSwatchesPanel({
             </button>
           </div>
           {confirmBulkSwatch ? (
-            <div className="mt-3 rounded-xl border border-indigo-200/80 bg-indigo-50/80 px-3 py-2 text-xs text-indigo-700 dark:border-indigo-400/30 dark:bg-indigo-500/10 dark:text-indigo-200">
+            <SettingsNotice className="mt-3" tone="info">
               {t(
                 "settings.confirmBulkSwatchTapAgain",
                 "Click Auto-fill visible missing swatches again to confirm.",
               )}
-            </div>
+            </SettingsNotice>
           ) : null}
         </SettingsSectionControls>
 

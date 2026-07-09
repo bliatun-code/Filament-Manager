@@ -1,5 +1,6 @@
 import {
   SettingsMetricTile,
+  SettingsNotice,
   SettingsSectionBody,
   SettingsSectionControls,
   SettingsSectionHeader,
@@ -99,12 +100,12 @@ export function SettingsCatalogRefreshPanel({
         }
       >
         {settingsClientReadOnly ? (
-          <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-900 dark:text-sky-100">
+          <SettingsNotice className="mt-3" tone="info">
             {t(
               "settings.catalogRefreshClientHostOnly",
               "Vendor catalog updates run on the host. This client still shows the host catalog and can save swatch fixes there.",
             )}
-          </div>
+          </SettingsNotice>
         ) : null}
       </SettingsSectionHeader>
 

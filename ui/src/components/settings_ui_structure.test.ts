@@ -47,6 +47,7 @@ test("Settings UI primitives use shared section label typography", () => {
 
 test("settings section chrome is owned by shared primitives", () => {
   for (const exportName of [
+    "SettingsNotice",
     "SettingsSectionPanel",
     "SettingsSectionHeader",
     "SettingsSectionBody",
@@ -59,6 +60,7 @@ test("settings section chrome is owned by shared primitives", () => {
   assert.match(source, /surface-subtle overflow-hidden p-0/);
   assert.match(source, /border-b border-slate-200\/80 px-5 py-5/);
   assert.match(source, /rounded-lg border border-slate-200 bg-white\/75 p-4/);
+  assert.match(source, /settingsNoticeToneClassNames/);
 });
 
 test("settings top-level tabs use the shared surface card primitive", () => {
@@ -94,11 +96,16 @@ test("settings catalog and maintenance panels use shared section chrome", () => 
     assert.match(panelSource, /SettingsSectionPanel/);
     assert.match(panelSource, /SettingsSectionHeader/);
     assert.match(panelSource, /SettingsSectionBody/);
+    assert.match(panelSource, /SettingsNotice/);
     assert.doesNotMatch(panelSource, /surface-subtle mt-[46] overflow-hidden p-0/);
     assert.doesNotMatch(panelSource, /border-b border-slate-200\/80 px-5 py-5/);
     assert.doesNotMatch(
       panelSource,
       /rounded-lg border border-slate-200 bg-white\/75 p-4 shadow-sm/,
+    );
+    assert.doesNotMatch(
+      panelSource,
+      /rounded-lg border border-sky-500\/30 bg-sky-500\/10 px-3 py-2 text-xs font-medium/,
     );
   }
 });

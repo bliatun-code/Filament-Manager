@@ -2,6 +2,7 @@ import type { ChangeEvent, RefObject } from "react";
 import { SettingsBackupValidationSummary } from "./settings_backup_validation_summary";
 import {
   SettingsMetricTile,
+  SettingsNotice,
   SettingsSectionBody,
   SettingsSectionControls,
   SettingsSectionHeader,
@@ -98,12 +99,12 @@ export function SettingsMaintenanceTab({
           }
         >
           {settingsClientReadOnly ? (
-            <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-900 dark:text-sky-100">
+            <SettingsNotice className="mt-3" tone="info">
               {t(
                 "settings.clientHostOnlyMaintenance",
                 "This device is a client. Full backup is exported from the paired host. Import, reset and repair actions must still be run on the host so library data stays in one place.",
               )}
-            </div>
+            </SettingsNotice>
           ) : null}
         </SettingsSectionHeader>
 
@@ -265,11 +266,11 @@ export function SettingsMaintenanceTab({
         </div>
       </div>
       {lastCatalogReset ? (
-        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200">
+        <SettingsNotice className="mt-4" tone="neutral">
           {t("settings.removed", "Removed")}: {lastCatalogReset.removed_count} /{" "}
           {t("settings.remaining", "Remaining")}: {lastCatalogReset.remaining_count} /{" "}
           {t("settings.reactivated", "Reactivated")}: {lastCatalogReset.reactivated_count}
-        </div>
+        </SettingsNotice>
       ) : null}
     </SettingsSurfaceCard>
   );

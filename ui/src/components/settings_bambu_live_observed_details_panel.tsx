@@ -16,6 +16,7 @@ import { SettingsBambuLiveCapturedFieldsPanel } from "./settings_bambu_live_capt
 import { SettingsBambuLiveDiagnosticsSummary } from "./settings_bambu_live_diagnostics_summary";
 import { SettingsBambuLiveRawPayloadPanel } from "./settings_bambu_live_raw_payload_panel";
 import { SettingsBambuLiveTrayCards } from "./settings_bambu_live_tray_cards";
+import { SettingsNotice } from "./settings_ui";
 
 type SettingsBambuLiveObservedDetailsPanelProps = {
   captureActive: boolean;
@@ -97,17 +98,17 @@ export function SettingsBambuLiveObservedDetailsPanel({
             {observedSummaryParts.join(" · ") || fallbackSummaryParts.join(" · ") || "—"}
           </div>
           {statusNote ? (
-            <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+            <SettingsNotice density="compact" tone="warning">
               {statusNote}
-            </div>
+            </SettingsNotice>
           ) : null}
           {amsReadInProgress ? (
-            <div className="rounded border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] text-sky-800 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-200">
+            <SettingsNotice density="compact" tone="info">
               {t(
                 "settings.bambuLiveAmsReading",
                 "AMS refresh in progress. RFID and tray matching can look temporarily uncertain until reading finishes.",
               )}
-            </div>
+            </SettingsNotice>
           ) : null}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/60">
             <div className="text-[11px] text-slate-600 dark:text-slate-300">
