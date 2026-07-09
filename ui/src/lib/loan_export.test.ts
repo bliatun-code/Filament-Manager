@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buildLoansCsv } from "./loan_export";
+import { normalizeLoanDetailsRow } from "./loan_row_normalization";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
 
 const rows: SpoolLoanDetailsRow[] = [
@@ -49,7 +50,7 @@ const rows: SpoolLoanDetailsRow[] = [
 
 test("buildLoansCsv matches the desktop loan export columns and escaping", () => {
   assert.equal(
-    buildLoansCsv(rows),
+    buildLoansCsv(rows.map(normalizeLoanDetailsRow)),
     [
       "loan_id,spool_id,direction,counterparty,grams_out,lent_at,returned_at,returned_grams,consumed_grams,material,filament,color,vendor,status",
       'loan-1,spool-1,OUTBOUND,"Erik ""Workshop""",1000,2026-06-20T10:00:00Z,,0,0,PLA,Basic,"Blue, Clear",Bambu,LOANED_OUT',
@@ -60,7 +61,7 @@ test("buildLoansCsv matches the desktop loan export columns and escaping", () =>
 });
 
 test("buildLoansCsv can export one loan direction from loaded host rows", () => {
-  const csv = buildLoansCsv(rows, "INBOUND");
+  const csv = buildLoansCsv(rows.map(normalizeLoanDetailsRow), "INBOUND");
   assert.match(csv, /loan-2/);
   assert.doesNotMatch(csv, /loan-1/);
 });
@@ -75,7 +76,7 @@ test("buildLoansCsv normalizes legacy loan direction values before export", () =
     },
   };
 
-  const csv = buildLoansCsv([legacyRow], "INBOUND");
+  const csv = buildLoansCsv([normalizeLoanDetailsRow(legacyRow)], "INBOUND");
 
   assert.match(csv, /loan-2,spool-2,INBOUND/);
   assert.equal(legacyRow.loan.loan_direction, "in-bound");

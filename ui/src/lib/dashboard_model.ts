@@ -6,14 +6,13 @@ import {
   isSpoolStatusEmptyOrLost,
   isSpoolStatusOnHand,
 } from "./inventory_domain";
-import { normalizeLoanDetailsRow } from "./loan_row_normalization";
+import type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import { isActiveOutboundLoan } from "./loan_state";
 import { summarizeEffectivePrinterSlots } from "./printer_profiles";
 import type {
   InventoryOverview,
   MaterialUsageRow,
   PrinterOverviewRow,
-  SpoolLoanDetailsRow,
   SpoolWithMasterRow,
   WishlistItemRow,
 } from "./tauri_client";
@@ -221,13 +220,13 @@ export function buildDashboardDerivedState(params: {
   overview: InventoryOverview;
   printers: PrinterOverviewRow[];
   spoolRows: SpoolWithMasterRow[];
-  loans: SpoolLoanDetailsRow[];
+  loans: NormalizedLoanDetailsRow[];
   wishlist: WishlistItemRow[];
   materialRows?: MaterialUsageRow[] | null;
   t: TranslateFn;
 }): DashboardDerivedState {
   const { overview, printers, spoolRows, loans, wishlist, materialRows, t } = params;
-  const activeLoans = loans.map(normalizeLoanDetailsRow).filter(isActiveOutboundLoan);
+  const activeLoans = loans.filter(isActiveOutboundLoan);
   const printerCount = printers.length;
   const effectiveSlotTotals = printers.reduce(
     (sum, printer) => {

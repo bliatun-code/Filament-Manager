@@ -5,6 +5,7 @@ import {
   buildDashboardCompanionPresentation,
   buildDashboardDerivedState,
 } from "./dashboard_model";
+import { normalizeLoanDetailsRow, type NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import type {
   InventoryOverview,
   PrinterOverviewRow,
@@ -86,8 +87,8 @@ function loanRow(
   spoolId: string,
   overrides: Partial<SpoolLoanDetailsRow> = {},
   loanOverrides: Partial<SpoolLoanDetailsRow["loan"]> = {},
-): SpoolLoanDetailsRow {
-  return {
+): NormalizedLoanDetailsRow {
+  return normalizeLoanDetailsRow({
     loan: {
       id: `loan-${spoolId}`,
       spool_id: spoolId,
@@ -116,7 +117,7 @@ function loanRow(
     vendor: "Bambu",
     hex_color: "#1f6feb",
     ...overrides,
-  };
+  });
 }
 
 test("buildDashboardBadges clamps progress and formats status copy", () => {

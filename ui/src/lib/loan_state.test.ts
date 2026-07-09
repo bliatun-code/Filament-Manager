@@ -11,9 +11,10 @@ import {
 } from "./loan_state";
 import { groupLoanUsageByPerson } from "./statistics_data_source";
 import { groupedLoanUsage } from "./statistics_model";
+import { normalizeLoanDetailsRow, type NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
 
-function loanRow(
+function rawLoanRow(
   spoolId: string,
   overrides: Partial<SpoolLoanDetailsRow> = {},
 ): SpoolLoanDetailsRow {
@@ -47,6 +48,13 @@ function loanRow(
       ...overrides.loan,
     },
   };
+}
+
+function loanRow(
+  spoolId: string,
+  overrides: Partial<SpoolLoanDetailsRow> = {},
+): NormalizedLoanDetailsRow {
+  return normalizeLoanDetailsRow(rawLoanRow(spoolId, overrides));
 }
 
 test("isLoanCurrentlyActive ignores legacy active rows for deleted spools", () => {

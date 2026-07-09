@@ -20,6 +20,7 @@ import {
   type DashboardDerivedState,
 } from "./dashboard_model";
 import { deriveInventoryOverviewFromRows } from "./statistics_model";
+import { normalizeActiveLoanRow, normalizeLoanDetailsRow } from "./loan_row_normalization";
 import { loadAllSpoolRows } from "./spool_data_source";
 import { resolveClientHostTarget } from "./host_write_target";
 import { firstDefinedTimestamp } from "./source_timestamps";
@@ -271,7 +272,7 @@ export async function loadDashboardData(
         overview: clientOverview ?? emptyInventoryOverview(),
         printers: clientPrinterRows ?? [],
         spoolRows: clientSpoolRows ?? [],
-        loans: clientLoanRows ?? [],
+        loans: (clientLoanRows ?? []).map(normalizeLoanDetailsRow),
         wishlist: clientWishlistRows,
         materialRows: null,
         t: params.t,
@@ -304,7 +305,7 @@ export async function loadDashboardData(
       overview,
       printers,
       spoolRows,
-      loans,
+      loans: loans.map(normalizeActiveLoanRow),
       wishlist,
       materialRows,
       t: params.t,
