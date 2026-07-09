@@ -36,6 +36,10 @@ import type {
   MasterCatalogRow,
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
+import {
+  normalizeSpoolWithMasterRow,
+  type NormalizedSpoolWithMasterRow,
+} from "../lib/spool_row_normalization";
 
 const t = (_key: string, fallback: string) => fallback;
 const formatDateTime = (value: string) => `formatted:${value}`;
@@ -126,13 +130,13 @@ function createSpoolRow(
     master?: Partial<SpoolWithMasterRow["master"]>;
     spool?: Partial<SpoolWithMasterRow["spool"]>;
   } = {},
-): SpoolWithMasterRow {
-  return {
+): NormalizedSpoolWithMasterRow {
+  return normalizeSpoolWithMasterRow({
     spool: {
       id: "spool-1",
       master_id: "master-1",
       rfid_tag: "ABC123",
-      status: "IN_STOCK",
+      status: "IN_USE",
       ...overrides.spool,
     },
     master: {
@@ -145,7 +149,7 @@ function createSpoolRow(
       vendor: "Bambu",
       ...overrides.master,
     },
-  };
+  });
 }
 
 function createCatalogRow(overrides: Partial<MasterCatalogRow> = {}): MasterCatalogRow {

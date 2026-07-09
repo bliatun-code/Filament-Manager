@@ -25,8 +25,8 @@ import type {
   BambuLiveObservedState,
   MasterCatalogRow,
   PrinterAmsSlotRow,
-  SpoolWithMasterRow,
 } from "../lib/tauri_client";
+import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import {
   buildSettingsBambuLiveDiagnosticTrayCards,
   formatSettingsBambuLiveSummaryTrayIndexLabel,
@@ -63,7 +63,7 @@ type BuildSettingsBambuLiveDiagnosticsModelInput = {
   liveConfig: BambuLiveIntegrationSettings | null;
   printerSlots?: PrinterAmsSlotRow[];
   selectedChartFieldPath?: string | null;
-  spoolRows: SpoolWithMasterRow[];
+  spoolRows: NormalizedSpoolWithMasterRow[];
   t: TranslateFn;
 };
 

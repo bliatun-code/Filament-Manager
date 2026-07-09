@@ -31,8 +31,8 @@ import type {
   BambuLiveObservedTray,
   MasterCatalogRow,
   PrinterAmsSlotRow,
-  SpoolWithMasterRow,
 } from "../lib/tauri_client";
+import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -41,7 +41,7 @@ type BuildSettingsBambuLiveDiagnosticTrayCardInput = {
   catalogRows?: MasterCatalogRow[];
   capturedTraySnapshot: DiagnosticTraySnapshot | null;
   printerSlots?: PrinterAmsSlotRow[];
-  spoolRows: SpoolWithMasterRow[];
+  spoolRows: NormalizedSpoolWithMasterRow[];
   t: TranslateFn;
   tray: BambuLiveObservedTray;
 };
@@ -52,7 +52,7 @@ type BuildSettingsBambuLiveDiagnosticTrayCardsInput = {
   captureTrayByKey: Map<string, DiagnosticTraySnapshot>;
   displayTrays: BambuLiveObservedTray[];
   printerSlots?: PrinterAmsSlotRow[];
-  spoolRows: SpoolWithMasterRow[];
+  spoolRows: NormalizedSpoolWithMasterRow[];
   t: TranslateFn;
 };
 
@@ -115,7 +115,7 @@ export function buildSettingsBambuLiveInventoryCandidateCards({
   candidates,
   t,
 }: {
-  candidates: SpoolWithMasterRow[];
+  candidates: NormalizedSpoolWithMasterRow[];
   t: TranslateFn;
 }) {
   return candidates.slice(0, 3).map((candidate) => {
@@ -307,7 +307,7 @@ export function buildSettingsBambuLiveInventoryMatchPresentation({
 }: {
   capturedTraySnapshot: DiagnosticTraySnapshot | null;
   primaryCatalogMatch?: MasterCatalogRow | null;
-  primaryInventoryMatch: SpoolWithMasterRow | null;
+  primaryInventoryMatch: NormalizedSpoolWithMasterRow | null;
   t: TranslateFn;
   tray: BambuLiveObservedTray;
 }) {

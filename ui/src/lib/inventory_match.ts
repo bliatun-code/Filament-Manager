@@ -8,11 +8,11 @@ import {
 } from "./inventory_domain";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
-export type InventoryMatchResult =
-  | { kind: "rfid_exact"; candidates: SpoolWithMasterRow[] }
-  | { kind: "metadata_single"; candidates: SpoolWithMasterRow[] }
-  | { kind: "metadata_multiple"; candidates: SpoolWithMasterRow[] }
-  | { kind: "none"; candidates: SpoolWithMasterRow[] };
+export type InventoryMatchResult<Row extends SpoolWithMasterRow = SpoolWithMasterRow> =
+  | { kind: "rfid_exact"; candidates: Row[] }
+  | { kind: "metadata_single"; candidates: Row[] }
+  | { kind: "metadata_multiple"; candidates: Row[] }
+  | { kind: "none"; candidates: Row[] };
 
 export type ObservedInventoryMatchInput = {
   rfid?: string | null;
@@ -51,9 +51,11 @@ export type InventoryMatchOptions = {
   requireObservedMaterialFamily?: boolean;
 };
 
-export type BambuUnknownRfidInventoryDecision = {
-  strictInventoryMatch: InventoryMatchResult;
-  suggestedInventoryMatch: InventoryMatchResult;
+export type BambuUnknownRfidInventoryDecision<
+  Row extends SpoolWithMasterRow = SpoolWithMasterRow,
+> = {
+  strictInventoryMatch: InventoryMatchResult<Row>;
+  suggestedInventoryMatch: InventoryMatchResult<Row>;
 };
 
 const LIVE_COLOR_MATCH_DISTANCE = 48;
@@ -421,10 +423,10 @@ function metadataCandidateScore({
   return score;
 }
 
-function sortMetadataCandidates(
-  candidates: SpoolWithMasterRow[],
+function sortMetadataCandidates<Row extends SpoolWithMasterRow>(
+  candidates: Row[],
   scoreById: Map<string, number>,
-): SpoolWithMasterRow[] {
+): Row[] {
   return [...candidates].sort((left, right) => {
     const scoreDelta = (scoreById.get(right.spool.id) ?? 0) - (scoreById.get(left.spool.id) ?? 0);
     if (scoreDelta !== 0) {
@@ -449,11 +451,11 @@ function formatSettingsPresetSignal(
   }) ?? presetSignal;
 }
 
-export function buildInventoryMatchResult(
-  spoolRows: SpoolWithMasterRow[],
+export function buildInventoryMatchResult<Row extends SpoolWithMasterRow>(
+  spoolRows: Row[],
   observed: ObservedInventoryMatchInput,
   options: InventoryMatchOptions = {},
-): InventoryMatchResult {
+): InventoryMatchResult<Row> {
   const activeRows = spoolRows.filter(isExactRfidInventoryRow);
 
   const normalizedObservedRfid =
@@ -529,19 +531,19 @@ export function buildInventoryMatchResult(
   return { kind: "none", candidates: [] };
 }
 
-export function buildInventoryMetadataCandidateResult(
-  spoolRows: SpoolWithMasterRow[],
+export function buildInventoryMetadataCandidateResult<Row extends SpoolWithMasterRow>(
+  spoolRows: Row[],
   observed: ObservedInventoryMatchInput,
   options: InventoryMatchOptions = {},
-): InventoryMatchResult {
+): InventoryMatchResult<Row> {
   return buildInventoryMatchResult(spoolRows, { ...observed, rfid: null }, options);
 }
 
-export function buildBambuUnknownRfidInventoryDecision(
-  spoolRows: SpoolWithMasterRow[],
+export function buildBambuUnknownRfidInventoryDecision<Row extends SpoolWithMasterRow>(
+  spoolRows: Row[],
   observed: ObservedInventoryMatchInput,
   options: InventoryMatchOptions & { enableMetadataCandidates?: boolean } = {},
-): BambuUnknownRfidInventoryDecision {
+): BambuUnknownRfidInventoryDecision<Row> {
   const strictInventoryMatch = buildInventoryMatchResult(spoolRows, observed, {
     preferredSpoolId: options.preferredSpoolId,
   });
