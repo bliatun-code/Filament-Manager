@@ -5,6 +5,7 @@ import {
   buildLoanableSpoolCandidates,
   loadLoanableSpoolCandidates,
 } from "./loan_out_data_source";
+import { normalizeSpoolWithMasterRows } from "./spool_row_normalization";
 import type { PrinterOverviewRow, SpoolWithMasterRow } from "./tauri_client";
 
 function spoolRow(
@@ -81,12 +82,12 @@ function printerOverview(assignedSpoolId: string | null): PrinterOverviewRow[] {
 
 test("buildLoanableSpoolCandidates skips assigned, borrowed-in, and unavailable spools", () => {
   const candidates = buildLoanableSpoolCandidates(
-    [
+    normalizeSpoolWithMasterRows([
       spoolRow("spool-a"),
       spoolRow("spool-b", { status: "in-stock" }),
-      spoolRow("spool-c", { ownership_type: "BORROWED_IN" }),
+      spoolRow("spool-c", { ownership_type: "borrowed-in" }),
       spoolRow("spool-d", { status: "EMPTY" }),
-    ],
+    ]),
     printerOverview("spool-a"),
   );
 

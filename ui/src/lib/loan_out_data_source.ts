@@ -2,14 +2,16 @@ import { fetchCachedLibrarySyncSpools } from "./tauri_client";
 import {
   isBorrowedInOwnership,
   isSpoolStatusLoanable,
-  normalizeOwnershipType,
-  normalizeSpoolStatus,
   type SpoolStatus,
 } from "./inventory_domain";
 import { loadPrinterOverviewData } from "./printer_data_source";
 import { loadSpoolRowsPage } from "./spool_data_source";
 import { sortSpoolsAlphabetically } from "./spool_sort";
-import type { PrinterOverviewRow, SpoolWithMasterRow } from "./tauri_client";
+import {
+  normalizeSpoolWithMasterRows,
+  type NormalizedSpoolWithMasterRow,
+} from "./spool_row_normalization";
+import type { PrinterOverviewRow } from "./tauri_client";
 
 type LoanOutDataSourceOptions = {
   clientReadOnly: boolean;
@@ -47,21 +49,20 @@ function collectAssignedSpoolIds(printers: PrinterOverviewRow[]): Set<string> {
 }
 
 export function buildLoanableSpoolCandidates(
-  spoolRows: SpoolWithMasterRow[],
+  spoolRows: NormalizedSpoolWithMasterRow[],
   printerOverview: PrinterOverviewRow[],
 ): LoanableSpool[] {
   const assignedSpoolIds = collectAssignedSpoolIds(printerOverview);
 
   return sortSpoolsAlphabetically(spoolRows)
     .filter((row) => {
-      const ownershipType = normalizeOwnershipType(row.spool.ownership_type);
       if (assignedSpoolIds.has(row.spool.id)) {
         return false;
       }
-      if (isBorrowedInOwnership(ownershipType)) {
+      if (isBorrowedInOwnership(row.spool.ownership_type)) {
         return false;
       }
-      return isSpoolStatusLoanable(row.spool.status);
+      return isSpoolStatusLoanable(row.spool.normalized_status);
     })
     .map((row) => ({
       id: row.spool.id,
@@ -70,7 +71,7 @@ export function buildLoanableSpoolCandidates(
       filamentName: row.master.filament_name,
       colorName: row.master.color_name,
       hexColor: row.master.hex_color ?? null,
-      status: normalizeSpoolStatus(row.spool.status),
+      status: row.spool.normalized_status ?? "IN_STOCK",
       remainingGrams: row.spool.remaining_g ?? row.spool.current_weight_g ?? null,
       spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
       location: row.spool.location_id ?? null,
@@ -97,5 +98,8 @@ export async function loadLoanableSpoolCandidates(
     loadPrinterOverview(options),
   ]);
 
-  return buildLoanableSpoolCandidates(spoolRows, printerOverview.printers);
+  return buildLoanableSpoolCandidates(
+    normalizeSpoolWithMasterRows(spoolRows),
+    printerOverview.printers,
+  );
 }
