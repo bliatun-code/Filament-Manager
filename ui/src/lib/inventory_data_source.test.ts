@@ -6,6 +6,7 @@ import {
   loadInventorySpools,
   mapSpoolRowToInventorySpool,
 } from "./inventory_data_source";
+import { normalizeSpoolWithMasterRow } from "./spool_row_normalization";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
 function spoolRow(
@@ -53,10 +54,11 @@ function spoolRow(
 }
 
 test("mapSpoolRowToInventorySpool normalizes spool rows for the inventory page", () => {
-  const mapped = mapSpoolRowToInventorySpool(
+  const row = normalizeSpoolWithMasterRow(
     spoolRow(
       "spool-1",
       {
+        status: "IN_USE",
         initial_weight_g: 750,
         remaining_g: 420,
         ownership_type: "BORROWED_IN",
@@ -67,8 +69,11 @@ test("mapSpoolRowToInventorySpool normalizes spool rows for the inventory page",
       { default_weight: 900 },
     ),
   );
+  row.spool.status = "IN_STOCK";
+  const mapped = mapSpoolRowToInventorySpool(row);
 
   assert.equal(mapped.id, "spool-1");
+  assert.equal(mapped.status, "ASSIGNED");
   assert.equal(mapped.initialWeightGrams, 750);
   assert.equal(mapped.remainingGrams, 420);
   assert.equal(mapped.ownershipType, "BORROWED_IN");
@@ -96,7 +101,7 @@ test("loadInventorySpools reports live client rows with cached snapshot timestam
   const result = await loadInventorySpools(
     { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
     {
-      loadRowsPage: async () => [spoolRow("live-spool")],
+      loadRowsPage: async () => [spoolRow("live-spool", { status: "IN_USE" })],
       fetchCachedSpools: async () => ({
         captured_at: "2026-04-01 10:00:00",
         rows: [spoolRow("cached-spool")],
@@ -108,6 +113,7 @@ test("loadInventorySpools reports live client rows with cached snapshot timestam
   assert.equal(result.usedFallback, false);
   assert.equal(result.updatedAt, "2026-04-01 10:00:00");
   assert.deepEqual(result.rows.map((row) => row.id), ["live-spool"]);
+  assert.equal(result.rows[0]?.status, "ASSIGNED");
 });
 
 test("loadInventorySpools falls back to cached client rows when host load fails", async () => {
@@ -119,7 +125,7 @@ test("loadInventorySpools falls back to cached client rows when host load fails"
       },
       fetchCachedSpools: async () => ({
         captured_at: "2026-04-01 11:00:00",
-        rows: [spoolRow("cached-spool")],
+        rows: [spoolRow("cached-spool", { status: "loaned out" })],
       }),
     },
   );
@@ -128,6 +134,7 @@ test("loadInventorySpools falls back to cached client rows when host load fails"
   assert.equal(result.usedFallback, true);
   assert.equal(result.updatedAt, "2026-04-01 11:00:00");
   assert.deepEqual(result.rows.map((row) => row.id), ["cached-spool"]);
+  assert.equal(result.rows[0]?.status, "BORROWED");
 });
 
 test("loadInventorySpools reports offline when client host and cache are unavailable", async () => {

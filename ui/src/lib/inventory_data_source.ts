@@ -8,13 +8,14 @@ import {
   type SpoolUsagePointRow,
   type SpoolWithMasterRow,
 } from "./tauri_client";
-import {
-  normalizeOwnershipType,
-  normalizeStatus,
-  type InventorySpool,
-} from "./inventory_list_model";
+import { type InventorySpool } from "./inventory_list_model";
 import { loadSpoolRowsPage } from "./spool_data_source";
 import { resolveClientHostTarget } from "./host_write_target";
+import {
+  normalizeSpoolWithMasterRow,
+  normalizeSpoolWithMasterRows,
+  type NormalizedSpoolWithMasterRow,
+} from "./spool_row_normalization";
 
 export type InventorySnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
 
@@ -53,36 +54,51 @@ type InventorySpoolDetailDependencies = {
   listLocalUsage?: typeof listSpoolUsage;
 };
 
+function isNormalizedSpoolWithMasterRow(
+  row: SpoolWithMasterRow,
+): row is NormalizedSpoolWithMasterRow {
+  return "normalized_status" in row.spool;
+}
+
+function normalizeInventorySpoolRow(row: SpoolWithMasterRow): NormalizedSpoolWithMasterRow {
+  return isNormalizedSpoolWithMasterRow(row) ? row : normalizeSpoolWithMasterRow(row);
+}
+
+function mapSpoolRowsToInventorySpools(rows: SpoolWithMasterRow[]): InventorySpool[] {
+  return normalizeSpoolWithMasterRows(rows).map(mapSpoolRowToInventorySpool);
+}
+
 export function mapSpoolRowToInventorySpool(row: SpoolWithMasterRow): InventorySpool {
+  const normalizedRow = normalizeInventorySpoolRow(row);
   const fallbackInitial =
-    Number.isFinite(row.master.default_weight) && row.master.default_weight > 0
-      ? row.master.default_weight
+    Number.isFinite(normalizedRow.master.default_weight) && normalizedRow.master.default_weight > 0
+      ? normalizedRow.master.default_weight
       : 1000;
 
   return {
-    id: row.spool.id,
-    masterId: row.spool.master_id,
-    vendor: row.master.vendor,
-    material: row.master.material,
-    filamentName: row.master.filament_name,
-    colorName: row.master.color_name,
-    hexColor: row.master.hex_color,
+    id: normalizedRow.spool.id,
+    masterId: normalizedRow.spool.master_id,
+    vendor: normalizedRow.master.vendor,
+    material: normalizedRow.master.material,
+    filamentName: normalizedRow.master.filament_name,
+    colorName: normalizedRow.master.color_name,
+    hexColor: normalizedRow.master.hex_color,
     initialWeightGrams:
-      row.spool.initial_weight_g && row.spool.initial_weight_g > 0
-        ? row.spool.initial_weight_g
+      normalizedRow.spool.initial_weight_g && normalizedRow.spool.initial_weight_g > 0
+        ? normalizedRow.spool.initial_weight_g
         : fallbackInitial,
-    status: normalizeStatus(row.spool.status),
-    ownershipType: normalizeOwnershipType(row.spool.ownership_type),
-    ownerName: row.spool.owner_name ?? null,
-    ownerContact: row.spool.owner_contact ?? null,
-    ownershipNote: row.spool.ownership_note ?? null,
-    remainingGrams: row.spool.remaining_g ?? null,
-    spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
-    location: row.spool.location_id ?? null,
-    homeLocation: row.spool.home_location_id ?? null,
-    qrCode: row.spool.qr_code ?? null,
-    rfidTag: row.spool.rfid_tag ?? null,
-    rfidObservedAt: row.spool.rfid_observed_at ?? null,
+    status: normalizedRow.spool.normalized_status ?? "IN_STOCK",
+    ownershipType: normalizedRow.spool.ownership_type,
+    ownerName: normalizedRow.spool.owner_name ?? null,
+    ownerContact: normalizedRow.spool.owner_contact ?? null,
+    ownershipNote: normalizedRow.spool.ownership_note ?? null,
+    remainingGrams: normalizedRow.spool.remaining_g ?? null,
+    spoolTareWeightGrams: normalizedRow.spool.spool_tare_weight_g ?? null,
+    location: normalizedRow.spool.location_id ?? null,
+    homeLocation: normalizedRow.spool.home_location_id ?? null,
+    qrCode: normalizedRow.spool.qr_code ?? null,
+    rfidTag: normalizedRow.spool.rfid_tag ?? null,
+    rfidObservedAt: normalizedRow.spool.rfid_observed_at ?? null,
   };
 }
 
@@ -99,7 +115,7 @@ export async function loadInventorySpools(
       ? await fetchCachedSpools().catch((): LibrarySyncCachedSpoolList | null => null)
       : null;
     return {
-      rows: rows.map(mapSpoolRowToInventorySpool),
+      rows: mapSpoolRowsToInventorySpools(rows),
       source: "LIVE",
       updatedAt: cached?.captured_at ?? null,
       usedFallback: false,
@@ -112,7 +128,7 @@ export async function loadInventorySpools(
     const cached = await fetchCachedSpools().catch((): LibrarySyncCachedSpoolList | null => null);
     if (cached) {
       return {
-        rows: cached.rows.map(mapSpoolRowToInventorySpool),
+        rows: mapSpoolRowsToInventorySpools(cached.rows),
         source: "CACHED",
         updatedAt: cached.captured_at ?? null,
         usedFallback: true,
