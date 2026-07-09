@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { createInitialCompanionState } from "./session_state.js";
 import {
@@ -8,6 +9,8 @@ import {
   renderLoanReturnTaskSheetBody,
   renderLoansShell,
 } from "./loans_shell.js";
+
+const loansShellSource = readFileSync(new URL("./loans_shell.js", import.meta.url), "utf8");
 
 function createLoanRow(overrides = {}) {
   return {
@@ -87,6 +90,19 @@ test("loans shell renders outbound history as its own primary flow", () => {
   assert.match(html, /loan-card compact-loan-card swatch-surface/);
   assert.match(html, /primary-button swatch-action-button loan-action-button/);
   assert.match(html, /data-action="start-loan-picker"/);
+});
+
+test("loans shell routes empty and info states through shared companion cards", () => {
+  assert.match(loansShellSource, /renderCompanionStateCard/);
+  assert.doesNotMatch(loansShellSource, /<div class="(?:empty-card|info-card)"/);
+
+  const html = renderShell({
+    loanRows: [],
+    loanSpoolOptions: [],
+  });
+
+  assert.match(html, /class="info-card">No spools are currently available for outbound loan\./);
+  assert.match(html, /class="empty-card">No loans match this search or filter\./);
 });
 
 test("loans shell keeps return UI out of the row until a task sheet opens", () => {

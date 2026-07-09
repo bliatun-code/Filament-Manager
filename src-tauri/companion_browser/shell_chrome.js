@@ -206,6 +206,23 @@ export function renderFormActionBlock(options) {
   return `<div class="${escape(classes)}">${actions}</div>`;
 }
 
+export function renderCompanionStateCard(options) {
+  const {
+    body = "",
+    className = "",
+    escapeHtml,
+    message = "",
+    tag = "div",
+    tone = "empty",
+  } = options;
+  const escape = typeof escapeHtml === "function" ? escapeHtml : (value) => String(value ?? "");
+  const tagName = ["article", "div", "section"].includes(tag) ? tag : "div";
+  const toneClass = tone === "info" ? "info-card" : "empty-card";
+  const classes = [toneClass, className].filter(Boolean).join(" ");
+  const content = body || escape(message);
+  return `<${tagName} class="${escape(classes)}">${content}</${tagName}>`;
+}
+
 export function renderSwatchSelectionCard(options) {
   const {
     actions = "",

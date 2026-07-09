@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   renderCompanionActionButton,
   renderCompanionActionLink,
+  renderCompanionStateCard,
   renderDesktopRail,
   renderDetailField,
   renderDetailModalShell,
@@ -175,6 +176,23 @@ test("form action block helper owns task sheet action chrome", () => {
     html,
     '<div class="detail-actions form-action-block sticky-actions"><button type="submit">Save</button></div>',
   );
+});
+
+test("companion state card helper owns empty and info card chrome", () => {
+  const infoHtml = renderCompanionStateCard({
+    className: "loan-empty-state",
+    escapeHtml,
+    message: "No <rows>",
+    tone: "info",
+  });
+  assert.equal(infoHtml, '<div class="info-card loan-empty-state">No &lt;rows&gt;</div>');
+
+  const emptyHtml = renderCompanionStateCard({
+    body: "<strong>Nothing here</strong>",
+    escapeHtml,
+    tag: "section",
+  });
+  assert.equal(emptyHtml, '<section class="empty-card"><strong>Nothing here</strong></section>');
 });
 
 test("swatch selection card helper owns selected filament preview chrome", () => {

@@ -9,6 +9,7 @@ import { formatInventoryDisplayTitle, formatRollReference } from "./formatters.j
 import { suggestSwatchHex, toSwatchColor } from "./companion_theme.js";
 import {
   renderCompanionActionButton,
+  renderCompanionStateCard,
   renderDetailField,
   renderFilterChipButton,
   renderFormActionBlock,
@@ -130,7 +131,10 @@ function renderLoanRows(options) {
   const locale = state.locale || "en";
 
   if (loanRows.length <= 0) {
-    return `<div class="empty-card">${escapeHtml(t(locale, "loans.noMatch", "No loans match this search or filter."))}</div>`;
+    return renderCompanionStateCard({
+      escapeHtml,
+      message: t(locale, "loans.noMatch", "No loans match this search or filter."),
+    });
   }
 
   return loanRows
@@ -229,9 +233,10 @@ export function renderLoanPickerTaskSheetBody(options) {
   const locale = state.locale || "en";
 
   if (!loanSpoolOptions.length) {
-    return `<div class="empty-card">${escapeHtml(
-      t(locale, "loans.noEligibleSpools", "No spools are currently available for outbound loan."),
-    )}</div>`;
+    return renderCompanionStateCard({
+      escapeHtml,
+      message: t(locale, "loans.noEligibleSpools", "No spools are currently available for outbound loan."),
+    });
   }
 
   return `
@@ -248,7 +253,10 @@ export function renderLoanReturnTaskSheetBody(options) {
   const locale = state.locale || "en";
 
   if (!loanRow) {
-    return `<div class="empty-card">${escapeHtml(t(locale, "loans.unavailable", "This loan is no longer available."))}</div>`;
+    return renderCompanionStateCard({
+      escapeHtml,
+      message: t(locale, "loans.unavailable", "This loan is no longer available."),
+    });
   }
 
   const counterparty =
@@ -365,9 +373,10 @@ export function renderLoanCreateTaskSheetBody(options) {
   const locale = state.locale || "en";
 
   if (!selectedSpool) {
-    return `<div class="empty-card">${escapeHtml(
-      t(locale, "status.loanSelectSpool", "Select a spool before creating a loan."),
-    )}</div>`;
+    return renderCompanionStateCard({
+      escapeHtml,
+      message: t(locale, "status.loanSelectSpool", "Select a spool before creating a loan."),
+    });
   }
 
   const displayTitle = formatInventoryDisplayTitle(
@@ -390,14 +399,16 @@ export function renderLoanCreateTaskSheetBody(options) {
         body: `
         ${
           selectedAssignment
-            ? `<div class="info-card">${escapeHtml(
-                t(
+            ? renderCompanionStateCard({
+                escapeHtml,
+                message: t(
                   locale,
                   "detail.loadedInSlot",
                   "Loaded in slot {slot} on {printer}. Creating the loan will clear that slot.",
                   { slot: selectedAssignment.slotIndex, printer: selectedAssignment.printerName },
                 ),
-              )}</div>`
+                tone: "info",
+              })
             : ""
         }
         <form class="stack loan-return-sheet" data-action="loan-spool-form">
@@ -541,9 +552,11 @@ export function renderLoansShell(options) {
 
       ${
         !loanSpoolOptions.length
-          ? `<div class="info-card">${escapeHtml(
-              t(locale, "loans.noEligibleSpools", "No spools are currently available for outbound loan."),
-            )}</div>`
+          ? renderCompanionStateCard({
+              escapeHtml,
+              message: t(locale, "loans.noEligibleSpools", "No spools are currently available for outbound loan."),
+              tone: "info",
+            })
           : ""
       }
 
