@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { loadSettingsInventoryRowsForExport } from "./settings_inventory_rows_loader_model";
+import { normalizeSpoolWithMasterRows } from "../lib/spool_row_normalization";
 import type { SpoolWithMasterRow } from "../lib/tauri_client";
 
 function row(id: string, status = "IN_STOCK", ownershipType = "OWNED"): SpoolWithMasterRow {
@@ -38,7 +39,7 @@ test("loadSettingsInventoryRowsForExport prefers refreshed rows when available",
     loadAllSpoolRows: async (options, pageLimit) => {
       assert.equal(options.clientReadOnly, true);
       assert.equal(pageLimit, 200);
-      return [row("fresh-spool", "loaned out", "OWNED")];
+      return normalizeSpoolWithMasterRows([row("fresh-spool", "loaned out", "OWNED")]);
     },
     options: {
       clientReadOnly: true,

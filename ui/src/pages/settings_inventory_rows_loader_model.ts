@@ -13,7 +13,7 @@ export type SettingsInventoryRowsLoadOptions = {
 type LoadAllSpoolRows = (
   options: SettingsInventoryRowsLoadOptions,
   limit: number,
-) => Promise<SpoolWithMasterRow[]>;
+) => Promise<NormalizedSpoolWithMasterRow[]>;
 
 export async function loadSettingsInventoryRowsForExport({
   fallbackRows,
@@ -27,7 +27,7 @@ export async function loadSettingsInventoryRowsForExport({
   pageLimit: number;
 }): Promise<NormalizedSpoolWithMasterRow[]> {
   try {
-    return normalizeSpoolWithMasterRows(await loadAllSpoolRows(options, pageLimit));
+    return await loadAllSpoolRows(options, pageLimit);
   } catch (error) {
     if (options.clientReadOnly) {
       return normalizeSpoolWithMasterRows(fallbackRows);
