@@ -38,7 +38,14 @@ test("InventoryAddModal wires the separate Bambu batch modal from existing workf
   assert.match(source, /onInputChange=\{onBambuBatchInputChange\}/);
   assert.match(source, /onRowSelectionChange=\{onBambuBatchRowSelectionChange\}/);
   assert.match(source, /autoOpenBambuBatch/);
+  assert.match(source, /autoFocusWishlistQueue/);
   assert.match(source, /openBambuBatchModal\(\)/);
+});
+
+test("InventoryAddModal can focus the wishlist queue for visual QA", () => {
+  assert.match(source, /wishlistQueueRef/);
+  assert.match(source, /scrollIntoView/);
+  assert.match(source, /<WishlistQueuePanel/);
 });
 
 test("InventoryAddModal feeds current stock selection into the action panel preview", () => {

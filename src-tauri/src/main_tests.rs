@@ -107,6 +107,10 @@ fn visual_qa_scenario_normalizer_accepts_stateful_settings_scenarios() {
         normalize_visual_qa_scenario("missing-swatches"),
         Some("settings-catalog-swatch-review")
     );
+    assert_eq!(
+        normalize_visual_qa_scenario("wishlist-orders"),
+        Some("wishlist-queue")
+    );
 }
 
 #[test]

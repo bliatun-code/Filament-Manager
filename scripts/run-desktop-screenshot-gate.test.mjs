@@ -95,6 +95,7 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
   assert.equal(normalizeDesktopVisualQaScenario("dashboard"), "dashboard-overview");
   assert.equal(normalizeDesktopVisualQaScenario("inventory"), "inventory-overview");
   assert.equal(normalizeDesktopVisualQaScenario("inventory-add"), "add-filament");
+  assert.equal(normalizeDesktopVisualQaScenario("wishlist-orders"), "wishlist-queue");
   assert.equal(normalizeDesktopVisualQaScenario("loan-history"), "loans-overview");
   assert.equal(normalizeDesktopVisualQaScenario("DETAIL"), "selected-roll");
   assert.equal(normalizeDesktopVisualQaScenario("inventory-rfid"), "rfid-capture");
@@ -152,6 +153,7 @@ test("desktop screenshot gate reads scenario metadata from the shared manifest",
     id: "bambu-batch-add",
     page: "inventory",
   });
+  assert.equal(desktopVisualQaScenarioDefinition("order-queue").requiresDatabaseFixture, true);
   assert.equal(desktopVisualQaScenarioDefinition("trusted-lan-details").settingsTab, "LIBRARY");
   assert.equal(desktopVisualQaScenarioDefinition("missing-swatches").requiresDatabaseFixture, true);
   assert.equal(desktopVisualQaScenarioDefinition("unknown"), null);
@@ -159,6 +161,7 @@ test("desktop screenshot gate reads scenario metadata from the shared manifest",
 
 test("desktop screenshot gate marks DB-fixture visual states", () => {
   assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("ams-onboarding"), true);
+  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("wishlist-orders"), true);
   assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("printer-slot-onboarding"), true);
   assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("rfid-override"), true);
   assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("missing-swatches"), true);
@@ -167,7 +170,7 @@ test("desktop screenshot gate marks DB-fixture visual states", () => {
 });
 
 test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {
-  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 25);
+  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 26);
   assert.deepEqual(
     parseDesktopVisualQaScenarios([
       "--scenario",

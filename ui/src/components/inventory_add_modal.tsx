@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { AppModal } from "./app_modal";
 import { InventoryBambuBatchModal } from "./inventory_bambu_batch_modal";
 import { InventoryCreateActionsPanel } from "./inventory_create_actions_panel";
@@ -31,6 +31,7 @@ import type {
 export type InventoryAddModalProps = {
   actionStyle?: CSSProperties;
   activeCatalogMasters: MasterCatalogRow[];
+  autoFocusWishlistQueue?: boolean;
   autoOpenBambuBatch?: boolean;
   bambuBatchInput: string;
   bambuBatchCreateState: BambuFilamentCodeBatchCreateState;
@@ -97,6 +98,7 @@ export type InventoryAddModalProps = {
 export function InventoryAddModal({
   actionStyle,
   activeCatalogMasters,
+  autoFocusWishlistQueue = false,
   autoOpenBambuBatch = false,
   bambuBatchInput,
   bambuBatchCreateState,
@@ -162,6 +164,7 @@ export function InventoryAddModal({
   const { t } = useI18n();
   const [bambuBatchModalOpen, setBambuBatchModalOpen] = useState(false);
   const [autoOpenedBambuBatch, setAutoOpenedBambuBatch] = useState(false);
+  const wishlistQueueRef = useRef<HTMLDivElement | null>(null);
   const selectedCatalogMaster = selectedCatalogMasterId
     ? (catalogMasterById.get(selectedCatalogMasterId) ?? null)
     : null;
@@ -196,6 +199,16 @@ export function InventoryAddModal({
     openBambuBatchModal();
     setAutoOpenedBambuBatch(true);
   }, [autoOpenBambuBatch, autoOpenedBambuBatch, open, openBambuBatchModal]);
+
+  useEffect(() => {
+    if (!open || !autoFocusWishlistQueue || wishlistLoading) {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      wishlistQueueRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [autoFocusWishlistQueue, open, visibleWishlistItems.length, wishlistItems.length, wishlistLoading]);
 
   if (!open) {
     return null;
@@ -301,22 +314,24 @@ export function InventoryAddModal({
                 tauriAvailable={tauriAvailable}
               />
 
-              <WishlistQueuePanel
-                busy={busy}
-                catalogMasterById={catalogMasterById}
-                confirmWishlistRemoveId={confirmWishlistRemoveId}
-                items={wishlistItems}
-                loading={wishlistLoading}
-                onDeleteItem={onDeleteWishlistItem}
-                onFilterChange={onWishlistFilterChange}
-                onStatusChange={onWishlistStatusChange}
-                onStockItem={onStockWishlistItem}
-                resolvedTheme={resolvedTheme}
-                summary={wishlistSummary}
-                tauriAvailable={tauriAvailable}
-                value={wishlistValue}
-                visibleItems={visibleWishlistItems}
-              />
+              <div ref={wishlistQueueRef}>
+                <WishlistQueuePanel
+                  busy={busy}
+                  catalogMasterById={catalogMasterById}
+                  confirmWishlistRemoveId={confirmWishlistRemoveId}
+                  items={wishlistItems}
+                  loading={wishlistLoading}
+                  onDeleteItem={onDeleteWishlistItem}
+                  onFilterChange={onWishlistFilterChange}
+                  onStatusChange={onWishlistStatusChange}
+                  onStockItem={onStockWishlistItem}
+                  resolvedTheme={resolvedTheme}
+                  summary={wishlistSummary}
+                  tauriAvailable={tauriAvailable}
+                  value={wishlistValue}
+                  visibleItems={visibleWishlistItems}
+                />
+              </div>
             </div>
           </div>
         </ModalBody>

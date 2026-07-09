@@ -33,6 +33,7 @@ test("initial page resolver opens the page requested by fixtures and visual QA s
   assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=dashboard-overview"), "dashboard");
   assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=inventory-overview"), "inventory");
   assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=add-filament"), "inventory");
+  assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=wishlist-queue"), "inventory");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=rfid-capture"), "inventory");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=bambu-batch-add"), "inventory");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=loans-overview"), "loans");

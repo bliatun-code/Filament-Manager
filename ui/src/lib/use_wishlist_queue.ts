@@ -21,8 +21,8 @@ export function useWishlistQueue(wishlistItems: WishlistItemRow[]) {
     [wishlistItems],
   );
 
-  const resetWishlistQueue = useCallback(() => {
-    setWishlistQueueFilter("WISHLIST");
+  const resetWishlistQueue = useCallback((filter: WishlistStatusFilter = "WISHLIST") => {
+    setWishlistQueueFilter(filter);
     setConfirmWishlistRemoveId(null);
   }, []);
 

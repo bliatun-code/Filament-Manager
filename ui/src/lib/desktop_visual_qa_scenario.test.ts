@@ -34,6 +34,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "dashboard-overview",
     "inventory-overview",
     "add-filament",
+    "wishlist-queue",
     "bambu-batch-add",
     "loans-overview",
     "loan-out",
@@ -60,6 +61,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
   assert.equal(normalizeDesktopVisualQaScenario("dashboard"), "dashboard-overview");
   assert.equal(normalizeDesktopVisualQaScenario("inventory"), "inventory-overview");
   assert.equal(normalizeDesktopVisualQaScenario("inventory-add"), "add-filament");
+  assert.equal(normalizeDesktopVisualQaScenario("wishlist-orders"), "wishlist-queue");
   assert.equal(normalizeDesktopVisualQaScenario("loan-history"), "loans-overview");
   assert.equal(normalizeDesktopVisualQaScenario("DETAIL"), "selected-roll");
   assert.equal(normalizeDesktopVisualQaScenario("inventory-rfid"), "rfid-capture");
@@ -113,6 +115,7 @@ test("desktop visual QA scenario manifest describes routing and fixture states",
     desktopVisualQaScenarioDefinition("ams-onboarding")?.requiresDatabaseFixture,
     true,
   );
+  assert.equal(desktopVisualQaScenarioDefinition("order-queue")?.requiresDatabaseFixture, true);
   assert.equal(desktopVisualQaScenarioDefinition("trusted-lan-details")?.settingsTab, "LIBRARY");
   assert.equal(desktopVisualQaScenarioDefinition("statistics")?.page, "statistics");
   assert.equal(desktopVisualQaScenarioDefinition("unknown"), null);
@@ -122,6 +125,7 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=dashboard-overview"), "dashboard");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=inventory-overview"), "inventory");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=add-filament"), "inventory");
+  assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=wishlist-queue"), "inventory");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=rfid-capture"), "inventory");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=loans-overview"), "loans");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=return-loan"), "loans");

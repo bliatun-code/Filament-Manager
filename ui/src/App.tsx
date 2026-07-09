@@ -6,7 +6,10 @@ import {
   type InventoryNavigationIntent,
   type PageKey,
 } from "./lib/app_navigation_model";
-import { desktopVisualQaInitialSettingsTab } from "./lib/desktop_visual_qa_scenario";
+import {
+  desktopVisualQaInitialPage,
+  desktopVisualQaInitialSettingsTab,
+} from "./lib/desktop_visual_qa_scenario";
 import { useI18n } from "./lib/i18n";
 import { getThemeMode, onThemeModeChange } from "./lib/theme_mode";
 import { isTauri, setDockIconTheme, setWindowTitle } from "./lib/tauri_client";
@@ -47,6 +50,41 @@ export default function App() {
     useState<InventoryNavigationIntent>(null);
   const [settingsInitialTab, setSettingsInitialTab] =
     useState<SettingsTabKey>(() => initialSettingsTabFromUrl());
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !import.meta.env.DEV) {
+      return;
+    }
+
+    let attempts = 0;
+    let intervalId: number | null = null;
+    const syncVisualQaRoute = () => {
+      attempts += 1;
+      const page = desktopVisualQaInitialPage(window.location.search);
+      if (page) {
+        setInventoryNavigationIntent(null);
+        setSettingsInitialTab(desktopVisualQaInitialSettingsTab(window.location.search) ?? "GENERAL");
+        setActivePage(page);
+        if (intervalId !== null) {
+          window.clearInterval(intervalId);
+          intervalId = null;
+        }
+        return;
+      }
+      if (attempts >= 75 && intervalId !== null) {
+        window.clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    intervalId = window.setInterval(syncVisualQaRoute, 200);
+    syncVisualQaRoute();
+    return () => {
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!isTauri()) {

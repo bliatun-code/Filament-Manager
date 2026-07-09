@@ -310,6 +310,9 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         "dashboard-overview" | "dashboard" => Some("dashboard-overview"),
         "inventory-overview" | "inventory" => Some("inventory-overview"),
         "add-filament" | "inventory-add" => Some("add-filament"),
+        "wishlist-queue" | "inventory-wishlist" | "wishlist-orders" | "order-queue" => {
+            Some("wishlist-queue")
+        }
         "loans-overview" | "loans" | "loan-history" => Some("loans-overview"),
         "loan-out" | "inventory-loan" => Some("loan-out"),
         "selected-roll" | "detail" | "inventory-detail" => Some("selected-roll"),

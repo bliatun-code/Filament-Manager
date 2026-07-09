@@ -8,6 +8,7 @@ export type DesktopVisualQaScenario =
   | "dashboard-overview"
   | "inventory-overview"
   | "add-filament"
+  | "wishlist-queue"
   | "bambu-batch-add"
   | "loans-overview"
   | "loan-out"

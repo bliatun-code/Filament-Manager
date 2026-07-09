@@ -19,6 +19,13 @@
       "category": "modal"
     },
     {
+      "id": "wishlist-queue",
+      "aliases": ["inventory-wishlist", "wishlist-orders", "order-queue"],
+      "page": "inventory",
+      "category": "modal",
+      "requiresDatabaseFixture": true
+    },
+    {
       "id": "bambu-batch-add",
       "aliases": ["batch-add", "bambu-batch"],
       "page": "inventory",

@@ -9,6 +9,7 @@ import {
   VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE,
   VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES,
   VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE,
+  VISUAL_QA_FIXTURE_WISHLIST_QUEUE,
   VISUAL_QA_PROFILE_BASE,
   VISUAL_QA_PROFILE_RICH,
   VISUAL_QA_DB_PATH_ENV_VAR,
@@ -49,6 +50,10 @@ test("normalizeVisualQaDatabaseFixtureScenario accepts slot onboarding aliases",
   assert.equal(
     normalizeVisualQaDatabaseFixtureScenario("missing-swatches"),
     VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES,
+  );
+  assert.equal(
+    normalizeVisualQaDatabaseFixtureScenario("wishlist-orders"),
+    VISUAL_QA_FIXTURE_WISHLIST_QUEUE,
   );
   assert.equal(normalizeVisualQaDatabaseFixtureScenario("settings-general"), null);
 });
@@ -666,6 +671,94 @@ test("applyVisualQaDatabaseFixture creates catalog missing-swatch review state o
         { id: "bambu_green", hex_color: null, catalog_user_edited: 1 },
         { id: "esun_red", hex_color: null, catalog_user_edited: 1 },
         { id: "historical_blue", hex_color: "#2255FF", catalog_user_edited: 0 },
+      ]);
+    } finally {
+      updatedDb.close();
+    }
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("applyVisualQaDatabaseFixture creates wishlist queue review state on copies", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-wishlist-"));
+  try {
+    const dbPath = join(dir, "fixture.db");
+    const db = new Database(dbPath);
+    db.exec(`
+      CREATE TABLE filament_master_list (
+        id TEXT PRIMARY KEY,
+        material TEXT NOT NULL,
+        filament_name TEXT NOT NULL,
+        color_name TEXT NOT NULL,
+        hex_color TEXT,
+        product_url TEXT,
+        default_weight INTEGER NOT NULL DEFAULT 1000,
+        vendor TEXT NOT NULL DEFAULT 'Bambu',
+        is_discontinued INTEGER NOT NULL DEFAULT 0,
+        catalog_source TEXT NOT NULL DEFAULT 'unknown',
+        catalog_user_edited INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(material, filament_name, color_name)
+      );
+      CREATE TABLE wishlist_items (
+        id TEXT PRIMARY KEY,
+        master_id TEXT REFERENCES filament_master_list(id),
+        material TEXT NOT NULL,
+        filament_name TEXT NOT NULL,
+        color_name TEXT NOT NULL,
+        vendor TEXT NOT NULL DEFAULT 'Manual',
+        status TEXT NOT NULL DEFAULT 'WISHLIST',
+        quantity INTEGER NOT NULL DEFAULT 1,
+        note TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+    db.close();
+
+    const fixture = await applyVisualQaDatabaseFixture(dbPath, "wishlist-orders", {
+      now: new Date("2026-07-09T10:00:00.000Z"),
+    });
+    assert.equal(fixture?.fixture, VISUAL_QA_FIXTURE_WISHLIST_QUEUE);
+    assert.deepEqual(fixture?.statuses, ["WISHLIST", "ON_ORDER", "RECEIVED"]);
+
+    const updatedDb = new Database(dbPath, { readonly: true });
+    try {
+      const rows = updatedDb
+        .prepare(
+          `SELECT w.id, w.master_id, w.status, w.quantity, w.note, m.hex_color
+           FROM wishlist_items w
+           JOIN filament_master_list m ON m.id = w.master_id
+           ORDER BY w.id ASC`,
+        )
+        .all();
+      assert.deepEqual(rows, [
+        {
+          id: "visual_qa_wishlist_on_order",
+          master_id: "visual_qa_master_wishlist_teal",
+          status: "ON_ORDER",
+          quantity: 3,
+          note: "Visual QA fixture: arriving with the next supplier box.",
+          hex_color: "#009688",
+        },
+        {
+          id: "visual_qa_wishlist_planned",
+          master_id: "visual_qa_master_wishlist_signal_red",
+          status: "WISHLIST",
+          quantity: 2,
+          note: "Visual QA fixture: planned accent label stock.",
+          hex_color: "#E32636",
+        },
+        {
+          id: "visual_qa_wishlist_received",
+          master_id: "visual_qa_master_wishlist_violet",
+          status: "RECEIVED",
+          quantity: 1,
+          note: "Visual QA fixture: ready to move into stock.",
+          hex_color: "#6D28D9",
+        },
       ]);
     } finally {
       updatedDb.close();

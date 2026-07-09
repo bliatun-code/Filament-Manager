@@ -13,9 +13,14 @@ import { useInventoryCreateDraft } from "./use_inventory_create_draft";
 import { useWishlistQueue } from "./use_wishlist_queue";
 import type { useI18n } from "./i18n";
 import type { ResolvedTheme } from "./theme_mode";
+import type { WishlistStatusFilter } from "./wishlist_data_source";
 import type { MasterCatalogRow, WishlistItemRow } from "./tauri_client";
 
 type SidePanelMode = "MANAGE" | "ADD";
+
+type OpenAddModalOptions = {
+  wishlistFilter?: WishlistStatusFilter;
+};
 
 type InventoryAddWorkflowInput = {
   canUseClientHostWrite: () => boolean;
@@ -198,7 +203,7 @@ export function useInventoryAddWorkflow({
     t,
   });
 
-  const openAddModal = useCallback(() => {
+  const openAddModal = useCallback((options: OpenAddModalOptions = {}) => {
     if (clientReadOnly) {
       if (!canUseClientHostWrite()) {
         return;
@@ -207,7 +212,7 @@ export function useInventoryAddWorkflow({
       return;
     }
     setSidePanelMode("ADD");
-    resetWishlistQueue();
+    resetWishlistQueue(options.wishlistFilter);
     resetBorrowedInDraft();
     setShowAddModal(true);
   }, [

@@ -13,6 +13,7 @@ export const VISUAL_QA_FIXTURE_PRINTER_SLOT_ONBOARDING = "printer-slot-onboardin
 export const VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE = "printer-rfid-override";
 export const VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES =
   "settings-catalog-missing-swatches";
+export const VISUAL_QA_FIXTURE_WISHLIST_QUEUE = "wishlist-queue";
 export const VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE = "trusted-lan-interface";
 export const VISUAL_QA_TRUSTED_LAN_PORT = 4279;
 
@@ -203,6 +204,11 @@ export function normalizeVisualQaDatabaseFixtureScenario(scenario) {
     case "catalog-swatch-review":
     case "missing-swatches":
       return VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES;
+    case "wishlist-queue":
+    case "inventory-wishlist":
+    case "wishlist-orders":
+    case "order-queue":
+      return VISUAL_QA_FIXTURE_WISHLIST_QUEUE;
     default:
       return null;
   }
@@ -232,6 +238,22 @@ function networkInterfacePreference(name) {
     return 50;
   }
   return 20;
+}
+
+function sqliteTableColumns(db, table) {
+  return new Set(
+    db
+      .prepare(`PRAGMA table_info(${table})`)
+      .all()
+      .map((row) => String(row.name)),
+  );
+}
+
+function ensureSqliteColumns(columns, table, requiredColumns, context) {
+  const missing = requiredColumns.filter((column) => !columns.has(column));
+  if (missing.length > 0) {
+    throw new Error(`${context} requires ${table}.${missing.join(", ")}.`);
+  }
 }
 
 export function listPrivateVisualQaNetworkInterfaces(interfaces = networkInterfaces()) {
@@ -933,6 +955,187 @@ async function applySettingsCatalogMissingSwatchesFixtureWithBetterSqlite(dbPath
   }
 }
 
+async function applyWishlistQueueFixtureWithBetterSqlite(dbPath, options = {}) {
+  const module = await import("better-sqlite3");
+  const Database = module.default ?? module;
+  const db = new Database(dbPath);
+  try {
+    const masterColumns = sqliteTableColumns(db, "filament_master_list");
+    const wishlistColumns = sqliteTableColumns(db, "wishlist_items");
+    ensureSqliteColumns(
+      masterColumns,
+      "filament_master_list",
+      ["id", "material", "filament_name", "color_name"],
+      "Wishlist queue visual QA fixture",
+    );
+    ensureSqliteColumns(
+      wishlistColumns,
+      "wishlist_items",
+      ["id", "material", "filament_name", "color_name", "vendor"],
+      "Wishlist queue visual QA fixture",
+    );
+
+    const now = (options.now ?? new Date()).toISOString();
+    const entries = [
+      {
+        id: "visual_qa_wishlist_planned",
+        masterId: "visual_qa_master_wishlist_signal_red",
+        vendor: "Bambu",
+        material: "PLA",
+        filamentName: "PLA Basic",
+        colorName: "Signal Red",
+        hexColor: "#E32636",
+        status: "WISHLIST",
+        quantity: 2,
+        note: "Visual QA fixture: planned accent label stock.",
+      },
+      {
+        id: "visual_qa_wishlist_on_order",
+        masterId: "visual_qa_master_wishlist_teal",
+        vendor: "eSUN",
+        material: "PETG",
+        filamentName: "PETG+",
+        colorName: "Ocean Teal",
+        hexColor: "#009688",
+        status: "ON_ORDER",
+        quantity: 3,
+        note: "Visual QA fixture: arriving with the next supplier box.",
+      },
+      {
+        id: "visual_qa_wishlist_received",
+        masterId: "visual_qa_master_wishlist_violet",
+        vendor: "Polymaker",
+        material: "ASA",
+        filamentName: "PolyLite ASA",
+        colorName: "Deep Violet",
+        hexColor: "#6D28D9",
+        status: "RECEIVED",
+        quantity: 1,
+        note: "Visual QA fixture: ready to move into stock.",
+      },
+    ];
+
+    const masterInsertColumns = [
+      "id",
+      "material",
+      "filament_name",
+      "color_name",
+      ...(masterColumns.has("hex_color") ? ["hex_color"] : []),
+      ...(masterColumns.has("vendor") ? ["vendor"] : []),
+      ...(masterColumns.has("default_weight") ? ["default_weight"] : []),
+      ...(masterColumns.has("is_discontinued") ? ["is_discontinued"] : []),
+      ...(masterColumns.has("catalog_source") ? ["catalog_source"] : []),
+      ...(masterColumns.has("catalog_user_edited") ? ["catalog_user_edited"] : []),
+      ...(masterColumns.has("updated_at") ? ["updated_at"] : []),
+    ];
+    const masterUpdateColumns = masterInsertColumns.filter((column) => column !== "id");
+    const upsertMaster = db.prepare(
+      `INSERT INTO filament_master_list (${masterInsertColumns.join(", ")})
+       VALUES (${masterInsertColumns.map(() => "?").join(", ")})
+       ON CONFLICT(id) DO UPDATE SET ${masterUpdateColumns
+         .map((column) => `${column} = excluded.${column}`)
+         .join(", ")}`,
+    );
+
+    const wishlistInsertColumns = [
+      "id",
+      ...(wishlistColumns.has("master_id") ? ["master_id"] : []),
+      "material",
+      "filament_name",
+      "color_name",
+      "vendor",
+      ...(wishlistColumns.has("status") ? ["status"] : []),
+      ...(wishlistColumns.has("quantity") ? ["quantity"] : []),
+      ...(wishlistColumns.has("note") ? ["note"] : []),
+      ...(wishlistColumns.has("created_at") ? ["created_at"] : []),
+      ...(wishlistColumns.has("updated_at") ? ["updated_at"] : []),
+    ];
+    const wishlistUpdateColumns = wishlistInsertColumns.filter((column) => column !== "id");
+    const upsertWishlist = db.prepare(
+      `INSERT INTO wishlist_items (${wishlistInsertColumns.join(", ")})
+       VALUES (${wishlistInsertColumns.map(() => "?").join(", ")})
+       ON CONFLICT(id) DO UPDATE SET ${wishlistUpdateColumns
+         .map((column) => `${column} = excluded.${column}`)
+         .join(", ")}`,
+    );
+
+    const masterValues = (entry) =>
+      masterInsertColumns.map((column) => {
+        switch (column) {
+          case "id":
+            return entry.masterId;
+          case "material":
+            return entry.material;
+          case "filament_name":
+            return entry.filamentName;
+          case "color_name":
+            return entry.colorName;
+          case "hex_color":
+            return entry.hexColor;
+          case "vendor":
+            return entry.vendor;
+          case "default_weight":
+            return 1000;
+          case "is_discontinued":
+            return 0;
+          case "catalog_source":
+            return "visual_qa";
+          case "catalog_user_edited":
+            return 1;
+          case "updated_at":
+            return now;
+          default:
+            return null;
+        }
+      });
+    const wishlistValues = (entry) =>
+      wishlistInsertColumns.map((column) => {
+        switch (column) {
+          case "id":
+            return entry.id;
+          case "master_id":
+            return entry.masterId;
+          case "material":
+            return entry.material;
+          case "filament_name":
+            return entry.filamentName;
+          case "color_name":
+            return entry.colorName;
+          case "vendor":
+            return entry.vendor;
+          case "status":
+            return entry.status;
+          case "quantity":
+            return entry.quantity;
+          case "note":
+            return entry.note;
+          case "created_at":
+          case "updated_at":
+            return now;
+          default:
+            return null;
+        }
+      });
+
+    const transaction = db.transaction(() => {
+      for (const entry of entries) {
+        upsertMaster.run(...masterValues(entry));
+        upsertWishlist.run(...wishlistValues(entry));
+      }
+    });
+    transaction();
+
+    return {
+      fixture: VISUAL_QA_FIXTURE_WISHLIST_QUEUE,
+      count: entries.length,
+      itemIds: entries.map((entry) => entry.id),
+      statuses: entries.map((entry) => entry.status),
+    };
+  } finally {
+    db.close();
+  }
+}
+
 export async function applyVisualQaDatabaseFixture(dbPath, scenario, options = {}) {
   const fixture = normalizeVisualQaDatabaseFixtureScenario(scenario);
   if (!fixture) {
@@ -949,6 +1152,9 @@ export async function applyVisualQaDatabaseFixture(dbPath, scenario, options = {
   }
   if (fixture === VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES) {
     return applySettingsCatalogMissingSwatchesFixtureWithBetterSqlite(dbPath);
+  }
+  if (fixture === VISUAL_QA_FIXTURE_WISHLIST_QUEUE) {
+    return applyWishlistQueueFixtureWithBetterSqlite(dbPath, options);
   }
   return null;
 }

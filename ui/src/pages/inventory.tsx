@@ -205,6 +205,7 @@ export default function InventoryPage({
   const { onBambuBatchInputChange, onCatalogQueryChange, onCreateModeChange } = addModalProps;
   const inventoryAddModalProps = {
     ...addModalProps,
+    autoFocusWishlistQueue: desktopVisualQaScenario === "wishlist-queue",
     autoOpenBambuBatch: desktopVisualQaScenario === "bambu-batch-add",
   };
 
@@ -584,14 +585,17 @@ export default function InventoryPage({
 
     if (
       desktopVisualQaScenario === "add-filament" ||
+      desktopVisualQaScenario === "wishlist-queue" ||
       desktopVisualQaScenario === "bambu-batch-add"
     ) {
       if (desktopVisualQaScenario === "bambu-batch-add") {
         onBambuBatchInputChange("40500\n40200\n65103");
-      } else {
+      } else if (desktopVisualQaScenario === "add-filament") {
         onCreateModeChange("esun");
       }
-      openAddModal();
+      openAddModal({
+        wishlistFilter: desktopVisualQaScenario === "wishlist-queue" ? "ON_ORDER" : undefined,
+      });
       setDesktopVisualQaStage(
         desktopVisualQaScenario === "add-filament" ? "add-esun-opened" : "done",
       );
@@ -822,7 +826,7 @@ export default function InventoryPage({
         error={error}
         headerActionsProps={{
           lowStockOnly,
-          onAddSpool: openAddModal,
+          onAddSpool: () => openAddModal(),
           onLoanOutRoll: openLoanTrackingModal,
           onLowStockOnlyChange: setLowStockOnly,
           onSearchChange: setSearch,
