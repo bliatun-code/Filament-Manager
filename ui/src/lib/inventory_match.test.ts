@@ -8,6 +8,7 @@ import {
   translateObservedMatchNote,
   type ObservedInventoryMatchInput,
 } from "./inventory_match";
+import { normalizeSpoolWithMasterRows } from "./spool_row_normalization";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
 type SharedLiveRfidCandidateFixture = {
@@ -545,6 +546,36 @@ test("buildInventoryMatchResult matches third-party live AMS color with toleranc
   assert.deepEqual(result.candidates.map((row) => row.spool.id), [
     "assigned-black",
     "stock-black",
+  ]);
+});
+
+test("buildInventoryMatchResult uses normalized spool status when present", () => {
+  const result = buildInventoryMatchResult(
+    normalizeSpoolWithMasterRows([
+      createRow("legacy-assigned", {
+        status: "IN_USE",
+        material: "PLA",
+        filamentName: "PLA+HS",
+        hexColor: "#121212",
+      }),
+      createRow("stock", {
+        status: "IN_STOCK",
+        material: "PLA",
+        filamentName: "PLA+HS",
+        hexColor: "#121212",
+      }),
+    ]),
+    {
+      material: "PLA",
+      filamentName: "PLA Matte",
+      colorHex: "#000000",
+    },
+  );
+
+  assert.equal(result.kind, "metadata_multiple");
+  assert.deepEqual(result.candidates.map((row) => row.spool.id), [
+    "legacy-assigned",
+    "stock",
   ]);
 });
 

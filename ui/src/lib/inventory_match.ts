@@ -5,8 +5,13 @@ import {
   isSpoolStatusLoanable,
   isSpoolStatusMetadataMatchable,
   isSpoolStatusRfidMatchable,
+  type SpoolStatus,
 } from "./inventory_domain";
 import type { SpoolWithMasterRow } from "./tauri_client";
+
+type InventoryMatchNormalizedSpoolRow = SpoolWithMasterRow["spool"] & {
+  normalized_status: SpoolStatus | null;
+};
 
 export type InventoryMatchResult<Row extends SpoolWithMasterRow = SpoolWithMasterRow> =
   | { kind: "rfid_exact"; candidates: Row[] }
@@ -232,12 +237,24 @@ function canUseSemanticOtherColorHint(row: SpoolWithMasterRow): boolean {
   return SEMANTIC_OTHER_COLOR_HINT_VENDORS.has(vendor);
 }
 
+function hasInventoryMatchNormalizedStatus(
+  spool: SpoolWithMasterRow["spool"],
+): spool is InventoryMatchNormalizedSpoolRow {
+  return "normalized_status" in spool;
+}
+
+function inventoryMatchSpoolStatus(row: SpoolWithMasterRow): string | null {
+  return hasInventoryMatchNormalizedStatus(row.spool)
+    ? row.spool.normalized_status
+    : row.spool.status;
+}
+
 function isExactRfidInventoryRow(row: SpoolWithMasterRow): boolean {
-  return isSpoolStatusRfidMatchable(row.spool.status);
+  return isSpoolStatusRfidMatchable(inventoryMatchSpoolStatus(row));
 }
 
 function isMetadataVisibleInventoryRow(row: SpoolWithMasterRow): boolean {
-  return isSpoolStatusMetadataMatchable(row.spool.status);
+  return isSpoolStatusMetadataMatchable(inventoryMatchSpoolStatus(row));
 }
 
 function isMetadataCandidateRow(
@@ -415,9 +432,10 @@ function metadataCandidateScore({
   if (semanticOtherColorHintMatchesObserved(row, observedColors)) {
     score += 60;
   }
-  if (isSpoolStatusAssigned(row.spool.status)) {
+  const status = inventoryMatchSpoolStatus(row);
+  if (isSpoolStatusAssigned(status)) {
     score += 8;
-  } else if (isSpoolStatusLoanable(row.spool.status)) {
+  } else if (isSpoolStatusLoanable(status)) {
     score += 4;
   }
   return score;
