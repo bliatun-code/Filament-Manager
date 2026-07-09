@@ -15,8 +15,8 @@ import type {
   MasterCatalogRow,
   PrinterAmsSlotRow,
   PrinterRow,
-  SpoolWithMasterRow,
 } from "../lib/tauri_client";
+import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import {
   buildSettingsBambuLiveDiagnosticsModel,
 } from "../pages/settings_bambu_live_diagnostics_model";
@@ -55,7 +55,7 @@ export type SettingsPrintersTabProps = {
   printers: PrinterRow[];
   settingsClientReadOnly: boolean;
   sortedPrinters: PrinterRow[];
-  spoolRows: SpoolWithMasterRow[];
+  spoolRows: NormalizedSpoolWithMasterRow[];
   tauri: boolean;
   onBambuLiveAccessCodeChange: (value: string) => void;
   onBambuLiveEnabledChange: (value: boolean) => void;

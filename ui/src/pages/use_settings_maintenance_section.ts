@@ -6,9 +6,9 @@ import type {
   CatalogResetStats,
   LibrarySyncHostValidationResult,
   LibrarySyncRemoteSnapshot,
-  SpoolWithMasterRow,
   TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
+import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import type {
   SettingsBackupErrorMessageLabels,
   SettingsBackupValidationMessageLabels,
@@ -71,7 +71,7 @@ type UseSettingsMaintenanceSectionInput = {
   settingsClientHostWritePaired: boolean;
   settingsClientLibraryId: string | null;
   settingsClientReadOnly: boolean;
-  settingsInventoryRows: SpoolWithMasterRow[];
+  settingsInventoryRows: NormalizedSpoolWithMasterRow[];
   settingsImportMessageLabels: () => SettingsImportMessageLabels;
   settingsInventoryExportMessageLabels: () => SettingsInventoryExportMessageLabels;
   settingsInventoryOverviewPrintMessageLabels: () => SettingsInventoryPrintMessageLabels;

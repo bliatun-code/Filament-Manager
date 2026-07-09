@@ -6,8 +6,8 @@ import type {
   MasterCatalogRow,
   PrinterOverviewRow,
   PrinterRow,
-  SpoolWithMasterRow,
 } from "../lib/tauri_client";
+import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import { buildSettingsPrintersRouteProps } from "./settings_printers_route_props";
 import type { SettingsPrinterMessageLabels } from "./settings_printer_model";
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
@@ -31,7 +31,7 @@ type UseSettingsPrintersSectionInput = {
   settingsClientLibraryId: string | null;
   settingsClientReadOnly: boolean;
   settingsPrinterMessageLabels: () => SettingsPrinterMessageLabels;
-  spoolRows: SpoolWithMasterRow[];
+  spoolRows: NormalizedSpoolWithMasterRow[];
   tauri: boolean;
 };
 

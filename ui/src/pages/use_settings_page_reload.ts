@@ -7,9 +7,9 @@ import type {
   MasterCatalogRow,
   PrinterOverviewRow,
   PrinterRow,
-  SpoolWithMasterRow,
 } from "../lib/tauri_client";
 import { loadSettingsPageData } from "../lib/settings_data_source";
+import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import {
   buildSettingsPageDataModel,
   buildSettingsPageLoadErrorMessage,
@@ -30,7 +30,7 @@ type UseSettingsPageReloadInput = {
   setLoading: Dispatch<SetStateAction<boolean>>;
   setPrinterOverview: Dispatch<SetStateAction<PrinterOverviewRow[]>>;
   setPrinters: Dispatch<SetStateAction<PrinterRow[]>>;
-  setSpoolRows: Dispatch<SetStateAction<SpoolWithMasterRow[]>>;
+  setSpoolRows: Dispatch<SetStateAction<NormalizedSpoolWithMasterRow[]>>;
   setSwatchDraftById: Dispatch<SetStateAction<Record<string, string>>>;
   settingsPageMessageLabels: () => SettingsPageMessageLabels;
   tauri: boolean;
