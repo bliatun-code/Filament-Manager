@@ -8,6 +8,7 @@ import {
   buildSpoolsById,
   resolveSpoolTareWeightById,
 } from "./printer_page_model";
+import { normalizeSpoolWithMasterRows } from "./spool_row_normalization";
 import type { PrinterAmsSlotRow, PrinterOverviewRow, SpoolWithMasterRow } from "./tauri_client";
 
 function spool(
@@ -111,7 +112,7 @@ test("spool lookup resolves known tare weights and empty ids safely", () => {
 });
 
 test("allowed spool options keep the active slot spool selectable", () => {
-  const sortedSpools = [
+  const sortedSpools = normalizeSpoolWithMasterRows([
     spool("available"),
     spool("borrowed-in", "IN_STOCK", "Generic", "BORROWED_IN"),
     spool("active", "IN_USE"),
@@ -119,7 +120,11 @@ test("allowed spool options keep the active slot spool selectable", () => {
     spool("deleted", "DELETED"),
     spool("loaned-out-owned", "BORROWED"),
     spool("loaned-out-borrowed-in", "BORROWED", "Generic", "BORROWED_IN"),
-  ];
+  ]);
+  const activeRow = sortedSpools.find((row) => row.spool.id === "active");
+  if (activeRow) {
+    activeRow.spool.status = "IN_STOCK";
+  }
   const optionsBySlot = buildAllowedSpoolOptionsBySlotSpoolId(
     [printer("p1", [slot("a", "active")])],
     sortedSpools,

@@ -18,9 +18,14 @@ import {
   isSpoolStatusAssigned,
   isSpoolStatusUnavailableForSlot,
   type OwnershipType,
+  type SpoolStatus,
 } from "./inventory_domain";
 import { isUnknownLiveRfid, liveTrayIdentity } from "./printer_live_display";
 import { resolveSpoolTareWeight } from "./spool_weight";
+
+type PrinterSlotNormalizedSpoolRow = SpoolWithMasterRow["spool"] & {
+  normalized_status: SpoolStatus | null;
+};
 
 export type SlotSwapDraft = {
   targetSpoolId: string;
@@ -165,6 +170,18 @@ function liveTrayLoadedForSafety(
   return tray?.loaded === true;
 }
 
+function hasPrinterSlotNormalizedStatus(
+  spool: SpoolWithMasterRow["spool"],
+): spool is PrinterSlotNormalizedSpoolRow {
+  return "normalized_status" in spool;
+}
+
+function printerSlotSpoolStatus(row: SpoolWithMasterRow): string | null {
+  return hasPrinterSlotNormalizedStatus(row.spool)
+    ? row.spool.normalized_status
+    : row.spool.status;
+}
+
 export function resolveLiveRfidObservedAt(input: {
   liveTray: BambuLiveObservedTray;
   currentLiveTray?: BambuLiveObservedTray | null;
@@ -180,7 +197,7 @@ export function resolveLiveRfidObservedAt(input: {
 
 function rowCanReceiveLiveBambuRfid(row: SpoolWithMasterRow): boolean {
   const vendor = (row.master.vendor ?? "").trim().toLowerCase();
-  return vendor.includes("bambu") && !isSpoolStatusUnavailableForSlot(row.spool.status);
+  return vendor.includes("bambu") && !isSpoolStatusUnavailableForSlot(printerSlotSpoolStatus(row));
 }
 
 export type PreparedMeasuredWeightUpdate = {
@@ -233,28 +250,29 @@ export function buildMeasuredTotalWeightDraft(
     : "";
 }
 
-export function filterAllowedSpoolsForSlot(
-  sortedSpools: SpoolWithMasterRow[],
+export function filterAllowedSpoolsForSlot<Row extends SpoolWithMasterRow>(
+  sortedSpools: Row[],
   slotSpoolId?: string | null,
-): SpoolWithMasterRow[] {
+): Row[] {
   return sortedSpools.filter((row) => {
-    if (isSpoolStatusUnavailableForSlot(row.spool.status)) {
+    const status = printerSlotSpoolStatus(row);
+    if (isSpoolStatusUnavailableForSlot(status)) {
       return false;
     }
     if (slotSpoolId && row.spool.id === slotSpoolId) {
       return true;
     }
-    if (isSpoolStatusAssigned(row.spool.status)) {
+    if (isSpoolStatusAssigned(status)) {
       return false;
     }
     return true;
   });
 }
 
-export function filterSlotOptionsBySearch(
-  slotOptions: SpoolWithMasterRow[],
+export function filterSlotOptionsBySearch<Row extends SpoolWithMasterRow>(
+  slotOptions: Row[],
   search: string,
-): SpoolWithMasterRow[] {
+): Row[] {
   const searchTerm = search.trim().toLowerCase();
   if (!searchTerm) {
     return slotOptions;

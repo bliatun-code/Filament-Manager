@@ -48,34 +48,30 @@ function printerSettingsSnapshot(
   };
 }
 
-function spoolRow(id: string): SpoolWithMasterRow {
+function spoolRow(id: string, status = "IN_USE"): SpoolWithMasterRow {
   return {
-    id,
-    master_id: "master-1",
-    vendor: "Bambu",
-    material: "PLA",
-    filament_name: "Basic",
-    color_name: "Gray",
-    hex_color: "#808080",
-    product_url: null,
-    default_weight: 1000,
-    remaining_weight: 1000,
-    spool_weight: 1000,
-    empty_spool_weight: 250,
-    initial_weight: 1000,
-    status: "AVAILABLE",
-    location: null,
-    owner_type: "OWNED",
-    owner_name: null,
-    external_owner: null,
-    loaned_to: null,
-    loaned_at: null,
-    assigned_printer_id: null,
-    assigned_slot_id: null,
-    rfid_tag: null,
-    created_at: "2026-04-01 10:00:00",
-    updated_at: "2026-04-01 10:00:00",
-  } as SpoolWithMasterRow;
+    spool: {
+      id,
+      master_id: "master-1",
+      status,
+      ownership_type: "OWNED",
+      initial_weight_g: 1000,
+      remaining_g: 1000,
+      spool_tare_weight_g: 250,
+      location_id: null,
+      rfid_tag: null,
+    },
+    master: {
+      id: "master-1",
+      vendor: "Bambu",
+      material: "PLA",
+      filament_name: "Basic",
+      color_name: "Gray",
+      hex_color: "#808080",
+      product_url: null,
+      default_weight: 1000,
+    },
+  };
 }
 
 test("loadPrinterOverviewData loads local overview and live integration settings", async () => {
@@ -209,7 +205,7 @@ test("loadPrinterPageData uses cached client data when host target is incomplete
       }),
       fetchCachedSpools: async () => ({
         captured_at: "2026-04-01 12:05:00",
-        rows: [spoolRow("cached-spool")],
+        rows: [spoolRow("cached-spool", "loaned out")],
       }),
     },
   );
@@ -217,7 +213,8 @@ test("loadPrinterPageData uses cached client data when host target is incomplete
   assert.equal(result.source, "CACHED");
   assert.equal(result.updatedAt, "2026-04-01 12:00:00");
   assert.deepEqual(result.printers.map((entry) => entry.printer.id), ["printer-cache"]);
-  assert.deepEqual(result.spools.map((entry) => entry.id), ["cached-spool"]);
+  assert.deepEqual(result.spools.map((entry) => entry.spool.id), ["cached-spool"]);
+  assert.equal(result.spools[0]?.spool.normalized_status, "BORROWED");
   assert.deepEqual(result.bambuLiveIntegrations, {});
 });
 
@@ -256,7 +253,8 @@ test("loadPrinterPageData keeps fulfilled client spools when host overview fails
   assert.equal(result.source, "CACHED");
   assert.equal(result.updatedAt, "2026-04-01 11:00:00");
   assert.deepEqual(result.printers.map((entry) => entry.printer.id), ["printer-cache"]);
-  assert.deepEqual(result.spools.map((entry) => entry.id), ["host-spool"]);
+  assert.deepEqual(result.spools.map((entry) => entry.spool.id), ["host-spool"]);
+  assert.equal(result.spools[0]?.spool.normalized_status, "ASSIGNED");
   assert.equal(result.bambuLiveIntegrations["printer-host"]?.enabled, true);
   assert.equal(errors.length, 1);
 });
@@ -290,7 +288,7 @@ test("loadPrinterPageData uses cached spool timestamp when spool data falls back
   assert.equal(result.source, "CACHED");
   assert.equal(result.updatedAt, "2026-04-01 12:00:00");
   assert.deepEqual(result.printers.map((entry) => entry.printer.id), ["printer-host"]);
-  assert.deepEqual(result.spools.map((entry) => entry.id), ["cached-spool"]);
+  assert.deepEqual(result.spools.map((entry) => entry.spool.id), ["cached-spool"]);
   assert.equal(errors.length, 1);
 });
 
@@ -323,7 +321,7 @@ test("loadPrinterPageData timestamps the cache piece actually used during partia
   assert.equal(result.source, "CACHED");
   assert.equal(result.updatedAt, "spool-cache");
   assert.deepEqual(result.printers.map((entry) => entry.printer.id), ["printer-host"]);
-  assert.deepEqual(result.spools.map((entry) => entry.id), ["cached-spool"]);
+  assert.deepEqual(result.spools.map((entry) => entry.spool.id), ["cached-spool"]);
 });
 
 test("loadPrinterPageData reports offline when host and cache are unavailable", async () => {

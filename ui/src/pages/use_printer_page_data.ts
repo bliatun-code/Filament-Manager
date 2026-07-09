@@ -6,11 +6,11 @@ import {
 } from "../lib/printer_data_source";
 import { loadCatalogMasters } from "../lib/catalog_data_source";
 import { sortPrinterSlotsExtLast } from "../lib/printer_profiles";
+import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import type {
   BambuLiveIntegrationEntry,
   MasterCatalogRow,
   PrinterOverviewRow,
-  SpoolWithMasterRow,
 } from "../lib/tauri_client";
 
 type UsePrinterPageDataInput = {
@@ -27,7 +27,7 @@ type UsePrinterPageDataInput = {
 export type UsePrinterPageDataResult = {
   loading: boolean;
   printers: PrinterOverviewRow[];
-  spools: SpoolWithMasterRow[];
+  spools: NormalizedSpoolWithMasterRow[];
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
   catalogMasters: MasterCatalogRow[];
   clientPrinterSource: PrinterSnapshotSource;
@@ -48,7 +48,7 @@ export function usePrinterPageData({
 }: UsePrinterPageDataInput): UsePrinterPageDataResult {
   const [loading, setLoading] = useState(tauri);
   const [printers, setPrinters] = useState<PrinterOverviewRow[]>([]);
-  const [spools, setSpools] = useState<SpoolWithMasterRow[]>([]);
+  const [spools, setSpools] = useState<NormalizedSpoolWithMasterRow[]>([]);
   const [bambuLiveIntegrations, setBambuLiveIntegrations] = useState<
     Record<string, BambuLiveIntegrationEntry["config"]>
   >({});

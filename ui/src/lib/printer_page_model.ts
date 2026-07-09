@@ -11,16 +11,16 @@ export type PrinterPageSummary = {
   totalSlots: number;
 };
 
-export function buildSpoolsById(spools: SpoolWithMasterRow[]): Map<string, SpoolWithMasterRow> {
-  const map = new Map<string, SpoolWithMasterRow>();
+export function buildSpoolsById<Row extends SpoolWithMasterRow>(spools: Row[]): Map<string, Row> {
+  const map = new Map<string, Row>();
   for (const row of spools) {
     map.set(row.spool.id, row);
   }
   return map;
 }
 
-export function resolveSpoolTareWeightById(
-  spoolsById: Map<string, SpoolWithMasterRow>,
+export function resolveSpoolTareWeightById<Row extends SpoolWithMasterRow>(
+  spoolsById: ReadonlyMap<string, Row>,
   spoolId: string | null | undefined,
 ): number {
   const id = (spoolId ?? "").trim();
@@ -46,11 +46,11 @@ export function buildPrinterPageSummary(printers: PrinterOverviewRow[]): Printer
   };
 }
 
-export function buildAllowedSpoolOptionsBySlotSpoolId(
+export function buildAllowedSpoolOptionsBySlotSpoolId<Row extends SpoolWithMasterRow>(
   printers: PrinterOverviewRow[],
-  sortedSpools: SpoolWithMasterRow[],
-): Map<string, SpoolWithMasterRow[]> {
-  const map = new Map<string, SpoolWithMasterRow[]>();
+  sortedSpools: Row[],
+): Map<string, Row[]> {
+  const map = new Map<string, Row[]>();
   map.set("", filterAllowedSpoolsForSlot(sortedSpools));
   const activeSlotSpoolIds = new Set<string>();
   for (const printer of printers) {
@@ -67,10 +67,10 @@ export function buildAllowedSpoolOptionsBySlotSpoolId(
   return map;
 }
 
-export function buildAllowedSpoolOptionMapsBySlotSpoolId(
-  allowedSpoolOptionsBySlotSpoolId: Map<string, SpoolWithMasterRow[]>,
-): Map<string, Map<string, SpoolWithMasterRow>> {
-  const map = new Map<string, Map<string, SpoolWithMasterRow>>();
+export function buildAllowedSpoolOptionMapsBySlotSpoolId<Row extends SpoolWithMasterRow>(
+  allowedSpoolOptionsBySlotSpoolId: Map<string, Row[]>,
+): Map<string, Map<string, Row>> {
+  const map = new Map<string, Map<string, Row>>();
   for (const [slotSpoolId, options] of allowedSpoolOptionsBySlotSpoolId) {
     map.set(
       slotSpoolId,

@@ -11,6 +11,10 @@ import {
 } from "./tauri_client";
 import { loadSpoolRowsPage } from "./spool_data_source";
 import {
+  normalizeSpoolWithMasterRows,
+  type NormalizedSpoolWithMasterRow,
+} from "./spool_row_normalization";
+import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
 } from "./library_sync_state";
@@ -35,7 +39,7 @@ export type PrinterOverviewDataSourceOptions = {
 
 export type PrinterDataLoadResult = {
   printers: PrinterOverviewRow[];
-  spools: SpoolWithMasterRow[];
+  spools: NormalizedSpoolWithMasterRow[];
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
   printerModels: string[];
   source: PrinterSnapshotSource;
@@ -106,6 +110,10 @@ function resolveClientPrinterUpdatedAt({
 }
 
 export const derivePrinterLibrarySyncState = deriveLibrarySyncPageState;
+
+function normalizePrinterSpoolRows(rows: SpoolWithMasterRow[]): NormalizedSpoolWithMasterRow[] {
+  return normalizeSpoolWithMasterRows(rows);
+}
 
 export async function loadPrinterOverviewData(
   options: PrinterOverviewDataSourceOptions,
@@ -199,7 +207,7 @@ export async function loadPrinterPageData(
         fetchCachedSpools().catch(() => null),
       ]);
       const printers = cachedPrinters?.rows ?? [];
-      const spools = cachedSpools?.rows ?? [];
+      const spools = normalizePrinterSpoolRows(cachedSpools?.rows ?? []);
       if (printers.length > 0 || spools.length > 0) {
         return {
           printers,
@@ -257,7 +265,9 @@ export async function loadPrinterPageData(
     }
 
     const printers = overviewResult.ok ? overviewResult.value : cachedPrinters?.rows ?? [];
-    const spools = spoolRowsResult.ok ? spoolRowsResult.value : cachedSpools?.rows ?? [];
+    const spools = normalizePrinterSpoolRows(
+      spoolRowsResult.ok ? spoolRowsResult.value : cachedSpools?.rows ?? [],
+    );
 
     if (printers.length > 0 || spools.length > 0 || overviewResult.ok || spoolRowsResult.ok) {
       return {
@@ -306,7 +316,7 @@ export async function loadPrinterPageData(
 
   return {
     printers: overview,
-    spools: spoolRows,
+    spools: normalizePrinterSpoolRows(spoolRows),
     bambuLiveIntegrations: mapBambuLiveIntegrations(settings.bambu_live_integrations),
     printerModels: resolvePrinterModels(settings.printer_models, supportedPrinterModels),
     source: "LIVE",

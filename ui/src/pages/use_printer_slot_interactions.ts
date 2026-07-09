@@ -47,6 +47,7 @@ import {
   liveTrayIdentity,
 } from "../lib/printer_live_display";
 import { sortSpoolsAlphabetically } from "../lib/spool_sort";
+import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import {
   createInventorySpoolFromMaster,
   updateInventorySpoolRfidTag,
@@ -81,7 +82,7 @@ type UsePrinterSlotInteractionsInput = {
   setBusy: Dispatch<SetStateAction<boolean>>;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfo: Dispatch<SetStateAction<string | null>>;
-  spools: SpoolWithMasterRow[];
+  spools: NormalizedSpoolWithMasterRow[];
   tauri: boolean;
   t: Translate;
 };
