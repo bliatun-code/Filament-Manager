@@ -2,7 +2,6 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "rea
 import {
   exportLoansCsv,
   isTauri,
-  type SpoolLoanDetailsRow,
 } from "../lib/tauri_client";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { LoanHistoryCard } from "../components/loan_history_card";
@@ -22,7 +21,11 @@ import {
 } from "../lib/loan_display";
 import { buildLoansCsv } from "../lib/loan_export";
 import { isInboundLoan, isLoanCurrentlyActive, isOutboundLoan } from "../lib/loan_state";
-import { loadLoanRowsPage, returnInventoryLoan } from "../lib/loan_data_source";
+import {
+  loadLoanRowsPage,
+  returnInventoryLoan,
+  type NormalizedLoanDetailsRow,
+} from "../lib/loan_data_source";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import { useClientWriteGuards } from "../lib/use_client_write_guards";
 import { useLibrarySyncState } from "./use_library_sync_state";
@@ -50,9 +53,11 @@ export default function LoansPage() {
   const [directionFilter, setDirectionFilter] = useState<LoanDirectionFilter>("ALL");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
-  const [loans, setLoans] = useState<SpoolLoanDetailsRow[]>([]);
+  const [loans, setLoans] = useState<NormalizedLoanDetailsRow[]>([]);
   const [showLoanOutModal, setShowLoanOutModal] = useState(false);
-  const [returnModalLoan, setReturnModalLoan] = useState<SpoolLoanDetailsRow | null>(null);
+  const [returnModalLoan, setReturnModalLoan] = useState<NormalizedLoanDetailsRow | null>(
+    null,
+  );
   const [returnModalGrams, setReturnModalGrams] = useState("");
   const [returnModalNote, setReturnModalNote] = useState("");
   const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
@@ -153,7 +158,7 @@ export default function LoansPage() {
     }
   }
 
-  const openReturnModal = useCallback((loan: SpoolLoanDetailsRow) => {
+  const openReturnModal = useCallback((loan: NormalizedLoanDetailsRow) => {
     if (!clientReadOnly && !ensureLocalWriteAllowed()) {
       return;
     }

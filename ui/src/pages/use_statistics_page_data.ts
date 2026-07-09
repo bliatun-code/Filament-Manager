@@ -6,9 +6,9 @@ import type {
   InventoryOverview,
   LoanUsageByPersonRow,
   PrinterOverviewRow,
-  SpoolLoanDetailsRow,
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
+import type { NormalizedLoanDetailsRow } from "../lib/statistics_data_source";
 
 type Translate = I18nContextValue["t"];
 
@@ -27,7 +27,7 @@ export function useStatisticsPageData({
   );
   const [loanUsage, setLoanUsage] = useState<LoanUsageByPersonRow[]>([]);
   const [inboundLoanUsage, setInboundLoanUsage] = useState<LoanUsageByPersonRow[]>([]);
-  const [loanDetails, setLoanDetails] = useState<SpoolLoanDetailsRow[]>([]);
+  const [loanDetails, setLoanDetails] = useState<NormalizedLoanDetailsRow[]>([]);
   const [loading, setLoading] = useState(tauri);
   const [error, setError] = useState<string | null>(null);
   const [clientReadOnly, setClientReadOnly] = useState(false);

@@ -4,6 +4,7 @@ import {
   normalizeLoanDirection,
   type LoanDirection,
 } from "./inventory_domain";
+import type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import { isLoanCurrentlyActive, isLoanReturned } from "./loan_state";
 import { resolveSpoolTareWeight } from "./spool_weight";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
@@ -13,6 +14,7 @@ export { normalizeLoanDirection, type LoanDirection };
 
 export type LoanFilter = "ALL" | "ACTIVE" | "RETURNED";
 export type LoanDirectionFilter = "ALL" | LoanDirection;
+export type LoanDisplayRow = NormalizedLoanDetailsRow;
 
 export function formatGrams(value?: number | null): string {
   return formatWeightGrams(value, "zero");
@@ -104,11 +106,11 @@ export function formatLoanReference(spoolIdRaw?: string | null): string {
 }
 
 export function filterLoans(
-  loans: SpoolLoanDetailsRow[],
+  loans: LoanDisplayRow[],
   directionFilter: LoanDirectionFilter,
   filter: LoanFilter,
   search: string,
-): SpoolLoanDetailsRow[] {
+): LoanDisplayRow[] {
   const directionScopedLoans = loans.filter((loan) =>
     directionFilter === "ALL"
       ? true

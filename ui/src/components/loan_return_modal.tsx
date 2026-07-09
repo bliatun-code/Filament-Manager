@@ -25,12 +25,12 @@ import {
 } from "./loan_swatch_card";
 import { useResolvedTheme } from "../lib/theme_mode";
 import { isInboundLoan } from "../lib/loan_state";
-import type { SpoolLoanDetailsRow } from "../lib/tauri_client";
+import type { NormalizedLoanDetailsRow } from "../lib/loan_data_source";
 
 type LoanReturnModalProps = {
   busy: boolean;
   grams: string;
-  loan: SpoolLoanDetailsRow | null;
+  loan: NormalizedLoanDetailsRow | null;
   note: string;
   onClose: () => void;
   onConfirm: () => void | Promise<void>;

@@ -23,7 +23,10 @@ import { loadAllSpoolRows } from "./spool_data_source";
 import { isLoanCurrentlyActive, isLoanReturned } from "./loan_state";
 import { deriveInventoryOverviewFromRows } from "./statistics_model";
 import { isLoanDirection, type LoanDirection } from "./inventory_domain";
-import { normalizeLoanDetailsRow } from "./loan_row_normalization";
+import {
+  normalizeLoanDetailsRow,
+  type NormalizedLoanDetailsRow,
+} from "./loan_row_normalization";
 import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
@@ -33,13 +36,14 @@ import { firstDefinedTimestamp } from "./source_timestamps";
 
 export type StatisticsSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
 export type StatisticsLibrarySyncState = LibrarySyncPageState;
+export type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
 
 export type StatisticsDataLoadResult = {
   overview: InventoryOverview | null;
   printers: PrinterOverviewRow[];
   spoolRows: SpoolWithMasterRow[];
   consumptionRows: FilamentConsumptionRow[];
-  loanDetails: SpoolLoanDetailsRow[];
+  loanDetails: NormalizedLoanDetailsRow[];
   loanUsage: LoanUsageByPersonRow[];
   inboundLoanUsage: LoanUsageByPersonRow[];
   updatedAt: string | null;
@@ -60,7 +64,7 @@ export type FilamentConsumptionBreakdownOptions = {
 
 export type LoanBreakdownRowsOptions = {
   clientReadOnly: boolean;
-  cachedLoanDetails: SpoolLoanDetailsRow[];
+  cachedLoanDetails: NormalizedLoanDetailsRow[];
   direction?: string | null;
   limit?: number;
 };
@@ -94,7 +98,7 @@ type StatisticsDataDependencies = {
   listLocalPrinterOverview?: typeof listPrinterOverview;
 };
 
-function normalizeLoanDetailsRows(rows: SpoolLoanDetailsRow[]): SpoolLoanDetailsRow[] {
+function normalizeLoanDetailsRows(rows: SpoolLoanDetailsRow[]): NormalizedLoanDetailsRow[] {
   return rows.map(normalizeLoanDetailsRow);
 }
 
@@ -105,7 +109,7 @@ export function deriveStatisticsLibrarySyncState(
 }
 
 export function groupLoanUsageByPerson(
-  rows: SpoolLoanDetailsRow[],
+  rows: NormalizedLoanDetailsRow[],
   direction: LoanDirection,
 ): LoanUsageByPersonRow[] {
   const grouped = new Map<string, LoanUsageByPersonRow>();
@@ -183,7 +187,7 @@ export async function loadFilamentConsumptionBreakdown(
 export async function loadLoanBreakdownRows(
   options: LoanBreakdownRowsOptions,
   dependencies: LoanBreakdownRowsDependencies = {},
-): Promise<SpoolLoanDetailsRow[]> {
+): Promise<NormalizedLoanDetailsRow[]> {
   if (options.clientReadOnly) {
     return normalizeLoanDetailsRows(options.cachedLoanDetails);
   }

@@ -35,6 +35,7 @@ import {
 import {
   loadFilamentConsumptionBreakdown,
   loadLoanBreakdownRows,
+  type NormalizedLoanDetailsRow,
 } from "../lib/statistics_data_source";
 import { resolveClientHostTarget } from "../lib/host_write_target";
 import { useResolvedTheme } from "../lib/theme_mode";
@@ -42,7 +43,6 @@ import {
   isTauri,
   type FilamentConsumptionRow,
   type PrinterOverviewRow,
-  type SpoolLoanDetailsRow,
 } from "../lib/tauri_client";
 import {
   StatisticsInboundLoanUsagePanel,
@@ -57,7 +57,7 @@ import {
 } from "./statistics_usage_modals";
 import { useStatisticsPageData } from "./use_statistics_page_data";
 
-function loanPartyName(row: SpoolLoanDetailsRow): string {
+function loanPartyName(row: NormalizedLoanDetailsRow): string {
   return (row.loan.counterparty_name ?? "").trim() || row.loan.borrower_name;
 }
 

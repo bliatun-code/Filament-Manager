@@ -28,8 +28,8 @@ import type {
   PrinterAmsSlotRow,
   PrinterOverviewRow,
   SpoolWithMasterRow,
-  SpoolLoanDetailsRow,
 } from "./tauri_client";
+import type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
 
 export type ConsumptionSort = "USED_DESC" | "USED_ASC" | "NAME_ASC" | "JOBS_DESC";
 export type LoanUsageListFilter = "ALL" | "ACTIVE" | "COMPLETED";
@@ -87,7 +87,7 @@ export function gramsToKgText(value: number): string {
   return `${(value / 1000).toFixed(2)} kg`;
 }
 
-export function groupedLoanUsage(rows: SpoolLoanDetailsRow[]): BorrowerFilamentUsageRow[] {
+export function groupedLoanUsage(rows: NormalizedLoanDetailsRow[]): BorrowerFilamentUsageRow[] {
   const grouped = new Map<string, BorrowerFilamentUsageRow>();
   for (const row of rows) {
     const material = (row.material ?? "").trim() || "Unknown";

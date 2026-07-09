@@ -5,7 +5,12 @@ import {
   buildDashboardCompanionPresentation,
   buildDashboardDerivedState,
 } from "./dashboard_model";
-import type { InventoryOverview, PrinterOverviewRow, SpoolWithMasterRow } from "./tauri_client";
+import type {
+  InventoryOverview,
+  PrinterOverviewRow,
+  SpoolLoanDetailsRow,
+  SpoolWithMasterRow,
+} from "./tauri_client";
 
 const t = (_key: string, fallback: string) => fallback;
 
@@ -74,6 +79,43 @@ function printer(
       last_job_at: null,
     },
     slots,
+  };
+}
+
+function loanRow(
+  spoolId: string,
+  overrides: Partial<SpoolLoanDetailsRow> = {},
+  loanOverrides: Partial<SpoolLoanDetailsRow["loan"]> = {},
+): SpoolLoanDetailsRow {
+  return {
+    loan: {
+      id: `loan-${spoolId}`,
+      spool_id: spoolId,
+      borrower_name: "Ada",
+      loan_direction: "OUTBOUND",
+      loan_status: "ACTIVE",
+      counterparty_name: null,
+      counterparty_contact: null,
+      counterparty_note: null,
+      grams_out: 320,
+      lent_note: null,
+      lent_at: "2026-07-01 10:00:00",
+      expected_return_at: null,
+      returned_at: null,
+      returned_grams: null,
+      consumed_grams: null,
+      return_note: null,
+      ...loanOverrides,
+    },
+    spool_status: "BORROWED",
+    spool_remaining_g: 680,
+    spool_tare_weight_g: null,
+    material: "PLA",
+    filament_name: "Matte",
+    color_name: "Blue",
+    vendor: "Bambu",
+    hex_color: "#1f6feb",
+    ...overrides,
   };
 }
 
@@ -171,6 +213,30 @@ test("buildDashboardDerivedState preserves unknown statuses outside on-hand coun
   assert.equal(result.ownershipOnHand.total, 1);
   assert.equal(result.ownershipOnHand.borrowedIn, 1);
   assert.equal(result.ownershipLowStock.owned, 1);
+});
+
+test("buildDashboardDerivedState normalizes legacy loan tokens before active counts", () => {
+  const result = buildDashboardDerivedState({
+    overview: overview(),
+    printers: [],
+    spoolRows: [],
+    loans: [
+      loanRow("legacy-active", {}, { loan_direction: "out-bound", loan_status: "active" }),
+      loanRow("legacy-returned", {}, { loan_status: "active", returned_at: "2026-07-02 10:00:00" }),
+      loanRow("legacy-inbound", {}, { loan_direction: "in-bound", loan_status: "active" }),
+    ],
+    wishlist: [],
+    t,
+  });
+
+  assert.equal(
+    result.health.metrics.find((metric) => metric.id === "loaned")?.value,
+    "1",
+  );
+  assert.deepEqual(
+    result.activity.map((item) => item.id),
+    ["loan-loan-legacy-active"],
+  );
 });
 
 test("buildDashboardDerivedState ignores EXT readiness for AMS/MMU printers", () => {

@@ -12,12 +12,12 @@ import { ModalDetailItem } from "./modal_chrome";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
 import { LoanSwatchCard, LoanSwatchInsetCard } from "./loan_swatch_card";
 import { useResolvedTheme } from "../lib/theme_mode";
-import type { SpoolLoanDetailsRow } from "../lib/tauri_client";
+import type { NormalizedLoanDetailsRow } from "../lib/loan_data_source";
 
 type LoanHistoryCardProps = {
   busy: boolean;
-  loan: SpoolLoanDetailsRow;
-  onReturn: (loan: SpoolLoanDetailsRow) => void;
+  loan: NormalizedLoanDetailsRow;
+  onReturn: (loan: NormalizedLoanDetailsRow) => void;
 };
 
 const loanHistoryReturnButtonClassName =
