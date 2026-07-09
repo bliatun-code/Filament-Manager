@@ -4,10 +4,10 @@ function spoolSortText(value?: string | null): string {
   return (value ?? "").trim();
 }
 
-export function sortSpoolsAlphabetically(
-  rows: SpoolWithMasterRow[],
+export function sortSpoolsAlphabetically<Row extends SpoolWithMasterRow>(
+  rows: Row[],
   locale?: string,
-): SpoolWithMasterRow[] {
+): Row[] {
   return [...rows].sort((left, right) => {
     const comparisons = [
       spoolSortText(left.master.material).localeCompare(
