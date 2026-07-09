@@ -16,6 +16,10 @@ import {
 import { loadCatalogMasters } from "./catalog_data_source";
 import { mapBambuLiveIntegrations } from "./printer_data_source";
 import { loadAllSpoolRows } from "./spool_data_source";
+import {
+  normalizeSpoolWithMasterRows,
+  type NormalizedSpoolWithMasterRow,
+} from "./spool_row_normalization";
 import { requireClientHostWriteTarget, resolveClientHostTarget } from "./host_write_target";
 
 export type SettingsPageData = {
@@ -23,7 +27,7 @@ export type SettingsPageData = {
   catalogRows: MasterCatalogRow[];
   syncSettings: LibrarySyncSettings;
   overviewRows: PrinterOverviewRow[];
-  spoolRows: SpoolWithMasterRow[];
+  spoolRows: NormalizedSpoolWithMasterRow[];
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
 };
 
@@ -167,7 +171,7 @@ export async function loadSettingsPageData(
     catalogRows,
     syncSettings,
     overviewRows,
-    spoolRows,
+    spoolRows: normalizeSpoolWithMasterRows(spoolRows),
     bambuLiveIntegrations,
   };
 }

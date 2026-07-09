@@ -52,7 +52,13 @@ function printerSettingsSnapshot(printerId: string): PrinterSettingsSnapshot {
   };
 }
 
-function spoolWithMasterRow(id: string): SpoolWithMasterRow {
+function spoolWithMasterRow(
+  id: string,
+  overrides: {
+    spool?: Partial<SpoolWithMasterRow["spool"]>;
+    master?: Partial<SpoolWithMasterRow["master"]>;
+  } = {},
+): SpoolWithMasterRow {
   return {
     spool: {
       id,
@@ -60,6 +66,8 @@ function spoolWithMasterRow(id: string): SpoolWithMasterRow {
       status: "available",
       initial_weight_g: 1000,
       current_weight_g: 900,
+      ownership_type: "OWNED",
+      ...overrides.spool,
     },
     master: {
       id: "master-1",
@@ -70,6 +78,7 @@ function spoolWithMasterRow(id: string): SpoolWithMasterRow {
       product_url: null,
       default_weight: 1000,
       vendor: "Bambu",
+      ...overrides.master,
     },
   };
 }
@@ -100,9 +109,30 @@ const hostCatalogRows: MasterCatalogRow[] = [
     is_discontinued: false,
   },
 ];
-const localSpoolRows: SpoolWithMasterRow[] = [];
-const hostSpoolRows: SpoolWithMasterRow[] = [];
-const cachedSpoolRows: SpoolWithMasterRow[] = [spoolWithMasterRow("spool-cache")];
+const localSpoolRows: SpoolWithMasterRow[] = [
+  spoolWithMasterRow("spool-local", {
+    spool: {
+      ownership_type: "borrowed-in",
+      status: "IN_USE",
+    },
+  }),
+];
+const hostSpoolRows: SpoolWithMasterRow[] = [
+  spoolWithMasterRow("spool-host", {
+    spool: {
+      ownership_type: "OWNED",
+      status: "loaned out",
+    },
+  }),
+];
+const cachedSpoolRows: SpoolWithMasterRow[] = [
+  spoolWithMasterRow("spool-cache", {
+    spool: {
+      ownership_type: "borrowed in",
+      status: "IN_USE",
+    },
+  }),
+];
 
 function remoteSnapshot(
   overrides: Partial<LibrarySyncRemoteSnapshot> = {},
@@ -157,7 +187,10 @@ test("loadSettingsPageData loads local settings overview and local spools", asyn
   });
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-local"]);
-  assert.equal(result.spoolRows, localSpoolRows);
+  assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["spool-local"]);
+  assert.equal(result.spoolRows[0]?.spool.status, "IN_USE");
+  assert.equal(result.spoolRows[0]?.spool.normalized_status, "ASSIGNED");
+  assert.equal(result.spoolRows[0]?.spool.ownership_type, "BORROWED_IN");
   assert.equal(result.bambuLiveIntegrations["printer-local"]?.enabled, true);
 });
 
@@ -193,7 +226,10 @@ test("loadSettingsPageData prefers host overview, settings, and spools for clien
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-host"]);
   assert.equal(result.catalogRows, hostCatalogRows);
-  assert.equal(result.spoolRows, hostSpoolRows);
+  assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["spool-host"]);
+  assert.equal(result.spoolRows[0]?.spool.status, "loaned out");
+  assert.equal(result.spoolRows[0]?.spool.normalized_status, "BORROWED");
+  assert.equal(result.spoolRows[0]?.spool.ownership_type, "OWNED");
   assert.equal(result.bambuLiveIntegrations["printer-host"]?.enabled, true);
 });
 
@@ -231,7 +267,10 @@ test("loadSettingsPageData falls back to cached client printers and spools", asy
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-cache"]);
   assert.equal(result.catalogRows, hostCatalogRows);
-  assert.equal(result.spoolRows, cachedSpoolRows);
+  assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["spool-cache"]);
+  assert.equal(result.spoolRows[0]?.spool.status, "IN_USE");
+  assert.equal(result.spoolRows[0]?.spool.normalized_status, "ASSIGNED");
+  assert.equal(result.spoolRows[0]?.spool.ownership_type, "BORROWED_IN");
   assert.equal(result.bambuLiveIntegrations["printer-host"]?.enabled, true);
 });
 
@@ -268,7 +307,9 @@ test("loadSettingsPageData avoids local spools when client host details are inco
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-cache"]);
   assert.deepEqual(result.catalogRows, []);
-  assert.equal(result.spoolRows, cachedSpoolRows);
+  assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["spool-cache"]);
+  assert.equal(result.spoolRows[0]?.spool.normalized_status, "ASSIGNED");
+  assert.equal(result.spoolRows[0]?.spool.ownership_type, "BORROWED_IN");
   assert.equal(result.bambuLiveIntegrations["printer-local"]?.enabled, true);
 });
 
@@ -304,7 +345,8 @@ test("loadSettingsPageData keeps fulfilled host client data when one host endpoi
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-host"]);
   assert.equal(result.catalogRows, hostCatalogRows);
-  assert.equal(result.spoolRows, hostSpoolRows);
+  assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["spool-host"]);
+  assert.equal(result.spoolRows[0]?.spool.normalized_status, "BORROWED");
   assert.equal(result.bambuLiveIntegrations["printer-local"]?.enabled, true);
   assert.equal(errors.length, 1);
 });
