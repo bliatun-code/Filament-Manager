@@ -4,9 +4,9 @@ import test from "node:test";
 import { loadAllSpoolRowsWithPageLoader, loadSpoolRowsPage } from "./spool_data_source";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
-function row(id: string): SpoolWithMasterRow {
+function row(id: string, status = "IN_STOCK", ownershipType = "OWNED"): SpoolWithMasterRow {
   return {
-    spool: { id },
+    spool: { id, ownership_type: ownershipType, status },
     master: {},
   } as SpoolWithMasterRow;
 }
@@ -19,9 +19,9 @@ test("loadAllSpoolRowsWithPageLoader advances offsets until the final partial pa
     async (_options, limit, offset) => {
       calls.push({ limit, offset });
       if (offset === 0) {
-        return [row("spool-1"), row("spool-2")];
+        return [row("spool-1", "IN_USE", "borrowed-in"), row("spool-2")];
       }
-      return [row("spool-3")];
+      return [row("spool-3", "loaned out")];
     },
     4,
   );
@@ -31,6 +31,11 @@ test("loadAllSpoolRowsWithPageLoader advances offsets until the final partial pa
     { limit: 2, offset: 2 },
   ]);
   assert.deepEqual(rows.map((entry) => entry.spool.id), ["spool-1", "spool-2", "spool-3"]);
+  assert.equal(rows[0]?.spool.status, "IN_USE");
+  assert.equal(rows[0]?.spool.normalized_status, "ASSIGNED");
+  assert.equal(rows[0]?.spool.ownership_type, "BORROWED_IN");
+  assert.equal(rows[2]?.spool.status, "loaned out");
+  assert.equal(rows[2]?.spool.normalized_status, "BORROWED");
 });
 
 test("loadSpoolRowsPage uses host spools in client mode", async () => {

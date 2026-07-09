@@ -4,6 +4,10 @@ import {
   type SpoolWithMasterRow,
 } from "./tauri_client";
 import { resolveClientHostTarget } from "./host_write_target";
+import {
+  normalizeSpoolWithMasterRows,
+  type NormalizedSpoolWithMasterRow,
+} from "./spool_row_normalization";
 
 type SpoolDataSourceOptions = {
   clientReadOnly: boolean;
@@ -43,7 +47,7 @@ export async function loadSpoolRowsPage(
 export async function loadAllSpoolRows(
   options: SpoolDataSourceOptions,
   limit = 200,
-): Promise<SpoolWithMasterRow[]> {
+): Promise<NormalizedSpoolWithMasterRow[]> {
   return loadAllSpoolRowsWithPageLoader(options, limit, loadSpoolRowsPage);
 }
 
@@ -52,7 +56,7 @@ export async function loadAllSpoolRowsWithPageLoader(
   limit = 200,
   loadPage: SpoolRowsPageLoader,
   maxPages = MAX_LOAD_ALL_SPOOL_PAGES,
-): Promise<SpoolWithMasterRow[]> {
+): Promise<NormalizedSpoolWithMasterRow[]> {
   const allRows: SpoolWithMasterRow[] = [];
   const pageLimit = Math.max(1, Math.floor(limit));
   let offset = 0;
@@ -67,5 +71,5 @@ export async function loadAllSpoolRowsWithPageLoader(
   if (allRows.length >= pageLimit * maxPages) {
     throw new Error("Stopped loading spools because pagination did not finish.");
   }
-  return allRows;
+  return normalizeSpoolWithMasterRows(allRows);
 }
