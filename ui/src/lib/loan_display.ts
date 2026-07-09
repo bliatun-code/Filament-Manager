@@ -7,7 +7,6 @@ import {
 import type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import { isLoanCurrentlyActive, isLoanReturned } from "./loan_state";
 import { resolveSpoolTareWeight } from "./spool_weight";
-import type { SpoolLoanDetailsRow } from "./tauri_client";
 import { formatGrams as formatWeightGrams } from "./weight_display";
 export { formatDateTime } from "./date_time";
 export { normalizeLoanDirection, type LoanDirection };
@@ -20,19 +19,19 @@ export function formatGrams(value?: number | null): string {
   return formatWeightGrams(value, "zero");
 }
 
-function resolveLoanTareWeight(loan: SpoolLoanDetailsRow): number {
+function resolveLoanTareWeight(loan: LoanDisplayRow): number {
   return resolveSpoolTareWeight(loan.spool_tare_weight_g, loan.vendor);
 }
 
 export function toMeasuredTotalWeight(
-  loan: SpoolLoanDetailsRow,
+  loan: LoanDisplayRow,
   filamentGrams?: number | null,
 ): number {
   return Math.max(0, filamentGrams ?? 0) + resolveLoanTareWeight(loan);
 }
 
 export function toReturnedFilamentWeight(
-  loan: SpoolLoanDetailsRow,
+  loan: LoanDisplayRow,
   measuredTotalGrams: number,
 ): number {
   return Math.max(0, measuredTotalGrams - resolveLoanTareWeight(loan));
@@ -43,7 +42,7 @@ function normalizeLoanToken(value?: string | null): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-export function compactLoanTitle(loan: SpoolLoanDetailsRow, unknownLabel: string): string {
+export function compactLoanTitle(loan: LoanDisplayRow, unknownLabel: string): string {
   const material = normalizeLoanToken(loan.material);
   const filament = normalizeLoanToken(loan.filament_name);
   const color = normalizeLoanToken(loan.color_name);

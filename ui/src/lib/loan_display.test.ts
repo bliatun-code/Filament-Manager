@@ -9,10 +9,11 @@ import {
   toMeasuredTotalWeight,
   toReturnedFilamentWeight,
 } from "./loan_display";
+import { normalizeLoanDetailsRow, type NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import type { SpoolLoanDetailsRow } from "./tauri_client";
 
-function loanRow(overrides: Partial<SpoolLoanDetailsRow> = {}): SpoolLoanDetailsRow {
-  return {
+function loanRow(overrides: Partial<SpoolLoanDetailsRow> = {}): NormalizedLoanDetailsRow {
+  return normalizeLoanDetailsRow({
     spool_status: "BORROWED",
     spool_remaining_g: 700,
     spool_tare_weight_g: 200,
@@ -41,7 +42,7 @@ function loanRow(overrides: Partial<SpoolLoanDetailsRow> = {}): SpoolLoanDetails
       return_note: null,
       ...overrides.loan,
     },
-  };
+  });
 }
 
 test("loan display keeps compact title and reference formatting", () => {
