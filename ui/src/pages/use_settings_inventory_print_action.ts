@@ -2,10 +2,10 @@ import { type Dispatch, type SetStateAction } from "react";
 import { toErrorMessage } from "../lib/error_text";
 import {
   printLabelPdf,
-  type SpoolWithMasterRow,
   type TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
 import type { Locale } from "../lib/i18n";
+import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import {
   buildSettingsInventoryOverviewPrintErrorMessage,
   buildSettingsInventoryOverviewPrintPdfLabels,
@@ -19,7 +19,7 @@ import {
 
 type UseSettingsInventoryPrintActionInput = {
   busy: boolean;
-  loadSettingsInventoryRows: () => Promise<SpoolWithMasterRow[]>;
+  loadSettingsInventoryRows: () => Promise<NormalizedSpoolWithMasterRow[]>;
   locale: Locale;
   setBusy: Dispatch<SetStateAction<boolean>>;
   setError: Dispatch<SetStateAction<string | null>>;

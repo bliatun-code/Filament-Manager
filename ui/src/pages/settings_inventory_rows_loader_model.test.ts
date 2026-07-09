@@ -4,15 +4,15 @@ import test from "node:test";
 import { loadSettingsInventoryRowsForExport } from "./settings_inventory_rows_loader_model";
 import type { SpoolWithMasterRow } from "../lib/tauri_client";
 
-function row(id: string): SpoolWithMasterRow {
+function row(id: string, status = "IN_STOCK", ownershipType = "OWNED"): SpoolWithMasterRow {
   return {
-    spool: { id },
+    spool: { id, ownership_type: ownershipType, status },
     master: {},
   } as SpoolWithMasterRow;
 }
 
 test("loadSettingsInventoryRowsForExport uses loaded settings rows when client refresh fails", async () => {
-  const fallbackRows = [row("loaded-spool")];
+  const fallbackRows = [row("loaded-spool", "IN_USE", "borrowed-in")];
   const rows = await loadSettingsInventoryRowsForExport({
     fallbackRows,
     loadAllSpoolRows: async () => {
@@ -26,7 +26,10 @@ test("loadSettingsInventoryRowsForExport uses loaded settings rows when client r
     pageLimit: 200,
   });
 
-  assert.equal(rows, fallbackRows);
+  assert.deepEqual(rows.map((entry) => entry.spool.id), ["loaded-spool"]);
+  assert.equal(rows[0]?.spool.status, "IN_USE");
+  assert.equal(rows[0]?.spool.normalized_status, "ASSIGNED");
+  assert.equal(rows[0]?.spool.ownership_type, "BORROWED_IN");
 });
 
 test("loadSettingsInventoryRowsForExport prefers refreshed rows when available", async () => {
@@ -35,7 +38,7 @@ test("loadSettingsInventoryRowsForExport prefers refreshed rows when available",
     loadAllSpoolRows: async (options, pageLimit) => {
       assert.equal(options.clientReadOnly, true);
       assert.equal(pageLimit, 200);
-      return [row("fresh-spool")];
+      return [row("fresh-spool", "loaned out", "OWNED")];
     },
     options: {
       clientReadOnly: true,
@@ -46,6 +49,9 @@ test("loadSettingsInventoryRowsForExport prefers refreshed rows when available",
   });
 
   assert.deepEqual(rows.map((entry) => entry.spool.id), ["fresh-spool"]);
+  assert.equal(rows[0]?.spool.status, "loaned out");
+  assert.equal(rows[0]?.spool.normalized_status, "BORROWED");
+  assert.equal(rows[0]?.spool.ownership_type, "OWNED");
 });
 
 test("loadSettingsInventoryRowsForExport keeps local export failures visible", async () => {

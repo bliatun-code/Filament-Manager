@@ -4,7 +4,7 @@ import type {
   InventoryOverviewPrintRow,
 } from "../lib/inventory_overview_print";
 import { isBorrowedInOwnership, isSpoolStatusEmpty } from "../lib/inventory_domain";
-import type { SpoolWithMasterRow } from "../lib/tauri_client";
+import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 
 export type SettingsInventoryPrintLabels = {
   borrowedIn: string;
@@ -26,7 +26,7 @@ export type SettingsInventoryPrintQrBuilder = (
 ) => BuiltFilamentQrPayload;
 
 export async function buildSettingsInventoryOverviewPrintRows(input: {
-  rows: SpoolWithMasterRow[];
+  rows: NormalizedSpoolWithMasterRow[];
   locale: string;
   companionShellUrl: string | null;
   labels: SettingsInventoryPrintLabels;
@@ -34,7 +34,7 @@ export async function buildSettingsInventoryOverviewPrintRows(input: {
   buildFilamentLabelQrDataUrl: (payload: string) => Promise<string>;
 }): Promise<InventoryOverviewPrintRow[]> {
   const inStockRows = input.rows
-    .filter((row) => !isSpoolStatusEmpty(row.spool.status))
+    .filter((row) => !isSpoolStatusEmpty(row.spool.normalized_status))
     .sort((left, right) => compareSettingsInventoryPrintRows(left, right, input.locale));
 
   return Promise.all(
@@ -87,8 +87,8 @@ export function buildSettingsInventoryOverviewPrintPdfLabels(
 }
 
 function compareSettingsInventoryPrintRows(
-  left: SpoolWithMasterRow,
-  right: SpoolWithMasterRow,
+  left: NormalizedSpoolWithMasterRow,
+  right: NormalizedSpoolWithMasterRow,
   locale: string,
 ): number {
   const materialOrder = left.master.material.localeCompare(right.master.material, locale);

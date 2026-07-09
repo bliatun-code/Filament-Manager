@@ -1,3 +1,7 @@
+import {
+  normalizeSpoolWithMasterRows,
+  type NormalizedSpoolWithMasterRow,
+} from "../lib/spool_row_normalization";
 import type { SpoolWithMasterRow } from "../lib/tauri_client";
 
 export type SettingsInventoryRowsLoadOptions = {
@@ -21,12 +25,12 @@ export async function loadSettingsInventoryRowsForExport({
   loadAllSpoolRows: LoadAllSpoolRows;
   options: SettingsInventoryRowsLoadOptions;
   pageLimit: number;
-}): Promise<SpoolWithMasterRow[]> {
+}): Promise<NormalizedSpoolWithMasterRow[]> {
   try {
-    return await loadAllSpoolRows(options, pageLimit);
+    return normalizeSpoolWithMasterRows(await loadAllSpoolRows(options, pageLimit));
   } catch (error) {
     if (options.clientReadOnly) {
-      return fallbackRows;
+      return normalizeSpoolWithMasterRows(fallbackRows);
     }
     throw error;
   }

@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { loadAllSpoolRows } from "../lib/spool_data_source";
+import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import type { SpoolWithMasterRow } from "../lib/tauri_client";
 import { loadSettingsInventoryRowsForExport } from "./settings_inventory_rows_loader_model";
 
@@ -16,7 +17,7 @@ export function useSettingsInventoryRowsLoader({
   settingsClientLibraryId,
   settingsClientReadOnly,
 }: UseSettingsInventoryRowsLoaderInput) {
-  return useCallback(async (): Promise<SpoolWithMasterRow[]> => {
+  return useCallback(async (): Promise<NormalizedSpoolWithMasterRow[]> => {
     return loadSettingsInventoryRowsForExport({
       fallbackRows,
       loadAllSpoolRows,

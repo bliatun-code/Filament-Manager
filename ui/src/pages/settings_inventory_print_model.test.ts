@@ -7,6 +7,7 @@ import {
   buildSettingsInventoryOverviewPrintSuccessMessage,
   buildSettingsInventoryPrintLabels,
 } from "./settings_inventory_print_model";
+import { normalizeSpoolWithMasterRows } from "../lib/spool_row_normalization";
 import type { MasterRow, SpoolRow, SpoolWithMasterRow } from "../lib/tauri_client";
 
 function row(
@@ -44,9 +45,9 @@ function row(
 test("settings inventory overview print rows skip empty spools and sort by filament identity", async () => {
   const qrPayloads: string[] = [];
   const rows = await buildSettingsInventoryOverviewPrintRows({
-    rows: [
+    rows: normalizeSpoolWithMasterRows([
       row({
-        spool: { id: "petg", master_id: "petg", status: "IN_STOCK" },
+        spool: { id: "petg", master_id: "petg", status: "IN_USE" },
         master: { id: "petg", material: "PETG", filament_name: "Clear", color_name: "Blue" },
       }),
       row({
@@ -57,7 +58,7 @@ test("settings inventory overview print rows skip empty spools and sort by filam
         spool: { id: "pla-a", master_id: "pla-a", status: "IN_STOCK" },
         master: { id: "pla-a", material: "PLA", filament_name: "Basic", color_name: "Amber" },
       }),
-    ],
+    ]),
     locale: "en",
     companionShellUrl: "http://host/companion",
     labels: { borrowedIn: "Borrowed in", unknown: "Unknown" },
@@ -76,7 +77,7 @@ test("settings inventory overview print rows skip empty spools and sort by filam
 
 test("settings inventory overview print rows map borrowed and missing display fields", async () => {
   const rows = await buildSettingsInventoryOverviewPrintRows({
-    rows: [
+    rows: normalizeSpoolWithMasterRows([
       row({
         spool: {
           id: "",
@@ -93,7 +94,7 @@ test("settings inventory overview print rows map borrowed and missing display fi
           hex_color: null,
         },
       }),
-    ],
+    ]),
     locale: "en",
     companionShellUrl: "http://host/companion",
     labels: { borrowedIn: "Borrowed in", unknown: "Unknown" },

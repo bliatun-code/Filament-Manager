@@ -2,6 +2,7 @@ import { type Dispatch, type SetStateAction } from "react";
 import { downloadTextFile } from "../lib/download_file";
 import { toErrorMessage } from "../lib/error_text";
 import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/inventory_export";
+import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import {
   exportFullBackupJson,
   exportInventoryCsv,
@@ -9,7 +10,6 @@ import {
   fetchLibrarySyncFullBackupJson,
   validateFullBackupJson,
   type BackupValidationStats,
-  type SpoolWithMasterRow,
 } from "../lib/tauri_client";
 import type { useI18n } from "../lib/i18n";
 import {
@@ -25,7 +25,7 @@ type SettingsTranslator = ReturnType<typeof useI18n>["t"];
 
 type UseSettingsBackupExportActionsInput = {
   busy: boolean;
-  loadSettingsInventoryRows: () => Promise<SpoolWithMasterRow[]>;
+  loadSettingsInventoryRows: () => Promise<NormalizedSpoolWithMasterRow[]>;
   recordExportedBackupValidation: (
     validationSummary: BackupValidationStats,
     exportedAt: string,
