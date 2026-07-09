@@ -6,6 +6,10 @@ import {
   listConsumptionMaterialOptions,
   listConsumptionVendorOptions,
 } from "./statistics_model";
+import {
+  normalizeSpoolWithMasterRow,
+  type NormalizedSpoolWithMasterRow,
+} from "./spool_row_normalization";
 import type { FilamentConsumptionRow, SpoolWithMasterRow } from "./tauri_client";
 
 function spoolRow({
@@ -16,14 +20,14 @@ function spoolRow({
   status: string;
   ownershipType?: string | null;
   remainingGrams?: number | null;
-}): SpoolWithMasterRow {
-  return {
+}): NormalizedSpoolWithMasterRow {
+  return normalizeSpoolWithMasterRow({
     spool: {
       status,
       ownership_type: ownershipType,
       remaining_g: remainingGrams,
     },
-  } as SpoolWithMasterRow;
+  } as SpoolWithMasterRow);
 }
 
 function consumptionRow(

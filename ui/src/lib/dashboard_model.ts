@@ -13,9 +13,9 @@ import type {
   InventoryOverview,
   MaterialUsageRow,
   PrinterOverviewRow,
-  SpoolWithMasterRow,
   WishlistItemRow,
 } from "./tauri_client";
+import type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -219,7 +219,7 @@ export function buildDashboardCompanionPresentation(params: {
 export function buildDashboardDerivedState(params: {
   overview: InventoryOverview;
   printers: PrinterOverviewRow[];
-  spoolRows: SpoolWithMasterRow[];
+  spoolRows: NormalizedSpoolWithMasterRow[];
   loans: NormalizedLoanDetailsRow[];
   wishlist: WishlistItemRow[];
   materialRows?: MaterialUsageRow[] | null;
@@ -241,7 +241,7 @@ export function buildDashboardDerivedState(params: {
   const onOrderCount = wishlist
     .filter((item) => item.status === "ON_ORDER")
     .reduce((sum, item) => sum + Math.max(1, item.quantity || 1), 0);
-  const onHandRows = spoolRows.filter((row) => isSpoolStatusOnHand(row.spool.status));
+  const onHandRows = spoolRows.filter((row) => isSpoolStatusOnHand(row.spool.normalized_status));
   const onHandTotal = onHandRows.length;
   const onHandOwned = onHandRows.filter(
     (row) => !isBorrowedInOwnership(row.spool.ownership_type),
@@ -250,13 +250,13 @@ export function buildDashboardDerivedState(params: {
     isBorrowedInOwnership(row.spool.ownership_type),
   ).length;
   const onHandInUse = onHandRows.filter((row) =>
-    isSpoolStatusAssigned(row.spool.status),
+    isSpoolStatusAssigned(row.spool.normalized_status),
   ).length;
   const lowStockRows = spoolRows
     .filter((row) => {
       const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
       return (
-        !isSpoolStatusEmptyOrLost(row.spool.status) &&
+        !isSpoolStatusEmptyOrLost(row.spool.normalized_status) &&
         remaining > 0 &&
         remaining <= LOW_STOCK_GRAMS
       );
@@ -273,7 +273,7 @@ export function buildDashboardDerivedState(params: {
   const ownedLowStockCount = spoolRows.filter((row) => {
     const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
     return (
-      !isSpoolStatusEmptyOrLost(row.spool.status) &&
+      !isSpoolStatusEmptyOrLost(row.spool.normalized_status) &&
       !isBorrowedInOwnership(row.spool.ownership_type) &&
       remaining > 0 &&
       remaining <= LOW_STOCK_GRAMS
@@ -282,7 +282,7 @@ export function buildDashboardDerivedState(params: {
   const borrowedInLowStockCount = spoolRows.filter((row) => {
     const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
     return (
-      !isSpoolStatusEmptyOrLost(row.spool.status) &&
+      !isSpoolStatusEmptyOrLost(row.spool.normalized_status) &&
       isBorrowedInOwnership(row.spool.ownership_type) &&
       remaining > 0 &&
       remaining <= LOW_STOCK_GRAMS
@@ -355,7 +355,7 @@ export function buildDashboardDerivedState(params: {
         : [0, overview.total_consumption_30d];
 
   const activeSpoolRows = spoolRows.filter((row) => {
-    return !isSpoolStatusEmptyOrLost(row.spool.status);
+    return !isSpoolStatusEmptyOrLost(row.spool.normalized_status);
   });
   const goalMetrics: DashboardGoalMetrics = {
     activeSpools: activeSpoolRows.length,

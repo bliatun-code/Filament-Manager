@@ -6,6 +6,10 @@ import {
   buildDashboardDerivedState,
 } from "./dashboard_model";
 import { normalizeLoanDetailsRow, type NormalizedLoanDetailsRow } from "./loan_row_normalization";
+import {
+  normalizeSpoolWithMasterRow,
+  type NormalizedSpoolWithMasterRow,
+} from "./spool_row_normalization";
 import type {
   InventoryOverview,
   PrinterOverviewRow,
@@ -36,8 +40,8 @@ function overview(overrides: Partial<InventoryOverview> = {}): InventoryOverview
 function spoolRow(
   id: string,
   overrides: Partial<SpoolWithMasterRow["spool"]> = {},
-): SpoolWithMasterRow {
-  return {
+): NormalizedSpoolWithMasterRow {
+  return normalizeSpoolWithMasterRow({
     spool: {
       id,
       master_id: "master-1",
@@ -57,7 +61,7 @@ function spoolRow(
       default_weight: 1000,
       vendor: "Bambu",
     },
-  };
+  });
 }
 
 function printer(

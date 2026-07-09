@@ -16,7 +16,6 @@ import {
   type LoanUsageByPersonRow,
   type PrinterOverviewRow,
   type FilamentConsumptionRow,
-  type SpoolWithMasterRow,
   type SpoolLoanDetailsRow,
 } from "./tauri_client";
 import { loadAllSpoolRows } from "./spool_data_source";
@@ -28,6 +27,10 @@ import {
   type NormalizedLoanDetailsRow,
 } from "./loan_row_normalization";
 import {
+  normalizeSpoolWithMasterRows,
+  type NormalizedSpoolWithMasterRow,
+} from "./spool_row_normalization";
+import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
 } from "./library_sync_state";
@@ -37,11 +40,12 @@ import { firstDefinedTimestamp } from "./source_timestamps";
 export type StatisticsSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
 export type StatisticsLibrarySyncState = LibrarySyncPageState;
 export type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
+export type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
 
 export type StatisticsDataLoadResult = {
   overview: InventoryOverview | null;
   printers: PrinterOverviewRow[];
-  spoolRows: SpoolWithMasterRow[];
+  spoolRows: NormalizedSpoolWithMasterRow[];
   consumptionRows: FilamentConsumptionRow[];
   loanDetails: NormalizedLoanDetailsRow[];
   loanUsage: LoanUsageByPersonRow[];
@@ -288,9 +292,10 @@ export async function loadStatisticsData(
       ? loansResult.value
       : cachedLoans?.rows ?? syncSettings.cached_loans?.rows ?? [];
     const resolvedLoans = normalizeLoanDetailsRows(resolvedLoanRows);
-    const resolvedSpoolRows = spoolsResult.ok
+    const resolvedSpoolRowsRaw = spoolsResult.ok
       ? spoolsResult.value
       : cachedSpools?.rows ?? syncSettings.cached_spools?.rows ?? [];
+    const resolvedSpoolRows = normalizeSpoolWithMasterRows(resolvedSpoolRowsRaw);
     const resolvedConsumptionRows = consumptionResult.ok ? consumptionResult.value : [];
     const derivedOverview =
       resolvedSpoolRows.length > 0 || resolvedConsumptionRows.length > 0
@@ -355,7 +360,7 @@ export async function loadStatisticsData(
   }
 
   if (syncState.clientReadOnly) {
-    const spoolRows = syncSettings.cached_spools?.rows ?? [];
+    const spoolRows = normalizeSpoolWithMasterRows(syncSettings.cached_spools?.rows ?? []);
     const loanRows = normalizeLoanDetailsRows(syncSettings.cached_loans?.rows ?? []);
     const spoolRowsOverview =
       spoolRows.length > 0 ? deriveInventoryOverviewFromRows(spoolRows, []) : null;
@@ -405,7 +410,7 @@ export async function loadStatisticsData(
   const listLocalPrinterOverview = dependencies.listLocalPrinterOverview ?? listPrinterOverview;
   const listLocalLoanUsageByPerson =
     dependencies.listLocalLoanUsageByPerson ?? listLoanUsageByPerson;
-  const [spoolRows, consumptionRows, printerRows, loanRows, inboundLoanRows] = await Promise.all([
+  const [spoolRowsRaw, consumptionRows, printerRows, loanRows, inboundLoanRows] = await Promise.all([
     loadLocalSpools({
       clientReadOnly: false,
       clientHostBaseUrl: null,
@@ -416,6 +421,7 @@ export async function loadStatisticsData(
     listLocalLoanUsageByPerson(30, "OUTBOUND"),
     listLocalLoanUsageByPerson(30, "INBOUND"),
   ]);
+  const spoolRows = normalizeSpoolWithMasterRows(spoolRowsRaw);
 
   return {
     overview: deriveInventoryOverviewFromRows(spoolRows, consumptionRows),

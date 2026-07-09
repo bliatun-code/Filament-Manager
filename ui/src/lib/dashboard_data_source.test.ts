@@ -84,16 +84,21 @@ function printerOverviewRow(id: string): PrinterOverviewRow {
   };
 }
 
-function spoolWithMasterRow(id: string): SpoolWithMasterRow {
+function spoolWithMasterRow(
+  id: string,
+  overrides: Partial<SpoolWithMasterRow["spool"]> = {},
+): SpoolWithMasterRow {
   return {
     spool: {
       id,
       master_id: "master-1",
       status: "IN_STOCK",
+      ownership_type: "OWNED",
       remaining_g: 850,
       current_weight_g: 850,
       initial_weight_g: 1000,
       location_id: "Shelf 1",
+      ...overrides,
     },
     master: {
       id: "master-1",
@@ -315,7 +320,12 @@ test("loadDashboardData uses cached client rows without a cached snapshot", asyn
           library_id: " ",
           cached_spools: {
             captured_at: "2026-04-01 08:30:00",
-            rows: [spoolWithMasterRow("spool-cache")],
+            rows: [
+              spoolWithMasterRow("spool-cache", {
+                ownership_type: "borrowed-in",
+                status: "IN_USE",
+              }),
+            ],
           },
           cached_printers: {
             captured_at: "2026-04-01 08:35:00",
@@ -357,6 +367,8 @@ test("loadDashboardData uses cached client rows without a cached snapshot", asyn
   assert.equal(result.syncSource, "client-cached");
   assert.equal(result.capturedAt, "2026-04-01 08:30:00");
   assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "1");
+  assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.trend, "1 assigned");
+  assert.equal(result.derived.ownershipOnHand.borrowedIn, 1);
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
   assert.equal(
     result.derived.health.metrics.find((metric) => metric.id === "onOrder")?.value,

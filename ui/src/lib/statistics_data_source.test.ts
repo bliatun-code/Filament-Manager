@@ -89,7 +89,10 @@ function syncSettings(overrides: Partial<LibrarySyncSettings> = {}): LibrarySync
   };
 }
 
-function spoolRow(id: string): SpoolWithMasterRow {
+function spoolRow(
+  id: string,
+  overrides: Partial<SpoolWithMasterRow["spool"]> = {},
+): SpoolWithMasterRow {
   return {
     spool: {
       id,
@@ -97,6 +100,7 @@ function spoolRow(id: string): SpoolWithMasterRow {
       status: "IN_STOCK",
       ownership_type: "OWNED",
       remaining_g: 900,
+      ...overrides,
     },
     master: {
       id: `master-${id}`,
@@ -289,7 +293,12 @@ test("loadStatisticsData avoids local fallback when client host details are inco
       library_id: "library-1",
       cached_spools: {
         captured_at: "spool-cache",
-        rows: [spoolRow("cached-spool")],
+        rows: [
+          spoolRow("cached-spool", {
+            ownership_type: "borrowed-in",
+            status: "IN_USE",
+          }),
+        ],
       },
       cached_printers: {
         captured_at: "printer-cache",
@@ -321,6 +330,9 @@ test("loadStatisticsData avoids local fallback when client host details are inco
   assert.equal(result.overview?.total_spools, 1);
   assert.deepEqual(result.printers.map((row) => row.printer.id), ["cached-printer"]);
   assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["cached-spool"]);
+  assert.equal(result.spoolRows[0]?.spool.status, "IN_USE");
+  assert.equal(result.spoolRows[0]?.spool.normalized_status, "ASSIGNED");
+  assert.equal(result.spoolRows[0]?.spool.ownership_type, "BORROWED_IN");
   assert.deepEqual(result.loanUsage.map((row) => row.borrower_name), ["Ada"]);
 });
 

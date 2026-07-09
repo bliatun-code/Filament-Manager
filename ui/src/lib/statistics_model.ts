@@ -27,9 +27,9 @@ import type {
   LoanUsageByPersonRow,
   PrinterAmsSlotRow,
   PrinterOverviewRow,
-  SpoolWithMasterRow,
 } from "./tauri_client";
 import type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
+import type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
 
 export type ConsumptionSort = "USED_DESC" | "USED_ASC" | "NAME_ASC" | "JOBS_DESC";
 export type LoanUsageListFilter = "ALL" | "ACTIVE" | "COMPLETED";
@@ -214,7 +214,7 @@ export function deriveStatisticsTotals(printers: PrinterOverviewRow[]): Statisti
 }
 
 export function deriveInventoryOverviewFromRows(
-  spools: SpoolWithMasterRow[],
+  spools: NormalizedSpoolWithMasterRow[],
   consumptionRows: FilamentConsumptionRow[],
 ): {
   total_spools: number;
@@ -240,8 +240,8 @@ export function deriveInventoryOverviewFromRows(
   let borrowedInLowStock = 0;
 
   for (const row of spools) {
-    const isOnHand = isSpoolStatusOnHand(row.spool.status);
-    const isAssigned = isSpoolStatusAssigned(row.spool.status);
+    const isOnHand = isSpoolStatusOnHand(row.spool.normalized_status);
+    const isAssigned = isSpoolStatusAssigned(row.spool.normalized_status);
     const borrowedIn = isBorrowedInOwnership(row.spool.ownership_type);
     const remaining = row.spool.remaining_g ?? null;
 

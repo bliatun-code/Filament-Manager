@@ -21,6 +21,7 @@ import {
 } from "./dashboard_model";
 import { deriveInventoryOverviewFromRows } from "./statistics_model";
 import { normalizeActiveLoanRow, normalizeLoanDetailsRow } from "./loan_row_normalization";
+import { normalizeSpoolWithMasterRows } from "./spool_row_normalization";
 import { loadAllSpoolRows } from "./spool_data_source";
 import { resolveClientHostTarget } from "./host_write_target";
 import { firstDefinedTimestamp } from "./source_timestamps";
@@ -228,9 +229,11 @@ export async function loadDashboardData(
     (clientPrinterRows?.length ?? 0) > 0 ||
     (clientLoanRows?.length ?? 0) > 0 ||
     clientWishlistRows.length > 0;
+  const normalizedClientSpoolRows =
+    clientSpoolRows != null ? normalizeSpoolWithMasterRows(clientSpoolRows) : null;
   const clientRowsOverview =
-    (clientSpoolRows?.length ?? 0) > 0
-      ? deriveInventoryOverviewFromRows(clientSpoolRows ?? [], [])
+    (normalizedClientSpoolRows?.length ?? 0) > 0
+      ? deriveInventoryOverviewFromRows(normalizedClientSpoolRows ?? [], [])
       : null;
   const clientOverview = clientRowsOverview ?? activeClientSnapshot?.inventory ?? null;
   const clientRowsOverviewCapturedAt =
@@ -271,7 +274,7 @@ export async function loadDashboardData(
       derived: buildDashboardDerivedState({
         overview: clientOverview ?? emptyInventoryOverview(),
         printers: clientPrinterRows ?? [],
-        spoolRows: clientSpoolRows ?? [],
+        spoolRows: normalizedClientSpoolRows ?? [],
         loans: (clientLoanRows ?? []).map(normalizeLoanDetailsRow),
         wishlist: clientWishlistRows,
         materialRows: null,
@@ -287,7 +290,7 @@ export async function loadDashboardData(
     };
   }
 
-  const [overview, printers, spoolRows, loans, wishlist, materialRows] = await Promise.all([
+  const [overview, printers, spoolRowsRaw, loans, wishlist, materialRows] = await Promise.all([
     loadInventoryOverview(),
     listLocalPrinters(),
     loadSpoolRows({
@@ -299,6 +302,7 @@ export async function loadDashboardData(
     listLocalWishlist(500),
     listLocalTopMaterials(12),
   ]);
+  const spoolRows = normalizeSpoolWithMasterRows(spoolRowsRaw);
 
   return {
     derived: buildDashboardDerivedState({
