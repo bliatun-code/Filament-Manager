@@ -6,8 +6,10 @@ import {
   buildDesktopWindowLookupScript,
   desktopScreenshotScale,
   desktopScreenshotNameForScenario,
+  desktopVisualQaExpectedWindowTitles,
   desktopVisualQaScenarioDefinition,
   desktopVisualQaScenarioRequiresDatabaseFixture,
+  desktopVisualQaWindowMatchesScenario,
   execFileWithTimeout,
   formatDesktopScreenshotGateReport,
   normalizeDesktopVisualQaScenario,
@@ -169,6 +171,28 @@ test("desktop screenshot gate marks DB-fixture visual states", () => {
   assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture(null), false);
 });
 
+test("desktop screenshot gate maps scenario aliases to localized window titles", () => {
+  assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "en"), ["Inventory"]);
+  assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "nb"), ["Lager"]);
+  assert.deepEqual(desktopVisualQaExpectedWindowTitles(null, "en"), []);
+  assert.equal(
+    desktopVisualQaWindowMatchesScenario(
+      createMetric({ window: { title: "Inventory" } }).window,
+      "wishlist-queue",
+      "en",
+    ),
+    true,
+  );
+  assert.equal(
+    desktopVisualQaWindowMatchesScenario(
+      createMetric({ window: { title: "Oversikt" } }).window,
+      "wishlist-queue",
+      "en",
+    ),
+    false,
+  );
+});
+
 test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {
   assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 26);
   assert.deepEqual(
@@ -249,6 +273,24 @@ test("desktop screenshot gate waits for an appearing window", async () => {
 
   assert.equal(window?.title, "Filament Manager");
   assert.equal(attempts, 3);
+});
+
+test("desktop screenshot gate waits for a scenario-ready desktop window", async () => {
+  let attempts = 0;
+  const window = await waitForDesktopWindow({
+    findWindowFn: async () => {
+      attempts += 1;
+      return attempts === 1
+        ? createMetric({ window: { title: "Dashboard" } }).window
+        : createMetric({ window: { title: "Inventory" } }).window;
+    },
+    intervalMs: 1,
+    isWindowReady: (windowInfo) => windowInfo.title === "Inventory",
+    timeoutMs: 50,
+  });
+
+  assert.equal(window?.title, "Inventory");
+  assert.equal(attempts, 2);
 });
 
 test("desktop screenshot gate wait can abort when launch exits", async () => {

@@ -26,6 +26,24 @@ const DESKTOP_VISUAL_QA_SCENARIO_DEFINITIONS =
 const DESKTOP_VISUAL_QA_SCENARIOS = DESKTOP_VISUAL_QA_SCENARIO_DEFINITIONS.map(
   (scenario) => scenario.id,
 );
+const DESKTOP_VISUAL_QA_PAGE_TITLES = {
+  en: {
+    dashboard: "Dashboard",
+    inventory: "Inventory",
+    loans: "Loans",
+    printers: "Printers",
+    settings: "Settings",
+    statistics: "Statistics",
+  },
+  nb: {
+    dashboard: "Oversikt",
+    inventory: "Lager",
+    loans: "Utlån",
+    printers: "Printere",
+    settings: "Innstillinger",
+    statistics: "Statistikk",
+  },
+};
 
 function parseArgValue(argv, name) {
   const index = argv.lastIndexOf(name);
@@ -100,6 +118,24 @@ export function parseDesktopVisualQaScenarios(argv) {
 
 export function desktopVisualQaScenarioRequiresDatabaseFixture(scenario) {
   return Boolean(desktopVisualQaScenarioDefinition(scenario)?.requiresDatabaseFixture);
+}
+
+export function desktopVisualQaExpectedWindowTitles(scenario, locale) {
+  const definition = desktopVisualQaScenarioDefinition(scenario);
+  if (!definition?.page) {
+    return [];
+  }
+  const normalizedLocale = normalizeVisualQaLocale(locale);
+  const title = DESKTOP_VISUAL_QA_PAGE_TITLES[normalizedLocale]?.[definition.page];
+  return title ? [title] : [];
+}
+
+export function desktopVisualQaWindowMatchesScenario(window, scenario, locale) {
+  const expectedTitles = desktopVisualQaExpectedWindowTitles(scenario, locale);
+  if (expectedTitles.length === 0) {
+    return true;
+  }
+  return expectedTitles.includes(String(window?.title ?? ""));
 }
 
 export function desktopScreenshotNameForScenario({
@@ -288,7 +324,7 @@ export async function waitForDesktopWindow(options = {}) {
       return null;
     }
     const window = await findWindowFn(options).catch(() => null);
-    if (window) {
+    if (window && (options.isWindowReady?.(window) ?? true)) {
       return window;
     }
     await wait(intervalMs);
@@ -574,6 +610,10 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
   let outputTail = "";
   let childExit = null;
   const child = spawnTauriDev(spawnFn, options, database);
+  const expectedWindowTitles = desktopVisualQaExpectedWindowTitles(
+    options.scenario,
+    options.locale,
+  );
 
   child.stdout?.on("data", (chunk) => {
     outputTail = appendOutputTail(outputTail, chunk);
@@ -590,6 +630,15 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
     const window = await waitForDesktopWindow({
       ...options,
       intervalMs: options.windowPollMs ?? 500,
+      isWindowReady:
+        expectedWindowTitles.length > 0
+          ? (windowInfo) =>
+              desktopVisualQaWindowMatchesScenario(
+                windowInfo,
+                options.scenario,
+                options.locale,
+              )
+          : options.isWindowReady,
       timeoutMs: options.startupTimeoutMs ?? 45_000,
       shouldAbort: () => childExit != null,
     });
@@ -602,7 +651,7 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
       return {
         database,
         errors: [
-          `No Filament Manager desktop window was found after launching Tauri dev.${suffix} Visible windows: ${formatVisibleWindowSummary(visibleWindows)}.`,
+          `No Filament Manager desktop window${expectedWindowTitles.length > 0 ? ` titled ${expectedWindowTitles.join(" or ")}` : ""} was found after launching Tauri dev.${suffix} Visible windows: ${formatVisibleWindowSummary(visibleWindows)}.`,
         ],
         launchOutputTail: outputTail.trim(),
         metric: { visibleWindows, window: null },
