@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { createInitialCompanionState } from "./session_state.js";
 import {
@@ -8,6 +9,11 @@ import {
   renderPrinterPickerTaskSheetBody,
   renderPrinterWeightTaskSheetBody,
 } from "./printer_workspace.js";
+
+const printerWorkspaceSource = readFileSync(
+  new URL("./printer_workspace.js", import.meta.url),
+  "utf8",
+);
 
 function createPrinterRow(overrides = {}) {
   return {
@@ -86,6 +92,22 @@ function renderBoard(overrides = {}) {
     formatGrams: (value) => `${value ?? 0} g`,
   });
 }
+
+test("printer workspace routes empty and info states through shared companion cards", () => {
+  assert.match(printerWorkspaceSource, /renderCompanionStateCard/);
+  assert.doesNotMatch(printerWorkspaceSource, /<div class="(?:empty-card|info-card)"/);
+
+  const missingSlotHtml = renderPrinterPickerTaskSheetBody({
+    state: createInitialCompanionState(),
+    printerSpoolOptions: [],
+    escapeHtml: (value) => String(value ?? ""),
+    formatGrams: (value) => `${value ?? 0} g`,
+  });
+  const missingPrinterHtml = renderBoard({ activePrinter: false });
+
+  assert.match(missingSlotHtml, /class="info-card">Choose a slot first\./);
+  assert.match(missingPrinterHtml, /class="empty-card">Choose a printer\./);
+});
 
 test("printer workspace uses human slot labels when ams ids are raw internal values", () => {
   assert.equal(

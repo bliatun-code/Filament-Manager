@@ -19,6 +19,7 @@ import {
 import { formatPrinterSlotLabelForModel } from "./printer_slot_labels.js";
 import {
   renderCompanionActionButton,
+  renderCompanionStateCard,
   renderDetailField,
   renderFormActionBlock,
   renderSwatchListRow,
@@ -225,11 +226,11 @@ export function renderPrinterPickerTaskSheetBody(options) {
   const pendingSlotTarget = state.pendingPrinterSlotTarget || null;
 
   if (!pendingSlotTarget) {
-    return `
-      <div class="info-card">
-        ${escapeHtml(t(locale, "printers.chooseSlotFirst", "Choose a slot first."))}
-      </div>
-    `;
+    return renderCompanionStateCard({
+      escapeHtml,
+      message: t(locale, "printers.chooseSlotFirst", "Choose a slot first."),
+      tone: "info",
+    });
   }
 
   const searchTerm = String(state.printerSpoolSearch || "").trim().toLowerCase();
@@ -311,7 +312,10 @@ export function renderPrinterPickerTaskSheetBody(options) {
                   });
                 })
                 .join("")
-            : `<div class="empty-card">${escapeHtml(t(locale, "printers.noReadyMatch", "No ready-to-load spools matched this search."))}</div>`
+            : renderCompanionStateCard({
+                escapeHtml,
+                message: t(locale, "printers.noReadyMatch", "No ready-to-load spools matched this search."),
+              })
         }
       </div>
     </div>
@@ -324,11 +328,11 @@ export function renderPrinterWeightTaskSheetBody(options) {
   const task = activeTaskSheet || null;
 
   if (!task || task.type !== "printer-weight") {
-    return `
-      <div class="info-card">
-        ${escapeHtml(t(locale, "printers.chooseSlotFirst", "Choose a slot first."))}
-      </div>
-    `;
+    return renderCompanionStateCard({
+      escapeHtml,
+      message: t(locale, "printers.chooseSlotFirst", "Choose a slot first."),
+      tone: "info",
+    });
   }
 
   const printerLabel = [task.printerName, task.slotLabel].filter(Boolean).join(" · ");
@@ -460,7 +464,10 @@ export function renderPrinterWeightTaskSheetBody(options) {
 
 export function renderPrinterRoster(printers, activePrinterId, escapeHtml, locale = "en") {
   if (printers.length <= 0) {
-    return `<div class="empty-card">${escapeHtml(t(locale, "printers.noPrinters", "No printers configured yet."))}</div>`;
+    return renderCompanionStateCard({
+      escapeHtml,
+      message: t(locale, "printers.noPrinters", "No printers configured yet."),
+    });
   }
 
   return printers
@@ -593,7 +600,10 @@ function renderSlotCards(options) {
 
   const slots = Array.isArray(activePrinter?.slots) ? activePrinter.slots : [];
   if (slots.length <= 0) {
-    return `<div class="empty-card">${escapeHtml(t(locale, "printers.noSlots", "No slots configured for this printer."))}</div>`;
+    return renderCompanionStateCard({
+      escapeHtml,
+      message: t(locale, "printers.noSlots", "No slots configured for this printer."),
+    });
   }
 
   return slots
@@ -772,7 +782,10 @@ export function renderPrinterBoard(options) {
   const locale = state.locale || "en";
 
   if (!activePrinter) {
-    return `<div class="empty-card">${escapeHtml(t(locale, "printers.choosePrinter", "Choose a printer."))}</div>`;
+    return renderCompanionStateCard({
+      escapeHtml,
+      message: t(locale, "printers.choosePrinter", "Choose a printer."),
+    });
   }
 
   const activePrinterSlots = Array.isArray(activePrinter?.slots) ? activePrinter.slots : [];

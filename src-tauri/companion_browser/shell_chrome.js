@@ -611,15 +611,15 @@ export function renderTrustedLanPairingApp(options) {
             </p>
           </div>
           <div class="stack">
-            <div class="info-card">
-              ${escapeHtml(
-                t(
-                  locale,
-                  "trustedLan.pairingHint",
-                  "Desktop Settings creates short-lived, single-use pairing links for human browser access.",
-                ),
-              )}
-            </div>
+            ${renderCompanionStateCard({
+              escapeHtml,
+              message: t(
+                locale,
+                "trustedLan.pairingHint",
+                "Desktop Settings creates short-lived, single-use pairing links for human browser access.",
+              ),
+              tone: "info",
+            })}
             <div class="status-line" data-tone="${escapeHtml(statusTone)}">${escapeHtml(
               statusMessage ||
                 t(

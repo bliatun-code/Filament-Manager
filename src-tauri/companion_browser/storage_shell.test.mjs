@@ -1,8 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { createInitialCompanionState } from "./session_state.js";
 import { renderAddFilamentTaskSheetBody, renderStorageShell } from "./storage_shell.js";
+
+const storageShellSource = readFileSync(new URL("./storage_shell.js", import.meta.url), "utf8");
 
 function createSpoolRow(id, overrides = {}) {
   return {
@@ -59,6 +62,17 @@ test("storage shell keeps search and primary actions close to the spool list", (
   assert.match(html, /data-action="select-spool"/);
   assert.doesNotMatch(html, /Selected spool/);
   assert.match(html, /Browse inventory and open the spool you need\./);
+});
+
+test("storage shell routes empty states through shared companion cards", () => {
+  assert.match(storageShellSource, /renderCompanionStateCard/);
+  assert.doesNotMatch(storageShellSource, /<div class="(?:empty-card|info-card)"/);
+
+  const html = renderShell({
+    spools: [],
+  });
+
+  assert.match(html, /class="empty-card">No local spools matched the current search\./);
 });
 
 test("storage shell shows the selected hidden banner when a search hides the active spool", () => {

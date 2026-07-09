@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { renderSelectedSpoolDetailBody } from "./detail_content.js";
+
+const detailContentSource = readFileSync(new URL("./detail_content.js", import.meta.url), "utf8");
 
 function createSelectedSpool(overrides = {}) {
   return {
@@ -63,6 +66,16 @@ function renderBody(overrides = {}) {
     locale: overrides.locale ?? "en",
   });
 }
+
+test("detail content routes timeline empty states through shared companion cards", () => {
+  assert.match(detailContentSource, /renderCompanionStateCard/);
+  assert.doesNotMatch(detailContentSource, /<div class="(?:empty-card|info-card)"/);
+
+  const html = renderBody();
+
+  assert.match(html, /class="empty-card">No usage points recorded yet\./);
+  assert.match(html, /class="empty-card">No history recorded yet\./);
+});
 
 test("detail content keeps borrowed-in spools out of loan actions inside detail", () => {
   const html = renderBody({

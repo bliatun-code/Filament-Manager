@@ -7,6 +7,7 @@ import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference, formatStatusLabel } from "./formatters.js";
 import {
   renderCompanionActionButton,
+  renderCompanionStateCard,
   renderDetailField,
   renderFormActionBlock,
   renderSwatchSelectionCard,
@@ -280,7 +281,10 @@ export function renderSelectedSpoolDetailBody(options) {
 function renderUsageTimeline(usageRows, helpers) {
   const { escapeHtml, formatDate, formatGrams, locale = "en" } = helpers;
   if (usageRows.length <= 0) {
-    return `<div class="empty-card">${escapeHtml(t(locale, "detail.noUsage", "No usage points recorded yet."))}</div>`;
+    return renderCompanionStateCard({
+      escapeHtml,
+      message: t(locale, "detail.noUsage", "No usage points recorded yet."),
+    });
   }
 
   return usageRows
@@ -300,7 +304,10 @@ function renderUsageTimeline(usageRows, helpers) {
 function renderHistoryTimeline(historyRows, helpers) {
   const { escapeHtml, formatDate, locale = "en" } = helpers;
   if (historyRows.length <= 0) {
-    return `<div class="empty-card">${escapeHtml(t(locale, "detail.noHistory", "No history recorded yet."))}</div>`;
+    return renderCompanionStateCard({
+      escapeHtml,
+      message: t(locale, "detail.noHistory", "No history recorded yet."),
+    });
   }
 
   return historyRows

@@ -14,6 +14,7 @@ import { t } from "./companion_i18n.js";
 import { isBorrowedInOwnership, normalizeDomainToken, parseSpoolStatus } from "./companion_domain.js";
 import {
   renderCompanionActionButton,
+  renderCompanionStateCard,
   renderDetailField,
   renderFilterChipButton,
   renderFormActionBlock,
@@ -360,9 +361,10 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
                             });
                           })
                           .join("")
-                      : `<div class="empty-card">${escapeHtml(
-                          t(locale, "storage.noCatalogMatches", "No catalog entries match this vendor filter."),
-                        )}</div>`
+                      : renderCompanionStateCard({
+                          escapeHtml,
+                          message: t(locale, "storage.noCatalogMatches", "No catalog entries match this vendor filter."),
+                        })
                   }
                 </div>
               </div>
@@ -581,11 +583,12 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
             ${
               selection.visibleWishlistItems.length > 0
                 ? wishlistRows
-                : `<div class="empty-card">${escapeHtml(
-                    selection.wishlistSummary.all > 0
+                : renderCompanionStateCard({
+                    escapeHtml,
+                    message: selection.wishlistSummary.all > 0
                       ? t(locale, "storage.noWishlistMatch", "No wishlist items match this filter.")
                       : t(locale, "storage.noWishlistItems", "No wishlist items yet."),
-                  )}</div>`
+                  })
             }
           </div>
         </div>
@@ -666,7 +669,10 @@ function renderSpoolRows(options) {
   const locale = state.locale || "en";
 
   if (spools.length <= 0) {
-    return `<div class="empty-card">${escapeHtml(t(locale, "storage.noMatch", "No local spools matched the current search."))}</div>`;
+    return renderCompanionStateCard({
+      escapeHtml,
+      message: t(locale, "storage.noMatch", "No local spools matched the current search."),
+    });
   }
 
   return spools
