@@ -66,6 +66,10 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(enDictionary, "inventory.loanSearchLabel"), "Search available rolls");
   assert.equal(lookup(enDictionary, "inventory.rfidTechnicalDetails"), "Technical details");
   assert.equal(lookup(enDictionary, "inventory.rfidConnected"), "Connected");
+  assert.equal(
+    lookup(enDictionary, "inventory.rollHistoryCollapsed"),
+    "Roll history is collapsed by default. Expand it to view the events.",
+  );
   assert.equal(getCachedLocaleDictionary("en"), enDictionary);
 
   const nbDictionary = await loadLocaleDictionary("nb");
@@ -80,6 +84,10 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(nbDictionary, "inventory.rfidTechnicalDetails"), "Tekniske detaljer");
   assert.equal(lookup(nbDictionary, "inventory.rfidConnected"), "Tilkoblet");
   assert.equal(lookup(nbDictionary, "inventory.rfidAmsSlotPresent"), "Fysisk til stede");
+  assert.equal(
+    lookup(nbDictionary, "inventory.rollHistoryCollapsed"),
+    "Filamenthistorikken er skjult som standard. Utvid den for å se hendelsene.",
+  );
   assert.equal(getCachedLocaleDictionary("nb"), nbDictionary);
 });
 

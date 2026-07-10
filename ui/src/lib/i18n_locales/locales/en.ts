@@ -547,6 +547,8 @@ export const enDictionary: DictionaryNode = {
       usageDiagram: "Usage diagram",
       selectRollForUsage: "Select a roll to show weight trend.",
       rollHistory: "Roll history",
+      rollHistoryCollapsed:
+        "Roll history is collapsed by default. Expand it to view the events.",
       historyEventCountOne: "event",
       historyEventCountMany: "events",
       showMoreHistory: "Show more",

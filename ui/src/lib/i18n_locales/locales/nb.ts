@@ -551,6 +551,8 @@ export const nbDictionary: DictionaryNode = {
       usageDiagram: "Bruksdiagram",
       selectRollForUsage: "Velg et filament for å vise vekttrend.",
       rollHistory: "Filamenthistorikk",
+      rollHistoryCollapsed:
+        "Filamenthistorikken er skjult som standard. Utvid den for å se hendelsene.",
       historyEventCountOne: "hendelse",
       historyEventCountMany: "hendelser",
       showMoreHistory: "Vis flere",

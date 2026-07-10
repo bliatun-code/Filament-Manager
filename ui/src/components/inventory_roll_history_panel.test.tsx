@@ -108,4 +108,9 @@ test("InventoryRollHistoryPanel reports the collapsed disclosure state", () => {
     /id="inventory-roll-history-toggle"[^>]*aria-controls="inventory-roll-history-events"[^>]*aria-expanded="false"/,
   );
   assert.match(html, /id="inventory-roll-history-events"[^>]*hidden=""/);
+  assert.match(
+    html,
+    /Roll history is collapsed by default\. Expand it to view the events\./,
+  );
+  assert.doesNotMatch(html, /Filamenthistorikk/);
 });

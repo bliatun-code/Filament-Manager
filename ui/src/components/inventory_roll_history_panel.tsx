@@ -157,7 +157,7 @@ export function InventoryRollHistoryPanel({
         <div className="mt-3 text-sm text-slate-500 dark:text-slate-400">
           {t(
             "inventory.rollHistoryCollapsed",
-            "Filamenthistorikk er kollapset som standard. Utvid når du vil se hendelsene.",
+            "Roll history is collapsed by default. Expand it to view the events.",
           )}
         </div>
       ) : null}
