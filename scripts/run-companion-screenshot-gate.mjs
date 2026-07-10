@@ -26,6 +26,7 @@ export const COMPANION_SCREENSHOT_VIEWPORTS = {
 };
 
 const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
+export const COMPANION_PRINTER_LIVE_WAIT_MS = 30_000;
 const COMPANION_THEME_STORAGE_KEY = "bfm-companion-theme-mode";
 const COMPANION_LOCALE_STORAGE_KEY = "bfm-locale";
 
@@ -562,6 +563,22 @@ async function prepareDetailScenario(page, timeoutMs) {
 async function preparePrintersScenario(page, timeoutMs) {
   await page.locator('[data-root-flow="printers"]').click({ timeout: timeoutMs });
   await page.waitForSelector(".slot-card", { timeout: timeoutMs });
+  await waitForCompanionPrinterLiveData(page);
+}
+
+export async function waitForCompanionPrinterLiveData(
+  page,
+  timeoutMs = COMPANION_PRINTER_LIVE_WAIT_MS,
+) {
+  try {
+    await page.waitForSelector(".printer-live-dot, .printer-live-strip", {
+      state: "visible",
+      timeout: timeoutMs,
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function prepareSettingsScenario(page, timeoutMs) {

@@ -5,6 +5,7 @@ import { test } from "node:test";
 import {
   buildCompanionScreenshotScenarios,
   companionScreenshotGateNeedsLaunch,
+  COMPANION_PRINTER_LIVE_WAIT_MS,
   COMPANION_SCREENSHOT_VIEWPORTS,
   formatCompanionScreenshotGateReport,
   formatLaunchedCompanionScreenshotGateReport,
@@ -12,6 +13,7 @@ import {
   runLaunchedCompanionScreenshotGate,
   summarizeCompanionScreenshotPixels,
   validateCompanionScreenshotMetrics,
+  waitForCompanionPrinterLiveData,
 } from "./run-companion-screenshot-gate.mjs";
 
 function createMetric(overrides = {}) {
@@ -224,6 +226,34 @@ test("companion screenshot scenarios cover wide, tablet, and phone task surfaces
     scenarios.find((scenario) => scenario.name === "tablet-settings")?.expectations,
     { settings: true },
   );
+});
+
+test("companion printer screenshots wait up to 30 seconds for live data", async () => {
+  const calls = [];
+  const page = {
+    waitForSelector: async (selector, options) => {
+      calls.push({ options, selector });
+    },
+  };
+
+  assert.equal(await waitForCompanionPrinterLiveData(page), true);
+  assert.deepEqual(calls, [
+    {
+      options: { state: "visible", timeout: COMPANION_PRINTER_LIVE_WAIT_MS },
+      selector: ".printer-live-dot, .printer-live-strip",
+    },
+  ]);
+  assert.equal(COMPANION_PRINTER_LIVE_WAIT_MS, 30_000);
+});
+
+test("companion printer screenshots continue when live data stays unavailable", async () => {
+  const page = {
+    waitForSelector: async () => {
+      throw new Error("timeout");
+    },
+  };
+
+  assert.equal(await waitForCompanionPrinterLiveData(page, 5), false);
 });
 
 test("companion screenshot metric validation enforces content-sized compact overlays", () => {

@@ -7,12 +7,17 @@ wide, tablet, and phone screens.
 The Companion/webapp server must be enabled, and the desktop app needs to stay
 running for Companion to work from a phone, tablet, or workshop browser.
 
+The v0.20.1 captures use the English dark theme and a rich temporary copy of a
+real local library. Printer, RFID, and Bambu diagnostics captures wait for live
+telemetry before the image is accepted; the source library is not modified.
+
 ## Quick Preview
 
 <p align="center">
   <a href="#dashboard"><img src="screenshots/dashboard-thumb.jpg" alt="Dashboard" width="150"></a>
   <a href="#inventory"><img src="screenshots/inventory-thumb.jpg" alt="Inventory" width="150"></a>
   <a href="#add-filament"><img src="screenshots/add-filament-thumb.jpg" alt="Add filament" width="150"></a>
+  <a href="#wishlist-and-orders"><img src="screenshots/wishlist-queue-thumb.jpg" alt="Wishlist and orders" width="150"></a>
   <a href="#loan-out"><img src="screenshots/loan-out-thumb.jpg" alt="Loan out" width="150"></a>
   <a href="#printers"><img src="screenshots/printers-thumb.jpg" alt="Printers" width="150"></a>
   <a href="#settings"><img src="screenshots/settings-general-thumb.jpg" alt="Settings" width="150"></a>
@@ -52,12 +57,26 @@ all ready matches in one action.
 
 ![Bambu batch add](screenshots/bambu-batch-add.jpg)
 
+### Wishlist And Orders
+
+Status filters, search, result counts, stocking, and removal keep planned
+purchases manageable from the same Add filament workspace.
+
+![Wishlist and orders queue](screenshots/wishlist-queue.jpg)
+
 ### Filament Details
 
 Roll-level maintenance for weight, tare, home location, ownership, QR companion
 links, RFID, live AMS sighting, and lost-status handling.
 
 ![Filament detail panel](screenshots/filament-details.jpg)
+
+### Roll History
+
+Roll history stays collapsed until needed, then shows a localized event timeline
+with bounded expansion for long histories.
+
+![Filament roll history](screenshots/filament-history.jpg)
 
 ### RFID Capture
 
@@ -88,12 +107,27 @@ and moves the roll back into stock or completes borrowed-in handback history.
 
 ![Return loan](screenshots/return-loan.jpg)
 
+### Return Borrowed-In Filament
+
+The inbound return flow confirms the external owner, measured hand-back weight,
+and removal of the borrowed spool from active inventory.
+
+![Return borrowed-in filament](screenshots/return-inbound-loan.jpg)
+
 ### Printers
 
 Printer and AMS slot state with live Bambu observations, current assignments,
-weight updates, RFID matching, and candidate suggestions.
+collapsed slot swatches/material labels, weight updates, RFID matching, and
+candidate suggestions.
 
 ![Printer slot overview](screenshots/printers.jpg)
+
+### Add Printer
+
+Printer setup chooses model, name, and multi-material capacity before optional
+local Bambu Live credentials are configured.
+
+![Add printer](screenshots/add-printer.jpg)
 
 ### Slot Assignment
 
@@ -134,6 +168,13 @@ breakdowns across manual jobs and live printer usage.
 
 ![Statistics overview](screenshots/statistics.jpg)
 
+### Loan Usage Statistics
+
+Loan statistics separate active and returned movements, borrower usage, and
+material consumed outside printer sessions.
+
+![Loan usage statistics](screenshots/statistics-loans.jpg)
+
 ## Settings
 
 ### General
@@ -150,6 +191,14 @@ enabled and running here before a phone, tablet, or workshop browser can use the
 LAN Companion address.
 
 ![Settings library and web app](screenshots/settings-library.jpg)
+
+### Guided Library Role Change
+
+Changing between Standalone, Host, and Client opens a guided review. Nothing is
+saved until the migration impact and required backup or connection details are
+confirmed.
+
+![Guided library role change](screenshots/settings-library-role-change.jpg)
 
 ### Bambu Live Diagnostics
 
@@ -171,6 +220,13 @@ Live capture can be paused to freeze the current diagnostic session while still
 showing the last observed printer and AMS state.
 
 ![Paused live capture](screenshots/settings-printer-diagnostics-paused.jpg)
+
+### Unsaved Printer Changes
+
+Printer reconfiguration keeps save state visible and asks before discarding
+unsaved model, capacity, name, or Bambu Live changes.
+
+![Discard unsaved printer changes](screenshots/settings-printer-editor-discard.jpg)
 
 ### Filament Catalogue
 

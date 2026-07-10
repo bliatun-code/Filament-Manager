@@ -112,6 +112,10 @@ Her kan du:
 
 Lagerkort grupperer like filamenttyper og farger, men viser fortsatt individuelle ruller og plasseringer. Dette gjør at lageret er lett å skanne uten å miste sporbarhet.
 
+Panelet Ønskeliste og bestillinger har egne statusfiltre og søkefelt. Det viser
+antall treff, lar deg flytte kjøp mellom Ønskeliste, Bestilt og Mottatt, lagerføre
+en ankommet vare som fysisk rull og fjerne planer som ikke lenger er aktuelle.
+
 ### Utlån
 
 Utlån samler alt som er lånt ut eller lånt inn.
@@ -196,6 +200,12 @@ Her kan du:
 
 Alle printere får minst ett eksternt spor (`EXT`). Bambu-printere kan få AMS-profiler med AMS-enheter og spor per enhet. Prusa MMU3 og Prusa XL har egne profiler for MMU-kanaler eller toolheads.
 
+Når den detaljerte sporoversikten er minimert, viser printerkortet fortsatt en
+kompakt swatch og materialetikett for hvert tildelte spor. Sammendragene bruker
+lagrede tildelinger og virker derfor også for manuelt konfigurerte printere uten
+live-data. Bambu-printere med live-data viser i tillegg jobbstatus, fremdrift,
+nozzle- og bedtemperatur, AMS-fuktighet og AMS-temperatur på en kompakt rad.
+
 ### Statistikk
 
 Statistikk viser aggregert bruk.
@@ -227,6 +237,7 @@ Generelt:
 Bibliotek og webapp:
 
 - bibliotekrolle: Kun lokal, Vert eller Klient
+- lokalt enhetsnavn som identifiserer denne installasjonen
 - webapp-server
 - nettverksgrensesnitt og port
 - paring av nettlesere
@@ -239,11 +250,13 @@ Bibliotek og webapp:
 - modell og sporprofil
 - Bambu Live-konfigurasjon
 - live-diagnostikk og capture
+- beskyttet rekonfigurering med bekreftelse før ulagrede endringer forkastes
 
 Filamentkatalog:
 
 - katalogoversikt
 - katalogoppdatering for Bambu og eSUN
+- separat leverandøraudit og oppdatering av valgte materialer
 - farge-/swatch-data
 - håndtering av katalogelementer som ikke lenger finnes i import
 
@@ -323,7 +336,12 @@ Statusene brukes slik:
 - Bestilt: noe som er bestilt, men ikke ferdig håndtert.
 - Mottatt: noe som er mottatt eller lukket i ønskeliste-/bestillingsflyten.
 
-Du kan legge gjeldende katalogvalg i ønskelisten fra Add filament. Når varen senere faktisk skal inn i lageret, registrerer du den som en fysisk rull med riktig vekt og plassering. Ønskelisten er planlegging og innkjøpsoppfølging; lageret er beholdningen du faktisk kan bruke.
+Du kan legge gjeldende katalogvalg i ønskelisten fra Legg til filament. Når varen senere faktisk skal inn i lageret, registrerer du den som en fysisk rull med riktig vekt og plassering. Ønskelisten er planlegging og innkjøpsoppfølging; lageret er beholdningen du faktisk kan bruke.
+
+Bruk statusfanene for å avgrense køen, søkefeltet for å finne et planlagt kjøp
+etter navn, farge eller leverandør, og **Lagerfør rull nå** når en bestilt vare
+kommer. **Fjern** sletter bare ønskeliste-/bestillingsraden; den sletter ikke en
+lagerrull.
 
 ### Mangler filamentet?
 
@@ -533,6 +551,10 @@ Manuelt:
 - Oppdater vekt ved behov.
 - Tøm sporet når rullen fjernes.
 
+Det minimerte printerkortet beholder swatcher og materialnavn for tildelte spor.
+Utvid **Vis spor** bare når du trenger tildeling, vekt, RFID eller handling for å
+tømme et spor.
+
 Med Bambu Live:
 
 - Live-data viser hva AMS rapporterer.
@@ -559,6 +581,10 @@ Programmet leveres med en lokal seed-katalog for kjente filamenter. Den gjør at
 
 Katalogreparasjon gjenoppretter den innebygde seed-katalogen og fjerner bare ubrukte ikke-seedede katalograder. Ruller på lager, ønskelistekoblinger, utlån, printerdata, RFID, plasseringer og historikk skal bevares.
 
+Leverandøraudit kontrollerer hva Bambu- eller eSUN-kilden rapporterer nå.
+Oppdatering av valgte materialer bruker katalogendringene du velger. Dermed kan
+du vurdere leverandørendringer før lokal katalogmetadata erstattes.
+
 ## Data, historikk og sikkerhet
 
 Programmet bevarer historikk for viktige handlinger.
@@ -573,6 +599,11 @@ Eksempler:
 - RFID-oppdatering
 - live-forbruk
 - sletting og livsløp
+
+Rulldetaljene holder historikken minimert som standard. Antall hendelser er
+alltid synlig; åpne **Vis** for å se tidslinjen. Vanlige historikker vises i sin
+helhet, mens lange historikker starter med et avgrenset sett nyere hendelser og
+tilbyr en egen vis-mer-handling.
 
 Sletting av rull er normalt en myk sletting fra aktiv visning, slik at historikk ikke forsvinner. Permanent purge finnes for tilfeller der rullen og relaterte data virkelig skal fjernes.
 

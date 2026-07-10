@@ -112,6 +112,11 @@ You can:
 
 Inventory cards group identical filament and color entries while still showing individual spools and locations. This keeps the inventory easy to scan without losing traceability.
 
+The Wishlist and orders panel has its own status filters and search field. It
+shows the number of matching rows, lets you move purchases between Wishlist, On
+order, and Received, stocks an arrived item as a physical spool, and removes
+plans that are no longer needed.
+
 ### Loans
 
 Loans collects both outgoing and incoming loans.
@@ -196,6 +201,12 @@ You can:
 
 Every printer gets at least one external slot (`EXT`). Bambu printers can use AMS profiles with AMS units and slots per unit. Prusa MMU3 and Prusa XL have their own profiles for MMU channels or toolheads.
 
+When a printer's detailed slot grid is collapsed, the overview still shows a
+compact swatch and material label for every assigned slot. These summaries use
+saved assignments, so they also work for manually configured printers without
+live data. Bambu printers with live data additionally show job state, progress,
+nozzle and bed temperature, AMS humidity, and AMS temperature on a compact row.
+
 ### Statistics
 
 Statistics shows aggregated usage.
@@ -227,6 +238,7 @@ General:
 Library and webapp:
 
 - library role: Standalone, Host, or Client
+- local device name used when identifying this installation
 - webapp server
 - network interface and port
 - browser pairing
@@ -239,11 +251,13 @@ Library and webapp:
 - model and slot profile
 - Bambu Live configuration
 - live diagnostics and capture
+- guarded reconfiguration with a discard confirmation for unsaved changes
 
 Filament catalog:
 
 - catalog overview
 - catalog refresh for Bambu and eSUN
+- separate vendor audit and selected-material update actions
 - color/swatch data
 - handling catalog items that are no longer found during import
 
@@ -324,6 +338,11 @@ The statuses are:
 - Received: something that has arrived or has been closed in the wishlist/order flow.
 
 You can add the current catalog selection to the wishlist from Add filament. When the item later becomes a physical spool, register it as inventory with the correct weight and location. The wishlist is for planning and purchasing follow-up; inventory is the stock you can actually use.
+
+Use the status tabs to focus the queue, the search field to find a planned
+purchase by name, color, or vendor, and **Stock roll now** when an ordered item
+arrives. **Remove** deletes only the wishlist/order entry; it does not delete an
+inventory spool.
 
 ### Missing Filament?
 
@@ -533,6 +552,10 @@ Manual flow:
 - Update weight when needed.
 - Clear the slot when the spool is removed.
 
+The collapsed printer card keeps assigned slot swatches and material names
+visible. Expand **Show slots** only when you need assignment, weight, RFID, or
+clear-slot actions.
+
 With Bambu Live:
 
 - Live data shows what AMS reports.
@@ -559,6 +582,11 @@ The app ships with a local seed catalog for known filament. This keeps older rol
 
 Catalog repair restores the bundled seed catalog and removes only unused non-seeded catalog rows. Inventory spools, wishlist links, loans, printer data, RFID, locations, and history should be preserved.
 
+Vendor audit checks what the upstream Bambu or eSUN source currently reports.
+Updating selected materials applies chosen catalog changes deliberately. This
+separation lets you review a vendor change before replacing local catalog
+metadata.
+
 ## Data, History, and Safety
 
 The app keeps history for important actions.
@@ -573,6 +601,11 @@ Examples:
 - RFID updates
 - live usage
 - deletion and lifecycle events
+
+The roll detail panel initially keeps history collapsed. The event count stays
+visible; open **Show** to inspect the timeline. Normal histories are shown in
+full, while long histories start with a bounded recent set and offer a further
+show-more action.
 
 Deleting a spool is normally a soft delete from active views so history remains intact. Permanent purge is available when the spool and its related data really should be removed.
 
