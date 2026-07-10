@@ -22,15 +22,17 @@ test("LoanReturnModal uses shared modal form inputs", () => {
   assert.match(source, /ModalNotice/);
   assert.match(source, /variant="primary"/);
   assert.doesNotMatch(source, /variant="success"/);
-  const primaryActionStart = source.indexOf(
-    '<ModalActionButton\n            type="button"\n            onClick={() => void onConfirm()}',
-  );
-  const primaryActionEnd = source.indexOf("</ModalActionButton>", primaryActionStart);
-  assert.notEqual(primaryActionStart, -1);
-  assert.notEqual(primaryActionEnd, -1);
-  const primaryAction = source.slice(primaryActionStart, primaryActionEnd);
-  assert.doesNotMatch(primaryAction, /swatchColor/);
-  assert.doesNotMatch(primaryAction, /resolvedTheme/);
+  for (const sourceWithLineEndings of [
+    source.replace(/\r?\n/g, "\n"),
+    source.replace(/\r?\n/g, "\r\n"),
+  ]) {
+    const primaryAction = sourceWithLineEndings.match(
+      /<ModalActionButton\s+type="button"\s+onClick=\{\(\) => void onConfirm\(\)\}[\s\S]*?<\/ModalActionButton>/,
+    )?.[0];
+    assert.ok(primaryAction, "expected to find the primary return action with LF or CRLF");
+    assert.doesNotMatch(primaryAction, /swatchColor/);
+    assert.doesNotMatch(primaryAction, /resolvedTheme/);
+  }
   assert.doesNotMatch(source, /FeedbackBanner/);
   assert.doesNotMatch(source, /modalActionButtonClassName/);
   assert.doesNotMatch(source, /loanFactLabelClassName/);
