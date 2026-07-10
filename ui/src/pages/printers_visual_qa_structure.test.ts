@@ -8,6 +8,13 @@ const workflowSource = readFileSync(
   "utf8",
 );
 
+test("printer page keeps its header action aligned until the compact card breakpoint", () => {
+  assert.match(pageSource, /page-header min-\[900px\]:flex-row/);
+  assert.match(pageSource, /page-header-actions min-\[900px\]:w-auto/);
+  assert.match(pageSource, /page-header-tools min-\[900px\]:w-auto/);
+  assert.match(pageSource, /<PageHeaderButton[\s\S]*responsive=\{false\}[\s\S]*openAddPrinterModal/);
+});
+
 test("add-printer visual QA waits for loaded desktop data and opens the real modal", () => {
   assert.match(pageSource, /desktopVisualQaScenario === "add-printer"/);
   assert.match(

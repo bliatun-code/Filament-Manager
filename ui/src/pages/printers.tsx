@@ -434,7 +434,7 @@ export default function PrintersPage() {
 
   return (
     <div className="page-shell">
-      <div className="page-header">
+      <div className="page-header min-[900px]:flex-row min-[900px]:items-start min-[900px]:justify-between min-[900px]:gap-8">
         <div className="page-header-copy">
           <h1 className="page-title">{t("nav.printers", "Printers")}</h1>
           <div className="page-subtitle max-w-2xl">
@@ -444,10 +444,11 @@ export default function PrintersPage() {
             )}
           </div>
         </div>
-        <div className="page-header-actions">
-          <div className="page-header-tools">
+        <div className="page-header-actions min-[900px]:w-auto min-[900px]:max-w-none min-[900px]:items-end">
+          <div className="page-header-tools min-[900px]:w-auto min-[900px]:flex-nowrap">
             <PageHeaderButton
               variant="primary"
+              responsive={false}
               onClick={openAddPrinterModal}
               disabled={!tauri || busy || (clientReadOnly ? !clientHostWritePaired : false)}
             >
