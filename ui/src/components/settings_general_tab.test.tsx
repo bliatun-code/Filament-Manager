@@ -45,7 +45,7 @@ function renderGeneralTab(locale: Locale = "en") {
   );
 }
 
-test("SettingsGeneralTab exposes license and versioned source links", () => {
+test("SettingsGeneralTab exposes license and source links", () => {
   const html = renderGeneralTab();
 
   assert.match(html, /AGPL-3\.0-or-later/);

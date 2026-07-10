@@ -11,12 +11,11 @@ import {
   userGuideUrlForLocale,
 } from "./app_metadata";
 
-test("app metadata exposes AGPL licensing and source links", () => {
+test("app metadata exposes AGPL licensing and stable main-branch source links", () => {
   assert.equal(APP_LICENSE_ID, "AGPL-3.0-or-later");
-  assert.equal(
-    sourceUrlForAppVersion("0.16.0"),
-    `${APP_REPOSITORY_URL}/tree/v0.16.0`,
-  );
+  assert.equal(sourceUrlForAppVersion("0.16.0"), `${APP_REPOSITORY_URL}/tree/main`);
+  assert.equal(sourceUrlForAppVersion("0.20.1"), `${APP_REPOSITORY_URL}/tree/main`);
+  assert.equal(sourceUrlForAppVersion(null), `${APP_REPOSITORY_URL}/tree/main`);
   assert.equal(
     licenseUrlForAppVersion("v0.16.0"),
     `${APP_REPOSITORY_URL}/blob/main/LICENSE`,
