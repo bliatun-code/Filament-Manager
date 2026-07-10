@@ -55,7 +55,7 @@ export function PrinterOverviewCardHeader({
 
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="flex min-w-0 flex-1 items-start gap-3">
+      <div className="order-1 flex min-w-0 flex-1 items-start gap-3">
         <div className="shrink-0">
           <PrinterModelPreview model={printer.printer.model} hasMultiMaterial={hasMultiMaterial} />
         </div>
@@ -80,10 +80,9 @@ export function PrinterOverviewCardHeader({
               </>
             ) : null}
           </div>
-          {liveTelemetry ? <PrinterLiveTelemetryStrip telemetry={liveTelemetry} /> : null}
         </div>
       </div>
-      <div className="grid w-full grid-cols-4 gap-2 min-[900px]:w-auto min-[900px]:min-w-[18rem]">
+      <div className="order-3 grid w-full grid-cols-4 gap-2 min-[900px]:order-2 min-[900px]:w-auto min-[900px]:min-w-[18rem]">
         {usageMetrics.map((metric) => (
           <div
             key={metric.key}
@@ -99,6 +98,11 @@ export function PrinterOverviewCardHeader({
           </div>
         ))}
       </div>
+      {liveTelemetry ? (
+        <div className="order-2 w-full min-[640px]:pl-[8.75rem] min-[900px]:order-3">
+          <PrinterLiveTelemetryStrip telemetry={liveTelemetry} />
+        </div>
+      ) : null}
     </div>
   );
 }
