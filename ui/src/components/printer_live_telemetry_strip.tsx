@@ -73,7 +73,7 @@ function TelemetrySegment({
   label: string;
 }) {
   return (
-    <div className="inline-flex min-h-7 items-center gap-1.5 border-l border-slate-300/70 pl-3 first:border-l-0 first:pl-0 dark:border-white/10">
+    <div className="inline-flex min-h-7 items-center gap-1.5 border-l border-slate-300/70 pl-2 first:border-l-0 first:pl-0 dark:border-white/10">
       <span className="text-slate-500 dark:text-slate-400">{icon}</span>
       <span className="sr-only">{label}</span>
       {children}
@@ -89,7 +89,7 @@ export function PrinterLiveTelemetryStrip({ telemetry }: PrinterLiveTelemetryStr
     .join(" · ");
 
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] leading-none text-slate-600 dark:text-slate-300">
+    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[11px] leading-none text-slate-600 dark:text-slate-300">
       <TelemetrySegment
         icon={<PrinterPulseIcon active={printing} />}
         label={t("printers.liveTelemetryState", "Printer state")}

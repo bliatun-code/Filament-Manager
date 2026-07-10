@@ -12,4 +12,6 @@ test("printer overview header lets long names and metadata wrap inside compact c
   assert.match(headerSource, /className="shrink-0"/);
   assert.match(headerSource, /className="min-w-0 space-y-0\.5"/);
   assert.equal(headerSource.match(/\[overflow-wrap:anywhere\]/g)?.length, 2);
+  assert.match(headerSource, /min-\[1200px\]:w-auto/);
+  assert.doesNotMatch(headerSource, /min-\[1080px\]:w-auto/);
 });

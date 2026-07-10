@@ -83,7 +83,7 @@ export function PrinterOverviewCardHeader({
           {liveTelemetry ? <PrinterLiveTelemetryStrip telemetry={liveTelemetry} /> : null}
         </div>
       </div>
-      <div className="grid w-full grid-cols-4 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[18rem]">
+      <div className="grid w-full grid-cols-4 gap-2 min-[1200px]:w-auto min-[1200px]:min-w-[18rem]">
         {usageMetrics.map((metric) => (
           <div
             key={metric.key}
