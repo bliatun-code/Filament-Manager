@@ -299,9 +299,9 @@ I Bambu-flyten:
 
 Desktop/client har også en Filament Code-batchmodal i Bambu-flyten. Lim inn én kode per linje, bruk det lille skann/skriv-feltet for å legge til én oppdaget kode om gangen, legg til strekkodeverdier fra et stillbilde, eller la webkameraet stå på mens du viser Bambu-eskeetiketter én etter én. Live-skanning gir tilbakemelding i video-overlayet når en kode legges til, fortsetter å skanne etter neste etikett og unngår å gjenta samme synlige etikett før du flytter den bort. Hvis en strekkode inneholder en femsifret Filament Code, legges koden inn som en klar rad eller vurderingsrad; hvis den bare inneholder en annen strekkodeverdi, blir råverdien stående synlig for manuell vurdering. Programmet viser hvilke rader som er klare og oppretter rader med et klart katalogtreff, inkludert ett entydig utgått old-stock-treff. Tvetydige aktive treff, utgåtte koder med flere mulige katalograder, ugyldige koder eller manglende koder blir stående for manuell vurdering.
 
-Batch-opprettede Bambu-ruller bruker lagerdetaljene på høyre side av modalen, inkludert eierskap, eier/kontakt for Innlånt, vekt og plassering. Companion/webapp bruker samme kataloglogikk for manuelt kodeoppslag, men bruker ikke kamera eller webcam-scanning.
+Batch-opprettede Bambu-ruller bruker lagerdetaljene på høyre side av modalen, inkludert eierskap, eier/kontakt for Innlånt, vekt og plassering. Companion/webapp bruker samme kataloglogikk for manuelt kodeoppslag, men bruker ikke kamera eller webkameraskanning.
 
-Status for kamera- og batch-scanning ligger i [Camera And Batch Scanning Status](CAMERA_BATCH_SCANNING_PLAN.md). Kortversjonen er at desktop/client holder kode-, bilde- og webcam-basert strekkodeinput i samme vurderingsbaserte batchmodell, mens OCR fortsatt er en senere eksplisitt batch.
+Se [Camera And Batch Scanning](CAMERA_AND_BATCH_SCANNING.md) for en kort fremgangsmåte, støttede inndatametoder og kamerafeilsøking. Desktop/client samler kode-, bilde- og webkamerabasert strekkodeinput i den samme vurderingsbaserte batchflyten. Skanneren leser strekkoder og Filament Codes, ikke vilkårlig etikettekst med OCR.
 
 ### Eid filament
 
