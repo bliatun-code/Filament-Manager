@@ -87,22 +87,22 @@ test("printer Live Bambu settings have explicit English and Norwegian locale cop
   const enDictionary = await loadLocaleDictionary("en");
   const nbDictionary = await loadLocaleDictionary("nb");
   const expectedCopy = {
-    bambuLiveSection: ["Live Bambu status (beta)", "Live Bambu-status (beta)"],
+    bambuLiveSection: ["Live Bambu status", "Live Bambu-status"],
     bambuLiveHint: [
-      "Optional local read-only integration for observing printer and AMS status while we evaluate which live fields are stable and valuable.",
-      "Valgfri lokal, skrivebeskyttet integrasjon for å observere printer- og AMS-status mens vi vurderer hvilke live-felt som er stabile og nyttige.",
+      "Optional local read-only integration for observing printer and AMS status.",
+      "Valgfri lokal, skrivebeskyttet integrasjon for å observere printer- og AMS-status.",
     ],
     enableBambuLive: ["Enable live status", "Aktiver live-status"],
     bambuLiveStandaloneOnly: [
-      "Live Bambu status can only be configured on the host desktop in this phase.",
-      "Live Bambu-status kan i denne fasen bare konfigureres på vertsmaskinen.",
+      "Live Bambu status is configured on the host desktop.",
+      "Live Bambu-status konfigureres på vertsmaskinen.",
     ],
     bambuLiveHost: ["Printer host / IP", "Printeradresse / IP"],
     bambuLiveAccessCode: ["Access code", "Tilgangskode"],
     bambuLivePrinterSerial: ["Printer serial", "Printerserienummer"],
-    bambuLiveOptInNote: [
-      "Credentials are stored locally on this desktop as part of the current experimental opt-in flow.",
-      "Tilgangsopplysningene lagres lokalt på denne maskinen som en del av den eksperimentelle funksjonen.",
+    bambuLiveCredentialsNote: [
+      "Credentials are stored locally on this desktop.",
+      "Tilgangsopplysningene lagres lokalt på denne maskinen.",
     ],
     bambuLiveDisabledNote: [
       "Leave disabled to keep the current printer flow unchanged.",
@@ -114,6 +114,10 @@ test("printer Live Bambu settings have explicit English and Norwegian locale cop
     assert.equal(lookup(enDictionary, `settings.${key}`), expectedEn);
     assert.equal(lookup(nbDictionary, `settings.${key}`), expectedNb);
   }
+  assert.doesNotMatch(
+    JSON.stringify(expectedCopy),
+    /\b(?:beta|experimental|experimentell|eksperimentell)\b/i,
+  );
 });
 
 test("resolveInitialLocale falls back when localStorage throws", () => {

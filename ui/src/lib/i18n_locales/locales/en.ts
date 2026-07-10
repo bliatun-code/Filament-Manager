@@ -1402,17 +1402,15 @@ export const enDictionary: DictionaryNode = {
       slotsPerUnit: "Slots per multi-material unit",
       columnsHint:
         "Choose model, name and multi-material capacity. EXT stays available automatically.",
-      bambuLiveSection: "Live Bambu status (beta)",
+      bambuLiveSection: "Live Bambu status",
       bambuLiveHint:
-        "Optional local read-only integration for observing printer and AMS status while we evaluate which live fields are stable and valuable.",
+        "Optional local read-only integration for observing printer and AMS status.",
       enableBambuLive: "Enable live status",
-      bambuLiveStandaloneOnly:
-        "Live Bambu status can only be configured on the host desktop in this phase.",
+      bambuLiveStandaloneOnly: "Live Bambu status is configured on the host desktop.",
       bambuLiveHost: "Printer host / IP",
       bambuLiveAccessCode: "Access code",
       bambuLivePrinterSerial: "Printer serial",
-      bambuLiveOptInNote:
-        "Credentials are stored locally on this desktop as part of the current experimental opt-in flow.",
+      bambuLiveCredentialsNote: "Credentials are stored locally on this desktop.",
       bambuLiveDisabledNote: "Leave disabled to keep the current printer flow unchanged.",
       activePrinter: "Active printer",
       noActivePrinter: "No active printer",

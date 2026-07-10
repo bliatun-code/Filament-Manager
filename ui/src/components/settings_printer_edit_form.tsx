@@ -193,7 +193,7 @@ export function SettingsPrinterEditForm({
       {supportsBambuLive ? (
         <fieldset className="surface-subtle border-dashed px-3 pb-3">
           <legend className="px-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {t("settings.bambuLiveSection", "Live Bambu status (beta)")}
+            {t("settings.bambuLiveSection", "Live Bambu status")}
           </legend>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <p
@@ -202,7 +202,7 @@ export function SettingsPrinterEditForm({
             >
               {t(
                 "settings.bambuLiveHint",
-                "Optional local read-only integration for observing printer and AMS status while we evaluate which live fields are stable and valuable.",
+                "Optional local read-only integration for observing printer and AMS status.",
               )}
             </p>
             <label
@@ -225,7 +225,7 @@ export function SettingsPrinterEditForm({
             <FeedbackBanner tone="warning" compact className="mt-3">
               {t(
                 "settings.bambuLiveStandaloneOnly",
-                "Live Bambu status can only be configured on the host desktop in this phase.",
+                "Live Bambu status is configured on the host desktop.",
               )}
             </FeedbackBanner>
           ) : null}
@@ -295,8 +295,8 @@ export function SettingsPrinterEditForm({
           <p id={liveNoteId} className="mt-3 text-xs text-slate-500 dark:text-slate-400">
             {bambuLiveEnabled
               ? t(
-                  "settings.bambuLiveOptInNote",
-                  "Credentials are stored locally on this desktop as part of the current experimental opt-in flow.",
+                  "settings.bambuLiveCredentialsNote",
+                  "Credentials are stored locally on this desktop.",
                 )
               : t(
                   "settings.bambuLiveDisabledNote",

@@ -1411,17 +1411,15 @@ export const nbDictionary: DictionaryNode = {
       slotsPerUnit: "Spor per fler-materiale-enhet",
       columnsHint:
         "Velg modell, navn og fler-materiale-kapasitet. EXT-spor er tilgjengelig automatisk.",
-      bambuLiveSection: "Live Bambu-status (beta)",
+      bambuLiveSection: "Live Bambu-status",
       bambuLiveHint:
-        "Valgfri lokal, skrivebeskyttet integrasjon for å observere printer- og AMS-status mens vi vurderer hvilke live-felt som er stabile og nyttige.",
+        "Valgfri lokal, skrivebeskyttet integrasjon for å observere printer- og AMS-status.",
       enableBambuLive: "Aktiver live-status",
-      bambuLiveStandaloneOnly:
-        "Live Bambu-status kan i denne fasen bare konfigureres på vertsmaskinen.",
+      bambuLiveStandaloneOnly: "Live Bambu-status konfigureres på vertsmaskinen.",
       bambuLiveHost: "Printeradresse / IP",
       bambuLiveAccessCode: "Tilgangskode",
       bambuLivePrinterSerial: "Printerserienummer",
-      bambuLiveOptInNote:
-        "Tilgangsopplysningene lagres lokalt på denne maskinen som en del av den eksperimentelle funksjonen.",
+      bambuLiveCredentialsNote: "Tilgangsopplysningene lagres lokalt på denne maskinen.",
       bambuLiveDisabledNote:
         "La funksjonen være deaktivert for å beholde gjeldende printerflyt uendret.",
       activePrinter: "Aktiv printer",
