@@ -18,6 +18,7 @@ import type {
 } from "../lib/tauri_client";
 import { PrinterOverviewCardHeader } from "./printer_overview_card_header";
 import { PrinterSlotCard } from "./printer_slot_card";
+import { PrinterSlotSummaryStrip } from "./printer_slot_summary_strip";
 
 type PrinterOverviewCardProps = {
   printer: PrinterOverviewRow;
@@ -124,7 +125,7 @@ export function PrinterOverviewCard({
         liveConfig={printerLiveConfig}
         resolvedTheme={resolvedTheme}
       />
-      <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-200/70 pt-3 dark:border-slate-700/70">
+      <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-200/70 pt-3 dark:border-slate-700/70">
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
           {printer.slots.length}{" "}
           {t(
@@ -132,10 +133,17 @@ export function PrinterOverviewCard({
             printer.slots.length === 1 ? "slot" : "slots",
           )}
         </span>
+        {!showSlots ? (
+          <PrinterSlotSummaryStrip
+            model={printer.printer.model}
+            slots={printer.slots}
+            findSpoolById={findSpoolById}
+          />
+        ) : null}
         {printer.slots.length > 0 ? (
           <button
             type="button"
-            className="rounded-lg border border-slate-300/80 bg-white/70 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="ml-auto rounded-lg border border-slate-300/80 bg-white/70 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800"
             aria-controls={slotGridId}
             aria-expanded={showSlots}
             onClick={() => {

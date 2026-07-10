@@ -11,6 +11,8 @@ test("multi-printer overview collapses slot grids behind an accessible disclosur
   assert.match(cardSource, /aria-expanded=\{showSlots\}/);
   assert.match(cardSource, /printers\.showSlots/);
   assert.match(cardSource, /printers\.hideSlots/);
+  assert.match(cardSource, /<PrinterSlotSummaryStrip/);
+  assert.match(cardSource, /!showSlots \? \(/);
   assert.match(cardSource, /showSlots \? \(/);
   assert.match(pageSource, /defaultSlotsExpanded=\{printers\.length === 1\}/);
 });
