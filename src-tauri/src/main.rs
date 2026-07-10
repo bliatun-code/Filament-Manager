@@ -89,6 +89,8 @@ pub(crate) const APP_DB_PATH_ENV_VAR: &str = "FILAMENT_MANAGER_DB_PATH";
 const VISUAL_QA_SCENARIO_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
 #[cfg(debug_assertions)]
 const VISUAL_QA_LOCALE_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_LOCALE";
+#[cfg(debug_assertions)]
+const VISUAL_QA_THEME_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_THEME";
 pub(crate) const LEGACY_APP_DB_FILE_NAME: &str = "bambu.db";
 pub(crate) const LEGACY_APP_DATA_DIR_NAME: &str = "com.bambu.filament.manager";
 pub(crate) const LEGACY_APP_DB_PATH_ENV_VAR: &str = "BAMBU_DB_PATH";
@@ -316,9 +318,20 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         "loans-overview" | "loans" | "loan-history" => Some("loans-overview"),
         "loan-out" | "inventory-loan" => Some("loan-out"),
         "selected-roll" | "detail" | "inventory-detail" => Some("selected-roll"),
+        "selected-roll-history" | "roll-history" | "inventory-roll-history" => {
+            Some("selected-roll-history")
+        }
+        "selected-roll-danger-zone" | "danger-zone" | "inventory-danger-zone" => {
+            Some("selected-roll-danger-zone")
+        }
         "rfid-capture" | "inventory-rfid" => Some("rfid-capture"),
         "return-loan" | "loan-return" | "return" => Some("return-loan"),
+        "return-inbound-loan"
+        | "inbound-return"
+        | "borrowed-in-hand-back"
+        | "hand-back-borrowed-in" => Some("return-inbound-loan"),
         "printer-board" | "printers" => Some("printer-board"),
+        "add-printer" | "printer-add" | "add-printer-modal" => Some("add-printer"),
         "printer-slot-assignment" | "printer-slot-dropdown" | "slot-assignment" => {
             Some("printer-slot-assignment")
         }
@@ -339,10 +352,32 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         "bambu-batch-add" | "batch-add" | "bambu-batch" => Some("bambu-batch-add"),
         "settings-general" | "general-settings" => Some("settings-general"),
         "settings-library" | "library-settings" | "companion-settings" => Some("settings-library"),
+        "settings-library-role-change"
+        | "library-role-change"
+        | "library-role-dialog"
+        | "library-role-modal"
+        | "library-role-switch"
+        | "companion-role-change" => Some("settings-library-role-change"),
         "settings-library-network-details"
         | "library-network-details"
         | "companion-network-details"
         | "trusted-lan-details" => Some("settings-library-network-details"),
+        "settings-library-network-editor"
+        | "library-network-editor"
+        | "companion-network-editor"
+        | "trusted-lan-editor" => Some("settings-library-network-editor"),
+        "settings-library-pairing"
+        | "library-pairing"
+        | "companion-pairing"
+        | "trusted-lan-pairing" => Some("settings-library-pairing"),
+        "settings-library-browsers"
+        | "library-browsers"
+        | "companion-browsers"
+        | "trusted-lan-browsers" => Some("settings-library-browsers"),
+        "settings-library-browsers-history"
+        | "library-browser-history"
+        | "companion-browser-history"
+        | "trusted-lan-browser-history" => Some("settings-library-browsers-history"),
         "settings-printer-diagnostics" | "printer-diagnostics" | "bambu-live-diagnostics" => {
             Some("settings-printer-diagnostics")
         }
@@ -352,6 +387,15 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         "settings-printer-diagnostics-paused"
         | "printer-diagnostics-paused"
         | "bambu-live-diagnostics-paused" => Some("settings-printer-diagnostics-paused"),
+        "settings-printer-editor" | "printer-editor" | "printer-settings-editor" => {
+            Some("settings-printer-editor")
+        }
+        "settings-printer-editor-dirty"
+        | "printer-editor-dirty"
+        | "printer-settings-editor-dirty" => Some("settings-printer-editor-dirty"),
+        "settings-printer-editor-discard"
+        | "printer-editor-discard"
+        | "printer-settings-editor-discard" => Some("settings-printer-editor-discard"),
         "settings-catalog" | "catalog-settings" | "filament-catalog" => Some("settings-catalog"),
         "settings-catalog-swatch-review"
         | "settings-catalog-missing-swatches"
@@ -362,6 +406,15 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         }
         "statistics-overview" | "statistics" | "usage-statistics" | "print-statistics" => {
             Some("statistics-overview")
+        }
+        "statistics-consumption" | "total-consumption" | "consumption-breakdown" => {
+            Some("statistics-consumption")
+        }
+        "statistics-borrower" | "borrower-usage-breakdown" | "statistics-borrower-usage" => {
+            Some("statistics-borrower")
+        }
+        "statistics-loans" | "loan-usage-statistics" | "statistics-loan-usage" => {
+            Some("statistics-loans")
         }
         _ => None,
     }
@@ -390,6 +443,22 @@ fn visual_qa_locale_from_env() -> &'static str {
 }
 
 #[cfg(debug_assertions)]
+fn normalize_visual_qa_theme(value: &str) -> Option<&'static str> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "light" => Some("light"),
+        "dark" => Some("dark"),
+        "auto" => Some("auto"),
+        _ => None,
+    }
+}
+
+#[cfg(debug_assertions)]
+fn visual_qa_theme_from_env() -> Option<&'static str> {
+    let value = std::env::var(VISUAL_QA_THEME_ENV_VAR).ok()?;
+    normalize_visual_qa_theme(&value)
+}
+
+#[cfg(debug_assertions)]
 fn apply_visual_qa_scenario_url(app: &tauri::App) -> Result<(), String> {
     let Some(scenario) = visual_qa_scenario_from_env() else {
         return Ok(());
@@ -401,6 +470,10 @@ fn apply_visual_qa_scenario_url(app: &tauri::App) -> Result<(), String> {
     url.query_pairs_mut()
         .append_pair("bfm_visual_qa", scenario)
         .append_pair("bfm_locale", visual_qa_locale_from_env());
+    if let Some(theme) = visual_qa_theme_from_env() {
+        url.query_pairs_mut()
+            .append_pair("bfm_visual_qa_theme", theme);
+    }
     window.navigate(url).map_err(|error| error.to_string())
 }
 

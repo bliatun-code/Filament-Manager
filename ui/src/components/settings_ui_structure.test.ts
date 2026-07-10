@@ -109,3 +109,21 @@ test("settings catalog and maintenance panels use shared section chrome", () => 
     );
   }
 });
+
+test("settings catalog uses an indeterminate progress signal and scoped refresh action", () => {
+  assert.match(catalogRefreshPanelSource, /role="progressbar"/);
+  assert.match(catalogRefreshPanelSource, /aria-label=\{catalogRefreshProgressMessage\}/);
+  assert.doesNotMatch(catalogRefreshPanelSource, /w-2\/3 animate-pulse/);
+  assert.match(catalogRefreshPanelSource, /settings\.runFullVendorAudit/);
+  assert.match(catalogRefreshPanelSource, /settings\.refreshSelectedMaterials/);
+});
+
+test("settings swatch visual QA waits for data and scrolls a permanent target", () => {
+  assert.match(catalogTabSource, /visibleMissingSwatchMasters\.length/);
+  assert.match(catalogTabSource, /visibleMissingSwatchCount === 0/);
+  assert.match(catalogTabSource, /requestAnimationFrame/);
+  assert.match(catalogTabSource, /id="settings-catalog-swatch-review-panel"/);
+  assert.match(catalogTabSource, /className="scroll-mt-24"/);
+  assert.match(catalogTabSource, /scrollIntoView\(\{ behavior: "auto", block: "start" \}\)/);
+  assert.doesNotMatch(catalogTabSource, /setTimeout/);
+});

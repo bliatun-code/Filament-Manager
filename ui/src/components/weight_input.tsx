@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useI18n } from "../lib/i18n";
 import {
   inventoryDetailFormControlClassName,
+  inventoryDetailLabelClassName,
   inventoryDetailSaveButtonClassName,
 } from "./inventory_detail_panel_class";
 
@@ -27,6 +28,9 @@ export function WeightInput({
 }: WeightInputProps) {
   const { t } = useI18n();
   const [internalValue, setInternalValue] = useState(value);
+  const generatedId = useId().replace(/:/g, "");
+  const rangeId = `inventory-weight-range-${generatedId}`;
+  const numberId = `inventory-weight-value-${generatedId}`;
 
   useEffect(() => {
     setInternalValue(value);
@@ -44,34 +48,48 @@ export function WeightInput({
 
   return (
     <div className="surface-card-compact" style={style}>
-      <div className="section-eyebrow">
-        {label || t("inventory.weightLabel", "Current weight (g)")}
-      </div>
-      <div className="mt-4 flex items-center gap-4">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          value={displayValue}
-          onChange={(event) => handleChange(Number(event.target.value))}
-          className="flex-1 accent-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-sky-100 dark:accent-slate-100 dark:focus-visible:ring-sky-500/20"
-        />
-        <input
-          type="number"
-          min={min}
-          max={max}
-          value={displayValue}
-          onChange={(event) => handleChange(Number(event.target.value))}
-          className={`w-24 ${inventoryDetailFormControlClassName}`}
-        />
-        <button
-          type="button"
-          onClick={() => onSubmit?.(displayValue)}
-          className={inventoryDetailSaveButtonClassName}
-        >
-          {t("common.save", "Save")}
-        </button>
-      </div>
+      <fieldset className="min-w-0 border-0 p-0">
+        <legend className="section-eyebrow">
+          {label || t("inventory.weightLabel", "Current weight (g)")}
+        </legend>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_8.5rem_auto] sm:items-end">
+          <label htmlFor={rangeId} className="block min-w-0">
+            <span className={inventoryDetailLabelClassName}>
+              {t("inventory.adjustWeight", "Adjust weight")}
+            </span>
+            <input
+              id={rangeId}
+              type="range"
+              min={min}
+              max={max}
+              value={displayValue}
+              onChange={(event) => handleChange(Number(event.target.value))}
+              className="mt-3 w-full accent-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-sky-100 dark:accent-slate-100 dark:focus-visible:ring-sky-500/20"
+            />
+          </label>
+          <label htmlFor={numberId} className="block">
+            <span className={`${inventoryDetailLabelClassName} sm:whitespace-nowrap`}>
+              {t("inventory.weightValue", "Weight value (g)")}
+            </span>
+            <input
+              id={numberId}
+              type="number"
+              min={min}
+              max={max}
+              value={displayValue}
+              onChange={(event) => handleChange(Number(event.target.value))}
+              className={`mt-1.5 w-full ${inventoryDetailFormControlClassName}`}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => onSubmit?.(displayValue)}
+            className={inventoryDetailSaveButtonClassName}
+          >
+            {t("common.save", "Save")}
+          </button>
+        </div>
+      </fieldset>
     </div>
   );
 }

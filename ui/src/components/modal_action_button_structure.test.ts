@@ -23,6 +23,15 @@ test("modal action buttons share secondary and primary chrome", () => {
     /rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold/;
   const rawPrimaryClass =
     /rounded-lg border border-sky-300 bg-sky-600 px-4 py-2 text-sm font-semibold/;
+  const wishlistActionStart = createActions.lastIndexOf(
+    "<ModalActionButton",
+    createActions.indexOf("onClick={onAddCurrentToWishlist}"),
+  );
+  const wishlistActionEnd = createActions.indexOf(
+    "</ModalActionButton>",
+    wishlistActionStart,
+  );
+  const wishlistAction = createActions.slice(wishlistActionStart, wishlistActionEnd);
 
   assert.match(actionButtonClass, /modalActionButtonClassName/);
   assert.match(actionButtonClass, /appControlFocusClassName/);
@@ -49,6 +58,9 @@ test("modal action buttons share secondary and primary chrome", () => {
   assert.match(createActions, /variant="solid"/);
   assert.match(createActions, /size="roomy"/);
   assert.match(createActions, /fullWidth/);
+  assert.match(wishlistAction, /variant="secondary"/);
+  assert.doesNotMatch(wishlistAction, /style=\{actionStyle\}/);
+  assert.doesNotMatch(wishlistAction, /variant="solid"/);
   for (const source of [
     addPrinterModal,
     batchModal,
@@ -64,10 +76,7 @@ test("modal action buttons share secondary and primary chrome", () => {
   }
   for (const source of [
     loanReturnModal,
-    rfidCapturePanels,
-    rfidOverrideModal,
     saveOnlyModal,
-    slotOnboardingModal,
   ]) {
     assert.match(source, /swatchColor=/);
   }

@@ -125,6 +125,10 @@ export function PrinterSlotCard({
     findSpoolById,
   });
   const { slotSwatchHex } = slotDisplay;
+  const slotLabel = formatPrinterSlotLabelForModel(t, printer.printer.model, {
+    ams_id: slot.ams_id,
+    slot_index: slot.slot_index,
+  });
   const {
     selectorStyle: slotSelectorStyle,
     currentRollStyle: slotCurrentRollStyle,
@@ -133,7 +137,7 @@ export function PrinterSlotCard({
   } = buildPrinterSlotCardStyles({
     slotSwatchHex,
     hasAssignedSpool: !!slot.spool_id,
-    hasSelectedTargetSpool: !!selectedTargetSpool,
+    isDropdownOpen,
     resolvedTheme,
   });
 
@@ -145,15 +149,13 @@ export function PrinterSlotCard({
       style={slotPanelStyle}
     >
       <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-        {formatPrinterSlotLabelForModel(t, printer.printer.model, {
-          ams_id: slot.ams_id,
-          slot_index: slot.slot_index,
-        })}
+        {slotLabel}
       </div>
 
       <PrinterSlotPicker
         printerId={printer.printer.id}
         slot={slot}
+        slotLabel={slotLabel}
         busy={busy}
         tauri={tauri}
         resolvedTheme={resolvedTheme}
@@ -161,7 +163,6 @@ export function PrinterSlotCard({
         selectedTargetSpool={selectedTargetSpool}
         slotSwatchHex={slotSwatchHex}
         slotSelectorStyle={slotSelectorStyle}
-        slotPanelStyle={slotPanelStyle}
         slotOptions={slotOptions}
         draft={draft}
         setOpenDropdownSlotId={setOpenDropdownSlotId}

@@ -21,6 +21,7 @@ import type {
 import type { SettingsBambuLiveDiagnosticsModel } from "../pages/settings_bambu_live_diagnostics_model";
 import { isBambuLabPrinter } from "../pages/settings_printer_model";
 import { SettingsBambuLiveObservedDetailsPanel } from "./settings_bambu_live_observed_details_panel";
+import { settingsBambuLiveObservedPanelId } from "./settings_bambu_live_dom_ids";
 import { SettingsPrinterCardHeader } from "./settings_printer_card_header";
 import { SettingsPrinterEditForm } from "./settings_printer_edit_form";
 
@@ -70,9 +71,11 @@ export type SettingsPrinterLiveDiagnosticsActions = {
 };
 
 type SettingsPrinterCardProps = {
+  actionsLocked: boolean;
   confirmDelete: boolean;
   editActions: SettingsPrinterEditActions;
   editDraft: SettingsPrinterEditDraft;
+  editDirty: boolean;
   expanded: boolean;
   isEditing: boolean;
   liveDiagnostics: SettingsPrinterLiveDiagnosticsState;
@@ -100,9 +103,11 @@ function settingsPrinterLiveStatusTone(
 }
 
 export function SettingsPrinterCard({
+  actionsLocked,
   confirmDelete,
   editActions,
   editDraft,
+  editDirty,
   expanded,
   isEditing,
   liveDiagnostics,
@@ -118,6 +123,7 @@ export function SettingsPrinterCard({
   const resolvedTheme = useResolvedTheme();
   const hasMultiMaterial = hasConfiguredMultiMaterial(printerSlots);
   const configuredSetup = describeConfiguredPrinterSetup(t, printer.model, printerSlots);
+  const observedDetailsId = settingsBambuLiveObservedPanelId(printer.id);
 
   return (
     <div
@@ -125,6 +131,7 @@ export function SettingsPrinterCard({
       style={printerBrandSurfaceStyle(printer.model, "compact", resolvedTheme)}
     >
       <SettingsPrinterCardHeader
+        actionsLocked={actionsLocked}
         busy={busy}
         configuredSetup={configuredSetup}
         confirmDelete={confirmDelete}
@@ -135,28 +142,33 @@ export function SettingsPrinterCard({
         liveStatusTone={settingsPrinterLiveStatusTone(liveDiagnostics.liveConfig)}
         onRemove={onRemove}
         onToggleDetails={liveDiagnosticsActions.onToggleDetails}
-        onToggleEdit={isEditing ? editActions.onCancel : editActions.onStart}
+        onToggleEdit={editActions.onStart}
+        observedDetailsId={observedDetailsId}
         printer={printer}
         tauri={tauri}
       />
 
-      {expanded && liveDiagnostics.liveConfig?.enabled ? (
-        <SettingsBambuLiveObservedDetailsPanel
-          captureActive={liveDiagnostics.captureActive}
-          diagnosticFilter={liveDiagnostics.diagnosticFilter}
-          diagnosticSession={liveDiagnostics.diagnosticSession}
-          diagnosticSort={liveDiagnostics.diagnosticSort}
-          downloadName={`${printer.name.replace(/\s+/g, "-").toLowerCase()}-live-capture.csv`}
-          liveConfig={liveDiagnostics.liveConfig}
-          model={liveDiagnostics.model}
-          onCopyError={liveDiagnosticsActions.onCopyError}
-          onCopySuccess={liveDiagnosticsActions.onCopySuccess}
-          onDiagnosticFilterChange={liveDiagnosticsActions.onDiagnosticFilterChange}
-          onDiagnosticSortChange={liveDiagnosticsActions.onDiagnosticSortChange}
-          onSelectedChartFieldChange={liveDiagnosticsActions.onSelectedChartFieldChange}
-          onToggleCapture={liveDiagnosticsActions.onToggleCapture}
-          printerId={printer.id}
-        />
+      {liveDiagnostics.liveConfig?.enabled ? (
+        <div id={observedDetailsId} hidden={!expanded}>
+          {expanded ? (
+            <SettingsBambuLiveObservedDetailsPanel
+              captureActive={liveDiagnostics.captureActive}
+              diagnosticFilter={liveDiagnostics.diagnosticFilter}
+              diagnosticSession={liveDiagnostics.diagnosticSession}
+              diagnosticSort={liveDiagnostics.diagnosticSort}
+              downloadName={`${printer.name.replace(/\s+/g, "-").toLowerCase()}-live-capture.csv`}
+              liveConfig={liveDiagnostics.liveConfig}
+              model={liveDiagnostics.model}
+              onCopyError={liveDiagnosticsActions.onCopyError}
+              onCopySuccess={liveDiagnosticsActions.onCopySuccess}
+              onDiagnosticFilterChange={liveDiagnosticsActions.onDiagnosticFilterChange}
+              onDiagnosticSortChange={liveDiagnosticsActions.onDiagnosticSortChange}
+              onSelectedChartFieldChange={liveDiagnosticsActions.onSelectedChartFieldChange}
+              onToggleCapture={liveDiagnosticsActions.onToggleCapture}
+              printerId={printer.id}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       {isEditing ? (
@@ -166,9 +178,11 @@ export function SettingsPrinterCard({
           bambuLiveHost={editDraft.bambuLiveHost}
           bambuLivePrinterSerial={editDraft.bambuLivePrinterSerial}
           busy={busy}
+          dirty={editDirty}
           model={editDraft.model}
           modelProfile={editDraft.modelProfile}
           name={editDraft.name}
+          printerId={printer.id}
           settingsClientReadOnly={settingsClientReadOnly}
           slotsPerUnit={editDraft.slotsPerUnit}
           supportsBambuLive={isBambuLabPrinter(printer.model)}
@@ -188,6 +202,7 @@ export function SettingsPrinterCard({
             }
           }}
           onNameChange={editActions.onNameChange}
+          onCancel={editActions.onCancel}
           onSave={editActions.onSave}
           onSlotsPerUnitChange={editActions.onSlotsPerUnitChange}
           onUnitsChange={editActions.onUnitsChange}

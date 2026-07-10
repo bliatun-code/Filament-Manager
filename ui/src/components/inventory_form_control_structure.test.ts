@@ -14,6 +14,7 @@ test("inventory form controls share the inventory input chrome", () => {
     /w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800/;
 
   assert.match(formControls, /inventoryFormControlClassName/);
+  assert.match(formControls, /appFormControlClassName/);
   assert.match(formControls, /appControlFocusClassName/);
   assert.match(formControls, /joinClassNames/);
   assert.match(createActions, /inventoryFormControlClassName/);

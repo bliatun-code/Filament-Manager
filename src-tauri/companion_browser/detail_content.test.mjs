@@ -195,7 +195,7 @@ test("detail content localizes core labels in norwegian", () => {
   assert.match(html, /Nåværende plassering/);
   assert.match(html, /Hjemmeplassering/);
   assert.match(html, /Målt totalvekt \(g\)/);
-  assert.match(html, /Tom rull-vekt \(g\)/);
+  assert.match(html, /Rullens tomvekt \(g\)/);
   assert.match(html, /Lagre vekt/);
   assert.match(html, /Historikk/);
   assert.match(html, /Vekt oppdatert/);
@@ -254,7 +254,7 @@ test("detail content localizes newer history event labels in norwegian", () => {
 
   assert.match(html, /Lagt til i lageret/);
   assert.match(html, /RFID lagret/);
-  assert.match(html, /Tom rull-vekt oppdatert/);
+  assert.match(html, /Rullens tomvekt oppdatert/);
 });
 
 test("detail content localizes WEIGHT_UPDATED history labels in norwegian", () => {

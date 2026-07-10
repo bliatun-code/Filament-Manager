@@ -49,9 +49,9 @@ export function printerBrandSurfaceStyle(
     darkTheme
       ? tone === "card"
         ? {
-            top: brand === "generic" ? 0.18 : 0.28,
-            mid: brand === "generic" ? 0.08 : 0.14,
-            bottom: brand === "generic" ? 0.035 : 0.065,
+            top: brand === "generic" ? 0.11 : 0.14,
+            mid: brand === "generic" ? 0.045 : 0.06,
+            bottom: brand === "generic" ? 0.018 : 0.024,
             base: "rgb(10, 17, 31)",
             border: brand === "generic" ? 0.32 : 0.44,
             shadow: brand === "generic" ? 0.18 : 0.34,
@@ -59,9 +59,9 @@ export function printerBrandSurfaceStyle(
             inset: "rgba(255, 255, 255, 0.03)",
           }
         : {
-            top: brand === "generic" ? 0.14 : 0.22,
-            mid: brand === "generic" ? 0.07 : 0.11,
-            bottom: brand === "generic" ? 0.03 : 0.05,
+            top: brand === "generic" ? 0.09 : 0.11,
+            mid: brand === "generic" ? 0.04 : 0.05,
+            bottom: brand === "generic" ? 0.016 : 0.02,
             base: "rgb(14, 22, 40)",
             border: brand === "generic" ? 0.28 : 0.38,
             shadow: brand === "generic" ? 0.16 : 0.28,

@@ -13,6 +13,10 @@ export function useSettingsLibrarySyncMessages(t: SettingsTranslator) {
       "settings.librarySyncClientPaired",
       "Desktop client paired successfully and is now using the detected host.",
     ),
+    deviceNameSaved: t(
+      "settings.librarySyncDeviceNameSaved",
+      "Device name saved.",
+    ),
     hostCheckPassed: t("settings.librarySyncHostCheckOk", "Host check passed."),
     renewPairing: t(
       "settings.librarySyncRenewPairingInfo",
@@ -41,6 +45,10 @@ export function useSettingsLibrarySyncMessages(t: SettingsTranslator) {
     clearClientAuthFailed: t(
       "settings.error.librarySyncClearClientAuth",
       "Failed to remove the saved desktop client pairing.",
+    ),
+    deviceNameSaveFailed: t(
+      "settings.error.librarySyncDeviceNameSave",
+      "Failed to save the device name.",
     ),
     hostCheckFailed: t(
       "settings.error.librarySyncHostCheck",

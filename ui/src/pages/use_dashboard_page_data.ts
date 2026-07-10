@@ -7,6 +7,7 @@ import {
   type DashboardStat,
 } from "../lib/dashboard_model";
 import { loadDashboardData } from "../lib/dashboard_data_source";
+import { formatDashboardSyncTime } from "../lib/dashboard_sync_time";
 import { isTauri, type TrustedLanCompanionStatus } from "../lib/tauri_client";
 
 type TranslateFn = (key: string, fallback: string) => string;
@@ -111,7 +112,7 @@ function createDefaultHealth(t: TranslateFn): DashboardHealth {
   };
 }
 
-export function useDashboardPageData(t: TranslateFn) {
+export function useDashboardPageData(t: TranslateFn, locale: string) {
   const tauri = isTauri();
   const [goalMetrics, setGoalMetrics] = useState<DashboardGoalMetrics>(
     () => cachedGoalMetrics ?? createDefaultGoalMetrics(),
@@ -183,10 +184,7 @@ export function useDashboardPageData(t: TranslateFn) {
               : "Host snapshot unavailable",
         );
         const timeLabel = capturedAt
-          ? capturedAt.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
+          ? formatDashboardSyncTime(capturedAt, locale)
           : loaded.capturedAt;
         setLastSyncLabel(
           timeLabel ? `${sourceLabel} ${timeLabel}` : sourceLabel,
@@ -194,13 +192,10 @@ export function useDashboardPageData(t: TranslateFn) {
         return;
       }
       setLastSyncLabel(
-        `${t("dashboard.synced", "Synced")} ${new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        })}`,
+        `${t("dashboard.synced", "Synced")} ${formatDashboardSyncTime(new Date(), locale)}`,
       );
     },
-    [clientHostNeedsRepair, tauri, t],
+    [clientHostNeedsRepair, locale, tauri, t],
   );
 
   useEffect(() => {

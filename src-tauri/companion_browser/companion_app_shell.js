@@ -72,7 +72,7 @@ function createRootFlowItems(state, spools) {
 }
 
 function renderWorkflowShell(options) {
-  const { state, loanRows, spools, activePrinter, selectedSpool } = options;
+  const { state, loanRows, spools, activePrinter, selectedSpool, formatGrams } = options;
 
   if (state.activeRootFlow === "printers") {
     return renderPrintersShell({
@@ -142,6 +142,7 @@ function renderDetailModal(options) {
     openingSpoolLabel,
     selectedSpool,
     selectionClearedAfterBorrowedInHandBack,
+    formatGrams,
   } = options;
   const selectedDetailSpoolId = String(state.selectedDetail?.spool?.spool?.id || "").trim();
   const selectedSpoolId = String(selectedSpool?.spool?.id || "").trim();
@@ -253,7 +254,7 @@ function renderDetailModal(options) {
 }
 
 function renderTaskSheet(options) {
-  const { loanRows, state } = options;
+  const { formatGrams, loanRows, state } = options;
   const activeTaskSheet = state.activeTaskSheet || null;
 
   if (!activeTaskSheet || state.detailOpen) {
@@ -408,6 +409,7 @@ function renderTaskSheet(options) {
 
 export function createCompanionAppShellRenderer(options) {
   const { companionLogic, state, syncLegacySectionState } = options;
+  const localizedFormatGrams = (value) => formatGrams(value, state.locale);
   const {
     canLoadSpoolIntoPrinter,
     detailBusyStatusLabel,
@@ -515,6 +517,7 @@ export function createCompanionAppShellRenderer(options) {
                 activePrinter,
                 printerSpoolOptions,
                 loanSpoolOptions,
+                formatGrams: localizedFormatGrams,
               })}
             </div>
             ${
@@ -538,6 +541,7 @@ export function createCompanionAppShellRenderer(options) {
                 loanSpoolOptions,
                 printerSpoolOptions,
                 findAssignedSlotForSpool,
+                formatGrams: localizedFormatGrams,
               })
             : ""
         }
@@ -551,6 +555,7 @@ export function createCompanionAppShellRenderer(options) {
                 openingSpoolLabel,
                 selectedSpool,
                 selectionClearedAfterBorrowedInHandBack: selectionCleared,
+                formatGrams: localizedFormatGrams,
               })
             : ""
         }

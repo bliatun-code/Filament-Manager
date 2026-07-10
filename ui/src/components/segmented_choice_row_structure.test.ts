@@ -6,7 +6,7 @@ const source = readFileSync(new URL("./segmented_choice_row.tsx", import.meta.ur
 
 test("SegmentedChoiceRow exposes pressed state and keyboard focus treatment", () => {
   assert.match(source, /role="group"/);
-  assert.match(source, /aria-label=\{label\}/);
+  assert.match(source, /aria-label=\{groupAriaLabel \?\? label\}/);
   assert.match(source, /aria-pressed=\{active\}/);
   assert.match(source, /groupClassName = ""/);
   assert.match(source, /segmentedChoiceGroupClass\(groupClassName\)/);

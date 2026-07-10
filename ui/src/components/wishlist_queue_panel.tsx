@@ -6,6 +6,7 @@ import { formatInventoryDisplayTitle } from "../lib/inventory_list_model";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { MasterCatalogRow, WishlistItemRow } from "../lib/tauri_client";
+import { formInputChromeClassName } from "./form_control_class";
 import {
   canStockWishlistItem,
   normalizeWishlistStatus,
@@ -20,11 +21,15 @@ type WishlistQueuePanelProps = {
   confirmWishlistRemoveId: string | null;
   items: WishlistItemRow[];
   loading: boolean;
+  onCancelDeleteItem: () => void;
   onDeleteItem: (itemId: string) => void;
   onFilterChange: (filter: WishlistStatusFilter) => void;
+  onQueryChange: (query: string) => void;
+  onRequestDeleteItem: (itemId: string) => void;
   onStatusChange: (itemId: string, status: WishlistStatus) => void;
   onStockItem: (item: WishlistItemRow) => void;
   resolvedTheme: ResolvedTheme;
+  query: string;
   summary: WishlistQueueSummary;
   tauriAvailable: boolean;
   visibleItems: WishlistItemRow[];
@@ -38,7 +43,7 @@ function wishlistItemHex(
   return item.master_id ? catalogMasterById.get(item.master_id)?.hex_color ?? null : null;
 }
 
-type WishlistQueueActionTone = "stock" | "remove";
+type WishlistQueueActionTone = "stock" | "remove" | "danger";
 
 function wishlistQueueActionButtonClassName(tone: WishlistQueueActionTone): string {
   const base =
@@ -46,6 +51,9 @@ function wishlistQueueActionButtonClassName(tone: WishlistQueueActionTone): stri
 
   if (tone === "stock") {
     return `${base} border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/20`;
+  }
+  if (tone === "danger") {
+    return `${base} border-rose-500 bg-rose-600 text-white shadow-sm shadow-rose-300/25 hover:bg-rose-700 dark:border-rose-400/70 dark:bg-rose-500/25 dark:text-rose-100 dark:shadow-none dark:hover:bg-rose-500/35`;
   }
 
   return `${base} border-slate-300 bg-white/80 text-slate-700 hover:bg-white dark:border-slate-600 dark:bg-slate-950/70 dark:text-slate-200 dark:hover:bg-slate-900/80`;
@@ -57,10 +65,14 @@ export function WishlistQueuePanel({
   confirmWishlistRemoveId,
   items,
   loading,
+  onCancelDeleteItem,
   onDeleteItem,
   onFilterChange,
+  onQueryChange,
+  onRequestDeleteItem,
   onStatusChange,
   onStockItem,
+  query,
   resolvedTheme,
   summary,
   tauriAvailable,
@@ -68,6 +80,10 @@ export function WishlistQueuePanel({
   visibleItems,
 }: WishlistQueuePanelProps) {
   const { t } = useI18n();
+  const resultCountUnit =
+    visibleItems.length === 1
+      ? t("wishlist.resultCountOne", "item")
+      : t("wishlist.resultCountMany", "items");
 
   return (
     <div className="surface-card space-y-4">
@@ -87,6 +103,7 @@ export function WishlistQueuePanel({
         </div>
         <SegmentedChoiceRow
           className="mt-4"
+          groupAriaLabel={t("wishlist.statusFilter", "Wishlist status filter")}
           value={value}
           onChange={onFilterChange}
           options={[
@@ -112,6 +129,26 @@ export function WishlistQueuePanel({
             },
           ]}
         />
+        <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+          <label className="block min-w-0">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              {t("wishlist.searchQueueLabel", "Search purchase queue")}
+            </span>
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder={t(
+                "wishlist.searchQueuePlaceholder",
+                "Search by name, color or vendor",
+              )}
+              className={`mt-1.5 w-full ${formInputChromeClassName}`}
+            />
+          </label>
+          <span className="count-pill tabular-nums" aria-live="polite">
+            {visibleItems.length} {resultCountUnit}
+          </span>
+        </div>
       </div>
 
       {loading ? (
@@ -126,15 +163,23 @@ export function WishlistQueuePanel({
       ) : null}
       {!loading && items.length > 0 && visibleItems.length === 0 ? (
         <div className="surface-subtle border-dashed px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
-          {t("wishlist.noneFiltered", "No items match the selected status filter.")}
+          {query.trim()
+            ? t("wishlist.noSearchResults", "No wishlist items match this search.")
+            : t("wishlist.noneFiltered", "No items match the selected status filter.")}
         </div>
       ) : null}
 
-      <div className="space-y-2 lg:max-h-[32rem] lg:overflow-y-auto lg:pr-1">
+      <div className="max-h-[28rem] space-y-2 overflow-y-auto overscroll-contain pr-1 lg:max-h-[32rem]">
         {visibleItems.map((item) => {
           const itemHex = wishlistItemHex(item, catalogMasterById);
           const itemStatus = normalizeWishlistStatus(item.status);
           const canStockItem = canStockWishlistItem(item.status);
+          const itemTitle = formatInventoryDisplayTitle(
+            item.material,
+            item.filament_name,
+            item.color_name,
+          );
+          const confirmingRemove = confirmWishlistRemoveId === item.id;
           return (
             <div
               key={item.id}
@@ -149,11 +194,7 @@ export function WishlistQueuePanel({
                 />
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold text-slate-900 dark:text-slate-50">
-                    {formatInventoryDisplayTitle(
-                      item.material,
-                      item.filament_name,
-                      item.color_name,
-                    )}
+                    {itemTitle}
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <VendorBadge vendor={item.vendor} compact />
@@ -174,6 +215,10 @@ export function WishlistQueuePanel({
                 </div>
                 <SegmentedChoiceRow<WishlistStatus>
                   className="mt-2"
+                  groupAriaLabel={t("wishlist.itemStatusGroup", "Status for {name}").replace(
+                    "{name}",
+                    itemTitle,
+                  )}
                   value={itemStatus}
                   onChange={(nextStatus) => onStatusChange(item.id, nextStatus)}
                   optionSizeClassName="px-3 py-1.5 text-[11px]"
@@ -195,28 +240,64 @@ export function WishlistQueuePanel({
                     },
                   ]}
                 />
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {canStockItem ? (
+                {confirmingRemove ? (
+                  <div
+                    className="mt-3 rounded-xl border border-rose-300 bg-rose-50/95 p-3 text-rose-950 dark:border-rose-400/45 dark:bg-rose-500/15 dark:text-rose-100"
+                    role="alert"
+                  >
+                    <div className="font-semibold">
+                      {t("wishlist.confirmRemoveTitle", "Remove {name} from the purchase queue?").replace(
+                        "{name}",
+                        itemTitle,
+                      )}
+                    </div>
+                    <div className="mt-1 text-[11px] leading-5 text-rose-800 dark:text-rose-200">
+                      {t(
+                        "wishlist.confirmRemoveHint",
+                        "This removes the queue entry. Existing inventory rolls are not affected.",
+                      )}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className={wishlistQueueActionButtonClassName("danger")}
+                        onClick={() => onDeleteItem(item.id)}
+                        disabled={!tauriAvailable || busy}
+                      >
+                        {t("wishlist.confirmRemoveAction", "Confirm remove")}
+                      </button>
+                      <button
+                        type="button"
+                        className={wishlistQueueActionButtonClassName("remove")}
+                        onClick={onCancelDeleteItem}
+                        disabled={busy}
+                      >
+                        {t("common.cancel", "Cancel")}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {canStockItem ? (
+                      <button
+                        type="button"
+                        className={wishlistQueueActionButtonClassName("stock")}
+                        onClick={() => onStockItem(item)}
+                        disabled={!tauriAvailable || busy}
+                      >
+                        {t("inventory.stockRollNow", "Stock roll now")}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
-                      className={wishlistQueueActionButtonClassName("stock")}
-                      onClick={() => onStockItem(item)}
+                      className={wishlistQueueActionButtonClassName("remove")}
+                      onClick={() => onRequestDeleteItem(item.id)}
                       disabled={!tauriAvailable || busy}
                     >
-                      {t("inventory.stockRollNow", "Stock roll now")}
+                      {t("common.remove", "Remove")}
                     </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className={wishlistQueueActionButtonClassName("remove")}
-                    onClick={() => onDeleteItem(item.id)}
-                    disabled={!tauriAvailable || busy}
-                  >
-                    {confirmWishlistRemoveId === item.id
-                      ? t("wishlist.confirmRemoveAction", "Confirm remove")
-                      : t("common.remove", "Remove")}
-                  </button>
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           );

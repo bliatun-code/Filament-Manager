@@ -1,6 +1,7 @@
 export const COMPANION_THEME_STORAGE_KEY = "bfm-companion-theme-mode";
 
 const SWATCH_FALLBACK = "#CBD5E1";
+const SWATCH_ACTION_CONTRAST_TARGET = 4.55;
 const VALID_THEME_MODES = new Set(["light", "dark", "auto"]);
 const PRINTER_BRAND_HEX = {
   bambu: "#00B140",
@@ -176,6 +177,43 @@ function relativeLuminance(rgb) {
   return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 }
 
+function contrastRatio(first, second) {
+  const firstLuminance = relativeLuminance(first);
+  const secondLuminance = relativeLuminance(second);
+  return (
+    (Math.max(firstLuminance, secondLuminance) + 0.05) /
+    (Math.min(firstLuminance, secondLuminance) + 0.05)
+  );
+}
+
+function fitSwatchActionEndpoint(endpoint, text, safeTarget, hoverMix) {
+  const white = [255, 255, 255];
+  for (let step = 0; step <= 100; step += 1) {
+    const adjustment = step / 100;
+    const candidate = mixRgb(endpoint, safeTarget, adjustment);
+    const hoverCandidate = mixRgb(candidate, white, hoverMix);
+    if (
+      contrastRatio(text, candidate) >= SWATCH_ACTION_CONTRAST_TARGET &&
+      contrastRatio(text, hoverCandidate) >= SWATCH_ACTION_CONTRAST_TARGET
+    ) {
+      return { adjustment, rgb: candidate };
+    }
+  }
+  return { adjustment: 1, rgb: safeTarget };
+}
+
+function fitSwatchActionGradient(start, end, text, safeTarget, contrastColor) {
+  const fittedStart = fitSwatchActionEndpoint(start, text, safeTarget, 0.06);
+  const fittedEnd = fitSwatchActionEndpoint(end, text, safeTarget, 0.08);
+  return {
+    contrastColor,
+    end: fittedEnd.rgb,
+    maxAdjustment: Math.max(fittedStart.adjustment, fittedEnd.adjustment),
+    start: fittedStart.rgb,
+    totalAdjustment: fittedStart.adjustment + fittedEnd.adjustment,
+  };
+}
+
 function swatchActionVars(rgb) {
   const luminance = relativeLuminance(rgb);
   const white = [255, 255, 255];
@@ -183,35 +221,46 @@ function swatchActionVars(rgb) {
   const slate300 = [203, 213, 225];
   const slate500 = [100, 116, 139];
   const slate900 = [15, 23, 42];
+  let palette;
 
   if (luminance > 0.62) {
-    return {
-      "--swatch-action-start": rgbToCssColor(mixRgb(rgb, white, 0.12)),
-      "--swatch-action-end": rgbToCssColor(mixRgb(rgb, slate300, 0.38)),
-      "--swatch-action-border": rgbToCssColor(mixRgb(rgb, slate900, 0.18)),
-      "--swatch-action-contrast": "#0F172A",
-      "--swatch-action-inner": "rgba(255, 255, 255, 0.48)",
-      "--swatch-action-shadow-rgb": `${rgb[0]} ${rgb[1]} ${rgb[2]}`,
+    palette = {
+      border: mixRgb(rgb, slate900, 0.18),
+      end: mixRgb(rgb, slate300, 0.38),
+      inner: "rgba(255, 255, 255, 0.48)",
+      start: mixRgb(rgb, white, 0.12),
+    };
+  } else if (luminance < 0.1) {
+    palette = {
+      border: mixRgb(rgb, slate50, 0.36),
+      end: mixRgb(rgb, slate900, 0.46),
+      inner: "rgba(255, 255, 255, 0.16)",
+      start: mixRgb(rgb, slate500, 0.62),
+    };
+  } else {
+    palette = {
+      border: mixRgb(rgb, white, 0.24),
+      end: mixRgb(rgb, slate900, 0.32),
+      inner: "rgba(255, 255, 255, 0.18)",
+      start: mixRgb(rgb, white, 0.08),
     };
   }
 
-  if (luminance < 0.1) {
-    return {
-      "--swatch-action-start": rgbToCssColor(mixRgb(rgb, slate500, 0.62)),
-      "--swatch-action-end": rgbToCssColor(mixRgb(rgb, slate900, 0.46)),
-      "--swatch-action-border": rgbToCssColor(mixRgb(rgb, slate50, 0.36)),
-      "--swatch-action-contrast": "#FFFFFF",
-      "--swatch-action-inner": "rgba(255, 255, 255, 0.16)",
-      "--swatch-action-shadow-rgb": `${rgb[0]} ${rgb[1]} ${rgb[2]}`,
-    };
-  }
+  const fittedGradient = [
+    fitSwatchActionGradient(palette.start, palette.end, white, slate900, "#FFFFFF"),
+    fitSwatchActionGradient(palette.start, palette.end, slate900, white, "#0F172A"),
+  ].sort(
+    (first, second) =>
+      first.maxAdjustment - second.maxAdjustment ||
+      first.totalAdjustment - second.totalAdjustment,
+  )[0];
 
   return {
-    "--swatch-action-start": rgbToCssColor(mixRgb(rgb, white, 0.08)),
-    "--swatch-action-end": rgbToCssColor(mixRgb(rgb, slate900, 0.32)),
-    "--swatch-action-border": rgbToCssColor(mixRgb(rgb, white, 0.24)),
-    "--swatch-action-contrast": "#FFFFFF",
-    "--swatch-action-inner": "rgba(255, 255, 255, 0.18)",
+    "--swatch-action-start": rgbToCssColor(fittedGradient.start),
+    "--swatch-action-end": rgbToCssColor(fittedGradient.end),
+    "--swatch-action-border": rgbToCssColor(palette.border),
+    "--swatch-action-contrast": fittedGradient.contrastColor,
+    "--swatch-action-inner": palette.inner,
     "--swatch-action-shadow-rgb": `${rgb[0]} ${rgb[1]} ${rgb[2]}`,
   };
 }

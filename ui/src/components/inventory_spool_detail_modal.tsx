@@ -68,6 +68,7 @@ type InventorySpoolDetailModalProps = {
   onChangeOwnershipType: (value: OwnershipType) => void;
   onChangeTare: (value: string) => void;
   onChangeVendor: (value: string) => void;
+  onCancelDangerZoneConfirmation: () => void;
   onClose: () => void;
   onDelete: () => void;
   onMarkEmpty: () => void;
@@ -140,6 +141,7 @@ export function InventorySpoolDetailModal({
   onChangeOwnershipType,
   onChangeTare,
   onChangeVendor,
+  onCancelDangerZoneConfirmation,
   onClose,
   onDelete,
   onMarkEmpty,
@@ -187,6 +189,7 @@ export function InventorySpoolDetailModal({
 
   return (
     <AppModal
+      ariaLabel={`${t("inventory.selectedRoll", "Selected roll")}: ${displayTitle}`}
       zIndex={50}
       closeOnBackdrop
       onBackdropClose={onClose}
@@ -204,7 +207,10 @@ export function InventorySpoolDetailModal({
           statusTone={statusTone}
         />
 
-        <div className="overflow-y-auto px-4 pb-4 pt-4 sm:p-5">
+        <div
+          className="overflow-y-auto px-4 pb-4 pt-4 sm:p-5"
+          data-inventory-detail-scroll
+        >
           <div className={inventoryTwoColumnModalGridClassName}>
             <div
               className={inventoryDetailPanelClassName}
@@ -342,10 +348,12 @@ export function InventorySpoolDetailModal({
                 confirmDelete={confirmDelete}
                 confirmPurge={confirmPurge}
                 manageBusy={manageBusy}
+                onCancelConfirmation={onCancelDangerZoneConfirmation}
                 onDelete={onDelete}
                 onMarkEmpty={onMarkEmpty}
                 onPurge={onPurge}
                 onRefill={onRefill}
+                rollLabel={displayTitle}
                 runtimeAvailable={runtimeAvailable}
                 status={spool.status}
               />

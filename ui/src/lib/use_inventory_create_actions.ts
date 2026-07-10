@@ -365,20 +365,14 @@ export function useInventoryCreateActions({
   }
 
   async function handleDeleteWishlistItem(itemId: string) {
+    if (confirmWishlistRemoveId !== itemId) {
+      return;
+    }
     if (!canStartWrite()) {
       return;
     }
-    if (confirmWishlistRemoveId !== itemId) {
-      setConfirmWishlistRemoveId(itemId);
-      setInfoMessage(
-        t(
-          "wishlist.confirmRemoveTapAgain",
-          "Click Remove again to confirm deleting this wishlist entry.",
-        ),
-      );
-      return;
-    }
     setConfirmWishlistRemoveId(null);
+    setInfoMessage(null);
     setBusy(true);
     setError(null);
     try {

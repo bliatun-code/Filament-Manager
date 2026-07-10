@@ -1,4 +1,12 @@
-import type { CSSProperties, Dispatch, SetStateAction } from "react";
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import {
   formatFilamentDisplayTitle,
   formatPlacementLabel,
@@ -22,9 +30,9 @@ import { formInputChromeClassName } from "./form_control_class";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
 
 const slotOptionSwatchClassName =
-  "h-4.5 w-4.5 shrink-0 rounded border border-slate-200 dark:border-slate-600";
+  "h-4.5 w-4.5 shrink-0 rounded";
 const slotSelectorButtonClassName =
-  "flex w-full items-center justify-between gap-2 rounded-xl bg-white/70 px-2.5 py-2 text-left text-sm text-slate-800 outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-900/55 dark:text-slate-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+  "flex w-full items-center justify-between gap-2 rounded-xl border border-slate-600/70 bg-white/70 px-2.5 py-2 text-left text-sm text-slate-800 outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-transparent dark:bg-slate-900/55 dark:text-slate-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
 
 function slotOptionButtonClassName(selected: boolean, selectedExtraClassName = ""): string {
   const base =
@@ -39,6 +47,7 @@ function slotOptionButtonClassName(selected: boolean, selectedExtraClassName = "
 type PrinterSlotPickerProps = {
   printerId: string;
   slot: PrinterAmsSlotRow;
+  slotLabel: string;
   busy: boolean;
   tauri: boolean;
   resolvedTheme: ResolvedTheme;
@@ -46,7 +55,6 @@ type PrinterSlotPickerProps = {
   selectedTargetSpool: SpoolWithMasterRow | null;
   slotSwatchHex: string | null;
   slotSelectorStyle?: CSSProperties;
-  slotPanelStyle?: CSSProperties;
   slotOptions: SpoolWithMasterRow[];
   draft: SlotSwapDraft;
   setOpenDropdownSlotId: Dispatch<SetStateAction<string | null>>;
@@ -62,6 +70,7 @@ type PrinterSlotPickerProps = {
 export function PrinterSlotPicker({
   printerId,
   slot,
+  slotLabel,
   busy,
   tauri,
   resolvedTheme,
@@ -69,7 +78,6 @@ export function PrinterSlotPicker({
   selectedTargetSpool,
   slotSwatchHex,
   slotSelectorStyle,
-  slotPanelStyle,
   slotOptions,
   draft,
   setOpenDropdownSlotId,
@@ -78,23 +86,126 @@ export function PrinterSlotPicker({
   openEmptySlotWeightDialog,
 }: PrinterSlotPickerProps) {
   const { t } = useI18n();
+  const popupId = useId();
+  const searchInputId = useId();
+  const selectorButtonRef = useRef<HTMLButtonElement | null>(null);
+  const popupRef = useRef<HTMLDivElement | null>(null);
+  const dropdownFallbackScrolledRef = useRef(false);
+  const [selectorHovered, setSelectorHovered] = useState(false);
+  const [hoveredTargetSpoolId, setHoveredTargetSpoolId] = useState<string | null>(null);
+  const [dropdownPlacement, setDropdownPlacement] = useState<"above" | "below">("below");
   const filteredSlotOptions = isDropdownOpen
     ? filterSlotOptionsBySearch(slotOptions, draft.search)
     : [];
+  const selectorEmphasis =
+    isDropdownOpen
+      ? "selected"
+      : selectorHovered
+        ? "hovered"
+        : "default";
+  const renderedSlotSelectorStyle =
+    resolvedTheme === "light" && (slotSelectorStyle || selectorEmphasis !== "default")
+      ? {
+          ...slotSelectorStyle,
+          ...printerSwatchInteractiveInsetStyle(
+            slotSwatchHex,
+            resolvedTheme,
+            selectorEmphasis,
+          ),
+          borderWidth: 1,
+        }
+      : slotSelectorStyle;
+
+  useLayoutEffect(() => {
+    if (!isDropdownOpen) {
+      dropdownFallbackScrolledRef.current = false;
+      return;
+    }
+
+    const syncDropdownPlacement = () => {
+      const selectorBounds = selectorButtonRef.current?.getBoundingClientRect();
+      const popupHeight = popupRef.current?.getBoundingClientRect().height ?? 352;
+      if (!selectorBounds) {
+        return;
+      }
+
+      const spaceAbove = selectorBounds.top - 16;
+      const spaceBelow = window.innerHeight - selectorBounds.bottom - 16;
+      const nextPlacement =
+        spaceBelow < popupHeight && spaceAbove > spaceBelow ? "above" : "below";
+      setDropdownPlacement((current) =>
+        current === nextPlacement ? current : nextPlacement,
+      );
+      if (
+        Math.max(spaceAbove, spaceBelow) < popupHeight &&
+        !dropdownFallbackScrolledRef.current
+      ) {
+        dropdownFallbackScrolledRef.current = true;
+        selectorButtonRef.current?.scrollIntoView({
+          behavior: "auto",
+          block: "center",
+          inline: "nearest",
+        });
+      }
+    };
+
+    syncDropdownPlacement();
+    const frameId = window.requestAnimationFrame(syncDropdownPlacement);
+    const timerIds = [100, 350, 900].map((delay) =>
+      window.setTimeout(syncDropdownPlacement, delay),
+    );
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(syncDropdownPlacement);
+    if (document.body) {
+      resizeObserver?.observe(document.body);
+    }
+    if (selectorButtonRef.current) {
+      resizeObserver?.observe(selectorButtonRef.current);
+    }
+    window.addEventListener("resize", syncDropdownPlacement);
+    window.addEventListener("scroll", syncDropdownPlacement, true);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      timerIds.forEach((timerId) => window.clearTimeout(timerId));
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", syncDropdownPlacement);
+      window.removeEventListener("scroll", syncDropdownPlacement, true);
+    };
+
+  }, [isDropdownOpen]);
 
   return (
     <div className="relative mt-2" data-slot-dropdown={slot.slot_id}>
       <button
+        ref={selectorButtonRef}
         type="button"
         className={slotSelectorButtonClassName}
+        aria-controls={popupId}
         aria-expanded={isDropdownOpen}
-        onClick={() =>
+        aria-haspopup="dialog"
+        aria-label={`${t("printers.chooseRollForSlot", "Choose roll for slot")} ${slotLabel}`}
+        onMouseEnter={() => setSelectorHovered(true)}
+        onMouseLeave={() => setSelectorHovered(false)}
+        onClick={() => {
+          if (!isDropdownOpen) {
+            const selectorBounds = selectorButtonRef.current?.getBoundingClientRect();
+            if (selectorBounds) {
+              const spaceAbove = selectorBounds.top - 16;
+              const spaceBelow = window.innerHeight - selectorBounds.bottom - 16;
+              setDropdownPlacement(
+                spaceBelow < 352 && spaceAbove > spaceBelow ? "above" : "below",
+              );
+            }
+          }
           setOpenDropdownSlotId((current) =>
             current === slot.slot_id ? null : slot.slot_id,
-          )
-        }
+          );
+        }}
         disabled={!tauri || busy}
-        style={slotSelectorStyle}
+        style={renderedSlotSelectorStyle}
       >
         <span className="flex min-w-0 items-center gap-2">
           <InventorySwatchChip
@@ -124,10 +235,45 @@ export function PrinterSlotPicker({
 
       {isDropdownOpen ? (
         <div
-          className="absolute left-0 right-0 z-30 mt-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-300/20 dark:border-slate-600 dark:bg-slate-900 dark:shadow-black/30"
-          style={slotPanelStyle}
+          ref={popupRef}
+          id={popupId}
+          role="dialog"
+          aria-label={`${t("printers.availableRollsForSlot", "Available rolls for")} ${slotLabel}`}
+          className={`absolute left-0 right-0 z-30 max-h-[22rem] overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-300/20 dark:border-slate-600 dark:bg-slate-900 dark:shadow-black/30 ${
+            dropdownPlacement === "above" ? "bottom-full mb-2" : "top-full mt-2"
+          }`}
         >
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <label
+              htmlFor={searchInputId}
+              className="text-xs font-semibold text-slate-700 dark:text-slate-200"
+            >
+              {t("printers.searchAvailableRolls", "Search available rolls")}
+            </label>
+            <div className="flex items-center gap-2">
+              <span
+                className="text-[11px] font-medium text-slate-500 dark:text-slate-400"
+                aria-live="polite"
+              >
+                {filteredSlotOptions.length}{" "}
+                {t(
+                  filteredSlotOptions.length === 1
+                    ? "printers.rollResultOne"
+                    : "printers.rollResultMany",
+                  filteredSlotOptions.length === 1 ? "roll" : "rolls",
+                )}
+              </span>
+              <button
+                type="button"
+                className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                onClick={() => setOpenDropdownSlotId(null)}
+              >
+                {t("common.close", "Close")}
+              </button>
+            </div>
+          </div>
           <input
+            id={searchInputId}
             type="text"
             value={draft.search}
             onChange={(event) =>
@@ -140,10 +286,12 @@ export function PrinterSlotPicker({
             className={`w-full text-slate-700 ${formInputChromeClassName}`}
             disabled={!tauri || busy}
           />
-          <div className="mt-2.5 max-h-64 space-y-1.5 overflow-y-auto rounded-xl border border-slate-200 p-2.5 dark:border-slate-600">
+          <div className="mt-2.5 max-h-44 space-y-1.5 overflow-y-auto rounded-xl border border-slate-200 p-2.5 dark:border-slate-600">
             <button
               type="button"
               className={`${slotOptionButtonClassName(draft.targetSpoolId === "", "font-semibold")} py-2`}
+              onMouseEnter={() => setHoveredTargetSpoolId("")}
+              onMouseLeave={() => setHoveredTargetSpoolId(null)}
               onClick={() => {
                 setSlotDraft(slot.slot_id, {
                   ...draft,
@@ -157,8 +305,13 @@ export function PrinterSlotPicker({
               }}
               disabled={!tauri || busy}
               style={
-                draft.targetSpoolId === ""
-                  ? printerSwatchInteractiveInsetStyle(null, resolvedTheme, "selected")
+                draft.targetSpoolId === "" ||
+                (resolvedTheme === "light" && hoveredTargetSpoolId === "")
+                  ? printerSwatchInteractiveInsetStyle(
+                      null,
+                      resolvedTheme,
+                      draft.targetSpoolId === "" ? "selected" : "hovered",
+                    )
                   : undefined
               }
             >
@@ -182,15 +335,26 @@ export function PrinterSlotPicker({
             </button>
             {filteredSlotOptions.map((row) => {
               const placementLabel = formatPlacementLabel(t, row.spool.location_id);
+              const displayTitle = formatFilamentDisplayTitle(
+                row.master.material,
+                row.master.filament_name,
+                row.master.color_name,
+              );
               return (
                 <button
                   key={row.spool.id}
                   type="button"
                   className={`${slotOptionButtonClassName(draft.targetSpoolId === row.spool.id)} py-1.5`}
+                  onMouseEnter={() => setHoveredTargetSpoolId(row.spool.id)}
+                  onMouseLeave={() => setHoveredTargetSpoolId(null)}
                   style={printerSwatchInteractiveInsetStyle(
                     row.master.hex_color,
                     resolvedTheme,
-                    draft.targetSpoolId === row.spool.id ? "selected" : "default",
+                    draft.targetSpoolId === row.spool.id
+                      ? "selected"
+                      : hoveredTargetSpoolId === row.spool.id
+                        ? "hovered"
+                        : "default",
                   )}
                   onClick={() => {
                     setSlotDraft(slot.slot_id, {
@@ -209,12 +373,11 @@ export function PrinterSlotPicker({
                       tone="tiny"
                     />
                     <span className="min-w-0">
-                      <span className="block truncate font-semibold leading-tight">
-                        {formatFilamentDisplayTitle(
-                          row.master.material,
-                          row.master.filament_name,
-                          row.master.color_name,
-                        )}
+                      <span
+                        className="block truncate font-semibold leading-tight"
+                        title={displayTitle}
+                      >
+                        {displayTitle}
                       </span>
                       <span className="mt-0.5 block truncate text-xs text-slate-600 dark:text-slate-400">
                         {row.master.vendor} · {formatSpoolReference(row.spool.id)} ·{" "}

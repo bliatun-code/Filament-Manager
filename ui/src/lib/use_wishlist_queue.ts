@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type { WishlistItemRow } from "./tauri_client";
 import {
-  filterWishlistItems,
+  filterWishlistQueueItems,
   summarizeWishlistQueue,
   type WishlistStatusFilter,
 } from "./wishlist_data_source";
@@ -9,11 +9,12 @@ import {
 export function useWishlistQueue(wishlistItems: WishlistItemRow[]) {
   const [wishlistQueueFilter, setWishlistQueueFilter] =
     useState<WishlistStatusFilter>("WISHLIST");
+  const [wishlistQueueQuery, setWishlistQueueQuery] = useState("");
   const [confirmWishlistRemoveId, setConfirmWishlistRemoveId] = useState<string | null>(null);
 
   const visibleWishlistItems = useMemo(
-    () => filterWishlistItems(wishlistItems, wishlistQueueFilter),
-    [wishlistItems, wishlistQueueFilter],
+    () => filterWishlistQueueItems(wishlistItems, wishlistQueueFilter, wishlistQueueQuery),
+    [wishlistItems, wishlistQueueFilter, wishlistQueueQuery],
   );
 
   const wishlistQueueSummary = useMemo(
@@ -23,6 +24,7 @@ export function useWishlistQueue(wishlistItems: WishlistItemRow[]) {
 
   const resetWishlistQueue = useCallback((filter: WishlistStatusFilter = "WISHLIST") => {
     setWishlistQueueFilter(filter);
+    setWishlistQueueQuery("");
     setConfirmWishlistRemoveId(null);
   }, []);
 
@@ -31,8 +33,10 @@ export function useWishlistQueue(wishlistItems: WishlistItemRow[]) {
     resetWishlistQueue,
     setConfirmWishlistRemoveId,
     setWishlistQueueFilter,
+    setWishlistQueueQuery,
     visibleWishlistItems,
     wishlistQueueFilter,
+    wishlistQueueQuery,
     wishlistQueueSummary,
   };
 }

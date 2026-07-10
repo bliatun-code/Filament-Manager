@@ -34,14 +34,19 @@ export function SummaryMetricTile({
   className?: string;
 }) {
   return (
-    <div className={`rounded-lg border px-3 py-2 ${metricTileClass(tone)} ${className}`.trim()}>
-      <div className="text-[11px] uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+    <span
+      className={`block rounded-lg border px-3 py-2 ${metricTileClass(tone)} ${className}`.trim()}
+    >
+      <span className="block text-[11px] uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
         {label}
-      </div>
-      <div key={value} className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-50">
+      </span>
+      <span
+        key={value}
+        className="mt-1 block text-sm font-semibold text-slate-900 dark:text-slate-50"
+      >
         {value}
-      </div>
-    </div>
+      </span>
+    </span>
   );
 }
 
@@ -72,6 +77,8 @@ export function StatisticsFilamentUsageRowCard({
   swatchColor?: string | null;
   vendor: string;
 }) {
+  const displayTitle = formatFilamentDisplayTitle(material, filamentName, colorName);
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3 dark:border-slate-700 dark:bg-slate-950/45">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -82,8 +89,11 @@ export function StatisticsFilamentUsageRowCard({
             tone="tiny"
           />
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
-              {formatFilamentDisplayTitle(material, filamentName, colorName)}
+            <div
+              className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50"
+              title={displayTitle}
+            >
+              {displayTitle}
             </div>
             <div className="truncate text-xs text-slate-500 dark:text-slate-400">
               {vendor}

@@ -8,6 +8,12 @@ import type { LoanUsageByPersonRow } from "../lib/tauri_client";
 import { StatisticsEmptyState, SummaryMetricTile } from "./statistics_primitives";
 import { statisticsInteractiveCardClass } from "./statistics_view_helpers";
 
+function statisticsResultCountUnit(t: TranslateFn, count: number): string {
+  return count === 1
+    ? t("statistics.resultCountOne", "result")
+    : t("statistics.resultCountMany", "results");
+}
+
 export function StatisticsOutboundLoanUsagePanel({
   filteredLoanUsage,
   loading,
@@ -24,7 +30,7 @@ export function StatisticsOutboundLoanUsagePanel({
   t: TranslateFn;
 }) {
   return (
-    <div className="mt-8 surface-card">
+    <div id="statistics-outbound-loan-usage" className="mt-8 scroll-mt-28 surface-card">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="section-eyebrow">
@@ -43,6 +49,7 @@ export function StatisticsOutboundLoanUsagePanel({
               <button
                 key={mode}
                 type="button"
+                aria-pressed={loanUsageListFilter === mode}
                 onClick={() => setLoanUsageListFilter(mode)}
                 className={neutralChipClass(loanUsageListFilter === mode, "px-3 py-1.5 text-xs")}
               >
@@ -54,8 +61,13 @@ export function StatisticsOutboundLoanUsagePanel({
               </button>
             ))}
           </div>
-          <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200 dark:shadow-none">
-            {filteredLoanUsage.length}
+          <div
+            className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold tabular-nums text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200 dark:shadow-none"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {filteredLoanUsage.length}{" "}
+            {statisticsResultCountUnit(t, filteredLoanUsage.length)}
           </div>
         </div>
       </div>
@@ -108,8 +120,13 @@ export function StatisticsInboundLoanUsagePanel({
             )}
           </div>
         </div>
-        <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200 dark:shadow-none">
-          {inboundLoanUsage.length}
+        <div
+          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold tabular-nums text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200 dark:shadow-none"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {inboundLoanUsage.length}{" "}
+          {statisticsResultCountUnit(t, inboundLoanUsage.length)}
         </div>
       </div>
       {loading ? (
@@ -146,24 +163,18 @@ function StatisticsLoanUsageRow({
   t: TranslateFn;
 }) {
   return (
-    <div
-      className={`rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3 dark:border-slate-700 dark:bg-slate-950/45 ${statisticsInteractiveCardClass}`}
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      className={`block w-full rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3 text-left dark:border-slate-700 dark:bg-slate-950/45 ${statisticsInteractiveCardClass}`}
       onClick={onOpen}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onOpen();
-        }
-      }}
     >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="font-semibold text-slate-900 dark:text-slate-50">
+      <span className="flex flex-wrap items-start justify-between gap-4">
+        <span className="block min-w-0">
+          <span className="block font-semibold text-slate-900 dark:text-slate-50">
             {row.borrower_name}
-          </div>
-          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          </span>
+          <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
             {isInboundLoanDirection(row.loan_direction)
               ? t(
                   "statistics.inboundBreakdownHint",
@@ -173,9 +184,13 @@ function StatisticsLoanUsageRow({
                   "statistics.borrowerBreakdownHint",
                   "Loan totals across active and completed rolls.",
                 )}
-          </div>
-        </div>
-        <div className="grid w-full grid-cols-2 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[18rem] min-[1080px]:grid-cols-3">
+          </span>
+          <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
+            {t("statistics.viewDetails", "View details")}
+            <span aria-hidden="true">→</span>
+          </span>
+        </span>
+        <span className="grid w-full grid-cols-2 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[18rem] min-[1080px]:grid-cols-3">
           <SummaryMetricTile
             label={t("printers.used", "Used")}
             value={`${row.total_consumed_g} g`}
@@ -192,8 +207,8 @@ function StatisticsLoanUsageRow({
             tone="emerald"
             className="col-span-2 min-[1080px]:col-span-1"
           />
-        </div>
-      </div>
-    </div>
+        </span>
+      </span>
+    </button>
   );
 }

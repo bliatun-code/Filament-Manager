@@ -208,6 +208,9 @@ export function validateCompanionScreenshotMetrics(metrics, minimums = {}) {
   const minEdgeDeltaMean = minimumFor(minimums.edgeDeltaMean, 1.2);
   const minLumaStdDev = minimumFor(minimums.lumaStdDev, 5);
   const minVisibleSwatchPixels = minimumFor(minimums.visibleSwatchPixels, 1);
+  const maxContentOverlayViewportRatio = Number.isFinite(Number(minimums.maxContentOverlayViewportRatio))
+    ? Number(minimums.maxContentOverlayViewportRatio)
+    : 0.9;
 
   for (const entry of metrics) {
     const prefix = entry.name || "scenario";
@@ -237,6 +240,9 @@ export function validateCompanionScreenshotMetrics(metrics, minimums = {}) {
     if (entry.expectations?.sheet && entry.counts.taskSheets < 1) {
       errors.push(`${prefix} expected an open task sheet`);
     }
+    if (entry.expectations?.outgoingLoanCalculation && entry.counts.outgoingLoanCalculations < 1) {
+      errors.push(`${prefix} expected an outgoing loan weight calculation`);
+    }
     if (entry.expectations?.detail && entry.counts.detailModals < 1) {
       errors.push(`${prefix} expected an open detail modal`);
     }
@@ -246,8 +252,30 @@ export function validateCompanionScreenshotMetrics(metrics, minimums = {}) {
     if (entry.expectations?.printers && entry.counts.slotCards < minSlotCards) {
       errors.push(`${prefix} expected printer slot cards, found ${entry.counts.slotCards}`);
     }
+    if (entry.expectations?.stablePrinterActions && entry.counts.swatchedPrinterActions > 0) {
+      errors.push(`${prefix} found ${entry.counts.swatchedPrinterActions} filament-colored printer action(s)`);
+    }
+    if (entry.expectations?.emptySlotsWithoutSwatches && entry.counts.emptySlotSwatchDots > 0) {
+      errors.push(`${prefix} found ${entry.counts.emptySlotSwatchDots} swatch dot(s) on empty printer slots`);
+    }
     if (entry.expectations?.settings && entry.counts.settingsCards < minSettingsCards) {
       errors.push(`${prefix} expected settings cards, found ${entry.counts.settingsCards}`);
+    }
+    if (entry.expectations?.enabledLoanReturnSubmit) {
+      if (!entry.loanReturnSubmit?.present) {
+        errors.push(`${prefix} expected a loan return submit button`);
+      } else if (entry.loanReturnSubmit.disabled) {
+        errors.push(`${prefix} loan return submit button is disabled`);
+      }
+    }
+    if (entry.expectations?.contentSizedOverlay) {
+      if (!Number.isFinite(entry.contentOverlay?.height)) {
+        errors.push(`${prefix} expected a measurable compact overlay`);
+      } else if (entry.contentOverlay.height > entry.viewport.height * maxContentOverlayViewportRatio) {
+        errors.push(
+          `${prefix} compact overlay fills too much of the viewport (${entry.contentOverlay.height}px of ${entry.viewport.height}px)`,
+        );
+      }
     }
     if (!entry.screenshotPixels) {
       errors.push(`${prefix} is missing screenshot pixel metrics`);
@@ -397,17 +425,31 @@ async function readPageMetrics(page, scenario) {
     }
 
     const bodyText = document.body?.innerText ?? "";
+    const loanReturnSubmit = document.querySelector(
+      '.loan-return-task-sheet button[type="submit"], .loan-return-task-sheet input[type="submit"]',
+    );
+    const contentOverlayElement = scenario.expectations?.detail
+      ? document.querySelector(".detail-modal-shell")
+      : scenario.expectations?.sheet
+        ? document.querySelector(".task-sheet-shell:not(.task-sheet-shell-wide)")
+        : null;
+    const contentOverlayRect = contentOverlayElement?.getBoundingClientRect?.() ?? null;
     return {
       appChildren: document.querySelector("#app")?.children.length ?? 0,
       bodySample: bodyText.slice(0, 360),
       counts: {
         detailModals: document.querySelectorAll(".detail-modal").length,
+        emptySlotSwatchDots: document.querySelectorAll(".slot-card-empty .swatch-dot").length,
         listRows: document.querySelectorAll(".list-row").length,
         loanCards: document.querySelectorAll(".loan-card").length,
+        outgoingLoanCalculations: document.querySelectorAll("#loan-outgoing-calculation").length,
         phoneNavButtons: document.querySelectorAll(".phone-nav-button").length,
         settingsCards: document.querySelectorAll(".settings-card").length,
         slotCards: document.querySelectorAll(".slot-card").length,
         swatchSurfaces: document.querySelectorAll(".swatch-surface").length,
+        swatchedPrinterActions: document.querySelectorAll(
+          ".slot-card .slot-button-primary.swatch-action-button",
+        ).length,
         taskSheets: document.querySelectorAll(".task-sheet").length,
       },
       document: {
@@ -416,7 +458,16 @@ async function readPageMetrics(page, scenario) {
         scrollWidth: document.documentElement.scrollWidth,
       },
       expectations: scenario.expectations,
+      contentOverlay: {
+        height: contentOverlayRect ? Math.round(contentOverlayRect.height) : null,
+      },
       horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+      loanReturnSubmit: {
+        disabled: loanReturnSubmit
+          ? loanReturnSubmit.matches(":disabled") || loanReturnSubmit.getAttribute("aria-disabled") === "true"
+          : null,
+        present: Boolean(loanReturnSubmit),
+      },
       name: scenario.name,
       outsideElements,
       pairingScreen: bodyText.includes("Trusted-LAN browser companion"),
@@ -572,6 +623,7 @@ function viewportScenario(viewportName, suffix, expectations, prepare = null) {
 }
 
 function buildCompanionTaskScenarios(viewportName) {
+  const contentSizedOverlay = viewportName === "phone" ? {} : { contentSizedOverlay: true };
   return [
     viewportScenario(
       viewportName,
@@ -582,25 +634,35 @@ function buildCompanionTaskScenarios(viewportName) {
     viewportScenario(
       viewportName,
       "lend-spool",
-      { sheet: true, swatches: true },
+      {
+        ...contentSizedOverlay,
+        outgoingLoanCalculation: true,
+        sheet: true,
+        swatches: true,
+      },
       prepareLendSpoolScenario,
     ),
     viewportScenario(
       viewportName,
       "return-loan",
-      { loans: true, sheet: true },
+      { ...contentSizedOverlay, enabledLoanReturnSubmit: true, loans: true, sheet: true },
       prepareReturnLoanScenario,
     ),
     viewportScenario(
       viewportName,
       "detail",
-      { detail: true, swatches: true },
+      { ...contentSizedOverlay, detail: true, swatches: true },
       prepareDetailScenario,
     ),
     viewportScenario(
       viewportName,
       "printers",
-      { printers: true, swatches: true },
+      {
+        emptySlotsWithoutSwatches: true,
+        printers: true,
+        stablePrinterActions: true,
+        swatches: true,
+      },
       preparePrintersScenario,
     ),
     viewportScenario(
@@ -619,6 +681,7 @@ export function buildCompanionScreenshotScenarios() {
       viewport: COMPANION_SCREENSHOT_VIEWPORTS.wide,
       expectations: { inventory: true, swatches: true },
     },
+    ...buildCompanionTaskScenarios("wide"),
     {
       name: "tablet-inventory",
       viewport: COMPANION_SCREENSHOT_VIEWPORTS.tablet,

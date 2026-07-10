@@ -7,6 +7,11 @@ const source = readFileSync(
   "utf8",
 );
 
+test("empty spools render an actually empty remaining meter", () => {
+  assert.match(source, /rollFillRatio <= 0 \? 0 : Math\.max\(4/);
+  assert.doesNotMatch(source, /width: `\$\{Math\.max\(4, Math\.round\(rollFillRatio \* 100\)\)\}%`/);
+});
+
 test("InventorySpoolCollection shares focus treatment for roll buttons", () => {
   assert.match(source, /inventorySpoolRollButtonClassName/);
   assert.match(source, /inventorySpoolListButtonClassName/);
@@ -25,5 +30,23 @@ test("InventorySpoolCollection shares focus treatment for roll buttons", () => {
   assert.doesNotMatch(
     source,
     /w-full rounded-xl border px-4 py-3 text-left shadow-sm transition hover:-translate-y-\[1px\]/,
+  );
+});
+
+test("InventorySpoolCollection lets grouped cards reveal every roll", () => {
+  assert.match(source, /const groupExpanded = expandedGroupKeys\.has\(group\.key\)/);
+  assert.match(
+    source,
+    /const visibleRolls = groupExpanded \? sortedRolls : sortedRolls\.slice\(0, 3\)/,
+  );
+  assert.match(source, /aria-expanded=\{groupExpanded\}/);
+  assert.match(source, /aria-controls=\{rollListId\}/);
+  assert.match(source, /id=\{rollListId\}/);
+  assert.match(source, /toggleGroupExpanded\(group\.key\)/);
+  assert.match(source, /inventory\.showAllRolls/);
+  assert.match(source, /inventory\.showFewerRolls/);
+  assert.doesNotMatch(
+    source,
+    /<div className="surface-subtle border-dashed[^>]*>\s*\+ \{group\.rolls\.length - 3\}/,
   );
 });

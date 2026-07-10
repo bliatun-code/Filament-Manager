@@ -19,14 +19,21 @@ function createMetric(overrides = {}) {
     appChildren: 1,
     counts: {
       detailModals: 0,
+      emptySlotSwatchDots: 0,
       listRows: 12,
       loanCards: 3,
+      outgoingLoanCalculations: 0,
       phoneNavButtons: 4,
       settingsCards: 3,
       slotCards: 5,
       swatchSurfaces: 10,
+      swatchedPrinterActions: 0,
       taskSheets: 0,
       ...overrides.counts,
+    },
+    contentOverlay: {
+      height: null,
+      ...overrides.contentOverlay,
     },
     document: {
       clientWidth: 390,
@@ -40,6 +47,11 @@ function createMetric(overrides = {}) {
       ...overrides.expectations,
     },
     horizontalOverflow: false,
+    loanReturnSubmit: {
+      disabled: null,
+      present: false,
+      ...overrides.loanReturnSubmit,
+    },
     name: "phone-inventory",
     outsideElements: [],
     pairingScreen: false,
@@ -144,13 +156,19 @@ test("companion screenshot metric validation accepts rich rendered surfaces", ()
   assert.deepEqual(errors, []);
 });
 
-test("companion screenshot scenarios cover tablet and phone task surfaces", () => {
+test("companion screenshot scenarios cover wide, tablet, and phone task surfaces", () => {
   const scenarios = buildCompanionScreenshotScenarios();
 
   assert.deepEqual(
     scenarios.map((scenario) => scenario.name),
     [
       "wide-inventory",
+      "wide-add-spool",
+      "wide-lend-spool",
+      "wide-return-loan",
+      "wide-detail",
+      "wide-printers",
+      "wide-settings",
       "tablet-inventory",
       "tablet-add-spool",
       "tablet-lend-spool",
@@ -169,17 +187,75 @@ test("companion screenshot scenarios cover tablet and phone task surfaces", () =
   );
 
   assert.equal(
+    scenarios.find((scenario) => scenario.name === "wide-detail")?.viewport.width,
+    COMPANION_SCREENSHOT_VIEWPORTS.wide.width,
+  );
+  assert.equal(
     scenarios.find((scenario) => scenario.name === "tablet-add-spool")?.viewport.width,
     COMPANION_SCREENSHOT_VIEWPORTS.tablet.width,
   );
   assert.deepEqual(
+    scenarios.find((scenario) => scenario.name === "wide-lend-spool")?.expectations,
+    {
+      contentSizedOverlay: true,
+      outgoingLoanCalculation: true,
+      sheet: true,
+      swatches: true,
+    },
+  );
+  assert.deepEqual(
+    scenarios.find((scenario) => scenario.name === "wide-return-loan")?.expectations,
+    { contentSizedOverlay: true, enabledLoanReturnSubmit: true, loans: true, sheet: true },
+  );
+  assert.deepEqual(
     scenarios.find((scenario) => scenario.name === "phone-return-loan")?.expectations,
-    { loans: true, sheet: true },
+    { enabledLoanReturnSubmit: true, loans: true, sheet: true },
+  );
+  assert.deepEqual(
+    scenarios.find((scenario) => scenario.name === "wide-printers")?.expectations,
+    {
+      emptySlotsWithoutSwatches: true,
+      printers: true,
+      stablePrinterActions: true,
+      swatches: true,
+    },
   );
   assert.deepEqual(
     scenarios.find((scenario) => scenario.name === "tablet-settings")?.expectations,
     { settings: true },
   );
+});
+
+test("companion screenshot metric validation enforces content-sized compact overlays", () => {
+  const errors = validateCompanionScreenshotMetrics([
+    createMetric({
+      contentOverlay: { height: 610 },
+      counts: { taskSheets: 1 },
+      expectations: { contentSizedOverlay: true, sheet: true },
+      name: "wide-lend-spool",
+    }),
+    createMetric({
+      contentOverlay: { height: 830 },
+      counts: { detailModals: 1 },
+      expectations: { contentSizedOverlay: true, detail: true },
+      name: "wide-detail-full-height",
+    }),
+    createMetric({
+      contentOverlay: { height: null },
+      expectations: { contentSizedOverlay: true },
+      name: "tablet-overlay-missing",
+    }),
+  ]);
+
+  assert.ok(
+    errors.some((error) =>
+      error.includes("wide-detail-full-height compact overlay fills too much of the viewport"),
+    ),
+  );
+  assert.ok(
+    errors.some((error) => error.includes("tablet-overlay-missing expected a measurable compact overlay")),
+  );
+  assert.ok(errors.every((error) => !error.includes("wide-lend-spool")));
 });
 
 test("companion screenshot gate normalizes screenshot locale overrides", () => {
@@ -222,6 +298,80 @@ test("companion screenshot metric validation rejects missing settings cards", ()
   ]);
 
   assert.ok(errors.some((error) => error.includes("expected settings cards")));
+});
+
+test("companion screenshot metric validation requires the outgoing loan calculation", () => {
+  const errors = validateCompanionScreenshotMetrics([
+    createMetric({
+      counts: { outgoingLoanCalculations: 0, taskSheets: 1 },
+      expectations: { outgoingLoanCalculation: true, sheet: true },
+      name: "wide-lend-spool-missing-calculation",
+    }),
+  ]);
+
+  assert.ok(errors.some((error) => error.includes("expected an outgoing loan weight calculation")));
+});
+
+test("companion screenshot metric validation rejects ambiguous printer action and empty-slot colors", () => {
+  const errors = validateCompanionScreenshotMetrics([
+    createMetric({
+      counts: {
+        emptySlotSwatchDots: 1,
+        slotCards: 5,
+        swatchedPrinterActions: 4,
+      },
+      expectations: {
+        emptySlotsWithoutSwatches: true,
+        printers: true,
+        stablePrinterActions: true,
+      },
+      name: "wide-printers-ambiguous-actions",
+    }),
+  ]);
+
+  assert.ok(errors.some((error) => error.includes("4 filament-colored printer action(s)")));
+  assert.ok(errors.some((error) => error.includes("1 swatch dot(s) on empty printer slots")));
+});
+
+test("companion screenshot metric validation accepts an enabled loan return submit", () => {
+  const errors = validateCompanionScreenshotMetrics([
+    createMetric({
+      counts: { loanCards: 3, taskSheets: 1 },
+      expectations: { enabledLoanReturnSubmit: true, loans: true, sheet: true },
+      loanReturnSubmit: { disabled: false, present: true },
+      name: "phone-return-loan",
+    }),
+  ]);
+
+  assert.deepEqual(errors, []);
+});
+
+test("companion screenshot metric validation rejects missing or disabled loan return submits", () => {
+  const errors = validateCompanionScreenshotMetrics([
+    createMetric({
+      counts: { loanCards: 3, taskSheets: 1 },
+      expectations: { enabledLoanReturnSubmit: true, loans: true, sheet: true },
+      loanReturnSubmit: { disabled: null, present: false },
+      name: "tablet-return-loan-missing-submit",
+    }),
+    createMetric({
+      counts: { loanCards: 3, taskSheets: 1 },
+      expectations: { enabledLoanReturnSubmit: true, loans: true, sheet: true },
+      loanReturnSubmit: { disabled: true, present: true },
+      name: "phone-return-loan-disabled-submit",
+    }),
+  ]);
+
+  assert.ok(
+    errors.some((error) =>
+      error.includes("tablet-return-loan-missing-submit expected a loan return submit button"),
+    ),
+  );
+  assert.ok(
+    errors.some((error) =>
+      error.includes("phone-return-loan-disabled-submit loan return submit button is disabled"),
+    ),
+  );
 });
 
 test("companion screenshot metric validation rejects flat raster captures", () => {

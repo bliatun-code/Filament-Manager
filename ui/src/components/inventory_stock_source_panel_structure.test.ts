@@ -28,3 +28,11 @@ test("InventoryStockSourcePanel shares focus treatment for catalog and manual ac
     /w-full rounded-xl border border-slate-200 bg-white\/85 px-3 py-2\.5 text-sm font-semibold text-slate-700 transition/,
   );
 });
+
+test("InventoryStockSourcePanel starts catalog entry in the named search field", () => {
+  assert.match(source, /autoFocusCatalogSearch = true/);
+  assert.match(source, /type="search"\s+autoFocus=\{autoFocusCatalogSearch\}\s+aria-label=/);
+  assert.match(source, /wishlist\.searchBambu/);
+  assert.match(source, /wishlist\.searchEsun/);
+  assert.match(source, /max-h-\[22rem\][^"]*overflow-y-auto[^"]*lg:max-h-\[26rem\]/);
+});

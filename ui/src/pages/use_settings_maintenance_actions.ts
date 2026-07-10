@@ -9,7 +9,6 @@ import {
   buildSettingsAppResetSuccessMessage,
   buildSettingsCatalogResetMessage,
   buildSettingsMaintenanceErrorMessage,
-  buildSettingsResetConfirmMessage,
   shouldArmSettingsResetAction,
   type SettingsCatalogResetMessageLabels,
   type SettingsMaintenanceResetMessageLabels,
@@ -54,7 +53,7 @@ export function useSettingsMaintenanceActions({
     if (shouldArmSettingsResetAction(confirmResetAction, "APP")) {
       setConfirmResetAction("APP");
       setError(null);
-      setInfo(buildSettingsResetConfirmMessage("app", settingsMaintenanceResetMessageLabels()));
+      setInfo(null);
       return;
     }
     clearConfirmResetAction();
@@ -86,7 +85,7 @@ export function useSettingsMaintenanceActions({
     if (shouldArmSettingsResetAction(confirmResetAction, "CATALOG")) {
       setConfirmResetAction("CATALOG");
       setError(null);
-      setInfo(buildSettingsResetConfirmMessage("catalog", settingsMaintenanceResetMessageLabels()));
+      setInfo(null);
       return;
     }
     clearConfirmResetAction();

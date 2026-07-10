@@ -81,7 +81,7 @@ test("companion action helper renders variants, swatches and boolean attributes"
   assert.match(coloredHtml, /class="primary-button swatch-action-button"/);
   assert.match(coloredHtml, /style="--swatch-rgb:22 163 74;--swatch-solid:#16A34A;/);
   assert.match(coloredHtml, /--swatch-action-start:rgb\(41 170 88\)/);
-  assert.match(coloredHtml, /--swatch-action-contrast:#FFFFFF/);
+  assert.match(coloredHtml, /--swatch-action-contrast:#0F172A/);
 });
 
 test("companion action link helper renders external links with shared chrome", () => {
@@ -234,7 +234,7 @@ test("swatch surface helper owns card surface attributes", () => {
     /^<article class="surface-card loan-card swatch-surface swatch-card-surface" data-selected aria-label="PLA &lt;Green&gt;" style="--swatch-rgb:22 163 74;--swatch-solid:#16A34A;/,
   );
   assert.match(html, /--swatch-action-start:rgb\(41 170 88\)/);
-  assert.match(html, /--swatch-action-contrast:#FFFFFF/);
+  assert.match(html, /--swatch-action-contrast:#0F172A/);
   assert.match(html, /"><span>Body<\/span><\/article>$/);
 
   const emptySlotHtml = renderSwatchSurface({
@@ -261,7 +261,7 @@ test("swatch surface helper owns card surface attributes", () => {
   });
   assert.equal(
     bannerHtml,
-    '<div class="selection-banner swatch-surface" style="--swatch-rgb:239 68 68;--swatch-solid:#EF4444;--swatch-action-start:rgb(240 83 83);--swatch-action-end:rgb(167 54 60);--swatch-action-border:rgb(243 113 113);--swatch-action-contrast:#FFFFFF;--swatch-action-inner:rgba(255, 255, 255, 0.18);--swatch-action-shadow-rgb:239 68 68">Hidden</div>',
+    '<div class="selection-banner swatch-surface" style="--swatch-rgb:239 68 68;--swatch-solid:#EF4444;--swatch-action-start:rgb(188 69 74);--swatch-action-end:rgb(167 54 60);--swatch-action-border:rgb(243 113 113);--swatch-action-contrast:#FFFFFF;--swatch-action-inner:rgba(255, 255, 255, 0.18);--swatch-action-shadow-rgb:239 68 68">Hidden</div>',
   );
 });
 

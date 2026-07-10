@@ -1,3 +1,4 @@
+import { useId, useState } from "react";
 import { VendorBadge } from "./vendor_badge";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { formatPlacementLabel } from "../lib/display_format";
@@ -72,7 +73,9 @@ function RemainingMeter({
     >
       <div
         className={`h-full rounded-full ${remainingBarClass(rollFillRatio)}`}
-        style={{ width: `${Math.max(4, Math.round(rollFillRatio * 100))}%` }}
+        style={{
+          width: `${rollFillRatio <= 0 ? 0 : Math.max(4, Math.round(rollFillRatio * 100))}%`,
+        }}
       />
     </div>
   );
@@ -117,8 +120,24 @@ export function InventorySpoolCollection({
   selectedSpoolId,
 }: InventorySpoolCollectionProps) {
   const { t } = useI18n();
+  const collectionId = useId();
+  const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
   const isEmpty =
     inventoryView === "CARDS" ? groupedSpools.length === 0 : filteredSpools.length === 0;
+
+  const toggleGroupExpanded = (groupKey: string) => {
+    setExpandedGroupKeys((current) => {
+      const next = new Set(current);
+      if (next.has(groupKey)) {
+        next.delete(groupKey);
+      } else {
+        next.add(groupKey);
+      }
+      return next;
+    });
+  };
 
   return (
     <div
@@ -129,21 +148,23 @@ export function InventorySpoolCollection({
       }
     >
       {inventoryView === "CARDS"
-        ? groupedSpools.map((group) => {
+        ? groupedSpools.map((group, groupIndex) => {
             const hasRecentRoll = group.rolls.some(
               (roll) => roll.id === recentlyAddedSpoolId,
             );
-            const visibleRolls = [...group.rolls]
-              .sort((left, right) => {
-                if (left.id === recentlyAddedSpoolId) {
-                  return -1;
-                }
-                if (right.id === recentlyAddedSpoolId) {
-                  return 1;
-                }
-                return 0;
-              })
-              .slice(0, 3);
+            const sortedRolls = [...group.rolls].sort((left, right) => {
+              if (left.id === recentlyAddedSpoolId) {
+                return -1;
+              }
+              if (right.id === recentlyAddedSpoolId) {
+                return 1;
+              }
+              return 0;
+            });
+            const groupExpanded = expandedGroupKeys.has(group.key);
+            const visibleRolls = groupExpanded ? sortedRolls : sortedRolls.slice(0, 3);
+            const hiddenRollCount = Math.max(0, group.rolls.length - 3);
+            const rollListId = `${collectionId}-group-${groupIndex}-rolls`;
             const singleVisibleRoll = group.rolls.length === 1 ? visibleRolls[0] : null;
 
             return (
@@ -243,58 +264,77 @@ export function InventorySpoolCollection({
                   </button>
                 ) : (
                   <div className="space-y-2.5">
-                    {visibleRolls.map((roll) => {
-                      const emphasis =
-                        selectedSpoolId === roll.id
-                          ? "selected"
-                          : roll.id === recentlyAddedSpoolId
-                            ? "recent"
-                            : "default";
-                      return (
-                        <button
-                          key={roll.id}
-                          type="button"
-                          onClick={() => onSelectRoll(roll.id)}
-                          className={inventorySpoolRollButtonClassName("compact")}
-                          style={inventorySwatchInteractiveInsetStyle(
-                            roll.hexColor ?? group.hexColor,
-                            resolvedTheme,
-                            emphasis,
-                          )}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <div className="truncate text-[13px] font-semibold leading-snug text-slate-900 dark:text-slate-50">
-                                {formatInventoryPlacement(t, roll.location)}
+                    <div id={rollListId} className="space-y-2.5">
+                      {visibleRolls.map((roll) => {
+                        const emphasis =
+                          selectedSpoolId === roll.id
+                            ? "selected"
+                            : roll.id === recentlyAddedSpoolId
+                              ? "recent"
+                              : "default";
+                        return (
+                          <button
+                            key={roll.id}
+                            type="button"
+                            onClick={() => onSelectRoll(roll.id)}
+                            className={inventorySpoolRollButtonClassName("compact")}
+                            style={inventorySwatchInteractiveInsetStyle(
+                              roll.hexColor ?? group.hexColor,
+                              resolvedTheme,
+                              emphasis,
+                            )}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="truncate text-[13px] font-semibold leading-snug text-slate-900 dark:text-slate-50">
+                                  {formatInventoryPlacement(t, roll.location)}
+                                </div>
+                                <OwnershipChip ownershipType={roll.ownershipType} t={t} />
                               </div>
-                              <OwnershipChip ownershipType={roll.ownershipType} t={t} />
-                            </div>
-                            <div className="mt-1 truncate text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                              {formatRollReference(roll)}
-                            </div>
-                            {isBorrowedInOwnership(roll.ownershipType) && roll.ownerName ? (
                               <div className="mt-1 truncate text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                                {t("inventory.borrowedFrom", "Borrowed from")}: {roll.ownerName}
+                                {formatRollReference(roll)}
                               </div>
-                            ) : null}
-                            <RemainingMeter spool={roll} />
-                          </div>
-                          <div className="shrink-0 text-right">
-                            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                              {t("inventory.remaining", "Remaining")}
+                              {isBorrowedInOwnership(roll.ownershipType) && roll.ownerName ? (
+                                <div className="mt-1 truncate text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                                  {t("inventory.borrowedFrom", "Borrowed from")}: {roll.ownerName}
+                                </div>
+                              ) : null}
+                              <RemainingMeter spool={roll} />
                             </div>
-                            <div className="mt-1 text-sm font-semibold leading-tight text-slate-900 dark:text-slate-50">
-                              {formatGrams(roll.remainingGrams)}
+                            <div className="shrink-0 text-right">
+                              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                                {t("inventory.remaining", "Remaining")}
+                              </div>
+                              <div className="mt-1 text-sm font-semibold leading-tight text-slate-900 dark:text-slate-50">
+                                {formatGrams(roll.remainingGrams)}
+                              </div>
                             </div>
-                          </div>
-                        </button>
-                      );
-                    })}
+                          </button>
+                        );
+                      })}
+                    </div>
 
                     {group.rolls.length > 3 ? (
-                      <div className="surface-subtle border-dashed px-3.5 py-2 text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                        + {group.rolls.length - 3} {t("inventory.moreRolls", "more roll(s)")}
-                      </div>
+                      <button
+                        type="button"
+                        aria-expanded={groupExpanded}
+                        aria-controls={rollListId}
+                        onClick={() => toggleGroupExpanded(group.key)}
+                        className="surface-subtle flex w-full items-center justify-between gap-3 border-dashed px-3.5 py-2 text-left text-[11px] font-semibold text-slate-700 outline-none transition hover:border-slate-400/70 hover:bg-white/80 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900/70 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20"
+                      >
+                        <span>
+                          {groupExpanded
+                            ? t("inventory.showFewerRolls", "Show fewer")
+                            : t("inventory.showAllRolls", "Show all")}
+                        </span>
+                        {groupExpanded ? (
+                          <span aria-hidden="true">&#9652;</span>
+                        ) : (
+                          <span className="font-medium text-slate-600 dark:text-slate-300">
+                            + {hiddenRollCount} {t("inventory.moreRolls", "more roll(s)")}
+                          </span>
+                        )}
+                      </button>
                     ) : null}
                   </div>
                 )}

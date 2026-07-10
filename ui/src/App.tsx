@@ -1,4 +1,4 @@
-import { Suspense, lazy, startTransition, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, startTransition, useEffect, useMemo, useRef, useState } from "react";
 import {
   APP_PAGE_LABEL_FALLBACKS,
   APP_PAGE_ORDER,
@@ -50,6 +50,7 @@ export default function App() {
     useState<InventoryNavigationIntent>(null);
   const [settingsInitialTab, setSettingsInitialTab] =
     useState<SettingsTabKey>(() => initialSettingsTabFromUrl());
+  const activeNavButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined" || !import.meta.env.DEV) {
@@ -128,6 +129,14 @@ export default function App() {
     void setWindowTitle(title);
   }, [activePage, pages, t]);
 
+  useEffect(() => {
+    activeNavButtonRef.current?.scrollIntoView({
+      behavior: "auto",
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [activePage]);
+
   const activePageLabel = pages.find((page) => page.key === activePage)?.label ?? t("app.title", "Filament Manager");
 
   const navigateToPage = (page: PageKey, nextInventoryIntent: InventoryNavigationIntent = null) => {
@@ -188,7 +197,10 @@ export default function App() {
 
   return (
     <div>
-      <nav className="app-nav">
+      <a className="app-skip-link" href="#app-main-content">
+        {t("app.skipToMainContent", "Skip to main content")}
+      </a>
+      <nav className="app-nav" aria-label={t("app.navigation", "Navigation")}>
         <div className="app-nav-inner">
           <div className="app-nav-brand">
             <div className="app-nav-logo">
@@ -198,14 +210,15 @@ export default function App() {
                 className="h-8 w-8 rounded-lg"
               />
             </div>
-            <span className="hidden text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:block">
+            <span className="hidden text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50 min-[900px]:block">
               {t("app.title", "Filament Manager")}
             </span>
           </div>
-          <div className="app-nav-list" aria-label={t("app.navigation", "Navigation")}>
+          <div className="app-nav-list">
             {pages.map((page) => (
               <button
                 key={page.key}
+                ref={activePage === page.key ? activeNavButtonRef : undefined}
                 type="button"
                 aria-current={activePage === page.key ? "page" : undefined}
                 onClick={() => {
@@ -221,15 +234,17 @@ export default function App() {
           </div>
         </div>
       </nav>
-      <Suspense
-        fallback={
-          <div className="surface-card mx-auto mt-4 flex min-h-[14rem] w-[calc(100%-2rem)] max-w-[1500px] items-center justify-center px-6 text-sm font-medium text-slate-500 dark:text-slate-300">
-            {t("app.loadingPage", "Loading page...")} {activePageLabel}
-          </div>
-        }
-      >
-        {content}
-      </Suspense>
+      <main id="app-main-content" tabIndex={-1}>
+        <Suspense
+          fallback={
+            <div className="surface-card mx-auto mt-4 flex min-h-[14rem] w-[calc(100%-2rem)] max-w-[1500px] items-center justify-center px-6 text-sm font-medium text-slate-500 dark:text-slate-300">
+              {t("app.loadingPage", "Loading page...")} {activePageLabel}
+            </div>
+          }
+        >
+          {content}
+        </Suspense>
+      </main>
     </div>
   );
 }

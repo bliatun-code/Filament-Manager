@@ -6,6 +6,7 @@ import type {
   ReactNode,
 } from "react";
 import { CloseButton } from "./close_button";
+import { useAppModalTitleId } from "./app_modal_context";
 import { appSoftButtonClassName, joinClassNames } from "./ui_class_names";
 
 export const modalEyebrowClassName =
@@ -311,6 +312,8 @@ export function ModalHeader({
   subtitleClassName,
   aside,
 }: ModalHeaderProps) {
+  const titleId = useAppModalTitleId();
+
   return (
     <div
       className={joinClassNames(
@@ -326,6 +329,7 @@ export function ModalHeader({
             </div>
           ) : null}
           <div
+            id={titleId}
             className={joinClassNames(
               "font-semibold tracking-tight text-slate-950 dark:text-slate-50",
               eyebrow ? "mt-1 text-xl" : "text-lg",

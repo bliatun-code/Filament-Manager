@@ -14,6 +14,7 @@ export const VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE = "printer-rfid-override";
 export const VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES =
   "settings-catalog-missing-swatches";
 export const VISUAL_QA_FIXTURE_WISHLIST_QUEUE = "wishlist-queue";
+export const VISUAL_QA_FIXTURE_LOAN_DIALOGS = "loan-dialogs";
 export const VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE = "trusted-lan-interface";
 export const VISUAL_QA_TRUSTED_LAN_PORT = 4279;
 
@@ -209,6 +210,14 @@ export function normalizeVisualQaDatabaseFixtureScenario(scenario) {
     case "wishlist-orders":
     case "order-queue":
       return VISUAL_QA_FIXTURE_WISHLIST_QUEUE;
+    case "return-inbound-loan":
+    case "inbound-return":
+    case "borrowed-in-hand-back":
+    case "hand-back-borrowed-in":
+    case "statistics-borrower":
+    case "borrower-usage-breakdown":
+    case "statistics-borrower-usage":
+      return VISUAL_QA_FIXTURE_LOAN_DIALOGS;
     default:
       return null;
   }
@@ -894,6 +903,37 @@ async function applyPrinterRfidOverrideFixtureWithBetterSqlite(dbPath, options =
   }
 }
 
+export function chooseBalancedCatalogSwatchFixtureRows(candidates, limit = 8) {
+  const safeLimit = Math.max(0, Number.parseInt(String(limit), 10) || 0);
+  if (safeLimit === 0) {
+    return [];
+  }
+  const vendorRows = (vendor) =>
+    candidates.filter((row) => String(row.vendor ?? "").toLowerCase().includes(vendor));
+  const esunRows = vendorRows("esun");
+  const bambuRows = vendorRows("bambu");
+  const preferredPerVendor = Math.floor(safeLimit / 2);
+  const selected = [];
+  const selectedIds = new Set();
+  const add = (row) => {
+    const id = String(row?.id ?? "");
+    if (!id || selectedIds.has(id) || selected.length >= safeLimit) {
+      return;
+    }
+    selected.push(row);
+    selectedIds.add(id);
+  };
+
+  for (let index = 0; index < preferredPerVendor; index += 1) {
+    add(esunRows[index]);
+    add(bambuRows[index]);
+  }
+  for (const row of candidates) {
+    add(row);
+  }
+  return selected;
+}
+
 async function applySettingsCatalogMissingSwatchesFixtureWithBetterSqlite(dbPath) {
   const module = await import("better-sqlite3");
   const Database = module.default ?? module;
@@ -905,7 +945,7 @@ async function applySettingsCatalogMissingSwatchesFixtureWithBetterSqlite(dbPath
         .all()
         .map((row) => String(row.name)),
     );
-    const rows = db
+    const candidates = db
       .prepare(
         `SELECT id, vendor, material, filament_name, color_name
          FROM filament_master_list
@@ -913,16 +953,29 @@ async function applySettingsCatalogMissingSwatchesFixtureWithBetterSqlite(dbPath
            AND COALESCE(hex_color, '') <> ''
          ORDER BY
            CASE
+             WHEN lower(color_name) LIKE '%black%'
+               OR lower(color_name) LIKE '%white%'
+               OR lower(color_name) LIKE '%gray%'
+               OR lower(color_name) LIKE '%grey%'
+               OR lower(color_name) LIKE '%silver%'
+               OR lower(color_name) LIKE '%transparent%'
+               OR lower(color_name) LIKE '%clear%'
+               OR lower(color_name) LIKE '%natural%'
+             THEN 1
+             ELSE 0
+           END,
+           CASE
              WHEN lower(vendor) LIKE '%esun%' THEN 0
              WHEN lower(vendor) LIKE '%bambu%' THEN 1
              ELSE 2
            END,
-           material,
-           filament_name,
-           color_name
-         LIMIT 8`,
+           lower(material),
+           lower(filament_name),
+           lower(color_name),
+           id`,
       )
       .all();
+    const rows = chooseBalancedCatalogSwatchFixtureRows(candidates, 8);
     if (rows.length === 0) {
       throw new Error("No catalog masters with saved swatches were found for swatch-review QA.");
     }
@@ -1136,6 +1189,226 @@ async function applyWishlistQueueFixtureWithBetterSqlite(dbPath, options = {}) {
   }
 }
 
+async function applyLoanDialogsFixtureWithBetterSqlite(dbPath, options = {}) {
+  const module = await import("better-sqlite3");
+  const Database = module.default ?? module;
+  const db = new Database(dbPath);
+  try {
+    const masterColumns = sqliteTableColumns(db, "filament_master_list");
+    const spoolColumns = sqliteTableColumns(db, "filament_spools");
+    const loanColumns = sqliteTableColumns(db, "spool_loans");
+    ensureSqliteColumns(
+      masterColumns,
+      "filament_master_list",
+      ["id", "material", "filament_name", "color_name", "hex_color", "default_weight", "vendor"],
+      "Loan dialog visual QA fixture",
+    );
+    ensureSqliteColumns(
+      spoolColumns,
+      "filament_spools",
+      [
+        "id",
+        "master_id",
+        "status",
+        "ownership_type",
+        "owner_name",
+        "owner_contact",
+        "ownership_note",
+        "initial_weight_g",
+        "current_weight_g",
+        "remaining_g",
+        "spool_tare_weight_g",
+        "deleted_at",
+        "created_at",
+        "updated_at",
+      ],
+      "Loan dialog visual QA fixture",
+    );
+    ensureSqliteColumns(
+      loanColumns,
+      "spool_loans",
+      [
+        "id",
+        "spool_id",
+        "borrower_name",
+        "loan_direction",
+        "loan_status",
+        "counterparty_name",
+        "counterparty_contact",
+        "counterparty_note",
+        "grams_out",
+        "lent_note",
+        "lent_at",
+        "returned_at",
+        "returned_grams",
+        "consumed_grams",
+        "return_note",
+      ],
+      "Loan dialog visual QA fixture",
+    );
+
+    const now = options.now ?? new Date();
+    const timestamp = now.toISOString();
+    const inboundLentAt = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1_000).toISOString();
+    const outboundLentAt = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1_000).toISOString();
+    const outboundReturnedAt = new Date(now.getTime() - 12 * 24 * 60 * 60 * 1_000).toISOString();
+    const entries = [
+      {
+        masterId: "visual_qa_master_inbound_lagoon",
+        spoolId: "visual_qa_spool_inbound_lagoon",
+        loanId: "visual_qa_loan_inbound_lagoon",
+        vendor: "Bambu",
+        material: "PETG",
+        filamentName: "PETG HF",
+        colorName: "Lagoon Blue",
+        hexColor: "#0081A7",
+        ownershipType: "BORROWED_IN",
+        ownerName: "Maja Solberg",
+        ownerContact: "maja@example.test",
+        ownershipNote: "Visual QA fixture: borrowed-in roll for hand-back review.",
+        currentWeight: 742,
+        direction: "INBOUND",
+        status: "ACTIVE",
+        partyName: "Maja Solberg",
+        lentAt: inboundLentAt,
+        returnedAt: null,
+        returnedGrams: null,
+        consumedGrams: null,
+      },
+      {
+        masterId: "visual_qa_master_outbound_coral",
+        spoolId: "visual_qa_spool_outbound_coral",
+        loanId: "visual_qa_loan_outbound_coral",
+        vendor: "Polymaker",
+        material: "PLA",
+        filamentName: "PolyTerra PLA",
+        colorName: "Coral Signal",
+        hexColor: "#F25F5C",
+        ownershipType: "OWNED",
+        ownerName: null,
+        ownerContact: null,
+        ownershipNote: null,
+        currentWeight: 620,
+        direction: "OUTBOUND",
+        status: "RETURNED",
+        partyName: "Nora Berg",
+        lentAt: outboundLentAt,
+        returnedAt: outboundReturnedAt,
+        returnedGrams: 620,
+        consumedGrams: 380,
+      },
+    ];
+
+    const upsertMaster = db.prepare(
+      `INSERT INTO filament_master_list
+       (id, material, filament_name, color_name, hex_color, default_weight, vendor)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         material = excluded.material,
+         filament_name = excluded.filament_name,
+         color_name = excluded.color_name,
+         hex_color = excluded.hex_color,
+         default_weight = excluded.default_weight,
+         vendor = excluded.vendor`,
+    );
+    const upsertSpool = db.prepare(
+      `INSERT INTO filament_spools
+       (id, master_id, status, ownership_type, owner_name, owner_contact, ownership_note,
+        initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g, deleted_at,
+        created_at, updated_at)
+       VALUES (?, ?, 'IN_STOCK', ?, ?, ?, ?, 1000, ?, ?, 250, NULL, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         master_id = excluded.master_id,
+         status = excluded.status,
+         ownership_type = excluded.ownership_type,
+         owner_name = excluded.owner_name,
+         owner_contact = excluded.owner_contact,
+         ownership_note = excluded.ownership_note,
+         initial_weight_g = excluded.initial_weight_g,
+         current_weight_g = excluded.current_weight_g,
+         remaining_g = excluded.remaining_g,
+         spool_tare_weight_g = excluded.spool_tare_weight_g,
+         deleted_at = NULL,
+         updated_at = excluded.updated_at`,
+    );
+    const upsertLoan = db.prepare(
+      `INSERT INTO spool_loans
+       (id, spool_id, borrower_name, loan_direction, loan_status, counterparty_name,
+        counterparty_contact, counterparty_note, grams_out, lent_note, lent_at,
+        returned_at, returned_grams, consumed_grams, return_note)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1000, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         spool_id = excluded.spool_id,
+         borrower_name = excluded.borrower_name,
+         loan_direction = excluded.loan_direction,
+         loan_status = excluded.loan_status,
+         counterparty_name = excluded.counterparty_name,
+         counterparty_contact = excluded.counterparty_contact,
+         counterparty_note = excluded.counterparty_note,
+         grams_out = excluded.grams_out,
+         lent_note = excluded.lent_note,
+         lent_at = excluded.lent_at,
+         returned_at = excluded.returned_at,
+         returned_grams = excluded.returned_grams,
+         consumed_grams = excluded.consumed_grams,
+         return_note = excluded.return_note`,
+    );
+
+    const transaction = db.transaction(() => {
+      for (const entry of entries) {
+        upsertMaster.run(
+          entry.masterId,
+          entry.material,
+          entry.filamentName,
+          entry.colorName,
+          entry.hexColor,
+          1000,
+          entry.vendor,
+        );
+        upsertSpool.run(
+          entry.spoolId,
+          entry.masterId,
+          entry.ownershipType,
+          entry.ownerName,
+          entry.ownerContact,
+          entry.ownershipNote,
+          entry.currentWeight,
+          entry.currentWeight,
+          timestamp,
+          timestamp,
+        );
+        upsertLoan.run(
+          entry.loanId,
+          entry.spoolId,
+          entry.partyName,
+          entry.direction,
+          entry.status,
+          entry.partyName,
+          entry.ownerContact,
+          "Visual QA fixture: data-connected loan dialog coverage.",
+          "Visual QA fixture loan.",
+          entry.lentAt,
+          entry.returnedAt,
+          entry.returnedGrams,
+          entry.consumedGrams,
+          entry.returnedAt ? "Visual QA fixture return." : null,
+        );
+      }
+    });
+    transaction();
+
+    return {
+      fixture: VISUAL_QA_FIXTURE_LOAN_DIALOGS,
+      inboundLoanId: entries[0].loanId,
+      inboundPartyName: entries[0].partyName,
+      outboundLoanId: entries[1].loanId,
+      outboundPartyName: entries[1].partyName,
+    };
+  } finally {
+    db.close();
+  }
+}
+
 export async function applyVisualQaDatabaseFixture(dbPath, scenario, options = {}) {
   const fixture = normalizeVisualQaDatabaseFixtureScenario(scenario);
   if (!fixture) {
@@ -1155,6 +1428,9 @@ export async function applyVisualQaDatabaseFixture(dbPath, scenario, options = {
   }
   if (fixture === VISUAL_QA_FIXTURE_WISHLIST_QUEUE) {
     return applyWishlistQueueFixtureWithBetterSqlite(dbPath, options);
+  }
+  if (fixture === VISUAL_QA_FIXTURE_LOAN_DIALOGS) {
+    return applyLoanDialogsFixtureWithBetterSqlite(dbPath, options);
   }
   return null;
 }
@@ -1309,6 +1585,10 @@ export function formatVisualQaDatasetReport({
       } else if (fixture.fixture === VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES) {
         const vendors = fixture.vendors?.length ? ` across ${fixture.vendors.join(", ")}` : "";
         lines.push(`  - ${fixture.fixture}: cleared ${fixture.count} swatch(es)${vendors}`);
+      } else if (fixture.fixture === VISUAL_QA_FIXTURE_LOAN_DIALOGS) {
+        lines.push(
+          `  - ${fixture.fixture}: inbound ${fixture.inboundPartyName}, borrower ${fixture.outboundPartyName}`,
+        );
       } else {
         lines.push(`  - ${fixture.fixture ?? "unknown"}`);
       }

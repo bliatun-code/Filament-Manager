@@ -2,9 +2,9 @@ import {
   settingsGroupLabelClass,
   settingsInfoPanelClass,
   settingsLibraryRoleButtonClass,
-  settingsTextInputClass,
   settingsValueBoxClass,
 } from "../lib/settings_ui_classes";
+import { SettingsLibraryDeviceNameField } from "../components/settings_library_device_name_field";
 import type { LibrarySyncSettings } from "../lib/tauri_client";
 import type {
   LibrarySyncMode,
@@ -20,7 +20,9 @@ type SettingsLibraryRoleOption = {
 
 type SettingsLibraryRolePanelProps = {
   librarySyncBusy: boolean;
+  librarySyncDeviceNameDirty: boolean;
   librarySyncDeviceNameDraft: string;
+  librarySyncDeviceNameSaveBusy: boolean;
   librarySyncModeDraft: LibrarySyncMode;
   librarySyncRoleOptions: SettingsLibraryRoleOption[];
   librarySyncSettings: LibrarySyncSettings | null;
@@ -29,11 +31,14 @@ type SettingsLibraryRolePanelProps = {
   t: TranslateFn;
   onDeviceNameChange: (value: string) => void;
   onRequestLibraryRoleChange: (mode: LibrarySyncMode) => void;
+  onSaveDeviceName: () => void;
 };
 
 export function SettingsLibraryRolePanel({
   librarySyncBusy,
+  librarySyncDeviceNameDirty,
   librarySyncDeviceNameDraft,
+  librarySyncDeviceNameSaveBusy,
   librarySyncModeDraft,
   librarySyncRoleOptions,
   librarySyncSettings,
@@ -42,6 +47,7 @@ export function SettingsLibraryRolePanel({
   t,
   onDeviceNameChange,
   onRequestLibraryRoleChange,
+  onSaveDeviceName,
 }: SettingsLibraryRolePanelProps) {
   return (
     <>
@@ -49,11 +55,16 @@ export function SettingsLibraryRolePanel({
         <div className={settingsGroupLabelClass}>
           {t("settings.libraryRoleLabel", "Library role")}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div
+          role="group"
+          aria-label={t("settings.libraryRoleLabel", "Library role")}
+          className="flex flex-wrap items-center gap-2"
+        >
           {librarySyncRoleOptions.map((option) => (
             <button
               key={option.mode}
               type="button"
+              aria-pressed={librarySyncModeDraft === option.mode}
               onClick={() => onRequestLibraryRoleChange(option.mode)}
               className={settingsLibraryRoleButtonClass(librarySyncModeDraft === option.mode)}
               disabled={!tauri || librarySyncBusy}
@@ -94,19 +105,16 @@ export function SettingsLibraryRolePanel({
 
       {libraryVisibility.showDeviceFields ? (
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="space-y-2">
-            <div className={settingsGroupLabelClass}>
-              {t("settings.librarySyncDeviceName", "Device name")}
-            </div>
-            <input
-              type="text"
-              value={librarySyncDeviceNameDraft}
-              onChange={(event) => onDeviceNameChange(event.target.value)}
-              className={settingsTextInputClass}
-              placeholder={t("settings.librarySyncDeviceNamePlaceholder", "Workshop PC")}
-              disabled={!tauri || librarySyncBusy}
-            />
-          </label>
+          <SettingsLibraryDeviceNameField
+            disabled={librarySyncBusy}
+            dirty={librarySyncDeviceNameDirty}
+            saving={librarySyncDeviceNameSaveBusy}
+            tauri={tauri}
+            t={t}
+            value={librarySyncDeviceNameDraft}
+            onChange={onDeviceNameChange}
+            onSave={onSaveDeviceName}
+          />
 
           <div className="space-y-2">
             <div className={settingsGroupLabelClass}>

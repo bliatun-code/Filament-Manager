@@ -172,6 +172,7 @@ export function useSettingsCatalogSection({
       visibleMissingSwatchMasters,
       visibleMissingSwatchVendorCount,
       onBulkAutoFill: handleBulkAutoFillMissingSwatches,
+      onCancelBulkAutoFill: clearConfirmBulkSwatch,
       onRefresh: reloadSettings,
       onSaveMissingSwatch: handleSaveMissingSwatch,
       onSwatchDraftChange: updateSwatchDraft,

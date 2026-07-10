@@ -16,8 +16,12 @@ const execFile = promisify(execFileCallback);
 const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
 const DEFAULT_PROCESS_NAME = "bambu-filament-manager";
 const DEFAULT_WINDOW_TITLE = "Filament Manager";
+export const DEFAULT_WINDOW_COMMAND_TIMEOUT_MS = 15_000;
 const VISUAL_QA_SCENARIO_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
 const VISUAL_QA_LOCALE_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_LOCALE";
+const VISUAL_QA_THEME_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_THEME";
+export const DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN = 96;
+export const DESKTOP_DARK_THEME_MAX_LUMA_MEAN = 128;
 const DESKTOP_VISUAL_QA_SCENARIO_MANIFEST = JSON.parse(
   readFileSync(resolve("ui", "src", "lib", "desktop_visual_qa_scenarios.json"), "utf8"),
 );
@@ -78,6 +82,68 @@ export function normalizeVisualQaLocale(value) {
     return "nb";
   }
   return "en";
+}
+
+export function normalizeDesktopVisualQaTheme(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "light" || normalized === "dark" || normalized === "auto") {
+    return normalized;
+  }
+  if (!normalized) {
+    throw new Error('Desktop visual QA theme is required. Use "light", "dark", or "auto".');
+  }
+  throw new Error(
+    `Unknown desktop visual QA theme "${value}". Use "light", "dark", or "auto".`,
+  );
+}
+
+export function resolveDesktopVisualQaTheme(argv, { hasScenario, launch }) {
+  const explicitTheme = argv.includes("--theme");
+  if (!explicitTheme) {
+    return hasScenario ? "dark" : null;
+  }
+  if (!launch) {
+    throw new Error("Desktop visual QA --theme requires --launch.");
+  }
+  if (!hasScenario) {
+    throw new Error("Desktop visual QA --theme requires --scenario.");
+  }
+  return normalizeDesktopVisualQaTheme(parseArgValue(argv, "--theme"));
+}
+
+export function normalizeDesktopVisualQaWindowSize(value) {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) {
+    throw new Error('Desktop visual QA window size is required. Use a value like "900x700".');
+  }
+  const match = normalized.match(/^(\d+)\s*[x×]\s*(\d+)$/i);
+  const width = Number(match?.[1]);
+  const height = Number(match?.[2]);
+  if (
+    !match ||
+    !Number.isSafeInteger(width) ||
+    !Number.isSafeInteger(height) ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    throw new Error(
+      `Unknown desktop visual QA window size "${value}". Use a positive width and height like "900x700".`,
+    );
+  }
+  return { height, width };
+}
+
+export function resolveDesktopVisualQaWindowSize(argv, { hasScenario, launch }) {
+  if (!argv.includes("--window-size")) {
+    return null;
+  }
+  if (!launch) {
+    throw new Error("Desktop visual QA --window-size requires --launch.");
+  }
+  if (!hasScenario) {
+    throw new Error("Desktop visual QA --window-size requires --scenario.");
+  }
+  return normalizeDesktopVisualQaWindowSize(parseArgValue(argv, "--window-size"));
 }
 
 export function normalizeDesktopVisualQaScenario(value) {
@@ -244,6 +310,23 @@ end tell
 `.trim();
 }
 
+export function buildDesktopWindowResizeScript(windowInfo, windowSize) {
+  const processName = quoteAppleScriptString(windowInfo?.processName ?? "");
+  const windowTitle = quoteAppleScriptString(windowInfo?.title ?? "");
+  const width = Number(windowSize?.width);
+  const height = Number(windowSize?.height);
+  if (!processName || !windowTitle || !Number.isSafeInteger(width) || !Number.isSafeInteger(height)) {
+    throw new Error("Desktop window resize requires a target window and an integer size.");
+  }
+  return `
+tell application "System Events"
+  tell first application process whose name is "${processName}"
+    set size of first window whose name is "${windowTitle}" to {${width}, ${height}}
+  end tell
+end tell
+`.trim();
+}
+
 export function parseDesktopWindowInfo(raw) {
   const parts = String(raw ?? "").trim().split("\t");
   if (parts.length < 6 || !parts[0] || !parts[1]) {
@@ -285,7 +368,10 @@ export async function listDesktopWindows(options = {}) {
     ["-e", buildDesktopWindowListScript()],
     {
       label: "Desktop visible-window diagnostics",
-      timeoutMs: options.windowCommandTimeoutMs ?? options.desktopCommandTimeoutMs ?? 2_500,
+      timeoutMs:
+        options.windowCommandTimeoutMs ??
+        options.desktopCommandTimeoutMs ??
+        DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
     },
   );
   return parseDesktopWindowList(stdout);
@@ -301,7 +387,10 @@ export async function findDesktopWindow(options = {}) {
     ["-e", buildDesktopWindowLookupScript({ processName, windowTitle })],
     {
       label: "Desktop window lookup",
-      timeoutMs: options.windowCommandTimeoutMs ?? options.desktopCommandTimeoutMs ?? 2_500,
+      timeoutMs:
+        options.windowCommandTimeoutMs ??
+        options.desktopCommandTimeoutMs ??
+        DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
     },
   );
   return parseDesktopWindowInfo(stdout);
@@ -344,10 +433,65 @@ export async function activateDesktopWindow(windowInfo, options = {}) {
     ["-e", buildDesktopWindowActivateScript(windowInfo.processName)],
     {
       label: "Desktop window activation",
-      timeoutMs: options.windowCommandTimeoutMs ?? options.desktopCommandTimeoutMs ?? 2_500,
+      timeoutMs:
+        options.windowCommandTimeoutMs ??
+        options.desktopCommandTimeoutMs ??
+        DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
     },
   );
   await wait(options.waitAfterActivateMs ?? 350);
+}
+
+export function desktopWindowMatchesRequestedSize(windowInfo, windowSize, tolerance = 2) {
+  if (!windowInfo || !windowSize) {
+    return false;
+  }
+  const allowedDelta = Number.isFinite(tolerance) ? Math.max(0, tolerance) : 2;
+  return (
+    Math.abs(Number(windowInfo.width) - Number(windowSize.width)) <= allowedDelta &&
+    Math.abs(Number(windowInfo.height) - Number(windowSize.height)) <= allowedDelta
+  );
+}
+
+export async function resizeDesktopWindow(windowInfo, windowSize, options = {}) {
+  if (!windowInfo || !windowSize) {
+    return windowInfo;
+  }
+  const execFileFn = options.execFileFn ?? execFile;
+  await execFileWithTimeout(
+    execFileFn,
+    "osascript",
+    ["-e", buildDesktopWindowResizeScript(windowInfo, windowSize)],
+    {
+      label: "Desktop window resize",
+      timeoutMs:
+        options.windowCommandTimeoutMs ??
+        options.desktopCommandTimeoutMs ??
+        DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
+    },
+  );
+
+  const findWindowFn = options.findWindowFn ?? findDesktopWindow;
+  let latestWindow = windowInfo;
+  const resizedWindow = await waitForDesktopWindow({
+    ...options,
+    findWindowFn: async (lookupOptions) => {
+      const nextWindow = await findWindowFn(lookupOptions);
+      if (nextWindow) {
+        latestWindow = nextWindow;
+      }
+      return nextWindow;
+    },
+    intervalMs: options.resizeWindowPollMs ?? 100,
+    isWindowReady: (candidate) =>
+      desktopWindowMatchesRequestedSize(
+        candidate,
+        windowSize,
+        options.windowSizeTolerance,
+      ),
+    timeoutMs: options.resizeWindowTimeoutMs ?? 3_000,
+  });
+  return resizedWindow ?? latestWindow;
 }
 
 function screenshotPath(outputDir, name = "desktop-window") {
@@ -459,6 +603,39 @@ export function validateDesktopScreenshotMetrics(metric, minimums = {}) {
   return errors;
 }
 
+export function validateDesktopScreenshotTheme(metric, themeMode) {
+  if (themeMode !== "light" && themeMode !== "dark") {
+    return [];
+  }
+  const lumaMean = Number(metric?.screenshotPixels?.lumaMean);
+  if (!Number.isFinite(lumaMean)) {
+    return [`Desktop ${themeMode} theme verification is missing screenshot luminance.`];
+  }
+  if (themeMode === "light" && lumaMean < DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN) {
+    return [
+      `Desktop light theme screenshot is too dark (mean luminance ${lumaMean.toFixed(1)}, expected at least ${DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN}).`,
+    ];
+  }
+  if (themeMode === "dark" && lumaMean >= DESKTOP_DARK_THEME_MAX_LUMA_MEAN) {
+    return [
+      `Desktop dark theme screenshot is too light (mean luminance ${lumaMean.toFixed(1)}, expected below ${DESKTOP_DARK_THEME_MAX_LUMA_MEAN}).`,
+    ];
+  }
+  return [];
+}
+
+export function validateDesktopWindowSize(metric, windowSize, tolerance = 2) {
+  if (!windowSize || !metric?.window) {
+    return [];
+  }
+  if (desktopWindowMatchesRequestedSize(metric.window, windowSize, tolerance)) {
+    return [];
+  }
+  return [
+    `Desktop window size ${metric.window.width}x${metric.window.height} does not match requested ${windowSize.width}x${windowSize.height}.`,
+  ];
+}
+
 export async function runDesktopScreenshotGate(options = {}) {
   if (process.platform !== "darwin" && !options.allowNonDarwin) {
     throw new Error("Desktop screenshot gate currently supports macOS only.");
@@ -470,6 +647,8 @@ export async function runDesktopScreenshotGate(options = {}) {
       errors: validateDesktopScreenshotMetrics({ window: null }, options.minimums),
       metric: { window: null },
       outputDir,
+      themeMode: options.themeMode ?? null,
+      windowSize: options.windowSize ?? null,
     };
   }
   await activateDesktopWindow(window, options);
@@ -484,12 +663,18 @@ export async function runDesktopScreenshotGate(options = {}) {
     screenshotPixels,
     window,
   };
-  const errors = validateDesktopScreenshotMetrics(metric, options.minimums);
+  const errors = [
+    ...validateDesktopScreenshotMetrics(metric, options.minimums),
+    ...validateDesktopScreenshotTheme(metric, options.themeMode),
+    ...validateDesktopWindowSize(metric, options.windowSize, options.windowSizeTolerance),
+  ];
   return {
     errors,
     metric,
     outputDir,
     scenario: options.scenario ?? null,
+    themeMode: options.themeMode ?? null,
+    windowSize: options.windowSize ?? null,
   };
 }
 
@@ -571,17 +756,22 @@ function releaseChild(child) {
   }
 }
 
+export function buildDesktopVisualQaLaunchEnv(options, database, baseEnv = process.env) {
+  return {
+    ...baseEnv,
+    [APP_DB_PATH_ENV_VAR]: database.targetPath,
+    FILAMENT_MANAGER_VISUAL_QA: "1",
+    [VISUAL_QA_LOCALE_ENV_VAR]: normalizeVisualQaLocale(options.locale),
+    ...(options.scenario ? { [VISUAL_QA_SCENARIO_ENV_VAR]: options.scenario } : {}),
+    ...(options.themeMode ? { [VISUAL_QA_THEME_ENV_VAR]: options.themeMode } : {}),
+  };
+}
+
 function spawnTauriDev(spawnFn, options, database) {
   return spawnFn("npm", ["run", "tauri", "--", "dev"], {
     cwd: options.cwd ?? process.cwd(),
     detached: true,
-    env: {
-      ...process.env,
-      [APP_DB_PATH_ENV_VAR]: database.targetPath,
-      FILAMENT_MANAGER_VISUAL_QA: "1",
-      [VISUAL_QA_LOCALE_ENV_VAR]: normalizeVisualQaLocale(options.locale),
-      ...(options.scenario ? { [VISUAL_QA_SCENARIO_ENV_VAR]: options.scenario } : {}),
-    },
+    env: buildDesktopVisualQaLaunchEnv(options, database),
     stdio: ["ignore", "pipe", "pipe"],
   });
 }
@@ -627,7 +817,7 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
 
   let keepApp = false;
   try {
-    const window = await waitForDesktopWindow({
+    let window = await waitForDesktopWindow({
       ...options,
       intervalMs: options.windowPollMs ?? 500,
       isWindowReady:
@@ -657,7 +847,13 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
         metric: { visibleWindows, window: null },
         outputDir: resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR),
         scenario: options.scenario ?? null,
+        themeMode: options.themeMode ?? null,
+        windowSize: options.windowSize ?? null,
       };
+    }
+
+    if (options.windowSize) {
+      window = await resizeDesktopWindow(window, options.windowSize, options);
     }
 
     if (options.captureDelayMs) {
@@ -732,6 +928,32 @@ export function formatDesktopScreenshotGateReport(result) {
       }`,
     );
   }
+  if (result.themeMode) {
+    if (result.themeMode === "auto") {
+      lines.push(
+        "Desktop visual QA theme: auto (system-resolved; luminance assertion skipped).",
+      );
+    } else {
+      const lumaMean = Number(result.metric?.screenshotPixels?.lumaMean);
+      const expectation =
+        result.themeMode === "light"
+          ? `>= ${DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN}`
+          : `< ${DESKTOP_DARK_THEME_MAX_LUMA_MEAN}`;
+      lines.push(
+        `Desktop visual QA theme: ${result.themeMode} (mean luminance ${
+          Number.isFinite(lumaMean) ? lumaMean.toFixed(1) : "unavailable"
+        }, expected ${expectation}).`,
+      );
+    }
+  }
+  if (result.windowSize) {
+    const capturedWindow = result.metric?.window;
+    lines.push(
+      `Desktop visual QA window size: requested ${result.windowSize.width}x${result.windowSize.height}; captured ${
+        capturedWindow ? `${capturedWindow.width}x${capturedWindow.height}` : "unavailable"
+      }.`,
+    );
+  }
   lines.push(`Desktop screenshot artifacts: ${result.outputDir}`);
   const metric = result.metric;
   if (metric.window) {
@@ -775,6 +997,8 @@ async function runCli() {
   const scenarios = parseDesktopVisualQaScenarios(argv);
   const hasScenario = scenarios.some(Boolean);
   const launch = parseBooleanArg(argv, "--launch");
+  const themeMode = resolveDesktopVisualQaTheme(argv, { hasScenario, launch });
+  const windowSize = resolveDesktopVisualQaWindowSize(argv, { hasScenario, launch });
   const explicitName = parseArgValue(argv, "--name");
   const baseName = explicitName ?? (hasScenario ? "desktop-scenario" : "desktop-window");
   const baseOptions = {
@@ -790,9 +1014,15 @@ async function runCli() {
     relaunchDelayMs: parseIntegerArg(argv, "--relaunch-delay-ms", 2_000),
     desktopCommandTimeoutMs: parseIntegerArg(argv, "--desktop-command-timeout-ms", 4_000),
     screenshotCommandTimeoutMs: parseIntegerArg(argv, "--screenshot-command-timeout-ms", 8_000),
-    windowCommandTimeoutMs: parseIntegerArg(argv, "--window-command-timeout-ms", 2_500),
+    windowCommandTimeoutMs: parseIntegerArg(
+      argv,
+      "--window-command-timeout-ms",
+      DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
+    ),
     sourcePath: parseArgValue(argv, "--source") ?? undefined,
     startupTimeoutMs: parseIntegerArg(argv, "--startup-timeout-ms", 45_000),
+    themeMode,
+    windowSize,
     processName: parseArgValue(argv, "--process-name") ?? DEFAULT_PROCESS_NAME,
     windowTitle: parseArgValue(argv, "--window-title") ?? DEFAULT_WINDOW_TITLE,
     minimums: {

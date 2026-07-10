@@ -337,7 +337,10 @@ export function buildDashboardDerivedState(params: {
       title: t("dashboard.monthlyUsage", "Monthly Usage"),
       value: `${overview.total_consumption_30d} g`,
       subtitle: t("dashboard.last30", "Last 30 days"),
-      trend: `${Math.round(overview.total_consumption_30d / 30)} g/day`,
+      trend: t("dashboard.gramsPerDay", "{count} g/day").replace(
+        "{count}",
+        String(Math.round(overview.total_consumption_30d / 30)),
+      ),
       accent: "amber",
     },
   ];

@@ -8,6 +8,8 @@ const primitivesSource = readFileSync(new URL("./statistics_primitives.tsx", imp
 test("statistics metric modal uses shared printer metric cards", () => {
   assert.match(primitivesSource, /function StatisticsPrinterMetricCard/);
   assert.match(primitivesSource, /printerBrandSurfaceStyle/);
+  assert.match(primitivesSource, /const displayTitle = formatFilamentDisplayTitle/);
+  assert.match(primitivesSource, /title=\{displayTitle\}/);
   assert.match(modalSource, /StatisticsPrinterMetricCard/);
   assert.doesNotMatch(modalSource, /printerBrandSurfaceStyle/);
   assert.doesNotMatch(modalSource, /className="rounded-2xl border p-4"/);

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { Locale } from "../lib/i18n";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { formatTrustedLanPairingExpiry } from "../lib/settings_utils";
@@ -40,14 +41,39 @@ export function SettingsTrustedLanPairingPanel({
   onCopyPairingLink,
   onCreatePairingLink,
 }: SettingsTrustedLanPairingPanelProps) {
+  const pairingResultRef = useRef<HTMLDivElement>(null);
+  const previousPairingLinkRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const isNewPairingLink = Boolean(
+      pairingLink && pairingLink !== previousPairingLinkRef.current,
+    );
+    previousPairingLinkRef.current = pairingLink;
+    if (!isNewPairingLink) {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      pairingResultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      pairingResultRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [pairingLink]);
+
   return (
-    <div className="mt-4">
+    <section
+      id="trusted-lan-pairing-panel"
+      aria-labelledby="trusted-lan-pairing-title"
+      className="mt-4 scroll-mt-24"
+    >
       <div className="surface-subtle px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div className="font-semibold text-slate-800 dark:text-slate-100">
+            <h3
+              id="trusted-lan-pairing-title"
+              className="font-semibold text-slate-800 dark:text-slate-100"
+            >
               {t("settings.trustedLanPairingTitle", "Browser pairing")}
-            </div>
+            </h3>
             <div className="mt-1 text-sm leading-6">
               {t(
                 "settings.trustedLanPairingBody",
@@ -63,37 +89,77 @@ export function SettingsTrustedLanPairingPanel({
           </div>
         </div>
 
-        <div className={`mt-4 grid gap-4 ${pairingLink ? "lg:grid-cols-[1fr_220px]" : ""}`}>
+        <div
+          className={`mt-4 grid gap-4 ${
+            pairingLink ? "md:grid-cols-[minmax(0,1fr)_260px]" : ""
+          }`}
+        >
           <div className="rounded-lg border border-slate-200 bg-white/85 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/55">
-            <label className="block">
-              <div className={settingsSectionLabelClass}>
-                {t("settings.trustedLanPairingLabelInput", "Browser label")}
+            <form
+              aria-busy={actionBusy}
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!pairActionDisabled) {
+                  onCreatePairingLink();
+                }
+              }}
+            >
+              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_max-content] md:items-start">
+                <label className="block">
+                  <div className={settingsSectionLabelClass}>
+                    {t("settings.trustedLanPairingLabelInput", "Browser label")}
+                  </div>
+                  <input
+                    type="text"
+                    aria-describedby="trusted-lan-pairing-label-hint"
+                    className={`mt-2 ${settingsFormControlClass}`}
+                    value={browserLabelDraft}
+                    disabled={pairActionDisabled}
+                    onChange={(event) => onBrowserLabelChange(event.target.value)}
+                    placeholder={t(
+                      "settings.trustedLanPairingLabelPlaceholder",
+                      "iPad Safari, kitchen phone, workshop MacBook...",
+                    )}
+                  />
+                  <div
+                    id="trusted-lan-pairing-label-hint"
+                    className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400"
+                  >
+                    {t(
+                      "settings.trustedLanPairingLabelHint",
+                      "Optional. This keeps the paired-browser list readable later.",
+                    )}
+                  </div>
+                </label>
+                <button
+                  type="submit"
+                  className={`${settingsActionButtonClass(
+                    pairingLink ? "neutral" : "accent",
+                  )} md:mt-[26px]`}
+                  disabled={pairActionDisabled}
+                >
+                  {pairingLink
+                    ? t("settings.trustedLanCreateAnotherPairing", "Create another link")
+                    : t("settings.trustedLanCreatePairing", "Create pairing link")}
+                </button>
               </div>
-              <input
-                type="text"
-                className={`mt-2 ${settingsFormControlClass}`}
-                value={browserLabelDraft}
-                disabled={pairActionDisabled}
-                onChange={(event) => onBrowserLabelChange(event.target.value)}
-                placeholder={t(
-                  "settings.trustedLanPairingLabelPlaceholder",
-                  "iPad Safari, kitchen phone, workshop MacBook...",
-                )}
-              />
-            </label>
-            <div className="mt-3">
-              <button
-                type="button"
-                className={settingsActionButtonClass("accent")}
-                disabled={pairActionDisabled}
-                onClick={onCreatePairingLink}
-              >
-                {t("settings.trustedLanCreatePairing", "Create pairing link")}
-              </button>
-            </div>
+            </form>
 
             {pairingLink ? (
-              <>
+              <div
+                ref={pairingResultRef}
+                tabIndex={-1}
+                aria-labelledby="trusted-lan-pairing-result-title"
+                className="mt-4 border-t border-slate-200 pt-4 outline-none dark:border-slate-700"
+              >
+                <div
+                  id="trusted-lan-pairing-result-title"
+                  role="status"
+                  aria-live="polite"
+                  className="font-semibold text-slate-800 dark:text-slate-100"
+                >
+                  {t("settings.trustedLanPairingReady", "Pairing link ready")}
+                </div>
                 <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                   <span className={inlineStatusSignalClass("neutral", "text-xs")}>
                     {t("settings.trustedLanPairingLabelMeta", "Browser label")}:{" "}
@@ -123,12 +189,15 @@ export function SettingsTrustedLanPairingPanel({
                     {t("settings.trustedLanCopyPairing", "Copy pairing link")}
                   </button>
                 </div>
-              </>
+              </div>
             ) : null}
           </div>
 
           {pairingLink ? (
-            <div className="rounded-lg border border-slate-200 bg-white/85 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/55">
+            <div
+              aria-busy={pairingQrBusy}
+              className="rounded-lg border border-slate-200 bg-white/85 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/55"
+            >
               <div className={settingsSectionLabelClass}>
                 {t("settings.trustedLanPairingQrTitle", "Pairing QR")}
               </div>
@@ -137,7 +206,7 @@ export function SettingsTrustedLanPairingPanel({
                   <img
                     src={pairingQrDataUrl}
                     alt={t("settings.trustedLanPairingQrAlt", "Trusted-LAN pairing QR")}
-                    className="h-44 w-44 rounded-xl bg-white p-2 shadow-sm shadow-slate-200/60 dark:shadow-none"
+                    className="h-auto w-full max-w-44 rounded-xl bg-white p-2 shadow-sm shadow-slate-200/60 dark:shadow-none"
                   />
                 ) : (
                   <div className="max-w-[12rem] text-center text-xs leading-6 text-slate-500 dark:text-slate-400">
@@ -165,6 +234,6 @@ export function SettingsTrustedLanPairingPanel({
           ) : null}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

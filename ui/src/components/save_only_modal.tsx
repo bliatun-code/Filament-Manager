@@ -1,15 +1,17 @@
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode } from "react";
 import { useI18n } from "../lib/i18n";
 import { AppModal } from "./app_modal";
 import { ModalActionButton } from "./modal_action_button";
 import { ModalFooter, modalEyebrowClassName } from "./modal_chrome";
 import { SwatchSelectionPreviewHeader } from "./swatch_selection_preview";
-import { useResolvedTheme } from "../lib/theme_mode";
 
 type SaveOnlyModalProps = {
   title: string;
   subtitle?: string;
   swatchColor?: string;
+  cancelDisabled?: boolean;
+  cancelLabel?: string;
+  onCancel?: () => void;
   onSave: () => void | Promise<void>;
   saveLabel?: string;
   saveDisabled?: boolean;
@@ -21,6 +23,9 @@ export function SaveOnlyModal({
   title,
   subtitle,
   swatchColor,
+  cancelDisabled = false,
+  cancelLabel,
+  onCancel,
   onSave,
   saveLabel,
   saveDisabled = false,
@@ -28,22 +33,13 @@ export function SaveOnlyModal({
   children,
 }: SaveOnlyModalProps) {
   const { t } = useI18n();
-  const resolvedTheme = useResolvedTheme();
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-    };
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, []);
+  const activeCancelHandler = onCancel && !cancelDisabled ? onCancel : undefined;
 
   return (
     <AppModal
+      ariaLabel={title}
+      closeOnBackdrop={Boolean(activeCancelHandler)}
+      onBackdropClose={activeCancelHandler}
       zIndex={zIndex}
       panelClassName="w-full max-w-lg overflow-hidden rounded-xl border border-slate-200/90 bg-white/95 p-0 shadow-2xl shadow-slate-300/18 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/90 dark:shadow-black/38"
     >
@@ -83,14 +79,28 @@ export function SaveOnlyModal({
 
         <div className="bg-white/95 px-5 py-5 dark:bg-slate-900/90">{children}</div>
 
-        <ModalFooter className="bg-slate-50/95 px-5 py-4 dark:bg-slate-950/90">
+        <ModalFooter
+          className={`bg-slate-50/95 px-5 py-4 dark:bg-slate-950/90 ${
+            onCancel ? "grid grid-cols-2 gap-3" : ""
+          }`}
+        >
+          {onCancel ? (
+            <ModalActionButton
+              type="button"
+              fullWidth
+              variant="secondary"
+              size="roomy"
+              onClick={onCancel}
+              disabled={cancelDisabled}
+            >
+              {cancelLabel ?? t("common.cancel", "Cancel")}
+            </ModalActionButton>
+          ) : null}
           <ModalActionButton
             type="button"
             fullWidth
             variant="solid"
             size="roomy"
-            swatchColor={swatchColor}
-            resolvedTheme={resolvedTheme}
             onClick={() => void onSave()}
             disabled={saveDisabled}
           >

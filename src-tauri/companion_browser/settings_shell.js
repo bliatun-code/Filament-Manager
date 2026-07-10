@@ -20,9 +20,8 @@ export function renderSettingsShell(options) {
   const themeSummary =
     themeMode === "auto"
       ? `${t(locale, "settings.followDevice", "Following device")} · ${t(locale, `settings.${resolvedTheme}`, resolvedTheme)}`
-      : t(locale, "settings.modeSummary", "{mode} mode · {resolved}", {
+      : t(locale, "settings.modeSummary", "{mode} mode", {
           mode: t(locale, `settings.${themeMode}`, themeMode),
-          resolved: t(locale, `settings.${resolvedTheme}`, resolvedTheme),
         });
   const countLabel = (count, singular, plural) =>
     `${count} ${count === 1 ? singular : plural}`;
@@ -62,6 +61,7 @@ export function renderSettingsShell(options) {
               action: "set-theme-mode",
               activeValue: themeMode,
               ariaLabel: t(locale, "settings.themeMode", "Theme mode"),
+              className: "settings-theme-control",
               columns: 3,
               escapeHtml,
               items: [

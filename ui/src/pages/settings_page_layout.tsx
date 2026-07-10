@@ -45,7 +45,7 @@ export function SettingsPageLayout({
         tauri={tauri}
       />
 
-      <SettingsTabNav onTabChange={onTabChange} tabs={tabButtons} />
+      <SettingsTabNav label={title} onTabChange={onTabChange} tabs={tabButtons} />
 
       <SettingsRouteOutlet activeTab={activeTab} routes={routes} />
       <SettingsLibraryRoleModalRoute {...roleModal} />

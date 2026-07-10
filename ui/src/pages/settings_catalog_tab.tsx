@@ -17,23 +17,38 @@ export function SettingsCatalogTab({
 }: SettingsCatalogTabProps) {
   const missingSwatchesRef = useRef<HTMLDivElement>(null);
   const desktopVisualQaScenarioRef = useRef(resolveDesktopVisualQaScenario());
+  const desktopVisualQaScrollAppliedRef = useRef(false);
+  const visibleMissingSwatchCount = missingSwatchesPanel.visibleMissingSwatchMasters.length;
 
   useEffect(() => {
-    if (desktopVisualQaScenarioRef.current !== "settings-catalog-swatch-review") {
+    if (
+      desktopVisualQaScenarioRef.current !== "settings-catalog-swatch-review" ||
+      desktopVisualQaScrollAppliedRef.current ||
+      visibleMissingSwatchCount === 0
+    ) {
       return;
     }
-    const timeoutId = window.setTimeout(() => {
-      missingSwatchesRef.current?.scrollIntoView({ block: "start" });
-    }, 0);
-    return () => window.clearTimeout(timeoutId);
-  }, []);
+    const frame = window.requestAnimationFrame(() => {
+      const target = missingSwatchesRef.current;
+      if (!target) {
+        return;
+      }
+      target.scrollIntoView({ behavior: "auto", block: "start" });
+      desktopVisualQaScrollAppliedRef.current = true;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [visibleMissingSwatchCount]);
 
   return (
     <SettingsSurfaceCard className="xl:col-span-2">
       <div className="text-sm text-slate-700 dark:text-slate-300">{helpText}</div>
 
       <SettingsCatalogRefreshPanel {...refreshPanel} />
-      <div ref={missingSwatchesRef}>
+      <div
+        id="settings-catalog-swatch-review-panel"
+        ref={missingSwatchesRef}
+        className="scroll-mt-24"
+      >
         <SettingsMissingSwatchesPanel {...missingSwatchesPanel} />
       </div>
     </SettingsSurfaceCard>

@@ -1,7 +1,11 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { StatCard } from "../components/dashboard_widgets";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { formatDateTime } from "../lib/date_time";
+import {
+  DESKTOP_VISUAL_QA_BORROWER_NAME,
+  resolveDesktopVisualQaScenario,
+} from "../lib/desktop_visual_qa_scenario";
 import { useI18n } from "../lib/i18n";
 import {
   buildActiveSlotRows,
@@ -104,6 +108,8 @@ export default function StatisticsPage() {
   const [slotOwnershipFilter, setSlotOwnershipFilter] = useState<OwnershipFilter>("ALL");
   const [loanUsageListFilter, setLoanUsageListFilter] =
     useState<LoanUsageListFilter>("ACTIVE");
+  const desktopVisualQaScenarioRef = useRef(resolveDesktopVisualQaScenario());
+  const desktopVisualQaActionStartedRef = useRef(false);
   const deferredConsumptionSearch = useDeferredValue(consumptionPrefs.search);
   const deferredBorrowerSearch = useDeferredValue(borrowerPrefs.search);
   const deferredConsumptionPrefs = useMemo<ConsumptionPopupPrefs>(
@@ -217,6 +223,57 @@ export default function StatisticsPage() {
     [consumptionRows],
   );
 
+  useEffect(() => {
+    if (loading || error) {
+      return;
+    }
+
+    if (desktopVisualQaScenarioRef.current === "statistics-consumption") {
+      if (desktopVisualQaActionStartedRef.current) {
+        return;
+      }
+      desktopVisualQaActionStartedRef.current = true;
+      void openConsumptionModal();
+      return;
+    }
+
+    if (desktopVisualQaScenarioRef.current !== "statistics-loans") {
+      return;
+    }
+    const target = document.getElementById("statistics-outbound-loan-usage");
+    if (!target) {
+      return;
+    }
+    let scheduledFrameId: number | null = null;
+    const revealLoanUsage = () => {
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+      scheduledFrameId = window.requestAnimationFrame(() => {
+        scheduledFrameId = null;
+        target.scrollIntoView({ behavior: "auto", block: "start" });
+      });
+    };
+
+    revealLoanUsage();
+    const timerIds = [150, 450, 900].map((delay) =>
+      window.setTimeout(revealLoanUsage, delay),
+    );
+    window.addEventListener("resize", revealLoanUsage);
+    const resizeObserver =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(revealLoanUsage);
+    resizeObserver?.observe(target);
+
+    return () => {
+      timerIds.forEach((timerId) => window.clearTimeout(timerId));
+      window.removeEventListener("resize", revealLoanUsage);
+      resizeObserver?.disconnect();
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+    };
+  }, [error, loading, openConsumptionModal]);
+
   const consumptionMaterialOptions = useMemo(
     () => listConsumptionMaterialOptions(consumptionRows),
     [consumptionRows],
@@ -275,6 +332,27 @@ export default function StatisticsPage() {
     },
     [clientReadOnly, loanDetails, t, tauri],
   );
+
+  useEffect(() => {
+    if (
+      loading ||
+      error ||
+      desktopVisualQaActionStartedRef.current ||
+      desktopVisualQaScenarioRef.current !== "statistics-borrower"
+    ) {
+      return;
+    }
+    const borrower =
+      loanUsage.find((row) => row.borrower_name === DESKTOP_VISUAL_QA_BORROWER_NAME)
+        ?.borrower_name ??
+      loanUsage.find((row) => row.total_consumed_g > 0)?.borrower_name ??
+      loanUsage[0]?.borrower_name;
+    if (!borrower) {
+      return;
+    }
+    desktopVisualQaActionStartedRef.current = true;
+    void openBorrowerModal(borrower, "OUTBOUND");
+  }, [error, loading, loanUsage, openBorrowerModal]);
 
   const activeSlotRows = useMemo(() => buildActiveSlotRows(printers), [printers]);
 
@@ -343,13 +421,15 @@ export default function StatisticsPage() {
         </FeedbackBanner>
       ) : null}
 
-      <div className="content-section grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="content-section grid grid-cols-1 gap-3 min-[720px]:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title={t("statistics.totalConsumption", "Total Consumption")}
           value={gramsToKgText(totals.totalUsed)}
           subtitle={t("statistics.acrossPrinters", "Across all printers")}
-          trend={`${totals.totalUsed} g`}
+          trend={t("statistics.allTime", "All time")}
           accent="amber"
+          actionLabel={t("statistics.viewDetails", "View details")}
+          opensDialog
           onClick={() => {
             void openConsumptionModal();
           }}
@@ -358,8 +438,15 @@ export default function StatisticsPage() {
           title={t("statistics.loggedJobs", "Logged Jobs")}
           value={totals.totalJobs.toString()}
           subtitle={t("statistics.linkedActivity", "Printer-linked activity")}
-          trend={`${printers.length} ${t("nav.printers", "printers")}`}
+          trend={`${printers.length} ${t(
+            printers.length === 1
+              ? "statistics.printerCountOne"
+              : "statistics.printerCountMany",
+            printers.length === 1 ? "printer" : "printers",
+          )}`}
           accent="sky"
+          actionLabel={t("statistics.viewDetails", "View details")}
+          opensDialog
           onClick={() => setMetricModalKind("LOGGED_JOBS")}
         />
         <StatCard
@@ -368,6 +455,8 @@ export default function StatisticsPage() {
           subtitle={t("statistics.assignedSlots", "Slots with assigned rolls")}
           trend={t("statistics.currentSnapshot", "Current snapshot")}
           accent="emerald"
+          actionLabel={t("statistics.viewDetails", "View details")}
+          opensDialog
           onClick={() => setMetricModalKind("ACTIVE_SLOTS")}
         />
         <StatCard
@@ -376,6 +465,8 @@ export default function StatisticsPage() {
           subtitle={t("statistics.acrossPrinters", "Across all printers")}
           trend={totals.totalJobs > 0 ? `${Math.round((totals.failedJobs / totals.totalJobs) * 100)}%` : "0%"}
           accent="rose"
+          actionLabel={t("statistics.viewDetails", "View details")}
+          opensDialog
           onClick={() => setMetricModalKind("FAILED_JOBS")}
         />
       </div>

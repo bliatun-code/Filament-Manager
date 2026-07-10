@@ -8,6 +8,7 @@ import {
   deleteWishlistEntry,
   filterWishlistCatalogMasters,
   filterWishlistItems,
+  filterWishlistQueueItems,
   listWishlistCatalogMastersByVendor,
   loadWishlistItems,
   normalizeWishlistStatus,
@@ -64,6 +65,39 @@ test("filterWishlistItems applies the queue status filter", () => {
     filterWishlistItems([wishlist, onOrder, received], "ON_ORDER").map((item) => item.id),
     ["order"],
   );
+});
+
+test("filterWishlistQueueItems searches names, colors, materials, and vendors inside status", () => {
+  const ocean: WishlistItemRow = {
+    ...wishlistItem("ocean"),
+    status: "ON_ORDER",
+    vendor: "eSUN",
+    material: "PETG+",
+    filament_name: "Ocean",
+    color_name: "Teal",
+  };
+  const peach: WishlistItemRow = {
+    ...wishlistItem("peach"),
+    vendor: "Bambu Lab",
+    material: "PLA",
+    filament_name: "Matte",
+    color_name: "Peach Pink",
+  };
+  const rows = [ocean, peach];
+
+  assert.deepEqual(filterWishlistQueueItems(rows, "ALL", " ocean ").map((item) => item.id), [
+    "ocean",
+  ]);
+  assert.deepEqual(filterWishlistQueueItems(rows, "ALL", "pink").map((item) => item.id), [
+    "peach",
+  ]);
+  assert.deepEqual(filterWishlistQueueItems(rows, "ALL", "esun").map((item) => item.id), [
+    "ocean",
+  ]);
+  assert.deepEqual(filterWishlistQueueItems(rows, "WISHLIST", "petg"), []);
+  assert.deepEqual(filterWishlistQueueItems(rows, "ON_ORDER", "petg").map((item) => item.id), [
+    "ocean",
+  ]);
 });
 
 test("summarizeWishlistQueue counts known queue states", () => {

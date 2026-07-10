@@ -1,4 +1,4 @@
-import { useEffect, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
 import type { Locale } from "../lib/i18n";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import type {
@@ -9,7 +9,10 @@ import type {
 } from "../lib/tauri_client";
 import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import { buildSettingsPrintersRouteProps } from "./settings_printers_route_props";
-import type { SettingsPrinterMessageLabels } from "./settings_printer_model";
+import {
+  chooseSettingsPrinterEditorVisualQaPrinter,
+  type SettingsPrinterMessageLabels,
+} from "./settings_printer_model";
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
 import { useSettingsPrinterActions } from "./use_settings_printer_actions";
 import { useSettingsPrinterSectionState } from "./use_settings_printer_section_state";
@@ -55,6 +58,7 @@ export function useSettingsPrintersSection({
   spoolRows,
   tauri,
 }: UseSettingsPrintersSectionInput) {
+  const printerEditorDiscardAppliedRef = useRef(false);
   const {
     cancelPrinterEdit,
     confirmDeletePrinterId,
@@ -69,6 +73,7 @@ export function useSettingsPrintersSection({
     editBambuLiveHost,
     editBambuLivePrinterSerial,
     editModelProfile,
+    editPrinterDirty,
     editPrinterId,
     editPrinterModel,
     editPrinterName,
@@ -103,6 +108,138 @@ export function useSettingsPrintersSection({
     visualQaScenario === "settings-printer-diagnostics" ||
     visualQaScenario === "settings-printer-diagnostics-fields" ||
     visualQaScenario === "settings-printer-diagnostics-paused";
+  const isPrinterEditorVisualQaScenario =
+    visualQaScenario === "settings-printer-editor" ||
+    visualQaScenario === "settings-printer-editor-dirty" ||
+    visualQaScenario === "settings-printer-editor-discard";
+  const isDirtyPrinterEditorVisualQaScenario =
+    visualQaScenario === "settings-printer-editor-dirty" ||
+    visualQaScenario === "settings-printer-editor-discard";
+
+  useEffect(() => {
+    if (!isPrinterEditorVisualQaScenario || loading) {
+      return;
+    }
+    const editorPrinter = chooseSettingsPrinterEditorVisualQaPrinter(
+      sortedPrinters,
+      bambuLiveIntegrations,
+    );
+    if (!editorPrinter) {
+      return;
+    }
+
+    if (expandedBambuDetailsPrinterId !== null) {
+      setExpandedBambuDetailsPrinterId(null);
+    }
+    if (editPrinterId !== editorPrinter.id) {
+      startPrinterEdit({
+        bambuLiveIntegrations,
+        printer: editorPrinter,
+        printerOverview,
+      });
+      return;
+    }
+    if (isDirtyPrinterEditorVisualQaScenario) {
+      const dirtyPrinterName = `${editorPrinter.name} (draft)`;
+      if (editPrinterName !== dirtyPrinterName) {
+        setEditPrinterName(dirtyPrinterName);
+      }
+    }
+  }, [
+    bambuLiveIntegrations,
+    editPrinterId,
+    editPrinterName,
+    expandedBambuDetailsPrinterId,
+    isDirtyPrinterEditorVisualQaScenario,
+    isPrinterEditorVisualQaScenario,
+    loading,
+    printerOverview,
+    setEditPrinterName,
+    setExpandedBambuDetailsPrinterId,
+    sortedPrinters,
+    startPrinterEdit,
+    visualQaScenario,
+  ]);
+
+  useEffect(() => {
+    if (
+      !isPrinterEditorVisualQaScenario ||
+      visualQaScenario === "settings-printer-editor-discard" ||
+      !editPrinterId
+    ) {
+      return;
+    }
+
+    const timeoutIds: number[] = [];
+    const revealEditorState = () => {
+      const dirtyScenario = visualQaScenario === "settings-printer-editor-dirty";
+      const selector = dirtyScenario
+        ? "[data-desktop-visual-qa-target='settings-printer-editor-actions']"
+        : "[data-desktop-visual-qa-target='settings-printer-editor']";
+      document.querySelector(selector)?.scrollIntoView({
+        behavior: "auto",
+        block: dirtyScenario ? "end" : "center",
+      });
+    };
+    const scheduleReveal = () => {
+      for (const delay of [150, 450, 900]) {
+        timeoutIds.push(window.setTimeout(revealEditorState, delay));
+      }
+    };
+
+    scheduleReveal();
+    window.addEventListener("resize", scheduleReveal);
+    return () => {
+      for (const timeoutId of timeoutIds) {
+        window.clearTimeout(timeoutId);
+      }
+      window.removeEventListener("resize", scheduleReveal);
+    };
+  }, [editPrinterId, isPrinterEditorVisualQaScenario, visualQaScenario]);
+
+  useEffect(() => {
+    if (
+      visualQaScenario !== "settings-printer-editor-discard" ||
+      !editPrinterId ||
+      !editPrinterDirty
+    ) {
+      return;
+    }
+
+    const timeoutIds: number[] = [];
+    const revealDiscardConfirmation = () => {
+      const confirmation = document.querySelector(
+        "[data-desktop-visual-qa-target='settings-printer-discard-confirmation']",
+      );
+      if (confirmation) {
+        printerEditorDiscardAppliedRef.current = true;
+        confirmation.scrollIntoView({ behavior: "auto", block: "center" });
+        return;
+      }
+
+      const cancelButton = document.querySelector<HTMLButtonElement>(
+        "[data-desktop-visual-qa-action='settings-printer-cancel']",
+      );
+      if (!cancelButton || cancelButton.disabled) {
+        return;
+      }
+      cancelButton.click();
+    };
+    const scheduleReveal = () => {
+      for (const delay of [150, 450, 900, 1_400]) {
+        timeoutIds.push(window.setTimeout(revealDiscardConfirmation, delay));
+      }
+    };
+
+    scheduleReveal();
+    window.addEventListener("resize", scheduleReveal);
+    return () => {
+      for (const timeoutId of timeoutIds) {
+        window.clearTimeout(timeoutId);
+      }
+      window.removeEventListener("resize", scheduleReveal);
+    };
+  }, [busy, editPrinterDirty, editPrinterId, visualQaScenario]);
 
   useEffect(() => {
     if (!isDiagnosticsVisualQaScenario) {
@@ -172,14 +309,41 @@ export function useSettingsPrintersSection({
     if (!expandedBambuDetailsPrinterId) {
       return;
     }
+    const capturedFieldCount =
+      diagnosticCaptureByPrinterId[expandedBambuDetailsPrinterId]?.fields.length ?? 0;
+    if (capturedFieldCount === 0) {
+      return;
+    }
 
-    const frame = window.requestAnimationFrame(() => {
-      document
-        .querySelector("[data-desktop-visual-qa-target='bambu-live-captured-fields']")
-        ?.scrollIntoView({ block: "center" });
-    });
+    let frame: number | null = null;
+    let timers: number[] = [];
+    const revealCapturedFields = () => {
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame);
+      }
+      frame = window.requestAnimationFrame(() => {
+        document
+          .querySelector("[data-desktop-visual-qa-target='bambu-live-captured-fields']")
+          ?.scrollIntoView({ behavior: "auto", block: "start" });
+      });
+    };
+    const scheduleReveal = () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      timers = [150, 450, 900].map((delay) =>
+        window.setTimeout(revealCapturedFields, delay),
+      );
+      revealCapturedFields();
+    };
 
-    return () => window.cancelAnimationFrame(frame);
+    scheduleReveal();
+    window.addEventListener("resize", scheduleReveal);
+    return () => {
+      window.removeEventListener("resize", scheduleReveal);
+      timers.forEach((timer) => window.clearTimeout(timer));
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame);
+      }
+    };
   }, [diagnosticCaptureByPrinterId, expandedBambuDetailsPrinterId, visualQaScenario]);
 
   const { handleToggleBambuLiveCapture, handleToggleBambuLiveDetails } =
@@ -205,6 +369,7 @@ export function useSettingsPrintersSection({
     editBambuLiveHost,
     editBambuLivePrinterSerial,
     editPrinterId,
+    editPrinterDirty,
     editPrinterModel,
     editPrinterName,
     editSlotsPerUnit,
@@ -240,6 +405,7 @@ export function useSettingsPrintersSection({
     editBambuLiveHost,
     editBambuLivePrinterSerial,
     editModelProfile,
+    editPrinterDirty,
     editPrinterId,
     editPrinterModel,
     editPrinterName,

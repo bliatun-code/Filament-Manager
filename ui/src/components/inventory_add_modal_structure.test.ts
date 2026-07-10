@@ -44,8 +44,24 @@ test("InventoryAddModal wires the separate Bambu batch modal from existing workf
 
 test("InventoryAddModal can focus the wishlist queue for visual QA", () => {
   assert.match(source, /wishlistQueueRef/);
-  assert.match(source, /scrollIntoView/);
+  assert.match(source, /data-inventory-add-scroll/);
+  assert.match(source, /top: Math\.max\(0, targetOffset\)/);
+  assert.doesNotMatch(source, /targetOffset - 16/);
+  assert.match(source, /window\.addEventListener\("resize", revealWishlistQueue\)/);
+  assert.match(source, /new ResizeObserver\(revealWishlistQueue\)/);
+  assert.match(source, /\[150, 450, 900\]\.map/);
+  assert.match(source, /activeCatalogMasters\.length/);
+  assert.match(source, /autoFocusCatalogSearch=\{!autoFocusWishlistQueue\}/);
+  assert.match(source, /scrollContainer\.scrollTo/);
+  assert.match(source, /preventScroll: true/);
   assert.match(source, /<WishlistQueuePanel/);
+});
+
+test("InventoryAddModal wires wishlist search and inline removal actions", () => {
+  assert.match(source, /query=\{wishlistQuery\}/);
+  assert.match(source, /onQueryChange=\{onWishlistQueryChange\}/);
+  assert.match(source, /onRequestDeleteItem=\{onRequestWishlistRemove\}/);
+  assert.match(source, /onCancelDeleteItem=\{onCancelWishlistRemove\}/);
 });
 
 test("InventoryAddModal feeds current stock selection into the action panel preview", () => {

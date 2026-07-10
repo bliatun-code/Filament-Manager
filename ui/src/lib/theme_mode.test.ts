@@ -45,12 +45,40 @@ test("getThemeMode returns stored supported mode", () => {
   assert.equal(mode, "dark");
 });
 
-test("getThemeMode forces dark mode for desktop visual QA routes", () => {
+test("getThemeMode keeps dark as the desktop visual QA default", () => {
   const mode = withWindowSearch("?bfm_visual_qa=add-filament", () =>
     withLocalStorage({ getItem: () => "light" }, () => getThemeMode()),
   );
 
   assert.equal(mode, "dark");
+});
+
+test("getThemeMode honors supported desktop visual QA theme overrides", () => {
+  for (const theme of ["light", "dark", "auto"] as const) {
+    const mode = withWindowSearch(
+      `?bfm_visual_qa=add-filament&bfm_visual_qa_theme=${theme}`,
+      () => withLocalStorage({ getItem: () => "light" }, () => getThemeMode()),
+    );
+
+    assert.equal(mode, theme);
+  }
+});
+
+test("getThemeMode rejects invalid desktop visual QA theme overrides", () => {
+  const mode = withWindowSearch(
+    "?bfm_visual_qa=add-filament&bfm_visual_qa_theme=sepia",
+    () => withLocalStorage({ getItem: () => "light" }, () => getThemeMode()),
+  );
+
+  assert.equal(mode, "dark");
+});
+
+test("getThemeMode ignores visual QA theme overrides outside a visual QA route", () => {
+  const mode = withWindowSearch("?bfm_visual_qa_theme=dark", () =>
+    withLocalStorage({ getItem: () => "light" }, () => getThemeMode()),
+  );
+
+  assert.equal(mode, "light");
 });
 
 test("getThemeMode falls back to auto when localStorage throws", () => {

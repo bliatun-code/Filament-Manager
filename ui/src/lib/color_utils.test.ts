@@ -20,6 +20,67 @@ import {
   toSwatchColor,
 } from "./color_utils";
 
+type TestRgb = [number, number, number];
+
+function parseCssRgb(value: string): TestRgb {
+  const channels = value.match(/\d+/g)?.map(Number) ?? [];
+  assert.equal(channels.length, 3, `expected an RGB color, received ${value}`);
+  return channels as TestRgb;
+}
+
+function parseHexRgb(value: string): TestRgb {
+  const normalized = value.replace("#", "");
+  assert.match(normalized, /^[0-9a-f]{6}$/i);
+  return [0, 2, 4].map((index) =>
+    Number.parseInt(normalized.slice(index, index + 2), 16),
+  ) as TestRgb;
+}
+
+function parseGradientEndpoints(background: string): [TestRgb, TestRgb] {
+  const matches = [...background.matchAll(/rgb\((\d+), (\d+), (\d+)\)/g)];
+  assert.equal(matches.length, 2, `expected two gradient endpoints, received ${background}`);
+  return matches.map((match) => parseCssRgb(match[0])) as [TestRgb, TestRgb];
+}
+
+function relativeLuminance(rgb: TestRgb): number {
+  const [red, green, blue] = rgb.map((channel) => {
+    const normalized = channel / 255;
+    return normalized <= 0.03928
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+function contrastRatio(first: TestRgb, second: TestRgb): number {
+  const firstLuminance = relativeLuminance(first);
+  const secondLuminance = relativeLuminance(second);
+  return (
+    (Math.max(firstLuminance, secondLuminance) + 0.05) /
+    (Math.min(firstLuminance, secondLuminance) + 0.05)
+  );
+}
+
+function assertSwatchActionContrast(
+  hex: string,
+  resolvedTheme: "light" | "dark",
+): void {
+  const style = buildSwatchActionButtonStyle(hex, resolvedTheme);
+  const text = parseHexRgb(style.color);
+  const endpoints = parseGradientEndpoints(style.background);
+  assert.notDeepEqual(
+    endpoints[0],
+    endpoints[1],
+    `${hex} ${resolvedTheme} should preserve two distinct gradient endpoints`,
+  );
+  for (const [index, endpoint] of endpoints.entries()) {
+    assert.ok(
+      contrastRatio(text, endpoint) >= 4.5,
+      `${hex} ${resolvedTheme} endpoint ${index + 1} should have at least 4.5:1 text contrast`,
+    );
+  }
+}
+
 test("normalizeHexColor accepts 3 and 6 digit hex values with or without hash", () => {
   assert.equal(normalizeHexColor("#abc"), "#abc");
   assert.equal(normalizeHexColor("abc"), "#abc");
@@ -124,6 +185,45 @@ test("buildSwatchActionButtonStyle keeps edge swatches readable", () => {
   assert.equal(black.color, "#FFFFFF");
   assert.equal(black.borderColor, "rgb(89, 90, 91)");
   assert.match(black.background, /rgb\(62, 72, 86\) 0%, rgb\(7, 11, 19\) 100%/);
+});
+
+test("buildSwatchActionButtonStyle keeps WCAG contrast for real midtone swatches", () => {
+  const realColors = [
+    "#9B9EA0",
+    "#8A8A8A",
+    "#3F8E43",
+    "#BABAB8",
+    "#FFC72C",
+    "#FFFFFF",
+    "#16A34A",
+    "#EF4444",
+  ];
+  for (const resolvedTheme of ["light", "dark"] as const) {
+    for (const color of realColors) {
+      assertSwatchActionContrast(color, resolvedTheme);
+    }
+  }
+
+  const gray = buildSwatchActionButtonStyle("#9B9EA0", "light");
+  assert.equal(gray.color, "#0F172A");
+  const [grayStart, grayEnd] = parseGradientEndpoints(gray.background);
+  assert.notDeepEqual(grayStart, grayEnd);
+});
+
+test("buildSwatchActionButtonStyle keeps WCAG contrast across an RGB grid", () => {
+  const samples = [0, 51, 102, 153, 204, 255];
+  for (const resolvedTheme of ["light", "dark"] as const) {
+    for (const red of samples) {
+      for (const green of samples) {
+        for (const blue of samples) {
+          const color = `#${[red, green, blue]
+            .map((channel) => channel.toString(16).padStart(2, "0"))
+            .join("")}`;
+          assertSwatchActionContrast(color, resolvedTheme);
+        }
+      }
+    }
+  }
 });
 
 test("buildSwatchSurfaceStyle centralizes tinted surface CSS", () => {

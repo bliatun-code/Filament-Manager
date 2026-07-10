@@ -19,6 +19,9 @@ export { formatGrams } from "./weight_display";
 type TranslateFn = (key: string, fallback?: string) => string;
 const BAMBU_PRIMARY_EXTERNAL_TRAY_INDEX = 255;
 const BAMBU_SECONDARY_EXTERNAL_TRAY_INDEX = 254;
+const LIGHT_PRINTER_SWATCH_SURFACE_BORDER = "rgba(100, 116, 139, 0.42)";
+const LIGHT_PRINTER_SWATCH_HOVER_BORDER = "rgba(2, 132, 199, 0.86)";
+const LIGHT_PRINTER_SWATCH_SELECTED_BORDER = "rgba(2, 132, 199, 0.94)";
 
 export function formatRelativeAge(raw: string | null | undefined, t: TranslateFn): string | null {
   const parsedMs = parseDateTimeMs(raw);
@@ -73,11 +76,11 @@ export function printerSwatchSurfaceStyle(
     darkTheme
       ? tone === "panel"
         ? {
-            top: 0.32,
-            mid: 0.16,
-            bottom: 0.08,
+            top: 0.15,
+            mid: 0.065,
+            bottom: 0.022,
             base: "rgb(10, 17, 31)",
-            shadow: 0.38,
+            shadow: 0.24,
             border: 0.44,
             ambientShadow: "rgba(2, 6, 23, 0.5)",
             inset: "rgba(255, 255, 255, 0.03)",
@@ -94,11 +97,11 @@ export function printerSwatchSurfaceStyle(
           }
       : tone === "panel"
         ? {
-            top: 0.12,
-            mid: 0.055,
-            bottom: 0.022,
+            top: 0.075,
+            mid: 0.03,
+            bottom: 0.01,
             base: "rgba(252, 254, 255, 0.96)",
-            shadow: 0.22,
+            shadow: 0.16,
             border: 0.18,
             ambientShadow: "rgba(148, 163, 184, 0.08)",
             inset: "rgba(255, 255, 255, 0.8)",
@@ -118,24 +121,35 @@ export function printerSwatchSurfaceStyle(
     midStop: darkTheme ? "24%" : "40%",
     bottomStop: darkTheme ? "66%" : "74%",
     shadowGeometry: "0 16px 34px -30px",
+    ...(darkTheme ? {} : { borderColor: LIGHT_PRINTER_SWATCH_SURFACE_BORDER }),
   });
 }
 
 export function printerSwatchInteractiveInsetStyle(
   raw: string | null | undefined,
   resolvedTheme: ResolvedTheme,
-  emphasis: "default" | "selected" = "default",
+  emphasis: "default" | "hovered" | "selected" = "default",
 ) {
   const base = printerSwatchSurfaceStyle(raw, "inset", resolvedTheme);
   if (emphasis === "selected") {
+    if (resolvedTheme === "light") {
+      return {
+        ...base,
+        borderColor: LIGHT_PRINTER_SWATCH_SELECTED_BORDER,
+        boxShadow: `${base.boxShadow}, 0 0 0 2px rgba(14, 165, 233, 0.24), 0 16px 30px -24px rgba(2, 132, 199, 0.3)`,
+      } as const;
+    }
     return {
       ...base,
-      borderColor: swatchRgba(raw, resolvedTheme === "dark" ? 0.56 : 0.34),
-      boxShadow: `${base.boxShadow}, 0 0 0 1px ${
-        resolvedTheme === "dark"
-          ? "rgba(226, 232, 240, 0.1)"
-          : "rgba(15, 23, 42, 0.08)"
-      }, 0 16px 30px -24px ${swatchRgba(raw, resolvedTheme === "dark" ? 0.44 : 0.28)}`,
+      borderColor: swatchRgba(raw, 0.56),
+      boxShadow: `${base.boxShadow}, 0 0 0 1px rgba(226, 232, 240, 0.1), 0 16px 30px -24px ${swatchRgba(raw, 0.44)}`,
+    } as const;
+  }
+  if (emphasis === "hovered" && resolvedTheme === "light") {
+    return {
+      ...base,
+      borderColor: LIGHT_PRINTER_SWATCH_HOVER_BORDER,
+      boxShadow: `${base.boxShadow}, 0 0 0 1px rgba(14, 165, 233, 0.22), 0 14px 26px -24px rgba(2, 132, 199, 0.24)`,
     } as const;
   }
   return base;

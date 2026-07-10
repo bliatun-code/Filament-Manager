@@ -26,7 +26,10 @@ import {
   returnInventoryLoan,
   type NormalizedLoanDetailsRow,
 } from "../lib/loan_data_source";
-import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
+import {
+  DESKTOP_VISUAL_QA_INBOUND_SPOOL_ID,
+  resolveDesktopVisualQaScenario,
+} from "../lib/desktop_visual_qa_scenario";
 import { useClientWriteGuards } from "../lib/use_client_write_guards";
 import { useLibrarySyncState } from "./use_library_sync_state";
 
@@ -62,7 +65,9 @@ export default function LoansPage() {
   const [returnModalNote, setReturnModalNote] = useState("");
   const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
   const [desktopVisualQaReturnApplied, setDesktopVisualQaReturnApplied] = useState(
-    () => desktopVisualQaScenario !== "return-loan",
+    () =>
+      desktopVisualQaScenario !== "return-loan" &&
+      desktopVisualQaScenario !== "return-inbound-loan",
   );
 
   const reload = useCallback(async () => {
@@ -191,7 +196,8 @@ export default function LoansPage() {
 
   useEffect(() => {
     if (
-      desktopVisualQaScenario !== "return-loan" ||
+      (desktopVisualQaScenario !== "return-loan" &&
+        desktopVisualQaScenario !== "return-inbound-loan") ||
       desktopVisualQaReturnApplied ||
       loading ||
       busy ||
@@ -199,9 +205,15 @@ export default function LoansPage() {
     ) {
       return;
     }
-    const activeLoan =
-      loans.find((loan) => isOutboundLoan(loan) && isLoanCurrentlyActive(loan)) ??
-      loans.find(isLoanCurrentlyActive);
+    const activeLoan = desktopVisualQaScenario === "return-inbound-loan"
+      ? loans.find(
+          (loan) =>
+            loan.loan.spool_id === DESKTOP_VISUAL_QA_INBOUND_SPOOL_ID &&
+            isInboundLoan(loan) &&
+            isLoanCurrentlyActive(loan),
+        ) ?? loans.find((loan) => isInboundLoan(loan) && isLoanCurrentlyActive(loan))
+      : loans.find((loan) => isOutboundLoan(loan) && isLoanCurrentlyActive(loan)) ??
+        loans.find(isLoanCurrentlyActive);
     if (!activeLoan) {
       return;
     }
@@ -280,6 +292,11 @@ export default function LoansPage() {
     }
   }
 
+  const loanResultCountUnit =
+    filteredLoans.length === 1
+      ? t("loans.resultCountOne", "loan")
+      : t("loans.resultCountMany", "loans");
+
   return (
     <div className="page-shell">
       <div className="page-header">
@@ -318,6 +335,10 @@ export default function LoansPage() {
           </div>
           <input
             type="search"
+            aria-label={t(
+              "loans.searchPlaceholder",
+              "Search person/material/spool id",
+            )}
             placeholder={t(
               "loans.searchPlaceholder",
               "Search person/material/spool id",
@@ -329,14 +350,19 @@ export default function LoansPage() {
           <div className="page-header-filter-surface">
             <div className="grid gap-3 min-[720px]:grid-cols-2">
               <div className="min-w-0">
-                <div className="section-eyebrow mb-1.5">
+                <div id="loan-direction-filter-label" className="section-eyebrow mb-1.5">
                   {t("loans.direction", "Direction")}
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div
+                  className="flex flex-wrap gap-1.5"
+                  role="group"
+                  aria-labelledby="loan-direction-filter-label"
+                >
                   {(["ALL", "OUTBOUND", "INBOUND"] as const).map((mode) => (
                     <button
                       key={mode}
                       type="button"
+                      aria-pressed={directionFilter === mode}
                       onClick={() => setDirectionFilter(mode)}
                       className={neutralChipClass(
                         directionFilter === mode,
@@ -353,14 +379,19 @@ export default function LoansPage() {
                 </div>
               </div>
               <div className="min-w-0">
-                <div className="section-eyebrow mb-1.5">
+                <div id="loan-status-filter-label" className="section-eyebrow mb-1.5">
                   {t("inventory.status", "Status")}
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div
+                  className="flex flex-wrap gap-1.5"
+                  role="group"
+                  aria-labelledby="loan-status-filter-label"
+                >
                   {(["ALL", "ACTIVE", "RETURNED"] as const).map((mode) => (
                     <button
                       key={mode}
                       type="button"
+                      aria-pressed={filter === mode}
                       onClick={() => setFilter(mode)}
                       className={neutralChipClass(filter === mode, "px-3 py-1.5 text-xs")}
                     >
@@ -430,8 +461,8 @@ export default function LoansPage() {
                 )}
               </div>
             </div>
-            <span className="count-pill">
-              {filteredLoans.length}
+            <span className="count-pill tabular-nums" aria-live="polite">
+              {filteredLoans.length} {loanResultCountUnit}
             </span>
           </div>
 

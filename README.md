@@ -216,7 +216,7 @@ Windows MSI uses the per-user WiX template in `src-tauri/wix/per-user.wxs`.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current release target: `v0.20.0`
+- Current release target: `v0.20.1`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`

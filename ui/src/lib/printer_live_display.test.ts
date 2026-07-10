@@ -9,6 +9,8 @@ import {
   isUnknownLiveRfid,
   liveActiveTrayMatchesSlot,
   liveTrayMatchesSlot,
+  printerSwatchInteractiveInsetStyle,
+  printerSwatchSurfaceStyle,
   resolveLiveConnectionIndicator,
 } from "./printer_live_display";
 import type {
@@ -18,6 +20,52 @@ import type {
 } from "./tauri_client";
 
 const t = (_key: string, fallback = "") => fallback;
+
+function lightBorderContrast(raw: string): number {
+  const channels = raw.match(/[\d.]+/g)?.map(Number) ?? [];
+  assert.equal(channels.length, 4);
+  const [red, green, blue, alpha] = channels;
+  const linearChannel = (value: number) => {
+    const normalized = value / 255;
+    return normalized <= 0.04045
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+  };
+  const composited = [red, green, blue].map(
+    (channel) => alpha * channel + (1 - alpha) * 255,
+  );
+  const luminance =
+    0.2126 * linearChannel(composited[0]) +
+    0.7152 * linearChannel(composited[1]) +
+    0.0722 * linearChannel(composited[2]);
+  return 1.05 / (luminance + 0.05);
+}
+
+test("printer swatch surfaces use quiet neutral light outlines and preserve dark swatch borders", () => {
+  const lightWhite = printerSwatchSurfaceStyle("#FFFFFF", "inset", "light");
+  const lightBlue = printerSwatchSurfaceStyle("#2563EB", "panel", "light");
+  const darkBlue = printerSwatchSurfaceStyle("#2563EB", "inset", "dark");
+
+  assert.equal(lightWhite.borderColor, "rgba(100, 116, 139, 0.42)");
+  assert.equal(lightBlue.borderColor, "rgba(100, 116, 139, 0.42)");
+  assert.equal(darkBlue.borderColor, "rgba(37, 99, 235, 0.4)");
+});
+
+test("printer swatch interaction uses semantic blue only for light selected and hover states", () => {
+  const lightSelected = printerSwatchInteractiveInsetStyle("#FFFFFF", "light", "selected");
+  const lightHovered = printerSwatchInteractiveInsetStyle("#FFFFFF", "light", "hovered");
+  const darkSelected = printerSwatchInteractiveInsetStyle("#FFFFFF", "dark", "selected");
+  const darkHovered = printerSwatchInteractiveInsetStyle("#FFFFFF", "dark", "hovered");
+
+  assert.equal(lightSelected.borderColor, "rgba(2, 132, 199, 0.94)");
+  assert.ok(lightBorderContrast(lightSelected.borderColor) >= 3);
+  assert.match(lightSelected.boxShadow, /rgba\(14, 165, 233, 0\.24\)/);
+  assert.equal(lightHovered.borderColor, "rgba(2, 132, 199, 0.86)");
+  assert.ok(lightBorderContrast(lightHovered.borderColor) >= 3);
+  assert.match(lightHovered.boxShadow, /rgba\(14, 165, 233, 0\.22\)/);
+  assert.equal(darkSelected.borderColor, "rgba(255, 255, 255, 0.56)");
+  assert.equal(darkHovered.borderColor, "rgba(255, 255, 255, 0.4)");
+});
 
 function slot(overrides: Partial<PrinterAmsSlotRow> = {}): PrinterAmsSlotRow {
   return {

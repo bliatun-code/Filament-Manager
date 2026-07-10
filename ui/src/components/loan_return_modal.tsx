@@ -26,6 +26,7 @@ import {
 import { useResolvedTheme } from "../lib/theme_mode";
 import { isInboundLoan } from "../lib/loan_state";
 import type { NormalizedLoanDetailsRow } from "../lib/loan_data_source";
+import { LoanReturnSummaryCard } from "./loan_return_summary_card";
 
 type LoanReturnModalProps = {
   busy: boolean;
@@ -171,6 +172,8 @@ export function LoanReturnModal({
           />
         </ModalFormField>
 
+        <LoanReturnSummaryCard grams={grams} loan={loan} />
+
         <ModalFormField label={t("loans.returnNoteOptional", "Return note (optional)")}>
           <input
             type="text"
@@ -193,9 +196,7 @@ export function LoanReturnModal({
             type="button"
             onClick={() => void onConfirm()}
             disabled={busy}
-            variant="success"
-            swatchColor={loan.hex_color}
-            resolvedTheme={resolvedTheme}
+            variant="primary"
           >
             {isInbound
               ? t("loans.confirmHandBackAction", "Confirm hand-back")

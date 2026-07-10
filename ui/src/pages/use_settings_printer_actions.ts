@@ -33,6 +33,7 @@ type UseSettingsPrinterActionsInput = {
   editBambuLiveEnabled: boolean;
   editBambuLiveHost: string;
   editBambuLivePrinterSerial: string;
+  editPrinterDirty: boolean;
   editPrinterId: string | null;
   editPrinterModel: string;
   editPrinterName: string;
@@ -67,6 +68,7 @@ export function useSettingsPrinterActions({
   editBambuLiveEnabled,
   editBambuLiveHost,
   editBambuLivePrinterSerial,
+  editPrinterDirty,
   editPrinterId,
   editPrinterModel,
   editPrinterName,
@@ -100,7 +102,7 @@ export function useSettingsPrinterActions({
   }
 
   async function handleSavePrinterReconfigure() {
-    if (!tauri || busy || !editPrinterId) {
+    if (!tauri || busy || !editPrinterId || !editPrinterDirty) {
       return;
     }
     const current = printers.find((printer) => printer.id === editPrinterId) ?? null;

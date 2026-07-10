@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useId, type Dispatch, type SetStateAction } from "react";
 import { AppModal } from "../components/app_modal";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { ModalHeader } from "../components/modal_chrome";
@@ -31,6 +31,29 @@ import {
 
 type Translate = I18nContextValue["t"];
 
+const statisticsFilterLabelClass =
+  "grid min-w-0 gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400";
+
+function statisticsResultCountUnit(t: Translate, count: number): string {
+  return count === 1
+    ? t("statistics.resultCountOne", "result")
+    : t("statistics.resultCountMany", "results");
+}
+
+function consumptionSortLabel(t: Translate, sort: ConsumptionPopupPrefs["sort"]): string {
+  switch (sort) {
+    case "USED_ASC":
+      return t("statistics.sortUsedAsc", "Least used");
+    case "JOBS_DESC":
+      return t("statistics.sortJobsDesc", "Most jobs");
+    case "NAME_ASC":
+      return t("statistics.sortNameAsc", "Name (A-Z)");
+    case "USED_DESC":
+    default:
+      return t("statistics.sortUsedDesc", "Most used");
+  }
+}
+
 export function StatisticsConsumptionModal({
   consumptionError,
   consumptionLoading,
@@ -56,6 +79,13 @@ export function StatisticsConsumptionModal({
   setConsumptionPrefs: Dispatch<SetStateAction<ConsumptionPopupPrefs>>;
   t: Translate;
 }) {
+  const searchId = useId();
+  const vendorId = useId();
+  const materialId = useId();
+  const ownershipId = useId();
+  const sortId = useId();
+  const resultCountUnit = statisticsResultCountUnit(t, filteredConsumptionRows.length);
+
   return (
     <AppModal
       closeOnBackdrop
@@ -81,93 +111,121 @@ export function StatisticsConsumptionModal({
         </FeedbackBanner>
       ) : null}
       {!consumptionLoading && !consumptionError && consumptionRows.length > 0 ? (
-        <div className="surface-subtle mt-4 grid grid-cols-1 gap-2 p-3 md:grid-cols-2 xl:grid-cols-6">
-          <input
-            type="search"
-            value={consumptionPrefs.search}
-            onChange={(event) =>
-              setConsumptionPrefs((current) => ({
-                ...current,
-                search: event.target.value,
-              }))
-            }
-            placeholder={t(
-              "statistics.searchFilamentPlaceholder",
-              "Search filament, color, vendor or owner",
-            )}
-            className={`${statisticsFilterInputClass} xl:col-span-2`}
-          />
-          <select
-            value={consumptionPrefs.vendorFilter}
-            onChange={(event) =>
-              setConsumptionPrefs((current) => ({
-                ...current,
-                vendorFilter: event.target.value,
-              }))
-            }
-            className={statisticsFilterSelectClass}
+        <div className="surface-subtle mt-4 grid grid-cols-1 gap-2 p-3 sm:grid-cols-2">
+          <label
+            htmlFor={searchId}
+            className={`${statisticsFilterLabelClass} sm:col-span-2`}
           >
-            {consumptionVendorOptions.map((option) => (
-              <option key={option} value={option}>
-                {option === "ALL"
-                  ? `${t("statistics.filterVendor", "Vendor")}: ${t("common.all", "All")}`
-                  : option}
+            <span>
+              {t(
+                "statistics.searchFilamentPlaceholder",
+                "Search filament, color, vendor or owner",
+              )}
+            </span>
+            <input
+              id={searchId}
+              type="search"
+              value={consumptionPrefs.search}
+              onChange={(event) =>
+                setConsumptionPrefs((current) => ({
+                  ...current,
+                  search: event.target.value,
+                }))
+              }
+              placeholder={t(
+                "statistics.searchFilamentPlaceholder",
+                "Search filament, color, vendor or owner",
+              )}
+              className={`w-full ${statisticsFilterInputClass}`}
+            />
+          </label>
+          <label htmlFor={vendorId} className={statisticsFilterLabelClass}>
+            <span>{t("statistics.filterVendor", "Vendor")}</span>
+            <select
+              id={vendorId}
+              value={consumptionPrefs.vendorFilter}
+              onChange={(event) =>
+                setConsumptionPrefs((current) => ({
+                  ...current,
+                  vendorFilter: event.target.value,
+                }))
+              }
+              className={`w-full ${statisticsFilterSelectClass}`}
+            >
+              {consumptionVendorOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option === "ALL"
+                    ? `${t("statistics.filterVendor", "Vendor")}: ${t("common.all", "All")}`
+                    : option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label htmlFor={materialId} className={statisticsFilterLabelClass}>
+            <span>{t("statistics.filterMaterial", "Material")}</span>
+            <select
+              id={materialId}
+              value={consumptionPrefs.materialFilter}
+              onChange={(event) =>
+                setConsumptionPrefs((current) => ({
+                  ...current,
+                  materialFilter: event.target.value,
+                }))
+              }
+              className={`w-full ${statisticsFilterSelectClass}`}
+            >
+              {consumptionMaterialOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option === "ALL"
+                    ? `${t("statistics.filterMaterial", "Material")}: ${t("common.all", "All")}`
+                    : option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label htmlFor={ownershipId} className={statisticsFilterLabelClass}>
+            <span>{t("inventory.ownershipGroup", "Ownership")}</span>
+            <select
+              id={ownershipId}
+              value={consumptionPrefs.ownershipFilter}
+              onChange={(event) =>
+                setConsumptionPrefs((current) => ({
+                  ...current,
+                  ownershipFilter: parseOwnershipFilter(event.target.value),
+                }))
+              }
+              className={`w-full ${statisticsFilterSelectClass}`}
+            >
+              <option value="ALL">
+                {`${t("inventory.ownershipGroup", "Ownership")}: ${t("common.all", "All")}`}
               </option>
-            ))}
-          </select>
-          <select
-            value={consumptionPrefs.materialFilter}
-            onChange={(event) =>
-              setConsumptionPrefs((current) => ({
-                ...current,
-                materialFilter: event.target.value,
-              }))
-            }
-            className={statisticsFilterSelectClass}
-          >
-            {consumptionMaterialOptions.map((option) => (
-              <option key={option} value={option}>
-                {option === "ALL"
-                  ? `${t("statistics.filterMaterial", "Material")}: ${t("common.all", "All")}`
-                  : option}
+              <option value="OWNED">
+                {`${t("inventory.ownershipGroup", "Ownership")}: ${t("inventory.ownedByUs", "Owned")}`}
               </option>
-            ))}
-          </select>
-          <select
-            value={consumptionPrefs.ownershipFilter}
-            onChange={(event) =>
-              setConsumptionPrefs((current) => ({
-                ...current,
-                ownershipFilter: parseOwnershipFilter(event.target.value),
-              }))
-            }
-            className={statisticsFilterSelectClass}
-          >
-            <option value="ALL">
-              {`${t("inventory.ownershipGroup", "Ownership")}: ${t("common.all", "All")}`}
-            </option>
-            <option value="OWNED">
-              {`${t("inventory.ownershipGroup", "Ownership")}: ${t("inventory.ownedByUs", "Owned")}`}
-            </option>
-            <option value="BORROWED_IN">
-              {`${t("inventory.ownershipGroup", "Ownership")}: ${t("inventory.borrowedIn", "Borrowed in")}`}
-            </option>
-          </select>
-          <select
-            value={consumptionPrefs.sort}
-            onChange={(event) =>
-              setConsumptionPrefs((current) => ({
-                ...current,
-                sort: parseConsumptionSort(event.target.value),
-              }))
-            }
-            className={statisticsFilterSelectClass}
-          >
-            <option value="USED_DESC">{t("statistics.sortUsedDesc", "Most used")}</option>
-            <option value="USED_ASC">{t("statistics.sortUsedAsc", "Least used")}</option>
-            <option value="JOBS_DESC">{t("statistics.sortJobsDesc", "Most jobs")}</option>
-            <option value="NAME_ASC">{t("statistics.sortNameAsc", "Name (A-Z)")}</option>
-          </select>
+              <option value="BORROWED_IN">
+                {`${t("inventory.ownershipGroup", "Ownership")}: ${t("inventory.borrowedIn", "Borrowed in")}`}
+              </option>
+            </select>
+          </label>
+          <label htmlFor={sortId} className={statisticsFilterLabelClass}>
+            <span>{consumptionSortLabel(t, consumptionPrefs.sort)}</span>
+            <select
+              id={sortId}
+              value={consumptionPrefs.sort}
+              onChange={(event) =>
+                setConsumptionPrefs((current) => ({
+                  ...current,
+                  sort: parseConsumptionSort(event.target.value),
+                }))
+              }
+              className={`w-full ${statisticsFilterSelectClass}`}
+            >
+              <option value="USED_DESC">{t("statistics.sortUsedDesc", "Most used")}</option>
+              <option value="USED_ASC">{t("statistics.sortUsedAsc", "Least used")}</option>
+              <option value="JOBS_DESC">{t("statistics.sortJobsDesc", "Most jobs")}</option>
+              <option value="NAME_ASC">{t("statistics.sortNameAsc", "Name (A-Z)")}</option>
+            </select>
+          </label>
           <button
             type="button"
             onClick={() =>
@@ -175,10 +233,17 @@ export function StatisticsConsumptionModal({
                 ...DEFAULT_CONSUMPTION_PREFS,
               })
             }
-            className={`${statisticsFilterButtonClass} md:col-span-2 xl:col-span-2`}
+            className={`${statisticsFilterButtonClass} w-full self-end sm:col-span-2`}
           >
             {t("statistics.resetFilters", "Reset filters")}
           </button>
+          <span
+            className="w-full self-end rounded-full border border-slate-200 bg-white px-3 py-2 text-right text-sm font-semibold tabular-nums text-slate-700 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200 sm:col-span-2"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {filteredConsumptionRows.length} / {consumptionRows.length} {resultCountUnit}
+          </span>
         </div>
       ) : null}
       {!consumptionLoading && !consumptionError && consumptionRows.length === 0 ? (
@@ -255,6 +320,8 @@ export function StatisticsBorrowerUsageModal({
   t: Translate;
 }) {
   const inboundDirection = isInboundLoanDirection(borrowerModalDirection);
+  const searchId = useId();
+  const resultCountUnit = statisticsResultCountUnit(t, filteredBorrowerRows.length);
 
   return (
     <AppModal
@@ -287,22 +354,31 @@ export function StatisticsBorrowerUsageModal({
         </FeedbackBanner>
       ) : null}
       {!borrowerLoading && !borrowerError && borrowerRows.length > 0 ? (
-        <div className="surface-subtle mt-4 flex flex-col gap-2 p-3 sm:flex-row">
-          <input
-            type="search"
-            value={borrowerPrefs.search}
-            onChange={(event) =>
-              setBorrowerPrefs((current) => ({
-                ...current,
-                search: event.target.value,
-              }))
-            }
-            placeholder={t(
-              "statistics.searchBorrowerFilamentPlaceholder",
-              "Search filament, color or vendor",
-            )}
-            className={`w-full ${statisticsFilterInputClass}`}
-          />
+        <div className="surface-subtle mt-4 grid grid-cols-1 gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <label htmlFor={searchId} className={statisticsFilterLabelClass}>
+            <span>
+              {t(
+                "statistics.searchBorrowerFilamentPlaceholder",
+                "Search filament, color or vendor",
+              )}
+            </span>
+            <input
+              id={searchId}
+              type="search"
+              value={borrowerPrefs.search}
+              onChange={(event) =>
+                setBorrowerPrefs((current) => ({
+                  ...current,
+                  search: event.target.value,
+                }))
+              }
+              placeholder={t(
+                "statistics.searchBorrowerFilamentPlaceholder",
+                "Search filament, color or vendor",
+              )}
+              className={`w-full ${statisticsFilterInputClass}`}
+            />
+          </label>
           <button
             type="button"
             onClick={() =>
@@ -310,10 +386,17 @@ export function StatisticsBorrowerUsageModal({
                 ...DEFAULT_BORROWER_PREFS,
               })
             }
-            className={`${statisticsFilterButtonClass} sm:w-auto`}
+            className={`${statisticsFilterButtonClass} self-end sm:w-auto`}
           >
             {t("statistics.resetFilters", "Reset filters")}
           </button>
+          <span
+            className="justify-self-end rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold tabular-nums text-slate-700 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-200 sm:col-span-2"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {filteredBorrowerRows.length} / {borrowerRows.length} {resultCountUnit}
+          </span>
         </div>
       ) : null}
       {!borrowerLoading && !borrowerError && borrowerRows.length === 0 ? (

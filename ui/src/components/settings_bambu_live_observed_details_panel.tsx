@@ -16,6 +16,10 @@ import { SettingsBambuLiveCapturedFieldsPanel } from "./settings_bambu_live_capt
 import { SettingsBambuLiveDiagnosticsSummary } from "./settings_bambu_live_diagnostics_summary";
 import { SettingsBambuLiveRawPayloadPanel } from "./settings_bambu_live_raw_payload_panel";
 import { SettingsBambuLiveTrayCards } from "./settings_bambu_live_tray_cards";
+import {
+  settingsBambuLiveCaptureHintId,
+  settingsBambuLiveCaptureStatusId,
+} from "./settings_bambu_live_dom_ids";
 import { SettingsNotice } from "./settings_ui";
 
 type SettingsBambuLiveObservedDetailsPanelProps = {
@@ -76,6 +80,9 @@ export function SettingsBambuLiveObservedDetailsPanel({
     sortedDiagnosticFields,
     statusNote,
   } = model;
+  const captureStatusId = settingsBambuLiveCaptureStatusId(printerId);
+  const captureHintId = settingsBambuLiveCaptureHintId(printerId);
+  const captureDescriptionIds = `${captureStatusId} ${captureHintId}`;
 
   return (
     <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200">
@@ -112,12 +119,17 @@ export function SettingsBambuLiveObservedDetailsPanel({
           ) : null}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/60">
             <div className="text-[11px] text-slate-600 dark:text-slate-300">
-              <span className="font-semibold text-slate-800 dark:text-slate-100">
+              <span
+                id={captureStatusId}
+                role="status"
+                aria-live="polite"
+                className="font-semibold text-slate-800 dark:text-slate-100"
+              >
                 {captureActive
                   ? t("settings.bambuLiveCaptureRunning", "Capture is running")
                   : t("settings.bambuLiveCapturePaused", "Capture is paused")}
               </span>
-              <span className="ml-2">
+              <span id={captureHintId} className="ml-2">
                 {captureActive
                   ? t(
                       "settings.bambuLiveCaptureRunningHint",
@@ -137,6 +149,7 @@ export function SettingsBambuLiveObservedDetailsPanel({
                   "compact",
                 )}
                 onClick={onToggleCapture}
+                aria-describedby={captureDescriptionIds}
               >
                 {captureActive
                   ? t("settings.bambuLiveStopCapture", "Stop capture")
@@ -150,6 +163,14 @@ export function SettingsBambuLiveObservedDetailsPanel({
               "More matching rolls exist in inventory.",
             )}
             printerId={printerId}
+            technicalDetailsLabel={t(
+              "settings.bambuLiveTechnicalDetails",
+              "Technical details",
+            )}
+            technicalDetailsHint={t(
+              "settings.bambuLiveTechnicalDetailsHint",
+              "Raw RFID identity, weight basis, preset, temperature range and match diagnostics.",
+            )}
             trays={diagnosticTrayCards}
           />
           <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-950/50">

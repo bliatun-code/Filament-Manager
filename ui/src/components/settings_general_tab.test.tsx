@@ -64,6 +64,17 @@ test("SettingsGeneralTab exposes license and versioned source links", () => {
   );
 });
 
+test("SettingsGeneralTab exposes selected theme and language choices", () => {
+  const html = renderGeneralTab();
+
+  assert.match(html, /role="group" aria-label="Appearance"/);
+  assert.match(html, /role="group" aria-label="Language"/);
+  assert.ok(html.indexOf("Appearance") < html.indexOf("Program"));
+  assert.ok(html.indexOf("Language") < html.indexOf("Program"));
+  assert.equal((html.match(/aria-pressed="true"/g) ?? []).length, 2);
+  assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 3);
+});
+
 test("SettingsGeneralTab localizes license controls in Norwegian", () => {
   const html = renderGeneralTab("nb");
 

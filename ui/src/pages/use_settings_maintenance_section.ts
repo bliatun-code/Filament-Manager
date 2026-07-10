@@ -245,6 +245,7 @@ export function useSettingsMaintenanceSection({
     onExportInventoryCsv: handleExportInventoryCsv,
     onExportInventoryJson: handleExportInventoryJson,
     onImportDataFile: handleImportDataFile,
+    onCancelReset: clearConfirmResetAction,
     onOpenBackupValidate: handleOpenBackupValidate,
     onOpenDataImport: handleOpenDataImport,
     onResetAppData: handleResetAppData,

@@ -5,6 +5,8 @@ import {
   buildDashboardCompanionPresentation,
   buildDashboardDerivedState,
 } from "./dashboard_model";
+import { lookup } from "./i18n";
+import { nbDictionary } from "./i18n_locales/locales/nb";
 import { normalizeLoanDetailsRow, type NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import {
   normalizeSpoolWithMasterRow,
@@ -18,6 +20,7 @@ import type {
 } from "./tauri_client";
 
 const t = (_key: string, fallback: string) => fallback;
+const nbT = (key: string, fallback: string) => lookup(nbDictionary, key) ?? fallback;
 
 function overview(overrides: Partial<InventoryOverview> = {}): InventoryOverview {
   return {
@@ -193,6 +196,22 @@ test("buildDashboardDerivedState keeps borrowed rows out of inventory health sco
 
   assert.equal(result.ownershipOnHand.total, 1);
   assert.equal(result.health.score, 0);
+});
+
+test("buildDashboardDerivedState localizes daily grams for Norwegian", () => {
+  const result = buildDashboardDerivedState({
+    overview: overview({ total_consumption_30d: 2352 }),
+    printers: [],
+    spoolRows: [],
+    loans: [],
+    wishlist: [],
+    t: nbT,
+  });
+
+  assert.equal(
+    result.stats.find((stat) => stat.id === "monthlyUsage")?.trend,
+    "78 g/dag",
+  );
 });
 
 test("buildDashboardDerivedState preserves unknown statuses outside on-hand counts", () => {

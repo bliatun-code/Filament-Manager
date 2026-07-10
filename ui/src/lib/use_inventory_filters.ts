@@ -49,8 +49,10 @@ export function useInventoryFilters(spools: InventorySpool[]) {
     () => groupInventorySpools(filteredSpools),
     [filteredSpools],
   );
-  const activeAdvancedFilterCount = [
-    inventoryView !== "CARDS",
+  const activeFilterCount = [
+    deferredSearch.trim().length > 0,
+    statusFilter !== "ALL",
+    lowStockOnly,
     ownershipFilter !== "ALL",
     vendorFilter !== "ALL",
     materialFilter !== "ALL",
@@ -77,7 +79,7 @@ export function useInventoryFilters(spools: InventorySpool[]) {
   }, []);
 
   return {
-    activeAdvancedFilterCount,
+    activeFilterCount,
     advancedFiltersOpen,
     filteredSpools,
     groupedSpools,

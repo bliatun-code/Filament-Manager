@@ -11,6 +11,7 @@ test("InventorySpoolDetailHeader matches the shared modal header scale", () => {
   assert.match(source, /SwatchSelectionPreviewHeader/);
   assert.match(source, /eyebrow=\{t\("inventory\.selectedRoll"/);
   assert.match(source, /swatchColor=\{spool\.hexColor\}/);
+  assert.match(source, /title=\{displayTitle\}/);
   assert.match(source, /CloseButton/);
   assert.match(source, /px-5 py-4/);
   assert.doesNotMatch(source, /swatchCssBackground/);

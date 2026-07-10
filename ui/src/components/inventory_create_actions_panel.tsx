@@ -187,7 +187,7 @@ export function InventoryCreateActionsPanel({
       <div className="mt-4 border-t border-slate-200/80 pt-4 dark:border-slate-700/80">
         <ModalActionButton
           fullWidth
-          style={actionStyle}
+          variant="secondary"
           onClick={onAddCurrentToWishlist}
           disabled={disabledWishlistCreate}
         >

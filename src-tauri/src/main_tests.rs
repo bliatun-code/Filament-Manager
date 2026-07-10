@@ -100,8 +100,36 @@ fn visual_qa_scenario_normalizer_accepts_stateful_settings_scenarios() {
         Some("settings-library-network-details")
     );
     assert_eq!(
+        normalize_visual_qa_scenario("library-role-dialog"),
+        Some("settings-library-role-change")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("settings-library-role-change"),
+        Some("settings-library-role-change")
+    );
+    assert_eq!(
         normalize_visual_qa_scenario("settings-library-network-details"),
         Some("settings-library-network-details")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("trusted-lan-editor"),
+        Some("settings-library-network-editor")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("settings-library-network-editor"),
+        Some("settings-library-network-editor")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("trusted-lan-pairing"),
+        Some("settings-library-pairing")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("trusted-lan-browsers"),
+        Some("settings-library-browsers")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("trusted-lan-browser-history"),
+        Some("settings-library-browsers-history")
     );
     assert_eq!(
         normalize_visual_qa_scenario("missing-swatches"),
@@ -110,6 +138,66 @@ fn visual_qa_scenario_normalizer_accepts_stateful_settings_scenarios() {
     assert_eq!(
         normalize_visual_qa_scenario("wishlist-orders"),
         Some("wishlist-queue")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("add-printer-modal"),
+        Some("add-printer")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("roll-history"),
+        Some("selected-roll-history")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("inventory-danger-zone"),
+        Some("selected-roll-danger-zone")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("statistics-consumption"),
+        Some("statistics-consumption")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("total-consumption"),
+        Some("statistics-consumption")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("borrower-usage-breakdown"),
+        Some("statistics-borrower")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("hand-back-borrowed-in"),
+        Some("return-inbound-loan")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("statistics-loans"),
+        Some("statistics-loans")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("loan-usage-statistics"),
+        Some("statistics-loans")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("printer-editor"),
+        Some("settings-printer-editor")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("settings-printer-editor"),
+        Some("settings-printer-editor")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("printer-editor-dirty"),
+        Some("settings-printer-editor-dirty")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("settings-printer-editor-dirty"),
+        Some("settings-printer-editor-dirty")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("printer-editor-discard"),
+        Some("settings-printer-editor-discard")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("settings-printer-editor-discard"),
+        Some("settings-printer-editor-discard")
     );
 }
 
@@ -125,6 +213,18 @@ fn visual_qa_locale_normalizer_defaults_to_english() {
     assert_eq!(normalize_visual_qa_locale("en-US"), "en");
     assert_eq!(normalize_visual_qa_locale(""), "en");
     assert_eq!(normalize_visual_qa_locale("bad"), "en");
+}
+
+#[test]
+#[cfg(debug_assertions)]
+fn visual_qa_theme_normalizer_accepts_only_supported_modes() {
+    use super::normalize_visual_qa_theme;
+
+    assert_eq!(normalize_visual_qa_theme("light"), Some("light"));
+    assert_eq!(normalize_visual_qa_theme(" DARK "), Some("dark"));
+    assert_eq!(normalize_visual_qa_theme("Auto"), Some("auto"));
+    assert_eq!(normalize_visual_qa_theme(""), None);
+    assert_eq!(normalize_visual_qa_theme("sepia"), None);
 }
 
 #[test]

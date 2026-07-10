@@ -15,6 +15,52 @@ import type { BackupValidationStats, CatalogResetStats } from "../lib/tauri_clie
 type TranslateFn = (key: string, fallback: string) => string;
 type ResetConfirmAction = "APP" | "CATALOG";
 
+function SettingsResetConfirmation({
+  cancelLabel,
+  confirmDisabled,
+  confirmLabel,
+  message,
+  onCancel,
+  onConfirm,
+  tone,
+}: {
+  cancelLabel: string;
+  confirmDisabled: boolean;
+  confirmLabel: string;
+  message: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  tone: "danger" | "warning";
+}) {
+  const confirmVariant = tone === "danger" ? "danger" : "warning";
+  const cancelVariant = tone === "danger" ? "dangerQuiet" : "warningQuiet";
+
+  return (
+    <SettingsNotice className="mt-3" tone={tone}>
+      <div role="alert">
+        <div className="whitespace-pre-line leading-5">{message}</div>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            className={`w-full sm:w-auto ${settingsActionButtonClass(confirmVariant, "comfortable")}`}
+            onClick={onConfirm}
+            disabled={confirmDisabled}
+          >
+            {confirmLabel}
+          </button>
+          <button
+            type="button"
+            className={`w-full sm:w-auto ${settingsActionButtonClass(cancelVariant, "comfortable")}`}
+            onClick={onCancel}
+          >
+            {cancelLabel}
+          </button>
+        </div>
+      </div>
+    </SettingsNotice>
+  );
+}
+
 export type SettingsMaintenanceTabProps = {
   backupImportInputRef: RefObject<HTMLInputElement | null>;
   backupValidateInputRef: RefObject<HTMLInputElement | null>;
@@ -36,6 +82,7 @@ export type SettingsMaintenanceTabProps = {
   onExportInventoryCsv: () => void;
   onExportInventoryJson: () => void;
   onImportDataFile: (event: ChangeEvent<HTMLInputElement>) => void;
+  onCancelReset: () => void;
   onOpenBackupValidate: () => void;
   onOpenDataImport: () => void;
   onResetAppData: () => void;
@@ -64,6 +111,7 @@ export function SettingsMaintenanceTab({
   onExportInventoryCsv,
   onExportInventoryJson,
   onImportDataFile,
+  onCancelReset,
   onOpenBackupValidate,
   onOpenDataImport,
   onResetAppData,
@@ -145,12 +193,14 @@ export function SettingsMaintenanceTab({
             <div className="section-eyebrow">
               {t("settings.backupImportGroup", "Import and validation")}
             </div>
-            <div className="surface-subtle mt-2 border-dashed px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
-              {t(
-                "settings.noBackupValidationYet",
-                "Validate a backup file here to see compatibility details before importing.",
-              )}
-            </div>
+            {!lastBackupValidation ? (
+              <div className="surface-subtle mt-2 border-dashed px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
+                {t(
+                  "settings.noBackupValidationYet",
+                  "Validate a backup file here to see compatibility details before importing.",
+                )}
+              </div>
+            ) : null}
             <div className="mt-4 space-y-2">
               <button
                 type="button"
@@ -207,16 +257,32 @@ export function SettingsMaintenanceTab({
               <span aria-hidden="true">!</span>
               {t("settings.resetCatalogs", "Repair catalog")}
             </div>
-            <button
-              type="button"
-              className={`mt-3 w-full ${settingsActionButtonClass("warning", "comfortable")}`}
-              onClick={onResetCatalogs}
-              disabled={hostOnlyActionDisabled}
-            >
-              {confirmResetAction === "CATALOG"
-                ? t("settings.confirmResetCatalogsAction", "Confirm catalog repair")
-                : t("settings.resetCatalogs", "Repair catalog")}
-            </button>
+            {confirmResetAction === "CATALOG" ? (
+              <SettingsResetConfirmation
+                cancelLabel={t("common.cancel", "Cancel")}
+                confirmDisabled={hostOnlyActionDisabled}
+                confirmLabel={t(
+                  "settings.confirmResetCatalogsAction",
+                  "Confirm catalog repair",
+                )}
+                message={t(
+                  "settings.confirmResetCatalogs",
+                  "Repair the catalog?\n\nThe bundled seed catalog is restored. Only unused non-seeded catalog entries are removed; inventory and wishlist references are preserved.",
+                )}
+                onCancel={onCancelReset}
+                onConfirm={onResetCatalogs}
+                tone="warning"
+              />
+            ) : (
+              <button
+                type="button"
+                className={`mt-3 w-full ${settingsActionButtonClass("warning", "comfortable")}`}
+                onClick={onResetCatalogs}
+                disabled={hostOnlyActionDisabled}
+              >
+                {t("settings.resetCatalogs", "Repair catalog")}
+              </button>
+            )}
             <ul className="mt-3 list-disc space-y-1 pl-5 text-xs leading-6 text-amber-900 dark:text-amber-100/90">
               <li>
                 {t(
@@ -241,16 +307,32 @@ export function SettingsMaintenanceTab({
               <span aria-hidden="true">!</span>
               {t("settings.resetApp", "Reset app data")}
             </div>
-            <button
-              type="button"
-              className={`mt-3 w-full ${settingsActionButtonClass("danger", "comfortable")}`}
-              onClick={onResetAppData}
-              disabled={hostOnlyActionDisabled}
-            >
-              {confirmResetAction === "APP"
-                ? t("settings.confirmResetAppAction", "Confirm reset app data")
-                : t("settings.resetApp", "Reset app data")}
-            </button>
+            {confirmResetAction === "APP" ? (
+              <SettingsResetConfirmation
+                cancelLabel={t("common.cancel", "Cancel")}
+                confirmDisabled={hostOnlyActionDisabled}
+                confirmLabel={t(
+                  "settings.confirmResetAppAction",
+                  "Confirm reset app data",
+                )}
+                message={t(
+                  "settings.confirmResetApp",
+                  "Reset app data?\n\nThis clears inventory, printer mappings, print history, wishlist, and trusted-LAN paired browsers. Catalog entries are kept.",
+                )}
+                onCancel={onCancelReset}
+                onConfirm={onResetAppData}
+                tone="danger"
+              />
+            ) : (
+              <button
+                type="button"
+                className={`mt-3 w-full ${settingsActionButtonClass("danger", "comfortable")}`}
+                onClick={onResetAppData}
+                disabled={hostOnlyActionDisabled}
+              >
+                {t("settings.resetApp", "Reset app data")}
+              </button>
+            )}
             <ul className="mt-3 list-disc space-y-1 pl-5 text-xs leading-6 text-rose-900 dark:text-rose-100/90">
               <li>
                 {t("settings.resetAppList1", "Clears inventory rolls and roll lifecycle history.")}

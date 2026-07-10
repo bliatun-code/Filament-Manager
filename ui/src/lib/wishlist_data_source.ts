@@ -78,6 +78,23 @@ export function filterWishlistItems(
   return items.filter((item) => (statusFilter === "ALL" ? true : item.status === statusFilter));
 }
 
+export function filterWishlistQueueItems(
+  items: WishlistItemRow[],
+  statusFilter: WishlistStatusFilter,
+  query: string,
+): WishlistItemRow[] {
+  const statusItems = filterWishlistItems(items, statusFilter);
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return statusItems;
+  }
+  return statusItems.filter((item) =>
+    `${item.vendor} ${item.material} ${item.filament_name} ${item.color_name}`
+      .toLowerCase()
+      .includes(normalizedQuery),
+  );
+}
+
 export function summarizeWishlistQueue(items: WishlistItemRow[]): WishlistQueueSummary {
   return items.reduce(
     (summary, item) => {

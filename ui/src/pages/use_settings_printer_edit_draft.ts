@@ -1,6 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { BambuLiveIntegrationEntry, PrinterOverviewRow, PrinterRow } from "../lib/tauri_client";
-import { derivePrinterMultiConfig } from "./settings_printer_model";
+import {
+  derivePrinterMultiConfig,
+  isPrinterReconfigureDraftDirty,
+  type PrinterReconfigureDraft,
+} from "./settings_printer_model";
 
 type BambuLiveIntegrationConfig = BambuLiveIntegrationEntry["config"];
 
@@ -11,6 +15,8 @@ type StartSettingsPrinterEditDraftInput = {
 };
 
 export function useSettingsPrinterEditDraft() {
+  const [editPrinterBaseline, setEditPrinterBaseline] =
+    useState<PrinterReconfigureDraft | null>(null);
   const [editPrinterId, setEditPrinterId] = useState<string | null>(null);
   const [editPrinterModel, setEditPrinterModel] = useState("");
   const [editPrinterName, setEditPrinterName] = useState("");
@@ -24,6 +30,7 @@ export function useSettingsPrinterEditDraft() {
     useState<string | null>(null);
 
   const cancelPrinterEdit = useCallback(() => {
+    setEditPrinterBaseline(null);
     setEditPrinterId(null);
     setEditPrinterModel("");
     setEditPrinterName("");
@@ -47,17 +54,57 @@ export function useSettingsPrinterEditDraft() {
       printerOverview,
     });
     const liveConfig = bambuLiveIntegrations[printer.id];
-    setEditPrinterId(printer.id);
-    setEditPrinterModel(printer.model);
-    setEditPrinterName(printer.name);
-    setEditAmsUnits(String(config.units));
-    setEditSlotsPerUnit(String(config.slotsPerUnit));
-    setEditBambuLiveEnabled(liveConfig?.enabled ?? false);
-    setEditBambuLiveHost(liveConfig?.host ?? "");
-    setEditBambuLiveAccessCode(liveConfig?.access_code ?? "");
-    setEditBambuLivePrinterSerial(liveConfig?.printer_serial ?? "");
+    const draft: PrinterReconfigureDraft = {
+      id: printer.id,
+      model: printer.model,
+      name: printer.name,
+      amsUnits: String(config.units),
+      slotsPerUnit: String(config.slotsPerUnit),
+      bambuLiveEnabled: liveConfig?.enabled ?? false,
+      bambuLiveHost: liveConfig?.host ?? "",
+      bambuLiveAccessCode: liveConfig?.access_code ?? "",
+      bambuLivePrinterSerial: liveConfig?.printer_serial ?? "",
+    };
+    setEditPrinterBaseline(draft);
+    setEditPrinterId(draft.id);
+    setEditPrinterModel(draft.model);
+    setEditPrinterName(draft.name);
+    setEditAmsUnits(draft.amsUnits);
+    setEditSlotsPerUnit(draft.slotsPerUnit);
+    setEditBambuLiveEnabled(draft.bambuLiveEnabled);
+    setEditBambuLiveHost(draft.bambuLiveHost);
+    setEditBambuLiveAccessCode(draft.bambuLiveAccessCode);
+    setEditBambuLivePrinterSerial(draft.bambuLivePrinterSerial);
     setExpandedBambuDetailsPrinterId(null);
   }, []);
+
+  const editPrinterDirty = useMemo(() => {
+    if (!editPrinterBaseline) {
+      return false;
+    }
+    return isPrinterReconfigureDraftDirty(editPrinterBaseline, {
+      id: editPrinterId,
+      model: editPrinterModel,
+      name: editPrinterName,
+      amsUnits: editAmsUnits,
+      slotsPerUnit: editSlotsPerUnit,
+      bambuLiveEnabled: editBambuLiveEnabled,
+      bambuLiveHost: editBambuLiveHost,
+      bambuLiveAccessCode: editBambuLiveAccessCode,
+      bambuLivePrinterSerial: editBambuLivePrinterSerial,
+    });
+  }, [
+    editAmsUnits,
+    editBambuLiveAccessCode,
+    editBambuLiveEnabled,
+    editBambuLiveHost,
+    editBambuLivePrinterSerial,
+    editPrinterBaseline,
+    editPrinterId,
+    editPrinterModel,
+    editPrinterName,
+    editSlotsPerUnit,
+  ]);
 
   return {
     cancelPrinterEdit,
@@ -67,6 +114,7 @@ export function useSettingsPrinterEditDraft() {
     editBambuLiveHost,
     editBambuLivePrinterSerial,
     editPrinterId,
+    editPrinterDirty,
     editPrinterModel,
     editPrinterName,
     editSlotsPerUnit,

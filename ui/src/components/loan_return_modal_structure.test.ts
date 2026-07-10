@@ -17,10 +17,20 @@ test("LoanReturnModal uses shared modal form inputs", () => {
   assert.match(swatchCardSource, /loanSwatchCardClass/);
   assert.match(source, /ModalDetailGrid/);
   assert.match(source, /ModalDetailItem/);
+  assert.match(source, /LoanReturnSummaryCard/);
   assert.match(source, /ModalFormField/);
   assert.match(source, /ModalNotice/);
-  assert.match(source, /variant="success"/);
-  assert.match(source, /swatchColor=\{loan\.hex_color\}/);
+  assert.match(source, /variant="primary"/);
+  assert.doesNotMatch(source, /variant="success"/);
+  const primaryActionStart = source.indexOf(
+    '<ModalActionButton\n            type="button"\n            onClick={() => void onConfirm()}',
+  );
+  const primaryActionEnd = source.indexOf("</ModalActionButton>", primaryActionStart);
+  assert.notEqual(primaryActionStart, -1);
+  assert.notEqual(primaryActionEnd, -1);
+  const primaryAction = source.slice(primaryActionStart, primaryActionEnd);
+  assert.doesNotMatch(primaryAction, /swatchColor/);
+  assert.doesNotMatch(primaryAction, /resolvedTheme/);
   assert.doesNotMatch(source, /FeedbackBanner/);
   assert.doesNotMatch(source, /modalActionButtonClassName/);
   assert.doesNotMatch(source, /loanFactLabelClassName/);

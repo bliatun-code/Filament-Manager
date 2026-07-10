@@ -6,17 +6,28 @@ export type ResolvedTheme = "light" | "dark";
 
 const STORAGE_KEY = "bfm-theme-mode";
 const CHANGE_EVENT = "bfm-theme-mode-change";
+const DESKTOP_VISUAL_QA_THEME_QUERY_KEY = "bfm_visual_qa_theme";
 
 let mediaListenerAttached = false;
 
-function isDesktopVisualQaRoute(): boolean {
+function desktopVisualQaThemeMode(): ThemeMode | null {
   try {
     if (typeof window === "undefined") {
-      return false;
+      return null;
     }
-    return new URLSearchParams(window.location.search).has(DESKTOP_VISUAL_QA_QUERY_KEY);
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has(DESKTOP_VISUAL_QA_QUERY_KEY)) {
+      return null;
+    }
+    const requestedMode = String(params.get(DESKTOP_VISUAL_QA_THEME_QUERY_KEY) ?? "")
+      .trim()
+      .toLowerCase();
+    if (requestedMode === "light" || requestedMode === "dark" || requestedMode === "auto") {
+      return requestedMode;
+    }
+    return "dark";
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -66,8 +77,9 @@ export function getResolvedTheme(mode: ThemeMode = getThemeMode()): ResolvedThem
 }
 
 export function getThemeMode(): ThemeMode {
-  if (isDesktopVisualQaRoute()) {
-    return "dark";
+  const visualQaThemeMode = desktopVisualQaThemeMode();
+  if (visualQaThemeMode) {
+    return visualQaThemeMode;
   }
   let stored: string | null = null;
   try {

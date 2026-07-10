@@ -39,6 +39,7 @@ export default function PrintersPage() {
   const tauri = isTauri();
   const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
   const desktopVisualQaNeedsPrinterAction =
+    desktopVisualQaScenario === "add-printer" ||
     desktopVisualQaScenario === "printer-slot-assignment" ||
     desktopVisualQaScenario === "printer-slot-onboarding" ||
     desktopVisualQaScenario === "printer-rfid-override" ||
@@ -131,6 +132,7 @@ export default function PrintersPage() {
     selectPrinterModel,
     closeAddPrinterModal,
     openAddPrinterModal,
+    openAddPrinterModalForVisualQa,
     handleAddPrinter,
   } = useAddPrinterWorkflow({
     busy,
@@ -148,6 +150,7 @@ export default function PrintersPage() {
 
   const {
     allowedSpoolsForSlot,
+    cancelIncomingWeightDialog,
     confirmIncomingWeightDialog,
     findAllowedSpoolForSlot,
     findLiveTrayForSlot,
@@ -198,6 +201,25 @@ export default function PrintersPage() {
   useEffect(() => {
     resetPrinterInteractionStateRef.current = resetPrinterInteractionState;
   }, [resetPrinterInteractionState]);
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenario !== "add-printer" ||
+      desktopVisualQaApplied ||
+      loading ||
+      !tauri
+    ) {
+      return;
+    }
+    openAddPrinterModalForVisualQa();
+    setDesktopVisualQaApplied(true);
+  }, [
+    desktopVisualQaApplied,
+    desktopVisualQaScenario,
+    loading,
+    openAddPrinterModalForVisualQa,
+    tauri,
+  ]);
 
   useEffect(() => {
     if (
@@ -488,6 +510,7 @@ export default function PrintersPage() {
           <PrinterOverviewCard
             key={printer.printer.id}
             printer={printer}
+            defaultSlotsExpanded={printers.length === 1}
             busy={busy}
             tauri={tauri}
             clientReadOnly={clientReadOnly}
@@ -521,6 +544,7 @@ export default function PrintersPage() {
           outgoingWeightValue={outgoingWeightValue}
           onIncomingWeightChange={setIncomingWeightValue}
           onOutgoingWeightChange={setOutgoingWeightValue}
+          onCancel={cancelIncomingWeightDialog}
           onSave={() => void confirmIncomingWeightDialog()}
         />
       ) : null}

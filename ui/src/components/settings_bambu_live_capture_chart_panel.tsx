@@ -1,8 +1,10 @@
+import { useId } from "react";
 import { DiagnosticCaptureChart } from "./diagnostic_capture_chart";
 import { useI18n } from "../lib/i18n";
 import {
   settingsCompactSelectClass,
   settingsSectionLabelClass,
+  settingsTinyLabelClass,
 } from "../lib/settings_ui_classes";
 import type { DiagnosticChartFieldOption } from "../lib/diagnostic_capture";
 
@@ -26,6 +28,8 @@ export function SettingsBambuLiveCaptureChartPanel({
   selectedFieldPath,
 }: SettingsBambuLiveCaptureChartPanelProps) {
   const { t } = useI18n();
+  const componentId = useId().replaceAll(":", "");
+  const chartFieldSelectId = `bambu-live-chart-field-${componentId}`;
 
   return (
     <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-950/40">
@@ -41,32 +45,34 @@ export function SettingsBambuLiveCaptureChartPanel({
             )}
           </div>
         </div>
-        <select
-          value={selectedFieldPath ?? ""}
-          onChange={(event) => onSelectedFieldChange(event.target.value)}
-          disabled={chartFields.length === 0}
-          className={`min-w-[260px] ${settingsCompactSelectClass}`}
-        >
-          {chartFields.length === 0 ? (
-            <option value="">
-              {t("settings.bambuLiveChartNoFields", "No chart-ready numeric fields yet")}
-            </option>
-          ) : null}
-          {chartFields.map((field) => (
-            <option key={field.path} value={field.path}>
-              {field.label}
-            </option>
-          ))}
-        </select>
+        {chartFields.length > 0 ? (
+          <div className="w-full sm:w-auto">
+            <label htmlFor={chartFieldSelectId} className={`mb-1 block ${settingsTinyLabelClass}`}>
+              {t("settings.bambuLiveChartFieldLabel", "Chart field")}
+            </label>
+            <select
+              id={chartFieldSelectId}
+              value={selectedFieldPath ?? ""}
+              onChange={(event) => onSelectedFieldChange(event.target.value)}
+              className={`w-full min-w-0 sm:min-w-[260px] ${settingsCompactSelectClass}`}
+            >
+              {chartFields.map((field) => (
+                <option key={field.path} value={field.path}>
+                  {field.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
       </div>
       <div className="mt-3">
-        {selectedFieldPath ? (
-          <DiagnosticCaptureChart fieldPath={selectedFieldPath} points={chartPoints} />
-        ) : (
-          <div className="surface-subtle border-dashed px-3 py-3 text-[11px] text-slate-600 dark:text-slate-300">
+        {chartFields.length === 0 ? (
+          <div className="surface-subtle border-dashed px-3 py-2 text-[11px] text-slate-600 dark:text-slate-300">
             {t("settings.bambuLiveChartNoFields", "No chart-ready numeric fields yet")}
           </div>
-        )}
+        ) : selectedFieldPath ? (
+          <DiagnosticCaptureChart fieldPath={selectedFieldPath} points={chartPoints} />
+        ) : null}
       </div>
     </div>
   );

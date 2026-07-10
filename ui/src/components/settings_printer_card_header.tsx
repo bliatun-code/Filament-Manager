@@ -4,8 +4,10 @@ import { inlineStatusSignalClass, type SemanticChipTone } from "../lib/chip_styl
 import { useI18n } from "../lib/i18n";
 import { settingsActionButtonClass } from "../lib/settings_ui_classes";
 import { PrinterModelPreview } from "./printer_model_preview";
+import { SettingsPrinterObservedDetailsToggle } from "./settings_printer_observed_details_toggle";
 
 type SettingsPrinterCardHeaderProps = {
+  actionsLocked: boolean;
   busy: boolean;
   configuredSetup: string;
   confirmDelete: boolean;
@@ -17,11 +19,13 @@ type SettingsPrinterCardHeaderProps = {
   onRemove: () => void;
   onToggleDetails: () => void;
   onToggleEdit: () => void;
+  observedDetailsId: string;
   printer: PrinterRow;
   tauri: boolean;
 };
 
 export function SettingsPrinterCardHeader({
+  actionsLocked,
   busy,
   configuredSetup,
   confirmDelete,
@@ -33,6 +37,7 @@ export function SettingsPrinterCardHeader({
   onRemove,
   onToggleDetails,
   onToggleEdit,
+  observedDetailsId,
   printer,
   tauri,
 }: SettingsPrinterCardHeaderProps) {
@@ -40,13 +45,13 @@ export function SettingsPrinterCardHeader({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <PrinterModelPreview
           model={printer.model}
           hasMultiMaterial={hasMultiMaterial}
           compact
         />
-        <div className="text-sm text-slate-700 dark:text-slate-200">
+        <div className="min-w-0 break-words text-sm text-slate-700 dark:text-slate-200">
           <span className="font-semibold text-slate-900 dark:text-slate-50">
             {printer.name}
           </span>{" "}
@@ -64,37 +69,45 @@ export function SettingsPrinterCardHeader({
           {configuredSetup}
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        {hasLiveIntegration ? (
-          <button
-            type="button"
-            className={settingsActionButtonClass("neutral", "compact")}
-            onClick={onToggleDetails}
-            disabled={!tauri}
-          >
-            {isExpanded
-              ? t("settings.hideObservedDetails", "Hide observed details")
-              : t("settings.showObservedDetails", "Show observed details & capture")}
-          </button>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {hasLiveIntegration && !isEditing ? (
+          <SettingsPrinterObservedDetailsToggle
+            controlsId={observedDetailsId}
+            disabled={!tauri || busy || actionsLocked}
+            expanded={isExpanded}
+            hideLabel={t("settings.hideObservedDetails", "Hide observed details")}
+            onToggle={onToggleDetails}
+            showLabel={t(
+              "settings.showObservedDetails",
+              "Show observed details & capture",
+            )}
+          />
         ) : null}
-        <button
-          type="button"
-          className={settingsActionButtonClass(isEditing ? "accent" : "neutral", "compact")}
-          onClick={onToggleEdit}
-          disabled={!tauri || busy}
-        >
-          {isEditing ? t("common.close", "Close") : t("settings.reconfigure", "Reconfigure")}
-        </button>
-        <button
-          type="button"
-          className={settingsActionButtonClass(confirmDelete ? "danger" : "dangerQuiet", "compact")}
-          onClick={onRemove}
-          disabled={!tauri || busy}
-        >
-          {confirmDelete
-            ? t("settings.confirmRemove", "Confirm remove")
-            : t("common.remove", "Remove")}
-        </button>
+        {!isEditing ? (
+          <>
+            <button
+              type="button"
+              className={settingsActionButtonClass("neutral", "compact")}
+              onClick={onToggleEdit}
+              disabled={!tauri || busy || actionsLocked}
+            >
+              {t("settings.reconfigure", "Reconfigure")}
+            </button>
+            <button
+              type="button"
+              className={settingsActionButtonClass(
+                confirmDelete ? "danger" : "dangerQuiet",
+                "compact",
+              )}
+              onClick={onRemove}
+              disabled={!tauri || busy || actionsLocked}
+            >
+              {confirmDelete
+                ? t("settings.confirmRemove", "Confirm remove")
+                : t("common.remove", "Remove")}
+            </button>
+          </>
+        ) : null}
       </div>
     </div>
   );

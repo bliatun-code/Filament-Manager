@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import test from "node:test";
 import {
   buildPrinterSlotsByPrinterId,
+  chooseSettingsPrinterEditorVisualQaPrinter,
   buildSettingsPrinterConfirmDeleteMessage,
   buildSettingsPrinterErrorMessage,
   buildSettingsPrinterRemovedMessage,
@@ -10,10 +11,13 @@ import {
   canUseSettingsPrinterWriteTarget,
   derivePrinterMultiConfig,
   isBambuLabPrinter,
+  isPrinterReconfigureDraftDirty,
+  normalizePrinterReconfigureDraft,
   preparePrinterReconfigure,
   sortSettingsPrinters,
 } from "./settings_printer_model";
 import type { PrinterOverviewRow, PrinterRow } from "../lib/tauri_client";
+import type { PrinterReconfigureDraft } from "./settings_printer_model";
 
 function printer(overrides: Partial<PrinterRow>): PrinterRow {
   return {
@@ -22,6 +26,23 @@ function printer(overrides: Partial<PrinterRow>): PrinterRow {
     model: "Bambu Lab X1 Carbon",
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
+    ...overrides,
+  };
+}
+
+function reconfigureDraft(
+  overrides: Partial<PrinterReconfigureDraft> = {},
+): PrinterReconfigureDraft {
+  return {
+    id: "printer-1",
+    model: "Bambu Lab X1 Carbon",
+    name: "Printer",
+    amsUnits: "1",
+    slotsPerUnit: "4",
+    bambuLiveEnabled: false,
+    bambuLiveHost: "",
+    bambuLiveAccessCode: "",
+    bambuLivePrinterSerial: "",
     ...overrides,
   };
 }
@@ -117,6 +138,33 @@ test("isBambuLabPrinter handles casing and whitespace", () => {
   assert.equal(isBambuLabPrinter("Prusa MK4"), false);
 });
 
+test("printer editor visual QA prefers a Bambu printer with active live integration", () => {
+  const printers = [
+    printer({ id: "prusa", model: "Prusa MK4" }),
+    printer({ id: "bambu-disabled", model: "Bambu Lab A1" }),
+    printer({ id: "bambu-live", model: "Bambu Lab P1S" }),
+  ];
+
+  assert.equal(
+    chooseSettingsPrinterEditorVisualQaPrinter(printers, {
+      "bambu-disabled": { enabled: false },
+      "bambu-live": { enabled: true },
+      prusa: { enabled: true },
+    })?.id,
+    "bambu-live",
+  );
+});
+
+test("printer editor visual QA falls back to the first configured printer", () => {
+  const printers = [
+    printer({ id: "first", model: "Prusa MK4" }),
+    printer({ id: "second", model: "Bambu Lab A1" }),
+  ];
+
+  assert.equal(chooseSettingsPrinterEditorVisualQaPrinter(printers, {})?.id, "first");
+  assert.equal(chooseSettingsPrinterEditorVisualQaPrinter([], {}), null);
+});
+
 test("preparePrinterReconfigure trims required fields and clamps model-specific slots", () => {
   const prepared = preparePrinterReconfigure({
     currentExists: true,
@@ -150,6 +198,174 @@ test("preparePrinterReconfigure trims required fields and clamps model-specific 
     accessCode: "12345678",
     printerSerial: "00M09",
   });
+});
+
+test("normalizePrinterReconfigureDraft matches the persisted reconfigure values", () => {
+  assert.deepEqual(
+    normalizePrinterReconfigureDraft(
+      reconfigureDraft({
+        model: " Bambu Lab A1 mini ",
+        name: " A1 Mini ",
+        amsUnits: "9",
+        slotsPerUnit: "12",
+        bambuLiveEnabled: true,
+        bambuLiveHost: " 192.168.1.20 ",
+        bambuLiveAccessCode: " 12345678 ",
+        bambuLivePrinterSerial: " 00M09 ",
+      }),
+    ),
+    {
+      id: "printer-1",
+      model: "Bambu Lab A1 mini",
+      name: "A1 Mini",
+      amsUnits: 1,
+      slotsPerUnit: 4,
+      bambuLiveEnabled: true,
+      bambuLiveHost: "192.168.1.20",
+      bambuLiveAccessCode: "12345678",
+      bambuLivePrinterSerial: "00M09",
+    },
+  );
+});
+
+test("printer reconfigure draft starts clean", () => {
+  const baseline = reconfigureDraft();
+
+  assert.equal(isPrinterReconfigureDraftDirty(baseline, { ...baseline }), false);
+});
+
+test("printer reconfigure dirty check ignores whitespace and equivalent clamped numbers", () => {
+  const baseline = reconfigureDraft({
+    model: "Bambu Lab A1 mini",
+    name: "A1 Mini",
+    bambuLiveEnabled: true,
+    bambuLiveHost: "192.168.1.20",
+    bambuLiveAccessCode: "12345678",
+    bambuLivePrinterSerial: "00M09",
+  });
+
+  assert.equal(
+    isPrinterReconfigureDraftDirty(
+      baseline,
+      reconfigureDraft({
+        model: " Bambu Lab A1 mini ",
+        name: " A1 Mini ",
+        amsUnits: "09",
+        slotsPerUnit: "12",
+        bambuLiveEnabled: true,
+        bambuLiveHost: " 192.168.1.20 ",
+        bambuLiveAccessCode: " 12345678 ",
+        bambuLivePrinterSerial: " 00M09 ",
+      }),
+    ),
+    false,
+  );
+});
+
+test("printer reconfigure dirty check tracks active capacity fields only", () => {
+  const baseline = reconfigureDraft({ amsUnits: "1", slotsPerUnit: "4" });
+
+  assert.equal(
+    isPrinterReconfigureDraftDirty(baseline, {
+      ...baseline,
+      amsUnits: "2",
+    }),
+    true,
+  );
+  assert.equal(
+    isPrinterReconfigureDraftDirty(baseline, {
+      ...baseline,
+      slotsPerUnit: "3",
+    }),
+    true,
+  );
+
+  const withoutUnits = reconfigureDraft({ amsUnits: "0", slotsPerUnit: "4" });
+  assert.equal(
+    isPrinterReconfigureDraftDirty(withoutUnits, {
+      ...withoutUnits,
+      slotsPerUnit: "1",
+    }),
+    false,
+  );
+});
+
+test("printer reconfigure dirty check tracks model and name", () => {
+  const baseline = reconfigureDraft();
+
+  assert.equal(
+    isPrinterReconfigureDraftDirty(baseline, {
+      ...baseline,
+      model: "Bambu Lab P1S",
+    }),
+    true,
+  );
+  assert.equal(
+    isPrinterReconfigureDraftDirty(baseline, {
+      ...baseline,
+      name: "Workshop printer",
+    }),
+    true,
+  );
+});
+
+test("printer reconfigure dirty check tracks live toggle and enabled credentials", () => {
+  const disabled = reconfigureDraft({
+    bambuLiveEnabled: false,
+    bambuLiveHost: "stored-host",
+    bambuLiveAccessCode: "stored-code",
+    bambuLivePrinterSerial: "stored-serial",
+  });
+
+  assert.equal(
+    isPrinterReconfigureDraftDirty(disabled, {
+      ...disabled,
+      bambuLiveHost: "ignored-host",
+      bambuLiveAccessCode: "ignored-code",
+      bambuLivePrinterSerial: "ignored-serial",
+    }),
+    false,
+  );
+  assert.equal(
+    isPrinterReconfigureDraftDirty(disabled, {
+      ...disabled,
+      bambuLiveEnabled: true,
+    }),
+    true,
+  );
+
+  const enabled = { ...disabled, bambuLiveEnabled: true };
+  assert.equal(
+    isPrinterReconfigureDraftDirty(enabled, {
+      ...enabled,
+      bambuLiveAccessCode: "new-code",
+    }),
+    true,
+  );
+});
+
+test("printer reconfigure dirty check handles an invalid enabled live baseline", () => {
+  const baseline = reconfigureDraft({
+    bambuLiveEnabled: true,
+    bambuLiveHost: "192.168.1.20",
+    bambuLiveAccessCode: "   ",
+    bambuLivePrinterSerial: "00M09",
+  });
+
+  assert.equal(
+    isPrinterReconfigureDraftDirty(baseline, {
+      ...baseline,
+      bambuLiveAccessCode: "",
+    }),
+    false,
+  );
+  assert.equal(
+    isPrinterReconfigureDraftDirty(baseline, {
+      ...baseline,
+      bambuLiveAccessCode: "12345678",
+    }),
+    true,
+  );
 });
 
 test("preparePrinterReconfigure validates missing printer and Bambu live fields", () => {

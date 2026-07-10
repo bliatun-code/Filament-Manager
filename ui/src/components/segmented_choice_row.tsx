@@ -17,6 +17,7 @@ export type SegmentedChoiceRowProps<T extends string> = {
   value: T;
   onChange: (value: T) => void;
   className?: string;
+  groupAriaLabel?: string;
   groupClassName?: string;
   optionSizeClassName?: string;
   isOptionDisabled?: (option: SegmentedChoiceOption<T>) => boolean;
@@ -58,6 +59,7 @@ export function SegmentedChoiceRow<T extends string>({
   value,
   onChange,
   className = "",
+  groupAriaLabel,
   groupClassName = "",
   optionSizeClassName,
   isOptionDisabled,
@@ -77,7 +79,11 @@ export function SegmentedChoiceRow<T extends string>({
           {label}
         </div>
       ) : null}
-      <div className={segmentedChoiceGroupClass(groupClassName)} role="group" aria-label={label}>
+      <div
+        className={segmentedChoiceGroupClass(groupClassName)}
+        role="group"
+        aria-label={groupAriaLabel ?? label}
+      >
         {options.map((option) => {
           const active = option.value === value;
           const disabled = isOptionDisabled?.(option) ?? false;

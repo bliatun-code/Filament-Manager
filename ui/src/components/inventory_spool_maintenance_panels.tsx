@@ -1,8 +1,10 @@
+import { useId } from "react";
 import { useI18n } from "../lib/i18n";
 import {
   inventoryDetailDangerActionButtonClassName,
   inventoryDetailEyebrowClassName,
   inventoryDetailFormControlClassName,
+  inventoryDetailLabelClassName,
   inventoryDetailPanelClassName,
   inventoryDetailSaveButtonClassName,
 } from "./inventory_detail_panel_class";
@@ -57,16 +59,19 @@ export function InventorySpoolTarePanel({
   value,
 }: InventorySpoolTarePanelProps) {
   const { t } = useI18n();
+  const generatedId = useId().replace(/:/g, "");
+  const inputId = `inventory-spool-tare-${generatedId}`;
+  const helpId = `${inputId}-help`;
 
   return (
     <div
       className={inventoryDetailPanelClassName}
       style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
-      <div className={inventoryDetailEyebrowClassName}>
+      <label htmlFor={inputId} className={inventoryDetailEyebrowClassName}>
         {t("inventory.emptySpoolWeight", "Empty spool weight (g)")}
-      </div>
-      <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+      </label>
+      <div id={helpId} className="mt-2 text-xs text-slate-500 dark:text-slate-400">
         {t(
           "inventory.emptySpoolWeightHelp",
           "Used to subtract spool tare from measured total so remaining filament stays accurate.",
@@ -74,6 +79,7 @@ export function InventorySpoolTarePanel({
       </div>
       <div className="mt-3 flex items-center gap-3">
         <input
+          id={inputId}
           type="number"
           min={0}
           step={1}
@@ -81,6 +87,7 @@ export function InventorySpoolTarePanel({
           onChange={(event) => onChange(event.target.value)}
           className={`w-28 ${inventoryDetailFormControlClassName}`}
           disabled={disabled}
+          aria-describedby={helpId}
         />
         <button
           type="button"
@@ -105,23 +112,28 @@ export function InventorySpoolHomeLocationPanel({
   value,
 }: InventorySpoolHomeLocationPanelProps) {
   const { t } = useI18n();
+  const generatedId = useId().replace(/:/g, "");
+  const inputId = `inventory-spool-home-location-${generatedId}`;
+  const helpId = `${inputId}-help`;
 
   return (
     <div
       className={inventoryDetailPanelClassName}
       style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
-      <div className={inventoryDetailEyebrowClassName}>
+      <label htmlFor={inputId} className={inventoryDetailEyebrowClassName}>
         {t("inventory.editHomeLocation", "Home location")}
-      </div>
+      </label>
       <div className="mt-3 flex items-center gap-3">
         <input
+          id={inputId}
           type="text"
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={t("inventory.homeLocationOptional", "Home location (optional)")}
           className={`w-full ${inventoryDetailFormControlClassName}`}
           disabled={disabled}
+          aria-describedby={assignedToPrinter ? helpId : undefined}
         />
         <button
           type="button"
@@ -133,7 +145,7 @@ export function InventorySpoolHomeLocationPanel({
         </button>
       </div>
       {assignedToPrinter ? (
-        <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+        <div id={helpId} className="mt-2 text-xs text-slate-500 dark:text-slate-400">
           {t(
             "inventory.homeLocationHintWhileAssigned",
             "Current placement is managed on the Printers page. Home location is where the spool returns when it is no longer loaded.",
@@ -160,75 +172,108 @@ export function InventorySpoolOwnershipPanel({
 }: InventorySpoolOwnershipPanelProps) {
   const { t } = useI18n();
   const borrowed = isBorrowedInOwnership(typeValue);
+  const generatedId = useId().replace(/:/g, "");
+  const fieldIdPrefix = `inventory-spool-ownership-${generatedId}`;
+  const ownerNameId = `${fieldIdPrefix}-owner-name`;
+  const ownerContactId = `${fieldIdPrefix}-owner-contact`;
+  const ownershipNoteId = `${fieldIdPrefix}-note`;
+  const ownedHelpId = `${fieldIdPrefix}-owned-help`;
 
   return (
     <div
       className={inventoryDetailPanelClassName}
       style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
-      <div className={inventoryDetailEyebrowClassName}>
-        {t("inventory.editOwnership", "Ownership")}
-      </div>
-      <SegmentedChoiceRow
-        className="mt-3"
-        groupClassName="w-full"
-        optionSizeClassName="flex-1 justify-center px-3 py-2 text-sm"
-        value={typeValue}
-        onChange={onChangeType}
-        isOptionDisabled={() => disabled}
-        options={[
-          {
-            value: "OWNED",
-            label: t("inventory.ownedByUs", "Owned"),
-          },
-          {
-            value: "BORROWED_IN",
-            label: t("inventory.borrowedIn", "Borrowed in"),
-          },
-        ]}
-      />
-      {borrowed ? (
-        <div className="mt-3 space-y-2">
-          <input
-            type="text"
-            value={ownerNameValue}
-            onChange={(event) => onChangeName(event.target.value)}
-            placeholder={t("inventory.ownerNameRequired", "Owner name (required)")}
-            className={`w-full ${inventoryDetailFormControlClassName}`}
-            disabled={disabled}
-          />
-          <input
-            type="text"
-            value={contactValue}
-            onChange={(event) => onChangeContact(event.target.value)}
-            placeholder={t("inventory.ownerContactOptional", "Contact (optional)")}
-            className={`w-full ${inventoryDetailFormControlClassName}`}
-            disabled={disabled}
-          />
-          <textarea
-            value={noteValue}
-            onChange={(event) => onChangeNote(event.target.value)}
-            placeholder={t("inventory.ownershipNoteOptional", "Note (optional)")}
-            className={`min-h-20 w-full resize-y ${inventoryDetailFormControlClassName}`}
-            disabled={disabled}
-          />
-        </div>
-      ) : (
-        <div className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-          {t(
-            "inventory.ownedOwnershipHelp",
-            "Owned rolls stay in your inventory and can be loaned out later.",
-          )}
-        </div>
-      )}
-      <button
-        type="button"
-        onClick={onSave}
-        className={`mt-3 ${inventoryDetailSaveButtonClassName}`}
-        disabled={disabled}
+      <fieldset
+        className="min-w-0 border-0 p-0"
+        aria-describedby={borrowed ? undefined : ownedHelpId}
       >
-        {t("inventory.saveOwnership", "Save ownership")}
-      </button>
+        <legend className={inventoryDetailEyebrowClassName}>
+          {t("inventory.editOwnership", "Ownership")}
+        </legend>
+        <SegmentedChoiceRow
+          className="mt-3"
+          groupClassName="w-full"
+          label={t("inventory.ownershipType", "Ownership type")}
+          optionSizeClassName="flex-1 justify-center px-3 py-2 text-sm"
+          value={typeValue}
+          onChange={onChangeType}
+          isOptionDisabled={() => disabled}
+          options={[
+            {
+              value: "OWNED",
+              label: t("inventory.ownedByUs", "Owned"),
+            },
+            {
+              value: "BORROWED_IN",
+              label: t("inventory.borrowedIn", "Borrowed in"),
+            },
+          ]}
+        />
+        {borrowed ? (
+          <div className="mt-3 space-y-2.5">
+            <label htmlFor={ownerNameId} className="block">
+              <span className={inventoryDetailLabelClassName}>
+                {t("inventory.ownerNameRequired", "Owner name (required)")}
+              </span>
+              <input
+                id={ownerNameId}
+                type="text"
+                value={ownerNameValue}
+                onChange={(event) => onChangeName(event.target.value)}
+                placeholder={t("inventory.ownerNameRequired", "Owner name (required)")}
+                className={`mt-1.5 w-full ${inventoryDetailFormControlClassName}`}
+                disabled={disabled}
+              />
+            </label>
+            <label htmlFor={ownerContactId} className="block">
+              <span className={inventoryDetailLabelClassName}>
+                {t("inventory.ownerContactOptional", "Contact (optional)")}
+              </span>
+              <input
+                id={ownerContactId}
+                type="text"
+                value={contactValue}
+                onChange={(event) => onChangeContact(event.target.value)}
+                placeholder={t("inventory.ownerContactOptional", "Contact (optional)")}
+                className={`mt-1.5 w-full ${inventoryDetailFormControlClassName}`}
+                disabled={disabled}
+              />
+            </label>
+            <label htmlFor={ownershipNoteId} className="block">
+              <span className={inventoryDetailLabelClassName}>
+                {t("inventory.ownershipNoteOptional", "Note (optional)")}
+              </span>
+              <textarea
+                id={ownershipNoteId}
+                value={noteValue}
+                onChange={(event) => onChangeNote(event.target.value)}
+                placeholder={t("inventory.ownershipNoteOptional", "Note (optional)")}
+                className={`mt-1.5 min-h-20 w-full resize-y ${inventoryDetailFormControlClassName}`}
+                disabled={disabled}
+              />
+            </label>
+          </div>
+        ) : (
+          <div
+            id={ownedHelpId}
+            className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400"
+          >
+            {t(
+              "inventory.ownedOwnershipHelp",
+              "Owned rolls stay in your inventory and can be loaned out later.",
+            )}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={onSave}
+          className={`mt-3 ${inventoryDetailSaveButtonClassName}`}
+          disabled={disabled}
+        >
+          {t("inventory.saveOwnership", "Save ownership")}
+        </button>
+      </fieldset>
     </div>
   );
 }

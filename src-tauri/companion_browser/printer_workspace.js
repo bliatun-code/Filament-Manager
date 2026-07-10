@@ -366,7 +366,6 @@ export function renderPrinterWeightTaskSheetBody(options) {
       : mode === "assign"
         ? t(locale, "printers.loadFilament", "Load filament")
         : t(locale, "detail.saveWeight", "Save weight");
-  const actionSwatch = task.targetSwatchColor || task.currentSwatchColor;
 
   return `
     <div class="stack printer-weight-sheet">
@@ -451,7 +450,6 @@ export function renderPrinterWeightTaskSheetBody(options) {
           escapeHtml,
           actions: renderCompanionActionButton({
             type: "submit",
-            swatch: actionSwatch,
             disabled: state.busy,
             escapeHtml,
             label: submitLabel,
@@ -641,7 +639,7 @@ function renderSlotCards(options) {
         : slotHasLiveLoaded
           ? liveMaterialBits || t(locale, "printers.liveDetected", "Live filament detected")
           : t(locale, "printers.empty", "Empty");
-      const slotContentColor = toSwatchColor(slotSwatch);
+      const slotContentColor = slotUsesSwatchSurface ? toSwatchColor(slotSwatch) : "";
       const slotSummary = slot.spool_id
         ? [formatStatusLabel(slot.spool_status || "ASSIGNED", locale), formatRollReference({ id: slot.spool_id })]
             .filter(Boolean)
@@ -698,8 +696,8 @@ function renderSlotCards(options) {
             </div>
             <span class="inline-signal slot-card-state" data-tone="${escapeHtml(slotStateTone)}">${escapeHtml(slotStateLabel)}</span>
           </div>
-          <div class="slot-content-line swatch-line">
-            <span class="swatch-dot" style="background:${escapeHtml(slotContentColor)}"></span>
+          <div class="slot-content-line${slotUsesSwatchSurface ? " swatch-line" : ""}">
+            ${slotUsesSwatchSurface ? `<span class="swatch-dot" style="background:${escapeHtml(slotContentColor)}"></span>` : ""}
             <span>${escapeHtml(slotContentTitle)}</span>
           </div>
           <div class="muted slot-card-subtitle">${escapeHtml(slotSummary)}</div>
@@ -710,7 +708,6 @@ function renderSlotCards(options) {
               slot.spool_id
                 ? `
                   ${renderCompanionActionButton({
-                    swatch: true,
                     className: "slot-button slot-button-primary",
                     attributes: {
                       "data-action": "start-printer-weight-update",
@@ -748,7 +745,6 @@ function renderSlotCards(options) {
               !slot.spool_id
                 ? `
                   ${renderCompanionActionButton({
-                    swatch: slotHasLiveLoaded,
                     className: "slot-button slot-button-primary slot-button-emphasis",
                     attributes: {
                       "data-action": "start-printer-slot-assignment",

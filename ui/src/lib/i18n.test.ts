@@ -61,12 +61,59 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   const enDictionary = await loadLocaleDictionary("en");
 
   assert.equal(lookup(enDictionary, "app.title"), "Filament Manager");
+  assert.equal(lookup(enDictionary, "common.cancel"), "Cancel");
+  assert.equal(lookup(enDictionary, "common.selected"), "Selected");
+  assert.equal(lookup(enDictionary, "inventory.loanSearchLabel"), "Search available rolls");
+  assert.equal(lookup(enDictionary, "inventory.rfidTechnicalDetails"), "Technical details");
+  assert.equal(lookup(enDictionary, "inventory.rfidConnected"), "Connected");
   assert.equal(getCachedLocaleDictionary("en"), enDictionary);
 
   const nbDictionary = await loadLocaleDictionary("nb");
 
   assert.equal(lookup(nbDictionary, "nav.inventory"), "Lager");
+  assert.equal(lookup(nbDictionary, "common.cancel"), "Avbryt");
+  assert.equal(lookup(nbDictionary, "common.selected"), "Valgt");
+  assert.equal(
+    lookup(nbDictionary, "inventory.loanSearchLabel"),
+    "Søk i tilgjengelige filamenter",
+  );
+  assert.equal(lookup(nbDictionary, "inventory.rfidTechnicalDetails"), "Tekniske detaljer");
+  assert.equal(lookup(nbDictionary, "inventory.rfidConnected"), "Tilkoblet");
+  assert.equal(lookup(nbDictionary, "inventory.rfidAmsSlotPresent"), "Fysisk til stede");
   assert.equal(getCachedLocaleDictionary("nb"), nbDictionary);
+});
+
+test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {
+  const enDictionary = await loadLocaleDictionary("en");
+  const nbDictionary = await loadLocaleDictionary("nb");
+  const expectedCopy = {
+    bambuLiveSection: ["Live Bambu status (beta)", "Live Bambu-status (beta)"],
+    bambuLiveHint: [
+      "Optional local read-only integration for observing printer and AMS status while we evaluate which live fields are stable and valuable.",
+      "Valgfri lokal, skrivebeskyttet integrasjon for å observere printer- og AMS-status mens vi vurderer hvilke live-felt som er stabile og nyttige.",
+    ],
+    enableBambuLive: ["Enable live status", "Aktiver live-status"],
+    bambuLiveStandaloneOnly: [
+      "Live Bambu status can only be configured on the host desktop in this phase.",
+      "Live Bambu-status kan i denne fasen bare konfigureres på vertsmaskinen.",
+    ],
+    bambuLiveHost: ["Printer host / IP", "Printeradresse / IP"],
+    bambuLiveAccessCode: ["Access code", "Tilgangskode"],
+    bambuLivePrinterSerial: ["Printer serial", "Printerserienummer"],
+    bambuLiveOptInNote: [
+      "Credentials are stored locally on this desktop as part of the current experimental opt-in flow.",
+      "Tilgangsopplysningene lagres lokalt på denne maskinen som en del av den eksperimentelle funksjonen.",
+    ],
+    bambuLiveDisabledNote: [
+      "Leave disabled to keep the current printer flow unchanged.",
+      "La funksjonen være deaktivert for å beholde gjeldende printerflyt uendret.",
+    ],
+  } as const;
+
+  for (const [key, [expectedEn, expectedNb]] of Object.entries(expectedCopy)) {
+    assert.equal(lookup(enDictionary, `settings.${key}`), expectedEn);
+    assert.equal(lookup(nbDictionary, `settings.${key}`), expectedNb);
+  }
 });
 
 test("resolveInitialLocale falls back when localStorage throws", () => {

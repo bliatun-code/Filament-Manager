@@ -275,8 +275,6 @@ export function SlotCatalogOnboardingModal({
             <ModalActionButton
               type="button"
               variant="primary"
-              swatchColor={prompt.master.hex_color}
-              resolvedTheme={resolvedTheme}
               onClick={onSave}
               disabled={saveDisabled}
             >

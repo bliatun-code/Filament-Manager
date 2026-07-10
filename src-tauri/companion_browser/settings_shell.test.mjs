@@ -75,6 +75,12 @@ test("settings shell localizes visible controls in norwegian", () => {
 
   assert.match(html, /Innstillinger/);
   assert.match(html, /Språk/);
+  assert.match(html, /class="segmented-control settings-theme-control"/);
+  assert.match(html, /Følg enheten/);
+  assert.match(html, /Lyse flater/);
+  assert.match(html, /Bedre i svakt lys/);
+  assert.match(html, /Lys modus/);
+  assert.doesNotMatch(html, /Lys modus · Lys/);
   assert.match(html, /Norsk/);
   assert.match(html, /Engelsk/);
   assert.match(html, /Lisens/);

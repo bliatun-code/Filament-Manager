@@ -67,6 +67,18 @@ import { useSlotDropdownDismissal } from "./use_slot_dropdown_dismissal";
 
 type Translate = I18nContextValue["t"];
 
+export function discardIncomingWeightSlotDraft(
+  current: Record<string, SlotSwapDraft>,
+  slotId: string | null | undefined,
+): Record<string, SlotSwapDraft> {
+  if (!slotId || !(slotId in current)) {
+    return current;
+  }
+  const next = { ...current };
+  delete next[slotId];
+  return next;
+}
+
 type UsePrinterSlotInteractionsInput = {
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
   busy: boolean;
@@ -273,6 +285,20 @@ export function usePrinterSlotInteractions({
     },
     [resolveSpoolTareWeightById],
   );
+
+  const cancelIncomingWeightDialog = useCallback(() => {
+    if (busy) {
+      return;
+    }
+
+    const slotId = incomingWeightPrompt?.slotId;
+    if (slotId) {
+      setSlotDrafts((current) => discardIncomingWeightSlotDraft(current, slotId));
+    }
+    setIncomingWeightPrompt(null);
+    setIncomingWeightValue("");
+    setOutgoingWeightValue("");
+  }, [busy, incomingWeightPrompt?.slotId]);
 
   const applyMeasuredWeightWithUsage = useCallback(
     async (
@@ -1023,6 +1049,7 @@ export function usePrinterSlotInteractions({
 
   return {
     allowedSpoolsForSlot,
+    cancelIncomingWeightDialog,
     confirmIncomingWeightDialog,
     findAllowedSpoolForSlot,
     findLiveTrayForSlot,

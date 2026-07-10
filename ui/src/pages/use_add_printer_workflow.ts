@@ -68,13 +68,7 @@ export function useAddPrinterWorkflow({
     setShowAddPrinterModal(false);
   }, [busy]);
 
-  const openAddPrinterModal = useCallback(() => {
-    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-      return;
-    }
-    if (clientReadOnly && !canUseClientHostWrite()) {
-      return;
-    }
+  const openAddPrinterModalForVisualQa = useCallback(() => {
     setNewPrinterModel("");
     setNewPrinterName("");
     setNewAmsUnits("0");
@@ -82,12 +76,21 @@ export function useAddPrinterWorkflow({
     setShowAddPrinterModal(true);
     setError(null);
     setInfo(null);
+  }, [setError, setInfo]);
+
+  const openAddPrinterModal = useCallback(() => {
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
+    openAddPrinterModalForVisualQa();
   }, [
     canUseClientHostWrite,
     clientReadOnly,
     ensureLocalWriteAllowed,
-    setError,
-    setInfo,
+    openAddPrinterModalForVisualQa,
   ]);
 
   const handleAddPrinter = useCallback(async () => {
@@ -171,6 +174,7 @@ export function useAddPrinterWorkflow({
     selectPrinterModel,
     closeAddPrinterModal,
     openAddPrinterModal,
+    openAddPrinterModalForVisualQa,
     handleAddPrinter,
   };
 }

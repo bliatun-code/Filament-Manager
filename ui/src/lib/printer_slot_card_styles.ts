@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import {
-  printerSwatchActionButtonStyle,
   printerSwatchInteractiveInsetStyle,
   printerSwatchSurfaceStyle,
 } from "./printer_live_display";
@@ -16,13 +15,13 @@ export type PrinterSlotCardStyles = {
 export function buildPrinterSlotCardStyles(options: {
   slotSwatchHex: string | null;
   hasAssignedSpool: boolean;
-  hasSelectedTargetSpool: boolean;
+  isDropdownOpen: boolean;
   resolvedTheme: ResolvedTheme;
 }): PrinterSlotCardStyles {
   const {
     slotSwatchHex,
     hasAssignedSpool,
-    hasSelectedTargetSpool,
+    isDropdownOpen,
     resolvedTheme,
   } = options;
   const slotInnerShadow =
@@ -30,26 +29,50 @@ export function buildPrinterSlotCardStyles(options: {
       ? "inset 0 1px 0 rgba(255, 255, 255, 0.04)"
       : "inset 0 1px 0 rgba(255, 255, 255, 0.45)";
   const selectorStyle = slotSwatchHex
-    ? {
-        ...printerSwatchInteractiveInsetStyle(
+    ? (() => {
+        const swatchStyle = printerSwatchInteractiveInsetStyle(
           slotSwatchHex,
           resolvedTheme,
-          hasSelectedTargetSpool ? "selected" : "default",
-        ),
-        borderColor: "transparent",
-        boxShadow: slotInnerShadow,
-      }
+          isDropdownOpen ? "selected" : "default",
+        );
+        return resolvedTheme === "dark"
+          ? {
+              ...swatchStyle,
+              borderColor: "transparent",
+              boxShadow: slotInnerShadow,
+            }
+          : {
+              ...swatchStyle,
+              borderColor: isDropdownOpen
+                ? swatchStyle.borderColor
+                : "rgba(71, 85, 105, 0.68)",
+              borderWidth: 1,
+            };
+      })()
     : undefined;
   const currentRollStyle = hasAssignedSpool
-    ? {
-        ...printerSwatchInteractiveInsetStyle(slotSwatchHex, resolvedTheme, "selected"),
-        borderColor: "transparent",
-        boxShadow: slotInnerShadow,
-      }
+    ? (() => {
+        const swatchStyle = printerSwatchInteractiveInsetStyle(
+          slotSwatchHex,
+          resolvedTheme,
+          resolvedTheme === "dark" ? "selected" : "default",
+        );
+        return resolvedTheme === "dark"
+          ? {
+              ...swatchStyle,
+              borderColor: "transparent",
+              boxShadow: slotInnerShadow,
+            }
+          : {
+              ...swatchStyle,
+              borderWidth: 1,
+            };
+      })()
     : undefined;
-  const actionStyle = slotSwatchHex
-    ? printerSwatchActionButtonStyle(slotSwatchHex, resolvedTheme)
-    : undefined;
+  // Filament color identifies the roll, not the meaning of the action. Keep
+  // the weight action neutral so different colors do not imply different
+  // success, warning, or danger semantics.
+  const actionStyle = undefined;
   const panelStyle = slotSwatchHex
     ? printerSwatchSurfaceStyle(slotSwatchHex, "panel", resolvedTheme)
     : undefined;

@@ -13,3 +13,8 @@ test("Dashboard header action button keeps shared focus treatment", () => {
     /inline-flex items-center gap-2 rounded-lg border border-slate-300\/70 bg-white\/86 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm shadow-slate-300\/25 backdrop-blur transition hover:bg-white dark:border-slate-700\/70/,
   );
 });
+
+test("Dashboard shows headline data in two columns in compact desktop windows", () => {
+  assert.match(source, /min-\[720px\]:grid-cols-2 xl:grid-cols-4/);
+  assert.doesNotMatch(source, /gap-4 md:grid-cols-2 xl:grid-cols-4/);
+});

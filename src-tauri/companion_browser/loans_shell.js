@@ -265,8 +265,30 @@ export function renderLoanReturnTaskSheetBody(options) {
     t(locale, "loans.unknownBorrower", "Unknown");
   const direction = normalizeLoanDirection(loanRow);
   const tareWeight = resolveSpoolTareWeight(loanRow, loanRow.vendor);
-  const defaultMeasuredReturnWeight =
-    Number(loanRow.spool_remaining_g ?? loanRow.loan.grams_out ?? 0) + tareWeight;
+  const rawLoanedWeight = Number(loanRow.loan.grams_out ?? 0);
+  const loanedWeight = Number.isFinite(rawLoanedWeight)
+    ? Math.max(0, Math.round(rawLoanedWeight))
+    : 0;
+  const rawReturnedFilamentWeight = Number(loanRow.spool_remaining_g ?? loanedWeight);
+  const defaultReturnedFilamentWeight = Number.isFinite(rawReturnedFilamentWeight)
+    ? Math.max(0, Math.round(rawReturnedFilamentWeight))
+    : loanedWeight;
+  const defaultMeasuredReturnWeight = defaultReturnedFilamentWeight + tareWeight;
+  const estimatedUsedWeight = Math.max(0, loanedWeight - defaultReturnedFilamentWeight);
+  const returnWeightCalculation = t(
+    locale,
+    direction === "INBOUND"
+      ? "loans.handBackWeightCalculation"
+      : "loans.returnWeightCalculation",
+    direction === "INBOUND"
+      ? "{total} total − {tare} spool tare = {returned} handed-back filament"
+      : "{total} total − {tare} spool tare = {returned} returned filament",
+    {
+      total: formatGrams(defaultMeasuredReturnWeight),
+      tare: formatGrams(tareWeight),
+      returned: formatGrams(defaultReturnedFilamentWeight),
+    },
+  );
   const actionSwatch =
     loanRow.hex_color ||
     suggestSwatchHex(loanRow.color_name, loanRow.filament_name, loanRow.vendor, loanRow.material);
@@ -323,9 +345,27 @@ export function renderLoanReturnTaskSheetBody(options) {
                 type="number"
                 min="0"
                 step="1"
+                aria-describedby="loan-return-calculation"
                 value="${escapeHtml(defaultMeasuredReturnWeight)}"
               />`,
             })}
+            <div
+              id="loan-return-calculation"
+              class="metric-card"
+            >
+              <div class="metric-label">${escapeHtml(
+                t(locale, "loans.returnCalculation", "Suggested return calculation"),
+              )}</div>
+              <div class="metric-value">${escapeHtml(returnWeightCalculation)}</div>
+              <div class="muted">${escapeHtml(
+                t(
+                  locale,
+                  "loans.estimatedUsedCalculation",
+                  "Estimated used: {used}",
+                  { used: formatGrams(estimatedUsedWeight) },
+                ),
+              )}</div>
+            </div>
             ${renderDetailField({
               escapeHtml,
               label:
@@ -347,7 +387,6 @@ export function renderLoanReturnTaskSheetBody(options) {
               escapeHtml,
               actions: renderCompanionActionButton({
                 type: "submit",
-                swatch: actionSwatch,
                 disabled: state.busy,
                 escapeHtml,
                 label:
@@ -387,6 +426,16 @@ export function renderLoanCreateTaskSheetBody(options) {
   const reference = formatRollReference(selectedSpool.spool);
   const tareWeight = resolveSpoolTareWeight(selectedSpool.spool, selectedSpool.master.vendor);
   const defaultMeasuredWeight = Number(selectedSpool.spool.remaining_g ?? 0) + tareWeight;
+  const outgoingWeightCalculation = t(
+    locale,
+    "loans.outgoingWeightCalculation",
+    "{total} total − {tare} spool tare = {filament} filament lent out",
+    {
+      total: formatGrams(defaultMeasuredWeight),
+      tare: formatGrams(tareWeight),
+      filament: formatGrams(selectedSpool.spool.remaining_g),
+    },
+  );
   const metadata = [
     selectedSpool.master.vendor || "",
     reference,
@@ -433,9 +482,19 @@ export function renderLoanCreateTaskSheetBody(options) {
               type="number"
               min="0"
               step="1"
+              aria-describedby="loan-outgoing-calculation"
               value="${escapeHtml(defaultMeasuredWeight)}"
             />`,
           })}
+          <div
+            id="loan-outgoing-calculation"
+            class="metric-card"
+          >
+            <div class="metric-label">${escapeHtml(
+              t(locale, "loans.outgoingCalculation", "Suggested outgoing calculation"),
+            )}</div>
+            <div class="metric-value">${escapeHtml(outgoingWeightCalculation)}</div>
+          </div>
           ${renderDetailField({
             escapeHtml,
             label: t(locale, "detail.loanNoteOptional", "Loan note (optional)"),

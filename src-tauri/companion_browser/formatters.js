@@ -12,11 +12,13 @@ export function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
-export function formatGrams(value) {
+export function formatGrams(value, locale = "en") {
+  const normalizedLocale = normalizeCompanionLocale(locale);
   if (value == null || Number.isNaN(Number(value))) {
     return "Unknown";
   }
-  return `${new Intl.NumberFormat("en-US").format(Number(value))} g`;
+  const numberLocale = normalizedLocale === "nb" ? "nb-NO" : "en-US";
+  return `${new Intl.NumberFormat(numberLocale).format(Number(value))} g`;
 }
 
 function normalizeDisplayToken(value) {
@@ -33,6 +35,17 @@ function splitDisplayTokens(value) {
     .split("·")
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
+}
+
+const TERMINAL_BASE_COLOR_PATTERN =
+  /\b(black|blue|brown|gray|grey|green|orange|pink|purple|red|silver|white|yellow)\b(?=\s*(?:\(\d{5}\))?$)/;
+
+function normalizeColorDisplayToken(value) {
+  const normalizedCodeSpacing = String(value || "").replace(/\s*\((\d{5})\)\s*$/, " ($1)");
+  return normalizedCodeSpacing.replace(
+    TERMINAL_BASE_COLOR_PATTERN,
+    (color) => `${color[0].toUpperCase()}${color.slice(1)}`,
+  );
 }
 
 function tokenStartsWithToken(baseToken, nextToken) {
@@ -54,7 +67,7 @@ export function formatInventoryDisplayTitle(materialRaw, filamentRaw, colorRaw =
   const tokens = [
     ...splitDisplayTokens(materialRaw),
     ...splitDisplayTokens(filamentRaw),
-    ...splitDisplayTokens(colorRaw),
+    ...splitDisplayTokens(colorRaw).map(normalizeColorDisplayToken),
   ].filter((token, index, allTokens) => {
     if (index === 0) {
       return true;

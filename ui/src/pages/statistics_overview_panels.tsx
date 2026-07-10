@@ -5,6 +5,41 @@ import type { InventoryOverview, PrinterOverviewRow } from "../lib/tauri_client"
 import { StatisticsEmptyState, SummaryMetricTile } from "./statistics_primitives";
 import { statisticsInteractiveCardClass } from "./statistics_view_helpers";
 
+function OwnershipMetricTile({
+  label,
+  lowStock = false,
+  ownership,
+  value,
+}: {
+  label: string;
+  lowStock?: boolean;
+  ownership: "owned" | "borrowed";
+  value: string;
+}) {
+  const surfaceClass = lowStock
+    ? "border-rose-200/80 bg-rose-50/65 dark:border-rose-400/25 dark:bg-rose-500/10"
+    : "border-slate-200/85 bg-white/72 dark:border-slate-700 dark:bg-slate-950/38";
+  const markerClass =
+    ownership === "owned"
+      ? "bg-slate-600 dark:bg-slate-300"
+      : "border-2 border-slate-500 bg-transparent dark:border-slate-400";
+
+  return (
+    <div
+      className={`rounded-lg border px-3 py-2 ${surfaceClass}`}
+      data-ownership={ownership}
+    >
+      <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+        <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${markerClass}`} />
+        <span>{label}</span>
+      </div>
+      <div className="mt-1 text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+        {value}
+      </div>
+    </div>
+  );
+}
+
 export function StatisticsOwnershipSnapshotPanel({
   ownershipOverview,
   t,
@@ -14,65 +49,66 @@ export function StatisticsOwnershipSnapshotPanel({
 }) {
   return (
     <div className="content-section surface-card">
-      <div className="flex flex-wrap items-start gap-3">
-        <div>
-          <div className="section-eyebrow">
-            {t("statistics.ownershipSnapshot", "Ownership snapshot")}
-          </div>
-          <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            {t(
-              "statistics.ownershipSnapshotHint",
-              "Additive ownership split for on-hand stock and recent print usage. The headline cards above still show the combined totals.",
-            )}
-          </div>
+      <div>
+        <div className="section-eyebrow">
+          {t("statistics.ownershipSnapshot", "Ownership snapshot")}
+        </div>
+        <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          {t(
+            "statistics.ownershipSnapshotHint",
+            "Additive ownership split for on-hand stock and recorded print usage. The headline cards above still show the combined totals.",
+          )}
         </div>
       </div>
-      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryMetricTile
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
+        <OwnershipMetricTile
           key={`owned-on-hand-${ownershipOverview?.total_owned_spools ?? 0}`}
           label={t("statistics.ownedOnHand", "Owned on hand")}
           value={(ownershipOverview?.total_owned_spools ?? 0).toString()}
-          tone="sky"
+          ownership="owned"
         />
-        <SummaryMetricTile
+        <OwnershipMetricTile
           key={`borrowed-on-hand-${ownershipOverview?.total_borrowed_in_spools ?? 0}`}
           label={t("statistics.borrowedInOnHand", "Borrowed in on hand")}
           value={(ownershipOverview?.total_borrowed_in_spools ?? 0).toString()}
-          tone="amber"
+          ownership="borrowed"
         />
-        <SummaryMetricTile
+        <OwnershipMetricTile
           key={`owned-consumption-${ownershipOverview?.owned_consumption_30d ?? 0}`}
-          label={t("statistics.ownedPrintUsage30d", "Owned print use (30d)")}
+          label={t("statistics.ownedPrintUsage30d", "Recorded print use · owned")}
           value={`${ownershipOverview?.owned_consumption_30d ?? 0} g`}
-          tone="emerald"
+          ownership="owned"
         />
-        <SummaryMetricTile
+        <OwnershipMetricTile
           key={`borrowed-consumption-${ownershipOverview?.borrowed_in_consumption_30d ?? 0}`}
-          label={t("statistics.borrowedInPrintUsage30d", "Borrowed-in print use (30d)")}
+          label={t(
+            "statistics.borrowedInPrintUsage30d",
+            "Recorded print use · borrowed from others",
+          )}
           value={`${ownershipOverview?.borrowed_in_consumption_30d ?? 0} g`}
-          tone="amber"
+          ownership="borrowed"
         />
-      </div>
-      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryMetricTile
+        <OwnershipMetricTile
           label={t("statistics.ownedInUse", "Owned assigned")}
           value={(ownershipOverview?.owned_in_use ?? 0).toString()}
-          tone="sky"
+          ownership="owned"
         />
-        <SummaryMetricTile
+        <OwnershipMetricTile
           label={t("statistics.borrowedInInUse", "Borrowed assigned")}
           value={(ownershipOverview?.borrowed_in_in_use ?? 0).toString()}
-          tone="amber"
+          ownership="borrowed"
         />
-        <SummaryMetricTile
+        <OwnershipMetricTile
           label={t("statistics.ownedLowStock", "Owned low stock")}
           value={(ownershipOverview?.owned_low_stock ?? 0).toString()}
-          tone="rose"
+          ownership="owned"
+          lowStock
         />
-        <SummaryMetricTile
+        <OwnershipMetricTile
           label={t("statistics.borrowedInLowStock", "Borrowed-in low stock")}
           value={(ownershipOverview?.borrowed_in_low_stock ?? 0).toString()}
-          tone="rose"
+          ownership="borrowed"
+          lowStock
         />
       </div>
     </div>
@@ -120,30 +156,28 @@ export function StatisticsPerPrinterUsagePanel({
       ) : null}
       <div className="mt-4 space-y-3">
         {printers.map((row) => (
-          <div
+          <button
             key={row.printer.id}
-            className={`rounded-lg border p-3.5 ${statisticsInteractiveCardClass}`}
-            role="button"
-            tabIndex={0}
+            type="button"
+            aria-haspopup="dialog"
+            className={`block w-full rounded-lg border p-3.5 text-left ${statisticsInteractiveCardClass}`}
             onClick={() => onOpenConsumption(row)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onOpenConsumption(row);
-              }
-            }}
             style={printerBrandSurfaceStyle(row.printer.model, "compact", resolvedTheme)}
           >
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="font-semibold text-slate-900 dark:text-slate-50">
+            <span className="flex flex-wrap items-start justify-between gap-4">
+              <span className="block min-w-0">
+                <span className="block font-semibold text-slate-900 dark:text-slate-50">
                   {row.printer.name}
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
+                </span>
+                <span className="block text-xs text-slate-500 dark:text-slate-400">
                   {row.printer.model}
-                </div>
-              </div>
-              <div className="grid w-full grid-cols-3 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[18rem]">
+                </span>
+                <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
+                  {t("statistics.viewDetails", "View details")}
+                  <span aria-hidden="true">→</span>
+                </span>
+              </span>
+              <span className="grid w-full grid-cols-3 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[18rem]">
                 <SummaryMetricTile
                   label={t("printers.jobs", "Jobs")}
                   value={row.usage.total_jobs.toString()}
@@ -159,9 +193,9 @@ export function StatisticsPerPrinterUsagePanel({
                   value={row.usage.failed_jobs.toString()}
                   tone="rose"
                 />
-              </div>
-            </div>
-          </div>
+              </span>
+            </span>
+          </button>
         ))}
       </div>
     </div>

@@ -51,6 +51,70 @@ export function SettingsGeneralTab({
 
   return (
     <>
+      <SettingsSurfaceCard
+        className="space-y-4"
+        eyebrow={t("settings.appearance", "Appearance")}
+        description={t("settings.autoHint", "Auto follows your system light/dark preference.")}
+      >
+        <div className="surface-subtle p-3">
+          <div
+            className="flex flex-wrap gap-2"
+            role="group"
+            aria-label={t("settings.appearance", "Appearance")}
+          >
+            {(["auto", "light", "dark"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={themeMode === mode}
+                onClick={() => onThemeSelection(mode)}
+                className={chipButtonClass(themeMode === mode)}
+              >
+                {mode === "auto"
+                  ? t("settings.auto", "Auto (system)")
+                  : mode === "light"
+                    ? t("settings.light", "Light")
+                    : t("settings.dark", "Dark")}
+              </button>
+            ))}
+          </div>
+        </div>
+      </SettingsSurfaceCard>
+
+      <SettingsSurfaceCard
+        className="space-y-4"
+        eyebrow={t("settings.language", "Language")}
+        description={t(
+          "settings.languageHint",
+          "Choose app language. More sections will be localized incrementally.",
+        )}
+      >
+        <div className="surface-subtle p-3">
+          <div
+            className="flex flex-wrap gap-2"
+            role="group"
+            aria-label={t("settings.language", "Language")}
+          >
+            <button
+              type="button"
+              aria-pressed={locale === "nb"}
+              onClick={() => onLocaleSelection("nb")}
+              className={chipButtonClass(locale === "nb")}
+            >
+              Norsk (bokmål)
+            </button>
+            <button
+              type="button"
+              aria-pressed={locale === "en"}
+              onClick={() => onLocaleSelection("en")}
+              className={chipButtonClass(locale === "en")}
+            >
+              English
+            </button>
+          </div>
+        </div>
+      </SettingsSurfaceCard>
+
       <SettingsSurfaceCard className="space-y-4" eyebrow={t("settings.program", "Program")}>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="surface-subtle px-4 py-3">
@@ -135,59 +199,6 @@ export function SettingsGeneralTab({
           >
             {t("settings.userManual", "User manual")}
           </button>
-        </div>
-      </SettingsSurfaceCard>
-
-      <SettingsSurfaceCard
-        className="space-y-4"
-        eyebrow={t("settings.appearance", "Appearance")}
-        description={t("settings.autoHint", "Auto follows your system light/dark preference.")}
-      >
-        <div className="surface-subtle p-3">
-          <div className="flex flex-wrap gap-2">
-            {(["auto", "light", "dark"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => onThemeSelection(mode)}
-                className={chipButtonClass(themeMode === mode)}
-              >
-                {mode === "auto"
-                  ? t("settings.auto", "Auto (system)")
-                  : mode === "light"
-                    ? t("settings.light", "Light")
-                    : t("settings.dark", "Dark")}
-              </button>
-            ))}
-          </div>
-        </div>
-      </SettingsSurfaceCard>
-
-      <SettingsSurfaceCard
-        className="space-y-4"
-        eyebrow={t("settings.language", "Language")}
-        description={t(
-          "settings.languageHint",
-          "Choose app language. More sections will be localized incrementally.",
-        )}
-      >
-        <div className="surface-subtle p-3">
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => onLocaleSelection("nb")}
-              className={chipButtonClass(locale === "nb")}
-            >
-              Norsk (bokmål)
-            </button>
-            <button
-              type="button"
-              onClick={() => onLocaleSelection("en")}
-              className={chipButtonClass(locale === "en")}
-            >
-              English
-            </button>
-          </div>
         </div>
       </SettingsSurfaceCard>
 

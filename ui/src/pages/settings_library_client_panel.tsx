@@ -1,4 +1,5 @@
 import { FeedbackBanner, type FeedbackTone } from "../components/feedback_banner";
+import { SettingsLibraryDeviceNameField } from "../components/settings_library_device_name_field";
 import { SettingsMetricTile } from "../components/settings_ui";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import {
@@ -35,7 +36,9 @@ function librarySyncValidationFeedbackTone(
 
 type SettingsLibraryClientPanelProps = {
   librarySyncBusy: boolean;
+  librarySyncDeviceNameDirty: boolean;
   librarySyncDeviceNameDraft: string;
+  librarySyncDeviceNameSaveBusy: boolean;
   librarySyncHostBaseUrlDraft: string;
   librarySyncPairingDraft: string;
   librarySyncSettings: LibrarySyncSettings | null;
@@ -58,12 +61,15 @@ type SettingsLibraryClientPanelProps = {
   onPairHost: () => void;
   onPairingDraftChange: (value: string) => void;
   onRenewClientAuth: () => void;
+  onSaveDeviceName: () => void;
   onToggleAdvanced: () => void;
 };
 
 export function SettingsLibraryClientPanel({
   librarySyncBusy,
+  librarySyncDeviceNameDirty,
   librarySyncDeviceNameDraft,
+  librarySyncDeviceNameSaveBusy,
   librarySyncHostBaseUrlDraft,
   librarySyncPairingDraft,
   librarySyncSettings,
@@ -86,6 +92,7 @@ export function SettingsLibraryClientPanel({
   onPairHost,
   onPairingDraftChange,
   onRenewClientAuth,
+  onSaveDeviceName,
   onToggleAdvanced,
 }: SettingsLibraryClientPanelProps) {
   return (
@@ -101,19 +108,16 @@ export function SettingsLibraryClientPanel({
           )}
         </div>
         <div className="mt-3">
-          <label className="space-y-2">
-            <div className={settingsGroupLabelClass}>
-              {t("settings.librarySyncDeviceName", "Device name")}
-            </div>
-            <input
-              type="text"
-              value={librarySyncDeviceNameDraft}
-              onChange={(event) => onDeviceNameChange(event.target.value)}
-              className={settingsTextInputClass}
-              placeholder={t("settings.librarySyncDeviceNamePlaceholder", "Workshop PC")}
-              disabled={!tauri || librarySyncBusy}
-            />
-          </label>
+          <SettingsLibraryDeviceNameField
+            disabled={librarySyncBusy}
+            dirty={librarySyncDeviceNameDirty}
+            saving={librarySyncDeviceNameSaveBusy}
+            tauri={tauri}
+            t={t}
+            value={librarySyncDeviceNameDraft}
+            onChange={onDeviceNameChange}
+            onSave={onSaveDeviceName}
+          />
         </div>
         {!settingsClientHostWritePaired ? (
           <>

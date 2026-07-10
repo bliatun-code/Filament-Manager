@@ -7,6 +7,8 @@ type StatCardProps = {
   trend?: string;
   accent?: "emerald" | "sky" | "amber" | "rose";
   onClick?: () => void;
+  opensDialog?: boolean;
+  actionLabel?: string;
 };
 
 const accentMap: Record<NonNullable<StatCardProps["accent"]>, string> = {
@@ -37,42 +39,59 @@ export function StatCard({
   trend,
   accent = "sky",
   onClick,
+  opensDialog = false,
+  actionLabel,
 }: StatCardProps) {
-  return (
-    <div
-      className={`surface-card relative overflow-hidden border-l-4 ${accentMap[accent]} ${
-        onClick
-          ? "cursor-pointer transition hover:-translate-y-0.5 hover:border-slate-400/45 dark:hover:border-slate-500"
-          : ""
-      }`}
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={
-        onClick
-          ? (event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onClick();
-              }
-            }
-          : undefined
-      }
-    >
-      <div className={`pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b ${accentSurfaceMap[accent]}`} />
-      <div className="relative flex items-center justify-between gap-3">
-        <div className="section-eyebrow">{title}</div>
-        <span className={`h-2.5 w-2.5 shrink-0 rounded-full shadow-[0_0_0_5px] ${accentDotMap[accent]}`} />
-      </div>
-      <div className="relative mt-3 text-[1.7rem] font-semibold leading-none text-slate-950 dark:text-slate-50">{value}</div>
-      <div className="mt-2 flex items-end justify-between gap-3 text-sm text-slate-600 dark:text-slate-300">
+  const className = `surface-card relative w-full overflow-hidden border-l-4 text-left ${accentMap[accent]} ${
+    onClick
+      ? "cursor-pointer outline-none transition hover:-translate-y-0.5 hover:border-slate-400/45 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:hover:border-slate-500 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20"
+      : ""
+  }`;
+  const content = (
+    <>
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-x-0 top-0 block h-20 bg-gradient-to-b ${accentSurfaceMap[accent]}`}
+      />
+      <span className="relative flex items-center justify-between gap-3">
+        <span className="section-eyebrow">{title}</span>
+        <span
+          aria-hidden="true"
+          className={`h-2.5 w-2.5 shrink-0 rounded-full shadow-[0_0_0_5px] ${accentDotMap[accent]}`}
+        />
+      </span>
+      <span className="relative mt-3 block text-[1.7rem] font-semibold leading-none text-slate-950 dark:text-slate-50">
+        {value}
+      </span>
+      <span className="mt-2 flex items-end justify-between gap-3 text-sm text-slate-600 dark:text-slate-300">
         <span className="min-w-0 leading-5">{subtitle}</span>
         {trend ? (
           <span className="shrink-0 text-right font-medium leading-5 text-slate-800 dark:text-slate-200">{trend}</span>
         ) : null}
-      </div>
-    </div>
+      </span>
+      {onClick && actionLabel ? (
+        <span className="relative mt-2 inline-flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
+          {actionLabel}
+          <span aria-hidden="true">→</span>
+        </span>
+      ) : null}
+    </>
   );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        aria-haspopup={opensDialog ? "dialog" : undefined}
+        className={className}
+        onClick={onClick}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <div className={className}>{content}</div>;
 }
 
 type LowStockItem = {

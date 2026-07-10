@@ -36,6 +36,7 @@
 
 .swatch-surface {
   background-color: var(--swatch-surface-base);
+  outline: 1px solid var(--swatch-surface-outline);
   background-image:
     linear-gradient(
       180deg,
@@ -201,6 +202,7 @@
 
 .primary-button.swatch-action-button:hover,
 .secondary-button.swatch-action-button:hover {
+  opacity: 1;
   background:
     linear-gradient(
       135deg,
@@ -408,7 +410,7 @@
   width: 100%;
   min-height: 2.9rem;
   border-radius: var(--control-radius);
-  border: 1px solid var(--border);
+  border: 1px solid var(--form-control-border);
   background: var(--surface-strong);
   color: var(--text);
   padding: 0.75rem 0.9rem;
@@ -476,14 +478,19 @@
 }
 
 :root[data-theme-mode="light"] .root-flow-button,
-:root[data-theme-mode="light"] .section-tab,
+:root[data-theme-mode="light"] .section-tab {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(78, 98, 122, 0.34);
+}
+
 :root[data-theme-mode="light"] .search-input,
 :root[data-theme-mode="light"] .token-input,
 :root[data-theme-mode="light"] .weight-input,
 :root[data-theme-mode="light"] .text-input,
-:root[data-theme-mode="light"] .detail-textarea {
+:root[data-theme-mode="light"] .detail-textarea,
+:root[data-theme-mode="light"] .swatch-input {
   background: rgba(255, 255, 255, 0.98);
-  border-color: rgba(78, 98, 122, 0.34);
+  border-color: var(--form-control-border);
 }
 
 :root[data-theme-mode="light"] .root-flow-button[data-active="true"],
@@ -575,20 +582,26 @@
 
   :root:not([data-theme-mode]) .root-flow-button,
   :root:not([data-theme-mode]) .section-tab,
+  :root[data-theme-mode="auto"] .root-flow-button,
+  :root[data-theme-mode="auto"] .section-tab {
+    background: rgba(255, 255, 255, 0.98);
+    border-color: rgba(78, 98, 122, 0.34);
+  }
+
   :root:not([data-theme-mode]) .search-input,
   :root:not([data-theme-mode]) .token-input,
   :root:not([data-theme-mode]) .weight-input,
   :root:not([data-theme-mode]) .text-input,
   :root:not([data-theme-mode]) .detail-textarea,
-  :root[data-theme-mode="auto"] .root-flow-button,
-  :root[data-theme-mode="auto"] .section-tab,
+  :root:not([data-theme-mode]) .swatch-input,
   :root[data-theme-mode="auto"] .search-input,
   :root[data-theme-mode="auto"] .token-input,
   :root[data-theme-mode="auto"] .weight-input,
   :root[data-theme-mode="auto"] .text-input,
-  :root[data-theme-mode="auto"] .detail-textarea {
+  :root[data-theme-mode="auto"] .detail-textarea,
+  :root[data-theme-mode="auto"] .swatch-input {
     background: rgba(255, 255, 255, 0.98);
-    border-color: rgba(78, 98, 122, 0.34);
+    border-color: var(--form-control-border);
   }
 
   :root:not([data-theme-mode]) .root-flow-button[data-active="true"],
@@ -804,7 +817,7 @@
   width: 0.85rem;
   height: 0.85rem;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.65);
+  border: 1px solid var(--swatch-dot-border);
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
 }
 
@@ -1747,7 +1760,7 @@
   width: 100%;
   min-height: 2.9rem;
   border-radius: var(--control-radius);
-  border: 1px solid var(--border);
+  border: 1px solid var(--form-control-border);
   background: var(--surface-strong);
   padding: 0.35rem;
 }
@@ -2100,11 +2113,19 @@
 .settings-card {
   display: grid;
   gap: var(--content-card-gap);
+  align-content: start;
 }
 
 .settings-language-block {
   gap: 0.6rem;
   padding-top: 0.1rem;
+}
+
+.settings-theme-control .segment-meta {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.25;
 }
 
 .settings-license-links {
@@ -3062,6 +3083,24 @@
   }
 }
 
+@media (min-width: 768px) {
+  .task-sheet-backdrop[data-layout="tablet"] .task-sheet-shell:not(.task-sheet-shell-wide),
+  .task-sheet-backdrop[data-layout="desktop"] .task-sheet-shell:not(.task-sheet-shell-wide),
+  .detail-modal-backdrop[data-layout="tablet"] .detail-modal-shell,
+  .detail-modal-backdrop[data-layout="desktop"] .detail-modal-shell {
+    height: auto;
+    max-height: calc(100dvh - 1.8rem);
+  }
+
+  .task-sheet-backdrop[data-layout="tablet"] .task-sheet-shell:not(.task-sheet-shell-wide) > .task-sheet,
+  .task-sheet-backdrop[data-layout="desktop"] .task-sheet-shell:not(.task-sheet-shell-wide) > .task-sheet,
+  .detail-modal-backdrop[data-layout="tablet"] .detail-modal.detail-panel,
+  .detail-modal-backdrop[data-layout="desktop"] .detail-modal.detail-panel {
+    height: auto;
+    max-height: calc(100dvh - 1.8rem);
+  }
+}
+
 @media (min-width: 768px) and (max-width: 1080px) {
   .hero-actions,
   .detail-actions,
@@ -3618,9 +3657,10 @@
   :root[data-theme-mode="light"] .token-input,
   :root[data-theme-mode="light"] .weight-input,
   :root[data-theme-mode="light"] .text-input,
-  :root[data-theme-mode="light"] .detail-textarea {
+  :root[data-theme-mode="light"] .detail-textarea,
+  :root[data-theme-mode="light"] .swatch-input {
     background: rgba(255, 255, 255, 0.99);
-    border-color: rgba(110, 132, 157, 0.34);
+    border-color: var(--form-control-border);
   }
 
   :root[data-theme-mode="light"] .phone-bottom-nav {
@@ -3676,13 +3716,15 @@
   :root:not([data-theme-mode]) .weight-input,
   :root:not([data-theme-mode]) .text-input,
   :root:not([data-theme-mode]) .detail-textarea,
+  :root:not([data-theme-mode]) .swatch-input,
   :root[data-theme-mode="auto"] .search-input,
   :root[data-theme-mode="auto"] .token-input,
   :root[data-theme-mode="auto"] .weight-input,
   :root[data-theme-mode="auto"] .text-input,
-  :root[data-theme-mode="auto"] .detail-textarea {
+  :root[data-theme-mode="auto"] .detail-textarea,
+  :root[data-theme-mode="auto"] .swatch-input {
     background: rgba(255, 255, 255, 0.99);
-    border-color: rgba(110, 132, 157, 0.34);
+    border-color: var(--form-control-border);
   }
 
   :root:not([data-theme-mode]) .phone-bottom-nav,

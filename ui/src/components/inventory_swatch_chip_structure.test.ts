@@ -11,4 +11,7 @@ test("InventorySwatchChip owns shared swatch background and tone chrome", () => 
   assert.match(source, /soft:/);
   assert.match(source, /tiny:/);
   assert.match(source, /current:/);
+  assert.match(source, /preview: "border-slate-600\/70/);
+  assert.match(source, /tiny: "border-slate-600\/70/);
+  assert.match(source, /dark:border-white\/10/);
 });

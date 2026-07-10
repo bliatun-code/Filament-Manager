@@ -195,8 +195,9 @@ test("settings swatch hex resolves draft values before fallback suggestions", ()
   );
   assert.equal(
     resolveSettingsSwatchHex({ master, swatchDraftById: { draft: "not-a-color" } }),
-    "#F97316",
+    "",
   );
+  assert.equal(resolveSettingsSwatchHex({ master, swatchDraftById: { draft: "" } }), "");
   assert.equal(resolveSettingsSwatchHex({ master, swatchDraftById: {} }), "#F97316");
 });
 

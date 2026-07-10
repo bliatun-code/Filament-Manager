@@ -12,7 +12,7 @@ export function modalPanelClassName(
   extraClassName = "p-5",
 ): string {
   return [
-    "w-full overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-2xl shadow-slate-300/18 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/94 dark:shadow-black/38",
+    "max-h-[calc(100dvh-3rem)] w-full overflow-y-auto overscroll-contain rounded-xl border border-slate-200/90 bg-white shadow-2xl shadow-slate-300/18 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/94 dark:shadow-black/38",
     widthClassName[width],
     extraClassName,
   ]

@@ -12,10 +12,10 @@ type InventorySwatchChipProps = {
 };
 
 const toneClassNames: Record<InventorySwatchChipTone, string> = {
-  preview: "border-white/70 shadow-black/5 dark:border-white/10 dark:shadow-none",
-  soft: "border-white/70 shadow-white/30 dark:border-white/10 dark:shadow-black/30",
-  tiny: "border-slate-400/40 dark:border-slate-600",
-  current: "border-slate-500/20 shadow-black/10 dark:border-white/10 dark:shadow-black/20",
+  preview: "border-slate-600/70 shadow-black/5 dark:border-white/10 dark:shadow-none",
+  soft: "border-slate-600/70 shadow-white/30 dark:border-white/10 dark:shadow-black/30",
+  tiny: "border-slate-600/70 dark:border-slate-600",
+  current: "border-slate-600/70 shadow-black/10 dark:border-white/10 dark:shadow-black/20",
 };
 
 export function InventorySwatchChip({

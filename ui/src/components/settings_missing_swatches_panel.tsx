@@ -7,7 +7,6 @@ import { formatFilamentDisplayTitle } from "../lib/display_format";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import {
-  SettingsMetricTile,
   SettingsNotice,
   SettingsSectionBody,
   SettingsSectionControls,
@@ -19,6 +18,7 @@ import {
   chipButtonClass,
   settingsActionButtonClass,
   settingsCompactFormControlClass,
+  settingsSectionLabelClass,
 } from "../lib/settings_ui_classes";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
 
@@ -36,6 +36,7 @@ type SettingsMissingSwatchesPanelProps = {
   visibleMissingSwatchMasters: MasterCatalogRow[];
   visibleMissingSwatchVendorCount: number;
   onBulkAutoFill: () => void;
+  onCancelBulkAutoFill: () => void;
   onRefresh: () => void;
   onSaveMissingSwatch: (master: MasterCatalogRow) => void;
   onSwatchDraftChange: (masterId: string, value: string) => void;
@@ -56,6 +57,7 @@ export function SettingsMissingSwatchesPanel({
   visibleMissingSwatchMasters,
   visibleMissingSwatchVendorCount,
   onBulkAutoFill,
+  onCancelBulkAutoFill,
   onRefresh,
   onSaveMissingSwatch,
   onSwatchDraftChange,
@@ -72,42 +74,51 @@ export function SettingsMissingSwatchesPanel({
           "Review missing swatches here, then save manual fixes or fill the visible list in bulk.",
         )}
         status={
-          <div className={inlineStatusSignalClass("neutral", "text-sm")}>
+          <div className={inlineStatusSignalClass("warning", "text-sm")}>
             {t("settings.missingSwatches", "Missing swatches")}: {missingSwatchCount}
           </div>
         }
-        metrics={
-          <>
-            <SettingsMetricTile
-              label={t("settings.missingSwatches", "Missing swatches")}
-              value={missingSwatchCount}
-            />
-            <SettingsMetricTile
-              label={t("settings.visibleMissing", "Visible missing")}
-              value={visibleMissingSwatchMasters.length}
-            />
-            <SettingsMetricTile
-              label={t("inventory.vendorGroup", "Vendor")}
-              value={visibleMissingSwatchVendorCount}
-              hint={t("settings.missingSwatches", "Missing swatches")}
-            />
-          </>
-        }
-      />
+      >
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-600 dark:text-slate-300">
+          <span>
+            <strong className="font-semibold text-slate-900 dark:text-slate-100">
+              {visibleMissingSwatchMasters.length}
+            </strong>{" "}
+            {t("settings.visibleMissing", "Visible missing")}
+          </span>
+          <span>
+            <strong className="font-semibold text-slate-900 dark:text-slate-100">
+              {visibleMissingSwatchVendorCount}
+            </strong>{" "}
+            {visibleMissingSwatchVendorCount === 1
+              ? t("inventory.vendorGroup", "Vendor")
+              : t("settings.vendors", "Vendors")}
+          </span>
+        </div>
+      </SettingsSectionHeader>
 
       <SettingsSectionBody>
         <SettingsSectionControls>
-          <div className="flex flex-wrap items-center gap-2">
+          <div
+            role="group"
+            aria-label={t("settings.swatchVendorFilter", "Filter by vendor")}
+          >
+            <div className={settingsSectionLabelClass}>
+              {t("settings.swatchVendorFilter", "Filter by vendor")}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
             {swatchVendorOptions.map((vendor) => (
               <button
                 key={vendor}
                 type="button"
+                aria-pressed={swatchVendorFilter === vendor}
                 onClick={() => onVendorFilterChange(vendor)}
                 className={chipButtonClass(swatchVendorFilter === vendor)}
               >
                 {vendor === "ALL" ? t("common.all", "All") : vendor}
               </button>
             ))}
+            </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <button
@@ -118,25 +129,46 @@ export function SettingsMissingSwatchesPanel({
             >
               {t("common.refresh", "Refresh")}
             </button>
-            <button
-              type="button"
-              className={settingsActionButtonClass("accent")}
-              onClick={onBulkAutoFill}
-              disabled={disabled || visibleMissingSwatchMasters.length === 0}
-            >
-              {swatchBusy
-                ? t("settings.updatingSwatches", "Updating swatches...")
-                : confirmBulkSwatch
-                  ? t("settings.confirmBulkSwatchAction", "Confirm auto-fill")
+            {confirmBulkSwatch ? (
+              <>
+                <button
+                  type="button"
+                  className={settingsActionButtonClass("accent")}
+                  onClick={onBulkAutoFill}
+                  disabled={disabled}
+                >
+                  {swatchBusy
+                    ? t("settings.updatingSwatches", "Updating swatches...")
+                    : t("settings.confirmBulkSwatchAction", "Confirm auto-fill")}
+                </button>
+                <button
+                  type="button"
+                  className={settingsActionButtonClass("neutral")}
+                  onClick={onCancelBulkAutoFill}
+                  disabled={disabled}
+                >
+                  {t("common.cancel", "Cancel")}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className={settingsActionButtonClass("accent")}
+                onClick={onBulkAutoFill}
+                disabled={disabled || visibleMissingSwatchMasters.length === 0}
+              >
+                {swatchBusy
+                  ? t("settings.updatingSwatches", "Updating swatches...")
                   : t("settings.autofillVisibleSwatches", "Auto-fill visible missing swatches")}
-            </button>
+              </button>
+            )}
           </div>
           {confirmBulkSwatch ? (
-            <SettingsNotice className="mt-3" tone="info">
+            <SettingsNotice className="mt-3" tone="warning">
               {t(
-                "settings.confirmBulkSwatchTapAgain",
-                "Click Auto-fill visible missing swatches again to confirm.",
-              )}
+                "settings.confirmBulkSwatchVisible",
+                "Apply suggested colors to {count} visible entries?",
+              ).replace("{count}", String(visibleMissingSwatchMasters.length))}
             </SettingsNotice>
           ) : null}
         </SettingsSectionControls>
@@ -146,63 +178,118 @@ export function SettingsMissingSwatchesPanel({
             {t("settings.noMissingSwatches", "No missing swatches to fill.")}
           </SettingsSectionEmptyState>
         ) : (
-          <div className="mt-4 max-h-[460px] space-y-3 overflow-auto pr-1">
-            {visibleMissingSwatchMasters.map((master) => {
+          <div
+            role="region"
+            aria-label={t("settings.missingSwatches", "Missing swatches")}
+            tabIndex={0}
+            className="mt-4 max-h-[460px] space-y-3 overflow-auto pr-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+          >
+            {visibleMissingSwatchMasters.map((master, index) => {
               const draftHex = swatchDraftById[master.id] ?? suggestHexFromColor(master);
-              const normalizedDraft =
-                normalizeSwatchValue(draftHex, { uppercase: true }) ?? suggestHexFromColor(master);
+              const suggestedHex = suggestHexFromColor(master);
+              const normalizedDraft = normalizeSwatchValue(draftHex, { uppercase: true });
+              const previewValue = normalizedDraft ?? suggestedHex;
+              const draftInvalid = normalizedDraft == null;
+              const displayTitle = formatFilamentDisplayTitle(
+                master.material,
+                master.filament_name,
+                master.color_name,
+              );
+              const valueInputId = `missing-swatch-value-${index}`;
+              const pickerInputId = `missing-swatch-picker-${index}`;
+              const valueHintId = `missing-swatch-value-hint-${index}`;
+              const suggested = normalizedDraft === suggestedHex;
 
               return (
                 <div
                   key={master.id}
                   className="rounded-lg border border-slate-200 bg-white/80 p-3 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none"
                 >
-                  <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <div className="flex min-w-0 items-start gap-3">
                       <InventorySwatchChip
                         className="mt-0.5 h-11 w-11 rounded-lg"
-                        swatchColor={normalizedDraft}
-                        title={normalizedDraft}
+                        swatchColor={previewValue}
+                        title={previewValue}
                         tone="soft"
                       />
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                          {formatFilamentDisplayTitle(
-                            master.material,
-                            master.filament_name,
-                            master.color_name,
-                          )}
+                        <div
+                          className="break-words text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100"
+                          title={displayTitle}
+                        >
+                          {displayTitle}
                         </div>
                         <div className="mt-1 truncate text-xs text-slate-600 dark:text-slate-300">
                           {master.vendor} / ID: {master.id}
                         </div>
+                        <div
+                          className={`mt-2 ${inlineStatusSignalClass(
+                            draftInvalid ? "danger" : "warning",
+                            "text-[11px]",
+                          )}`}
+                        >
+                          {draftInvalid
+                            ? t("settings.swatchInvalid", "Invalid value")
+                            : suggested
+                              ? t("settings.swatchSuggestedUnsaved", "Suggested · not saved")
+                              : t("settings.swatchEditedUnsaved", "Edited · not saved")}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="grid gap-2 sm:grid-cols-[120px_56px_auto] xl:min-w-[308px]">
-                      <input
-                        type="text"
-                        value={draftHex}
-                        onChange={(event) => onSwatchDraftChange(master.id, event.target.value)}
-                        className={settingsCompactFormControlClass}
-                        placeholder="#RRGGBB / gradient(...) / multi(...)"
-                        disabled={disabled}
-                      />
-                      <input
-                        type="color"
-                        value={toSwatchColor(normalizedDraft)}
-                        onChange={(event) => onSwatchDraftChange(master.id, event.target.value)}
-                        className="h-10 w-full rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-600 dark:bg-slate-900/70"
-                        disabled={disabled}
-                      />
-                      <button
-                        type="button"
-                        className={settingsActionButtonClass()}
-                        onClick={() => onSaveMissingSwatch(master)}
-                        disabled={disabled}
-                      >
-                        {t("common.save", "Save")}
-                      </button>
+                    <div className="grid w-full gap-2 sm:grid-cols-[minmax(180px,240px)_56px_max-content] sm:items-start md:w-auto">
+                      <label htmlFor={valueInputId} className="block">
+                        <span className={settingsSectionLabelClass}>
+                          {t("settings.swatchValue", "Swatch value")}
+                        </span>
+                        <input
+                          id={valueInputId}
+                          type="text"
+                          value={draftHex}
+                          aria-invalid={draftInvalid}
+                          aria-describedby={draftInvalid ? valueHintId : undefined}
+                          onChange={(event) => onSwatchDraftChange(master.id, event.target.value)}
+                          className={`mt-2 ${settingsCompactFormControlClass}`}
+                          placeholder="#RRGGBB / gradient(...) / multi(...)"
+                          disabled={disabled}
+                        />
+                        {draftInvalid ? (
+                          <span
+                            id={valueHintId}
+                            className="mt-1 block max-w-60 text-[11px] leading-4 text-rose-600 dark:text-rose-300"
+                          >
+                            {t(
+                              "settings.swatchInvalidHint",
+                              "Use #RGB, #RRGGBB, gradient(...), or multi(...).",
+                            )}
+                          </span>
+                        ) : null}
+                      </label>
+                      <label htmlFor={pickerInputId} className="block">
+                        <span className={settingsSectionLabelClass}>
+                          {t("settings.swatchColorPicker", "Picker")}
+                        </span>
+                        <input
+                          id={pickerInputId}
+                          type="color"
+                          value={toSwatchColor(previewValue)}
+                          onChange={(event) => onSwatchDraftChange(master.id, event.target.value)}
+                          className="mt-2 h-10 w-full rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-600 dark:bg-slate-900/70"
+                          disabled={disabled}
+                        />
+                      </label>
+                      <div className="sm:pt-[26px]">
+                        <button
+                          type="button"
+                          aria-label={`${t("common.save", "Save")}: ${displayTitle}`}
+                          className={settingsActionButtonClass()}
+                          onClick={() => onSaveMissingSwatch(master)}
+                          disabled={disabled || draftInvalid}
+                        >
+                          {t("common.save", "Save")}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

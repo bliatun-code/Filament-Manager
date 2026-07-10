@@ -29,7 +29,7 @@ export default function DashboardPage({
   onOpenLowStock,
   onOpenCompanionSettings,
 }: DashboardPageProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const {
     activity,
     clientHostCompanionTone,
@@ -44,7 +44,7 @@ export default function DashboardPage({
     ownershipOnHand,
     stats,
     usagePoints,
-  } = useDashboardPageData(t);
+  } = useDashboardPageData(t, locale);
   const badges = useMemo(
     () => buildDashboardBadges({ goalMetrics, t }),
     [goalMetrics, t],
@@ -105,7 +105,7 @@ export default function DashboardPage({
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-8 grid grid-cols-1 gap-4 min-[720px]:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
           <StatCard
             key={stat.id}

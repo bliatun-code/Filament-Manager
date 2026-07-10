@@ -13,6 +13,7 @@ type IncomingWeightModalProps = {
   outgoingWeightValue: string;
   onIncomingWeightChange: (value: string) => void;
   onOutgoingWeightChange: (value: string) => void;
+  onCancel: () => void;
   onSave: () => void;
 };
 
@@ -23,6 +24,7 @@ export function IncomingWeightModal({
   outgoingWeightValue,
   onIncomingWeightChange,
   onOutgoingWeightChange,
+  onCancel,
   onSave,
 }: IncomingWeightModalProps) {
   const { t } = useI18n();
@@ -40,6 +42,8 @@ export function IncomingWeightModal({
         prompt.targetColorName,
       )}
       swatchColor={toSwatchColor(prompt.targetHexColor)}
+      cancelDisabled={busy}
+      onCancel={onCancel}
       saveDisabled={busy}
       onSave={onSave}
     >

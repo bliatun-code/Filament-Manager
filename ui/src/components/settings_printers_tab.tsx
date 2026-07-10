@@ -45,6 +45,7 @@ export type SettingsPrintersTabProps = {
   editBambuLiveHost: string;
   editBambuLivePrinterSerial: string;
   editModelProfile: PrinterModelProfile;
+  editPrinterDirty: boolean;
   editPrinterId: string | null;
   editPrinterModel: string;
   editPrinterName: string;
@@ -94,6 +95,7 @@ export function SettingsPrintersTab({
   editBambuLiveHost,
   editBambuLivePrinterSerial,
   editModelProfile,
+  editPrinterDirty,
   editPrinterId,
   editPrinterModel,
   editPrinterName,
@@ -218,10 +220,12 @@ export function SettingsPrintersTab({
           return (
             <SettingsPrinterCard
               key={printer.id}
+              actionsLocked={editPrinterId !== null}
               confirmDelete={confirmDeletePrinterId === printer.id}
               editActions={editActions}
               editDraft={editDraft}
               expanded={expandedBambuDetailsPrinterId === printer.id}
+              editDirty={isEditing && editPrinterDirty}
               isEditing={isEditing}
               liveDiagnostics={liveDiagnostics}
               liveDiagnosticsActions={liveDiagnosticsActions}

@@ -139,6 +139,29 @@ test("app shell renderer composes the mobile shell with the four primary tabs", 
   assert.match(html, /phone-bottom-nav/);
 });
 
+test("app shell formats displayed grams with the selected Norwegian locale", () => {
+  const spool = createSpoolRow("spool-1", {
+    spool: {
+      current_weight_g: 1000,
+      remaining_g: 1000,
+    },
+  });
+  const renderer = createRenderer({
+    spools: [spool],
+    selectedSpool: spool,
+    state: {
+      activeRootFlow: "storage",
+      locale: "nb",
+      spools: [spool],
+    },
+  });
+
+  const html = renderer.renderRoot();
+
+  assert.match(html, /1\u00a0000 g/);
+  assert.doesNotMatch(html, /1,000 g/);
+});
+
 test("app shell renderer opens add-spool task sheets above the root flow when requested", () => {
   const renderer = createRenderer({
     state: {

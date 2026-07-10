@@ -124,10 +124,36 @@ export function useInventoryAddWorkflow({
     resetWishlistQueue,
     setConfirmWishlistRemoveId,
     setWishlistQueueFilter,
+    setWishlistQueueQuery,
     visibleWishlistItems,
     wishlistQueueFilter,
+    wishlistQueueQuery,
     wishlistQueueSummary,
   } = useWishlistQueue(wishlistItems);
+
+  const cancelWishlistRemove = useCallback(() => {
+    setConfirmWishlistRemoveId(null);
+    setInfoMessage(null);
+  }, [setConfirmWishlistRemoveId, setInfoMessage]);
+
+  const requestWishlistRemove = useCallback((itemId: string) => {
+    setConfirmWishlistRemoveId(itemId);
+    setInfoMessage(null);
+  }, [setConfirmWishlistRemoveId, setInfoMessage]);
+
+  const handleWishlistFilterChange = useCallback((filter: WishlistStatusFilter) => {
+    setWishlistQueueFilter(filter);
+    if (confirmWishlistRemoveId) {
+      cancelWishlistRemove();
+    }
+  }, [cancelWishlistRemove, confirmWishlistRemoveId, setWishlistQueueFilter]);
+
+  const handleWishlistQueryChange = useCallback((query: string) => {
+    setWishlistQueueQuery(query);
+    if (confirmWishlistRemoveId) {
+      cancelWishlistRemove();
+    }
+  }, [cancelWishlistRemove, confirmWishlistRemoveId, setWishlistQueueQuery]);
 
   const switchToManageMode = useCallback(() => {
     setSidePanelMode("MANAGE");
@@ -293,6 +319,7 @@ export function useInventoryAddWorkflow({
     onBambuBatchInputChange: setBambuBatchInput,
     onBambuBatchRowSelectionChange: setBambuBatchRowSelection,
     onCatalogQueryChange: handleCatalogQueryChange,
+    onCancelWishlistRemove: cancelWishlistRemove,
     onClose: closeAddModal,
     onCreateBambuCodeBatch: handleCreateBambuCodeBatch,
     onCreateModeChange: setCreateMode,
@@ -306,10 +333,12 @@ export function useInventoryAddWorkflow({
     onManualMaterialChange: setManualMaterial,
     onManualVendorChange: setManualVendor,
     onOwnershipTypeChange: setNewOwnershipType,
+    onRequestWishlistRemove: requestWishlistRemove,
     onSelectCatalogMaster: selectCatalogMaster,
     onStockWishlistItem: handleStockFromWishlist,
     onUseManualFromCatalog: useManualFromCatalog,
-    onWishlistFilterChange: setWishlistQueueFilter,
+    onWishlistFilterChange: handleWishlistFilterChange,
+    onWishlistQueryChange: handleWishlistQueryChange,
     onWishlistStatusChange: handleWishlistStatus,
     open: addModalActive,
     ownershipType: newOwnershipType,
@@ -320,6 +349,7 @@ export function useInventoryAddWorkflow({
     visibleWishlistItems,
     wishlistItems,
     wishlistLoading,
+    wishlistQuery: wishlistQueueQuery,
     wishlistSummary: wishlistQueueSummary,
     wishlistValue: wishlistQueueFilter,
   };

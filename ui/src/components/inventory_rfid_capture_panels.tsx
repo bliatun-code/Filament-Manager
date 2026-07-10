@@ -20,7 +20,6 @@ import {
 } from "../lib/inventory_rfid_capture";
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
 import type { BambuLiveIntegrationSettings } from "../lib/tauri_client";
-import { useResolvedTheme } from "../lib/theme_mode";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
 
 type RfidCaptureMatchMeta = {
@@ -88,7 +87,6 @@ type InventoryRfidCaptureActionsProps = {
   manageBusy: boolean;
   onCancel: () => void;
   onSave: () => void;
-  spoolHexColor?: string | null;
 };
 
 function inventoryRfidCaptureSlotButtonClassName(active: boolean): string {
@@ -305,8 +303,8 @@ export function InventoryRfidCaptureDiagnostics({
             label={t("inventory.rfidPrinterLive", "Printer live")}
             value={
               printerConnected
-                ? t("inventory.connected", "Connected")
-                : t("inventory.disconnected", "Not connected")
+                ? t("inventory.rfidConnected", "Connected")
+                : t("inventory.rfidDisconnected", "Not connected")
             }
           />
           <RfidDetailRow
@@ -476,10 +474,8 @@ export function InventoryRfidCaptureActions({
   manageBusy,
   onCancel,
   onSave,
-  spoolHexColor,
 }: InventoryRfidCaptureActionsProps) {
   const { t } = useI18n();
-  const resolvedTheme = useResolvedTheme();
 
   return (
     <div className="flex flex-wrap justify-end gap-3">
@@ -492,8 +488,6 @@ export function InventoryRfidCaptureActions({
       <ModalActionButton
         type="button"
         variant="primary"
-        swatchColor={spoolHexColor}
-        resolvedTheme={resolvedTheme}
         onClick={onSave}
         disabled={!canSave || manageBusy}
       >

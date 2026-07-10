@@ -54,7 +54,7 @@ type InventoryHeaderActionsProps = {
 };
 
 type InventoryControlsPanelProps = {
-  activeAdvancedFilterCount: number;
+  activeFilterCount: number;
   advancedFiltersOpen: boolean;
   inventoryView: InventoryViewMode;
   materialFilter: string;
@@ -63,6 +63,7 @@ type InventoryControlsPanelProps = {
   onInventoryViewChange: (value: InventoryViewMode) => void;
   onMaterialFilterChange: (value: string) => void;
   onOwnershipFilterChange: (value: OwnershipFilter) => void;
+  onResetFilters: () => void;
   onVendorFilterChange: (value: string) => void;
   ownershipFilter: OwnershipFilter;
   vendorFilter: string;
@@ -132,6 +133,10 @@ export function InventoryHeaderActions({
       <div className="flex w-full flex-col gap-2 min-[920px]:items-end">
         <input
           type="search"
+          aria-label={t(
+            "inventory.searchPlaceholder",
+            "Search by material, color, location or QR",
+          )}
           placeholder={t(
             "inventory.searchPlaceholder",
             "Search by material, color, location or QR",
@@ -148,6 +153,7 @@ export function InventoryHeaderActions({
             <div className="flex flex-wrap gap-1.5 min-[920px]:justify-end">
               <button
                 type="button"
+                aria-pressed={lowStockOnly}
                 onClick={() => onLowStockOnlyChange(!lowStockOnly)}
                 className={neutralChipClass(lowStockOnly, "px-3.5 py-2 text-xs")}
               >
@@ -157,6 +163,7 @@ export function InventoryHeaderActions({
                 <button
                   key={status}
                   type="button"
+                  aria-pressed={statusFilter === status}
                   onClick={() => onStatusFilterChange(status)}
                   className={neutralChipClass(statusFilter === status, "px-3.5 py-2 text-xs")}
                 >
@@ -172,7 +179,7 @@ export function InventoryHeaderActions({
 }
 
 export function InventoryControlsPanel({
-  activeAdvancedFilterCount,
+  activeFilterCount,
   advancedFiltersOpen,
   inventoryView,
   materialFilter,
@@ -181,6 +188,7 @@ export function InventoryControlsPanel({
   onInventoryViewChange,
   onMaterialFilterChange,
   onOwnershipFilterChange,
+  onResetFilters,
   onVendorFilterChange,
   ownershipFilter,
   vendorFilter,
@@ -188,40 +196,61 @@ export function InventoryControlsPanel({
   visibleInventoryCount,
 }: InventoryControlsPanelProps) {
   const { t } = useI18n();
+  const resultLabel =
+    visibleInventoryCount === 1
+      ? t("inventory.spoolResult", "spool")
+      : t("inventory.spoolResults", "spools");
 
   return (
       <div className="surface-subtle mt-4 px-3 py-2.5">
         <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center min-[920px]:justify-between">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              {t("inventory.filters", "Filters")}
+            <div
+              className="text-sm font-semibold text-slate-800 dark:text-slate-100"
+              aria-live="polite"
+            >
+              <span className="tabular-nums">{visibleInventoryCount}</span> {resultLabel}
             </div>
-            <span className="rounded-full border border-slate-300 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200 dark:shadow-none">
-              {visibleInventoryCount}
-            </span>
-            {activeAdvancedFilterCount > 0 ? (
+            {activeFilterCount > 0 ? (
               <span className="rounded-full border border-sky-300/65 bg-sky-50/70 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:border-sky-400/35 dark:bg-sky-500/10 dark:text-sky-200">
-                {activeAdvancedFilterCount} {t("inventory.activeFilters", "active")}
+                {activeFilterCount} {t("inventory.activeFilters", "active")}
               </span>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={() => onAdvancedFiltersOpenChange(!advancedFiltersOpen)}
-            className={neutralChipClass(advancedFiltersOpen, "px-3 py-1.5 text-xs")}
-          >
-            {advancedFiltersOpen
-              ? t("inventory.hideAdvancedFilters", "Hide details")
-              : t("inventory.showAdvancedFilters", "More filters")}
-          </button>
+          <div className="flex flex-wrap items-center gap-2 min-[920px]:justify-end">
+            {activeFilterCount > 0 ? (
+              <button
+                type="button"
+                onClick={onResetFilters}
+                className={neutralChipClass(false, "px-3 py-1.5 text-xs")}
+              >
+                {t("inventory.resetFilters", "Reset filters")}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              aria-controls="inventory-advanced-filters"
+              aria-expanded={advancedFiltersOpen}
+              onClick={() => onAdvancedFiltersOpenChange(!advancedFiltersOpen)}
+              className={neutralChipClass(advancedFiltersOpen, "px-3 py-1.5 text-xs")}
+            >
+              {advancedFiltersOpen
+                ? t("inventory.hideAdvancedFilters", "Hide details")
+                : t("inventory.showAdvancedFilters", "More filters")}
+            </button>
+          </div>
         </div>
 
         {advancedFiltersOpen ? (
-          <div className="mt-3 space-y-2 border-t border-slate-200/70 pt-3 dark:border-slate-700/70">
+          <div
+            id="inventory-advanced-filters"
+            className="mt-3 space-y-2 border-t border-slate-200/70 pt-3 dark:border-slate-700/70"
+          >
             <InventoryAdvancedFilterRow label={t("inventory.viewGroup", "View")}>
               <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
+                  aria-pressed={inventoryView === "CARDS"}
                   onClick={() => onInventoryViewChange("CARDS")}
                   className={neutralChipClass(inventoryView === "CARDS", "px-3 py-1.5 text-xs")}
                 >
@@ -229,6 +258,7 @@ export function InventoryControlsPanel({
                 </button>
                 <button
                   type="button"
+                  aria-pressed={inventoryView === "LIST"}
                   onClick={() => onInventoryViewChange("LIST")}
                   className={neutralChipClass(inventoryView === "LIST", "px-3 py-1.5 text-xs")}
                 >
@@ -242,6 +272,7 @@ export function InventoryControlsPanel({
                   <button
                     key={ownership}
                     type="button"
+                    aria-pressed={ownershipFilter === ownership}
                     onClick={() => onOwnershipFilterChange(ownership)}
                     className={neutralChipClass(
                       ownershipFilter === ownership,
@@ -259,6 +290,7 @@ export function InventoryControlsPanel({
                   <button
                     key={vendor}
                     type="button"
+                    aria-pressed={vendorFilter === vendor}
                     onClick={() => onVendorFilterChange(vendor)}
                     className={neutralChipClass(vendorFilter === vendor, "px-3 py-1.5 text-xs")}
                   >
@@ -273,6 +305,7 @@ export function InventoryControlsPanel({
                   <button
                     key={material}
                     type="button"
+                    aria-pressed={materialFilter === material}
                     onClick={() => onMaterialFilterChange(material)}
                     className={
                       material === "ALL"

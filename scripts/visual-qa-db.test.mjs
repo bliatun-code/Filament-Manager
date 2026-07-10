@@ -6,6 +6,7 @@ import { test } from "node:test";
 import Database from "better-sqlite3";
 import {
   APP_DB_PATH_ENV_VAR,
+  VISUAL_QA_FIXTURE_LOAN_DIALOGS,
   VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE,
   VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES,
   VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE,
@@ -17,6 +18,7 @@ import {
   applyTrustedLanInterfaceFixture,
   applyVisualQaDatabaseFixture,
   assessVisualQaDataset,
+  chooseBalancedCatalogSwatchFixtureRows,
   formatVisualQaDatasetReport,
   listPrivateVisualQaNetworkInterfaces,
   normalizeVisualQaDatabaseFixtureScenario,
@@ -55,7 +57,36 @@ test("normalizeVisualQaDatabaseFixtureScenario accepts slot onboarding aliases",
     normalizeVisualQaDatabaseFixtureScenario("wishlist-orders"),
     VISUAL_QA_FIXTURE_WISHLIST_QUEUE,
   );
+  assert.equal(
+    normalizeVisualQaDatabaseFixtureScenario("hand-back-borrowed-in"),
+    VISUAL_QA_FIXTURE_LOAN_DIALOGS,
+  );
+  assert.equal(
+    normalizeVisualQaDatabaseFixtureScenario("borrower-usage-breakdown"),
+    VISUAL_QA_FIXTURE_LOAN_DIALOGS,
+  );
+  assert.equal(normalizeVisualQaDatabaseFixtureScenario("settings-library-pairing"), null);
+  assert.equal(normalizeVisualQaDatabaseFixtureScenario("settings-library-browsers"), null);
+  assert.equal(normalizeVisualQaDatabaseFixtureScenario("settings-library-browsers-history"), null);
   assert.equal(normalizeVisualQaDatabaseFixtureScenario("settings-general"), null);
+});
+
+test("catalog swatch fixture balances eSUN and Bambu before filling remaining slots", () => {
+  const candidates = [
+    ...Array.from({ length: 8 }, (_, index) => ({ id: `esun-${index}`, vendor: "eSUN" })),
+    ...Array.from({ length: 5 }, (_, index) => ({ id: `bambu-${index}`, vendor: "Bambu" })),
+    { id: "other-0", vendor: "Other" },
+  ];
+
+  const selected = chooseBalancedCatalogSwatchFixtureRows(candidates, 8);
+
+  assert.equal(selected.length, 8);
+  assert.equal(selected.filter((row) => row.vendor === "eSUN").length, 4);
+  assert.equal(selected.filter((row) => row.vendor === "Bambu").length, 4);
+  assert.deepEqual(
+    selected.slice(0, 4).map((row) => row.id),
+    ["esun-0", "bambu-0", "esun-1", "bambu-1"],
+  );
 });
 
 test("resolveVisualQaDbSource prefers explicit visual QA env path", () => {
@@ -758,6 +789,118 @@ test("applyVisualQaDatabaseFixture creates wishlist queue review state on copies
           quantity: 1,
           note: "Visual QA fixture: ready to move into stock.",
           hex_color: "#6D28D9",
+        },
+      ]);
+    } finally {
+      updatedDb.close();
+    }
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("applyVisualQaDatabaseFixture creates data-connected loan dialog states on copies", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-loan-dialogs-"));
+  try {
+    const dbPath = join(dir, "fixture.db");
+    const db = new Database(dbPath);
+    db.exec(`
+      CREATE TABLE filament_master_list (
+        id TEXT PRIMARY KEY,
+        material TEXT NOT NULL,
+        filament_name TEXT NOT NULL,
+        color_name TEXT NOT NULL,
+        hex_color TEXT,
+        default_weight INTEGER NOT NULL DEFAULT 1000,
+        vendor TEXT NOT NULL DEFAULT 'Bambu'
+      );
+      CREATE TABLE filament_spools (
+        id TEXT PRIMARY KEY,
+        master_id TEXT NOT NULL REFERENCES filament_master_list(id),
+        status TEXT NOT NULL,
+        ownership_type TEXT NOT NULL DEFAULT 'OWNED',
+        owner_name TEXT,
+        owner_contact TEXT,
+        ownership_note TEXT,
+        initial_weight_g INTEGER,
+        current_weight_g INTEGER,
+        remaining_g INTEGER,
+        spool_tare_weight_g INTEGER,
+        deleted_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE TABLE spool_loans (
+        id TEXT PRIMARY KEY,
+        spool_id TEXT NOT NULL REFERENCES filament_spools(id),
+        borrower_name TEXT NOT NULL,
+        loan_direction TEXT NOT NULL DEFAULT 'OUTBOUND',
+        loan_status TEXT NOT NULL DEFAULT 'ACTIVE',
+        counterparty_name TEXT,
+        counterparty_contact TEXT,
+        counterparty_note TEXT,
+        grams_out INTEGER NOT NULL,
+        lent_note TEXT,
+        lent_at TEXT NOT NULL DEFAULT (datetime('now')),
+        returned_at TEXT,
+        returned_grams INTEGER,
+        consumed_grams INTEGER,
+        return_note TEXT
+      );
+      CREATE UNIQUE INDEX idx_spool_loans_active_unique
+        ON spool_loans(spool_id) WHERE returned_at IS NULL;
+    `);
+    db.close();
+
+    const fixture = await applyVisualQaDatabaseFixture(dbPath, "statistics-borrower", {
+      now: new Date("2026-07-10T10:00:00.000Z"),
+    });
+    assert.equal(fixture?.fixture, VISUAL_QA_FIXTURE_LOAN_DIALOGS);
+    assert.equal(fixture?.inboundPartyName, "Maja Solberg");
+    assert.equal(fixture?.outboundPartyName, "Nora Berg");
+
+    const updatedDb = new Database(dbPath, { readonly: true });
+    try {
+      const rows = updatedDb
+        .prepare(
+          `SELECT l.id, l.loan_direction, l.loan_status, l.borrower_name,
+                  l.grams_out, l.returned_grams, l.consumed_grams,
+                  s.ownership_type, s.status AS spool_status, s.remaining_g,
+                  m.color_name, m.hex_color
+           FROM spool_loans l
+           JOIN filament_spools s ON s.id = l.spool_id
+           JOIN filament_master_list m ON m.id = s.master_id
+           ORDER BY l.loan_direction ASC`,
+        )
+        .all();
+      assert.deepEqual(rows, [
+        {
+          id: "visual_qa_loan_inbound_lagoon",
+          loan_direction: "INBOUND",
+          loan_status: "ACTIVE",
+          borrower_name: "Maja Solberg",
+          grams_out: 1000,
+          returned_grams: null,
+          consumed_grams: null,
+          ownership_type: "BORROWED_IN",
+          spool_status: "IN_STOCK",
+          remaining_g: 742,
+          color_name: "Lagoon Blue",
+          hex_color: "#0081A7",
+        },
+        {
+          id: "visual_qa_loan_outbound_coral",
+          loan_direction: "OUTBOUND",
+          loan_status: "RETURNED",
+          borrower_name: "Nora Berg",
+          grams_out: 1000,
+          returned_grams: 620,
+          consumed_grams: 380,
+          ownership_type: "OWNED",
+          spool_status: "IN_STOCK",
+          remaining_g: 620,
+          color_name: "Coral Signal",
+          hex_color: "#F25F5C",
         },
       ]);
     } finally {

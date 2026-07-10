@@ -37,16 +37,27 @@ export function OwnershipSnapshotPanel({
   onHand,
   t,
 }: OwnershipSnapshotPanelProps) {
+  const hasBorrowedInStock = onHand.borrowedIn > 0 || lowStock.borrowedIn > 0;
+
   return (
     <div className="mt-6 surface-card">
-      <div className="flex flex-wrap items-start gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="section-eyebrow">
             {t("dashboard.ownershipSnapshot", "Ownership snapshot")}
           </div>
         </div>
+        {!hasBorrowedInStock ? (
+          <div className="rounded-full border border-slate-300/70 bg-slate-100/70 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-700/70 dark:bg-slate-900/55 dark:text-slate-300">
+            {t("dashboard.noBorrowedInStock", "No borrowed-in stock")}
+          </div>
+        ) : null}
       </div>
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div
+        className={`mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 ${
+          hasBorrowedInStock ? "xl:grid-cols-4" : "xl:grid-cols-2"
+        }`}
+      >
         <div className="rounded-lg border border-sky-200/80 bg-sky-50/58 px-3 py-3 dark:border-sky-400/22 dark:bg-sky-500/[0.08]">
           <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
             {onHand.owned}
@@ -55,14 +66,16 @@ export function OwnershipSnapshotPanel({
             {t("dashboard.ownedOnHand", "Owned on hand")}
           </div>
         </div>
-        <div className="rounded-lg border border-amber-200/80 bg-amber-50/58 px-3 py-3 dark:border-amber-400/22 dark:bg-amber-500/[0.08]">
-          <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-            {onHand.borrowedIn}
+        {hasBorrowedInStock ? (
+          <div className="rounded-lg border border-amber-200/80 bg-amber-50/58 px-3 py-3 dark:border-amber-400/22 dark:bg-amber-500/[0.08]">
+            <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+              {onHand.borrowedIn}
+            </div>
+            <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              {t("dashboard.borrowedInOnHand", "Borrowed in on hand")}
+            </div>
           </div>
-          <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-            {t("dashboard.borrowedInOnHand", "Borrowed in on hand")}
-          </div>
-        </div>
+        ) : null}
         <div className="rounded-lg border border-rose-200/80 bg-rose-50/58 px-3 py-3 dark:border-rose-400/22 dark:bg-rose-500/[0.08]">
           <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
             {lowStock.owned}
@@ -71,14 +84,16 @@ export function OwnershipSnapshotPanel({
             {t("dashboard.ownedLowStock", "Owned low stock")}
           </div>
         </div>
-        <div className="rounded-lg border border-orange-200/80 bg-orange-50/58 px-3 py-3 dark:border-orange-400/22 dark:bg-orange-500/[0.08]">
-          <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-            {lowStock.borrowedIn}
+        {hasBorrowedInStock ? (
+          <div className="rounded-lg border border-orange-200/80 bg-orange-50/58 px-3 py-3 dark:border-orange-400/22 dark:bg-orange-500/[0.08]">
+            <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+              {lowStock.borrowedIn}
+            </div>
+            <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              {t("dashboard.borrowedInLowStock", "Borrowed-in low stock")}
+            </div>
           </div>
-          <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-            {t("dashboard.borrowedInLowStock", "Borrowed-in low stock")}
-          </div>
-        </div>
+        ) : null}
       </div>
     </div>
   );

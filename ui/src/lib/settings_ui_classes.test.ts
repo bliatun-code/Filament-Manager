@@ -35,6 +35,7 @@ test("settings action buttons expose compact and destructive variants", () => {
 });
 
 test("settings compact selects share focus and disabled treatment", () => {
+  assert.match(settingsCompactSelectClass, /app-form-control app-control-focus/);
   assert.match(settingsCompactSelectClass, /rounded-lg border border-slate-300/);
   assert.match(settingsCompactSelectClass, /text-xs text-slate-700/);
   assert.match(settingsCompactSelectClass, /focus-visible:border-sky-300\/70/);
@@ -42,6 +43,7 @@ test("settings compact selects share focus and disabled treatment", () => {
 });
 
 test("settings compact form controls share focus and disabled treatment", () => {
+  assert.match(settingsCompactFormControlClass, /app-form-control app-control-focus/);
   assert.match(settingsCompactFormControlClass, /rounded-xl border border-slate-200/);
   assert.match(settingsCompactFormControlClass, /text-xs text-slate-900/);
   assert.match(settingsCompactFormControlClass, /focus-visible:border-sky-300\/70/);
@@ -51,6 +53,7 @@ test("settings compact form controls share focus and disabled treatment", () => 
 
 test("settings text inputs use the shared form control chrome", () => {
   assert.equal(settingsTextInputClass, settingsFormControlClass);
+  assert.match(settingsFormControlClass, /app-form-control app-control-focus/);
   assert.match(settingsFormControlClass, /w-full rounded-xl border border-slate-200/);
   assert.match(settingsFormControlClass, /focus:ring-2 focus:ring-indigo-200/);
   assert.match(settingsFormControlClass, /dark:bg-slate-950\/70/);

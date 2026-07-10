@@ -6,7 +6,7 @@ test("printer slot card styles stay empty when no swatch or assigned roll exists
   const styles = buildPrinterSlotCardStyles({
     slotSwatchHex: null,
     hasAssignedSpool: false,
-    hasSelectedTargetSpool: false,
+    isDropdownOpen: false,
     resolvedTheme: "dark",
   });
 
@@ -20,35 +20,61 @@ test("printer slot card styles tint selectable controls from the active swatch",
   const styles = buildPrinterSlotCardStyles({
     slotSwatchHex: "#22c55e",
     hasAssignedSpool: true,
-    hasSelectedTargetSpool: true,
+    isDropdownOpen: true,
     resolvedTheme: "light",
   });
 
-  assert.equal(styles.selectorStyle?.borderColor, "transparent");
-  assert.equal(styles.currentRollStyle?.borderColor, "transparent");
-  assert.equal(
-    styles.selectorStyle?.boxShadow,
-    "inset 0 1px 0 rgba(255, 255, 255, 0.45)",
-  );
-  assert.equal(
-    styles.currentRollStyle?.boxShadow,
-    "inset 0 1px 0 rgba(255, 255, 255, 0.45)",
-  );
-  assert.match(String(styles.actionStyle?.background), /linear-gradient/);
+  assert.equal(styles.selectorStyle?.borderColor, "rgba(2, 132, 199, 0.94)");
+  assert.equal(styles.currentRollStyle?.borderColor, "rgba(100, 116, 139, 0.42)");
+  assert.equal(styles.selectorStyle?.borderWidth, 1);
+  assert.equal(styles.currentRollStyle?.borderWidth, 1);
+  assert.match(String(styles.selectorStyle?.boxShadow), /rgba\(14, 165, 233, 0\.24\)/);
+  assert.equal(styles.actionStyle, undefined);
   assert.match(String(styles.panelStyle?.backgroundImage), /linear-gradient/);
+});
+
+test("printer slot card styles reserve blue emphasis for the open selector", () => {
+  const styles = buildPrinterSlotCardStyles({
+    slotSwatchHex: "#22c55e",
+    hasAssignedSpool: true,
+    isDropdownOpen: false,
+    resolvedTheme: "light",
+  });
+
+  assert.equal(styles.selectorStyle?.borderColor, "rgba(71, 85, 105, 0.68)");
+  assert.equal(styles.currentRollStyle?.borderColor, "rgba(100, 116, 139, 0.42)");
 });
 
 test("printer slot card styles only show current roll emphasis for assigned slots", () => {
   const styles = buildPrinterSlotCardStyles({
     slotSwatchHex: "#000000",
     hasAssignedSpool: false,
-    hasSelectedTargetSpool: false,
+    isDropdownOpen: false,
     resolvedTheme: "dark",
   });
 
   assert.ok(styles.selectorStyle);
   assert.equal(styles.currentRollStyle, undefined);
-  assert.ok(styles.actionStyle);
-  assert.match(String(styles.actionStyle.background), /rgb\(62, 72, 86\) 0%, rgb\(7, 11, 19\) 100%/);
+  assert.equal(styles.actionStyle, undefined);
   assert.ok(styles.panelStyle);
+});
+
+test("printer slot card styles preserve transparent dark selector chrome", () => {
+  const styles = buildPrinterSlotCardStyles({
+    slotSwatchHex: "#22c55e",
+    hasAssignedSpool: true,
+    isDropdownOpen: true,
+    resolvedTheme: "dark",
+  });
+
+  assert.equal(styles.selectorStyle?.borderColor, "transparent");
+  assert.equal(styles.currentRollStyle?.borderColor, "transparent");
+  assert.equal(
+    styles.selectorStyle?.boxShadow,
+    "inset 0 1px 0 rgba(255, 255, 255, 0.04)",
+  );
+  assert.equal(
+    styles.currentRollStyle?.boxShadow,
+    "inset 0 1px 0 rgba(255, 255, 255, 0.04)",
+  );
 });

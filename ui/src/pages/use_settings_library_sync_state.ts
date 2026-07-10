@@ -10,6 +10,7 @@ export function useSettingsLibrarySyncState() {
   const [librarySyncSettings, setLibrarySyncSettings] = useState<LibrarySyncSettings | null>(null);
   const [librarySyncModeDraft, setLibrarySyncModeDraft] = useState<LibrarySyncMode>("STANDALONE");
   const [librarySyncDeviceNameDraft, setLibrarySyncDeviceNameDraft] = useState("");
+  const [librarySyncDeviceNameSaveBusy, setLibrarySyncDeviceNameSaveBusy] = useState(false);
   const [librarySyncHostBaseUrlDraft, setLibrarySyncHostBaseUrlDraft] = useState("");
   const [librarySyncPairingDraft, setLibrarySyncPairingDraft] = useState("");
   const [librarySyncBusy, setLibrarySyncBusy] = useState(false);
@@ -23,6 +24,7 @@ export function useSettingsLibrarySyncState() {
   return {
     librarySyncBusy,
     librarySyncDeviceNameDraft,
+    librarySyncDeviceNameSaveBusy,
     librarySyncHostBaseUrlDraft,
     librarySyncModeDraft,
     librarySyncPairingDraft,
@@ -33,6 +35,7 @@ export function useSettingsLibrarySyncState() {
     librarySyncValidationBusy,
     setLibrarySyncBusy,
     setLibrarySyncDeviceNameDraft,
+    setLibrarySyncDeviceNameSaveBusy,
     setLibrarySyncHostBaseUrlDraft,
     setLibrarySyncModeDraft,
     setLibrarySyncPairingDraft,

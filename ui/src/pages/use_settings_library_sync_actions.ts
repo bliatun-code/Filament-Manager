@@ -14,6 +14,7 @@ import {
 } from "../lib/tauri_client";
 import { refreshLibrarySyncSnapshot } from "../lib/settings_data_source";
 import { extractBaseUrlFromPairingInput } from "../lib/settings_utils";
+import { persistLibrarySyncDeviceName } from "./settings_library_device_name";
 import {
   buildLibrarySyncActionMessage,
   buildLibrarySyncErrorMessage,
@@ -52,6 +53,7 @@ type UseSettingsLibrarySyncActionsInput = LibrarySyncActionLabels & {
   setInfo: Dispatch<SetStateAction<string | null>>;
   setLibrarySyncBusy: Dispatch<SetStateAction<boolean>>;
   setLibrarySyncDeviceNameDraft: Dispatch<SetStateAction<string>>;
+  setLibrarySyncDeviceNameSaveBusy: Dispatch<SetStateAction<boolean>>;
   setLibrarySyncHostBaseUrlDraft: Dispatch<SetStateAction<string>>;
   setLibrarySyncModeDraft: Dispatch<SetStateAction<LibrarySyncMode>>;
   setLibrarySyncPairingDraft: Dispatch<SetStateAction<string>>;
@@ -85,6 +87,7 @@ export function useSettingsLibrarySyncActions({
   setInfo,
   setLibrarySyncBusy,
   setLibrarySyncDeviceNameDraft,
+  setLibrarySyncDeviceNameSaveBusy,
   setLibrarySyncHostBaseUrlDraft,
   setLibrarySyncModeDraft,
   setLibrarySyncPairingDraft,
@@ -198,6 +201,56 @@ export function useSettingsLibrarySyncActions({
     trustedLanSelectedInterfaceOption,
     trustedLanStatus?.enabled,
     trustedLanValidationMessageLabels,
+  ]);
+
+  const handleSaveLibrarySyncDeviceName = useCallback(async () => {
+    if (!tauri || librarySyncBusy || !librarySyncSettings) {
+      return false;
+    }
+    setLibrarySyncBusy(true);
+    setLibrarySyncDeviceNameSaveBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const saved = await persistLibrarySyncDeviceName({
+        current: librarySyncSettings,
+        deviceName: librarySyncDeviceNameDraft,
+      });
+      setLibrarySyncSettings(saved);
+      setLibrarySyncDeviceNameDraft(saved.device_name ?? "");
+      setInfo(
+        buildLibrarySyncActionMessage("deviceNameSaved", librarySyncActionMessageLabels()),
+      );
+      return true;
+    } catch (saveError) {
+      console.error(saveError);
+      setError(
+        toErrorMessage(
+          saveError,
+          buildLibrarySyncErrorMessage(
+            "deviceNameSaveFailed",
+            librarySyncErrorMessageLabels(),
+          ),
+        ),
+      );
+      return false;
+    } finally {
+      setLibrarySyncDeviceNameSaveBusy(false);
+      setLibrarySyncBusy(false);
+    }
+  }, [
+    librarySyncActionMessageLabels,
+    librarySyncBusy,
+    librarySyncDeviceNameDraft,
+    librarySyncErrorMessageLabels,
+    librarySyncSettings,
+    setError,
+    setInfo,
+    setLibrarySyncBusy,
+    setLibrarySyncDeviceNameDraft,
+    setLibrarySyncDeviceNameSaveBusy,
+    setLibrarySyncSettings,
+    tauri,
   ]);
 
   const handleValidateLibrarySyncHost = useCallback(async () => {
@@ -449,6 +502,7 @@ export function useSettingsLibrarySyncActions({
     handleFetchLibrarySyncSnapshot,
     handlePairLibrarySyncHost,
     handleRenewLibrarySyncClientAuth,
+    handleSaveLibrarySyncDeviceName,
     handleSaveLibrarySyncSettings,
     handleValidateLibrarySyncHost,
   };

@@ -20,6 +20,7 @@ import { useSettingsMaintenanceSection } from "./use_settings_maintenance_sectio
 import { useSettingsPrintersSection } from "./use_settings_printers_section";
 import { useSettingsSilentReload } from "./use_settings_silent_reload";
 import { useSettingsMessageGroups } from "./use_settings_message_groups";
+import { isLibrarySyncDeviceNameDirty } from "./settings_library_device_name";
 
 type SettingsPageProps = {
   initialTab?: SettingsTabKey;
@@ -28,6 +29,7 @@ type SettingsPageProps = {
 export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPageProps) {
   const tauri = isTauri();
   const desktopVisualQaScenarioRef = useRef(resolveDesktopVisualQaScenario());
+  const desktopVisualQaRoleChangeAppliedRef = useRef(false);
   const reloadSettingsRef = useRef<() => Promise<void>>(async () => undefined);
   const { locale, setLocale, t } = useI18n();
   const { busy, error, info, setBusy, setError, setInfo } = useSettingsFeedbackState();
@@ -58,9 +60,11 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   const {
     librarySyncBusy,
     librarySyncDeviceNameDraft,
+    librarySyncDeviceNameSaveBusy,
     librarySyncHostBaseUrlDraft,
     librarySyncModeDraft,
     librarySyncPairingDraft,
+    librarySyncSavedMode,
     librarySyncSettings,
     librarySyncSnapshot,
     librarySyncSnapshotBusy,
@@ -110,19 +114,36 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     trustedLanPairingLabel,
     trustedLanPairingLink,
     trustedLanPortDraft,
+    trustedLanLoading,
     trustedLanStatus,
   } = libraryRuntime;
   const messageGroups = useSettingsMessageGroups(t);
 
   useEffect(() => {
-    if (desktopVisualQaScenarioRef.current !== "settings-library-network-details") {
+    const scenario = desktopVisualQaScenarioRef.current;
+    const isNetworkScenario =
+      scenario === "settings-library-network-details" ||
+      scenario === "settings-library-network-editor";
+    const isPairingScenario = scenario === "settings-library-pairing";
+    const isBrowsersScenario =
+      scenario === "settings-library-browsers" ||
+      scenario === "settings-library-browsers-history";
+    const isRoleChangeScenario = scenario === "settings-library-role-change";
+    if (
+      !isNetworkScenario &&
+      !isPairingScenario &&
+      !isBrowsersScenario &&
+      !isRoleChangeScenario
+    ) {
       return;
     }
     setActiveTab("LIBRARY");
-    setShowLibraryClientAdvanced(true);
-    setShowTrustedLanNetworkEditor(true);
-    setShowTrustedLanNetworkSummary(true);
-    setShowTrustedLanRevokedBrowsers(true);
+    setShowLibraryClientAdvanced(false);
+    setShowTrustedLanNetworkEditor(scenario === "settings-library-network-editor");
+    setShowTrustedLanNetworkSummary(isNetworkScenario);
+    setShowTrustedLanRevokedBrowsers(
+      scenario === "settings-library-browsers-history",
+    );
   }, [
     setActiveTab,
     setShowLibraryClientAdvanced,
@@ -178,6 +199,91 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setSpoolRows,
     spoolRows,
   } = useSettingsPageDataState(tauri);
+
+  useEffect(() => {
+    if (loading || trustedLanLoading) {
+      return;
+    }
+    const scenario = desktopVisualQaScenarioRef.current;
+    const expectsEditor = scenario === "settings-library-network-editor";
+    const isNetworkScenario =
+      scenario === "settings-library-network-details" || expectsEditor;
+    const isPairingScenario = scenario === "settings-library-pairing";
+    const isBrowsersScenario =
+      scenario === "settings-library-browsers" ||
+      scenario === "settings-library-browsers-history";
+    if (!isNetworkScenario && !isPairingScenario && !isBrowsersScenario) {
+      return;
+    }
+    if (isNetworkScenario) {
+      if (!showTrustedLanNetworkSummary || showTrustedLanNetworkEditor !== expectsEditor) {
+        return;
+      }
+    } else if (showTrustedLanNetworkSummary || showTrustedLanNetworkEditor) {
+      return;
+    }
+    if (
+      scenario === "settings-library-browsers" &&
+      showTrustedLanRevokedBrowsers
+    ) {
+      return;
+    }
+    if (
+      scenario === "settings-library-browsers-history" &&
+      revokedTrustedLanPairedBrowsers.length > 0 &&
+      !showTrustedLanRevokedBrowsers
+    ) {
+      return;
+    }
+    const targetId = isNetworkScenario
+      ? expectsEditor
+        ? "trusted-lan-network-editor"
+        : "trusted-lan-network-details"
+      : isPairingScenario
+        ? "trusted-lan-pairing-panel"
+        : "trusted-lan-browsers-panel";
+    const scrollBlock = isBrowsersScenario ? "start" : "center";
+    const target = document.getElementById(targetId);
+    if (!target) {
+      return;
+    }
+    let scheduledFrameId: number | null = null;
+    const revealTarget = () => {
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+      scheduledFrameId = window.requestAnimationFrame(() => {
+        scheduledFrameId = null;
+        target.scrollIntoView({ behavior: "auto", block: scrollBlock });
+      });
+    };
+
+    revealTarget();
+    const timerIds = [150, 450, 900].map((delay) =>
+      window.setTimeout(revealTarget, delay),
+    );
+    window.addEventListener("resize", revealTarget);
+    const resizeObserver =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(revealTarget);
+    resizeObserver?.observe(target);
+
+    return () => {
+      timerIds.forEach((timerId) => window.clearTimeout(timerId));
+      window.removeEventListener("resize", revealTarget);
+      resizeObserver?.disconnect();
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+    };
+  }, [
+    loading,
+    revokedTrustedLanPairedBrowsers.length,
+    showTrustedLanNetworkEditor,
+    showTrustedLanNetworkSummary,
+    showTrustedLanRevokedBrowsers,
+    trustedLanLoading,
+  ]);
+
   const {
     missingSwatchCount,
     settingsCatalogRouteProps,
@@ -308,6 +414,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     handleRevokeAllTrustedLanBrowsers,
     handleRevokeTrustedLanBrowser,
     handleSaveTrustedLanConfig,
+    handleSaveLibrarySyncDeviceName,
     handleToggleTrustedLanEnabled,
     libraryRoleConfirmArmed,
     roleChangeState,
@@ -325,6 +432,33 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     tauri,
     t,
   });
+
+  useEffect(() => {
+    if (
+      desktopVisualQaRoleChangeAppliedRef.current ||
+      desktopVisualQaScenarioRef.current !== "settings-library-role-change" ||
+      activeTab !== "LIBRARY" ||
+      loading ||
+      librarySyncBusy ||
+      !librarySyncSettings ||
+      !tauri
+    ) {
+      return;
+    }
+
+    const targetMode = librarySyncSavedMode === "CLIENT" ? "STANDALONE" : "CLIENT";
+    handleRequestLibraryRoleChange(targetMode);
+    desktopVisualQaRoleChangeAppliedRef.current = true;
+  }, [
+    activeTab,
+    handleRequestLibraryRoleChange,
+    librarySyncBusy,
+    librarySyncSavedMode,
+    librarySyncSettings,
+    loading,
+    tauri,
+  ]);
+
   const settingsGeneralRouteProps = buildSettingsGeneralRouteProps({
     appVersion,
     busy,
@@ -352,7 +486,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     lastFullBackupValidatedAt,
     libraryRoleConfirmArmed,
     librarySyncBusy,
+    librarySyncDeviceNameDirty: isLibrarySyncDeviceNameDirty(
+      librarySyncSettings,
+      librarySyncDeviceNameDraft,
+    ),
     librarySyncDeviceNameDraft,
+    librarySyncDeviceNameSaveBusy,
     librarySyncHostBaseUrlDraft,
     librarySyncModeDraft,
     librarySyncPairingDraft,
@@ -414,6 +553,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     onRevokeAllBrowsers: handleRevokeAllTrustedLanBrowsers,
     onRevokeBrowser: handleRevokeTrustedLanBrowser,
     onSaveNetwork: handleSaveTrustedLanConfig,
+    onSaveDeviceName: () => void handleSaveLibrarySyncDeviceName(),
     onToggleAdvanced: () => setShowLibraryClientAdvanced((value) => !value),
     onToggleNetworkEditor: () => setShowTrustedLanNetworkEditor((value) => !value),
     onToggleNetworkSummary: () => setShowTrustedLanNetworkSummary((value) => !value),

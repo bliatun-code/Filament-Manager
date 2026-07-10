@@ -34,11 +34,18 @@ test("initial page resolver opens the page requested by fixtures and visual QA s
   assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=inventory-overview"), "inventory");
   assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=add-filament"), "inventory");
   assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=wishlist-queue"), "inventory");
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=selected-roll-history"), "inventory");
+  assert.equal(
+    resolveInitialPageFromSearch("bfm_visual_qa=selected-roll-danger-zone"),
+    "inventory",
+  );
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=rfid-capture"), "inventory");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=bambu-batch-add"), "inventory");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=loans-overview"), "loans");
   assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=return-loan"), "loans");
+  assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=return-inbound-loan"), "loans");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-board"), "printers");
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=add-printer"), "printers");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-slot-assignment"), "printers");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-slot-onboarding"), "printers");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-rfid-override"), "printers");
@@ -47,7 +54,21 @@ test("initial page resolver opens the page requested by fixtures and visual QA s
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-general"), "settings");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-library"), "settings");
   assert.equal(
+    resolveInitialPageFromSearch("bfm_visual_qa=settings-library-role-change"),
+    "settings",
+  );
+  assert.equal(
     resolveInitialPageFromSearch("bfm_visual_qa=settings-library-network-details"),
+    "settings",
+  );
+  assert.equal(
+    resolveInitialPageFromSearch("bfm_visual_qa=settings-library-network-editor"),
+    "settings",
+  );
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-library-pairing"), "settings");
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-library-browsers"), "settings");
+  assert.equal(
+    resolveInitialPageFromSearch("bfm_visual_qa=settings-library-browsers-history"),
     "settings",
   );
   assert.equal(
@@ -62,6 +83,15 @@ test("initial page resolver opens the page requested by fixtures and visual QA s
     resolveInitialPageFromSearch("bfm_visual_qa=settings-printer-diagnostics-paused"),
     "settings",
   );
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-printer-editor"), "settings");
+  assert.equal(
+    resolveInitialPageFromSearch("bfm_visual_qa=settings-printer-editor-dirty"),
+    "settings",
+  );
+  assert.equal(
+    resolveInitialPageFromSearch("bfm_visual_qa=settings-printer-editor-discard"),
+    "settings",
+  );
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-catalog"), "settings");
   assert.equal(
     resolveInitialPageFromSearch("bfm_visual_qa=settings-catalog-swatch-review"),
@@ -69,6 +99,9 @@ test("initial page resolver opens the page requested by fixtures and visual QA s
   );
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-maintenance"), "settings");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=statistics-overview"), "statistics");
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=statistics-consumption"), "statistics");
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=statistics-borrower"), "statistics");
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=statistics-loans"), "statistics");
   assert.equal(resolveInitialPageFromSearch("?bfm_inventory_fixture=list"), "dashboard");
   assert.equal(resolveInitialPageFromSearch(""), "dashboard");
   assert.equal(resolveInitialPageFromSearch(null), "dashboard");

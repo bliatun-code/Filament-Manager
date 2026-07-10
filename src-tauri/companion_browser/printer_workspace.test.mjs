@@ -155,7 +155,8 @@ test("printer workspace keeps the board focused on slots instead of readiness ba
   assert.match(html, /Load filament/);
   assert.match(html, /Update weight/);
   assert.match(html, /Clear slot/);
-  assert.match(html, /primary-button swatch-action-button slot-button slot-button-primary/);
+  assert.match(html, /primary-button slot-button slot-button-primary/);
+  assert.doesNotMatch(html, /swatch-action-button slot-button/);
   assert.match(html, /slot-card-loaded/);
   assert.match(html, /slot-card-empty/);
 });
@@ -181,6 +182,66 @@ test("printer workspace gives loaded slot cards a filament tint even without exp
 
   assert.match(html, /slot-card-loaded swatch-surface/);
   assert.match(html, /--swatch-rgb:/);
+});
+
+test("printer workspace keeps a gray slot tint while its weight action stays visibly enabled", () => {
+  const html = renderBoard({
+    activePrinter: createPrinterRow({
+      slots: [
+        {
+          slot_id: "slot-4",
+          ams_id: "ams_1",
+          slot_index: 4,
+          spool_id: "spool-gray",
+          spool_material: "PETG",
+          spool_filament_name: "PETG Basic",
+          spool_color_name: "Gray(30107)",
+          spool_hex_color: "#9B9EA0",
+          spool_remaining_g: 730,
+        },
+      ],
+    }),
+  });
+  const updateButton = html.match(
+    /<button[^>]*data-action="start-printer-weight-update"[^>]*data-printer-task-mode="update"[^>]*>Update weight<\/button>/,
+  )?.[0];
+
+  assert.match(html, /slot-card slot-card-loaded swatch-surface swatch-card-surface/);
+  assert.match(html, /--swatch-rgb:155 158 160/);
+  assert.match(html, /PETG Basic · Gray \(30107\)/);
+  assert.doesNotMatch(html, /Gray\(30107\)/);
+  assert.ok(updateButton);
+  assert.match(updateButton, /class="primary-button slot-button slot-button-primary"/);
+  assert.doesNotMatch(updateButton, /swatch-action-button|style=|disabled/);
+});
+
+test("printer workspace ignores a stale filament color on a truly empty external slot", () => {
+  const html = renderBoard({
+    state: {
+      locale: "nb",
+    },
+    activePrinter: createPrinterRow({
+      slots: [
+        {
+          slot_id: "printer_1773326181381_ext_slot_1",
+          ams_id: "external",
+          slot_index: 1,
+          spool_id: null,
+          live_loaded: false,
+          live_color_hex: "#D45D84",
+          live_filament_type: "",
+          live_filament_name: "",
+          live_tray_uuid: null,
+          live_match_status: null,
+        },
+      ],
+    }),
+  });
+
+  assert.match(html, /EXT-spor/);
+  assert.match(html, /slot-card slot-card-empty/);
+  assert.match(html, />Tom<\/span>/);
+  assert.doesNotMatch(html, /swatch-surface|swatch-dot|#D45D84|--swatch-rgb:212 93 132/);
 });
 
 test("printer workspace shows a live badge when host live data is present", () => {
@@ -307,7 +368,7 @@ test("printer workspace does not show stale job timing when only a loaded slot r
   assert.doesNotMatch(html, /25 min/);
 });
 
-test("printer workspace shows live slot status for unassigned observed trays", () => {
+test("printer workspace keeps the color dot for an actually observed unassigned live tray", () => {
   const html = renderBoard({
     activePrinter: createPrinterRow({
       slots: [
@@ -331,6 +392,17 @@ test("printer workspace shows live slot status for unassigned observed trays", (
   assert.match(html, /PLA · Basic/);
   assert.match(html, /74%/);
   assert.match(html, /slot-card-loaded swatch-surface/);
+  assert.match(html, /--swatch-rgb:129 251 128/);
+  assert.match(html, /<span class="swatch-dot" style="background:#81FB80"><\/span>/);
+  const loadButton = html.match(
+    /<button[^>]*data-action="start-printer-slot-assignment"[^>]*>Load filament<\/button>/,
+  )?.[0];
+  assert.ok(loadButton);
+  assert.match(
+    loadButton,
+    /class="primary-button slot-button slot-button-primary slot-button-emphasis"/,
+  );
+  assert.doesNotMatch(loadButton, /swatch-action-button|style=|disabled/);
 });
 
 test("printer workspace suggests Bambu inventory candidates for unknown live RFID", () => {
@@ -822,35 +894,48 @@ test("printer workspace renders a direct load picker body for the targeted slot"
 });
 
 test("printer workspace renders a dedicated weight task sheet body for loaded slots", () => {
-  const html = renderPrinterWeightTaskSheetBody({
-    state: {
-      locale: "nb",
-      busy: false,
-    },
-    activeTaskSheet: {
-      type: "printer-weight",
-      mode: "clear",
-      printerName: "Brutus",
-      slotLabel: "AMS 1 · Spor 2",
-      currentSpoolId: "spool-1",
-      currentSpoolTitle: "ABS Azure (40601)",
-      currentVendor: "Bambu",
-      currentReference: "#ebcb0",
-      currentLocationId: "Hylle 3",
-      currentRemainingWeight: "825",
-      currentMeasuredWeight: "1075",
-      currentSwatchColor: "#3B82F6",
-    },
-    escapeHtml: (value) => String(value ?? ""),
-    formatGrams: (value) => `${value ?? 0} g`,
-  });
+  const activeTaskSheet = {
+    type: "printer-weight",
+    mode: "clear",
+    printerName: "Brutus",
+    slotLabel: "AMS 1 · Spor 4",
+    currentSpoolId: "spool-gray",
+    currentSpoolTitle: "PETG Basic · Gray (30107)",
+    currentVendor: "Bambu",
+    currentReference: "#321751",
+    currentLocationId: "Hylle 3",
+    currentRemainingWeight: "730",
+    currentMeasuredWeight: "980",
+    currentSwatchColor: "#9B9EA0",
+  };
+  const renderTaskSheet = (busy) =>
+    renderPrinterWeightTaskSheetBody({
+      state: {
+        locale: "nb",
+        busy,
+      },
+      activeTaskSheet,
+      escapeHtml: (value) => String(value ?? ""),
+      formatGrams: (value) => `${value ?? 0} g`,
+    });
+  const html = renderTaskSheet(false);
+  const busyHtml = renderTaskSheet(true);
+  const submitButton = html.match(/<button[^>]*type="submit"[^>]*>Tøm spor<\/button>/)?.[0];
+  const busySubmitButton = busyHtml.match(/<button[^>]*type="submit"[^>]*>Tøm spor<\/button>/)?.[0];
 
   assert.match(html, /Utgående vekt \(g\)/);
   assert.match(html, /data-action="printer-slot-operation-form"/);
   assert.match(html, /companion-selection-card swatch-surface detail-section-card printer-weight-summary/);
-  assert.match(html, /class="primary-button swatch-action-button" type="submit" style="--swatch-rgb:/);
-  assert.match(html, /Brutus · AMS 1 · Spor 2/);
-  assert.match(html, /1075/);
+  assert.match(html, /--swatch-rgb:155 158 160/);
+  assert.match(html, /Brutus · AMS 1 · Spor 4/);
+  assert.match(html, /980/);
+  assert.ok(submitButton);
+  assert.match(submitButton, /class="primary-button"/);
+  assert.doesNotMatch(submitButton, /swatch-action-button|style=|disabled/);
+  assert.ok(busySubmitButton);
+  assert.match(busySubmitButton, /class="primary-button"/);
+  assert.match(busySubmitButton, / disabled/);
+  assert.doesNotMatch(busySubmitButton, /swatch-action-button|style=/);
 });
 
 test("printer workspace localizes slot labels in norwegian", () => {

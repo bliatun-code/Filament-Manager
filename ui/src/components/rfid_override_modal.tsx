@@ -132,8 +132,6 @@ export function RfidOverrideModal({
             <ModalActionButton
               type="button"
               variant="primary"
-              swatchColor={prompt.spool.master.hex_color}
-              resolvedTheme={resolvedTheme}
               onClick={onSave}
               disabled={!observedRfid || busy}
             >

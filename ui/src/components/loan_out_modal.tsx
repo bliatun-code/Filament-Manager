@@ -24,7 +24,6 @@ import {
 } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
 import {
-  inventoryCatalogRowStyle,
   inventorySwatchInsetStyle,
   inventorySwatchPanelStyle,
 } from "../lib/inventory_swatch_style";
@@ -35,8 +34,6 @@ import {
   type LoanableSpool,
 } from "../lib/loan_out_data_source";
 import {
-  countPillClassName,
-  loanOutSpoolButtonClassName,
   panelCardClassName,
   panelSubtitleClassName,
   panelTitleClassName,
@@ -47,7 +44,7 @@ import {
   toMeasuredTotalWeight,
 } from "../lib/loan_out_weight_model";
 import { isTauri } from "../lib/tauri_client";
-import { InventorySwatchChip } from "./inventory_swatch_chip";
+import { LoanOutCandidateList } from "./loan_out_candidate_list";
 
 type LoanOutModalProps = {
   open: boolean;
@@ -82,7 +79,7 @@ export function LoanOutModal({
   const [error, setError] = useState<string | null>(null);
   const [spools, setSpools] = useState<LoanableSpool[]>([]);
   const [selectedSpoolId, setSelectedSpoolId] = useState<string | null>(null);
-  const [hoveredLoanSpoolId, setHoveredLoanSpoolId] = useState<string | null>(null);
+  const [spoolSearchQuery, setSpoolSearchQuery] = useState("");
   const [borrowerName, setBorrowerName] = useState("");
   const [gramsOut, setGramsOut] = useState("");
   const [note, setNote] = useState("");
@@ -124,6 +121,7 @@ export function LoanOutModal({
     }
     setBorrowerName("");
     setNote("");
+    setSpoolSearchQuery("");
     setError(null);
     void reload();
   }, [open, reload, tauri]);
@@ -237,84 +235,22 @@ export function LoanOutModal({
               </ModalNotice>
             ) : (
               <div className={`${inventoryTwoColumnModalGridClassName} min-h-0 flex-1`}>
-                <div className={`${panelCardClassName} flex min-h-0 flex-col`}>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className={panelTitleClassName}>
-                      {t("inventory.availableToLoan", "Available to loan")}
-                    </div>
-                    <span className={countPillClassName}>{spools.length}</span>
-                  </div>
-
-                  <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto pr-1 max-h-[min(58vh,40rem)]">
-                    {spools.map((spool) => {
-                      const isActive = selectedSpool?.id === spool.id;
-                      const placementLabel = formatPlacementLabel(t, spool.location);
-                      const referenceLabel = formatSpoolReference(spool.id);
-                      return (
-                        <button
-                          key={spool.id}
-                          type="button"
-                          onMouseEnter={() => setHoveredLoanSpoolId(spool.id)}
-                          onMouseLeave={() => setHoveredLoanSpoolId(null)}
-                          onClick={() => {
-                            setSelectedSpoolId(spool.id);
-                            setGramsOut(
-                              spool.remainingGrams != null
-                                ? String(toMeasuredTotalWeight(spool, spool.remainingGrams))
-                                : "",
-                            );
-                          }}
-                          className={loanOutSpoolButtonClassName(isActive)}
-                          style={inventoryCatalogRowStyle(
-                            spool.hexColor,
-                            isActive,
-                            resolvedTheme,
-                            hoveredLoanSpoolId === spool.id,
-                          )}
-                        >
-                          <span className="flex min-w-0 items-center gap-2.5">
-                            <InventorySwatchChip
-                              className="h-8 w-8 rounded-md"
-                              swatchColor={spool.hexColor}
-                              tone="tiny"
-                            />
-                            <span className="min-w-0 flex-1">
-                              <span
-                                className="block overflow-hidden break-words font-semibold leading-tight text-slate-900 [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] dark:text-slate-50"
-                                title={formatFilamentDisplayTitle(
-                                  spool.material,
-                                  spool.filamentName,
-                                  spool.colorName,
-                                )}
-                              >
-                                {formatFilamentDisplayTitle(
-                                  spool.material,
-                                  spool.filamentName,
-                                  spool.colorName,
-                                )}
-                              </span>
-                              <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                                <VendorBadge vendor={spool.vendor} compact />
-                                <span className="font-mono" title={`#${spool.id}`}>
-                                  {referenceLabel}
-                                </span>
-                                <span>{formatLoanOutGrams(spool.remainingGrams)}</span>
-                                <span className="truncate max-w-[11rem]" title={placementLabel}>
-                                  {placementLabel}
-                                </span>
-                              </span>
-                            </span>
-                          </span>
-                          {isActive ? (
-                            <span className="shrink-0 rounded-full border border-slate-300 bg-white/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-700 shadow-sm dark:border-slate-500 dark:bg-slate-900/80 dark:text-slate-100 dark:shadow-none">
-                              ✓ {t("common.selected", "Selected")}
-                            </span>
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                <LoanOutCandidateList
+                  disabled={!tauri || busy}
+                  searchQuery={spoolSearchQuery}
+                  selectedSpoolId={selectedSpoolId}
+                  spools={spools}
+                  onSearchQueryChange={setSpoolSearchQuery}
+                  renderVendorBadge={(vendor) => <VendorBadge vendor={vendor} compact />}
+                  onSelectSpool={(spool) => {
+                    setSelectedSpoolId(spool.id);
+                    setGramsOut(
+                      spool.remainingGrams != null
+                        ? String(toMeasuredTotalWeight(spool, spool.remainingGrams))
+                        : "",
+                    );
+                  }}
+                />
 
                 <div className={`${panelCardClassName} flex min-h-0 flex-col overflow-hidden`}>
                   {selectedSpool ? (

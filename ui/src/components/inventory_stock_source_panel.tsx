@@ -17,6 +17,7 @@ import { InventorySwatchChip } from "./inventory_swatch_chip";
 
 type InventoryStockSourcePanelProps = {
   activeCatalogMasters: MasterCatalogRow[];
+  autoFocusCatalogSearch?: boolean;
   catalogQuery: string;
   createMode: InventoryCreateMode;
   isCatalogCreateMode: boolean;
@@ -55,6 +56,7 @@ const inventoryStockManualFallbackButtonClassName =
 
 export function InventoryStockSourcePanel({
   activeCatalogMasters,
+  autoFocusCatalogSearch = true,
   catalogQuery,
   createMode,
   isCatalogCreateMode,
@@ -133,6 +135,12 @@ export function InventoryStockSourcePanel({
             <div className="space-y-2.5">
               <input
                 type="search"
+                autoFocus={autoFocusCatalogSearch}
+                aria-label={
+                  createMode === "bambu"
+                    ? t("wishlist.searchBambu", "Search Bambu material/color or filament code")
+                    : t("wishlist.searchEsun", "Search eSUN material/color")
+                }
                 value={catalogQuery}
                 onChange={(event) => onCatalogQueryChange(event.target.value)}
                 placeholder={
@@ -150,7 +158,7 @@ export function InventoryStockSourcePanel({
 
       {isCatalogCreateMode ? (
         <div className="space-y-3">
-          <div className="space-y-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 dark:border-slate-700 dark:bg-slate-950/70 lg:max-h-[26rem] lg:overflow-y-auto">
+          <div className="max-h-[22rem] space-y-1.5 overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white p-1.5 dark:border-slate-700 dark:bg-slate-950/70 lg:max-h-[26rem]">
             {activeCatalogMasters.map((master) => {
               const selected = selectedCatalogMasterId === master.id;
               return (

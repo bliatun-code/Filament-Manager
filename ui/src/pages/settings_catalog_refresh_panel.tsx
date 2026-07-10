@@ -70,6 +70,11 @@ export function SettingsCatalogRefreshPanel({
   onToggleCatalogRefreshLog,
   onToggleCatalogRefreshMaterial,
 }: SettingsCatalogRefreshPanelProps) {
+  const refreshActionLabel =
+    activeCatalogRefreshMaterials.length === 0
+      ? t("settings.runFullVendorAudit", "Run full vendor audit")
+      : `${t("settings.refreshSelectedMaterials", "Refresh selected materials")} (${activeCatalogRefreshMaterials.length})`;
+
   return (
     <SettingsSectionPanel className="mt-4">
       <SettingsSectionHeader
@@ -165,7 +170,7 @@ export function SettingsCatalogRefreshPanel({
             >
               {catalogRefreshBusy && catalogRefreshVendor === catalogVendor
                 ? t("wishlist.refreshing", "Refreshing")
-                : t("settings.refreshCurrentVendor", "Refresh current vendor catalog")}
+                : refreshActionLabel}
             </button>
             <button
               type="button"
@@ -202,8 +207,12 @@ export function SettingsCatalogRefreshPanel({
                 value={`${catalogRefreshElapsedSeconds}s`}
               />
             </div>
-            <div className="mt-4 h-2 rounded-full bg-slate-200 dark:bg-slate-800">
-              <div className="h-2 w-2/3 animate-pulse rounded-full bg-slate-900 dark:bg-slate-100" />
+            <div
+              className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
+              role="progressbar"
+              aria-label={catalogRefreshProgressMessage}
+            >
+              <div className="h-full w-full animate-pulse bg-gradient-to-r from-slate-400/35 via-slate-900 to-slate-400/35 dark:from-slate-600/45 dark:via-slate-100 dark:to-slate-600/45" />
             </div>
           </div>
         ) : null}

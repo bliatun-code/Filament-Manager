@@ -65,6 +65,7 @@ export type LibrarySyncClientState = {
 export type LibrarySyncActionMessageKey =
   | "clientAuthCleared"
   | "clientPaired"
+  | "deviceNameSaved"
   | "hostCheckPassed"
   | "renewPairing"
   | "settingsSaved"
@@ -81,6 +82,7 @@ export type LibrarySyncPairingMessageLabels = Record<LibrarySyncPairingMessageKe
 
 export type LibrarySyncErrorMessageKey =
   | "clearClientAuthFailed"
+  | "deviceNameSaveFailed"
   | "hostCheckFailed"
   | "settingsSaveFailed"
   | "snapshotFailed";

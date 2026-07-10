@@ -106,6 +106,48 @@ test("submitQrLookup accepts versioned deep-link payloads", async () => {
   ]);
 });
 
+test("submitSpoolLoanReturn subtracts the Bambu spool weight from measured total weight", async () => {
+  const fetchCalls = [];
+  const harness = createMutationHarness({
+    state: {
+      activeTaskSheet: { type: "loan-return", loanId: "loan-1" },
+      expandedLoanReturnId: "loan-1",
+      spools: [
+        {
+          spool: {
+            id: "spool-1",
+            spool_tare_weight_g: null,
+          },
+          master: {
+            vendor: "Bambu",
+          },
+        },
+      ],
+    },
+    fetchJson: async (path, init) => {
+      fetchCalls.push([path, JSON.parse(String(init?.body || "{}"))]);
+      return { ok: true };
+    },
+  });
+
+  await harness.mutations.submitSpoolLoanReturn("loan-1", "spool-1", "1250", "");
+
+  assert.deepEqual(fetchCalls, [
+    [
+      "/api/v1/loans/loan-1/return",
+      {
+        returned_grams: 1000,
+        note: null,
+      },
+    ],
+  ]);
+  assert.equal(harness.refreshCount, 1);
+  assert.deepEqual(harness.busyCalls, [true, false]);
+  assert.equal(harness.state.activeTaskSheet, null);
+  assert.equal(harness.state.expandedLoanReturnId, "");
+  assert.equal(harness.state.statusTone, "success");
+});
+
 test("submitLiveSlotCandidateRfidUpdate saves a current unknown live RFID candidate", async () => {
   const fetchCalls = [];
   const harness = createMutationHarness({

@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useId, useState, type Dispatch, type SetStateAction } from "react";
 import { useI18n } from "../lib/i18n";
 import { printerBrandSurfaceStyle } from "../lib/printer_branding";
 import {
@@ -21,6 +21,7 @@ import { PrinterSlotCard } from "./printer_slot_card";
 
 type PrinterOverviewCardProps = {
   printer: PrinterOverviewRow;
+  defaultSlotsExpanded?: boolean;
   busy: boolean;
   tauri: boolean;
   clientReadOnly: boolean;
@@ -71,6 +72,7 @@ type PrinterOverviewCardProps = {
 
 export function PrinterOverviewCard({
   printer,
+  defaultSlotsExpanded = true,
   busy,
   tauri,
   clientReadOnly,
@@ -94,8 +96,11 @@ export function PrinterOverviewCard({
   openWeightPromptForDraft,
 }: PrinterOverviewCardProps) {
   const { t } = useI18n();
+  const slotGridId = useId();
+  const [slotsExpanded, setSlotsExpanded] = useState(defaultSlotsExpanded);
   const hasMultiMaterial = hasConfiguredMultiMaterial(printer.slots);
   const hasOpenDropdown = printer.slots.some((slot) => slot.slot_id === openDropdownSlotId);
+  const showSlots = slotsExpanded || hasOpenDropdown;
   const printerLiveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
   const liveConnectionIndicator = resolveLiveConnectionIndicator(
     printerLiveConfig,
@@ -119,36 +124,69 @@ export function PrinterOverviewCard({
         liveConfig={printerLiveConfig}
         resolvedTheme={resolvedTheme}
       />
-      <div className="mt-3 grid grid-cols-1 gap-2.5 lg:grid-cols-2">
-        {printer.slots.map((slot) => (
-          <PrinterSlotCard
-            key={slot.slot_id}
-            printer={printer}
-            slot={slot}
-            busy={busy}
-            tauri={tauri}
-            clientReadOnly={clientReadOnly}
-            clientPrinterSource={clientPrinterSource}
-            resolvedTheme={resolvedTheme}
-            bambuLiveIntegrations={bambuLiveIntegrations}
-            catalogMasters={catalogMasters}
-            openDropdownSlotId={openDropdownSlotId}
-            setOpenDropdownSlotId={setOpenDropdownSlotId}
-            spools={spools}
-            allowedSpoolsForSlot={allowedSpoolsForSlot}
-            findAllowedSpoolForSlot={findAllowedSpoolForSlot}
-            getSlotDraft={getSlotDraft}
-            setSlotDraft={setSlotDraft}
-            findSpoolById={findSpoolById}
-            openIncomingWeightDialog={openIncomingWeightDialog}
-            openEmptySlotWeightDialog={openEmptySlotWeightDialog}
-            openRfidOverrideDialog={openRfidOverrideDialog}
-            registerLiveRfidCandidate={registerLiveRfidCandidate}
-            createLiveBambuCatalogSpool={createLiveBambuCatalogSpool}
-            openWeightPromptForDraft={openWeightPromptForDraft}
-          />
-        ))}
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-200/70 pt-3 dark:border-slate-700/70">
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          {printer.slots.length}{" "}
+          {t(
+            printer.slots.length === 1 ? "printers.slotCountOne" : "printers.slotCountMany",
+            printer.slots.length === 1 ? "slot" : "slots",
+          )}
+        </span>
+        {printer.slots.length > 0 ? (
+          <button
+            type="button"
+            className="rounded-lg border border-slate-300/80 bg-white/70 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800"
+            aria-controls={slotGridId}
+            aria-expanded={showSlots}
+            onClick={() => {
+              if (showSlots) {
+                if (hasOpenDropdown) {
+                  setOpenDropdownSlotId(null);
+                }
+                setSlotsExpanded(false);
+                return;
+              }
+              setSlotsExpanded(true);
+            }}
+          >
+            {showSlots
+              ? t("printers.hideSlots", "Hide slots")
+              : t("printers.showSlots", "Show slots")}
+          </button>
+        ) : null}
       </div>
+      {showSlots ? (
+        <div id={slotGridId} className="mt-3 grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+          {printer.slots.map((slot) => (
+            <PrinterSlotCard
+              key={slot.slot_id}
+              printer={printer}
+              slot={slot}
+              busy={busy}
+              tauri={tauri}
+              clientReadOnly={clientReadOnly}
+              clientPrinterSource={clientPrinterSource}
+              resolvedTheme={resolvedTheme}
+              bambuLiveIntegrations={bambuLiveIntegrations}
+              catalogMasters={catalogMasters}
+              openDropdownSlotId={openDropdownSlotId}
+              setOpenDropdownSlotId={setOpenDropdownSlotId}
+              spools={spools}
+              allowedSpoolsForSlot={allowedSpoolsForSlot}
+              findAllowedSpoolForSlot={findAllowedSpoolForSlot}
+              getSlotDraft={getSlotDraft}
+              setSlotDraft={setSlotDraft}
+              findSpoolById={findSpoolById}
+              openIncomingWeightDialog={openIncomingWeightDialog}
+              openEmptySlotWeightDialog={openEmptySlotWeightDialog}
+              openRfidOverrideDialog={openRfidOverrideDialog}
+              registerLiveRfidCandidate={registerLiveRfidCandidate}
+              createLiveBambuCatalogSpool={createLiveBambuCatalogSpool}
+              openWeightPromptForDraft={openWeightPromptForDraft}
+            />
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

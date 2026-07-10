@@ -50,6 +50,18 @@
       "category": "modal"
     },
     {
+      "id": "selected-roll-history",
+      "aliases": ["roll-history", "inventory-roll-history"],
+      "page": "inventory",
+      "category": "modal"
+    },
+    {
+      "id": "selected-roll-danger-zone",
+      "aliases": ["danger-zone", "inventory-danger-zone"],
+      "page": "inventory",
+      "category": "modal"
+    },
+    {
       "id": "rfid-capture",
       "aliases": ["inventory-rfid"],
       "page": "inventory",
@@ -62,10 +74,23 @@
       "category": "modal"
     },
     {
+      "id": "return-inbound-loan",
+      "aliases": ["inbound-return", "borrowed-in-hand-back", "hand-back-borrowed-in"],
+      "page": "loans",
+      "category": "modal",
+      "requiresDatabaseFixture": true
+    },
+    {
       "id": "printer-board",
       "aliases": ["printers"],
       "page": "printers",
       "category": "overview"
+    },
+    {
+      "id": "add-printer",
+      "aliases": ["printer-add", "add-printer-modal"],
+      "page": "printers",
+      "category": "modal"
     },
     {
       "id": "printer-slot-assignment",
@@ -114,8 +139,43 @@
       "category": "settings"
     },
     {
+      "id": "settings-library-role-change",
+      "aliases": ["library-role-change", "library-role-dialog", "library-role-modal", "library-role-switch", "companion-role-change"],
+      "page": "settings",
+      "settingsTab": "LIBRARY",
+      "category": "modal"
+    },
+    {
       "id": "settings-library-network-details",
       "aliases": ["library-network-details", "companion-network-details", "trusted-lan-details"],
+      "page": "settings",
+      "settingsTab": "LIBRARY",
+      "category": "settings"
+    },
+    {
+      "id": "settings-library-network-editor",
+      "aliases": ["library-network-editor", "companion-network-editor", "trusted-lan-editor"],
+      "page": "settings",
+      "settingsTab": "LIBRARY",
+      "category": "settings"
+    },
+    {
+      "id": "settings-library-pairing",
+      "aliases": ["library-pairing", "companion-pairing", "trusted-lan-pairing"],
+      "page": "settings",
+      "settingsTab": "LIBRARY",
+      "category": "settings"
+    },
+    {
+      "id": "settings-library-browsers",
+      "aliases": ["library-browsers", "companion-browsers", "trusted-lan-browsers"],
+      "page": "settings",
+      "settingsTab": "LIBRARY",
+      "category": "settings"
+    },
+    {
+      "id": "settings-library-browsers-history",
+      "aliases": ["library-browser-history", "companion-browser-history", "trusted-lan-browser-history"],
       "page": "settings",
       "settingsTab": "LIBRARY",
       "category": "settings"
@@ -137,6 +197,27 @@
     {
       "id": "settings-printer-diagnostics-paused",
       "aliases": ["printer-diagnostics-paused", "bambu-live-diagnostics-paused"],
+      "page": "settings",
+      "settingsTab": "PRINTERS",
+      "category": "settings"
+    },
+    {
+      "id": "settings-printer-editor",
+      "aliases": ["printer-editor", "printer-settings-editor"],
+      "page": "settings",
+      "settingsTab": "PRINTERS",
+      "category": "settings"
+    },
+    {
+      "id": "settings-printer-editor-dirty",
+      "aliases": ["printer-editor-dirty", "printer-settings-editor-dirty"],
+      "page": "settings",
+      "settingsTab": "PRINTERS",
+      "category": "settings"
+    },
+    {
+      "id": "settings-printer-editor-discard",
+      "aliases": ["printer-editor-discard", "printer-settings-editor-discard"],
       "page": "settings",
       "settingsTab": "PRINTERS",
       "category": "settings"
@@ -168,6 +249,25 @@
       "aliases": ["statistics", "usage-statistics", "print-statistics"],
       "page": "statistics",
       "category": "overview"
+    },
+    {
+      "id": "statistics-consumption",
+      "aliases": ["total-consumption", "consumption-breakdown"],
+      "page": "statistics",
+      "category": "modal"
+    },
+    {
+      "id": "statistics-borrower",
+      "aliases": ["borrower-usage-breakdown", "statistics-borrower-usage"],
+      "page": "statistics",
+      "category": "modal",
+      "requiresDatabaseFixture": true
+    },
+    {
+      "id": "statistics-loans",
+      "aliases": ["loan-usage-statistics", "statistics-loan-usage"],
+      "page": "statistics",
+      "category": "workflow"
     }
   ]
 }

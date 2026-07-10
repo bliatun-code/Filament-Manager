@@ -55,13 +55,15 @@ export function PrinterOverviewCardHeader({
 
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="flex items-start gap-3">
-        <PrinterModelPreview model={printer.printer.model} hasMultiMaterial={hasMultiMaterial} />
-        <div className="space-y-0.5">
-          <div className="text-base font-semibold text-slate-900 dark:text-slate-50">
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        <div className="shrink-0">
+          <PrinterModelPreview model={printer.printer.model} hasMultiMaterial={hasMultiMaterial} />
+        </div>
+        <div className="min-w-0 space-y-0.5">
+          <div className="[overflow-wrap:anywhere] text-base font-semibold text-slate-900 dark:text-slate-50">
             {printer.printer.name}
           </div>
-          <div className="text-xs leading-5 text-slate-600 dark:text-slate-300">
+          <div className="[overflow-wrap:anywhere] text-xs leading-5 text-slate-600 dark:text-slate-300">
             {printer.printer.model} ·{" "}
             {describePrinterCapability(t, printer.printer.model, hasMultiMaterial)} ·{" "}
             {configuredSetup}

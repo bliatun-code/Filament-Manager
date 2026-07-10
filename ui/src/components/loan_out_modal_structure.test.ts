@@ -7,6 +7,10 @@ const stylesSource = readFileSync(
   new URL("./loan_out_modal_styles.ts", import.meta.url),
   "utf8",
 );
+const candidateSource = readFileSync(
+  new URL("./loan_out_candidate_list.tsx", import.meta.url),
+  "utf8",
+);
 
 test("LoanOutModal uses shared wide modal layout rhythm", () => {
   assert.match(source, /inventoryModalOverlayClassName/);
@@ -21,7 +25,7 @@ test("LoanOutModal uses shared wide modal layout rhythm", () => {
   assert.match(source, /variant="solid"/);
   assert.match(source, /size="roomy"/);
   assert.match(source, /fullWidth/);
-  assert.match(source, /inventoryCatalogRowStyle/);
+  assert.match(candidateSource, /inventoryCatalogRowStyle/);
   assert.match(source, /inventorySwatchPanelStyle/);
   assert.match(source, /inventorySwatchInsetStyle/);
   assert.match(source, /SwatchSelectionPreviewHeader/);
@@ -31,11 +35,13 @@ test("LoanOutModal uses shared wide modal layout rhythm", () => {
   assert.match(source, /ModalDetailItem/);
   assert.match(source, /ModalFormField/);
   assert.match(source, /ModalNotice/);
-  assert.match(source, /hoveredLoanSpoolId/);
-  assert.match(source, /setHoveredLoanSpoolId\(spool\.id\)/);
-  assert.match(source, /setHoveredLoanSpoolId\(null\)/);
-  assert.match(source, /hoveredLoanSpoolId === spool\.id/);
-  assert.match(source, /loanOutSpoolButtonClassName/);
+  assert.match(source, /LoanOutCandidateList/);
+  assert.match(source, /setSpoolSearchQuery\(""\)/);
+  assert.match(candidateSource, /loanOutSpoolButtonClassName/);
+  assert.match(candidateSource, /hoveredSpoolId/);
+  assert.match(candidateSource, /setHoveredSpoolId\(spool\.id\)/);
+  assert.match(candidateSource, /setHoveredSpoolId\(null\)/);
+  assert.match(candidateSource, /hoveredSpoolId === spool\.id/);
   assert.match(stylesSource, /loanOutSpoolButtonClassName/);
   assert.match(stylesSource, /focus-visible:border-sky-300/);
   assert.doesNotMatch(source, /FeedbackBanner/);
@@ -56,4 +62,18 @@ test("LoanOutModal uses shared wide modal layout rhythm", () => {
     source,
     /flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2\.5 text-left text-\[13px\] transition/,
   );
+});
+
+test("LoanOutCandidateList names search, selection and contained scrolling", () => {
+  assert.match(candidateSource, /<label\s+htmlFor=\{searchId\}/);
+  assert.match(candidateSource, /type="search"/);
+  assert.match(candidateSource, /aria-controls=\{listId\}/);
+  assert.match(candidateSource, /aria-live="polite"/);
+  assert.match(candidateSource, /aria-pressed=\{isActive\}/);
+  assert.match(candidateSource, /t\("common\.selected", "Selected"\)/);
+  assert.match(candidateSource, /filterLoanableSpoolsBySearch/);
+  assert.match(candidateSource, /resolveContainedSelectionScrollTop/);
+  assert.match(candidateSource, /list\.scrollTop = Math\.min\(maxScrollTop, nextScrollTop\)/);
+  assert.doesNotMatch(candidateSource, /scrollIntoView/);
+  assert.doesNotMatch(candidateSource, /window\.scroll/);
 });

@@ -44,6 +44,7 @@ test("buildLibrarySyncActionMessage returns stable action feedback copy", () => 
   const labels = {
     clientAuthCleared: "Desktop client pairing was removed from this device.",
     clientPaired: "Desktop client paired successfully and is now using the detected host.",
+    deviceNameSaved: "Device name saved.",
     hostCheckPassed: "Host check passed.",
     renewPairing: "Saved pairing was cleared. Paste a fresh pairing link from the host to continue.",
     settingsSaved: "Library role settings saved.",
@@ -51,6 +52,10 @@ test("buildLibrarySyncActionMessage returns stable action feedback copy", () => 
   };
 
   assert.equal(buildLibrarySyncActionMessage("settingsSaved", labels), labels.settingsSaved);
+  assert.equal(
+    buildLibrarySyncActionMessage("deviceNameSaved", labels),
+    labels.deviceNameSaved,
+  );
   assert.equal(buildLibrarySyncActionMessage("hostCheckPassed", labels), labels.hostCheckPassed);
   assert.equal(buildLibrarySyncActionMessage("clientPaired", labels), labels.clientPaired);
   assert.equal(
@@ -83,6 +88,7 @@ test("buildLibrarySyncPairingMessage returns stable pairing feedback copy", () =
 test("buildLibrarySyncErrorMessage returns stable operation fallback copy", () => {
   const labels = {
     clearClientAuthFailed: "Failed to remove the saved desktop client pairing.",
+    deviceNameSaveFailed: "Failed to save the device name.",
     hostCheckFailed: "Failed to check the configured host.",
     settingsSaveFailed: "Failed to save library role settings.",
     snapshotFailed: "Failed to fetch host snapshot.",
@@ -96,6 +102,10 @@ test("buildLibrarySyncErrorMessage returns stable operation fallback copy", () =
   assert.equal(
     buildLibrarySyncErrorMessage("settingsSaveFailed", labels),
     labels.settingsSaveFailed,
+  );
+  assert.equal(
+    buildLibrarySyncErrorMessage("deviceNameSaveFailed", labels),
+    labels.deviceNameSaveFailed,
   );
   assert.equal(buildLibrarySyncErrorMessage("snapshotFailed", labels), labels.snapshotFailed);
 });

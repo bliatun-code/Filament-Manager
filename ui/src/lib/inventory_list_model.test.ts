@@ -73,6 +73,39 @@ test("formatInventoryDisplayTitle splits existing middle-dot labels and falls ba
   assert.equal(formatInventoryDisplayTitle("", null, undefined), "—");
 });
 
+test("formatInventoryDisplayTitle narrowly normalizes catalog color presentation", () => {
+  const cases = [
+    ["PETG", "PETG Basic", "Gray(30107)", "PETG Basic · Gray (30107)"],
+    ["PETG", "PETG-CF", "Titan Gray  (31101)", "PETG-CF · Titan Gray (31101)"],
+    ["PLA", "PLA+", "Dark blue", "PLA+ · Dark Blue"],
+    [
+      "PLA",
+      "PLA Matte",
+      "Matte Lilac purple (11700)",
+      "PLA Matte · Matte Lilac Purple (11700)",
+    ],
+    ["PLA", "PLA Basic", "Mistletoe Green (10502)", "PLA Basic · Mistletoe Green (10502)"],
+    [
+      "PLA",
+      "PLA Basic Gradient",
+      "Ocean to Meadow (10902)",
+      "PLA Basic Gradient · Ocean to Meadow (10902)",
+    ],
+    ["PLA", "PLA+ Refilament", "eSpool+", "PLA+ Refilament · eSpool+"],
+    ["PLA", "PLA Basic", "Color (1234)", "PLA Basic · Color (1234)"],
+    [
+      "PLA",
+      "PLA-Silk Magic",
+      "Black Purple+black Gold+black Green+black Red",
+      "PLA-Silk Magic · Black Purple+black Gold+black Green+black Red",
+    ],
+  ] as const;
+
+  for (const [material, filament, color, expected] of cases) {
+    assert.equal(formatInventoryDisplayTitle(material, filament, color), expected);
+  }
+});
+
 test("formatMasterDisplayTitle uses the shared inventory display title formatter", () => {
   assert.equal(
     formatMasterDisplayTitle({

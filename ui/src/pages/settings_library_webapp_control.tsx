@@ -32,6 +32,8 @@ export function SettingsLibraryWebappControl({
   t,
   onToggleTrustedLanEnabled,
 }: SettingsLibraryWebappControlProps) {
+  const webappRunning = Boolean(trustedLanStatus?.enabled && trustedLanStatus?.running);
+
   return (
     <div className="space-y-2">
       <div className={settingsGroupLabelClass}>
@@ -59,11 +61,12 @@ export function SettingsLibraryWebappControl({
           </span>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             role="switch"
             aria-checked={trustedLanEnabledDraft}
+            aria-label={t("settings.libraryWebappToggle", "Enable web app")}
             onClick={() => onToggleTrustedLanEnabled(!trustedLanEnabledDraft)}
             className={settingsWebappSwitchClass(trustedLanEnabledDraft)}
             disabled={
@@ -80,10 +83,24 @@ export function SettingsLibraryWebappControl({
             </span>
             <span>
               {trustedLanEnabledDraft
-                ? t("settings.libraryWebappRunning", "Running")
+                ? t("common.on", "On")
                 : t("common.off", "Off")}
             </span>
           </button>
+          {trustedLanEnabledDraft ? (
+            <span
+              role="status"
+              aria-live="polite"
+              className={settingsWebappStatusClass(webappRunning)}
+            >
+              <span className="settings-webapp-status-dot" aria-hidden="true" />
+              {webappRunning
+                ? t("settings.libraryWebappRunning", "Running")
+                : trustedLanActionBusy
+                  ? t("settings.trustedLanStatusStarting", "Starting...")
+                  : t("settings.trustedLanStateNeedsAttention", "Check")}
+            </span>
+          ) : null}
         </div>
       )}
     </div>

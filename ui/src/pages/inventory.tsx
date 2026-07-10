@@ -6,13 +6,11 @@ import { LoanOutModal } from "../components/loan_out_modal";
 import type { InventoryNavigationIntent } from "../lib/app_navigation_model";
 import { useI18n } from "../lib/i18n";
 import {
+  chooseDesktopVisualQaLoanSpool,
   chooseDesktopVisualQaSpoolId,
   resolveDesktopVisualQaScenario,
 } from "../lib/desktop_visual_qa_scenario";
-import {
-  isInventorySpoolLoanTrackingCandidate,
-  type InventorySpool,
-} from "../lib/inventory_list_model";
+import { isInventorySpoolLoanTrackingCandidate } from "../lib/inventory_list_model";
 import type { RfidCaptureField } from "../lib/inventory_rfid_capture";
 import {
   buildInventoryDetailVisualFixture,
@@ -44,19 +42,6 @@ type InventoryPageProps = {
   navigationIntent?: InventoryNavigationIntent;
   onConsumeNavigationIntent?: () => void;
 };
-
-function chooseNonBambuVisualQaSpool(spools: InventorySpool[]): InventorySpool | null {
-  return (
-    spools.find(
-      (spool) =>
-        !spool.vendor.toLowerCase().includes("bambu") &&
-        !/\b(black|white|gray|grey|silver|transparent|clear|natural)\b/i.test(spool.colorName),
-    ) ??
-    spools.find((spool) => !spool.vendor.toLowerCase().includes("bambu")) ??
-    spools[0] ??
-    null
-  );
-}
 
 export default function InventoryPage({
   navigationIntent = null,
@@ -114,7 +99,7 @@ export default function InventoryPage({
     t,
   });
   const {
-    activeAdvancedFilterCount,
+    activeFilterCount,
     advancedFiltersOpen,
     filteredSpools,
     groupedSpools,
@@ -155,7 +140,12 @@ export default function InventoryPage({
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [recentlyAddedSpoolId, setRecentlyAddedSpoolId] = useState<string | null>(null);
   const [desktopVisualQaStage, setDesktopVisualQaStage] = useState<
-    "pending" | "add-esun-opened" | "detail-opened" | "done"
+    | "pending"
+    | "add-esun-opened"
+    | "detail-opened"
+    | "danger-confirmation-requested"
+    | "detail-section-opened"
+    | "done"
   >(() => (desktopVisualQaScenario ? "pending" : "done"));
 
   const [selectedRfidCaptureSlotId, setSelectedRfidCaptureSlotId] = useState<string | null>(null);
@@ -295,6 +285,16 @@ export default function InventoryPage({
     setShowRollModal,
     setUsagePoints,
   });
+
+  const cancelDangerZoneConfirmation = useCallback(() => {
+    setConfirmDelete(false);
+    setConfirmPurge(false);
+  }, [setConfirmDelete, setConfirmPurge]);
+
+  const closeSelectedSpoolDetailModal = useCallback(() => {
+    cancelDangerZoneConfirmation();
+    closeRollModal();
+  }, [cancelDangerZoneConfirmation, closeRollModal]);
 
   const {
     buildArtifacts: buildSelectedSpoolQrArtifacts,
@@ -606,7 +606,7 @@ export default function InventoryPage({
       if (loanTrackingCandidates.length === 0) {
         return;
       }
-      openLoanTrackingModal(chooseNonBambuVisualQaSpool(loanTrackingCandidates));
+      openLoanTrackingModal(chooseDesktopVisualQaLoanSpool(loanTrackingCandidates));
       setDesktopVisualQaStage("done");
       return;
     }
@@ -622,7 +622,11 @@ export default function InventoryPage({
 
     selectRollForManage(spoolId);
     setDesktopVisualQaStage(
-      desktopVisualQaScenario === "rfid-capture" ? "detail-opened" : "done",
+      desktopVisualQaScenario === "rfid-capture" ||
+        desktopVisualQaScenario === "selected-roll-history" ||
+        desktopVisualQaScenario === "selected-roll-danger-zone"
+        ? "detail-opened"
+        : "done",
     );
   }, [
     assignedDesktopVisualQaSpoolIds,
@@ -677,6 +681,153 @@ export default function InventoryPage({
     showRollModal,
   ]);
 
+  useEffect(() => {
+    if (desktopVisualQaStage !== "detail-opened" || !showRollModal || !selectedSpool) {
+      return;
+    }
+
+    if (desktopVisualQaScenario === "selected-roll-history") {
+      const toggle = document.querySelector<HTMLButtonElement>("#inventory-roll-history-toggle");
+      if (!toggle) {
+        return;
+      }
+      if (toggle.getAttribute("aria-expanded") !== "true") {
+        toggle.click();
+      }
+      setDesktopVisualQaStage("detail-section-opened");
+      return;
+    }
+
+    if (desktopVisualQaScenario === "selected-roll-danger-zone") {
+      const panel = document.querySelector<HTMLElement>("#inventory-danger-zone-panel");
+      if (!panel) {
+        return;
+      }
+      if (panel instanceof HTMLDetailsElement) {
+        panel.open = true;
+      }
+      const frame = window.requestAnimationFrame(() => {
+        const markEmptyRequest = document.querySelector<HTMLButtonElement>(
+          "#inventory-mark-empty-request",
+        );
+        if (!markEmptyRequest) {
+          return;
+        }
+        markEmptyRequest.click();
+        setDesktopVisualQaStage("danger-confirmation-requested");
+      });
+      return () => window.cancelAnimationFrame(frame);
+    }
+  }, [desktopVisualQaScenario, desktopVisualQaStage, selectedSpool, showRollModal]);
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenario !== "selected-roll-danger-zone" ||
+      desktopVisualQaStage !== "danger-confirmation-requested"
+    ) {
+      return;
+    }
+    if (!document.querySelector("#inventory-mark-empty-confirmation")) {
+      return;
+    }
+    setDesktopVisualQaStage("detail-section-opened");
+  }, [desktopVisualQaScenario, desktopVisualQaStage]);
+
+  useEffect(() => {
+    if (
+      desktopVisualQaStage !== "detail-section-opened" &&
+      desktopVisualQaStage !== "done"
+    ) {
+      return;
+    }
+    if (
+      desktopVisualQaScenario === "selected-roll-history" &&
+      (historyLoading ||
+        usageLoading ||
+        selectedSpoolQrLoading ||
+        !showRollHistory ||
+        visibleHistoryRows.length === 0)
+    ) {
+      return;
+    }
+
+    const targetSelector =
+      desktopVisualQaScenario === "selected-roll-history"
+        ? "#inventory-roll-history-panel"
+        : desktopVisualQaScenario === "selected-roll-danger-zone"
+          ? "#inventory-danger-zone-panel"
+          : null;
+    if (!targetSelector) {
+      return;
+    }
+    const target = document.querySelector<HTMLElement>(targetSelector);
+    if (!target) {
+      return;
+    }
+
+    const scrollContainer = target.closest<HTMLElement>("[data-inventory-detail-scroll]");
+    const scrollToTarget = () => {
+      if (scrollContainer) {
+        const targetOffset =
+          scrollContainer.scrollTop +
+          target.getBoundingClientRect().top -
+          scrollContainer.getBoundingClientRect().top;
+        scrollContainer.scrollTop = Math.max(0, targetOffset - 16);
+      } else {
+        target.scrollIntoView({ behavior: "auto", block: "start" });
+      }
+    };
+    let scheduledFrameId: number | null = null;
+    const scheduleScrollToTarget = () => {
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+      scheduledFrameId = window.requestAnimationFrame(() => {
+        scheduledFrameId = null;
+        scrollToTarget();
+      });
+    };
+
+    scrollToTarget();
+    window.addEventListener("resize", scheduleScrollToTarget);
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(scheduleScrollToTarget);
+    if (scrollContainer) {
+      resizeObserver?.observe(scrollContainer);
+    }
+    resizeObserver?.observe(target);
+
+    const timerIds =
+      desktopVisualQaStage === "detail-section-opened"
+        ? [150, 450, 900].map((delay) =>
+            window.setTimeout(() => {
+              scrollToTarget();
+              if (delay === 900) {
+                setDesktopVisualQaStage("done");
+              }
+            }, delay),
+          )
+        : [];
+    return () => {
+      timerIds.forEach((timerId) => window.clearTimeout(timerId));
+      window.removeEventListener("resize", scheduleScrollToTarget);
+      resizeObserver?.disconnect();
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+    };
+  }, [
+    desktopVisualQaScenario,
+    desktopVisualQaStage,
+    historyLoading,
+    selectedSpoolQrLoading,
+    showRollHistory,
+    usageLoading,
+    visibleHistoryRows.length,
+  ]);
+
   return (
     <div className="page-shell">
       <LoanOutModal
@@ -721,7 +872,8 @@ export default function InventoryPage({
         onChangeOwnershipType={setSelectedSpoolOwnershipDraft}
         onChangeTare={setSelectedSpoolTareDraft}
         onChangeVendor={setEditMasterVendor}
-        onClose={closeRollModal}
+        onCancelDangerZoneConfirmation={cancelDangerZoneConfirmation}
+        onClose={closeSelectedSpoolDetailModal}
         onDelete={handleDeleteSelected}
         onMarkEmpty={handleMarkEmpty}
         onPrintLabel={handlePrintLabel}
@@ -808,7 +960,7 @@ export default function InventoryPage({
           selectedSpoolId,
         }}
         controlsProps={{
-          activeAdvancedFilterCount,
+          activeFilterCount,
           advancedFiltersOpen,
           inventoryView,
           materialFilter,
@@ -817,6 +969,7 @@ export default function InventoryPage({
           onInventoryViewChange: setInventoryView,
           onMaterialFilterChange: setMaterialFilter,
           onOwnershipFilterChange: setOwnershipFilter,
+          onResetFilters: resetFilters,
           onVendorFilterChange: setVendorFilter,
           ownershipFilter,
           vendorFilter,

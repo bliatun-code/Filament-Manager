@@ -7,28 +7,50 @@ import {
 } from "./color_utils";
 import type { ResolvedTheme } from "./theme_mode";
 
+const LIGHT_SWATCH_BORDER = "rgba(71, 85, 105, 0.68)";
+const LIGHT_SWATCH_HOVER_BORDER = "rgba(2, 132, 199, 0.86)";
+const LIGHT_SWATCH_SELECTED_BORDER = "rgba(2, 132, 199, 0.94)";
+
 export function inventorySwatchBorderColor(
   raw: string | null | undefined,
   resolvedTheme: ResolvedTheme,
 ): string {
+  if (resolvedTheme === "light") {
+    return LIGHT_SWATCH_BORDER;
+  }
   const rgb = hexToRgb(raw);
   if (!rgb) {
-    return resolvedTheme === "dark"
-      ? "rgba(100, 116, 139, 0.42)"
-      : "rgba(148, 163, 184, 0.28)";
+    return "rgba(100, 116, 139, 0.42)";
   }
   const brightness = (rgb[0] + rgb[1] + rgb[2]) / 3;
   if (brightness >= 228) {
-    return resolvedTheme === "dark"
-      ? "rgba(255, 255, 255, 0.4)"
-      : "rgba(148, 163, 184, 0.34)";
+    return "rgba(255, 255, 255, 0.4)";
   }
   if (brightness <= 42) {
-    return resolvedTheme === "dark"
-      ? "rgba(148, 163, 184, 0.34)"
-      : "rgba(71, 85, 105, 0.34)";
+    return "rgba(148, 163, 184, 0.34)";
   }
-  return swatchRgba(raw, resolvedTheme === "dark" ? 0.4 : 0.28);
+  return swatchRgba(raw, 0.4);
+}
+
+function inventorySwatchSurfaceBorderColor(
+  raw: string | null | undefined,
+  resolvedTheme: ResolvedTheme,
+): string {
+  if (resolvedTheme === "dark") {
+    return inventorySwatchBorderColor(raw, resolvedTheme);
+  }
+  const rgb = hexToRgb(raw);
+  if (!rgb) {
+    return "rgba(148, 163, 184, 0.28)";
+  }
+  const brightness = (rgb[0] + rgb[1] + rgb[2]) / 3;
+  if (brightness >= 228) {
+    return "rgba(148, 163, 184, 0.34)";
+  }
+  if (brightness <= 42) {
+    return "rgba(71, 85, 105, 0.34)";
+  }
+  return swatchRgba(raw, 0.28);
 }
 
 type InventorySwatchSurfaceTone = "card" | "panel" | "inset";
@@ -103,7 +125,7 @@ function inventorySwatchSurfaceStyle(
   return buildSwatchSurfaceStyle(raw, strength satisfies SwatchSurfaceStrength, {
     midStop: darkTheme ? "24%" : "38%",
     bottomStop: darkTheme ? "66%" : "74%",
-    borderColor: inventorySwatchBorderColor(raw, resolvedTheme),
+    borderColor: inventorySwatchSurfaceBorderColor(raw, resolvedTheme),
   });
 }
 
@@ -135,14 +157,17 @@ export function inventorySwatchInteractiveInsetStyle(
 ) {
   const base = inventorySwatchInsetStyle(raw, resolvedTheme);
   if (emphasis === "selected") {
+    if (resolvedTheme === "light") {
+      return {
+        ...base,
+        borderColor: LIGHT_SWATCH_SELECTED_BORDER,
+        boxShadow: `${base.boxShadow}, 0 0 0 2px rgba(14, 165, 233, 0.24), 0 16px 30px -24px rgba(2, 132, 199, 0.3)`,
+      } as const;
+    }
     return {
       ...base,
-      borderColor: swatchRgba(raw, resolvedTheme === "dark" ? 0.54 : 0.34),
-      boxShadow: `${base.boxShadow}, 0 0 0 1px ${
-        resolvedTheme === "dark"
-          ? "rgba(226, 232, 240, 0.12)"
-          : "rgba(15, 23, 42, 0.08)"
-      }, 0 16px 30px -26px ${swatchRgba(raw, resolvedTheme === "dark" ? 0.42 : 0.3)}`,
+      borderColor: swatchRgba(raw, 0.54),
+      boxShadow: `${base.boxShadow}, 0 0 0 1px rgba(226, 232, 240, 0.12), 0 16px 30px -26px ${swatchRgba(raw, 0.42)}`,
     } as const;
   }
   if (emphasis === "recent") {
@@ -151,15 +176,15 @@ export function inventorySwatchInteractiveInsetStyle(
       borderColor:
         resolvedTheme === "dark"
           ? "rgba(52, 211, 153, 0.42)"
-          : "rgba(16, 185, 129, 0.36)",
+          : "rgba(4, 120, 87, 0.82)",
       boxShadow: `${base.boxShadow}, 0 0 0 1px ${
         resolvedTheme === "dark"
           ? "rgba(52, 211, 153, 0.16)"
-          : "rgba(16, 185, 129, 0.12)"
+          : "rgba(4, 120, 87, 0.2)"
       }, 0 16px 30px -26px ${
         resolvedTheme === "dark"
           ? "rgba(16, 185, 129, 0.28)"
-          : "rgba(16, 185, 129, 0.22)"
+          : "rgba(4, 120, 87, 0.24)"
       }`,
     } as const;
   }
@@ -180,15 +205,13 @@ export function inventoryCatalogRowStyle(
     return {
       ...base,
       borderColor:
-        resolvedTheme === "dark"
-          ? "rgba(248, 250, 252, 0.68)"
-          : "rgba(255, 255, 255, 0.98)",
+        resolvedTheme === "dark" ? "rgba(248, 250, 252, 0.68)" : LIGHT_SWATCH_HOVER_BORDER,
       boxShadow: `${base.boxShadow}, 0 0 0 1px ${
         resolvedTheme === "dark"
           ? "rgba(248, 250, 252, 0.38)"
-          : "rgba(255, 255, 255, 0.96)"
+          : "rgba(14, 165, 233, 0.22)"
       }, 0 12px 22px -24px ${
-        resolvedTheme === "dark" ? "rgba(2, 6, 23, 0.5)" : "rgba(15, 23, 42, 0.18)"
+        resolvedTheme === "dark" ? "rgba(2, 6, 23, 0.5)" : "rgba(2, 132, 199, 0.24)"
       }`,
     } as const;
   }
@@ -196,15 +219,13 @@ export function inventoryCatalogRowStyle(
     return {
       ...base,
       borderColor:
-        resolvedTheme === "dark"
-          ? "rgba(248, 250, 252, 0.72)"
-          : "rgba(255, 255, 255, 0.98)",
+        resolvedTheme === "dark" ? "rgba(248, 250, 252, 0.72)" : LIGHT_SWATCH_SELECTED_BORDER,
       boxShadow: `${base.boxShadow}, 0 0 0 1px ${
         resolvedTheme === "dark"
           ? "rgba(248, 250, 252, 0.42)"
-          : "rgba(255, 255, 255, 0.96)"
+          : "rgba(14, 165, 233, 0.34)"
       }, 0 12px 22px -24px ${
-        resolvedTheme === "dark" ? "rgba(2, 6, 23, 0.54)" : "rgba(15, 23, 42, 0.2)"
+        resolvedTheme === "dark" ? "rgba(2, 6, 23, 0.54)" : "rgba(2, 132, 199, 0.3)"
       }`,
     } as const;
   }
@@ -213,13 +234,13 @@ export function inventoryCatalogRowStyle(
     borderColor:
       resolvedTheme === "dark"
         ? "rgba(226, 232, 240, 0.54)"
-        : "rgba(15, 23, 42, 0.16)",
+        : LIGHT_SWATCH_SELECTED_BORDER,
     boxShadow: `${base.boxShadow}, 0 0 0 2px ${
       resolvedTheme === "dark"
         ? "rgba(226, 232, 240, 0.12)"
-        : "rgba(15, 23, 42, 0.08)"
+        : "rgba(14, 165, 233, 0.24)"
     }, 0 14px 28px -24px ${
-      resolvedTheme === "dark" ? "rgba(2, 6, 23, 0.54)" : "rgba(15, 23, 42, 0.18)"
+      resolvedTheme === "dark" ? "rgba(2, 6, 23, 0.54)" : "rgba(2, 132, 199, 0.28)"
     }`,
   } as const;
 }
@@ -240,7 +261,8 @@ export function inventoryCreatePreviewPanelStyle(
   }
   return {
     ...inventorySwatchPanelStyle(raw, resolvedTheme),
-    borderColor: swatchRgba(raw, resolvedTheme === "dark" ? 0.42 : 0.28),
+    borderColor:
+      resolvedTheme === "dark" ? swatchRgba(raw, 0.42) : inventorySwatchBorderColor(raw, "light"),
     boxShadow:
       resolvedTheme === "dark"
         ? `inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 36px -28px ${swatchRgba(

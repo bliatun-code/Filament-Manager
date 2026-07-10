@@ -273,6 +273,20 @@ function relativeLuminance(rgb: [number, number, number]): number {
   return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 }
 
+const SWATCH_ACTION_CONTRAST_TARGET = 4.5;
+
+function contrastRatio(
+  first: [number, number, number],
+  second: [number, number, number],
+): number {
+  const firstLuminance = relativeLuminance(first);
+  const secondLuminance = relativeLuminance(second);
+  return (
+    (Math.max(firstLuminance, secondLuminance) + 0.05) /
+    (Math.min(firstLuminance, secondLuminance) + 0.05)
+  );
+}
+
 function mixRgb(
   source: [number, number, number],
   target: [number, number, number],
@@ -282,6 +296,39 @@ function mixRgb(
   return source.map((channel, index) =>
     Math.round(channel * (1 - ratio) + target[index] * ratio),
   ) as [number, number, number];
+}
+
+function fitSwatchActionEndpoint(
+  endpoint: [number, number, number],
+  text: [number, number, number],
+  safeTarget: [number, number, number],
+) {
+  for (let step = 0; step <= 100; step += 1) {
+    const adjustment = step / 100;
+    const candidate = mixRgb(endpoint, safeTarget, adjustment);
+    if (contrastRatio(text, candidate) >= SWATCH_ACTION_CONTRAST_TARGET) {
+      return { adjustment, rgb: candidate };
+    }
+  }
+  return { adjustment: 1, rgb: safeTarget };
+}
+
+function fitSwatchActionGradient(
+  start: [number, number, number],
+  end: [number, number, number],
+  text: [number, number, number],
+  safeTarget: [number, number, number],
+  contrastColor: "#FFFFFF" | "#0F172A",
+) {
+  const fittedStart = fitSwatchActionEndpoint(start, text, safeTarget);
+  const fittedEnd = fitSwatchActionEndpoint(end, text, safeTarget);
+  return {
+    contrastColor,
+    end: fittedEnd.rgb,
+    maxAdjustment: Math.max(fittedStart.adjustment, fittedEnd.adjustment),
+    start: fittedStart.rgb,
+    totalAdjustment: fittedStart.adjustment + fittedEnd.adjustment,
+  };
 }
 
 function rgbColor(rgb: [number, number, number]): string {
@@ -303,48 +350,53 @@ export function buildSwatchActionButtonStyle(
   const slate300: [number, number, number] = [203, 213, 225];
   const slate500: [number, number, number] = [100, 116, 139];
   const slate900: [number, number, number] = [15, 23, 42];
+  let start: [number, number, number];
+  let end: [number, number, number];
+  let border: [number, number, number];
+  let boxShadow: string;
 
   if (luminance > 0.62) {
-    const start = mixRgb(rgb, white, 0.12);
-    const end = mixRgb(rgb, slate300, 0.38);
-    const border = mixRgb(rgb, slate900, 0.18);
-    return {
-      background: `linear-gradient(135deg, ${rgbColor(start)} 0%, ${rgbColor(end)} 100%)`,
-      borderColor: rgbColor(border),
-      color: "#0F172A",
-      boxShadow:
-        resolvedTheme === "dark"
-          ? `0 18px 36px -24px ${rgbaColor(rgb, 0.56)}, inset 0 1px 0 rgba(255, 255, 255, 0.42)`
-          : `0 18px 36px -24px ${rgbaColor(rgb, 0.46)}, inset 0 1px 0 rgba(255, 255, 255, 0.54)`,
-    } as const;
-  }
-
-  if (luminance < 0.1) {
-    const start = mixRgb(rgb, slate500, 0.62);
-    const end = mixRgb(rgb, slate900, 0.46);
-    const border = mixRgb(rgb, slate50, 0.36);
-    return {
-      background: `linear-gradient(135deg, ${rgbColor(start)} 0%, ${rgbColor(end)} 100%)`,
-      borderColor: rgbColor(border),
-      color: "#FFFFFF",
-      boxShadow:
-        resolvedTheme === "dark"
-          ? `0 18px 36px -24px ${rgbaColor(rgb, 0.72)}, inset 0 1px 0 rgba(255, 255, 255, 0.16)`
-          : `0 18px 36px -24px ${rgbaColor(rgb, 0.52)}, inset 0 1px 0 rgba(255, 255, 255, 0.18)`,
-    } as const;
-  }
-
-  const start = mixRgb(rgb, white, 0.08);
-  const end = mixRgb(rgb, slate900, resolvedTheme === "dark" ? 0.34 : 0.28);
-  const border = mixRgb(rgb, white, 0.24);
-  return {
-    background: `linear-gradient(135deg, ${rgbColor(start)} 0%, ${rgbColor(end)} 100%)`,
-    borderColor: rgbColor(border),
-    color: "#FFFFFF",
-    boxShadow:
+    start = mixRgb(rgb, white, 0.12);
+    end = mixRgb(rgb, slate300, 0.38);
+    border = mixRgb(rgb, slate900, 0.18);
+    boxShadow =
+      resolvedTheme === "dark"
+        ? `0 18px 36px -24px ${rgbaColor(rgb, 0.56)}, inset 0 1px 0 rgba(255, 255, 255, 0.42)`
+        : `0 18px 36px -24px ${rgbaColor(rgb, 0.46)}, inset 0 1px 0 rgba(255, 255, 255, 0.54)`;
+  } else if (luminance < 0.1) {
+    start = mixRgb(rgb, slate500, 0.62);
+    end = mixRgb(rgb, slate900, 0.46);
+    border = mixRgb(rgb, slate50, 0.36);
+    boxShadow =
+      resolvedTheme === "dark"
+        ? `0 18px 36px -24px ${rgbaColor(rgb, 0.72)}, inset 0 1px 0 rgba(255, 255, 255, 0.16)`
+        : `0 18px 36px -24px ${rgbaColor(rgb, 0.52)}, inset 0 1px 0 rgba(255, 255, 255, 0.18)`;
+  } else {
+    start = mixRgb(rgb, white, 0.08);
+    end = mixRgb(rgb, slate900, resolvedTheme === "dark" ? 0.34 : 0.28);
+    border = mixRgb(rgb, white, 0.24);
+    boxShadow =
       resolvedTheme === "dark"
         ? `0 18px 36px -24px ${rgbaColor(rgb, 0.72)}, inset 0 1px 0 rgba(255, 255, 255, 0.14)`
-        : `0 18px 36px -24px ${rgbaColor(rgb, 0.58)}, inset 0 1px 0 rgba(255, 255, 255, 0.18)`,
+        : `0 18px 36px -24px ${rgbaColor(rgb, 0.58)}, inset 0 1px 0 rgba(255, 255, 255, 0.18)`;
+  }
+
+  const fittedGradient = [
+    fitSwatchActionGradient(start, end, white, slate900, "#FFFFFF"),
+    fitSwatchActionGradient(start, end, slate900, white, "#0F172A"),
+  ].sort(
+    (first, second) =>
+      first.maxAdjustment - second.maxAdjustment ||
+      first.totalAdjustment - second.totalAdjustment,
+  )[0];
+
+  return {
+    background: `linear-gradient(135deg, ${rgbColor(fittedGradient.start)} 0%, ${rgbColor(
+      fittedGradient.end,
+    )} 100%)`,
+    borderColor: rgbColor(border),
+    color: fittedGradient.contrastColor,
+    boxShadow,
   } as const;
 }
 

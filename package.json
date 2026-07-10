@@ -2,7 +2,7 @@
   "name": "bambu-filament-manager",
   "private": true,
   "license": "AGPL-3.0-or-later",
-  "version": "0.20.0",
+  "version": "0.20.1",
   "type": "module",
   "engines": {
     "node": ">=24 <25",

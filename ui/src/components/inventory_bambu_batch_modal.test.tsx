@@ -21,6 +21,7 @@ const norwegianMessages: Record<string, string> = {
   "inventory.bambuBatchModalEyebrow": "Bambu-esker",
   "inventory.bambuBatchModalTitle": "Batch legg inn fra esker",
   "inventory.bambuBatchTitle": "Filament Code-batch",
+  "inventory.bambuBatchInputLabel": "Koder i denne batchen",
   "inventory.bambuBatchScanTitle": "Skann eller legg inn koder",
   "inventory.bambuBatchAppendScan": "Legg til i batch",
   "inventory.bambuBatchImageAction": "Legg til fra bilde",
@@ -45,7 +46,8 @@ test("InventoryBambuBatchModal portals above the add modal and preserves camera 
   assert.match(source, /createPortal\(modal, document\.body\)/);
   assert.match(source, /object-contain/);
   assert.match(source, /inventoryWideModalPanelClassName/);
-  assert.match(source, /inventoryTwoColumnModalGridClassName/);
+  assert.match(source, /bambuBatchWorkspaceClassName/);
+  assert.match(source, /cameraPanelVisible\s*\?/);
   assert.doesNotMatch(source, /w-\[min\(96vw,86rem\)\]/);
   assert.doesNotMatch(source, /object-cover/);
 });
@@ -161,7 +163,10 @@ test("InventoryBambuBatchModal owns batch controls without stock workflow side p
   assert.match(html, /TPU for AMS · Yellow \(53400\)/);
   assert.match(html, /w-\[min\(100%,72rem\)\]/);
   assert.match(html, /xl:w-\[min\(80vw,72rem\)\]/);
-  assert.match(html, /min-\[900px\]:grid-cols-\[minmax\(0,1.08fr\)_minmax\(20rem,0.92fr\)\]/);
+  assert.match(html, /min-\[900px\]:grid-cols-\[minmax\(17rem,0.62fr\)_minmax\(0,1.38fr\)\]/);
+  assert.match(source, /min-\[900px\]:grid-cols-\[minmax\(0,1fr\)_minmax\(20rem,1fr\)\]/);
+  assert.match(html, /<label[^>]*for="[^"]+"[^>]*>Codes in this batch<\/label>/);
+  assert.match(html, /<textarea[^>]*id="[^"]+"/);
   assert.doesNotMatch(html, /Box label/);
   assert.doesNotMatch(html, /One active Bambu catalog entry matched and is selected/);
   assert.doesNotMatch(html, /Wishlist &amp; orders/);
@@ -179,6 +184,7 @@ test("InventoryBambuBatchModal localizes batch controls in Norwegian", () => {
   assert.match(html, /Batch legg inn fra esker/);
   assert.match(html, /Bambu-esker/);
   assert.match(html, /Filament Code-batch/);
+  assert.match(html, /Koder i denne batchen/);
   assert.match(html, /Skann eller legg inn koder/);
   assert.match(html, /Legg til i batch/);
   assert.match(html, /Legg til fra bilde/);

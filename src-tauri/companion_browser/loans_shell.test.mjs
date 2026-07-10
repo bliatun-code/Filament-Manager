@@ -36,12 +36,13 @@ function createLoanRow(overrides = {}) {
   };
 }
 
-function createSelectedSpool() {
+function createSelectedSpool(overrides = {}) {
   return {
     spool: {
       id: "spool-1",
       remaining_g: 500,
       spool_tare_weight_g: 250,
+      ...overrides.spool,
     },
     master: {
       material: "PLA",
@@ -49,6 +50,7 @@ function createSelectedSpool() {
       color_name: "White",
       vendor: "Bambu",
       hex_color: "#ffffff",
+      ...overrides.master,
     },
   };
 }
@@ -169,12 +171,74 @@ test("loan return task sheet renders the compact return form", () => {
   assert.match(html, /companion-selection-card-head/);
   assert.match(html, /PLA · Basic · White/);
   assert.match(html, /Bambu · #1 · Borrower: Alex/);
-  assert.match(html, /class="primary-button swatch-action-button" type="submit" style="--swatch-rgb:/);
+  const returnButton = html.match(/<button[^>]*>Complete return<\/button>/)?.[0] ?? "";
+  assert.match(returnButton, /class="primary-button" type="submit"/);
+  assert.doesNotMatch(returnButton, /swatch-action-button|disabled/);
   assert.match(html, /class="metric-card loan-date-metric"/);
   assert.match(html, /Returned total weight incl\. spool \(g\)/);
+  assert.match(html, /aria-describedby="loan-return-calculation"/);
+  assert.match(html, /Suggested return calculation/);
+  assert.doesNotMatch(html, /role="status"|aria-live=/);
+  assert.match(html, /750 g total − 250 g spool tare = 500 g returned filament/);
+  assert.match(html, /Estimated used: 140 g/);
   assert.match(html, /value="750"/);
   assert.doesNotMatch(html, /^\s*<div class="stack loan-return-task-sheet">\s*<div class="metric-grid compact-loan-metadata">/);
   assert.doesNotMatch(html, /Marks the loan returned in local data\./);
+});
+
+test("loan return task sheet explains the real Bambu total-weight calculation", () => {
+  const state = {
+    ...createInitialCompanionState(),
+    busy: false,
+  };
+  const html = renderLoanReturnTaskSheetBody({
+    state,
+    loanRow: createLoanRow({
+      loan: {
+        id: "loan-gray",
+        spool_id: "spool-gray",
+        borrower_name: "Erik",
+        returned_at: null,
+        lent_at: "2026-05-20T14:47:36Z",
+        grams_out: 1000,
+        lent_note: "",
+        return_note: "",
+      },
+      color_name: "Matte Ash Gray (11102)",
+      hex_color: "#9B9EA0",
+      spool_remaining_g: 1000,
+      spool_tare_weight_g: null,
+    }),
+    escapeHtml: (value) => String(value ?? ""),
+    formatDate: (value) => (value ? `date:${value}` : "Unknown"),
+    formatGrams: (value) => `${value ?? 0} g`,
+  });
+
+  const returnButton = html.match(/<button[^>]*>Complete return<\/button>/)?.[0] ?? "";
+  assert.match(html, /value="1250"/);
+  assert.match(html, /1250 g total − 250 g spool tare = 1000 g returned filament/);
+  assert.match(html, /Estimated used: 0 g/);
+  assert.match(returnButton, /class="primary-button" type="submit"/);
+  assert.doesNotMatch(returnButton, /swatch-action-button|disabled|style=/);
+  assert.match(html, /class="surface-card companion-selection-card swatch-surface compact-loan-card loan-return-card"/);
+});
+
+test("loan return task sheet disables its stable primary action while busy", () => {
+  const state = {
+    ...createInitialCompanionState(),
+    busy: true,
+  };
+  const html = renderLoanReturnTaskSheetBody({
+    state,
+    loanRow: createLoanRow(),
+    escapeHtml: (value) => String(value ?? ""),
+    formatDate: (value) => (value ? `date:${value}` : "Unknown"),
+    formatGrams: (value) => `${value ?? 0} g`,
+  });
+
+  const returnButton = html.match(/<button[^>]*>Complete return<\/button>/)?.[0] ?? "";
+  assert.match(returnButton, /class="primary-button" type="submit" disabled/);
+  assert.doesNotMatch(returnButton, /swatch-action-button|style=/);
 });
 
 test("loan picker uses the same swatch list row language as add filament", () => {
@@ -217,8 +281,55 @@ test("loan create task sheet renders outgoing measured weight and slot warning",
   assert.match(html, /primary-button swatch-action-button/);
   assert.match(html, /data-action="loan-spool-form"/);
   assert.match(html, /Outgoing total weight incl\. spool \(g\)/);
+  assert.match(html, /aria-describedby="loan-outgoing-calculation"/);
+  assert.match(html, /id="loan-outgoing-calculation"/);
+  assert.match(html, /Suggested outgoing calculation/);
+  assert.match(html, /750 g total − 250 g spool tare = 500 g filament lent out/);
+  assert.doesNotMatch(html, /id="loan-outgoing-calculation"[\s\S]*?role="status"|aria-live=/);
   assert.match(html, /value="750"/);
   assert.match(html, /Loaded in slot 2 on Brutus/);
+});
+
+test("loan create task sheet explains the real eSUN fallback tare without formatting the raw input", () => {
+  const state = {
+    ...createInitialCompanionState(),
+    busy: false,
+    locale: "nb",
+  };
+  const numberFormat = new Intl.NumberFormat("nb-NO");
+  const formatGrams = (value) => `${numberFormat.format(Number(value))} g`;
+  const html = renderLoanCreateTaskSheetBody({
+    state,
+    selectedSpool: createSelectedSpool({
+      spool: {
+        id: "spool-esun-blue",
+        remaining_g: 1000,
+        spool_tare_weight_g: null,
+      },
+      master: {
+        material: "PETG+HS",
+        filament_name: "",
+        color_name: "Blue",
+        vendor: "eSUN",
+        hex_color: "#5593D9",
+      },
+    }),
+    selectedAssignment: null,
+    escapeHtml: (value) => String(value ?? ""),
+    formatGrams,
+  });
+
+  assert.match(html, /Utgående totalvekt inkl\. spole \(g\)/);
+  assert.match(html, /aria-describedby="loan-outgoing-calculation"/);
+  assert.match(html, /Regnestykke for foreslått utgående vekt/);
+  assert.ok(
+    html.includes(
+      `${formatGrams(1224)} totalvekt − ${formatGrams(224)} rullens tomvekt = ${formatGrams(1000)} filament lånes ut`,
+    ),
+  );
+  assert.match(html, /value="1224"/);
+  assert.doesNotMatch(html, /value="1[^\d]224"/);
+  assert.doesNotMatch(html, /role="status"|aria-live=/);
 });
 
 test("loans shell shows cross-flow recovery actions when filters hide the selected spool history", () => {

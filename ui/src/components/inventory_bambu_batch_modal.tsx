@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   type ChangeEvent,
@@ -9,7 +10,6 @@ import { createPortal } from "react-dom";
 import { AppModal } from "./app_modal";
 import {
   inventoryModalOverlayClassName,
-  inventoryTwoColumnModalGridClassName,
   inventoryWideModalPanelClassName,
 } from "./inventory_modal_chrome";
 import { ModalActionButton } from "./modal_action_button";
@@ -50,6 +50,13 @@ const bambuBatchPanelClassName =
   "rounded-2xl border border-slate-200/90 bg-white/72 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45";
 const bambuBatchScanPanelClassName = `shrink-0 p-3 ${bambuBatchPanelClassName}`;
 const bambuBatchReviewPanelClassName = `flex min-h-0 flex-col ${bambuBatchPanelClassName}`;
+
+function bambuBatchWorkspaceClassName(cameraPanelVisible: boolean): string {
+  const desktopColumns = cameraPanelVisible
+    ? "min-[900px]:grid-cols-[minmax(0,1fr)_minmax(20rem,1fr)]"
+    : "min-[900px]:grid-cols-[minmax(17rem,0.62fr)_minmax(0,1.38fr)]";
+  return `grid min-h-0 grid-cols-1 gap-4 overflow-y-auto overscroll-contain min-[900px]:h-full min-[900px]:overflow-hidden xl:gap-5 ${desktopColumns}`;
+}
 
 type BambuBatchCameraScanModule = typeof import("../lib/bambu_filament_code_camera_scan");
 type BambuBatchImageScanModule = typeof import("../lib/bambu_filament_code_image_scan");
@@ -307,6 +314,7 @@ function BambuFilamentCodeBatchPanel({
   tauriAvailable: boolean;
 }) {
   const { t } = useI18n();
+  const batchInputId = useId();
   const [scanInput, setScanInput] = useState("");
   const [imageScanBusy, setImageScanBusy] = useState(false);
   const [imageScanMessage, setImageScanMessage] = useState<string | null>(null);
@@ -683,9 +691,7 @@ function BambuFilamentCodeBatchPanel({
   };
 
   return (
-    <div
-      className={`${inventoryTwoColumnModalGridClassName} min-h-0 overflow-y-auto overscroll-contain min-[900px]:h-full min-[900px]:overflow-hidden`}
-    >
+    <div className={bambuBatchWorkspaceClassName(cameraPanelVisible)}>
       <section className="flex min-h-0 flex-col gap-3 min-[900px]:overflow-hidden">
         <div className={bambuBatchScanPanelClassName}>
           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -858,7 +864,14 @@ function BambuFilamentCodeBatchPanel({
         </div>
 
         <ModalBody overscrollContain className="p-3">
+          <label
+            htmlFor={batchInputId}
+            className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-200"
+          >
+            {t("inventory.bambuBatchInputLabel", "Codes in this batch")}
+          </label>
           <textarea
+            id={batchInputId}
             value={input}
             onChange={(event) => onInputChange(event.target.value)}
             placeholder={t("inventory.bambuBatchPlaceholder", "53400\n53600\n65103")}

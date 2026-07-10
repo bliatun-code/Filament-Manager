@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   readStoredCompanionLocale,
   resolveInitialCompanionLocale,
+  t,
 } from "./companion_i18n.js";
 
 test("readStoredCompanionLocale falls back when storage throws", () => {
@@ -78,4 +79,53 @@ test("resolveInitialCompanionLocale tolerates blocked browser globals", () => {
       delete globalThis.navigator;
     }
   }
+});
+
+test("Norwegian empty-spool copy uses the established rullens tomvekt wording", () => {
+  assert.equal(t("nb", "detail.emptySpoolWeight"), "Rullens tomvekt (g)");
+  assert.equal(t("nb", "detail.saveEmptySpoolWeight"), "Lagre rullens tomvekt");
+  assert.equal(t("nb", "status.tareWeightUpdated"), "Rullens tomvekt er oppdatert.");
+  assert.equal(t("nb", "detail.eventTareWeightUpdate"), "Rullens tomvekt oppdatert");
+});
+
+test("return calculations explain total weight, spool tare, and filament in both locales", () => {
+  const params = { returned: "1 000 g", tare: "250 g", total: "1 250 g" };
+
+  assert.equal(
+    t("nb", "loans.returnCalculation"),
+    "Regnestykke for foreslått vekt",
+  );
+  assert.equal(
+    t("en", "loans.returnWeightCalculation", "", params),
+    "1 250 g total − 250 g spool tare = 1 000 g returned filament",
+  );
+  assert.equal(
+    t("nb", "loans.returnWeightCalculation", "", params),
+    "1 250 g totalvekt − 250 g rullens tomvekt = 1 000 g returnert filament",
+  );
+  assert.equal(
+    t("nb", "loans.estimatedUsedCalculation", "", { used: "0 g" }),
+    "Beregnet brukt: 0 g",
+  );
+});
+
+test("outgoing calculations explain total weight, spool tare, and lent filament in both locales", () => {
+  const params = { filament: "1 000 g", tare: "224 g", total: "1 224 g" };
+
+  assert.equal(
+    t("en", "loans.outgoingCalculation"),
+    "Suggested outgoing calculation",
+  );
+  assert.equal(
+    t("nb", "loans.outgoingCalculation"),
+    "Regnestykke for foreslått utgående vekt",
+  );
+  assert.equal(
+    t("en", "loans.outgoingWeightCalculation", "", params),
+    "1 224 g total − 224 g spool tare = 1 000 g filament lent out",
+  );
+  assert.equal(
+    t("nb", "loans.outgoingWeightCalculation", "", params),
+    "1 224 g totalvekt − 224 g rullens tomvekt = 1 000 g filament lånes ut",
+  );
 });

@@ -12,6 +12,12 @@ test("statistics interactive cards share keyboard focus treatment", () => {
 
   assert.match(overviewPanels, /statisticsInteractiveCardClass/);
   assert.match(loanPanels, /statisticsInteractiveCardClass/);
+  assert.match(overviewPanels, /<button[\s\S]*aria-haspopup="dialog"/);
+  assert.match(loanPanels, /<button[\s\S]*aria-haspopup="dialog"/);
+  assert.match(overviewPanels, /statistics\.viewDetails/);
+  assert.match(loanPanels, /statistics\.viewDetails/);
+  assert.doesNotMatch(overviewPanels, /role="button"|tabIndex=\{0\}|onKeyDown/);
+  assert.doesNotMatch(loanPanels, /role="button"|tabIndex=\{0\}|onKeyDown/);
   assert.doesNotMatch(
     overviewPanels,
     /cursor-pointer rounded-lg border p-3\.5 text-sm transition hover:-translate-y-0\.5/,

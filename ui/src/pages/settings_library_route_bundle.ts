@@ -37,7 +37,9 @@ export function buildSettingsLibraryRouteBundle({
   lastFullBackupValidatedAt,
   libraryRoleConfirmArmed,
   librarySyncBusy,
+  librarySyncDeviceNameDirty,
   librarySyncDeviceNameDraft,
+  librarySyncDeviceNameSaveBusy,
   librarySyncHostBaseUrlDraft,
   librarySyncModeDraft,
   librarySyncPairingDraft,
@@ -99,6 +101,7 @@ export function buildSettingsLibraryRouteBundle({
   onRevokeAllBrowsers,
   onRevokeBrowser,
   onSaveNetwork,
+  onSaveDeviceName,
   onToggleAdvanced,
   onToggleNetworkEditor,
   onToggleNetworkSummary,
@@ -107,7 +110,9 @@ export function buildSettingsLibraryRouteBundle({
 }: BuildSettingsLibraryRouteBundleInput) {
   const settingsLibraryRolePanelProps = buildSettingsLibraryRolePanelProps({
     librarySyncBusy,
+    librarySyncDeviceNameDirty,
     librarySyncDeviceNameDraft,
+    librarySyncDeviceNameSaveBusy,
     librarySyncModeDraft,
     librarySyncRoleOptions,
     librarySyncSettings,
@@ -116,6 +121,7 @@ export function buildSettingsLibraryRouteBundle({
     t,
     onDeviceNameChange,
     onRequestLibraryRoleChange,
+    onSaveDeviceName,
   });
   const settingsLibraryWebappControlProps = buildSettingsLibraryWebappControlProps({
     librarySyncModeDraft,
@@ -173,7 +179,9 @@ export function buildSettingsLibraryRouteBundle({
   });
   const settingsLibraryClientPanelProps = buildSettingsLibraryClientPanelProps({
     librarySyncBusy,
+    librarySyncDeviceNameDirty,
     librarySyncDeviceNameDraft,
+    librarySyncDeviceNameSaveBusy,
     librarySyncHostBaseUrlDraft,
     librarySyncPairingDraft,
     librarySyncSettings,
@@ -196,6 +204,7 @@ export function buildSettingsLibraryRouteBundle({
     onPairHost,
     onPairingDraftChange,
     onRenewClientAuth,
+    onSaveDeviceName,
     onToggleAdvanced,
   });
   const settingsLibraryRouteProps = buildSettingsLibraryRouteProps({

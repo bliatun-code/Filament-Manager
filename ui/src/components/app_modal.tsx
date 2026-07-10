@@ -1,6 +1,15 @@
-import { type ReactNode } from "react";
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useId,
+  useRef,
+} from "react";
+import { AppModalTitleIdContext } from "./app_modal_context";
+import { modalFocusableElements, resolveAppModalTabTarget } from "./app_modal_focus";
 
 type AppModalProps = {
+  ariaLabel?: string;
   children: ReactNode;
   zIndex?: number;
   closeOnBackdrop?: boolean;
@@ -10,6 +19,7 @@ type AppModalProps = {
 };
 
 export function AppModal({
+  ariaLabel,
   children,
   zIndex = 50,
   closeOnBackdrop = false,
@@ -17,28 +27,105 @@ export function AppModal({
   overlayClassName,
   panelClassName,
 }: AppModalProps) {
+  const titleId = useId();
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(
+    typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null,
+  );
   const overlayClasses =
     overlayClassName ??
     "fixed inset-0 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-md dark:bg-black/50";
   const panelClasses =
     panelClassName ??
-    "w-full max-w-md rounded-2xl border border-slate-200/90 bg-white/95 p-5 shadow-2xl shadow-slate-300/25 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/92 dark:shadow-black/45";
+    "max-h-[calc(100dvh-3rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl border border-slate-200/90 bg-white/95 p-5 shadow-2xl shadow-slate-300/25 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/92 dark:shadow-black/45";
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) {
+      return;
+    }
+
+    if (!panel.contains(document.activeElement)) {
+      (modalFocusableElements(panel)[0] ?? panel).focus({ preventScroll: true });
+    }
+
+    const returnFocus = returnFocusRef.current;
+    return () => {
+      if (returnFocus?.isConnected) {
+        returnFocus.focus({ preventScroll: true });
+      }
+    };
+  }, []);
+
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      if (onBackdropClose) {
+        event.preventDefault();
+        onBackdropClose();
+      }
+      return;
+    }
+
+    if (event.key !== "Tab") {
+      return;
+    }
+
+    event.stopPropagation();
+    const panel = panelRef.current;
+    if (!panel) {
+      return;
+    }
+    const focusableElements = modalFocusableElements(panel);
+    const activeIndex = focusableElements.indexOf(document.activeElement as HTMLElement);
+    const target = resolveAppModalTabTarget({
+      activeIndex,
+      focusableCount: focusableElements.length,
+      shiftKey: event.shiftKey,
+    });
+    if (!target) {
+      return;
+    }
+
+    event.preventDefault();
+    if (target === "panel") {
+      panel.focus({ preventScroll: true });
+    } else if (target === "first") {
+      focusableElements[0]?.focus({ preventScroll: true });
+    } else {
+      focusableElements.at(-1)?.focus({ preventScroll: true });
+    }
+  };
 
   return (
-    <div
-      className={overlayClasses}
-      style={{ zIndex }}
-      onClick={
-        closeOnBackdrop && onBackdropClose
-          ? () => {
-              onBackdropClose();
-            }
-          : undefined
-      }
-    >
-      <div className={panelClasses} onClick={(event) => event.stopPropagation()}>
-        {children}
+    <AppModalTitleIdContext.Provider value={titleId}>
+      <div
+        className={overlayClasses}
+        style={{ zIndex }}
+        onClick={
+          closeOnBackdrop && onBackdropClose
+            ? () => {
+                onBackdropClose();
+              }
+            : undefined
+        }
+        onKeyDown={handleKeyDown}
+      >
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabel ? undefined : titleId}
+          tabIndex={-1}
+          className={panelClasses}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {children}
+        </div>
       </div>
-    </div>
+    </AppModalTitleIdContext.Provider>
   );
 }

@@ -309,9 +309,15 @@ test("buildTrustedLanPairedBrowserListModel keeps active browsers first and huma
     ["revoked-browser"],
   );
   assert.equal(model.activeRows[0]?.activityLabel, "Last seen 1 min ago");
+  assert.equal(model.activeRows[0]?.statusLabel, "Recently active");
+  assert.equal(model.activeRows[0]?.statusTone, "live");
+  assert.equal(model.activeRows[0]?.activityDateTime, "2026-03-28T19:59:00.000Z");
   assert.equal(model.activeRows[0]?.originLabel, "192.168.86.25:4278");
   assert.equal(model.activeRows[1]?.activityLabel, "Waiting for first renewal");
+  assert.equal(model.activeRows[1]?.statusLabel, "Authorized");
+  assert.equal(model.activeRows[1]?.statusTone, "idle");
   assert.equal(model.activeRows[1]?.initials, "MA");
+  assert.equal(model.activeRows[1]?.pairedDateTime, "2026-03-28T19:20:00.000Z");
   assert.equal(model.revokedRows[0]?.statusLabel, "Revoked");
   assert.match(model.revokedRows[0]?.activityLabel ?? "", /^Revoked /);
 });
@@ -337,6 +343,28 @@ test("buildTrustedLanPairedBrowserListModel uses Norwegian relative wording and 
   assert.equal(model.activeRows[0]?.initials, "PB");
   assert.equal(model.activeRows[0]?.activityLabel, "Last seen 5 min siden");
   assert.equal(model.activeRows[0]?.originLabel, "192.168.86.25:4278");
+});
+
+test("authorized browsers are only marked recently active after a recent renewal", () => {
+  const model = buildTrustedLanPairedBrowserListModel({
+    browsers: [
+      {
+        id: "stale-authorized",
+        display_name: "Old iPhone",
+        paired_at: "2026-03-20T10:00:00.000Z",
+        last_seen_at: "2026-03-26T20:00:00.000Z",
+        last_origin: "192.168.86.25:4278",
+        revoked_at: null,
+      },
+    ],
+    locale: "en",
+    t,
+    nowMs: Date.parse("2026-03-28T20:00:00.000Z"),
+  });
+
+  assert.equal(model.activeRows[0]?.statusLabel, "Authorized");
+  assert.equal(model.activeRows[0]?.statusTone, "idle");
+  assert.equal(model.activeRows[0]?.activityLabel, "Last seen 2 d ago");
 });
 
 test("findNewTrustedLanActiveBrowserIds detects newly paired browsers only", () => {

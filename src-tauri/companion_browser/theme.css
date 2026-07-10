@@ -12,6 +12,8 @@
   --surface-panel: rgba(255, 255, 255, 0.96);
   --border: rgba(65, 85, 110, 0.38);
   --border-strong: rgba(45, 64, 88, 0.6);
+  /* Opaque control edge: 4.18:1 on white and 3.39:1 on #dbe9f8. */
+  --form-control-border: #6b7e92;
   --text: #102235;
   --text-muted: #33485f;
   --muted: #33485f;
@@ -64,6 +66,8 @@
   --swatch-surface-shadow: 0.34;
   --swatch-surface-ambient: rgba(80, 103, 130, 0.12);
   --swatch-surface-inset: rgba(255, 255, 255, 0.72);
+  --swatch-dot-border: var(--border-strong);
+  --swatch-surface-outline: var(--border);
   --printer-surface-base: rgba(250, 253, 255, 0.98);
   --printer-surface-top: 0.28;
   --printer-surface-mid: 0.16;
@@ -87,6 +91,7 @@
   --surface-panel: rgba(17, 28, 45, 0.9);
   --border: rgba(127, 156, 187, 0.2);
   --border-strong: rgba(127, 156, 187, 0.34);
+  --form-control-border: var(--border);
   --text: #f4f8fb;
   --text-muted: #b4c1cf;
   --muted: #b4c1cf;
@@ -130,6 +135,8 @@
   --swatch-surface-shadow: 0.38;
   --swatch-surface-ambient: rgba(2, 6, 23, 0.5);
   --swatch-surface-inset: rgba(255, 255, 255, 0.03);
+  --swatch-dot-border: rgba(255, 255, 255, 0.65);
+  --swatch-surface-outline: transparent;
   --printer-surface-base: rgb(10, 17, 31);
   --printer-surface-top: 0.28;
   --printer-surface-mid: 0.14;
@@ -155,6 +162,7 @@
     --surface-panel: rgba(17, 28, 45, 0.9);
     --border: rgba(127, 156, 187, 0.2);
     --border-strong: rgba(127, 156, 187, 0.34);
+    --form-control-border: var(--border);
     --text: #f4f8fb;
     --text-muted: #b4c1cf;
     --muted: #b4c1cf;
@@ -198,6 +206,8 @@
     --swatch-surface-shadow: 0.38;
     --swatch-surface-ambient: rgba(2, 6, 23, 0.5);
     --swatch-surface-inset: rgba(255, 255, 255, 0.03);
+    --swatch-dot-border: rgba(255, 255, 255, 0.65);
+    --swatch-surface-outline: transparent;
     --printer-surface-base: rgb(10, 17, 31);
     --printer-surface-top: 0.28;
     --printer-surface-mid: 0.14;

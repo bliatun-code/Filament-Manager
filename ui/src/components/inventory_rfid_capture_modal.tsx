@@ -1,7 +1,7 @@
 import { AppModal } from "./app_modal";
 import {
   inventoryModalOverlayClassName,
-  inventoryWideModalPanelClassName,
+  inventoryWideContentModalPanelClassName,
 } from "./inventory_modal_chrome";
 import { ModalBody, ModalFooter, ModalNotice } from "./modal_chrome";
 import {
@@ -19,6 +19,7 @@ import type {
 } from "../lib/inventory_rfid_capture";
 import type { InventoryPrinterSlotOption } from "../lib/use_inventory_printer_slots";
 import type { BambuLiveIntegrationSettings } from "../lib/tauri_client";
+import { useI18n } from "../lib/i18n";
 
 type RfidCaptureMatchMeta = {
   className: string;
@@ -81,16 +82,19 @@ export function InventoryRfidCaptureModal({
   summary,
   supportsRfidCapture,
 }: InventoryRfidCaptureModalProps) {
+  const { t } = useI18n();
+
   if (!open || !spool) {
     return null;
   }
 
   return (
     <AppModal
+      ariaLabel={`${t("inventory.rfidCaptureTitle", "RFID capture")}: ${displayTitle}`}
       closeOnBackdrop
       onBackdropClose={onClose}
       overlayClassName={inventoryModalOverlayClassName}
-      panelClassName={inventoryWideModalPanelClassName}
+      panelClassName={inventoryWideContentModalPanelClassName}
       zIndex={60}
     >
       <div className="flex min-h-0 flex-1 flex-col">
@@ -121,29 +125,44 @@ export function InventoryRfidCaptureModal({
             />
           </div>
 
-          <InventoryRfidCaptureDiagnostics
-            clientReadOnly={clientReadOnly}
-            lastSlotDataAt={lastSlotDataAt}
-            liveIntegration={liveIntegration}
-            selectedSlot={selectedSlot}
-            slotLabel={slotLabel}
-            summary={summary}
-          />
-
           {error ? (
             <ModalNotice className="mt-4 text-xs" tone="danger">
               {error}
             </ModalNotice>
           ) : null}
 
-          <InventoryRfidCapturedFieldsPanel
-            fields={fields}
-            hasObservedSnapshotFields={hasObservedSnapshotFields}
-            loading={loading}
-            onToggle={onToggleCapturedFields}
-            show={showCapturedFields}
-            supportsRfidCapture={supportsRfidCapture}
-          />
+          <details className="mt-4 rounded-xl border border-slate-200 bg-white/60 dark:border-slate-700 dark:bg-slate-950/25">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-300 dark:text-slate-100 dark:hover:bg-slate-900/60 dark:focus-visible:ring-sky-400/60">
+              <span className="block">
+                {t("inventory.rfidTechnicalDetails", "Technical details")}
+              </span>
+              <span className="mt-1 block text-xs font-normal text-slate-500 dark:text-slate-400">
+                {t(
+                  "inventory.rfidTechnicalDetailsHint",
+                  "Raw RFID identity signals, capture status and captured slot fields.",
+                )}
+              </span>
+            </summary>
+            <div className="border-t border-slate-200 px-4 pb-4 dark:border-slate-700">
+              <InventoryRfidCaptureDiagnostics
+                clientReadOnly={clientReadOnly}
+                lastSlotDataAt={lastSlotDataAt}
+                liveIntegration={liveIntegration}
+                selectedSlot={selectedSlot}
+                slotLabel={slotLabel}
+                summary={summary}
+              />
+
+              <InventoryRfidCapturedFieldsPanel
+                fields={fields}
+                hasObservedSnapshotFields={hasObservedSnapshotFields}
+                loading={loading}
+                onToggle={onToggleCapturedFields}
+                show={showCapturedFields}
+                supportsRfidCapture={supportsRfidCapture}
+              />
+            </div>
+          </details>
         </ModalBody>
 
         <ModalFooter className="px-5 py-4 sm:px-6">
@@ -152,7 +171,6 @@ export function InventoryRfidCaptureModal({
             manageBusy={manageBusy}
             onCancel={onCancel}
             onSave={onSave}
-            spoolHexColor={spool.hexColor}
           />
         </ModalFooter>
       </div>

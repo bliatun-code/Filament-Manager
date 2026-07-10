@@ -11,7 +11,9 @@ export type TrustedLanPairedBrowserRowModel = {
   statusLabel: string;
   statusTone: TrustedLanCompanionStatusTone;
   activityLabel: string;
+  activityDateTime: string | null;
   pairedLabel: string;
+  pairedDateTime: string | null;
   originLabel: string | null;
   revoked: boolean;
 };
@@ -48,11 +50,17 @@ function formatAbsoluteTimestamp(value: string | null | undefined, locale: Local
     return locale === "nb" ? "Ukjent" : "Unknown";
   }
   return new Intl.DateTimeFormat(trustedLanLocale(locale), {
+    year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   }).format(timestampMs);
+}
+
+function timestampDateTime(value?: string | null): string | null {
+  const timestampMs = parseTimestampMs(value);
+  return timestampMs === null ? null : new Date(timestampMs).toISOString();
 }
 
 function formatRelativeTimestamp(
@@ -145,11 +153,18 @@ export function buildTrustedLanPairedBrowserListModel(
 
   const toRowModel = (browser: TrustedLanPairedBrowser): TrustedLanPairedBrowserRowModel => {
     const revoked = Boolean(browser.revoked_at);
+    const lastSeenAtMs = parseTimestampMs(browser.last_seen_at);
+    const recentlyActive =
+      !revoked &&
+      lastSeenAtMs !== null &&
+      Math.max(0, nowMs - lastSeenAtMs) < 24 * 60 * 60 * 1000;
     const displayName =
       browser.display_name?.trim() || t("settings.trustedLanUnnamedBrowser", "Paired browser");
     const statusLabel = revoked
       ? t("settings.trustedLanRevoked", "Revoked")
-      : t("settings.trustedLanActive", "Active");
+      : recentlyActive
+        ? t("settings.trustedLanRecentlyActive", "Recently active")
+        : t("settings.trustedLanAuthorized", "Authorized");
     const activityLabel = revoked
       ? `${t("settings.trustedLanRevoked", "Revoked")} ${formatAbsoluteTimestamp(
           browser.revoked_at,
@@ -168,12 +183,16 @@ export function buildTrustedLanPairedBrowserListModel(
       displayName,
       initials: buildBrowserInitials(displayName),
       statusLabel,
-      statusTone: revoked ? "idle" : "live",
+      statusTone: recentlyActive ? "live" : "idle",
       activityLabel,
+      activityDateTime: timestampDateTime(
+        revoked ? browser.revoked_at : browser.last_seen_at,
+      ),
       pairedLabel: `${t("settings.trustedLanPairedAt", "Paired")} ${formatAbsoluteTimestamp(
         browser.paired_at,
         locale,
       )}`,
+      pairedDateTime: timestampDateTime(browser.paired_at),
       originLabel: summarizeOrigin(browser.last_origin),
       revoked,
     };

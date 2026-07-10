@@ -1,4 +1,5 @@
 import type {
+  BambuLiveIntegrationEntry,
   CreatePrinterInput,
   PrinterAmsSlotRow,
   PrinterOverviewRow,
@@ -22,6 +23,18 @@ export type PrinterReconfigureDraft = {
   bambuLiveHost: string;
   bambuLiveAccessCode: string;
   bambuLivePrinterSerial: string;
+};
+
+export type NormalizedPrinterReconfigureDraft = {
+  id: string | null;
+  model: string;
+  name: string;
+  amsUnits: number;
+  slotsPerUnit: number;
+  bambuLiveEnabled: boolean;
+  bambuLiveHost: string | null;
+  bambuLiveAccessCode: string | null;
+  bambuLivePrinterSerial: string | null;
 };
 
 export type PreparedPrinterReconfigure =
@@ -88,39 +101,106 @@ export function isBambuLabPrinter(model: string): boolean {
   return model.trim().toLowerCase().startsWith("bambu lab");
 }
 
+export function chooseSettingsPrinterEditorVisualQaPrinter(
+  printers: PrinterRow[],
+  bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>,
+): PrinterRow | null {
+  return (
+    printers.find(
+      (printer) =>
+        isBambuLabPrinter(printer.model) && bambuLiveIntegrations[printer.id]?.enabled,
+    ) ??
+    printers[0] ??
+    null
+  );
+}
+
+export function normalizePrinterReconfigureDraft(
+  draft: PrinterReconfigureDraft,
+): NormalizedPrinterReconfigureDraft {
+  const model = draft.model.trim();
+  const profile = resolvePrinterModelProfile(model);
+  const amsUnits = clampInt(
+    parseNonNegativeInt(draft.amsUnits, profile.defaultUnits),
+    0,
+    profile.maxUnits,
+  );
+  const slotsPerUnit = clampInt(
+    parsePositiveInt(draft.slotsPerUnit, profile.defaultSlotsPerUnit),
+    1,
+    profile.maxSlotsPerUnit,
+  );
+
+  return {
+    id: draft.id,
+    model,
+    name: draft.name.trim(),
+    amsUnits,
+    slotsPerUnit,
+    bambuLiveEnabled: draft.bambuLiveEnabled,
+    bambuLiveHost: draft.bambuLiveHost.trim() || null,
+    bambuLiveAccessCode: draft.bambuLiveAccessCode.trim() || null,
+    bambuLivePrinterSerial: draft.bambuLivePrinterSerial.trim() || null,
+  };
+}
+
+export function isPrinterReconfigureDraftDirty(
+  baseline: PrinterReconfigureDraft,
+  current: PrinterReconfigureDraft,
+): boolean {
+  const normalizedBaseline = normalizePrinterReconfigureDraft(baseline);
+  const normalizedCurrent = normalizePrinterReconfigureDraft(current);
+
+  if (
+    normalizedBaseline.id !== normalizedCurrent.id ||
+    normalizedBaseline.model !== normalizedCurrent.model ||
+    normalizedBaseline.name !== normalizedCurrent.name ||
+    normalizedBaseline.amsUnits !== normalizedCurrent.amsUnits
+  ) {
+    return true;
+  }
+
+  if (
+    normalizedCurrent.amsUnits > 0 &&
+    normalizedBaseline.slotsPerUnit !== normalizedCurrent.slotsPerUnit
+  ) {
+    return true;
+  }
+
+  if (normalizedBaseline.bambuLiveEnabled !== normalizedCurrent.bambuLiveEnabled) {
+    return true;
+  }
+
+  return (
+    normalizedCurrent.bambuLiveEnabled &&
+    (normalizedBaseline.bambuLiveHost !== normalizedCurrent.bambuLiveHost ||
+      normalizedBaseline.bambuLiveAccessCode !==
+        normalizedCurrent.bambuLiveAccessCode ||
+      normalizedBaseline.bambuLivePrinterSerial !==
+        normalizedCurrent.bambuLivePrinterSerial)
+  );
+}
+
 export function preparePrinterReconfigure(input: {
   currentExists: boolean;
   draft: PrinterReconfigureDraft;
 }): PreparedPrinterReconfigure {
-  const id = input.draft.id;
-  const model = input.draft.model.trim();
-  const name = input.draft.name.trim();
+  const normalized = normalizePrinterReconfigureDraft(input.draft);
+  const { id, model, name } = normalized;
 
   if (!input.currentExists || !id || !model || !name) {
     return { ok: false, reason: "missing_printer" };
   }
 
-  const liveHost = input.draft.bambuLiveHost.trim();
-  const liveAccessCode = input.draft.bambuLiveAccessCode.trim();
-  const livePrinterSerial = input.draft.bambuLivePrinterSerial.trim();
+  const liveHost = normalized.bambuLiveHost;
+  const liveAccessCode = normalized.bambuLiveAccessCode;
+  const livePrinterSerial = normalized.bambuLivePrinterSerial;
   if (
-    input.draft.bambuLiveEnabled &&
+    normalized.bambuLiveEnabled &&
     (!liveHost || !liveAccessCode || !livePrinterSerial)
   ) {
     return { ok: false, reason: "missing_bambu_live_fields" };
   }
-
-  const profile = resolvePrinterModelProfile(model);
-  const units = clampInt(
-    parseNonNegativeInt(input.draft.amsUnits, profile.defaultUnits),
-    0,
-    profile.maxUnits,
-  );
-  const slots = clampInt(
-    parsePositiveInt(input.draft.slotsPerUnit, profile.defaultSlotsPerUnit),
-    1,
-    profile.maxSlotsPerUnit,
-  );
 
   return {
     ok: true,
@@ -128,14 +208,14 @@ export function preparePrinterReconfigure(input: {
       id,
       model,
       name,
-      ams_units: units,
-      slots_per_ams: slots,
+      ams_units: normalized.amsUnits,
+      slots_per_ams: normalized.slotsPerUnit,
     },
     bambuLive: {
-      enabled: input.draft.bambuLiveEnabled,
-      host: liveHost || null,
-      accessCode: liveAccessCode || null,
-      printerSerial: livePrinterSerial || null,
+      enabled: normalized.bambuLiveEnabled,
+      host: liveHost,
+      accessCode: liveAccessCode,
+      printerSerial: livePrinterSerial,
     },
   };
 }

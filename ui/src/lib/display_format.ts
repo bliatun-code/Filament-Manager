@@ -23,6 +23,17 @@ function splitDisplayTokens(value?: string | null): string[] {
     .filter((part) => part.length > 0);
 }
 
+const TERMINAL_BASE_COLOR_PATTERN =
+  /\b(black|blue|brown|gray|grey|green|orange|pink|purple|red|silver|white|yellow)\b(?=\s*(?:\(\d{5}\))?$)/;
+
+function normalizeColorDisplayToken(value: string): string {
+  const normalizedCodeSpacing = value.replace(/\s*\((\d{5})\)\s*$/, " ($1)");
+  return normalizedCodeSpacing.replace(
+    TERMINAL_BASE_COLOR_PATTERN,
+    (color) => `${color[0].toUpperCase()}${color.slice(1)}`,
+  );
+}
+
 function tokenStartsWithToken(baseToken: string, nextToken: string): boolean {
   const base = baseToken.trim().toLowerCase();
   const next = nextToken.trim().toLowerCase();
@@ -46,7 +57,7 @@ export function formatFilamentDisplayTitle(
   const tokens = [
     ...splitDisplayTokens(materialRaw),
     ...splitDisplayTokens(filamentRaw),
-    ...splitDisplayTokens(colorRaw),
+    ...splitDisplayTokens(colorRaw).map(normalizeColorDisplayToken),
   ].filter((token, index, allTokens) => {
     if (index === 0) {
       return true;

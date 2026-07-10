@@ -64,6 +64,7 @@ export type InventoryAddModalProps = {
   onBambuBatchInputChange: (value: string) => void;
   onBambuBatchRowSelectionChange: (rowKey: string, masterId: string | null) => void;
   onCatalogQueryChange: (value: string) => void;
+  onCancelWishlistRemove: () => void;
   onClose: () => void;
   onCreateBambuCodeBatch: () => void;
   onCreateModeChange: (value: InventoryCreateMode) => void;
@@ -77,10 +78,12 @@ export type InventoryAddModalProps = {
   onManualMaterialChange: (value: string) => void;
   onManualVendorChange: (value: string) => void;
   onOwnershipTypeChange: (value: OwnershipType) => void;
+  onRequestWishlistRemove: (itemId: string) => void;
   onSelectCatalogMaster: (master: MasterCatalogRow) => void;
   onStockWishlistItem: (item: WishlistItemRow) => void;
   onUseManualFromCatalog: () => void;
   onWishlistFilterChange: (filter: WishlistStatusFilter) => void;
+  onWishlistQueryChange: (query: string) => void;
   onWishlistStatusChange: (itemId: string, status: WishlistStatus) => void;
   open: boolean;
   ownershipType: OwnershipType;
@@ -91,6 +94,7 @@ export type InventoryAddModalProps = {
   visibleWishlistItems: WishlistItemRow[];
   wishlistItems: WishlistItemRow[];
   wishlistLoading: boolean;
+  wishlistQuery: string;
   wishlistSummary: WishlistQueueSummary;
   wishlistValue: WishlistStatusFilter;
 };
@@ -131,6 +135,7 @@ export function InventoryAddModal({
   onBambuBatchInputChange,
   onBambuBatchRowSelectionChange,
   onCatalogQueryChange,
+  onCancelWishlistRemove,
   onClose,
   onCreateBambuCodeBatch,
   onCreateModeChange,
@@ -144,10 +149,12 @@ export function InventoryAddModal({
   onManualMaterialChange,
   onManualVendorChange,
   onOwnershipTypeChange,
+  onRequestWishlistRemove,
   onSelectCatalogMaster,
   onStockWishlistItem,
   onUseManualFromCatalog,
   onWishlistFilterChange,
+  onWishlistQueryChange,
   onWishlistStatusChange,
   open,
   ownershipType,
@@ -158,6 +165,7 @@ export function InventoryAddModal({
   visibleWishlistItems,
   wishlistItems,
   wishlistLoading,
+  wishlistQuery,
   wishlistSummary,
   wishlistValue,
 }: InventoryAddModalProps) {
@@ -204,11 +212,59 @@ export function InventoryAddModal({
     if (!open || !autoFocusWishlistQueue || wishlistLoading) {
       return;
     }
-    const frame = window.requestAnimationFrame(() => {
-      wishlistQueueRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [autoFocusWishlistQueue, open, visibleWishlistItems.length, wishlistItems.length, wishlistLoading]);
+    const target = wishlistQueueRef.current;
+    const scrollContainer = target?.closest<HTMLElement>("[data-inventory-add-scroll]");
+    if (!target || !scrollContainer) {
+      return;
+    }
+
+    let scheduledFrameId: number | null = null;
+    const revealWishlistQueue = () => {
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+      scheduledFrameId = window.requestAnimationFrame(() => {
+        scheduledFrameId = null;
+        const targetOffset =
+          scrollContainer.scrollTop +
+          target.getBoundingClientRect().top -
+          scrollContainer.getBoundingClientRect().top;
+        scrollContainer.scrollTo({
+          behavior: "auto",
+          top: Math.max(0, targetOffset),
+        });
+        target.querySelector<HTMLInputElement>('input[type="search"]')?.focus({
+          preventScroll: true,
+        });
+      });
+    };
+
+    revealWishlistQueue();
+    const timerIds = [150, 450, 900].map((delay) =>
+      window.setTimeout(revealWishlistQueue, delay),
+    );
+    window.addEventListener("resize", revealWishlistQueue);
+    const resizeObserver =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(revealWishlistQueue);
+    resizeObserver?.observe(scrollContainer);
+    resizeObserver?.observe(target);
+
+    return () => {
+      timerIds.forEach((timerId) => window.clearTimeout(timerId));
+      window.removeEventListener("resize", revealWishlistQueue);
+      resizeObserver?.disconnect();
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+    };
+  }, [
+    activeCatalogMasters.length,
+    autoFocusWishlistQueue,
+    open,
+    visibleWishlistItems.length,
+    wishlistItems.length,
+    wishlistLoading,
+  ]);
 
   if (!open) {
     return null;
@@ -250,7 +306,10 @@ export function InventoryAddModal({
           }
         />
 
-        <ModalBody className="px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+        <ModalBody
+          className="px-5 pb-5 pt-4 sm:px-6 sm:pb-6"
+          data-inventory-add-scroll
+        >
           {error ? (
             <ModalNotice tone="danger" className="mb-4">
               {error}
@@ -267,6 +326,7 @@ export function InventoryAddModal({
             <div className="space-y-4">
               <InventoryStockSourcePanel
                 activeCatalogMasters={activeCatalogMasters}
+                autoFocusCatalogSearch={!autoFocusWishlistQueue}
                 catalogQuery={catalogQuery}
                 createMode={createMode}
                 isCatalogCreateMode={isCatalogCreateMode}
@@ -321,10 +381,14 @@ export function InventoryAddModal({
                   confirmWishlistRemoveId={confirmWishlistRemoveId}
                   items={wishlistItems}
                   loading={wishlistLoading}
+                  onCancelDeleteItem={onCancelWishlistRemove}
                   onDeleteItem={onDeleteWishlistItem}
                   onFilterChange={onWishlistFilterChange}
+                  onQueryChange={onWishlistQueryChange}
+                  onRequestDeleteItem={onRequestWishlistRemove}
                   onStatusChange={onWishlistStatusChange}
                   onStockItem={onStockWishlistItem}
+                  query={wishlistQuery}
                   resolvedTheme={resolvedTheme}
                   summary={wishlistSummary}
                   tauriAvailable={tauriAvailable}

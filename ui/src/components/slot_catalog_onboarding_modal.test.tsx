@@ -141,6 +141,10 @@ test("SlotCatalogOnboardingModal renders the owned catalog onboarding save path"
   assert.match(html, /Home location \(optional\)/);
   assert.doesNotMatch(html, /Borrowed from/);
   assert.doesNotMatch(html, /<button(?=[^>]*disabled="")[^>]*>\s*Add \+ save RFID/);
+  const saveButton = html.match(/<button[^>]*>\s*Add \+ save RFID\s*<\/button>/)?.[0];
+  assert.ok(saveButton);
+  assert.match(saveButton, /bg-sky-600/);
+  assert.doesNotMatch(saveButton, /style=/);
 });
 
 test("SlotCatalogOnboardingModal marks discontinued catalog fallback rows", () => {

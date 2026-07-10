@@ -11,9 +11,9 @@ const panelsSource = readFileSync(
   "utf8",
 );
 
-test("InventoryRfidCaptureModal uses the shared wide modal chrome and internal scrolling", () => {
+test("InventoryRfidCaptureModal uses content-sized wide modal chrome and internal scrolling", () => {
   assert.match(modalSource, /inventoryModalOverlayClassName/);
-  assert.match(modalSource, /inventoryWideModalPanelClassName/);
+  assert.match(modalSource, /inventoryWideContentModalPanelClassName/);
   assert.match(modalSource, /closeOnBackdrop/);
   assert.match(modalSource, /ModalNotice/);
   assert.match(modalSource, /zIndex=\{60\}/);
@@ -23,6 +23,20 @@ test("InventoryRfidCaptureModal uses the shared wide modal chrome and internal s
   assert.doesNotMatch(modalSource, /shrink-0 border-t/);
   assert.doesNotMatch(modalSource, /max-w-6xl rounded-3xl/);
   assert.doesNotMatch(modalSource, /rounded-xl border border-amber-200\/80 bg-amber-50\/90/);
+});
+
+test("InventoryRfidCaptureModal keeps secondary telemetry in a collapsed technical disclosure", () => {
+  const detailsStart = modalSource.indexOf("<details");
+  const detailsEnd = modalSource.indexOf("</details>", detailsStart);
+  const technicalDetails = modalSource.slice(detailsStart, detailsEnd);
+
+  assert.ok(detailsStart >= 0);
+  assert.ok(detailsEnd > detailsStart);
+  assert.match(technicalDetails, /<summary/);
+  assert.match(technicalDetails, /inventory\.rfidTechnicalDetails/);
+  assert.match(technicalDetails, /InventoryRfidCaptureDiagnostics/);
+  assert.match(technicalDetails, /InventoryRfidCapturedFieldsPanel/);
+  assert.doesNotMatch(technicalDetails, /<details[^>]*\sopen(?:=|\s|>)/);
 });
 
 test("InventoryRfidCapture panels use the shared modal breakpoint language", () => {
