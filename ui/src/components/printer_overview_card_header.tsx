@@ -99,7 +99,7 @@ export function PrinterOverviewCardHeader({
         ))}
       </div>
       {liveTelemetry ? (
-        <div className="order-2 w-full min-[640px]:pl-[8.75rem] min-[900px]:order-3">
+        <div className="order-2 w-full min-[640px]:-mt-8 min-[640px]:pl-[10.25rem] min-[900px]:order-3">
           <PrinterLiveTelemetryStrip telemetry={liveTelemetry} />
         </div>
       ) : null}
