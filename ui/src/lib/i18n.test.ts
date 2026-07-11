@@ -137,6 +137,15 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
     "Technische Details",
   );
   assert.equal(getCachedLocaleDictionary("de"), germanDictionary);
+
+  const frenchDictionary = await loadLocaleDictionary("fr");
+  assert.equal(lookup(frenchDictionary, "nav.inventory"), "Stock");
+  assert.equal(lookup(frenchDictionary, "common.cancel"), "Annuler");
+  assert.equal(
+    lookup(frenchDictionary, "inventory.rfidTechnicalDetails"),
+    "Technical details",
+  );
+  assert.equal(getCachedLocaleDictionary("fr"), frenchDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {
@@ -197,7 +206,7 @@ test("resolveInitialLocale checks navigator languages in preference order", () =
   const storage = { getItem: () => null };
   const navigatorRef = {
     language: "en-US",
-    languages: ["de-DE", "nb-NO", "en-US"],
+    languages: ["fr-FR", "de-DE", "nb-NO", "en-US"],
   };
 
   const locale = withGlobalValue("localStorage", storage, () =>

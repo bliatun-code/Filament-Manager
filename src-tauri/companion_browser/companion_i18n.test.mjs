@@ -62,7 +62,7 @@ test("resolveInitialCompanionLocale migrates the legacy desktop-named storage ke
 test("resolveInitialCompanionLocale checks navigator languages in preference order", () => {
   const locale = resolveInitialCompanionLocale(
     { getItem: () => null },
-    { language: "en-US", languages: ["de-DE", "nb-NO", "en-US"] },
+    { language: "en-US", languages: ["fr-FR", "de-DE", "nb-NO", "en-US"] },
   );
 
   assert.equal(locale, "nb");
@@ -92,6 +92,18 @@ test("German draft uses translated overlay copy", () => {
   assert.equal(t("de", "nav.storage"), "Bestand");
   assert.equal(t("de", "printers.toolhead"), "Werkzeugkopf");
   assert.equal(t("de", "recovery.suggested"), "Vorgeschlagene Wiederherstellung");
+});
+
+test("French draft uses translated overlay copy and English fallback", () => {
+  assert.equal(t("fr", "nav.storage"), "Stock");
+  assert.equal(t("fr", "printers.toolhead"), "Tête d’outil");
+  assert.equal(t("fr", "recovery.suggested"), t("en", "recovery.suggested"));
+});
+
+test("French draft applies French zero, one, and other plural categories", () => {
+  assert.equal(t("fr", "nav.spoolCount", "", { count: 0 }), "0 bobine");
+  assert.equal(t("fr", "nav.spoolCount", "", { count: 1 }), "1 bobine");
+  assert.equal(t("fr", "nav.spoolCount", "", { count: 2 }), "2 bobines");
 });
 
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {

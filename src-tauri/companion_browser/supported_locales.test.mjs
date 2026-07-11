@@ -26,6 +26,8 @@ test("locale registry normalizes canonical, regional, underscore, and legacy ali
   assert.equal(normalizeSupportedLocale("zh_xb"), "zh-XB");
   assert.equal(normalizeSupportedLocale("de-DE"), "de");
   assert.equal(normalizeSelectableLocale("de-DE"), null);
+  assert.equal(normalizeSupportedLocale("fr-FR"), "fr");
+  assert.equal(normalizeSelectableLocale("fr-FR"), null);
 });
 
 test("locale registry owns format, guide, and native-label metadata", () => {
@@ -33,14 +35,17 @@ test("locale registry owns format, guide, and native-label metadata", () => {
     "en",
     "nb",
     "de",
+    "fr",
     "en-XA",
     "ar-XB",
     "zh-XB",
   ]);
   assert.deepEqual(SELECTABLE_LOCALES.map(({ id }) => id), ["en", "nb"]);
-  assert.deepEqual(CATALOG_LOCALES.map(({ id }) => id), ["en", "nb", "de"]);
+  assert.deepEqual(CATALOG_LOCALES.map(({ id }) => id), ["en", "nb", "de", "fr"]);
   assert.equal(sourceLocaleFor("de-DE"), "de");
   assert.equal(fallbackLocaleFor("de"), "en");
+  assert.equal(sourceLocaleFor("fr-FR"), "fr");
+  assert.equal(fallbackLocaleFor("fr"), "en");
   assert.equal(sourceLocaleFor("en-XA"), "en");
   assert.equal(sourceLocaleFor("ar-XB"), "en");
   assert.equal(sourceLocaleFor("zh-XB"), "en");
@@ -49,6 +54,7 @@ test("locale registry owns format, guide, and native-label metadata", () => {
   assert.equal(intlLocaleFor("ar-XB"), "ar-EG");
   assert.equal(intlLocaleFor("zh-XB"), "zh-CN");
   assert.equal(intlLocaleFor("de-DE"), "de-DE");
+  assert.equal(intlLocaleFor("fr-FR"), "fr-FR");
   assert.equal(intlLocaleFor("pl_pl"), "pl-PL");
   assert.equal(guidePathForLocale("nb"), "docs/BRUKERVEILEDNING.md");
   assert.equal(guidePathForLocale("unknown"), "docs/USER_GUIDE.md");
@@ -71,4 +77,7 @@ test("locale registry applies html language and direction", () => {
 
   assert.equal(applyLocaleToDocument("de-DE", documentRef), true);
   assert.deepEqual(documentRef.documentElement, { lang: "de", dir: "ltr" });
+
+  assert.equal(applyLocaleToDocument("fr-FR", documentRef), true);
+  assert.deepEqual(documentRef.documentElement, { lang: "fr", dir: "ltr" });
 });

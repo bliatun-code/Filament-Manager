@@ -61,6 +61,14 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
     settings: "Einstellungen",
     statistics: "Statistik",
   },
+  fr: {
+    dashboard: "Tableau de bord",
+    inventory: "Stock",
+    loans: "Prêts",
+    printers: "Imprimantes",
+    settings: "Paramètres",
+    statistics: "Statistiques",
+  },
   "en-XA": Object.fromEntries(
     Object.entries({
       dashboard: "Dashboard",
