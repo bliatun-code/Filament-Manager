@@ -848,6 +848,139 @@ export const frDictionary: DictionaryNode = {
     updateWeight: "Mettre à jour le poids",
     applyRollChange: "Appliquer le changement de bobine",
     logUse: "Enregistrer la consommation",
+    desktopOnly: "La vue des imprimantes est disponible dans l’application de bureau.",
+    clientReadOnlyBanner:
+      "Cet appareil est lié comme client. Les affectations d’imprimante restent sur l’hôte.",
+    clientReadOnlyAction:
+      "Cet appareil est connecté comme client. Utilisez l’hôte pour modifier les imprimantes.",
+    clientReadOnlyBannerPaired:
+      "Cet appareil est connecté comme client. Les affectations peuvent être envoyées à l’hôte, mais la configuration des imprimantes y reste gérée.",
+    clientHostUnavailable: "Les informations de connexion à l’hôte sont absentes.",
+    clientWriteRequiresPairing:
+      "Associez ce client à l’hôte avant d’effectuer des actions d’imprimante protégées.",
+    clientReadOnlyHost: "Hôte",
+    clientReadOnlyCached:
+      "L’hôte est indisponible. Affichage du dernier instantané des imprimantes.",
+    clientReadOnlyOffline:
+      "L’hôte est indisponible et aucun instantané des imprimantes n’est encore disponible.",
+    clientReadOnlyUpdated: "Mis à jour",
+    noAms: "Sans AMS",
+    noMmu: "Sans MMU3",
+    withToolheads: "Plusieurs têtes d’outil",
+    singleToolhead: "Une tête d’outil",
+    singleMaterialOnly: "Monomatériau uniquement",
+    withMultiMaterial: "Multimatériau activé",
+    noMultiMaterial: "Sans multimatériau",
+    previewWithMultiMaterial: "{model} avec multimatériau",
+    previewSingleMaterial: "{model} monomatériau",
+    availableRollsForSlot: "Bobines disponibles pour",
+    searchAvailableRolls: "Rechercher dans les bobines disponibles",
+    rollResultOne: "bobine",
+    rollResultMany: "bobines",
+    rollResultCount: "{count, plural, one {# bobine} other {# bobines}}",
+    clearSlotOptionHint: "Retirer la bobine actuelle de cet emplacement",
+    targetRoll: "Bobine cible",
+    targetEmpty: "Cible : emplacement vide",
+    liveTelemetryAmsHumidityShort: "AMS",
+    liveRfid: "RFID en direct",
+    liveCatalogRequiresRfid: "attendre la RFID",
+    manualAssignment: "Manuel",
+    unknownLiveRfid: "RFID non enregistrée",
+    rfidOverridden: "RFID remplacée manuellement",
+    lastKnownLive: "Dernier état en direct connu",
+    waitingForLiveIdentity:
+      "Affichage de la dernière affectation enregistrée jusqu’à la réception d’une identité plus fiable.",
+    unknownLiveRfidHint:
+      "L’AMS a signalé une identité RFID qui n’est pas enregistrée dans le stock.",
+    rfidOverriddenHint:
+      "Cet emplacement est affecté manuellement tandis que la même RFID non enregistrée reste active.",
+    liveCandidateCurrentMatches:
+      "L’affectation actuelle correspond au signal de matériau et de couleur en direct.",
+    liveCandidateSingle:
+      "Une bobine du stock correspond au signal de matériau et de couleur en direct.",
+    liveCandidateCount: "{count} bobines du stock correspondent au signal en direct.",
+    liveCandidateSummary:
+      "{count, plural, one {Une bobine du stock correspond au signal en direct.} other {# bobines du stock correspondent au signal en direct.}}",
+    liveRfidCandidateCurrentMatches:
+      "L’affectation actuelle ressemble à cette bobine Bambu. Enregistrez la RFID pour la lier définitivement.",
+    liveRfidCandidateSingle:
+      "Une bobine du stock ressemble à cette bobine Bambu. Enregistrez la RFID pour la lier définitivement.",
+    liveRfidCandidateSelectFirst:
+      "Une bobine du stock ressemble à cette bobine Bambu. Sélectionnez-la avant d’enregistrer la RFID.",
+    liveRfidCandidateSelectCorrect:
+      "Sélectionnez la bonne bobine avant d’enregistrer la RFID.",
+    liveRfidCandidateCount: "{count} bobines du stock ressemblent à cette bobine Bambu.",
+    liveRfidCandidateSummary:
+      "{count, plural, one {Une bobine du stock ressemble à cette bobine Bambu. Enregistrez la RFID pour la lier définitivement.} other {# bobines du stock ressemblent à cette bobine Bambu.}}",
+    liveRfidCandidateSelectionSummary:
+      "{count, plural, one {Une bobine du stock ressemble à cette bobine Bambu. Sélectionnez-la avant d’enregistrer la RFID.} other {# bobines du stock ressemblent à cette bobine Bambu. Sélectionnez la bonne bobine avant d’enregistrer la RFID.}}",
+    liveCandidateCurrent: "actuelle",
+    liveCandidateMore: "D’autres candidates existent dans le stock.",
+    liveCandidateHasRfid: "RFID enregistrée",
+    liveCandidateSelectBeforeRfid: "sélectionner d’abord",
+    liveCandidateUnavailable: "indisponible",
+    registerLiveRfid: "Enregistrer la RFID",
+    liveCatalogCandidateSingle:
+      "Le catalogue Bambu contient une correspondance probable. Ajoutez-la ici pour enregistrer la RFID.",
+    liveCatalogCandidateCount:
+      "{count} entrées du catalogue Bambu ressemblent à cette bobine en direct.",
+    liveCatalogCandidateSummary:
+      "{count, plural, one {Le catalogue Bambu contient une correspondance probable. Ajoutez-la ici pour enregistrer la RFID.} other {# entrées du catalogue Bambu ressemblent à cette bobine en direct.}}",
+    liveCatalogCandidateMore: "D’autres candidates du catalogue Bambu sont disponibles.",
+    slotOnboarding: "Intégration AMS",
+    addCatalogRollAndSaveRfid: "Ajouter et enregistrer la RFID",
+    addBorrowedCatalogRollAndSaveRfid: "Ajouter comme empruntée et enregistrer la RFID",
+    slotOnboardingOccupied:
+      "Une bobine est déjà affectée. Retirez-la ou remplacez-la avec le flux normal avant d’en créer une depuis le signal AMS.",
+    slotOnboardingOccupiedBeforeSave:
+      "Une bobine vient d’être affectée. Retirez-la ou remplacez-la avant d’ajouter une bobine depuis l’AMS.",
+    slotOnboardingNeedsRfid:
+      "Attendez une identité RFID non vide du signal AMS avant d’ajouter et de lier cette bobine.",
+    slotOnboardingNeedsBorrowedOwner:
+      "Indiquez à qui appartient la bobine avant de l’enregistrer comme empruntée.",
+    slotOnboardingLiveSlotUnloaded:
+      "L’AMS ne signale plus de bobine chargée. Rouvrez l’action lorsque la bobine est chargée.",
+    slotOnboardingLiveIdentityChanged:
+      "L’identité AMS a changé avant l’enregistrement. Rouvrez l’action et confirmez la bobine actuelle.",
+    liveCatalogRequiresEmptySlot: "vider d’abord l’emplacement",
+    liveCatalogRequiresLoadedSlot: "charger d’abord la bobine",
+    liveRfidRegisteredAndAssigned:
+      "RFID enregistrée et bobine proposée affectée à cet emplacement.",
+    liveCatalogCreatedAndAssigned:
+      "{label} a été ajoutée, sa RFID enregistrée et la bobine affectée à cet emplacement.",
+    rfidOverrideDialogHint:
+      "Cet emplacement est affecté manuellement tandis que l’AMS signale la même RFID non enregistrée. Enregistrez-la sur la bobine sélectionnée lorsque vous êtes prêt.",
+    rfidOverrideNothingToSave:
+      "Aucune identité RFID non vide n’est disponible pour cet emplacement.",
+    jobOptional: "Nom de la tâche (facultatif)",
+    swapNoteOptional: "Note de remplacement (facultative)",
+    outgoingWeight: "Poids sortant (g)",
+    incomingWeight: "Pesée entrante (g, facultative)",
+    incomingWeightPromptTitle: "Définir le poids de la bobine entrante",
+    outgoingWeightPromptTitle: "Définir le poids de la bobine sortante",
+    incomingWeightPromptLabel: "Poids mesuré (g)",
+    noPendingChanges: "Aucune modification d’emplacement en attente.",
+    slotUpdated: "Emplacement d’imprimante mis à jour.",
+    usageRecorded: "Consommation d’impression enregistrée.",
+    error: {
+      load: "Échec du chargement des imprimantes.",
+      updateSlot: "Échec de la mise à jour de l’emplacement.",
+      outgoingWeightRequired: "Saisissez le poids de la bobine sortante avant le remplacement.",
+      selectRollBeforeWeight: "Sélectionnez une bobine cible avant de mettre à jour le poids.",
+      invalidUsage: "La consommation doit être supérieure à zéro.",
+      recordUsage: "Échec de l’enregistrement de la consommation.",
+      candidateAlreadyHasRfid: "Cette bobine possède déjà une identité RFID enregistrée.",
+      candidateUnavailableForRfid:
+        "Actualisez les données ; cette bobine n’est plus disponible comme candidate RFID Bambu.",
+      liveSlotUnloadedBeforeSave:
+        "L’AMS ne signale plus de bobine chargée. Actualisez et confirmez la bobine avant d’enregistrer la RFID.",
+      selectCandidateBeforeRfid:
+        "Sélectionnez d’abord cette bobine dans l’emplacement afin de traiter le poids de la bobine sortante.",
+      liveRfidChangedBeforeSave:
+        "L’identité AMS a changé avant l’enregistrement. Rouvrez l’action et confirmez la bobine actuelle.",
+      createFromCatalogRequiresEmptySlot:
+        "Videz ou remplacez la bobine actuelle avec le flux normal avant d’en créer une depuis le catalogue.",
+    },
   },
   chart: {
     rollUsageAria: "Graphique de consommation de la bobine",

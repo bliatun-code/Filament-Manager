@@ -146,6 +146,7 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(frenchDictionary, "loans.confirmHandBackAction"), "Confirmer la restitution");
   assert.equal(lookup(frenchDictionary, "inventory.bambuBatchCameraAction"), "Utiliser la webcam");
   assert.equal(lookup(frenchDictionary, "inventory.rfidTechnicalDetails"), "Détails techniques");
+  assert.equal(lookup(frenchDictionary, "printers.slotOnboarding"), "Intégration AMS");
   assert.equal(
     lookup(frenchDictionary, "settings.libraryTabTitle"),
     "Library and web app",

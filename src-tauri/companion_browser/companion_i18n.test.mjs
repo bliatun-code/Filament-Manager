@@ -100,6 +100,7 @@ test("French draft uses translated overlay copy and English fallback", () => {
   assert.equal(t("fr", "detail.saveWeight"), "Enregistrer le poids");
   assert.equal(t("fr", "storage.wishlistQueue"), "Liste de souhaits / commandes");
   assert.equal(t("fr", "loans.completeReturn"), "Terminer le retour");
+  assert.equal(t("fr", "printers.saveCandidateRfid"), "Enregistrer la RFID");
   assert.equal(t("fr", "settings.desktopInCharge"), t("en", "settings.desktopInCharge"));
 });
 
