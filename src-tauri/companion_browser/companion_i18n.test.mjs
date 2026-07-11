@@ -123,6 +123,8 @@ test("Spanish draft translates the shell and falls back to English", () => {
   assert.equal(t("es", "storage.addFilament"), "Añadir filamento");
   assert.equal(t("es", "loans.completeReturn"), "Completar devolución");
   assert.equal(t("es", "detail.saveWeight"), "Guardar peso");
+  assert.equal(t("es", "inventory.rfidSaveAction"), "Guardar RFID");
+  assert.equal(t("es", "detail.eventRfidSaved"), "RFID guardada");
 });
 
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
