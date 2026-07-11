@@ -162,7 +162,10 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(spanishDictionary, "nav.inventory"), "Inventario");
   assert.equal(lookup(spanishDictionary, "common.cancel"), "Cancelar");
   assert.equal(lookup(spanishDictionary, "dashboard.totalSpools"), "Bobinas totales");
-  assert.equal(lookup(spanishDictionary, "inventory.title"), "Spools");
+  assert.equal(lookup(spanishDictionary, "inventory.title"), "Bobinas");
+  assert.equal(lookup(spanishDictionary, "inventory.addFilament"), "Añadir filamento");
+  assert.equal(lookup(spanishDictionary, "wishlist.statusOnOrder"), "Pedido");
+  assert.equal(lookup(spanishDictionary, "loans.confirmReturnAction"), "Confirmar devolución");
   assert.equal(getCachedLocaleDictionary("es"), spanishDictionary);
 });
 

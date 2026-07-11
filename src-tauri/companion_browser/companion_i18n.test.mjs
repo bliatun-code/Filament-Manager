@@ -120,6 +120,9 @@ test("Spanish draft translates the shell and falls back to English", () => {
   assert.equal(t("es", "nav.spoolCount", "", { count: 1 }), "1 bobina");
   assert.equal(t("es", "nav.spoolCount", "", { count: 2 }), "2 bobinas");
   assert.equal(t("es", "printers.toolhead"), "Toolhead");
+  assert.equal(t("es", "storage.addFilament"), "Añadir filamento");
+  assert.equal(t("es", "loans.completeReturn"), "Completar devolución");
+  assert.equal(t("es", "detail.saveWeight"), "Guardar peso");
 });
 
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
