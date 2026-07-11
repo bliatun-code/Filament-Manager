@@ -4,6 +4,11 @@ English is the canonical source language. Norwegian Bokmål, German, and French
 are maintained beside it. Generated pseudo-locales are QA tools and must never
 appear as user choices.
 
+Spanish is currently a hidden draft catalog. It can be selected only through
+explicit QA overrides, uses English fallback for untranslated copy, and must not
+be presented as a supported user language before translation, visual QA, and
+native review are complete.
+
 ## Canonical terminology
 
 Use these concepts consistently in the desktop app, Companion, labels, guides,

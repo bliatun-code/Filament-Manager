@@ -229,6 +229,8 @@ fn visual_qa_locale_normalizer_defaults_to_english() {
     assert_eq!(normalize_visual_qa_locale("de-DE"), "de");
     assert_eq!(normalize_visual_qa_locale("fr"), "fr");
     assert_eq!(normalize_visual_qa_locale("fr-FR"), "fr");
+    assert_eq!(normalize_visual_qa_locale("es"), "es");
+    assert_eq!(normalize_visual_qa_locale("es-ES"), "es");
     assert_eq!(normalize_visual_qa_locale(""), "en");
     assert_eq!(normalize_visual_qa_locale("bad"), "en");
 }

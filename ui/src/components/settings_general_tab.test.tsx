@@ -94,6 +94,7 @@ test("SettingsGeneralTab exposes selected theme and language choices", () => {
   assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 5);
   assert.match(html, />Deutsch</);
   assert.match(html, />Français</);
+  assert.doesNotMatch(html, />Español</);
   assert.doesNotMatch(html, /Pseudo \(QA\)/);
 });
 

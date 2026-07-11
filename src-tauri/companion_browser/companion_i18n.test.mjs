@@ -114,6 +114,14 @@ test("French locale applies French zero, one, and other plural categories", () =
   assert.equal(t("fr", "nav.spoolCount", "", { count: 2 }), "2 bobines");
 });
 
+test("Spanish draft translates the shell and falls back to English", () => {
+  assert.equal(t("es", "nav.storage"), "Inventario");
+  assert.equal(t("es", "settings.title"), "Ajustes");
+  assert.equal(t("es", "nav.spoolCount", "", { count: 1 }), "1 bobina");
+  assert.equal(t("es", "nav.spoolCount", "", { count: 2 }), "2 bobinas");
+  assert.equal(t("es", "printers.toolhead"), "Toolhead");
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {

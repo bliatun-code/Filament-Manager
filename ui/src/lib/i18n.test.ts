@@ -157,6 +157,13 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(frenchDictionary, "settings.cachedReused"), "Données en cache réutilisées");
   assert.equal(lookup(frenchDictionary, "dashboard.clientSnapshotCardTitle"), "Aperçu de l’hôte en lecture seule");
   assert.equal(getCachedLocaleDictionary("fr"), frenchDictionary);
+
+  const spanishDictionary = await loadLocaleDictionary("es");
+  assert.equal(lookup(spanishDictionary, "nav.inventory"), "Inventario");
+  assert.equal(lookup(spanishDictionary, "common.cancel"), "Cancelar");
+  assert.equal(lookup(spanishDictionary, "dashboard.totalSpools"), "Bobinas totales");
+  assert.equal(lookup(spanishDictionary, "inventory.title"), "Spools");
+  assert.equal(getCachedLocaleDictionary("es"), spanishDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {

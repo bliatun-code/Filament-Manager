@@ -28,6 +28,8 @@ test("locale registry normalizes canonical, regional, underscore, and legacy ali
   assert.equal(normalizeSelectableLocale("de-DE"), "de");
   assert.equal(normalizeSupportedLocale("fr-FR"), "fr");
   assert.equal(normalizeSelectableLocale("fr-FR"), "fr");
+  assert.equal(normalizeSupportedLocale("es-ES"), "es");
+  assert.equal(normalizeSelectableLocale("es-ES"), null);
 });
 
 test("locale registry owns format, guide, and native-label metadata", () => {
@@ -36,16 +38,19 @@ test("locale registry owns format, guide, and native-label metadata", () => {
     "nb",
     "de",
     "fr",
+    "es",
     "en-XA",
     "ar-XB",
     "zh-XB",
   ]);
   assert.deepEqual(SELECTABLE_LOCALES.map(({ id }) => id), ["en", "nb", "de", "fr"]);
-  assert.deepEqual(CATALOG_LOCALES.map(({ id }) => id), ["en", "nb", "de", "fr"]);
+  assert.deepEqual(CATALOG_LOCALES.map(({ id }) => id), ["en", "nb", "de", "fr", "es"]);
   assert.equal(sourceLocaleFor("de-DE"), "de");
   assert.equal(fallbackLocaleFor("de"), null);
   assert.equal(sourceLocaleFor("fr-FR"), "fr");
   assert.equal(fallbackLocaleFor("fr"), null);
+  assert.equal(sourceLocaleFor("es-ES"), "es");
+  assert.equal(fallbackLocaleFor("es"), "en");
   assert.equal(sourceLocaleFor("en-XA"), "en");
   assert.equal(sourceLocaleFor("ar-XB"), "en");
   assert.equal(sourceLocaleFor("zh-XB"), "en");
@@ -55,10 +60,12 @@ test("locale registry owns format, guide, and native-label metadata", () => {
   assert.equal(intlLocaleFor("zh-XB"), "zh-CN");
   assert.equal(intlLocaleFor("de-DE"), "de-DE");
   assert.equal(intlLocaleFor("fr-FR"), "fr-FR");
+  assert.equal(intlLocaleFor("es-MX"), "es-ES");
   assert.equal(intlLocaleFor("pl_pl"), "pl-PL");
   assert.equal(guidePathForLocale("nb"), "docs/BRUKERVEILEDNING.md");
   assert.equal(guidePathForLocale("de"), "docs/USER_GUIDE.md");
   assert.equal(guidePathForLocale("fr"), "docs/USER_GUIDE.md");
+  assert.equal(guidePathForLocale("es"), "docs/USER_GUIDE.md");
   assert.equal(guidePathForLocale("unknown"), "docs/USER_GUIDE.md");
 });
 
@@ -82,4 +89,7 @@ test("locale registry applies html language and direction", () => {
 
   assert.equal(applyLocaleToDocument("fr-FR", documentRef), true);
   assert.deepEqual(documentRef.documentElement, { lang: "fr", dir: "ltr" });
+
+  assert.equal(applyLocaleToDocument("es-ES", documentRef), true);
+  assert.deepEqual(documentRef.documentElement, { lang: "es", dir: "ltr" });
 });

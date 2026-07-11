@@ -416,6 +416,9 @@ test("desktop printer captures wait for live data before taking screenshots", ()
 test("desktop screenshot gate maps scenario aliases to localized window titles", () => {
   assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "en"), ["Inventory"]);
   assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "nb"), ["Lager"]);
+  assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "es-ES"), [
+    "Inventario",
+  ]);
   assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "en-XA"), [
     "⟦Îñṽ·éñţ·öŕý·⟧",
   ]);

@@ -442,6 +442,7 @@ fn normalize_visual_qa_locale(value: &str) -> &'static str {
         "zh-xb" | "zh_xb" => "zh-XB",
         "de" | "de-de" => "de",
         "fr" | "fr-fr" => "fr",
+        "es" | "es-es" => "es",
         _ => "en",
     }
 }
