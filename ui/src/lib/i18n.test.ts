@@ -152,6 +152,8 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(frenchDictionary, "settings.librarySyncClient"), "Client");
   assert.equal(lookup(frenchDictionary, "settings.companionStatusRunning"), "Actif");
   assert.equal(lookup(frenchDictionary, "settings.trustedLanNetworkDetails"), "Détails du réseau");
+  assert.equal(lookup(frenchDictionary, "settings.catalogRefreshTitle"), "Mises à jour des catalogues fabricants");
+  assert.equal(lookup(frenchDictionary, "settings.bambuLiveDiagnostics"), "Diagnostics");
   assert.equal(
     lookup(frenchDictionary, "settings.cachedReused"),
     "Cached reused",
