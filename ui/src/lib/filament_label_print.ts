@@ -79,21 +79,30 @@ function labelVendor(value: string): string {
 
 export function buildFilamentLabelTextLines(input: FilamentLabelImageInput): {
   vendor: string;
-  identity: string;
+  identityLines: string[];
   material: string;
   reference: string;
 } {
   const material = input.material.trim();
   const filamentName = input.filamentName.trim();
-  const rawIdentity = input.colorName?.trim() || filamentName;
-  const withoutMaterial = stripRepeatedLabelPrefix(rawIdentity, material);
-  const withoutFilament =
-    filamentName.toLocaleLowerCase() === material.toLocaleLowerCase()
-      ? withoutMaterial
-      : stripRepeatedLabelPrefix(withoutMaterial, filamentName);
+  const rawColor = input.colorName?.trim() || "";
+  const series = stripRepeatedLabelPrefix(filamentName, material);
+  const colorWithoutMaterial = stripRepeatedLabelPrefix(rawColor, material);
+  const colorWithoutFilament = stripRepeatedLabelPrefix(colorWithoutMaterial, filamentName);
+  const color = stripRepeatedLabelPrefix(colorWithoutFilament, series);
+  const identityLines = [series, color || colorWithoutFilament || colorWithoutMaterial || rawColor]
+    .map((value) => value.trim())
+    .filter(
+      (value, index, values) =>
+        Boolean(value) &&
+        value.toLocaleLowerCase() !== material.toLocaleLowerCase() &&
+        values.findIndex(
+          (candidate) => candidate.toLocaleLowerCase() === value.toLocaleLowerCase(),
+        ) === index,
+    );
   return {
     vendor: labelVendor(input.vendor),
-    identity: withoutFilament || withoutMaterial || rawIdentity || filamentName || material,
+    identityLines: identityLines.length > 0 ? identityLines : [filamentName || material],
     material,
     reference: formatSpoolReference(input.reference),
   };
@@ -161,25 +170,30 @@ export async function buildFilamentLabelPngDataUrl(
     minimumSize: detailPx,
     weight: 800,
   });
-  const identityPx = fittedCanvasFontSize({
-    context,
-    text: text.identity,
-    maxWidth: textWidth,
-    preferredSize: identityPreferredPx,
-    minimumSize: Math.max(20, detailPx - 4),
+  const identityLines = text.identityLines.map((identity) => ({
+    text: identity,
+    size: fittedCanvasFontSize({
+      context,
+      text: identity,
+      maxWidth: textWidth,
+      preferredSize: identityPreferredPx,
+      minimumSize: Math.max(20, detailPx - 4),
+      weight: 600,
+    }),
     weight: 600,
-  });
+  }));
   const lines = [
-    { text: text.vendor, size: vendorPx, weight: 800 },
-    { text: text.identity, size: identityPx, weight: 600 },
-    { text: text.material, size: detailPx, weight: 600 },
-    { text: text.reference, size: detailPx, weight: 700 },
+    { text: text.vendor, size: vendorPx, weight: 800, gapBefore: 0 },
+    ...identityLines.map((line) => ({ ...line, gapBefore: 0 })),
+    { text: text.material, size: detailPx, weight: 600, gapBefore: 0 },
+    { text: text.reference, size: detailPx, weight: 700, gapBefore: lineGap },
   ];
   let baseline = outerPadding + vendorPx;
 
   context.fillStyle = "#000000";
   context.textBaseline = "alphabetic";
   for (const line of lines) {
+    baseline += line.gapBefore;
     context.font = `${line.weight} ${line.size}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
     context.fillText(fitCanvasText(context, line.text, textWidth), textLeft, baseline);
     baseline += line.size + lineGap;

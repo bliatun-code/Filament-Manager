@@ -64,7 +64,7 @@ test("label text puts vendor first and removes repeated Bambu material prefixes"
     }),
     {
       vendor: "Bambu Lab",
-      identity: "Tangerine Yellow (40402)",
+      identityLines: ["Tangerine Yellow (40402)"],
       material: "ABS",
       reference: "#053186",
     },
@@ -83,9 +83,48 @@ test("label text preserves a descriptive filament identity without duplicating i
     }),
     {
       vendor: "eSUN",
-      identity: "Morandi Purple",
+      identityLines: ["ePLA-Matte", "Morandi Purple"],
       material: "PLA",
       reference: "#QR-22",
     },
+  );
+});
+
+test("label text keeps long Bambu and eSUN series on a separate identity line", () => {
+  assert.deepEqual(
+    buildFilamentLabelTextLines({
+      vendor: "Bambu",
+      material: "PLA",
+      filamentName: "PLA Silk Multi-Color",
+      colorName: "Dawn Radiance (13912)",
+      reference: "spool_1780069566047",
+      qrDataUrl: "data:image/png;base64,qr",
+    }).identityLines,
+    ["Silk Multi-Color", "Dawn Radiance (13912)"],
+  );
+  assert.deepEqual(
+    buildFilamentLabelTextLines({
+      vendor: "eSUN",
+      material: "PLA",
+      filamentName: "PLA-Twinkling (PLA-TK)",
+      colorName: "Purple",
+      reference: "spool_1775436489403",
+      qrDataUrl: "data:image/png;base64,qr",
+    }).identityLines,
+    ["Twinkling (PLA-TK)", "Purple"],
+  );
+});
+
+test("label text collapses identical generic filament and color names", () => {
+  assert.deepEqual(
+    buildFilamentLabelTextLines({
+      vendor: "Generic",
+      material: "PLA",
+      filamentName: "Metal Silver",
+      colorName: "Metal Silver",
+      reference: "spool_1775560866203",
+      qrDataUrl: "data:image/png;base64,qr",
+    }).identityLines,
+    ["Metal Silver"],
   );
 });
