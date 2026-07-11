@@ -13,6 +13,9 @@ reviewer or record approval by itself.
   fingerprint.
 - Generate a review sheet with `npm run export:i18n-review -- --locale <locale>`.
   Open the TSV in a spreadsheet and filter by surface, state or context.
+- Confirm the export reports `0 fallback`. Rows marked `unchanged` require
+  reviewer confirmation that the term, product name, acronym or format should
+  remain identical to English.
 - Review only against artifacts produced from the same fingerprint.
 - Keep product names and protocol acronyms such as Bambu Lab, eSUN, AMS, RFID,
   MQTT, QR, CSV, JSON and AGPL unchanged unless the product itself localizes

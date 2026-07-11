@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
   buildLocalizationReviewRows,
+  exportLocalizationReview,
   formatLocalizationReviewTsv,
 } from "./export-i18n-review.mjs";
 
@@ -58,4 +62,19 @@ test("review TSV keeps one physical row per message", () => {
   assert.equal(tsv.trimEnd().split("\n").length, 2);
   assert.match(tsv, /First line\\nSecond line/);
   assert.match(tsv, /Première ligne\\nDeuxième ligne/);
+});
+
+test("German and French review-ready drafts contain no English fallback rows", () => {
+  const directory = mkdtempSync(join(tmpdir(), "filament-manager-i18n-review-"));
+  try {
+    for (const locale of ["de", "fr"]) {
+      const outputPath = join(directory, `${locale}.tsv`);
+      const result = exportLocalizationReview({ locale, outputPath });
+      assert.equal(result.states.fallback, 0, `${locale} contains fallback rows`);
+      assert.equal(readFileSync(outputPath, "utf8").split("\n")[0],
+        "surface\tkey\tstate\tsource_en\ttarget\tmeaning\tmax_characters\tscreenshot");
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
