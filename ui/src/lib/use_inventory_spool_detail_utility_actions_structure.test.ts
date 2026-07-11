@@ -7,7 +7,9 @@ const source = readFileSync(
   "utf8",
 );
 
-test("selected spool utility actions lazy-load label HTML generation", () => {
-  assert.match(source, /import\("\.\/filament_label_print"\)/);
-  assert.doesNotMatch(source, /from "\.\/filament_label_print"/);
+test("selected spool utility actions export the rendered label PNG", () => {
+  assert.match(source, /exportLabelPng/);
+  assert.match(source, /filament-label-/);
+  assert.doesNotMatch(source, /printLabelHtml/);
+  assert.doesNotMatch(source, /buildFilamentLabelHtml/);
 });

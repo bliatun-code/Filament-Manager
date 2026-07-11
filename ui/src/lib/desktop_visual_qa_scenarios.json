@@ -50,6 +50,12 @@
       "category": "modal"
     },
     {
+      "id": "selected-roll-label",
+      "aliases": ["label", "qr-label", "inventory-label"],
+      "page": "inventory",
+      "category": "modal"
+    },
+    {
       "id": "selected-roll-history",
       "aliases": ["roll-history", "inventory-roll-history"],
       "page": "inventory",

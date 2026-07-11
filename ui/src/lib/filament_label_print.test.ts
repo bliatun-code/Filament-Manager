@@ -1,10 +1,33 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { buildFilamentLabelQrDataUrl } from "./filament_label_print";
 import {
-  buildFilamentLabelHtml,
-  buildFilamentLabelQrDataUrl,
-} from "./filament_label_print";
+  FILAMENT_LABEL_PROFILES,
+  filamentLabelPixelSize,
+  filamentLabelProfile,
+} from "./filament_label_profiles";
+
+test("filament label profiles include a full-height 24 mm P-Touch default", () => {
+  assert.deepEqual(
+    FILAMENT_LABEL_PROFILES.map(({ id, widthMm, heightMm }) => ({
+      id,
+      widthMm,
+      heightMm,
+    })),
+    [
+      { id: "ptouch-24", widthMm: 60, heightMm: 24 },
+      { id: "compact", widthMm: 50, heightMm: 25 },
+      { id: "standard", widthMm: 60, heightMm: 30 },
+      { id: "expanded", widthMm: 75, heightMm: 40 },
+    ],
+  );
+  assert.equal(filamentLabelProfile("ptouch-24").title, "P-Touch 24 mm");
+  assert.deepEqual(filamentLabelPixelSize("ptouch-24"), {
+    width: 709,
+    height: 283,
+  });
+});
 
 test("buildFilamentLabelQrDataUrl requests high-redundancy print options", async () => {
   let capturedPayload = "";
@@ -24,57 +47,4 @@ test("buildFilamentLabelQrDataUrl requests high-redundancy print options", async
   assert.equal(capturedOptions?.errorCorrectionLevel, "H");
   assert.equal(capturedOptions?.margin, 2);
   assert.equal(capturedOptions?.width, 512);
-});
-
-test("buildFilamentLabelHtml includes QR image and required filament details", () => {
-  const html = buildFilamentLabelHtml({
-    vendor: "Bambu",
-    material: "PLA",
-    filamentName: "Basic",
-    colorName: "White",
-    homeLocation: "Shelf 7",
-    reference: "QR-22",
-    qrPayload: "v1:QR-22",
-    qrDataUrl: "data:image/png;base64,abc123",
-    labels: {
-      vendor: "Vendor",
-      material: "Material",
-      filament: "Filament",
-      homeLocation: "Home location",
-      reference: "Reference",
-      qrPayload: "QR payload",
-    },
-  });
-
-  assert.match(html, /data:image\/png;base64,abc123/);
-  assert.match(html, /Vendor:<\/strong> Bambu/);
-  assert.match(html, /Filament:<\/strong> Basic/);
-  assert.match(html, /Home location:<\/strong> Shelf 7/);
-  assert.match(html, /Reference:<\/strong> #QR-22/);
-  assert.doesNotMatch(html, /Material:<\/strong>/);
-  assert.doesNotMatch(html, /QR payload:<\/strong>/);
-  assert.doesNotMatch(html, /Color:<\/strong>/);
-});
-
-test("buildFilamentLabelHtml formats spool id reference in human-friendly style", () => {
-  const html = buildFilamentLabelHtml({
-    vendor: "Bambu",
-    material: "PLA",
-    filamentName: "Basic",
-    colorName: "White",
-    homeLocation: null,
-    reference: "spool_177531758936",
-    qrPayload: "v1:spool_177531758936",
-    qrDataUrl: "data:image/png;base64,abc123",
-    labels: {
-      vendor: "Vendor",
-      material: "Material",
-      filament: "Filament",
-      homeLocation: "Home location",
-      reference: "Reference",
-      qrPayload: "QR payload",
-    },
-  });
-
-  assert.match(html, /Reference:<\/strong> #758936/);
 });

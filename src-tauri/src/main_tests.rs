@@ -148,6 +148,10 @@ fn visual_qa_scenario_normalizer_accepts_stateful_settings_scenarios() {
         Some("selected-roll-history")
     );
     assert_eq!(
+        normalize_visual_qa_scenario("qr-label"),
+        Some("selected-roll-label")
+    );
+    assert_eq!(
         normalize_visual_qa_scenario("inventory-danger-zone"),
         Some("selected-roll-danger-zone")
     );

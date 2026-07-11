@@ -44,6 +44,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "loans-overview",
     "loan-out",
     "selected-roll",
+    "selected-roll-label",
     "selected-roll-history",
     "selected-roll-danger-zone",
     "rfid-capture",
@@ -84,6 +85,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
   assert.equal(normalizeDesktopVisualQaScenario("wishlist-orders"), "wishlist-queue");
   assert.equal(normalizeDesktopVisualQaScenario("loan-history"), "loans-overview");
   assert.equal(normalizeDesktopVisualQaScenario("DETAIL"), "selected-roll");
+  assert.equal(normalizeDesktopVisualQaScenario("qr-label"), "selected-roll-label");
   assert.equal(normalizeDesktopVisualQaScenario("roll-history"), "selected-roll-history");
   assert.equal(
     normalizeDesktopVisualQaScenario("inventory-danger-zone"),

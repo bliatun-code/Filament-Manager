@@ -298,8 +298,8 @@ fn main() {
             inventory_maintenance_commands::reset_catalog_data,
             inventory_stats_commands::top_materials,
             inventory_stats_commands::list_filament_consumption,
-            document_commands::print_label_html,
             document_commands::print_label_pdf,
+            document_commands::export_label_png,
             external_url_commands::open_external_url,
         ])
         .run(tauri::generate_context!())
@@ -318,6 +318,9 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         "loans-overview" | "loans" | "loan-history" => Some("loans-overview"),
         "loan-out" | "inventory-loan" => Some("loan-out"),
         "selected-roll" | "detail" | "inventory-detail" => Some("selected-roll"),
+        "selected-roll-label" | "label" | "qr-label" | "inventory-label" => {
+            Some("selected-roll-label")
+        }
         "selected-roll-history" | "roll-history" | "inventory-roll-history" => {
             Some("selected-roll-history")
         }

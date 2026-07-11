@@ -112,6 +112,12 @@ You can:
 
 Inventory cards group identical filament and color entries while still showing individual spools and locations. This keeps the inventory easy to scan without losing traceability.
 
+From a spool's QR panel, **Create QR label** opens a print preview with P-Touch
+24 mm, Compact, Standard, and Expanded sizes. The P-Touch profile uses a 60 ×
+24 mm landscape canvas with a nearly full-height QR and large identifying text.
+The finished 300-DPI PNG is saved in the normal Downloads folder instead of the
+application data directory.
+
 The Wishlist and orders panel has its own status filters and search field. It
 shows the number of matching rows, lets you move purchases between Wishlist, On
 order, and Received, stocks an arrived item as a physical spool, and removes

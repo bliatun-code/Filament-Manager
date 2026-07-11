@@ -15,6 +15,7 @@ export type DesktopVisualQaScenario =
   | "loans-overview"
   | "loan-out"
   | "selected-roll"
+  | "selected-roll-label"
   | "selected-roll-history"
   | "selected-roll-danger-zone"
   | "rfid-capture"
@@ -158,7 +159,7 @@ export function chooseDesktopVisualQaSpoolId(
       null
     );
   }
-  if (scenario === "selected-roll") {
+  if (scenario === "selected-roll" || scenario === "selected-roll-label") {
     return (
       usableSpools.find(isBrightNeutralSpool)?.id ??
       usableSpools.find(isColorfulNonBambuSpool)?.id ??

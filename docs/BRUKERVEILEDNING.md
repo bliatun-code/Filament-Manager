@@ -112,6 +112,12 @@ Her kan du:
 
 Lagerkort grupperer like filamenttyper og farger, men viser fortsatt individuelle ruller og plasseringer. Dette gjør at lageret er lett å skanne uten å miste sporbarhet.
 
+Fra QR-panelet for en rull åpner **Lag QR-etikett** en forhåndsvisning med
+størrelsene P-Touch 24 mm, Kompakt, Standard og Utvidet. P-Touch-profilen bruker
+et liggende arbeidsområde på 60 × 24 mm med QR-kode i nesten full høyde og stor,
+lesbar identitetstekst. Den ferdige PNG-filen lagres med 300 DPI i den vanlige
+Nedlastinger-mappen, ikke i programmets datamappe.
+
 Panelet Ønskeliste og bestillinger har egne statusfiltre og søkefelt. Det viser
 antall treff, lar deg flytte kjøp mellom Ønskeliste, Bestilt og Mottatt, lagerføre
 en ankommet vare som fysisk rull og fjerne planer som ikke lenger er aktuelle.

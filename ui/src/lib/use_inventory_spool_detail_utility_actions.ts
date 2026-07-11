@@ -4,14 +4,11 @@ import type { useI18n } from "./i18n";
 import type { InventorySpool } from "./inventory_list_model";
 import type { RfidCaptureSummary } from "./inventory_rfid_capture";
 import { updateInventorySpoolRfidTag } from "./spool_writes";
-import type { SpoolQrArtifacts } from "./spool_qr_artifacts";
-import { printLabelHtml, type BambuLiveIntegrationSettings } from "./tauri_client";
+import type { FilamentLabelProfileId } from "./filament_label_profiles";
+import { exportLabelPng, type BambuLiveIntegrationSettings } from "./tauri_client";
 import type { InventoryPrinterSlotOption } from "./use_inventory_printer_slots";
 
 type InventorySpoolDetailUtilityActionsInput = {
-  buildSelectedSpoolQrArtifacts: (
-    spool: InventorySpool,
-  ) => Promise<SpoolQrArtifacts>;
   canUseClientHostWrite: () => boolean;
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
@@ -40,7 +37,6 @@ type InventorySpoolDetailUtilityActionsInput = {
 };
 
 export function useInventorySpoolDetailUtilityActions({
-  buildSelectedSpoolQrArtifacts,
   canUseClientHostWrite,
   clientHostBaseUrl,
   clientLibraryId,
@@ -67,34 +63,25 @@ export function useInventorySpoolDetailUtilityActions({
   tauriAvailable,
   t,
 }: InventorySpoolDetailUtilityActionsInput) {
-  const handlePrintLabel = useCallback(async () => {
+  const handlePrintLabel = useCallback(async (
+    profileId: FilamentLabelProfileId,
+    pngDataUrl: string,
+  ) => {
     if (!tauriAvailable || !selectedSpool) {
       return;
     }
     try {
-      const { qrReference, qrPayload, qrDataUrl } = await buildSelectedSpoolQrArtifacts(
-        selectedSpool,
+      const reference = selectedSpool.id.replace(/^spool_/, "").slice(-6) || "spool";
+      const exportedPath = await exportLabelPng(
+        pngDataUrl,
+        `filament-label-${reference}-${profileId}`,
       );
-      const { buildFilamentLabelHtml } = await import("./filament_label_print");
-      const html = buildFilamentLabelHtml({
-        vendor: selectedSpool.vendor,
-        material: selectedSpool.material,
-        filamentName: selectedSpool.filamentName,
-        colorName: selectedSpool.colorName || null,
-        homeLocation: selectedSpool.homeLocation ?? null,
-        reference: qrReference,
-        qrPayload,
-        qrDataUrl,
-        labels: {
-          vendor: t("inventory.vendor", "Vendor"),
-          material: t("inventory.material", "Material"),
-          filament: t("inventory.filament", "Filament"),
-          homeLocation: t("inventory.homeLocationLabel", "Home location"),
-          reference: t("inventory.reference", "Reference"),
-          qrPayload: t("inventory.qrPayload", "QR payload"),
-        },
-      });
-      await printLabelHtml(html, null, 1);
+      setInfoMessage(
+        t("inventory.labelSaved", "Label PNG saved to Downloads.").replace(
+          "{path}",
+          exportedPath,
+        ),
+      );
     } catch (printError) {
       console.error(printError);
       setError(
@@ -102,9 +89,9 @@ export function useInventorySpoolDetailUtilityActions({
       );
     }
   }, [
-    buildSelectedSpoolQrArtifacts,
     selectedSpool,
     setError,
+    setInfoMessage,
     t,
     tauriAvailable,
   ]);

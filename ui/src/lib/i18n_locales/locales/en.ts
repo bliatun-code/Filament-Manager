@@ -452,7 +452,26 @@ export const enDictionary: DictionaryNode = {
       refilled: "Roll reactivated and ready for use.",
       refilledAuto: "Roll reactivated from new measured weight.",
       returnToInventory: "Return to inventory",
-      printQr: "Print QR label",
+      printQr: "Create QR label",
+      labelBuilderTitle: "Create label image",
+      labelBuilderSubtitle:
+        "Choose a physical size, check the preview, and save a print-ready PNG.",
+      labelSize: "Label size",
+      labelProfile: {
+        "ptouch-24": "P-Touch 24 mm",
+        compact: "Compact",
+        standard: "Standard",
+        expanded: "Expanded",
+      },
+      labelPreview: "Label preview",
+      labelRendering: "Rendering label...",
+      labelPreviewUnavailable: "Label preview unavailable",
+      labelPtouchHint:
+        "Designed for 24 mm tape with a full-height QR and readable text.",
+      labelImageHint: "The PNG is rendered at 300 DPI for predictable physical sizing.",
+      labelSaving: "Saving PNG...",
+      labelSaveDownloads: "Save PNG to Downloads",
+      labelSaved: "Label PNG saved to Downloads.",
       rfidButton: "RFID",
       rfidHintReady:
         "Capture AMS/RFID identity data, review it, and save the observed RFID identity when it looks correct.",

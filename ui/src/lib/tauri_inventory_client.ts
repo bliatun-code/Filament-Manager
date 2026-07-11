@@ -376,15 +376,12 @@ export async function assignSpoolLocation(spoolId: string, locationName: string 
   });
 }
 
-export async function printLabelHtml(
-  html: string,
-  printerName?: string | null,
-  copies?: number | null,
-) {
-  return invoke<void>("print_label_html", {
-    html,
-    printerName,
-    copies,
+export async function exportLabelPng(pngDataUrl: string, filenameStem: string) {
+  return invoke<string>("export_label_png", {
+    pngBase64: pngDataUrl,
+    png_base64: pngDataUrl,
+    filenameStem,
+    filename_stem: filenameStem,
   });
 }
 

@@ -423,7 +423,7 @@ test("desktop screenshot gate maps scenario aliases to localized window titles",
 });
 
 test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {
-  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 41);
+  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 42);
   assert.deepEqual(
     parseDesktopVisualQaScenarios([
       "--scenario",

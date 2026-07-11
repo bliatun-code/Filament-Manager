@@ -456,7 +456,26 @@ export const nbDictionary: DictionaryNode = {
       refilled: "Rullen er reaktivert og klar til bruk.",
       refilledAuto: "Rullen ble reaktivert fra ny målt vekt.",
       returnToInventory: "Returner til lager",
-      printQr: "Skriv ut QR-etikett",
+      printQr: "Lag QR-etikett",
+      labelBuilderTitle: "Lag etikettbilde",
+      labelBuilderSubtitle:
+        "Velg fysisk størrelse, kontroller forhåndsvisningen og lagre en utskriftsklar PNG.",
+      labelSize: "Etikettstørrelse",
+      labelProfile: {
+        "ptouch-24": "P-Touch 24 mm",
+        compact: "Kompakt",
+        standard: "Standard",
+        expanded: "Utvidet",
+      },
+      labelPreview: "Forhåndsvisning av etikett",
+      labelRendering: "Genererer etikett...",
+      labelPreviewUnavailable: "Forhåndsvisning er ikke tilgjengelig",
+      labelPtouchHint:
+        "Laget for 24 mm tape med QR-kode i full høyde og lesbar tekst.",
+      labelImageHint: "PNG-bildet genereres i 300 DPI for forutsigbar fysisk størrelse.",
+      labelSaving: "Lagrer PNG...",
+      labelSaveDownloads: "Lagre PNG i Nedlastinger",
+      labelSaved: "Etikettbildet er lagret som PNG i Nedlastinger.",
       rfidButton: "RFID",
       rfidHintReady:
         "Fang AMS/RFID-identitetsdata, se over dem og lagre observert RFID-identitet når den ser riktig ut.",

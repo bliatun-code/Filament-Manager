@@ -27,6 +27,7 @@ import {
 import { RollUsageChart } from "./roll_usage_chart";
 import { WeightInput } from "./weight_input";
 import { useI18n } from "../lib/i18n";
+import type { FilamentLabelProfileId } from "../lib/filament_label_profiles";
 import type {
   InventorySemanticTone,
   InventorySpool,
@@ -49,6 +50,7 @@ type InventorySpoolDetailModalProps = {
   hasHiddenHistoryRows: boolean;
   hexColor: string;
   historyLoading: boolean;
+  initialLabelPanelOpen?: boolean;
   rfidBindingMeta: { className: string; hint: string; label: string };
   infoMessage: string | null;
   locationDraft: string;
@@ -72,7 +74,7 @@ type InventorySpoolDetailModalProps = {
   onClose: () => void;
   onDelete: () => void;
   onMarkEmpty: () => void;
-  onPrintLabel: () => void;
+  onPrintLabel: (profileId: FilamentLabelProfileId, pngDataUrl: string) => Promise<void>;
   onPurge: () => void;
   onRefill: () => void;
   onSaveLocation: () => void;
@@ -122,6 +124,7 @@ export function InventorySpoolDetailModal({
   hasHiddenHistoryRows,
   hexColor,
   historyLoading,
+  initialLabelPanelOpen = false,
   rfidBindingMeta,
   infoMessage,
   locationDraft,
@@ -238,11 +241,13 @@ export function InventorySpoolDetailModal({
                   companionAvailable={qrCompanionAvailable}
                   dataUrl={qrDataUrl}
                   loading={qrLoading}
+                  initialLabelPanelOpen={initialLabelPanelOpen}
                   onPrintLabel={onPrintLabel}
                   onStartRfidCapture={onStartRfidCapture}
                   resolvedTheme={resolvedTheme}
                   runtimeAvailable={runtimeAvailable}
                   spoolHexColor={spool.hexColor}
+                  spool={spool}
                   supportsRfidCapture={supportsRfidCapture}
                   target={qrTarget}
                 />

@@ -297,7 +297,6 @@ export default function InventoryPage({
   }, [cancelDangerZoneConfirmation, closeRollModal]);
 
   const {
-    buildArtifacts: buildSelectedSpoolQrArtifacts,
     companionShellUrl: selectedSpoolQrCompanionShellUrl,
     dataUrl: selectedSpoolQrDataUrl,
     loading: selectedSpoolQrLoading,
@@ -521,7 +520,6 @@ export default function InventoryPage({
     handleSaveCapturedRfid,
     handleStartRfidCapture,
   } = useInventorySpoolDetailUtilityActions({
-    buildSelectedSpoolQrArtifacts,
     canUseClientHostWrite,
     clientHostBaseUrl,
     clientLibraryId,
@@ -623,6 +621,7 @@ export default function InventoryPage({
     selectRollForManage(spoolId);
     setDesktopVisualQaStage(
       desktopVisualQaScenario === "rfid-capture" ||
+        desktopVisualQaScenario === "selected-roll-label" ||
         desktopVisualQaScenario === "selected-roll-history" ||
         desktopVisualQaScenario === "selected-roll-danger-zone"
         ? "detail-opened"
@@ -686,6 +685,28 @@ export default function InventoryPage({
       return;
     }
 
+    if (desktopVisualQaScenario === "selected-roll-label") {
+      const target = document.querySelector<HTMLElement>("#inventory-label-builder");
+      const preview = target?.querySelector("img");
+      if (!target || !preview || selectedSpoolQrLoading) {
+        return;
+      }
+      const timer = window.setTimeout(() => {
+        const scrollContainer = target.closest<HTMLElement>("[data-inventory-detail-scroll]");
+        if (scrollContainer) {
+          const targetOffset =
+            scrollContainer.scrollTop +
+            target.getBoundingClientRect().top -
+            scrollContainer.getBoundingClientRect().top;
+          scrollContainer.scrollTop = Math.max(0, targetOffset - 20);
+        } else {
+          target.scrollIntoView({ behavior: "auto", block: "center" });
+        }
+        setDesktopVisualQaStage("done");
+      }, 250);
+      return () => window.clearTimeout(timer);
+    }
+
     if (desktopVisualQaScenario === "selected-roll-history") {
       const toggle = document.querySelector<HTMLButtonElement>("#inventory-roll-history-toggle");
       if (!toggle) {
@@ -718,7 +739,13 @@ export default function InventoryPage({
       });
       return () => window.cancelAnimationFrame(frame);
     }
-  }, [desktopVisualQaScenario, desktopVisualQaStage, selectedSpool, showRollModal]);
+  }, [
+    desktopVisualQaScenario,
+    desktopVisualQaStage,
+    selectedSpool,
+    selectedSpoolQrLoading,
+    showRollModal,
+  ]);
 
   useEffect(() => {
     if (
@@ -854,6 +881,7 @@ export default function InventoryPage({
         hasHiddenHistoryRows={hasHiddenHistoryRows}
         hexColor={editMasterHexColor}
         historyLoading={historyLoading}
+        initialLabelPanelOpen={desktopVisualQaScenario === "selected-roll-label"}
         infoMessage={infoMessage}
         locationDraft={selectedSpoolLocationDraft}
         locationValue={selectedSpoolLocationValue}

@@ -1,36 +1,113 @@
 import QRCode from "qrcode";
 import { formatSpoolReference } from "./display_format";
+import {
+  filamentLabelPixelSize,
+  filamentLabelProfile,
+  type FilamentLabelProfileId,
+} from "./filament_label_profiles";
 
 type QrEncoder = {
   toDataURL(text: string, options?: Record<string, unknown>): Promise<string>;
 };
 
-export type FilamentLabelHtmlInput = {
+export type FilamentLabelImageInput = {
   vendor: string;
   material: string;
   filamentName: string;
   colorName?: string | null;
-  homeLocation?: string | null;
   reference: string;
-  qrPayload: string;
   qrDataUrl: string;
-  labels: {
-    vendor: string;
-    material: string;
-    filament: string;
-    homeLocation: string;
-    reference: string;
-    qrPayload: string;
-  };
 };
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+type FilamentLabelCanvasDependencies = {
+  createCanvas?: () => HTMLCanvasElement;
+  loadImage?: (dataUrl: string) => Promise<CanvasImageSource>;
+};
+
+const LABEL_DPI = 300;
+
+function defaultCanvas(): HTMLCanvasElement {
+  return document.createElement("canvas");
+}
+
+function loadCanvasImage(dataUrl: string): Promise<CanvasImageSource> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Could not load the label QR image."));
+    image.src = dataUrl;
+  });
+}
+
+function fitCanvasText(
+  context: CanvasRenderingContext2D,
+  value: string,
+  maxWidth: number,
+): string {
+  const normalized = value.trim();
+  if (context.measureText(normalized).width <= maxWidth) {
+    return normalized;
+  }
+  let clipped = normalized;
+  while (clipped.length > 1 && context.measureText(`${clipped}…`).width > maxWidth) {
+    clipped = clipped.slice(0, -1);
+  }
+  return `${clipped.trimEnd()}…`;
+}
+
+export async function buildFilamentLabelPngDataUrl(
+  input: FilamentLabelImageInput,
+  profileId: FilamentLabelProfileId,
+  dependencies: FilamentLabelCanvasDependencies = {},
+): Promise<string> {
+  const profile = filamentLabelProfile(profileId);
+  const size = filamentLabelPixelSize(profileId);
+  const canvas = (dependencies.createCanvas ?? defaultCanvas)();
+  canvas.width = size.width;
+  canvas.height = size.height;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Canvas rendering is unavailable for label export.");
+  }
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, size.width, size.height);
+
+  const pxPerMm = LABEL_DPI / 25.4;
+  const outerPadding = Math.max(8, Math.round(0.8 * pxPerMm));
+  const qrSize = size.height - outerPadding * 2;
+  const qrImage = await (dependencies.loadImage ?? loadCanvasImage)(input.qrDataUrl);
+  context.imageSmoothingEnabled = false;
+  context.drawImage(qrImage, outerPadding, outerPadding, qrSize, qrSize);
+
+  const textLeft = outerPadding + qrSize + Math.round(1.6 * pxPerMm);
+  const textWidth = size.width - textLeft - outerPadding;
+  const title = input.colorName?.trim() || input.filamentName.trim();
+  const materialLine = [input.material.trim(), input.filamentName.trim()]
+    .filter(Boolean)
+    .join(" · ");
+  const reference = formatSpoolReference(input.reference);
+  const lineGap = Math.round(0.8 * pxPerMm);
+  const titlePx = Math.max(30, Math.round((profile.heightMm >= 30 ? 4.1 : 3.5) * pxPerMm));
+  const detailPx = Math.max(21, Math.round((profile.heightMm >= 30 ? 2.8 : 2.4) * pxPerMm));
+  const lines = [
+    { text: title, size: titlePx, weight: 800 },
+    { text: materialLine, size: detailPx, weight: 700 },
+    { text: input.vendor, size: detailPx, weight: 500 },
+    { text: reference, size: detailPx, weight: 700 },
+  ];
+  const contentHeight = lines.reduce((sum, line) => sum + line.size, 0) + lineGap * 3;
+  let baseline = Math.max(outerPadding + titlePx, Math.round((size.height - contentHeight) / 2) + titlePx);
+
+  context.fillStyle = "#000000";
+  context.textBaseline = "alphabetic";
+  for (const line of lines) {
+    context.font = `${line.weight} ${line.size}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+    context.fillText(fitCanvasText(context, line.text, textWidth), textLeft, baseline);
+    baseline += line.size + lineGap;
+  }
+
+  return canvas.toDataURL("image/png");
 }
 
 export async function buildFilamentLabelQrDataUrl(
@@ -50,31 +127,4 @@ export async function buildFilamentLabelQrDataUrl(
       light: "#ffffffff",
     },
   });
-}
-
-export function buildFilamentLabelHtml(input: FilamentLabelHtmlInput): string {
-  const filamentTitle = [input.colorName, input.filamentName].filter(Boolean)[0] || input.filamentName;
-  const referenceLabel = formatSpoolReference(input.reference);
-  return `
-<html>
-  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 20px; color: #0f172a;">
-    <div style="display: grid; grid-template-columns: 196px 1fr; gap: 16px; align-items: start; max-width: 760px;">
-      <img src="${escapeHtml(input.qrDataUrl)}" alt="Filament QR" style="width: 196px; height: 196px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; image-rendering: pixelated; object-fit: contain;" />
-      <div>
-        <div style="font-size: 24px; font-weight: 700; margin-bottom: 6px;">${escapeHtml(filamentTitle || input.filamentName)}</div>
-        <div style="font-size: 16px; line-height: 1.4;">
-          <div><strong>${escapeHtml(input.labels.vendor)}:</strong> ${escapeHtml(input.vendor)}</div>
-          <div><strong>${escapeHtml(input.labels.filament)}:</strong> ${escapeHtml(input.filamentName)}</div>
-          ${
-            input.homeLocation
-              ? `<div><strong>${escapeHtml(input.labels.homeLocation)}:</strong> ${escapeHtml(input.homeLocation)}</div>`
-              : ""
-          }
-          <div><strong>${escapeHtml(input.labels.reference)}:</strong> ${escapeHtml(referenceLabel)}</div>
-        </div>
-      </div>
-    </div>
-  </body>
-</html>
-  `.trim();
 }
