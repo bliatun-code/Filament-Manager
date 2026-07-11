@@ -57,6 +57,8 @@ test("locale registry owns format, guide, and native-label metadata", () => {
   assert.equal(intlLocaleFor("fr-FR"), "fr-FR");
   assert.equal(intlLocaleFor("pl_pl"), "pl-PL");
   assert.equal(guidePathForLocale("nb"), "docs/BRUKERVEILEDNING.md");
+  assert.equal(guidePathForLocale("de"), "docs/USER_GUIDE.md");
+  assert.equal(guidePathForLocale("fr"), "docs/USER_GUIDE.md");
   assert.equal(guidePathForLocale("unknown"), "docs/USER_GUIDE.md");
 });
 

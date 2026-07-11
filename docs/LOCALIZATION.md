@@ -101,3 +101,15 @@ contracts already run in CI. Reconsider a translation platform after the pilot
 if contributor volume, review latency, plural/context discussions, or stale
 catalog coordination becomes difficult. Do not add a platform merely to export
 the same files through another system.
+
+## Pilot reviewer handoff
+
+German and French remain hidden draft locales until a named native reviewer has
+approved them against the current source fingerprint. The focused handoff is in
+[`localization/REVIEW_CHECKLIST.md`](../localization/REVIEW_CHECKLIST.md).
+
+The first German/French UI release may use the complete English user guide as a
+documented fallback. Full translated guides follow after native UI review and
+real user demand; they are not generated mechanically from the source guide.
+The app must keep linking draft locales to the English guide until a complete,
+reviewed locale-specific guide is added.

@@ -30,4 +30,12 @@ test("app metadata exposes AGPL licensing and stable main-branch source links", 
     userGuideUrlForLocale("nb"),
     `${APP_REPOSITORY_URL}/blob/main/docs/BRUKERVEILEDNING.md`,
   );
+  assert.equal(
+    userGuideUrlForLocale("de"),
+    `${APP_REPOSITORY_URL}/blob/main/docs/USER_GUIDE.md`,
+  );
+  assert.equal(
+    userGuideUrlForLocale("fr"),
+    `${APP_REPOSITORY_URL}/blob/main/docs/USER_GUIDE.md`,
+  );
 });
