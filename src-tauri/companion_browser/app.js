@@ -323,6 +323,11 @@ function main() {
     readBrowserStorage(),
     readBrowserGlobal("navigator"),
   );
+  state.statusMessage = t(
+    state.locale,
+    "status.trustedLanAwaitPairing",
+    "Open a pairing link from desktop Settings to start this trusted-LAN browser session.",
+  );
   syncRecoverySectionLabels(state.locale);
   state.themeMode = readStoredThemeMode();
   state.resolvedTheme = applyCompanionThemeMode(state.themeMode, document, window);

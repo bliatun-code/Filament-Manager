@@ -3,6 +3,8 @@ import type { DictionaryNode } from "../../i18n_types";
 export const nbDictionary: DictionaryNode = {
     app: {
       title: "Filament Manager",
+      iconAlt: "Filament Manager-ikon",
+      loadingPage: "Laster side...",
       navigation: "Navigasjon",
       skipToMainContent: "Hopp til hovedinnhold",
     },
@@ -26,8 +28,15 @@ export const nbDictionary: DictionaryNode = {
       copied: "Kopiert",
       copyFailed: "Kopiering feilet",
       unknown: "Ukjent",
+      show: "Vis",
+      hide: "Skjul",
+      justNow: "akkurat nå",
       minutes: "min",
       hoursShort: "t",
+      daysShort: "d",
+      minutesAgo: "{count} min siden",
+      hoursAgo: "{count} t siden",
+      daysAgo: "{count} dager siden",
     },
     vendor: {
       bambu: "Bambu",
@@ -187,6 +196,8 @@ export const nbDictionary: DictionaryNode = {
       statusBorrowed: "Utlånt",
       statusEmpty: "Tom",
       statusLost: "Tapt",
+      statusMissing: "Mangler",
+      statusDeleted: "Slettet",
       ownership: "Eierskap",
       ownershipType: "Eierskapstype",
       ownedByUs: "Eid",
@@ -221,6 +232,9 @@ export const nbDictionary: DictionaryNode = {
       showAllRolls: "Vis alle",
       showFewerRolls: "Vis færre",
       loading: "Laster filamenter...",
+      addedToInventory: "Lagt til i lageret",
+      addedFromWishlist: "Lagt til fra ønskelisten",
+      visualFixtureLoaded: "Testdata for filamentdetaljer er lastet.",
       noMatch: "Ingen filamenter matcher valgte filtre.",
       noMatchHint: "Prøv å justere søk, status, materiale eller eierskapsfilter.",
       selectedRoll: "Valgt filament",
@@ -293,6 +307,11 @@ export const nbDictionary: DictionaryNode = {
       searchVendorCatalog: "Søk etter {{vendor}}-materiale, filament eller farge",
       catalogRefreshFilter: "Katalogoppdatering og filtrering",
       catalogSelection: "Katalogvalg",
+      noCatalogMatches: "Ingen katalogoppføringer matcher valgte leverandørfiltre.",
+      imported: "Importert",
+      reactivated: "Reaktivert",
+      discontinued: "Utgått",
+      unknownCollection: "ukjent samling",
       catalogManagedInSettings:
         "Katalogoppdateringer og fremdrift håndteres i Innstillinger → Filamentkatalog.",
       catalogManagedInSettingsHelp:
@@ -610,6 +629,8 @@ export const nbDictionary: DictionaryNode = {
         addedToLibraryDetail: "Filamentet ble lagt til i lageret.",
       },
       error: {
+        add: "Kunne ikke legge til filament.",
+        loadInventory: "Kunne ikke laste lageret.",
         loadSpools: "Kunne ikke laste lagerruller.",
         esunQueryShort: "Skriv minst 2 tegn for eSUN-oppslag.",
         esunLookup: "eSUN-oppslag feilet. Prøv igjen.",
@@ -667,6 +688,7 @@ export const nbDictionary: DictionaryNode = {
       },
     },
     chart: {
+      rollUsageAria: "Diagram over filamentforbruk",
       latest: "Siste",
       consumed: "Forbrukt i diagram",
       totalConsumed: "totalt forbrukt",
@@ -856,6 +878,8 @@ export const nbDictionary: DictionaryNode = {
       amsSlot: "AMS-spor",
       extSlot: "EXT-spor",
       slot: "Spor",
+      previewWithMultiMaterial: "{model} med fler-materiale",
+      previewSingleMaterial: "{model} med ett materiale",
       toolhead: "Verktøyhode",
       channel: "Kanal",
       emptySlot: "Tomt spor",
@@ -887,6 +911,7 @@ export const nbDictionary: DictionaryNode = {
       liveHumidityMiddle: "Midt",
       liveHumidityWet: "Fuktig",
       liveRfid: "Live RFID",
+      liveCatalogRequiresRfid: "vent på RFID",
       manualAssignment: "Manuell",
       unknownLiveRfid: "RFID er ikke registrert",
       rfidOverridden: "RFID overstyrt",
@@ -1061,6 +1086,8 @@ export const nbDictionary: DictionaryNode = {
       noFailedJobsBreakdown: "Ingen feilede jobber registrert.",
       noActiveSlotsBreakdown: "Ingen lastede spor akkurat nå.",
       noActiveSlotFilterMatch: "Ingen lastede spor matcher valgt eierskapsfilter.",
+      clientHostBreakdownOnly:
+        "Detaljert filamentfordeling er foreløpig tilgjengelig på vertsenheten.",
       failureRate: "Feilrate",
       completed: "Fullført",
       error: {
@@ -1654,6 +1681,8 @@ export const nbDictionary: DictionaryNode = {
       bambuLiveFieldChanges: "Endringer",
       bambuLiveFieldChangeCadence: "Gj.snitt endringsintervall",
       bambuLiveFieldRecentValues: "Nylige verdier",
+      bambuLiveCandidateRfidSaved: "RFID lagret",
+      bambuLiveCandidateNoRfidSaved: "Ingen RFID lagret",
       bambuLiveCaptureWaiting:
         "Venter på live-feltoppdateringer. Start en print eller la printeren rapportere mer data mens dette panelet er åpent.",
       bambuLiveObservedDetails: "Observerte live-detaljer",
@@ -1676,6 +1705,8 @@ export const nbDictionary: DictionaryNode = {
       bambuLiveSummaryAmsStatus: "AMS-status",
       bambuLiveMoreInventoryCandidates: "Det finnes flere matchende ruller i lageret.",
       bambuLivePresetSignal: "Filamentinnstillingsprofil",
+      bambuLivePresetNozzleSuffix: "mm-dyse",
+      bambuLiveAmsLabel: "AMS",
       bambuLiveAmsWeightEstimate: "AMS-estimat",
       bambuLiveAmsWeightBasis: "AMS-rullgrunnlag",
       bambuLiveNozzleRange: "Nozzle-område",
@@ -1745,6 +1776,9 @@ export const nbDictionary: DictionaryNode = {
         "Importer full sikkerhetskopi nå?\n\nDette erstatter nåværende lager, historikk, konfigurerte printere og vedlikeholdsdata.",
       error: {
         load: "Kunne ikke laste innstillinger.",
+        bambuLiveFieldsRequired:
+          "Vert, tilgangskode og printerserienummer er påkrevd når live Bambu-status er aktivert.",
+        librarySyncSnapshot: "Kunne ikke hente øyeblikksbilde fra verten.",
         printerRequired: "Printernavn og printermodell er påkrevd.",
         addPrinter: "Kunne ikke legge til printer.",
         updatePrinter: "Kunne ikke oppdatere printer.",

@@ -511,6 +511,7 @@ export function renderDetailModalShell(options) {
         selectedSpool.master.material,
         selectedSpool.master.filament_name,
         selectedSpool.master.color_name,
+        locale,
       )
     : t(locale, "detail.spoolDetailsFallback", "Spool details");
   const statusChips = [];

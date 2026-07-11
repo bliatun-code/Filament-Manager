@@ -125,7 +125,9 @@ export function InventoryRfidCaptureHeader({
         </div>
         <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           {selectedSlot
-            ? `${selectedSlot.printerName} · ${slotLabel ?? `Slot ${selectedSlot.slotIndex}`}`
+            ? `${selectedSlot.printerName} · ${
+                slotLabel ?? `${t("printers.slot", "Slot")} ${selectedSlot.slotIndex}`
+              }`
             : t("inventory.rfidNoCaptureSource", "No live AMS slot available")}
         </div>
         {matchMeta ? (
@@ -180,7 +182,7 @@ export function InventoryRfidCaptureSlotPicker({
                   swatchColor={slotSummary.colorHex ?? spool.hexColor}
                   tone="tiny"
                 />
-                <span>{label ?? `Slot ${slot.slotIndex}`}</span>
+                <span>{label ?? `${t("printers.slot", "Slot")} ${slot.slotIndex}`}</span>
               </div>
               {hasSlotMeta ? (
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">

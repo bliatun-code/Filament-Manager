@@ -278,7 +278,7 @@ export function renderPrinterPickerTaskSheetBody(options) {
                     );
                   const rowMeta = [
                     row.master.vendor,
-                    formatRollReference(row.spool),
+                    formatRollReference(row.spool, locale),
                     row.spool.location_id ? formatPlacementLabel(row.spool.location_id, locale) : "",
                     row.spool.home_location_id &&
                     row.spool.home_location_id !== row.spool.location_id
@@ -307,6 +307,7 @@ export function renderPrinterPickerTaskSheetBody(options) {
                       row.master.material,
                       row.master.filament_name,
                       row.master.color_name,
+                      locale,
                     ),
                     weight: formatGrams(row.spool.remaining_g),
                   });
@@ -551,6 +552,7 @@ function renderLiveInventoryCandidateRows(slot, spoolRows, activePrinter, locale
             row.master.material,
             row.master.filament_name,
             row.master.color_name,
+            locale,
           );
           const isBorrowedIn = isBorrowedInOwnership(row?.spool?.ownership_type);
           const ownerName = String(row?.spool?.owner_name || "").trim();
@@ -561,7 +563,7 @@ function renderLiveInventoryCandidateRows(slot, spoolRows, activePrinter, locale
                 : t(locale, "storage.borrowedInAction", "Borrowed-in")
               : null;
           const meta = [
-            formatRollReference(row.spool),
+            formatRollReference(row.spool, locale),
             formatGrams(row.spool.remaining_g),
             ownershipLabel,
           ]
@@ -611,6 +613,7 @@ function renderSlotCards(options) {
         slot.spool_material,
         slot.spool_filament_name,
         slot.spool_color_name,
+        locale,
       );
       const slotIsPendingTarget =
         !slot.spool_id &&
@@ -633,6 +636,7 @@ function renderSlotCards(options) {
         slot.live_filament_type,
         slot.live_filament_name,
         slot.live_tray_id_name,
+        locale,
       );
       const slotContentTitle = slot.spool_id
         ? materialBits
@@ -641,7 +645,7 @@ function renderSlotCards(options) {
           : t(locale, "printers.empty", "Empty");
       const slotContentColor = slotUsesSwatchSurface ? toSwatchColor(slotSwatch) : "";
       const slotSummary = slot.spool_id
-        ? [formatStatusLabel(slot.spool_status || "ASSIGNED", locale), formatRollReference({ id: slot.spool_id })]
+        ? [formatStatusLabel(slot.spool_status || "ASSIGNED", locale), formatRollReference({ id: slot.spool_id }, locale)]
             .filter(Boolean)
             .join(" · ")
         : slotHasLiveLoaded

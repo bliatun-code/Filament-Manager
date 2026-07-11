@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { resolve } from "node:path";
+import { relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { collectUiSourceFiles } from "./ui-source-utils.mjs";
 
 const repoRoot = resolve(".");
 const require = createRequire(import.meta.url);
@@ -11,6 +12,7 @@ const localeFiles = {
   en: resolve(repoRoot, "ui", "src", "lib", "i18n_locales", "locales", "en.ts"),
   nb: resolve(repoRoot, "ui", "src", "lib", "i18n_locales", "locales", "nb.ts"),
 };
+const uiSourceRoot = resolve(repoRoot, "ui", "src");
 
 function propertyNameText(name) {
   if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
@@ -78,6 +80,49 @@ function flattenDictionary(dictionary, prefix = "") {
   );
 }
 
+function isTranslationCallExpression(expression) {
+  if (ts.isIdentifier(expression)) {
+    return expression.text === "t";
+  }
+  return ts.isPropertyAccessExpression(expression) && expression.name.text === "t";
+}
+
+export function collectLiteralTranslationKeysFromSource(source, fileName = "source.tsx") {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    fileName.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const keys = [];
+
+  function visit(node) {
+    if (ts.isCallExpression(node) && isTranslationCallExpression(node.expression)) {
+      const keyArgument = node.arguments[0];
+      if (ts.isStringLiteral(keyArgument) || ts.isNoSubstitutionTemplateLiteral(keyArgument)) {
+        const location = sourceFile.getLineAndCharacterOfPosition(keyArgument.getStart(sourceFile));
+        keys.push({
+          key: keyArgument.text,
+          line: location.line + 1,
+          column: location.character + 1,
+        });
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return keys;
+}
+
+export function validateRuntimeTranslationKeys(dictionary, runtimeKeys) {
+  const dictionaryKeys = new Set(flattenDictionary(dictionary).map(([key]) => key));
+  return runtimeKeys
+    .filter(({ key }) => !dictionaryKeys.has(key))
+    .map(({ key, location }) => `${location}: unknown translation key ${key}.`);
+}
+
 function placeholderTokens(value) {
   return Array.from(value.matchAll(/\{([A-Za-z0-9_]+)\}/g), (match) => match[1]).sort();
 }
@@ -133,6 +178,13 @@ function runI18nLocaleCheck() {
     "nbDictionary",
   );
   const errors = validateLocaleDictionaries(enDictionary, nbDictionary, "nb");
+  const runtimeKeys = collectUiSourceFiles(uiSourceRoot).flatMap((file) =>
+    collectLiteralTranslationKeysFromSource(readFileSync(file, "utf8"), file).map((entry) => ({
+      key: entry.key,
+      location: `${relative(repoRoot, file)}:${entry.line}:${entry.column}`,
+    })),
+  );
+  errors.push(...validateRuntimeTranslationKeys(enDictionary, runtimeKeys));
 
   if (errors.length > 0) {
     console.error("UI locale dictionary contract failed:");

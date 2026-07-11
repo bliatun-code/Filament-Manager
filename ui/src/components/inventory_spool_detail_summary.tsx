@@ -136,8 +136,8 @@ export function InventorySpoolIdentityPanel({
             {t("inventory.lastAmsIdentitySeen", "Last AMS sighting")}:{" "}
             {amsSighting
               ? `${formatCaptureTimestamp(amsSighting.observedAt, locale)} (${formatObservedAge(
-                  amsSighting.observedAt,
-                  locale,
+                amsSighting.observedAt,
+                  t,
                 )})`
               : "-"}
             {amsSighting?.source === "live_activity" ? (

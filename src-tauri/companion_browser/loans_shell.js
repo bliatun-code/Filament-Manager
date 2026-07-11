@@ -52,9 +52,10 @@ function renderHiddenSelectionBanner(selectedSpool, loanRows, escapeHtml, format
     selectedSpool.master?.material,
     selectedSpool.master?.filament_name,
     selectedSpool.master?.color_name,
+    locale,
   );
   const summaryItems = [
-    formatRollReference(selectedSpool.spool),
+    formatRollReference(selectedSpool.spool, locale),
     formatGrams(selectedSpool.spool?.remaining_g),
     selectedSpool.spool?.location_id || t(locale, "format.unassigned", "Unassigned"),
   ].filter(Boolean);
@@ -106,10 +107,11 @@ function renderLoanPickerRows(options) {
         row.master?.material,
         row.master?.filament_name,
         row.master?.color_name,
+        locale,
       );
       const metadata = [
         row.master?.vendor || "",
-        formatRollReference(row.spool),
+        formatRollReference(row.spool, locale),
         formatGrams(row.spool?.remaining_g),
         row.spool?.location_id || t(locale, "format.unassigned", "Unassigned"),
       ].filter(Boolean);
@@ -150,8 +152,8 @@ function renderLoanRows(options) {
       const swatch =
         row.hex_color ||
         suggestSwatchHex(row.color_name, row.filament_name, row.vendor, row.material);
-      const displayTitle = formatInventoryDisplayTitle(row.material, row.filament_name, row.color_name);
-      const loanReference = formatRollReference({ id: row.loan.spool_id });
+      const displayTitle = formatInventoryDisplayTitle(row.material, row.filament_name, row.color_name, locale);
+      const loanReference = formatRollReference({ id: row.loan.spool_id }, locale);
       const vendorName = row.vendor || t(locale, "loans.unknownVendor", "Unknown vendor");
       const subtitleBits = [
         direction === "INBOUND"
@@ -159,8 +161,8 @@ function renderLoanRows(options) {
           : counterparty,
         formatGrams(row.loan.grams_out),
         returned
-          ? t(locale, "loans.returnedAt", "Returned {date}", { date: formatDate(row.loan.returned_at) })
-          : t(locale, "loans.lentAt", "Lent {date}", { date: formatDate(row.loan.lent_at) }),
+          ? t(locale, "loans.returnedAt", "Returned {date}", { date: formatDate(row.loan.returned_at, locale) })
+          : t(locale, "loans.lentAt", "Lent {date}", { date: formatDate(row.loan.lent_at, locale) }),
       ]
         .filter(Boolean)
         .map((value) => escapeHtml(value))
@@ -296,8 +298,9 @@ export function renderLoanReturnTaskSheetBody(options) {
     loanRow.material,
     loanRow.filament_name,
     loanRow.color_name,
+    locale,
   );
-  const reference = formatRollReference({ id: loanRow.loan.spool_id });
+  const reference = formatRollReference({ id: loanRow.loan.spool_id }, locale);
   const metadata = [
     loanRow.vendor || t(locale, "loans.unknownVendor", "Unknown vendor"),
     reference,
@@ -322,12 +325,12 @@ export function renderLoanReturnTaskSheetBody(options) {
                 direction === "INBOUND" ? t(locale, "detail.borrowedInDate", "Borrowed in") : t(locale, "loans.lentOut", "Lent out"),
               )}</div>
               <div class="metric-value">${escapeHtml(
-                direction === "INBOUND" ? formatDate(loanRow.loan.lent_at) : formatGrams(loanRow.loan.grams_out),
+                direction === "INBOUND" ? formatDate(loanRow.loan.lent_at, locale) : formatGrams(loanRow.loan.grams_out),
               )}</div>
             </div>
             <div class="metric-card loan-date-metric">
               <div class="metric-label">${escapeHtml(t(locale, "loans.lentAtLabel", "Lent at"))}</div>
-              <div class="metric-value">${escapeHtml(formatDate(loanRow.loan.lent_at))}</div>
+              <div class="metric-value">${escapeHtml(formatDate(loanRow.loan.lent_at, locale))}</div>
             </div>
           </div>
           <form class="stack loan-return-sheet" data-action="${escapeHtml(direction === "INBOUND" ? "hand-back-loan-form" : "return-loan-history-form")}">
@@ -422,8 +425,9 @@ export function renderLoanCreateTaskSheetBody(options) {
     selectedSpool.master.material,
     selectedSpool.master.filament_name,
     selectedSpool.master.color_name,
+    locale,
   );
-  const reference = formatRollReference(selectedSpool.spool);
+  const reference = formatRollReference(selectedSpool.spool, locale);
   const tareWeight = resolveSpoolTareWeight(selectedSpool.spool, selectedSpool.master.vendor);
   const defaultMeasuredWeight = Number(selectedSpool.spool.remaining_g ?? 0) + tareWeight;
   const outgoingWeightCalculation = t(

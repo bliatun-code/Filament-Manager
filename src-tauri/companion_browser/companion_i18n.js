@@ -24,6 +24,12 @@ const dictionaries = {
       configuredCount: "{count} configured",
       trustedLanSession: "Trusted-LAN session",
       disconnected: "Disconnected",
+      spoolCountOne: "{count} spool",
+      spoolCountMany: "{count} spools",
+      printerCountOne: "{count} printer",
+      printerCountMany: "{count} printers",
+      activeLoanCountOne: "{count} active loan",
+      activeLoanCountMany: "{count} active loans",
       primaryFlowsAria: "Primary flows",
     },
     shell: {
@@ -46,6 +52,7 @@ const dictionaries = {
       loanBorrowedInBlocked: "Borrowed-in spools cannot be loaned out from the browser companion.",
       loanAlreadyLoanedOut: "This spool is already loaned out.",
       loanEmptyOrLostBlocked: "Empty or lost spools cannot be loaned out here.",
+      loanInUseBlocked: "Spools that are loaded in printer slots cannot be loaned out.",
     },
     recovery: {
       selectSuggested: "Select suggested spool",
@@ -292,6 +299,8 @@ const dictionaries = {
     },
     format: {
       unknown: "Unknown",
+      unknownFilament: "Unknown filament",
+      noReference: "No reference",
       unassigned: "Unassigned",
       inStock: "In stock",
       assigned: "Assigned",
@@ -559,6 +568,12 @@ const dictionaries = {
       configuredCount: "{count} konfigurert",
       trustedLanSession: "Trusted-LAN-økt",
       disconnected: "Frakoblet",
+      spoolCountOne: "{count} spole",
+      spoolCountMany: "{count} spoler",
+      printerCountOne: "{count} printer",
+      printerCountMany: "{count} printere",
+      activeLoanCountOne: "{count} aktivt utlån",
+      activeLoanCountMany: "{count} aktive utlån",
       primaryFlowsAria: "Hovedflyter",
     },
     shell: {
@@ -581,6 +596,7 @@ const dictionaries = {
       loanBorrowedInBlocked: "Innlånte spoler kan ikke lånes ut fra nettleserkompanjongen.",
       loanAlreadyLoanedOut: "Denne spolen er allerede utlånt.",
       loanEmptyOrLostBlocked: "Tomme eller tapte spoler kan ikke lånes ut her.",
+      loanInUseBlocked: "Filamenter som er lastet i printerspor, kan ikke lånes ut.",
     },
     recovery: {
       selectSuggested: "Velg foreslått spole",
@@ -828,6 +844,8 @@ const dictionaries = {
     },
     format: {
       unknown: "Ukjent",
+      unknownFilament: "Ukjent filament",
+      noReference: "Ingen referanse",
       unassigned: "Uplassert",
       inStock: "På lager",
       assigned: "Tildelt",

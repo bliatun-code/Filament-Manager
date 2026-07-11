@@ -44,7 +44,6 @@ export function SettingsLibraryRoleModal({
   lastFullBackupValidatedAt,
   libraryRoleConfirmArmed,
   librarySyncBusy,
-  librarySyncSettings,
   locale,
   roleChangeState,
   tauri,
@@ -115,13 +114,10 @@ export function SettingsLibraryRoleModal({
 
         {roleChangeState.fromClient && roleChangeState.toStandalone ? (
           <ModalNotice>
-            {locale === "nb"
-              ? `Denne klienten forventer vanligvis at et vertsbibliotek er tilgjengelig. Du kan eksportere en full sikkerhetskopi på ${
-                  librarySyncSettings?.host_device_name || t("common.unknown", "Ukjent")
-                } og importere den senere under Programvedlikehold hvis du vil fortsette lokalt.`
-              : `This client normally expects a host library. You can export a full backup on ${
-                  librarySyncSettings?.host_device_name || t("common.unknown", "Unknown")
-                } and import it later under Program maintenance if you want to continue locally.`}
+            {t(
+              "settings.librarySyncRoleChangeClientLocalHint",
+              "This client normally expects a host library. Export a full backup on the current host and import it later under Program maintenance if you want to continue locally.",
+            )}
           </ModalNotice>
         ) : null}
 

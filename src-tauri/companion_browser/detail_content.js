@@ -49,9 +49,10 @@ export function renderSelectedSpoolDetailBody(options) {
     selectedSpool.master.material,
     selectedSpool.master.filament_name,
     selectedSpool.master.color_name,
+    locale,
   );
   const detailSwatch = selectedSpool.master.hex_color || "#CBD5E1";
-  const detailReference = formatRollReference(selectedSpool.spool);
+  const detailReference = formatRollReference(selectedSpool.spool, locale);
   const defaultMeasuredWeight =
     (selectedSpool?.spool?.remaining_g ?? selectedSpool?.spool?.current_weight_g ?? 0) +
     detailTareWeight;
@@ -294,7 +295,7 @@ function renderUsageTimeline(usageRows, helpers) {
         <div class="timeline-item">
           <div class="list-title">${escapeHtml(formatGrams(point.grams))}</div>
           <div class="muted">${escapeHtml(formatUsageSourceLabel(point.source, locale))}</div>
-          <div class="meta-line">${escapeHtml(formatDate(point.captured_at))}</div>
+          <div class="meta-line">${escapeHtml(formatDate(point.captured_at, locale))}</div>
         </div>
       `,
     )
@@ -316,7 +317,7 @@ function renderHistoryTimeline(historyRows, helpers) {
       (event) => `
         <div class="timeline-item">
           <div class="list-title">${escapeHtml(formatHistoryEventLabel(event.event_type, locale))}</div>
-          <div class="meta-line">${escapeHtml(formatDate(event.created_at))}</div>
+          <div class="meta-line">${escapeHtml(formatDate(event.created_at, locale))}</div>
         </div>
       `,
     )
@@ -335,16 +336,18 @@ function renderHistorySection(options) {
   const historySummaryBits = [];
   if (usageCount > 0) {
     historySummaryBits.push(
-      locale === "nb"
-        ? `${usageCount} vektkontroll${usageCount === 1 ? "" : "er"}`
-        : `${usageCount} weight check${usageCount === 1 ? "" : "s"}`,
+      t(locale, "detail.weightChecksSummary", "{count} weight check{suffix}", {
+        count: usageCount,
+        suffix: usageCount === 1 ? "" : locale === "nb" ? "er" : "s",
+      }),
     );
   }
   if (historyCount > 0) {
     historySummaryBits.push(
-      locale === "nb"
-        ? `${historyCount} aktivitet${historyCount === 1 ? "" : "er"}`
-        : `${historyCount} activity item${historyCount === 1 ? "" : "s"}`,
+      t(locale, "detail.activityItemsSummary", "{count} activity item{suffix}", {
+        count: historyCount,
+        suffix: historyCount === 1 ? "" : locale === "nb" ? "er" : "s",
+      }),
     );
   }
   const historySummary = historySummaryBits.join(" · ") || t(locale, "detail.noRecentHistory", "No recent history");

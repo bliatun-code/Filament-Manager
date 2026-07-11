@@ -206,7 +206,7 @@ export default function App() {
             <div className="app-nav-logo">
               <img
                 src={resolvedTheme === "dark" ? brandIconDark : brandIconLight}
-                alt="Filament Manager icon"
+                alt={t("app.iconAlt", "Filament Manager icon")}
                 className="h-8 w-8 rounded-lg"
               />
             </div>

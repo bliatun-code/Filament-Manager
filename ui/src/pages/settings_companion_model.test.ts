@@ -335,7 +335,8 @@ test("buildTrustedLanPairedBrowserListModel uses Norwegian relative wording and 
       },
     ],
     locale: "nb",
-    t,
+    t: (key, fallback) =>
+      key === "common.minutesAgo" ? "{count} min siden" : fallback,
     nowMs: Date.parse("2026-03-28T20:00:00.000Z"),
   });
 

@@ -23,20 +23,36 @@ export function renderSettingsShell(options) {
       : t(locale, "settings.modeSummary", "{mode} mode", {
           mode: t(locale, `settings.${themeMode}`, themeMode),
         });
-  const countLabel = (count, singular, plural) =>
-    `${count} ${count === 1 ? singular : plural}`;
+  const countLabel = (count, singularKey, pluralKey, singularFallback, pluralFallback) =>
+    t(locale, count === 1 ? singularKey : pluralKey, count === 1 ? singularFallback : pluralFallback, {
+      count,
+    });
   const connectionSummary =
     connectionSummaryOption ||
     [
       state.apiReady
         ? t(locale, "settings.trustedLanConnected", "Trusted-LAN connected")
         : t(locale, "settings.disconnected", "Disconnected"),
-      countLabel(state.spools.length, locale === "nb" ? "spole" : "spool", locale === "nb" ? "spoler" : "spools"),
-      countLabel(state.printers.length, locale === "nb" ? "printer" : "printer", locale === "nb" ? "printere" : "printers"),
+      countLabel(
+        state.spools.length,
+        "settings.spoolCountOne",
+        "settings.spoolCountMany",
+        "{count} spool",
+        "{count} spools",
+      ),
+      countLabel(
+        state.printers.length,
+        "settings.printerCountOne",
+        "settings.printerCountMany",
+        "{count} printer",
+        "{count} printers",
+      ),
       countLabel(
         state.activeLoans.length,
-        locale === "nb" ? "aktivt utlån" : "active loan",
-        locale === "nb" ? "aktive utlån" : "active loans",
+        "settings.activeLoanCountOne",
+        "settings.activeLoanCountMany",
+        "{count} active loan",
+        "{count} active loans",
       ),
     ].join(" · ");
   return `

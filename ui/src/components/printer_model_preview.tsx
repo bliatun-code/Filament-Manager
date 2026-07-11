@@ -1,5 +1,6 @@
 import printerBase from "../assets/printer_base.svg";
 import printerWithAms from "../assets/printer_with_ams.svg";
+import { useI18n } from "../lib/i18n";
 
 type PrinterModelPreviewProps = {
   model: string;
@@ -12,6 +13,7 @@ export function PrinterModelPreview({
   hasMultiMaterial,
   compact = false,
 }: PrinterModelPreviewProps) {
+  const { t } = useI18n();
   const src = hasMultiMaterial ? printerWithAms : printerBase;
   const heightClass = compact ? "h-14" : "h-20";
   return (
@@ -20,8 +22,14 @@ export function PrinterModelPreview({
         src={src}
         alt={
           hasMultiMaterial
-            ? `${model} with multi-material`
-            : `${model} single-material`
+            ? t("printers.previewWithMultiMaterial", "{model} with multi-material").replace(
+                "{model}",
+                model,
+              )
+            : t("printers.previewSingleMaterial", "{model} single-material").replace(
+                "{model}",
+                model,
+              )
         }
         className={`${heightClass} w-auto object-contain`}
       />

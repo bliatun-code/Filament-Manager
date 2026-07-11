@@ -3,6 +3,8 @@ import type { DictionaryNode } from "../../i18n_types";
 export const enDictionary: DictionaryNode = {
     app: {
       title: "Filament Manager",
+      iconAlt: "Filament Manager icon",
+      loadingPage: "Loading page...",
       navigation: "Navigation",
       skipToMainContent: "Skip to main content",
     },
@@ -26,8 +28,15 @@ export const enDictionary: DictionaryNode = {
       copied: "Copied",
       copyFailed: "Copy failed",
       unknown: "Unknown",
+      show: "Show",
+      hide: "Hide",
+      justNow: "just now",
       minutes: "min",
       hoursShort: "h",
+      daysShort: "d",
+      minutesAgo: "{count} min ago",
+      hoursAgo: "{count} h ago",
+      daysAgo: "{count} days ago",
     },
     vendor: {
       bambu: "Bambu",
@@ -187,6 +196,8 @@ export const enDictionary: DictionaryNode = {
       statusBorrowed: "Loaned out",
       statusEmpty: "Empty",
       statusLost: "Lost",
+      statusMissing: "Missing",
+      statusDeleted: "Deleted",
       ownership: "Ownership",
       ownershipType: "Ownership type",
       ownedByUs: "Owned",
@@ -221,6 +232,9 @@ export const enDictionary: DictionaryNode = {
       showAllRolls: "Show all",
       showFewerRolls: "Show fewer",
       loading: "Loading spools...",
+      addedToInventory: "Added to inventory",
+      addedFromWishlist: "Added from wishlist",
+      visualFixtureLoaded: "Inventory detail fixture loaded.",
       noMatch: "No spools match current filters.",
       noMatchHint: "Try adjusting search, status, material or ownership filters.",
       selectedRoll: "Selected roll",
@@ -293,6 +307,11 @@ export const enDictionary: DictionaryNode = {
       searchVendorCatalog: "Search {{vendor}} material, filament or color",
       catalogRefreshFilter: "Catalog refresh & filter",
       catalogSelection: "Catalog selection",
+      noCatalogMatches: "No catalog entries match the current vendor filters.",
+      imported: "Imported",
+      reactivated: "Reactivated",
+      discontinued: "Discontinued",
+      unknownCollection: "unknown collection",
       catalogManagedInSettings:
         "Catalog updates and refresh progress are managed in Settings → Filament catalogue.",
       catalogManagedInSettingsHelp:
@@ -606,6 +625,8 @@ export const enDictionary: DictionaryNode = {
         addedToLibraryDetail: "Filament was added to the library.",
       },
       error: {
+        add: "Failed to add filament.",
+        loadInventory: "Failed to load inventory.",
         loadSpools: "Could not load inventory spools.",
         esunQueryShort: "Type at least 2 characters for eSUN lookup.",
         esunLookup: "eSUN lookup failed. Try again.",
@@ -663,6 +684,7 @@ export const enDictionary: DictionaryNode = {
       },
     },
     chart: {
+      rollUsageAria: "Roll usage chart",
       latest: "Latest",
       consumed: "Consumed over chart",
       totalConsumed: "total consumed",
@@ -851,6 +873,8 @@ export const enDictionary: DictionaryNode = {
       amsSlot: "AMS Slot",
       extSlot: "EXT Slot",
       slot: "Slot",
+      previewWithMultiMaterial: "{model} with multi-material",
+      previewSingleMaterial: "{model} single-material",
       toolhead: "Toolhead",
       channel: "Channel",
       emptySlot: "Empty slot",
@@ -882,6 +906,7 @@ export const enDictionary: DictionaryNode = {
       liveHumidityMiddle: "Mid",
       liveHumidityWet: "Wet",
       liveRfid: "Live RFID",
+      liveCatalogRequiresRfid: "wait for RFID",
       manualAssignment: "Manual",
       unknownLiveRfid: "RFID is not registered",
       rfidOverridden: "RFID overridden",
@@ -1056,6 +1081,8 @@ export const enDictionary: DictionaryNode = {
       noFailedJobsBreakdown: "No failed jobs recorded.",
       noActiveSlotsBreakdown: "No loaded slots right now.",
       noActiveSlotFilterMatch: "No loaded slots match the current ownership filter.",
+      clientHostBreakdownOnly:
+        "Detailed filament breakdown is currently available on the host device.",
       failureRate: "Failure rate",
       completed: "Completed",
       error: {
@@ -1645,6 +1672,8 @@ export const enDictionary: DictionaryNode = {
       bambuLiveFieldChangeCadence: "Avg change interval",
       bambuLiveFieldRecentValues: "Recent values",
       bambuLiveCandidateCount: "candidates",
+      bambuLiveCandidateRfidSaved: "RFID saved",
+      bambuLiveCandidateNoRfidSaved: "No RFID saved",
       bambuLiveCaptureWaiting:
         "Waiting for live field updates. Start a print or let the printer report more data while this panel is open.",
       bambuLiveObservedDetails: "Observed live details",
@@ -1667,6 +1696,8 @@ export const enDictionary: DictionaryNode = {
       bambuLiveSummaryAmsStatus: "AMS status",
       bambuLiveMoreInventoryCandidates: "More matching rolls exist in inventory.",
       bambuLivePresetSignal: "Filament settings preset",
+      bambuLivePresetNozzleSuffix: "mm nozzle",
+      bambuLiveAmsLabel: "AMS",
       bambuLiveAmsWeightEstimate: "AMS estimate",
       bambuLiveAmsWeightBasis: "AMS spool basis",
       bambuLiveNozzleRange: "Nozzle range",
@@ -1735,6 +1766,9 @@ export const enDictionary: DictionaryNode = {
         "Import full backup now?\n\nThis will replace current inventory, history, configured printers and maintenance data.",
       error: {
         load: "Failed to load settings.",
+        bambuLiveFieldsRequired:
+          "Host, access code and printer serial are required when live Bambu status is enabled.",
+        librarySyncSnapshot: "Failed to fetch host snapshot.",
         printerRequired: "Printer name and model are required.",
         addPrinter: "Failed to add printer.",
         updatePrinter: "Failed to update printer.",

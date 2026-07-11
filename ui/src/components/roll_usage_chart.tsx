@@ -117,7 +117,7 @@ export function RollUsageChart({
         viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
         className="w-full rounded-lg border border-slate-300/70 bg-white/70 text-slate-700 shadow-inner shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-950/40 dark:text-sky-300 dark:shadow-none"
         role="img"
-        aria-label="Roll usage chart"
+        aria-label={t("chart.rollUsageAria", "Roll usage chart")}
       >
         {[0.25, 0.5, 0.75].map((ratio) => {
           const y = CHART_PADDING + ratio * (CHART_HEIGHT - CHART_PADDING * 2);

@@ -153,6 +153,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
     selection.material || t(locale, "storage.material", "Material"),
     selection.filamentName || t(locale, "storage.filament", "Filament"),
     selection.colorName || t(locale, "storage.color", "Color"),
+    locale,
   );
   const previewMeta = [
     selection.vendor || t(locale, "storage.vendor", "Vendor"),
@@ -177,7 +178,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
           <div class="add-spool-wishlist-row-head">
             <div class="stack add-spool-wishlist-row-copy">
               <div class="list-title">${escapeHtml(
-                formatInventoryDisplayTitle(item.material, item.filament_name, item.color_name),
+                formatInventoryDisplayTitle(item.material, item.filament_name, item.color_name, locale),
               )}</div>
               <div class="list-subtitle">${escapeHtml(item.vendor || "Generic")} · ${escapeHtml(
                 `${t(locale, "storage.quantity", "Qty")} ${item.quantity}`,
@@ -357,6 +358,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
                                 master.material,
                                 master.filament_name,
                                 master.color_name,
+                                locale,
                               ),
                             });
                           })
@@ -609,10 +611,11 @@ function renderSelectedSpoolHiddenBanner(
     selectedSpool.master.material,
     selectedSpool.master.filament_name,
     selectedSpool.master.color_name,
+    locale,
   );
   const homeLocationId = selectedSpool.spool.home_location_id || "";
   const summaryItems = [
-    formatRollReference(selectedSpool.spool),
+    formatRollReference(selectedSpool.spool, locale),
     formatGrams(selectedSpool.spool.remaining_g),
     selectedSpool.spool.location_id ? formatPlacementLabel(selectedSpool.spool.location_id, locale) : "",
     homeLocationId &&
@@ -683,8 +686,12 @@ function renderSpoolRows(options) {
         row.master.material,
         row.master.filament_name,
         row.master.color_name,
+        locale,
       );
-      const subtitleBits = [row.master.vendor || "Unknown vendor", formatRollReference(row.spool)]
+      const subtitleBits = [
+        row.master.vendor || t(locale, "loans.unknownVendor", "Unknown vendor"),
+        formatRollReference(row.spool, locale),
+      ]
         .filter(Boolean)
         .join(" · ");
       const metaBits = [

@@ -15,7 +15,7 @@ export function escapeHtml(value) {
 export function formatGrams(value, locale = "en") {
   const normalizedLocale = normalizeCompanionLocale(locale);
   if (value == null || Number.isNaN(Number(value))) {
-    return "Unknown";
+    return t(normalizedLocale, "format.unknown", "Unknown");
   }
   const numberLocale = normalizedLocale === "nb" ? "nb-NO" : "en-US";
   return `${new Intl.NumberFormat(numberLocale).format(Number(value))} g`;
@@ -63,7 +63,12 @@ function tokenStartsWithToken(baseToken, nextToken) {
   );
 }
 
-export function formatInventoryDisplayTitle(materialRaw, filamentRaw, colorRaw = "") {
+export function formatInventoryDisplayTitle(
+  materialRaw,
+  filamentRaw,
+  colorRaw = "",
+  locale = "en",
+) {
   const tokens = [
     ...splitDisplayTokens(materialRaw),
     ...splitDisplayTokens(filamentRaw),
@@ -79,7 +84,9 @@ export function formatInventoryDisplayTitle(materialRaw, filamentRaw, colorRaw =
     tokens.shift();
   }
 
-  return tokens.length > 0 ? tokens.join(" · ") : "Unknown filament";
+  return tokens.length > 0
+    ? tokens.join(" · ")
+    : t(normalizeCompanionLocale(locale), "format.unknownFilament", "Unknown filament");
 }
 
 function compareDisplayStrings(left, right) {
@@ -129,24 +136,24 @@ export function sortSpoolRowsAlphabetically(rows) {
   });
 }
 
-export function formatRollReference(spool) {
+export function formatRollReference(spool, locale = "en") {
   const normalizedId = String(spool?.id ?? "").trim().replace(/^spool[-_]?/, "");
   if (!normalizedId) {
-    return "No reference";
+    return t(normalizeCompanionLocale(locale), "format.noReference", "No reference");
   }
 
   return `#${normalizedId.slice(-6)}`;
 }
 
-export function formatDate(value) {
+export function formatDate(value, locale = "en") {
   if (!value) {
-    return "Unknown";
+    return t(normalizeCompanionLocale(locale), "format.unknown", "Unknown");
   }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return escapeHtml(value);
   }
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(normalizeCompanionLocale(locale) === "nb" ? "nb-NO" : "en-US", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);

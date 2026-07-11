@@ -148,7 +148,10 @@ export function formatRfidCapturePresetName(
   }).join(" · ");
 }
 
-export function formatObservedAge(raw: string | null | undefined, locale: Locale): string {
+export function formatObservedAge(
+  raw: string | null | undefined,
+  t: TranslateFn,
+): string {
   if (!(raw?.trim())) {
     return "—";
   }
@@ -158,18 +161,21 @@ export function formatObservedAge(raw: string | null | undefined, locale: Locale
   }
   const diffMs = Date.now() - parsed.getTime();
   if (diffMs < 60_000) {
-    return locale === "nb" ? "nå nettopp" : "just now";
+    return t("common.justNow", "just now");
   }
   const diffMinutes = Math.round(diffMs / 60_000);
   if (diffMinutes < 60) {
-    return locale === "nb" ? `${diffMinutes} min siden` : `${diffMinutes} min ago`;
+    return t("common.minutesAgo", "{count} min ago").replace(
+      "{count}",
+      String(diffMinutes),
+    );
   }
   const diffHours = Math.round(diffMinutes / 60);
   if (diffHours < 48) {
-    return locale === "nb" ? `${diffHours} t siden` : `${diffHours} h ago`;
+    return t("common.hoursAgo", "{count} h ago").replace("{count}", String(diffHours));
   }
   const diffDays = Math.round(diffHours / 24);
-  return locale === "nb" ? `${diffDays} dager siden` : `${diffDays} days ago`;
+  return t("common.daysAgo", "{count} days ago").replace("{count}", String(diffDays));
 }
 
 export function buildRfidCaptureSlotLiveStatus(

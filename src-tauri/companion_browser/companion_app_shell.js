@@ -210,7 +210,12 @@ function renderDetailModal(options) {
           rfidTag: observedRfid || "",
           observedAt: String(slot?.live_last_identity_seen_at || slot?.live_printer_last_seen_at || "").trim(),
           filamentLabel:
-            formatInventoryDisplayTitle(slot?.live_filament_type, slot?.live_filament_name, slot?.live_tray_id_name) || "",
+            formatInventoryDisplayTitle(
+              slot?.live_filament_type,
+              slot?.live_filament_name,
+              slot?.live_tray_id_name,
+              state.locale || "en",
+            ) || "",
           statusLabel:
             slot?.live_match_status === "unknown_rfid"
               ? t(state.locale || "en", "printers.liveMatchUnknownRfid", "RFID not registered")
@@ -285,7 +290,12 @@ function renderTaskSheet(options) {
       loanRow?.loan?.counterparty_name ||
       t(state.locale || "en", "loans.unknownBorrower", "Unknown");
     const displayTitle = loanRow
-      ? formatInventoryDisplayTitle(loanRow.material, loanRow.filament_name, loanRow.color_name)
+      ? formatInventoryDisplayTitle(
+          loanRow.material,
+          loanRow.filament_name,
+          loanRow.color_name,
+          state.locale || "en",
+        )
       : t(state.locale || "en", "loans.outboundLoan", "Outbound loan");
     return renderTaskSheetShell({
       layoutMode: state.layoutMode,
@@ -334,6 +344,7 @@ function renderTaskSheet(options) {
           selectedSpool.master.material,
           selectedSpool.master.filament_name,
           selectedSpool.master.color_name,
+          state.locale || "en",
         )
       : t(state.locale || "en", "detail.lendSpool", "Lend spool");
     return renderTaskSheetShell({

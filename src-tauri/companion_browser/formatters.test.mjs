@@ -2,11 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  formatDate,
   formatGrams,
   formatInventoryDisplayTitle,
   formatPlacementLabel,
   formatPrinterSlotLocation,
   formatPrinterSlotTokenLabel,
+  formatRollReference,
   parsePlacementLocation,
   sortCatalogMastersAlphabetically,
   sortSpoolRowsAlphabetically,
@@ -15,7 +17,13 @@ import {
 test("formatGrams follows the selected Companion locale", () => {
   assert.equal(formatGrams(1234.5678, "en"), "1,234.568 g");
   assert.equal(formatGrams(1234.5678, "nb"), "1\u00a0234,568 g");
-  assert.equal(formatGrams(null, "nb"), "Unknown");
+  assert.equal(formatGrams(null, "nb"), "Ukjent");
+});
+
+test("missing formatter values follow the selected Companion locale", () => {
+  assert.equal(formatInventoryDisplayTitle("", "", "", "nb"), "Ukjent filament");
+  assert.equal(formatRollReference({}, "nb"), "Ingen referanse");
+  assert.equal(formatDate(null, "nb"), "Ukjent");
 });
 
 test("formatInventoryDisplayTitle narrowly normalizes catalog color presentation", () => {

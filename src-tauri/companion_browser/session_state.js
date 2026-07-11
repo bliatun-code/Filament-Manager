@@ -30,7 +30,7 @@ export function createInitialCompanionState() {
     pairingToken: "",
     pairingRequired: false,
     reauthPromise: null,
-    statusMessage: "Waiting for a trusted-LAN pairing link.",
+    statusMessage: "",
     statusTone: "default",
     locale: "en",
     themeMode: "auto",

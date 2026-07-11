@@ -44,10 +44,14 @@ function parseTimestampMs(value?: string | null): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function formatAbsoluteTimestamp(value: string | null | undefined, locale: Locale): string {
+function formatAbsoluteTimestamp(
+  value: string | null | undefined,
+  locale: Locale,
+  t: TranslateFn,
+): string {
   const timestampMs = parseTimestampMs(value);
   if (timestampMs === null) {
-    return locale === "nb" ? "Ukjent" : "Unknown";
+    return t("common.unknown", "Unknown");
   }
   return new Intl.DateTimeFormat(trustedLanLocale(locale), {
     year: "numeric",
@@ -67,31 +71,35 @@ function formatRelativeTimestamp(
   value: string | null | undefined,
   locale: Locale,
   nowMs: number,
+  t: TranslateFn,
 ): string {
   const timestampMs = parseTimestampMs(value);
   if (timestampMs === null) {
-    return locale === "nb" ? "Ukjent" : "Unknown";
+    return t("common.unknown", "Unknown");
   }
 
   const elapsedMinutes = Math.max(0, Math.floor((nowMs - timestampMs) / 60000));
   if (elapsedMinutes < 1) {
-    return locale === "nb" ? "akkurat nå" : "just now";
+    return t("common.justNow", "just now");
   }
   if (elapsedMinutes < 60) {
-    return locale === "nb" ? `${elapsedMinutes} min siden` : `${elapsedMinutes} min ago`;
+    return t("common.minutesAgo", "{count} min ago").replace(
+      "{count}",
+      String(elapsedMinutes),
+    );
   }
 
   const elapsedHours = Math.floor(elapsedMinutes / 60);
   if (elapsedHours < 24) {
-    return locale === "nb" ? `${elapsedHours} t siden` : `${elapsedHours} hr ago`;
+    return t("common.hoursAgo", "{count} h ago").replace("{count}", String(elapsedHours));
   }
 
   const elapsedDays = Math.floor(elapsedHours / 24);
   if (elapsedDays < 7) {
-    return locale === "nb" ? `${elapsedDays} d siden` : `${elapsedDays} d ago`;
+    return t("common.daysShort", "{count} d ago").replace("{count}", String(elapsedDays));
   }
 
-  return formatAbsoluteTimestamp(value, locale);
+  return formatAbsoluteTimestamp(value, locale, t);
 }
 
 function summarizeOrigin(origin?: string | null): string | null {
@@ -169,12 +177,14 @@ export function buildTrustedLanPairedBrowserListModel(
       ? `${t("settings.trustedLanRevoked", "Revoked")} ${formatAbsoluteTimestamp(
           browser.revoked_at,
           locale,
+          t,
         )}`
       : browser.last_seen_at
         ? `${t("settings.trustedLanLastSeen", "Last seen")} ${formatRelativeTimestamp(
             browser.last_seen_at,
             locale,
             nowMs,
+            t,
           )}`
         : t("settings.trustedLanBrowserWaiting", "Waiting for first renewal");
 
@@ -191,6 +201,7 @@ export function buildTrustedLanPairedBrowserListModel(
       pairedLabel: `${t("settings.trustedLanPairedAt", "Paired")} ${formatAbsoluteTimestamp(
         browser.paired_at,
         locale,
+        t,
       )}`,
       pairedDateTime: timestampDateTime(browser.paired_at),
       originLabel: summarizeOrigin(browser.last_origin),
