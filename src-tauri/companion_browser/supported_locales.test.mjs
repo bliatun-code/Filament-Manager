@@ -3,9 +3,12 @@ import test from "node:test";
 
 import {
   applyLocaleToDocument,
+  CATALOG_LOCALES,
+  fallbackLocaleFor,
   guidePathForLocale,
   intlLocaleFor,
   normalizeSupportedLocale,
+  normalizeSelectableLocale,
   SELECTABLE_LOCALES,
   sourceLocaleFor,
   SUPPORTED_LOCALES,
@@ -21,18 +24,23 @@ test("locale registry normalizes canonical, regional, underscore, and legacy ali
   assert.equal(normalizeSupportedLocale("ar_xb"), "ar-XB");
   assert.equal(normalizeSupportedLocale("zh-XB"), "zh-XB");
   assert.equal(normalizeSupportedLocale("zh_xb"), "zh-XB");
-  assert.equal(normalizeSupportedLocale("de-DE"), null);
+  assert.equal(normalizeSupportedLocale("de-DE"), "de");
+  assert.equal(normalizeSelectableLocale("de-DE"), null);
 });
 
 test("locale registry owns format, guide, and native-label metadata", () => {
   assert.deepEqual(SUPPORTED_LOCALES.map(({ id }) => id), [
     "en",
     "nb",
+    "de",
     "en-XA",
     "ar-XB",
     "zh-XB",
   ]);
   assert.deepEqual(SELECTABLE_LOCALES.map(({ id }) => id), ["en", "nb"]);
+  assert.deepEqual(CATALOG_LOCALES.map(({ id }) => id), ["en", "nb", "de"]);
+  assert.equal(sourceLocaleFor("de-DE"), "de");
+  assert.equal(fallbackLocaleFor("de"), "en");
   assert.equal(sourceLocaleFor("en-XA"), "en");
   assert.equal(sourceLocaleFor("ar-XB"), "en");
   assert.equal(sourceLocaleFor("zh-XB"), "en");
@@ -40,6 +48,7 @@ test("locale registry owns format, guide, and native-label metadata", () => {
   assert.equal(intlLocaleFor("en-XA"), "en-US");
   assert.equal(intlLocaleFor("ar-XB"), "ar-EG");
   assert.equal(intlLocaleFor("zh-XB"), "zh-CN");
+  assert.equal(intlLocaleFor("de-DE"), "de-DE");
   assert.equal(intlLocaleFor("pl_pl"), "pl-PL");
   assert.equal(guidePathForLocale("nb"), "docs/BRUKERVEILEDNING.md");
   assert.equal(guidePathForLocale("unknown"), "docs/USER_GUIDE.md");
@@ -59,4 +68,7 @@ test("locale registry applies html language and direction", () => {
 
   assert.equal(applyLocaleToDocument("zh-XB", documentRef), true);
   assert.deepEqual(documentRef.documentElement, { lang: "zh-Hans-XB", dir: "ltr" });
+
+  assert.equal(applyLocaleToDocument("de-DE", documentRef), true);
+  assert.deepEqual(documentRef.documentElement, { lang: "de", dir: "ltr" });
 });

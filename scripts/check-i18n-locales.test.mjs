@@ -5,6 +5,7 @@ import {
   collectLiteralTranslationKeysFromSource,
   readLocaleDictionaryFromSource,
   validateLocaleDictionaries,
+  validateLocaleOverlay,
   validateRuntimeTranslationKeys,
 } from "./check-i18n-locales.mjs";
 
@@ -79,6 +80,25 @@ test("locale dictionary contract validates ICU selector parameters", () => {
 
   assert.ok(errors.some((error) => error.includes("missing placeholder {count}")));
   assert.ok(errors.some((error) => error.includes("extra placeholder {total}")));
+});
+
+test("draft locale overlay accepts partial keys but rejects drift", () => {
+  assert.deepEqual(
+    validateLocaleOverlay(
+      { common: { save: "Save", count: "{count} spools" } },
+      { common: { save: "Speichern" } },
+      "de",
+    ),
+    [],
+  );
+  const errors = validateLocaleOverlay(
+    { common: { count: "{count} spools" } },
+    { common: { count: "{total} Rollen", extra: "Extra" } },
+    "de",
+  );
+  assert.ok(errors.some((error) => error.includes("missing placeholder {count}")));
+  assert.ok(errors.some((error) => error.includes("extra placeholder {total}")));
+  assert.ok(errors.some((error) => error.includes("unknown translation key common.extra")));
 });
 
 test("runtime key collector reads literal translation calls", () => {

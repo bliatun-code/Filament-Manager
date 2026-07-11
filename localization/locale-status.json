@@ -14,6 +14,12 @@
       "nativeReviewer": "@bliatun-code",
       "reviewedAt": "2026-07-11",
       "reviewedSourceFingerprint": "sha256:84ef9d7451321c93c0ade560bce4696ff3c7769b5206eb39e7bf9333cdcd5451"
+    },
+    "de": {
+      "releaseStatus": "draft",
+      "nativeReviewer": null,
+      "reviewedAt": null,
+      "reviewedSourceFingerprint": null
     }
   }
 }

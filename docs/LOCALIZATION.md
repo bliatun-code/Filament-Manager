@@ -31,6 +31,12 @@ paths, identifiers, and URLs are user data and must not be translated.
 
 ## Translation change workflow
 
+New languages start as `catalogKind: "draft"`, `selectable: false`, and use
+sparse dictionaries layered over English. Drafts are available to explicit QA
+only: the operating-system language must not activate them automatically. Move
+a locale to a complete source catalog and expose it only after every release
+gate and native review has passed.
+
 1. Update English source strings first. Use parameterized messages instead of
    building sentences from translated fragments.
 2. Run `npm run report:i18n`. The source fingerprint changes immediately and

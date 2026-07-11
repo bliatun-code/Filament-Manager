@@ -88,6 +88,12 @@ test("Companion accepts pseudo locale only through an explicit QA value", () => 
   assert.match(cjkOutput, /[設品項]/);
 });
 
+test("German draft uses translated overlay copy and English fallback", () => {
+  assert.equal(t("de", "nav.storage"), "Bestand");
+  assert.equal(t("de", "printers.toolhead"), "Werkzeugkopf");
+  assert.equal(t("de", "storage.addFilamentHelp"), t("en", "storage.addFilamentHelp"));
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {

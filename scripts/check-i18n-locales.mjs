@@ -177,6 +177,32 @@ export function validateLocaleDictionaries(baseDictionary, targetDictionary, tar
   return errors;
 }
 
+export function validateLocaleOverlay(baseDictionary, targetDictionary, targetLocale) {
+  const baseEntries = new Map(flattenDictionary(baseDictionary));
+  const targetEntries = new Map(flattenDictionary(targetDictionary));
+  const errors = [];
+
+  for (const [key, targetValue] of targetEntries) {
+    const baseValue = baseEntries.get(key);
+    if (typeof baseValue !== "string") {
+      errors.push(`${targetLocale} has unknown translation key ${key}.`);
+      continue;
+    }
+    const placeholderDiff = compareSets(
+      placeholderTokens(baseValue),
+      placeholderTokens(targetValue),
+    );
+    for (const missing of placeholderDiff.missingFromRight) {
+      errors.push(`${targetLocale}.${key} is missing placeholder {${missing}}.`);
+    }
+    for (const extra of placeholderDiff.extraInRight) {
+      errors.push(`${targetLocale}.${key} has extra placeholder {${extra}}.`);
+    }
+  }
+
+  return errors;
+}
+
 function runI18nLocaleCheck() {
   const dictionaries = Object.fromEntries(
     SOURCE_LOCALES.map(({ id }) => [

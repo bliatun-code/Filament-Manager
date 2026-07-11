@@ -5,12 +5,13 @@ import { pathToFileURL } from "node:url";
 
 import {
   DEFAULT_LOCALE,
-  SOURCE_LOCALES,
+  CATALOG_LOCALES,
 } from "../src-tauri/companion_browser/supported_locales.js";
 import {
   flattenDictionary,
   readLocaleDictionaryFromSource,
   validateLocaleDictionaries,
+  validateLocaleOverlay,
 } from "./check-i18n-locales.mjs";
 
 const repoRoot = resolve(".");
@@ -45,7 +46,9 @@ function dictionaryMap(dictionary) {
 function translationStats(baseDictionary, targetDictionary) {
   const base = dictionaryMap(baseDictionary);
   const target = dictionaryMap(targetDictionary);
-  const translated = [...base].filter(([key, value]) => target.get(key) !== value).length;
+  const translated = [...base].filter(
+    ([key, value]) => typeof target.get(key) === "string" && target.get(key) !== value,
+  ).length;
   const present = [...base.keys()].filter((key) => typeof target.get(key) === "string").length;
   return {
     total: base.size,
@@ -130,7 +133,7 @@ export function buildLocalizationReport({
   }
 
   const localeReports = [];
-  for (const { id } of localeDefinitions) {
+  for (const { id, catalogKind } of localeDefinitions) {
     const status = statusDocument.locales?.[id];
     if (!status) {
       errors.push(`locale-status.json is missing source locale ${id}.`);
@@ -142,7 +145,10 @@ export function buildLocalizationReport({
       errors.push(`Missing desktop or Companion dictionary for ${id}.`);
       continue;
     }
-    if (id !== sourceLocale) {
+    if (id !== sourceLocale && catalogKind === "draft") {
+      errors.push(...validateLocaleOverlay(sourceDesktop, desktop, `${id} desktop`));
+      errors.push(...validateLocaleOverlay(sourceCompanion, companion, `${id} companion`));
+    } else if (id !== sourceLocale) {
       errors.push(...validateLocaleDictionaries(sourceDesktop, desktop, `${id} desktop`));
       errors.push(...validateLocaleDictionaries(sourceCompanion, companion, `${id} companion`));
     }
@@ -155,10 +161,10 @@ export function buildLocalizationReport({
       ((desktopStats.present + companionStats.present) / total) * 100;
     const maintained = status.releaseStatus === "maintained";
 
-    if (!status.nativeReviewer || !String(status.nativeReviewer).trim()) {
+    if (maintained && (!status.nativeReviewer || !String(status.nativeReviewer).trim())) {
       errors.push(`${id} needs a named nativeReviewer.`);
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(status.reviewedAt ?? "")) {
+    if (maintained && !/^\d{4}-\d{2}-\d{2}$/.test(status.reviewedAt ?? "")) {
       errors.push(`${id} needs reviewedAt in YYYY-MM-DD format.`);
     }
     if (maintained && status.reviewedSourceFingerprint !== sourceFingerprint) {
@@ -196,7 +202,7 @@ export function buildLocalizationReport({
 
 function loadProjectReport() {
   const desktopDictionaries = Object.fromEntries(
-    SOURCE_LOCALES.map(({ id }) => [
+    CATALOG_LOCALES.map(({ id }) => [
       id,
       readLocaleDictionaryFromSource(
         readFileSync(resolve(desktopLocaleRoot, `${id}.ts`), "utf8"),
@@ -209,7 +215,7 @@ function loadProjectReport() {
     "dictionaries",
   );
   return buildLocalizationReport({
-    localeDefinitions: SOURCE_LOCALES,
+    localeDefinitions: CATALOG_LOCALES,
     statusDocument: readJson(statusFile),
     contextDocument: readJson(contextFile),
     desktopDictionaries,

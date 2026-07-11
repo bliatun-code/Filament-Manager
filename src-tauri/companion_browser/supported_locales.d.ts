@@ -8,8 +8,9 @@ export type SupportedLocaleDefinition = Readonly<{
   intlLocale: string;
   nativeLabel: string;
   selectable: boolean;
-  catalogKind: "source" | "generated";
+  catalogKind: "source" | "draft" | "generated";
   generatedFrom: string | null;
+  fallbackLocale: string | null;
   pseudoMode: "accented" | "rtl" | "cjk" | null;
   guidePath: string;
   selectionMessageKey: string;
@@ -21,6 +22,7 @@ export const DEFAULT_LOCALE: string;
 export const SUPPORTED_LOCALES: readonly SupportedLocaleDefinition[];
 export const SELECTABLE_LOCALES: readonly SupportedLocaleDefinition[];
 export const SOURCE_LOCALES: readonly SupportedLocaleDefinition[];
+export const CATALOG_LOCALES: readonly SupportedLocaleDefinition[];
 export const SUPPORTED_LOCALE_IDS: readonly string[];
 export function localeDefinition(value: unknown): SupportedLocaleDefinition | null;
 export function normalizeSupportedLocale(
@@ -28,6 +30,11 @@ export function normalizeSupportedLocale(
   fallback?: string | null,
 ): string | null;
 export function sourceLocaleFor(value: unknown): string;
+export function fallbackLocaleFor(value: unknown): string | null;
+export function normalizeSelectableLocale(
+  value: unknown,
+  fallback?: string | null,
+): string | null;
 export function isPseudoLocale(value: unknown): boolean;
 export function pseudoModeFor(value: unknown): "accented" | "rtl" | "cjk" | null;
 export function intlLocaleFor(value: unknown): string;

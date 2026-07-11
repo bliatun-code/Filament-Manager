@@ -5,10 +5,12 @@ import { pathToFileURL } from "node:url";
 import {
   readLocaleDictionaryFromSource,
   validateLocaleDictionaries,
+  validateLocaleOverlay,
   validateRuntimeTranslationKeys,
 } from "./check-i18n-locales.mjs";
 import {
   DEFAULT_LOCALE,
+  CATALOG_LOCALES,
   SOURCE_LOCALES,
 } from "../src-tauri/companion_browser/supported_locales.js";
 
@@ -53,7 +55,7 @@ function runCompanionI18nCheck() {
     "dictionaries",
   );
   const dictionaryLocales = Object.keys(dictionaries).sort();
-  const manifestLocales = SOURCE_LOCALES.map(({ id }) => id).sort();
+  const manifestLocales = CATALOG_LOCALES.map(({ id }) => id).sort();
   const errors = [];
   if (JSON.stringify(dictionaryLocales) !== JSON.stringify(manifestLocales)) {
     errors.push(
@@ -65,6 +67,9 @@ function runCompanionI18nCheck() {
     if (id !== DEFAULT_LOCALE && dictionaries[id]) {
       errors.push(...validateLocaleDictionaries(baseDictionary, dictionaries[id], id));
     }
+  }
+  for (const { id } of CATALOG_LOCALES.filter(({ catalogKind }) => catalogKind === "draft")) {
+    errors.push(...validateLocaleOverlay(baseDictionary, dictionaries[id], id));
   }
   const runtimeKeys = readdirSync(companionRoot, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".js"))

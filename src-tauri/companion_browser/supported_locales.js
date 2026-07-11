@@ -11,6 +11,7 @@ export const SUPPORTED_LOCALES = Object.freeze([
     selectable: true,
     catalogKind: "source",
     generatedFrom: null,
+    fallbackLocale: null,
     pseudoMode: null,
     guidePath: "docs/USER_GUIDE.md",
     selectionMessageKey: "settings.langSetEn",
@@ -27,11 +28,29 @@ export const SUPPORTED_LOCALES = Object.freeze([
     selectable: true,
     catalogKind: "source",
     generatedFrom: null,
+    fallbackLocale: null,
     pseudoMode: null,
     guidePath: "docs/BRUKERVEILEDNING.md",
     selectionMessageKey: "settings.langSetNb",
     companionSelectionMessageKey: "status.languageSetNb",
     selectionMessageFallback: "Language set to Norwegian.",
+  }),
+  Object.freeze({
+    id: "de",
+    aliases: Object.freeze(["de"]),
+    htmlLang: "de",
+    direction: "ltr",
+    intlLocale: "de-DE",
+    nativeLabel: "Deutsch",
+    selectable: false,
+    catalogKind: "draft",
+    generatedFrom: null,
+    fallbackLocale: "en",
+    pseudoMode: null,
+    guidePath: "docs/USER_GUIDE.md",
+    selectionMessageKey: "settings.langSetEn",
+    companionSelectionMessageKey: "status.languageSetEn",
+    selectionMessageFallback: "Language set to German.",
   }),
   Object.freeze({
     id: "en-XA",
@@ -43,6 +62,7 @@ export const SUPPORTED_LOCALES = Object.freeze([
     selectable: false,
     catalogKind: "generated",
     generatedFrom: "en",
+    fallbackLocale: null,
     pseudoMode: "accented",
     guidePath: "docs/USER_GUIDE.md",
     selectionMessageKey: "settings.langSetEn",
@@ -59,6 +79,7 @@ export const SUPPORTED_LOCALES = Object.freeze([
     selectable: false,
     catalogKind: "generated",
     generatedFrom: "en",
+    fallbackLocale: null,
     pseudoMode: "rtl",
     guidePath: "docs/USER_GUIDE.md",
     selectionMessageKey: "settings.langSetEn",
@@ -75,6 +96,7 @@ export const SUPPORTED_LOCALES = Object.freeze([
     selectable: false,
     catalogKind: "generated",
     generatedFrom: "en",
+    fallbackLocale: null,
     pseudoMode: "cjk",
     guidePath: "docs/USER_GUIDE.md",
     selectionMessageKey: "settings.langSetEn",
@@ -89,6 +111,10 @@ export const SELECTABLE_LOCALES = Object.freeze(
 
 export const SOURCE_LOCALES = Object.freeze(
   SUPPORTED_LOCALES.filter(({ catalogKind }) => catalogKind === "source"),
+);
+
+export const CATALOG_LOCALES = Object.freeze(
+  SUPPORTED_LOCALES.filter(({ catalogKind }) => catalogKind === "source" || catalogKind === "draft"),
 );
 
 export const SUPPORTED_LOCALE_IDS = Object.freeze(
@@ -120,6 +146,15 @@ export function localeDefinition(value) {
 export function sourceLocaleFor(value) {
   const definition = localeDefinition(value) ?? localeDefinition(DEFAULT_LOCALE);
   return definition?.generatedFrom ?? definition?.id ?? DEFAULT_LOCALE;
+}
+
+export function fallbackLocaleFor(value) {
+  return localeDefinition(value)?.fallbackLocale ?? null;
+}
+
+export function normalizeSelectableLocale(value, fallback = null) {
+  const definition = localeDefinition(value);
+  return definition?.selectable ? definition.id : fallback;
 }
 
 export function isPseudoLocale(value) {

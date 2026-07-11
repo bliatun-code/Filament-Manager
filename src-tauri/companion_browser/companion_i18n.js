@@ -1,6 +1,8 @@
 import {
   DEFAULT_LOCALE,
+  fallbackLocaleFor,
   isPseudoLocale,
+  normalizeSelectableLocale,
   normalizeSupportedLocale,
   sourceLocaleFor,
 } from "./supported_locales.js";
@@ -1170,6 +1172,221 @@ const dictionaries = {
       rfidSaveAction: "Lagre RFID",
     },
   },
+  de: {
+    rail: {
+      eyebrow: "Browser-Companion",
+      title: "Filament Manager",
+      copy: "Vertrauenswürdiger LAN-Zugriff auf die vom Desktop verwaltete Bibliothek.",
+      activeLoans: "{count} aktive Ausleihen",
+    },
+    common: {
+      minutes: "Min.",
+      hoursShort: "Std.",
+    },
+    errors: {
+      invalidRequest: "Die Anfrage konnte nicht ausgeführt werden.",
+      unauthorized: "Eine Anmeldung ist erforderlich.",
+      forbidden: "Diese Aktion ist nicht erlaubt.",
+      notFound: "Der angeforderte Eintrag wurde nicht gefunden.",
+      internal: "Ein Fehler ist aufgetreten. Versuche es erneut.",
+      spoolActiveLoan: "Beende die aktive Ausleihe, bevor du diese Rolle entfernst.",
+      loadedSpoolEditBlocked: "Bearbeite eine geladene Rolle über die Druckerplatz-Aktionen.",
+      loanedSpoolEditBlocked:
+        "Beende die Ausleihe, bevor du Status oder Lagerort dieser Rolle änderst.",
+      spoolStatusEditLimited:
+        "Im Browser kann der Rollenstatus nur auf Lagernd, Leer oder Verloren gesetzt werden.",
+      exportInvalidPayload: "Der erzeugte Export ist ungültig.",
+      downloadsUnavailable: "Der Download-Ordner ist nicht verfügbar.",
+      exportWriteFailed: "Der Export konnte nicht gespeichert werden.",
+      requestFailed: "Die Anfrage konnte nicht ausgeführt werden.",
+    },
+    nav: {
+      storage: "Bestand",
+      loans: "Ausleihen",
+      printers: "Drucker",
+      settings: "Einstellungen",
+      visibleCount: "{count} sichtbar",
+      activeCount: "{count} aktiv",
+      configuredCount: "{count} konfiguriert",
+      spoolCount: "{count, plural, one {# Rolle} other {# Rollen}}",
+      printerCount: "{count, plural, one {# Drucker} other {# Drucker}}",
+      activeLoanCount:
+        "{count, plural, one {# aktive Ausleihe} other {# aktive Ausleihen}}",
+      primaryFlowsAria: "Hauptbereiche",
+    },
+    shell: {
+      refresh: "Aktualisieren",
+      refreshLocalData: "Companion-Daten aktualisieren",
+      refreshCompanionData: "Companion-Daten aktualisieren",
+      refreshing: "Wird aktualisiert...",
+      openingDetail: "Details werden geöffnet...",
+      forget: "Vergessen",
+      close: "Schließen",
+      done: "Fertig",
+    },
+    storage: {
+      title: "Bestand",
+      subtitle: "Bestand durchsuchen und die benötigte Rolle öffnen.",
+      searchPlaceholder: "Filament, Farbe, Eigentümer oder Lagerort suchen",
+      ownership: "Filamenteigentum",
+      addFilament: "Filament hinzufügen",
+      stockEntry: "Bestandseintrag",
+      selectionPreview: "Auswahlvorschau",
+      addSpool: "Rolle hinzufügen",
+      addSpoolToInventory: "Rolle zum Bestand hinzufügen",
+      borrowedInAction: "Von anderen geliehen",
+      owned: "Eigene Rolle",
+      activeOnly: "Aktiv",
+      allCatalog: "Alle",
+      selected: "Ausgewählt",
+      discontinued: "Nicht mehr erhältlich",
+      material: "Material",
+      filament: "Filament",
+      filamentName: "Filamentname",
+      color: "Farbe",
+      vendor: "Hersteller",
+      startingWeight: "Startgewicht (Gramm)",
+      borrowedFrom: "Geliehen von",
+      swatch: "Farbmuster",
+      addToWishlist: "Zur Wunschliste / Bestellung hinzufügen",
+      wishlist: "Wunschliste",
+      onOrder: "Bestellt",
+      received: "Erhalten",
+      stockNow: "Jetzt einlagern",
+      remove: "Entfernen",
+      quantity: "Anz.",
+      openSpool: "Rolle öffnen",
+      noMatch: "Keine lokalen Rollen entsprechen der aktuellen Suche.",
+      clearSearch: "Suche löschen",
+    },
+    loans: {
+      title: "Ausleihen",
+      subtitle: "Ausleihen verfolgen und Rückgaben abschließen.",
+      searchPlaceholder: "Entleiher, Notiz, Filament oder Referenz suchen",
+      filterAria: "Ausleihstatusfilter",
+      activeOnly: "Nur aktive",
+      returnedOnly: "Nur zurückgegebene",
+      allLoans: "Alle Ausleihen",
+      activeFilter: "Aktiv {count}",
+      returnedFilter: "Zurückgegeben {count}",
+      allFilter: "Alle {count}",
+      noMatch: "Keine Ausleihen entsprechen Suche oder Filter.",
+      openSpool: "Rolle öffnen",
+      returnLoan: "Ausleihe zurückgeben",
+      active: "Aktiv",
+      borrowedInActive: "Von anderen geliehen",
+      inactive: "Inaktiv",
+      returned: "Zurückgegeben",
+      returnedAt: "Zurückgegeben {date}",
+      lentAt: "Ausgeliehen {date}",
+      borrowedFrom: "Geliehen von {name}",
+      borrower: "Entleiher",
+      lentOut: "Ausgeliehen",
+      returnedWeight: "Rückgabegewicht (Gramm)",
+      completeReturn: "Rückgabe abschließen",
+      outboundLoan: "Ausgehende Ausleihe",
+      unknownBorrower: "Unbekannt",
+      unknownVendor: "Unbekannter Hersteller",
+    },
+    printers: {
+      title: "Drucker",
+      subtitle: "Drucker auswählen und freie Materialplätze belegen.",
+      roster: "Druckerliste",
+      noPrinters: "Noch keine Drucker konfiguriert.",
+      noSlots: "Für diesen Drucker sind keine Materialplätze konfiguriert.",
+      choosePrinter: "Drucker auswählen.",
+      chooseSlotFirst: "Zuerst einen Platz auswählen.",
+      loaded: "Belegt",
+      empty: "Frei",
+      openSlot: "Freier Platz",
+      loadTarget: "Ladeziel",
+      chooseBelow: "Unten Filament auswählen.",
+      loadHere: "Hier eine Rolle laden.",
+      openSpool: "Rolle öffnen",
+      updateWeight: "Gewicht aktualisieren",
+      outgoingWeight: "Ausgehendes Gewicht (g)",
+      clearSlot: "Platz leeren",
+      loadFilament: "Filament laden",
+      readyToLoad: "{count} ladebereit",
+      liveBadge: "Live",
+      liveSummary: "Live vom Host",
+      liveTelemetryPrinting: "Druckt",
+      liveTelemetryActive: "Aktiv",
+      liveTelemetryNozzle: "Düse",
+      liveTelemetryBed: "Druckbett",
+      liveTelemetryAmsHumidityShort: "AMS",
+      liveHumidityDry: "Trocken",
+      liveHumidityMiddle: "Mittel",
+      liveHumidityWet: "Feucht",
+      saveCandidateRfid: "RFID speichern",
+      activeSlot: "Aktiver Platz",
+      channel: "Kanal",
+      slot: "Platz",
+      toolhead: "Werkzeugkopf",
+      printerSlot: "Druckerplatz",
+    },
+    settings: {
+      title: "Einstellungen",
+      subtitle: "Darstellung, Sprache und aktuelle Sitzung.",
+      appearance: "Darstellung",
+      appearanceHelp: "Darstellung des Companion auswählen.",
+      language: "Sprache",
+      languageHelp: "Sprache der Browseroberfläche auswählen.",
+      norwegian: "Norwegisch",
+      english: "Englisch",
+      themeMode: "Darstellungsmodus",
+      auto: "Auto",
+      autoHelp: "Wie Gerät",
+      light: "Hell",
+      lightHelp: "Helles Design",
+      dark: "Dunkel",
+      darkHelp: "Dunkles Design",
+      followDevice: "Geräteeinstellung",
+      modeSummary: "{mode}-Modus",
+      connection: "Verbindung",
+      connectionHelp: "Aktualisierung und Sitzungssteuerung.",
+      connected: "Verbunden",
+      disconnected: "Getrennt",
+      license: "Lizenz",
+      licenseHelp: "Open-Source-Bedingungen für diesen Browser-Companion.",
+      sourceCode: "Quellcode",
+      viewLicense: "Lizenz anzeigen",
+      viewNotices: "Hinweise",
+    },
+    format: {
+      unknown: "Unbekannt",
+      unknownFilament: "Unbekanntes Filament",
+      noReference: "Keine Referenz",
+      unassigned: "Nicht zugewiesen",
+      inStock: "Auf Lager",
+      assigned: "Zugewiesen",
+      inUse: "In Verwendung",
+      loanedOut: "Ausgeliehen",
+      empty: "Leer",
+      lost: "Verloren",
+      owned: "Eigene Rolle",
+      borrowedIn: "Von anderen geliehen",
+    },
+    detail: {
+      spoolHeading: "Rolle",
+      spoolDetailsFallback: "Rollendetails",
+      status: "Status",
+      loan: "Ausleihe",
+      emptySpoolWeight: "Leerrollengewicht (g)",
+      saveDetails: "Details speichern",
+      borrowedFrom: "Geliehen von",
+      history: "Verlauf",
+      recentActivity: "Letzte Aktivitäten",
+    },
+    inventory: {
+      rfidButton: "RFID",
+      rfidCurrentTag: "Gespeicherte RFID",
+      rfidSourceSlot: "RFID-Quellplatz",
+      rfidObservedTag: "Beobachtete RFID",
+      rfidCaptureStatus: "Erfassungsstatus",
+      rfidSaveAction: "RFID speichern",
+    },
+  },
 };
 
 function lookup(dictionary, key) {
@@ -1251,7 +1468,7 @@ export function resolveInitialCompanionLocale(storageRef, navigatorRef) {
     languages = [];
   }
   for (const language of languages) {
-    const locale = normalizeSupportedLocale(language);
+    const locale = normalizeSelectableLocale(language);
     if (locale) {
       return locale;
     }
@@ -1262,11 +1479,18 @@ export function resolveInitialCompanionLocale(storageRef, navigatorRef) {
 export function t(locale, key, fallback = "", params = {}) {
   const normalizedLocale = normalizeCompanionLocale(locale);
   const localized = lookup(dictionaries[sourceLocaleFor(normalizedLocale)], key);
+  const fallbackLocale = fallbackLocaleFor(normalizedLocale);
+  const sourceFallback = fallbackLocale
+    ? lookup(dictionaries[fallbackLocale], key)
+    : undefined;
   const format = isPseudoLocale(normalizedLocale)
     ? (template) => pseudoLocalizeMessageForLocale(template, params, normalizedLocale)
     : (template) => formatMessage(template, params, normalizedLocale);
   if (typeof localized === "string") {
     return format(localized);
+  }
+  if (typeof sourceFallback === "string") {
+    return format(sourceFallback);
   }
   if (fallback) {
     return format(fallback);

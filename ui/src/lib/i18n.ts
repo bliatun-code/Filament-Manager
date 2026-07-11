@@ -2,6 +2,7 @@ import { createContext, useContext } from "react";
 import type { DictionaryNode, I18nContextValue, Locale } from "./i18n_types";
 import {
   DEFAULT_LOCALE,
+  normalizeSelectableLocale,
   normalizeSupportedLocale,
 } from "../../../src-tauri/companion_browser/supported_locales.js";
 
@@ -79,7 +80,7 @@ export function resolveInitialLocale(): Locale {
     return stored;
   }
   for (const language of resolveNavigatorLanguages()) {
-    const locale = normalizeLocale(language);
+    const locale = normalizeSelectableLocale(language) as Locale | null;
     if (locale) {
       return locale;
     }

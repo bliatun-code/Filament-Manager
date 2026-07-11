@@ -128,6 +128,15 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   const cjkPseudoDictionary = await loadLocaleDictionary("zh-XB");
   assert.equal(lookup(cjkPseudoDictionary, "app.title"), "Filament Manager");
   assert.equal(getCachedLocaleDictionary("zh-XB"), cjkPseudoDictionary);
+
+  const germanDictionary = await loadLocaleDictionary("de");
+  assert.equal(lookup(germanDictionary, "nav.inventory"), "Bestand");
+  assert.equal(lookup(germanDictionary, "common.cancel"), "Abbrechen");
+  assert.equal(
+    lookup(germanDictionary, "inventory.loanSearchLabel"),
+    "Search available rolls",
+  );
+  assert.equal(getCachedLocaleDictionary("de"), germanDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {
