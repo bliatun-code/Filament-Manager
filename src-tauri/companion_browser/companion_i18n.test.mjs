@@ -119,12 +119,14 @@ test("Spanish draft translates the shell and falls back to English", () => {
   assert.equal(t("es", "settings.title"), "Ajustes");
   assert.equal(t("es", "nav.spoolCount", "", { count: 1 }), "1 bobina");
   assert.equal(t("es", "nav.spoolCount", "", { count: 2 }), "2 bobinas");
-  assert.equal(t("es", "printers.toolhead"), "Toolhead");
+  assert.equal(t("es", "printers.toolhead"), "Cabezal");
   assert.equal(t("es", "storage.addFilament"), "Añadir filamento");
   assert.equal(t("es", "loans.completeReturn"), "Completar devolución");
   assert.equal(t("es", "detail.saveWeight"), "Guardar peso");
   assert.equal(t("es", "inventory.rfidSaveAction"), "Guardar RFID");
   assert.equal(t("es", "detail.eventRfidSaved"), "RFID guardada");
+  assert.equal(t("es", "printers.toolhead"), "Cabezal");
+  assert.equal(t("es", "printers.loadedSummary", "", { loaded: 3, open: 1 }), "3 cargadas · 1 libres");
 });
 
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
