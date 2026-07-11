@@ -324,6 +324,85 @@ export const frDictionary: DictionaryNode = {
     bambuCodeBoxLabelHint: "Ce champ figure sur l’étiquette de la boîte.",
     bambuBatchHeaderAction: "Ajouter plusieurs boîtes",
     bambuBatchHeaderActionShort: "Lot",
+    bambuBatchModalEyebrow: "Boîtes Bambu",
+    bambuBatchModalTitle: "Ajouter plusieurs boîtes",
+    bambuBatchModalSubtitle:
+      "Ajoutez plusieurs bobines Bambu avec les codes filament des boîtes sans masquer la recherche normale.",
+    bambuBatchTitle: "Lot de codes filament",
+    bambuBatchInputLabel: "Codes du lot",
+    bambuBatchHelp:
+      "Collez un ou plusieurs codes à cinq chiffres. Les correspondances prêtes utilisent les détails de l’ajout de filament.",
+    bambuBatchScanTitle: "Scanner ou saisir des codes",
+    bambuBatchScanHelp: "Utilisez la webcam, importez une image ou saisissez un code à la fois.",
+    bambuBatchScanLabel: "Scanner ou saisir un code",
+    bambuBatchScanPlaceholder: "Scanner ou saisir un code",
+    bambuBatchAppendScan: "Ajouter au lot",
+    bambuBatchImageAction: "Ajouter depuis une image",
+    bambuBatchImageScanning: "Lecture de l’image…",
+    bambuBatchImageAddedCodes: "{count} code(s) filament ajouté(s) au lot.",
+    bambuBatchImageAddedReview: "{count} valeur(s) de code-barres ajoutée(s) à vérifier.",
+    bambuBatchImageAddedMixed:
+      "{codeCount} code(s) filament et {reviewCount} valeur(s) à vérifier ont été ajoutés.",
+    bambuBatchImageIgnored: "{count} QR d’instructions Bambu ignoré(s).",
+    bambuBatchImageUnsupported:
+      "La détection des codes-barres dans les images n’est pas disponible ici. Collez ou saisissez le code.",
+    bambuBatchImageNoBarcode: "Aucun code-barres trouvé dans cette image.",
+    bambuBatchImageError: "Impossible de lire cette image.",
+    bambuBatchCameraAction: "Utiliser la webcam",
+    bambuBatchCameraStop: "Arrêter la webcam",
+    bambuBatchCameraStartingAction: "Démarrage de la caméra…",
+    bambuBatchCameraStarting: "Démarrage de la caméra",
+    bambuBatchCameraStartingMessage: "Démarrage de la caméra…",
+    bambuBatchCameraScanning: "Analyse",
+    bambuBatchCameraShowLabel:
+      "Placez le code filament ou le code-barres à plat dans le guide, assez loin pour que les barres restent nettes.",
+    bambuBatchCameraAdded: "Ajouté",
+    bambuBatchCameraReview: "À vérifier",
+    bambuBatchCameraDuplicate: "Déjà ajouté",
+    bambuBatchCameraIgnored: "Ignoré",
+    bambuBatchCameraUnavailable: "Caméra indisponible",
+    bambuBatchCameraErrorShort: "Erreur de caméra",
+    bambuBatchCameraPreviewIdle: "Démarrez la webcam pour scanner les étiquettes Bambu.",
+    bambuBatchCameraNoBarcodeYet:
+      "Analyse en cours ; aucune correspondance. Rapprochez ou éloignez l’étiquette jusqu’à obtenir des barres nettes.",
+    bambuBatchCameraAddedCodeValues: "Ajouté : {codes}.",
+    bambuBatchCameraAddedReviewValues: "Ajouté à vérifier : {values}.",
+    bambuBatchCameraAddedMixedValues:
+      "Ajouté : {codes} ; {reviewCount} valeur(s) à vérifier.",
+    bambuBatchCameraIgnoredQr:
+      "QR d’instructions Bambu ignoré. Continuez à montrer l’étiquette du code filament.",
+    bambuBatchCameraAlreadyAdded:
+      "Déjà ajouté. Éloignez l’étiquette avant de scanner un autre exemplaire.",
+    bambuBatchCameraBarcodeUnsupported:
+      "La détection en direct n’est pas disponible ici. Importez une image ou saisissez le code.",
+    bambuBatchCameraUnsupported:
+      "L’accès à la caméra n’est pas disponible ici. Importez une image ou saisissez le code.",
+    bambuBatchCameraPermissionDenied:
+      "L’autorisation de la caméra a été refusée. Autorisez l’accès et réessayez.",
+    bambuBatchCameraError: "Impossible de démarrer la caméra.",
+    bambuBatchCameraPreviewError: "Impossible de démarrer l’aperçu de la caméra.",
+    bambuBatchCameraReadError: "L’analyse s’est arrêtée après une erreur de lecture.",
+    bambuBatchCameraReadRetry:
+      "La caméra reste active, mais une image a été ignorée. Maintenez l’étiquette immobile.",
+    bambuBatchPlaceholder: "53400\n53600\n65103",
+    bambuBatchReady: "Prêt",
+    bambuBatchReadyShort: "prêt",
+    bambuBatchNeedsReview: "à vérifier",
+    bambuBatchAmbiguous: "Choisir manuellement",
+    bambuBatchChooseMatch: "Choisir une ligne du catalogue",
+    bambuBatchNoMatch: "Aucune correspondance",
+    bambuBatchNoCode: "Aucun code",
+    bambuBatchMoreRows: "de plus",
+    bambuBatchNoRowsYet: "Les codes scannés et saisis apparaîtront ici.",
+    bambuBatchBorrowedOwnerRequired:
+      "Indiquez à qui appartiennent les bobines avant de créer ce lot emprunté.",
+    bambuBatchNoneReady:
+      "Aucune ligne n’est prête. Choisissez les correspondances ambiguës ou arrêtées, ou vérifiez les codes manquants.",
+    bambuBatchPartialReady: "Seules les lignes prêtes seront ajoutées ; les autres seront ignorées.",
+    bambuBatchAllReady: "Tous les codes collés sont prêts.",
+    bambuBatchAddReady: "Ajouter les correspondances prêtes",
+    bambuBatchAdded: "Lot de codes Bambu ajouté",
+    borrowedInBatchRegistered: "Lot de bobines empruntées enregistré",
     manualDetails: "Détails manuels",
     manualDetailsHelp:
       "Utilisez cette option si un filament manque dans le catalogue ou pour une entrée entièrement manuelle.",
@@ -395,6 +474,75 @@ export const frDictionary: DictionaryNode = {
     labelSaving: "Enregistrement du PNG…",
     labelSaveDownloads: "Enregistrer le PNG dans Téléchargements",
     labelSaved: "PNG de l’étiquette enregistré dans Téléchargements.",
+    rfidHintReady:
+      "Capturez les données d’identité AMS/RFID, vérifiez-les puis enregistrez l’identité observée.",
+    rfidHintNeedsLive:
+      "La capture RFID exige une imprimante avec l’état Bambu en direct et au moins un emplacement AMS.",
+    rfidRegistered: "RFID enregistrée",
+    rfidBambuUnregistered: "RFID pas encore enregistrée",
+    rfidBambuUnregisteredHint:
+      "Les bobines Bambu peuvent être liées automatiquement en les chargeant dans l’AMS puis en enregistrant l’identité observée.",
+    rfidUnsupportedVendor: "RFID AMS indisponible",
+    rfidUnsupportedVendorHint:
+      "L’identité RFID AMS est actuellement réservée aux bobines Bambu. Utilisez plutôt le QR, le poids, l’emplacement et l’affectation à l’imprimante.",
+    lastAmsIdentitySeen: "Dernière détection AMS",
+    lastAmsSightingLiveActivity: "Emplacement en direct",
+    rfidMatchExact: "Exacte",
+    rfidMatchExactHint: "Le matériau et la couleur HEX correspondent.",
+    rfidMatchPartial: "Partielle",
+    rfidMatchPartialHint:
+      "Le matériau correspond et la couleur observée est proche de celle du catalogue.",
+    rfidCaptureTitle: "Capture RFID",
+    rfidNoCaptureSource: "Aucun emplacement AMS en direct disponible",
+    rfidSourceSlot: "Emplacement source RFID",
+    rfidCurrentTag: "RFID enregistrée",
+    rfidObservedTag: "RFID observée",
+    rfidObservedMaterial: "Filament observé",
+    rfidObservedColor: "Couleur observée",
+    rfidIdentitySignals: "Signaux d’identité RFID",
+    rfidIdentityCandidates: "Signaux d’identité RFID",
+    rfidCaptureStatus: "État de la capture",
+    rfidPrinterLive: "Imprimante en direct",
+    rfidConnected: "Connectée",
+    rfidDisconnected: "Non connectée",
+    rfidTechnicalDetails: "Détails techniques",
+    rfidTechnicalDetailsHint:
+      "Signaux RFID bruts, état de la capture et champs de l’emplacement capturé.",
+    rfidLastSeen: "Dernière détection",
+    rfidLastSlotData: "Dernières données de l’emplacement",
+    rfidPresetSignal: "Préréglage du filament",
+    rfidPresetName: "Nom du préréglage ou du matériau",
+    rfidActiveSource: "Source active",
+    rfidAmsExistBits: "Bits de présence des emplacements AMS",
+    rfidAmsSlotPresence: "Présence de l’emplacement sélectionné",
+    rfidAmsSlotPresent: "Présent physiquement",
+    rfidAmsSlotMissing: "Absent physiquement",
+    rfidSlotActive: "Actif",
+    rfidSlotLoaded: "Chargé",
+    rfidSlotEmpty: "Vide",
+    rfidSlotLive: "En direct",
+    rfidSlotIdentitySeen: "RFID détectée",
+    rfidSlotLiveSeen: "Direct détecté",
+    rfidAmsReadDone: "Bits de lecture AMS terminée",
+    rfidAmsBambuBits: "Bits Bambu AMS",
+    rfidAmsStatus: "État RFID AMS",
+    rfidCapturedFields: "Champs capturés de l’emplacement",
+    rfidCapturedFieldsCollapsed: "Afficher les champs capturés",
+    rfidCaptureUsingLastKnown:
+      "En attente de nouvelles données AMS. Les valeurs précédentes restent visibles jusqu’à une mise à jour.",
+    rfidCaptureWaiting:
+      "En attente de nouvelles données AMS. Gardez cette fenêtre ouverte pendant la réception des données.",
+    rfidCaptureUnavailable:
+      "Aucun champ propre à cet emplacement AMS n’a encore été reçu.",
+    rfidCaptureNoPayload:
+      "Aucune donnée en direct n’est encore disponible. Lancez une actualisation AMS dans Bambu Studio ou attendez le prochain envoi.",
+    rfidCaptureNoSlotData:
+      "Aucune donnée AMS propre à cet emplacement source n’est encore disponible.",
+    rfidCaptureNothingToSave:
+      "Aucune identité RFID n’est encore disponible pour l’emplacement sélectionné.",
+    rfidCaptureFailed: "Impossible d’actualiser la capture RFID depuis l’imprimante.",
+    rfidSaved: "RFID enregistrée sur la bobine sélectionnée.",
+    saveRfid: "Enregistrer la RFID",
     markEmpty: "Marquer comme épuisée (vide)",
     confirmMarkEmptyAction: "Marquer la bobine comme vide",
     markEmptyConfirmTitle: "Marquer cette bobine comme vide ?",
@@ -467,6 +615,11 @@ export const frDictionary: DictionaryNode = {
       selectEsunFirst: "Lancez la recherche eSUN et sélectionnez un produit.",
       manualNeedsFields: "La création manuelle exige un nom de filament et une couleur.",
       createSpool: "Échec de la création de la bobine. Vérifiez le QR et les valeurs.",
+      bambuBatchEmpty:
+        "Collez au moins un code filament Bambu ayant une correspondance prête.",
+      bambuBatchWrongMode: "Passez à la source Bambu avant de créer un lot de codes filament.",
+      createBambuBatch:
+        "Échec de la création du lot Bambu. Vérifiez l’unicité des QR et les valeurs.",
       stockFromWishlist: "Échec de l’ajout au stock depuis la liste de souhaits.",
       unlockMetadataFirst: "Déverrouillez les métadonnées avant de modifier le catalogue.",
       masterFieldsRequired:

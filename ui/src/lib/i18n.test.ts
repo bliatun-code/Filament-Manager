@@ -144,9 +144,11 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(frenchDictionary, "inventory.saveRollChanges"), "Enregistrer les modifications");
   assert.equal(lookup(frenchDictionary, "wishlist.statusOnOrder"), "Commandé");
   assert.equal(lookup(frenchDictionary, "loans.confirmHandBackAction"), "Confirmer la restitution");
+  assert.equal(lookup(frenchDictionary, "inventory.bambuBatchCameraAction"), "Utiliser la webcam");
+  assert.equal(lookup(frenchDictionary, "inventory.rfidTechnicalDetails"), "Détails techniques");
   assert.equal(
-    lookup(frenchDictionary, "inventory.rfidTechnicalDetails"),
-    "Technical details",
+    lookup(frenchDictionary, "settings.libraryTabTitle"),
+    "Library and web app",
   );
   assert.equal(getCachedLocaleDictionary("fr"), frenchDictionary);
 });
