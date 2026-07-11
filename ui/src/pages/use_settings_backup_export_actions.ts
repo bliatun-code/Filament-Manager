@@ -109,6 +109,7 @@ export function useSettingsBackupExportActions({
         toErrorMessage(
           backupError,
           buildSettingsBackupErrorMessage("exportBackupFailed", settingsBackupErrorMessageLabels()),
+          t,
         ),
       );
     } finally {
@@ -145,6 +146,7 @@ export function useSettingsBackupExportActions({
             "exportInventoryCsvFailed",
             settingsBackupErrorMessageLabels(),
           ),
+          t,
         ),
       );
     } finally {
@@ -181,6 +183,7 @@ export function useSettingsBackupExportActions({
             "exportInventoryJsonFailed",
             settingsBackupErrorMessageLabels(),
           ),
+          t,
         ),
       );
     } finally {

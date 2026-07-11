@@ -316,7 +316,11 @@ export function useInventorySpoolDetailActions({
     } catch (deleteError) {
       console.error(deleteError);
       setError(
-        commandErrorText(deleteError, t("inventory.error.deleteRoll", "Failed to delete roll.")),
+        commandErrorText(
+          deleteError,
+          t("inventory.error.deleteRoll", "Failed to delete roll."),
+          t,
+        ),
       );
     } finally {
       setConfirmDelete(false);

@@ -1,6 +1,7 @@
 pub(crate) const COMPANION_BROWSER_HTML: &str = include_str!("../companion_browser/index.html");
 
 const COMPANION_BROWSER_APP_JS: &str = include_str!("../companion_browser/app.js");
+const COMPANION_BROWSER_APP_ERROR_JS: &str = include_str!("../companion_browser/app_error.js");
 const COMPANION_BROWSER_BAMBU_FILAMENT_CODE_LOOKUP_JS: &str =
     include_str!("../companion_browser/bambu_filament_code_lookup.js");
 const COMPANION_BROWSER_API_CLIENT_JS: &str =
@@ -146,6 +147,13 @@ pub(crate) fn companion_browser_assets() -> &'static [(&'static str, CompanionBr
             CompanionBrowserAsset {
                 content_type: "application/javascript; charset=utf-8",
                 content: COMPANION_BROWSER_DOM_EVENTS_JS,
+            },
+        ),
+        (
+            "app_error.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_APP_ERROR_JS,
             },
         ),
         (

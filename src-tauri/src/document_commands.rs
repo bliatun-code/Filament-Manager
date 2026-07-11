@@ -1,3 +1,4 @@
+use crate::app_error::{coded_command_error, diagnostic_command_error};
 use crate::backend::filament_database::{BackupValidationStats, ImportDataStats};
 use crate::state::AppState;
 use crate::with_db;
@@ -73,16 +74,21 @@ pub(crate) fn export_label_png(
         .unwrap_or(png_base64.trim());
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(encoded)
-        .map_err(|error| format!("Invalid PNG payload: {error}"))?;
+        .map_err(|_| coded_command_error("export.invalid_payload"))?;
     if !bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
-        return Err("Label export payload is not a PNG image.".to_string());
+        return Err(coded_command_error("export.invalid_payload"));
     }
 
-    let downloads_dir = app
-        .path()
-        .download_dir()
-        .map_err(|error| format!("Could not locate the Downloads folder: {error}"))?;
-    std::fs::create_dir_all(&downloads_dir).map_err(|error| error.to_string())?;
+    let downloads_dir = app.path().download_dir().map_err(|error| {
+        diagnostic_command_error(
+            "export.downloads_unavailable",
+            "Locate Downloads folder for label export",
+            error,
+        )
+    })?;
+    std::fs::create_dir_all(&downloads_dir).map_err(|error| {
+        diagnostic_command_error("export.write_failed", "Create Downloads folder", error)
+    })?;
     let safe_stem = sanitize_generated_filename_stem(&filename_stem, "filament-label");
     let path = downloads_dir.join(format!("{safe_stem}-{}.png", chrono_id()));
     let bytes = png_with_dpi(&bytes, 300)?;
@@ -97,11 +103,16 @@ pub(crate) fn export_inventory_label_sheet_pdf(
     filename_stem: String,
 ) -> Result<String, String> {
     let bytes = decode_pdf_payload(&pdf_base64)?;
-    let downloads_dir = app
-        .path()
-        .download_dir()
-        .map_err(|error| format!("Could not locate the Downloads folder: {error}"))?;
-    std::fs::create_dir_all(&downloads_dir).map_err(|error| error.to_string())?;
+    let downloads_dir = app.path().download_dir().map_err(|error| {
+        diagnostic_command_error(
+            "export.downloads_unavailable",
+            "Locate Downloads folder for PDF export",
+            error,
+        )
+    })?;
+    std::fs::create_dir_all(&downloads_dir).map_err(|error| {
+        diagnostic_command_error("export.write_failed", "Create Downloads folder", error)
+    })?;
     let safe_stem =
         sanitize_generated_filename_stem(&filename_stem, "filament-inventory-label-sheet");
     let path = downloads_dir.join(format!("{safe_stem}-{}.pdf", chrono_id()));
@@ -116,21 +127,28 @@ fn decode_pdf_payload(pdf_base64: &str) -> Result<Vec<u8>, String> {
         .unwrap_or(pdf_base64.trim());
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(encoded)
-        .map_err(|error| format!("Invalid PDF payload: {error}"))?;
+        .map_err(|_| coded_command_error("export.invalid_payload"))?;
     if !bytes.starts_with(b"%PDF-") {
-        return Err("Inventory label sheet export payload is not a PDF document.".to_string());
+        return Err(coded_command_error("export.invalid_payload"));
     }
     Ok(bytes)
 }
 
 fn write_generated_file(path: &Path, contents: &[u8]) -> Result<(), String> {
     let temp_path = path.with_extension(format!("{}.tmp", chrono_id()));
-    let mut file = File::create(&temp_path).map_err(|error| error.to_string())?;
-    file.write_all(contents)
-        .map_err(|error| error.to_string())?;
-    file.sync_all().map_err(|error| error.to_string())?;
+    let mut file = File::create(&temp_path).map_err(|error| {
+        diagnostic_command_error("export.write_failed", "Create temporary export file", error)
+    })?;
+    file.write_all(contents).map_err(|error| {
+        diagnostic_command_error("export.write_failed", "Write temporary export file", error)
+    })?;
+    file.sync_all().map_err(|error| {
+        diagnostic_command_error("export.write_failed", "Sync temporary export file", error)
+    })?;
     drop(file);
-    std::fs::rename(&temp_path, path).map_err(|error| error.to_string())?;
+    std::fs::rename(&temp_path, path).map_err(|error| {
+        diagnostic_command_error("export.write_failed", "Finalize exported file", error)
+    })?;
     Ok(())
 }
 
@@ -179,12 +197,12 @@ fn png_with_dpi(bytes: &[u8], dpi: u32) -> Result<Vec<u8>, String> {
         let length = u32::from_be_bytes(
             bytes[offset..offset + 4]
                 .try_into()
-                .map_err(|_| "Invalid PNG chunk length.".to_string())?,
+                .map_err(|_| coded_command_error("export.invalid_payload"))?,
         ) as usize;
         let chunk_end = offset
             .checked_add(12 + length)
             .filter(|end| *end <= bytes.len())
-            .ok_or_else(|| "Invalid PNG chunk bounds.".to_string())?;
+            .ok_or_else(|| coded_command_error("export.invalid_payload"))?;
         let chunk_type = &bytes[offset + 4..offset + 8];
         if chunk_type != b"pHYs" {
             output.extend_from_slice(&bytes[offset..chunk_end]);
@@ -199,7 +217,7 @@ fn png_with_dpi(bytes: &[u8], dpi: u32) -> Result<Vec<u8>, String> {
         }
     }
     if !inserted {
-        return Err("PNG image is missing its IHDR chunk.".to_string());
+        return Err(coded_command_error("export.invalid_payload"));
     }
     Ok(output)
 }
@@ -285,10 +303,11 @@ mod tests {
         );
 
         let invalid = base64::engine::general_purpose::STANDARD.encode(b"not a pdf");
-        assert_eq!(
-            decode_pdf_payload(&invalid).expect_err("non-PDF payload should fail"),
-            "Inventory label sheet export payload is not a PDF document."
-        );
+        let error = decode_pdf_payload(&invalid).expect_err("non-PDF payload should fail");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&error).expect("structured export error");
+        assert_eq!(parsed["code"], "export.invalid_payload");
+        assert!(!error.contains("not a PDF"));
     }
 
     #[test]

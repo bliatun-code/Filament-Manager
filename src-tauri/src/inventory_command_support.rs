@@ -13,5 +13,5 @@ pub(crate) fn companion_service(state: &AppState) -> CompanionService {
 }
 
 pub(crate) fn inventory_error_to_string(error: InventoryError) -> String {
-    format!("{error:?}")
+    crate::app_error::inventory_error_to_command_string(error)
 }

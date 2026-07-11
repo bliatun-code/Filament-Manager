@@ -19,6 +19,23 @@ const dictionaries = {
       minutes: "min",
       hoursShort: "h",
     },
+    errors: {
+      invalidRequest: "The request could not be completed.",
+      unauthorized: "Authentication is required.",
+      forbidden: "This action is not allowed.",
+      notFound: "The requested record was not found.",
+      internal: "Something went wrong. Try again.",
+      spoolActiveLoan: "Return the active loan before removing this roll.",
+      loadedSpoolEditBlocked: "Use the printer-slot actions to edit a loaded roll.",
+      loanedSpoolEditBlocked:
+        "Return the loan before editing this roll's status or location.",
+      spoolStatusEditLimited:
+        "Browser edits are limited to in-stock, empty, or lost rolls.",
+      exportInvalidPayload: "The generated export is invalid.",
+      downloadsUnavailable: "The Downloads folder is unavailable.",
+      exportWriteFailed: "The export could not be saved.",
+      requestFailed: "The request could not be completed.",
+    },
     nav: {
       storage: "Inventory",
       loans: "Loans",
@@ -580,6 +597,23 @@ const dictionaries = {
     common: {
       minutes: "min",
       hoursShort: "t",
+    },
+    errors: {
+      invalidRequest: "Forespørselen kunne ikke fullføres.",
+      unauthorized: "Autentisering er påkrevd.",
+      forbidden: "Denne handlingen er ikke tillatt.",
+      notFound: "Den forespurte posten ble ikke funnet.",
+      internal: "Noe gikk galt. Prøv igjen.",
+      spoolActiveLoan: "Returner det aktive utlånet før du fjerner denne rullen.",
+      loadedSpoolEditBlocked: "Bruk printersporthandlingene for å redigere en lastet rull.",
+      loanedSpoolEditBlocked:
+        "Returner utlånet før du redigerer status eller plassering for denne rullen.",
+      spoolStatusEditLimited:
+        "Nettleseren kan bare redigere ruller som er på lager, tomme eller mistet.",
+      exportInvalidPayload: "Den genererte eksporten er ugyldig.",
+      downloadsUnavailable: "Nedlastingsmappen er utilgjengelig.",
+      exportWriteFailed: "Eksporten kunne ikke lagres.",
+      requestFailed: "Forespørselen kunne ikke fullføres.",
     },
     nav: {
       storage: "Lager",

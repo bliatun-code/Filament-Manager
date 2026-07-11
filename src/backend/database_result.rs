@@ -1,7 +1,7 @@
 #[derive(Debug)]
 pub enum InventoryError {
     Db(String),
-    InvalidOperation(String),
+    InvalidOperation { code: &'static str, message: String },
     NotFound,
 }
 
@@ -17,7 +17,7 @@ impl std::fmt::Display for InventoryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             InventoryError::Db(message) => write!(f, "Database error: {message}"),
-            InventoryError::InvalidOperation(message) => write!(f, "{message}"),
+            InventoryError::InvalidOperation { message, .. } => write!(f, "{message}"),
             InventoryError::NotFound => write!(f, "Record not found"),
         }
     }

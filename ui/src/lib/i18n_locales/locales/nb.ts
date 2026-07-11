@@ -38,6 +38,23 @@ export const nbDictionary: DictionaryNode = {
       hoursAgo: "{count} t siden",
       daysAgo: "{count} dager siden",
     },
+    errors: {
+      invalidRequest: "Forespørselen kunne ikke fullføres.",
+      unauthorized: "Autentisering er påkrevd.",
+      forbidden: "Denne handlingen er ikke tillatt.",
+      notFound: "Den forespurte posten ble ikke funnet.",
+      internal: "Noe gikk galt. Prøv igjen.",
+      spoolActiveLoan: "Returner det aktive utlånet før du fjerner denne rullen.",
+      loadedSpoolEditBlocked: "Bruk printersporthandlingene for å redigere en lastet rull.",
+      loanedSpoolEditBlocked:
+        "Returner utlånet før du redigerer status eller plassering for denne rullen.",
+      spoolStatusEditLimited:
+        "Nettleseren kan bare redigere ruller som er på lager, tomme eller mistet.",
+      exportInvalidPayload: "Den genererte eksporten er ugyldig.",
+      downloadsUnavailable: "Nedlastingsmappen er utilgjengelig.",
+      exportWriteFailed: "Eksporten kunne ikke lagres.",
+      requestFailed: "Forespørselen kunne ikke fullføres.",
+    },
     vendor: {
       bambu: "Bambu",
       esun: "eSUN",

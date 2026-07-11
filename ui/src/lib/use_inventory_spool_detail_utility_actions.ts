@@ -85,7 +85,11 @@ export function useInventorySpoolDetailUtilityActions({
     } catch (printError) {
       console.error(printError);
       setError(
-        commandErrorText(printError, t("inventory.error.printLabel", "Failed to generate label.")),
+        commandErrorText(
+          printError,
+          t("inventory.error.printLabel", "Failed to generate label."),
+          t,
+        ),
       );
     }
   }, [

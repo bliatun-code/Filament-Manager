@@ -1,4 +1,5 @@
 import { t } from "./companion_i18n.js";
+import { localizedAppError, parseAppError } from "./app_error.js";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const TRUSTED_LAN_MODE = "trusted-lan";
@@ -42,6 +43,32 @@ export function cloneInitWithFreshSession(init = {}, csrfToken = "") {
   return nextInit;
 }
 
+function fallbackCodeForStatus(status) {
+  if (status === 401) return "common.unauthorized";
+  if (status === 403) return "common.forbidden";
+  if (status === 404) return "common.not_found";
+  if (status >= 500) return "common.internal";
+  return "common.invalid_request";
+}
+
+export function createCompanionRequestError(result, status, locale = "en") {
+  const parsedError = parseAppError(result?.parsed) ?? {
+    code: fallbackCodeForStatus(status),
+    safeDetail: null,
+    diagnosticId: null,
+  };
+  const message = localizedAppError(
+    parsedError,
+    (key, fallback) => t(locale, key, fallback),
+    t(locale, "errors.requestFailed", "The request could not be completed."),
+  );
+  const error = new Error(message);
+  error.code = parsedError.code;
+  error.safe_detail = parsedError.safeDetail;
+  error.diagnostic_id = parsedError.diagnosticId;
+  return error;
+}
+
 export function createCompanionApiClient(options) {
   const session = options?.session;
   if (!session || typeof session !== "object") {
@@ -76,9 +103,10 @@ export function createCompanionApiClient(options) {
     const response = await fetchImpl("/api/v1/auth/session", {
       credentials: "same-origin",
     });
-    const { parsed, message } = await readJsonResponse(response);
+    const result = await readJsonResponse(response);
+    const { parsed } = result;
     if (!response.ok) {
-      throw new Error(message);
+      throw createCompanionRequestError(result, response.status, session.locale || "en");
     }
 
     updateSessionMode(parsed);
@@ -105,9 +133,10 @@ export function createCompanionApiClient(options) {
       },
       body: JSON.stringify({ pairing_token: trimmed }),
     });
-    const { parsed, message } = await readJsonResponse(response);
+    const result = await readJsonResponse(response);
+    const { parsed } = result;
     if (!response.ok) {
-      throw new Error(message);
+      throw createCompanionRequestError(result, response.status, session.locale || "en");
     }
 
     applyAuthenticatedSession(parsed);
@@ -121,9 +150,10 @@ export function createCompanionApiClient(options) {
       method: "POST",
       credentials: "same-origin",
     });
-    const { parsed, message } = await readJsonResponse(response);
+    const result = await readJsonResponse(response);
+    const { parsed } = result;
     if (!response.ok) {
-      throw new Error(message);
+      throw createCompanionRequestError(result, response.status, session.locale || "en");
     }
 
     applyAuthenticatedSession(parsed);
@@ -174,7 +204,8 @@ export function createCompanionApiClient(options) {
       credentials: "same-origin",
       ...init,
     });
-    const { parsed, message } = await readJsonResponse(response);
+    const result = await readJsonResponse(response);
+    const { parsed } = result;
     if (response.ok) {
       return parsed;
     }
@@ -193,10 +224,14 @@ export function createCompanionApiClient(options) {
       if (retryResponse.ok) {
         return retryResult.parsed;
       }
-      throw new Error(retryResult.message);
+      throw createCompanionRequestError(
+        retryResult,
+        retryResponse.status,
+        session.locale || "en",
+      );
     }
 
-    throw new Error(message);
+    throw createCompanionRequestError(result, response.status, session.locale || "en");
   }
 
   return {

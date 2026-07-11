@@ -2313,7 +2313,8 @@ async fn companion_api_rejects_spool_delete_with_active_loan() {
             .map_err(|error| error.to_string())?;
         let delete_text =
             String::from_utf8(delete_body.to_vec()).map_err(|error| error.to_string())?;
-        assert!(delete_text.contains("return it before deleting"));
+        assert!(delete_text.contains("\"code\":\"inventory.spool.active_loan\""));
+        assert!(!delete_text.contains("return it before deleting"));
 
         let active_loans = CompanionService::new(db_path.to_string_lossy().to_string())
             .list_active_spool_loans()
@@ -2953,7 +2954,8 @@ async fn companion_api_rejects_status_and_location_edits_for_loaded_spools() {
             .map_err(|error| error.to_string())?;
         let update_text =
             String::from_utf8(update_body.to_vec()).map_err(|error| error.to_string())?;
-        assert!(update_text.contains("Loaded spools use printer-slot actions"));
+        assert!(update_text.contains("\"code\":\"inventory.spool.loaded_edit_blocked\""));
+        assert!(!update_text.contains("Loaded spools use printer-slot actions"));
 
         Ok::<(), String>(())
     }

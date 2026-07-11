@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod app_error;
 mod app_services;
 mod backend;
 mod bambu_live;
@@ -684,25 +685,28 @@ pub(crate) fn with_inventory<Func, Output>(state: &AppState, func: Func) -> Resu
 where
     Func: FnOnce(InventoryEngine) -> backend::database_result::InventoryResult<Output>,
 {
-    let db = FilamentDatabase::open(&state.db_path).map_err(|error| error.to_string())?;
+    let db = FilamentDatabase::open(&state.db_path)
+        .map_err(|error| app_error::internal_command_error("Open inventory database", error))?;
     let engine = InventoryEngine::new(db);
-    func(engine).map_err(|error| format!("{:?}", error))
+    func(engine).map_err(app_error::inventory_error_to_command_string)
 }
 
 pub(crate) fn with_db<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>
 where
     Func: FnOnce(&FilamentDatabase) -> backend::database_result::InventoryResult<Output>,
 {
-    let db = FilamentDatabase::open(&state.db_path).map_err(|error| error.to_string())?;
-    func(&db).map_err(|error| format!("{:?}", error))
+    let db = FilamentDatabase::open(&state.db_path)
+        .map_err(|error| app_error::internal_command_error("Open inventory database", error))?;
+    func(&db).map_err(app_error::inventory_error_to_command_string)
 }
 
 pub(crate) fn with_stats<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>
 where
     Func: FnOnce(StatisticsEngine) -> Result<Output, rusqlite::Error>,
 {
-    let stats = StatisticsEngine::open(&state.db_path).map_err(|error| error.to_string())?;
-    func(stats).map_err(|error| error.to_string())
+    let stats = StatisticsEngine::open(&state.db_path)
+        .map_err(|error| app_error::internal_command_error("Open statistics database", error))?;
+    func(stats).map_err(|error| app_error::internal_command_error("Statistics query", error))
 }
 
 #[cfg(test)]

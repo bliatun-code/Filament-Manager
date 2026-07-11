@@ -38,6 +38,23 @@ export const enDictionary: DictionaryNode = {
       hoursAgo: "{count} h ago",
       daysAgo: "{count} days ago",
     },
+    errors: {
+      invalidRequest: "The request could not be completed.",
+      unauthorized: "Authentication is required.",
+      forbidden: "This action is not allowed.",
+      notFound: "The requested record was not found.",
+      internal: "Something went wrong. Try again.",
+      spoolActiveLoan: "Return the active loan before removing this roll.",
+      loadedSpoolEditBlocked: "Use the printer-slot actions to edit a loaded roll.",
+      loanedSpoolEditBlocked:
+        "Return the loan before editing this roll's status or location.",
+      spoolStatusEditLimited:
+        "Browser edits are limited to in-stock, empty, or lost rolls.",
+      exportInvalidPayload: "The generated export is invalid.",
+      downloadsUnavailable: "The Downloads folder is unavailable.",
+      exportWriteFailed: "The export could not be saved.",
+      requestFailed: "The request could not be completed.",
+    },
     vendor: {
       bambu: "Bambu",
       esun: "eSUN",

@@ -20,9 +20,10 @@ pub(crate) fn soft_delete_spool(conn: &Connection, spool_id: &str) -> InventoryR
         )
         .optional()?;
     if active_loan_exists.is_some() {
-        return Err(InventoryError::InvalidOperation(
-            "spool has an active loan; return it before deleting".to_string(),
-        ));
+        return Err(InventoryError::InvalidOperation {
+            code: "inventory.spool.active_loan",
+            message: "spool has an active loan; return it before deleting".to_string(),
+        });
     }
 
     let affected = tx.execute(

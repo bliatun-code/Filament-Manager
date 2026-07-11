@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   cloneInitWithFreshSession,
   createCompanionApiClient,
+  createCompanionRequestError,
   normalizeHeaders,
   readJsonResponse,
 } from "./companion_api_client.js";
@@ -53,6 +54,25 @@ test("readJsonResponse falls back cleanly for non-json failures", async () => {
   const result = await readJsonResponse(response);
   assert.equal(result.parsed, null);
   assert.equal(result.message, "Request failed with status 502");
+});
+
+test("structured API errors use localized safe copy and retain only diagnostic ids", () => {
+  const error = createCompanionRequestError(
+    {
+      parsed: {
+        code: "inventory.spool.active_loan",
+        message: "raw server detail that must not be shown",
+        safe_detail: null,
+        diagnostic_id: "fm-api-1",
+      },
+    },
+    400,
+    "nb",
+  );
+  assert.equal(error.message, "Returner det aktive utlånet før du fjerner denne rullen.");
+  assert.equal(error.code, "inventory.spool.active_loan");
+  assert.equal(error.diagnostic_id, "fm-api-1");
+  assert.doesNotMatch(error.message, /raw server detail/);
 });
 
 test("companion api client retries a mutating request after session restore", async () => {
