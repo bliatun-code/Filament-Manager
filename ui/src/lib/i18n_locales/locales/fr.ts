@@ -1129,6 +1129,159 @@ export const frDictionary: DictionaryNode = {
     importFullBackup: "Importer la sauvegarde complète",
     validateBackup: "Valider le fichier de sauvegarde",
     inventoryOverviewPrint: "Planches d’étiquettes du stock",
+    libraryTabTitle: "Bibliothèque et web app",
+    libraryTabHint: "",
+    libraryRoleLabel: "Rôle de la bibliothèque",
+    libraryWebappLabel: "Web app",
+    libraryWebappRunsOnHost: "Exécutée sur l’hôte",
+    libraryWebappRunning: "Active",
+    libraryWebappToggle: "Activer la web app",
+    librarySyncTitle: "Rôles de la bibliothèque",
+    librarySyncHint:
+      "Choisissez si cet appareil reste autonome, héberge la bibliothèque partagée ou se connecte à un autre hôte.",
+    librarySyncStandalone: "Autonome",
+    librarySyncHost: "Hôte",
+    librarySyncClient: "Client",
+    librarySyncConnectTitle: "Se connecter à l’hôte",
+    librarySyncConnectHint:
+      "Saisissez d’abord l’adresse de l’hôte, puis vérifiez-la avant de lier cet appareil.",
+    librarySyncDeviceName: "Nom de l’appareil",
+    librarySyncDeviceNamePlaceholder: "PC de l’atelier",
+    librarySyncLibraryId: "ID de la bibliothèque",
+    librarySyncHostUrl: "URL de l’hôte",
+    librarySyncCheckHost: "Vérifier l’hôte",
+    librarySyncChecking: "Vérification…",
+    librarySyncHostCheckOk: "Vérification de l’hôte réussie.",
+    librarySyncHostCheckPairingInvalid:
+      "L’hôte est accessible, mais l’association du client doit être renouvelée.",
+    librarySyncLinkHost: "Lier cet appareil à l’hôte vérifié",
+    librarySyncUseCheckedHost: "Utiliser cet hôte vérifié",
+    librarySyncLinkedHost: "Cet appareil est maintenant lié à la bibliothèque de l’hôte.",
+    librarySyncPairHost: "Associer le client desktop",
+    librarySyncClientAuthTitle: "Association du client desktop",
+    librarySyncClientPairingFlowHint:
+      "Commencez avec un lien d’association temporaire créé sur l’hôte. Le client l’utilise pour détecter, vérifier et connecter automatiquement le bon hôte.",
+    librarySyncClientAuthHint:
+      "Collez un lien temporaire de l’hôte pour autoriser les actions de synchronisation protégées.",
+    librarySyncClientAuthInput: "Lien d’association",
+    librarySyncClientAuthPaired: "Associé",
+    librarySyncClientAuthNeedsRepair: "Nouvelle association requise",
+    librarySyncClientAuthUnpaired: "Non associé",
+    librarySyncClientAuthPairedAt: "Associé",
+    librarySyncClientAuthExpiresAt: "Expiration de la session",
+    librarySyncClientAuthPersistentHint:
+      "Ce client reste associé jusqu’à la suppression de l’association ici ou sur l’hôte.",
+    librarySyncClientAuthRepairHint:
+      "L’hôte reste accessible, mais ce client doit être associé de nouveau avant les actions protégées.",
+    librarySyncClearClientAuth: "Supprimer l’association",
+    librarySyncRenewPairing: "Renouveler l’association",
+    librarySyncRenewPairingInfo:
+      "L’association enregistrée a été supprimée. Collez un nouveau lien de l’hôte pour continuer.",
+    librarySyncClientAuthCleared: "Association du client supprimée de cet appareil.",
+    librarySyncClientPaired:
+      "Client desktop associé à l’hôte. Les actions protégées peuvent maintenant être activées.",
+    librarySyncPairingInvalid:
+      "Lien d’association invalide. Créez un nouveau lien sur l’hôte et réessayez.",
+    librarySyncCurrentHost: "Hôte actuel",
+    librarySyncFetchSnapshot: "Récupérer l’instantané",
+    librarySyncRefreshingSnapshot: "Actualisation de l’instantané…",
+    librarySyncSnapshotRefreshed: "Instantané de l’hôte actualisé.",
+    librarySyncRemoteDevice: "Appareil distant",
+    librarySyncRemoteLibraryId: "ID de la bibliothèque distante",
+    librarySyncRemoteMode: "Rôle distant",
+    librarySyncRemoteAuth: "Mode d’authentification",
+    librarySyncLastStatus: "Dernier état de l’hôte",
+    librarySyncLastChecked: "Dernière vérification",
+    librarySyncLastReachable: "Dernière disponibilité",
+    librarySyncCachedSnapshot: "Instantané de l’hôte en cache",
+    librarySyncNoSnapshotYet: "Aucun instantané en cache",
+    librarySyncNoSnapshotHint:
+      "Récupérez un instantané de l’hôte pour conserver ici une petite vue en lecture seule.",
+    librarySyncStatusLive: "En direct",
+    librarySyncStatusCached: "En cache",
+    librarySyncStatusOffline: "Hors ligne",
+    librarySyncSnapshotCapturedAt: "Capturé",
+    librarySyncSnapshotTotalSpools: "Bobines au total",
+    librarySyncSnapshotInUse: "En cours d’utilisation",
+    librarySyncSnapshotAssigned: "Affectées",
+    librarySyncSnapshotLowStock: "Stock faible",
+    librarySyncSnapshotLoans: "Prêts actifs",
+    librarySyncSnapshotPrinters: "Imprimantes",
+    librarySyncAdvancedTitle: "Détails avancés de l’hôte",
+    librarySyncAdvancedHint:
+      "Ouvrez uniquement pour consulter les diagnostics ou l’instantané en cache.",
+    librarySyncShowAdvanced: "Afficher les détails",
+    librarySyncHideAdvanced: "Masquer les détails",
+    librarySyncStandaloneHint: "Cet appareil utilise uniquement sa bibliothèque locale.",
+    librarySyncStandaloneWebappHint:
+      "Cet appareil conserve sa bibliothèque locale et héberge également la web app.",
+    librarySyncHostHint:
+      "Cet appareil est prêt à héberger la bibliothèque pour d’autres clients desktop ou navigateur.",
+    librarySyncClientHint:
+      "Cet appareil se connecte à un autre hôte et conserve un cache en lecture seule si l’hôte est indisponible.",
+    librarySyncRoleChangeValidateImportHint:
+      "Validez ici la même sauvegarde. Elle pourra ensuite être importée dans Maintenance du programme sur l’appareil qui doit poursuivre la bibliothèque.",
+    librarySyncRoleChangeAutoValidatedHint:
+      "La dernière sauvegarde exportée a été validée automatiquement dans ce parcours guidé.",
+    librarySyncRoleChangeClientLocalHint:
+      "Ce client attend normalement une bibliothèque hôte. Exportez une sauvegarde complète sur l’hôte actuel et importez-la plus tard si vous souhaitez continuer localement.",
+    librarySyncRoleChangeClientToHostHint:
+      "Ce client deviendra son propre hôte. Pour déplacer ensuite les données, exportez une sauvegarde sur l’hôte actuel et importez-la ici.",
+    librarySyncRoleChangeClientHint:
+      "Le mode Client exige une connexion à un hôte. Après le changement, utilisez l’association du client desktop.",
+    librarySyncConfirmSwitchToStandalone: "Passer en mode Autonome",
+    librarySyncConfirmSwitchToClient: "Passer en mode Client",
+    librarySyncConfirmSwitchToHost: "Passer en mode Hôte",
+    librarySyncConfirmAgain: "Cliquez de nouveau pour confirmer",
+    librarySyncConfirmArmedHint: "Un clic supplémentaire confirme ce changement de rôle.",
+    librarySyncMigrationStepExport: "Exporter une sauvegarde complète depuis l’hôte actuel",
+    librarySyncMigrationStepExportHint:
+      "Utilisez le bouton d’export ci-dessous avant l’import sur l’autre appareil.",
+    librarySyncMigrationStepImport: "Importer la sauvegarde complète sur cet appareil",
+    librarySyncMigrationStepImportHint:
+      "Importez ici la sauvegarde de l’hôte avant que cet appareil prenne le relais.",
+    librarySyncStepDone: "Terminé",
+    librarySyncStepPending: "En attente",
+    librarySyncOpenMaintenance: "Ouvrir les outils de maintenance",
+    librarySyncSaveHint:
+      "Les changements de rôle ouvrent un parcours guidé. Rien n’est enregistré avant confirmation.",
+    librarySyncSave: "Enregistrer le rôle de la bibliothèque",
+    librarySyncSaving: "Enregistrement…",
+    librarySyncSaved: "Rôle de la bibliothèque enregistré.",
+    librarySyncSaveDeviceName: "Enregistrer le nom de l’appareil",
+    librarySyncDeviceNameUnsaved: "Modifications non enregistrées",
+    librarySyncDeviceNameSavedStatus: "Enregistré",
+    librarySyncDeviceNameSaved: "Nom de l’appareil enregistré.",
+    librarySyncBackupAutoValidated:
+      "La sauvegarde exportée a été validée automatiquement et peut être utilisée pour le changement de rôle.",
+    companionTitle: "Companion local dans le navigateur",
+    companionHelp:
+      "Ouvrez l’interface navigateur servie par l’application sur cet appareil. L’application desktop reste la source de référence.",
+    companionRefreshStatus: "Actualiser l’état",
+    companionCopyShellUrl: "Copier l’URL",
+    companionCopyLaunchLink: "Copier le lien de lancement",
+    companionOpenBrowser: "Ouvrir dans le navigateur",
+    companionStatus: "État de Companion",
+    companionStatusRunning: "Actif",
+    companionStatusUnreachable: "Ne répond pas",
+    companionStatusStopped: "Arrêté",
+    companionStatusHint:
+      "L’API locale et l’interface navigateur sont hébergées par l’application desktop.",
+    companionShellUrl: "URL de l’interface",
+    companionShellUrlHint: "Servie localement par l’application desktop.",
+    companionShellUrlCopied: "URL de Companion copiée.",
+    companionAuth: "Authentification",
+    companionMode: "Portée",
+    companionSourceOfTruth: "Source de référence",
+    companionSourceOfTruthValue: "Application desktop + SQLite",
+    companionSourceOfTruthHint:
+      "Les actions du navigateur passent par le service géré par l’application au lieu d’accéder directement à SQLite.",
+    companionScope: "Fonctions actuelles du navigateur",
+    companionScopeValue:
+      "Stock, liens directs, bobines empruntées, imprimantes, prêts et retours, détails, poids, emplacements et création de prêts.",
+    companionBoundaries: "Fonctions réservées au desktop",
+    companionBoundariesValue:
+      "Actualisation du catalogue, import, export, réinitialisation, remplacement d’un emplacement occupé et administration avancée.",
     licenseHelp:
       "Filament Manager est open source. Les versions modifiées distribuées, ou utilisées sur un réseau, doivent publier leur code source correspondant sous la même licence.",
     helpHint:
@@ -1234,6 +1387,17 @@ export const frDictionary: DictionaryNode = {
       exportInventoryCsv: "Échec de l’export CSV du stock.",
       exportInventoryJson: "Échec de l’export JSON du stock.",
       inventoryOverviewPrint: "Échec de la création du PDF d’étiquettes.",
+      librarySyncSnapshot: "Échec de la récupération de l’instantané de l’hôte.",
+      librarySyncSave: "Échec de l’enregistrement du rôle de la bibliothèque.",
+      librarySyncDeviceNameSave: "Échec de l’enregistrement du nom de l’appareil.",
+      librarySyncHostCheck: "Échec de la vérification de l’hôte configuré.",
+      librarySyncPairingLinkRequired:
+        "Collez le lien d’association complet de l’hôte afin que le client puisse le détecter automatiquement.",
+      librarySyncLinkHost: "Échec de la liaison à la bibliothèque de l’hôte.",
+      librarySyncPairHost: "Échec de l’association du client desktop à l’hôte.",
+      librarySyncClearClientAuth: "Échec de la suppression de l’association enregistrée.",
+      librarySyncPrinterWriteRequiresPairing:
+        "Associez ce client à l’hôte avant de modifier les imprimantes.",
     },
   },
 };
