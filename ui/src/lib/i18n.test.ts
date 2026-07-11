@@ -133,8 +133,8 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(germanDictionary, "nav.inventory"), "Bestand");
   assert.equal(lookup(germanDictionary, "common.cancel"), "Abbrechen");
   assert.equal(
-    lookup(germanDictionary, "inventory.loanSearchLabel"),
-    "Search available rolls",
+    lookup(germanDictionary, "inventory.rfidTechnicalDetails"),
+    "Technical details",
   );
   assert.equal(getCachedLocaleDictionary("de"), germanDictionary);
 });
