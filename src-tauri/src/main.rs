@@ -298,7 +298,7 @@ fn main() {
             inventory_maintenance_commands::reset_catalog_data,
             inventory_stats_commands::top_materials,
             inventory_stats_commands::list_filament_consumption,
-            document_commands::print_label_pdf,
+            document_commands::export_inventory_label_sheet_pdf,
             document_commands::export_label_png,
             external_url_commands::open_external_url,
         ])
@@ -354,6 +354,9 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         }
         "bambu-batch-add" | "batch-add" | "bambu-batch" => Some("bambu-batch-add"),
         "settings-general" | "general-settings" => Some("settings-general"),
+        "settings-inventory-label-sheet" | "inventory-label-sheet" | "settings-label-sheet" => {
+            Some("settings-inventory-label-sheet")
+        }
         "settings-library" | "library-settings" | "companion-settings" => Some("settings-library"),
         "settings-library-role-change"
         | "library-role-change"

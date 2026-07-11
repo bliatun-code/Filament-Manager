@@ -7,6 +7,16 @@ const printersSectionSource = readFileSync(
   new URL("./use_settings_printers_section.ts", import.meta.url),
   "utf8",
 );
+const labelSheetModalSource = readFileSync(
+  new URL("../components/settings_inventory_label_sheet_modal.tsx", import.meta.url),
+  "utf8",
+);
+
+test("inventory label sheet visual QA opens the real data-backed modal", () => {
+  assert.match(source, /desktopVisualQaScenario === "settings-inventory-label-sheet"/);
+  assert.match(labelSheetModalSource, /id="settings-inventory-label-sheet-builder"/);
+  assert.match(labelSheetModalSource, /visibleItems\.map/);
+});
 
 test("network visual QA keeps summary and editor states bounded", () => {
   assert.match(source, /scenario === "settings-library-network-details"/);

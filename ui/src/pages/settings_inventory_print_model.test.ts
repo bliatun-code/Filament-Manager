@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildSettingsInventoryOverviewPrintErrorMessage,
-  buildSettingsInventoryOverviewPrintPdfLabels,
   buildSettingsInventoryOverviewPrintRows,
   buildSettingsInventoryOverviewPrintSuccessMessage,
   buildSettingsInventoryPrintLabels,
@@ -42,7 +41,7 @@ function row(
   };
 }
 
-test("settings inventory overview print rows skip empty spools and sort by filament identity", async () => {
+test("settings inventory overview print rows keep only on-hand spools and sort by filament identity", async () => {
   const qrPayloads: string[] = [];
   const rows = await buildSettingsInventoryOverviewPrintRows({
     rows: normalizeSpoolWithMasterRows([
@@ -53,6 +52,10 @@ test("settings inventory overview print rows skip empty spools and sort by filam
       row({
         spool: { id: "empty", master_id: "empty", status: "empty" },
         master: { id: "empty", material: "ABS", filament_name: "Hidden", color_name: "Grey" },
+      }),
+      row({
+        spool: { id: "borrowed", master_id: "borrowed", status: "BORROWED" },
+        master: { id: "borrowed", material: "ABS", filament_name: "Loan", color_name: "Grey" },
       }),
       row({
         spool: { id: "pla-a", master_id: "pla-a", status: "IN_STOCK" },
@@ -123,32 +126,16 @@ test("settings inventory print labels preserve row fallback copy", () => {
 
 test("settings inventory overview print success message returns stable copy", () => {
   const labels = {
-    inventoryOverviewPrintDone: "A4 inventory overview PDF opened for printing.",
-    inventoryOverviewPrintFailed: "Failed to print inventory overview.",
+    inventoryOverviewPrintDone: "Inventory label PDF saved to Downloads: {path}",
+    inventoryOverviewPrintFailed: "Failed to create inventory label PDF.",
   };
 
   assert.equal(
-    buildSettingsInventoryOverviewPrintSuccessMessage(labels),
-    labels.inventoryOverviewPrintDone,
+    buildSettingsInventoryOverviewPrintSuccessMessage(labels, "/Downloads/labels.pdf"),
+    "Inventory label PDF saved to Downloads: /Downloads/labels.pdf",
   );
   assert.equal(
     buildSettingsInventoryOverviewPrintErrorMessage(labels),
     labels.inventoryOverviewPrintFailed,
   );
-});
-
-test("settings inventory overview print PDF labels preserve the print contract", () => {
-  const labels = {
-    title: "In-stock filament overview",
-    generatedAt: "Generated",
-    groupMaterial: "Material group",
-    empty: "No filament in stock.",
-    vendor: "Vendor",
-    material: "Material",
-    filament: "Filament",
-    homeLocation: "Home location",
-    reference: "Reference",
-  };
-
-  assert.deepEqual(buildSettingsInventoryOverviewPrintPdfLabels(labels), labels);
 });

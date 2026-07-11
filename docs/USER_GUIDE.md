@@ -239,7 +239,13 @@ General:
 - app version
 - theme: Auto, Light, Dark
 - language
-- A4 inventory overview
+- inventory QR label sheets
+
+**Create inventory label sheet** opens a preview for all on-hand spools. Choose
+A4 or US Letter, start on the first page, and use the page controls to review
+the remaining sheets before saving. Each label on the sheet uses the same 60 ×
+24 mm layout as the P-Touch QR label, and the finished PDF is saved to
+Downloads.
 
 Library and webapp:
 

@@ -180,7 +180,7 @@ material consumed outside printer sessions.
 ### General
 
 Version, license/source links, language, appearance, documentation links, and
-printable inventory overview tools.
+the inventory label-sheet builder with A4 and US Letter export.
 
 ![Settings general](screenshots/settings-general.jpg)
 

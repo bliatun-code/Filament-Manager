@@ -1,13 +1,11 @@
 use crate::backend::filament_database::{BackupValidationStats, ImportDataStats};
 use crate::state::AppState;
 use crate::with_db;
-#[cfg(target_os = "windows")]
-use crate::{APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME};
 use base64::Engine;
 use serde::Serialize;
 use std::fs::File;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tauri::Manager;
 
 #[derive(Serialize)]
@@ -85,7 +83,7 @@ pub(crate) fn export_label_png(
         .download_dir()
         .map_err(|error| format!("Could not locate the Downloads folder: {error}"))?;
     std::fs::create_dir_all(&downloads_dir).map_err(|error| error.to_string())?;
-    let safe_stem = sanitize_generated_filename_stem(&filename_stem);
+    let safe_stem = sanitize_generated_filename_stem(&filename_stem, "filament-label");
     let path = downloads_dir.join(format!("{safe_stem}-{}.png", chrono_id()));
     let bytes = png_with_dpi(&bytes, 300)?;
     write_generated_file(&path, &bytes)?;
@@ -93,72 +91,36 @@ pub(crate) fn export_label_png(
 }
 
 #[tauri::command]
-pub(crate) fn print_label_pdf(
+pub(crate) fn export_inventory_label_sheet_pdf(
     app: tauri::AppHandle,
     pdf_base64: String,
-    printer_name: Option<String>,
-    copies: Option<u32>,
-) -> Result<(), String> {
-    let bytes = base64::engine::general_purpose::STANDARD
-        .decode(pdf_base64.trim())
-        .map_err(|error| format!("Invalid PDF payload: {error}"))?;
-    let path = write_pdf_to_disk(&app, &bytes)?;
-    let _ = printer_name;
-    let _ = copies;
-
-    open_generated_document(&path)?;
-    Ok(())
-}
-
-fn write_pdf_to_disk(app: &tauri::AppHandle, bytes: &[u8]) -> Result<PathBuf, String> {
-    let app_dir = resolve_app_storage_dir_for_handle(app)?;
-    let label_dir = app_dir.join("labels");
-    std::fs::create_dir_all(&label_dir).map_err(|error| error.to_string())?;
-    let filename = format!("label_{}.pdf", chrono_id());
-    let path = label_dir.join(filename);
-    write_generated_file(&path, bytes)?;
-    Ok(path)
-}
-
-fn resolve_app_storage_dir_for_handle(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let app_data_dir = app
+    filename_stem: String,
+) -> Result<String, String> {
+    let bytes = decode_pdf_payload(&pdf_base64)?;
+    let downloads_dir = app
         .path()
-        .app_data_dir()
-        .map_err(|error| error.to_string())?;
-    #[cfg(target_os = "windows")]
-    {
-        let app_local_data_dir = app
-            .path()
-            .app_local_data_dir()
-            .map_err(|error| error.to_string())?;
-        Ok(resolve_windows_storage_dir(
-            app_data_dir,
-            app_local_data_dir,
-        ))
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        Ok(app_data_dir)
-    }
+        .download_dir()
+        .map_err(|error| format!("Could not locate the Downloads folder: {error}"))?;
+    std::fs::create_dir_all(&downloads_dir).map_err(|error| error.to_string())?;
+    let safe_stem =
+        sanitize_generated_filename_stem(&filename_stem, "filament-inventory-label-sheet");
+    let path = downloads_dir.join(format!("{safe_stem}-{}.pdf", chrono_id()));
+    write_generated_file(&path, &bytes)?;
+    Ok(path.to_string_lossy().into_owned())
 }
 
-#[cfg(target_os = "windows")]
-fn resolve_windows_storage_dir(roaming_dir: PathBuf, local_dir: PathBuf) -> PathBuf {
-    if storage_dir_has_database(&local_dir) {
-        return local_dir;
+fn decode_pdf_payload(pdf_base64: &str) -> Result<Vec<u8>, String> {
+    let encoded = pdf_base64
+        .trim()
+        .strip_prefix("data:application/pdf;base64,")
+        .unwrap_or(pdf_base64.trim());
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(encoded)
+        .map_err(|error| format!("Invalid PDF payload: {error}"))?;
+    if !bytes.starts_with(b"%PDF-") {
+        return Err("Inventory label sheet export payload is not a PDF document.".to_string());
     }
-    if storage_dir_has_database(&roaming_dir) {
-        return roaming_dir;
-    }
-    local_dir
-}
-
-#[cfg(target_os = "windows")]
-fn storage_dir_has_database(dir: &Path) -> bool {
-    [APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME]
-        .iter()
-        .any(|file_name| dir.join(file_name).exists())
+    Ok(bytes)
 }
 
 fn write_generated_file(path: &Path, contents: &[u8]) -> Result<(), String> {
@@ -172,7 +134,7 @@ fn write_generated_file(path: &Path, contents: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
-fn sanitize_generated_filename_stem(value: &str) -> String {
+fn sanitize_generated_filename_stem(value: &str, fallback: &str) -> String {
     let normalized = value
         .trim()
         .chars()
@@ -190,7 +152,7 @@ fn sanitize_generated_filename_stem(value: &str) -> String {
         .collect::<Vec<_>>()
         .join("-");
     if compact.is_empty() {
-        "filament-label".to_string()
+        fallback.to_string()
     } else {
         compact
     }
@@ -266,22 +228,6 @@ fn png_crc32(bytes: &[u8]) -> u32 {
     !crc
 }
 
-fn open_generated_document(path: &Path) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
-    {
-        open::that(path).map_err(|error| {
-            format!("Failed to open generated file in the default Windows handler: {error}")
-        })?;
-        Ok(())
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        open::that(path).map_err(|error| error.to_string())?;
-        Ok(())
-    }
-}
-
 pub(crate) fn chrono_id() -> String {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -292,7 +238,11 @@ pub(crate) fn chrono_id() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{chrono_id, png_with_dpi, sanitize_generated_filename_stem, write_generated_file};
+    use super::{
+        chrono_id, decode_pdf_payload, png_with_dpi, sanitize_generated_filename_stem,
+        write_generated_file,
+    };
+    use base64::Engine;
 
     #[test]
     fn generated_file_write_persists_contents() {
@@ -313,10 +263,32 @@ mod tests {
     #[test]
     fn generated_label_filename_stays_portable() {
         assert_eq!(
-            sanitize_generated_filename_stem(" filament label #248216 / 24 mm "),
+            sanitize_generated_filename_stem(" filament label #248216 / 24 mm ", "filament-label",),
             "filament-label-248216-24-mm"
         );
-        assert_eq!(sanitize_generated_filename_stem("..."), "filament-label");
+        assert_eq!(
+            sanitize_generated_filename_stem("...", "filament-label"),
+            "filament-label"
+        );
+        assert_eq!(
+            sanitize_generated_filename_stem("...", "filament-inventory-label-sheet"),
+            "filament-inventory-label-sheet"
+        );
+    }
+
+    #[test]
+    fn inventory_label_sheet_pdf_requires_pdf_magic() {
+        let valid = base64::engine::general_purpose::STANDARD.encode(b"%PDF-1.7\ncontent");
+        assert_eq!(
+            decode_pdf_payload(&valid).expect("valid PDF payload should decode"),
+            b"%PDF-1.7\ncontent"
+        );
+
+        let invalid = base64::engine::general_purpose::STANDARD.encode(b"not a pdf");
+        assert_eq!(
+            decode_pdf_payload(&invalid).expect_err("non-PDF payload should fail"),
+            "Inventory label sheet export payload is not a PDF document."
+        );
     }
 
     #[test]

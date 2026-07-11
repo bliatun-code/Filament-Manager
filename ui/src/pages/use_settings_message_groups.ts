@@ -28,7 +28,6 @@ export function useSettingsMessageGroups(t: TranslateFn) {
   } = messageLabels.backup;
   const {
     settingsInventoryOverviewPrintMessageLabels,
-    settingsInventoryOverviewPrintPdfLabels,
     settingsInventoryPrintLabels,
   } = messageLabels.inventoryPrint;
   const {
@@ -53,7 +52,6 @@ export function useSettingsMessageGroups(t: TranslateFn) {
     settingsImportMessageLabels,
     settingsInventoryExportMessageLabels,
     settingsInventoryOverviewPrintMessageLabels,
-    settingsInventoryOverviewPrintPdfLabels,
     settingsInventoryPrintLabels,
     settingsMaintenanceResetMessageLabels,
     settingsPrinterMessageLabels,

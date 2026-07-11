@@ -20,10 +20,10 @@ import type {
   SettingsMaintenanceResetMessageLabels,
 } from "./settings_maintenance_model";
 import type {
-  SettingsInventoryOverviewPrintPdfLabels,
   SettingsInventoryPrintLabels,
   SettingsInventoryPrintMessageLabels,
 } from "./settings_inventory_print_model";
+import type { SettingsInventoryLabelSheetModalProps } from "../components/settings_inventory_label_sheet_modal";
 import { buildSettingsMaintenanceRouteProps } from "./settings_maintenance_route_props";
 import type { LibrarySyncMode } from "./settings_library_sync_model";
 import { useSettingsBackupExportActions } from "./use_settings_backup_export_actions";
@@ -44,6 +44,7 @@ type UseSettingsMaintenanceSectionInput = {
   clearBackupValidation: () => void;
   lastBackupValidation: BackupValidationStats | null;
   lastCatalogReset: CatalogResetStats | null;
+  initialInventoryLabelSheetOpen?: boolean;
   librarySyncModeDraft: LibrarySyncMode;
   locale: Locale;
   missingSwatchCount: number;
@@ -75,7 +76,6 @@ type UseSettingsMaintenanceSectionInput = {
   settingsImportMessageLabels: () => SettingsImportMessageLabels;
   settingsInventoryExportMessageLabels: () => SettingsInventoryExportMessageLabels;
   settingsInventoryOverviewPrintMessageLabels: () => SettingsInventoryPrintMessageLabels;
-  settingsInventoryOverviewPrintPdfLabels: () => SettingsInventoryOverviewPrintPdfLabels;
   settingsInventoryPrintLabels: () => SettingsInventoryPrintLabels;
   settingsMaintenanceResetMessageLabels: () => SettingsMaintenanceResetMessageLabels;
   tauri: boolean;
@@ -92,6 +92,7 @@ export function useSettingsMaintenanceSection({
   clearBackupValidation,
   lastBackupValidation,
   lastCatalogReset,
+  initialInventoryLabelSheetOpen = false,
   librarySyncModeDraft,
   locale,
   missingSwatchCount,
@@ -120,7 +121,6 @@ export function useSettingsMaintenanceSection({
   settingsImportMessageLabels,
   settingsInventoryExportMessageLabels,
   settingsInventoryOverviewPrintMessageLabels,
-  settingsInventoryOverviewPrintPdfLabels,
   settingsInventoryPrintLabels,
   settingsMaintenanceResetMessageLabels,
   tauri,
@@ -184,17 +184,19 @@ export function useSettingsMaintenanceSection({
     t,
   });
 
-  const { handlePrintInventoryOverviewA4 } = useSettingsInventoryPrintAction({
+  const {
+    handleOpenInventoryLabelSheet,
+    inventoryLabelSheetModalProps,
+  } = useSettingsInventoryPrintAction({
     busy,
+    initialOpen: initialInventoryLabelSheetOpen,
     loadSettingsInventoryRows,
     locale,
-    setBusy,
     setError,
     setInfo,
     settingsClientHostBaseUrl,
     settingsClientReadOnly,
     settingsInventoryOverviewPrintMessageLabels,
-    settingsInventoryOverviewPrintPdfLabels,
     settingsInventoryPrintLabels,
     tauri,
     trustedLanStatus,
@@ -257,7 +259,8 @@ export function useSettingsMaintenanceSection({
     handleExportFullBackup,
     handleOpenBackupValidate,
     handleOpenDataImport,
-    handlePrintInventoryOverviewA4,
+    handleOpenInventoryLabelSheet,
+    inventoryLabelSheetModalProps: inventoryLabelSheetModalProps satisfies SettingsInventoryLabelSheetModalProps,
     settingsMaintenanceRouteProps,
   };
 }

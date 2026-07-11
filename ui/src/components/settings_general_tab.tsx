@@ -16,6 +16,10 @@ import {
   settingsSectionLabelClass,
 } from "../lib/settings_ui_classes";
 import { SettingsSurfaceCard } from "./settings_ui";
+import {
+  SettingsInventoryLabelSheetModal,
+  type SettingsInventoryLabelSheetModalProps,
+} from "./settings_inventory_label_sheet_modal";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -23,23 +27,25 @@ export type SettingsGeneralTabProps = {
   appVersion: string | null;
   busy: boolean;
   locale: Locale;
+  inventoryLabelSheetModalProps: SettingsInventoryLabelSheetModalProps;
   tauri: boolean;
   themeMode: ThemeMode;
   t: TranslateFn;
   onLocaleSelection: (locale: Locale) => void;
-  onPrintInventoryOverviewA4: () => void;
+  onOpenInventoryLabelSheet: () => void;
   onThemeSelection: (mode: ThemeMode) => void;
 };
 
 export function SettingsGeneralTab({
   appVersion,
   busy,
+  inventoryLabelSheetModalProps,
   locale,
   tauri,
   themeMode,
   t,
   onLocaleSelection,
-  onPrintInventoryOverviewA4,
+  onOpenInventoryLabelSheet,
   onThemeSelection,
 }: SettingsGeneralTabProps) {
   const displayVersion = appVersion?.trim() || t("common.unknown", "Unknown");
@@ -204,21 +210,23 @@ export function SettingsGeneralTab({
 
       <SettingsSurfaceCard
         className="space-y-4"
-        eyebrow={t("settings.inventoryOverviewPrint", "Inventory A4 overview")}
+        eyebrow={t("settings.inventoryOverviewPrint", "Inventory label sheets")}
         description={t(
           "settings.inventoryOverviewPrintHint",
-          "Print a material-sorted list with swatch, QR and filament details for all in-stock spools.",
+          "Create QR label sheets for every on-hand roll, using the same readable 60 × 24 mm layout as individual labels.",
         )}
       >
         <button
           type="button"
-          onClick={onPrintInventoryOverviewA4}
+          onClick={onOpenInventoryLabelSheet}
           className={settingsActionButtonClass("accent")}
           disabled={!tauri || busy}
         >
-          {t("settings.inventoryOverviewPrintAction", "Print A4 inventory overview")}
+          {t("settings.inventoryOverviewPrintAction", "Create inventory label sheet")}
         </button>
       </SettingsSurfaceCard>
+
+      <SettingsInventoryLabelSheetModal {...inventoryLabelSheetModalProps} />
     </>
   );
 }

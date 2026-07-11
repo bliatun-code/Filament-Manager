@@ -3,19 +3,19 @@ type SettingsGeneralTabProps = SettingsGeneralRouteProps["tab"];
 
 type BuildSettingsGeneralRoutePropsInput = Omit<
   SettingsGeneralTabProps,
-  "onPrintInventoryOverviewA4"
+  "onOpenInventoryLabelSheet"
 > & {
-  onPrintInventoryOverviewA4: () => Promise<void> | void;
+  onOpenInventoryLabelSheet: () => Promise<void> | void;
 };
 
 export function buildSettingsGeneralRouteProps({
-  onPrintInventoryOverviewA4,
+  onOpenInventoryLabelSheet,
   ...tab
 }: BuildSettingsGeneralRoutePropsInput): SettingsGeneralRouteProps {
   return {
     tab: {
       ...tab,
-      onPrintInventoryOverviewA4: () => void onPrintInventoryOverviewA4(),
+      onOpenInventoryLabelSheet: () => void onOpenInventoryLabelSheet(),
     },
   };
 }

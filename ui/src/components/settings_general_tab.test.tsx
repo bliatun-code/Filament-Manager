@@ -25,7 +25,7 @@ function i18nValue(locale: Locale = "en"): I18nContextValue {
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
-function renderGeneralTab(locale: Locale = "en") {
+function renderGeneralTab(locale: Locale = "en", labelSheetOpen = false) {
   return renderToStaticMarkup(
     React.createElement(
       I18nContext.Provider,
@@ -33,12 +33,28 @@ function renderGeneralTab(locale: Locale = "en") {
       React.createElement(SettingsGeneralTab, {
         appVersion: "0.16.0",
         busy: false,
+        inventoryLabelSheetModalProps: {
+          items: labelSheetOpen
+            ? [
+                {
+                  reference: "spool-1",
+                  pngDataUrl:
+                    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7aSykAAAAASUVORK5CYII=",
+                },
+              ]
+            : [],
+          loading: false,
+          onClose: () => {},
+          onSave: () => {},
+          open: labelSheetOpen,
+          saving: false,
+        },
         locale,
         tauri: true,
         themeMode: "dark",
         t: i18nValue(locale).t,
         onLocaleSelection: () => {},
-        onPrintInventoryOverviewA4: () => {},
+        onOpenInventoryLabelSheet: () => {},
         onThemeSelection: () => {},
       }),
     ),
@@ -84,4 +100,17 @@ test("SettingsGeneralTab localizes license controls in Norwegian", () => {
   assert.match(html, /Notiser/);
   assert.match(html, /Hjelp/);
   assert.match(html, /Brukermanual/);
+});
+
+test("SettingsGeneralTab opens a paper-aware inventory label sheet preview", () => {
+  const html = renderGeneralTab("en", true);
+
+  assert.match(html, /Create inventory label sheet/);
+  assert.match(html, /Sheet preview/);
+  assert.match(html, /A4/);
+  assert.match(html, /US Letter/);
+  assert.match(html, /60 × 24 mm/);
+  assert.match(html, /30 labels per page/);
+  assert.match(html, /Save PDF to Downloads/);
+  assert.match(html, /data:image\/png;base64/);
 });

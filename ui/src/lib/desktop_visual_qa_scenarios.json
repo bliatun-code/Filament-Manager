@@ -138,6 +138,13 @@
       "category": "settings"
     },
     {
+      "id": "settings-inventory-label-sheet",
+      "aliases": ["inventory-label-sheet", "settings-label-sheet"],
+      "page": "settings",
+      "settingsTab": "GENERAL",
+      "category": "modal"
+    },
+    {
       "id": "settings-library",
       "aliases": ["library-settings", "companion-settings"],
       "page": "settings",

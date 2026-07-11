@@ -28,7 +28,8 @@ type SettingsPageProps = {
 
 export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPageProps) {
   const tauri = isTauri();
-  const desktopVisualQaScenarioRef = useRef(resolveDesktopVisualQaScenario());
+  const desktopVisualQaScenario = resolveDesktopVisualQaScenario();
+  const desktopVisualQaScenarioRef = useRef(desktopVisualQaScenario);
   const desktopVisualQaRoleChangeAppliedRef = useRef(false);
   const reloadSettingsRef = useRef<() => Promise<void>>(async () => undefined);
   const { locale, setLocale, t } = useI18n();
@@ -161,7 +162,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsImportMessageLabels,
     settingsInventoryExportMessageLabels,
     settingsInventoryOverviewPrintMessageLabels,
-    settingsInventoryOverviewPrintPdfLabels,
     settingsInventoryPrintLabels,
     settingsMaintenanceResetMessageLabels,
     settingsPrinterMessageLabels,
@@ -333,7 +333,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     handleExportFullBackup,
     handleOpenBackupValidate,
     handleOpenDataImport,
-    handlePrintInventoryOverviewA4,
+    handleOpenInventoryLabelSheet,
+    inventoryLabelSheetModalProps,
     settingsMaintenanceRouteProps,
   } = useSettingsMaintenanceSection({
     backupValidationHasExtraTables,
@@ -344,6 +345,8 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     clearBackupValidation,
     lastBackupValidation,
     lastCatalogReset,
+    initialInventoryLabelSheetOpen:
+      desktopVisualQaScenario === "settings-inventory-label-sheet",
     librarySyncModeDraft,
     locale,
     missingSwatchCount,
@@ -372,7 +375,6 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsImportMessageLabels,
     settingsInventoryExportMessageLabels,
     settingsInventoryOverviewPrintMessageLabels,
-    settingsInventoryOverviewPrintPdfLabels,
     settingsInventoryPrintLabels,
     settingsMaintenanceResetMessageLabels,
     tauri,
@@ -463,11 +465,12 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     appVersion,
     busy,
     locale,
+    inventoryLabelSheetModalProps,
     tauri,
     themeMode,
     t,
     onLocaleSelection: handleLocaleSelection,
-    onPrintInventoryOverviewA4: handlePrintInventoryOverviewA4,
+    onOpenInventoryLabelSheet: handleOpenInventoryLabelSheet,
     onThemeSelection: handleThemeSelection,
   });
   const {

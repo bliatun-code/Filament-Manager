@@ -58,6 +58,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "printer-slot-replacement",
     "printer-slot-clear",
     "settings-general",
+    "settings-inventory-label-sheet",
     "settings-library",
     "settings-library-role-change",
     "settings-library-network-details",
@@ -106,6 +107,10 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
   assert.equal(normalizeDesktopVisualQaScenario("slot-unload"), "printer-slot-clear");
   assert.equal(normalizeDesktopVisualQaScenario("batch-add"), "bambu-batch-add");
   assert.equal(normalizeDesktopVisualQaScenario("general-settings"), "settings-general");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("inventory-label-sheet"),
+    "settings-inventory-label-sheet",
+  );
   assert.equal(normalizeDesktopVisualQaScenario("companion-settings"), "settings-library");
   assert.equal(
     normalizeDesktopVisualQaScenario("library-role-dialog"),
@@ -185,6 +190,10 @@ test("desktop visual QA scenario manifest describes routing and fixture states",
   assert.equal(desktopVisualQaScenarioDefinition("order-queue")?.requiresDatabaseFixture, true);
   assert.equal(desktopVisualQaScenarioDefinition("trusted-lan-details")?.settingsTab, "LIBRARY");
   assert.equal(
+    desktopVisualQaScenarioDefinition("inventory-label-sheet")?.settingsTab,
+    "GENERAL",
+  );
+  assert.equal(
     desktopVisualQaScenarioDefinition("library-role-change")?.settingsTab,
     "LIBRARY",
   );
@@ -250,6 +259,10 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-slot-replacement"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-slot-clear"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-general"), "settings");
+  assert.equal(
+    desktopVisualQaInitialPage("?bfm_visual_qa=settings-inventory-label-sheet"),
+    "settings",
+  );
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-library"), "settings");
   assert.equal(
     desktopVisualQaInitialPage("?bfm_visual_qa=settings-library-role-change"),
@@ -306,6 +319,10 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
 
 test("desktop visual QA settings scenarios resolve to the intended tab", () => {
   assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-general"), "GENERAL");
+  assert.equal(
+    desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-inventory-label-sheet"),
+    "GENERAL",
+  );
   assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-library"), "LIBRARY");
   assert.equal(
     desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-library-role-change"),

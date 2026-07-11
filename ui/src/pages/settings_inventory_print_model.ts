@@ -1,17 +1,12 @@
 import type { BuiltFilamentQrPayload } from "../lib/filament_qr_payload";
-import type {
-  InventoryOverviewPrintLabels,
-  InventoryOverviewPrintRow,
-} from "../lib/inventory_overview_print";
-import { isBorrowedInOwnership, isSpoolStatusEmpty } from "../lib/inventory_domain";
+import type { InventoryOverviewPrintRow } from "../lib/inventory_overview_print";
+import { isBorrowedInOwnership, isSpoolStatusOnHand } from "../lib/inventory_domain";
 import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 
 export type SettingsInventoryPrintLabels = {
   borrowedIn: string;
   unknown: string;
 };
-
-export type SettingsInventoryOverviewPrintPdfLabels = InventoryOverviewPrintLabels;
 
 export type SettingsInventoryPrintMessageLabels = {
   inventoryOverviewPrintFailed: string;
@@ -34,7 +29,7 @@ export async function buildSettingsInventoryOverviewPrintRows(input: {
   buildFilamentLabelQrDataUrl: (payload: string) => Promise<string>;
 }): Promise<InventoryOverviewPrintRow[]> {
   const inStockRows = input.rows
-    .filter((row) => !isSpoolStatusEmpty(row.spool.normalized_status))
+    .filter((row) => isSpoolStatusOnHand(row.spool.normalized_status))
     .sort((left, right) => compareSettingsInventoryPrintRows(left, right, input.locale));
 
   return Promise.all(
@@ -70,20 +65,15 @@ export function buildSettingsInventoryPrintLabels(
 
 export function buildSettingsInventoryOverviewPrintSuccessMessage(
   labels: SettingsInventoryPrintMessageLabels,
+  exportedPath: string,
 ): string {
-  return labels.inventoryOverviewPrintDone;
+  return labels.inventoryOverviewPrintDone.replace("{path}", exportedPath);
 }
 
 export function buildSettingsInventoryOverviewPrintErrorMessage(
   labels: SettingsInventoryPrintMessageLabels,
 ): string {
   return labels.inventoryOverviewPrintFailed;
-}
-
-export function buildSettingsInventoryOverviewPrintPdfLabels(
-  labels: SettingsInventoryOverviewPrintPdfLabels,
-): SettingsInventoryOverviewPrintPdfLabels {
-  return labels;
 }
 
 function compareSettingsInventoryPrintRows(

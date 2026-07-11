@@ -29,6 +29,7 @@ export type DesktopVisualQaScenario =
   | "printer-slot-replacement"
   | "printer-slot-clear"
   | "settings-general"
+  | "settings-inventory-label-sheet"
   | "settings-library"
   | "settings-library-role-change"
   | "settings-library-network-details"

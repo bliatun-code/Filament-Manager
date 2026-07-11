@@ -7,11 +7,11 @@ export function useSettingsInventoryPrintMessages(t: SettingsTranslator) {
   const settingsInventoryOverviewPrintMessageLabels = useCallback(() => ({
     inventoryOverviewPrintFailed: t(
       "settings.error.inventoryOverviewPrint",
-      "Failed to print inventory overview.",
+      "Failed to create inventory label PDF.",
     ),
     inventoryOverviewPrintDone: t(
       "settings.inventoryOverviewPrintDone",
-      "A4 inventory overview PDF opened for printing.",
+      "Inventory label PDF saved to Downloads: {path}",
     ),
   }), [t]);
 
@@ -20,21 +20,8 @@ export function useSettingsInventoryPrintMessages(t: SettingsTranslator) {
     unknown: t("common.unknown", "Unknown"),
   }), [t]);
 
-  const settingsInventoryOverviewPrintPdfLabels = useCallback(() => ({
-    title: t("settings.inventoryOverviewPrintTitle", "In-stock filament overview"),
-    generatedAt: t("settings.inventoryOverviewPrintGeneratedAt", "Generated"),
-    groupMaterial: t("settings.inventoryOverviewPrintGroupMaterial", "Material group"),
-    empty: t("settings.inventoryOverviewPrintEmpty", "No filament in stock."),
-    vendor: t("settings.inventoryOverviewPrintVendor", "Vendor"),
-    material: t("settings.inventoryOverviewPrintMaterial", "Material"),
-    filament: t("settings.inventoryOverviewPrintFilament", "Filament"),
-    homeLocation: t("inventory.homeLocationLabel", "Home location"),
-    reference: t("settings.inventoryOverviewPrintReference", "Reference"),
-  }), [t]);
-
   return {
     settingsInventoryOverviewPrintMessageLabels,
-    settingsInventoryOverviewPrintPdfLabels,
     settingsInventoryPrintLabels,
   };
 }

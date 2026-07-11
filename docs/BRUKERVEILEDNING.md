@@ -238,7 +238,13 @@ Generelt:
 - programversjon
 - tema: Auto, Lys, Mørk
 - språk
-- A4-lageroversikt
+- etikettark med QR for lageret
+
+**Lag etikettark for lageret** åpner en forhåndsvisning for alle ruller som er på
+lager. Velg A4 eller US Letter, start på første side, og bruk sidekontrollene for
+å se gjennom resten av arkene før du lagrer. Hver etikett på arket bruker samme
+oppsett på 60 × 24 mm som P-Touch QR-etiketten, og den ferdige PDF-filen lagres
+i Nedlastinger.
 
 Bibliotek og webapp:
 

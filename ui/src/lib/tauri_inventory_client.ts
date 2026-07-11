@@ -385,16 +385,12 @@ export async function exportLabelPng(pngDataUrl: string, filenameStem: string) {
   });
 }
 
-export async function printLabelPdf(
-  pdfBase64: string,
-  printerName?: string | null,
-  copies?: number | null,
-) {
-  return invoke<void>("print_label_pdf", {
+export async function exportInventoryLabelSheetPdf(pdfBase64: string, filenameStem: string) {
+  return invoke<string>("export_inventory_label_sheet_pdf", {
     pdfBase64,
     pdf_base64: pdfBase64,
-    printerName,
-    copies,
+    filenameStem,
+    filename_stem: filenameStem,
   });
 }
 
