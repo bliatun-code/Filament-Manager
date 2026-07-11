@@ -76,11 +76,17 @@ export const frDictionary: DictionaryNode = {
     inUse: "en cours d’utilisation",
     assigned: "affectées",
     ownershipSnapshot: "Aperçu de la propriété",
+    ownershipSnapshotHint:
+      "Suivez séparément nos bobines et les bobines empruntées sans modifier les totaux principaux ci-dessus.",
+    noBorrowedInStock: "Aucune bobine empruntée dans le stock",
     ownedOnHand: "Nos bobines disponibles",
     borrowedInOnHand: "Bobines empruntées disponibles",
     ownedLowStock: "Nos stocks faibles",
     borrowedInLowStock: "Stocks faibles empruntés",
+    ownershipSplitNote:
+      "Les totaux principaux ci-dessus regroupent toujours toutes les bobines physiques, tandis que les règles de synthèse par propriétaire continuent d’évoluer.",
     activePrinters: "Imprimantes actives",
+    amsOnline: "Emplacements en ligne",
     configured: "configurées",
     noActivePrinter: "Aucune imprimante active sélectionnée",
     noPrintersConfigured: "Aucune imprimante configurée",
@@ -88,14 +94,36 @@ export const frDictionary: DictionaryNode = {
     noAlerts: "Aucune alerte",
     monthlyUsage: "Consommation mensuelle",
     gramsPerDay: "{count} g/jour",
+    clientSnapshotSubtitle: "Instantané de l’hôte en lecture seule",
+    clientSnapshotHostPrinters: "Sur l’hôte",
+    clientSnapshotHostOnline: "Activité des imprimantes signalée par l’hôte",
+    clientSnapshotNeedsAttention: "La bibliothèque de l’hôte nécessite votre attention",
+    clientSnapshotActiveLoans: "Prêts actifs",
+    clientSnapshotSynced: "Instantané de l’hôte",
+    clientSnapshotSyncedLive: "Instantané en direct de l’hôte",
+    clientSnapshotSyncedCached: "Instantané de l’hôte en cache",
+    clientSnapshotCardTitle: "Aperçu de l’hôte en lecture seule",
+    clientSnapshotCardHint:
+      "Cet appareil est connecté en tant que client. Il affiche pour le moment le résumé de l’hôte et laisse les opérations d’écriture importantes sur l’hôte.",
+    clientSnapshotLibraryId: "ID de la bibliothèque",
+    clientSnapshotCapturedAt: "Instantané capturé",
+    clientSnapshotHealthHint:
+      "Ce client affiche uniquement le résumé de l’hôte. Le détail de l’état du stock reste pour le moment sur l’hôte.",
     last30: "30 derniers jours",
     consumption: "Consommation de filament",
+    consumptionCaption: "La consommation est agrégée à partir des tâches liées aux imprimantes.",
     noUsageTrendYet: "Aucune tendance de consommation pour le moment",
     backup: "Sauvegarde",
+    backupText: "Exportez des instantanés du stock en JSON ou CSV pour les archiver.",
     recentActivity: "Activité récente",
+    activityHint: "Les prêts ouverts et l’utilisation récente des imprimantes apparaissent ici en premier.",
+    activityEmptyHint:
+      "Les prêts, les tâches d’impression et les autres activités suivies apparaîtront ici.",
     noRecentActivity: "Aucune activité récente.",
     inventoryHealth: "État du stock",
     achievements: "Objectifs de progression",
+    achievementsHint: "Objectifs dynamiques basés sur votre stock et l’activité actuelle des imprimantes.",
+    lowStockShort: "stock faible",
     active: "Actif",
     below20: "Sous 20 %",
     below200: "Sous 200 g",
@@ -107,12 +135,34 @@ export const frDictionary: DictionaryNode = {
     healthStable: "Stock stable",
     healthMonitor: "Surveiller le réapprovisionnement",
     healthRestock: "Réapprovisionnement conseillé",
+    healthBalanceHint:
+      "Surveillez ensemble les stocks faibles, les prêts, les commandes et les emplacements chargés.",
     noInventoryData: "Aucune donnée de stock",
     addRollsForHealth: "Ajoutez des bobines pour démarrer le suivi du stock.",
+    syncedFromDb: "Synchronisé depuis la base locale",
     synced: "Synchronisé",
     companionOff: "Web app désactivée",
     companionLive: "Web app active",
     companionCheck: "Vérifier la web app",
+    hostCompanionOff: "Hôte déconnecté",
+    connectedToHost: "Connecté à",
+    checkHostConnection: "Vérifier la connexion à",
+    hostFallbackName: "l’hôte",
+    openCompanionSettings: "Ouvrir les paramètres de Companion",
+    badgeLocationCoverage: "Couverture des emplacements",
+    badgeLocationCoverageDesc:
+      "Affectez chaque bobine active à une étagère, un prêt ou un emplacement d’imprimante.",
+    badgeActiveSpoolsPlaced: "bobines actives placées",
+    badgeNoActiveSpools: "Aucune bobine active pour le moment.",
+    badgeJobLogging: "Suivi des tâches",
+    badgeJobLoggingDesc:
+      "Enregistrez les tâches liées aux imprimantes afin que la consommation repose sur l’utilisation réelle.",
+    badgeJobsLogged: "tâches enregistrées",
+    badgeSlotReadiness: "Préparation des emplacements",
+    badgeSlotReadinessDesc:
+      "Gardez les emplacements AMS/MMU prêts lorsqu’ils sont configurés ; EXT compte pour les imprimantes monomatériau.",
+    badgeSlotsLoaded: "emplacements chargés",
+    badgeNoPrinterSlots: "Aucun emplacement d’imprimante configuré pour le moment.",
   },
   inventory: {
     title: "Bobines",
@@ -1240,6 +1290,8 @@ export const frDictionary: DictionaryNode = {
     librarySyncAdvancedTitle: "Détails avancés de l’hôte",
     librarySyncAdvancedHint:
       "Ouvrez uniquement pour consulter les diagnostics ou l’instantané en cache.",
+    cachedReused: "Données en cache réutilisées",
+    detailFetches: "Chargements des détails",
     librarySyncShowAdvanced: "Afficher les détails",
     librarySyncHideAdvanced: "Masquer les détails",
     librarySyncStandaloneHint: "Cet appareil utilise uniquement sa bibliothèque locale.",
@@ -1486,6 +1538,7 @@ export const frDictionary: DictionaryNode = {
     catalogResetDone: "Réparation du catalogue terminée",
     backupExported: "Sauvegarde complète exportée (stock, historique et imprimantes).",
     backupImported: "Sauvegarde complète importée.",
+    inventoryImportDone: "Import du stock terminé.",
     librarySyncImportedOnClientHint:
       "Cet appareil est prêt à devenir le prochain hôte. Vérifiez le rôle de la bibliothèque avant de prendre le relais.",
     importSource: "Source",
@@ -1724,6 +1777,9 @@ export const frDictionary: DictionaryNode = {
     updated: "mis à jour",
     failed: "échec",
     skipped: "ignoré",
+    themeSetTo: "Mode d’apparence défini sur",
+    langSetNb: "Langue définie sur le norvégien.",
+    langSetEn: "Langue définie sur l’anglais.",
     confirmBulkSwatch: "Compléter automatiquement toutes les couleurs manquantes visibles ?",
     confirmBulkSwatchTapAgain:
       "Cliquez de nouveau sur Compléter les couleurs manquantes visibles pour confirmer.",
@@ -1739,6 +1795,8 @@ export const frDictionary: DictionaryNode = {
       "Réinitialiser les données de l’application ?\n\nLe stock, les imprimantes, l’historique, la liste de souhaits et les navigateurs associés seront effacés. Le catalogue sera conservé.",
     confirmResetCatalogs:
       "Réparer le catalogue ?\n\nLe catalogue intégré sera restauré. Seules les entrées inutilisées non intégrées seront supprimées ; les références du stock et des souhaits seront conservées.",
+    confirmImportBackup:
+      "Importer maintenant la sauvegarde complète ?\n\nLe stock, l’historique, les imprimantes configurées et les données de maintenance actuels seront remplacés.",
     error: {
       load: "Échec du chargement des paramètres.",
       bambuLiveFieldsRequired:
@@ -1773,9 +1831,15 @@ export const frDictionary: DictionaryNode = {
       librarySyncPrinterWriteRequiresPairing:
         "Associez ce client à l’hôte avant de modifier les imprimantes.",
       loadTrustedLanCompanion: "Échec du chargement de l’état de Companion Trusted-LAN.",
+      copyCompanionShellUrl: "Échec de la copie de l’URL de Companion.",
       trustedLanNoInterface:
         "Choisissez une interface privée avant d’activer le serveur de la web app.",
+      saveTrustedLanConfig: "Échec de l’enregistrement des paramètres de Companion Trusted-LAN.",
+      createTrustedLanPairing: "Échec de la création du lien d’association Trusted-LAN.",
+      copyTrustedLanPairing: "Échec de la copie du lien d’association Trusted-LAN.",
       loadTrustedLanPairedBrowsers: "Échec de l’actualisation des navigateurs associés.",
+      revokeTrustedLanBrowser: "Échec de la révocation du navigateur Trusted-LAN.",
+      revokeAllTrustedLanBrowsers: "Échec de la révocation des navigateurs Trusted-LAN.",
     },
   },
 };
