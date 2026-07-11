@@ -296,6 +296,7 @@ test("companion screenshot gate normalizes screenshot locale overrides", () => {
   assert.equal(normalizeCompanionScreenshotLocale("en"), "en");
   assert.equal(normalizeCompanionScreenshotLocale("en-US"), "en");
   assert.equal(normalizeCompanionScreenshotLocale("en-GB"), "en");
+  assert.equal(normalizeCompanionScreenshotLocale("en-XA"), "en-XA");
   assert.equal(normalizeCompanionScreenshotLocale(""), "en");
   assert.equal(normalizeCompanionScreenshotLocale("bad"), "en");
 });

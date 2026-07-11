@@ -5,3 +5,9 @@ export function formatMessage(
   params?: MessageParams,
   locale?: unknown,
 ): string;
+export function formatMessageWithLiteralTransform(
+  template: string,
+  params?: MessageParams,
+  locale?: unknown,
+  transformLiteral?: (value: string) => string,
+): string;

@@ -8,6 +8,9 @@ export const SUPPORTED_LOCALES = Object.freeze([
     direction: "ltr",
     intlLocale: "en-US",
     nativeLabel: "English",
+    selectable: true,
+    catalogKind: "source",
+    generatedFrom: null,
     guidePath: "docs/USER_GUIDE.md",
     selectionMessageKey: "settings.langSetEn",
     companionSelectionMessageKey: "status.languageSetEn",
@@ -20,12 +23,38 @@ export const SUPPORTED_LOCALES = Object.freeze([
     direction: "ltr",
     intlLocale: "nb-NO",
     nativeLabel: "Norsk (bokmål)",
+    selectable: true,
+    catalogKind: "source",
+    generatedFrom: null,
     guidePath: "docs/BRUKERVEILEDNING.md",
     selectionMessageKey: "settings.langSetNb",
     companionSelectionMessageKey: "status.languageSetNb",
     selectionMessageFallback: "Language set to Norwegian.",
   }),
+  Object.freeze({
+    id: "en-XA",
+    aliases: Object.freeze(["en-xa"]),
+    htmlLang: "en-XA",
+    direction: "ltr",
+    intlLocale: "en-US",
+    nativeLabel: "Pseudo (QA)",
+    selectable: false,
+    catalogKind: "generated",
+    generatedFrom: "en",
+    guidePath: "docs/USER_GUIDE.md",
+    selectionMessageKey: "settings.langSetEn",
+    companionSelectionMessageKey: "status.languageSetEn",
+    selectionMessageFallback: "Language set to English.",
+  }),
 ]);
+
+export const SELECTABLE_LOCALES = Object.freeze(
+  SUPPORTED_LOCALES.filter(({ selectable }) => selectable),
+);
+
+export const SOURCE_LOCALES = Object.freeze(
+  SUPPORTED_LOCALES.filter(({ catalogKind }) => catalogKind === "source"),
+);
 
 export const SUPPORTED_LOCALE_IDS = Object.freeze(
   SUPPORTED_LOCALES.map(({ id }) => id),
@@ -40,16 +69,26 @@ export function localeDefinition(value) {
   if (!normalized) {
     return null;
   }
-  const baseLanguage = normalized.split("-")[0];
-  return (
-    SUPPORTED_LOCALES.find(
-      ({ id, aliases }) =>
-        normalized === id ||
-        aliases.includes(normalized) ||
-        baseLanguage === id ||
-        aliases.includes(baseLanguage),
-    ) ?? null
+  const exactMatch = SUPPORTED_LOCALES.find(
+    ({ id, aliases }) => normalized === id.toLowerCase() || aliases.includes(normalized),
   );
+  if (exactMatch) {
+    return exactMatch;
+  }
+  const baseLanguage = normalized.split("-")[0];
+  return SUPPORTED_LOCALES.find(
+    ({ id, aliases }) =>
+      baseLanguage === id.toLowerCase() || aliases.includes(baseLanguage),
+  ) ?? null;
+}
+
+export function sourceLocaleFor(value) {
+  const definition = localeDefinition(value) ?? localeDefinition(DEFAULT_LOCALE);
+  return definition?.generatedFrom ?? definition?.id ?? DEFAULT_LOCALE;
+}
+
+export function isPseudoLocale(value) {
+  return localeDefinition(value)?.catalogKind === "generated";
 }
 
 export function normalizeSupportedLocale(value, fallback = null) {

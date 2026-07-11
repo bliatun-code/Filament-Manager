@@ -1,5 +1,5 @@
 import type { Locale } from "../lib/i18n";
-import { SUPPORTED_LOCALES } from "../../../src-tauri/companion_browser/supported_locales.js";
+import { SELECTABLE_LOCALES } from "../../../src-tauri/companion_browser/supported_locales.js";
 import type { ThemeMode } from "../lib/theme_mode";
 import {
   APP_LICENSE_ID,
@@ -102,7 +102,7 @@ export function SettingsGeneralTab({
             role="group"
             aria-label={t("settings.language", "Language")}
           >
-            {SUPPORTED_LOCALES.map((definition) => (
+            {SELECTABLE_LOCALES.map((definition) => (
               <button
                 key={definition.id}
                 type="button"

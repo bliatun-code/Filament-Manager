@@ -9,7 +9,7 @@ import {
 } from "./check-i18n-locales.mjs";
 import {
   DEFAULT_LOCALE,
-  SUPPORTED_LOCALES,
+  SOURCE_LOCALES,
 } from "../src-tauri/companion_browser/supported_locales.js";
 
 const repoRoot = resolve(".");
@@ -53,7 +53,7 @@ function runCompanionI18nCheck() {
     "dictionaries",
   );
   const dictionaryLocales = Object.keys(dictionaries).sort();
-  const manifestLocales = SUPPORTED_LOCALES.map(({ id }) => id).sort();
+  const manifestLocales = SOURCE_LOCALES.map(({ id }) => id).sort();
   const errors = [];
   if (JSON.stringify(dictionaryLocales) !== JSON.stringify(manifestLocales)) {
     errors.push(
@@ -61,7 +61,7 @@ function runCompanionI18nCheck() {
     );
   }
   const baseDictionary = dictionaries[DEFAULT_LOCALE];
-  for (const { id } of SUPPORTED_LOCALES) {
+  for (const { id } of SOURCE_LOCALES) {
     if (id !== DEFAULT_LOCALE && dictionaries[id]) {
       errors.push(...validateLocaleDictionaries(baseDictionary, dictionaries[id], id));
     }

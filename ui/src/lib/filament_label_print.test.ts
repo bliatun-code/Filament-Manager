@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildFilamentLabelQrDataUrl,
+  buildFilamentLabelPngDataUrl,
   buildFilamentLabelTextLines,
 } from "./filament_label_print";
 import {
@@ -127,4 +128,50 @@ test("label text collapses identical generic filament and color names", () => {
     }).identityLines,
     ["Metal Silver"],
   );
+});
+
+test("PNG label rendering safely fits long accented product data", async () => {
+  const drawnText: string[] = [];
+  const context = {
+    drawImage() {},
+    fillRect() {},
+    fillText(value: string) {
+      drawnText.push(value);
+    },
+    font: "",
+    fillStyle: "",
+    imageSmoothingEnabled: true,
+    measureText(value: string) {
+      return { width: Array.from(value).length * 12 };
+    },
+    textBaseline: "alphabetic",
+  };
+  const canvas = {
+    width: 0,
+    height: 0,
+    getContext: () => context,
+    toDataURL: () => "data:image/png;base64,rendered",
+  };
+
+  const result = await buildFilamentLabelPngDataUrl(
+    {
+      vendor: "Éléments Génériques",
+      material: "PLA-CF",
+      filamentName: "Précision renforcée très longue série spéciale",
+      colorName: "Brûlé d’été violet extrêmement détaillé (40402)",
+      reference: "spool_1780069566047",
+      qrDataUrl: "data:image/png;base64,qr",
+    },
+    "ptouch-24",
+    {
+      createCanvas: () => canvas as unknown as HTMLCanvasElement,
+      loadImage: async () => ({}) as CanvasImageSource,
+    },
+  );
+
+  assert.equal(result, "data:image/png;base64,rendered");
+  assert.equal(drawnText.length, 5);
+  assert.ok(drawnText.every((line) => line.length > 0));
+  assert.ok(drawnText.some((line) => /[Ééû]/.test(line)));
+  assert.ok(drawnText.some((line) => line.endsWith("…")));
 });

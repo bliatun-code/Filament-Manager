@@ -92,6 +92,7 @@ test("SettingsGeneralTab exposes selected theme and language choices", () => {
   assert.ok(html.indexOf("Language") < html.indexOf("Program"));
   assert.equal((html.match(/aria-pressed="true"/g) ?? []).length, 2);
   assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 3);
+  assert.doesNotMatch(html, /Pseudo \(QA\)/);
 });
 
 test("SettingsGeneralTab localizes license controls in Norwegian", () => {

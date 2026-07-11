@@ -348,6 +348,7 @@ async function waitForCompanionReady(page, timeoutMs) {
         document.querySelector(".list-row, .loan-card, .slot-card, .task-sheet, .detail-modal"),
       );
     },
+    undefined,
     { timeout: timeoutMs },
   );
 }
@@ -595,6 +596,13 @@ async function runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, opt
     viewport: scenario.viewport,
   });
   const page = await context.newPage();
+  const runtimeErrors = [];
+  page.on("pageerror", (error) => runtimeErrors.push(String(error?.message ?? error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      runtimeErrors.push(message.text());
+    }
+  });
   try {
     await page.addInitScript(
       ({ localeKey, localeValue, themeKey, themeValue }) => {
@@ -626,6 +634,18 @@ async function runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, opt
       screenshot: path,
       screenshotPixels: measureCompanionScreenshotPixels(screenshotBuffer, metrics.swatchSamples),
     };
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => ({
+      appChildren: document.querySelector("#app")?.childElementCount ?? 0,
+      readySurfaces: document.querySelectorAll(
+        ".list-row, .loan-card, .slot-card, .task-sheet, .detail-modal",
+      ).length,
+      url: window.location.href,
+    })).catch(() => null);
+    const detail = diagnostic
+      ? ` ${JSON.stringify({ ...diagnostic, runtimeErrors: runtimeErrors.slice(-5) })}`
+      : "";
+    throw new Error(`[${scenario.name}] ${error.message}${detail}`);
   } finally {
     await context.close();
   }

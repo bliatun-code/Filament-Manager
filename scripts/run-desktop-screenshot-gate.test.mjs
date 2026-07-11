@@ -8,6 +8,7 @@ import {
   buildDesktopWindowResizeScript,
   DESKTOP_DARK_THEME_MAX_LUMA_MEAN,
   DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN,
+  DESKTOP_PRINTER_LIVE_WAIT_MS,
   DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
   desktopScreenshotScale,
   desktopScreenshotNameForScenario,
@@ -16,6 +17,7 @@ import {
   desktopVisualQaScenarioDefinition,
   desktopVisualQaScenarioRequiresDatabaseFixture,
   desktopVisualQaWindowMatchesScenario,
+  defaultDesktopVisualQaCaptureDelayMs,
   execFileWithTimeout,
   formatDesktopScreenshotGateReport,
   normalizeDesktopVisualQaScenario,
@@ -213,6 +215,7 @@ test("desktop screenshot gate normalizes screenshot locale overrides", () => {
   assert.equal(normalizeVisualQaLocale("en"), "en");
   assert.equal(normalizeVisualQaLocale("en-US"), "en");
   assert.equal(normalizeVisualQaLocale("en-GB"), "en");
+  assert.equal(normalizeVisualQaLocale("en-XA"), "en-XA");
   assert.equal(normalizeVisualQaLocale(""), "en");
   assert.equal(normalizeVisualQaLocale("bad"), "en");
 });
@@ -402,9 +405,18 @@ test("desktop screenshot gate marks DB-fixture visual states", () => {
   assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture(null), false);
 });
 
+test("desktop printer captures wait for live data before taking screenshots", () => {
+  assert.equal(defaultDesktopVisualQaCaptureDelayMs(["printer-board"]), DESKTOP_PRINTER_LIVE_WAIT_MS);
+  assert.equal(defaultDesktopVisualQaCaptureDelayMs(["selected-roll-label"]), 3_500);
+  assert.equal(defaultDesktopVisualQaCaptureDelayMs([null]), 0);
+});
+
 test("desktop screenshot gate maps scenario aliases to localized window titles", () => {
   assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "en"), ["Inventory"]);
   assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "nb"), ["Lager"]);
+  assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "en-XA"), [
+    "⟦Îñṽ·éñţ·öŕý·⟧",
+  ]);
   assert.deepEqual(desktopVisualQaExpectedWindowTitles(null, "en"), []);
   assert.equal(
     desktopVisualQaWindowMatchesScenario(

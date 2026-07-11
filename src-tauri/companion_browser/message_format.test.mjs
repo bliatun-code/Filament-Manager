@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { formatMessage } from "./message_format.js";
+import { formatMessage, formatMessageWithLiteralTransform } from "./message_format.js";
 
 const pluralMessage =
   "{count, plural, one {# item} few {# items-few} many {# items-many} other {# items}}";
@@ -45,4 +45,16 @@ test("plural offsets keep exact matches on the source number and format the rema
   assert.equal(formatMessage(message, { count: 1 }), "Only the host");
   assert.equal(formatMessage(message, { count: 2 }), "The host and 1 guest");
   assert.equal(formatMessage(message, { count: 4 }), "The host and 3 guests");
+});
+
+test("literal transforms leave interpolated product data unchanged", () => {
+  assert.equal(
+    formatMessageWithLiteralTransform(
+      "Material {name} has {count, plural, one {# roll} other {# rolls}}.",
+      { name: "Bambu Lab PLA Basic", count: 2 },
+      "en",
+      (value) => value.toUpperCase(),
+    ),
+    "MATERIAL Bambu Lab PLA Basic HAS 2 ROLLS.",
+  );
 });

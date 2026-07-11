@@ -1,4 +1,5 @@
 import type { DictionaryNode, Locale } from "../i18n_types";
+import { sourceLocaleFor } from "../../../../src-tauri/companion_browser/supported_locales.js";
 
 const dictionaryCache: Partial<Record<Locale, DictionaryNode>> = {};
 const dictionaryPromises: Partial<Record<Locale, Promise<DictionaryNode>>> = {};
@@ -6,7 +7,7 @@ const dictionaryPromises: Partial<Record<Locale, Promise<DictionaryNode>>> = {};
 type LocaleDictionaryModule = { default: DictionaryNode };
 
 function dictionaryLoader(locale: Locale): Promise<LocaleDictionaryModule> {
-  return import(`./locales/${locale}.ts`);
+  return import(`./locales/${sourceLocaleFor(locale)}.ts`);
 }
 
 export function getCachedLocaleDictionary(locale: Locale): DictionaryNode | null {

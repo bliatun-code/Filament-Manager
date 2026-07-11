@@ -9,6 +9,7 @@ import {
   DEFAULT_LOCALE,
   normalizeSupportedLocale,
 } from "../src-tauri/companion_browser/supported_locales.js";
+import { pseudoLocalizeMessage } from "../src-tauri/companion_browser/pseudo_locale.js";
 import {
   APP_DB_PATH_ENV_VAR,
   cleanupVisualQaDatabase,
@@ -21,6 +22,7 @@ const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
 const DEFAULT_PROCESS_NAME = "bambu-filament-manager";
 const DEFAULT_WINDOW_TITLE = "Filament Manager";
 export const DEFAULT_WINDOW_COMMAND_TIMEOUT_MS = 15_000;
+export const DESKTOP_PRINTER_LIVE_WAIT_MS = 30_000;
 const VISUAL_QA_SCENARIO_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
 const VISUAL_QA_LOCALE_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_LOCALE";
 const VISUAL_QA_THEME_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_THEME";
@@ -51,6 +53,16 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
     settings: "Innstillinger",
     statistics: "Statistikk",
   },
+  "en-XA": Object.fromEntries(
+    Object.entries({
+      dashboard: "Dashboard",
+      inventory: "Inventory",
+      loans: "Loans",
+      printers: "Printers",
+      settings: "Settings",
+      statistics: "Statistics",
+    }).map(([page, title]) => [page, pseudoLocalizeMessage(title)]),
+  ),
 };
 
 function parseArgValue(argv, name) {
@@ -184,6 +196,17 @@ export function parseDesktopVisualQaScenarios(argv) {
 
 export function desktopVisualQaScenarioRequiresDatabaseFixture(scenario) {
   return Boolean(desktopVisualQaScenarioDefinition(scenario)?.requiresDatabaseFixture);
+}
+
+export function defaultDesktopVisualQaCaptureDelayMs(scenarios) {
+  if (
+    scenarios.some(
+      (scenario) => desktopVisualQaScenarioDefinition(scenario)?.page === "printers",
+    )
+  ) {
+    return DESKTOP_PRINTER_LIVE_WAIT_MS;
+  }
+  return scenarios.some(Boolean) ? 3_500 : 0;
 }
 
 export function desktopVisualQaExpectedWindowTitles(scenario, locale) {
@@ -1004,7 +1027,11 @@ async function runCli() {
   const explicitName = parseArgValue(argv, "--name");
   const baseName = explicitName ?? (hasScenario ? "desktop-scenario" : "desktop-window");
   const baseOptions = {
-    captureDelayMs: parseIntegerArg(argv, "--capture-delay-ms", hasScenario ? 3_500 : 0),
+    captureDelayMs: parseIntegerArg(
+      argv,
+      "--capture-delay-ms",
+      defaultDesktopVisualQaCaptureDelayMs(scenarios),
+    ),
     keep: parseBooleanArg(argv, "--keep"),
     keepAppOnFail: parseBooleanArg(argv, "--keep-app-on-fail"),
     live: parseBooleanArg(argv, "--live"),

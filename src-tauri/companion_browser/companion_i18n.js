@@ -1,8 +1,11 @@
 import {
   DEFAULT_LOCALE,
+  isPseudoLocale,
   normalizeSupportedLocale,
+  sourceLocaleFor,
 } from "./supported_locales.js";
 import { formatMessage } from "./message_format.js";
+import { pseudoLocalizeMessage } from "./pseudo_locale.js";
 
 export const COMPANION_LOCALE_STORAGE_KEY = "bfm-companion-locale";
 const LEGACY_COMPANION_LOCALE_STORAGE_KEYS = ["bfm-locale"];
@@ -1258,12 +1261,15 @@ export function resolveInitialCompanionLocale(storageRef, navigatorRef) {
 
 export function t(locale, key, fallback = "", params = {}) {
   const normalizedLocale = normalizeCompanionLocale(locale);
-  const localized = lookup(dictionaries[normalizedLocale], key);
+  const localized = lookup(dictionaries[sourceLocaleFor(normalizedLocale)], key);
+  const format = isPseudoLocale(normalizedLocale)
+    ? (template) => pseudoLocalizeMessage(template, params)
+    : (template) => formatMessage(template, params, normalizedLocale);
   if (typeof localized === "string") {
-    return formatMessage(localized, params, normalizedLocale);
+    return format(localized);
   }
   if (fallback) {
-    return formatMessage(fallback, params, normalizedLocale);
+    return format(fallback);
   }
   return key;
 }

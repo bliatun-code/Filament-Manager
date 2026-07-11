@@ -68,6 +68,18 @@ test("resolveInitialCompanionLocale checks navigator languages in preference ord
   assert.equal(locale, "nb");
 });
 
+test("Companion accepts pseudo locale only through an explicit QA value", () => {
+  assert.equal(
+    resolveInitialCompanionLocale(
+      { getItem: () => "en-XA" },
+      { language: "en-US" },
+    ),
+    "en-XA",
+  );
+  const output = t("en-XA", "settings.spoolCount", "", { count: 2 });
+  assert.match(output, /^⟦.*2 şþö.*⟧$/);
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {

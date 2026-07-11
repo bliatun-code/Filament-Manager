@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { collectUiSourceFiles } from "./ui-source-utils.mjs";
 import {
   DEFAULT_LOCALE,
-  SUPPORTED_LOCALES,
+  SOURCE_LOCALES,
 } from "../src-tauri/companion_browser/supported_locales.js";
 
 const repoRoot = resolve(".");
@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url);
 const ts = require(resolve(repoRoot, "ui", "node_modules", "typescript"));
 
 const localeFiles = Object.fromEntries(
-  SUPPORTED_LOCALES.map(({ id }) => [
+  SOURCE_LOCALES.map(({ id }) => [
     id,
     resolve(repoRoot, "ui", "src", "lib", "i18n_locales", "locales", `${id}.ts`),
   ]),
@@ -179,7 +179,7 @@ export function validateLocaleDictionaries(baseDictionary, targetDictionary, tar
 
 function runI18nLocaleCheck() {
   const dictionaries = Object.fromEntries(
-    SUPPORTED_LOCALES.map(({ id }) => [
+    SOURCE_LOCALES.map(({ id }) => [
       id,
       readLocaleDictionaryFromSource(
         readFileSync(localeFiles[id], "utf8"),
@@ -188,7 +188,7 @@ function runI18nLocaleCheck() {
     ]),
   );
   const baseDictionary = dictionaries[DEFAULT_LOCALE];
-  const errors = SUPPORTED_LOCALES.filter(({ id }) => id !== DEFAULT_LOCALE).flatMap(
+  const errors = SOURCE_LOCALES.filter(({ id }) => id !== DEFAULT_LOCALE).flatMap(
     ({ id }) => validateLocaleDictionaries(baseDictionary, dictionaries[id], id),
   );
   const runtimeKeys = collectUiSourceFiles(uiSourceRoot).flatMap((file) =>

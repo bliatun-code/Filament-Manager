@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import {
   applyLocaleToDocument,
   DEFAULT_LOCALE,
+  isPseudoLocale,
 } from "../../../src-tauri/companion_browser/supported_locales.js";
 import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
+import { pseudoLocalizeMessage } from "../../../src-tauri/companion_browser/pseudo_locale.js";
 import {
   getCachedLocaleDictionary,
   I18nContext,
@@ -72,7 +74,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       const message =
         (activeDictionary ? lookup(activeDictionary, key) : undefined) ??
         (fallbackDictionary ? lookup(fallbackDictionary, key) : undefined);
-      return formatMessage(message ?? fallback ?? key, params, locale);
+      const template = message ?? fallback ?? key;
+      return isPseudoLocale(locale)
+        ? pseudoLocalizeMessage(template, params)
+        : formatMessage(template, params, locale);
     },
     [activeDictionary, fallbackDictionary, locale],
   );

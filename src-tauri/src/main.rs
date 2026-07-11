@@ -437,6 +437,7 @@ fn visual_qa_scenario_from_env() -> Option<&'static str> {
 fn normalize_visual_qa_locale(value: &str) -> &'static str {
     match value.trim().to_ascii_lowercase().as_str() {
         "nb" | "no" | "nb-no" => "nb",
+        "en-xa" | "en_xa" => "en-XA",
         _ => "en",
     }
 }

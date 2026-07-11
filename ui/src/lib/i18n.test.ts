@@ -70,6 +70,12 @@ test("resolveInitialLocale lets screenshot URLs override stored locale", () => {
   assert.equal(locale, "en");
 });
 
+test("resolveInitialLocale accepts the QA-only pseudo locale from screenshot URLs", () => {
+  const windowRef = { location: { search: "?bfm_locale=en-XA" } };
+  const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
+  assert.equal(locale, "en-XA");
+});
+
 test("locale dictionaries lazy-load and cache supported locales", async () => {
   const enDictionary = await loadLocaleDictionary("en");
 
@@ -102,6 +108,10 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
     "Filamenthistorikken er skjult som standard. Utvid den for å se hendelsene.",
   );
   assert.equal(getCachedLocaleDictionary("nb"), nbDictionary);
+
+  const pseudoDictionary = await loadLocaleDictionary("en-XA");
+  assert.equal(lookup(pseudoDictionary, "app.title"), "Filament Manager");
+  assert.equal(getCachedLocaleDictionary("en-XA"), pseudoDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {

@@ -65,7 +65,7 @@ function parseMessageOptions(source) {
   return options;
 }
 
-function formatArgument(content, params, locale) {
+function formatArgument(content, params, locale, transformLiteral) {
   const [name, type = "", style = ""] = splitTopLevel(content, ",", 3);
   const value = params[name];
   if (!type) {
@@ -86,7 +86,12 @@ function formatArgument(content, params, locale) {
   }
   if (type === "select") {
     const options = parseMessageOptions(style);
-    return formatFragment(options[String(value)] ?? options.other ?? "", params, locale);
+    return formatFragment(
+      options[String(value)] ?? options.other ?? "",
+      params,
+      locale,
+      transformLiteral,
+    );
   }
   if (type === "plural" || type === "selectordinal") {
     const numericValue = Number(value);
@@ -107,27 +112,33 @@ function formatArgument(content, params, locale) {
       selected.replaceAll("#", formatLocaleNumber(pluralValue, locale)),
       params,
       locale,
+      transformLiteral,
     );
   }
   return value == null ? "" : String(value);
 }
 
-function formatFragment(template, params, locale) {
+function formatFragment(template, params, locale, transformLiteral = (value) => value) {
   let output = "";
   let cursor = 0;
   while (cursor < template.length) {
     const open = template.indexOf("{", cursor);
     if (open < 0) {
-      output += template.slice(cursor);
+      output += transformLiteral(template.slice(cursor));
       break;
     }
-    output += template.slice(cursor, open);
+    output += transformLiteral(template.slice(cursor, open));
     const close = matchingBraceIndex(template, open);
     if (close < 0) {
-      output += template.slice(open);
+      output += transformLiteral(template.slice(open));
       break;
     }
-    output += formatArgument(template.slice(open + 1, close), params, locale);
+    output += formatArgument(
+      template.slice(open + 1, close),
+      params,
+      locale,
+      transformLiteral,
+    );
     cursor = close + 1;
   }
   return output;
@@ -135,4 +146,13 @@ function formatFragment(template, params, locale) {
 
 export function formatMessage(template, params = {}, locale = "en") {
   return formatFragment(String(template ?? ""), params, locale);
+}
+
+export function formatMessageWithLiteralTransform(
+  template,
+  params = {},
+  locale = "en",
+  transformLiteral = (value) => value,
+) {
+  return formatFragment(String(template ?? ""), params, locale, transformLiteral);
 }

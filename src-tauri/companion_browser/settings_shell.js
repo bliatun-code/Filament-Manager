@@ -1,5 +1,5 @@
 import { t } from "./companion_i18n.js";
-import { SUPPORTED_LOCALES } from "./supported_locales.js";
+import { SELECTABLE_LOCALES } from "./supported_locales.js";
 import {
   renderCompanionActionButton,
   renderCompanionActionLink,
@@ -84,9 +84,9 @@ export function renderSettingsShell(options) {
                 action: "set-locale",
                 activeValue: locale,
                 ariaLabel: t(locale, "settings.language", "Language"),
-                columns: Math.min(SUPPORTED_LOCALES.length, 3),
+                columns: Math.min(SELECTABLE_LOCALES.length, 3),
                 escapeHtml,
-                items: SUPPORTED_LOCALES.map(({ id, nativeLabel }) => ({
+                items: SELECTABLE_LOCALES.map(({ id, nativeLabel }) => ({
                   value: id,
                   label: nativeLabel,
                 })),
