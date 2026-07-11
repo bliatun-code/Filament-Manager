@@ -159,7 +159,16 @@ export function chooseDesktopVisualQaSpoolId(
       null
     );
   }
-  if (scenario === "selected-roll" || scenario === "selected-roll-label") {
+  if (scenario === "selected-roll-label") {
+    return (
+      usableSpools.find(isLabelRedundancyStressSpool)?.id ??
+      usableSpools.find(isBrightNeutralSpool)?.id ??
+      usableSpools[0]?.id ??
+      spools[0]?.id ??
+      null
+    );
+  }
+  if (scenario === "selected-roll") {
     return (
       usableSpools.find(isBrightNeutralSpool)?.id ??
       usableSpools.find(isColorfulNonBambuSpool)?.id ??
@@ -179,6 +188,16 @@ export function chooseDesktopVisualQaSpoolId(
     );
   }
   return usableSpools[0]?.id ?? spools[0]?.id ?? null;
+}
+
+function isLabelRedundancyStressSpool(spool: InventorySpool): boolean {
+  const material = spool.material.trim();
+  return (
+    /^bambu(?:\s+lab)?$/i.test(spool.vendor.trim()) &&
+    Boolean(material) &&
+    spool.colorName.toLocaleLowerCase().startsWith(`${material.toLocaleLowerCase()} `) &&
+    spool.colorName.length >= 20
+  );
 }
 
 export function chooseDesktopVisualQaLoanSpool(spools: InventorySpool[]): InventorySpool | null {

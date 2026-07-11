@@ -55,6 +55,69 @@ function fitCanvasText(
   return `${clipped.trimEnd()}…`;
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function stripRepeatedLabelPrefix(value: string, prefix: string): string {
+  const normalizedValue = value.trim();
+  const normalizedPrefix = prefix.trim();
+  if (!normalizedValue || !normalizedPrefix) {
+    return normalizedValue;
+  }
+  return normalizedValue
+    .replace(
+      new RegExp(`^${escapeRegExp(normalizedPrefix)}(?:\\s*[\u00b7:|/-]\\s*|\\s+)`, "i"),
+      "",
+    )
+    .trim();
+}
+
+function labelVendor(value: string): string {
+  return /^bambu$/i.test(value.trim()) ? "Bambu Lab" : value.trim();
+}
+
+export function buildFilamentLabelTextLines(input: FilamentLabelImageInput): {
+  vendor: string;
+  identity: string;
+  material: string;
+  reference: string;
+} {
+  const material = input.material.trim();
+  const filamentName = input.filamentName.trim();
+  const rawIdentity = input.colorName?.trim() || filamentName;
+  const withoutMaterial = stripRepeatedLabelPrefix(rawIdentity, material);
+  const withoutFilament =
+    filamentName.toLocaleLowerCase() === material.toLocaleLowerCase()
+      ? withoutMaterial
+      : stripRepeatedLabelPrefix(withoutMaterial, filamentName);
+  return {
+    vendor: labelVendor(input.vendor),
+    identity: withoutFilament || withoutMaterial || rawIdentity || filamentName || material,
+    material,
+    reference: formatSpoolReference(input.reference),
+  };
+}
+
+function fittedCanvasFontSize(input: {
+  context: CanvasRenderingContext2D;
+  maxWidth: number;
+  minimumSize: number;
+  preferredSize: number;
+  text: string;
+  weight: number;
+}): number {
+  let size = input.preferredSize;
+  while (size > input.minimumSize) {
+    input.context.font = `${input.weight} ${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+    if (input.context.measureText(input.text).width <= input.maxWidth) {
+      break;
+    }
+    size -= 1;
+  }
+  return size;
+}
+
 export async function buildFilamentLabelPngDataUrl(
   input: FilamentLabelImageInput,
   profileId: FilamentLabelProfileId,
@@ -82,22 +145,37 @@ export async function buildFilamentLabelPngDataUrl(
 
   const textLeft = outerPadding + qrSize + Math.round(1.6 * pxPerMm);
   const textWidth = size.width - textLeft - outerPadding;
-  const title = input.colorName?.trim() || input.filamentName.trim();
-  const materialLine = [input.material.trim(), input.filamentName.trim()]
-    .filter(Boolean)
-    .join(" · ");
-  const reference = formatSpoolReference(input.reference);
+  const text = buildFilamentLabelTextLines(input);
   const lineGap = Math.round(0.8 * pxPerMm);
   const titlePx = Math.max(30, Math.round((profile.heightMm >= 30 ? 4.1 : 3.5) * pxPerMm));
+  const identityPreferredPx = Math.max(
+    24,
+    Math.round((profile.heightMm >= 30 ? 3.1 : 2.65) * pxPerMm),
+  );
   const detailPx = Math.max(21, Math.round((profile.heightMm >= 30 ? 2.8 : 2.4) * pxPerMm));
+  const vendorPx = fittedCanvasFontSize({
+    context,
+    text: text.vendor,
+    maxWidth: textWidth,
+    preferredSize: titlePx,
+    minimumSize: detailPx,
+    weight: 800,
+  });
+  const identityPx = fittedCanvasFontSize({
+    context,
+    text: text.identity,
+    maxWidth: textWidth,
+    preferredSize: identityPreferredPx,
+    minimumSize: Math.max(20, detailPx - 4),
+    weight: 600,
+  });
   const lines = [
-    { text: title, size: titlePx, weight: 800 },
-    { text: materialLine, size: detailPx, weight: 700 },
-    { text: input.vendor, size: detailPx, weight: 500 },
-    { text: reference, size: detailPx, weight: 700 },
+    { text: text.vendor, size: vendorPx, weight: 800 },
+    { text: text.identity, size: identityPx, weight: 600 },
+    { text: text.material, size: detailPx, weight: 600 },
+    { text: text.reference, size: detailPx, weight: 700 },
   ];
-  const contentHeight = lines.reduce((sum, line) => sum + line.size, 0) + lineGap * 3;
-  let baseline = Math.max(outerPadding + titlePx, Math.round((size.height - contentHeight) / 2) + titlePx);
+  let baseline = outerPadding + vendorPx;
 
   context.fillStyle = "#000000";
   context.textBaseline = "alphabetic";

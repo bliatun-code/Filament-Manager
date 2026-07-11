@@ -422,6 +422,25 @@ test("desktop visual QA selected-roll prefers a real bright neutral edge case", 
   );
 });
 
+test("desktop visual QA label preview prefers repeated-material catalog data", () => {
+  const spools = [
+    spool({ id: "white", colorName: "Jade White", hexColor: "#FFFFFF" }),
+    spool({
+      id: "label-stress",
+      vendor: "Bambu",
+      material: "ABS",
+      filamentName: "ABS",
+      colorName: "ABS Tangerine Yellow (40402)",
+      hexColor: "#FFC72C",
+    }),
+  ];
+
+  assert.equal(
+    chooseDesktopVisualQaSpoolId(spools, new Set(), "selected-roll-label"),
+    "label-stress",
+  );
+});
+
 test("desktop visual QA loan-out prefers the brightest real non-Bambu gray midtone", () => {
   const spools = [
     spool({ id: "peach", vendor: "eSUN", colorName: "Peach Pink", hexColor: "#F6B8B8" }),

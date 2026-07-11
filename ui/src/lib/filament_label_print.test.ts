@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildFilamentLabelQrDataUrl } from "./filament_label_print";
+import {
+  buildFilamentLabelQrDataUrl,
+  buildFilamentLabelTextLines,
+} from "./filament_label_print";
 import {
   FILAMENT_LABEL_PROFILES,
   filamentLabelPixelSize,
@@ -47,4 +50,42 @@ test("buildFilamentLabelQrDataUrl requests high-redundancy print options", async
   assert.equal(capturedOptions?.errorCorrectionLevel, "H");
   assert.equal(capturedOptions?.margin, 2);
   assert.equal(capturedOptions?.width, 512);
+});
+
+test("label text puts vendor first and removes repeated Bambu material prefixes", () => {
+  assert.deepEqual(
+    buildFilamentLabelTextLines({
+      vendor: "Bambu",
+      material: "ABS",
+      filamentName: "ABS",
+      colorName: "ABS Tangerine Yellow (40402)",
+      reference: "spool_1775592053186",
+      qrDataUrl: "data:image/png;base64,qr",
+    }),
+    {
+      vendor: "Bambu Lab",
+      identity: "Tangerine Yellow (40402)",
+      material: "ABS",
+      reference: "#053186",
+    },
+  );
+});
+
+test("label text preserves a descriptive filament identity without duplicating its series", () => {
+  assert.deepEqual(
+    buildFilamentLabelTextLines({
+      vendor: "eSUN",
+      material: "PLA",
+      filamentName: "ePLA-Matte",
+      colorName: "ePLA-Matte · Morandi Purple",
+      reference: "QR-22",
+      qrDataUrl: "data:image/png;base64,qr",
+    }),
+    {
+      vendor: "eSUN",
+      identity: "Morandi Purple",
+      material: "PLA",
+      reference: "#QR-22",
+    },
+  );
 });
