@@ -112,11 +112,19 @@ Her kan du:
 
 Lagerkort grupperer like filamenttyper og farger, men viser fortsatt individuelle ruller og plasseringer. Dette gjør at lageret er lett å skanne uten å miste sporbarhet.
 
-Fra QR-panelet for en rull åpner **Lag QR-etikett** en forhåndsvisning med
-størrelsene P-Touch 24 mm, Kompakt, Standard og Utvidet. P-Touch-profilen bruker
-et liggende arbeidsområde på 60 × 24 mm med QR-kode i nesten full høyde og stor,
-lesbar identitetstekst. Den ferdige PNG-filen lagres med 300 DPI i den vanlige
-Nedlastinger-mappen, ikke i programmets datamappe.
+Slik lager du en etikett for én rull:
+
+1. Åpne detaljene for rullen i Lager og finn QR-panelet.
+2. Velg **Lag QR-etikett**.
+3. Velg P-Touch 24 mm, Kompakt, Standard eller Utvidet, og kontroller
+   forhåndsvisningen.
+4. Velg **Lagre PNG i Nedlastinger** for å lagre det utskriftsklare bildet med
+   300 DPI.
+
+P-Touch-profilen bruker et liggende arbeidsområde på 60 × 24 mm med QR-kode i
+nesten full høyde og stor, lesbar identitetstekst. For flere tilgjengelige ruller
+samtidig bruker du i stedet **Innstillinger → Generelt → Lag etikettark for
+lageret**.
 
 Panelet Ønskeliste og bestillinger har egne statusfiltre og søkefelt. Det viser
 antall treff, lar deg flytte kjøp mellom Ønskeliste, Bestilt og Mottatt, lagerføre
@@ -240,11 +248,17 @@ Generelt:
 - språk
 - etikettark med QR for lageret
 
-**Lag etikettark for lageret** åpner en forhåndsvisning for alle ruller som er på
-lager. Velg A4 eller US Letter, start på første side, og bruk sidekontrollene for
-å se gjennom resten av arkene før du lagrer. Hver etikett på arket bruker samme
-oppsett på 60 × 24 mm som P-Touch QR-etiketten, og den ferdige PDF-filen lagres
-i Nedlastinger.
+Slik lager du etikettark for rullene som er på lager:
+
+1. Åpne **Innstillinger → Generelt** og velg **Lag etikettark for lageret**.
+2. Velg A4 eller US Letter.
+3. Kontroller forhåndsvisningen, og bruk sidekontrollene dersom lageret dekker
+   flere sider.
+4. Velg **Lagre PDF i Nedlastinger**.
+
+Hver side rommer opptil 30 etiketter med samme lesbare oppsett på 60 × 24 mm som
+P-Touch QR-etiketten. For én rull, eller for en annen etikettstørrelse, åpner du
+QR-panelet for rullen under **Lager** og velger **Lag QR-etikett**.
 
 Bibliotek og webapp:
 

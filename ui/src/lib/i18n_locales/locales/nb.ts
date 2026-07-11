@@ -473,6 +473,8 @@ export const nbDictionary: DictionaryNode = {
       labelPtouchHint:
         "Laget for 24 mm tape med QR-kode i full høyde og lesbar tekst.",
       labelImageHint: "PNG-bildet genereres i 300 DPI for forutsigbar fysisk størrelse.",
+      labelSheetHint:
+        "Trenger du etiketter for flere ruller? Lag etikettark under Innstillinger → Generelt.",
       labelSaving: "Lagrer PNG...",
       labelSaveDownloads: "Lagre PNG i Nedlastinger",
       labelSaved: "Etikettbildet er lagret som PNG i Nedlastinger.",
@@ -1520,6 +1522,8 @@ export const nbDictionary: DictionaryNode = {
       inventoryOverviewEmpty: "Ingen tilgjengelige filamentruller å ta med.",
       inventoryOverviewLabelCount: "{count} etiketter · {perPage} per side",
       inventoryOverviewPerPage: "etiketter per side",
+      inventoryOverviewSingleLabelHint:
+        "Trenger du bare én etikett? Åpne rullen i Lager og velg Lag QR-etikett.",
       inventoryOverviewPageCount: "Side {page} av {pages}",
       inventoryOverviewPreviousPage: "Forrige side",
       inventoryOverviewNextPage: "Neste side",

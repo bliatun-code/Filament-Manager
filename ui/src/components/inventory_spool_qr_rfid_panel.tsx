@@ -168,6 +168,12 @@ export function InventorySpoolQrRfidPanel({
           {t("inventory.printQr", "Create QR label")}
         </button>
       </div>
+      <div className="mt-2 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+        {t(
+          "inventory.labelSheetHint",
+          "Need labels for several rolls? Create an inventory label sheet under Settings → General.",
+        )}
+      </div>
       {labelPanelOpen ? (
         <AppModal
           zIndex={80}
@@ -236,6 +242,12 @@ export function InventorySpoolQrRfidPanel({
                       "inventory.labelImageHint",
                       "The PNG is rendered at 300 DPI for predictable physical sizing.",
                     )}
+              </div>
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-600 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300">
+                {t(
+                  "inventory.labelSheetHint",
+                  "Need labels for several rolls? Create an inventory label sheet under Settings → General.",
+                )}
               </div>
               <button
                 type="button"

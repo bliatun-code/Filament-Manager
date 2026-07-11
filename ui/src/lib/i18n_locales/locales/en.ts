@@ -469,6 +469,8 @@ export const enDictionary: DictionaryNode = {
       labelPtouchHint:
         "Designed for 24 mm tape with a full-height QR and readable text.",
       labelImageHint: "The PNG is rendered at 300 DPI for predictable physical sizing.",
+      labelSheetHint:
+        "Need labels for several rolls? Create an inventory label sheet under Settings → General.",
       labelSaving: "Saving PNG...",
       labelSaveDownloads: "Save PNG to Downloads",
       labelSaved: "Label PNG saved to Downloads.",
@@ -1510,6 +1512,8 @@ export const enDictionary: DictionaryNode = {
       inventoryOverviewEmpty: "No on-hand filament rolls to include.",
       inventoryOverviewLabelCount: "{count} labels · {perPage} per page",
       inventoryOverviewPerPage: "labels per page",
+      inventoryOverviewSingleLabelHint:
+        "Need just one label? Open the roll in Inventory and choose Create QR label.",
       inventoryOverviewPageCount: "Page {page} of {pages}",
       inventoryOverviewPreviousPage: "Previous page",
       inventoryOverviewNextPage: "Next page",

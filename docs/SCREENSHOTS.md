@@ -7,7 +7,7 @@ wide, tablet, and phone screens.
 The Companion/webapp server must be enabled, and the desktop app needs to stay
 running for Companion to work from a phone, tablet, or workshop browser.
 
-The v0.20.1 captures use the English dark theme and a rich temporary copy of a
+The v0.20.2 captures use the English dark theme and a rich temporary copy of a
 real local library. Printer, RFID, and Bambu diagnostics captures wait for live
 telemetry before the image is accepted; the source library is not modified.
 
@@ -16,11 +16,13 @@ telemetry before the image is accepted; the source library is not modified.
 <p align="center">
   <a href="#dashboard"><img src="screenshots/dashboard-thumb.jpg" alt="Dashboard" width="150"></a>
   <a href="#inventory"><img src="screenshots/inventory-thumb.jpg" alt="Inventory" width="150"></a>
+  <a href="#individual-filament-label"><img src="screenshots/filament-label-thumb.jpg" alt="Individual filament label" width="150"></a>
   <a href="#add-filament"><img src="screenshots/add-filament-thumb.jpg" alt="Add filament" width="150"></a>
   <a href="#wishlist-and-orders"><img src="screenshots/wishlist-queue-thumb.jpg" alt="Wishlist and orders" width="150"></a>
   <a href="#loan-out"><img src="screenshots/loan-out-thumb.jpg" alt="Loan out" width="150"></a>
   <a href="#printers"><img src="screenshots/printers-thumb.jpg" alt="Printers" width="150"></a>
   <a href="#settings"><img src="screenshots/settings-general-thumb.jpg" alt="Settings" width="150"></a>
+  <a href="#inventory-label-sheet"><img src="screenshots/inventory-label-sheet-thumb.jpg" alt="Inventory label sheet" width="150"></a>
   <a href="#companion-tablet"><img src="screenshots/companion-tablet-inventory-thumb.jpg" alt="Companion tablet" width="150"></a>
   <a href="#companion-phone"><img src="screenshots/companion-phone-inventory-thumb.jpg" alt="Companion phone" width="150"></a>
 </p>
@@ -70,6 +72,16 @@ Roll-level maintenance for weight, tare, home location, ownership, QR companion
 links, RFID, live AMS sighting, and lost-status handling.
 
 ![Filament detail panel](screenshots/filament-details.jpg)
+
+### Individual Filament Label
+
+The label builder previews a selected roll at its physical size before saving a
+print-ready 300-DPI PNG to Downloads. P-Touch 24 mm, Compact, Standard, and
+Expanded profiles share the same clear QR and filament identity layout, while
+the panel points to the inventory label-sheet builder when several rolls need
+labels at once.
+
+![Individual filament label builder](screenshots/filament-label.jpg)
 
 ### Roll History
 
@@ -183,6 +195,16 @@ Version, license/source links, language, appearance, documentation links, and
 the inventory label-sheet builder with A4 and US Letter export.
 
 ![Settings general](screenshots/settings-general.jpg)
+
+### Inventory Label Sheet
+
+The inventory label-sheet builder arranges all on-hand rolls on A4 or US Letter
+pages with the same 60 × 24 mm layout as an individual P-Touch label. Page
+controls provide an in-app preview before the print-ready PDF is saved to
+Downloads, and the panel points back to Inventory when only one roll needs a
+label.
+
+![Inventory label-sheet builder](screenshots/inventory-label-sheet.jpg)
 
 ### Library And Web App
 

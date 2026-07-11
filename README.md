@@ -27,6 +27,8 @@ open the larger screenshot, or open the full
   <a href="docs/screenshots/add-printer.jpg"><img src="docs/screenshots/add-printer-thumb.jpg" alt="Add printer and multi-material setup" width="220"></a>
   <a href="docs/screenshots/statistics.jpg"><img src="docs/screenshots/statistics-thumb.jpg" alt="Statistics page with printer and loan usage" width="220"></a>
   <a href="docs/screenshots/filament-details.jpg"><img src="docs/screenshots/filament-details-thumb.jpg" alt="Filament detail panel with weight, ownership and QR tools" width="220"></a>
+  <a href="docs/screenshots/filament-label.jpg"><img src="docs/screenshots/filament-label-thumb.jpg" alt="Individual filament QR label preview with physical size choices" width="220"></a>
+  <a href="docs/screenshots/inventory-label-sheet.jpg"><img src="docs/screenshots/inventory-label-sheet-thumb.jpg" alt="Inventory label sheet preview with A4 and US Letter choices" width="220"></a>
   <a href="docs/screenshots/filament-history.jpg"><img src="docs/screenshots/filament-history-thumb.jpg" alt="Filament roll history timeline" width="220"></a>
   <a href="docs/screenshots/companion-tablet-inventory.jpg"><img src="docs/screenshots/companion-tablet-inventory-thumb.jpg" alt="Companion tablet inventory view" width="220"></a>
   <a href="docs/screenshots/companion-phone-inventory.jpg"><img src="docs/screenshots/companion-phone-inventory-thumb.jpg" alt="Companion phone inventory view" width="220"></a>
@@ -44,6 +46,7 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
+- [v0.20.2](RELEASE_NOTES_v0.20.2.md)
 - [v0.20.1](RELEASE_NOTES_v0.20.1.md)
 - [v0.19.0](RELEASE_NOTES_v0.19.0.md)
 - [v0.18.0](RELEASE_NOTES_v0.18.0.md)
@@ -64,6 +67,8 @@ Release notes:
   estimated AMS weight, Bambu filament settings/status diagnostics, nozzle
   temperature, and print-session usage accounting.
 - QR/RFID support for robust spool lookup and safer automatic AMS matching.
+- Print-ready QR labels for individual rolls as 300-DPI PNG files, plus matching
+  A4 or US Letter inventory label sheets as PDF files, all saved to Downloads.
 - Local companion/webapp for paired phones, tablets, and workshop browsers.
 - Host/client library mode for sharing one desktop-owned library with other
   desktop installations.
@@ -222,7 +227,7 @@ Windows MSI uses the per-user WiX template in `src-tauri/wix/per-user.wxs`.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current release target: `v0.20.1`
+- Current release target: `v0.20.2`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`

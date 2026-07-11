@@ -50,6 +50,8 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(qrRfidPanel, /inventoryDetailActionButtonClassName/);
   assert.match(qrRfidPanel, /inventoryDetailEyebrowClassName/);
   assert.match(qrRfidPanel, /InventoryDetailTintPanel/);
+  assert.match(qrRfidPanel, /inventory\.labelSheetHint/);
+  assert.match(qrRfidPanel, /Settings → General/);
   assert.match(rollHistoryPanel, /inventoryDetailEyebrowClassName/);
   assert.match(spoolDetailSummary, /InventoryDetailFactCard/);
   assert.match(rfidCapturePanels, /inventoryDetailSectionLabelClassName/);

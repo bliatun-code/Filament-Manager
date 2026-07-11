@@ -13,6 +13,8 @@ const norwegianMessages: Record<string, string> = {
   "settings.viewNotices": "Notiser",
   "settings.help": "Hjelp",
   "settings.userManual": "Brukermanual",
+  "settings.inventoryOverviewSingleLabelHint":
+    "Trenger du bare én etikett? Åpne rullen i Lager og velg Lag QR-etikett.",
 };
 
 function i18nValue(locale: Locale = "en"): I18nContextValue {
@@ -70,6 +72,7 @@ test("SettingsGeneralTab exposes license and source links", () => {
   assert.match(html, /Notices/);
   assert.match(html, /Product tour/);
   assert.match(html, /User manual/);
+  assert.match(html, /Need just one label\?/);
   assert.match(
     html,
     /class="[^"]*border-slate-200[^"]*bg-white[^"]*text-slate-700[^"]*"[^>]*>Product tour/,
@@ -100,6 +103,7 @@ test("SettingsGeneralTab localizes license controls in Norwegian", () => {
   assert.match(html, /Notiser/);
   assert.match(html, /Hjelp/);
   assert.match(html, /Brukermanual/);
+  assert.match(html, /Trenger du bare én etikett\?/);
 });
 
 test("SettingsGeneralTab opens a paper-aware inventory label sheet preview", () => {
@@ -111,6 +115,8 @@ test("SettingsGeneralTab opens a paper-aware inventory label sheet preview", () 
   assert.match(html, /US Letter/);
   assert.match(html, /60 × 24 mm/);
   assert.match(html, /30 labels per page/);
+  assert.match(html, /Need just one label\?/);
+  assert.match(html, /Open the roll in Inventory/);
   assert.match(html, /Save PDF to Downloads/);
   assert.match(html, /data:image\/png;base64/);
 });

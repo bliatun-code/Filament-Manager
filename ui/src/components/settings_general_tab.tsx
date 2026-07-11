@@ -224,6 +224,12 @@ export function SettingsGeneralTab({
         >
           {t("settings.inventoryOverviewPrintAction", "Create inventory label sheet")}
         </button>
+        <div className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+          {t(
+            "settings.inventoryOverviewSingleLabelHint",
+            "Need just one label? Open the roll in Inventory and choose Create QR label.",
+          )}
+        </div>
       </SettingsSurfaceCard>
 
       <SettingsInventoryLabelSheetModal {...inventoryLabelSheetModalProps} />

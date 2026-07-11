@@ -211,6 +211,13 @@ export function SettingsInventoryLabelSheetModal({
             {t("settings.inventoryOverviewPerPage", "labels per page")}
           </div>
 
+          <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-600 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300">
+            {t(
+              "settings.inventoryOverviewSingleLabelHint",
+              "Need just one label? Open the roll in Inventory and choose Create QR label.",
+            )}
+          </div>
+
           <button
             type="button"
             className={`mt-4 w-full ${settingsActionButtonClass("accent")}`}

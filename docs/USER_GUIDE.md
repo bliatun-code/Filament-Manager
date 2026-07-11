@@ -112,11 +112,16 @@ You can:
 
 Inventory cards group identical filament and color entries while still showing individual spools and locations. This keeps the inventory easy to scan without losing traceability.
 
-From a spool's QR panel, **Create QR label** opens a print preview with P-Touch
-24 mm, Compact, Standard, and Expanded sizes. The P-Touch profile uses a 60 ×
-24 mm landscape canvas with a nearly full-height QR and large identifying text.
-The finished 300-DPI PNG is saved in the normal Downloads folder instead of the
-application data directory.
+To create a label for one spool:
+
+1. Open the spool details in Inventory and find the QR panel.
+2. Choose **Create QR label**.
+3. Select P-Touch 24 mm, Compact, Standard, or Expanded, then check the preview.
+4. Choose **Save PNG to Downloads** to save the print-ready 300-DPI image.
+
+The P-Touch profile uses a 60 × 24 mm landscape canvas with a nearly full-height
+QR and large identifying text. For several on-hand spools at once, use **Settings
+→ General → Create inventory label sheet** instead.
 
 The Wishlist and orders panel has its own status filters and search field. It
 shows the number of matching rows, lets you move purchases between Wishlist, On
@@ -241,11 +246,17 @@ General:
 - language
 - inventory QR label sheets
 
-**Create inventory label sheet** opens a preview for all on-hand spools. Choose
-A4 or US Letter, start on the first page, and use the page controls to review
-the remaining sheets before saving. Each label on the sheet uses the same 60 ×
-24 mm layout as the P-Touch QR label, and the finished PDF is saved to
-Downloads.
+To create label sheets for the on-hand inventory:
+
+1. Open **Settings → General** and choose **Create inventory label sheet**.
+2. Select A4 or US Letter.
+3. Review the sheet preview and use the page controls when the inventory spans
+   more than one page.
+4. Choose **Save PDF to Downloads**.
+
+Each page holds up to 30 labels in the same readable 60 × 24 mm layout as the
+P-Touch QR label. For one spool, or for a different label size, open its QR panel
+under **Inventory** and choose **Create QR label**.
 
 Library and webapp:
 
