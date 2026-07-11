@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "messages": [
+    {
+      "surface": "desktop",
+      "key": "common.active",
+      "meaning": "Generic enabled/current state, not a grammatical description of a person.",
+      "screenshot": "docs/screenshots/settings-library.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.statusEmpty",
+      "meaning": "The physical spool has no usable filament remaining; it is not an empty printer slot.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.statusLost",
+      "meaning": "The user cannot currently locate the physical spool. It has not been deleted.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.borrowedIn",
+      "meaning": "A spool owned by someone else and temporarily held by the user; opposite of loaned out.",
+      "screenshot": "docs/screenshots/add-filament.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.out",
+      "meaning": "Compact table heading for filament weight when a spool was loaned out, measured in grams.",
+      "screenshot": "docs/screenshots/loan-out.jpg",
+      "maxCharacters": 10
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.remaining",
+      "meaning": "Estimated usable filament still wound on the spool, excluding the empty-spool weight.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.emptySpoolWeight",
+      "meaning": "Tare weight of the empty physical spool, subtracted from measured total weight.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "loans.directionOutbound",
+      "meaning": "A spool owned by the user that has been lent to another person.",
+      "screenshot": "docs/screenshots/loans.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "loans.out",
+      "meaning": "Compact loan-table heading for outgoing filament weight in grams.",
+      "screenshot": "docs/screenshots/loans.jpg",
+      "maxCharacters": 10
+    },
+    {
+      "surface": "desktop",
+      "key": "printers.used",
+      "meaning": "Total filament consumed by tracked jobs on this printer, not elapsed printer time.",
+      "screenshot": "docs/screenshots/printers.jpg",
+      "maxCharacters": 12
+    },
+    {
+      "surface": "desktop",
+      "key": "printers.slot",
+      "meaning": "One material position in an AMS, MMU, external holder, or toolhead group.",
+      "screenshot": "docs/screenshots/printer-slot-assignment.jpg",
+      "maxCharacters": 14
+    },
+    {
+      "surface": "desktop",
+      "key": "printers.toolhead",
+      "meaning": "A printer toolhead/extruder material position; do not translate as a hand tool.",
+      "screenshot": "docs/screenshots/printer-slot-assignment.jpg",
+      "maxCharacters": 18
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.companionTitle",
+      "meaning": "Filament Manager's trusted-LAN browser interface. Companion is a product feature name, not a person.",
+      "screenshot": "docs/screenshots/settings-library.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "storage.borrowedInAction",
+      "meaning": "Register stock owned by somebody else and currently held by the user.",
+      "screenshot": "docs/screenshots/companion-phone-add-spool.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "loans.active",
+      "meaning": "The outbound loan has not yet been returned.",
+      "screenshot": "docs/screenshots/companion-phone-lend-spool.jpg",
+      "maxCharacters": 14
+    },
+    {
+      "surface": "companion",
+      "key": "printers.empty",
+      "meaning": "A printer material slot has no assigned spool; this is not the empty-spool inventory status.",
+      "screenshot": "docs/screenshots/companion-phone-printers.jpg",
+      "maxCharacters": 14
+    },
+    {
+      "surface": "companion",
+      "key": "printers.slot",
+      "meaning": "One load position in an AMS, MMU, external holder, or toolhead group.",
+      "screenshot": "docs/screenshots/companion-phone-printers.jpg",
+      "maxCharacters": 14
+    },
+    {
+      "surface": "companion",
+      "key": "printers.toolhead",
+      "meaning": "A printer toolhead/extruder material position; do not translate as a hand tool.",
+      "screenshot": "docs/screenshots/companion-phone-printers.jpg",
+      "maxCharacters": 18
+    },
+    {
+      "surface": "companion",
+      "key": "detail.loan",
+      "meaning": "Heading for the current ownership/loan record associated with the selected spool.",
+      "screenshot": "docs/screenshots/companion-phone-detail.jpg",
+      "maxCharacters": 14
+    },
+    {
+      "surface": "companion",
+      "key": "detail.emptySpoolWeight",
+      "meaning": "Tare weight of the empty physical spool, not zero remaining filament.",
+      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "detail.usageSourceRfid",
+      "meaning": "Usage/history source recorded from radio-frequency spool identity. Keep the acronym RFID.",
+      "screenshot": "docs/screenshots/companion-phone-detail.jpg",
+      "maxCharacters": 8
+    },
+    {
+      "surface": "companion",
+      "key": "printers.liveTelemetryAmsHumidityShort",
+      "meaning": "Compact label for Bambu Lab's Automatic Material System. Keep the product acronym AMS.",
+      "screenshot": "docs/screenshots/companion-phone-printers.jpg",
+      "maxCharacters": 8
+    }
+  ]
+}

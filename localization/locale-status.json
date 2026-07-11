@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "sourceLocale": "en",
+  "minimumDistinctTranslationPercent": 95,
+  "locales": {
+    "en": {
+      "releaseStatus": "canonical",
+      "nativeReviewer": "@bliatun-code",
+      "reviewedAt": "2026-07-11",
+      "reviewedSourceFingerprint": "canonical"
+    },
+    "nb": {
+      "releaseStatus": "maintained",
+      "nativeReviewer": "@bliatun-code",
+      "reviewedAt": "2026-07-11",
+      "reviewedSourceFingerprint": "sha256:84ef9d7451321c93c0ade560bce4696ff3c7769b5206eb39e7bf9333cdcd5451"
+    }
+  }
+}

@@ -76,7 +76,7 @@ export function readLocaleDictionaryFromSource(source, exportName) {
   throw new Error(`Could not find ${exportName}.`);
 }
 
-function flattenDictionary(dictionary, prefix = "") {
+export function flattenDictionary(dictionary, prefix = "") {
   if (typeof dictionary === "string") {
     return [[prefix, dictionary]];
   }

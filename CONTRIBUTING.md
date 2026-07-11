@@ -59,6 +59,13 @@ npm run check:contracts
 - UI changes should keep desktop modal sizing, mobile Companion behavior, and
   localization in mind.
 
+## Localization
+
+Read [the localization workflow](docs/LOCALIZATION.md) before changing source
+copy or adding a language. Run `npm run report:i18n` after English source-string
+changes; maintained locales must be translated and natively reviewed against
+the new source fingerprint before release.
+
 ## Dependency Changes
 
 For dependency updates, include the reason for the update and run relevant
