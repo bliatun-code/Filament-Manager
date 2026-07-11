@@ -26,6 +26,7 @@
     "check:i18n-ui-copy": "node ./scripts/check-i18n-ui-copy.mjs",
     "check:i18n-readiness": "node ./scripts/check-i18n-readiness.mjs",
     "report:i18n": "node ./scripts/check-i18n-readiness.mjs",
+    "export:i18n-review": "node ./scripts/export-i18n-review.mjs",
     "check:ui-bundle-chunks": "node ./scripts/check-ui-bundle-chunks.mjs",
     "check:ui-orphans": "node ./scripts/check-ui-orphans.mjs",
     "check:contracts": "npm run check:version && npm run check:seed-catalog && npm run check:bambu-data && npm run check:printer-models && npm run check:tauri-invokes && npm run check:companion-routes && npm run check:css-vars && npm run check:ui-orphans && npm run check:ui-architecture && npm run check:i18n-fallbacks && npm run check:i18n-locales && npm run check:companion-i18n && npm run check:i18n-ui-copy && npm run check:i18n-readiness && npm run check:ui-bundle-chunks",

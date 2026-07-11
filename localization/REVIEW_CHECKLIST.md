@@ -11,6 +11,8 @@ reviewer or record approval by itself.
   runtime and user-guide fallback.
 - Run `npm run report:i18n` and record the current combined English source
   fingerprint.
+- Generate a review sheet with `npm run export:i18n-review -- --locale <locale>`.
+  Open the TSV in a spreadsheet and filter by surface, state or context.
 - Review only against artifacts produced from the same fingerprint.
 - Keep product names and protocol acronyms such as Bambu Lab, eSUN, AMS, RFID,
   MQTT, QR, CSV, JSON and AGPL unchanged unless the product itself localizes
@@ -50,6 +52,7 @@ Replace `<locale>` with `de` or `fr`.
 
 ```sh
 npm run report:i18n
+npm run export:i18n-review -- --locale <locale>
 node scripts/run-desktop-screenshot-gate.mjs --launch --locale <locale> --profile rich --scenario all
 node scripts/run-companion-screenshot-gate.mjs --launch --locale <locale> --profile rich
 npm run verify

@@ -94,14 +94,18 @@ test("German draft uses translated overlay copy", () => {
   assert.equal(t("de", "recovery.suggested"), "Vorgeschlagene Wiederherstellung");
 });
 
-test("French draft uses translated overlay copy and English fallback", () => {
+test("French draft uses complete translated copy and keeps explicit runtime fallback", () => {
   assert.equal(t("fr", "nav.storage"), "Stock");
   assert.equal(t("fr", "printers.toolhead"), "Tête d’outil");
   assert.equal(t("fr", "detail.saveWeight"), "Enregistrer le poids");
   assert.equal(t("fr", "storage.wishlistQueue"), "Liste de souhaits / commandes");
   assert.equal(t("fr", "loans.completeReturn"), "Terminer le retour");
   assert.equal(t("fr", "printers.saveCandidateRfid"), "Enregistrer la RFID");
-  assert.equal(t("fr", "settings.desktopInCharge"), t("en", "settings.desktopInCharge"));
+  assert.equal(
+    t("fr", "settings.desktopInCharge"),
+    "L’application desktop et SQLite gardent le contrôle.",
+  );
+  assert.equal(t("fr", "missing.reviewKey", "Repli sûr"), "Repli sûr");
 });
 
 test("French draft applies French zero, one, and other plural categories", () => {
