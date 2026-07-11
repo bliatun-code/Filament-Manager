@@ -141,6 +141,9 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   const frenchDictionary = await loadLocaleDictionary("fr");
   assert.equal(lookup(frenchDictionary, "nav.inventory"), "Stock");
   assert.equal(lookup(frenchDictionary, "common.cancel"), "Annuler");
+  assert.equal(lookup(frenchDictionary, "inventory.saveRollChanges"), "Enregistrer les modifications");
+  assert.equal(lookup(frenchDictionary, "wishlist.statusOnOrder"), "Commandé");
+  assert.equal(lookup(frenchDictionary, "loans.confirmHandBackAction"), "Confirmer la restitution");
   assert.equal(
     lookup(frenchDictionary, "inventory.rfidTechnicalDetails"),
     "Technical details",

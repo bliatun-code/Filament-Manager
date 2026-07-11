@@ -97,7 +97,10 @@ test("German draft uses translated overlay copy", () => {
 test("French draft uses translated overlay copy and English fallback", () => {
   assert.equal(t("fr", "nav.storage"), "Stock");
   assert.equal(t("fr", "printers.toolhead"), "Tête d’outil");
-  assert.equal(t("fr", "recovery.suggested"), t("en", "recovery.suggested"));
+  assert.equal(t("fr", "detail.saveWeight"), "Enregistrer le poids");
+  assert.equal(t("fr", "storage.wishlistQueue"), "Liste de souhaits / commandes");
+  assert.equal(t("fr", "loans.completeReturn"), "Terminer le retour");
+  assert.equal(t("fr", "settings.desktopInCharge"), t("en", "settings.desktopInCharge"));
 });
 
 test("French draft applies French zero, one, and other plural categories", () => {
