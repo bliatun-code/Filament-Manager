@@ -7,6 +7,7 @@ import type {
 } from "../lib/tauri_client";
 import { isExternalSlotId, resolvePrinterModelProfile } from "../lib/printer_profiles";
 import { clampInt, parseNonNegativeInt, parsePositiveInt } from "../lib/settings_utils";
+import { createLocaleCollator } from "../../../src-tauri/companion_browser/locale_format.js";
 
 export type PrinterMultiMaterialConfig = {
   units: number;
@@ -62,7 +63,7 @@ export function buildPrinterSlotsByPrinterId(
 }
 
 export function sortSettingsPrinters(printers: PrinterRow[], locale: string): PrinterRow[] {
-  const collator = new Intl.Collator(locale, {
+  const collator = createLocaleCollator(locale, {
     numeric: true,
     sensitivity: "base",
   });

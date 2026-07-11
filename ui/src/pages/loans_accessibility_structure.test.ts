@@ -14,9 +14,9 @@ test("loan search and filters expose names and selected state", () => {
 });
 
 test("loan result count includes a localized unit", () => {
-  assert.match(source, /loanResultCountUnit/);
-  assert.match(source, /loans\.resultCountOne/);
-  assert.match(source, /loans\.resultCountMany/);
+  assert.match(source, /loanResultCount/);
+  assert.match(source, /loans\.resultCount/);
+  assert.match(source, /\{count, plural, one \{# loan\} other \{# loans\}\}/);
   assert.match(source, /aria-live="polite"/);
   const countPillRule = cssSource.match(/\.count-pill\s*\{([^}]+)\}/s)?.[1] ?? "";
   assert.match(countPillRule, /inline-flex/);

@@ -308,7 +308,7 @@ test("buildTrustedLanPairedBrowserListModel keeps active browsers first and huma
     model.revokedRows.map((row) => row.id),
     ["revoked-browser"],
   );
-  assert.equal(model.activeRows[0]?.activityLabel, "Last seen 1 min ago");
+  assert.equal(model.activeRows[0]?.activityLabel, "Last seen 1 min. ago");
   assert.equal(model.activeRows[0]?.statusLabel, "Recently active");
   assert.equal(model.activeRows[0]?.statusTone, "live");
   assert.equal(model.activeRows[0]?.activityDateTime, "2026-03-28T19:59:00.000Z");
@@ -335,14 +335,13 @@ test("buildTrustedLanPairedBrowserListModel uses Norwegian relative wording and 
       },
     ],
     locale: "nb",
-    t: (key, fallback) =>
-      key === "common.minutesAgo" ? "{count} min siden" : fallback,
+    t,
     nowMs: Date.parse("2026-03-28T20:00:00.000Z"),
   });
 
   assert.equal(model.activeRows[0]?.displayName, "Paired browser");
   assert.equal(model.activeRows[0]?.initials, "PB");
-  assert.equal(model.activeRows[0]?.activityLabel, "Last seen 5 min siden");
+  assert.equal(model.activeRows[0]?.activityLabel, "Last seen for 5 min siden");
   assert.equal(model.activeRows[0]?.originLabel, "192.168.86.25:4278");
 });
 
@@ -365,7 +364,7 @@ test("authorized browsers are only marked recently active after a recent renewal
 
   assert.equal(model.activeRows[0]?.statusLabel, "Authorized");
   assert.equal(model.activeRows[0]?.statusTone, "idle");
-  assert.equal(model.activeRows[0]?.activityLabel, "Last seen 2 d ago");
+  assert.equal(model.activeRows[0]?.activityLabel, "Last seen 2 days ago");
 });
 
 test("findNewTrustedLanActiveBrowserIds detects newly paired browsers only", () => {

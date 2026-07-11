@@ -255,12 +255,10 @@ export function PrinterSlotPicker({
                 className="text-[11px] font-medium text-slate-500 dark:text-slate-400"
                 aria-live="polite"
               >
-                {filteredSlotOptions.length}{" "}
                 {t(
-                  filteredSlotOptions.length === 1
-                    ? "printers.rollResultOne"
-                    : "printers.rollResultMany",
-                  filteredSlotOptions.length === 1 ? "roll" : "rolls",
+                  "printers.rollResultCount",
+                  "{count, plural, one {# roll} other {# rolls}}",
+                  { count: filteredSlotOptions.length },
                 )}
               </span>
               <button

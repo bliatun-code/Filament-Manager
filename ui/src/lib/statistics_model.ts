@@ -30,6 +30,7 @@ import type {
 } from "./tauri_client";
 import type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
+import type { I18nContextValue } from "./i18n";
 
 export type ConsumptionSort = "USED_DESC" | "USED_ASC" | "NAME_ASC" | "JOBS_DESC";
 export type LoanUsageListFilter = "ALL" | "ACTIVE" | "COMPLETED";
@@ -45,7 +46,7 @@ export type ConsumptionPopupPrefs = {
 export type BorrowerPopupPrefs = {
   search: string;
 };
-export type TranslateFn = (key: string, fallback?: string) => string;
+export type TranslateFn = I18nContextValue["t"];
 export type BorrowerFilamentUsageRow = {
   material: string;
   filamentName: string;

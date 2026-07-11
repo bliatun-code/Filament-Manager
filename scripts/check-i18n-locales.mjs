@@ -130,7 +130,10 @@ export function validateRuntimeTranslationKeys(dictionary, runtimeKeys) {
 }
 
 function placeholderTokens(value) {
-  return Array.from(value.matchAll(/\{([A-Za-z0-9_]+)\}/g), (match) => match[1]).sort();
+  return Array.from(
+    value.matchAll(/\{([A-Za-z0-9_]+)\s*(?:[,}])/g),
+    (match) => match[1],
+  ).sort();
 }
 
 function compareSets(leftValues, rightValues) {

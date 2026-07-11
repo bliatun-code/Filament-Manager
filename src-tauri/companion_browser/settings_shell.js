@@ -24,36 +24,23 @@ export function renderSettingsShell(options) {
       : t(locale, "settings.modeSummary", "{mode} mode", {
           mode: t(locale, `settings.${themeMode}`, themeMode),
         });
-  const countLabel = (count, singularKey, pluralKey, singularFallback, pluralFallback) =>
-    t(locale, count === 1 ? singularKey : pluralKey, count === 1 ? singularFallback : pluralFallback, {
-      count,
-    });
   const connectionSummary =
     connectionSummaryOption ||
     [
       state.apiReady
         ? t(locale, "settings.trustedLanConnected", "Trusted-LAN connected")
         : t(locale, "settings.disconnected", "Disconnected"),
-      countLabel(
-        state.spools.length,
-        "settings.spoolCountOne",
-        "settings.spoolCountMany",
-        "{count} spool",
-        "{count} spools",
-      ),
-      countLabel(
-        state.printers.length,
-        "settings.printerCountOne",
-        "settings.printerCountMany",
-        "{count} printer",
-        "{count} printers",
-      ),
-      countLabel(
-        state.activeLoans.length,
-        "settings.activeLoanCountOne",
-        "settings.activeLoanCountMany",
-        "{count} active loan",
-        "{count} active loans",
+      t(locale, "settings.spoolCount", "{count, plural, one {# spool} other {# spools}}", {
+        count: state.spools.length,
+      }),
+      t(locale, "settings.printerCount", "{count, plural, one {# printer} other {# printers}}", {
+        count: state.printers.length,
+      }),
+      t(
+        locale,
+        "settings.activeLoanCount",
+        "{count, plural, one {# active loan} other {# active loans}}",
+        { count: state.activeLoans.length },
       ),
     ].join(" · ");
   return `

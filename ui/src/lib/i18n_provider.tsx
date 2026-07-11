@@ -3,6 +3,7 @@ import {
   applyLocaleToDocument,
   DEFAULT_LOCALE,
 } from "../../../src-tauri/companion_browser/supported_locales.js";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 import {
   getCachedLocaleDictionary,
   I18nContext,
@@ -67,13 +68,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback(
-    (key: string, fallback?: string) => {
+    (key: string, fallback?: string, params = {}) => {
       const message =
         (activeDictionary ? lookup(activeDictionary, key) : undefined) ??
         (fallbackDictionary ? lookup(fallbackDictionary, key) : undefined);
-      return message ?? fallback ?? key;
+      return formatMessage(message ?? fallback ?? key, params, locale);
     },
-    [activeDictionary, fallbackDictionary],
+    [activeDictionary, fallbackDictionary, locale],
   );
 
   const value = useMemo<I18nContextValue>(

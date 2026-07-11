@@ -21,6 +21,7 @@ import {
   settingsSectionLabelClass,
 } from "../lib/settings_ui_classes";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
+import type { I18nContextValue } from "../lib/i18n";
 
 type SettingsMissingSwatchesPanelProps = {
   busy: boolean;
@@ -32,7 +33,7 @@ type SettingsMissingSwatchesPanelProps = {
   swatchVendorFilter: string;
   swatchVendorOptions: string[];
   tauri: boolean;
-  t: (key: string, fallback: string) => string;
+  t: I18nContextValue["t"];
   visibleMissingSwatchMasters: MasterCatalogRow[];
   visibleMissingSwatchVendorCount: number;
   onBulkAutoFill: () => void;
@@ -168,7 +169,8 @@ export function SettingsMissingSwatchesPanel({
               {t(
                 "settings.confirmBulkSwatchVisible",
                 "Apply suggested colors to {count} visible entries?",
-              ).replace("{count}", String(visibleMissingSwatchMasters.length))}
+                { count: visibleMissingSwatchMasters.length },
+              )}
             </SettingsNotice>
           ) : null}
         </SettingsSectionControls>

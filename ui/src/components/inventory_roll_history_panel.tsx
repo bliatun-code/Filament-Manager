@@ -43,10 +43,9 @@ export function InventoryRollHistoryPanel({
     ? visibleHistoryRows
     : visibleHistoryRows.slice(0, INITIAL_HISTORY_EVENT_LIMIT);
   const historyEventCountLabel = t(
-    historyEventCount === 1
-      ? "inventory.historyEventCountOne"
-      : "inventory.historyEventCountMany",
-    historyEventCount === 1 ? "event" : "events",
+    "inventory.historyEventCount",
+    "{count, plural, one {# event} other {# events}}",
+    { count: historyEventCount },
   );
 
   function handlePanelToggle() {
@@ -69,7 +68,7 @@ export function InventoryRollHistoryPanel({
           </div>
           {!historyLoading ? (
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
-              {historyEventCount} {historyEventCountLabel}
+              {historyEventCountLabel}
             </span>
           ) : null}
         </div>

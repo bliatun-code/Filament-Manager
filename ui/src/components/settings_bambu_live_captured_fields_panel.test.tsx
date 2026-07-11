@@ -8,13 +8,15 @@ import { I18nContext, lookup, type I18nContextValue } from "../lib/i18n";
 import { enDictionary } from "../lib/i18n_locales/locales/en";
 import type { SettingsBambuLiveDiagnosticGroup } from "../pages/settings_bambu_live_diagnostics_model";
 import { SettingsBambuLiveCapturedFieldsPanel } from "./settings_bambu_live_captured_fields_panel";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
 const i18nValue: I18nContextValue = {
   locale: "en",
   setLocale: () => {},
-  t: (key, fallback = "") => lookup(enDictionary, key) ?? fallback,
+  t: (key, fallback = "", params = {}) =>
+    formatMessage(lookup(enDictionary, key) ?? fallback, params, "en"),
 };
 
 function capturedField(path: string, valueText: string): DiagnosticCaptureField {

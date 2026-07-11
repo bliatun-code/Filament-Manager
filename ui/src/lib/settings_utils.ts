@@ -1,5 +1,5 @@
 import type { Locale } from "./i18n";
-import { intlLocaleFor } from "../../../src-tauri/companion_browser/supported_locales.js";
+import { formatLocaleDateTime } from "../../../src-tauri/companion_browser/locale_format.js";
 
 export function parsePositiveInt(raw: string, fallback: number): number {
   const parsed = Number.parseInt(raw, 10);
@@ -28,10 +28,10 @@ export function clampInt(value: number, min: number, max: number): number {
 }
 
 export function formatTrustedLanPairingExpiry(expiresAtMs: number, locale: Locale): string {
-  return new Intl.DateTimeFormat(intlLocaleFor(locale), {
+  return formatLocaleDateTime(expiresAtMs, locale, {
     hour: "2-digit",
     minute: "2-digit",
-  }).format(expiresAtMs);
+  });
 }
 
 export function formatSettingsDateTime(raw: string, locale: Locale): string {
@@ -41,13 +41,13 @@ export function formatSettingsDateTime(raw: string, locale: Locale): string {
   if (Number.isNaN(parsed.getTime())) {
     return raw;
   }
-  return new Intl.DateTimeFormat(intlLocaleFor(locale), {
+  return formatLocaleDateTime(parsed, locale, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(parsed);
+  });
 }
 
 export function formatDiagnosticJson(value: unknown): string {

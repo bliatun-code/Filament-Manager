@@ -2,6 +2,8 @@ import type { BuiltFilamentQrPayload } from "../lib/filament_qr_payload";
 import type { InventoryOverviewPrintRow } from "../lib/inventory_overview_print";
 import { isBorrowedInOwnership, isSpoolStatusOnHand } from "../lib/inventory_domain";
 import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
+import { createLocaleCollator } from "../../../src-tauri/companion_browser/locale_format.js";
 
 export type SettingsInventoryPrintLabels = {
   borrowedIn: string;
@@ -67,7 +69,7 @@ export function buildSettingsInventoryOverviewPrintSuccessMessage(
   labels: SettingsInventoryPrintMessageLabels,
   exportedPath: string,
 ): string {
-  return labels.inventoryOverviewPrintDone.replace("{path}", exportedPath);
+  return formatMessage(labels.inventoryOverviewPrintDone, { path: exportedPath });
 }
 
 export function buildSettingsInventoryOverviewPrintErrorMessage(
@@ -81,16 +83,17 @@ function compareSettingsInventoryPrintRows(
   right: NormalizedSpoolWithMasterRow,
   locale: string,
 ): number {
-  const materialOrder = left.master.material.localeCompare(right.master.material, locale);
+  const collator = createLocaleCollator(locale, { numeric: true, sensitivity: "base" });
+  const materialOrder = collator.compare(left.master.material, right.master.material);
   if (materialOrder !== 0) {
     return materialOrder;
   }
-  const filamentOrder = left.master.filament_name.localeCompare(
+  const filamentOrder = collator.compare(
+    left.master.filament_name,
     right.master.filament_name,
-    locale,
   );
   if (filamentOrder !== 0) {
     return filamentOrder;
   }
-  return left.master.color_name.localeCompare(right.master.color_name, locale);
+  return collator.compare(left.master.color_name, right.master.color_name);
 }

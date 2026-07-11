@@ -111,16 +111,11 @@ export function PrinterSlotAssignmentStatus({
       return null;
     }
     const visibleRows = rows.slice(0, 3);
-    const summary =
-      rows.length === 1
-        ? t(
-            "printers.liveCatalogCandidateSingle",
-            "Bambu catalog has one likely match. Add it here to save the live RFID.",
-          )
-        : t(
-            "printers.liveCatalogCandidateCount",
-            "{count} Bambu catalog entries look like this live roll.",
-          ).replace("{count}", String(rows.length));
+    const summary = t(
+      "printers.liveCatalogCandidateSummary",
+      "{count, plural, one {Bambu catalog has one likely match. Add it here to save the live RFID.} other {# Bambu catalog entries look like this live roll.}}",
+      { count: rows.length },
+    );
     const catalogOpenState = effectiveLiveTray
       ? buildSlotCatalogOnboardingOpenState(slot, effectiveLiveTray, { busy })
       : null;
@@ -205,36 +200,30 @@ export function PrinterSlotAssignmentStatus({
         : t(
             "printers.liveRfidCandidateCount",
             "{count} inventory rolls look like this live Bambu roll.",
-          ).replace("{count}", String(rows.length))
+            { count: rows.length },
+          )
       : currentAssignmentMatched
         ? t(
             "printers.liveCandidateCurrentMatches",
             "Current assignment matches the live material/color signal.",
           )
-        : rows.length === 1
-          ? t(
-              "printers.liveCandidateSingle",
-              "One inventory roll matches the live material/color signal.",
-            )
-          : t(
-              "printers.liveCandidateCount",
-              "{count} inventory rolls match the live material/color signal.",
-            ).replace("{count}", String(rows.length));
+        : t(
+            "printers.liveCandidateSummary",
+            "{count, plural, one {One inventory roll matches the live material/color signal.} other {# inventory rolls match the live material/color signal.}}",
+            { count: rows.length },
+          );
     const unknownRfidSummary = unknownLiveRfid
       ? occupiedByDifferentRoll
-        ? rows.length === 1
+        ? t(
+            "printers.liveRfidCandidateSelectionSummary",
+            "{count, plural, one {One inventory roll looks like this live Bambu roll. Select it before saving RFID.} other {# inventory rolls look like this live Bambu roll. Select the correct roll before saving RFID.}}",
+            { count: rows.length },
+          )
+        : !currentAssignmentMatched
           ? t(
-              "printers.liveRfidCandidateSelectFirst",
-              "One inventory roll looks like this live Bambu roll. Select it before saving RFID.",
-            )
-          : `${summary} ${t(
-              "printers.liveRfidCandidateSelectCorrect",
-              "Select the correct roll before saving RFID.",
-            )}`
-        : !currentAssignmentMatched && rows.length === 1
-          ? t(
-              "printers.liveRfidCandidateSingle",
-              "One inventory roll looks like this live Bambu roll. Save RFID to bind it permanently.",
+              "printers.liveRfidCandidateSummary",
+              "{count, plural, one {One inventory roll looks like this live Bambu roll. Save RFID to bind it permanently.} other {# inventory rolls look like this live Bambu roll.}}",
+              { count: rows.length },
             )
           : summary
       : summary;

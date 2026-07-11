@@ -336,18 +336,26 @@ function renderHistorySection(options) {
   const historySummaryBits = [];
   if (usageCount > 0) {
     historySummaryBits.push(
-      t(locale, "detail.weightChecksSummary", "{count} weight check{suffix}", {
+      t(
+        locale,
+        "detail.weightChecksSummary",
+        "{count, plural, one {# weight check} other {# weight checks}}",
+        {
         count: usageCount,
-        suffix: usageCount === 1 ? "" : locale === "nb" ? "er" : "s",
-      }),
+        },
+      ),
     );
   }
   if (historyCount > 0) {
     historySummaryBits.push(
-      t(locale, "detail.activityItemsSummary", "{count} activity item{suffix}", {
+      t(
+        locale,
+        "detail.activityItemsSummary",
+        "{count, plural, one {# activity item} other {# activity items}}",
+        {
         count: historyCount,
-        suffix: historyCount === 1 ? "" : locale === "nb" ? "er" : "s",
-      }),
+        },
+      ),
     );
   }
   const historySummary = historySummaryBits.join(" · ") || t(locale, "detail.noRecentHistory", "No recent history");

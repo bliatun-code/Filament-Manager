@@ -82,16 +82,11 @@ export function InventoryStockSourcePanel({
   const [hoveredCatalogMasterId, setHoveredCatalogMasterId] = useState<string | null>(
     null,
   );
-  const catalogMatchCountLabel =
-    activeCatalogMasters.length === 1
-      ? t("inventory.catalogMatchCountSingular", "{count} match").replace(
-          "{count}",
-          String(activeCatalogMasters.length),
-        )
-      : t("inventory.catalogMatchCountPlural", "{count} matches").replace(
-          "{count}",
-          String(activeCatalogMasters.length),
-        );
+  const catalogMatchCountLabel = t(
+    "inventory.catalogMatchCount",
+    "{count, plural, one {# match} other {# matches}}",
+    { count: activeCatalogMasters.length },
+  );
 
   return (
     <div className="surface-card space-y-4">

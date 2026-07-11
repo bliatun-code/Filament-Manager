@@ -1,9 +1,12 @@
-import type { Locale } from "../lib/i18n";
-import { intlLocaleFor } from "../../../src-tauri/companion_browser/supported_locales.js";
+import type { I18nContextValue, Locale } from "../lib/i18n";
+import {
+  formatLocaleDateTime,
+  formatLocaleRelativeTime,
+} from "../../../src-tauri/companion_browser/locale_format.js";
 import type { TrustedLanPairedBrowser } from "../lib/tauri_client";
 import type { TrustedLanCompanionStatusTone } from "./settings_companion_model";
 
-type TranslateFn = (key: string, fallback: string) => string;
+type TranslateFn = I18nContextValue["t"];
 
 export type TrustedLanPairedBrowserRowModel = {
   id: string;
@@ -31,10 +34,6 @@ type BuildTrustedLanPairedBrowserListInput = {
   nowMs?: number;
 };
 
-function trustedLanLocale(locale: Locale): string {
-  return intlLocaleFor(locale);
-}
-
 function parseTimestampMs(value?: string | null): number | null {
   if (!value) {
     return null;
@@ -54,13 +53,13 @@ function formatAbsoluteTimestamp(
   if (timestampMs === null) {
     return t("common.unknown", "Unknown");
   }
-  return new Intl.DateTimeFormat(trustedLanLocale(locale), {
+  return formatLocaleDateTime(timestampMs, locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(timestampMs);
+  });
 }
 
 function timestampDateTime(value?: string | null): string | null {
@@ -84,20 +83,17 @@ function formatRelativeTimestamp(
     return t("common.justNow", "just now");
   }
   if (elapsedMinutes < 60) {
-    return t("common.minutesAgo", "{count} min ago").replace(
-      "{count}",
-      String(elapsedMinutes),
-    );
+    return formatLocaleRelativeTime(-elapsedMinutes, "minute", locale, { style: "short" });
   }
 
   const elapsedHours = Math.floor(elapsedMinutes / 60);
   if (elapsedHours < 24) {
-    return t("common.hoursAgo", "{count} h ago").replace("{count}", String(elapsedHours));
+    return formatLocaleRelativeTime(-elapsedHours, "hour", locale, { style: "short" });
   }
 
   const elapsedDays = Math.floor(elapsedHours / 24);
   if (elapsedDays < 7) {
-    return t("common.daysShort", "{count} d ago").replace("{count}", String(elapsedDays));
+    return formatLocaleRelativeTime(-elapsedDays, "day", locale, { style: "short" });
   }
 
   return formatAbsoluteTimestamp(value, locale, t);

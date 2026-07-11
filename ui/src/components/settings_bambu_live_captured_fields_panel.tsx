@@ -42,11 +42,10 @@ export function SettingsBambuLiveCapturedFieldsPanel({
   const componentId = useId().replaceAll(":", "");
   const diagnosticSortId = `bambu-live-captured-fields-sort-${componentId}`;
   const diagnosticFilterId = `bambu-live-captured-fields-filter-${componentId}`;
-  const fieldResultUnit = t(
-    sortedFieldCount === 1
-      ? "settings.bambuLiveFieldResultOne"
-      : "settings.bambuLiveFieldResultMany",
-    sortedFieldCount === 1 ? "field" : "fields",
+  const fieldResultLabel = t(
+    "settings.bambuLiveFieldResultCount",
+    "{count, plural, one {# field} other {# fields}}",
+    { count: sortedFieldCount },
   );
 
   function handleExportCsv() {
@@ -72,7 +71,7 @@ export function SettingsBambuLiveCapturedFieldsPanel({
           aria-atomic="true"
           aria-live="polite"
         >
-          {sortedFieldCount} {fieldResultUnit}
+          {fieldResultLabel}
         </span>
       </div>
       <div className="mt-2 flex flex-wrap items-end justify-between gap-2">

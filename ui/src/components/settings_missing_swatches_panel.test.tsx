@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import { SettingsMissingSwatchesPanel } from "./settings_missing_swatches_panel";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
@@ -39,7 +40,7 @@ function renderPanel({
       swatchVendorFilter="ALL"
       swatchVendorOptions={["ALL", "eSUN"]}
       tauri
-      t={(_key, fallback) => fallback}
+      t={(_key, fallback = "", params = {}) => formatMessage(fallback, params, "en")}
       visibleMissingSwatchMasters={[master]}
       visibleMissingSwatchVendorCount={1}
       onBulkAutoFill={() => {}}

@@ -57,7 +57,15 @@ export function normalizeSupportedLocale(value, fallback = null) {
 }
 
 export function intlLocaleFor(value) {
-  return localeDefinition(value)?.intlLocale ?? localeDefinition(DEFAULT_LOCALE).intlLocale;
+  const definition = localeDefinition(value);
+  if (definition) {
+    return definition.intlLocale;
+  }
+  try {
+    return Intl.getCanonicalLocales(normalizedLanguageTag(value))[0];
+  } catch {
+    return localeDefinition(DEFAULT_LOCALE).intlLocale;
+  }
 }
 
 export function guidePathForLocale(value) {

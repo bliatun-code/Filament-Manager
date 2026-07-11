@@ -70,6 +70,7 @@ function resolveAddSheetState(state) {
         .toLowerCase()
         .includes(catalogSearch) || codeMatchesMaster;
     }),
+    state.locale,
   );
   const selectedMasterId = String(draft.selectedMasterId || "").trim();
   const explicitSelectedMaster =

@@ -2,6 +2,7 @@ import {
   DEFAULT_LOCALE,
   normalizeSupportedLocale,
 } from "./supported_locales.js";
+import { formatMessage } from "./message_format.js";
 
 export const COMPANION_LOCALE_STORAGE_KEY = "bfm-companion-locale";
 const LEGACY_COMPANION_LOCALE_STORAGE_KEYS = ["bfm-locale"];
@@ -34,6 +35,10 @@ const dictionaries = {
       printerCountMany: "{count} printers",
       activeLoanCountOne: "{count} active loan",
       activeLoanCountMany: "{count} active loans",
+      spoolCount: "{count, plural, one {# spool} other {# spools}}",
+      printerCount: "{count, plural, one {# printer} other {# printers}}",
+      activeLoanCount:
+        "{count, plural, one {# active loan} other {# active loans}}",
       primaryFlowsAria: "Primary flows",
     },
     shell: {
@@ -253,6 +258,8 @@ const dictionaries = {
         "One inventory roll looks like this live Bambu roll. Save RFID to bind it permanently.",
       liveCandidateMultiple:
         "{count} inventory rolls look like this live Bambu roll. Choose the correct row to save RFID.",
+      liveCandidate:
+        "{count, plural, one {One inventory roll looks like this live Bambu roll. Save RFID to bind it permanently.} other {# inventory rolls look like this live Bambu roll. Choose the correct row to save RFID.}}",
       saveCandidateRfid: "Save RFID",
       activeSlot: "Active slot",
       extSlot: "EXT Slot",
@@ -290,6 +297,10 @@ const dictionaries = {
       printerCountMany: "{count} printers",
       activeLoanCountOne: "{count} active loan",
       activeLoanCountMany: "{count} active loans",
+      spoolCount: "{count, plural, one {# spool} other {# spools}}",
+      printerCount: "{count, plural, one {# printer} other {# printers}}",
+      activeLoanCount:
+        "{count, plural, one {# active loan} other {# active loans}}",
       desktopInCharge: "Desktop app and SQLite stay in charge.",
       trustedLanDesktopInCharge:
         "Desktop app and SQLite stay in charge. Trusted-LAN access is still desktop-controlled and not encrypted on the network.",
@@ -520,8 +531,10 @@ const dictionaries = {
       usageSourceLoanOut: "Loaned out",
       usageSourceLoanReturn: "Loan return",
       noHistory: "No history recorded yet.",
-      weightChecksSummary: "{count} weight check{suffix}",
-      activityItemsSummary: "{count} activity item{suffix}",
+      weightChecksSummary:
+        "{count, plural, one {# weight check} other {# weight checks}}",
+      activityItemsSummary:
+        "{count, plural, one {# activity item} other {# activity items}}",
       noRecentHistory: "No recent history",
       history: "History",
       weightChecks: "Weight checks",
@@ -584,6 +597,10 @@ const dictionaries = {
       printerCountMany: "{count} printere",
       activeLoanCountOne: "{count} aktivt utlån",
       activeLoanCountMany: "{count} aktive utlån",
+      spoolCount: "{count, plural, one {# spole} other {# spoler}}",
+      printerCount: "{count, plural, one {# printer} other {# printere}}",
+      activeLoanCount:
+        "{count, plural, one {# aktivt utlån} other {# aktive utlån}}",
       primaryFlowsAria: "Hovedflyter",
     },
     shell: {
@@ -803,6 +820,8 @@ const dictionaries = {
         "Én rull i lageret ligner denne live Bambu-rullen. Lagre RFID for å binde den permanent.",
       liveCandidateMultiple:
         "{count} ruller i lageret ligner denne live Bambu-rullen. Velg riktig rad for å lagre RFID.",
+      liveCandidate:
+        "{count, plural, one {Én rull i lageret ligner denne live Bambu-rullen. Lagre RFID for å binde den permanent.} other {# ruller i lageret ligner denne live Bambu-rullen. Velg riktig rad for å lagre RFID.}}",
       saveCandidateRfid: "Lagre RFID",
       activeSlot: "Aktivt spor",
       extSlot: "EXT-spor",
@@ -841,6 +860,10 @@ const dictionaries = {
       printerCountMany: "{count} printere",
       activeLoanCountOne: "{count} aktivt utlån",
       activeLoanCountMany: "{count} aktive utlån",
+      spoolCount: "{count, plural, one {# spole} other {# spoler}}",
+      printerCount: "{count, plural, one {# printer} other {# printere}}",
+      activeLoanCount:
+        "{count, plural, one {# aktivt utlån} other {# aktive utlån}}",
       desktopInCharge: "Desktop-appen og SQLite er fortsatt kilden til sannhet.",
       trustedLanDesktopInCharge:
         "Desktop-appen og SQLite er fortsatt kilden til sannhet. Trusted-LAN-tilgang styres fortsatt fra desktop og er ikke kryptert på nettverket.",
@@ -1071,8 +1094,10 @@ const dictionaries = {
       usageSourceLoanOut: "Lånt ut",
       usageSourceLoanReturn: "Utlån returnert",
       noHistory: "Ingen historikk registrert ennå.",
-      weightChecksSummary: "{count} vektkontroll{suffix}",
-      activityItemsSummary: "{count} aktivitet{suffix}",
+      weightChecksSummary:
+        "{count, plural, one {# vektkontroll} other {# vektkontroller}}",
+      activityItemsSummary:
+        "{count, plural, one {# aktivitet} other {# aktiviteter}}",
       noRecentHistory: "Ingen nylig historikk",
       history: "Historikk",
       weightChecks: "Vektkontroller",
@@ -1109,10 +1134,6 @@ const dictionaries = {
     },
   },
 };
-
-function interpolate(template, params = {}) {
-  return String(template).replace(/\{(\w+)\}/g, (_match, token) => String(params[token] ?? ""));
-}
 
 function lookup(dictionary, key) {
   return String(key || "")
@@ -1205,17 +1226,10 @@ export function t(locale, key, fallback = "", params = {}) {
   const normalizedLocale = normalizeCompanionLocale(locale);
   const localized = lookup(dictionaries[normalizedLocale], key);
   if (typeof localized === "string") {
-    return interpolate(localized, params);
+    return formatMessage(localized, params, normalizedLocale);
   }
   if (fallback) {
-    return interpolate(fallback, params);
+    return formatMessage(fallback, params, normalizedLocale);
   }
   return key;
-}
-
-export function formatCountLabel(locale, count, forms) {
-  const normalizedLocale = normalizeCompanionLocale(locale);
-  const resolvedForms = forms?.[normalizedLocale] ?? forms?.en ?? { one: "", other: "" };
-  const noun = count === 1 ? resolvedForms.one : resolvedForms.other;
-  return `${count} ${noun}`.trim();
 }

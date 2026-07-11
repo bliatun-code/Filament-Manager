@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { I18nContextValue } from "../lib/i18n";
 import type { TrustedLanPairedBrowserRowModel } from "../pages/settings_companion_model";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { settingsActionButtonClass } from "../lib/settings_ui_classes";
@@ -9,7 +10,7 @@ type SettingsTrustedLanBrowsersPanelProps = {
   actionBusy: boolean;
   revokedBrowsers: TrustedLanPairedBrowserRowModel[];
   showRevokedBrowsers: boolean;
-  t: (key: string, fallback: string) => string;
+  t: I18nContextValue["t"];
   totalBrowserCount: number;
   onRevokeAllBrowsers: () => void;
   onRevokeBrowser: (browserId: string) => void;
@@ -35,7 +36,7 @@ function TrustedLanBrowserRow({
   actionBusy: boolean;
   confirming: boolean;
   revokeRequestDisabled: boolean;
-  t: (key: string, fallback: string) => string;
+  t: I18nContextValue["t"];
   onCancelRevoke: () => void;
   onConfirmRevoke: () => void;
   onRequestRevoke: () => void;
@@ -44,15 +45,18 @@ function TrustedLanBrowserRow({
   const revokeAriaLabel = t(
     "settings.trustedLanRevokeBrowserAria",
     "Revoke browser access for {name}",
-  ).replace("{name}", browser.displayName);
+    { name: browser.displayName },
+  );
   const confirmAriaLabel = t(
     "settings.trustedLanConfirmRevokeBrowserAria",
     "Confirm revoking browser access for {name}",
-  ).replace("{name}", browser.displayName);
+    { name: browser.displayName },
+  );
   const cancelAriaLabel = t(
     "settings.trustedLanCancelRevokeBrowserAria",
     "Cancel revoking browser access for {name}",
-  ).replace("{name}", browser.displayName);
+    { name: browser.displayName },
+  );
 
   return (
     <li className="rounded-lg border border-slate-200 bg-white/90 px-4 py-3 shadow-sm shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-950/55 dark:shadow-none">
@@ -105,7 +109,8 @@ function TrustedLanBrowserRow({
                 {t(
                   "settings.trustedLanConfirmRevokeBrowser",
                   "Revoke access for {name}? Its current sessions will be closed, and the browser must be paired again.",
-                ).replace("{name}", browser.displayName)}
+                  { name: browser.displayName },
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -139,7 +144,7 @@ function TrustedLanRevokedBrowserRow({
   t,
 }: {
   browser: TrustedLanPairedBrowserRowModel;
-  t: (key: string, fallback: string) => string;
+  t: I18nContextValue["t"];
 }) {
   return (
     <li className="rounded-lg border border-slate-200/80 bg-slate-50/85 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/55">
@@ -168,7 +173,7 @@ function TrustedLanBrowserMeta({
   t,
 }: {
   browser: TrustedLanPairedBrowserRowModel;
-  t: (key: string, fallback: string) => string;
+  t: I18nContextValue["t"];
 }) {
   return (
     <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
@@ -217,7 +222,8 @@ export function SettingsTrustedLanBrowsersPanel({
   const revokeAllAriaLabel = t(
     "settings.trustedLanRevokeAllAria",
     "Revoke access for all {count} authorized browsers",
-  ).replace("{count}", String(activeBrowsers.length));
+    { count: activeBrowsers.length },
+  );
 
   const confirmRevokeAll = () => {
     onRevokeAllBrowsers();
@@ -262,10 +268,9 @@ export function SettingsTrustedLanBrowsersPanel({
               disabled={revokeRequestDisabled || activeBrowsers.length === 0}
               onClick={() => setRevokeConfirmation({ kind: "all" })}
             >
-              {t("settings.trustedLanRevokeAllWithCount", "Revoke all ({count})").replace(
-                "{count}",
-                String(activeBrowsers.length),
-              )}
+              {t("settings.trustedLanRevokeAllWithCount", "Revoke all ({count})", {
+                count: activeBrowsers.length,
+              })}
             </button>
           ) : null}
         </div>
@@ -279,7 +284,8 @@ export function SettingsTrustedLanBrowsersPanel({
                 {t(
                   "settings.trustedLanConfirmRevokeAll",
                   "Revoke access for all authorized browsers ({count})? Their current sessions will be closed, and every browser must be paired again.",
-                ).replace("{count}", String(activeBrowsers.length))}
+                  { count: activeBrowsers.length },
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -374,10 +380,13 @@ export function SettingsTrustedLanBrowsersPanel({
                   className={settingsActionButtonClass()}
                   onClick={onToggleRevokedBrowsers}
                 >
-                  {(showRevokedBrowsers
-                    ? t("settings.trustedLanHideRevoked", "Hide {count} revoked")
-                    : t("settings.trustedLanShowRevoked", "Show {count} revoked")
-                  ).replace("{count}", String(revokedBrowsers.length))}
+                  {showRevokedBrowsers
+                    ? t("settings.trustedLanHideRevoked", "Hide {count} revoked", {
+                        count: revokedBrowsers.length,
+                      })
+                    : t("settings.trustedLanShowRevoked", "Show {count} revoked", {
+                        count: revokedBrowsers.length,
+                      })}
                 </button>
               </div>
 

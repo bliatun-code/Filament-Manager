@@ -6,11 +6,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { I18nContext, type I18nContextValue } from "../lib/i18n";
 import type { LoanableSpool } from "../lib/loan_out_data_source";
 import { LoanOutCandidateList } from "./loan_out_candidate_list";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 
 const i18nValue: I18nContextValue = {
   locale: "en",
   setLocale: () => {},
-  t: (_key, fallback = "") => fallback,
+  t: (_key, fallback = "", params = {}) => formatMessage(fallback, params, "en"),
 };
 
 const spools: LoanableSpool[] = [

@@ -522,19 +522,12 @@ function renderLiveInventoryCandidateRows(slot, spoolRows, activePrinter, locale
   }
   const observedRfid = liveSlotObservedRfid(slot);
   const observedAt = String(slot?.live_last_identity_seen_at || slot?.live_printer_last_seen_at || "").trim();
-  const intro =
-    candidates.length === 1
-      ? t(
-          locale,
-          "printers.liveCandidateSingle",
-          "One inventory roll looks like this live Bambu roll. Save RFID to bind it permanently.",
-        )
-      : t(
-          locale,
-          "printers.liveCandidateMultiple",
-          "{count} inventory rolls look like this live Bambu roll. Choose the correct row to save RFID.",
-          { count: candidates.length },
-        );
+  const intro = t(
+    locale,
+    "printers.liveCandidate",
+    "{count, plural, one {One inventory roll looks like this live Bambu roll. Save RFID to bind it permanently.} other {# inventory rolls look like this live Bambu roll. Choose the correct row to save RFID.}}",
+    { count: candidates.length },
+  );
   return `
     <div class="slot-live-candidates">
       <div class="slot-live-candidates-label">${escapeHtml(intro)}</div>

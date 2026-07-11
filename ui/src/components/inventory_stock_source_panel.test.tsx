@@ -7,9 +7,11 @@ import { I18nContext, type I18nContextValue, type Locale } from "../lib/i18n";
 import type { InventoryCreateMode } from "../lib/inventory_create_model";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import { InventoryStockSourcePanel } from "./inventory_stock_source_panel";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 
 const norwegianMessages: Record<string, string> = {
   "inventory.catalogMatchCountPlural": "{count} treff",
+  "inventory.catalogMatchCount": "{count, plural, one {# treff} other {# treff}}",
   "wishlist.searchBambu": "Søk Bambu materiale/farge eller filamentkode",
 };
 
@@ -17,7 +19,12 @@ function i18nValue(locale: Locale = "en"): I18nContextValue {
   return {
     locale,
     setLocale: () => {},
-    t: (key, fallback = "") => (locale === "nb" ? norwegianMessages[key] ?? fallback : fallback),
+    t: (key, fallback = "", params = {}) =>
+      formatMessage(
+        locale === "nb" ? norwegianMessages[key] ?? fallback : fallback,
+        params,
+        locale,
+      ),
   };
 }
 

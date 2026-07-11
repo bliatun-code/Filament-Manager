@@ -13,10 +13,13 @@ import {
   StatisticsBorrowerUsageModal,
   StatisticsConsumptionModal,
 } from "./statistics_usage_modals";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
+import type { I18nContextValue } from "../lib/i18n";
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
-const t = (_key: string, fallback = "") => fallback;
+const t: I18nContextValue["t"] = (_key, fallback = "", params = {}) =>
+  formatMessage(fallback, params, "en");
 
 const consumptionRows: FilamentConsumptionRow[] = [
   {
@@ -105,7 +108,7 @@ test("consumption modal gives search and every select an associated label", () =
   assert.match(html, />Vendor</);
   assert.match(html, />Material</);
   assert.match(html, />Ownership</);
-  assert.match(html, /aria-live="polite"[^>]*aria-atomic="true"[^>]*>1 \/ 2 result</);
+  assert.match(html, /aria-live="polite"[^>]*aria-atomic="true"[^>]*>1 \/ 2 results</);
   assert.match(
     html,
     /surface-subtle mt-4 grid grid-cols-1 gap-2 p-3 sm:grid-cols-2/,
@@ -135,5 +138,5 @@ test("borrower usage search has a label and announces filtered versus total rows
   assert.ok(searchId);
   assert.match(html, new RegExp(`<input id="${searchId}" type="search"`));
   assert.match(html, />Search filament, color or vendor</);
-  assert.match(html, /aria-live="polite"[^>]*aria-atomic="true"[^>]*>1 \/ 2 result</);
+  assert.match(html, /aria-live="polite"[^>]*aria-atomic="true"[^>]*>1 \/ 2 results</);
 });

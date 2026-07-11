@@ -19,6 +19,7 @@ test("locale registry normalizes canonical, regional, underscore, and legacy ali
 test("locale registry owns format, guide, and native-label metadata", () => {
   assert.deepEqual(SUPPORTED_LOCALES.map(({ id }) => id), ["en", "nb"]);
   assert.equal(intlLocaleFor("no"), "nb-NO");
+  assert.equal(intlLocaleFor("pl_pl"), "pl-PL");
   assert.equal(guidePathForLocale("nb"), "docs/BRUKERVEILEDNING.md");
   assert.equal(guidePathForLocale("unknown"), "docs/USER_GUIDE.md");
 });

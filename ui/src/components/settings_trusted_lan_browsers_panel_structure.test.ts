@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import type { TrustedLanPairedBrowserRowModel } from "../pages/settings_companion_model";
 import { SettingsTrustedLanBrowsersPanel } from "./settings_trusted_lan_browsers_panel";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
@@ -35,7 +36,7 @@ function renderPanel() {
       actionBusy: false,
       revokedBrowsers: [],
       showRevokedBrowsers: false,
-      t: (_key, fallback) => fallback,
+      t: (_key, fallback = "", params = {}) => formatMessage(fallback, params, "en"),
       totalBrowserCount: 1,
       onRevokeAllBrowsers: () => {},
       onRevokeBrowser: () => {},

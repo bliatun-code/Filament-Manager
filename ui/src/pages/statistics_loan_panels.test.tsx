@@ -8,10 +8,13 @@ import {
   StatisticsInboundLoanUsagePanel,
   StatisticsOutboundLoanUsagePanel,
 } from "./statistics_loan_panels";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
+import type { I18nContextValue } from "../lib/i18n";
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
-const t = (_key: string, fallback = "") => fallback;
+const t: I18nContextValue["t"] = (_key, fallback = "", params = {}) =>
+  formatMessage(fallback, params, "en");
 
 const outboundRow: LoanUsageByPersonRow = {
   loan_direction: "OUTBOUND",

@@ -8,6 +8,7 @@ import {
   type SpoolStatus,
 } from "./inventory_domain";
 import type { SpoolWithMasterRow } from "./tauri_client";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 
 type InventoryMatchNormalizedSpoolRow = SpoolWithMasterRow["spool"] & {
   normalized_status: SpoolStatus | null;
@@ -597,10 +598,13 @@ export function translateObservedMatchNote(
     const baseNote = presetSignalMatch[1].trim();
     const baseTranslation = baseNote ? translateObservedMatchNote(baseNote, t) : null;
     const presetSignal = formatSettingsPresetSignal(presetSignalMatch[2].trim(), t);
-    const presetTranslation = t(
-      "settings.bambuLiveMatchNotePresetSignal",
-      "Filament settings preset: {preset}. This is a material/settings hint, not a roll identity.",
-    ).replace("{preset}", presetSignal);
+    const presetTranslation = formatMessage(
+      t(
+        "settings.bambuLiveMatchNotePresetSignal",
+        "Filament settings preset: {preset}. This is a material/settings hint, not a roll identity.",
+      ),
+      { preset: presetSignal },
+    );
     return [baseTranslation, presetTranslation].filter(Boolean).join(" ");
   }
   switch (normalized) {

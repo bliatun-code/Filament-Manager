@@ -1,5 +1,5 @@
 import { renderSelectedSpoolDetailBody } from "./detail_content.js";
-import { formatCountLabel, t } from "./companion_i18n.js";
+import { t } from "./companion_i18n.js";
 import {
   isSpoolStatusAssigned,
   isSpoolStatusUnavailableForPrinterSlot,
@@ -105,18 +105,18 @@ function renderWorkflowShell(options) {
         state.apiReady
           ? t(locale, "settings.connected", "Connected")
           : t(locale, "settings.disconnected", "Disconnected"),
-        formatCountLabel(locale, state.spools.length, {
-          en: { one: "spool", other: "spools" },
-          nb: { one: "spole", other: "spoler" },
+        t(locale, "nav.spoolCount", "{count, plural, one {# spool} other {# spools}}", {
+          count: state.spools.length,
         }),
-        formatCountLabel(locale, state.printers.length, {
-          en: { one: "printer", other: "printers" },
-          nb: { one: "printer", other: "printere" },
+        t(locale, "nav.printerCount", "{count, plural, one {# printer} other {# printers}}", {
+          count: state.printers.length,
         }),
-        formatCountLabel(locale, state.activeLoans.length, {
-          en: { one: "active loan", other: "active loans" },
-          nb: { one: "aktivt utlån", other: "aktive utlån" },
-        }),
+        t(
+          locale,
+          "nav.activeLoanCount",
+          "{count, plural, one {# active loan} other {# active loans}}",
+          { count: state.activeLoans.length },
+        ),
       ].join(" · "),
       escapeHtml,
     });
@@ -480,6 +480,7 @@ export function createCompanionAppShellRenderer(options) {
         }
         return canLoadSpoolIntoPrinter(row);
       }),
+      state.locale,
     );
     const loanSpoolOptions = sortSpoolRowsAlphabetically(
       state.spools.filter((row) => {
@@ -488,6 +489,7 @@ export function createCompanionAppShellRenderer(options) {
         }
         return !findAssignedSlotForSpool(String(row?.spool?.id || "").trim());
       }),
+      state.locale,
     );
     const selectionCleared = selectionClearedAfterBorrowedInHandBack();
     const detailBusyLabel = detailBusyStatusLabel(selectedSpool?.spool?.id || state.selectedSpoolId);

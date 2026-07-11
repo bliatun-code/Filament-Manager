@@ -22,14 +22,8 @@ export function PrinterModelPreview({
         src={src}
         alt={
           hasMultiMaterial
-            ? t("printers.previewWithMultiMaterial", "{model} with multi-material").replace(
-                "{model}",
-                model,
-              )
-            : t("printers.previewSingleMaterial", "{model} single-material").replace(
-                "{model}",
-                model,
-              )
+            ? t("printers.previewWithMultiMaterial", "{model} with multi-material", { model })
+            : t("printers.previewSingleMaterial", "{model} single-material", { model })
         }
         className={`${heightClass} w-auto object-contain`}
       />

@@ -1,4 +1,5 @@
 import type { SpoolWithMasterRow } from "./tauri_client";
+import { createLocaleCollator } from "../../../src-tauri/companion_browser/locale_format.js";
 
 function spoolSortText(value?: string | null): string {
   return (value ?? "").trim();
@@ -8,32 +9,23 @@ export function sortSpoolsAlphabetically<Row extends SpoolWithMasterRow>(
   rows: Row[],
   locale?: string,
 ): Row[] {
+  const collator = createLocaleCollator(locale, {
+    sensitivity: "base",
+    numeric: true,
+  });
   return [...rows].sort((left, right) => {
     const comparisons = [
-      spoolSortText(left.master.material).localeCompare(
-        spoolSortText(right.master.material),
-        locale,
-        { sensitivity: "base", numeric: true },
-      ),
-      spoolSortText(left.master.filament_name).localeCompare(
+      collator.compare(spoolSortText(left.master.material), spoolSortText(right.master.material)),
+      collator.compare(
+        spoolSortText(left.master.filament_name),
         spoolSortText(right.master.filament_name),
-        locale,
-        { sensitivity: "base", numeric: true },
       ),
-      spoolSortText(left.master.color_name).localeCompare(
+      collator.compare(
+        spoolSortText(left.master.color_name),
         spoolSortText(right.master.color_name),
-        locale,
-        { sensitivity: "base", numeric: true },
       ),
-      spoolSortText(left.master.vendor).localeCompare(
-        spoolSortText(right.master.vendor),
-        locale,
-        { sensitivity: "base", numeric: true },
-      ),
-      spoolSortText(left.spool.id).localeCompare(spoolSortText(right.spool.id), locale, {
-        sensitivity: "base",
-        numeric: true,
-      }),
+      collator.compare(spoolSortText(left.master.vendor), spoolSortText(right.master.vendor)),
+      collator.compare(spoolSortText(left.spool.id), spoolSortText(right.spool.id)),
     ];
 
     return comparisons.find((result) => result !== 0) ?? 0;

@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { I18nContext, type I18nContextValue } from "../lib/i18n";
 import type { WishlistItemRow } from "../lib/tauri_client";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 
 registerHooks({
   load(url, context, nextLoad) {
@@ -27,7 +28,7 @@ const { WishlistQueuePanel } = await import("./wishlist_queue_panel");
 const i18nValue: I18nContextValue = {
   locale: "en",
   setLocale: () => {},
-  t: (_key, fallback = "") => fallback,
+  t: (_key, fallback = "", params = {}) => formatMessage(fallback, params, "en"),
 };
 
 function wishlistItem(overrides: Partial<WishlistItemRow> = {}): WishlistItemRow {

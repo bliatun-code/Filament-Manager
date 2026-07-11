@@ -172,26 +172,28 @@ function bambuBatchImageScanMessage(
     return t(
       "inventory.bambuBatchImageAddedMixed",
       "{codeCount} filament code(s) and {reviewCount} barcode value(s) for review were added to the batch.",
-    )
-      .replace("{codeCount}", String(codeCount))
-      .replace("{reviewCount}", String(reviewCount));
+      { codeCount, reviewCount },
+    );
   }
   if (codeCount > 0) {
     return t(
       "inventory.bambuBatchImageAddedCodes",
       "{count} filament code(s) added to the batch.",
-    ).replace("{count}", String(codeCount));
+      { count: codeCount },
+    );
   }
   if (ignoredCount > 0) {
     return t(
       "inventory.bambuBatchImageIgnored",
       "Ignored {count} Bambu instruction QR value(s).",
-    ).replace("{count}", String(ignoredCount));
+      { count: ignoredCount },
+    );
   }
   return t(
     "inventory.bambuBatchImageAddedReview",
     "{count} barcode value(s) added for review.",
-  ).replace("{count}", String(reviewCount));
+    { count: reviewCount },
+  );
 }
 
 function formatBambuBatchScanLinePreview(lines: string[]): string {
@@ -228,15 +230,13 @@ function bambuBatchCameraScanMessage(
     return t(
       "inventory.bambuBatchCameraAddedMixedValues",
       "Added {codes}; {reviewCount} barcode value(s) for review.",
-    )
-      .replace("{codes}", codePreview)
-      .replace("{reviewCount}", String(reviewCount));
+      { codes: codePreview, reviewCount },
+    );
   }
   if (codeCount > 0) {
-    return t(
-      "inventory.bambuBatchCameraAddedCodeValues",
-      "Added {codes}.",
-    ).replace("{codes}", codePreview);
+    return t("inventory.bambuBatchCameraAddedCodeValues", "Added {codes}.", {
+      codes: codePreview,
+    });
   }
   if (ignoredCount > 0) {
     return t(
@@ -247,7 +247,8 @@ function bambuBatchCameraScanMessage(
   return t(
     "inventory.bambuBatchCameraAddedReviewValues",
     "Added for review: {values}.",
-  ).replace("{values}", reviewPreview);
+    { values: reviewPreview },
+  );
 }
 
 function bambuBatchCameraStatusLabel(

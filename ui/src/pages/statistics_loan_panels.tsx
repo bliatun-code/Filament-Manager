@@ -8,10 +8,12 @@ import type { LoanUsageByPersonRow } from "../lib/tauri_client";
 import { StatisticsEmptyState, SummaryMetricTile } from "./statistics_primitives";
 import { statisticsInteractiveCardClass } from "./statistics_view_helpers";
 
-function statisticsResultCountUnit(t: TranslateFn, count: number): string {
-  return count === 1
-    ? t("statistics.resultCountOne", "result")
-    : t("statistics.resultCountMany", "results");
+function statisticsResultCount(t: TranslateFn, count: number): string {
+  return t(
+    "statistics.resultCount",
+    "{count, plural, one {# result} other {# results}}",
+    { count },
+  );
 }
 
 export function StatisticsOutboundLoanUsagePanel({
@@ -66,8 +68,7 @@ export function StatisticsOutboundLoanUsagePanel({
             aria-live="polite"
             aria-atomic="true"
           >
-            {filteredLoanUsage.length}{" "}
-            {statisticsResultCountUnit(t, filteredLoanUsage.length)}
+            {statisticsResultCount(t, filteredLoanUsage.length)}
           </div>
         </div>
       </div>
@@ -125,8 +126,7 @@ export function StatisticsInboundLoanUsagePanel({
           aria-live="polite"
           aria-atomic="true"
         >
-          {inboundLoanUsage.length}{" "}
-          {statisticsResultCountUnit(t, inboundLoanUsage.length)}
+          {statisticsResultCount(t, inboundLoanUsage.length)}
         </div>
       </div>
       {loading ? (

@@ -40,8 +40,8 @@ test("PrinterSlotPicker names its slot-specific popup and visible search field",
   assert.match(source, /role="dialog"/);
   assert.match(source, /htmlFor=\{searchInputId\}/);
   assert.match(source, /id=\{searchInputId\}/);
-  assert.match(source, /printers\.rollResultOne/);
-  assert.match(source, /printers\.rollResultMany/);
+  assert.match(source, /printers\.rollResultCount/);
+  assert.match(source, /\{count, plural, one \{# roll\} other \{# rolls\}\}/);
   assert.match(source, /max-h-44/);
   assert.match(source, /const displayTitle = formatFilamentDisplayTitle/);
   assert.match(source, /title=\{displayTitle\}/);

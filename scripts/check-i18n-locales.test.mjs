@@ -62,6 +62,25 @@ test("locale dictionary contract reports key and placeholder drift", () => {
   assert.ok(errors.some((error) => error.includes("extra placeholder {person}")));
 });
 
+test("locale dictionary contract validates ICU selector parameters", () => {
+  const errors = validateLocaleDictionaries(
+    {
+      common: {
+        count: "{count, plural, one {# spool} other {# spools}} for {owner}",
+      },
+    },
+    {
+      common: {
+        count: "{total, plural, one {# spole} other {# spoler}} for {owner}",
+      },
+    },
+    "nb",
+  );
+
+  assert.ok(errors.some((error) => error.includes("missing placeholder {count}")));
+  assert.ok(errors.some((error) => error.includes("extra placeholder {total}")));
+});
+
 test("runtime key collector reads literal translation calls", () => {
   const keys = collectLiteralTranslationKeysFromSource(
     `const value = t("common.save", "Save"); const dynamic = t(key, "Fallback");`,

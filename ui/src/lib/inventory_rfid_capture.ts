@@ -1,7 +1,7 @@
 import { inlineStatusSignalClass, semanticChipClass } from "./chip_styles";
 import { formatBambuSettingsProfileNameParts } from "./bambu_settings_profiles";
-import type { Locale } from "./i18n";
-import { intlLocaleFor } from "../../../src-tauri/companion_browser/supported_locales.js";
+import type { I18nContextValue, Locale } from "./i18n";
+import { formatLocaleDateTime } from "../../../src-tauri/companion_browser/locale_format.js";
 export {
   assessRfidCaptureMatch,
   rfidCaptureMatchMeta,
@@ -105,20 +105,20 @@ export type RfidCaptureSlotLiveStatus = {
   stateLabel: string | null;
 };
 
-type TranslateFn = (key: string, fallback: string) => string;
+type TranslateFn = I18nContextValue["t"];
 
 export function formatCaptureTimestamp(raw: string, locale: Locale): string {
   const parsed = new Date(raw);
   if (Number.isNaN(parsed.getTime())) {
     return raw;
   }
-  return new Intl.DateTimeFormat(intlLocaleFor(locale), {
+  return formatLocaleDateTime(parsed, locale, {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-  }).format(parsed);
+  });
 }
 
 export function getRfidBindingState(
@@ -166,17 +166,14 @@ export function formatObservedAge(
   }
   const diffMinutes = Math.round(diffMs / 60_000);
   if (diffMinutes < 60) {
-    return t("common.minutesAgo", "{count} min ago").replace(
-      "{count}",
-      String(diffMinutes),
-    );
+    return t("common.minutesAgo", "{count} min ago", { count: diffMinutes });
   }
   const diffHours = Math.round(diffMinutes / 60);
   if (diffHours < 48) {
-    return t("common.hoursAgo", "{count} h ago").replace("{count}", String(diffHours));
+    return t("common.hoursAgo", "{count} h ago", { count: diffHours });
   }
   const diffDays = Math.round(diffHours / 24);
-  return t("common.daysAgo", "{count} days ago").replace("{count}", String(diffDays));
+  return t("common.daysAgo", "{count} days ago", { count: diffDays });
 }
 
 export function buildRfidCaptureSlotLiveStatus(

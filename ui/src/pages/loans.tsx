@@ -292,10 +292,11 @@ export default function LoansPage() {
     }
   }
 
-  const loanResultCountUnit =
-    filteredLoans.length === 1
-      ? t("loans.resultCountOne", "loan")
-      : t("loans.resultCountMany", "loans");
+  const loanResultCount = t(
+    "loans.resultCount",
+    "{count, plural, one {# loan} other {# loans}}",
+    { count: filteredLoans.length },
+  );
 
   return (
     <div className="page-shell">
@@ -462,7 +463,7 @@ export default function LoansPage() {
               </div>
             </div>
             <span className="count-pill tabular-nums" aria-live="polite">
-              {filteredLoans.length} {loanResultCountUnit}
+              {loanResultCount}
             </span>
           </div>
 

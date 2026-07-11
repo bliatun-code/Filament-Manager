@@ -34,10 +34,16 @@ type Translate = I18nContextValue["t"];
 const statisticsFilterLabelClass =
   "grid min-w-0 gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400";
 
-function statisticsResultCountUnit(t: Translate, count: number): string {
-  return count === 1
-    ? t("statistics.resultCountOne", "result")
-    : t("statistics.resultCountMany", "results");
+function statisticsFilteredResultCount(
+  t: Translate,
+  visible: number,
+  total: number,
+): string {
+  return t(
+    "statistics.filteredResultCount",
+    "{visible} / {total, plural, one {# result} other {# results}}",
+    { visible, total },
+  );
 }
 
 function consumptionSortLabel(t: Translate, sort: ConsumptionPopupPrefs["sort"]): string {
@@ -84,7 +90,6 @@ export function StatisticsConsumptionModal({
   const materialId = useId();
   const ownershipId = useId();
   const sortId = useId();
-  const resultCountUnit = statisticsResultCountUnit(t, filteredConsumptionRows.length);
 
   return (
     <AppModal
@@ -242,7 +247,11 @@ export function StatisticsConsumptionModal({
             aria-live="polite"
             aria-atomic="true"
           >
-            {filteredConsumptionRows.length} / {consumptionRows.length} {resultCountUnit}
+            {statisticsFilteredResultCount(
+              t,
+              filteredConsumptionRows.length,
+              consumptionRows.length,
+            )}
           </span>
         </div>
       ) : null}
@@ -321,7 +330,6 @@ export function StatisticsBorrowerUsageModal({
 }) {
   const inboundDirection = isInboundLoanDirection(borrowerModalDirection);
   const searchId = useId();
-  const resultCountUnit = statisticsResultCountUnit(t, filteredBorrowerRows.length);
 
   return (
     <AppModal
@@ -395,7 +403,11 @@ export function StatisticsBorrowerUsageModal({
             aria-live="polite"
             aria-atomic="true"
           >
-            {filteredBorrowerRows.length} / {borrowerRows.length} {resultCountUnit}
+            {statisticsFilteredResultCount(
+              t,
+              filteredBorrowerRows.length,
+              borrowerRows.length,
+            )}
           </span>
         </div>
       ) : null}

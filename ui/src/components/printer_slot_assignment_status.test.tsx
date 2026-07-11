@@ -14,8 +14,10 @@ import type {
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
 import { PrinterSlotAssignmentStatus } from "./printer_slot_assignment_status";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 
-const t = (_key: string, fallback = "") => fallback;
+const t: I18nContextValue["t"] = (_key, fallback = "", params = {}) =>
+  formatMessage(fallback, params, "en");
 
 const i18nValue: I18nContextValue = {
   locale: "en",

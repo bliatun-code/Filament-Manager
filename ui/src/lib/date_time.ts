@@ -1,5 +1,5 @@
 import type { Locale } from "./i18n";
-import { intlLocaleFor } from "../../../src-tauri/companion_browser/supported_locales.js";
+import { formatLocaleDateTime } from "../../../src-tauri/companion_browser/locale_format.js";
 
 export function parseDateTimeMs(raw?: string | null): number | null {
   if (!raw) {
@@ -26,12 +26,12 @@ export function formatDateTime(raw: string, locale: Locale): string {
   if (parsedMs == null) {
     return raw;
   }
-  return new Intl.DateTimeFormat(intlLocaleFor(locale), {
+  return formatLocaleDateTime(new Date(parsedMs), locale, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-  }).format(new Date(parsedMs));
+  });
 }

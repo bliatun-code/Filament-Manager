@@ -304,6 +304,8 @@ export const enDictionary: DictionaryNode = {
       vendorSource: "Vendor source",
       catalogMatchCountSingular: "{count} match",
       catalogMatchCountPlural: "{count} matches",
+      catalogMatchCount:
+        "{count, plural, one {# match} other {# matches}}",
       searchVendorCatalog: "Search {{vendor}} material, filament or color",
       catalogRefreshFilter: "Catalog refresh & filter",
       catalogSelection: "Catalog selection",
@@ -436,6 +438,9 @@ export const enDictionary: DictionaryNode = {
       loanSearchLabel: "Search available rolls",
       loanSearchPlaceholder: "Search material, color, vendor, location or reference",
       loanSearchFilteredCount: "{visible} of {total} {unit}",
+      loanCandidateCount: "{count, plural, one {# roll} other {# rolls}}",
+      loanSearchFilteredCountIcu:
+        "{visible} of {total, plural, one {# roll} other {# rolls}}",
       loanCandidateOne: "roll",
       loanCandidateMany: "rolls",
       noLoanSearchResults: "No available rolls match your search.",
@@ -591,6 +596,7 @@ export const enDictionary: DictionaryNode = {
         "Roll history is collapsed by default. Expand it to view the events.",
       historyEventCountOne: "event",
       historyEventCountMany: "events",
+      historyEventCount: "{count, plural, one {# event} other {# events}}",
       showMoreHistory: "Show more",
       showLessHistory: "Show fewer",
       loadingHistory: "Loading history...",
@@ -703,6 +709,7 @@ export const enDictionary: DictionaryNode = {
       searchQueuePlaceholder: "Search by name, color or vendor",
       resultCountOne: "item",
       resultCountMany: "items",
+      resultCount: "{count, plural, one {# item} other {# items}}",
       searchBambu: "Search Bambu material/color or filament code",
       searchEsun: "Search eSUN material/color",
       vendorPlaceholder: "Vendor (e.g. Generic, eSUN)",
@@ -778,6 +785,7 @@ export const enDictionary: DictionaryNode = {
       searchPlaceholder: "Search person/material/spool id",
       resultCountOne: "loan",
       resultCountMany: "loans",
+      resultCount: "{count, plural, one {# loan} other {# loans}}",
       direction: "Direction",
       directionOutbound: "Loaned out",
       directionInbound: "Borrowed in",
@@ -864,6 +872,7 @@ export const enDictionary: DictionaryNode = {
       noSlots: "This printer has no slots configured.",
       slotCountOne: "slot",
       slotCountMany: "slots",
+      slotCount: "{count, plural, one {# slot} other {# slots}}",
       showSlots: "Show slots",
       hideSlots: "Hide slots",
       jobs: "Jobs",
@@ -885,6 +894,7 @@ export const enDictionary: DictionaryNode = {
       searchAvailableRolls: "Search available rolls",
       rollResultOne: "roll",
       rollResultMany: "rolls",
+      rollResultCount: "{count, plural, one {# roll} other {# rolls}}",
       clearSlotOptionHint: "Remove current roll from this slot",
       targetRoll: "Target roll",
       targetEmpty: "Target: Empty slot",
@@ -923,6 +933,8 @@ export const enDictionary: DictionaryNode = {
         "One inventory roll matches the live material/color signal.",
       liveCandidateCount:
         "{count} inventory rolls match the live material/color signal.",
+      liveCandidateSummary:
+        "{count, plural, one {One inventory roll matches the live material/color signal.} other {# inventory rolls match the live material/color signal.}}",
       liveRfidCandidateCurrentMatches:
         "Current assignment looks like this live Bambu roll. Save RFID to bind it permanently.",
       liveRfidCandidateSingle:
@@ -933,6 +945,10 @@ export const enDictionary: DictionaryNode = {
         "Select the correct roll before saving RFID.",
       liveRfidCandidateCount:
         "{count} inventory rolls look like this live Bambu roll.",
+      liveRfidCandidateSummary:
+        "{count, plural, one {One inventory roll looks like this live Bambu roll. Save RFID to bind it permanently.} other {# inventory rolls look like this live Bambu roll.}}",
+      liveRfidCandidateSelectionSummary:
+        "{count, plural, one {One inventory roll looks like this live Bambu roll. Select it before saving RFID.} other {# inventory rolls look like this live Bambu roll. Select the correct roll before saving RFID.}}",
       liveCandidateCurrent: "current",
       liveCandidateMore: "More candidates exist in inventory.",
       liveCandidateHasRfid: "RFID saved",
@@ -943,6 +959,8 @@ export const enDictionary: DictionaryNode = {
         "Bambu catalog has one likely match. Add it here to save the live RFID.",
       liveCatalogCandidateCount:
         "{count} Bambu catalog entries look like this live roll.",
+      liveCatalogCandidateSummary:
+        "{count, plural, one {Bambu catalog has one likely match. Add it here to save the live RFID.} other {# Bambu catalog entries look like this live roll.}}",
       liveCatalogCandidateMore: "More Bambu catalog candidates are available.",
       slotOnboarding: "AMS onboarding",
       addCatalogRollAndSaveRfid: "Add + save RFID",
@@ -1027,8 +1045,12 @@ export const enDictionary: DictionaryNode = {
       viewDetails: "View details",
       resultCountOne: "result",
       resultCountMany: "results",
+      resultCount: "{count, plural, one {# result} other {# results}}",
+      filteredResultCount:
+        "{visible} / {total, plural, one {# result} other {# results}}",
       printerCountOne: "printer",
       printerCountMany: "printers",
+      printerCount: "{count, plural, one {# printer} other {# printers}}",
       acrossPrinters: "Across all printers",
       loggedJobs: "Logged Jobs",
       linkedActivity: "Printer-linked activity",
@@ -1653,6 +1675,7 @@ export const enDictionary: DictionaryNode = {
       bambuLiveFilterLabel: "Filter captured fields",
       bambuLiveFieldResultOne: "field",
       bambuLiveFieldResultMany: "fields",
+      bambuLiveFieldResultCount: "{count, plural, one {# field} other {# fields}}",
       bambuLiveCapturedGroupCaption: "Captured live fields",
       bambuLiveSortPath: "Sort: Field",
       bambuLiveSortLastSeen: "Sort: Most recently seen",

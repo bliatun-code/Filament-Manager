@@ -438,12 +438,11 @@ export default function StatisticsPage() {
           title={t("statistics.loggedJobs", "Logged Jobs")}
           value={totals.totalJobs.toString()}
           subtitle={t("statistics.linkedActivity", "Printer-linked activity")}
-          trend={`${printers.length} ${t(
-            printers.length === 1
-              ? "statistics.printerCountOne"
-              : "statistics.printerCountMany",
-            printers.length === 1 ? "printer" : "printers",
-          )}`}
+          trend={t(
+            "statistics.printerCount",
+            "{count, plural, one {# printer} other {# printers}}",
+            { count: printers.length },
+          )}
           accent="sky"
           actionLabel={t("statistics.viewDetails", "View details")}
           opensDialog

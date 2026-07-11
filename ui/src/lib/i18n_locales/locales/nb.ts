@@ -304,6 +304,8 @@ export const nbDictionary: DictionaryNode = {
       vendorSource: "Leverandørkilde",
       catalogMatchCountSingular: "{count} treff",
       catalogMatchCountPlural: "{count} treff",
+      catalogMatchCount:
+        "{count, plural, one {# treff} other {# treff}}",
       searchVendorCatalog: "Søk etter {{vendor}}-materiale, filament eller farge",
       catalogRefreshFilter: "Katalogoppdatering og filtrering",
       catalogSelection: "Katalogvalg",
@@ -440,6 +442,9 @@ export const nbDictionary: DictionaryNode = {
       loanSearchLabel: "Søk i tilgjengelige filamenter",
       loanSearchPlaceholder: "Søk på materiale, farge, leverandør, lokasjon eller referanse",
       loanSearchFilteredCount: "{visible} av {total} {unit}",
+      loanCandidateCount: "{count, plural, one {# filament} other {# filamenter}}",
+      loanSearchFilteredCountIcu:
+        "{visible} av {total, plural, one {# filament} other {# filamenter}}",
       loanCandidateOne: "filament",
       loanCandidateMany: "filamenter",
       noLoanSearchResults: "Ingen tilgjengelige filamenter matcher søket.",
@@ -595,6 +600,7 @@ export const nbDictionary: DictionaryNode = {
         "Filamenthistorikken er skjult som standard. Utvid den for å se hendelsene.",
       historyEventCountOne: "hendelse",
       historyEventCountMany: "hendelser",
+      historyEventCount: "{count, plural, one {# hendelse} other {# hendelser}}",
       showMoreHistory: "Vis flere",
       showLessHistory: "Vis færre",
       loadingHistory: "Laster historikk...",
@@ -707,6 +713,7 @@ export const nbDictionary: DictionaryNode = {
       searchQueuePlaceholder: "Søk på navn, farge eller leverandør",
       resultCountOne: "treff",
       resultCountMany: "treff",
+      resultCount: "{count, plural, one {# treff} other {# treff}}",
       searchBambu: "Søk Bambu materiale/farge eller filamentkode",
       searchEsun: "Søk eSUN materiale/farge",
       vendorPlaceholder: "Leverandør (f.eks. Generic, eSUN)",
@@ -782,6 +789,7 @@ export const nbDictionary: DictionaryNode = {
       searchPlaceholder: "Søk person/materiale/filament-id",
       resultCountOne: "utlån",
       resultCountMany: "utlån",
+      resultCount: "{count, plural, one {# utlån} other {# utlån}}",
       direction: "Retning",
       directionOutbound: "Utlånt",
       directionInbound: "Innlånt",
@@ -869,6 +877,7 @@ export const nbDictionary: DictionaryNode = {
       noSlots: "Denne printeren har ingen spor konfigurert.",
       slotCountOne: "spor",
       slotCountMany: "spor",
+      slotCount: "{count, plural, one {# spor} other {# spor}}",
       showSlots: "Vis spor",
       hideSlots: "Skjul spor",
       jobs: "Jobber",
@@ -890,6 +899,7 @@ export const nbDictionary: DictionaryNode = {
       searchAvailableRolls: "Søk i tilgjengelige ruller",
       rollResultOne: "rull",
       rollResultMany: "ruller",
+      rollResultCount: "{count, plural, one {# rull} other {# ruller}}",
       clearSlotOptionHint: "Fjern nåværende filament fra dette sporet",
       targetRoll: "Målfilament",
       targetEmpty: "Mål: Tomt spor",
@@ -928,6 +938,8 @@ export const nbDictionary: DictionaryNode = {
         "Én rull i lageret matcher live-signalet for materiale/farge.",
       liveCandidateCount:
         "{count} ruller i lageret matcher live-signalet for materiale/farge.",
+      liveCandidateSummary:
+        "{count, plural, one {Én rull i lageret matcher live-signalet for materiale/farge.} other {# ruller i lageret matcher live-signalet for materiale/farge.}}",
       liveRfidCandidateCurrentMatches:
         "Nåværende tildeling ligner denne live Bambu-rullen. Lagre RFID for å binde den permanent.",
       liveRfidCandidateSingle:
@@ -938,6 +950,10 @@ export const nbDictionary: DictionaryNode = {
         "Velg riktig rull før RFID lagres.",
       liveRfidCandidateCount:
         "{count} ruller i lageret ligner denne live Bambu-rullen.",
+      liveRfidCandidateSummary:
+        "{count, plural, one {Én rull i lageret ligner denne live Bambu-rullen. Lagre RFID for å binde den permanent.} other {# ruller i lageret ligner denne live Bambu-rullen.}}",
+      liveRfidCandidateSelectionSummary:
+        "{count, plural, one {Én rull i lageret ligner denne live Bambu-rullen. Velg den før RFID lagres.} other {# ruller i lageret ligner denne live Bambu-rullen. Velg riktig rull før RFID lagres.}}",
       liveCandidateCurrent: "nåværende",
       liveCandidateMore: "Flere kandidater finnes i lageret.",
       liveCandidateHasRfid: "RFID lagret",
@@ -948,6 +964,8 @@ export const nbDictionary: DictionaryNode = {
         "Bambu-katalogen har én sannsynlig match. Legg den til her for å lagre live-RFID.",
       liveCatalogCandidateCount:
         "{count} Bambu-katalogoppføringer ligner denne live-rullen.",
+      liveCatalogCandidateSummary:
+        "{count, plural, one {Bambu-katalogen har én sannsynlig match. Legg den til her for å lagre live-RFID.} other {# Bambu-katalogoppføringer ligner denne live-rullen.}}",
       liveCatalogCandidateMore: "Flere Bambu-katalogkandidater er tilgjengelige.",
       slotOnboarding: "AMS-innrulling",
       addCatalogRollAndSaveRfid: "Legg til + lagre RFID",
@@ -1032,8 +1050,12 @@ export const nbDictionary: DictionaryNode = {
       viewDetails: "Vis detaljer",
       resultCountOne: "treff",
       resultCountMany: "treff",
+      resultCount: "{count, plural, one {# treff} other {# treff}}",
+      filteredResultCount:
+        "{visible} / {total, plural, one {# treff} other {# treff}}",
       printerCountOne: "printer",
       printerCountMany: "printere",
+      printerCount: "{count, plural, one {# printer} other {# printere}}",
       acrossPrinters: "På tvers av alle printere",
       loggedJobs: "Loggførte jobber",
       linkedActivity: "Printerkoblet aktivitet",
@@ -1663,6 +1685,7 @@ export const nbDictionary: DictionaryNode = {
       bambuLiveFilterLabel: "Filtrer fangede felt",
       bambuLiveFieldResultOne: "felt",
       bambuLiveFieldResultMany: "felt",
+      bambuLiveFieldResultCount: "{count, plural, one {# felt} other {# felt}}",
       bambuLiveCapturedGroupCaption: "Fangede live-felt",
       bambuLiveSortPath: "Sorter: Felt",
       bambuLiveSortLastSeen: "Sorter: Sist sett",

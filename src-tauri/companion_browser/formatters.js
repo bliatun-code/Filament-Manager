@@ -1,5 +1,10 @@
 import { normalizeCompanionLocale, t } from "./companion_i18n.js";
 import { isBorrowedInOwnership, normalizeDomainToken, parseSpoolStatus } from "./companion_domain.js";
+import {
+  createLocaleCollator,
+  formatLocaleDateTime,
+  formatLocaleNumber,
+} from "./locale_format.js";
 
 const PRINTER_SLOT_LOCATION_PREFIX = "Printer:";
 
@@ -17,8 +22,7 @@ export function formatGrams(value, locale = "en") {
   if (value == null || Number.isNaN(Number(value))) {
     return t(normalizedLocale, "format.unknown", "Unknown");
   }
-  const numberLocale = normalizedLocale === "nb" ? "nb-NO" : "en-US";
-  return `${new Intl.NumberFormat(numberLocale).format(Number(value))} g`;
+  return `${formatLocaleNumber(Number(value), normalizedLocale)} g`;
 }
 
 function normalizeDisplayToken(value) {
@@ -89,50 +93,56 @@ export function formatInventoryDisplayTitle(
     : t(normalizeCompanionLocale(locale), "format.unknownFilament", "Unknown filament");
 }
 
-function compareDisplayStrings(left, right) {
-  return String(left || "").localeCompare(String(right || ""), undefined, {
+function compareDisplayStrings(left, right, locale) {
+  return createLocaleCollator(locale, {
     sensitivity: "base",
     numeric: true,
-  });
+  }).compare(String(left || ""), String(right || ""));
 }
 
-export function sortCatalogMastersAlphabetically(rows) {
+export function sortCatalogMastersAlphabetically(rows, locale = "en") {
   const list = Array.isArray(rows) ? [...rows] : [];
   return list.sort((left, right) => {
     const titleCompare = compareDisplayStrings(
-      formatInventoryDisplayTitle(left?.material, left?.filament_name, left?.color_name),
-      formatInventoryDisplayTitle(right?.material, right?.filament_name, right?.color_name),
+      formatInventoryDisplayTitle(left?.material, left?.filament_name, left?.color_name, locale),
+      formatInventoryDisplayTitle(right?.material, right?.filament_name, right?.color_name, locale),
+      locale,
     );
     if (titleCompare !== 0) {
       return titleCompare;
     }
-    const vendorCompare = compareDisplayStrings(left?.vendor, right?.vendor);
+    const vendorCompare = compareDisplayStrings(left?.vendor, right?.vendor, locale);
     if (vendorCompare !== 0) {
       return vendorCompare;
     }
-    return compareDisplayStrings(left?.id, right?.id);
+    return compareDisplayStrings(left?.id, right?.id, locale);
   });
 }
 
-export function sortSpoolRowsAlphabetically(rows) {
+export function sortSpoolRowsAlphabetically(rows, locale = "en") {
   const list = Array.isArray(rows) ? [...rows] : [];
   return list.sort((left, right) => {
     const titleCompare = compareDisplayStrings(
-      formatInventoryDisplayTitle(left?.master?.material, left?.master?.filament_name, left?.master?.color_name),
-      formatInventoryDisplayTitle(right?.master?.material, right?.master?.filament_name, right?.master?.color_name),
+      formatInventoryDisplayTitle(left?.master?.material, left?.master?.filament_name, left?.master?.color_name, locale),
+      formatInventoryDisplayTitle(right?.master?.material, right?.master?.filament_name, right?.master?.color_name, locale),
+      locale,
     );
     if (titleCompare !== 0) {
       return titleCompare;
     }
-    const vendorCompare = compareDisplayStrings(left?.master?.vendor, right?.master?.vendor);
+    const vendorCompare = compareDisplayStrings(left?.master?.vendor, right?.master?.vendor, locale);
     if (vendorCompare !== 0) {
       return vendorCompare;
     }
-    const locationCompare = compareDisplayStrings(left?.spool?.location_id, right?.spool?.location_id);
+    const locationCompare = compareDisplayStrings(
+      left?.spool?.location_id,
+      right?.spool?.location_id,
+      locale,
+    );
     if (locationCompare !== 0) {
       return locationCompare;
     }
-    return compareDisplayStrings(left?.spool?.id, right?.spool?.id);
+    return compareDisplayStrings(left?.spool?.id, right?.spool?.id, locale);
   });
 }
 
@@ -153,10 +163,10 @@ export function formatDate(value, locale = "en") {
   if (Number.isNaN(date.getTime())) {
     return escapeHtml(value);
   }
-  return new Intl.DateTimeFormat(normalizeCompanionLocale(locale) === "nb" ? "nb-NO" : "en-US", {
+  return formatLocaleDateTime(date, locale, {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(date);
+  });
 }
 
 export function formatPrinterSlotLocation(printerName, slotId) {
@@ -197,10 +207,10 @@ export function parsePlacementLocation(value) {
 
 export function formatPrinterSlotTokenLabel(token, locale = "en") {
   const normalizedLocale = normalizeCompanionLocale(locale);
-  const slotLabel = t(normalizedLocale, "printers.slot", normalizedLocale === "nb" ? "Spor" : "Slot");
-  const extSlotLabel = t(normalizedLocale, "printers.extSlot", normalizedLocale === "nb" ? "EXT-spor" : "EXT Slot");
-  const channelLabel = t(normalizedLocale, "printers.channel", normalizedLocale === "nb" ? "Kanal" : "Channel");
-  const toolheadLabel = t(normalizedLocale, "printers.toolhead", normalizedLocale === "nb" ? "Verktøyhode" : "Toolhead");
+  const slotLabel = t(normalizedLocale, "printers.slot", "Slot");
+  const extSlotLabel = t(normalizedLocale, "printers.extSlot", "EXT Slot");
+  const channelLabel = t(normalizedLocale, "printers.channel", "Channel");
+  const toolheadLabel = t(normalizedLocale, "printers.toolhead", "Toolhead");
   const normalized = normalizeDisplayToken(token);
   if (!normalized) {
     return "";

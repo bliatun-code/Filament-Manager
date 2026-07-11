@@ -19,13 +19,6 @@ export type SettingsInventoryLabelSheetModalProps = {
   saving: boolean;
 };
 
-function replaceTokens(template: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce(
-    (copy, [key, value]) => copy.replace(`{${key}}`, String(value)),
-    template,
-  );
-}
-
 export function SettingsInventoryLabelSheetModal({
   items,
   loading,
@@ -58,12 +51,14 @@ export function SettingsInventoryLabelSheetModal({
     return null;
   }
 
-  const labelCountText = replaceTokens(
-    t("settings.inventoryOverviewLabelCount", "{count} labels · {perPage} per page"),
+  const labelCountText = t(
+    "settings.inventoryOverviewLabelCount",
+    "{count} labels · {perPage} per page",
     { count: items.length, perPage: layout.itemsPerPage },
   );
-  const pageCountText = replaceTokens(
-    t("settings.inventoryOverviewPageCount", "Page {page} of {pages}"),
+  const pageCountText = t(
+    "settings.inventoryOverviewPageCount",
+    "Page {page} of {pages}",
     { page: pageIndex + 1, pages: pageCount },
   );
 

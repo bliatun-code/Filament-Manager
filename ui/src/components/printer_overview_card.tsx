@@ -127,10 +127,10 @@ export function PrinterOverviewCard({
       />
       <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-200/70 pt-3 dark:border-slate-700/70">
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-          {printer.slots.length}{" "}
           {t(
-            printer.slots.length === 1 ? "printers.slotCountOne" : "printers.slotCountMany",
-            printer.slots.length === 1 ? "slot" : "slots",
+            "printers.slotCount",
+            "{count, plural, one {# slot} other {# slots}}",
+            { count: printer.slots.length },
           )}
         </span>
         {!showSlots ? (

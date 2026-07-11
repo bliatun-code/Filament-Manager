@@ -80,10 +80,11 @@ export function WishlistQueuePanel({
   visibleItems,
 }: WishlistQueuePanelProps) {
   const { t } = useI18n();
-  const resultCountUnit =
-    visibleItems.length === 1
-      ? t("wishlist.resultCountOne", "item")
-      : t("wishlist.resultCountMany", "items");
+  const resultCount = t(
+    "wishlist.resultCount",
+    "{count, plural, one {# item} other {# items}}",
+    { count: visibleItems.length },
+  );
 
   return (
     <div className="surface-card space-y-4">
@@ -146,7 +147,7 @@ export function WishlistQueuePanel({
             />
           </label>
           <span className="count-pill tabular-nums" aria-live="polite">
-            {visibleItems.length} {resultCountUnit}
+            {resultCount}
           </span>
         </div>
       </div>
@@ -215,10 +216,9 @@ export function WishlistQueuePanel({
                 </div>
                 <SegmentedChoiceRow<WishlistStatus>
                   className="mt-2"
-                  groupAriaLabel={t("wishlist.itemStatusGroup", "Status for {name}").replace(
-                    "{name}",
-                    itemTitle,
-                  )}
+                  groupAriaLabel={t("wishlist.itemStatusGroup", "Status for {name}", {
+                    name: itemTitle,
+                  })}
                   value={itemStatus}
                   onChange={(nextStatus) => onStatusChange(item.id, nextStatus)}
                   optionSizeClassName="px-3 py-1.5 text-[11px]"
@@ -246,9 +246,10 @@ export function WishlistQueuePanel({
                     role="alert"
                   >
                     <div className="font-semibold">
-                      {t("wishlist.confirmRemoveTitle", "Remove {name} from the purchase queue?").replace(
-                        "{name}",
-                        itemTitle,
+                      {t(
+                        "wishlist.confirmRemoveTitle",
+                        "Remove {name} from the purchase queue?",
+                        { name: itemTitle },
                       )}
                     </div>
                     <div className="mt-1 text-[11px] leading-5 text-rose-800 dark:text-rose-200">

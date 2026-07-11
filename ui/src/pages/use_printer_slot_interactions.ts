@@ -973,7 +973,8 @@ export function usePrinterSlotInteractions({
         t(
           "printers.liveCatalogCreatedAndAssigned",
           "{label} was added, RFID was saved, and the roll was assigned to this slot.",
-        ).replace("{label}", request.addedLabel),
+          { label: request.addedLabel },
+        ),
       );
     } catch (createError) {
       console.error(createError);

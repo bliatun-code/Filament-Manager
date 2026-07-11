@@ -59,16 +59,15 @@ export function LoanOutCandidateList({
     () => filterLoanableSpoolsBySearch(spools, searchQuery),
     [searchQuery, spools],
   );
-  const candidateUnit = t(
-    spools.length === 1 ? "inventory.loanCandidateOne" : "inventory.loanCandidateMany",
-    spools.length === 1 ? "roll" : "rolls",
-  );
   const resultCount = searchQuery.trim()
-    ? t("inventory.loanSearchFilteredCount", "{visible} of {total} {unit}")
-        .replace("{visible}", String(visibleSpools.length))
-        .replace("{total}", String(spools.length))
-        .replace("{unit}", candidateUnit)
-    : `${spools.length} ${candidateUnit}`;
+    ? t(
+        "inventory.loanSearchFilteredCountIcu",
+        "{visible} of {total, plural, one {# roll} other {# rolls}}",
+        { visible: visibleSpools.length, total: spools.length },
+      )
+    : t("inventory.loanCandidateCount", "{count, plural, one {# roll} other {# rolls}}", {
+        count: spools.length,
+      });
 
   useEffect(() => {
     if (!selectedSpoolId) {

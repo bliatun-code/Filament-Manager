@@ -9,6 +9,7 @@ import {
   type I18nContextValue,
 } from "../lib/i18n";
 import { enDictionary } from "../lib/i18n_locales/locales/en";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 import type { SpoolHistoryEventRow } from "../lib/tauri_client";
 import { InventoryRollHistoryPanel } from "./inventory_roll_history_panel";
 
@@ -17,7 +18,8 @@ import { InventoryRollHistoryPanel } from "./inventory_roll_history_panel";
 const i18nValue: I18nContextValue = {
   locale: "en",
   setLocale: () => {},
-  t: (key, fallback = "") => lookup(enDictionary, key) ?? fallback,
+  t: (key, fallback = "", params = {}) =>
+    formatMessage(lookup(enDictionary, key) ?? fallback, params, "en"),
 };
 
 function historyEvent(index: number): SpoolHistoryEventRow {
