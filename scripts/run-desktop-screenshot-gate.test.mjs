@@ -209,8 +209,10 @@ test("desktop screenshot gate normalizes screenshot locale overrides", () => {
   assert.equal(normalizeVisualQaLocale("nb"), "nb");
   assert.equal(normalizeVisualQaLocale("no"), "nb");
   assert.equal(normalizeVisualQaLocale("nb-NO"), "nb");
+  assert.equal(normalizeVisualQaLocale("no_NO"), "nb");
   assert.equal(normalizeVisualQaLocale("en"), "en");
   assert.equal(normalizeVisualQaLocale("en-US"), "en");
+  assert.equal(normalizeVisualQaLocale("en-GB"), "en");
   assert.equal(normalizeVisualQaLocale(""), "en");
   assert.equal(normalizeVisualQaLocale("bad"), "en");
 });

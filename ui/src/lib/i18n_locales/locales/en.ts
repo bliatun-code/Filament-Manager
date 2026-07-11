@@ -1809,3 +1809,5 @@ export const enDictionary: DictionaryNode = {
       },
     },
   };
+
+export default enDictionary;

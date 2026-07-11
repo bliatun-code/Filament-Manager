@@ -52,3 +52,25 @@ export function collectImportSpecifiers(source) {
   }
   return specifiers;
 }
+
+export function collectDynamicImportTemplateSpecifiers(source) {
+  return Array.from(
+    source.matchAll(/import\(\s*`([^`]*\$\{[^}]+\}[^`]*)`\s*\)/g),
+    (match) => match[1].replace(/\$\{[^}]+\}/g, "*"),
+  );
+}
+
+export function resolveRelativeImportGlob(files, fromFile, specifier) {
+  if (!specifier.startsWith(".")) {
+    return [];
+  }
+  const absolutePattern = resolve(join(fromFile, ".."), specifier);
+  const expression = new RegExp(
+    `^${absolutePattern
+      .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+      .replaceAll("**", "::DOUBLE_STAR::")
+      .replaceAll("*", "[^/]*")
+      .replaceAll("::DOUBLE_STAR::", ".*")}$`,
+  );
+  return files.filter((file) => expression.test(file));
+}

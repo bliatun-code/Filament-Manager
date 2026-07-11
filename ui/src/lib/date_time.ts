@@ -1,4 +1,5 @@
 import type { Locale } from "./i18n";
+import { intlLocaleFor } from "../../../src-tauri/companion_browser/supported_locales.js";
 
 export function parseDateTimeMs(raw?: string | null): number | null {
   if (!raw) {
@@ -25,7 +26,7 @@ export function formatDateTime(raw: string, locale: Locale): string {
   if (parsedMs == null) {
     return raw;
   }
-  return new Intl.DateTimeFormat(locale === "nb" ? "nb-NO" : "en-US", {
+  return new Intl.DateTimeFormat(intlLocaleFor(locale), {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

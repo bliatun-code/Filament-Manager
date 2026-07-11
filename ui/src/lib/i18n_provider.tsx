@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  applyLocaleToDocument,
+  DEFAULT_LOCALE,
+} from "../../../src-tauri/companion_browser/supported_locales.js";
+import {
   getCachedLocaleDictionary,
   I18nContext,
   loadLocaleDictionary,
@@ -18,7 +22,16 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   >(() => ({}));
 
   const activeDictionary = loadedDictionaries[locale] ?? getCachedLocaleDictionary(locale);
-  const fallbackDictionary = locale === "en" ? activeDictionary : getCachedLocaleDictionary("en");
+  const fallbackDictionary =
+    locale === DEFAULT_LOCALE
+      ? activeDictionary
+      : getCachedLocaleDictionary(DEFAULT_LOCALE);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      applyLocaleToDocument(locale, document);
+    }
+  }, [locale]);
 
   useEffect(() => {
     if (activeDictionary) {

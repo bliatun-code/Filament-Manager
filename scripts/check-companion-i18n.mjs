@@ -7,6 +7,10 @@ import {
   validateLocaleDictionaries,
   validateRuntimeTranslationKeys,
 } from "./check-i18n-locales.mjs";
+import {
+  DEFAULT_LOCALE,
+  SUPPORTED_LOCALES,
+} from "../src-tauri/companion_browser/supported_locales.js";
 
 const repoRoot = resolve(".");
 const companionRoot = resolve(repoRoot, "src-tauri", "companion_browser");
@@ -48,7 +52,20 @@ function runCompanionI18nCheck() {
     readFileSync(dictionaryFile, "utf8"),
     "dictionaries",
   );
-  const errors = validateLocaleDictionaries(dictionaries.en, dictionaries.nb, "nb");
+  const dictionaryLocales = Object.keys(dictionaries).sort();
+  const manifestLocales = SUPPORTED_LOCALES.map(({ id }) => id).sort();
+  const errors = [];
+  if (JSON.stringify(dictionaryLocales) !== JSON.stringify(manifestLocales)) {
+    errors.push(
+      `Companion dictionary locales ${dictionaryLocales.join(", ")} do not match manifest locales ${manifestLocales.join(", ")}.`,
+    );
+  }
+  const baseDictionary = dictionaries[DEFAULT_LOCALE];
+  for (const { id } of SUPPORTED_LOCALES) {
+    if (id !== DEFAULT_LOCALE && dictionaries[id]) {
+      errors.push(...validateLocaleDictionaries(baseDictionary, dictionaries[id], id));
+    }
+  }
   const runtimeKeys = readdirSync(companionRoot, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".js"))
     .flatMap((entry) => {
@@ -60,7 +77,7 @@ function runCompanionI18nCheck() {
         }),
       );
     });
-  errors.push(...validateRuntimeTranslationKeys(dictionaries.en, runtimeKeys));
+  errors.push(...validateRuntimeTranslationKeys(baseDictionary, runtimeKeys));
 
   if (errors.length > 0) {
     console.error("Companion locale dictionary contract failed:");

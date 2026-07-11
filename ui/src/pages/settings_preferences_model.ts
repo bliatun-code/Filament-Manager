@@ -1,11 +1,12 @@
 import type { Locale } from "../lib/i18n";
 import type { ThemeMode } from "../lib/theme_mode";
+import { localeDefinition } from "../../../src-tauri/companion_browser/supported_locales.js";
 
 export type SettingsPreferenceMessageLabels = {
-  languageSetEnglish: string;
-  languageSetNorwegian: string;
   themeSetTo: string;
 };
+
+type TranslateFn = (key: string, fallback?: string) => string;
 
 export function buildSettingsThemeSelectionMessage(
   mode: ThemeMode,
@@ -16,10 +17,11 @@ export function buildSettingsThemeSelectionMessage(
 
 export function buildSettingsLocaleSelectionMessage(
   locale: Locale,
-  labels: Pick<
-    SettingsPreferenceMessageLabels,
-    "languageSetEnglish" | "languageSetNorwegian"
-  >,
+  t: TranslateFn,
 ): string {
-  return locale === "nb" ? labels.languageSetNorwegian : labels.languageSetEnglish;
+  const definition = localeDefinition(locale);
+  if (!definition) {
+    return locale;
+  }
+  return t(definition.selectionMessageKey, definition.selectionMessageFallback);
 }

@@ -16,11 +16,12 @@ test("buildSettingsThemeSelectionMessage formats the selected mode", () => {
 });
 
 test("buildSettingsLocaleSelectionMessage returns locale-specific feedback", () => {
-  const labels = {
-    languageSetEnglish: "Language set to English.",
-    languageSetNorwegian: "Language set to Norwegian.",
+  const messages: Record<string, string> = {
+    "settings.langSetEn": "Language set to English.",
+    "settings.langSetNb": "Language set to Norwegian.",
   };
+  const t = (key: string, fallback = "") => messages[key] ?? fallback;
 
-  assert.equal(buildSettingsLocaleSelectionMessage("nb", labels), labels.languageSetNorwegian);
-  assert.equal(buildSettingsLocaleSelectionMessage("en", labels), labels.languageSetEnglish);
+  assert.equal(buildSettingsLocaleSelectionMessage("nb", t), messages["settings.langSetNb"]);
+  assert.equal(buildSettingsLocaleSelectionMessage("en", t), messages["settings.langSetEn"]);
 });

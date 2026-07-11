@@ -31,6 +31,43 @@ test("resolveInitialCompanionLocale falls back to navigator when storage throws"
   assert.equal(locale, "nb");
 });
 
+test("resolveInitialCompanionLocale migrates stored regional and legacy aliases", () => {
+  const writes = [];
+  const locale = resolveInitialCompanionLocale(
+    {
+      getItem: () => "no_NO",
+      setItem: (key, value) => writes.push([key, value]),
+    },
+    { language: "en-US" },
+  );
+
+  assert.equal(locale, "nb");
+  assert.deepEqual(writes, [["bfm-companion-locale", "nb"]]);
+});
+
+test("resolveInitialCompanionLocale migrates the legacy desktop-named storage key", () => {
+  const writes = [];
+  const locale = resolveInitialCompanionLocale(
+    {
+      getItem: (key) => (key === "bfm-locale" ? "nb" : null),
+      setItem: (key, value) => writes.push([key, value]),
+    },
+    { language: "en-US" },
+  );
+
+  assert.equal(locale, "nb");
+  assert.deepEqual(writes, [["bfm-companion-locale", "nb"]]);
+});
+
+test("resolveInitialCompanionLocale checks navigator languages in preference order", () => {
+  const locale = resolveInitialCompanionLocale(
+    { getItem: () => null },
+    { language: "en-US", languages: ["de-DE", "nb-NO", "en-US"] },
+  );
+
+  assert.equal(locale, "nb");
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {

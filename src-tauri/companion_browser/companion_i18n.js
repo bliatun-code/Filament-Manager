@@ -1,6 +1,10 @@
-export const COMPANION_LOCALE_STORAGE_KEY = "bfm-locale";
+import {
+  DEFAULT_LOCALE,
+  normalizeSupportedLocale,
+} from "./supported_locales.js";
 
-const VALID_LOCALES = new Set(["en", "nb"]);
+export const COMPANION_LOCALE_STORAGE_KEY = "bfm-companion-locale";
+const LEGACY_COMPANION_LOCALE_STORAGE_KEYS = ["bfm-locale"];
 
 const dictionaries = {
   en: {
@@ -280,6 +284,12 @@ const dictionaries = {
       connected: "Connected",
       trustedLanConnected: "Trusted-LAN connected",
       disconnected: "Disconnected",
+      spoolCountOne: "{count} spool",
+      spoolCountMany: "{count} spools",
+      printerCountOne: "{count} printer",
+      printerCountMany: "{count} printers",
+      activeLoanCountOne: "{count} active loan",
+      activeLoanCountMany: "{count} active loans",
       desktopInCharge: "Desktop app and SQLite stay in charge.",
       trustedLanDesktopInCharge:
         "Desktop app and SQLite stay in charge. Trusted-LAN access is still desktop-controlled and not encrypted on the network.",
@@ -825,6 +835,12 @@ const dictionaries = {
       connected: "Tilkoblet",
       trustedLanConnected: "Trusted-LAN tilkoblet",
       disconnected: "Frakoblet",
+      spoolCountOne: "{count} spole",
+      spoolCountMany: "{count} spoler",
+      printerCountOne: "{count} printer",
+      printerCountMany: "{count} printere",
+      activeLoanCountOne: "{count} aktivt utlån",
+      activeLoanCountMany: "{count} aktive utlån",
       desktopInCharge: "Desktop-appen og SQLite er fortsatt kilden til sannhet.",
       trustedLanDesktopInCharge:
         "Desktop-appen og SQLite er fortsatt kilden til sannhet. Trusted-LAN-tilgang styres fortsatt fra desktop og er ikke kryptert på nettverket.",
@@ -1111,15 +1127,19 @@ function lookup(dictionary, key) {
 }
 
 export function normalizeCompanionLocale(locale) {
-  const normalized = String(locale || "").trim().toLowerCase();
-  return VALID_LOCALES.has(normalized) ? normalized : "en";
+  return normalizeSupportedLocale(locale, DEFAULT_LOCALE);
 }
 
 export function readStoredCompanionLocale(storageKey, storageRef) {
   try {
-    return normalizeCompanionLocale(storageRef?.getItem?.(storageKey));
+    const storedValue = storageRef?.getItem?.(storageKey);
+    const locale = normalizeCompanionLocale(storedValue);
+    if (storedValue && storedValue !== locale) {
+      storageRef?.setItem?.(storageKey, locale);
+    }
+    return locale;
   } catch {
-    return "en";
+    return DEFAULT_LOCALE;
   }
 }
 
@@ -1137,24 +1157,48 @@ export function resolveInitialCompanionLocale(storageRef, navigatorRef) {
   const effectiveNavigator =
     navigatorRef === undefined ? readCompanionGlobal("navigator") : navigatorRef;
   let storedValue = null;
+  let storedFromLegacyKey = false;
   try {
     storedValue = effectiveStorage?.getItem?.(COMPANION_LOCALE_STORAGE_KEY);
+    if (!storedValue) {
+      for (const legacyKey of LEGACY_COMPANION_LOCALE_STORAGE_KEYS) {
+        storedValue = effectiveStorage?.getItem?.(legacyKey);
+        if (storedValue) {
+          storedFromLegacyKey = true;
+          break;
+        }
+      }
+    }
   } catch {
     storedValue = null;
   }
-  if (storedValue === "en" || storedValue === "nb") {
-    return storedValue;
+  const storedLocale = normalizeSupportedLocale(storedValue);
+  if (storedLocale) {
+    if (storedFromLegacyKey || storedValue !== storedLocale) {
+      try {
+        effectiveStorage?.setItem?.(COMPANION_LOCALE_STORAGE_KEY, storedLocale);
+      } catch {
+        // Canonical storage migration is best-effort.
+      }
+    }
+    return storedLocale;
   }
-  let language = "";
+  let languages = [];
   try {
-    language = String(effectiveNavigator?.language || "").trim().toLowerCase();
+    const preferred = Array.isArray(effectiveNavigator?.languages)
+      ? effectiveNavigator.languages
+      : [];
+    languages = [...preferred, effectiveNavigator?.language].filter(Boolean);
   } catch {
-    language = "";
+    languages = [];
   }
-  if (language.startsWith("nb") || language.startsWith("no")) {
-    return "nb";
+  for (const language of languages) {
+    const locale = normalizeSupportedLocale(language);
+    if (locale) {
+      return locale;
+    }
   }
-  return "en";
+  return DEFAULT_LOCALE;
 }
 
 export function t(locale, key, fallback = "", params = {}) {

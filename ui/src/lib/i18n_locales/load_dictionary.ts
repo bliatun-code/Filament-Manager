@@ -3,10 +3,11 @@ import type { DictionaryNode, Locale } from "../i18n_types";
 const dictionaryCache: Partial<Record<Locale, DictionaryNode>> = {};
 const dictionaryPromises: Partial<Record<Locale, Promise<DictionaryNode>>> = {};
 
-const dictionaryLoaders: Record<Locale, () => Promise<DictionaryNode>> = {
-  en: () => import("./locales/en").then(({ enDictionary }) => enDictionary),
-  nb: () => import("./locales/nb").then(({ nbDictionary }) => nbDictionary),
-};
+type LocaleDictionaryModule = { default: DictionaryNode };
+
+function dictionaryLoader(locale: Locale): Promise<LocaleDictionaryModule> {
+  return import(`./locales/${locale}.ts`);
+}
 
 export function getCachedLocaleDictionary(locale: Locale): DictionaryNode | null {
   return dictionaryCache[locale] ?? null;
@@ -18,8 +19,8 @@ export function loadLocaleDictionary(locale: Locale): Promise<DictionaryNode> {
     return Promise.resolve(cachedDictionary);
   }
 
-  dictionaryPromises[locale] ??= dictionaryLoaders[locale]().then(
-    (dictionary) => {
+  dictionaryPromises[locale] ??= dictionaryLoader(locale).then(
+    ({ default: dictionary }) => {
       dictionaryCache[locale] = dictionary;
       return dictionary;
     },

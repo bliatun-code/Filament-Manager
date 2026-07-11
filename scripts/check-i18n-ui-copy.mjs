@@ -15,8 +15,6 @@ const allowedTechnicalCopy = new Set([
   "mm",
   "g",
   "g - 0 g",
-  "Norsk (bokmål)",
-  "English",
   "60 × 24 mm ·",
   "/ ID:",
   "#RRGGBB / gradient(...) / multi(...)",

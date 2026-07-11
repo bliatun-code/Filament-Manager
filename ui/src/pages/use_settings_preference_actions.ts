@@ -22,8 +22,6 @@ export function useSettingsPreferenceActions({
 }: UseSettingsPreferenceActionsInput) {
   function settingsPreferenceMessageLabels() {
     return {
-      languageSetEnglish: t("settings.langSetEn", "Language set to English."),
-      languageSetNorwegian: t("settings.langSetNb", "Language set to Norwegian."),
       themeSetTo: t("settings.themeSetTo", "Theme mode set to"),
     };
   }
@@ -35,7 +33,7 @@ export function useSettingsPreferenceActions({
 
   function handleLocaleSelection(nextLocale: Locale) {
     setLocale(nextLocale);
-    setInfo(buildSettingsLocaleSelectionMessage(nextLocale, settingsPreferenceMessageLabels()));
+    setInfo(buildSettingsLocaleSelectionMessage(nextLocale, t));
   }
 
   return {

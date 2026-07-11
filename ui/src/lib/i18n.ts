@@ -1,5 +1,9 @@
 import { createContext, useContext } from "react";
 import type { DictionaryNode, I18nContextValue, Locale } from "./i18n_types";
+import {
+  DEFAULT_LOCALE,
+  normalizeSupportedLocale,
+} from "../../../src-tauri/companion_browser/supported_locales.js";
 
 export type { DictionaryNode, I18nContextValue, Locale } from "./i18n_types";
 export {
@@ -10,8 +14,7 @@ export {
 export const I18N_STORAGE_KEY = "bfm-locale";
 
 function normalizeLocale(value: unknown): Locale | null {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  return normalized === "en" || normalized === "nb" ? normalized : null;
+  return normalizeSupportedLocale(value) as Locale | null;
 }
 
 function readQueryLocale(): Locale | null {
@@ -31,20 +34,28 @@ function readStoredLocale(): Locale | null {
     if (typeof localStorage === "undefined") {
       return null;
     }
-    return normalizeLocale(localStorage.getItem(I18N_STORAGE_KEY));
+    const storedValue = localStorage.getItem(I18N_STORAGE_KEY);
+    const locale = normalizeLocale(storedValue);
+    if (locale && storedValue !== locale) {
+      localStorage.setItem(I18N_STORAGE_KEY, locale);
+    }
+    return locale;
   } catch {
     return null;
   }
 }
 
-function resolveNavigatorLanguage(): string {
+function resolveNavigatorLanguages(): string[] {
   try {
     if (typeof navigator === "undefined") {
-      return "";
+      return [];
     }
-    return navigator.language || "";
+    const languages = Array.isArray(navigator.languages) ? navigator.languages : [];
+    return [...languages, navigator.language].filter(
+      (language): language is string => typeof language === "string" && language.length > 0,
+    );
   } catch {
-    return "";
+    return [];
   }
 }
 
@@ -67,11 +78,13 @@ export function resolveInitialLocale(): Locale {
   if (stored) {
     return stored;
   }
-  const language = resolveNavigatorLanguage().toLowerCase();
-  if (language.startsWith("nb") || language.startsWith("no")) {
-    return "nb";
+  for (const language of resolveNavigatorLanguages()) {
+    const locale = normalizeLocale(language);
+    if (locale) {
+      return locale;
+    }
   }
-  return "en";
+  return DEFAULT_LOCALE as Locale;
 }
 
 export function lookup(dictionary: DictionaryNode, key: string): string | undefined {

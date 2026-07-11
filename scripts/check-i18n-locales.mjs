@@ -3,15 +3,21 @@ import { createRequire } from "node:module";
 import { relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { collectUiSourceFiles } from "./ui-source-utils.mjs";
+import {
+  DEFAULT_LOCALE,
+  SUPPORTED_LOCALES,
+} from "../src-tauri/companion_browser/supported_locales.js";
 
 const repoRoot = resolve(".");
 const require = createRequire(import.meta.url);
 const ts = require(resolve(repoRoot, "ui", "node_modules", "typescript"));
 
-const localeFiles = {
-  en: resolve(repoRoot, "ui", "src", "lib", "i18n_locales", "locales", "en.ts"),
-  nb: resolve(repoRoot, "ui", "src", "lib", "i18n_locales", "locales", "nb.ts"),
-};
+const localeFiles = Object.fromEntries(
+  SUPPORTED_LOCALES.map(({ id }) => [
+    id,
+    resolve(repoRoot, "ui", "src", "lib", "i18n_locales", "locales", `${id}.ts`),
+  ]),
+);
 const uiSourceRoot = resolve(repoRoot, "ui", "src");
 
 function propertyNameText(name) {
@@ -169,22 +175,26 @@ export function validateLocaleDictionaries(baseDictionary, targetDictionary, tar
 }
 
 function runI18nLocaleCheck() {
-  const enDictionary = readLocaleDictionaryFromSource(
-    readFileSync(localeFiles.en, "utf8"),
-    "enDictionary",
+  const dictionaries = Object.fromEntries(
+    SUPPORTED_LOCALES.map(({ id }) => [
+      id,
+      readLocaleDictionaryFromSource(
+        readFileSync(localeFiles[id], "utf8"),
+        `${id}Dictionary`,
+      ),
+    ]),
   );
-  const nbDictionary = readLocaleDictionaryFromSource(
-    readFileSync(localeFiles.nb, "utf8"),
-    "nbDictionary",
+  const baseDictionary = dictionaries[DEFAULT_LOCALE];
+  const errors = SUPPORTED_LOCALES.filter(({ id }) => id !== DEFAULT_LOCALE).flatMap(
+    ({ id }) => validateLocaleDictionaries(baseDictionary, dictionaries[id], id),
   );
-  const errors = validateLocaleDictionaries(enDictionary, nbDictionary, "nb");
   const runtimeKeys = collectUiSourceFiles(uiSourceRoot).flatMap((file) =>
     collectLiteralTranslationKeysFromSource(readFileSync(file, "utf8"), file).map((entry) => ({
       key: entry.key,
       location: `${relative(repoRoot, file)}:${entry.line}:${entry.column}`,
     })),
   );
-  errors.push(...validateRuntimeTranslationKeys(enDictionary, runtimeKeys));
+  errors.push(...validateRuntimeTranslationKeys(baseDictionary, runtimeKeys));
 
   if (errors.length > 0) {
     console.error("UI locale dictionary contract failed:");

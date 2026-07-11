@@ -1,4 +1,5 @@
 import type { Locale } from "../lib/i18n";
+import { intlLocaleFor } from "../../../src-tauri/companion_browser/supported_locales.js";
 import type { TrustedLanPairedBrowser } from "../lib/tauri_client";
 import type { TrustedLanCompanionStatusTone } from "./settings_companion_model";
 
@@ -31,7 +32,7 @@ type BuildTrustedLanPairedBrowserListInput = {
 };
 
 function trustedLanLocale(locale: Locale): string {
-  return locale === "nb" ? "nb-NO" : "en-US";
+  return intlLocaleFor(locale);
 }
 
 function parseTimestampMs(value?: string | null): number | null {

@@ -1,4 +1,5 @@
 import type { Locale } from "../lib/i18n";
+import { SUPPORTED_LOCALES } from "../../../src-tauri/companion_browser/supported_locales.js";
 import type { ThemeMode } from "../lib/theme_mode";
 import {
   APP_LICENSE_ID,
@@ -101,22 +102,17 @@ export function SettingsGeneralTab({
             role="group"
             aria-label={t("settings.language", "Language")}
           >
-            <button
-              type="button"
-              aria-pressed={locale === "nb"}
-              onClick={() => onLocaleSelection("nb")}
-              className={chipButtonClass(locale === "nb")}
-            >
-              Norsk (bokmål)
-            </button>
-            <button
-              type="button"
-              aria-pressed={locale === "en"}
-              onClick={() => onLocaleSelection("en")}
-              className={chipButtonClass(locale === "en")}
-            >
-              English
-            </button>
+            {SUPPORTED_LOCALES.map((definition) => (
+              <button
+                key={definition.id}
+                type="button"
+                aria-pressed={locale === definition.id}
+                onClick={() => onLocaleSelection(definition.id)}
+                className={chipButtonClass(locale === definition.id)}
+              >
+                {definition.nativeLabel}
+              </button>
+            ))}
           </div>
         </div>
       </SettingsSurfaceCard>

@@ -6,6 +6,10 @@ import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
 import { measureScreenshotPixels } from "./screenshot-pixels.mjs";
 import {
+  DEFAULT_LOCALE,
+  normalizeSupportedLocale,
+} from "../src-tauri/companion_browser/supported_locales.js";
+import {
   APP_DB_PATH_ENV_VAR,
   cleanupVisualQaDatabase,
   formatVisualQaDatasetReport,
@@ -77,11 +81,7 @@ function parseBooleanArg(argv, name) {
 }
 
 export function normalizeVisualQaLocale(value) {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  if (normalized === "nb" || normalized === "no" || normalized === "nb-no") {
-    return "nb";
-  }
-  return "en";
+  return normalizeSupportedLocale(value, DEFAULT_LOCALE);
 }
 
 export function normalizeDesktopVisualQaTheme(value) {
@@ -192,7 +192,9 @@ export function desktopVisualQaExpectedWindowTitles(scenario, locale) {
     return [];
   }
   const normalizedLocale = normalizeVisualQaLocale(locale);
-  const title = DESKTOP_VISUAL_QA_PAGE_TITLES[normalizedLocale]?.[definition.page];
+  const title =
+    DESKTOP_VISUAL_QA_PAGE_TITLES[normalizedLocale]?.[definition.page] ??
+    DESKTOP_VISUAL_QA_PAGE_TITLES[DEFAULT_LOCALE]?.[definition.page];
   return title ? [title] : [];
 }
 

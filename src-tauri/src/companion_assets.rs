@@ -15,6 +15,8 @@ const COMPANION_BROWSER_DOMAIN_JS: &str = include_str!("../companion_browser/com
 const COMPANION_BROWSER_DOM_EVENTS_JS: &str =
     include_str!("../companion_browser/companion_dom_events.js");
 const COMPANION_BROWSER_I18N_JS: &str = include_str!("../companion_browser/companion_i18n.js");
+const COMPANION_BROWSER_SUPPORTED_LOCALES_JS: &str =
+    include_str!("../companion_browser/supported_locales.js");
 const COMPANION_BROWSER_INPUT_ROUTER_JS: &str =
     include_str!("../companion_browser/companion_input_router.js");
 const COMPANION_BROWSER_LIVE_RFID_CANDIDATES_JS: &str =
@@ -147,6 +149,13 @@ pub(crate) fn companion_browser_assets() -> &'static [(&'static str, CompanionBr
             CompanionBrowserAsset {
                 content_type: "application/javascript; charset=utf-8",
                 content: COMPANION_BROWSER_I18N_JS,
+            },
+        ),
+        (
+            "supported_locales.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_SUPPORTED_LOCALES_JS,
             },
         ),
         (

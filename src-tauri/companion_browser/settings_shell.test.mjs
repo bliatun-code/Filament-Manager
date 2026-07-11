@@ -30,7 +30,7 @@ test("settings shell renders session metrics and current session actions", () =>
   assert.match(html, /Following device · Light/);
   assert.match(html, /Trusted-LAN connected · 1 spool · 2 printers · 1 active loan/);
   assert.match(html, /data-action="set-locale"/);
-  assert.match(html, /Norwegian/);
+  assert.match(html, /Norsk \(bokmål\)/);
   assert.match(html, /English/);
   assert.doesNotMatch(html, /Workflow scope/);
   assert.match(html, /Refresh companion data/);
@@ -82,7 +82,8 @@ test("settings shell localizes visible controls in norwegian", () => {
   assert.match(html, /Lys modus/);
   assert.doesNotMatch(html, /Lys modus · Lys/);
   assert.match(html, /Norsk/);
-  assert.match(html, /Engelsk/);
+  assert.match(html, /English/);
+  assert.match(html, /1 spole · 2 printere · 1 aktivt utlån/);
   assert.match(html, /Lisens/);
   assert.match(html, /Kildekode/);
   assert.match(html, /Vis lisens/);

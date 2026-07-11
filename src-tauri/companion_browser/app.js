@@ -24,6 +24,7 @@ import {
 } from "./companion_theme.js";
 import { parseQrPayload } from "./qr_payload.js";
 import { createInitialCompanionState, createBorrowedInDraft, resetSessionState } from "./session_state.js";
+import { applyLocaleToDocument, localeDefinition } from "./supported_locales.js";
 
 const root = document.getElementById("app");
 const THEME_STORAGE_KEY = COMPANION_THEME_STORAGE_KEY;
@@ -186,14 +187,24 @@ function setThemeMode(nextMode) {
 function setLocale(nextLocale) {
   const normalizedLocale = normalizeCompanionLocale(nextLocale);
   state.locale = normalizedLocale;
+  syncDocumentLocale(normalizedLocale);
   syncRecoverySectionLabels(normalizedLocale);
   persistCompanionPreference(LOCALE_STORAGE_KEY, normalizedLocale);
+  const definition = localeDefinition(normalizedLocale);
   setStatus(
-    normalizedLocale === "nb"
-      ? t(normalizedLocale, "status.languageSetNb", "Language set to Norwegian.")
-      : t(normalizedLocale, "status.languageSetEn", "Language set to English."),
+    definition
+      ? t(
+          normalizedLocale,
+          definition.companionSelectionMessageKey,
+          definition.selectionMessageFallback,
+        )
+      : normalizedLocale,
     "success",
   );
+}
+
+function syncDocumentLocale(locale = state.locale) {
+  applyLocaleToDocument(locale, document);
 }
 
 function installThemeWatcher() {
@@ -323,6 +334,7 @@ function main() {
     readBrowserStorage(),
     readBrowserGlobal("navigator"),
   );
+  syncDocumentLocale(state.locale);
   state.statusMessage = t(
     state.locale,
     "status.trustedLanAwaitPairing",

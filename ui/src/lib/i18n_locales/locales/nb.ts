@@ -1818,3 +1818,5 @@ export const nbDictionary: DictionaryNode = {
       },
     },
   };
+
+export default nbDictionary;

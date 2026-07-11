@@ -1,6 +1,7 @@
 import { inlineStatusSignalClass, semanticChipClass } from "./chip_styles";
 import { formatBambuSettingsProfileNameParts } from "./bambu_settings_profiles";
 import type { Locale } from "./i18n";
+import { intlLocaleFor } from "../../../src-tauri/companion_browser/supported_locales.js";
 export {
   assessRfidCaptureMatch,
   rfidCaptureMatchMeta,
@@ -111,7 +112,7 @@ export function formatCaptureTimestamp(raw: string, locale: Locale): string {
   if (Number.isNaN(parsed.getTime())) {
     return raw;
   }
-  return new Intl.DateTimeFormat(locale === "nb" ? "nb-NO" : "en-US", {
+  return new Intl.DateTimeFormat(intlLocaleFor(locale), {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",

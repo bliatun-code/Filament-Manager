@@ -40,6 +40,19 @@ test("resolveInitialLocale uses stored supported locale", () => {
   assert.equal(locale, "nb");
 });
 
+test("resolveInitialLocale migrates stored regional and legacy aliases", () => {
+  const writes: Array<[string, string]> = [];
+  const storage = {
+    getItem: () => "no-NO",
+    setItem: (key: string, value: string) => writes.push([key, value]),
+  };
+
+  const locale = withGlobalValue("localStorage", storage, () => resolveInitialLocale());
+
+  assert.equal(locale, "nb");
+  assert.deepEqual(writes, [["bfm-locale", "nb"]]);
+});
+
 test("resolveInitialLocale lets screenshot URLs override stored locale", () => {
   const storage = {
     getItem: () => "nb",
@@ -136,6 +149,20 @@ test("resolveInitialLocale falls back when localStorage throws", () => {
   };
   const navigatorRef = {
     language: "no-NO",
+  };
+
+  const locale = withGlobalValue("localStorage", storage, () =>
+    withGlobalValue("navigator", navigatorRef, () => resolveInitialLocale()),
+  );
+
+  assert.equal(locale, "nb");
+});
+
+test("resolveInitialLocale checks navigator languages in preference order", () => {
+  const storage = { getItem: () => null };
+  const navigatorRef = {
+    language: "en-US",
+    languages: ["de-DE", "nb-NO", "en-US"],
   };
 
   const locale = withGlobalValue("localStorage", storage, () =>

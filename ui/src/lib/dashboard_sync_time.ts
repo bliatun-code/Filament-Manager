@@ -1,11 +1,7 @@
+import { intlLocaleFor } from "../../../src-tauri/companion_browser/supported_locales.js";
+
 export function dashboardSyncTimeLocale(locale: string): string {
-  if (locale === "nb") {
-    return "nb-NO";
-  }
-  if (locale === "en") {
-    return "en-US";
-  }
-  return locale;
+  return intlLocaleFor(locale);
 }
 
 export function formatDashboardSyncTime(date: Date, locale: string): string {

@@ -13,6 +13,11 @@ import {
   summarizeScreenshotPixels,
 } from "./screenshot-pixels.mjs";
 import {
+  DEFAULT_LOCALE,
+  intlLocaleFor,
+  normalizeSupportedLocale,
+} from "../src-tauri/companion_browser/supported_locales.js";
+import {
   APP_DB_PATH_ENV_VAR,
   cleanupVisualQaDatabase,
   formatVisualQaDatasetReport,
@@ -28,7 +33,7 @@ export const COMPANION_SCREENSHOT_VIEWPORTS = {
 const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
 export const COMPANION_PRINTER_LIVE_WAIT_MS = 30_000;
 const COMPANION_THEME_STORAGE_KEY = "bfm-companion-theme-mode";
-const COMPANION_LOCALE_STORAGE_KEY = "bfm-locale";
+const COMPANION_LOCALE_STORAGE_KEY = "bfm-companion-locale";
 
 function parseArgValue(argv, name) {
   const index = argv.indexOf(name);
@@ -49,11 +54,7 @@ function parseBooleanArg(argv, name) {
 }
 
 export function normalizeCompanionScreenshotLocale(value) {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  if (normalized === "nb" || normalized === "no" || normalized === "nb-no") {
-    return "nb";
-  }
-  return "en";
+  return normalizeSupportedLocale(value, DEFAULT_LOCALE);
 }
 
 function routeUrl(baseUrl, route) {
@@ -590,7 +591,7 @@ async function runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, opt
   const locale = normalizeCompanionScreenshotLocale(options.locale);
   const context = await browser.newContext({
     colorScheme: options.themeMode === "dark" ? "dark" : undefined,
-    locale: locale === "nb" ? "nb-NO" : "en-US",
+    locale: intlLocaleFor(locale),
     viewport: scenario.viewport,
   });
   const page = await context.newPage();

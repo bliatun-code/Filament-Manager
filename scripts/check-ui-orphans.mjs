@@ -2,8 +2,10 @@ import { readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import {
   buildRelativeImportResolver,
+  collectDynamicImportTemplateSpecifiers,
   collectImportSpecifiers,
   collectUiSourceFiles,
+  resolveRelativeImportGlob,
 } from "./ui-source-utils.mjs";
 
 const repoRoot = resolve(".");
@@ -29,6 +31,13 @@ while (pending.length > 0) {
     const dependency = resolveImport(file, specifier);
     if (dependency && !reachable.has(dependency)) {
       pending.push(dependency);
+    }
+  }
+  for (const specifier of collectDynamicImportTemplateSpecifiers(source)) {
+    for (const dependency of resolveRelativeImportGlob(files, file, specifier)) {
+      if (!reachable.has(dependency)) {
+        pending.push(dependency);
+      }
     }
   }
 }
