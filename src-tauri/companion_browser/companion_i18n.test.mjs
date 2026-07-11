@@ -59,13 +59,13 @@ test("resolveInitialCompanionLocale migrates the legacy desktop-named storage ke
   assert.deepEqual(writes, [["bfm-companion-locale", "nb"]]);
 });
 
-test("resolveInitialCompanionLocale checks navigator languages in preference order", () => {
+test("resolveInitialCompanionLocale checks selectable navigator languages in preference order", () => {
   const locale = resolveInitialCompanionLocale(
     { getItem: () => null },
     { language: "en-US", languages: ["fr-FR", "de-DE", "nb-NO", "en-US"] },
   );
 
-  assert.equal(locale, "nb");
+  assert.equal(locale, "fr");
 });
 
 test("Companion accepts pseudo locale only through an explicit QA value", () => {
@@ -88,13 +88,13 @@ test("Companion accepts pseudo locale only through an explicit QA value", () => 
   assert.match(cjkOutput, /[設品項]/);
 });
 
-test("German draft uses translated overlay copy", () => {
+test("German locale uses translated source copy", () => {
   assert.equal(t("de", "nav.storage"), "Bestand");
   assert.equal(t("de", "printers.toolhead"), "Werkzeugkopf");
   assert.equal(t("de", "recovery.suggested"), "Vorgeschlagene Wiederherstellung");
 });
 
-test("French draft uses complete translated copy and keeps explicit runtime fallback", () => {
+test("French locale uses complete translated source copy", () => {
   assert.equal(t("fr", "nav.storage"), "Stock");
   assert.equal(t("fr", "printers.toolhead"), "Tête d’outil");
   assert.equal(t("fr", "detail.saveWeight"), "Enregistrer le poids");
@@ -108,7 +108,7 @@ test("French draft uses complete translated copy and keeps explicit runtime fall
   assert.equal(t("fr", "missing.reviewKey", "Repli sûr"), "Repli sûr");
 });
 
-test("French draft applies French zero, one, and other plural categories", () => {
+test("French locale applies French zero, one, and other plural categories", () => {
   assert.equal(t("fr", "nav.spoolCount", "", { count: 0 }), "0 bobine");
   assert.equal(t("fr", "nav.spoolCount", "", { count: 1 }), "1 bobine");
   assert.equal(t("fr", "nav.spoolCount", "", { count: 2 }), "2 bobines");

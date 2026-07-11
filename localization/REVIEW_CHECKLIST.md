@@ -1,14 +1,15 @@
 # German and French localization review
 
-Use this checklist for native review of the hidden `de` and `fr` pilot locales.
+Use this checklist for native review of the maintained `de` and `fr` locales
+after English source changes.
 It supplements the canonical terminology and workflow in
 [`docs/LOCALIZATION.md`](../docs/LOCALIZATION.md); it does not replace a named
 reviewer or record approval by itself.
 
 ## Before review
 
-- Confirm the locale is still `draft`, not selectable, and has English as its
-  runtime and user-guide fallback.
+- Confirm the locale is marked stale against the new English source fingerprint
+  and still uses the English user-guide fallback.
 - Run `npm run report:i18n` and record the current combined English source
   fingerprint.
 - Generate a review sheet with `npm run export:i18n-review -- --locale <locale>`.

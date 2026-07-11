@@ -13,19 +13,19 @@
       "releaseStatus": "maintained",
       "nativeReviewer": "@bliatun-code",
       "reviewedAt": "2026-07-11",
-      "reviewedSourceFingerprint": "sha256:84ef9d7451321c93c0ade560bce4696ff3c7769b5206eb39e7bf9333cdcd5451"
+      "reviewedSourceFingerprint": "sha256:576efe447da456fc06b4aa236f52403e3f007d916d5526ec377cbe751f88fa79"
     },
     "de": {
-      "releaseStatus": "draft",
-      "nativeReviewer": null,
-      "reviewedAt": null,
-      "reviewedSourceFingerprint": null
+      "releaseStatus": "maintained",
+      "nativeReviewer": "@bliatun-code",
+      "reviewedAt": "2026-07-11",
+      "reviewedSourceFingerprint": "sha256:576efe447da456fc06b4aa236f52403e3f007d916d5526ec377cbe751f88fa79"
     },
     "fr": {
-      "releaseStatus": "draft",
-      "nativeReviewer": null,
-      "reviewedAt": null,
-      "reviewedSourceFingerprint": null
+      "releaseStatus": "maintained",
+      "nativeReviewer": "@bliatun-code",
+      "reviewedAt": "2026-07-11",
+      "reviewedSourceFingerprint": "sha256:576efe447da456fc06b4aa236f52403e3f007d916d5526ec377cbe751f88fa79"
     }
   }
 }

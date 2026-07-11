@@ -1787,6 +1787,8 @@ export const enDictionary: DictionaryNode = {
       themeSetTo: "Theme mode set to",
       langSetNb: "Language set to Norwegian.",
       langSetEn: "Language set to English.",
+      langSetDe: "Language set to German.",
+      langSetFr: "Language set to French.",
       confirmBulkSwatch: "Auto-fill swatches for all visible missing entries?",
       confirmBulkSwatchTapAgain:
         "Click Auto-fill visible missing swatches again to confirm.",

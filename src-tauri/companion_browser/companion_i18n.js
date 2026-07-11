@@ -357,6 +357,8 @@ const dictionaries = {
     status: {
       languageSetNb: "Language set to Norwegian.",
       languageSetEn: "Language set to English.",
+      languageSetDe: "Language set to German.",
+      languageSetFr: "Language set to French.",
       companionReady: "Companion session ready.",
       refreshed: "Companion data refreshed.",
       trustedLanPairingMissing:
@@ -937,6 +939,8 @@ const dictionaries = {
     status: {
       languageSetNb: "Språk satt til norsk.",
       languageSetEn: "Språk satt til engelsk.",
+      languageSetDe: "Språk satt til tysk.",
+      languageSetFr: "Språk satt til fransk.",
       companionReady: "Kompanjongøkten er klar.",
       refreshed: "Kompanjongdata er oppdatert.",
       trustedLanPairingMissing:
@@ -1518,6 +1522,8 @@ const dictionaries = {
     status: {
       languageSetNb: "Sprache auf Norwegisch gesetzt.",
       languageSetEn: "Sprache auf Englisch gesetzt.",
+      languageSetDe: "Sprache auf Deutsch gesetzt.",
+      languageSetFr: "Sprache auf Französisch gesetzt.",
       companionReady: "Companion-Sitzung bereit.",
       refreshed: "Companion-Daten aktualisiert.",
       trustedLanPairingMissing:
@@ -2208,6 +2214,8 @@ const dictionaries = {
     status: {
       languageSetNb: "Langue définie sur le norvégien.",
       languageSetEn: "Langue définie sur l’anglais.",
+      languageSetDe: "Langue définie sur l’allemand.",
+      languageSetFr: "Langue définie sur le français.",
       companionReady: "Session Companion prête.",
       refreshed: "Données Companion actualisées.",
       trustedLanPairingMissing:

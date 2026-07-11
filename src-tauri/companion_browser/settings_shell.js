@@ -84,7 +84,7 @@ export function renderSettingsShell(options) {
                 action: "set-locale",
                 activeValue: locale,
                 ariaLabel: t(locale, "settings.language", "Language"),
-                columns: Math.min(SELECTABLE_LOCALES.length, 3),
+                columns: SELECTABLE_LOCALES.length === 4 ? 2 : Math.min(SELECTABLE_LOCALES.length, 3),
                 escapeHtml,
                 items: SELECTABLE_LOCALES.map(({ id, nativeLabel }) => ({
                   value: id,

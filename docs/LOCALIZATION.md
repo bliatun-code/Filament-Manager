@@ -1,7 +1,8 @@
 # Localization workflow
 
-English is the canonical source language. Norwegian Bokmål is maintained beside
-it. Generated pseudo-locales are QA tools and must never appear as user choices.
+English is the canonical source language. Norwegian Bokmål, German, and French
+are maintained beside it. Generated pseudo-locales are QA tools and must never
+appear as user choices.
 
 ## Canonical terminology
 
@@ -77,9 +78,9 @@ copying the new value without native review.
 ## Review ownership and stale-locale policy
 
 Every published non-source locale must have one named native reviewer or
-maintainer in `localization/locale-status.json`. English and Norwegian Bokmål are
-currently owned by `@bliatun-code`. A locale without an owner is not eligible to
-be marked maintained or exposed as complete.
+maintainer in `localization/locale-status.json`. Norwegian Bokmål, German, and
+French are currently owned by `@bliatun-code`. A locale without an owner is not
+eligible to be marked maintained or exposed as complete.
 
 A maintained locale becomes stale whenever its reviewed source fingerprint no
 longer matches the combined English desktop and Companion catalogs. Stale
@@ -95,21 +96,22 @@ development, but must not ship as fully supported. Release readiness requires:
 
 ## Collaboration model
 
-GitHub pull requests are sufficient for the German/French pilot because the
-catalogs are code-reviewed, the initial reviewer group is small, and automated
-contracts already run in CI. Reconsider a translation platform after the pilot
-if contributor volume, review latency, plural/context discussions, or stale
-catalog coordination becomes difficult. Do not add a platform merely to export
-the same files through another system.
+GitHub pull requests are sufficient for the current maintained locales because
+the catalogs are code-reviewed, the reviewer group is small, and automated
+contracts already run in CI. Reconsider a translation platform if contributor
+volume, review latency, plural/context discussions, or stale catalog
+coordination becomes difficult. Do not add a platform merely to export the same
+files through another system.
 
-## Pilot reviewer handoff
+## Reviewer handoff
 
-German and French remain hidden draft locales until a named native reviewer has
-approved them against the current source fingerprint. The focused handoff is in
-[`localization/REVIEW_CHECKLIST.md`](../localization/REVIEW_CHECKLIST.md).
+German and French were approved against the current source fingerprint and are
+available in the desktop app and Companion. Use the focused handoff in
+[`localization/REVIEW_CHECKLIST.md`](../localization/REVIEW_CHECKLIST.md) again
+whenever source changes make either maintained catalog stale.
 
 The first German/French UI release may use the complete English user guide as a
 documented fallback. Full translated guides follow after native UI review and
 real user demand; they are not generated mechanically from the source guide.
-The app must keep linking draft locales to the English guide until a complete,
-reviewed locale-specific guide is added.
+The app links German and French to the English guide until a complete, reviewed
+locale-specific guide is added.

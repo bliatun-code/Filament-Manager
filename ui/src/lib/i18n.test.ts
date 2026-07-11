@@ -224,7 +224,7 @@ test("resolveInitialLocale checks navigator languages in preference order", () =
     withGlobalValue("navigator", navigatorRef, () => resolveInitialLocale()),
   );
 
-  assert.equal(locale, "nb");
+  assert.equal(locale, "fr");
 });
 
 test("persistLocale ignores localStorage write failures", () => {

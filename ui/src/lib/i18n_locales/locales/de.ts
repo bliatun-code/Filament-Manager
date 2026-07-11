@@ -1730,6 +1730,8 @@ export const deDictionary: DictionaryNode = {
     themeSetTo: "Darstellung eingestellt auf",
     langSetNb: "Sprache auf Norwegisch eingestellt.",
     langSetEn: "Sprache auf Englisch eingestellt.",
+    langSetDe: "Sprache auf Deutsch eingestellt.",
+    langSetFr: "Sprache auf Französisch eingestellt.",
     confirmDeletePrinter: "Drucker löschen",
     confirmDeletePrinterSuffix: "und seine Platzzuweisungen?",
     confirmDeleteTapAgain: "Klicke erneut auf Entfernen, um den Drucker zu löschen",

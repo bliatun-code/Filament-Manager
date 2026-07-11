@@ -25,9 +25,9 @@ test("locale registry normalizes canonical, regional, underscore, and legacy ali
   assert.equal(normalizeSupportedLocale("zh-XB"), "zh-XB");
   assert.equal(normalizeSupportedLocale("zh_xb"), "zh-XB");
   assert.equal(normalizeSupportedLocale("de-DE"), "de");
-  assert.equal(normalizeSelectableLocale("de-DE"), null);
+  assert.equal(normalizeSelectableLocale("de-DE"), "de");
   assert.equal(normalizeSupportedLocale("fr-FR"), "fr");
-  assert.equal(normalizeSelectableLocale("fr-FR"), null);
+  assert.equal(normalizeSelectableLocale("fr-FR"), "fr");
 });
 
 test("locale registry owns format, guide, and native-label metadata", () => {
@@ -40,12 +40,12 @@ test("locale registry owns format, guide, and native-label metadata", () => {
     "ar-XB",
     "zh-XB",
   ]);
-  assert.deepEqual(SELECTABLE_LOCALES.map(({ id }) => id), ["en", "nb"]);
+  assert.deepEqual(SELECTABLE_LOCALES.map(({ id }) => id), ["en", "nb", "de", "fr"]);
   assert.deepEqual(CATALOG_LOCALES.map(({ id }) => id), ["en", "nb", "de", "fr"]);
   assert.equal(sourceLocaleFor("de-DE"), "de");
-  assert.equal(fallbackLocaleFor("de"), "en");
+  assert.equal(fallbackLocaleFor("de"), null);
   assert.equal(sourceLocaleFor("fr-FR"), "fr");
-  assert.equal(fallbackLocaleFor("fr"), "en");
+  assert.equal(fallbackLocaleFor("fr"), null);
   assert.equal(sourceLocaleFor("en-XA"), "en");
   assert.equal(sourceLocaleFor("ar-XB"), "en");
   assert.equal(sourceLocaleFor("zh-XB"), "en");
