@@ -148,6 +148,7 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(frenchDictionary, "inventory.rfidTechnicalDetails"), "Détails techniques");
   assert.equal(lookup(frenchDictionary, "printers.slotOnboarding"), "Intégration AMS");
   assert.equal(lookup(frenchDictionary, "statistics.perPrinter"), "Consommation par imprimante");
+  assert.equal(lookup(frenchDictionary, "settings.inventoryOverviewPaperFormat"), "Format du papier");
   assert.equal(
     lookup(frenchDictionary, "settings.libraryTabTitle"),
     "Library and web app",
