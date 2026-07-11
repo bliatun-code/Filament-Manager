@@ -173,6 +173,8 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(spanishDictionary, "printers.slotOnboarding"), "Incorporación AMS");
   assert.equal(lookup(spanishDictionary, "settings.bambuLiveSection"), "Estado Live Bambu");
   assert.equal(lookup(spanishDictionary, "settings.printerDiscardChanges"), "Descartar cambios");
+  assert.equal(lookup(spanishDictionary, "statistics.perPrinter"), "Consumo por impresora");
+  assert.equal(lookup(spanishDictionary, "statistics.borrowerUsage"), "Consumo de préstamos por persona");
   assert.equal(getCachedLocaleDictionary("es"), spanishDictionary);
 });
 
