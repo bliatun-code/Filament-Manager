@@ -1019,6 +1019,8 @@
 .add-spool-section .segment-button {
   text-align: center;
   justify-items: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .add-spool-grid {
@@ -1044,7 +1046,7 @@
 .add-spool-wishlist-list {
   max-height: 19rem;
   overflow: auto;
-  padding-right: 0.12rem;
+  padding-inline-end: 0.12rem;
 }
 
 .add-spool-catalog-row[data-active="true"] {
@@ -1655,6 +1657,7 @@
 
 .shell-scaffold {
   display: block;
+  min-width: 0;
 }
 
 .shell-main {
@@ -1663,6 +1666,7 @@
   align-content: start;
   grid-auto-rows: max-content;
   min-height: calc(100dvh - 1.44rem);
+  min-width: 0;
 }
 
 .app-topbar {
@@ -1776,6 +1780,8 @@
 .segment-button > span:first-child {
   font-weight: 700;
   letter-spacing: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .root-flow-meta,
@@ -1793,6 +1799,7 @@
   gap: 0.75rem;
   align-content: start;
   min-height: 0;
+  min-width: 0;
 }
 
 .workflow-shell,
@@ -1803,6 +1810,7 @@
 
 .workflow-shell {
   align-self: start;
+  min-width: 0;
 }
 
 .workflow-header {
@@ -2241,7 +2249,7 @@
   height: 100%;
   max-height: none;
   overflow: auto;
-  padding-right: 0.1rem;
+  padding-inline-end: 0.1rem;
 }
 
 .printer-roster-header {
@@ -2366,7 +2374,7 @@
   display: inline-block;
   width: 0.45rem;
   height: 0.45rem;
-  margin-right: 0.35rem;
+  margin-inline-end: 0.35rem;
   border-radius: 999px;
   background: rgb(74 222 128 / 0.92);
   box-shadow: 0 0 0 0.18rem rgb(74 222 128 / 0.14);
@@ -2735,7 +2743,8 @@
   justify-content: space-between;
   gap: 0.75rem;
   align-items: center;
-  padding: 0.92rem 2.7rem 0.92rem 1rem;
+  padding-block: 0.92rem;
+  padding-inline: 1rem 2.7rem;
   font-weight: 700;
   letter-spacing: 0;
 }
@@ -2747,7 +2756,7 @@
 .detail-collapsible-summary::after {
   content: "";
   position: absolute;
-  right: 1rem;
+  inset-inline-end: 1rem;
   top: calc(50% - 0.28rem);
   width: 0.56rem;
   height: 0.56rem;

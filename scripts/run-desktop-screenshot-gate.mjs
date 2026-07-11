@@ -9,7 +9,7 @@ import {
   DEFAULT_LOCALE,
   normalizeSupportedLocale,
 } from "../src-tauri/companion_browser/supported_locales.js";
-import { pseudoLocalizeMessage } from "../src-tauri/companion_browser/pseudo_locale.js";
+import { pseudoLocalizeMessageForLocale } from "../src-tauri/companion_browser/pseudo_locale.js";
 import {
   APP_DB_PATH_ENV_VAR,
   cleanupVisualQaDatabase,
@@ -61,7 +61,27 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
       printers: "Printers",
       settings: "Settings",
       statistics: "Statistics",
-    }).map(([page, title]) => [page, pseudoLocalizeMessage(title)]),
+    }).map(([page, title]) => [page, pseudoLocalizeMessageForLocale(title, {}, "en-XA")]),
+  ),
+  "ar-XB": Object.fromEntries(
+    Object.entries({
+      dashboard: "Dashboard",
+      inventory: "Inventory",
+      loans: "Loans",
+      printers: "Printers",
+      settings: "Settings",
+      statistics: "Statistics",
+    }).map(([page, title]) => [page, pseudoLocalizeMessageForLocale(title, {}, "ar-XB")]),
+  ),
+  "zh-XB": Object.fromEntries(
+    Object.entries({
+      dashboard: "Dashboard",
+      inventory: "Inventory",
+      loans: "Loans",
+      printers: "Printers",
+      settings: "Settings",
+      statistics: "Statistics",
+    }).map(([page, title]) => [page, pseudoLocalizeMessageForLocale(title, {}, "zh-XB")]),
   ),
 };
 

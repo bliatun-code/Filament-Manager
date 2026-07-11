@@ -74,6 +74,14 @@ test("resolveInitialLocale accepts the QA-only pseudo locale from screenshot URL
   const windowRef = { location: { search: "?bfm_locale=en-XA" } };
   const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
   assert.equal(locale, "en-XA");
+
+  const rtlWindowRef = { location: { search: "?bfm_locale=ar-XB" } };
+  const rtlLocale = withGlobalValue("window", rtlWindowRef, () => resolveInitialLocale());
+  assert.equal(rtlLocale, "ar-XB");
+
+  const cjkWindowRef = { location: { search: "?bfm_locale=zh-XB" } };
+  const cjkLocale = withGlobalValue("window", cjkWindowRef, () => resolveInitialLocale());
+  assert.equal(cjkLocale, "zh-XB");
 });
 
 test("locale dictionaries lazy-load and cache supported locales", async () => {
@@ -112,6 +120,14 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   const pseudoDictionary = await loadLocaleDictionary("en-XA");
   assert.equal(lookup(pseudoDictionary, "app.title"), "Filament Manager");
   assert.equal(getCachedLocaleDictionary("en-XA"), pseudoDictionary);
+
+  const rtlPseudoDictionary = await loadLocaleDictionary("ar-XB");
+  assert.equal(lookup(rtlPseudoDictionary, "app.title"), "Filament Manager");
+  assert.equal(getCachedLocaleDictionary("ar-XB"), rtlPseudoDictionary);
+
+  const cjkPseudoDictionary = await loadLocaleDictionary("zh-XB");
+  assert.equal(lookup(cjkPseudoDictionary, "app.title"), "Filament Manager");
+  assert.equal(getCachedLocaleDictionary("zh-XB"), cjkPseudoDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {

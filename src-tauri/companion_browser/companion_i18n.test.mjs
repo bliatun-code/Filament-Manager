@@ -78,6 +78,14 @@ test("Companion accepts pseudo locale only through an explicit QA value", () => 
   );
   const output = t("en-XA", "settings.spoolCount", "", { count: 2 });
   assert.match(output, /^⟦.*2 şþö.*⟧$/);
+
+  const rtlOutput = t("ar-XB", "settings.spoolCount", "", { count: 2 });
+  assert.ok(rtlOutput.startsWith("⟦\u2067"));
+  assert.match(rtlOutput, /٢/);
+
+  const cjkOutput = t("zh-XB", "settings.spoolCount", "", { count: 2 });
+  assert.match(cjkOutput, /^【.*2.*】$/);
+  assert.match(cjkOutput, /[設品項]/);
 });
 
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {

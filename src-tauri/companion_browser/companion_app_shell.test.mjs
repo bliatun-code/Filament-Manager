@@ -137,6 +137,7 @@ test("app shell renderer composes the mobile shell with the four primary tabs", 
   assert.match(html, /Settings/);
   assert.match(html, /toggle-add-spool-form/);
   assert.match(html, /phone-bottom-nav/);
+  assert.doesNotMatch(html, /class="shell-scaffold"[^>]* inert/);
 });
 
 test("app shell formats displayed grams with the selected Norwegian locale", () => {
@@ -176,6 +177,7 @@ test("app shell renderer opens add-spool task sheets above the root flow when re
   assert.match(html, /Add spool to inventory/);
   assert.match(html, /task-sheet-shell task-sheet-shell-wide/);
   assert.match(html, /task-sheet surface-panel add-filament-sheet/);
+  assert.match(html, /class="shell-scaffold"[^>]* inert aria-hidden="true"/);
 });
 
 test("app shell renderer uses the shared task-sheet shell for loan picking", () => {
@@ -315,6 +317,7 @@ test("app shell renderer includes the selected spool detail modal when opened", 
   assert.match(html, /detail-modal-backdrop/);
   assert.match(html, /Save weight/);
   assert.match(html, /QR code/);
+  assert.match(html, /class="shell-scaffold"[^>]* inert aria-hidden="true"/);
 });
 
 test("app shell renderer uses observed tag uid as RFID capture fallback", () => {

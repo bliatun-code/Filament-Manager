@@ -4,6 +4,7 @@ import { PassThrough } from "node:stream";
 import { test } from "node:test";
 import {
   buildCompanionScreenshotScenarios,
+  auditCompanionKeyboardNavigation,
   companionScreenshotGateNeedsLaunch,
   COMPANION_PRINTER_LIVE_WAIT_MS,
   COMPANION_SCREENSHOT_VIEWPORTS,
@@ -18,6 +19,11 @@ import {
 
 function createMetric(overrides = {}) {
   return {
+    accessibility: {
+      focusableCount: 8,
+      unnamedFocusableCount: 0,
+      ...overrides.accessibility,
+    },
     appChildren: 1,
     counts: {
       detailModals: 0,
@@ -49,6 +55,14 @@ function createMetric(overrides = {}) {
       ...overrides.expectations,
     },
     horizontalOverflow: false,
+    keyboard: {
+      outsideViewportTargets: 0,
+      outsideViewportTargetNames: [],
+      uniqueTargets: 6,
+      unnamedTargets: 0,
+      visits: 8,
+      ...overrides.keyboard,
+    },
     loanReturnSubmit: {
       disabled: null,
       present: false,
@@ -118,6 +132,52 @@ function createVisualQaDatabase(overrides = {}) {
     ...overrides,
   };
 }
+
+test("companion keyboard audit reports distinct, named, in-viewport targets", async () => {
+  const visits = [
+    { name: "Inventory", outsideViewport: false, target: "inventory" },
+    { name: "Loans", outsideViewport: false, target: "loans" },
+    { name: "Inventory", outsideViewport: false, target: "inventory" },
+  ];
+  let evaluateCalls = 0;
+  let tabPresses = 0;
+  const page = {
+    keyboard: {
+      press: async (key) => {
+        assert.equal(key, "Tab");
+        tabPresses += 1;
+      },
+    },
+    evaluate: async () => {
+      evaluateCalls += 1;
+      return evaluateCalls === 1 ? undefined : visits[evaluateCalls - 2];
+    },
+  };
+
+  const result = await auditCompanionKeyboardNavigation(page, 3);
+
+  assert.equal(tabPresses, 3);
+  assert.deepEqual(result, {
+    outsideViewportTargets: 0,
+    outsideViewportTargetNames: [],
+    uniqueTargets: 2,
+    unnamedTargets: 0,
+    visits: 3,
+  });
+});
+
+test("companion screenshot metrics reject unnamed and unreachable keyboard controls", () => {
+  const errors = validateCompanionScreenshotMetrics([
+    createMetric({
+      accessibility: { focusableCount: 4, unnamedFocusableCount: 1 },
+      keyboard: { uniqueTargets: 1, unnamedTargets: 1, outsideViewportTargets: 1 },
+    }),
+  ]);
+
+  assert.ok(errors.some((error) => error.includes("unnamed keyboard-focusable")));
+  assert.ok(errors.some((error) => error.includes("at least two distinct")));
+  assert.ok(errors.some((error) => error.includes("outside the viewport")));
+});
 
 function createFakeChild() {
   const child = new EventEmitter();
@@ -297,6 +357,8 @@ test("companion screenshot gate normalizes screenshot locale overrides", () => {
   assert.equal(normalizeCompanionScreenshotLocale("en-US"), "en");
   assert.equal(normalizeCompanionScreenshotLocale("en-GB"), "en");
   assert.equal(normalizeCompanionScreenshotLocale("en-XA"), "en-XA");
+  assert.equal(normalizeCompanionScreenshotLocale("ar-XB"), "ar-XB");
+  assert.equal(normalizeCompanionScreenshotLocale("zh-XB"), "zh-XB");
   assert.equal(normalizeCompanionScreenshotLocale(""), "en");
   assert.equal(normalizeCompanionScreenshotLocale("bad"), "en");
 });

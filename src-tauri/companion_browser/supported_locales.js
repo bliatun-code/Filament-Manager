@@ -11,6 +11,7 @@ export const SUPPORTED_LOCALES = Object.freeze([
     selectable: true,
     catalogKind: "source",
     generatedFrom: null,
+    pseudoMode: null,
     guidePath: "docs/USER_GUIDE.md",
     selectionMessageKey: "settings.langSetEn",
     companionSelectionMessageKey: "status.languageSetEn",
@@ -26,6 +27,7 @@ export const SUPPORTED_LOCALES = Object.freeze([
     selectable: true,
     catalogKind: "source",
     generatedFrom: null,
+    pseudoMode: null,
     guidePath: "docs/BRUKERVEILEDNING.md",
     selectionMessageKey: "settings.langSetNb",
     companionSelectionMessageKey: "status.languageSetNb",
@@ -41,6 +43,39 @@ export const SUPPORTED_LOCALES = Object.freeze([
     selectable: false,
     catalogKind: "generated",
     generatedFrom: "en",
+    pseudoMode: "accented",
+    guidePath: "docs/USER_GUIDE.md",
+    selectionMessageKey: "settings.langSetEn",
+    companionSelectionMessageKey: "status.languageSetEn",
+    selectionMessageFallback: "Language set to English.",
+  }),
+  Object.freeze({
+    id: "ar-XB",
+    aliases: Object.freeze(["ar-xb"]),
+    htmlLang: "ar-XB",
+    direction: "rtl",
+    intlLocale: "ar-EG",
+    nativeLabel: "Pseudo RTL (QA)",
+    selectable: false,
+    catalogKind: "generated",
+    generatedFrom: "en",
+    pseudoMode: "rtl",
+    guidePath: "docs/USER_GUIDE.md",
+    selectionMessageKey: "settings.langSetEn",
+    companionSelectionMessageKey: "status.languageSetEn",
+    selectionMessageFallback: "Language set to English.",
+  }),
+  Object.freeze({
+    id: "zh-XB",
+    aliases: Object.freeze(["zh-xb"]),
+    htmlLang: "zh-Hans-XB",
+    direction: "ltr",
+    intlLocale: "zh-CN",
+    nativeLabel: "Pseudo CJK (QA)",
+    selectable: false,
+    catalogKind: "generated",
+    generatedFrom: "en",
+    pseudoMode: "cjk",
     guidePath: "docs/USER_GUIDE.md",
     selectionMessageKey: "settings.langSetEn",
     companionSelectionMessageKey: "status.languageSetEn",
@@ -89,6 +124,10 @@ export function sourceLocaleFor(value) {
 
 export function isPseudoLocale(value) {
   return localeDefinition(value)?.catalogKind === "generated";
+}
+
+export function pseudoModeFor(value) {
+  return localeDefinition(value)?.pseudoMode ?? null;
 }
 
 export function normalizeSupportedLocale(value, fallback = null) {

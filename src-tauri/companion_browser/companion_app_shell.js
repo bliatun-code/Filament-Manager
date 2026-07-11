@@ -493,10 +493,11 @@ export function createCompanionAppShellRenderer(options) {
     );
     const selectionCleared = selectionClearedAfterBorrowedInHandBack();
     const detailBusyLabel = detailBusyStatusLabel(selectedSpool?.spool?.id || state.selectedSpoolId);
+    const rootContentInert = Boolean(state.activeTaskSheet || state.detailOpen);
 
     return `
       <div class="companion-shell" data-layout="${escapeHtml(state.layoutMode)}">
-        <div class="shell-scaffold" data-layout="${escapeHtml(state.layoutMode)}">
+        <div class="shell-scaffold" data-layout="${escapeHtml(state.layoutMode)}"${rootContentInert ? ' inert aria-hidden="true"' : ""}>
           ${
             state.layoutMode === "desktop"
               ? renderDesktopRail({

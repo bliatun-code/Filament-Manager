@@ -5,7 +5,7 @@ import {
   isPseudoLocale,
 } from "../../../src-tauri/companion_browser/supported_locales.js";
 import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
-import { pseudoLocalizeMessage } from "../../../src-tauri/companion_browser/pseudo_locale.js";
+import { pseudoLocalizeMessageForLocale } from "../../../src-tauri/companion_browser/pseudo_locale.js";
 import {
   getCachedLocaleDictionary,
   I18nContext,
@@ -76,7 +76,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         (fallbackDictionary ? lookup(fallbackDictionary, key) : undefined);
       const template = message ?? fallback ?? key;
       return isPseudoLocale(locale)
-        ? pseudoLocalizeMessage(template, params)
+        ? pseudoLocalizeMessageForLocale(template, params, locale)
         : formatMessage(template, params, locale);
     },
     [activeDictionary, fallbackDictionary, locale],

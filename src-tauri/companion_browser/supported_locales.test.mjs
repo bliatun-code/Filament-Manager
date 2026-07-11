@@ -17,15 +17,29 @@ test("locale registry normalizes canonical, regional, underscore, and legacy ali
   assert.equal(normalizeSupportedLocale("no-NO"), "nb");
   assert.equal(normalizeSupportedLocale("en-XA"), "en-XA");
   assert.equal(normalizeSupportedLocale("en_xa"), "en-XA");
+  assert.equal(normalizeSupportedLocale("ar-XB"), "ar-XB");
+  assert.equal(normalizeSupportedLocale("ar_xb"), "ar-XB");
+  assert.equal(normalizeSupportedLocale("zh-XB"), "zh-XB");
+  assert.equal(normalizeSupportedLocale("zh_xb"), "zh-XB");
   assert.equal(normalizeSupportedLocale("de-DE"), null);
 });
 
 test("locale registry owns format, guide, and native-label metadata", () => {
-  assert.deepEqual(SUPPORTED_LOCALES.map(({ id }) => id), ["en", "nb", "en-XA"]);
+  assert.deepEqual(SUPPORTED_LOCALES.map(({ id }) => id), [
+    "en",
+    "nb",
+    "en-XA",
+    "ar-XB",
+    "zh-XB",
+  ]);
   assert.deepEqual(SELECTABLE_LOCALES.map(({ id }) => id), ["en", "nb"]);
   assert.equal(sourceLocaleFor("en-XA"), "en");
+  assert.equal(sourceLocaleFor("ar-XB"), "en");
+  assert.equal(sourceLocaleFor("zh-XB"), "en");
   assert.equal(intlLocaleFor("no"), "nb-NO");
   assert.equal(intlLocaleFor("en-XA"), "en-US");
+  assert.equal(intlLocaleFor("ar-XB"), "ar-EG");
+  assert.equal(intlLocaleFor("zh-XB"), "zh-CN");
   assert.equal(intlLocaleFor("pl_pl"), "pl-PL");
   assert.equal(guidePathForLocale("nb"), "docs/BRUKERVEILEDNING.md");
   assert.equal(guidePathForLocale("unknown"), "docs/USER_GUIDE.md");
@@ -39,4 +53,10 @@ test("locale registry applies html language and direction", () => {
 
   assert.equal(applyLocaleToDocument("en-XA", documentRef), true);
   assert.deepEqual(documentRef.documentElement, { lang: "en-XA", dir: "ltr" });
+
+  assert.equal(applyLocaleToDocument("ar-XB", documentRef), true);
+  assert.deepEqual(documentRef.documentElement, { lang: "ar-XB", dir: "rtl" });
+
+  assert.equal(applyLocaleToDocument("zh-XB", documentRef), true);
+  assert.deepEqual(documentRef.documentElement, { lang: "zh-Hans-XB", dir: "ltr" });
 });

@@ -228,10 +228,43 @@ export function validateCompanionScreenshotMetrics(metrics, minimums = {}) {
       );
     }
     if (entry.outsideElements.length > 0) {
-      errors.push(`${prefix} has ${entry.outsideElements.length} visible element(s) outside viewport`);
+      const samples = entry.outsideElements
+        .slice(0, 3)
+        .map(({ className, left, right, text }) =>
+          `${className || "unknown"} (${left}..${right}): ${text || "<no text>"}`,
+        )
+        .join("; ");
+      errors.push(
+        `${prefix} has ${entry.outsideElements.length} visible element(s) outside viewport: ${samples}`,
+      );
     }
     if (entry.textOverflow.length > 0) {
-      errors.push(`${prefix} has ${entry.textOverflow.length} obvious text overflow candidate(s)`);
+      const samples = entry.textOverflow
+        .slice(0, 3)
+        .map(({ className, text }) => `${className || "unknown"}: ${text || "<no text>"}`)
+        .join("; ");
+      errors.push(
+        `${prefix} has ${entry.textOverflow.length} obvious text overflow candidate(s): ${samples}`,
+      );
+    }
+    if (entry.accessibility?.focusableCount < 1) {
+      errors.push(`${prefix} has no visible keyboard-focusable controls`);
+    }
+    if (entry.accessibility?.unnamedFocusableCount > 0) {
+      errors.push(
+        `${prefix} has ${entry.accessibility.unnamedFocusableCount} unnamed keyboard-focusable control(s)`,
+      );
+    }
+    if (entry.keyboard?.uniqueTargets < Math.min(2, entry.accessibility?.focusableCount ?? 0)) {
+      errors.push(`${prefix} keyboard traversal did not reach at least two distinct controls`);
+    }
+    if (entry.keyboard?.unnamedTargets > 0) {
+      errors.push(`${prefix} keyboard traversal reached ${entry.keyboard.unnamedTargets} unnamed control(s)`);
+    }
+    if (entry.keyboard?.outsideViewportTargets > 0) {
+      errors.push(
+        `${prefix} keyboard traversal reached ${entry.keyboard.outsideViewportTargets} control(s) outside the viewport: ${(entry.keyboard.outsideViewportTargetNames ?? []).join(", ")}`,
+      );
     }
     if (entry.expectations?.inventory && entry.counts.listRows < minRows) {
       errors.push(`${prefix} expected inventory rows, found ${entry.counts.listRows}`);
@@ -321,6 +354,7 @@ export function formatCompanionScreenshotGateReport(result) {
     lines.push(
       `  - ${metric.name}: ${metric.viewport.width}x${metric.viewport.height}, rows ${metric.counts.listRows}, swatches ${metric.counts.swatchSurfaces}, loans ${metric.counts.loanCards}, slots ${metric.counts.slotCards}`,
       `    settings ${metric.counts.settingsCards}`,
+      `    keyboard ${metric.keyboard.uniqueTargets} targets, unnamed ${metric.accessibility.unnamedFocusableCount}`,
       `    pixels: contrast ${metric.screenshotPixels.lumaStdDev.toFixed(1)}, colors ${metric.screenshotPixels.colorBuckets}, swatch pixels ${metric.screenshotPixels.swatchSamples.visible}/${metric.screenshotPixels.swatchSamples.total}`,
       `    ${metric.screenshot}`,
     );
@@ -428,6 +462,33 @@ async function readPageMetrics(page, scenario) {
     }
 
     const bodyText = document.body?.innerText ?? "";
+    const focusableElements = Array.from(
+      document.querySelectorAll(
+        'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter((element) => visible(element) && !element.matches(":disabled"));
+    const accessibleName = (element) => {
+      const labelledBy = element.getAttribute("aria-labelledby");
+      const labelledByText = labelledBy
+        ? labelledBy
+            .split(/\s+/)
+            .map((id) => document.getElementById(id)?.textContent ?? "")
+            .join(" ")
+        : "";
+      const labelsText = Array.from(element.labels ?? [])
+        .map((label) => label.textContent ?? "")
+        .join(" ");
+      return (
+        element.getAttribute("aria-label") ||
+        labelledByText ||
+        labelsText ||
+        element.textContent ||
+        element.getAttribute("title") ||
+        element.getAttribute("placeholder") ||
+        element.getAttribute("value") ||
+        ""
+      ).trim();
+    };
     const loanReturnSubmit = document.querySelector(
       '.loan-return-task-sheet button[type="submit"], .loan-return-task-sheet input[type="submit"]',
     );
@@ -439,6 +500,12 @@ async function readPageMetrics(page, scenario) {
     const contentOverlayRect = contentOverlayElement?.getBoundingClientRect?.() ?? null;
     return {
       appChildren: document.querySelector("#app")?.children.length ?? 0,
+      accessibility: {
+        focusableCount: focusableElements.length,
+        unnamedFocusableCount: focusableElements.filter(
+          (element) => !accessibleName(element),
+        ).length,
+      },
       bodySample: bodyText.slice(0, 360),
       counts: {
         detailModals: document.querySelectorAll(".detail-modal").length,
@@ -506,6 +573,66 @@ async function readPageMetrics(page, scenario) {
       },
     };
   }, scenarioSummary);
+}
+
+export async function auditCompanionKeyboardNavigation(page, steps = 8) {
+  await page.evaluate(() => document.activeElement?.blur?.());
+  const visits = [];
+  for (let index = 0; index < steps; index += 1) {
+    await page.keyboard.press("Tab");
+    const visit = await page.evaluate(() => {
+      const element = document.activeElement;
+      if (!element || element === document.body || element === document.documentElement) {
+        return null;
+      }
+      const rect = element.getBoundingClientRect();
+      const labelledBy = element.getAttribute("aria-labelledby");
+      const labelledByText = labelledBy
+        ? labelledBy
+            .split(/\s+/)
+            .map((id) => document.getElementById(id)?.textContent ?? "")
+            .join(" ")
+        : "";
+      const labelsText = Array.from(element.labels ?? [])
+        .map((label) => label.textContent ?? "")
+        .join(" ");
+      const name = (
+        element.getAttribute("aria-label") ||
+        labelledByText ||
+        labelsText ||
+        element.textContent ||
+        element.getAttribute("title") ||
+        element.getAttribute("placeholder") ||
+        element.getAttribute("value") ||
+        ""
+      ).trim();
+      return {
+        name,
+        outsideViewport:
+          rect.bottom < 0 ||
+          rect.right < 0 ||
+          rect.left > window.innerWidth ||
+          rect.top > window.innerHeight,
+        target:
+          element.id ||
+          element.getAttribute("data-action") ||
+          element.getAttribute("name") ||
+          `${element.tagName.toLowerCase()}:${String(element.className || "").slice(0, 80)}`,
+      };
+    });
+    if (visit) {
+      visits.push(visit);
+    }
+  }
+  return {
+    outsideViewportTargets: visits.filter(({ outsideViewport }) => outsideViewport).length,
+    outsideViewportTargetNames: visits
+      .filter(({ outsideViewport }) => outsideViewport)
+      .map(({ name, target }) => name || target),
+    uniqueTargets: new Set(visits.map(({ target }) => target)).size,
+    unnamedTargets: visits.filter(({ name }) => !name).length,
+    visits: visits.length,
+  };
 }
 
 async function chooseFirstNonBambuOption(locator) {
@@ -629,8 +756,10 @@ async function runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, opt
     const metrics = await readPageMetrics(page, scenario);
     const path = screenshotPath(outputDir, scenario.name);
     const screenshotBuffer = await page.screenshot({ path, fullPage: false });
+    const keyboard = await auditCompanionKeyboardNavigation(page);
     return {
       ...metrics,
+      keyboard,
       screenshot: path,
       screenshotPixels: measureCompanionScreenshotPixels(screenshotBuffer, metrics.swatchSamples),
     };

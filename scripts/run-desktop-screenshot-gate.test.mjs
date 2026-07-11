@@ -216,6 +216,8 @@ test("desktop screenshot gate normalizes screenshot locale overrides", () => {
   assert.equal(normalizeVisualQaLocale("en-US"), "en");
   assert.equal(normalizeVisualQaLocale("en-GB"), "en");
   assert.equal(normalizeVisualQaLocale("en-XA"), "en-XA");
+  assert.equal(normalizeVisualQaLocale("ar-XB"), "ar-XB");
+  assert.equal(normalizeVisualQaLocale("zh-XB"), "zh-XB");
   assert.equal(normalizeVisualQaLocale(""), "en");
   assert.equal(normalizeVisualQaLocale("bad"), "en");
 });
@@ -416,6 +418,12 @@ test("desktop screenshot gate maps scenario aliases to localized window titles",
   assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "nb"), ["Lager"]);
   assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "en-XA"), [
     "⟦Îñṽ·éñţ·öŕý·⟧",
+  ]);
+  assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "ar-XB"), [
+    "⟦\u2067Îñṽ·éñţ·öŕý·\u2069⟧",
+  ]);
+  assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "zh-XB"), [
+    "【已內值頁內態項入有】",
   ]);
   assert.deepEqual(desktopVisualQaExpectedWindowTitles(null, "en"), []);
   assert.equal(

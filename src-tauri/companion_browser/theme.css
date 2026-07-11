@@ -1,6 +1,7 @@
 :root {
   color-scheme: light;
-  font-family: Inter, "Segoe UI", sans-serif;
+  font-family: Inter, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Noto Sans CJK SC", sans-serif;
   --bg-top: #f7fbff;
   --bg-bottom: #e2edf8;
   --bg-glow-primary: rgba(255, 255, 255, 0.62);

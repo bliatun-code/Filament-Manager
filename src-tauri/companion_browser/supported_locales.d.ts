@@ -10,6 +10,7 @@ export type SupportedLocaleDefinition = Readonly<{
   selectable: boolean;
   catalogKind: "source" | "generated";
   generatedFrom: string | null;
+  pseudoMode: "accented" | "rtl" | "cjk" | null;
   guidePath: string;
   selectionMessageKey: string;
   companionSelectionMessageKey: string;
@@ -28,6 +29,7 @@ export function normalizeSupportedLocale(
 ): string | null;
 export function sourceLocaleFor(value: unknown): string;
 export function isPseudoLocale(value: unknown): boolean;
+export function pseudoModeFor(value: unknown): "accented" | "rtl" | "cjk" | null;
 export function intlLocaleFor(value: unknown): string;
 export function guidePathForLocale(value: unknown): string;
 export function applyLocaleToDocument(value: unknown, documentRef: Document): boolean;

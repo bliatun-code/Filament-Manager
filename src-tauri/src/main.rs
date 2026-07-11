@@ -438,6 +438,8 @@ fn normalize_visual_qa_locale(value: &str) -> &'static str {
     match value.trim().to_ascii_lowercase().as_str() {
         "nb" | "no" | "nb-no" => "nb",
         "en-xa" | "en_xa" => "en-XA",
+        "ar-xb" | "ar_xb" => "ar-XB",
+        "zh-xb" | "zh_xb" => "zh-XB",
         _ => "en",
     }
 }
