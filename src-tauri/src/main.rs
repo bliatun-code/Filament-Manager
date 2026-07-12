@@ -446,6 +446,7 @@ fn normalize_visual_qa_locale(value: &str) -> &'static str {
         "pt-br" | "pt_br" => "pt-BR",
         "it" | "it-it" | "it_it" => "it-IT",
         "pl" | "pl-pl" | "pl_pl" => "pl-PL",
+        "nl" | "nl-nl" | "nl_nl" => "nl-NL",
         _ => "en",
     }
 }

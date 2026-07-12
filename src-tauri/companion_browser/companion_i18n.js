@@ -4988,6 +4988,7 @@ const dictionaries = {
     "title": "Przeglądarka Companion w Trusted-LAN"
   }
 },
+  "nl-NL": {},
 };
 
 function lookup(dictionary, key) {
