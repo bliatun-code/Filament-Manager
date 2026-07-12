@@ -124,6 +124,12 @@ test("resolveInitialLocale accepts hidden Dutch only through a QA URL", () => {
   assert.equal(locale, "nl-NL");
 });
 
+test("resolveInitialLocale accepts hidden Czech only through a QA URL", () => {
+  const windowRef = { location: { search: "?bfm_locale=cs-CZ" } };
+  const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
+  assert.equal(locale, "cs-CZ");
+});
+
 test("locale dictionaries lazy-load and cache supported locales", async () => {
   const enDictionary = await loadLocaleDictionary("en");
 
@@ -382,6 +388,17 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(dutchDictionary, "printers.showSlots"), "Slots tonen");
   assert.equal(lookup(dutchDictionary, "statistics.perPrinter"), "Verbruik per printer");
   assert.equal(getCachedLocaleDictionary("nl-NL"), dutchDictionary);
+
+  const czechDictionary = await loadLocaleDictionary("cs-CZ");
+  assert.equal(lookup(czechDictionary, "nav.inventory"), "Sklad");
+  assert.equal(lookup(czechDictionary, "common.cancel"), "Zrušit");
+  assert.equal(lookup(czechDictionary, "dashboard.totalSpools"), "Celkem rolí");
+  assert.equal(lookup(czechDictionary, "inventory.title"), "Role");
+  assert.equal(lookup(czechDictionary, "wishlist.statusOnOrder"), "Objednáno");
+  assert.equal(lookup(czechDictionary, "inventory.bambuBatchCameraAction"), "Použijte webovou kameru");
+  assert.equal(lookup(czechDictionary, "printers.showSlots"), "Zobrazit sloty");
+  assert.equal(lookup(czechDictionary, "statistics.perPrinter"), "Spotřeba podle tiskárny");
+  assert.equal(getCachedLocaleDictionary("cs-CZ"), czechDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {

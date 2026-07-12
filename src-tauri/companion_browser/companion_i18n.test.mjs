@@ -198,6 +198,16 @@ test("complete Dutch draft translates shell and workflow copy", () => {
   assert.equal(t("nl-NL", "detail.saveWeight"), "Gewicht opslaan");
 });
 
+test("complete Czech draft translates shell and plural workflow copy", () => {
+  assert.equal(t("cs-CZ", "nav.storage"), "Sklad");
+  assert.equal(t("cs-CZ", "settings.title"), "Nastavení");
+  assert.equal(t("cs-CZ", "nav.spoolCount", "", { count: 1 }), "1 cívka");
+  assert.equal(t("cs-CZ", "nav.spoolCount", "", { count: 2 }), "2 cívky");
+  assert.equal(t("cs-CZ", "nav.spoolCount", "", { count: 5 }), "5 cívek");
+  assert.equal(t("cs-CZ", "printers.toolhead"), "Nástrojová hlava");
+  assert.equal(t("cs-CZ", "detail.saveWeight"), "Uložit hmotnost");
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {
