@@ -114,12 +114,13 @@ test("French locale applies French zero, one, and other plural categories", () =
   assert.equal(t("fr", "nav.spoolCount", "", { count: 2 }), "2 bobines");
 });
 
-test("Spanish draft translates the shell and falls back to English", () => {
+test("complete Spanish draft translates shell and workflow copy", () => {
   assert.equal(t("es", "nav.storage"), "Inventario");
   assert.equal(t("es", "settings.title"), "Ajustes");
   assert.equal(t("es", "nav.spoolCount", "", { count: 1 }), "1 bobina");
   assert.equal(t("es", "nav.spoolCount", "", { count: 2 }), "2 bobinas");
   assert.equal(t("es", "printers.toolhead"), "Cabezal");
+  assert.equal(t("es", "status.qrLookupFailed"), "No se pudo abrir el enlace de la bobina.");
   assert.equal(t("es", "storage.addFilament"), "Añadir filamento");
   assert.equal(t("es", "loans.completeReturn"), "Completar devolución");
   assert.equal(t("es", "detail.saveWeight"), "Guardar peso");

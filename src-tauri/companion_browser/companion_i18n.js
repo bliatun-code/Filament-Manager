@@ -31,7 +31,8 @@ const dictionaries = {
       notFound: "The requested record was not found.",
       internal: "Something went wrong. Try again.",
       spoolActiveLoan: "Return the active loan before removing this roll.",
-      loadedSpoolEditBlocked: "Use the printer-slot actions to edit a loaded roll.",
+      loadedSpoolEditBlocked:
+        "Use the printer-slot actions to edit a loaded roll.",
       loanedSpoolEditBlocked:
         "Return the loan before editing this roll's status or location.",
       spoolStatusEditLimited:
@@ -80,10 +81,12 @@ const dictionaries = {
       openingNamedSpool: "Opening {noun} {id}...",
       openingNoun: "Opening {noun}...",
       loanSelectSpool: "Select a spool from inventory before creating a loan.",
-      loanBorrowedInBlocked: "Borrowed-in spools cannot be loaned out from the browser companion.",
+      loanBorrowedInBlocked:
+        "Borrowed-in spools cannot be loaned out from the browser companion.",
       loanAlreadyLoanedOut: "This spool is already loaned out.",
       loanEmptyOrLostBlocked: "Empty or lost spools cannot be loaned out here.",
-      loanInUseBlocked: "Spools that are loaded in printer slots cannot be loaned out.",
+      loanInUseBlocked:
+        "Spools that are loaded in printer slots cannot be loaned out.",
     },
     recovery: {
       selectSuggested: "Select suggested spool",
@@ -100,7 +103,8 @@ const dictionaries = {
       openingFromSource: "Opening from {source}",
       recoveryInSection: "Recovery in {section}",
       openingSpoolFromSourceNow: "Opening {spool} from {source} now.",
-      openingSuggestedFromSourceNow: "Opening the suggested spool from {source} now.",
+      openingSuggestedFromSourceNow:
+        "Opening the suggested spool from {source} now.",
       openingSpoolNow: "Opening {spool} now",
       openingFromSourceNow: "Opening from {source} now",
       openingSpoolShort: "Opening {spool}",
@@ -118,7 +122,8 @@ const dictionaries = {
       stockEntry: "Stock entry",
       selectionPreview: "Selection preview",
       addSpool: "Add spool",
-      addSpoolDetail: "Add this selection directly to stock, either as owned or borrowed-in.",
+      addSpoolDetail:
+        "Add this selection directly to stock, either as owned or borrowed-in.",
       addSpoolToInventory: "Add spool to inventory",
       borrowedInAction: "Borrowed-in",
       owned: "Owned",
@@ -150,7 +155,8 @@ const dictionaries = {
       ownerContactPlaceholder: "Phone, email, or handle",
       optionalDetails: "Optional details",
       optionalDetailsMeta: "Vendor, swatch, location",
-      optionalDetailsBorrowedMeta: "Owner contact, vendor, swatch, location, note",
+      optionalDetailsBorrowedMeta:
+        "Owner contact, vendor, swatch, location, note",
       swatch: "Swatch",
       locationOptional: "Location (optional)",
       locationPlaceholder: "Shelf, bin, drawer, cart...",
@@ -182,7 +188,8 @@ const dictionaries = {
       openSpool: "Open spool",
       noMatch: "No local spools matched the current search.",
       hiddenSelectedTitle: "Selected spool hidden",
-      hiddenSelectedBody: "{title} stays selected for detail, slots, and loans.",
+      hiddenSelectedBody:
+        "{title} stays selected for detail, slots, and loans.",
       clearSearch: "Clear search",
     },
     loans: {
@@ -190,7 +197,8 @@ const dictionaries = {
       subtitle: "Track loans and finish returns.",
       searchPlaceholder: "Search borrower, note, filament, or reference",
       filterAria: "Loan status filters",
-      loanPickerHelp: "Choose a spool to lend out. Loaning is completed when outgoing weight is saved.",
+      loanPickerHelp:
+        "Choose a spool to lend out. Loaning is completed when outgoing weight is saved.",
       activeOnly: "Active only",
       returnedOnly: "Returned only",
       allLoans: "All loans",
@@ -200,7 +208,8 @@ const dictionaries = {
       showAll: "Show all loans",
       noMatch: "No loans match this search or filter.",
       noEligibleSpools: "No spools are currently available for outbound loan.",
-      hiddenSelectedMessage: "{title} stays selected for detail and loan actions.",
+      hiddenSelectedMessage:
+        "{title} stays selected for detail and loan actions.",
       openSpool: "Open spool",
       returnLoan: "Return loan",
       active: "Active",
@@ -211,7 +220,8 @@ const dictionaries = {
       lentAt: "Lent {date}",
       borrowedFrom: "Borrowed from {name}",
       hiddenSelectedTitle: "Selected spool hidden",
-      hiddenSelectedBody: "{title} still has loan rows. Clear filters to see them here.",
+      hiddenSelectedBody:
+        "{title} still has loan rows. Clear filters to see them here.",
       loanNote: "Loan note:",
       returnNote: "Return note:",
       unavailable: "This loan is no longer available.",
@@ -296,7 +306,8 @@ const dictionaries = {
       appearance: "Appearance",
       appearanceHelp: "Pick how the companion looks.",
       language: "Language",
-      languageHelp: "Choose browser shell language. More browser copy will keep improving from here.",
+      languageHelp:
+        "Choose browser shell language. More browser copy will keep improving from here.",
       norwegian: "Norwegian",
       english: "English",
       themeMode: "Theme mode",
@@ -334,8 +345,7 @@ const dictionaries = {
     },
     trustedLan: {
       title: "Trusted-LAN browser companion",
-      copy:
-        "This browser is using the trusted-LAN companion path. Open a pairing link from desktop Settings to approve this browser. Trusted-LAN traffic is not encrypted, so only use it on a network you trust.",
+      copy: "This browser is using the trusted-LAN companion path. Open a pairing link from desktop Settings to approve this browser. Trusted-LAN traffic is not encrypted, so only use it on a network you trust.",
       pairingHint:
         "Desktop Settings creates short-lived, single-use pairing links for human browser access.",
       awaiting: "Waiting for a trusted-LAN pairing link.",
@@ -400,24 +410,29 @@ const dictionaries = {
       printerSlotFailed: "Failed to update printer slot.",
       loanSelectSpool: "Select a spool before creating a loan.",
       loanBorrowerRequired: "Enter a borrower name before creating a loan.",
-      loanOutgoingWeightInvalid: "Enter a valid non-negative outgoing weight in grams.",
+      loanOutgoingWeightInvalid:
+        "Enter a valid non-negative outgoing weight in grams.",
       loanCreating: "Creating outbound loan...",
       loanCreated: "Outbound loan created.",
       loanCreatedJustNow: "Outbound loan created just now.",
       loanCreateFailed: "Failed to create outbound loan.",
       loanReturnSelectActive: "Select an active loan before returning it.",
-      loanReturnWeightInvalid: "Enter a valid non-negative returned weight in grams.",
+      loanReturnWeightInvalid:
+        "Enter a valid non-negative returned weight in grams.",
       loanReturning: "Returning outbound loan...",
       loanReturned: "Outbound loan returned.",
       loanReturnedJustNow: "Outbound loan returned just now.",
       loanReturnFailed: "Failed to return outbound loan.",
       stockCatalogRequired: "Choose a catalog filament before adding stock.",
       manualMaterialRequired: "Enter a material before adding a manual spool.",
-      manualFilamentRequired: "Enter a filament name before adding a manual spool.",
+      manualFilamentRequired:
+        "Enter a filament name before adding a manual spool.",
       manualColorRequired: "Enter a color before adding a manual spool.",
-      borrowedInOwnerRequired: "Enter who the borrowed-in spool is borrowed from.",
+      borrowedInOwnerRequired:
+        "Enter who the borrowed-in spool is borrowed from.",
       swatchHexInvalid: "Enter a valid swatch hex with #RGB or #RRGGBB.",
-      startingWeightInvalid: "Enter a valid non-negative starting weight in grams.",
+      startingWeightInvalid:
+        "Enter a valid non-negative starting weight in grams.",
       borrowedInRegistering: "Registering borrowed-in spool...",
       stockAdding: "Adding spool to inventory...",
       borrowedInRegistered: "Borrowed-in spool registered.",
@@ -426,12 +441,15 @@ const dictionaries = {
       stockAddedJustNow: "Spool added to inventory just now.",
       borrowedInRegisterFailed: "Failed to register borrowed-in spool.",
       stockAddFailed: "Failed to add spool to inventory.",
-      wishlistCatalogRequired: "Choose a catalog filament before adding it to wishlist.",
-      wishlistManualIncomplete: "Finish the manual filament details before adding to wishlist.",
+      wishlistCatalogRequired:
+        "Choose a catalog filament before adding it to wishlist.",
+      wishlistManualIncomplete:
+        "Finish the manual filament details before adding to wishlist.",
       wishlistAdding: "Adding filament to wishlist...",
       wishlistAdded: "Wishlist item added.",
       wishlistAddFailed: "Failed to add wishlist item.",
-      wishlistSelectBeforeStatus: "Choose a wishlist item before changing its status.",
+      wishlistSelectBeforeStatus:
+        "Choose a wishlist item before changing its status.",
       wishlistStatusInvalid: "Choose a valid wishlist status.",
       wishlistStatusUpdating: "Updating wishlist status...",
       wishlistStatusUpdated: "Wishlist status updated.",
@@ -450,7 +468,8 @@ const dictionaries = {
       qrLookupMissingSpoolId: "Spool link returned no spool id",
       qrLookupMatched: "Spool link opened.",
       qrLookupFailed: "Failed to open spool link.",
-      borrowedInSelectBeforeUpdate: "Select a borrowed-in spool before updating its details.",
+      borrowedInSelectBeforeUpdate:
+        "Select a borrowed-in spool before updating its details.",
       borrowedInSaving: "Saving borrowed-in details...",
       borrowedInUpdated: "Borrowed-in details updated.",
       borrowedInUpdatedJustNow: "Borrowed-in details updated just now.",
@@ -477,8 +496,10 @@ const dictionaries = {
       rfidCandidateAlreadyRegistered: "This roll already has an RFID saved.",
       rfidLiveCandidateStale:
         "Refresh Companion data; the live slot identity changed before RFID could be saved.",
-      borrowedInHandBackSelectActive: "Select an active borrowed-in loan before handing it back.",
-      borrowedInHandBackWeightInvalid: "Enter a valid non-negative handed-back weight in grams.",
+      borrowedInHandBackSelectActive:
+        "Select an active borrowed-in loan before handing it back.",
+      borrowedInHandBackWeightInvalid:
+        "Enter a valid non-negative handed-back weight in grams.",
       borrowedInHandingBack: "Handing back borrowed-in spool...",
       borrowedInHandedBack: "Borrowed-in spool handed back.",
       borrowedInHandBackFailed: "Failed to hand back borrowed-in spool.",
@@ -490,7 +511,8 @@ const dictionaries = {
       noSelection: "No selection",
       noSelectedSpool: "No selected spool",
       selectSpool: "Select a spool",
-      selectSpoolHint: "Choose a spool from Inventory, Loans, or Printers to inspect it here.",
+      selectSpoolHint:
+        "Choose a spool from Inventory, Loans, or Printers to inspect it here.",
       borrowedInRemovedHint:
         "The last borrowed-in spool was removed from inventory after hand-back. Pick another spool from Inventory to continue.",
       loan: "Loan",
@@ -531,7 +553,8 @@ const dictionaries = {
       handBackNoteOptional: "Hand-back note (optional)",
       handBackPlaceholder: "Condition or hand-back note",
       handBackSpool: "Hand back spool",
-      noBorrowedRecord: "No active borrowed-in record was found for this spool.",
+      noBorrowedRecord:
+        "No active borrowed-in record was found for this spool.",
       counterparty: "Counterparty",
       lentOut: "Lent out",
       lentAt: "Lent at",
@@ -539,14 +562,16 @@ const dictionaries = {
       returnedMeasuredWeight: "Returned total weight incl. spool (g)",
       returnNoteOptional: "Return note (optional)",
       returnPlaceholder: "Condition or return note",
-      useBorrowedInSection: "Hand back this borrowed-in spool from the borrowed-in section above.",
+      useBorrowedInSection:
+        "Hand back this borrowed-in spool from the borrowed-in section above.",
       borrowerName: "Borrower name",
       borrowerPlaceholder: "Who is taking this spool?",
       outgoingWeight: "Outgoing weight (g)",
       outgoingMeasuredWeight: "Outgoing total weight incl. spool (g)",
       loanNoteOptional: "Loan note (optional)",
       loanNotePlaceholder: "Project or return timing",
-      loadedInSlot: "Loaded in slot {slot} on {printer}. Creating the loan will clear that slot.",
+      loadedInSlot:
+        "Loaded in slot {slot} on {printer}. Creating the loan will clear that slot.",
       noUsage: "No usage points recorded yet.",
       unknownSource: "Unknown source",
       usageSourceManual: "Manual",
@@ -611,8 +636,10 @@ const dictionaries = {
       forbidden: "Denne handlingen er ikke tillatt.",
       notFound: "Den forespurte posten ble ikke funnet.",
       internal: "Noe gikk galt. Prøv igjen.",
-      spoolActiveLoan: "Returner det aktive utlånet før du fjerner denne rullen.",
-      loadedSpoolEditBlocked: "Bruk printersporthandlingene for å redigere en lastet rull.",
+      spoolActiveLoan:
+        "Returner det aktive utlånet før du fjerner denne rullen.",
+      loadedSpoolEditBlocked:
+        "Bruk printersporthandlingene for å redigere en lastet rull.",
       loanedSpoolEditBlocked:
         "Returner utlånet før du redigerer status eller plassering for denne rullen.",
       spoolStatusEditLimited:
@@ -661,10 +688,12 @@ const dictionaries = {
       openingNamedSpool: "Åpner {noun} {id}...",
       openingNoun: "Åpner {noun}...",
       loanSelectSpool: "Velg en spole fra lager før du oppretter et utlån.",
-      loanBorrowedInBlocked: "Innlånte spoler kan ikke lånes ut fra nettleserkompanjongen.",
+      loanBorrowedInBlocked:
+        "Innlånte spoler kan ikke lånes ut fra nettleserkompanjongen.",
       loanAlreadyLoanedOut: "Denne spolen er allerede utlånt.",
       loanEmptyOrLostBlocked: "Tomme eller tapte spoler kan ikke lånes ut her.",
-      loanInUseBlocked: "Filamenter som er lastet i printerspor, kan ikke lånes ut.",
+      loanInUseBlocked:
+        "Filamenter som er lastet i printerspor, kan ikke lånes ut.",
     },
     recovery: {
       selectSuggested: "Velg foreslått spole",
@@ -681,7 +710,8 @@ const dictionaries = {
       openingFromSource: "Åpner fra {source}",
       recoveryInSection: "Gjenoppretting i {section}",
       openingSpoolFromSourceNow: "Åpner {spool} fra {source} nå.",
-      openingSuggestedFromSourceNow: "Åpner den foreslåtte spolen fra {source} nå.",
+      openingSuggestedFromSourceNow:
+        "Åpner den foreslåtte spolen fra {source} nå.",
       openingSpoolNow: "Åpner {spool} nå",
       openingFromSourceNow: "Åpner fra {source} nå",
       openingSpoolShort: "Åpner {spool}",
@@ -699,7 +729,8 @@ const dictionaries = {
       stockEntry: "Lagerføring",
       selectionPreview: "Forhåndsvisning",
       addSpool: "Legg til spole",
-      addSpoolDetail: "Legg dette valget direkte i lager, enten som eid eller innlånt.",
+      addSpoolDetail:
+        "Legg dette valget direkte i lager, enten som eid eller innlånt.",
       addSpoolToInventory: "Legg spole i lager",
       borrowedInAction: "Innlånt",
       owned: "Eid",
@@ -713,7 +744,8 @@ const dictionaries = {
       selected: "Valgt",
       chooseCatalogRow: "Velg katalograd",
       discontinued: "Utgått",
-      noCatalogMatches: "Ingen katalogoppføringer matcher dette leverandørfilteret.",
+      noCatalogMatches:
+        "Ingen katalogoppføringer matcher dette leverandørfilteret.",
       material: "Materiale",
       materialPlaceholder: "PLA, PETG, TPU...",
       filament: "Filament",
@@ -731,7 +763,8 @@ const dictionaries = {
       ownerContactPlaceholder: "Telefon, e-post eller brukernavn",
       optionalDetails: "Valgfrie detaljer",
       optionalDetailsMeta: "Leverandør, swatch, plassering",
-      optionalDetailsBorrowedMeta: "Eierkontakt, leverandør, swatch, plassering, notat",
+      optionalDetailsBorrowedMeta:
+        "Eierkontakt, leverandør, swatch, plassering, notat",
       swatch: "Swatch",
       locationOptional: "Plassering (valgfritt)",
       locationPlaceholder: "Hylle, boks, skuff, tralle...",
@@ -763,7 +796,8 @@ const dictionaries = {
       openSpool: "Åpne filament",
       noMatch: "Ingen lokale filamenter matchet dette søket.",
       hiddenSelectedTitle: "Valgt spole er skjult",
-      hiddenSelectedBody: "{title} forblir valgt for detaljer, printerspor og utlån.",
+      hiddenSelectedBody:
+        "{title} forblir valgt for detaljer, printerspor og utlån.",
       clearSearch: "Tøm søk",
     },
     loans: {
@@ -771,7 +805,8 @@ const dictionaries = {
       subtitle: "Følg utlån og fullfør returer.",
       searchPlaceholder: "Søk på låner, notat, filament eller referanse",
       filterAria: "Utlånsfiltre",
-      loanPickerHelp: "Velg en spole som skal lånes ut. Utlånet fullføres når utgående vekt lagres.",
+      loanPickerHelp:
+        "Velg en spole som skal lånes ut. Utlånet fullføres når utgående vekt lagres.",
       activeOnly: "Bare aktive",
       returnedOnly: "Bare returnerte",
       allLoans: "Alle utlån",
@@ -781,7 +816,8 @@ const dictionaries = {
       showAll: "Vis alle utlån",
       noMatch: "Ingen utlån matcher dette søket eller filteret.",
       noEligibleSpools: "Ingen spoler er tilgjengelige for utlån akkurat nå.",
-      hiddenSelectedMessage: "{title} forblir valgt for detaljer og utlånshandlinger.",
+      hiddenSelectedMessage:
+        "{title} forblir valgt for detaljer og utlånshandlinger.",
       openSpool: "Åpne filament",
       returnLoan: "Registrer retur",
       active: "Aktiv",
@@ -792,7 +828,8 @@ const dictionaries = {
       lentAt: "Lånt ut {date}",
       borrowedFrom: "Lånt fra {name}",
       hiddenSelectedTitle: "Valgt spole er skjult",
-      hiddenSelectedBody: "{title} har fortsatt utlånsrader. Fjern filtrene for å se dem her.",
+      hiddenSelectedBody:
+        "{title} har fortsatt utlånsrader. Fjern filtrene for å se dem her.",
       loanNote: "Utlånsnotat:",
       returnNote: "Returnotat:",
       unavailable: "Dette utlånet er ikke lenger tilgjengelig.",
@@ -905,7 +942,8 @@ const dictionaries = {
       printerCount: "{count, plural, one {# printer} other {# printere}}",
       activeLoanCount:
         "{count, plural, one {# aktivt utlån} other {# aktive utlån}}",
-      desktopInCharge: "Desktop-appen og SQLite er fortsatt kilden til sannhet.",
+      desktopInCharge:
+        "Desktop-appen og SQLite er fortsatt kilden til sannhet.",
       trustedLanDesktopInCharge:
         "Desktop-appen og SQLite er fortsatt kilden til sannhet. Trusted-LAN-tilgang styres fortsatt fra desktop og er ikke kryptert på nettverket.",
       license: "Lisens",
@@ -916,8 +954,7 @@ const dictionaries = {
     },
     trustedLan: {
       title: "Trusted-LAN-nettleserkompanjong",
-      copy:
-        "Denne nettleseren bruker trusted-LAN-kompanjongstien. Åpne en parringlenke fra desktop-innstillinger for å godkjenne denne nettleseren. Trusted-LAN-trafikk er ikke kryptert, så bruk dette bare på et nettverk du stoler på.",
+      copy: "Denne nettleseren bruker trusted-LAN-kompanjongstien. Åpne en parringlenke fra desktop-innstillinger for å godkjenne denne nettleseren. Trusted-LAN-trafikk er ikke kryptert, så bruk dette bare på et nettverk du stoler på.",
       pairingHint:
         "Desktop-innstillinger lager kortvarige engangslenker for menneskelig nettlesertilgang.",
       awaiting: "Venter på en trusted-LAN-parringlenke.",
@@ -978,28 +1015,35 @@ const dictionaries = {
       clearedFromSlotJustNow: "Tømt fra {label} nettopp.",
       updatingPrinterSlot: "Oppdaterer printerspor...",
       clearingPrinterSlot: "Tømmer printerspor...",
-      printerSlotRequired: "Printer og spor må være valgt for å oppdatere sporet.",
+      printerSlotRequired:
+        "Printer og spor må være valgt for å oppdatere sporet.",
       printerSlotFailed: "Kunne ikke oppdatere printersporet.",
       loanSelectSpool: "Velg en spole før du oppretter et utlån.",
       loanBorrowerRequired: "Skriv inn navn på låner før du oppretter utlån.",
-      loanOutgoingWeightInvalid: "Skriv inn en gyldig ikke-negativ utgående vekt i gram.",
+      loanOutgoingWeightInvalid:
+        "Skriv inn en gyldig ikke-negativ utgående vekt i gram.",
       loanCreating: "Oppretter utlån...",
       loanCreated: "Utlån opprettet.",
       loanCreatedJustNow: "Utlån opprettet nettopp.",
       loanCreateFailed: "Kunne ikke opprette utlån.",
       loanReturnSelectActive: "Velg et aktivt utlån før du registrerer retur.",
-      loanReturnWeightInvalid: "Skriv inn en gyldig ikke-negativ returnert vekt i gram.",
+      loanReturnWeightInvalid:
+        "Skriv inn en gyldig ikke-negativ returnert vekt i gram.",
       loanReturning: "Registrerer retur...",
       loanReturned: "Utlån returnert.",
       loanReturnedJustNow: "Utlån returnert nettopp.",
       loanReturnFailed: "Kunne ikke registrere retur av utlån.",
       stockCatalogRequired: "Velg et katalogfilament før lagerføring.",
-      manualMaterialRequired: "Skriv inn materiale før du legger til manuell spole.",
-      manualFilamentRequired: "Skriv inn filamentnavn før du legger til manuell spole.",
+      manualMaterialRequired:
+        "Skriv inn materiale før du legger til manuell spole.",
+      manualFilamentRequired:
+        "Skriv inn filamentnavn før du legger til manuell spole.",
       manualColorRequired: "Skriv inn farge før du legger til manuell spole.",
-      borrowedInOwnerRequired: "Skriv inn hvem den innlånte spolen er lånt fra.",
+      borrowedInOwnerRequired:
+        "Skriv inn hvem den innlånte spolen er lånt fra.",
       swatchHexInvalid: "Skriv inn gyldig swatch-hex med #RGB eller #RRGGBB.",
-      startingWeightInvalid: "Skriv inn en gyldig ikke-negativ startvekt i gram.",
+      startingWeightInvalid:
+        "Skriv inn en gyldig ikke-negativ startvekt i gram.",
       borrowedInRegistering: "Registrerer innlånt spole...",
       stockAdding: "Legger spole til i lager...",
       borrowedInRegistered: "Innlånt spole registrert.",
@@ -1008,12 +1052,15 @@ const dictionaries = {
       stockAddedJustNow: "Spole lagt til i lager nettopp.",
       borrowedInRegisterFailed: "Kunne ikke registrere innlånt spole.",
       stockAddFailed: "Kunne ikke legge spole til i lager.",
-      wishlistCatalogRequired: "Velg et katalogfilament før du legger det til i ønskelisten.",
-      wishlistManualIncomplete: "Fullfør manuelle filamentdetaljer før du legger til i ønskeliste.",
+      wishlistCatalogRequired:
+        "Velg et katalogfilament før du legger det til i ønskelisten.",
+      wishlistManualIncomplete:
+        "Fullfør manuelle filamentdetaljer før du legger til i ønskeliste.",
       wishlistAdding: "Legger filament i ønskeliste...",
       wishlistAdded: "Ønskelistepost lagt til.",
       wishlistAddFailed: "Kunne ikke legge til ønskelistepost.",
-      wishlistSelectBeforeStatus: "Velg en ønskelistepost før du endrer status.",
+      wishlistSelectBeforeStatus:
+        "Velg en ønskelistepost før du endrer status.",
       wishlistStatusInvalid: "Velg en gyldig ønskelistestatus.",
       wishlistStatusUpdating: "Oppdaterer ønskelistestatus...",
       wishlistStatusUpdated: "Ønskelistestatus oppdatert.",
@@ -1032,11 +1079,13 @@ const dictionaries = {
       qrLookupMissingSpoolId: "Filamentlenken returnerte ingen spool-id",
       qrLookupMatched: "Filamentlenke åpnet.",
       qrLookupFailed: "Kunne ikke åpne filamentlenke.",
-      borrowedInSelectBeforeUpdate: "Velg en innlånt spole før du oppdaterer detaljer.",
+      borrowedInSelectBeforeUpdate:
+        "Velg en innlånt spole før du oppdaterer detaljer.",
       borrowedInSaving: "Lagrer detaljer for innlånt spole...",
       borrowedInUpdated: "Detaljer for innlånt spole oppdatert.",
       borrowedInUpdatedJustNow: "Detaljer for innlånt spole oppdatert nettopp.",
-      borrowedInUpdateFailed: "Kunne ikke oppdatere detaljer for innlånt spole.",
+      borrowedInUpdateFailed:
+        "Kunne ikke oppdatere detaljer for innlånt spole.",
       selectSpoolBeforeEdit: "Velg en spole før du redigerer detaljer.",
       invalidDetailStatus: "Velg en gyldig status før du lagrer detaljer.",
       savingSpoolDetails: "Lagrer spoledetaljer...",
@@ -1055,12 +1104,15 @@ const dictionaries = {
       rfidSaved: "RFID lagret.",
       rfidSavedJustNow: "RFID lagret nettopp.",
       rfidSaveFailed: "Kunne ikke lagre RFID.",
-      rfidCaptureNothingToSave: "Ingen observert RFID var tilgjengelig å lagre.",
+      rfidCaptureNothingToSave:
+        "Ingen observert RFID var tilgjengelig å lagre.",
       rfidCandidateAlreadyRegistered: "Denne spolen har allerede lagret RFID.",
       rfidLiveCandidateStale:
         "Oppdater kompanjongdata; live-identiteten i sporet endret seg før RFID kunne lagres.",
-      borrowedInHandBackSelectActive: "Velg et aktivt innlån før tilbakelevering.",
-      borrowedInHandBackWeightInvalid: "Skriv inn en gyldig ikke-negativ tilbakelevert vekt i gram.",
+      borrowedInHandBackSelectActive:
+        "Velg et aktivt innlån før tilbakelevering.",
+      borrowedInHandBackWeightInvalid:
+        "Skriv inn en gyldig ikke-negativ tilbakelevert vekt i gram.",
       borrowedInHandingBack: "Tilbakeleverer innlånt spole...",
       borrowedInHandedBack: "Innlånt spole tilbakelevert.",
       borrowedInHandBackFailed: "Kunne ikke tilbakelevere innlånt spole.",
@@ -1072,7 +1124,8 @@ const dictionaries = {
       noSelection: "Ingen valgt",
       noSelectedSpool: "Ingen valgt spole",
       selectSpool: "Velg en spole",
-      selectSpoolHint: "Velg en spole fra Lager, Utlån eller Printere for å se detaljer her.",
+      selectSpoolHint:
+        "Velg en spole fra Lager, Utlån eller Printere for å se detaljer her.",
       borrowedInRemovedHint:
         "Den sist innlånte spolen ble fjernet fra lager etter tilbakelevering. Velg en annen spole fra Lager for å fortsette.",
       loan: "Utlån",
@@ -1090,7 +1143,8 @@ const dictionaries = {
       saveEmptySpoolWeight: "Lagre rullens tomvekt",
       details: "Detaljer",
       qrPreview: "QR-kode",
-      qrPreviewAlt: "Filament-QR-kode for rask oppslag av detaljer i kompanjongen",
+      qrPreviewAlt:
+        "Filament-QR-kode for rask oppslag av detaljer i kompanjongen",
       status: "Status",
       locationOptional: "Plassering (valgfritt)",
       locationPlaceholder: "Hylle, skuff eller tralle",
@@ -1113,7 +1167,8 @@ const dictionaries = {
       handBackNoteOptional: "Tilbakeleveringsnotat (valgfritt)",
       handBackPlaceholder: "Tilstand eller tilbakeleveringsnotat",
       handBackSpool: "Lever tilbake spole",
-      noBorrowedRecord: "Ingen aktiv innlånsregistrering ble funnet for denne spolen.",
+      noBorrowedRecord:
+        "Ingen aktiv innlånsregistrering ble funnet for denne spolen.",
       counterparty: "Motpart",
       lentOut: "Lånt ut",
       lentAt: "Lånt ut",
@@ -1121,14 +1176,16 @@ const dictionaries = {
       returnedMeasuredWeight: "Returnert totalvekt inkl. spole (g)",
       returnNoteOptional: "Returnotat (valgfritt)",
       returnPlaceholder: "Tilstand eller returnotat",
-      useBorrowedInSection: "Lever tilbake denne innlånte spolen fra seksjonen for innlån ovenfor.",
+      useBorrowedInSection:
+        "Lever tilbake denne innlånte spolen fra seksjonen for innlån ovenfor.",
       borrowerName: "Lånernavn",
       borrowerPlaceholder: "Hvem tar denne spolen?",
       outgoingWeight: "Utgående vekt (g)",
       outgoingMeasuredWeight: "Utgående totalvekt inkl. spole (g)",
       loanNoteOptional: "Utlånsnotat (valgfritt)",
       loanNotePlaceholder: "Prosjekt eller returtidspunkt",
-      loadedInSlot: "Lastet i spor {slot} på {printer}. Utlånet vil tømme det sporet.",
+      loadedInSlot:
+        "Lastet i spor {slot} på {printer}. Utlånet vil tømme det sporet.",
       noUsage: "Ingen registrerte brukspunkter ennå.",
       unknownSource: "Ukjent kilde",
       usageSourceManual: "Manuell",
@@ -1193,8 +1250,10 @@ const dictionaries = {
       forbidden: "Diese Aktion ist nicht erlaubt.",
       notFound: "Der angeforderte Eintrag wurde nicht gefunden.",
       internal: "Ein Fehler ist aufgetreten. Versuche es erneut.",
-      spoolActiveLoan: "Beende die aktive Ausleihe, bevor du diese Rolle entfernst.",
-      loadedSpoolEditBlocked: "Bearbeite eine geladene Rolle über die Druckerplatz-Aktionen.",
+      spoolActiveLoan:
+        "Beende die aktive Ausleihe, bevor du diese Rolle entfernst.",
+      loadedSpoolEditBlocked:
+        "Bearbeite eine geladene Rolle über die Druckerplatz-Aktionen.",
       loanedSpoolEditBlocked:
         "Beende die Ausleihe, bevor du Status oder Lagerort dieser Rolle änderst.",
       spoolStatusEditLimited:
@@ -1242,11 +1301,15 @@ const dictionaries = {
       openingId: "{id} wird geöffnet...",
       openingNamedSpool: "{noun} {id} wird geöffnet...",
       openingNoun: "{noun} wird geöffnet...",
-      loanSelectSpool: "Wähle eine Rolle aus dem Bestand, bevor du eine Ausleihe erstellst.",
-      loanBorrowedInBlocked: "Geliehene Rollen können im Browser-Companion nicht weiterverliehen werden.",
+      loanSelectSpool:
+        "Wähle eine Rolle aus dem Bestand, bevor du eine Ausleihe erstellst.",
+      loanBorrowedInBlocked:
+        "Geliehene Rollen können im Browser-Companion nicht weiterverliehen werden.",
       loanAlreadyLoanedOut: "Diese Rolle ist bereits ausgeliehen.",
-      loanEmptyOrLostBlocked: "Leere oder verlorene Rollen können hier nicht ausgeliehen werden.",
-      loanInUseBlocked: "In Druckerplätzen geladene Rollen können nicht ausgeliehen werden.",
+      loanEmptyOrLostBlocked:
+        "Leere oder verlorene Rollen können hier nicht ausgeliehen werden.",
+      loanInUseBlocked:
+        "In Druckerplätzen geladene Rollen können nicht ausgeliehen werden.",
     },
     recovery: {
       selectSuggested: "Vorgeschlagene Rolle auswählen",
@@ -1263,7 +1326,8 @@ const dictionaries = {
       openingFromSource: "Wird aus {source} geöffnet",
       recoveryInSection: "Wiederherstellung in {section}",
       openingSpoolFromSourceNow: "{spool} wird jetzt aus {source} geöffnet.",
-      openingSuggestedFromSourceNow: "Die vorgeschlagene Rolle aus {source} wird jetzt geöffnet.",
+      openingSuggestedFromSourceNow:
+        "Die vorgeschlagene Rolle aus {source} wird jetzt geöffnet.",
       openingSpoolNow: "{spool} wird jetzt geöffnet",
       openingFromSourceNow: "Wird jetzt aus {source} geöffnet",
       openingSpoolShort: "{spool} wird geöffnet",
@@ -1281,7 +1345,8 @@ const dictionaries = {
       stockEntry: "Bestandseintrag",
       selectionPreview: "Auswahlvorschau",
       addSpool: "Rolle hinzufügen",
-      addSpoolDetail: "Diese Auswahl als eigene oder geliehene Rolle direkt einlagern.",
+      addSpoolDetail:
+        "Diese Auswahl als eigene oder geliehene Rolle direkt einlagern.",
       addSpoolToInventory: "Rolle zum Bestand hinzufügen",
       borrowedInAction: "Von anderen geliehen",
       owned: "Eigene Rolle",
@@ -1295,7 +1360,8 @@ const dictionaries = {
       selected: "Ausgewählt",
       chooseCatalogRow: "Katalogeintrag auswählen",
       discontinued: "Nicht mehr erhältlich",
-      noCatalogMatches: "Keine Katalogeinträge entsprechen diesem Herstellerfilter.",
+      noCatalogMatches:
+        "Keine Katalogeinträge entsprechen diesem Herstellerfilter.",
       material: "Material",
       materialPlaceholder: "PLA, PETG, TPU...",
       filament: "Filament",
@@ -1331,7 +1397,8 @@ const dictionaries = {
       addToWishlist: "Zur Wunschliste / Bestellung hinzufügen",
       addToWishlistHelp:
         "Dieselbe Auswahl für Wunschliste und Bestellverfolgung im Browser verwenden.",
-      addCurrentSelectionToWishlist: "Aktuelle Auswahl zur Wunschliste hinzufügen",
+      addCurrentSelectionToWishlist:
+        "Aktuelle Auswahl zur Wunschliste hinzufügen",
       wishlistQueue: "Wunschliste / Bestellliste",
       wishlistQueueHelp:
         "Einträge zwischen Wunschliste, bestellt und erhalten verschieben oder direkt einlagern.",
@@ -1346,7 +1413,8 @@ const dictionaries = {
       openSpool: "Rolle öffnen",
       noMatch: "Keine lokalen Rollen entsprechen der aktuellen Suche.",
       hiddenSelectedTitle: "Ausgewählte Rolle ausgeblendet",
-      hiddenSelectedBody: "{title} bleibt für Details, Plätze und Ausleihen ausgewählt.",
+      hiddenSelectedBody:
+        "{title} bleibt für Details, Plätze und Ausleihen ausgewählt.",
       clearSearch: "Suche löschen",
     },
     loans: {
@@ -1365,7 +1433,8 @@ const dictionaries = {
       showAll: "Alle Ausleihen anzeigen",
       noMatch: "Keine Ausleihen entsprechen Suche oder Filter.",
       noEligibleSpools: "Derzeit sind keine Rollen zum Ausleihen verfügbar.",
-      hiddenSelectedMessage: "{title} bleibt für Details und Ausleihaktionen ausgewählt.",
+      hiddenSelectedMessage:
+        "{title} bleibt für Details und Ausleihaktionen ausgewählt.",
       openSpool: "Rolle öffnen",
       returnLoan: "Ausleihe zurückgeben",
       active: "Aktiv",
@@ -1376,7 +1445,8 @@ const dictionaries = {
       lentAt: "Ausgeliehen {date}",
       borrowedFrom: "Geliehen von {name}",
       hiddenSelectedTitle: "Ausgewählte Rolle ausgeblendet",
-      hiddenSelectedBody: "{title} besitzt weiterhin Ausleihzeilen. Lösche die Filter, um sie anzuzeigen.",
+      hiddenSelectedBody:
+        "{title} besitzt weiterhin Ausleihzeilen. Lösche die Filter, um sie anzuzeigen.",
       loanNote: "Ausleihnotiz:",
       returnNote: "Rückgabenotiz:",
       unavailable: "Diese Ausleihe ist nicht mehr verfügbar.",
@@ -1499,8 +1569,7 @@ const dictionaries = {
     },
     trustedLan: {
       title: "Trusted-LAN-Browser-Companion",
-      copy:
-        "Dieser Browser verwendet den Trusted-LAN-Companion. Öffne einen Kopplungslink aus den Desktop-Einstellungen. Der Datenverkehr ist nicht verschlüsselt; verwende nur ein vertrauenswürdiges Netzwerk.",
+      copy: "Dieser Browser verwendet den Trusted-LAN-Companion. Öffne einen Kopplungslink aus den Desktop-Einstellungen. Der Datenverkehr ist nicht verschlüsselt; verwende nur ein vertrauenswürdiges Netzwerk.",
       pairingHint:
         "Die Desktop-Einstellungen erstellen kurzlebige, einmalig verwendbare Kopplungslinks für Browserzugriff.",
       awaiting: "Warte auf einen Trusted-LAN-Kopplungslink.",
@@ -1530,15 +1599,19 @@ const dictionaries = {
         "Öffne einen Kopplungslink aus den Desktop-Einstellungen, um diese Trusted-LAN-Sitzung zu starten.",
       trustedLanPairing: "Trusted-LAN-Browser wird gekoppelt...",
       trustedLanReady: "Trusted-LAN-Browsersitzung bereit.",
-      trustedLanRenewing: "Trusted-LAN-Sitzung abgelaufen. Kopplung wird erneuert...",
+      trustedLanRenewing:
+        "Trusted-LAN-Sitzung abgelaufen. Kopplung wird erneuert...",
       trustedLanRestored: "Trusted-LAN-Sitzung wiederhergestellt.",
       trustedLanReopen:
         "Trusted-LAN-Sitzung abgelaufen. Öffne einen neuen Kopplungslink aus den Desktop-Einstellungen.",
       trustedLanAwaitPairing:
         "Öffne einen Kopplungslink aus den Desktop-Einstellungen, um diese Trusted-LAN-Sitzung zu starten.",
-      sessionStatusFailed: "Aktuelle Companion-Sitzung konnte nicht geprüft werden.",
-      trustedLanPairFailed: "Trusted-LAN-Browser konnte nicht gekoppelt werden.",
-      trustedLanRenewFailed: "Trusted-LAN-Sitzung konnte nicht erneuert werden.",
+      sessionStatusFailed:
+        "Aktuelle Companion-Sitzung konnte nicht geprüft werden.",
+      trustedLanPairFailed:
+        "Trusted-LAN-Browser konnte nicht gekoppelt werden.",
+      trustedLanRenewFailed:
+        "Trusted-LAN-Sitzung konnte nicht erneuert werden.",
       refreshFailed: "Companion-Daten konnten nicht geladen werden.",
       detailLoadFailed: "Rollendetails konnten nicht geladen werden.",
       weightInvalid: "Gib ein gültiges, nicht negatives Gewicht in Gramm ein.",
@@ -1547,7 +1620,8 @@ const dictionaries = {
       weightUpdatedJustNow: "Gewicht gerade aktualisiert.",
       weightFailed: "Gewicht konnte nicht aktualisiert werden.",
       printerSlotWeightUpdated: "Druckerplatzgewicht aktualisiert.",
-      printerSlotWeightUpdatedJustNow: "Druckerplatzgewicht gerade aktualisiert.",
+      printerSlotWeightUpdatedJustNow:
+        "Druckerplatzgewicht gerade aktualisiert.",
       tareWeightSaving: "Leerrollengewicht wird gespeichert...",
       tareWeightUpdated: "Leerrollengewicht aktualisiert.",
       tareWeightUpdatedJustNow: "Leerrollengewicht gerade aktualisiert.",
@@ -1560,52 +1634,65 @@ const dictionaries = {
       clearedFromSlotJustNow: "Gerade aus {label} entfernt.",
       updatingPrinterSlot: "Druckerplatzzuweisung wird aktualisiert...",
       clearingPrinterSlot: "Druckerplatz wird geleert...",
-      printerSlotRequired: "Drucker und Platz sind für diese Änderung erforderlich.",
+      printerSlotRequired:
+        "Drucker und Platz sind für diese Änderung erforderlich.",
       printerSlotFailed: "Druckerplatz konnte nicht aktualisiert werden.",
       loanSelectSpool: "Wähle vor dem Erstellen einer Ausleihe eine Rolle.",
-      loanBorrowerRequired: "Gib vor dem Erstellen der Ausleihe einen Entleiher an.",
-      loanOutgoingWeightInvalid: "Gib ein gültiges, nicht negatives Ausgangsgewicht ein.",
+      loanBorrowerRequired:
+        "Gib vor dem Erstellen der Ausleihe einen Entleiher an.",
+      loanOutgoingWeightInvalid:
+        "Gib ein gültiges, nicht negatives Ausgangsgewicht ein.",
       loanCreating: "Ausleihe wird erstellt...",
       loanCreated: "Ausleihe erstellt.",
       loanCreatedJustNow: "Ausleihe gerade erstellt.",
       loanCreateFailed: "Ausleihe konnte nicht erstellt werden.",
       loanReturnSelectActive: "Wähle vor der Rückgabe eine aktive Ausleihe.",
-      loanReturnWeightInvalid: "Gib ein gültiges, nicht negatives Rückgabegewicht ein.",
+      loanReturnWeightInvalid:
+        "Gib ein gültiges, nicht negatives Rückgabegewicht ein.",
       loanReturning: "Ausleihe wird zurückgegeben...",
       loanReturned: "Ausleihe zurückgegeben.",
       loanReturnedJustNow: "Ausleihe gerade zurückgegeben.",
       loanReturnFailed: "Ausleihe konnte nicht zurückgegeben werden.",
       stockCatalogRequired: "Wähle vor dem Einlagern ein Katalogfilament.",
       manualMaterialRequired: "Gib für eine manuelle Rolle ein Material ein.",
-      manualFilamentRequired: "Gib für eine manuelle Rolle einen Filamentnamen ein.",
+      manualFilamentRequired:
+        "Gib für eine manuelle Rolle einen Filamentnamen ein.",
       manualColorRequired: "Gib für eine manuelle Rolle eine Farbe ein.",
       borrowedInOwnerRequired: "Gib an, von wem die Rolle geliehen wurde.",
-      swatchHexInvalid: "Gib eine gültige Farbangabe als #RGB oder #RRGGBB ein.",
-      startingWeightInvalid: "Gib ein gültiges, nicht negatives Startgewicht ein.",
+      swatchHexInvalid:
+        "Gib eine gültige Farbangabe als #RGB oder #RRGGBB ein.",
+      startingWeightInvalid:
+        "Gib ein gültiges, nicht negatives Startgewicht ein.",
       borrowedInRegistering: "Geliehene Rolle wird registriert...",
       stockAdding: "Rolle wird zum Bestand hinzugefügt...",
       borrowedInRegistered: "Geliehene Rolle registriert.",
       borrowedInRegisteredJustNow: "Geliehene Rolle gerade registriert.",
       stockAdded: "Rolle zum Bestand hinzugefügt.",
       stockAddedJustNow: "Rolle gerade zum Bestand hinzugefügt.",
-      borrowedInRegisterFailed: "Geliehene Rolle konnte nicht registriert werden.",
+      borrowedInRegisterFailed:
+        "Geliehene Rolle konnte nicht registriert werden.",
       stockAddFailed: "Rolle konnte nicht zum Bestand hinzugefügt werden.",
       wishlistCatalogRequired: "Wähle vor dem Hinzufügen ein Katalogfilament.",
-      wishlistManualIncomplete: "Vervollständige vor dem Hinzufügen die manuellen Filamentdetails.",
+      wishlistManualIncomplete:
+        "Vervollständige vor dem Hinzufügen die manuellen Filamentdetails.",
       wishlistAdding: "Filament wird zur Wunschliste hinzugefügt...",
       wishlistAdded: "Wunschlisteneintrag hinzugefügt.",
       wishlistAddFailed: "Wunschlisteneintrag konnte nicht hinzugefügt werden.",
-      wishlistSelectBeforeStatus: "Wähle vor der Statusänderung einen Wunschlisteneintrag.",
+      wishlistSelectBeforeStatus:
+        "Wähle vor der Statusänderung einen Wunschlisteneintrag.",
       wishlistStatusInvalid: "Wähle einen gültigen Wunschlistenstatus.",
       wishlistStatusUpdating: "Wunschlistenstatus wird aktualisiert...",
       wishlistStatusUpdated: "Wunschlistenstatus aktualisiert.",
-      wishlistStatusUpdateFailed: "Wunschlistenstatus konnte nicht aktualisiert werden.",
-      wishlistSelectBeforeStock: "Wähle vor dem Einlagern einen Wunschlisteneintrag.",
+      wishlistStatusUpdateFailed:
+        "Wunschlistenstatus konnte nicht aktualisiert werden.",
+      wishlistSelectBeforeStock:
+        "Wähle vor dem Einlagern einen Wunschlisteneintrag.",
       wishlistStocking: "Wunschlistenrolle wird eingelagert...",
       wishlistStocked: "Wunschlistenrolle zum Bestand hinzugefügt.",
       wishlistStockedJustNow: "Wunschlistenrolle gerade eingelagert.",
       wishlistStockFailed: "Wunschlistenrolle konnte nicht eingelagert werden.",
-      wishlistSelectBeforeDelete: "Wähle vor dem Entfernen einen Wunschlisteneintrag.",
+      wishlistSelectBeforeDelete:
+        "Wähle vor dem Entfernen einen Wunschlisteneintrag.",
       wishlistDeleting: "Wunschlisteneintrag wird entfernt...",
       wishlistDeleted: "Wunschlisteneintrag entfernt.",
       wishlistDeleteFailed: "Wunschlisteneintrag konnte nicht entfernt werden.",
@@ -1614,18 +1701,22 @@ const dictionaries = {
       qrLookupMissingSpoolId: "Rollenlink enthält keine Rollen-ID",
       qrLookupMatched: "Rollenlink geöffnet.",
       qrLookupFailed: "Rollenlink konnte nicht geöffnet werden.",
-      borrowedInSelectBeforeUpdate: "Wähle vor der Änderung eine geliehene Rolle.",
+      borrowedInSelectBeforeUpdate:
+        "Wähle vor der Änderung eine geliehene Rolle.",
       borrowedInSaving: "Details der geliehenen Rolle werden gespeichert...",
       borrowedInUpdated: "Details der geliehenen Rolle aktualisiert.",
-      borrowedInUpdatedJustNow: "Details der geliehenen Rolle gerade aktualisiert.",
-      borrowedInUpdateFailed: "Details der geliehenen Rolle konnten nicht aktualisiert werden.",
+      borrowedInUpdatedJustNow:
+        "Details der geliehenen Rolle gerade aktualisiert.",
+      borrowedInUpdateFailed:
+        "Details der geliehenen Rolle konnten nicht aktualisiert werden.",
       selectSpoolBeforeEdit: "Wähle vor dem Bearbeiten eine Rolle.",
       invalidDetailStatus: "Wähle vor dem Speichern einen gültigen Status.",
       savingSpoolDetails: "Rollendetails werden gespeichert...",
       spoolDetailsUpdated: "Rollendetails aktualisiert.",
       homeLocationSaved: "Stammlagerort gespeichert.",
       spoolDetailsUpdatedJustNow: "Details gerade aktualisiert.",
-      spoolDetailsUpdateFailed: "Rollendetails konnten nicht aktualisiert werden.",
+      spoolDetailsUpdateFailed:
+        "Rollendetails konnten nicht aktualisiert werden.",
       homeLocationSaveFailed: "Stammlagerort konnte nicht gespeichert werden.",
       loadedSpoolEditBlocked:
         "Geladene Rollen werden über Druckerplatz-Aktionen statt über manuelle Statusänderungen bearbeitet.",
@@ -1637,8 +1728,10 @@ const dictionaries = {
       rfidSaved: "RFID gespeichert.",
       rfidSavedJustNow: "RFID gerade gespeichert.",
       rfidSaveFailed: "RFID konnte nicht gespeichert werden.",
-      rfidCaptureNothingToSave: "Keine beobachtete RFID zum Speichern verfügbar.",
-      rfidCandidateAlreadyRegistered: "Für diese Rolle ist bereits eine RFID gespeichert.",
+      rfidCaptureNothingToSave:
+        "Keine beobachtete RFID zum Speichern verfügbar.",
+      rfidCandidateAlreadyRegistered:
+        "Für diese Rolle ist bereits eine RFID gespeichert.",
       rfidLiveCandidateStale:
         "Aktualisiere die Companion-Daten; die Live-Identität hat sich vor dem Speichern geändert.",
       borrowedInHandBackSelectActive:
@@ -1647,7 +1740,8 @@ const dictionaries = {
         "Gib ein gültiges, nicht negatives Rückgabegewicht ein.",
       borrowedInHandingBack: "Geliehene Rolle wird zurückgereicht...",
       borrowedInHandedBack: "Geliehene Rolle zurückgereicht.",
-      borrowedInHandBackFailed: "Geliehene Rolle konnte nicht zurückgereicht werden.",
+      borrowedInHandBackFailed:
+        "Geliehene Rolle konnte nicht zurückgereicht werden.",
     },
     detail: {
       openDetail: "Details",
@@ -1656,7 +1750,8 @@ const dictionaries = {
       noSelection: "Keine Auswahl",
       noSelectedSpool: "Keine Rolle ausgewählt",
       selectSpool: "Rolle auswählen",
-      selectSpoolHint: "Wähle eine Rolle aus Bestand, Ausleihen oder Druckern, um sie zu prüfen.",
+      selectSpoolHint:
+        "Wähle eine Rolle aus Bestand, Ausleihen oder Druckern, um sie zu prüfen.",
       borrowedInRemovedHint:
         "Die letzte geliehene Rolle wurde nach der Rückgabe aus dem Bestand entfernt. Wähle eine andere Rolle aus dem Bestand.",
       status: "Status",
@@ -1697,7 +1792,8 @@ const dictionaries = {
       handBackNoteOptional: "Rückgabenotiz (optional)",
       handBackPlaceholder: "Zustand oder Rückgabehinweis",
       handBackSpool: "Rolle zurückreichen",
-      noBorrowedRecord: "Für diese Rolle wurde keine aktive eingehende Ausleihe gefunden.",
+      noBorrowedRecord:
+        "Für diese Rolle wurde keine aktive eingehende Ausleihe gefunden.",
       counterparty: "Gegenpartei",
       lentOut: "Ausgeliehen",
       lentAt: "Ausgeliehen am",
@@ -1752,7 +1848,8 @@ const dictionaries = {
     },
     inventory: {
       rfidButton: "RFID",
-      rfidHintReady: "Beobachtete AMS-Identität erfassen und auf dieser Rolle speichern.",
+      rfidHintReady:
+        "Beobachtete AMS-Identität erfassen und auf dieser Rolle speichern.",
       rfidCurrentTag: "Gespeicherte RFID",
       rfidSourceSlot: "RFID-Quellplatz",
       rfidNoCaptureSource: "Kein Live-AMS-Platz verfügbar",
@@ -1779,7 +1876,8 @@ const dictionaries = {
       forbidden: "Cette action n’est pas autorisée.",
       notFound: "L’élément demandé est introuvable.",
       internal: "Une erreur est survenue. Réessayez.",
-      spoolActiveLoan: "Retournez le prêt actif avant de supprimer cette bobine.",
+      spoolActiveLoan:
+        "Retournez le prêt actif avant de supprimer cette bobine.",
       loadedSpoolEditBlocked:
         "Utilisez les actions de l’emplacement d’imprimante pour modifier une bobine chargée.",
       loanedSpoolEditBlocked:
@@ -1809,7 +1907,8 @@ const dictionaries = {
       activeLoanCountMany: "{count} prêts actifs",
       spoolCount: "{count, plural, one {# bobine} other {# bobines}}",
       printerCount: "{count, plural, one {# imprimante} other {# imprimantes}}",
-      activeLoanCount: "{count, plural, one {# prêt actif} other {# prêts actifs}}",
+      activeLoanCount:
+        "{count, plural, one {# prêt actif} other {# prêts actifs}}",
       primaryFlowsAria: "Sections principales",
     },
     shell: {
@@ -1828,11 +1927,13 @@ const dictionaries = {
       openingId: "Ouverture de {id}…",
       openingNamedSpool: "Ouverture de {noun} {id}…",
       openingNoun: "Ouverture de {noun}…",
-      loanSelectSpool: "Sélectionnez une bobine du stock avant de créer un prêt.",
+      loanSelectSpool:
+        "Sélectionnez une bobine du stock avant de créer un prêt.",
       loanBorrowedInBlocked:
         "Les bobines empruntées ne peuvent pas être prêtées depuis Companion.",
       loanAlreadyLoanedOut: "Cette bobine est déjà prêtée.",
-      loanEmptyOrLostBlocked: "Les bobines vides ou perdues ne peuvent pas être prêtées ici.",
+      loanEmptyOrLostBlocked:
+        "Les bobines vides ou perdues ne peuvent pas être prêtées ici.",
       loanInUseBlocked:
         "Les bobines chargées dans une imprimante ne peuvent pas être prêtées.",
     },
@@ -1851,7 +1952,8 @@ const dictionaries = {
       openingFromSource: "Ouverture depuis {source}",
       recoveryInSection: "Récupération dans {section}",
       openingSpoolFromSourceNow: "Ouverture de {spool} depuis {source}.",
-      openingSuggestedFromSourceNow: "Ouverture de la bobine proposée depuis {source}.",
+      openingSuggestedFromSourceNow:
+        "Ouverture de la bobine proposée depuis {source}.",
       openingSpoolNow: "Ouverture de {spool}",
       openingFromSourceNow: "Ouverture depuis {source}",
       openingSpoolShort: "Ouverture de {spool}",
@@ -1861,7 +1963,8 @@ const dictionaries = {
     storage: {
       title: "Stock",
       subtitle: "Parcourez le stock et ouvrez la bobine dont vous avez besoin.",
-      searchPlaceholder: "Rechercher filament, couleur, propriétaire ou emplacement",
+      searchPlaceholder:
+        "Rechercher filament, couleur, propriétaire ou emplacement",
       ownership: "Propriété du filament",
       addFilament: "Ajouter du filament",
       addFilamentHelp:
@@ -1921,7 +2024,8 @@ const dictionaries = {
       addToWishlistHelp:
         "Utilisez la même sélection pour suivre les souhaits et commandes dans Companion.",
       quantity: "Quantité",
-      addCurrentSelectionToWishlist: "Ajouter la sélection à la liste de souhaits",
+      addCurrentSelectionToWishlist:
+        "Ajouter la sélection à la liste de souhaits",
       wishlistQueue: "Liste de souhaits / commandes",
       wishlistQueueHelp:
         "Passez les éléments de souhaité à commandé puis reçu, ou ajoutez-les directement au stock.",
@@ -1954,8 +2058,10 @@ const dictionaries = {
       allFilter: "Tous {count}",
       showAll: "Afficher tous les prêts",
       noMatch: "Aucun prêt ne correspond à cette recherche ou à ce filtre.",
-      noEligibleSpools: "Aucune bobine n’est actuellement disponible pour un prêt sortant.",
-      hiddenSelectedMessage: "{title} reste sélectionnée pour les détails et les prêts.",
+      noEligibleSpools:
+        "Aucune bobine n’est actuellement disponible pour un prêt sortant.",
+      hiddenSelectedMessage:
+        "{title} reste sélectionnée pour les détails et les prêts.",
       openSpool: "Ouvrir la bobine",
       returnLoan: "Retourner le prêt",
       active: "Actif",
@@ -2019,7 +2125,8 @@ const dictionaries = {
       saveEmptySpoolWeight: "Enregistrer le poids de la bobine vide",
       details: "Détails",
       qrPreview: "Code QR",
-      qrPreviewAlt: "Code QR du filament pour ouvrir rapidement les détails dans Companion",
+      qrPreviewAlt:
+        "Code QR du filament pour ouvrir rapidement les détails dans Companion",
       status: "État",
       locationOptional: "Emplacement (facultatif)",
       locationPlaceholder: "Étagère, tiroir ou chariot",
@@ -2116,7 +2223,8 @@ const dictionaries = {
       loadFilament: "Charger le filament",
       readyToLoad: "{count} prêtes à charger",
       pickerPlaceholder: "Rechercher matériau, couleur, fabricant ou référence",
-      noReadyMatch: "Aucune bobine prête à charger ne correspond à cette recherche.",
+      noReadyMatch:
+        "Aucune bobine prête à charger ne correspond à cette recherche.",
       loadedSummary: "{loaded} chargés · {open} libres",
       liveBadge: "Direct",
       liveSummary: "Données directes de l’hôte",
@@ -2179,7 +2287,8 @@ const dictionaries = {
       activeLoanCountMany: "{count} prêts actifs",
       spoolCount: "{count, plural, one {# bobine} other {# bobines}}",
       printerCount: "{count, plural, one {# imprimante} other {# imprimantes}}",
-      activeLoanCount: "{count, plural, one {# prêt actif} other {# prêts actifs}}",
+      activeLoanCount:
+        "{count, plural, one {# prêt actif} other {# prêts actifs}}",
       desktopInCharge: "L’application desktop et SQLite gardent le contrôle.",
       trustedLanDesktopInCharge:
         "L’application desktop et SQLite gardent le contrôle. L’accès Trusted-LAN reste contrôlé par le desktop et n’est pas chiffré sur le réseau.",
@@ -2191,8 +2300,7 @@ const dictionaries = {
     },
     trustedLan: {
       title: "Companion navigateur Trusted-LAN",
-      copy:
-        "Ce navigateur utilise l’accès Trusted-LAN. Ouvrez un lien de couplage depuis les paramètres de l’application.",
+      copy: "Ce navigateur utilise l’accès Trusted-LAN. Ouvrez un lien de couplage depuis les paramètres de l’application.",
       pairingHint:
         "Les paramètres de l’application créent des liens de couplage temporaires à usage unique.",
       awaiting: "En attente d’un lien de couplage Trusted-LAN.",
@@ -2229,9 +2337,11 @@ const dictionaries = {
         "La session Trusted-LAN a expiré. Ouvrez un nouveau lien de couplage depuis les paramètres desktop.",
       trustedLanAwaitPairing:
         "Ouvrez un lien de couplage depuis les paramètres desktop pour démarrer cette session navigateur Trusted-LAN.",
-      sessionStatusFailed: "Échec de la vérification de la session Companion actuelle.",
+      sessionStatusFailed:
+        "Échec de la vérification de la session Companion actuelle.",
       trustedLanPairFailed: "Échec du couplage du navigateur Trusted-LAN.",
-      trustedLanRenewFailed: "Échec du renouvellement de la session Trusted-LAN.",
+      trustedLanRenewFailed:
+        "Échec du renouvellement de la session Trusted-LAN.",
       refreshFailed: "Échec du chargement des données Companion.",
       detailLoadFailed: "Échec du chargement des détails de la bobine.",
       weightInvalid: "Saisissez un poids valide et positif ou nul en grammes.",
@@ -2241,10 +2351,12 @@ const dictionaries = {
       weightUpdatedJustNow: "Poids mis à jour à l’instant.",
       tareWeightSaving: "Enregistrement du poids de la bobine vide…",
       tareWeightUpdated: "Poids de la bobine vide mis à jour.",
-      tareWeightUpdatedJustNow: "Poids de la bobine vide mis à jour à l’instant.",
+      tareWeightUpdatedJustNow:
+        "Poids de la bobine vide mis à jour à l’instant.",
       tareWeightFailed: "Échec de la mise à jour du poids de la bobine vide.",
       printerSlotWeightUpdated: "Poids de l’emplacement mis à jour.",
-      printerSlotWeightUpdatedJustNow: "Poids de l’emplacement mis à jour à l’instant.",
+      printerSlotWeightUpdatedJustNow:
+        "Poids de l’emplacement mis à jour à l’instant.",
       printerSlotAssigned: "Emplacement d’imprimante affecté.",
       printerSlotCleared: "Emplacement d’imprimante vidé.",
       printerSlotAssignedJustNow: "Emplacement affecté à l’instant.",
@@ -2256,32 +2368,43 @@ const dictionaries = {
       printerSlotRequired: "L’imprimante et l’emplacement sont obligatoires.",
       printerSlotFailed: "Échec de la mise à jour de l’emplacement.",
       loanSelectSpool: "Sélectionnez une bobine avant de créer un prêt.",
-      loanBorrowerRequired: "Saisissez le nom de l’emprunteur avant de créer le prêt.",
-      loanOutgoingWeightInvalid: "Saisissez un poids sortant valide, positif ou nul.",
+      loanBorrowerRequired:
+        "Saisissez le nom de l’emprunteur avant de créer le prêt.",
+      loanOutgoingWeightInvalid:
+        "Saisissez un poids sortant valide, positif ou nul.",
       loanCreating: "Création du prêt sortant…",
       loanCreated: "Prêt sortant créé.",
       loanCreatedJustNow: "Prêt sortant créé à l’instant.",
       loanCreateFailed: "Échec de la création du prêt sortant.",
-      loanReturnSelectActive: "Sélectionnez un prêt actif avant de le retourner.",
-      loanReturnWeightInvalid: "Saisissez un poids retourné valide, positif ou nul.",
+      loanReturnSelectActive:
+        "Sélectionnez un prêt actif avant de le retourner.",
+      loanReturnWeightInvalid:
+        "Saisissez un poids retourné valide, positif ou nul.",
       loanReturning: "Retour du prêt sortant…",
       loanReturned: "Prêt sortant retourné.",
       loanReturnedJustNow: "Prêt sortant retourné à l’instant.",
       loanReturnFailed: "Échec du retour du prêt sortant.",
-      stockCatalogRequired: "Choisissez un filament du catalogue avant l’ajout au stock.",
-      manualMaterialRequired: "Saisissez un matériau pour ajouter une bobine manuelle.",
-      manualFilamentRequired: "Saisissez un nom de filament pour ajouter une bobine manuelle.",
-      manualColorRequired: "Saisissez une couleur pour ajouter une bobine manuelle.",
+      stockCatalogRequired:
+        "Choisissez un filament du catalogue avant l’ajout au stock.",
+      manualMaterialRequired:
+        "Saisissez un matériau pour ajouter une bobine manuelle.",
+      manualFilamentRequired:
+        "Saisissez un nom de filament pour ajouter une bobine manuelle.",
+      manualColorRequired:
+        "Saisissez une couleur pour ajouter une bobine manuelle.",
       borrowedInOwnerRequired: "Indiquez à qui appartient la bobine empruntée.",
-      swatchHexInvalid: "Saisissez une couleur valide au format #RGB ou #RRGGBB.",
-      startingWeightInvalid: "Saisissez un poids initial valide, positif ou nul.",
+      swatchHexInvalid:
+        "Saisissez une couleur valide au format #RGB ou #RRGGBB.",
+      startingWeightInvalid:
+        "Saisissez un poids initial valide, positif ou nul.",
       borrowedInRegistering: "Enregistrement de la bobine empruntée…",
       stockAdding: "Ajout de la bobine au stock…",
       borrowedInRegistered: "Bobine empruntée enregistrée.",
       borrowedInRegisteredJustNow: "Bobine empruntée enregistrée à l’instant.",
       stockAdded: "Bobine ajoutée au stock.",
       stockAddedJustNow: "Bobine ajoutée au stock à l’instant.",
-      borrowedInRegisterFailed: "Échec de l’enregistrement de la bobine empruntée.",
+      borrowedInRegisterFailed:
+        "Échec de l’enregistrement de la bobine empruntée.",
       stockAddFailed: "Échec de l’ajout de la bobine au stock.",
       wishlistCatalogRequired:
         "Choisissez un filament du catalogue avant de l’ajouter à la liste de souhaits.",
@@ -2290,39 +2413,49 @@ const dictionaries = {
       wishlistAdding: "Ajout du filament à la liste de souhaits…",
       wishlistAdded: "Filament ajouté à la liste de souhaits.",
       wishlistAddFailed: "Échec de l’ajout à la liste de souhaits.",
-      wishlistSelectBeforeStatus: "Choisissez un élément avant de modifier son état.",
-      wishlistStatusInvalid: "Choisissez un état valide pour la liste de souhaits.",
+      wishlistSelectBeforeStatus:
+        "Choisissez un élément avant de modifier son état.",
+      wishlistStatusInvalid:
+        "Choisissez un état valide pour la liste de souhaits.",
       wishlistStatusUpdating: "Mise à jour de l’état…",
       wishlistStatusUpdated: "État de la liste de souhaits mis à jour.",
       wishlistStatusUpdateFailed: "Échec de la mise à jour de l’état.",
-      wishlistSelectBeforeStock: "Choisissez un élément avant de l’ajouter au stock.",
+      wishlistSelectBeforeStock:
+        "Choisissez un élément avant de l’ajouter au stock.",
       wishlistStocking: "Ajout de la bobine souhaitée au stock…",
       wishlistStocked: "Bobine souhaitée ajoutée au stock.",
       wishlistStockedJustNow: "Bobine souhaitée ajoutée au stock à l’instant.",
-      wishlistStockFailed: "Échec de l’ajout au stock depuis la liste de souhaits.",
-      wishlistSelectBeforeDelete: "Choisissez un élément avant de le supprimer.",
+      wishlistStockFailed:
+        "Échec de l’ajout au stock depuis la liste de souhaits.",
+      wishlistSelectBeforeDelete:
+        "Choisissez un élément avant de le supprimer.",
       wishlistDeleting: "Suppression de l’élément…",
       wishlistDeleted: "Élément supprimé de la liste de souhaits.",
       wishlistDeleteFailed: "Échec de la suppression de l’élément.",
-      qrLookupRequired: "Ouvrez un lien de bobine valide avant de charger une bobine.",
+      qrLookupRequired:
+        "Ouvrez un lien de bobine valide avant de charger une bobine.",
       qrLookupSearching: "Ouverture du lien de la bobine…",
-      qrLookupMissingSpoolId: "Le lien de la bobine ne contient aucun identifiant",
+      qrLookupMissingSpoolId:
+        "Le lien de la bobine ne contient aucun identifiant",
       qrLookupMatched: "Lien de la bobine ouvert.",
       qrLookupFailed: "Échec de l’ouverture du lien de la bobine.",
       borrowedInSelectBeforeUpdate:
         "Sélectionnez une bobine empruntée avant de modifier ses détails.",
       borrowedInSaving: "Enregistrement des détails de la bobine empruntée…",
       borrowedInUpdated: "Détails de la bobine empruntée mis à jour.",
-      borrowedInUpdatedJustNow: "Détails de la bobine empruntée mis à jour à l’instant.",
+      borrowedInUpdatedJustNow:
+        "Détails de la bobine empruntée mis à jour à l’instant.",
       borrowedInUpdateFailed: "Échec de la mise à jour de la bobine empruntée.",
-      selectSpoolBeforeEdit: "Sélectionnez une bobine avant de modifier ses détails.",
+      selectSpoolBeforeEdit:
+        "Sélectionnez une bobine avant de modifier ses détails.",
       invalidDetailStatus: "Choisissez un état valide avant d’enregistrer.",
       savingSpoolDetails: "Enregistrement des détails de la bobine…",
       spoolDetailsUpdated: "Détails de la bobine mis à jour.",
       homeLocationSaved: "Emplacement habituel enregistré.",
       spoolDetailsUpdatedJustNow: "Détails mis à jour à l’instant.",
       spoolDetailsUpdateFailed: "Échec de la mise à jour des détails.",
-      homeLocationSaveFailed: "Échec de l’enregistrement de l’emplacement habituel.",
+      homeLocationSaveFailed:
+        "Échec de l’enregistrement de l’emplacement habituel.",
       loadedSpoolEditBlocked:
         "Les bobines chargées se modifient avec les actions d’emplacement d’imprimante.",
       loanedOutEditBlocked:
@@ -2333,26 +2466,32 @@ const dictionaries = {
       rfidSaved: "RFID enregistrée.",
       rfidSavedJustNow: "RFID enregistrée à l’instant.",
       rfidSaveFailed: "Échec de l’enregistrement de la RFID.",
-      rfidCaptureNothingToSave: "Aucune RFID observée n’est disponible à enregistrer.",
-      rfidCandidateAlreadyRegistered: "Cette bobine possède déjà une RFID enregistrée.",
+      rfidCaptureNothingToSave:
+        "Aucune RFID observée n’est disponible à enregistrer.",
+      rfidCandidateAlreadyRegistered:
+        "Cette bobine possède déjà une RFID enregistrée.",
       rfidLiveCandidateStale:
         "Actualisez Companion ; l’identité de l’emplacement a changé avant l’enregistrement.",
       borrowedInHandBackSelectActive:
         "Sélectionnez un emprunt actif avant de rendre la bobine.",
-      borrowedInHandBackWeightInvalid: "Saisissez un poids rendu valide, positif ou nul.",
+      borrowedInHandBackWeightInvalid:
+        "Saisissez un poids rendu valide, positif ou nul.",
       borrowedInHandingBack: "Restitution de la bobine empruntée…",
       borrowedInHandedBack: "Bobine empruntée rendue.",
-      borrowedInHandBackFailed: "Échec de la restitution de la bobine empruntée.",
+      borrowedInHandBackFailed:
+        "Échec de la restitution de la bobine empruntée.",
     },
     inventory: {
       rfidButton: "RFID",
-      rfidHintReady: "Capturez et enregistrez l’identité AMS observée sur cette bobine.",
+      rfidHintReady:
+        "Capturez et enregistrez l’identité AMS observée sur cette bobine.",
       rfidCurrentTag: "RFID enregistrée",
       rfidSourceSlot: "Emplacement source RFID",
       rfidNoCaptureSource: "Aucun emplacement AMS en direct disponible",
       rfidObservedTag: "RFID observée",
       rfidCaptureStatus: "État de la capture",
-      rfidCaptureUnavailable: "Aucune capture en direct disponible actuellement.",
+      rfidCaptureUnavailable:
+        "Aucune capture en direct disponible actuellement.",
       rfidSaveAction: "Enregistrer la RFID",
     },
   },
@@ -2373,7 +2512,8 @@ const dictionaries = {
       forbidden: "Esta acción no está permitida.",
       notFound: "No se encontró el registro solicitado.",
       internal: "Algo salió mal. Inténtalo de nuevo.",
-      spoolActiveLoan: "Devuelve el préstamo activo antes de eliminar esta bobina.",
+      spoolActiveLoan:
+        "Devuelve el préstamo activo antes de eliminar esta bobina.",
       loadedSpoolEditBlocked:
         "Usa las acciones de la ranura de impresora para editar una bobina cargada.",
       loanedSpoolEditBlocked:
@@ -2400,6 +2540,13 @@ const dictionaries = {
       activeLoanCount:
         "{count, plural, one {# préstamo activo} other {# préstamos activos}}",
       primaryFlowsAria: "Flujos principales",
+
+      activeLoanCountMany: "{count} préstamos activos",
+      activeLoanCountOne: "{count} préstamo activo",
+      printerCountMany: "{count} impresoras",
+      printerCountOne: "{count} impresora",
+      spoolCountMany: "{count} bobinas",
+      spoolCountOne: "{count} bobina",
     },
     shell: {
       refresh: "Actualizar",
@@ -2422,7 +2569,8 @@ const dictionaries = {
       stockEntry: "Entrada de stock",
       selectionPreview: "Vista previa de la selección",
       addSpool: "Añadir bobina",
-      addSpoolDetail: "Añade esta selección al stock como propia o prestada por terceros.",
+      addSpoolDetail:
+        "Añade esta selección al stock como propia o prestada por terceros.",
       addSpoolToInventory: "Añadir bobina al inventario",
       borrowedInAction: "Prestada por terceros",
       owned: "Propia",
@@ -2469,7 +2617,8 @@ const dictionaries = {
       addToWishlistHelp: "Usa la misma selección para seguir deseos y pedidos.",
       addCurrentSelectionToWishlist: "Añadir la selección actual a deseos",
       wishlistQueue: "Cola de deseos / pedidos",
-      wishlistQueueHelp: "Mueve artículos entre deseos, pedido y recibido, o regístralos ahora.",
+      wishlistQueueHelp:
+        "Mueve artículos entre deseos, pedido y recibido, o regístralos ahora.",
       wishlist: "Deseos",
       onOrder: "Pedido",
       received: "Recibido",
@@ -2481,15 +2630,22 @@ const dictionaries = {
       openSpool: "Abrir bobina",
       noMatch: "Ninguna bobina local coincide con la búsqueda.",
       hiddenSelectedTitle: "Bobina seleccionada oculta",
-      hiddenSelectedBody: "{title} sigue seleccionada para detalles, ranuras y préstamos.",
+      hiddenSelectedBody:
+        "{title} sigue seleccionada para detalles, ranuras y préstamos.",
       clearSearch: "Borrar búsqueda",
+
+      optionalDetailsBorrowedMeta:
+        "Contacto del propietario, proveedor, muestra, ubicación, nota",
+      registerBorrowedInHelp:
+        "Registre este bobina como prestado mientras mantiene el mismo flujo de catálogo y lista de deseos que en el escritorio.",
     },
     loans: {
       title: "Préstamos",
       subtitle: "Gestiona préstamos y completa devoluciones.",
       searchPlaceholder: "Buscar prestatario, nota, filamento o referencia",
       filterAria: "Filtros de estado de préstamos",
-      loanPickerHelp: "Elige una bobina. El préstamo se completa al guardar el peso de salida.",
+      loanPickerHelp:
+        "Elige una bobina. El préstamo se completa al guardar el peso de salida.",
       activeOnly: "Solo activos",
       returnedOnly: "Solo devueltos",
       allLoans: "Todos los préstamos",
@@ -2499,7 +2655,8 @@ const dictionaries = {
       showAll: "Mostrar todos los préstamos",
       noMatch: "Ningún préstamo coincide con la búsqueda o el filtro.",
       noEligibleSpools: "No hay bobinas disponibles para prestar.",
-      hiddenSelectedMessage: "{title} sigue seleccionada para detalles y préstamos.",
+      hiddenSelectedMessage:
+        "{title} sigue seleccionada para detalles y préstamos.",
       openSpool: "Abrir bobina",
       returnLoan: "Devolver préstamo",
       active: "Activo",
@@ -2533,6 +2690,10 @@ const dictionaries = {
       outboundLoan: "Préstamo saliente",
       unknownBorrower: "Desconocido",
       unknownVendor: "Fabricante desconocido",
+
+      hiddenSelectedBody:
+        "{title} todavía tiene préstamos. Borra los filtros para verlos aquí.",
+      hiddenSelectedTitle: "bobina seleccionado oculto",
     },
     detail: {
       openDetail: "Detalle",
@@ -2541,7 +2702,8 @@ const dictionaries = {
       noSelection: "Sin selección",
       noSelectedSpool: "Ninguna bobina seleccionada",
       selectSpool: "Selecciona una bobina",
-      selectSpoolHint: "Elige una bobina en Inventario, Préstamos o Impresoras.",
+      selectSpoolHint:
+        "Elige una bobina en Inventario, Préstamos o Impresoras.",
       loan: "Préstamo",
       lendSpool: "Prestar bobina",
       borrowedInHelp: "Datos del propietario y entrega.",
@@ -2557,7 +2719,8 @@ const dictionaries = {
       saveEmptySpoolWeight: "Guardar peso de la bobina vacía",
       details: "Detalles",
       qrPreview: "Código QR",
-      qrPreviewAlt: "Código QR del filamento para abrir el detalle en Companion",
+      qrPreviewAlt:
+        "Código QR del filamento para abrir el detalle en Companion",
       status: "Estado",
       locationOptional: "Ubicación (opcional)",
       locationPlaceholder: "Estante, cajón o carro",
@@ -2588,8 +2751,7 @@ const dictionaries = {
       noHistory: "Aún no hay historial.",
       weightChecksSummary:
         "{count, plural, one {# control de peso} other {# controles de peso}}",
-      activityItemsSummary:
-        "{count, plural, one {# evento} other {# eventos}}",
+      activityItemsSummary: "{count, plural, one {# evento} other {# eventos}}",
       noRecentHistory: "Sin historial reciente",
       history: "Historial",
       weightChecks: "Controles de peso",
@@ -2611,10 +2773,36 @@ const dictionaries = {
       eventDeleted: "Eliminada",
       notLoaded: "No cargada",
       qrInline: "QR {code}",
+
+      borrowedFromPlaceholder: "Nombre del propietario o contraparte",
+      borrowedInRemovedHint:
+        "El último bobina prestado fue retirado del inventario después de su devolución. Elija otro bobina del Inventario para continuar.",
+      counterparty: "Contraparte",
+      eventStatusLocationUpdate: "Actualización de estado y ubicación",
+      handBackMeasuredWeight: "Peso total devuelto incl. bobina (g)",
+      handBackNoteOptional: "Nota de devolución (opcional)",
+      handBackPlaceholder: "Condición o nota de devolución",
+      homeLocationPlaceholder: "Estante, cajón o carrito",
+      lentAt: "Cuaresma en",
+      lentOut: "prestado",
+      loadedInSlot:
+        "Cargado en la ranura {slot} de {printer}. Al crear el préstamo se liberará esa ranura.",
+      noBorrowedRecord:
+        "No se encontró ningún registro de préstamo activo para este bobina.",
+      notePlaceholder: "Momento de regreso u otro contexto",
+      ownerContactOptional: "Contacto del propietario (opcional)",
+      ownerContactPlaceholder: "Teléfono, correo electrónico o dirección",
+      returnNoteOptional: "Nota de devolución (opcional)",
+      returnPlaceholder: "Condición o nota de devolución",
+      returnedMeasuredWeight: "Peso total devuelto incl. bobina (g)",
+      returnedWeight: "Peso devuelto (g)",
+      useBorrowedInSection:
+        "Devuelva este bobina prestado de la sección de préstamo anterior.",
     },
     inventory: {
       rfidButton: "RFID",
-      rfidHintReady: "Captura y guarda la identidad AMS observada en esta bobina.",
+      rfidHintReady:
+        "Captura y guarda la identidad AMS observada en esta bobina.",
       rfidCurrentTag: "RFID guardada",
       rfidSourceSlot: "Ranura de origen RFID",
       rfidNoCaptureSource: "No hay ranuras AMS en directo disponibles",
@@ -2644,7 +2832,8 @@ const dictionaries = {
       loadFilament: "Cargar filamento",
       readyToLoad: "{count} listas para cargar",
       pickerPlaceholder: "Buscar material, color, fabricante o referencia",
-      noReadyMatch: "Ninguna bobina lista para cargar coincide con la búsqueda.",
+      noReadyMatch:
+        "Ninguna bobina lista para cargar coincide con la búsqueda.",
       loadedSummary: "{loaded} cargadas · {open} libres",
       liveBadge: "Live",
       liveSummary: "Live desde el host",
@@ -2662,8 +2851,10 @@ const dictionaries = {
       liveHumidityDry: "Seco",
       liveHumidityMiddle: "Medio",
       liveHumidityWet: "Húmedo",
-      liveCandidateSingle: "Una bobina parece coincidir. Guarda la RFID para vincularla.",
-      liveCandidateMultiple: "{count} bobinas parecen coincidir. Elige la correcta para guardar la RFID.",
+      liveCandidateSingle:
+        "Una bobina parece coincidir. Guarda la RFID para vincularla.",
+      liveCandidateMultiple:
+        "{count} bobinas parecen coincidir. Elige la correcta para guardar la RFID.",
       liveCandidate:
         "{count, plural, one {Una bobina parece coincidir. Guarda la RFID para vincularla.} other {# bobinas parecen coincidir. Elige la correcta para guardar la RFID.}}",
       saveCandidateRfid: "Guardar RFID",
@@ -2704,6 +2895,19 @@ const dictionaries = {
       sourceCode: "Código fuente",
       viewLicense: "Ver licencia",
       viewNotices: "Avisos",
+
+      activeLoanCountMany: "{count} préstamos activos",
+      activeLoanCountOne: "{count} préstamo activo",
+      desktopInCharge:
+        "La aplicación de escritorio y SQLite permanecen a cargo.",
+      english: "Inglés",
+      norwegian: "noruego",
+      printerCountMany: "{count} impresoras",
+      printerCountOne: "{count} impresora",
+      spoolCountMany: "{count} bobinas",
+      spoolCountOne: "{count} bobina",
+      trustedLanDesktopInCharge:
+        "La aplicación de escritorio y SQLite permanecen a cargo. El acceso a Trusted-LAN sigue estando controlado por el escritorio y no está cifrado en la red.",
     },
     format: {
       unknown: "Desconocido",
@@ -2718,6 +2922,225 @@ const dictionaries = {
       lost: "Perdido",
       owned: "Propio",
       borrowedIn: "Prestado por terceros",
+    },
+
+    logic: {
+      loanAlreadyLoanedOut: "Esta bobina ya está prestada.",
+      loanBorrowedInBlocked:
+        "Las bobinas recibidas en préstamo no se pueden prestar desde Companion.",
+      loanEmptyOrLostBlocked:
+        "Aquí no se pueden prestar bobinas vacías o perdidas.",
+      loanInUseBlocked:
+        "No se pueden prestar bobinas cargadas en las ranuras de una impresora.",
+      loanSelectSpool:
+        "Selecciona una bobina del inventario antes de crear un préstamo.",
+      opening: "Abriendo...",
+      openingFrom: "Abriendo {noun} desde {from}...",
+      openingId: "Abriendo {id}...",
+      openingNamedSpool: "Abriendo {noun} {id}...",
+      openingNoun: "Abriendo {noun}...",
+    },
+    recovery: {
+      currentPrinterSlot: "ranura de impresora actual",
+      fromSource: "Desde {source}",
+      handedBack: "Devuelto",
+      nextSpool: "Siguiente bobina sugerida",
+      openingFromSource: "Abriendo desde {source}",
+      openingFromSourceNow: "Abriendo ahora desde {source}",
+      openingNow: "Abriendo ahora",
+      openingSpool: "Abriendo bobina",
+      openingSpoolFromSourceNow: "Abriendo ahora {spool} desde {source}.",
+      openingSpoolNow: "Abriendo ahora {spool}",
+      openingSpoolShort: "Abriendo {spool}",
+      openingSuggestedFromSourceNow:
+        "Abriendo ahora la bobina sugerida desde {source}.",
+      recoveryInSection: "Recuperación en {section}",
+      selectSpool: "Selecciona una bobina",
+      selectSuggested: "Selecciona la bobina sugerida",
+      slotOnPrinter: "{printer}, ranura {slot}",
+      sourceInventory: "Inventario",
+      sourceLoanHistory: "Historial de préstamos",
+      sourcePrinterSlot: "Ranura para impresora",
+      suggested: "Recuperación sugerida",
+    },
+    status: {
+      borrowedInHandBackFailed:
+        "No se pudo devolver la bobina recibida en préstamo.",
+      borrowedInHandBackSelectActive:
+        "Selecciona un préstamo recibido activo antes de devolverlo.",
+      borrowedInHandBackWeightInvalid:
+        "Introduce un peso devuelto válido y no negativo en gramos.",
+      borrowedInHandedBack: "Bobina recibida en préstamo devuelta.",
+      borrowedInHandingBack: "Devolviendo la bobina recibida en préstamo...",
+      borrowedInOwnerRequired:
+        "Indica quién es el propietario de la bobina recibida en préstamo.",
+      borrowedInRegisterFailed:
+        "No se pudo registrar la bobina recibida en préstamo.",
+      borrowedInRegistered: "Bobina recibida en préstamo registrada.",
+      borrowedInRegisteredJustNow:
+        "Bobina prestada registrada hace un momento.",
+      borrowedInRegistering: "Registrando bobina recibida en préstamo...",
+      borrowedInSaving: "Guardando los datos del préstamo recibido...",
+      borrowedInSelectBeforeUpdate:
+        "Selecciona una bobina recibida en préstamo antes de actualizar sus datos.",
+      borrowedInUpdateFailed:
+        "No se pudieron actualizar los detalles del préstamo.",
+      borrowedInUpdated: "Detalles del préstamo actualizados.",
+      borrowedInUpdatedJustNow:
+        "Los detalles del préstamo se actualizaron hace un momento.",
+      browserStatusLocationLimited:
+        "Las ediciones de estado/ubicación del navegador se limitan a En stock, Vacío o Perdido.",
+      clearedFromSlotJustNow: "Retirado de {label} hace un momento.",
+      clearingPrinterSlot: "Limpiando la ranura de la impresora...",
+      companionReady: "Sesión Companion lista.",
+      detailLoadFailed: "No se pudo cargar el detalle de la bobina.",
+      homeLocationSaveFailed: "No se pudo guardar la ubicación de casa.",
+      homeLocationSaved: "Ubicación de casa guardada.",
+      invalidDetailStatus:
+        "Elige un estado válido antes de guardar los detalles.",
+      languageSetDe: "Idioma configurado en alemán.",
+      languageSetEn: "Idioma configurado en inglés.",
+      languageSetFr: "Idioma configurado en francés.",
+      languageSetNb: "Idioma configurado en noruego.",
+      loadedIntoSlotJustNow: "Cargado en {label} hace un momento.",
+      loadedSpoolEditBlocked:
+        "Las bobinas cargadas utilizan las acciones de ranura de la impresora en lugar de cambios manuales de estado o ubicación.",
+      loanBorrowerRequired:
+        "Introduce el nombre del prestatario antes de crear un préstamo.",
+      loanCreateFailed: "No se pudo crear el préstamo saliente.",
+      loanCreated: "Préstamo saliente creado.",
+      loanCreatedJustNow: "Préstamo saliente creado hace un momento.",
+      loanCreating: "Creando préstamo saliente...",
+      loanOutgoingWeightInvalid:
+        "Introduce un peso de salida válido y no negativo en gramos.",
+      loanReturnFailed: "No se pudo devolver el préstamo saliente.",
+      loanReturnSelectActive:
+        "Selecciona un préstamo activo antes de devolverlo.",
+      loanReturnWeightInvalid:
+        "Introduce un peso devuelto válido y no negativo en gramos.",
+      loanReturned: "Préstamo saliente devuelto.",
+      loanReturnedJustNow: "Préstamo saliente devuelto hace un momento.",
+      loanReturning: "Devolución de préstamo saliente...",
+      loanSelectSpool: "Selecciona una bobina antes de crear un préstamo.",
+      loanedOutEditBlocked:
+        "Las bobinas prestadas utilizan el flujo de devolución de Companion en lugar de cambios manuales de estado o ubicación.",
+      manualColorRequired:
+        "Introduce un color antes de añadir una bobina manual.",
+      manualFilamentRequired:
+        "Introduce un nombre de filamento antes de añadir una bobina manual.",
+      manualMaterialRequired:
+        "Introduce un material antes de añadir una bobina manual.",
+      printerSlotAssigned: "Ranura de impresora asignada.",
+      printerSlotAssignedJustNow:
+        "Ranura para impresora asignada hace un momento.",
+      printerSlotCleared: "Ranura de la impresora despejada.",
+      printerSlotClearedJustNow:
+        "La ranura de la impresora se ha despejado hace un momento.",
+      printerSlotFailed: "No se pudo actualizar la ranura de la impresora.",
+      printerSlotRequired:
+        "Se requieren impresora y ranura para las actualizaciones de ranuras.",
+      printerSlotWeightUpdated:
+        "Peso de la ranura de la impresora actualizado.",
+      printerSlotWeightUpdatedJustNow:
+        "Peso de la ranura de la impresora actualizado hace un momento.",
+      qrLookupFailed: "No se pudo abrir el enlace de la bobina.",
+      qrLookupMatched: "Enlace de bobina abierto.",
+      qrLookupMissingSpoolId:
+        "El enlace no contiene ningún identificador de bobina.",
+      qrLookupRequired: "Abre un enlace de bobina válido antes de cargarla.",
+      qrLookupSearching: "Abriendo el enlace de la bobina...",
+      refreshFailed: "No se pudieron cargar los datos complementarios.",
+      refreshed: "Datos de Companion actualizados.",
+      rfidCandidateAlreadyRegistered: "Este rollo ya tiene un RFID guardado.",
+      rfidCaptureNothingToSave:
+        "No hubo ningún RFID observado disponible para guardar.",
+      rfidLiveCandidateStale:
+        "Actualizar datos de Companion; la identidad de la ranura en vivo cambió antes de que se pudiera guardar RFID.",
+      rfidSaveFailed: "No se pudo guardar RFID.",
+      rfidSaved: "RFID guardado.",
+      rfidSavedJustNow: "RFID guardado hace un momento.",
+      savingSpoolDetails: "Guardando detalles de la bobina...",
+      savingSpoolRfid: "Guardando RFID...",
+      selectSpoolBeforeEdit:
+        "Selecciona una bobina antes de editar sus detalles.",
+      sessionStatusFailed:
+        "No se pudo verificar la sesión complementaria actual.",
+      spoolDetailsUpdateFailed:
+        "No se pudieron actualizar los detalles de la bobina.",
+      spoolDetailsUpdated: "Detalles de la bobina actualizados.",
+      spoolDetailsUpdatedJustNow: "Detalles actualizados hace un momento.",
+      startingWeightInvalid:
+        "Introduce un peso inicial válido y no negativo en gramos.",
+      stockAddFailed: "No se pudo añadir la bobina al inventario.",
+      stockAdded: "Bobina añadida al inventario.",
+      stockAddedJustNow: "Bobina añadida al inventario hace un momento.",
+      stockAdding: "Añadiendo bobina al inventario...",
+      stockCatalogRequired:
+        "Elige un filamento del catálogo antes de añadir existencias.",
+      swatchHexInvalid:
+        "Introduce un color hexadecimal válido con #RGB o #RRGGBB.",
+      tareWeightFailed: "No se pudo actualizar el peso de la bobina vacía.",
+      tareWeightSaving: "Guardando el peso de la bobina vacía...",
+      tareWeightUpdated: "Peso de la bobina vacía actualizado.",
+      tareWeightUpdatedJustNow:
+        "Peso de la bobina vacía actualizado hace un momento.",
+      trustedLanAwaitPairing:
+        "Abra un enlace de emparejamiento desde la Configuración del escritorio para iniciar esta sesión del navegador de LAN confiable.",
+      trustedLanPairFailed: "No se pudo emparejar el navegador LAN confiable.",
+      trustedLanPairing: "Emparejando el navegador de LAN confiable...",
+      trustedLanPairingMissing:
+        "Abra un enlace de emparejamiento desde la Configuración del escritorio para iniciar esta sesión del navegador de LAN confiable.",
+      trustedLanReady: "Sesión del navegador Trusted-LAN lista.",
+      trustedLanRenewFailed: "No se pudo renovar la sesión de LAN confiable.",
+      trustedLanRenewing:
+        "La sesión Trusted-LAN expiró. Intentando renovar el navegador vinculado...",
+      trustedLanReopen:
+        "La sesión Trusted-LAN expiró. Abra un nuevo enlace de emparejamiento desde la Configuración del escritorio.",
+      trustedLanRestored: "Sesión Trusted-LAN restaurada.",
+      updatingPrinterSlot:
+        "Actualizando la asignación de ranuras de impresora...",
+      weightFailed: "No se pudo actualizar el peso.",
+      weightInvalid: "Introduce un peso válido y no negativo en gramos.",
+      weightSaving: "Guardando la actualización de peso...",
+      weightUpdated: "Peso actualizado.",
+      weightUpdatedJustNow: "Peso actualizado hace un momento.",
+      wishlistAddFailed:
+        "No se pudo agregar el elemento de la lista de deseos.",
+      wishlistAdded: "Artículo de la lista de deseos agregado.",
+      wishlistAdding: "Añadiendo filamento a la lista de deseos...",
+      wishlistCatalogRequired:
+        "Elige un filamento del catálogo antes de añadirlo a la lista de deseos.",
+      wishlistDeleteFailed:
+        "No se pudo eliminar el elemento de la lista de deseos.",
+      wishlistDeleted: "Elemento de la lista de deseos eliminado.",
+      wishlistDeleting: "Eliminando elemento de la lista de deseos...",
+      wishlistManualIncomplete:
+        "Completa los datos del filamento manual antes de añadirlo a la lista de deseos.",
+      wishlistSelectBeforeDelete:
+        "Elija un elemento de la lista de deseos antes de eliminarlo.",
+      wishlistSelectBeforeStatus:
+        "Elija un elemento de la lista de deseos antes de cambiar su estado.",
+      wishlistSelectBeforeStock:
+        "Elija un artículo de la lista de deseos antes de almacenarlo.",
+      wishlistStatusInvalid: "Elija un estado de lista de deseos válido.",
+      wishlistStatusUpdateFailed:
+        "No se pudo actualizar el estado de la lista de deseos.",
+      wishlistStatusUpdated: "Estado de la lista de deseos actualizado.",
+      wishlistStatusUpdating: "Actualizando el estado de la lista de deseos...",
+      wishlistStockFailed:
+        "No se pudo añadir al inventario la bobina de la lista de deseos.",
+      wishlistStocked: "Bobina de la lista de deseos añadida al inventario.",
+      wishlistStockedJustNow:
+        "Bobina de la lista de deseos añadida al inventario hace un momento.",
+      wishlistStocking:
+        "Añadiendo la bobina de la lista de deseos al inventario...",
+    },
+    trustedLan: {
+      awaiting: "Esperando un enlace de emparejamiento de LAN confiable.",
+      copy: "Este navegador utiliza la ruta complementaria de LAN confiable. Abra un enlace de emparejamiento desde la Configuración del escritorio para aprobar este navegador. El tráfico Trusted-LAN no está cifrado, así que utilícelo únicamente en una red de confianza.",
+      pairingHint:
+        "La configuración de escritorio crea enlaces de emparejamiento de un solo uso y de corta duración para el acceso humano al navegador.",
+      title: "Compañero del navegador Trusted-LAN",
     },
   },
 };
@@ -2763,7 +3186,9 @@ export function resolveInitialCompanionLocale(storageRef, navigatorRef) {
   const effectiveStorage =
     storageRef === undefined ? readCompanionGlobal("localStorage") : storageRef;
   const effectiveNavigator =
-    navigatorRef === undefined ? readCompanionGlobal("navigator") : navigatorRef;
+    navigatorRef === undefined
+      ? readCompanionGlobal("navigator")
+      : navigatorRef;
   let storedValue = null;
   let storedFromLegacyKey = false;
   try {
@@ -2811,13 +3236,17 @@ export function resolveInitialCompanionLocale(storageRef, navigatorRef) {
 
 export function t(locale, key, fallback = "", params = {}) {
   const normalizedLocale = normalizeCompanionLocale(locale);
-  const localized = lookup(dictionaries[sourceLocaleFor(normalizedLocale)], key);
+  const localized = lookup(
+    dictionaries[sourceLocaleFor(normalizedLocale)],
+    key,
+  );
   const fallbackLocale = fallbackLocaleFor(normalizedLocale);
   const sourceFallback = fallbackLocale
     ? lookup(dictionaries[fallbackLocale], key)
     : undefined;
   const format = isPseudoLocale(normalizedLocale)
-    ? (template) => pseudoLocalizeMessageForLocale(template, params, normalizedLocale)
+    ? (template) =>
+        pseudoLocalizeMessageForLocale(template, params, normalizedLocale)
     : (template) => formatMessage(template, params, normalizedLocale);
   if (typeof localized === "string") {
     return format(localized);
