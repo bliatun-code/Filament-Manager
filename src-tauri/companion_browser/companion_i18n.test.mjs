@@ -291,6 +291,15 @@ test("complete Swedish draft translates shell and plural workflow copy", () => {
   assert.equal(t("sv-SE", "detail.saveWeight"), "Spara vikt");
 });
 
+test("complete Danish draft translates shell and plural workflow copy", () => {
+  assert.equal(t("da-DK", "nav.storage"), "Lager");
+  assert.equal(t("da-DK", "settings.title"), "Indstillinger");
+  assert.equal(t("da-DK", "nav.spoolCount", "", { count: 1 }), "1 rulle");
+  assert.equal(t("da-DK", "nav.spoolCount", "", { count: 2 }), "2 ruller");
+  assert.equal(t("da-DK", "printers.toolhead"), "Printhoved");
+  assert.equal(t("da-DK", "detail.saveWeight"), "Gem vægt");
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {
