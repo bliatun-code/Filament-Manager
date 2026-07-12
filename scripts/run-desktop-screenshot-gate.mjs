@@ -200,6 +200,14 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
     settings: "Indstillinger",
     statistics: "Statistik",
   },
+  "fi-FI": {
+    dashboard: "Yleiskatsaus",
+    inventory: "Varasto",
+    loans: "Lainat",
+    printers: "Tulostimet",
+    settings: "Asetukset",
+    statistics: "Tilastot",
+  },
   "en-XA": Object.fromEntries(
     Object.entries({
       dashboard: "Dashboard",

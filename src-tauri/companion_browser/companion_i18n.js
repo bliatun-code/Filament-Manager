@@ -11624,6 +11624,7 @@ const dictionaries = {
     "borrowedInHandedBack": "Lånt spole returneres."
   }
 },
+  "fi-FI": {},
 };
 
 function lookup(dictionary, key) {

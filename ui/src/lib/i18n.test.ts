@@ -190,6 +190,12 @@ test("resolveInitialLocale accepts hidden Danish only through a QA URL", () => {
   assert.equal(locale, "da-DK");
 });
 
+test("resolveInitialLocale accepts hidden Finnish only through a QA URL", () => {
+  const windowRef = { location: { search: "?bfm_locale=fi-FI" } };
+  const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
+  assert.equal(locale, "fi-FI");
+});
+
 test("locale dictionaries lazy-load and cache supported locales", async () => {
   const enDictionary = await loadLocaleDictionary("en");
 

@@ -275,6 +275,9 @@ fn visual_qa_locale_normalizer_defaults_to_english() {
     assert_eq!(normalize_visual_qa_locale("da"), "da-DK");
     assert_eq!(normalize_visual_qa_locale("da-DK"), "da-DK");
     assert_eq!(normalize_visual_qa_locale("da_dk"), "da-DK");
+    assert_eq!(normalize_visual_qa_locale("fi"), "fi-FI");
+    assert_eq!(normalize_visual_qa_locale("fi-FI"), "fi-FI");
+    assert_eq!(normalize_visual_qa_locale("fi_fi"), "fi-FI");
     assert_eq!(normalize_visual_qa_locale(""), "en");
     assert_eq!(normalize_visual_qa_locale("bad"), "en");
 }
