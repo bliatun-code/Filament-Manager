@@ -7200,6 +7200,7 @@ const dictionaries = {
     "title": "Trusted-LAN ブラウザ companion"
   }
 },
+  "ko-KR": {},
 };
 
 function lookup(dictionary, key) {

@@ -74,6 +74,12 @@
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
+    },
+    "ko-KR": {
+      "releaseStatus": "draft",
+      "nativeReviewer": null,
+      "reviewedAt": null,
+      "reviewedSourceFingerprint": null
     }
   }
 }

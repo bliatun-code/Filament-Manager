@@ -136,6 +136,14 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
     settings: "設定",
     statistics: "統計",
   },
+  "ko-KR": {
+    dashboard: "개요",
+    inventory: "재고",
+    loans: "대여",
+    printers: "프린터",
+    settings: "설정",
+    statistics: "통계",
+  },
   "en-XA": Object.fromEntries(
     Object.entries({
       dashboard: "Dashboard",
