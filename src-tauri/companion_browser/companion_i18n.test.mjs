@@ -180,6 +180,15 @@ test("complete Italian draft translates shell and workflow copy", () => {
   );
 });
 
+test("complete Polish draft translates shell and plural workflow copy", () => {
+  assert.equal(t("pl-PL", "nav.storage"), "Magazyn");
+  assert.equal(t("pl-PL", "settings.title"), "Ustawienia");
+  assert.equal(t("pl-PL", "nav.spoolCount", "", { count: 1 }), "1 szpula");
+  assert.equal(t("pl-PL", "nav.spoolCount", "", { count: 2 }), "2 szpule");
+  assert.equal(t("pl-PL", "nav.spoolCount", "", { count: 5 }), "5 szpul");
+  assert.equal(t("pl-PL", "printers.toolhead"), "Głowica narzędziowa");
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {

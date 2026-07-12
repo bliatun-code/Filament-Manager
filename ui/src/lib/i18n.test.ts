@@ -110,6 +110,14 @@ test("resolveInitialLocale accepts hidden Italian only through a QA URL", () => 
   assert.equal(locale, "it-IT");
 });
 
+test("resolveInitialLocale accepts hidden Polish only through a QA URL", () => {
+  const windowRef = { location: { search: "?bfm_locale=pl-PL" } };
+  const locale = withGlobalValue("window", windowRef, () =>
+    resolveInitialLocale(),
+  );
+  assert.equal(locale, "pl-PL");
+});
+
 test("locale dictionaries lazy-load and cache supported locales", async () => {
   const enDictionary = await loadLocaleDictionary("en");
 
@@ -346,6 +354,17 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
     "Consumo per stampante",
   );
   assert.equal(getCachedLocaleDictionary("it-IT"), italianDictionary);
+
+  const polishDictionary = await loadLocaleDictionary("pl-PL");
+  assert.equal(lookup(polishDictionary, "nav.inventory"), "Magazyn");
+  assert.equal(lookup(polishDictionary, "common.cancel"), "Anuluj");
+  assert.equal(lookup(polishDictionary, "dashboard.totalSpools"), "Wszystkie szpule");
+  assert.equal(lookup(polishDictionary, "inventory.title"), "Szpule");
+  assert.equal(lookup(polishDictionary, "wishlist.statusOnOrder"), "Zamówione");
+  assert.equal(lookup(polishDictionary, "inventory.bambuBatchCameraAction"), "Użyj kamery internetowej");
+  assert.equal(lookup(polishDictionary, "printers.showSlots"), "Pokaż gniazda");
+  assert.equal(lookup(polishDictionary, "statistics.perPrinter"), "Zużycie według drukarki");
+  assert.equal(getCachedLocaleDictionary("pl-PL"), polishDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {

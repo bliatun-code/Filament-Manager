@@ -121,4 +121,7 @@ test("locale registry applies html language and direction", () => {
 
   assert.equal(applyLocaleToDocument("it", documentRef), true);
   assert.deepEqual(documentRef.documentElement, { lang: "it-IT", dir: "ltr" });
+
+  assert.equal(applyLocaleToDocument("pl", documentRef), true);
+  assert.deepEqual(documentRef.documentElement, { lang: "pl-PL", dir: "ltr" });
 });
