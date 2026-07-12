@@ -226,6 +226,15 @@ test("complete Japanese draft translates shell and workflow copy", () => {
   assert.equal(t("ja-JP", "detail.saveWeight"), "重量を保存");
 });
 
+test("complete Korean draft translates shell and workflow copy", () => {
+  assert.equal(t("ko-KR", "nav.storage"), "재고");
+  assert.equal(t("ko-KR", "settings.title"), "설정");
+  assert.equal(t("ko-KR", "nav.spoolCount", "", { count: 1 }), "1개 스풀");
+  assert.equal(t("ko-KR", "nav.spoolCount", "", { count: 2 }), "2개 스풀");
+  assert.equal(t("ko-KR", "printers.toolhead"), "툴헤드");
+  assert.equal(t("ko-KR", "detail.saveWeight"), "무게 저장");
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {

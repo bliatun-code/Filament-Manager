@@ -142,6 +142,12 @@ test("resolveInitialLocale accepts hidden Japanese only through a QA URL", () =>
   assert.equal(locale, "ja-JP");
 });
 
+test("resolveInitialLocale accepts hidden Korean only through a QA URL", () => {
+  const windowRef = { location: { search: "?bfm_locale=ko-KR" } };
+  const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
+  assert.equal(locale, "ko-KR");
+});
+
 test("locale dictionaries lazy-load and cache supported locales", async () => {
   const enDictionary = await loadLocaleDictionary("en");
 
@@ -433,6 +439,17 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(japaneseDictionary, "printers.showSlots"), "スロットを表示");
   assert.equal(lookup(japaneseDictionary, "statistics.perPrinter"), "プリンター別使用量");
   assert.equal(getCachedLocaleDictionary("ja-JP"), japaneseDictionary);
+
+  const koreanDictionary = await loadLocaleDictionary("ko-KR");
+  assert.equal(lookup(koreanDictionary, "nav.inventory"), "재고");
+  assert.equal(lookup(koreanDictionary, "common.cancel"), "취소");
+  assert.equal(lookup(koreanDictionary, "dashboard.totalSpools"), "전체 롤");
+  assert.equal(lookup(koreanDictionary, "inventory.title"), "롤");
+  assert.equal(lookup(koreanDictionary, "wishlist.statusOnOrder"), "주문 중");
+  assert.equal(lookup(koreanDictionary, "inventory.bambuBatchCameraAction"), "웹캠 사용");
+  assert.equal(lookup(koreanDictionary, "printers.showSlots"), "슬롯 표시");
+  assert.equal(lookup(koreanDictionary, "statistics.perPrinter"), "프린터별 사용량");
+  assert.equal(getCachedLocaleDictionary("ko-KR"), koreanDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {
