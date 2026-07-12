@@ -154,6 +154,12 @@ test("resolveInitialLocale accepts hidden Traditional Chinese only through a QA 
   assert.equal(locale, "zh-TW");
 });
 
+test("resolveInitialLocale accepts hidden Turkish only through a QA URL", () => {
+  const windowRef = { location: { search: "?bfm_locale=tr-TR" } };
+  const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
+  assert.equal(locale, "tr-TR");
+});
+
 test("locale dictionaries lazy-load and cache supported locales", async () => {
   const enDictionary = await loadLocaleDictionary("en");
 
@@ -467,6 +473,17 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(traditionalChineseDictionary, "printers.showSlots"), "顯示槽位");
   assert.equal(lookup(traditionalChineseDictionary, "statistics.perPrinter"), "各印表機用量");
   assert.equal(getCachedLocaleDictionary("zh-TW"), traditionalChineseDictionary);
+
+  const turkishDictionary = await loadLocaleDictionary("tr-TR");
+  assert.equal(lookup(turkishDictionary, "nav.inventory"), "Envanter");
+  assert.equal(lookup(turkishDictionary, "common.cancel"), "İptal");
+  assert.equal(lookup(turkishDictionary, "dashboard.totalSpools"), "Toplam makara");
+  assert.equal(lookup(turkishDictionary, "inventory.title"), "Makaralar");
+  assert.equal(lookup(turkishDictionary, "wishlist.statusOnOrder"), "Sipariş verildi");
+  assert.equal(lookup(turkishDictionary, "inventory.bambuBatchCameraAction"), "Web kamerasını kullan");
+  assert.equal(lookup(turkishDictionary, "printers.showSlots"), "Yuvaları göster");
+  assert.equal(lookup(turkishDictionary, "statistics.perPrinter"), "Yazıcıya göre kullanım");
+  assert.equal(getCachedLocaleDictionary("tr-TR"), turkishDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {

@@ -244,6 +244,15 @@ test("complete Traditional Chinese draft translates shell and workflow copy", ()
   assert.equal(t("zh-TW", "detail.saveWeight"), "儲存重量");
 });
 
+test("complete Turkish draft translates shell and workflow copy", () => {
+  assert.equal(t("tr-TR", "nav.storage"), "Envanter");
+  assert.equal(t("tr-TR", "settings.title"), "Ayarlar");
+  assert.equal(t("tr-TR", "nav.spoolCount", "", { count: 1 }), "1 makara");
+  assert.equal(t("tr-TR", "nav.spoolCount", "", { count: 2 }), "2 makara");
+  assert.equal(t("tr-TR", "printers.toolhead"), "Takım kafası");
+  assert.equal(t("tr-TR", "detail.saveWeight"), "Ağırlığı kaydet");
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {
