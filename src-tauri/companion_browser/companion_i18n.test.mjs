@@ -217,6 +217,15 @@ test("complete Simplified Chinese draft translates shell and workflow copy", () 
   assert.equal(t("zh-CN", "detail.saveWeight"), "保存重量");
 });
 
+test("complete Japanese draft translates shell and workflow copy", () => {
+  assert.equal(t("ja-JP", "nav.storage"), "在庫");
+  assert.equal(t("ja-JP", "settings.title"), "設定");
+  assert.equal(t("ja-JP", "nav.spoolCount", "", { count: 1 }), "1 個のスプール");
+  assert.equal(t("ja-JP", "nav.spoolCount", "", { count: 2 }), "2 個のスプール");
+  assert.equal(t("ja-JP", "printers.toolhead"), "ツールヘッド");
+  assert.equal(t("ja-JP", "detail.saveWeight"), "重量を保存");
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {

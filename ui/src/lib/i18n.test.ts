@@ -136,6 +136,12 @@ test("resolveInitialLocale accepts hidden Simplified Chinese only through a QA U
   assert.equal(locale, "zh-CN");
 });
 
+test("resolveInitialLocale accepts hidden Japanese only through a QA URL", () => {
+  const windowRef = { location: { search: "?bfm_locale=ja-JP" } };
+  const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
+  assert.equal(locale, "ja-JP");
+});
+
 test("locale dictionaries lazy-load and cache supported locales", async () => {
   const enDictionary = await loadLocaleDictionary("en");
 
@@ -416,6 +422,17 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(chineseDictionary, "printers.showSlots"), "显示料槽");
   assert.equal(lookup(chineseDictionary, "statistics.perPrinter"), "按打印机统计用量");
   assert.equal(getCachedLocaleDictionary("zh-CN"), chineseDictionary);
+
+  const japaneseDictionary = await loadLocaleDictionary("ja-JP");
+  assert.equal(lookup(japaneseDictionary, "nav.inventory"), "在庫");
+  assert.equal(lookup(japaneseDictionary, "common.cancel"), "キャンセル");
+  assert.equal(lookup(japaneseDictionary, "dashboard.totalSpools"), "ロール合計");
+  assert.equal(lookup(japaneseDictionary, "inventory.title"), "ロール");
+  assert.equal(lookup(japaneseDictionary, "wishlist.statusOnOrder"), "注文済み");
+  assert.equal(lookup(japaneseDictionary, "inventory.bambuBatchCameraAction"), "ウェブカメラを使用する");
+  assert.equal(lookup(japaneseDictionary, "printers.showSlots"), "スロットを表示");
+  assert.equal(lookup(japaneseDictionary, "statistics.perPrinter"), "プリンター別使用量");
+  assert.equal(getCachedLocaleDictionary("ja-JP"), japaneseDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {
