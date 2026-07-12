@@ -9,7 +9,10 @@ function renderShell(overrides = {}) {
     ...createInitialCompanionState(),
     apiReady: true,
     spools: [{ spool: { id: "spool-1" } }],
-    printers: [{ printer: { id: "printer-1" } }, { printer: { id: "printer-2" } }],
+    printers: [
+      { printer: { id: "printer-1" } },
+      { printer: { id: "printer-2" } },
+    ],
     activeLoans: [{ loan: { id: "loan-1" } }],
     ...overrides.state,
   };
@@ -28,7 +31,10 @@ test("settings shell renders session metrics and current session actions", () =>
   assert.match(html, /data-action="set-theme-mode"/);
   assert.match(html, /Connection/);
   assert.match(html, /Following device · Light/);
-  assert.match(html, /Trusted-LAN connected · 1 spool · 2 printers · 1 active loan/);
+  assert.match(
+    html,
+    /Trusted-LAN connected · 1 spool · 2 printers · 1 active loan/,
+  );
   assert.match(html, /data-action="set-locale"/);
   assert.match(html, /Norsk \(bokmål\)/);
   assert.match(html, /English/);
@@ -36,7 +42,11 @@ test("settings shell renders session metrics and current session actions", () =>
   assert.match(html, /Français/);
   assert.doesNotMatch(html, /Español/);
   assert.doesNotMatch(html, /Português \(Brasil\)/);
-  assert.match(html, /class="segmented-control" data-columns="2" role="group" aria-label="Language"/);
+  assert.doesNotMatch(html, /Italiano/);
+  assert.match(
+    html,
+    /class="segmented-control" data-columns="2" role="group" aria-label="Language"/,
+  );
   assert.doesNotMatch(html, /Workflow scope/);
   assert.match(html, /Refresh companion data/);
   assert.doesNotMatch(html, /Forget token/);
@@ -52,8 +62,14 @@ test("settings shell exposes AGPL license and source links", () => {
   assert.match(html, /View license/);
   assert.match(html, /Notices/);
   assert.match(html, /github\.com\/bliatun-code\/Filament-Manager/);
-  assert.match(html, /github\.com\/bliatun-code\/Filament-Manager\/blob\/main\/LICENSE/);
-  assert.match(html, /github\.com\/bliatun-code\/Filament-Manager\/blob\/main\/NOTICE\.md/);
+  assert.match(
+    html,
+    /github\.com\/bliatun-code\/Filament-Manager\/blob\/main\/LICENSE/,
+  );
+  assert.match(
+    html,
+    /github\.com\/bliatun-code\/Filament-Manager\/blob\/main\/NOTICE\.md/,
+  );
 });
 
 test("settings shell reflects disconnected session state", () => {

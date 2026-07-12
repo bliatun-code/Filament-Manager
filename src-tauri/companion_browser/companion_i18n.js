@@ -3780,6 +3780,7 @@ const dictionaries = {
       title: "Navegador Trusted-LAN companion",
     },
   },
+  "it-IT": {},
 };
 
 function lookup(dictionary, key) {
