@@ -152,6 +152,14 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
     settings: "設定",
     statistics: "統計",
   },
+  "tr-TR": {
+    dashboard: "Genel Bakış",
+    inventory: "Envanter",
+    loans: "Ödünçler",
+    printers: "Yazıcılar",
+    settings: "Ayarlar",
+    statistics: "İstatistikler",
+  },
   "en-XA": Object.fromEntries(
     Object.entries({
       dashboard: "Dashboard",

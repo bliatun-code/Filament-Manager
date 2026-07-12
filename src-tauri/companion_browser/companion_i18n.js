@@ -8306,6 +8306,7 @@ const dictionaries = {
     "title": "Trusted-LAN 瀏覽器伴侶"
   }
 },
+  "tr-TR": {},
 };
 
 function lookup(dictionary, key) {

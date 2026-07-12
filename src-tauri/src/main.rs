@@ -452,6 +452,7 @@ fn normalize_visual_qa_locale(value: &str) -> &'static str {
         "ja" | "ja-jp" | "ja_jp" => "ja-JP",
         "ko" | "ko-kr" | "ko_kr" => "ko-KR",
         "zh-tw" | "zh_tw" | "zh-hant" => "zh-TW",
+        "tr" | "tr-tr" | "tr_tr" => "tr-TR",
         _ => "en",
     }
 }
