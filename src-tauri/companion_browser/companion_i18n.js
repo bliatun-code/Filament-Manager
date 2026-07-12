@@ -11652,7 +11652,7 @@ const dictionaries = {
     "refreshing": "Päivitetään...",
     "refreshLocalData": "Päivitä Companion-tiedot",
     "refreshCompanionData": "Päivitä Companion-tiedot",
-    "openingDetail": "Avaustieto..."
+    "openingDetail": "Avataan tietoja..."
   },
   "nav": {
     "storage": "Varasto",
@@ -11661,7 +11661,7 @@ const dictionaries = {
     "settings": "Asetukset",
     "activeCount": "{count} aktiivinen",
     "disconnected": "Ei yhteyttä",
-    "configuredCount": "{count} määritetty",
+    "configuredCount": "{count} määritettyä",
     "trustedLanSession": "Trusted-LAN-istunto",
     "spoolCount": "{count, plural, one {# rulla} other {# rullaa}}",
     "printerCount": "{count, plural, one {# tulostin} other {# tulostinta}}",
@@ -11772,7 +11772,7 @@ const dictionaries = {
   "trustedLan": {
     "title": "Trusted-LAN selain",
     "awaiting": "Odotetaan luotettavaa LAN-pariliitoslinkkiä.",
-    "copy": "Tämä selain käyttää luotettavaa LAN seuraavaa polkua. Valtuuta tämä selain avaamalla kumppanilinkki työpöydän asetuksista. Trusted-LAN-liikennettä ei ole salattu, joten käytä sitä vain verkossa, johon luotat.",
+    "copy": "Tämä selain käyttää Trusted-LAN Companion -yhteyttä. Valtuuta selain avaamalla Companion-linkki työpöytäsovelluksen asetuksista. Trusted-LAN-liikennettä ei salata, joten käytä sitä vain luotetussa verkossa.",
     "pairingHint": "Työpöytäasetukset luovat lyhytaikaisia, kertaluonteisia yhteyslinkkejä ihmisten pääsyä selaimiin."
   },
   "printers": {
@@ -11794,7 +11794,7 @@ const dictionaries = {
     "liveBadge": "Live",
     "openSpool": "Avaa kela",
     "loadFilament": "Lataa filamentti",
-    "clearSlot": "Tyhjä tila",
+    "clearSlot": "Tyhjennä paikka",
     "noSlots": "Tälle tulostimelle ei ole määritetty sijainteja.",
     "noReadyMatch": "Yksikään latausvalmiista kelaa ei vastannut tätä hakua.",
     "liveMatchNoClear": "Ei selkeää varaston vastaavuutta",
@@ -11837,7 +11837,7 @@ const dictionaries = {
     "rfidCaptureUnavailable": "Live-tallenteita ei ole tällä hetkellä saatavilla."
   },
   "loans": {
-    "title": "Lainaus",
+    "title": "Lainat",
     "activeOnly": "Vain aktiivinen",
     "returnedOnly": "Vain palautettu",
     "filterAria": "Lainatilan suodatin",
@@ -11985,7 +11985,7 @@ const dictionaries = {
     "selectSpoolHint": "Valitse kela varastosta, lainasta tai tulostimesta tarkistaaksesi sen täällä.",
     "borrowedInRemovedHint": "Viimeinen lainattu kela poistettiin varastosta palautuksen jälkeen. Valitse toinen kela varastosta jatkaaksesi.",
     "borrowedFrom": "Lainattu osoitteesta",
-    "qrPreviewAlt": "Filamentti QR -koodi nopeaan kumppanihakuun",
+    "qrPreviewAlt": "Filamentin QR-koodi nopeaan Companion-hakuun",
     "contact": "Ota yhteyttä",
     "borrowedInDate": "Lainattu",
     "borrowedFromPlaceholder": "Omistajan tai vastapuolen nimi",
