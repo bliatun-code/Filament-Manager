@@ -170,7 +170,7 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(spanishDictionary, "inventory.rfidTechnicalDetails"), "Detalles técnicos");
   assert.equal(lookup(spanishDictionary, "inventory.purgeConfirmTitle"), "¿Eliminar permanentemente esta bobina y todo su historial?");
   assert.equal(lookup(spanishDictionary, "printers.showSlots"), "Mostrar ranuras");
-  assert.equal(lookup(spanishDictionary, "printers.slotOnboarding"), "Incorporación AMS");
+  assert.equal(lookup(spanishDictionary, "printers.slotOnboarding"), "Registro desde AMS");
   assert.equal(lookup(spanishDictionary, "settings.bambuLiveSection"), "Estado Live Bambu");
   assert.equal(lookup(spanishDictionary, "settings.printerDiscardChanges"), "Descartar cambios");
   assert.equal(lookup(spanishDictionary, "statistics.perPrinter"), "Consumo por impresora");

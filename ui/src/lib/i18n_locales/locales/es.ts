@@ -139,7 +139,7 @@ export const esDictionary: DictionaryNode = {
     companionCheck: "Verificación de aplicaciones web",
     companionLive: "Aplicación web en ejecución",
     companionOff: "Aplicación web desactivada",
-    configured: "configurado",
+    configured: "configuradas",
     connectedToHost: "Conectado a",
     consumption: "Consumo de filamento",
     consumptionCaption:
@@ -157,7 +157,7 @@ export const esDictionary: DictionaryNode = {
     loaned: "prestado",
     loanedTo: "Prestado a",
     lowStockShort: "stock bajo",
-    lowest: "más bajo",
+    lowest: "mínimo",
     noActivePrinter: "No se seleccionó ninguna impresora activa",
     noInventoryData: "Sin datos de inventario",
     noPrintersConfigured: "No hay impresoras configuradas",
@@ -879,7 +879,7 @@ export const esDictionary: DictionaryNode = {
     handBackDialogWeightLabel: "Peso total devuelto incl. rollo (g)",
     handedBackFilamentGrams: "Devuelto",
     historyHint:
-      "Las filas abiertas se pueden devolver o devolver aquí, mientras que las filas completadas se pueden buscar como referencia.",
+      "Los préstamos abiertos se pueden devolver aquí; los completados permanecen disponibles como referencia.",
     in: "En",
     loanedGrams: "Prestado",
     markedHandedBackTo: "rollo prestado marcado como devuelto a",
@@ -932,7 +932,7 @@ export const esDictionary: DictionaryNode = {
     previewSingleMaterial: "{model} con un material",
     toolhead: "Cabezal",
     channel: "Canal",
-    emptySlot: "Ranura vacía",
+    emptySlot: "Vaciar ranura",
     noSpoolAssigned: "Ninguna bobina asignada.",
     searchRolls: "Buscar bobinas por nombre o fabricante",
     chooseRollForSlot: "Elegir bobina para la ranura",
@@ -945,15 +945,15 @@ export const esDictionary: DictionaryNode = {
     targetRoll: "Bobina de destino",
     targetEmpty: "Destino: ranura vacía",
     currentRoll: "Bobina actual",
-    liveConnectionConnected: "Live conectado",
-    liveConnectionIdle: "Live inactivo",
+    liveConnectionConnected: "Conectada en directo",
+    liveConnectionIdle: "Sin actividad en directo",
     liveConnectionWaiting: "Esperando Live",
     liveTelemetryState: "Estado de la impresora",
     liveTelemetryPrinting: "Imprimiendo",
     liveTelemetryPreparing: "Preparando",
     liveTelemetryPaused: "En pausa",
     liveTelemetryActive: "Activa",
-    liveTelemetryIdle: "Inactiva",
+    liveTelemetryIdle: "En espera",
     liveTelemetryNozzle: "Boquilla",
     liveTelemetryBed: "Cama",
     liveTelemetryAmsHumidity: "Humedad AMS",
@@ -965,8 +965,8 @@ export const esDictionary: DictionaryNode = {
     liveCatalogRequiresRfid: "esperando RFID",
     manualAssignment: "Manual",
     unknownLiveRfid: "RFID no registrada",
-    rfidOverridden: "RFID anulada manualmente",
-    lastKnownLive: "Último estado Live conocido",
+    rfidOverridden: "RFID sustituida manualmente",
+    lastKnownLive: "Último estado en directo conocido",
     waitingForLiveIdentity:
       "Se muestra la última asignación guardada hasta recibir una identidad más fiable.",
     unknownLiveRfidHint:
@@ -1005,7 +1005,7 @@ export const esDictionary: DictionaryNode = {
     liveCatalogCandidateSummary:
       "{count, plural, one {El catálogo Bambu tiene una coincidencia probable. Añádela para guardar la RFID.} other {# entradas del catálogo Bambu se parecen a esta bobina.}}",
     liveCatalogCandidateMore: "Hay más candidatas en el catálogo Bambu.",
-    slotOnboarding: "Incorporación AMS",
+    slotOnboarding: "Registro desde AMS",
     addCatalogRollAndSaveRfid: "Añadir y guardar RFID",
     addBorrowedCatalogRollAndSaveRfid: "Añadir como prestada y guardar RFID",
     slotOnboardingOccupied:
@@ -1690,7 +1690,7 @@ export const esDictionary: DictionaryNode = {
       "Actualización de AMS en curso. RFID y la coincidencia de bandejas pueden parecer temporalmente inciertas hasta que finaliza la lectura.",
     bambuLiveAmsWeightBasis: "Base de rollo AMS",
     bambuLiveAmsWeightEstimate: "Estimación de AMS",
-    bambuLiveBadge: "Vivir",
+    bambuLiveBadge: "En directo",
     bambuLiveCandidateCount: "candidatos",
     bambuLiveCandidateNoRfidSaved: "No se guardó ningún RFID",
     bambuLiveCandidateRfidSaved: "RFID guardado",
@@ -1846,12 +1846,12 @@ export const esDictionary: DictionaryNode = {
     catalogRefreshClientHostOnly:
       "Las actualizaciones del catálogo de proveedores se envían al host. Este cliente todavía muestra y edita el catálogo de hosts compartidos.",
     catalogRefreshHelp:
-      "Elija proveedor y actualice solo las familias de materiales que necesitan nuevos productos. Una auditoría completa de proveedores es más lenta y puede marcar productos no vistos como históricos.",
+      "Elige un proveedor y actualiza solo las familias de materiales que necesiten productos nuevos. Una auditoría completa es más lenta y puede marcar como históricos los productos que ya no aparezcan.",
     catalogRefreshTitle: "Actualizaciones del catálogo de proveedores",
     catalogTabClientHelp:
       "Este cliente muestra el catálogo de hosts. Las correcciones de muestras y las actualizaciones del catálogo de proveedores se guardan en el host.",
     catalogTabHelp:
-      "La aplicación se envía con un catálogo de semillas local. Las actualizaciones de proveedores agregan productos recién descubiertos y actualizan familias de materiales seleccionadas.",
+      "La aplicación incluye un catálogo local. Las actualizaciones de proveedores añaden productos nuevos y actualizan las familias de materiales seleccionadas.",
     confirmBulkSwatch:
       "¿Rellenar automáticamente muestras para todas las entradas visibles que faltan?",
     confirmBulkSwatchAction: "Confirmar autocompletar",
@@ -1895,7 +1895,7 @@ export const esDictionary: DictionaryNode = {
     swatchBulkDone: "Actualización masiva de muestras completada",
     swatchBulkNoneUpdated:
       "No se pudieron completar automáticamente muestras faltantes visibles.",
-    swatchColorPicker: "Recogedor",
+    swatchColorPicker: "Selector",
     swatchEditedUnsaved: "Editado · no guardado",
     swatchInvalid: "Valor no válido",
     swatchInvalidHint: "Utilice #RGB, #RRGGBB, degradado(...) o múltiple(...).",
