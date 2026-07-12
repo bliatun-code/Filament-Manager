@@ -208,6 +208,15 @@ test("complete Czech draft translates shell and plural workflow copy", () => {
   assert.equal(t("cs-CZ", "detail.saveWeight"), "Uložit hmotnost");
 });
 
+test("complete Simplified Chinese draft translates shell and workflow copy", () => {
+  assert.equal(t("zh-CN", "nav.storage"), "库存");
+  assert.equal(t("zh-CN", "settings.title"), "设置");
+  assert.equal(t("zh-CN", "nav.spoolCount", "", { count: 1 }), "1 个线轴");
+  assert.equal(t("zh-CN", "nav.spoolCount", "", { count: 2 }), "2 个线轴");
+  assert.equal(t("zh-CN", "printers.toolhead"), "工具头");
+  assert.equal(t("zh-CN", "detail.saveWeight"), "保存重量");
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {
