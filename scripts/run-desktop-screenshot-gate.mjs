@@ -192,6 +192,14 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
     settings: "Inställningar",
     statistics: "Statistik",
   },
+  "da-DK": {
+    dashboard: "Oversigt",
+    inventory: "Lager",
+    loans: "Udlån",
+    printers: "Printere",
+    settings: "Indstillinger",
+    statistics: "Statistik",
+  },
   "en-XA": Object.fromEntries(
     Object.entries({
       dashboard: "Dashboard",

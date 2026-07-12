@@ -457,6 +457,7 @@ fn normalize_visual_qa_locale(value: &str) -> &'static str {
         "ru" | "ru-ru" | "ru_ru" => "ru-RU",
         "hu" | "hu-hu" | "hu_hu" => "hu-HU",
         "sv" | "sv-se" | "sv_se" => "sv-SE",
+        "da" | "da-dk" | "da_dk" => "da-DK",
         _ => "en",
     }
 }

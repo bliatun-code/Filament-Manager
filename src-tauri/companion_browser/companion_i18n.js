@@ -11071,6 +11071,7 @@ const dictionaries = {
     "borrowedInHandedBack": "Inlånad spole lämnas tillbaka."
   }
 },
+  "da-DK": {},
 };
 
 function lookup(dictionary, key) {
