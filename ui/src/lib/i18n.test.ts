@@ -224,6 +224,11 @@ test("Spanish settings pilot covers program, label sheet, and maintenance workfl
     lookup(esDictionary, "settings.exportFullBackup"),
     "Exportar copia de seguridad completa (JSON)",
   );
+  assert.equal(lookup(esDictionary, "settings.librarySyncClient"), "Cliente");
+  assert.equal(
+    lookup(esDictionary, "settings.librarySyncConfirmSwitchToClient"),
+    "Cambiar a Cliente",
+  );
 });
 
 test("resolveInitialLocale falls back when localStorage throws", () => {
