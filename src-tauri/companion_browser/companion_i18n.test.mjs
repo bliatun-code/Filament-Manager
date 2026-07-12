@@ -189,6 +189,15 @@ test("complete Polish draft translates shell and plural workflow copy", () => {
   assert.equal(t("pl-PL", "printers.toolhead"), "Głowica narzędziowa");
 });
 
+test("complete Dutch draft translates shell and workflow copy", () => {
+  assert.equal(t("nl-NL", "nav.storage"), "Voorraad");
+  assert.equal(t("nl-NL", "settings.title"), "Instellingen");
+  assert.equal(t("nl-NL", "nav.spoolCount", "", { count: 1 }), "1 spoel");
+  assert.equal(t("nl-NL", "nav.spoolCount", "", { count: 2 }), "2 spoelen");
+  assert.equal(t("nl-NL", "printers.toolhead"), "Gereedschapskop");
+  assert.equal(t("nl-NL", "detail.saveWeight"), "Gewicht opslaan");
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {

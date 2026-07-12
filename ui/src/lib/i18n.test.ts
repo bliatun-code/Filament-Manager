@@ -118,6 +118,12 @@ test("resolveInitialLocale accepts hidden Polish only through a QA URL", () => {
   assert.equal(locale, "pl-PL");
 });
 
+test("resolveInitialLocale accepts hidden Dutch only through a QA URL", () => {
+  const windowRef = { location: { search: "?bfm_locale=nl-NL" } };
+  const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
+  assert.equal(locale, "nl-NL");
+});
+
 test("locale dictionaries lazy-load and cache supported locales", async () => {
   const enDictionary = await loadLocaleDictionary("en");
 
@@ -365,6 +371,17 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(polishDictionary, "printers.showSlots"), "Pokaż gniazda");
   assert.equal(lookup(polishDictionary, "statistics.perPrinter"), "Zużycie według drukarki");
   assert.equal(getCachedLocaleDictionary("pl-PL"), polishDictionary);
+
+  const dutchDictionary = await loadLocaleDictionary("nl-NL");
+  assert.equal(lookup(dutchDictionary, "nav.inventory"), "Voorraad");
+  assert.equal(lookup(dutchDictionary, "common.cancel"), "Annuleren");
+  assert.equal(lookup(dutchDictionary, "dashboard.totalSpools"), "Totaal aantal rollen");
+  assert.equal(lookup(dutchDictionary, "inventory.title"), "Rollen");
+  assert.equal(lookup(dutchDictionary, "wishlist.statusOnOrder"), "Besteld");
+  assert.equal(lookup(dutchDictionary, "inventory.bambuBatchCameraAction"), "Gebruik webcam");
+  assert.equal(lookup(dutchDictionary, "printers.showSlots"), "Slots tonen");
+  assert.equal(lookup(dutchDictionary, "statistics.perPrinter"), "Verbruik per printer");
+  assert.equal(getCachedLocaleDictionary("nl-NL"), dutchDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {
