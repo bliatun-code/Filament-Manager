@@ -264,7 +264,7 @@ test("complete Ukrainian draft translates shell and plural workflow copy", () =>
 });
 
 test("complete Russian draft translates shell and plural workflow copy", () => {
-  assert.equal(t("ru-RU", "nav.storage"), "Инвентарь");
+  assert.equal(t("ru-RU", "nav.storage"), "Склад");
   assert.equal(t("ru-RU", "settings.title"), "Настройки");
   assert.equal(t("ru-RU", "nav.spoolCount", "", { count: 1 }), "1 катушка");
   assert.equal(t("ru-RU", "nav.spoolCount", "", { count: 2 }), "2 катушки");

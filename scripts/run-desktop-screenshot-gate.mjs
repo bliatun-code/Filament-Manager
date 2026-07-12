@@ -171,7 +171,7 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
   "ru-RU": {
     dashboard: "Обзор",
     inventory: "Инвентарь",
-    loans: "Займы",
+    loans: "Выдачи",
     printers: "Принтеры",
     settings: "Настройки",
     statistics: "Статистика",
