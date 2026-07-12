@@ -64,15 +64,23 @@ test("review TSV keeps one physical row per message", () => {
   assert.match(tsv, /Première ligne\\nDeuxième ligne/);
 });
 
-test("completed German, French, and Spanish catalogs contain no English fallback rows", () => {
-  const directory = mkdtempSync(join(tmpdir(), "filament-manager-i18n-review-"));
+test("completed German, French, Spanish, and Brazilian Portuguese catalogs contain no English fallback rows", () => {
+  const directory = mkdtempSync(
+    join(tmpdir(), "filament-manager-i18n-review-"),
+  );
   try {
-    for (const locale of ["de", "fr", "es"]) {
+    for (const locale of ["de", "fr", "es", "pt-BR"]) {
       const outputPath = join(directory, `${locale}.tsv`);
       const result = exportLocalizationReview({ locale, outputPath });
-      assert.equal(result.states.fallback, 0, `${locale} contains fallback rows`);
-      assert.equal(readFileSync(outputPath, "utf8").split("\n")[0],
-        "surface\tkey\tstate\tsource_en\ttarget\tmeaning\tmax_characters\tscreenshot");
+      assert.equal(
+        result.states.fallback,
+        0,
+        `${locale} contains fallback rows`,
+      );
+      assert.equal(
+        readFileSync(outputPath, "utf8").split("\n")[0],
+        "surface\tkey\tstate\tsource_en\ttarget\tmeaning\tmax_characters\tscreenshot",
+      );
     }
   } finally {
     rmSync(directory, { recursive: true, force: true });

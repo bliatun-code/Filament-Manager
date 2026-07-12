@@ -91,14 +91,20 @@ test("Companion accepts pseudo locale only through an explicit QA value", () => 
 test("German locale uses translated source copy", () => {
   assert.equal(t("de", "nav.storage"), "Bestand");
   assert.equal(t("de", "printers.toolhead"), "Werkzeugkopf");
-  assert.equal(t("de", "recovery.suggested"), "Vorgeschlagene Wiederherstellung");
+  assert.equal(
+    t("de", "recovery.suggested"),
+    "Vorgeschlagene Wiederherstellung",
+  );
 });
 
 test("French locale uses complete translated source copy", () => {
   assert.equal(t("fr", "nav.storage"), "Stock");
   assert.equal(t("fr", "printers.toolhead"), "Tête d’outil");
   assert.equal(t("fr", "detail.saveWeight"), "Enregistrer le poids");
-  assert.equal(t("fr", "storage.wishlistQueue"), "Liste de souhaits / commandes");
+  assert.equal(
+    t("fr", "storage.wishlistQueue"),
+    "Liste de souhaits / commandes",
+  );
   assert.equal(t("fr", "loans.completeReturn"), "Terminer le retour");
   assert.equal(t("fr", "printers.saveCandidateRfid"), "Enregistrer la RFID");
   assert.equal(
@@ -120,14 +126,39 @@ test("complete Spanish draft translates shell and workflow copy", () => {
   assert.equal(t("es", "nav.spoolCount", "", { count: 1 }), "1 bobina");
   assert.equal(t("es", "nav.spoolCount", "", { count: 2 }), "2 bobinas");
   assert.equal(t("es", "printers.toolhead"), "Cabezal");
-  assert.equal(t("es", "status.qrLookupFailed"), "No se pudo abrir el enlace de la bobina.");
+  assert.equal(
+    t("es", "status.qrLookupFailed"),
+    "No se pudo abrir el enlace de la bobina.",
+  );
   assert.equal(t("es", "storage.addFilament"), "Añadir filamento");
   assert.equal(t("es", "loans.completeReturn"), "Completar devolución");
   assert.equal(t("es", "detail.saveWeight"), "Guardar peso");
   assert.equal(t("es", "inventory.rfidSaveAction"), "Guardar RFID");
   assert.equal(t("es", "detail.eventRfidSaved"), "RFID guardada");
   assert.equal(t("es", "printers.toolhead"), "Cabezal");
-  assert.equal(t("es", "printers.loadedSummary", "", { loaded: 3, open: 1 }), "3 cargadas · 1 libres");
+  assert.equal(
+    t("es", "printers.loadedSummary", "", { loaded: 3, open: 1 }),
+    "3 cargadas · 1 libres",
+  );
+});
+
+test("complete Brazilian Portuguese draft translates shell and workflow copy", () => {
+  assert.equal(t("pt-BR", "nav.storage"), "Inventário");
+  assert.equal(t("pt-BR", "settings.title"), "Configurações");
+  assert.equal(t("pt-BR", "nav.spoolCount", "", { count: 1 }), "1 bobina");
+  assert.equal(t("pt-BR", "nav.spoolCount", "", { count: 2 }), "2 bobinas");
+  assert.equal(t("pt-BR", "printers.toolhead"), "Cabeçote");
+  assert.equal(
+    t("pt-BR", "status.qrLookupFailed"),
+    "Falha ao abrir o link da bobina.",
+  );
+  assert.equal(t("pt-BR", "storage.addFilament"), "Adicionar filamento");
+  assert.equal(t("pt-BR", "loans.completeReturn"), "Concluir devolução");
+  assert.equal(t("pt-BR", "detail.saveWeight"), "Salvar peso");
+  assert.equal(
+    t("pt-BR", "printers.loadedSummary", "", { loaded: 3, open: 1 }),
+    "3 carregadas · 1 livres",
+  );
 });
 
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
@@ -148,8 +179,14 @@ test("resolveInitialCompanionLocale falls back to English when storage and navig
 });
 
 test("resolveInitialCompanionLocale tolerates blocked browser globals", () => {
-  const storageDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
-  const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  const storageDescriptor = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "localStorage",
+  );
+  const navigatorDescriptor = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "navigator",
+  );
 
   try {
     Object.defineProperty(globalThis, "localStorage", {
@@ -183,8 +220,14 @@ test("resolveInitialCompanionLocale tolerates blocked browser globals", () => {
 test("Norwegian empty-spool copy uses the established rullens tomvekt wording", () => {
   assert.equal(t("nb", "detail.emptySpoolWeight"), "Rullens tomvekt (g)");
   assert.equal(t("nb", "detail.saveEmptySpoolWeight"), "Lagre rullens tomvekt");
-  assert.equal(t("nb", "status.tareWeightUpdated"), "Rullens tomvekt er oppdatert.");
-  assert.equal(t("nb", "detail.eventTareWeightUpdate"), "Rullens tomvekt oppdatert");
+  assert.equal(
+    t("nb", "status.tareWeightUpdated"),
+    "Rullens tomvekt er oppdatert.",
+  );
+  assert.equal(
+    t("nb", "detail.eventTareWeightUpdate"),
+    "Rullens tomvekt oppdatert",
+  );
 });
 
 test("return calculations explain total weight, spool tare, and filament in both locales", () => {

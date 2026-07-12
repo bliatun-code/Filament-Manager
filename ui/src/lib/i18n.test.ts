@@ -35,7 +35,9 @@ test("resolveInitialLocale uses stored supported locale", () => {
     getItem: () => "nb",
   };
 
-  const locale = withGlobalValue("localStorage", storage, () => resolveInitialLocale());
+  const locale = withGlobalValue("localStorage", storage, () =>
+    resolveInitialLocale(),
+  );
 
   assert.equal(locale, "nb");
 });
@@ -47,7 +49,9 @@ test("resolveInitialLocale migrates stored regional and legacy aliases", () => {
     setItem: (key: string, value: string) => writes.push([key, value]),
   };
 
-  const locale = withGlobalValue("localStorage", storage, () => resolveInitialLocale());
+  const locale = withGlobalValue("localStorage", storage, () =>
+    resolveInitialLocale(),
+  );
 
   assert.equal(locale, "nb");
   assert.deepEqual(writes, [["bfm-locale", "nb"]]);
@@ -72,16 +76,30 @@ test("resolveInitialLocale lets screenshot URLs override stored locale", () => {
 
 test("resolveInitialLocale accepts the QA-only pseudo locale from screenshot URLs", () => {
   const windowRef = { location: { search: "?bfm_locale=en-XA" } };
-  const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
+  const locale = withGlobalValue("window", windowRef, () =>
+    resolveInitialLocale(),
+  );
   assert.equal(locale, "en-XA");
 
   const rtlWindowRef = { location: { search: "?bfm_locale=ar-XB" } };
-  const rtlLocale = withGlobalValue("window", rtlWindowRef, () => resolveInitialLocale());
+  const rtlLocale = withGlobalValue("window", rtlWindowRef, () =>
+    resolveInitialLocale(),
+  );
   assert.equal(rtlLocale, "ar-XB");
 
   const cjkWindowRef = { location: { search: "?bfm_locale=zh-XB" } };
-  const cjkLocale = withGlobalValue("window", cjkWindowRef, () => resolveInitialLocale());
+  const cjkLocale = withGlobalValue("window", cjkWindowRef, () =>
+    resolveInitialLocale(),
+  );
   assert.equal(cjkLocale, "zh-XB");
+});
+
+test("resolveInitialLocale accepts hidden Brazilian Portuguese only through a QA URL", () => {
+  const windowRef = { location: { search: "?bfm_locale=pt-BR" } };
+  const locale = withGlobalValue("window", windowRef, () =>
+    resolveInitialLocale(),
+  );
+  assert.equal(locale, "pt-BR");
 });
 
 test("locale dictionaries lazy-load and cache supported locales", async () => {
@@ -90,8 +108,14 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(enDictionary, "app.title"), "Filament Manager");
   assert.equal(lookup(enDictionary, "common.cancel"), "Cancel");
   assert.equal(lookup(enDictionary, "common.selected"), "Selected");
-  assert.equal(lookup(enDictionary, "inventory.loanSearchLabel"), "Search available rolls");
-  assert.equal(lookup(enDictionary, "inventory.rfidTechnicalDetails"), "Technical details");
+  assert.equal(
+    lookup(enDictionary, "inventory.loanSearchLabel"),
+    "Search available rolls",
+  );
+  assert.equal(
+    lookup(enDictionary, "inventory.rfidTechnicalDetails"),
+    "Technical details",
+  );
   assert.equal(lookup(enDictionary, "inventory.rfidConnected"), "Connected");
   assert.equal(
     lookup(enDictionary, "inventory.rollHistoryCollapsed"),
@@ -108,9 +132,15 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
     lookup(nbDictionary, "inventory.loanSearchLabel"),
     "Søk i tilgjengelige filamenter",
   );
-  assert.equal(lookup(nbDictionary, "inventory.rfidTechnicalDetails"), "Tekniske detaljer");
+  assert.equal(
+    lookup(nbDictionary, "inventory.rfidTechnicalDetails"),
+    "Tekniske detaljer",
+  );
   assert.equal(lookup(nbDictionary, "inventory.rfidConnected"), "Tilkoblet");
-  assert.equal(lookup(nbDictionary, "inventory.rfidAmsSlotPresent"), "Fysisk til stede");
+  assert.equal(
+    lookup(nbDictionary, "inventory.rfidAmsSlotPresent"),
+    "Fysisk til stede",
+  );
   assert.equal(
     lookup(nbDictionary, "inventory.rollHistoryCollapsed"),
     "Filamenthistorikken er skjult som standard. Utvid den for å se hendelsene.",
@@ -141,41 +171,149 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   const frenchDictionary = await loadLocaleDictionary("fr");
   assert.equal(lookup(frenchDictionary, "nav.inventory"), "Stock");
   assert.equal(lookup(frenchDictionary, "common.cancel"), "Annuler");
-  assert.equal(lookup(frenchDictionary, "inventory.saveRollChanges"), "Enregistrer les modifications");
+  assert.equal(
+    lookup(frenchDictionary, "inventory.saveRollChanges"),
+    "Enregistrer les modifications",
+  );
   assert.equal(lookup(frenchDictionary, "wishlist.statusOnOrder"), "Commandé");
-  assert.equal(lookup(frenchDictionary, "loans.confirmHandBackAction"), "Confirmer la restitution");
-  assert.equal(lookup(frenchDictionary, "inventory.bambuBatchCameraAction"), "Utiliser la webcam");
-  assert.equal(lookup(frenchDictionary, "inventory.rfidTechnicalDetails"), "Détails techniques");
-  assert.equal(lookup(frenchDictionary, "printers.slotOnboarding"), "Intégration AMS");
-  assert.equal(lookup(frenchDictionary, "statistics.perPrinter"), "Consommation par imprimante");
-  assert.equal(lookup(frenchDictionary, "settings.inventoryOverviewPaperFormat"), "Format du papier");
-  assert.equal(lookup(frenchDictionary, "settings.librarySyncClient"), "Client");
-  assert.equal(lookup(frenchDictionary, "settings.companionStatusRunning"), "Actif");
-  assert.equal(lookup(frenchDictionary, "settings.trustedLanNetworkDetails"), "Détails du réseau");
-  assert.equal(lookup(frenchDictionary, "settings.catalogRefreshTitle"), "Mises à jour des catalogues fabricants");
-  assert.equal(lookup(frenchDictionary, "settings.bambuLiveDiagnostics"), "Diagnostics");
-  assert.equal(lookup(frenchDictionary, "settings.cachedReused"), "Données en cache réutilisées");
-  assert.equal(lookup(frenchDictionary, "dashboard.clientSnapshotCardTitle"), "Aperçu de l’hôte en lecture seule");
+  assert.equal(
+    lookup(frenchDictionary, "loans.confirmHandBackAction"),
+    "Confirmer la restitution",
+  );
+  assert.equal(
+    lookup(frenchDictionary, "inventory.bambuBatchCameraAction"),
+    "Utiliser la webcam",
+  );
+  assert.equal(
+    lookup(frenchDictionary, "inventory.rfidTechnicalDetails"),
+    "Détails techniques",
+  );
+  assert.equal(
+    lookup(frenchDictionary, "printers.slotOnboarding"),
+    "Intégration AMS",
+  );
+  assert.equal(
+    lookup(frenchDictionary, "statistics.perPrinter"),
+    "Consommation par imprimante",
+  );
+  assert.equal(
+    lookup(frenchDictionary, "settings.inventoryOverviewPaperFormat"),
+    "Format du papier",
+  );
+  assert.equal(
+    lookup(frenchDictionary, "settings.librarySyncClient"),
+    "Client",
+  );
+  assert.equal(
+    lookup(frenchDictionary, "settings.companionStatusRunning"),
+    "Actif",
+  );
+  assert.equal(
+    lookup(frenchDictionary, "settings.trustedLanNetworkDetails"),
+    "Détails du réseau",
+  );
+  assert.equal(
+    lookup(frenchDictionary, "settings.catalogRefreshTitle"),
+    "Mises à jour des catalogues fabricants",
+  );
+  assert.equal(
+    lookup(frenchDictionary, "settings.bambuLiveDiagnostics"),
+    "Diagnostics",
+  );
+  assert.equal(
+    lookup(frenchDictionary, "settings.cachedReused"),
+    "Données en cache réutilisées",
+  );
+  assert.equal(
+    lookup(frenchDictionary, "dashboard.clientSnapshotCardTitle"),
+    "Aperçu de l’hôte en lecture seule",
+  );
   assert.equal(getCachedLocaleDictionary("fr"), frenchDictionary);
 
   const spanishDictionary = await loadLocaleDictionary("es");
   assert.equal(lookup(spanishDictionary, "nav.inventory"), "Inventario");
   assert.equal(lookup(spanishDictionary, "common.cancel"), "Cancelar");
-  assert.equal(lookup(spanishDictionary, "dashboard.totalSpools"), "Bobinas totales");
+  assert.equal(
+    lookup(spanishDictionary, "dashboard.totalSpools"),
+    "Bobinas totales",
+  );
   assert.equal(lookup(spanishDictionary, "inventory.title"), "Bobinas");
-  assert.equal(lookup(spanishDictionary, "inventory.addFilament"), "Añadir filamento");
+  assert.equal(
+    lookup(spanishDictionary, "inventory.addFilament"),
+    "Añadir filamento",
+  );
   assert.equal(lookup(spanishDictionary, "wishlist.statusOnOrder"), "Pedido");
-  assert.equal(lookup(spanishDictionary, "loans.confirmReturnAction"), "Confirmar devolución");
-  assert.equal(lookup(spanishDictionary, "inventory.bambuBatchCameraAction"), "Usar webcam");
-  assert.equal(lookup(spanishDictionary, "inventory.rfidTechnicalDetails"), "Detalles técnicos");
-  assert.equal(lookup(spanishDictionary, "inventory.purgeConfirmTitle"), "¿Eliminar permanentemente esta bobina y todo su historial?");
-  assert.equal(lookup(spanishDictionary, "printers.showSlots"), "Mostrar ranuras");
-  assert.equal(lookup(spanishDictionary, "printers.slotOnboarding"), "Registro desde AMS");
-  assert.equal(lookup(spanishDictionary, "settings.bambuLiveSection"), "Estado Live Bambu");
-  assert.equal(lookup(spanishDictionary, "settings.printerDiscardChanges"), "Descartar cambios");
-  assert.equal(lookup(spanishDictionary, "statistics.perPrinter"), "Consumo por impresora");
-  assert.equal(lookup(spanishDictionary, "statistics.borrowerUsage"), "Consumo de préstamos por persona");
+  assert.equal(
+    lookup(spanishDictionary, "loans.confirmReturnAction"),
+    "Confirmar devolución",
+  );
+  assert.equal(
+    lookup(spanishDictionary, "inventory.bambuBatchCameraAction"),
+    "Usar webcam",
+  );
+  assert.equal(
+    lookup(spanishDictionary, "inventory.rfidTechnicalDetails"),
+    "Detalles técnicos",
+  );
+  assert.equal(
+    lookup(spanishDictionary, "inventory.purgeConfirmTitle"),
+    "¿Eliminar permanentemente esta bobina y todo su historial?",
+  );
+  assert.equal(
+    lookup(spanishDictionary, "printers.showSlots"),
+    "Mostrar ranuras",
+  );
+  assert.equal(
+    lookup(spanishDictionary, "printers.slotOnboarding"),
+    "Registro desde AMS",
+  );
+  assert.equal(
+    lookup(spanishDictionary, "settings.bambuLiveSection"),
+    "Estado Live Bambu",
+  );
+  assert.equal(
+    lookup(spanishDictionary, "settings.printerDiscardChanges"),
+    "Descartar cambios",
+  );
+  assert.equal(
+    lookup(spanishDictionary, "statistics.perPrinter"),
+    "Consumo por impresora",
+  );
+  assert.equal(
+    lookup(spanishDictionary, "statistics.borrowerUsage"),
+    "Consumo de préstamos por persona",
+  );
   assert.equal(getCachedLocaleDictionary("es"), spanishDictionary);
+
+  const portugueseDictionary = await loadLocaleDictionary("pt-BR");
+  assert.equal(lookup(portugueseDictionary, "nav.inventory"), "Inventário");
+  assert.equal(lookup(portugueseDictionary, "common.cancel"), "Cancelar");
+  assert.equal(
+    lookup(portugueseDictionary, "dashboard.totalSpools"),
+    "Bobinas totais",
+  );
+  assert.equal(lookup(portugueseDictionary, "inventory.title"), "Bobinas");
+  assert.equal(
+    lookup(portugueseDictionary, "wishlist.statusOnOrder"),
+    "Encomendado",
+  );
+  assert.equal(
+    lookup(portugueseDictionary, "loans.confirmReturnAction"),
+    "Confirmar devolução",
+  );
+  assert.equal(
+    lookup(portugueseDictionary, "inventory.bambuBatchCameraAction"),
+    "Usar webcam",
+  );
+  assert.equal(
+    lookup(portugueseDictionary, "printers.showSlots"),
+    "Mostrar slots",
+  );
+  assert.equal(
+    lookup(portugueseDictionary, "statistics.perPrinter"),
+    "Consumo por impressora",
+  );
+  assert.equal(getCachedLocaleDictionary("pt-BR"), portugueseDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {
@@ -218,8 +356,14 @@ test("printer Live Bambu settings have explicit English and Norwegian locale cop
 test("Spanish settings pilot covers program, label sheet, and maintenance workflows", async () => {
   const esDictionary = await loadLocaleDictionary("es");
 
-  assert.equal(lookup(esDictionary, "settings.productTour"), "Recorrido del producto");
-  assert.equal(lookup(esDictionary, "settings.inventoryOverviewPaperFormat"), "Formato del papel");
+  assert.equal(
+    lookup(esDictionary, "settings.productTour"),
+    "Recorrido del producto",
+  );
+  assert.equal(
+    lookup(esDictionary, "settings.inventoryOverviewPaperFormat"),
+    "Formato del papel",
+  );
   assert.equal(
     lookup(esDictionary, "settings.exportFullBackup"),
     "Exportar copia de seguridad completa (JSON)",
