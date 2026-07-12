@@ -254,7 +254,7 @@ test("complete Turkish draft translates shell and workflow copy", () => {
 });
 
 test("complete Ukrainian draft translates shell and plural workflow copy", () => {
-  assert.equal(t("uk-UA", "nav.storage"), "Інвентар");
+  assert.equal(t("uk-UA", "nav.storage"), "Склад");
   assert.equal(t("uk-UA", "settings.title"), "Налаштування");
   assert.equal(t("uk-UA", "nav.spoolCount", "", { count: 1 }), "1 котушка");
   assert.equal(t("uk-UA", "nav.spoolCount", "", { count: 2 }), "2 котушки");
