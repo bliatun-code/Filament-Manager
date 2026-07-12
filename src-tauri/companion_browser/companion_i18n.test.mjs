@@ -273,6 +273,15 @@ test("complete Russian draft translates shell and plural workflow copy", () => {
   assert.equal(t("ru-RU", "detail.saveWeight"), "Сохранить вес");
 });
 
+test("complete Hungarian draft translates shell and plural workflow copy", () => {
+  assert.equal(t("hu-HU", "nav.storage"), "Készlet");
+  assert.equal(t("hu-HU", "settings.title"), "Beállítások");
+  assert.equal(t("hu-HU", "nav.spoolCount", "", { count: 1 }), "1 tekercs");
+  assert.equal(t("hu-HU", "nav.spoolCount", "", { count: 5 }), "5 tekercs");
+  assert.equal(t("hu-HU", "printers.toolhead"), "Nyomtatófej");
+  assert.equal(t("hu-HU", "detail.saveWeight"), "Súly mentése");
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {

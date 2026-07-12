@@ -524,6 +524,17 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(russianDictionary, "printers.showSlots"), "Показать слоты");
   assert.equal(lookup(russianDictionary, "statistics.perPrinter"), "Использование каждого принтера");
   assert.equal(getCachedLocaleDictionary("ru-RU"), russianDictionary);
+
+  const hungarianDictionary = await loadLocaleDictionary("hu-HU");
+  assert.equal(lookup(hungarianDictionary, "nav.inventory"), "Készlet");
+  assert.equal(lookup(hungarianDictionary, "common.cancel"), "Mégse");
+  assert.equal(lookup(hungarianDictionary, "dashboard.totalSpools"), "Összes tekercs");
+  assert.equal(lookup(hungarianDictionary, "inventory.title"), "Tekercsek");
+  assert.equal(lookup(hungarianDictionary, "wishlist.statusOnOrder"), "Megrendelve");
+  assert.equal(lookup(hungarianDictionary, "inventory.bambuBatchCameraAction"), "Webkamera használata");
+  assert.equal(lookup(hungarianDictionary, "printers.showSlots"), "Helyek megjelenítése");
+  assert.equal(lookup(hungarianDictionary, "statistics.perPrinter"), "Nyomtatónkénti használat");
+  assert.equal(getCachedLocaleDictionary("hu-HU"), hungarianDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {
