@@ -6094,6 +6094,7 @@ const dictionaries = {
     "title": "Prohlížeč Companion přes Trusted-LAN"
   }
 },
+  "zh-CN": {},
 };
 
 function lookup(dictionary, key) {
