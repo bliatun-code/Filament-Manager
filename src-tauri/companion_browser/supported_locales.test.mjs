@@ -71,12 +71,15 @@ test("locale registry normalizes canonical, regional, underscore, and legacy ali
   assert.equal(normalizeSupportedLocale("hu"), "hu-HU");
   assert.equal(normalizeSupportedLocale("hu_HU"), "hu-HU");
   assert.equal(normalizeSelectableLocale("hu-HU"), null);
+  assert.equal(normalizeSupportedLocale("sv"), "sv-SE");
+  assert.equal(normalizeSupportedLocale("sv_SE"), "sv-SE");
+  assert.equal(normalizeSelectableLocale("sv-SE"), null);
 });
 
 test("locale registry owns format, guide, and native-label metadata", () => {
   assert.deepEqual(
     SUPPORTED_LOCALES.map(({ id }) => id),
-    ["en", "nb", "de", "fr", "es", "pt-BR", "it-IT", "pl-PL", "nl-NL", "cs-CZ", "zh-CN", "ja-JP", "ko-KR", "zh-TW", "tr-TR", "uk-UA", "ru-RU", "hu-HU", "en-XA", "ar-XB", "zh-XB"],
+    ["en", "nb", "de", "fr", "es", "pt-BR", "it-IT", "pl-PL", "nl-NL", "cs-CZ", "zh-CN", "ja-JP", "ko-KR", "zh-TW", "tr-TR", "uk-UA", "ru-RU", "hu-HU", "sv-SE", "en-XA", "ar-XB", "zh-XB"],
   );
   assert.deepEqual(
     SELECTABLE_LOCALES.map(({ id }) => id),
@@ -84,7 +87,7 @@ test("locale registry owns format, guide, and native-label metadata", () => {
   );
   assert.deepEqual(
     CATALOG_LOCALES.map(({ id }) => id),
-    ["en", "nb", "de", "fr", "es", "pt-BR", "it-IT", "pl-PL", "nl-NL", "cs-CZ", "zh-CN", "ja-JP", "ko-KR", "zh-TW", "tr-TR", "uk-UA", "ru-RU", "hu-HU"],
+    ["en", "nb", "de", "fr", "es", "pt-BR", "it-IT", "pl-PL", "nl-NL", "cs-CZ", "zh-CN", "ja-JP", "ko-KR", "zh-TW", "tr-TR", "uk-UA", "ru-RU", "hu-HU", "sv-SE"],
   );
   assert.equal(sourceLocaleFor("de-DE"), "de");
   assert.equal(fallbackLocaleFor("de"), null);
@@ -118,6 +121,8 @@ test("locale registry owns format, guide, and native-label metadata", () => {
   assert.equal(fallbackLocaleFor("ru-RU"), "en");
   assert.equal(sourceLocaleFor("hu"), "hu-HU");
   assert.equal(fallbackLocaleFor("hu-HU"), "en");
+  assert.equal(sourceLocaleFor("sv"), "sv-SE");
+  assert.equal(fallbackLocaleFor("sv-SE"), "en");
   assert.equal(sourceLocaleFor("en-XA"), "en");
   assert.equal(sourceLocaleFor("ar-XB"), "en");
   assert.equal(sourceLocaleFor("zh-XB"), "en");
@@ -148,6 +153,7 @@ test("locale registry owns format, guide, and native-label metadata", () => {
   assert.equal(guidePathForLocale("uk-UA"), "docs/USER_GUIDE.md");
   assert.equal(guidePathForLocale("ru-RU"), "docs/USER_GUIDE.md");
   assert.equal(guidePathForLocale("hu-HU"), "docs/USER_GUIDE.md");
+  assert.equal(guidePathForLocale("sv-SE"), "docs/USER_GUIDE.md");
   assert.equal(guidePathForLocale("unknown"), "docs/USER_GUIDE.md");
 });
 
@@ -216,4 +222,7 @@ test("locale registry applies html language and direction", () => {
 
   assert.equal(applyLocaleToDocument("hu", documentRef), true);
   assert.deepEqual(documentRef.documentElement, { lang: "hu-HU", dir: "ltr" });
+
+  assert.equal(applyLocaleToDocument("sv", documentRef), true);
+  assert.deepEqual(documentRef.documentElement, { lang: "sv-SE", dir: "ltr" });
 });

@@ -10518,6 +10518,7 @@ const dictionaries = {
     "borrowedInHandedBack": "Kölcsönzött orsó visszaadva."
   }
 },
+  "sv-SE": {},
 };
 
 function lookup(dictionary, key) {
