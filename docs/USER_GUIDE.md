@@ -243,8 +243,16 @@ General:
 
 - app version
 - theme: Auto, Light, Dark
-- language
+- language, selected from one compact list
 - inventory QR label sheets
+
+The desktop app and Companion support English, Norwegian Bokmål, German,
+French, Spanish, Brazilian Portuguese, Italian, Polish, Dutch, Czech,
+Simplified Chinese, Traditional Chinese, Japanese, Korean, Turkish, Ukrainian,
+Russian, Hungarian, Swedish, Danish, and Finnish. The selected language is
+stored locally for each surface. English remains the fallback when needed.
+Corrections to community translations can be proposed through the project’s
+GitHub issues or pull requests.
 
 To create label sheets for the on-hand inventory:
 

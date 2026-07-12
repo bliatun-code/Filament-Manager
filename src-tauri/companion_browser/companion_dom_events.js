@@ -105,6 +105,7 @@ export function handleCompanionInputEvent(event, options) {
       options.render();
     },
     setPrinterSpoolSearch: options.setPrinterSpoolSearch,
+    setLocale: options.setLocale,
     setBorrowedInDraftField: options.setBorrowedInDraftField,
     render: options.render,
   });

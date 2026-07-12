@@ -245,8 +245,15 @@ Generelt:
 
 - programversjon
 - tema: Auto, Lys, Mørk
-- språk
+- språk, valgt fra én kompakt liste
 - etikettark med QR for lageret
+
+Desktop-appen og Companion støtter engelsk, norsk bokmål, tysk, fransk,
+spansk, brasiliansk portugisisk, italiensk, polsk, nederlandsk, tsjekkisk,
+forenklet kinesisk, tradisjonell kinesisk, japansk, koreansk, tyrkisk,
+ukrainsk, russisk, ungarsk, svensk, dansk og finsk. Språkvalget lagres lokalt
+for hver flate, og engelsk brukes som fallback ved behov. Korrigeringer til
+community-oversettelsene kan foreslås via issues eller pull requests på GitHub.
 
 Slik lager du etikettark for rullene som er på lager:
 

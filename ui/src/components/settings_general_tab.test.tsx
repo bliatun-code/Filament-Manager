@@ -87,14 +87,16 @@ test("SettingsGeneralTab exposes selected theme and language choices", () => {
   const html = renderGeneralTab();
 
   assert.match(html, /role="group" aria-label="Appearance"/);
-  assert.match(html, /role="group" aria-label="Language"/);
+  assert.match(html, /<select[^>]*aria-label="Language"/);
   assert.ok(html.indexOf("Appearance") < html.indexOf("Program"));
   assert.ok(html.indexOf("Language") < html.indexOf("Program"));
-  assert.equal((html.match(/aria-pressed="true"/g) ?? []).length, 2);
-  assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 5);
-  assert.match(html, />Deutsch</);
-  assert.match(html, />Français</);
-  assert.doesNotMatch(html, />Español</);
+  assert.equal((html.match(/aria-pressed="true"/g) ?? []).length, 1);
+  assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 2);
+  assert.match(html, /<option value="de">Deutsch<\/option>/);
+  assert.match(html, /<option value="fr">Français<\/option>/);
+  assert.match(html, /<option value="es">Español<\/option>/);
+  assert.match(html, /<option value="fi-FI">Suomi<\/option>/);
+  assert.equal((html.match(/<option /g) ?? []).length, 21);
   assert.doesNotMatch(html, /Pseudo \(QA\)/);
 });
 

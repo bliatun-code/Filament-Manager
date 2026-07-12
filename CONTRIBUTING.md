@@ -66,6 +66,13 @@ copy or adding a language. Run `npm run report:i18n` after English source-string
 changes; maintained locales must be translated and natively reviewed against
 the new source fingerprint before release.
 
+The app currently publishes complete catalogs for 21 languages. Most of the
+new catalogs are community-review candidates rather than translations with a
+named native reviewer. Focused corrections are welcome: identify the locale,
+message or screen, expected wording, and—when layout is involved—include a
+screenshot. Run the locale checks and the relevant data-backed screenshot
+scenario before submitting the change.
+
 ## Dependency Changes
 
 For dependency updates, include the reason for the update and run relevant

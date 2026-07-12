@@ -46,6 +46,7 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
+- [v0.21.0](RELEASE_NOTES_v0.21.0.md)
 - [v0.20.2](RELEASE_NOTES_v0.20.2.md)
 - [v0.20.1](RELEASE_NOTES_v0.20.1.md)
 - [v0.19.0](RELEASE_NOTES_v0.19.0.md)
@@ -74,6 +75,22 @@ Release notes:
   desktop installations.
 - Catalog refresh and maintenance for Bambu and eSUN filament data.
 - Backup, import/export, reset, and maintenance tools.
+
+## Languages
+
+Filament Manager can be used in 21 languages:
+
+- English, Norwegian Bokmål, German, French, Spanish, Brazilian Portuguese,
+  Italian, Polish, Dutch, Czech, Swedish, Danish, Finnish, and Turkish.
+- Simplified Chinese, Traditional Chinese, Japanese, and Korean.
+- Ukrainian, Russian, and Hungarian.
+
+Language is selected from one compact list under **Settings → General**. English
+remains the canonical fallback. German and French have completed named review;
+the other new translations have complete catalogs and automated visual QA, and
+community corrections are welcome through
+[GitHub issues](https://github.com/bliatun-code/Filament-Manager/issues) or pull
+requests.
 
 ## License
 
@@ -227,7 +244,7 @@ Windows MSI uses the per-user WiX template in `src-tauri/wix/per-user.wxs`.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current release target: `v0.20.2`
+- Current release target: `v0.21.0`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`

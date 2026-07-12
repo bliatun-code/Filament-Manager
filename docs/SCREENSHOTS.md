@@ -7,7 +7,7 @@ wide, tablet, and phone screens.
 The Companion/webapp server must be enabled, and the desktop app needs to stay
 running for Companion to work from a phone, tablet, or workshop browser.
 
-The v0.20.2 captures use the English dark theme and a rich temporary copy of a
+The v0.21.0 captures use the English dark theme and a rich temporary copy of a
 real local library. Printer, RFID, and Bambu diagnostics captures wait for live
 telemetry before the image is accepted; the source library is not modified.
 
@@ -25,6 +25,7 @@ telemetry before the image is accepted; the source library is not modified.
   <a href="#inventory-label-sheet"><img src="screenshots/inventory-label-sheet-thumb.jpg" alt="Inventory label sheet" width="150"></a>
   <a href="#companion-tablet"><img src="screenshots/companion-tablet-inventory-thumb.jpg" alt="Companion tablet" width="150"></a>
   <a href="#companion-phone"><img src="screenshots/companion-phone-inventory-thumb.jpg" alt="Companion phone" width="150"></a>
+  <a href="#phone-settings"><img src="screenshots/companion-phone-settings-thumb.jpg" alt="Companion settings" width="150"></a>
 </p>
 
 ## Desktop App
@@ -191,8 +192,9 @@ material consumed outside printer sessions.
 
 ### General
 
-Version, license/source links, language, appearance, documentation links, and
-the inventory label-sheet builder with A4 and US Letter export.
+Version, license/source links, appearance, documentation links, and a compact
+selector for the 21 published interface languages. The screenshot also records
+the v0.21.0 version shown by the packaged application.
 
 ![Settings general](screenshots/settings-general.jpg)
 
@@ -319,3 +321,11 @@ The phone printer board shows AMS slots, loaded rolls, live observations, and
 slot actions in the Companion view.
 
 ![Companion phone printer board](screenshots/companion-phone-printers.jpg)
+
+### Phone Settings
+
+Companion uses the same compact language selector as the desktop app, so all
+published languages remain practical on a phone without turning the settings
+panel into a long row of buttons.
+
+![Companion phone settings](screenshots/companion-phone-settings.jpg)

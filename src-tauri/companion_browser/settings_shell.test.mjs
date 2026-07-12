@@ -35,32 +35,16 @@ test("settings shell renders session metrics and current session actions", () =>
     html,
     /Trusted-LAN connected · 1 spool · 2 printers · 1 active loan/,
   );
-  assert.match(html, /data-action="set-locale"/);
+  assert.match(html, /<select[^>]*name="app-locale"[^>]*aria-label="Language"/);
   assert.match(html, /Norsk \(bokmål\)/);
   assert.match(html, /English/);
   assert.match(html, /Deutsch/);
   assert.match(html, /Français/);
-  assert.doesNotMatch(html, /Español/);
-  assert.doesNotMatch(html, /Português \(Brasil\)/);
-  assert.doesNotMatch(html, /Italiano/);
-  assert.doesNotMatch(html, /Polski/);
-  assert.doesNotMatch(html, /Nederlands/);
-  assert.doesNotMatch(html, /Čeština/);
-  assert.doesNotMatch(html, /简体中文/);
-  assert.doesNotMatch(html, /日本語/);
-  assert.doesNotMatch(html, /한국어/);
-  assert.doesNotMatch(html, /繁體中文/);
-  assert.doesNotMatch(html, /Türkçe/);
-  assert.doesNotMatch(html, /Українська/);
-  assert.doesNotMatch(html, /Русский/);
-  assert.doesNotMatch(html, /Magyar/);
-  assert.doesNotMatch(html, /Svenska/);
-  assert.doesNotMatch(html, /Dansk/);
-  assert.doesNotMatch(html, /Suomi/);
-  assert.match(
-    html,
-    /class="segmented-control" data-columns="2" role="group" aria-label="Language"/,
-  );
+  assert.match(html, /Español/);
+  assert.match(html, /Português \(Brasil\)/);
+  assert.match(html, /简体中文/);
+  assert.match(html, /Suomi/);
+  assert.equal((html.match(/<option value=/g) ?? []).length, 21);
   assert.doesNotMatch(html, /Workflow scope/);
   assert.match(html, /Refresh companion data/);
   assert.doesNotMatch(html, /Forget token/);

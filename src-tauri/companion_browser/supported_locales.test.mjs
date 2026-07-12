@@ -29,57 +29,57 @@ test("locale registry normalizes canonical, regional, underscore, and legacy ali
   assert.equal(normalizeSupportedLocale("fr-FR"), "fr");
   assert.equal(normalizeSelectableLocale("fr-FR"), "fr");
   assert.equal(normalizeSupportedLocale("es-ES"), "es");
-  assert.equal(normalizeSelectableLocale("es-ES"), null);
+  assert.equal(normalizeSelectableLocale("es-ES"), "es");
   assert.equal(normalizeSupportedLocale("pt-BR"), "pt-BR");
   assert.equal(normalizeSupportedLocale("pt_br"), "pt-BR");
-  assert.equal(normalizeSelectableLocale("pt-BR"), null);
+  assert.equal(normalizeSelectableLocale("pt-BR"), "pt-BR");
   assert.equal(normalizeSupportedLocale("it"), "it-IT");
   assert.equal(normalizeSupportedLocale("it_IT"), "it-IT");
-  assert.equal(normalizeSelectableLocale("it-IT"), null);
+  assert.equal(normalizeSelectableLocale("it-IT"), "it-IT");
   assert.equal(normalizeSupportedLocale("pl"), "pl-PL");
   assert.equal(normalizeSupportedLocale("pl_PL"), "pl-PL");
-  assert.equal(normalizeSelectableLocale("pl-PL"), null);
+  assert.equal(normalizeSelectableLocale("pl-PL"), "pl-PL");
   assert.equal(normalizeSupportedLocale("nl"), "nl-NL");
   assert.equal(normalizeSupportedLocale("nl_NL"), "nl-NL");
-  assert.equal(normalizeSelectableLocale("nl-NL"), null);
+  assert.equal(normalizeSelectableLocale("nl-NL"), "nl-NL");
   assert.equal(normalizeSupportedLocale("cs"), "cs-CZ");
   assert.equal(normalizeSupportedLocale("cs_CZ"), "cs-CZ");
-  assert.equal(normalizeSelectableLocale("cs-CZ"), null);
+  assert.equal(normalizeSelectableLocale("cs-CZ"), "cs-CZ");
   assert.equal(normalizeSupportedLocale("zh"), "zh-CN");
   assert.equal(normalizeSupportedLocale("zh_CN"), "zh-CN");
   assert.equal(normalizeSupportedLocale("zh-Hans"), "zh-CN");
-  assert.equal(normalizeSelectableLocale("zh-CN"), null);
+  assert.equal(normalizeSelectableLocale("zh-CN"), "zh-CN");
   assert.equal(normalizeSupportedLocale("ja"), "ja-JP");
   assert.equal(normalizeSupportedLocale("ja_JP"), "ja-JP");
-  assert.equal(normalizeSelectableLocale("ja-JP"), null);
+  assert.equal(normalizeSelectableLocale("ja-JP"), "ja-JP");
   assert.equal(normalizeSupportedLocale("ko"), "ko-KR");
   assert.equal(normalizeSupportedLocale("ko_KR"), "ko-KR");
-  assert.equal(normalizeSelectableLocale("ko-KR"), null);
+  assert.equal(normalizeSelectableLocale("ko-KR"), "ko-KR");
   assert.equal(normalizeSupportedLocale("zh-TW"), "zh-TW");
   assert.equal(normalizeSupportedLocale("zh_TW"), "zh-TW");
   assert.equal(normalizeSupportedLocale("zh-Hant"), "zh-TW");
-  assert.equal(normalizeSelectableLocale("zh-TW"), null);
+  assert.equal(normalizeSelectableLocale("zh-TW"), "zh-TW");
   assert.equal(normalizeSupportedLocale("tr"), "tr-TR");
   assert.equal(normalizeSupportedLocale("tr_TR"), "tr-TR");
-  assert.equal(normalizeSelectableLocale("tr-TR"), null);
+  assert.equal(normalizeSelectableLocale("tr-TR"), "tr-TR");
   assert.equal(normalizeSupportedLocale("uk"), "uk-UA");
   assert.equal(normalizeSupportedLocale("uk_UA"), "uk-UA");
-  assert.equal(normalizeSelectableLocale("uk-UA"), null);
+  assert.equal(normalizeSelectableLocale("uk-UA"), "uk-UA");
   assert.equal(normalizeSupportedLocale("ru"), "ru-RU");
   assert.equal(normalizeSupportedLocale("ru_RU"), "ru-RU");
-  assert.equal(normalizeSelectableLocale("ru-RU"), null);
+  assert.equal(normalizeSelectableLocale("ru-RU"), "ru-RU");
   assert.equal(normalizeSupportedLocale("hu"), "hu-HU");
   assert.equal(normalizeSupportedLocale("hu_HU"), "hu-HU");
-  assert.equal(normalizeSelectableLocale("hu-HU"), null);
+  assert.equal(normalizeSelectableLocale("hu-HU"), "hu-HU");
   assert.equal(normalizeSupportedLocale("sv"), "sv-SE");
   assert.equal(normalizeSupportedLocale("sv_SE"), "sv-SE");
-  assert.equal(normalizeSelectableLocale("sv-SE"), null);
+  assert.equal(normalizeSelectableLocale("sv-SE"), "sv-SE");
   assert.equal(normalizeSupportedLocale("da"), "da-DK");
   assert.equal(normalizeSupportedLocale("da_DK"), "da-DK");
-  assert.equal(normalizeSelectableLocale("da-DK"), null);
+  assert.equal(normalizeSelectableLocale("da-DK"), "da-DK");
   assert.equal(normalizeSupportedLocale("fi"), "fi-FI");
   assert.equal(normalizeSupportedLocale("fi_FI"), "fi-FI");
-  assert.equal(normalizeSelectableLocale("fi-FI"), null);
+  assert.equal(normalizeSelectableLocale("fi-FI"), "fi-FI");
 });
 
 test("locale registry owns format, guide, and native-label metadata", () => {
@@ -89,7 +89,7 @@ test("locale registry owns format, guide, and native-label metadata", () => {
   );
   assert.deepEqual(
     SELECTABLE_LOCALES.map(({ id }) => id),
-    ["en", "nb", "de", "fr"],
+    ["en", "nb", "de", "fr", "es", "pt-BR", "it-IT", "pl-PL", "nl-NL", "cs-CZ", "zh-CN", "ja-JP", "ko-KR", "zh-TW", "tr-TR", "uk-UA", "ru-RU", "hu-HU", "sv-SE", "da-DK", "fi-FI"],
   );
   assert.deepEqual(
     CATALOG_LOCALES.map(({ id }) => id),

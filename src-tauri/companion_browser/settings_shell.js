@@ -80,18 +80,19 @@ export function renderSettingsShell(options) {
               <div>
                 <div class="list-title">${escapeHtml(t(locale, "settings.language", "Language"))}</div>
               </div>
-              ${renderSegmentedControl({
-                action: "set-locale",
-                activeValue: locale,
-                ariaLabel: t(locale, "settings.language", "Language"),
-                columns: SELECTABLE_LOCALES.length === 4 ? 2 : Math.min(SELECTABLE_LOCALES.length, 3),
-                escapeHtml,
-                items: SELECTABLE_LOCALES.map(({ id, nativeLabel }) => ({
-                  value: id,
-                  label: nativeLabel,
-                })),
-                valueAttribute: "data-locale",
-              })}
+              <label class="settings-locale-field">
+                <span class="sr-only">${escapeHtml(t(locale, "settings.language", "Language"))}</span>
+                <select
+                  class="settings-locale-select"
+                  name="app-locale"
+                  aria-label="${escapeHtml(t(locale, "settings.language", "Language"))}"
+                >
+                  ${SELECTABLE_LOCALES.map(
+                    ({ id, nativeLabel }) =>
+                      `<option value="${escapeHtml(id)}"${id === locale ? " selected" : ""}>${escapeHtml(nativeLabel)}</option>`,
+                  ).join("")}
+                </select>
+              </label>
             </div>
           </div>
         </section>

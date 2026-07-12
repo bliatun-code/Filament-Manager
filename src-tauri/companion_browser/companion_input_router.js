@@ -16,6 +16,11 @@ export function routeCompanionInputChange(name, value, handlers) {
     return true;
   }
 
+  if (normalizedName === "app-locale") {
+    handlers.setLocale(String(value || "en"));
+    return true;
+  }
+
   if (handlers.setBorrowedInDraftField(normalizedName, String(value || ""))) {
     handlers.render();
     return true;

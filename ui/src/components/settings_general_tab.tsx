@@ -14,6 +14,7 @@ import { openExternalUrl } from "../lib/tauri_maintenance_client";
 import {
   chipButtonClass,
   settingsActionButtonClass,
+  settingsFormControlClass,
   settingsSectionLabelClass,
 } from "../lib/settings_ui_classes";
 import { SettingsSurfaceCard } from "./settings_ui";
@@ -97,23 +98,21 @@ export function SettingsGeneralTab({
         )}
       >
         <div className="surface-subtle p-3">
-          <div
-            className="flex flex-wrap gap-2"
-            role="group"
-            aria-label={t("settings.language", "Language")}
-          >
-            {SELECTABLE_LOCALES.map((definition) => (
-              <button
-                key={definition.id}
-                type="button"
-                aria-pressed={locale === definition.id}
-                onClick={() => onLocaleSelection(definition.id)}
-                className={chipButtonClass(locale === definition.id)}
-              >
-                {definition.nativeLabel}
-              </button>
-            ))}
-          </div>
+          <label className="block max-w-md">
+            <span className="sr-only">{t("settings.language", "Language")}</span>
+            <select
+              aria-label={t("settings.language", "Language")}
+              className={settingsFormControlClass}
+              value={locale}
+              onChange={(event) => onLocaleSelection(event.target.value as Locale)}
+            >
+              {SELECTABLE_LOCALES.map((definition) => (
+                <option key={definition.id} value={definition.id}>
+                  {definition.nativeLabel}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </SettingsSurfaceCard>
 

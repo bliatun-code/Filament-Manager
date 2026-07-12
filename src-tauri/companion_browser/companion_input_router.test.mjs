@@ -67,3 +67,15 @@ test("input router returns false for unknown fields", () => {
 
   assert.equal(handled, false);
 });
+
+test("input router dispatches the scalable locale select", () => {
+  const calls = [];
+  const handled = routeCompanionInputChange("app-locale", "fi-FI", {
+    setLocale(value) {
+      calls.push(value);
+    },
+  });
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls, ["fi-FI"]);
+});
