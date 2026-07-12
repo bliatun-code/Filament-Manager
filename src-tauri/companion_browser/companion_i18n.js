@@ -6647,6 +6647,7 @@ const dictionaries = {
     "title": "Trusted-LAN Companion 浏览器"
   }
 },
+  "ja-JP": {},
 };
 
 function lookup(dictionary, key) {

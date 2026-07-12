@@ -248,6 +248,9 @@ fn visual_qa_locale_normalizer_defaults_to_english() {
     assert_eq!(normalize_visual_qa_locale("zh"), "zh-CN");
     assert_eq!(normalize_visual_qa_locale("zh-CN"), "zh-CN");
     assert_eq!(normalize_visual_qa_locale("zh_cn"), "zh-CN");
+    assert_eq!(normalize_visual_qa_locale("ja"), "ja-JP");
+    assert_eq!(normalize_visual_qa_locale("ja-JP"), "ja-JP");
+    assert_eq!(normalize_visual_qa_locale("ja_jp"), "ja-JP");
     assert_eq!(normalize_visual_qa_locale(""), "en");
     assert_eq!(normalize_visual_qa_locale("bad"), "en");
 }

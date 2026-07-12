@@ -128,6 +128,14 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
     settings: "设置",
     statistics: "统计",
   },
+  "ja-JP": {
+    dashboard: "概要",
+    inventory: "在庫",
+    loans: "貸し借り",
+    printers: "プリンター",
+    settings: "設定",
+    statistics: "統計",
+  },
   "en-XA": Object.fromEntries(
     Object.entries({
       dashboard: "Dashboard",

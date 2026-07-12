@@ -47,6 +47,7 @@ test("settings shell renders session metrics and current session actions", () =>
   assert.doesNotMatch(html, /Nederlands/);
   assert.doesNotMatch(html, /Čeština/);
   assert.doesNotMatch(html, /简体中文/);
+  assert.doesNotMatch(html, /日本語/);
   assert.match(
     html,
     /class="segmented-control" data-columns="2" role="group" aria-label="Language"/,

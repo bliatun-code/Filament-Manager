@@ -449,6 +449,7 @@ fn normalize_visual_qa_locale(value: &str) -> &'static str {
         "nl" | "nl-nl" | "nl_nl" => "nl-NL",
         "cs" | "cs-cz" | "cs_cz" => "cs-CZ",
         "zh" | "zh-cn" | "zh_cn" | "zh-hans" => "zh-CN",
+        "ja" | "ja-jp" | "ja_jp" => "ja-JP",
         _ => "en",
     }
 }
