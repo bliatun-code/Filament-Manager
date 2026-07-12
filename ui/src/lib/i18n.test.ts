@@ -215,6 +215,17 @@ test("printer Live Bambu settings have explicit English and Norwegian locale cop
   );
 });
 
+test("Spanish settings pilot covers program, label sheet, and maintenance workflows", async () => {
+  const esDictionary = await loadLocaleDictionary("es");
+
+  assert.equal(lookup(esDictionary, "settings.productTour"), "Recorrido del producto");
+  assert.equal(lookup(esDictionary, "settings.inventoryOverviewPaperFormat"), "Formato del papel");
+  assert.equal(
+    lookup(esDictionary, "settings.exportFullBackup"),
+    "Exportar copia de seguridad completa (JSON)",
+  );
+});
+
 test("resolveInitialLocale falls back when localStorage throws", () => {
   const storage = {
     getItem: () => {
