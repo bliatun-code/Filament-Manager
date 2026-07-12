@@ -263,6 +263,16 @@ test("complete Ukrainian draft translates shell and plural workflow copy", () =>
   assert.equal(t("uk-UA", "detail.saveWeight"), "Зберегти вагу");
 });
 
+test("complete Russian draft translates shell and plural workflow copy", () => {
+  assert.equal(t("ru-RU", "nav.storage"), "Инвентарь");
+  assert.equal(t("ru-RU", "settings.title"), "Настройки");
+  assert.equal(t("ru-RU", "nav.spoolCount", "", { count: 1 }), "1 катушка");
+  assert.equal(t("ru-RU", "nav.spoolCount", "", { count: 2 }), "2 катушки");
+  assert.equal(t("ru-RU", "nav.spoolCount", "", { count: 5 }), "5 катушек");
+  assert.equal(t("ru-RU", "printers.toolhead"), "Печатающая головка");
+  assert.equal(t("ru-RU", "detail.saveWeight"), "Сохранить вес");
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {

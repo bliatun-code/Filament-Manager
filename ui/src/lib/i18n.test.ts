@@ -507,6 +507,17 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(ukrainianDictionary, "printers.showSlots"), "Показати слоти");
   assert.equal(lookup(ukrainianDictionary, "statistics.perPrinter"), "Використання за принтером");
   assert.equal(getCachedLocaleDictionary("uk-UA"), ukrainianDictionary);
+
+  const russianDictionary = await loadLocaleDictionary("ru-RU");
+  assert.equal(lookup(russianDictionary, "nav.inventory"), "Инвентарь");
+  assert.equal(lookup(russianDictionary, "common.cancel"), "Отмена");
+  assert.equal(lookup(russianDictionary, "dashboard.totalSpools"), "Всего катушек");
+  assert.equal(lookup(russianDictionary, "inventory.title"), "Катушки");
+  assert.equal(lookup(russianDictionary, "wishlist.statusOnOrder"), "Под заказ");
+  assert.equal(lookup(russianDictionary, "inventory.bambuBatchCameraAction"), "Использовать веб-камеру");
+  assert.equal(lookup(russianDictionary, "printers.showSlots"), "Показать слоты");
+  assert.equal(lookup(russianDictionary, "statistics.perPrinter"), "Использование каждого принтера");
+  assert.equal(getCachedLocaleDictionary("ru-RU"), russianDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {
