@@ -242,6 +242,9 @@ fn visual_qa_locale_normalizer_defaults_to_english() {
     assert_eq!(normalize_visual_qa_locale("nl"), "nl-NL");
     assert_eq!(normalize_visual_qa_locale("nl-NL"), "nl-NL");
     assert_eq!(normalize_visual_qa_locale("nl_nl"), "nl-NL");
+    assert_eq!(normalize_visual_qa_locale("cs"), "cs-CZ");
+    assert_eq!(normalize_visual_qa_locale("cs-CZ"), "cs-CZ");
+    assert_eq!(normalize_visual_qa_locale("cs_cz"), "cs-CZ");
     assert_eq!(normalize_visual_qa_locale(""), "en");
     assert_eq!(normalize_visual_qa_locale("bad"), "en");
 }

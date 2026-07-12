@@ -5541,6 +5541,7 @@ const dictionaries = {
     "title": "Companion-browser via Trusted-LAN"
   }
 },
+  "cs-CZ": {},
 };
 
 function lookup(dictionary, key) {
