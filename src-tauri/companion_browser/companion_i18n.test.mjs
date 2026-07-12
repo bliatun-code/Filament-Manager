@@ -300,6 +300,15 @@ test("complete Danish draft translates shell and plural workflow copy", () => {
   assert.equal(t("da-DK", "detail.saveWeight"), "Gem vægt");
 });
 
+test("complete Finnish draft translates shell and plural workflow copy", () => {
+  assert.equal(t("fi-FI", "nav.storage"), "Varasto");
+  assert.equal(t("fi-FI", "settings.title"), "Asetukset");
+  assert.equal(t("fi-FI", "nav.spoolCount", "", { count: 1 }), "1 rulla");
+  assert.equal(t("fi-FI", "nav.spoolCount", "", { count: 2 }), "2 rullaa");
+  assert.equal(t("fi-FI", "printers.toolhead"), "Tulostuspää");
+  assert.equal(t("fi-FI", "detail.saveWeight"), "Tallenna paino");
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {
