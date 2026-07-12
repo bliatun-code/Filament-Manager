@@ -9,6 +9,7 @@ import {
 } from "../src-tauri/companion_browser/supported_locales.js";
 import {
   flattenDictionary,
+  localeDictionaryExportName,
   readLocaleDictionaryFromSource,
   validateLocaleDictionaries,
   validateLocaleOverlay,
@@ -17,7 +18,14 @@ import {
 const repoRoot = resolve(".");
 const statusFile = resolve(repoRoot, "localization", "locale-status.json");
 const contextFile = resolve(repoRoot, "localization", "message-context.json");
-const desktopLocaleRoot = resolve(repoRoot, "ui", "src", "lib", "i18n_locales", "locales");
+const desktopLocaleRoot = resolve(
+  repoRoot,
+  "ui",
+  "src",
+  "lib",
+  "i18n_locales",
+  "locales",
+);
 const companionDictionaryFile = resolve(
   repoRoot,
   "src-tauri",
@@ -31,8 +39,16 @@ function readJson(file) {
 
 export function catalogFingerprint(desktopDictionary, companionDictionary) {
   const rows = [
-    ...flattenDictionary(desktopDictionary).map(([key, value]) => ["desktop", key, value]),
-    ...flattenDictionary(companionDictionary).map(([key, value]) => ["companion", key, value]),
+    ...flattenDictionary(desktopDictionary).map(([key, value]) => [
+      "desktop",
+      key,
+      value,
+    ]),
+    ...flattenDictionary(companionDictionary).map(([key, value]) => [
+      "companion",
+      key,
+      value,
+    ]),
   ].sort(([surfaceA, keyA], [surfaceB, keyB]) =>
     `${surfaceA}:${keyA}`.localeCompare(`${surfaceB}:${keyB}`, "en"),
   );
@@ -47,23 +63,36 @@ function translationStats(baseDictionary, targetDictionary) {
   const base = dictionaryMap(baseDictionary);
   const target = dictionaryMap(targetDictionary);
   const translated = [...base].filter(
-    ([key, value]) => typeof target.get(key) === "string" && target.get(key) !== value,
+    ([key, value]) =>
+      typeof target.get(key) === "string" && target.get(key) !== value,
   ).length;
-  const present = [...base.keys()].filter((key) => typeof target.get(key) === "string").length;
+  const present = [...base.keys()].filter(
+    (key) => typeof target.get(key) === "string",
+  ).length;
   return {
     total: base.size,
     present,
     translated,
     keyCoveragePercent: base.size === 0 ? 100 : (present / base.size) * 100,
-    distinctTranslationPercent: base.size === 0 ? 100 : (translated / base.size) * 100,
+    distinctTranslationPercent:
+      base.size === 0 ? 100 : (translated / base.size) * 100,
   };
 }
 
-export function validateTranslatorContext(contextDocument, baseDictionaries, fileExists = existsSync) {
+export function validateTranslatorContext(
+  contextDocument,
+  baseDictionaries,
+  fileExists = existsSync,
+) {
   const errors = [];
   const seen = new Set();
-  if (contextDocument?.schemaVersion !== 1 || !Array.isArray(contextDocument.messages)) {
-    return ["Translator context must use schemaVersion 1 and a messages array."];
+  if (
+    contextDocument?.schemaVersion !== 1 ||
+    !Array.isArray(contextDocument.messages)
+  ) {
+    return [
+      "Translator context must use schemaVersion 1 and a messages array.",
+    ];
   }
 
   for (const [index, message] of contextDocument.messages.entries()) {
@@ -80,10 +109,16 @@ export function validateTranslatorContext(contextDocument, baseDictionaries, fil
     if (!dictionaryMap(baseDictionaries[message.surface]).has(message.key)) {
       errors.push(`${label} references unknown key ${identity}.`);
     }
-    if (typeof message.meaning !== "string" || message.meaning.trim().length < 12) {
+    if (
+      typeof message.meaning !== "string" ||
+      message.meaning.trim().length < 12
+    ) {
       errors.push(`${label} needs a useful meaning.`);
     }
-    if (typeof message.screenshot !== "string" || !fileExists(resolve(repoRoot, message.screenshot))) {
+    if (
+      typeof message.screenshot !== "string" ||
+      !fileExists(resolve(repoRoot, message.screenshot))
+    ) {
       errors.push(`${label} references a missing screenshot.`);
     }
     if (
@@ -128,7 +163,9 @@ export function buildLocalizationReport({
   const localeIds = localeDefinitions.map(({ id }) => id);
   for (const localeId of Object.keys(statusDocument.locales ?? {})) {
     if (!localeIds.includes(localeId)) {
-      errors.push(`locale-status.json contains unknown source locale ${localeId}.`);
+      errors.push(
+        `locale-status.json contains unknown source locale ${localeId}.`,
+      );
     }
   }
 
@@ -146,22 +183,38 @@ export function buildLocalizationReport({
       continue;
     }
     if (id !== sourceLocale && catalogKind === "draft") {
-      errors.push(...validateLocaleOverlay(sourceDesktop, desktop, `${id} desktop`));
-      errors.push(...validateLocaleOverlay(sourceCompanion, companion, `${id} companion`));
+      errors.push(
+        ...validateLocaleOverlay(sourceDesktop, desktop, `${id} desktop`),
+      );
+      errors.push(
+        ...validateLocaleOverlay(sourceCompanion, companion, `${id} companion`),
+      );
     } else if (id !== sourceLocale) {
-      errors.push(...validateLocaleDictionaries(sourceDesktop, desktop, `${id} desktop`));
-      errors.push(...validateLocaleDictionaries(sourceCompanion, companion, `${id} companion`));
+      errors.push(
+        ...validateLocaleDictionaries(sourceDesktop, desktop, `${id} desktop`),
+      );
+      errors.push(
+        ...validateLocaleDictionaries(
+          sourceCompanion,
+          companion,
+          `${id} companion`,
+        ),
+      );
     }
     const desktopStats = translationStats(sourceDesktop, desktop);
     const companionStats = translationStats(sourceCompanion, companion);
     const total = desktopStats.total + companionStats.total;
     const translated = desktopStats.translated + companionStats.translated;
-    const distinctTranslationPercent = id === sourceLocale ? 100 : (translated / total) * 100;
+    const distinctTranslationPercent =
+      id === sourceLocale ? 100 : (translated / total) * 100;
     const keyCoveragePercent =
       ((desktopStats.present + companionStats.present) / total) * 100;
     const maintained = status.releaseStatus === "maintained";
 
-    if (maintained && (!status.nativeReviewer || !String(status.nativeReviewer).trim())) {
+    if (
+      maintained &&
+      (!status.nativeReviewer || !String(status.nativeReviewer).trim())
+    ) {
       errors.push(`${id} needs a named nativeReviewer.`);
     }
     if (maintained && !/^\d{4}-\d{2}-\d{2}$/.test(status.reviewedAt ?? "")) {
@@ -173,11 +226,14 @@ export function buildLocalizationReport({
       );
     }
     if (maintained && keyCoveragePercent < 100) {
-      errors.push(`${id} key coverage is ${keyCoveragePercent.toFixed(2)}%; maintained requires 100%.`);
+      errors.push(
+        `${id} key coverage is ${keyCoveragePercent.toFixed(2)}%; maintained requires 100%.`,
+      );
     }
     if (
       maintained &&
-      distinctTranslationPercent < statusDocument.minimumDistinctTranslationPercent
+      distinctTranslationPercent <
+        statusDocument.minimumDistinctTranslationPercent
     ) {
       errors.push(
         `${id} translation signal is ${distinctTranslationPercent.toFixed(2)}%; ` +
@@ -193,7 +249,8 @@ export function buildLocalizationReport({
       distinctTranslationPercent,
       desktop: desktopStats,
       companion: companionStats,
-      stale: maintained && status.reviewedSourceFingerprint !== sourceFingerprint,
+      stale:
+        maintained && status.reviewedSourceFingerprint !== sourceFingerprint,
     });
   }
 
@@ -206,7 +263,7 @@ function loadProjectReport() {
       id,
       readLocaleDictionaryFromSource(
         readFileSync(resolve(desktopLocaleRoot, `${id}.ts`), "utf8"),
-        `${id}Dictionary`,
+        localeDictionaryExportName(id),
       ),
     ]),
   );
@@ -244,6 +301,9 @@ function run() {
   console.log("Localization readiness ok.");
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   run();
 }

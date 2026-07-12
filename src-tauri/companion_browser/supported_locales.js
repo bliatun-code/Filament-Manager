@@ -87,6 +87,23 @@ export const SUPPORTED_LOCALES = Object.freeze([
     selectionMessageFallback: "Language set to Spanish.",
   }),
   Object.freeze({
+    id: "pt-BR",
+    aliases: Object.freeze(["pt-br"]),
+    htmlLang: "pt-BR",
+    direction: "ltr",
+    intlLocale: "pt-BR",
+    nativeLabel: "Português (Brasil)",
+    selectable: false,
+    catalogKind: "draft",
+    generatedFrom: null,
+    fallbackLocale: "en",
+    pseudoMode: null,
+    guidePath: "docs/USER_GUIDE.md",
+    selectionMessageKey: "settings.langSetEn",
+    companionSelectionMessageKey: "status.languageSetEn",
+    selectionMessageFallback: "Language set to Brazilian Portuguese.",
+  }),
+  Object.freeze({
     id: "en-XA",
     aliases: Object.freeze(["en-xa"]),
     htmlLang: "en-XA",
@@ -148,7 +165,9 @@ export const SOURCE_LOCALES = Object.freeze(
 );
 
 export const CATALOG_LOCALES = Object.freeze(
-  SUPPORTED_LOCALES.filter(({ catalogKind }) => catalogKind === "source" || catalogKind === "draft"),
+  SUPPORTED_LOCALES.filter(
+    ({ catalogKind }) => catalogKind === "source" || catalogKind === "draft",
+  ),
 );
 
 export const SUPPORTED_LOCALE_IDS = Object.freeze(
@@ -156,7 +175,10 @@ export const SUPPORTED_LOCALE_IDS = Object.freeze(
 );
 
 function normalizedLanguageTag(value) {
-  return String(value ?? "").trim().toLowerCase().replaceAll("_", "-");
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replaceAll("_", "-");
 }
 
 export function localeDefinition(value) {
@@ -165,20 +187,24 @@ export function localeDefinition(value) {
     return null;
   }
   const exactMatch = SUPPORTED_LOCALES.find(
-    ({ id, aliases }) => normalized === id.toLowerCase() || aliases.includes(normalized),
+    ({ id, aliases }) =>
+      normalized === id.toLowerCase() || aliases.includes(normalized),
   );
   if (exactMatch) {
     return exactMatch;
   }
   const baseLanguage = normalized.split("-")[0];
-  return SUPPORTED_LOCALES.find(
-    ({ id, aliases }) =>
-      baseLanguage === id.toLowerCase() || aliases.includes(baseLanguage),
-  ) ?? null;
+  return (
+    SUPPORTED_LOCALES.find(
+      ({ id, aliases }) =>
+        baseLanguage === id.toLowerCase() || aliases.includes(baseLanguage),
+    ) ?? null
+  );
 }
 
 export function sourceLocaleFor(value) {
-  const definition = localeDefinition(value) ?? localeDefinition(DEFAULT_LOCALE);
+  const definition =
+    localeDefinition(value) ?? localeDefinition(DEFAULT_LOCALE);
   return definition?.generatedFrom ?? definition?.id ?? DEFAULT_LOCALE;
 }
 
@@ -216,11 +242,15 @@ export function intlLocaleFor(value) {
 }
 
 export function guidePathForLocale(value) {
-  return localeDefinition(value)?.guidePath ?? localeDefinition(DEFAULT_LOCALE).guidePath;
+  return (
+    localeDefinition(value)?.guidePath ??
+    localeDefinition(DEFAULT_LOCALE).guidePath
+  );
 }
 
 export function applyLocaleToDocument(value, documentRef) {
-  const definition = localeDefinition(value) ?? localeDefinition(DEFAULT_LOCALE);
+  const definition =
+    localeDefinition(value) ?? localeDefinition(DEFAULT_LOCALE);
   const root = documentRef?.documentElement;
   if (!root || !definition) {
     return false;

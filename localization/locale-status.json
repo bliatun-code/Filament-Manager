@@ -32,6 +32,12 @@
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
+    },
+    "pt-BR": {
+      "releaseStatus": "draft",
+      "nativeReviewer": null,
+      "reviewedAt": null,
+      "reviewedSourceFingerprint": null
     }
   }
 }

@@ -3,11 +3,17 @@ import test from "node:test";
 
 import {
   collectLiteralTranslationKeysFromSource,
+  localeDictionaryExportName,
   readLocaleDictionaryFromSource,
   validateLocaleDictionaries,
   validateLocaleOverlay,
   validateRuntimeTranslationKeys,
 } from "./check-i18n-locales.mjs";
+
+test("locale dictionary export names support regional locale identifiers", () => {
+  assert.equal(localeDictionaryExportName("en"), "enDictionary");
+  assert.equal(localeDictionaryExportName("pt-BR"), "ptBRDictionary");
+});
 
 test("locale dictionary parser reads nested string leaves", () => {
   const dictionary = readLocaleDictionaryFromSource(
@@ -57,10 +63,22 @@ test("locale dictionary contract reports key and placeholder drift", () => {
     "nb",
   );
 
-  assert.ok(errors.some((error) => error.includes("missing translation key common.save")));
-  assert.ok(errors.some((error) => error.includes("extra translation key common.close")));
-  assert.ok(errors.some((error) => error.includes("missing placeholder {owner}")));
-  assert.ok(errors.some((error) => error.includes("extra placeholder {person}")));
+  assert.ok(
+    errors.some((error) =>
+      error.includes("missing translation key common.save"),
+    ),
+  );
+  assert.ok(
+    errors.some((error) =>
+      error.includes("extra translation key common.close"),
+    ),
+  );
+  assert.ok(
+    errors.some((error) => error.includes("missing placeholder {owner}")),
+  );
+  assert.ok(
+    errors.some((error) => error.includes("extra placeholder {person}")),
+  );
 });
 
 test("locale dictionary contract validates ICU selector parameters", () => {
@@ -78,8 +96,12 @@ test("locale dictionary contract validates ICU selector parameters", () => {
     "nb",
   );
 
-  assert.ok(errors.some((error) => error.includes("missing placeholder {count}")));
-  assert.ok(errors.some((error) => error.includes("extra placeholder {total}")));
+  assert.ok(
+    errors.some((error) => error.includes("missing placeholder {count}")),
+  );
+  assert.ok(
+    errors.some((error) => error.includes("extra placeholder {total}")),
+  );
 });
 
 test("draft locale overlay accepts partial keys but rejects drift", () => {
@@ -96,9 +118,17 @@ test("draft locale overlay accepts partial keys but rejects drift", () => {
     { common: { count: "{total} Rollen", extra: "Extra" } },
     "de",
   );
-  assert.ok(errors.some((error) => error.includes("missing placeholder {count}")));
-  assert.ok(errors.some((error) => error.includes("extra placeholder {total}")));
-  assert.ok(errors.some((error) => error.includes("unknown translation key common.extra")));
+  assert.ok(
+    errors.some((error) => error.includes("missing placeholder {count}")),
+  );
+  assert.ok(
+    errors.some((error) => error.includes("extra placeholder {total}")),
+  );
+  assert.ok(
+    errors.some((error) =>
+      error.includes("unknown translation key common.extra"),
+    ),
+  );
 });
 
 test("runtime key collector reads literal translation calls", () => {
@@ -106,17 +136,17 @@ test("runtime key collector reads literal translation calls", () => {
     `const value = t("common.save", "Save"); const dynamic = t(key, "Fallback");`,
   );
 
-  assert.deepEqual(keys.map(({ key }) => key), ["common.save"]);
+  assert.deepEqual(
+    keys.map(({ key }) => key),
+    ["common.save"],
+  );
 });
 
 test("runtime key contract reports literals missing from the base dictionary", () => {
-  const errors = validateRuntimeTranslationKeys(
-    { common: { save: "Save" } },
-    [
-      { key: "common.save", location: "ui/src/example.tsx:1:1" },
-      { key: "common.missing", location: "ui/src/example.tsx:2:1" },
-    ],
-  );
+  const errors = validateRuntimeTranslationKeys({ common: { save: "Save" } }, [
+    { key: "common.save", location: "ui/src/example.tsx:1:1" },
+    { key: "common.missing", location: "ui/src/example.tsx:2:1" },
+  ]);
 
   assert.deepEqual(errors, [
     "ui/src/example.tsx:2:1: unknown translation key common.missing.",

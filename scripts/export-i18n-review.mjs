@@ -2,12 +2,26 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { CATALOG_LOCALES, DEFAULT_LOCALE } from "../src-tauri/companion_browser/supported_locales.js";
-import { flattenDictionary, readLocaleDictionaryFromSource } from "./check-i18n-locales.mjs";
+import {
+  CATALOG_LOCALES,
+  DEFAULT_LOCALE,
+} from "../src-tauri/companion_browser/supported_locales.js";
+import {
+  flattenDictionary,
+  localeDictionaryExportName,
+  readLocaleDictionaryFromSource,
+} from "./check-i18n-locales.mjs";
 import { catalogFingerprint } from "./check-i18n-readiness.mjs";
 
 const repoRoot = resolve(".");
-const desktopLocaleRoot = resolve(repoRoot, "ui", "src", "lib", "i18n_locales", "locales");
+const desktopLocaleRoot = resolve(
+  repoRoot,
+  "ui",
+  "src",
+  "lib",
+  "i18n_locales",
+  "locales",
+);
 const companionDictionaryFile = resolve(
   repoRoot,
   "src-tauri",
@@ -21,11 +35,18 @@ function dictionaryMap(dictionary) {
 
 function contextMap(contextDocument) {
   return new Map(
-    (contextDocument.messages ?? []).map((entry) => [`${entry.surface}:${entry.key}`, entry]),
+    (contextDocument.messages ?? []).map((entry) => [
+      `${entry.surface}:${entry.key}`,
+      entry,
+    ]),
   );
 }
 
-export function buildLocalizationReviewRows({ sourceDictionaries, targetDictionaries, contextDocument }) {
+export function buildLocalizationReviewRows({
+  sourceDictionaries,
+  targetDictionaries,
+  contextDocument,
+}) {
   const contexts = contextMap(contextDocument);
   const rows = [];
   for (const surface of ["desktop", "companion"]) {
@@ -33,7 +54,8 @@ export function buildLocalizationReviewRows({ sourceDictionaries, targetDictiona
     const target = dictionaryMap(targetDictionaries[surface]);
     for (const [key, sourceText] of source) {
       const explicitTarget = target.get(key);
-      const targetText = typeof explicitTarget === "string" ? explicitTarget : sourceText;
+      const targetText =
+        typeof explicitTarget === "string" ? explicitTarget : sourceText;
       const context = contexts.get(`${surface}:${key}`) ?? {};
       rows.push({
         surface,
@@ -53,12 +75,17 @@ export function buildLocalizationReviewRows({ sourceDictionaries, targetDictiona
     }
   }
   return rows.sort((left, right) =>
-    `${left.surface}:${left.key}`.localeCompare(`${right.surface}:${right.key}`, "en"),
+    `${left.surface}:${left.key}`.localeCompare(
+      `${right.surface}:${right.key}`,
+      "en",
+    ),
   );
 }
 
 function tsvCell(value) {
-  return String(value ?? "").replaceAll("\t", " ").replaceAll(/\r?\n/g, "\\n");
+  return String(value ?? "")
+    .replaceAll("\t", " ")
+    .replaceAll(/\r?\n/g, "\\n");
 }
 
 export function formatLocalizationReviewTsv(rows) {
@@ -100,7 +127,7 @@ function argValue(argv, name) {
 function loadDesktopDictionary(locale) {
   return readLocaleDictionaryFromSource(
     readFileSync(resolve(desktopLocaleRoot, `${locale}.ts`), "utf8"),
-    `${locale}Dictionary`,
+    localeDictionaryExportName(locale),
   );
 }
 
@@ -114,7 +141,11 @@ function loadCompanionDictionaries() {
 export function exportLocalizationReview({ locale, outputPath }) {
   const definition = CATALOG_LOCALES.find(({ id }) => id === locale);
   if (!definition || locale === DEFAULT_LOCALE) {
-    throw new Error(`Choose a non-source catalog locale: ${CATALOG_LOCALES.map(({ id }) => id).filter((id) => id !== DEFAULT_LOCALE).join(", ")}.`);
+    throw new Error(
+      `Choose a non-source catalog locale: ${CATALOG_LOCALES.map(({ id }) => id)
+        .filter((id) => id !== DEFAULT_LOCALE)
+        .join(", ")}.`,
+    );
   }
   const companionDictionaries = loadCompanionDictionaries();
   const sourceDictionaries = {
@@ -126,7 +157,10 @@ export function exportLocalizationReview({ locale, outputPath }) {
     companion: companionDictionaries[locale],
   };
   const contextDocument = JSON.parse(
-    readFileSync(resolve(repoRoot, "localization", "message-context.json"), "utf8"),
+    readFileSync(
+      resolve(repoRoot, "localization", "message-context.json"),
+      "utf8",
+    ),
   );
   const rows = buildLocalizationReviewRows({
     sourceDictionaries,
@@ -134,7 +168,13 @@ export function exportLocalizationReview({ locale, outputPath }) {
     contextDocument,
   });
   const targetPath = resolve(
-    outputPath ?? resolve(repoRoot, "release-artifacts", "localization-review", `${locale}.tsv`),
+    outputPath ??
+      resolve(
+        repoRoot,
+        "release-artifacts",
+        "localization-review",
+        `${locale}.tsv`,
+      ),
   );
   mkdirSync(dirname(targetPath), { recursive: true });
   writeFileSync(targetPath, formatLocalizationReviewTsv(rows), "utf8");
@@ -169,7 +209,10 @@ function run() {
   );
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   try {
     run();
   } catch (error) {

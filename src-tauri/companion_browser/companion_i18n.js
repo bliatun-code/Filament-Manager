@@ -3143,6 +3143,7 @@ const dictionaries = {
       title: "Compañero del navegador Trusted-LAN",
     },
   },
+  "pt-BR": {},
 };
 
 function lookup(dictionary, key) {

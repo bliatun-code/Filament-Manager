@@ -15,13 +15,29 @@ const ts = require(resolve(repoRoot, "ui", "node_modules", "typescript"));
 const localeFiles = Object.fromEntries(
   SOURCE_LOCALES.map(({ id }) => [
     id,
-    resolve(repoRoot, "ui", "src", "lib", "i18n_locales", "locales", `${id}.ts`),
+    resolve(
+      repoRoot,
+      "ui",
+      "src",
+      "lib",
+      "i18n_locales",
+      "locales",
+      `${id}.ts`,
+    ),
   ]),
 );
 const uiSourceRoot = resolve(repoRoot, "ui", "src");
 
+export function localeDictionaryExportName(locale) {
+  return `${String(locale).replace(/-([a-z])/gi, (_, letter) => letter.toUpperCase())}Dictionary`;
+}
+
 function propertyNameText(name) {
-  if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
+  if (
+    ts.isIdentifier(name) ||
+    ts.isStringLiteral(name) ||
+    ts.isNumericLiteral(name)
+  ) {
     return name.text;
   }
   return null;
@@ -32,17 +48,23 @@ function readDictionaryNode(node, path = []) {
     return node.text;
   }
   if (!ts.isObjectLiteralExpression(node)) {
-    throw new Error(`Unsupported dictionary value at ${path.join(".") || "<root>"}`);
+    throw new Error(
+      `Unsupported dictionary value at ${path.join(".") || "<root>"}`,
+    );
   }
 
   const result = {};
   for (const property of node.properties) {
     if (!ts.isPropertyAssignment(property)) {
-      throw new Error(`Unsupported dictionary property at ${path.join(".") || "<root>"}`);
+      throw new Error(
+        `Unsupported dictionary property at ${path.join(".") || "<root>"}`,
+      );
     }
     const key = propertyNameText(property.name);
     if (!key) {
-      throw new Error(`Unsupported dictionary key at ${path.join(".") || "<root>"}`);
+      throw new Error(
+        `Unsupported dictionary key at ${path.join(".") || "<root>"}`,
+      );
     }
     result[key] = readDictionaryNode(property.initializer, [...path, key]);
   }
@@ -63,7 +85,10 @@ export function readLocaleDictionaryFromSource(source, exportName) {
       continue;
     }
     for (const declaration of statement.declarationList.declarations) {
-      if (!ts.isIdentifier(declaration.name) || declaration.name.text !== exportName) {
+      if (
+        !ts.isIdentifier(declaration.name) ||
+        declaration.name.text !== exportName
+      ) {
         continue;
       }
       if (!declaration.initializer) {
@@ -90,10 +115,15 @@ function isTranslationCallExpression(expression) {
   if (ts.isIdentifier(expression)) {
     return expression.text === "t";
   }
-  return ts.isPropertyAccessExpression(expression) && expression.name.text === "t";
+  return (
+    ts.isPropertyAccessExpression(expression) && expression.name.text === "t"
+  );
 }
 
-export function collectLiteralTranslationKeysFromSource(source, fileName = "source.tsx") {
+export function collectLiteralTranslationKeysFromSource(
+  source,
+  fileName = "source.tsx",
+) {
   const sourceFile = ts.createSourceFile(
     fileName,
     source,
@@ -104,10 +134,18 @@ export function collectLiteralTranslationKeysFromSource(source, fileName = "sour
   const keys = [];
 
   function visit(node) {
-    if (ts.isCallExpression(node) && isTranslationCallExpression(node.expression)) {
+    if (
+      ts.isCallExpression(node) &&
+      isTranslationCallExpression(node.expression)
+    ) {
       const keyArgument = node.arguments[0];
-      if (ts.isStringLiteral(keyArgument) || ts.isNoSubstitutionTemplateLiteral(keyArgument)) {
-        const location = sourceFile.getLineAndCharacterOfPosition(keyArgument.getStart(sourceFile));
+      if (
+        ts.isStringLiteral(keyArgument) ||
+        ts.isNoSubstitutionTemplateLiteral(keyArgument)
+      ) {
+        const location = sourceFile.getLineAndCharacterOfPosition(
+          keyArgument.getStart(sourceFile),
+        );
         keys.push({
           key: keyArgument.text,
           line: location.line + 1,
@@ -123,7 +161,9 @@ export function collectLiteralTranslationKeysFromSource(source, fileName = "sour
 }
 
 export function validateRuntimeTranslationKeys(dictionary, runtimeKeys) {
-  const dictionaryKeys = new Set(flattenDictionary(dictionary).map(([key]) => key));
+  const dictionaryKeys = new Set(
+    flattenDictionary(dictionary).map(([key]) => key),
+  );
   return runtimeKeys
     .filter(({ key }) => !dictionaryKeys.has(key))
     .map(({ key, location }) => `${location}: unknown translation key ${key}.`);
@@ -145,10 +185,17 @@ function compareSets(leftValues, rightValues) {
   };
 }
 
-export function validateLocaleDictionaries(baseDictionary, targetDictionary, targetLocale = "nb") {
+export function validateLocaleDictionaries(
+  baseDictionary,
+  targetDictionary,
+  targetLocale = "nb",
+) {
   const baseEntries = new Map(flattenDictionary(baseDictionary));
   const targetEntries = new Map(flattenDictionary(targetDictionary));
-  const { missingFromRight, extraInRight } = compareSets(baseEntries.keys(), targetEntries.keys());
+  const { missingFromRight, extraInRight } = compareSets(
+    baseEntries.keys(),
+    targetEntries.keys(),
+  );
   const errors = [];
 
   for (const key of missingFromRight) {
@@ -167,7 +214,9 @@ export function validateLocaleDictionaries(baseDictionary, targetDictionary, tar
     const targetPlaceholders = placeholderTokens(targetValue);
     const placeholderDiff = compareSets(basePlaceholders, targetPlaceholders);
     for (const missing of placeholderDiff.missingFromRight) {
-      errors.push(`${targetLocale}.${key} is missing placeholder {${missing}}.`);
+      errors.push(
+        `${targetLocale}.${key} is missing placeholder {${missing}}.`,
+      );
     }
     for (const extra of placeholderDiff.extraInRight) {
       errors.push(`${targetLocale}.${key} has extra placeholder {${extra}}.`);
@@ -177,7 +226,11 @@ export function validateLocaleDictionaries(baseDictionary, targetDictionary, tar
   return errors;
 }
 
-export function validateLocaleOverlay(baseDictionary, targetDictionary, targetLocale) {
+export function validateLocaleOverlay(
+  baseDictionary,
+  targetDictionary,
+  targetLocale,
+) {
   const baseEntries = new Map(flattenDictionary(baseDictionary));
   const targetEntries = new Map(flattenDictionary(targetDictionary));
   const errors = [];
@@ -193,7 +246,9 @@ export function validateLocaleOverlay(baseDictionary, targetDictionary, targetLo
       placeholderTokens(targetValue),
     );
     for (const missing of placeholderDiff.missingFromRight) {
-      errors.push(`${targetLocale}.${key} is missing placeholder {${missing}}.`);
+      errors.push(
+        `${targetLocale}.${key} is missing placeholder {${missing}}.`,
+      );
     }
     for (const extra of placeholderDiff.extraInRight) {
       errors.push(`${targetLocale}.${key} has extra placeholder {${extra}}.`);
@@ -209,16 +264,21 @@ function runI18nLocaleCheck() {
       id,
       readLocaleDictionaryFromSource(
         readFileSync(localeFiles[id], "utf8"),
-        `${id}Dictionary`,
+        localeDictionaryExportName(id),
       ),
     ]),
   );
   const baseDictionary = dictionaries[DEFAULT_LOCALE];
-  const errors = SOURCE_LOCALES.filter(({ id }) => id !== DEFAULT_LOCALE).flatMap(
-    ({ id }) => validateLocaleDictionaries(baseDictionary, dictionaries[id], id),
+  const errors = SOURCE_LOCALES.filter(
+    ({ id }) => id !== DEFAULT_LOCALE,
+  ).flatMap(({ id }) =>
+    validateLocaleDictionaries(baseDictionary, dictionaries[id], id),
   );
   const runtimeKeys = collectUiSourceFiles(uiSourceRoot).flatMap((file) =>
-    collectLiteralTranslationKeysFromSource(readFileSync(file, "utf8"), file).map((entry) => ({
+    collectLiteralTranslationKeysFromSource(
+      readFileSync(file, "utf8"),
+      file,
+    ).map((entry) => ({
       key: entry.key,
       location: `${relative(repoRoot, file)}:${entry.line}:${entry.column}`,
     })),
@@ -237,6 +297,9 @@ function runI18nLocaleCheck() {
   console.log("UI locale dictionary contract ok.");
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   runI18nLocaleCheck();
 }

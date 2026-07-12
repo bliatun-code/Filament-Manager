@@ -443,6 +443,7 @@ fn normalize_visual_qa_locale(value: &str) -> &'static str {
         "de" | "de-de" => "de",
         "fr" | "fr-fr" => "fr",
         "es" | "es-es" => "es",
+        "pt-br" | "pt_br" => "pt-BR",
         _ => "en",
     }
 }

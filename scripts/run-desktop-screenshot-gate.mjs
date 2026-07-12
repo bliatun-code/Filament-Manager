@@ -29,7 +29,10 @@ const VISUAL_QA_THEME_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_THEME";
 export const DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN = 96;
 export const DESKTOP_DARK_THEME_MAX_LUMA_MEAN = 128;
 const DESKTOP_VISUAL_QA_SCENARIO_MANIFEST = JSON.parse(
-  readFileSync(resolve("ui", "src", "lib", "desktop_visual_qa_scenarios.json"), "utf8"),
+  readFileSync(
+    resolve("ui", "src", "lib", "desktop_visual_qa_scenarios.json"),
+    "utf8",
+  ),
 );
 const DESKTOP_VISUAL_QA_SCENARIO_DEFINITIONS =
   DESKTOP_VISUAL_QA_SCENARIO_MANIFEST.scenarios ?? [];
@@ -77,6 +80,14 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
     settings: "Ajustes",
     statistics: "Estadísticas",
   },
+  "pt-BR": {
+    dashboard: "Painel",
+    inventory: "Inventário",
+    loans: "Empréstimos",
+    printers: "Impressoras",
+    settings: "Configurações",
+    statistics: "Estatísticas",
+  },
   "en-XA": Object.fromEntries(
     Object.entries({
       dashboard: "Dashboard",
@@ -85,7 +96,10 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
       printers: "Printers",
       settings: "Settings",
       statistics: "Statistics",
-    }).map(([page, title]) => [page, pseudoLocalizeMessageForLocale(title, {}, "en-XA")]),
+    }).map(([page, title]) => [
+      page,
+      pseudoLocalizeMessageForLocale(title, {}, "en-XA"),
+    ]),
   ),
   "ar-XB": Object.fromEntries(
     Object.entries({
@@ -95,7 +109,10 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
       printers: "Printers",
       settings: "Settings",
       statistics: "Statistics",
-    }).map(([page, title]) => [page, pseudoLocalizeMessageForLocale(title, {}, "ar-XB")]),
+    }).map(([page, title]) => [
+      page,
+      pseudoLocalizeMessageForLocale(title, {}, "ar-XB"),
+    ]),
   ),
   "zh-XB": Object.fromEntries(
     Object.entries({
@@ -105,7 +122,10 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
       printers: "Printers",
       settings: "Settings",
       statistics: "Statistics",
-    }).map(([page, title]) => [page, pseudoLocalizeMessageForLocale(title, {}, "zh-XB")]),
+    }).map(([page, title]) => [
+      page,
+      pseudoLocalizeMessageForLocale(title, {}, "zh-XB"),
+    ]),
   ),
 };
 
@@ -141,12 +161,20 @@ export function normalizeVisualQaLocale(value) {
 }
 
 export function normalizeDesktopVisualQaTheme(value) {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  if (normalized === "light" || normalized === "dark" || normalized === "auto") {
+  const normalized = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  if (
+    normalized === "light" ||
+    normalized === "dark" ||
+    normalized === "auto"
+  ) {
     return normalized;
   }
   if (!normalized) {
-    throw new Error('Desktop visual QA theme is required. Use "light", "dark", or "auto".');
+    throw new Error(
+      'Desktop visual QA theme is required. Use "light", "dark", or "auto".',
+    );
   }
   throw new Error(
     `Unknown desktop visual QA theme "${value}". Use "light", "dark", or "auto".`,
@@ -170,7 +198,9 @@ export function resolveDesktopVisualQaTheme(argv, { hasScenario, launch }) {
 export function normalizeDesktopVisualQaWindowSize(value) {
   const normalized = String(value ?? "").trim();
   if (!normalized) {
-    throw new Error('Desktop visual QA window size is required. Use a value like "900x700".');
+    throw new Error(
+      'Desktop visual QA window size is required. Use a value like "900x700".',
+    );
   }
   const match = normalized.match(/^(\d+)\s*[x×]\s*(\d+)$/i);
   const width = Number(match?.[1]);
@@ -189,7 +219,10 @@ export function normalizeDesktopVisualQaWindowSize(value) {
   return { height, width };
 }
 
-export function resolveDesktopVisualQaWindowSize(argv, { hasScenario, launch }) {
+export function resolveDesktopVisualQaWindowSize(
+  argv,
+  { hasScenario, launch },
+) {
   if (!argv.includes("--window-size")) {
     return null;
   }
@@ -199,7 +232,9 @@ export function resolveDesktopVisualQaWindowSize(argv, { hasScenario, launch }) 
   if (!hasScenario) {
     throw new Error("Desktop visual QA --window-size requires --scenario.");
   }
-  return normalizeDesktopVisualQaWindowSize(parseArgValue(argv, "--window-size"));
+  return normalizeDesktopVisualQaWindowSize(
+    parseArgValue(argv, "--window-size"),
+  );
 }
 
 export function normalizeDesktopVisualQaScenario(value) {
@@ -216,7 +251,9 @@ export function normalizeDesktopVisualQaScenario(value) {
 }
 
 export function desktopVisualQaScenarioDefinition(value) {
-  const token = String(value ?? "").trim().toLowerCase();
+  const token = String(value ?? "")
+    .trim()
+    .toLowerCase();
   if (!token) {
     return null;
   }
@@ -239,13 +276,16 @@ export function parseDesktopVisualQaScenarios(argv) {
 }
 
 export function desktopVisualQaScenarioRequiresDatabaseFixture(scenario) {
-  return Boolean(desktopVisualQaScenarioDefinition(scenario)?.requiresDatabaseFixture);
+  return Boolean(
+    desktopVisualQaScenarioDefinition(scenario)?.requiresDatabaseFixture,
+  );
 }
 
 export function defaultDesktopVisualQaCaptureDelayMs(scenarios) {
   if (
     scenarios.some(
-      (scenario) => desktopVisualQaScenarioDefinition(scenario)?.page === "printers",
+      (scenario) =>
+        desktopVisualQaScenarioDefinition(scenario)?.page === "printers",
     )
   ) {
     return DESKTOP_PRINTER_LIVE_WAIT_MS;
@@ -282,13 +322,17 @@ export function desktopScreenshotNameForScenario({
   if (!scenario) {
     return baseName;
   }
-  return scenarioCount > 1 || !explicitName ? `${baseName}-${scenario}` : baseName;
+  return scenarioCount > 1 || !explicitName
+    ? `${baseName}-${scenario}`
+    : baseName;
 }
 
 export function shouldRetryDesktopLaunch(result) {
   return Boolean(
     result?.errors?.some((error) =>
-      String(error).includes("No Filament Manager desktop window was found after launching"),
+      String(error).includes(
+        "No Filament Manager desktop window was found after launching",
+      ),
     ),
   );
 }
@@ -301,7 +345,12 @@ function quoteAppleScriptString(value) {
   return String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
-export async function execFileWithTimeout(execFileFn, command, args, options = {}) {
+export async function execFileWithTimeout(
+  execFileFn,
+  command,
+  args,
+  options = {},
+) {
   const timeoutMs = options.timeoutMs ?? 4_000;
   const label = options.label ?? command;
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
@@ -310,7 +359,8 @@ export async function execFileWithTimeout(execFileFn, command, args, options = {
 
   let timer = null;
   const timeoutGraceMs =
-    options.timeoutGraceMs ?? Math.min(250, Math.max(20, Math.round(timeoutMs * 0.1)));
+    options.timeoutGraceMs ??
+    Math.min(250, Math.max(20, Math.round(timeoutMs * 0.1)));
   try {
     return await Promise.race([
       execFileFn(command, args, { timeout: timeoutMs }),
@@ -328,13 +378,19 @@ export async function execFileWithTimeout(execFileFn, command, args, options = {
   }
 }
 
-export function buildDesktopWindowLookupScript(windowTitle = DEFAULT_WINDOW_TITLE) {
+export function buildDesktopWindowLookupScript(
+  windowTitle = DEFAULT_WINDOW_TITLE,
+) {
   const options =
     typeof windowTitle === "object" && windowTitle !== null
       ? windowTitle
       : { windowTitle };
-  const title = quoteAppleScriptString(options.windowTitle ?? DEFAULT_WINDOW_TITLE);
-  const processName = quoteAppleScriptString(options.processName ?? DEFAULT_PROCESS_NAME);
+  const title = quoteAppleScriptString(
+    options.windowTitle ?? DEFAULT_WINDOW_TITLE,
+  );
+  const processName = quoteAppleScriptString(
+    options.processName ?? DEFAULT_PROCESS_NAME,
+  );
   return `
 tell application "System Events"
   repeat with appProcess in (application processes whose visible is true)
@@ -384,8 +440,15 @@ export function buildDesktopWindowResizeScript(windowInfo, windowSize) {
   const windowTitle = quoteAppleScriptString(windowInfo?.title ?? "");
   const width = Number(windowSize?.width);
   const height = Number(windowSize?.height);
-  if (!processName || !windowTitle || !Number.isSafeInteger(width) || !Number.isSafeInteger(height)) {
-    throw new Error("Desktop window resize requires a target window and an integer size.");
+  if (
+    !processName ||
+    !windowTitle ||
+    !Number.isSafeInteger(width) ||
+    !Number.isSafeInteger(height)
+  ) {
+    throw new Error(
+      "Desktop window resize requires a target window and an integer size.",
+    );
   }
   return `
 tell application "System Events"
@@ -397,7 +460,9 @@ end tell
 }
 
 export function parseDesktopWindowInfo(raw) {
-  const parts = String(raw ?? "").trim().split("\t");
+  const parts = String(raw ?? "")
+    .trim()
+    .split("\t");
   if (parts.length < 6 || !parts[0] || !parts[1]) {
     return null;
   }
@@ -511,18 +576,28 @@ export async function activateDesktopWindow(windowInfo, options = {}) {
   await wait(options.waitAfterActivateMs ?? 350);
 }
 
-export function desktopWindowMatchesRequestedSize(windowInfo, windowSize, tolerance = 2) {
+export function desktopWindowMatchesRequestedSize(
+  windowInfo,
+  windowSize,
+  tolerance = 2,
+) {
   if (!windowInfo || !windowSize) {
     return false;
   }
   const allowedDelta = Number.isFinite(tolerance) ? Math.max(0, tolerance) : 2;
   return (
-    Math.abs(Number(windowInfo.width) - Number(windowSize.width)) <= allowedDelta &&
-    Math.abs(Number(windowInfo.height) - Number(windowSize.height)) <= allowedDelta
+    Math.abs(Number(windowInfo.width) - Number(windowSize.width)) <=
+      allowedDelta &&
+    Math.abs(Number(windowInfo.height) - Number(windowSize.height)) <=
+      allowedDelta
   );
 }
 
-export async function resizeDesktopWindow(windowInfo, windowSize, options = {}) {
+export async function resizeDesktopWindow(
+  windowInfo,
+  windowSize,
+  options = {},
+) {
   if (!windowInfo || !windowSize) {
     return windowInfo;
   }
@@ -578,10 +653,18 @@ export async function captureDesktopWindowScreenshot(windowInfo, options = {}) {
     Math.max(1, windowInfo.width),
     Math.max(1, windowInfo.height),
   ].join(",");
-  await execFileWithTimeout(execFileFn, "screencapture", ["-x", "-R", region, path], {
-    label: "Desktop window screenshot capture",
-    timeoutMs: options.screenshotCommandTimeoutMs ?? options.desktopCommandTimeoutMs ?? 8_000,
-  });
+  await execFileWithTimeout(
+    execFileFn,
+    "screencapture",
+    ["-x", "-R", region, path],
+    {
+      label: "Desktop window screenshot capture",
+      timeoutMs:
+        options.screenshotCommandTimeoutMs ??
+        options.desktopCommandTimeoutMs ??
+        8_000,
+    },
+  );
   return {
     buffer: await readFile(path),
     path,
@@ -597,10 +680,17 @@ export function desktopScreenshotScale(metric) {
   const windowHeight = Number(metric.window.height);
   const pixelWidth = Number(metric.screenshotPixels.width);
   const pixelHeight = Number(metric.screenshotPixels.height);
-  if (![windowWidth, windowHeight, pixelWidth, pixelHeight].every(Number.isFinite)) {
+  if (
+    ![windowWidth, windowHeight, pixelWidth, pixelHeight].every(Number.isFinite)
+  ) {
     return null;
   }
-  if (windowWidth <= 0 || windowHeight <= 0 || pixelWidth <= 0 || pixelHeight <= 0) {
+  if (
+    windowWidth <= 0 ||
+    windowHeight <= 0 ||
+    pixelWidth <= 0 ||
+    pixelHeight <= 0
+  ) {
     return null;
   }
   const x = pixelWidth / windowWidth;
@@ -620,13 +710,19 @@ export function validateDesktopScreenshotMetrics(metric, minimums = {}) {
   const minColorBuckets = minimumFor(minimums.colorBuckets, 24);
   const minEdgeDeltaMean = minimumFor(minimums.edgeDeltaMean, 1.2);
   const minLumaStdDev = minimumFor(minimums.lumaStdDev, 5);
-  const minSaturatedPixelRatio = minimumFor(minimums.saturatedPixelRatio, 0.006);
+  const minSaturatedPixelRatio = minimumFor(
+    minimums.saturatedPixelRatio,
+    0.006,
+  );
 
   if (!metric.window) {
     errors.push("No Filament Manager desktop window was found.");
     return errors;
   }
-  if (metric.window.width < minWindowWidth || metric.window.height < minWindowHeight) {
+  if (
+    metric.window.width < minWindowWidth ||
+    metric.window.height < minWindowHeight
+  ) {
     errors.push(
       `Desktop window is too small (${metric.window.width}x${metric.window.height}, expected at least ${minWindowWidth}x${minWindowHeight}).`,
     );
@@ -678,7 +774,9 @@ export function validateDesktopScreenshotTheme(metric, themeMode) {
   }
   const lumaMean = Number(metric?.screenshotPixels?.lumaMean);
   if (!Number.isFinite(lumaMean)) {
-    return [`Desktop ${themeMode} theme verification is missing screenshot luminance.`];
+    return [
+      `Desktop ${themeMode} theme verification is missing screenshot luminance.`,
+    ];
   }
   if (themeMode === "light" && lumaMean < DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN) {
     return [
@@ -713,7 +811,10 @@ export async function runDesktopScreenshotGate(options = {}) {
   const window = options.window ?? (await findDesktopWindow(options));
   if (!window) {
     return {
-      errors: validateDesktopScreenshotMetrics({ window: null }, options.minimums),
+      errors: validateDesktopScreenshotMetrics(
+        { window: null },
+        options.minimums,
+      ),
       metric: { window: null },
       outputDir,
       themeMode: options.themeMode ?? null,
@@ -735,7 +836,11 @@ export async function runDesktopScreenshotGate(options = {}) {
   const errors = [
     ...validateDesktopScreenshotMetrics(metric, options.minimums),
     ...validateDesktopScreenshotTheme(metric, options.themeMode),
-    ...validateDesktopWindowSize(metric, options.windowSize, options.windowSizeTolerance),
+    ...validateDesktopWindowSize(
+      metric,
+      options.windowSize,
+      options.windowSizeTolerance,
+    ),
   ];
   return {
     errors,
@@ -758,7 +863,10 @@ function formatVisibleWindowSummary(windows) {
   }
   return windows
     .slice(0, 8)
-    .map((window) => `${window.processName}:${window.title} ${window.width}x${window.height}`)
+    .map(
+      (window) =>
+        `${window.processName}:${window.title} ${window.width}x${window.height}`,
+    )
     .join("; ");
 }
 
@@ -825,14 +933,22 @@ function releaseChild(child) {
   }
 }
 
-export function buildDesktopVisualQaLaunchEnv(options, database, baseEnv = process.env) {
+export function buildDesktopVisualQaLaunchEnv(
+  options,
+  database,
+  baseEnv = process.env,
+) {
   return {
     ...baseEnv,
     [APP_DB_PATH_ENV_VAR]: database.targetPath,
     FILAMENT_MANAGER_VISUAL_QA: "1",
     [VISUAL_QA_LOCALE_ENV_VAR]: normalizeVisualQaLocale(options.locale),
-    ...(options.scenario ? { [VISUAL_QA_SCENARIO_ENV_VAR]: options.scenario } : {}),
-    ...(options.themeMode ? { [VISUAL_QA_THEME_ENV_VAR]: options.themeMode } : {}),
+    ...(options.scenario
+      ? { [VISUAL_QA_SCENARIO_ENV_VAR]: options.scenario }
+      : {}),
+    ...(options.themeMode
+      ? { [VISUAL_QA_THEME_ENV_VAR]: options.themeMode }
+      : {}),
   };
 }
 
@@ -850,11 +966,14 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
     throw new Error("Desktop screenshot gate currently supports macOS only.");
   }
 
-  const prepareDatabase = options.prepareVisualQaDatabase ?? prepareVisualQaDatabase;
-  const cleanupDatabase = options.cleanupVisualQaDatabase ?? cleanupVisualQaDatabase;
+  const prepareDatabase =
+    options.prepareVisualQaDatabase ?? prepareVisualQaDatabase;
+  const cleanupDatabase =
+    options.cleanupVisualQaDatabase ?? cleanupVisualQaDatabase;
   const spawnFn = options.spawnFn ?? spawn;
   const forceCopyForFixture = Boolean(
-    options.live && desktopVisualQaScenarioRequiresDatabaseFixture(options.scenario),
+    options.live &&
+    desktopVisualQaScenarioRequiresDatabaseFixture(options.scenario),
   );
   const database = await prepareDatabase({
     live: Boolean(options.live) && !forceCopyForFixture,
@@ -987,7 +1106,9 @@ export function formatDesktopScreenshotGateReport(result) {
     const definition = desktopVisualQaScenarioDefinition(result.scenario);
     const details = [
       definition?.page,
-      definition?.settingsTab ? `settings:${definition.settingsTab.toLowerCase()}` : null,
+      definition?.settingsTab
+        ? `settings:${definition.settingsTab.toLowerCase()}`
+        : null,
       definition?.category,
       definition?.requiresDatabaseFixture ? "db-fixture" : null,
     ].filter(Boolean);
@@ -1019,7 +1140,9 @@ export function formatDesktopScreenshotGateReport(result) {
     const capturedWindow = result.metric?.window;
     lines.push(
       `Desktop visual QA window size: requested ${result.windowSize.width}x${result.windowSize.height}; captured ${
-        capturedWindow ? `${capturedWindow.width}x${capturedWindow.height}` : "unavailable"
+        capturedWindow
+          ? `${capturedWindow.width}x${capturedWindow.height}`
+          : "unavailable"
       }.`,
     );
   }
@@ -1033,7 +1156,9 @@ export function formatDesktopScreenshotGateReport(result) {
   if (!metric.window && metric.visibleWindows?.length > 0) {
     lines.push("Visible desktop windows:");
     for (const window of metric.visibleWindows.slice(0, 8)) {
-      lines.push(`  - ${window.processName}: ${window.title} ${window.width}x${window.height}`);
+      lines.push(
+        `  - ${window.processName}: ${window.title} ${window.width}x${window.height}`,
+      );
     }
   }
   if (metric.screenshotPixels) {
@@ -1067,9 +1192,13 @@ async function runCli() {
   const hasScenario = scenarios.some(Boolean);
   const launch = parseBooleanArg(argv, "--launch");
   const themeMode = resolveDesktopVisualQaTheme(argv, { hasScenario, launch });
-  const windowSize = resolveDesktopVisualQaWindowSize(argv, { hasScenario, launch });
+  const windowSize = resolveDesktopVisualQaWindowSize(argv, {
+    hasScenario,
+    launch,
+  });
   const explicitName = parseArgValue(argv, "--name");
-  const baseName = explicitName ?? (hasScenario ? "desktop-scenario" : "desktop-window");
+  const baseName =
+    explicitName ?? (hasScenario ? "desktop-scenario" : "desktop-window");
   const baseOptions = {
     captureDelayMs: parseIntegerArg(
       argv,
@@ -1082,11 +1211,23 @@ async function runCli() {
     locale: normalizeVisualQaLocale(parseArgValue(argv, "--locale")),
     name: baseName,
     outputDir: parseArgValue(argv, "--output-dir") ?? DEFAULT_OUTPUT_DIR,
-    postTerminateDelayMs: parseIntegerArg(argv, "--post-terminate-delay-ms", 1_200),
+    postTerminateDelayMs: parseIntegerArg(
+      argv,
+      "--post-terminate-delay-ms",
+      1_200,
+    ),
     profile: parseArgValue(argv, "--profile") ?? undefined,
     relaunchDelayMs: parseIntegerArg(argv, "--relaunch-delay-ms", 2_000),
-    desktopCommandTimeoutMs: parseIntegerArg(argv, "--desktop-command-timeout-ms", 4_000),
-    screenshotCommandTimeoutMs: parseIntegerArg(argv, "--screenshot-command-timeout-ms", 8_000),
+    desktopCommandTimeoutMs: parseIntegerArg(
+      argv,
+      "--desktop-command-timeout-ms",
+      4_000,
+    ),
+    screenshotCommandTimeoutMs: parseIntegerArg(
+      argv,
+      "--screenshot-command-timeout-ms",
+      8_000,
+    ),
     windowCommandTimeoutMs: parseIntegerArg(
       argv,
       "--window-command-timeout-ms",
@@ -1106,7 +1247,11 @@ async function runCli() {
       windowWidth: parseIntegerArg(argv, "--min-window-width", undefined),
     },
   };
-  const launchAttempts = parseIntegerArg(argv, "--launch-attempts", launch ? 2 : 1);
+  const launchAttempts = parseIntegerArg(
+    argv,
+    "--launch-attempts",
+    launch ? 2 : 1,
+  );
   const results = [];
   for (const scenario of scenarios) {
     const name = desktopScreenshotNameForScenario({
@@ -1128,7 +1273,10 @@ async function runCli() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   runCli().catch((error) => {
     console.error(error.message);
     process.exit(1);

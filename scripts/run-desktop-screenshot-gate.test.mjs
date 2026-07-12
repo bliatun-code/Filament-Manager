@@ -73,7 +73,9 @@ function createMetric(overrides = {}) {
 test("desktop screenshot gate parses macOS window lookup output", () => {
   assert.equal(DEFAULT_WINDOW_COMMAND_TIMEOUT_MS, 15_000);
   assert.deepEqual(
-    parseDesktopWindowInfo("Filament Manager\tFilament Manager\t20\t40\t1300\t900\n"),
+    parseDesktopWindowInfo(
+      "Filament Manager\tFilament Manager\t20\t40\t1300\t900\n",
+    ),
     {
       height: 900,
       processName: "Filament Manager",
@@ -84,7 +86,10 @@ test("desktop screenshot gate parses macOS window lookup output", () => {
     },
   );
   assert.equal(parseDesktopWindowInfo(""), null);
-  assert.equal(parseDesktopWindowInfo("Filament Manager\tTitle\t0\t0\t0\t900"), null);
+  assert.equal(
+    parseDesktopWindowInfo("Filament Manager\tTitle\t0\t0\t0\t900"),
+    null,
+  );
 });
 
 test("desktop screenshot gate parses visible window diagnostics", () => {
@@ -121,30 +126,81 @@ test("desktop screenshot gate lookup script escapes quoted titles", () => {
 });
 
 test("desktop screenshot gate normalizes visual QA scenarios", () => {
-  assert.equal(normalizeDesktopVisualQaScenario("dashboard"), "dashboard-overview");
-  assert.equal(normalizeDesktopVisualQaScenario("inventory"), "inventory-overview");
-  assert.equal(normalizeDesktopVisualQaScenario("inventory-add"), "add-filament");
-  assert.equal(normalizeDesktopVisualQaScenario("wishlist-orders"), "wishlist-queue");
-  assert.equal(normalizeDesktopVisualQaScenario("loan-history"), "loans-overview");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("dashboard"),
+    "dashboard-overview",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("inventory"),
+    "inventory-overview",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("inventory-add"),
+    "add-filament",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("wishlist-orders"),
+    "wishlist-queue",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("loan-history"),
+    "loans-overview",
+  );
   assert.equal(normalizeDesktopVisualQaScenario("DETAIL"), "selected-roll");
-  assert.equal(normalizeDesktopVisualQaScenario("roll-history"), "selected-roll-history");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("roll-history"),
+    "selected-roll-history",
+  );
   assert.equal(
     normalizeDesktopVisualQaScenario("inventory-danger-zone"),
     "selected-roll-danger-zone",
   );
-  assert.equal(normalizeDesktopVisualQaScenario("inventory-rfid"), "rfid-capture");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("inventory-rfid"),
+    "rfid-capture",
+  );
   assert.equal(normalizeDesktopVisualQaScenario("loan-return"), "return-loan");
-  assert.equal(normalizeDesktopVisualQaScenario("inbound-return"), "return-inbound-loan");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("inbound-return"),
+    "return-inbound-loan",
+  );
   assert.equal(normalizeDesktopVisualQaScenario("printers"), "printer-board");
-  assert.equal(normalizeDesktopVisualQaScenario("add-printer-modal"), "add-printer");
-  assert.equal(normalizeDesktopVisualQaScenario("slot-assignment"), "printer-slot-assignment");
-  assert.equal(normalizeDesktopVisualQaScenario("ams-onboarding"), "printer-slot-onboarding");
-  assert.equal(normalizeDesktopVisualQaScenario("rfid-override"), "printer-rfid-override");
-  assert.equal(normalizeDesktopVisualQaScenario("slot-swap"), "printer-slot-replacement");
-  assert.equal(normalizeDesktopVisualQaScenario("slot-unload"), "printer-slot-clear");
-  assert.equal(normalizeDesktopVisualQaScenario("batch-add"), "bambu-batch-add");
-  assert.equal(normalizeDesktopVisualQaScenario("general-settings"), "settings-general");
-  assert.equal(normalizeDesktopVisualQaScenario("companion-settings"), "settings-library");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("add-printer-modal"),
+    "add-printer",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("slot-assignment"),
+    "printer-slot-assignment",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("ams-onboarding"),
+    "printer-slot-onboarding",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("rfid-override"),
+    "printer-rfid-override",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("slot-swap"),
+    "printer-slot-replacement",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("slot-unload"),
+    "printer-slot-clear",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("batch-add"),
+    "bambu-batch-add",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("general-settings"),
+    "settings-general",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("companion-settings"),
+    "settings-library",
+  );
   assert.equal(
     normalizeDesktopVisualQaScenario("companion-role-change"),
     "settings-library-role-change",
@@ -181,7 +237,10 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
     normalizeDesktopVisualQaScenario("bambu-live-diagnostics-paused"),
     "settings-printer-diagnostics-paused",
   );
-  assert.equal(normalizeDesktopVisualQaScenario("printer-editor"), "settings-printer-editor");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("printer-editor"),
+    "settings-printer-editor",
+  );
   assert.equal(
     normalizeDesktopVisualQaScenario("printer-editor-dirty"),
     "settings-printer-editor-dirty",
@@ -190,21 +249,39 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
     normalizeDesktopVisualQaScenario("printer-editor-discard"),
     "settings-printer-editor-discard",
   );
-  assert.equal(normalizeDesktopVisualQaScenario("filament-catalog"), "settings-catalog");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("filament-catalog"),
+    "settings-catalog",
+  );
   assert.equal(
     normalizeDesktopVisualQaScenario("missing-swatches"),
     "settings-catalog-swatch-review",
   );
-  assert.equal(normalizeDesktopVisualQaScenario("program-maintenance"), "settings-maintenance");
-  assert.equal(normalizeDesktopVisualQaScenario("usage-statistics"), "statistics-overview");
-  assert.equal(normalizeDesktopVisualQaScenario("total-consumption"), "statistics-consumption");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("program-maintenance"),
+    "settings-maintenance",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("usage-statistics"),
+    "statistics-overview",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("total-consumption"),
+    "statistics-consumption",
+  );
   assert.equal(
     normalizeDesktopVisualQaScenario("statistics-borrower-usage"),
     "statistics-borrower",
   );
-  assert.equal(normalizeDesktopVisualQaScenario("loan-usage-statistics"), "statistics-loans");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("loan-usage-statistics"),
+    "statistics-loans",
+  );
   assert.equal(normalizeDesktopVisualQaScenario(""), null);
-  assert.throws(() => normalizeDesktopVisualQaScenario("bad"), /Unknown desktop visual QA/);
+  assert.throws(
+    () => normalizeDesktopVisualQaScenario("bad"),
+    /Unknown desktop visual QA/,
+  );
 });
 
 test("desktop screenshot gate normalizes screenshot locale overrides", () => {
@@ -227,7 +304,10 @@ test("desktop screenshot gate normalizes supported theme overrides", () => {
   assert.equal(normalizeDesktopVisualQaTheme(" DARK "), "dark");
   assert.equal(normalizeDesktopVisualQaTheme("Auto"), "auto");
   assert.throws(() => normalizeDesktopVisualQaTheme(""), /theme is required/);
-  assert.throws(() => normalizeDesktopVisualQaTheme("sepia"), /Unknown desktop visual QA theme/);
+  assert.throws(
+    () => normalizeDesktopVisualQaTheme("sepia"),
+    /Unknown desktop visual QA theme/,
+  );
 });
 
 test("desktop screenshot gate scopes explicit themes to launched scenarios", () => {
@@ -273,9 +353,18 @@ test("desktop screenshot gate normalizes explicit responsive window sizes", () =
     height: 768,
     width: 1024,
   });
-  assert.throws(() => normalizeDesktopVisualQaWindowSize(""), /window size is required/);
-  assert.throws(() => normalizeDesktopVisualQaWindowSize("900"), /Unknown desktop visual QA/);
-  assert.throws(() => normalizeDesktopVisualQaWindowSize("0x700"), /positive width and height/);
+  assert.throws(
+    () => normalizeDesktopVisualQaWindowSize(""),
+    /window size is required/,
+  );
+  assert.throws(
+    () => normalizeDesktopVisualQaWindowSize("900"),
+    /Unknown desktop visual QA/,
+  );
+  assert.throws(
+    () => normalizeDesktopVisualQaWindowSize("0x700"),
+    /positive width and height/,
+  );
 });
 
 test("desktop screenshot gate scopes explicit window sizes to launched scenarios", () => {
@@ -339,24 +428,44 @@ test("desktop screenshot gate reads scenario metadata from the shared manifest",
     id: "bambu-batch-add",
     page: "inventory",
   });
-  assert.equal(desktopVisualQaScenarioDefinition("order-queue").requiresDatabaseFixture, true);
-  assert.equal(desktopVisualQaScenarioDefinition("trusted-lan-details").settingsTab, "LIBRARY");
+  assert.equal(
+    desktopVisualQaScenarioDefinition("order-queue").requiresDatabaseFixture,
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioDefinition("trusted-lan-details").settingsTab,
+    "LIBRARY",
+  );
   assert.equal(
     desktopVisualQaScenarioDefinition("library-role-dialog").settingsTab,
     "LIBRARY",
   );
   assert.equal(
-    desktopVisualQaScenarioDefinition("library-role-switch").requiresDatabaseFixture,
+    desktopVisualQaScenarioDefinition("library-role-switch")
+      .requiresDatabaseFixture,
     undefined,
   );
-  assert.equal(desktopVisualQaScenarioDefinition("trusted-lan-editor").settingsTab, "LIBRARY");
-  assert.equal(desktopVisualQaScenarioDefinition("trusted-lan-pairing").settingsTab, "LIBRARY");
-  assert.equal(desktopVisualQaScenarioDefinition("trusted-lan-browsers").settingsTab, "LIBRARY");
   assert.equal(
-    desktopVisualQaScenarioDefinition("trusted-lan-browser-history").settingsTab,
+    desktopVisualQaScenarioDefinition("trusted-lan-editor").settingsTab,
     "LIBRARY",
   );
-  assert.equal(desktopVisualQaScenarioDefinition("printer-editor").settingsTab, "PRINTERS");
+  assert.equal(
+    desktopVisualQaScenarioDefinition("trusted-lan-pairing").settingsTab,
+    "LIBRARY",
+  );
+  assert.equal(
+    desktopVisualQaScenarioDefinition("trusted-lan-browsers").settingsTab,
+    "LIBRARY",
+  );
+  assert.equal(
+    desktopVisualQaScenarioDefinition("trusted-lan-browser-history")
+      .settingsTab,
+    "LIBRARY",
+  );
+  assert.equal(
+    desktopVisualQaScenarioDefinition("printer-editor").settingsTab,
+    "PRINTERS",
+  );
   assert.equal(
     desktopVisualQaScenarioDefinition("printer-editor-dirty").settingsTab,
     "PRINTERS",
@@ -365,69 +474,141 @@ test("desktop screenshot gate reads scenario metadata from the shared manifest",
     desktopVisualQaScenarioDefinition("printer-editor-discard").settingsTab,
     "PRINTERS",
   );
-  assert.equal(desktopVisualQaScenarioDefinition("missing-swatches").requiresDatabaseFixture, true);
   assert.equal(
-    desktopVisualQaScenarioDefinition("statistics-consumption").requiresDatabaseFixture,
-    undefined,
-  );
-  assert.equal(
-    desktopVisualQaScenarioDefinition("statistics-loans").requiresDatabaseFixture,
-    undefined,
-  );
-  assert.equal(
-    desktopVisualQaScenarioDefinition("statistics-borrower").requiresDatabaseFixture,
+    desktopVisualQaScenarioDefinition("missing-swatches")
+      .requiresDatabaseFixture,
     true,
   );
   assert.equal(
-    desktopVisualQaScenarioDefinition("hand-back-borrowed-in").requiresDatabaseFixture,
+    desktopVisualQaScenarioDefinition("statistics-consumption")
+      .requiresDatabaseFixture,
+    undefined,
+  );
+  assert.equal(
+    desktopVisualQaScenarioDefinition("statistics-loans")
+      .requiresDatabaseFixture,
+    undefined,
+  );
+  assert.equal(
+    desktopVisualQaScenarioDefinition("statistics-borrower")
+      .requiresDatabaseFixture,
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioDefinition("hand-back-borrowed-in")
+      .requiresDatabaseFixture,
     true,
   );
   assert.equal(desktopVisualQaScenarioDefinition("unknown"), null);
 });
 
 test("desktop screenshot gate marks DB-fixture visual states", () => {
-  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("ams-onboarding"), true);
-  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("wishlist-orders"), true);
-  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("printer-slot-onboarding"), true);
-  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("rfid-override"), true);
-  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("missing-swatches"), true);
-  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("inbound-return"), true);
-  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("borrower-usage-breakdown"), true);
-  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("trusted-lan-pairing"), false);
-  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("library-role-modal"), false);
-  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("trusted-lan-browsers"), false);
-  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("printer-editor"), false);
-  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("printer-editor-dirty"), false);
-  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("printer-editor-discard"), false);
   assert.equal(
-    desktopVisualQaScenarioRequiresDatabaseFixture("trusted-lan-browser-history"),
+    desktopVisualQaScenarioRequiresDatabaseFixture("ams-onboarding"),
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("wishlist-orders"),
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("printer-slot-onboarding"),
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("rfid-override"),
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("missing-swatches"),
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("inbound-return"),
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("borrower-usage-breakdown"),
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("trusted-lan-pairing"),
     false,
   );
-  assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture("printers"), false);
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("library-role-modal"),
+    false,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("trusted-lan-browsers"),
+    false,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("printer-editor"),
+    false,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("printer-editor-dirty"),
+    false,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("printer-editor-discard"),
+    false,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture(
+      "trusted-lan-browser-history",
+    ),
+    false,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("printers"),
+    false,
+  );
   assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture(null), false);
 });
 
 test("desktop printer captures wait for live data before taking screenshots", () => {
-  assert.equal(defaultDesktopVisualQaCaptureDelayMs(["printer-board"]), DESKTOP_PRINTER_LIVE_WAIT_MS);
-  assert.equal(defaultDesktopVisualQaCaptureDelayMs(["selected-roll-label"]), 3_500);
+  assert.equal(
+    defaultDesktopVisualQaCaptureDelayMs(["printer-board"]),
+    DESKTOP_PRINTER_LIVE_WAIT_MS,
+  );
+  assert.equal(
+    defaultDesktopVisualQaCaptureDelayMs(["selected-roll-label"]),
+    3_500,
+  );
   assert.equal(defaultDesktopVisualQaCaptureDelayMs([null]), 0);
 });
 
 test("desktop screenshot gate maps scenario aliases to localized window titles", () => {
-  assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "en"), ["Inventory"]);
-  assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "nb"), ["Lager"]);
-  assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "es-ES"), [
-    "Inventario",
-  ]);
-  assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "en-XA"), [
-    "⟦Îñṽ·éñţ·öŕý·⟧",
-  ]);
-  assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "ar-XB"), [
-    "⟦\u2067Îñṽ·éñţ·öŕý·\u2069⟧",
-  ]);
-  assert.deepEqual(desktopVisualQaExpectedWindowTitles("wishlist-orders", "zh-XB"), [
-    "【已內值頁內態項入有】",
-  ]);
+  assert.deepEqual(
+    desktopVisualQaExpectedWindowTitles("wishlist-orders", "en"),
+    ["Inventory"],
+  );
+  assert.deepEqual(
+    desktopVisualQaExpectedWindowTitles("wishlist-orders", "nb"),
+    ["Lager"],
+  );
+  assert.deepEqual(
+    desktopVisualQaExpectedWindowTitles("wishlist-orders", "es-ES"),
+    ["Inventario"],
+  );
+  assert.deepEqual(
+    desktopVisualQaExpectedWindowTitles("wishlist-orders", "pt-BR"),
+    ["Inventário"],
+  );
+  assert.deepEqual(
+    desktopVisualQaExpectedWindowTitles("wishlist-orders", "en-XA"),
+    ["⟦Îñṽ·éñţ·öŕý·⟧"],
+  );
+  assert.deepEqual(
+    desktopVisualQaExpectedWindowTitles("wishlist-orders", "ar-XB"),
+    ["⟦\u2067Îñṽ·éñţ·öŕý·\u2069⟧"],
+  );
+  assert.deepEqual(
+    desktopVisualQaExpectedWindowTitles("wishlist-orders", "zh-XB"),
+    ["【已內值頁內態項入有】"],
+  );
   assert.deepEqual(desktopVisualQaExpectedWindowTitles(null, "en"), []);
   assert.equal(
     desktopVisualQaWindowMatchesScenario(
@@ -505,7 +686,9 @@ test("desktop screenshot metric validation accepts rich desktop captures", () =>
 test("desktop screenshot theme validation uses modal-tolerant light and dark boundaries", () => {
   assert.deepEqual(
     validateDesktopScreenshotTheme(
-      createMetric({ screenshotPixels: { lumaMean: DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN } }),
+      createMetric({
+        screenshotPixels: { lumaMean: DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN },
+      }),
       "light",
     ),
     [],
@@ -530,13 +713,18 @@ test("desktop screenshot theme validation uses modal-tolerant light and dark bou
   );
   assert.match(
     validateDesktopScreenshotTheme(
-      createMetric({ screenshotPixels: { lumaMean: DESKTOP_DARK_THEME_MAX_LUMA_MEAN } }),
+      createMetric({
+        screenshotPixels: { lumaMean: DESKTOP_DARK_THEME_MAX_LUMA_MEAN },
+      }),
       "dark",
     )[0],
     /dark theme screenshot is too light/,
   );
   assert.deepEqual(
-    validateDesktopScreenshotTheme(createMetric({ screenshotPixels: { lumaMean: 0 } }), "auto"),
+    validateDesktopScreenshotTheme(
+      createMetric({ screenshotPixels: { lumaMean: 0 } }),
+      "auto",
+    ),
     [],
   );
 });
@@ -601,7 +789,10 @@ test("desktop screenshot gate resizes and rereads the captured desktop window", 
       findWindowFn: async () => {
         attempts += 1;
         return createMetric({
-          window: attempts === 1 ? { height: 800, width: 1200 } : { height: 700, width: 900 },
+          window:
+            attempts === 1
+              ? { height: 800, width: 1200 }
+              : { height: 700, width: 900 },
         }).window;
       },
       resizeWindowPollMs: 1,
@@ -639,7 +830,7 @@ test("desktop screenshot gate times out stuck macOS helper commands", async () =
     execFileWithTimeout(
       () => new Promise(() => {}),
       "osascript",
-      ["-e", "return \"\""],
+      ["-e", 'return ""'],
       {
         label: "Desktop window lookup",
         timeoutGraceMs: 1,
@@ -685,17 +876,23 @@ test("desktop screenshot gate validates the requested size against the captured 
     true,
   );
   assert.deepEqual(
-    validateDesktopWindowSize(createMetric({ window: { height: 700, width: 900 } }), {
-      height: 700,
-      width: 900,
-    }),
+    validateDesktopWindowSize(
+      createMetric({ window: { height: 700, width: 900 } }),
+      {
+        height: 700,
+        width: 900,
+      },
+    ),
     [],
   );
   assert.match(
-    validateDesktopWindowSize(createMetric({ window: { height: 800, width: 1200 } }), {
-      height: 700,
-      width: 900,
-    })[0],
+    validateDesktopWindowSize(
+      createMetric({ window: { height: 800, width: 1200 } }),
+      {
+        height: 700,
+        width: 900,
+      },
+    )[0],
     /1200x800 does not match requested 900x700/,
   );
 });
@@ -709,7 +906,10 @@ test("desktop screenshot report lists window and artifact details", () => {
   });
 
   assert.match(report, /Desktop visual QA scenario: add-filament/);
-  assert.match(report, /Desktop visual QA scenario: add-filament \(inventory, modal\)/);
+  assert.match(
+    report,
+    /Desktop visual QA scenario: add-filament \(inventory, modal\)/,
+  );
   assert.match(report, /Desktop window: Filament Manager/);
   assert.match(report, /Pixels: 1300x900 @1\.0x/);
   assert.match(report, /desktop-window\.png/);
@@ -738,7 +938,10 @@ test("desktop screenshot report identifies explicit and automatic themes", () =>
     scenario: "add-filament",
     themeMode: "light",
   });
-  assert.match(lightReport, /theme: light \(mean luminance 166\.4, expected >= 96\)/);
+  assert.match(
+    lightReport,
+    /theme: light \(mean luminance 166\.4, expected >= 96\)/,
+  );
 
   const autoReport = formatDesktopScreenshotGateReport({
     errors: [],
@@ -747,7 +950,10 @@ test("desktop screenshot report identifies explicit and automatic themes", () =>
     scenario: "add-filament",
     themeMode: "auto",
   });
-  assert.match(autoReport, /theme: auto \(system-resolved; luminance assertion skipped\)/);
+  assert.match(
+    autoReport,
+    /theme: auto \(system-resolved; luminance assertion skipped\)/,
+  );
 });
 
 test("desktop screenshot report lists visible windows when launch misses the app", () => {
