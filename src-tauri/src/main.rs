@@ -455,6 +455,7 @@ fn normalize_visual_qa_locale(value: &str) -> &'static str {
         "tr" | "tr-tr" | "tr_tr" => "tr-TR",
         "uk" | "uk-ua" | "uk_ua" => "uk-UA",
         "ru" | "ru-ru" | "ru_ru" => "ru-RU",
+        "hu" | "hu-hu" | "hu_hu" => "hu-HU",
         _ => "en",
     }
 }

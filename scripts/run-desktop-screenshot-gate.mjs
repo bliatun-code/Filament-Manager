@@ -176,6 +176,14 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
     settings: "Настройки",
     statistics: "Статистика",
   },
+  "hu-HU": {
+    dashboard: "Áttekintés",
+    inventory: "Készlet",
+    loans: "Kölcsönök",
+    printers: "Nyomtatók",
+    settings: "Beállítások",
+    statistics: "Statisztika",
+  },
   "en-XA": Object.fromEntries(
     Object.entries({
       dashboard: "Dashboard",

@@ -104,6 +104,12 @@
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
+    },
+    "hu-HU": {
+      "releaseStatus": "draft",
+      "nativeReviewer": null,
+      "reviewedAt": null,
+      "reviewedSourceFingerprint": null
     }
   }
 }

@@ -9965,6 +9965,7 @@ const dictionaries = {
     "borrowedInHandedBack": "Взятую в долг катушку сдали обратно."
   }
 },
+  "hu-HU": {},
 };
 
 function lookup(dictionary, key) {
