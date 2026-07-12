@@ -161,6 +161,25 @@ test("complete Brazilian Portuguese draft translates shell and workflow copy", (
   );
 });
 
+test("complete Italian draft translates shell and workflow copy", () => {
+  assert.equal(t("it-IT", "nav.storage"), "Inventario");
+  assert.equal(t("it-IT", "settings.title"), "Impostazioni");
+  assert.equal(t("it-IT", "nav.spoolCount", "", { count: 1 }), "1 bobina");
+  assert.equal(t("it-IT", "nav.spoolCount", "", { count: 2 }), "2 bobine");
+  assert.equal(t("it-IT", "printers.toolhead"), "Testina");
+  assert.equal(
+    t("it-IT", "status.qrLookupFailed"),
+    "Impossibile aprire il collegamento della bobina.",
+  );
+  assert.equal(t("it-IT", "storage.addFilament"), "Aggiungi filamento");
+  assert.equal(t("it-IT", "loans.completeReturn"), "Completa il reso");
+  assert.equal(t("it-IT", "detail.saveWeight"), "Salva peso");
+  assert.equal(
+    t("it-IT", "printers.loadedSummary", "", { loaded: 3, open: 1 }),
+    "3 occupati · 1 liberi",
+  );
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {

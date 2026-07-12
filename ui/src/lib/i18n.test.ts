@@ -102,6 +102,14 @@ test("resolveInitialLocale accepts hidden Brazilian Portuguese only through a QA
   assert.equal(locale, "pt-BR");
 });
 
+test("resolveInitialLocale accepts hidden Italian only through a QA URL", () => {
+  const windowRef = { location: { search: "?bfm_locale=it-IT" } };
+  const locale = withGlobalValue("window", windowRef, () =>
+    resolveInitialLocale(),
+  );
+  assert.equal(locale, "it-IT");
+});
+
 test("locale dictionaries lazy-load and cache supported locales", async () => {
   const enDictionary = await loadLocaleDictionary("en");
 
@@ -314,6 +322,30 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
     "Consumo por impressora",
   );
   assert.equal(getCachedLocaleDictionary("pt-BR"), portugueseDictionary);
+
+  const italianDictionary = await loadLocaleDictionary("it-IT");
+  assert.equal(lookup(italianDictionary, "nav.inventory"), "Inventario");
+  assert.equal(lookup(italianDictionary, "common.cancel"), "Annulla");
+  assert.equal(
+    lookup(italianDictionary, "dashboard.totalSpools"),
+    "Bobine totali",
+  );
+  assert.equal(lookup(italianDictionary, "inventory.title"), "Bobine");
+  assert.equal(lookup(italianDictionary, "wishlist.statusOnOrder"), "Ordinato");
+  assert.equal(
+    lookup(italianDictionary, "loans.confirmReturnAction"),
+    "Conferma il reso",
+  );
+  assert.equal(
+    lookup(italianDictionary, "inventory.bambuBatchCameraAction"),
+    "Usa la webcam",
+  );
+  assert.equal(lookup(italianDictionary, "printers.showSlots"), "Mostra slot");
+  assert.equal(
+    lookup(italianDictionary, "statistics.perPrinter"),
+    "Consumo per stampante",
+  );
+  assert.equal(getCachedLocaleDictionary("it-IT"), italianDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {
