@@ -7753,6 +7753,7 @@ const dictionaries = {
     "title": "Trusted-LAN 브라우저 컴패니언"
   }
 },
+  "zh-TW": {},
 };
 
 function lookup(dictionary, key) {

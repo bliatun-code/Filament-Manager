@@ -80,6 +80,12 @@
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
+    },
+    "zh-TW": {
+      "releaseStatus": "draft",
+      "nativeReviewer": null,
+      "reviewedAt": null,
+      "reviewedSourceFingerprint": null
     }
   }
 }
