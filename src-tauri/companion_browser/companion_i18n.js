@@ -8859,6 +8859,7 @@ const dictionaries = {
     "title": "Trusted-LAN tarayıcı arkadaşı"
   }
 },
+  "uk-UA": {},
 };
 
 function lookup(dictionary, key) {

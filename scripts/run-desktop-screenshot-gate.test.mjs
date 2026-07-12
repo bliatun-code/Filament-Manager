@@ -634,6 +634,10 @@ test("desktop screenshot gate maps scenario aliases to localized window titles",
     ["Envanter"],
   );
   assert.deepEqual(
+    desktopVisualQaExpectedWindowTitles("wishlist-orders", "uk-UA"),
+    ["Інвентар"],
+  );
+  assert.deepEqual(
     desktopVisualQaExpectedWindowTitles("wishlist-orders", "en-XA"),
     ["⟦Îñṽ·éñţ·öŕý·⟧"],
   );

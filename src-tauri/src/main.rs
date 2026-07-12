@@ -453,6 +453,7 @@ fn normalize_visual_qa_locale(value: &str) -> &'static str {
         "ko" | "ko-kr" | "ko_kr" => "ko-KR",
         "zh-tw" | "zh_tw" | "zh-hant" => "zh-TW",
         "tr" | "tr-tr" | "tr_tr" => "tr-TR",
+        "uk" | "uk-ua" | "uk_ua" => "uk-UA",
         _ => "en",
     }
 }
