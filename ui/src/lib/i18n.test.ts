@@ -541,6 +541,17 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(hungarianDictionary, "printers.showSlots"), "Helyek megjelenítése");
   assert.equal(lookup(hungarianDictionary, "statistics.perPrinter"), "Nyomtatónkénti használat");
   assert.equal(getCachedLocaleDictionary("hu-HU"), hungarianDictionary);
+
+  const swedishDictionary = await loadLocaleDictionary("sv-SE");
+  assert.equal(lookup(swedishDictionary, "nav.inventory"), "Lager");
+  assert.equal(lookup(swedishDictionary, "common.cancel"), "Avbryt");
+  assert.equal(lookup(swedishDictionary, "dashboard.totalSpools"), "Totalt antal rullar");
+  assert.equal(lookup(swedishDictionary, "inventory.title"), "Rullar");
+  assert.equal(lookup(swedishDictionary, "wishlist.statusOnOrder"), "Beställd");
+  assert.equal(lookup(swedishDictionary, "inventory.bambuBatchCameraAction"), "Använd webbkameran");
+  assert.equal(lookup(swedishDictionary, "printers.showSlots"), "Visa platser");
+  assert.equal(lookup(swedishDictionary, "statistics.perPrinter"), "Användning per skrivare");
+  assert.equal(getCachedLocaleDictionary("sv-SE"), swedishDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {

@@ -282,6 +282,15 @@ test("complete Hungarian draft translates shell and plural workflow copy", () =>
   assert.equal(t("hu-HU", "detail.saveWeight"), "Súly mentése");
 });
 
+test("complete Swedish draft translates shell and plural workflow copy", () => {
+  assert.equal(t("sv-SE", "nav.storage"), "Lager");
+  assert.equal(t("sv-SE", "settings.title"), "Inställningar");
+  assert.equal(t("sv-SE", "nav.spoolCount", "", { count: 1 }), "1 rulle");
+  assert.equal(t("sv-SE", "nav.spoolCount", "", { count: 2 }), "2 rullar");
+  assert.equal(t("sv-SE", "printers.toolhead"), "Skrivhuvud");
+  assert.equal(t("sv-SE", "detail.saveWeight"), "Spara vikt");
+});
+
 test("resolveInitialCompanionLocale falls back to English when storage and navigator throw", () => {
   const locale = resolveInitialCompanionLocale(
     {
