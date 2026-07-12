@@ -160,6 +160,12 @@ test("resolveInitialLocale accepts hidden Turkish only through a QA URL", () => 
   assert.equal(locale, "tr-TR");
 });
 
+test("resolveInitialLocale accepts hidden Ukrainian only through a QA URL", () => {
+  const windowRef = { location: { search: "?bfm_locale=uk-UA" } };
+  const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
+  assert.equal(locale, "uk-UA");
+});
+
 test("locale dictionaries lazy-load and cache supported locales", async () => {
   const enDictionary = await loadLocaleDictionary("en");
 
@@ -484,6 +490,17 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   assert.equal(lookup(turkishDictionary, "printers.showSlots"), "Yuvaları göster");
   assert.equal(lookup(turkishDictionary, "statistics.perPrinter"), "Yazıcıya göre kullanım");
   assert.equal(getCachedLocaleDictionary("tr-TR"), turkishDictionary);
+
+  const ukrainianDictionary = await loadLocaleDictionary("uk-UA");
+  assert.equal(lookup(ukrainianDictionary, "nav.inventory"), "Інвентар");
+  assert.equal(lookup(ukrainianDictionary, "common.cancel"), "Скасувати");
+  assert.equal(lookup(ukrainianDictionary, "dashboard.totalSpools"), "Усього котушок");
+  assert.equal(lookup(ukrainianDictionary, "inventory.title"), "Котушки");
+  assert.equal(lookup(ukrainianDictionary, "wishlist.statusOnOrder"), "Замовлено");
+  assert.equal(lookup(ukrainianDictionary, "inventory.bambuBatchCameraAction"), "Використати вебкамеру");
+  assert.equal(lookup(ukrainianDictionary, "printers.showSlots"), "Показати слоти");
+  assert.equal(lookup(ukrainianDictionary, "statistics.perPrinter"), "Використання за принтером");
+  assert.equal(getCachedLocaleDictionary("uk-UA"), ukrainianDictionary);
 });
 
 test("printer Live Bambu settings have explicit English and Norwegian locale copy", async () => {

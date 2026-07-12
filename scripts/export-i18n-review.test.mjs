@@ -69,7 +69,7 @@ test("completed catalog locales contain no English fallback rows", () => {
     join(tmpdir(), "filament-manager-i18n-review-"),
   );
   try {
-    for (const locale of ["de", "fr", "es", "pt-BR", "it-IT", "pl-PL", "nl-NL", "cs-CZ", "zh-CN", "ja-JP", "ko-KR", "zh-TW", "tr-TR"]) {
+    for (const locale of ["de", "fr", "es", "pt-BR", "it-IT", "pl-PL", "nl-NL", "cs-CZ", "zh-CN", "ja-JP", "ko-KR", "zh-TW", "tr-TR", "uk-UA"]) {
       const outputPath = join(directory, `${locale}.tsv`);
       const result = exportLocalizationReview({ locale, outputPath });
       assert.equal(
