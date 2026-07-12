@@ -166,6 +166,12 @@ test("resolveInitialLocale accepts hidden Ukrainian only through a QA URL", () =
   assert.equal(locale, "uk-UA");
 });
 
+test("resolveInitialLocale accepts hidden Russian only through a QA URL", () => {
+  const windowRef = { location: { search: "?bfm_locale=ru-RU" } };
+  const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
+  assert.equal(locale, "ru-RU");
+});
+
 test("locale dictionaries lazy-load and cache supported locales", async () => {
   const enDictionary = await loadLocaleDictionary("en");
 

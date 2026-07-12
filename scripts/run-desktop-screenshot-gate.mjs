@@ -168,6 +168,14 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
     settings: "Налаштування",
     statistics: "Статистика",
   },
+  "ru-RU": {
+    dashboard: "Обзор",
+    inventory: "Инвентарь",
+    loans: "Займы",
+    printers: "Принтеры",
+    settings: "Настройки",
+    statistics: "Статистика",
+  },
   "en-XA": Object.fromEntries(
     Object.entries({
       dashboard: "Dashboard",

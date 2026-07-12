@@ -263,6 +263,9 @@ fn visual_qa_locale_normalizer_defaults_to_english() {
     assert_eq!(normalize_visual_qa_locale("uk"), "uk-UA");
     assert_eq!(normalize_visual_qa_locale("uk-UA"), "uk-UA");
     assert_eq!(normalize_visual_qa_locale("uk_ua"), "uk-UA");
+    assert_eq!(normalize_visual_qa_locale("ru"), "ru-RU");
+    assert_eq!(normalize_visual_qa_locale("ru-RU"), "ru-RU");
+    assert_eq!(normalize_visual_qa_locale("ru_ru"), "ru-RU");
     assert_eq!(normalize_visual_qa_locale(""), "en");
     assert_eq!(normalize_visual_qa_locale("bad"), "en");
 }

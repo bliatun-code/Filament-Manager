@@ -9412,6 +9412,7 @@ const dictionaries = {
     "title": "Супутник браузера Trusted-LAN"
   }
 },
+  "ru-RU": {},
 };
 
 function lookup(dictionary, key) {
