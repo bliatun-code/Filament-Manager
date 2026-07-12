@@ -96,6 +96,14 @@ const DESKTOP_VISUAL_QA_PAGE_TITLES = {
     settings: "Impostazioni",
     statistics: "Statistiche",
   },
+  "pl-PL": {
+    dashboard: "Pulpit",
+    inventory: "Magazyn",
+    loans: "Wypożyczenia",
+    printers: "Drukarki",
+    settings: "Ustawienia",
+    statistics: "Statystyki",
+  },
   "en-XA": Object.fromEntries(
     Object.entries({
       dashboard: "Dashboard",

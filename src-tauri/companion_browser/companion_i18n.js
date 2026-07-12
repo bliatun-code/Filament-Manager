@@ -4435,6 +4435,7 @@ const dictionaries = {
       title: "Trusted-LAN browser companion",
     },
   },
+  "pl-PL": {},
 };
 
 function lookup(dictionary, key) {

@@ -36,12 +36,15 @@ test("locale registry normalizes canonical, regional, underscore, and legacy ali
   assert.equal(normalizeSupportedLocale("it"), "it-IT");
   assert.equal(normalizeSupportedLocale("it_IT"), "it-IT");
   assert.equal(normalizeSelectableLocale("it-IT"), null);
+  assert.equal(normalizeSupportedLocale("pl"), "pl-PL");
+  assert.equal(normalizeSupportedLocale("pl_PL"), "pl-PL");
+  assert.equal(normalizeSelectableLocale("pl-PL"), null);
 });
 
 test("locale registry owns format, guide, and native-label metadata", () => {
   assert.deepEqual(
     SUPPORTED_LOCALES.map(({ id }) => id),
-    ["en", "nb", "de", "fr", "es", "pt-BR", "it-IT", "en-XA", "ar-XB", "zh-XB"],
+    ["en", "nb", "de", "fr", "es", "pt-BR", "it-IT", "pl-PL", "en-XA", "ar-XB", "zh-XB"],
   );
   assert.deepEqual(
     SELECTABLE_LOCALES.map(({ id }) => id),
@@ -49,7 +52,7 @@ test("locale registry owns format, guide, and native-label metadata", () => {
   );
   assert.deepEqual(
     CATALOG_LOCALES.map(({ id }) => id),
-    ["en", "nb", "de", "fr", "es", "pt-BR", "it-IT"],
+    ["en", "nb", "de", "fr", "es", "pt-BR", "it-IT", "pl-PL"],
   );
   assert.equal(sourceLocaleFor("de-DE"), "de");
   assert.equal(fallbackLocaleFor("de"), null);
@@ -61,6 +64,8 @@ test("locale registry owns format, guide, and native-label metadata", () => {
   assert.equal(fallbackLocaleFor("pt-BR"), "en");
   assert.equal(sourceLocaleFor("it"), "it-IT");
   assert.equal(fallbackLocaleFor("it-IT"), "en");
+  assert.equal(sourceLocaleFor("pl"), "pl-PL");
+  assert.equal(fallbackLocaleFor("pl-PL"), "en");
   assert.equal(sourceLocaleFor("en-XA"), "en");
   assert.equal(sourceLocaleFor("ar-XB"), "en");
   assert.equal(sourceLocaleFor("zh-XB"), "en");
@@ -80,6 +85,7 @@ test("locale registry owns format, guide, and native-label metadata", () => {
   assert.equal(guidePathForLocale("es"), "docs/USER_GUIDE.md");
   assert.equal(guidePathForLocale("pt-BR"), "docs/USER_GUIDE.md");
   assert.equal(guidePathForLocale("it-IT"), "docs/USER_GUIDE.md");
+  assert.equal(guidePathForLocale("pl-PL"), "docs/USER_GUIDE.md");
   assert.equal(guidePathForLocale("unknown"), "docs/USER_GUIDE.md");
 });
 

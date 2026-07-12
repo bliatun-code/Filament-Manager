@@ -44,6 +44,12 @@
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
+    },
+    "pl-PL": {
+      "releaseStatus": "draft",
+      "nativeReviewer": null,
+      "reviewedAt": null,
+      "reviewedSourceFingerprint": null
     }
   }
 }
