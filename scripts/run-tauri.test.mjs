@@ -3,9 +3,12 @@ import test from "node:test";
 
 import {
   FILAMENT_MANAGER_MACOS_SIGNING_IDENTITY_ENV,
+  FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV,
+  TAURI_MACOS_SIGNING_IDENTITY_ENV,
   hasAppleSigningEnvironment,
   hasExplicitTauriConfig,
   macosSigningIdentityForBuild,
+  validateRequiredMacosSigningEnvironment,
   withMacosSigningConfig,
 } from "./run-tauri.mjs";
 
@@ -35,6 +38,14 @@ test("withMacosSigningConfig keeps certificate-based macOS builds untouched", ()
   assert.deepEqual(withMacosSigningConfig(["build"], { env, platform: "darwin" }), [
     "build",
   ]);
+});
+
+test("withMacosSigningConfig respects the standard Tauri signing identity", () => {
+  const env = { [TAURI_MACOS_SIGNING_IDENTITY_ENV]: "Developer ID Application: Example AS" };
+
+  assert.equal(hasAppleSigningEnvironment(env), true);
+  assert.equal(macosSigningIdentityForBuild(env, "darwin"), null);
+  assert.deepEqual(withMacosSigningConfig(["build"], { env, platform: "darwin" }), ["build"]);
 });
 
 test("withMacosSigningConfig still ad-hoc signs when only notarization env is present", () => {
@@ -83,5 +94,95 @@ test("withMacosSigningConfig only touches macOS build commands that sign", () =>
   assert.deepEqual(
     withMacosSigningConfig(["build", "--no-sign"], { env: {}, platform: "darwin" }),
     ["build", "--no-sign"],
+  );
+});
+
+test("required macOS signing fails closed without a Developer ID identity", () => {
+  assert.throws(
+    () =>
+      validateRequiredMacosSigningEnvironment({
+        args: ["build", "--bundles", "dmg"],
+        env: { [FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV]: "1" },
+        platform: "darwin",
+      }),
+    /Developer ID Application identity is required/,
+  );
+});
+
+test("required macOS signing rejects development and arbitrary identities", () => {
+  for (const signingIdentity of ["Apple Development: Example", "invalid", "-"]) {
+    assert.throws(
+      () =>
+        validateRequiredMacosSigningEnvironment({
+          args: ["build"],
+          env: {
+            [FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV]: "1",
+            [TAURI_MACOS_SIGNING_IDENTITY_ENV]: signingIdentity,
+          },
+          platform: "darwin",
+        }),
+      /Developer ID Application identity is required/,
+    );
+  }
+});
+
+test("required macOS signing fails closed without complete notarization credentials", () => {
+  assert.throws(
+    () =>
+      validateRequiredMacosSigningEnvironment({
+        args: ["build"],
+        env: {
+          [FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV]: "true",
+          [TAURI_MACOS_SIGNING_IDENTITY_ENV]: "Developer ID Application: Example AS",
+          APPLE_API_KEY: "KEY123",
+        },
+        platform: "darwin",
+      }),
+    /Complete notarization credentials are required/,
+  );
+});
+
+test("required macOS signing accepts complete App Store Connect API credentials", () => {
+  assert.doesNotThrow(() =>
+    validateRequiredMacosSigningEnvironment({
+      args: ["build", "--bundles", "dmg"],
+      env: {
+        [FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV]: "yes",
+        [TAURI_MACOS_SIGNING_IDENTITY_ENV]: "Developer ID Application: Example AS",
+        APPLE_API_ISSUER: "issuer",
+        APPLE_API_KEY: "KEY123",
+        APPLE_API_KEY_PATH: "/tmp/AuthKey_KEY123.p8",
+      },
+      platform: "darwin",
+    }),
+  );
+});
+
+test("required macOS signing accepts complete Apple ID credentials", () => {
+  assert.doesNotThrow(() =>
+    validateRequiredMacosSigningEnvironment({
+      args: ["build"],
+      env: {
+        [FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV]: "1",
+        [FILAMENT_MANAGER_MACOS_SIGNING_IDENTITY_ENV]:
+          "Developer ID Application: Example AS",
+        APPLE_ID: "developer@example.com",
+        APPLE_PASSWORD: "app-specific-password",
+        APPLE_TEAM_ID: "TEAM123456",
+      },
+      platform: "darwin",
+    }),
+  );
+});
+
+test("required macOS signing rejects --no-sign", () => {
+  assert.throws(
+    () =>
+      validateRequiredMacosSigningEnvironment({
+        args: ["build", "--no-sign"],
+        env: { [FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV]: "1" },
+        platform: "darwin",
+      }),
+    /cannot be combined with --no-sign/,
   );
 });

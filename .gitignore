@@ -54,5 +54,17 @@ ui/src/assets/logo_variants/README.md
 .env
 .env.*
 
+# Apple signing and notarization material
+.apple-signing/
+*.p12
+*.p8
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+*.keychain
+*.keychain-db
+notarytool-*.json
+
 # Historical lockfile artifacts
 package-lock [0-9].json

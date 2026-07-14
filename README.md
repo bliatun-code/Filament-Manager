@@ -226,8 +226,26 @@ npm run tauri -- build --bundles dmg
 ```
 
 On macOS, `npm run tauri` ad-hoc signs local builds so bundle entitlements are
-applied. Set `FILAMENT_MANAGER_MACOS_SIGNING_IDENTITY` or pass Tauri `--config`
-when building with a specific signing identity.
+applied. The current GitHub Actions DMG job also remains ad-hoc signed and is not
+notarized. Set Tauri's standard `APPLE_SIGNING_IDENTITY`, the compatible
+`FILAMENT_MANAGER_MACOS_SIGNING_IDENTITY`, or pass Tauri `--config` when building
+with a specific signing identity.
+
+Developer ID signing and notarization are intentionally opt-in so the current
+build and release flow does not depend on Apple credentials. The preparation,
+secret-handling, stable-Xcode guidance, activation steps, and release checks are
+documented in [macOS Signing and Notarization](docs/MACOS_SIGNING.md).
+
+After a signed and notarized DMG is built, verify it on macOS before upload:
+
+```bash
+EXPECTED_APPLE_TEAM_ID="TEAMID" \
+  npm run verify:macos-release -- path/to/Filament-Manager.dmg \
+  --architectures=arm64
+```
+
+The required architecture remains a release decision; adjust the verifier
+argument when Intel or universal artifacts are introduced.
 
 Build only a Windows MSI on Windows:
 
@@ -305,7 +323,8 @@ macOS:
 - App data path is typically
   `~/Library/Application Support/no.bliatun.filamentmanager`.
 
-If macOS blocks first launch of an unsigned build downloaded from GitHub:
+For a locally produced or ad-hoc release build that you trust, if macOS blocks
+first launch:
 
 1. Move the app to `Applications` from the DMG.
 2. Try `Right click -> Open` once.
@@ -314,6 +333,10 @@ If macOS blocks first launch of an unsigned build downloaded from GitHub:
 ```bash
 xattr -dr com.apple.quarantine "/Applications/Filament Manager.app"
 ```
+
+The `xattr` workaround removes quarantine metadata and should not be used for a
+Developer ID signed and notarized release. If a future signed release requires
+this workaround, treat that as a release defect and report it instead.
 
 If Bambu Live works in development but the installed DMG reports `No route to
 host` for a reachable printer, allow Filament Manager in `System Settings ->

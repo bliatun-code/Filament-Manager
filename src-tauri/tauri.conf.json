@@ -30,6 +30,7 @@
     ],
     "macOS": {
       "entitlements": "./Entitlements.plist",
+      "hardenedRuntime": true,
       "infoPlist": "./Info.plist"
     }
   }
