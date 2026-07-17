@@ -115,11 +115,9 @@ available to its users. See [LICENSE](LICENSE) for the full license text and
 - `ui/`: React desktop UI, UI models, tests, and styling.
 - `scripts/`: local validation, Tauri wrapper, and contract checks.
 - `docs/`: user-facing guides.
-- `.github/workflows/release-build.yml`: tag/manual orchestrator for the signed
-  macOS DMG and Windows MSI artifacts.
-- `.github/workflows/macos-signed-release.yml`: protected reusable Apple Silicon
-  Developer ID signing, notarization, stapling, and verification workflow; it
-  also remains available for manual release-candidate builds.
+- `.github/workflows/release-build.yml`: protected tag/manual workflow for the
+  signed Apple Silicon DMG and Windows MSI artifacts, including Developer ID
+  signing, notarization, stapling, and verification.
 
 ## Requirements
 
@@ -291,8 +289,8 @@ npm run verify
 ## GitHub Actions Release Artifacts
 
 The release workflow builds installer artifacts from tags and manual runs. Its
-macOS job delegates to the same protected workflow that passed the signing
-pilot, so no parallel ad-hoc DMG is produced:
+macOS job uses the same protected signing sequence that passed the pilot, so no
+parallel ad-hoc DMG is produced:
 
 - Workflow: `.github/workflows/release-build.yml`
 - Tag trigger: push tag matching `v*`, for example `v0.17.0`

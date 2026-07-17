@@ -76,9 +76,187 @@ jobs:
     name: Build signed macOS DMG
     needs: validate-release
     if: github.event_name == 'push' || github.event.inputs.platform == 'both' || github.event.inputs.platform == 'macos'
-    uses: ./.github/workflows/macos-signed-release.yml
-    with:
-      confirm_notarization: true
+    environment: macos-release
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - name: Configure temporary release paths
+        run: |
+          set -euo pipefail
+          {
+            echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/AuthKey.p8"
+            echo "CARGO_TARGET_DIR=$RUNNER_TEMP/filament-manager-target"
+            echo "FILAMENT_MANAGER_CERTIFICATE_PATH=$RUNNER_TEMP/developer-id-application.p12"
+            echo "FILAMENT_MANAGER_KEYCHAIN_PATH=$RUNNER_TEMP/filament-manager-signing.keychain-db"
+          } >> "$GITHUB_ENV"
+
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            ui/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+
+      - name: Record build environment
+        run: |
+          set -euo pipefail
+          sw_vers
+          uname -m
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-version
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm --prefix ./ui ci
+
+      - name: Validate release version
+        run: |
+          set -euo pipefail
+          npm run check:version
+          package_version="$(node -p "require('./package.json').version")"
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$package_version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package version v$package_version."
+            exit 1
+          fi
+
+      - name: Prepare Apple credentials
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+
+          required_secrets=(
+            APPLE_API_ISSUER
+            APPLE_API_KEY
+            APPLE_API_PRIVATE_KEY
+            APPLE_CERTIFICATE
+            APPLE_CERTIFICATE_PASSWORD
+            APPLE_SIGNING_IDENTITY
+            APPLE_TEAM_ID
+          )
+          for name in "${required_secrets[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Missing required macos-release secret: $name"
+              exit 1
+            fi
+          done
+
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$FILAMENT_MANAGER_CERTIFICATE_PATH"
+          printf '%s' "$APPLE_API_PRIVATE_KEY" > "$APPLE_API_KEY_PATH"
+          chmod 600 "$FILAMENT_MANAGER_CERTIFICATE_PATH" "$APPLE_API_KEY_PATH"
+
+          keychain_password="$(openssl rand -hex 32)"
+          security create-keychain -p "$keychain_password" "$FILAMENT_MANAGER_KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$FILAMENT_MANAGER_KEYCHAIN_PATH"
+          security unlock-keychain -p "$keychain_password" "$FILAMENT_MANAGER_KEYCHAIN_PATH"
+          security import "$FILAMENT_MANAGER_CERTIFICATE_PATH" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign \
+            -t cert \
+            -f pkcs12 \
+            -k "$FILAMENT_MANAGER_KEYCHAIN_PATH"
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "$keychain_password" \
+            "$FILAMENT_MANAGER_KEYCHAIN_PATH"
+          security list-keychains -d user -s "$FILAMENT_MANAGER_KEYCHAIN_PATH"
+          security default-keychain -d user -s "$FILAMENT_MANAGER_KEYCHAIN_PATH"
+
+          if ! security find-identity -v -p codesigning "$FILAMENT_MANAGER_KEYCHAIN_PATH" \
+            | grep -Fq "\"$APPLE_SIGNING_IDENTITY\""; then
+            echo "::error::The configured Developer ID Application identity was not imported."
+            exit 1
+          fi
+
+      - name: Build signed and notarized DMG
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING: "1"
+        run: npm run tauri -- build --bundles dmg
+
+      - name: Normalize DMG filename
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          dmgs=("$CARGO_TARGET_DIR"/release/bundle/dmg/*.dmg)
+          if [[ ${#dmgs[@]} -ne 1 ]]; then
+            echo "::error::Expected exactly one signed DMG, found ${#dmgs[@]}."
+            exit 1
+          fi
+
+          original_path="${dmgs[0]}"
+          original_name="$(basename "$original_path")"
+          normalized_name="${original_name// /-}"
+          normalized_path="$(dirname "$original_path")/$normalized_name"
+          if [[ "$original_path" != "$normalized_path" ]]; then
+            mv "$original_path" "$normalized_path"
+          fi
+          echo "FILAMENT_MANAGER_DMG_PATH=$normalized_path" >> "$GITHUB_ENV"
+
+      - name: Notarize and staple final DMG
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          set -euo pipefail
+          xcrun notarytool submit "$FILAMENT_MANAGER_DMG_PATH" \
+            --key "$APPLE_API_KEY_PATH" \
+            --key-id "$APPLE_API_KEY" \
+            --issuer "$APPLE_API_ISSUER" \
+            --wait
+          xcrun stapler staple "$FILAMENT_MANAGER_DMG_PATH"
+          xcrun stapler validate "$FILAMENT_MANAGER_DMG_PATH"
+
+      - name: Verify signed release
+        env:
+          EXPECTED_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          npm run verify:macos-release -- "$FILAMENT_MANAGER_DMG_PATH" --architectures=arm64
+
+      - name: Write DMG checksum
+        run: |
+          set -euo pipefail
+          dmg_directory="$(dirname "$FILAMENT_MANAGER_DMG_PATH")"
+          dmg_name="$(basename "$FILAMENT_MANAGER_DMG_PATH")"
+          cd "$dmg_directory"
+          shasum -a 256 "$dmg_name" > SHA256SUMS.txt
+
+      - name: Upload verified DMG artifact
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: filament-manager-macos-dmg-${{ github.ref_name }}
+          path: |
+            ${{ runner.temp }}/filament-manager-target/release/bundle/dmg/*.dmg
+            ${{ runner.temp }}/filament-manager-target/release/bundle/dmg/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove Apple credentials
+        if: always()
+        run: |
+          security delete-keychain "$FILAMENT_MANAGER_KEYCHAIN_PATH" 2>/dev/null || true
+          rm -f "$FILAMENT_MANAGER_CERTIFICATE_PATH" "$APPLE_API_KEY_PATH"
 
   build-windows-msi:
     name: Build Windows MSI

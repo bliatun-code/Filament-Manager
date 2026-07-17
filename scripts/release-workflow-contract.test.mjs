@@ -1,12 +1,8 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const releaseWorkflow = readFileSync(".github/workflows/release-build.yml", "utf8");
-const signedMacosWorkflow = readFileSync(
-  ".github/workflows/macos-signed-release.yml",
-  "utf8",
-);
 
 function readSection(source, startMarker, endMarker) {
   const start = source.indexOf(startMarker);
@@ -28,7 +24,7 @@ function assertStepOrder(source, stepNames) {
   assert.deepEqual(positions, [...positions].sort((left, right) => left - right));
 }
 
-test("release workflow delegates macOS artifacts to the protected signed workflow", () => {
+test("release workflow gates tag and manual installer builds", () => {
   const validationJob = readSection(
     releaseWorkflow,
     "  validate-release:",
@@ -49,10 +45,15 @@ test("release workflow delegates macOS artifacts to the protected signed workflo
   assert.match(validationJob, /Manual macOS release builds require notarization confirmation/);
   assert.match(validationJob, /git merge-base --is-ancestor HEAD refs\/remotes\/origin\/main/);
   assert.match(macosJob, /needs: validate-release/);
-  assert.match(macosJob, /uses: \.\/\.github\/workflows\/macos-signed-release\.yml/);
-  assert.match(macosJob, /confirm_notarization: true/);
-  assert.doesNotMatch(releaseWorkflow, /npm run tauri -- build --bundles dmg/);
+  assert.match(
+    macosJob,
+    /if: github\.event_name == 'push' \|\| github\.event\.inputs\.platform == 'both' \|\| github\.event\.inputs\.platform == 'macos'/,
+  );
   assert.match(windowsJob, /needs: validate-release/);
+  assert.match(
+    windowsJob,
+    /if: github\.event_name == 'push' \|\| github\.event\.inputs\.platform == 'both' \|\| github\.event\.inputs\.platform == 'windows'/,
+  );
   assert.match(windowsJob, /runs-on: windows-latest/);
   assert.match(windowsJob, /Build MSI bundle/);
   assert.match(windowsJob, /name: filament-manager-windows-msi-\$\{\{ github\.ref_name \}\}/);
@@ -60,38 +61,46 @@ test("release workflow delegates macOS artifacts to the protected signed workflo
   assert.match(windowsJob, /retention-days: 14/);
 });
 
-test("signed macOS workflow remains manual and is reusable by tagged releases", () => {
-  const signedJob = readSection(signedMacosWorkflow, "  build-signed-macos-dmg:");
+test("release workflow keeps the protected macOS signing sequence fail-closed", () => {
+  const macosJob = readSection(
+    releaseWorkflow,
+    "  build-macos-dmg:",
+    "  build-windows-msi:",
+  );
 
-  assert.match(signedMacosWorkflow, /^name: Signed macOS DMG$/m);
-  assert.match(signedMacosWorkflow, /workflow_call:/);
-  assert.match(signedMacosWorkflow, /workflow_dispatch:/);
-  assert.match(signedJob, /if: inputs\.confirm_notarization/);
-  assert.match(signedJob, /environment: macos-release/);
-  assert.match(signedJob, /runs-on: macos-15/);
-  assert.match(signedMacosWorkflow, /permissions:\s*\n\s*contents: read/);
-  assert.match(signedJob, /FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING: "1"/);
-  assert.match(signedJob, /xcrun notarytool submit "\$FILAMENT_MANAGER_DMG_PATH"/);
-  assert.match(signedJob, /--wait/);
-  assert.match(signedJob, /xcrun stapler staple "\$FILAMENT_MANAGER_DMG_PATH"/);
-  assert.match(signedJob, /xcrun stapler validate "\$FILAMENT_MANAGER_DMG_PATH"/);
-  assert.match(signedJob, /npm run verify:macos-release -- "\$FILAMENT_MANAGER_DMG_PATH" --architectures=arm64/);
-  assert.match(signedJob, /shasum -a 256 "\$dmg_name" > SHA256SUMS\.txt/);
+  assert.equal(existsSync(".github/workflows/macos-signed-release.yml"), false);
+  assert.doesNotMatch(releaseWorkflow, /macos-signed-release\.yml/);
+  assert.match(releaseWorkflow, /permissions:\s*\n\s*contents: read/);
+  assert.match(macosJob, /environment: macos-release/);
+  assert.match(macosJob, /runs-on: macos-15/);
+  assert.match(macosJob, /- name: Prepare Apple credentials/);
+  assert.match(macosJob, /APPLE_API_ISSUER: \$\{\{ secrets\.APPLE_API_ISSUER \}\}/);
+  assert.match(macosJob, /APPLE_API_PRIVATE_KEY: \$\{\{ secrets\.APPLE_API_PRIVATE_KEY \}\}/);
+  assert.match(macosJob, /APPLE_CERTIFICATE: \$\{\{ secrets\.APPLE_CERTIFICATE \}\}/);
+  assert.match(macosJob, /APPLE_TEAM_ID: \$\{\{ secrets\.APPLE_TEAM_ID \}\}/);
+  assert.match(macosJob, /FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING: "1"/);
+  assert.match(macosJob, /npm run tauri -- build --bundles dmg/);
+  assert.match(macosJob, /xcrun notarytool submit "\$FILAMENT_MANAGER_DMG_PATH"/);
+  assert.match(macosJob, /--wait/);
+  assert.match(macosJob, /xcrun stapler staple "\$FILAMENT_MANAGER_DMG_PATH"/);
+  assert.match(macosJob, /xcrun stapler validate "\$FILAMENT_MANAGER_DMG_PATH"/);
+  assert.match(macosJob, /npm run verify:macos-release -- "\$FILAMENT_MANAGER_DMG_PATH" --architectures=arm64/);
+  assert.match(macosJob, /shasum -a 256 "\$dmg_name" > SHA256SUMS\.txt/);
   assert.match(
-    signedJob,
+    macosJob,
     /name: filament-manager-macos-dmg-\$\{\{ github\.ref_name \}\}/,
   );
-  assert.match(signedJob, /bundle\/dmg\/\*\.dmg/);
-  assert.match(signedJob, /bundle\/dmg\/SHA256SUMS\.txt/);
-  assert.match(signedJob, /if-no-files-found: error/);
-  assert.match(signedJob, /retention-days: 14/);
-  assert.match(signedJob, /normalized_name="\$\{original_name\/\/ \/-\}"/);
+  assert.match(macosJob, /bundle\/dmg\/\*\.dmg/);
+  assert.match(macosJob, /bundle\/dmg\/SHA256SUMS\.txt/);
+  assert.match(macosJob, /if-no-files-found: error/);
+  assert.match(macosJob, /retention-days: 14/);
+  assert.match(macosJob, /normalized_name="\$\{original_name\/\/ \/-\}"/);
   assert.match(
-    signedJob,
+    macosJob,
     /- name: Remove Apple credentials\s*\n\s*if: always\(\)/,
   );
 
-  assertStepOrder(signedJob, [
+  assertStepOrder(macosJob, [
     "Build signed and notarized DMG",
     "Normalize DMG filename",
     "Notarize and staple final DMG",

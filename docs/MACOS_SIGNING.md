@@ -18,9 +18,8 @@ The Tauri environment variable contract is documented in
 
 - Ordinary local macOS builds remain ad-hoc signed. Tagged macOS artifacts are
   Developer ID signed, notarized, stapled, and verified before upload.
-- `.github/workflows/release-build.yml` delegates its macOS job to the reusable
-  `.github/workflows/macos-signed-release.yml`. The latter also remains directly
-  dispatchable for release candidates with an explicit confirmation input.
+- `.github/workflows/release-build.yml` contains the protected macOS signing job
+  used by both version tags and explicitly confirmed manual release candidates.
 - The signing job uses the protected `macos-release` environment and does not
   expose Apple credentials to Windows builds, normal CI, or publication steps.
 - The Tauri wrapper keeps this behavior unless signing is explicitly requested.
@@ -66,7 +65,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   npm run tauri -- build --bundles dmg
 ```
 
-The signed workflow pins the Apple Silicon `macos-15` runner label and
+The protected macOS job pins the Apple Silicon `macos-15` runner label and
 records the exact macOS, architecture, Xcode, and SDK versions in every run. Do
 not replace it with `macos-latest` or move it to a new runner image without a
 release-candidate pass.
@@ -102,11 +101,12 @@ missing notarization credentials.
 ## Protected GitHub Environment
 
 Do not add Apple credentials as repository files or ordinary workflow values.
-Create a protected GitHub environment named `macos-release`; the signed workflow
-is scoped to it. Its selected-ref policies must allow branch `main` for manual
-candidates and tags matching `v*` for releases. Add a required reviewer or tag
-ruleset if the repository plan supports those protections. Until then, release
-tag creation is a maintainer-only operation and acts as the release approval.
+Create a protected GitHub environment named `macos-release`; the macOS signing
+job is scoped to it. Its selected-ref policies must allow branch `main` for
+manual candidates and tags matching `v*` for releases. Add a required reviewer
+or tag ruleset if the repository plan supports those protections. Until then,
+release tag creation is a maintainer-only operation and acts as the release
+approval.
 
 Use these environment secrets:
 
@@ -121,7 +121,7 @@ Use these environment secrets:
 | `APPLE_TEAM_ID` | Expected Apple Developer team ID used by verification |
 
 `APPLE_API_PRIVATE_KEY` is a GitHub secret name, not a Tauri variable. The
-signed workflow writes it to a file under `$RUNNER_TEMP` and exposes that
+macOS signing job writes it to a file under `$RUNNER_TEMP` and exposes that
 path as `APPLE_API_KEY_PATH` only for the build.
 
 Treat every identifier in the table as sensitive workflow configuration even
@@ -214,8 +214,8 @@ is assembling the app, which causes `codesign` to reject the bundle before it is
 packaged. When `FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING=1` is set, the Tauri
 wrapper defaults an otherwise unset `CARGO_TARGET_DIR` to a private temporary
 directory; an explicit value still takes precedence. GitHub-hosted runners do
-not place this target under a File Provider folder, and the signed workflow uses
-`$RUNNER_TEMP` explicitly.
+not place this target under a File Provider folder, and the protected macOS job
+uses `$RUNNER_TEMP` explicitly.
 
 ### 4. Operate the protected release workflow
 
@@ -226,9 +226,7 @@ not place this target under a File Provider folder, and the signed workflow uses
 3. Push an annotated tag matching the package version exactly. The release
    validator also requires the tagged commit to be on `main`.
 4. For a non-tagged candidate, open **Actions → Release Build Artifacts**, choose
-   `macos` or `both`, and enable the notarization confirmation. The standalone
-   **Signed macOS DMG** workflow remains available for focused
-   macOS diagnostics.
+   `macos` or `both`, and enable the notarization confirmation.
 5. Confirm that the workflow records an arm64 `macos-15` runner and a stable
    Xcode, imports the certificate into an ephemeral keychain, and completes both
    the app and final-DMG notarization steps.
@@ -236,7 +234,7 @@ not place this target under a File Provider folder, and the signed workflow uses
    normalized DMG and `SHA256SUMS.txt` from that same run, verify the checksum,
    and only then attach them to a draft GitHub release.
 
-The reusable workflow writes `APPLE_API_PRIVATE_KEY` below `$RUNNER_TEMP`,
+The protected macOS job writes `APPLE_API_PRIVATE_KEY` below `$RUNNER_TEMP`,
 exposes its path as `APPLE_API_KEY_PATH`, and builds with
 `FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING=1`. Tauri signs, notarizes, and staples
 the app before packaging it. The workflow then normalizes the public filename,
