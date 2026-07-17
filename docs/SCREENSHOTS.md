@@ -7,9 +7,11 @@ wide, tablet, and phone screens.
 The Companion/webapp server must be enabled, and the desktop app needs to stay
 running for Companion to work from a phone, tablet, or workshop browser.
 
-The v0.21.0 captures use the English dark theme and a rich temporary copy of a
-real local library. Printer, RFID, and Bambu diagnostics captures wait for live
-telemetry before the image is accepted; the source library is not modified.
+The current captures were produced from the v0.21.0 UI in the English dark
+theme with a production-shaped temporary QA database. The v0.21.1 release
+changed macOS distribution rather than these UI workflows. Printer, RFID, and
+Bambu diagnostics captures wait for live telemetry before the image is
+accepted; the source library is not modified.
 
 ## Quick Preview
 
@@ -193,8 +195,9 @@ material consumed outside printer sessions.
 ### General
 
 Version, license/source links, appearance, documentation links, and a compact
-selector for the 21 published interface languages. The screenshot also records
-the v0.21.0 version shown by the packaged application.
+selector for the 21 published interface languages. The screenshot records the
+v0.21.0 UI baseline; v0.21.1 changed signed macOS distribution rather than this
+screen.
 
 ![Settings general](screenshots/settings-general.jpg)
 

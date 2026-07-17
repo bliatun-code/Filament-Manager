@@ -6,6 +6,7 @@ import { test } from "node:test";
 import Database from "better-sqlite3";
 import {
   APP_DB_PATH_ENV_VAR,
+  DEFAULT_VISUAL_QA_DB_CANDIDATES,
   VISUAL_QA_FIXTURE_LOAN_DIALOGS,
   VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE,
   VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES,
@@ -27,6 +28,15 @@ import {
   resolveVisualQaDbSource,
   visualQaTempDbPath,
 } from "./visual-qa-db.mjs";
+
+test("default visual QA sources never auto-select the live App Support library", () => {
+  assert.ok(DEFAULT_VISUAL_QA_DB_CANDIDATES.length > 0);
+  assert.ok(
+    DEFAULT_VISUAL_QA_DB_CANDIDATES.every(
+      (candidate) => !candidate.includes("Library/Application Support"),
+    ),
+  );
+});
 
 test("normalizeVisualQaPath trims and resolves relative paths", () => {
   assert.equal(normalizeVisualQaPath(""), null);
@@ -291,7 +301,7 @@ test("applyTrustedLanInterfaceFixture retargets trusted LAN settings on database
     );
     db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
       "trusted_lan_interface_address",
-      "192.168.86.25",
+      "192.168.1.25",
     );
     db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("trusted_lan_port", "4278");
     db.close();
@@ -301,7 +311,7 @@ test("applyTrustedLanInterfaceFixture retargets trusted LAN settings on database
     });
 
     assert.equal(fixture?.fixture, VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE);
-    assert.equal(fixture?.previousInterfaceAddress, "192.168.86.25");
+    assert.equal(fixture?.previousInterfaceAddress, "192.168.1.25");
     assert.equal(fixture?.interfaceAddress, "172.20.10.7");
     assert.equal(fixture?.interfaceName, "en0");
     assert.equal(fixture?.previousPort, "4278");
@@ -344,7 +354,7 @@ test("applyTrustedLanInterfaceFixture leaves live databases untouched", async ()
     db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("trusted_lan_enabled", "1");
     db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
       "trusted_lan_interface_address",
-      "192.168.86.25",
+      "192.168.1.25",
     );
     db.close();
 
@@ -360,7 +370,7 @@ test("applyTrustedLanInterfaceFixture leaves live databases untouched", async ()
         updatedDb
           .prepare("SELECT value FROM settings WHERE key = ?")
           .get("trusted_lan_interface_address").value,
-        "192.168.86.25",
+        "192.168.1.25",
       );
     } finally {
       updatedDb.close();

@@ -4,6 +4,10 @@ title: "[Feature]: "
 labels:
   - enhancement
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the workflow with sanitized examples. Do not include credentials, pairing links or tokens, device identifiers, names, or a copy of your real inventory.
   - type: textarea
     id: workflow
     attributes:

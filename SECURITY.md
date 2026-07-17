@@ -42,6 +42,7 @@ Out of scope:
 ## Sensitive Data
 
 Filament Manager is designed as a local-first app. Before sharing diagnostics,
-screenshots, logs, or database exports, remove private LAN addresses, pairing
-tokens, user names, notes, and any real-world inventory data you do not want to
-publish.
+screenshots, logs, or database exports, remove private LAN addresses, printer
+serials, access codes, pairing links and tokens, full RFID/tray identifiers,
+user names, notes, scannable QR payloads, and any real-world inventory data you
+do not want to publish.

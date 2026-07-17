@@ -1737,7 +1737,7 @@ fn library_sync_settings_default_and_persist_cleanly() {
                 mode: "CLIENT".to_string(),
                 device_name: "Workshop Windows".to_string(),
                 library_id: defaults.library_id.clone(),
-                host_base_url: Some("http://192.168.86.25:4278/".to_string()),
+                host_base_url: Some("http://192.168.1.25:4278/".to_string()),
                 host_device_name: Some("Main Host".to_string()),
                 client_auth_paired: false,
                 client_auth_paired_at: None,
@@ -1757,7 +1757,7 @@ fn library_sync_settings_default_and_persist_cleanly() {
         assert_eq!(saved.device_name, "Workshop Windows");
         assert_eq!(
             saved.host_base_url.as_deref(),
-            Some("http://192.168.86.25:4278")
+            Some("http://192.168.1.25:4278")
         );
         assert_eq!(saved.host_device_name.as_deref(), Some("Main Host"));
 
@@ -1843,7 +1843,7 @@ fn library_sync_client_auth_clears_when_client_host_changes() {
             mode: "CLIENT".to_string(),
             device_name: "Workshop Windows".to_string(),
             library_id: defaults.library_id.clone(),
-            host_base_url: Some("http://192.168.86.25:4278".to_string()),
+            host_base_url: Some("http://192.168.1.25:4278".to_string()),
             host_device_name: Some("Main Host".to_string()),
             client_auth_paired: false,
             client_auth_paired_at: None,
@@ -1876,7 +1876,7 @@ fn library_sync_client_auth_clears_when_client_host_changes() {
                 mode: "CLIENT".to_string(),
                 device_name: "Workshop Windows".to_string(),
                 library_id: defaults.library_id,
-                host_base_url: Some("http://192.168.86.99:4278".to_string()),
+                host_base_url: Some("http://192.168.1.99:4278".to_string()),
                 host_device_name: Some("Backup Host".to_string()),
                 client_auth_paired: false,
                 client_auth_paired_at: None,
@@ -1894,7 +1894,7 @@ fn library_sync_client_auth_clears_when_client_host_changes() {
 
         assert_eq!(
             changed.host_base_url.as_deref(),
-            Some("http://192.168.86.99:4278")
+            Some("http://192.168.1.99:4278")
         );
         assert!(!changed.client_auth_paired);
         assert!(changed.client_auth_paired_at.is_none());

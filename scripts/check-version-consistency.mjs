@@ -50,8 +50,8 @@ const versions = [
   ["Tauri config version", tauriConfig.version],
 ];
 
-const tagReferences = [
-  ["README current release target", requireMatch("README current release target", readme, /Current release target: `(v[^`]+)`/)],
+const documentationVersions = [
+  ["README current version", requireMatch("README current version", readme, /Current version: `([^`]+)`/)],
 ];
 const mismatches = [];
 for (const [label, version] of versions) {
@@ -59,9 +59,9 @@ for (const [label, version] of versions) {
     mismatches.push(`${label} is ${version ?? "missing"}, expected ${appVersion}`);
   }
 }
-for (const [label, tag] of tagReferences) {
-  if (tag !== releaseTag) {
-    mismatches.push(`${label} is ${tag}, expected ${releaseTag}`);
+for (const [label, version] of documentationVersions) {
+  if (version !== appVersion) {
+    mismatches.push(`${label} is ${version}, expected ${appVersion}`);
   }
 }
 

@@ -41,6 +41,8 @@ Start with the user guide for product behavior and workflows:
 - Norwegian: [docs/BRUKERVEILEDNING.md](docs/BRUKERVEILEDNING.md)
 - English: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
 - Screenshot tour: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md)
+- macOS installation and verification:
+  [docs/MACOS_DISTRIBUTION.md](docs/MACOS_DISTRIBUTION.md)
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Security policy: [SECURITY.md](SECURITY.md)
 
@@ -229,32 +231,12 @@ npm run tauri -- build --bundles dmg
 ```
 
 On macOS, `npm run tauri` ad-hoc signs ordinary local builds so bundle
-entitlements are applied. Tagged GitHub Actions releases instead use the
-protected `macos-release` environment and fail closed unless Developer ID
-signing, notarization, stapling, and strict verification all succeed. Set
-Tauri's standard `APPLE_SIGNING_IDENTITY`, the compatible
-`FILAMENT_MANAGER_MACOS_SIGNING_IDENTITY`, or pass Tauri `--config` when building
-locally with a specific signing identity.
-
-Developer ID signing and notarization remain opt-in for local development, but
-are required for tagged macOS artifacts. Preparation, secret handling,
-stable-Xcode guidance, release activation, and verification are documented in
-[macOS Signing and Notarization](docs/MACOS_SIGNING.md).
-
-The signed macOS release contract is Apple Silicon (`arm64`) on macOS 11.0 Big
-Sur or newer. Tauri sets this minimum for both bundle metadata and the Rust
-deployment target; the release verifier checks both before artifact upload.
-
-After a signed and notarized DMG is built, verify it on macOS before upload:
-
-```bash
-EXPECTED_APPLE_TEAM_ID="TEAMID" \
-  npm run verify:macos-release -- path/to/Filament-Manager.dmg \
-  --architectures=arm64
-```
-
-Intel or universal artifacts are not part of the current contract and require
-their own build and compatibility validation before changing this argument.
+entitlements are applied. Official tagged macOS artifacts are Developer ID
+signed, notarized, stapled, and verified before publication. The public macOS
+contract is Apple Silicon (`arm64`) on macOS 11 Big Sur or newer; Intel and
+universal artifacts are not currently published. See
+[macOS Installation And Verification](docs/MACOS_DISTRIBUTION.md) for the user
+installation and checksum flow.
 
 Build only a Windows MSI on Windows:
 
@@ -271,14 +253,14 @@ Windows MSI uses the per-user WiX template in `src-tauri/wix/per-user.wxs`.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current release target: `v0.21.1`
+- Current version: `0.21.1`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`
   - `src-tauri/Cargo.toml`
   - `Cargo.lock`
   - `src-tauri/tauri.conf.json`
-  - this README release target
+  - this README current version
 
 The version guard is included in:
 
@@ -289,59 +271,21 @@ npm run verify
 
 ## GitHub Actions Release Artifacts
 
-The release workflow builds installer artifacts from tags and manual runs. Its
-macOS job uses the same protected signing sequence that passed the pilot, so no
-parallel ad-hoc DMG is produced:
+The release workflow builds installer artifacts from version tags and
+maintainer-approved manual runs:
 
 - Workflow: `.github/workflows/release-build.yml`
-- Tag trigger: push tag matching `v*`, for example `v0.17.0`
-- Manual trigger: `workflow_dispatch` with `platform` set to `both`, `windows`,
-  or `macos`; macOS selections also require the notarization confirmation
+- Tag trigger: a version tag matching `v*`
+- Manual trigger: `workflow_dispatch` for a selected platform
 - Outputs:
   - `filament-manager-macos-dmg-<ref>` with the normalized DMG and
     `SHA256SUMS.txt`
   - `filament-manager-windows-msi-<ref>`
 
-For a tag run, `<ref>` is the tag name. A manual run from the default branch
-uses `main`.
-
-Trigger from git:
-
-```bash
-git tag -a vX.Y.Z -m "vX.Y.Z"
-git push origin vX.Y.Z
-```
-
-Download artifacts from a run:
-
-```bash
-gh run download <run-id> --dir release-artifacts/<ref>
-```
-
-Verify the downloaded macOS artifact before publication:
-
-```bash
-cd release-artifacts/<ref>/filament-manager-macos-dmg-<ref>
-shasum -a 256 -c SHA256SUMS.txt
-```
-
-Create a draft for the existing tag, then attach installers and the checksum
-only after both build jobs have passed:
-
-```bash
-gh release create <tag> --draft --verify-tag --generate-notes
-gh release upload <tag> release-artifacts/<ref>/**/*.dmg release-artifacts/<ref>/**/*.msi release-artifacts/<ref>/**/SHA256SUMS.txt
-```
-
-Release assets are treated as immutable; investigate a mismatch instead of
-silently replacing an existing installer.
-
-Manual single-platform build:
-
-1. Open GitHub -> `Actions` -> `Release Build Artifacts`.
-2. Click `Run workflow`.
-3. Choose `windows`, `macos`, or `both`.
-4. For `macos` or `both`, enable the explicit Apple notarization confirmation.
+The macOS job fails instead of publishing an ad-hoc fallback when signing,
+notarization, stapling, verification, or checksum generation fails. Release
+assets are treated as immutable; a mismatch is investigated rather than
+silently replaced.
 
 ## Installers and App Data
 
@@ -350,21 +294,8 @@ macOS:
 - Download DMG from the latest GitHub release.
 - App data path is typically
   `~/Library/Application Support/no.bliatun.filamentmanager`.
-
-For a locally produced or ad-hoc release build that you trust, if macOS blocks
-first launch:
-
-1. Move the app to `Applications` from the DMG.
-2. Try `Right click -> Open` once.
-3. If still blocked, run:
-
-```bash
-xattr -dr com.apple.quarantine "/Applications/Filament Manager.app"
-```
-
-The `xattr` workaround removes quarantine metadata and should not be used for a
-Developer ID signed and notarized release. If a future signed release requires
-this workaround, treat that as a release defect and report it instead.
+- Installation and verification:
+  [docs/MACOS_DISTRIBUTION.md](docs/MACOS_DISTRIBUTION.md)
 
 If Bambu Live works in development but the installed DMG reports `No route to
 host` for a reachable printer, allow Filament Manager in `System Settings ->

@@ -47,7 +47,8 @@ npm run check:contracts
 - Avoid broad rewrites unless they are clearly motivated and covered by tests.
 - Include screenshots for meaningful UI changes.
 - Do not commit local databases, logs, `.env` files, private pairing URLs, or
-  screenshots containing sensitive personal data.
+  screenshots containing LAN addresses, printer serials, access codes, full
+  RFID values, scannable private QR targets, names, or other personal data.
 
 ## Areas That Need Extra Care
 

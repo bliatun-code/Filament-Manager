@@ -187,7 +187,7 @@ test("submit router dispatches RFID save payloads from the selected live source"
     "update-spool-rfid-form",
     createData({
       "spool-id": "spool-11",
-      "rfid-source": `${encodeURIComponent("B85A8848EEFD4C9784072CD4D7D04FAC")}|${encodeURIComponent("2026-04-17T18:45:56Z")}`,
+      "rfid-source": `${encodeURIComponent("00112233445566778899AABBCCDDEEFF")}|${encodeURIComponent("2026-04-17T18:45:56Z")}`,
     }),
     {
       submitSpoolRfidUpdate(...args) {
@@ -199,7 +199,7 @@ test("submit router dispatches RFID save payloads from the selected live source"
   assert.equal(handled, true);
   assert.deepEqual(calls, [[
     "spool-11",
-    "B85A8848EEFD4C9784072CD4D7D04FAC",
+    "00112233445566778899AABBCCDDEEFF",
     "2026-04-17T18:45:56Z",
   ]]);
 });

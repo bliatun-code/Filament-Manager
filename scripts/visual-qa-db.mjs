@@ -18,19 +18,14 @@ export const VISUAL_QA_FIXTURE_LOAN_DIALOGS = "loan-dialogs";
 export const VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE = "trusted-lan-interface";
 export const VISUAL_QA_TRUSTED_LAN_PORT = 4279;
 
-const LOCAL_APP_SUPPORT_DB = process.env.HOME
-  ? `${process.env.HOME}/Library/Application Support/no.bliatun.filamentmanager/filament-manager.db`
-  : null;
-
 export const DEFAULT_VISUAL_QA_DB_CANDIDATES = [
-  LOCAL_APP_SUPPORT_DB,
   "data/filament_manager.db",
   "data/app.db",
   "data/visual-test-bambu.db",
   "data/ui_polish_test.db",
   "data/filament-manager.db",
   "data/bambu.db",
-].filter(Boolean);
+];
 
 export const VISUAL_QA_REQUIRED_TABLES = ["filament_spools", "printers"];
 export const VISUAL_QA_CONTEXT_TABLES = [

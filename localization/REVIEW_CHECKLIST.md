@@ -1,15 +1,17 @@
-# German and French localization review
+# Localization review checklist
 
-Use this checklist for native review of the maintained `de` and `fr` locales
-after English source changes.
-It supplements the canonical terminology and workflow in
+Use this checklist for community corrections or complete native review of any
+registered locale. German and French are currently maintained with named
+review; the other published non-source locales are community-review candidates.
+This checklist supplements the canonical terminology and workflow in
 [`docs/LOCALIZATION.md`](../docs/LOCALIZATION.md); it does not replace a named
 reviewer or record approval by itself.
 
 ## Before review
 
-- Confirm the locale is marked stale against the new English source fingerprint
-  and still uses the English user-guide fallback.
+- For a maintained locale, confirm whether it is stale against the new English
+  source fingerprint. For a community-review candidate, record the exact source
+  fingerprint used for the review.
 - Run `npm run report:i18n` and record the current combined English source
   fingerprint.
 - Generate a review sheet with `npm run export:i18n-review -- --locale <locale>`.
@@ -52,7 +54,8 @@ reviewer or record approval by itself.
 
 ## Required QA commands
 
-Replace `<locale>` with `de` or `fr`.
+Replace `<locale>` with the registered locale ID, for example `de`, `fr`,
+`pt-BR`, or `ja-JP`.
 
 ```sh
 npm run report:i18n
@@ -72,9 +75,10 @@ After corrections and a final clean QA run:
 - Add the named native reviewer and review date to
   `localization/locale-status.json`.
 - Set `reviewedSourceFingerprint` to the exact fingerprint that was reviewed.
-- Change release status and locale selectability only in the same reviewed
-  release change.
+- Change `releaseStatus` to `maintained` only in the reviewed release change.
+  Locale selectability is a separate product decision and may already be true
+  for a published community-review candidate.
 - Re-run readiness, both visual matrices and full verification after the status
   change.
 - Do not approve a stale fingerprint or infer native approval from automated
-  tests, machine translation or visual layout checks.
+  tests, machine translation, public availability, or visual layout checks.

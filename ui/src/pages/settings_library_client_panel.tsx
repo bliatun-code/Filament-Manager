@@ -130,7 +130,7 @@ export function SettingsLibraryClientPanel({
                 value={librarySyncPairingDraft}
                 onChange={(event) => onPairingDraftChange(event.target.value)}
                 className={settingsTextInputClass}
-                placeholder="http://192.168.86.25:4278/companion?pairing=..."
+                placeholder="http://192.168.1.25:4278/companion?pairing=..."
                 disabled={!tauri || librarySyncBusy}
               />
             </label>

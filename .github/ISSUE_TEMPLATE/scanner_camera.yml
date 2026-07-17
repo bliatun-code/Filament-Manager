@@ -5,11 +5,15 @@ labels:
   - bug
   - scanner
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Please remove private LAN addresses, pairing tokens, full QR targets, names, and inventory details before submitting. A redacted label image is usually enough to reproduce scanner behavior.
   - type: input
     id: version
     attributes:
       label: App version
-      placeholder: "0.16.0"
+      placeholder: "0.21.1"
     validations:
       required: true
   - type: dropdown
@@ -38,7 +42,7 @@ body:
     id: label_details
     attributes:
       label: Label or box details
-      description: Filament material/color/code, barcode value, SKU, or QR target if known.
+      description: Filament material/color/code, sanitized barcode format, or SKU. Do not paste a full Companion or pairing URL, token, private IP address, or QR payload.
   - type: textarea
     id: behavior
     attributes:
@@ -50,4 +54,4 @@ body:
     id: attachments
     attributes:
       label: Screenshots or sample images
-      description: Attach images only if they do not expose private data.
+      description: Attach images only after removing private data, pairing links, full RFID values, and unrelated inventory details.

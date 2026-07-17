@@ -7,13 +7,13 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting a problem. Please remove private LAN addresses, tokens, names, and screenshots with sensitive inventory data before submitting.
+        Thanks for reporting a problem. Please remove private LAN addresses, printer serials, access codes, pairing links or tokens, full RFID values, names, and unrelated inventory data before submitting.
   - type: input
     id: version
     attributes:
       label: App version
       description: Find this in Settings -> Program.
-      placeholder: "0.16.0"
+      placeholder: "0.21.1"
     validations:
       required: true
   - type: dropdown
@@ -54,5 +54,5 @@ body:
     attributes:
       label: Checklist
       options:
-        - label: I have removed private tokens, LAN secrets, and personal data from this report.
+        - label: I have removed credentials, device identifiers, private network details, scannable private QR targets, and personal data from this report.
           required: true

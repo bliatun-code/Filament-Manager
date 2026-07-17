@@ -275,7 +275,7 @@ test("buildTrustedLanPairedBrowserListModel keeps active browsers first and huma
         display_name: "Workshop iPad",
         paired_at: "2026-03-28T17:30:00.000Z",
         last_seen_at: "2026-03-28T18:30:00.000Z",
-        last_origin: "http://192.168.86.25:4278",
+        last_origin: "http://192.168.1.25:4278",
         revoked_at: "2026-03-28T18:45:00.000Z",
       },
       {
@@ -283,7 +283,7 @@ test("buildTrustedLanPairedBrowserListModel keeps active browsers first and huma
         display_name: "Kitchen Phone",
         paired_at: "2026-03-28T18:00:00.000Z",
         last_seen_at: "2026-03-28T19:59:00.000Z",
-        last_origin: "http://192.168.86.25:4278/companion",
+        last_origin: "http://192.168.1.25:4278/companion",
         revoked_at: null,
       },
       {
@@ -312,7 +312,7 @@ test("buildTrustedLanPairedBrowserListModel keeps active browsers first and huma
   assert.equal(model.activeRows[0]?.statusLabel, "Recently active");
   assert.equal(model.activeRows[0]?.statusTone, "live");
   assert.equal(model.activeRows[0]?.activityDateTime, "2026-03-28T19:59:00.000Z");
-  assert.equal(model.activeRows[0]?.originLabel, "192.168.86.25:4278");
+  assert.equal(model.activeRows[0]?.originLabel, "192.168.1.25:4278");
   assert.equal(model.activeRows[1]?.activityLabel, "Waiting for first renewal");
   assert.equal(model.activeRows[1]?.statusLabel, "Authorized");
   assert.equal(model.activeRows[1]?.statusTone, "idle");
@@ -330,7 +330,7 @@ test("buildTrustedLanPairedBrowserListModel uses Norwegian relative wording and 
         display_name: " ",
         paired_at: "2026-03-28T18:00:00.000Z",
         last_seen_at: "2026-03-28T19:55:00.000Z",
-        last_origin: "192.168.86.25:4278",
+        last_origin: "192.168.1.25:4278",
         revoked_at: null,
       },
     ],
@@ -342,7 +342,7 @@ test("buildTrustedLanPairedBrowserListModel uses Norwegian relative wording and 
   assert.equal(model.activeRows[0]?.displayName, "Paired browser");
   assert.equal(model.activeRows[0]?.initials, "PB");
   assert.equal(model.activeRows[0]?.activityLabel, "Last seen for 5 min siden");
-  assert.equal(model.activeRows[0]?.originLabel, "192.168.86.25:4278");
+  assert.equal(model.activeRows[0]?.originLabel, "192.168.1.25:4278");
 });
 
 test("authorized browsers are only marked recently active after a recent renewal", () => {
@@ -353,7 +353,7 @@ test("authorized browsers are only marked recently active after a recent renewal
         display_name: "Old iPhone",
         paired_at: "2026-03-20T10:00:00.000Z",
         last_seen_at: "2026-03-26T20:00:00.000Z",
-        last_origin: "192.168.86.25:4278",
+        last_origin: "192.168.1.25:4278",
         revoked_at: null,
       },
     ],
@@ -375,7 +375,7 @@ test("findNewTrustedLanActiveBrowserIds detects newly paired browsers only", () 
         display_name: "Existing",
         paired_at: "2026-03-28T18:00:00.000Z",
         last_seen_at: "2026-03-28T19:00:00.000Z",
-        last_origin: "http://192.168.86.25:4278",
+        last_origin: "http://192.168.1.25:4278",
         revoked_at: null,
       },
       {
@@ -383,7 +383,7 @@ test("findNewTrustedLanActiveBrowserIds detects newly paired browsers only", () 
         display_name: "Old device",
         paired_at: "2026-03-28T16:00:00.000Z",
         last_seen_at: "2026-03-28T17:00:00.000Z",
-        last_origin: "http://192.168.86.25:4278",
+        last_origin: "http://192.168.1.25:4278",
         revoked_at: "2026-03-28T17:30:00.000Z",
       },
     ],
@@ -393,7 +393,7 @@ test("findNewTrustedLanActiveBrowserIds detects newly paired browsers only", () 
         display_name: "Existing",
         paired_at: "2026-03-28T18:00:00.000Z",
         last_seen_at: "2026-03-28T20:00:00.000Z",
-        last_origin: "http://192.168.86.25:4278",
+        last_origin: "http://192.168.1.25:4278",
         revoked_at: null,
       },
       {
@@ -409,7 +409,7 @@ test("findNewTrustedLanActiveBrowserIds detects newly paired browsers only", () 
         display_name: "Old device",
         paired_at: "2026-03-28T16:00:00.000Z",
         last_seen_at: "2026-03-28T17:00:00.000Z",
-        last_origin: "http://192.168.86.25:4278",
+        last_origin: "http://192.168.1.25:4278",
         revoked_at: "2026-03-28T17:30:00.000Z",
       },
     ],

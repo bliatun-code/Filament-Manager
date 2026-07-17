@@ -5,11 +5,15 @@ labels:
   - bug
   - bambu-live
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Please sanitize diagnostics before submitting. Remove printer IP addresses, serial numbers, access codes, pairing URLs/tokens, full RFID or tray identifiers, names, and unrelated inventory data.
   - type: input
     id: version
     attributes:
       label: App version
-      placeholder: "0.16.0"
+      placeholder: "0.21.1"
     validations:
       required: true
   - type: textarea
@@ -38,4 +42,4 @@ body:
     id: diagnostics
     attributes:
       label: Diagnostics
-      description: Paste relevant sanitized Bambu Live diagnostics or screenshots.
+      description: Paste only the relevant fields after replacing identifiers with consistent placeholders. Never include an access code or full raw payload.

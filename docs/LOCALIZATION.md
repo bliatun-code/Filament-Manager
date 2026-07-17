@@ -1,13 +1,26 @@
 # Localization workflow
 
 English is the canonical source language. Norwegian Bokmål, German, and French
-are maintained beside it. Generated pseudo-locales are QA tools and must never
-appear as user choices.
+are maintained with named review. Seventeen additional complete catalogs are
+published as community-review candidates, so the desktop app and Companion
+currently offer 21 languages in the same compact selector. English remains the
+runtime fallback. Generated pseudo-locales are QA tools and must never appear as
+user choices.
 
-Spanish is currently a hidden draft catalog. It can be selected only through
-explicit QA overrides, uses English fallback for untranslated copy, and must not
-be presented as a supported user language before translation, visual QA, and
-native review are complete.
+`catalogKind`, `selectable`, and `releaseStatus` describe different concerns:
+
+- `selectable` controls whether users can choose the language.
+- `catalogKind: "draft"` permits fallback overlays and keeps a catalog eligible
+  for community correction; it does not by itself mean that the locale is
+  hidden.
+- `releaseStatus: "maintained"` records named native review against a specific
+  English source fingerprint.
+
+The currently published community-review candidates are Spanish, Brazilian
+Portuguese, Italian, Polish, Dutch, Czech, Simplified Chinese, Traditional
+Chinese, Japanese, Korean, Turkish, Ukrainian, Russian, Hungarian, Swedish,
+Danish, and Finnish. Their catalogs and automated visual QA are complete, but
+availability must not be described as named native approval.
 
 ## Canonical terminology
 
@@ -38,10 +51,11 @@ paths, identifiers, and URLs are user data and must not be translated.
 ## Translation change workflow
 
 New languages start as `catalogKind: "draft"`, `selectable: false`, and use
-sparse dictionaries layered over English. Drafts are available to explicit QA
-only: the operating-system language must not activate them automatically. Move
-a locale to a complete source catalog and expose it only after every release
-gate and native review has passed.
+sparse dictionaries layered over English. While incomplete, they are available
+to explicit QA only and the operating-system language must not activate them
+automatically. Publishing a completed locale as a community-review candidate is
+an explicit release decision after full catalog, artifact, and visual QA. A
+locale becomes `maintained` only after named native review.
 
 1. Update English source strings first. Use parameterized messages instead of
    building sentences from translated fragments.
@@ -51,12 +65,14 @@ gate and native review has passed.
    plural/select syntax.
 4. Update translator context when a new short label, overloaded term, or strict
    width constraint is introduced.
-5. A named native reviewer checks the glossary, main workflows, safety/error
-   copy, long strings, dates, numbers, plurals, labels, and documentation links.
-6. After approval, update the locale's `reviewedAt` and
-   `reviewedSourceFingerprint` in `localization/locale-status.json`.
-7. Run the full data-backed desktop and Companion visual matrices, then
-   `npm run verify`.
+5. Run the full data-backed desktop and Companion visual matrices, then
+   `npm run verify` before exposing a new community-review candidate.
+6. For maintained status, a named native reviewer checks the glossary, main
+   workflows, safety/error copy, long strings, dates, numbers, plurals, labels,
+   and documentation links.
+7. After native approval, update the locale's `nativeReviewer`, `reviewedAt`,
+   and `reviewedSourceFingerprint` in `localization/locale-status.json`, then
+   repeat the release checks.
 
 The report treats dictionary parity as key coverage and separately reports the
 share of target strings that differ from English. Legitimate unchanged strings
@@ -82,10 +98,11 @@ copying the new value without native review.
 
 ## Review ownership and stale-locale policy
 
-Every published non-source locale must have one named native reviewer or
+Every locale marked `maintained` must have one named native reviewer or
 maintainer in `localization/locale-status.json`. Norwegian Bokmål, German, and
-French are currently owned by `@bliatun-code`. A locale without an owner is not
-eligible to be marked maintained or exposed as complete.
+French currently have named review. A locale without an owner can be selectable
+as a clearly described community-review candidate, but is not eligible for
+`maintained` status.
 
 A maintained locale becomes stale whenever its reviewed source fingerprint no
 longer matches the combined English desktop and Companion catalogs. Stale
@@ -110,13 +127,13 @@ files through another system.
 
 ## Reviewer handoff
 
-German and French were approved against the current source fingerprint and are
-available in the desktop app and Companion. Use the focused handoff in
-[`localization/REVIEW_CHECKLIST.md`](../localization/REVIEW_CHECKLIST.md) again
-whenever source changes make either maintained catalog stale.
+Use [`localization/REVIEW_CHECKLIST.md`](../localization/REVIEW_CHECKLIST.md) for
+both focused community corrections and a complete native review. German and
+French were approved against the maintained source fingerprint; repeat the
+handoff whenever English changes make a maintained catalog stale. Community
+review candidates remain selectable while retaining their review-candidate
+status and English fallback contract.
 
-The first German/French UI release may use the complete English user guide as a
-documented fallback. Full translated guides follow after native UI review and
-real user demand; they are not generated mechanically from the source guide.
-The app links German and French to the English guide until a complete, reviewed
-locale-specific guide is added.
+The complete English user guide is the documented fallback for languages that
+do not yet have a reviewed locale-specific guide. Translated guides follow real
+review and demand; they are not generated mechanically from the source guide.

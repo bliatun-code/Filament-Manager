@@ -225,7 +225,7 @@ test("detail content renders RFID capture controls from live printer sources", (
         printerId: "printer-1",
         printerName: "Brutus",
         slotLabel: "AMS 1 · Slot 4",
-        rfidTag: "B85A8848EEFD4C9784072CD4D7D04FAC",
+        rfidTag: "00112233445566778899AABBCCDDEEFF",
         observedAt: "2026-04-17T18:45:56Z",
         filamentLabel: "PLA · Jade White",
         statusLabel: "RFID not registered",
