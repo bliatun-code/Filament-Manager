@@ -107,3 +107,34 @@ test("macOS release verifier rejects missing entitlements and privacy strings", 
     /device\.camera/,
   );
 });
+
+test("macOS release verifier rejects debug and App Sandbox entitlements", () => {
+  const requiredEntitlements = {
+    "com.apple.security.device.camera": true,
+    "com.apple.security.network.client": true,
+    "com.apple.security.network.server": true,
+  };
+  const infoPlist = {
+    CFBundleExecutable: "bambu-filament-manager",
+    CFBundleIdentifier: "no.bliatun.filamentmanager",
+    NSCameraUsageDescription: "Scan filament labels.",
+    NSLocalNetworkUsageDescription: "Connect to printers.",
+  };
+
+  for (const forbiddenEntitlement of [
+    "com.apple.security.app-sandbox",
+    "com.apple.security.get-task-allow",
+  ]) {
+    assert.throws(
+      () =>
+        validateReleaseMetadata({
+          entitlements: {
+            ...requiredEntitlements,
+            [forbiddenEntitlement]: true,
+          },
+          infoPlist,
+        }),
+      new RegExp(forbiddenEntitlement.replaceAll(".", "\\.")),
+    );
+  }
+});

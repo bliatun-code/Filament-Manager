@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -55,6 +56,13 @@ export function validateRequiredMacosSigningEnvironment({
   if (args.includes("--no-sign")) {
     throw new Error(
       `${FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV}=1 cannot be combined with --no-sign.`,
+    );
+  }
+
+  if (hasExplicitTauriConfig(args)) {
+    throw new Error(
+      `${FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV}=1 cannot be combined with an explicit ` +
+        "Tauri --config/-c value because it can override the required Developer ID identity.",
     );
   }
 
@@ -127,6 +135,30 @@ export function withMacosSigningConfig(args, options = {}) {
   ];
 }
 
+export function withMacosSigningBuildEnvironment({
+  args,
+  env = process.env,
+  platform = process.platform,
+  temporaryDirectory = tmpdir(),
+} = {}) {
+  if (
+    platform !== "darwin" ||
+    args?.[0] !== "build" ||
+    !envFlag(env, FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV) ||
+    envValue(env, "CARGO_TARGET_DIR") !== null
+  ) {
+    return env;
+  }
+
+  return {
+    ...env,
+    CARGO_TARGET_DIR: path.join(
+      temporaryDirectory,
+      "filament-manager-macos-signing-target",
+    ),
+  };
+}
+
 export function runTauriCli({
   argv = process.argv.slice(2),
   cwd = process.cwd(),
@@ -136,11 +168,16 @@ export function runTauriCli({
   const tauriCliPath = path.join(cwd, "node_modules", "@tauri-apps", "cli", "tauri.js");
   const tauriProjectDir = path.join(cwd, "src-tauri");
   const args = withMacosSigningConfig(argv, { env, platform });
+  const childEnv = withMacosSigningBuildEnvironment({ args, env, platform });
+
+  if (childEnv !== env) {
+    console.log(`Signed macOS bundle output: ${childEnv.CARGO_TARGET_DIR}`);
+  }
 
   const child = spawn(process.execPath, [tauriCliPath, ...args], {
     cwd: tauriProjectDir,
     stdio: "inherit",
-    env,
+    env: childEnv,
   });
 
   child.on("exit", (code, signal) => {

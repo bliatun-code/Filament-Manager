@@ -12,6 +12,10 @@ const EXPECTED_ENTITLEMENTS = [
   "com.apple.security.network.client",
   "com.apple.security.network.server",
 ];
+const FORBIDDEN_TRUE_ENTITLEMENTS = [
+  "com.apple.security.app-sandbox",
+  "com.apple.security.get-task-allow",
+];
 const EXPECTED_PRIVACY_KEYS = ["NSCameraUsageDescription", "NSLocalNetworkUsageDescription"];
 
 function commandText(command, args) {
@@ -117,6 +121,11 @@ export function validateReleaseMetadata({
   for (const entitlement of EXPECTED_ENTITLEMENTS) {
     if (entitlements?.[entitlement] !== true) {
       throw new Error(`Expected signed entitlement ${entitlement}=true.`);
+    }
+  }
+  for (const entitlement of FORBIDDEN_TRUE_ENTITLEMENTS) {
+    if (entitlements?.[entitlement] === true) {
+      throw new Error(`Release must not contain signed entitlement ${entitlement}=true.`);
     }
   }
   for (const privacyKey of EXPECTED_PRIVACY_KEYS) {

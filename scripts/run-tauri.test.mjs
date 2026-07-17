@@ -9,6 +9,7 @@ import {
   hasExplicitTauriConfig,
   macosSigningIdentityForBuild,
   validateRequiredMacosSigningEnvironment,
+  withMacosSigningBuildEnvironment,
   withMacosSigningConfig,
 } from "./run-tauri.mjs";
 
@@ -184,5 +185,62 @@ test("required macOS signing rejects --no-sign", () => {
         platform: "darwin",
       }),
     /cannot be combined with --no-sign/,
+  );
+});
+
+test("required macOS signing rejects explicit Tauri config overrides", () => {
+  const env = {
+    [FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV]: "1",
+    [TAURI_MACOS_SIGNING_IDENTITY_ENV]: "Developer ID Application: Example AS",
+    APPLE_API_ISSUER: "issuer",
+    APPLE_API_KEY: "KEY123",
+    APPLE_API_KEY_PATH: "/tmp/AuthKey_KEY123.p8",
+  };
+
+  for (const args of [
+    ["build", "--config", '{"bundle":{"macOS":{"signingIdentity":"-"}}}'],
+    ["build", "--config={}"],
+    ["build", "-c={}"],
+  ]) {
+    assert.throws(
+      () => validateRequiredMacosSigningEnvironment({ args, env, platform: "darwin" }),
+      /cannot be combined with an explicit Tauri --config\/\-c value/,
+    );
+  }
+});
+
+test("required macOS signing keeps generated bundles outside File Provider folders", () => {
+  const env = {
+    [FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV]: "1",
+    [TAURI_MACOS_SIGNING_IDENTITY_ENV]: "Developer ID Application: Example AS",
+  };
+  const signedBuildEnv = withMacosSigningBuildEnvironment({
+    args: ["build", "--bundles", "dmg"],
+    env,
+    platform: "darwin",
+    temporaryDirectory: "/private/tmp",
+  });
+
+  assert.notEqual(signedBuildEnv, env);
+  assert.equal(
+    signedBuildEnv.CARGO_TARGET_DIR,
+    "/private/tmp/filament-manager-macos-signing-target",
+  );
+  assert.equal(env.CARGO_TARGET_DIR, undefined);
+  assert.equal(
+    withMacosSigningBuildEnvironment({
+      args: ["build"],
+      env: { ...env, CARGO_TARGET_DIR: "/custom/target" },
+      platform: "darwin",
+    }).CARGO_TARGET_DIR,
+    "/custom/target",
+  );
+  assert.equal(
+    withMacosSigningBuildEnvironment({
+      args: ["build"],
+      env: {},
+      platform: "darwin",
+    }).CARGO_TARGET_DIR,
+    undefined,
   );
 });
