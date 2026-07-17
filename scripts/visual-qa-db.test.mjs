@@ -263,6 +263,8 @@ test("rich visual QA accepts production-like local context", () => {
 });
 
 test("formatVisualQaDatasetReport includes counts and errors", () => {
+  const sourcePath = join(tmpdir(), "source.db");
+  const targetPath = join(tmpdir(), "copy.db");
   const report = formatVisualQaDatasetReport({
     assessment: {
       errors: ["filament_spools has 0 row(s), expected at least 1"],
@@ -276,11 +278,11 @@ test("formatVisualQaDatasetReport includes counts and errors", () => {
       },
       tables: ["filament_spools", "printers"],
     },
-    sourcePath: "/tmp/source.db",
-    targetPath: "/tmp/copy.db",
+    sourcePath,
+    targetPath,
   });
 
-  assert.match(report, /Visual QA database source: \/tmp\/source\.db/);
+  assert.ok(report.includes(`Visual QA database source: ${sourcePath}`));
   assert.match(report, /Visual QA profile: base/);
   assert.match(report, /Desktop app: use the Tauri desktop window/);
   assert.match(report, /Companion: http:\/\/192\.168\.1\.50:4278\/companion/);

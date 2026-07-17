@@ -69,6 +69,9 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
+      - name: Run portability checks
+        run: npm run test:portability
+
       - name: Install UI dependencies
         working-directory: ui
         run: npm ci

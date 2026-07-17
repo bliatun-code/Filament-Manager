@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 
 const repoRoot = resolve(".");
 const apiPath = resolve(repoRoot, "src-tauri", "src", "companion_routes.rs");
@@ -92,7 +92,7 @@ for (const file of collectJavaScriptFiles(browserDir)) {
     if (!browserPaths.has(path)) {
       browserPaths.set(path, []);
     }
-    browserPaths.get(path).push(file.replace(`${repoRoot}/`, ""));
+    browserPaths.get(path).push(relative(repoRoot, file));
   }
 }
 

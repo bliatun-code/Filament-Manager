@@ -154,7 +154,7 @@ test("required macOS signing accepts complete App Store Connect API credentials"
         [TAURI_MACOS_SIGNING_IDENTITY_ENV]: "Developer ID Application: Example AS",
         APPLE_API_ISSUER: "issuer",
         APPLE_API_KEY: "KEY123",
-        APPLE_API_KEY_PATH: "/tmp/AuthKey_KEY123.p8",
+        APPLE_API_KEY_PATH: path.join(tmpdir(), "AuthKey_KEY123.p8"),
       },
       platform: "darwin",
     }),
@@ -196,7 +196,7 @@ test("required macOS signing rejects explicit Tauri config overrides", () => {
     [TAURI_MACOS_SIGNING_IDENTITY_ENV]: "Developer ID Application: Example AS",
     APPLE_API_ISSUER: "issuer",
     APPLE_API_KEY: "KEY123",
-    APPLE_API_KEY_PATH: "/tmp/AuthKey_KEY123.p8",
+    APPLE_API_KEY_PATH: path.join(tmpdir(), "AuthKey_KEY123.p8"),
   };
 
   for (const args of [

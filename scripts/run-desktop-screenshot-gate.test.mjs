@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test } from "node:test";
 import {
   buildDesktopVisualQaLaunchEnv,
@@ -37,9 +39,12 @@ import {
   waitForDesktopWindow,
 } from "./run-desktop-screenshot-gate.mjs";
 
+const testOutputDir = path.join(tmpdir(), "visual-qa");
+const testVisualDatabasePath = path.join(tmpdir(), "visual-qa.db");
+
 function createMetric(overrides = {}) {
   return {
-    screenshot: "/tmp/desktop-window.png",
+    screenshot: path.join(tmpdir(), "desktop-window.png"),
     screenshotPixels: {
       colorBuckets: 80,
       edgeDeltaMean: 7,
@@ -400,13 +405,13 @@ test("desktop screenshot gate scopes explicit window sizes to launched scenarios
 test("desktop screenshot gate passes scenario theme through the Tauri launch environment", () => {
   const env = buildDesktopVisualQaLaunchEnv(
     { locale: "nb", scenario: "add-filament", themeMode: "light" },
-    { targetPath: "/tmp/visual-qa.db" },
+    { targetPath: testVisualDatabasePath },
     { EXISTING: "kept" },
   );
 
   assert.deepEqual(env, {
     EXISTING: "kept",
-    FILAMENT_MANAGER_DB_PATH: "/tmp/visual-qa.db",
+    FILAMENT_MANAGER_DB_PATH: testVisualDatabasePath,
     FILAMENT_MANAGER_VISUAL_QA: "1",
     FILAMENT_MANAGER_VISUAL_QA_LOCALE: "nb",
     FILAMENT_MANAGER_VISUAL_QA_SCENARIO: "add-filament",
@@ -415,7 +420,7 @@ test("desktop screenshot gate passes scenario theme through the Tauri launch env
 
   const defaultEnv = buildDesktopVisualQaLaunchEnv(
     { locale: "en" },
-    { targetPath: "/tmp/visual-qa.db" },
+    { targetPath: testVisualDatabasePath },
     {},
   );
   assert.equal("FILAMENT_MANAGER_VISUAL_QA_THEME" in defaultEnv, false);
@@ -965,7 +970,7 @@ test("desktop screenshot report lists window and artifact details", () => {
   const report = formatDesktopScreenshotGateReport({
     errors: [],
     metric: createMetric(),
-    outputDir: "/tmp/visual-qa",
+    outputDir: testOutputDir,
     scenario: "add-filament",
   });
 
@@ -984,7 +989,7 @@ test("desktop screenshot report identifies requested and captured window sizes",
   const report = formatDesktopScreenshotGateReport({
     errors: [],
     metric: createMetric({ window: { height: 700, width: 900 } }),
-    outputDir: "/tmp/visual-qa",
+    outputDir: testOutputDir,
     scenario: "inventory-overview",
     windowSize: { height: 700, width: 900 },
   });
@@ -998,7 +1003,7 @@ test("desktop screenshot report identifies explicit and automatic themes", () =>
   const lightReport = formatDesktopScreenshotGateReport({
     errors: [],
     metric: lightMetric,
-    outputDir: "/tmp/visual-qa",
+    outputDir: testOutputDir,
     scenario: "add-filament",
     themeMode: "light",
   });
@@ -1010,7 +1015,7 @@ test("desktop screenshot report identifies explicit and automatic themes", () =>
   const autoReport = formatDesktopScreenshotGateReport({
     errors: [],
     metric: createMetric(),
-    outputDir: "/tmp/visual-qa",
+    outputDir: testOutputDir,
     scenario: "add-filament",
     themeMode: "auto",
   });
@@ -1036,7 +1041,7 @@ test("desktop screenshot report lists visible windows when launch misses the app
       ],
       window: null,
     },
-    outputDir: "/tmp/visual-qa",
+    outputDir: testOutputDir,
   });
 
   assert.match(report, /Visible desktop windows/);

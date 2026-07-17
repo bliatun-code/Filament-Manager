@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { PassThrough } from "node:stream";
 import { test } from "node:test";
 import {
@@ -16,6 +18,10 @@ import {
   validateCompanionScreenshotMetrics,
   waitForCompanionPrinterLiveData,
 } from "./run-companion-screenshot-gate.mjs";
+
+const testOutputDir = path.join(tmpdir(), "visual-qa");
+const testSourceDatabasePath = path.join(tmpdir(), "source.db");
+const testVisualDatabasePath = path.join(tmpdir(), "visual.db");
 
 function createMetric(overrides = {}) {
   return {
@@ -71,7 +77,7 @@ function createMetric(overrides = {}) {
     name: "phone-inventory",
     outsideElements: [],
     pairingScreen: false,
-    screenshot: "/tmp/companion-phone-inventory.png",
+    screenshot: path.join(tmpdir(), "companion-phone-inventory.png"),
     screenshotPixels: {
       colorBuckets: 92,
       edgeDeltaMean: 7.4,
@@ -127,8 +133,8 @@ function createVisualQaDatabase(overrides = {}) {
       tables: ["filament_spools", "printers"],
     },
     live: false,
-    sourcePath: "/tmp/source.db",
-    targetPath: "/tmp/visual.db",
+    sourcePath: testSourceDatabasePath,
+    targetPath: testVisualDatabasePath,
     ...overrides,
   };
 }
@@ -542,7 +548,7 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
   };
   const result = await runLaunchedCompanionScreenshotGate({
     cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
-    outputDir: "/tmp/visual-qa",
+    outputDir: testOutputDir,
     postTerminateDelayMs: 0,
     prepareVisualQaDatabase: async (options) => {
       calls.prepare.push(options);
@@ -579,12 +585,15 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
   assert.deepEqual(calls.prepare, [{ live: false, profile: undefined, sourcePath: undefined }]);
   assert.equal(calls.spawn[0]?.command, "npm");
   assert.deepEqual(calls.spawn[0]?.args, ["run", "tauri", "--", "dev"]);
-  assert.equal(calls.spawn[0]?.options.env.FILAMENT_MANAGER_DB_PATH, "/tmp/visual.db");
+  assert.equal(
+    calls.spawn[0]?.options.env.FILAMENT_MANAGER_DB_PATH,
+    testVisualDatabasePath,
+  );
   assert.equal(calls.spawn[0]?.options.env.FILAMENT_MANAGER_VISUAL_QA, "1");
   assert.equal(calls.wait[0]?.baseUrl, "http://127.0.0.1:4278");
   assert.equal(calls.visual[0]?.timeoutMs, 1234);
   assert.equal(calls.screenshot[0]?.themeMode, "dark");
-  assert.deepEqual(calls.cleanup, ["/tmp/visual.db"]);
+  assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
   assert.equal(child.killedSignal, "SIGTERM");
 });
 
@@ -592,7 +601,7 @@ test("launched companion screenshot gate reports startup failures with launch ou
   const child = createFakeChild();
   const result = await runLaunchedCompanionScreenshotGate({
     cleanupVisualQaDatabase: () => {},
-    outputDir: "/tmp/visual-qa",
+    outputDir: testOutputDir,
     postTerminateDelayMs: 0,
     prepareVisualQaDatabase: async () => createVisualQaDatabase(),
     spawnFn: () => {
@@ -619,7 +628,7 @@ test("launched companion screenshot report includes launch diagnostics", () => {
     database: createVisualQaDatabase(),
     errors: ["broken"],
     launchOutputTail: "tail output",
-    outputDir: "/tmp/visual-qa",
+    outputDir: testOutputDir,
     screenshotGate: null,
     visualGate: null,
   });
@@ -634,7 +643,7 @@ test("companion screenshot report lists artifact paths", () => {
     baseUrl: "http://127.0.0.1:4278",
     errors: [],
     metrics: [createMetric()],
-    outputDir: "/tmp/visual-qa",
+    outputDir: testOutputDir,
   });
 
   assert.match(report, /Companion screenshot gate target/);
