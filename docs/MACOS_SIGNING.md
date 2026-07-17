@@ -225,8 +225,10 @@ Only after the local sign-only pilot passes:
    the DMG and `SHA256SUMS.txt` from that same run.
 
 The workflow writes `APPLE_API_PRIVATE_KEY` below `$RUNNER_TEMP`, exposes its
-path as `APPLE_API_KEY_PATH`, builds with
-`FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING=1`, verifies the stapled DMG against the
+path as `APPLE_API_KEY_PATH`, and builds with
+`FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING=1`. Tauri signs, notarizes, and staples
+the app before packaging it. The workflow then submits the finished signed DMG
+to Apple, staples and validates the DMG ticket, verifies the result against the
 protected `APPLE_TEAM_ID`, and removes the temporary keychain and keys with an
 `if: always()` cleanup step.
 
