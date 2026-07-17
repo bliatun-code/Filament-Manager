@@ -3,9 +3,12 @@ import test from "node:test";
 
 import {
   normalizeExpectedArchitectures,
+  normalizeMacosVersion,
+  parseMacosDeploymentTargets,
   parseCodesignDetails,
   validateCodesignDetails,
   validateExpectedArchitectures,
+  validateMacosDeploymentTargets,
   validateReleaseMetadata,
 } from "./verify-macos-release.mjs";
 
@@ -86,6 +89,7 @@ test("macOS release verifier reads dotted entitlement names as literal keys", ()
       infoPlist: {
         CFBundleExecutable: "bambu-filament-manager",
         CFBundleIdentifier: "no.bliatun.filamentmanager",
+        LSMinimumSystemVersion: "11.0",
         NSCameraUsageDescription: "Scan filament labels.",
         NSLocalNetworkUsageDescription: "Connect to printers.",
       },
@@ -93,6 +97,7 @@ test("macOS release verifier reads dotted entitlement names as literal keys", ()
     {
       bundleId: "no.bliatun.filamentmanager",
       executableName: "bambu-filament-manager",
+      minimumSystemVersion: "11.0",
     },
   );
 });
@@ -102,7 +107,10 @@ test("macOS release verifier rejects missing entitlements and privacy strings", 
     () =>
       validateReleaseMetadata({
         entitlements: {},
-        infoPlist: { CFBundleIdentifier: "no.bliatun.filamentmanager" },
+        infoPlist: {
+          CFBundleIdentifier: "no.bliatun.filamentmanager",
+          LSMinimumSystemVersion: "11.0",
+        },
       }),
     /device\.camera/,
   );
@@ -117,6 +125,7 @@ test("macOS release verifier rejects debug and App Sandbox entitlements", () => 
   const infoPlist = {
     CFBundleExecutable: "bambu-filament-manager",
     CFBundleIdentifier: "no.bliatun.filamentmanager",
+    LSMinimumSystemVersion: "11.0",
     NSCameraUsageDescription: "Scan filament labels.",
     NSLocalNetworkUsageDescription: "Connect to printers.",
   };
@@ -137,4 +146,48 @@ test("macOS release verifier rejects debug and App Sandbox entitlements", () => 
       new RegExp(forbiddenEntitlement.replaceAll(".", "\\.")),
     );
   }
+});
+
+test("macOS release verifier enforces bundle and Mach-O deployment targets", () => {
+  const otoolOutput = `
+Load command 10
+      cmd LC_BUILD_VERSION
+  cmdsize 32
+ platform 1
+    minos 11.0
+      sdk 26.5
+Load command 11
+      cmd LC_VERSION_MIN_MACOSX
+  cmdsize 16
+  version 11.0
+      sdk 15.0
+`;
+
+  assert.equal(normalizeMacosVersion("11"), "11.0.0");
+  assert.equal(normalizeMacosVersion("11.0"), "11.0.0");
+  assert.deepEqual(parseMacosDeploymentTargets(otoolOutput), ["11.0"]);
+  assert.deepEqual(validateMacosDeploymentTargets(["11.0"], "11"), ["11.0"]);
+  assert.throws(
+    () => validateMacosDeploymentTargets(["10.13"], "11.0"),
+    /Expected macOS deployment target 11\.0, found 10\.13/,
+  );
+  assert.throws(
+    () =>
+      validateReleaseMetadata({
+        entitlements: {
+          "com.apple.security.device.camera": true,
+          "com.apple.security.network.client": true,
+          "com.apple.security.network.server": true,
+        },
+        expectedMinimumSystemVersion: "11.0",
+        infoPlist: {
+          CFBundleExecutable: "bambu-filament-manager",
+          CFBundleIdentifier: "no.bliatun.filamentmanager",
+          LSMinimumSystemVersion: "10.13",
+          NSCameraUsageDescription: "Scan filament labels.",
+          NSLocalNetworkUsageDescription: "Connect to printers.",
+        },
+      }),
+    /Expected LSMinimumSystemVersion 11\.0, found 10\.13/,
+  );
 });

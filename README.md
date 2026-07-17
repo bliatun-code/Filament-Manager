@@ -117,6 +117,8 @@ available to its users. See [LICENSE](LICENSE) for the full license text and
 - `docs/`: user-facing guides.
 - `.github/workflows/release-build.yml`: tag/manual workflow for macOS DMG and
   Windows MSI artifacts.
+- `.github/workflows/macos-signed-release.yml`: protected manual pilot for an
+  Apple Silicon Developer ID signed and notarized DMG.
 
 ## Requirements
 
@@ -125,6 +127,7 @@ available to its users. See [LICENSE](LICENSE) for the full license text and
 - Rust toolchain for Tauri builds
 - Xcode app + Command Line Tools for macOS builds
 - `sqlite3` CLI recommended for scraper fallback behavior
+- Current macOS DMG: Apple Silicon and macOS 11.0 Big Sur or newer
 
 The project uses the local Tauri CLI from npm dependencies through
 `npm run tauri`, so a global `cargo tauri` install is not required.
@@ -236,6 +239,10 @@ build and release flow does not depend on Apple credentials. The preparation,
 secret-handling, stable-Xcode guidance, activation steps, and release checks are
 documented in [macOS Signing and Notarization](docs/MACOS_SIGNING.md).
 
+The signed macOS release contract is Apple Silicon (`arm64`) on macOS 11.0 Big
+Sur or newer. Tauri sets this minimum for both bundle metadata and the Rust
+deployment target; the release verifier checks both before artifact upload.
+
 After a signed and notarized DMG is built, verify it on macOS before upload:
 
 ```bash
@@ -244,8 +251,8 @@ EXPECTED_APPLE_TEAM_ID="TEAMID" \
   --architectures=arm64
 ```
 
-The required architecture remains a release decision; adjust the verifier
-argument when Intel or universal artifacts are introduced.
+Intel or universal artifacts are not part of the current contract and require
+their own build and compatibility validation before changing this argument.
 
 Build only a Windows MSI on Windows:
 

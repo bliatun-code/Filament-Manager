@@ -141,23 +141,25 @@ second line of defense. That does not replace careful secret handling.
 
 ## Activation Runbook
 
-### 1. Decide the release compatibility contract
+### 1. Release compatibility contract
 
-Before credentials are connected, choose and document:
+The first signed release contract is:
 
-- architecture: Apple Silicon (`arm64`), Intel (`x86_64`), separate artifacts,
-  or a universal binary;
-- minimum supported macOS version;
-- the stable Xcode version and GitHub runner image used to build it.
+- architecture: Apple Silicon (`arm64`);
+- minimum system version: macOS 11.0 Big Sur;
+- CI image: the Apple Silicon `macos-15` runner, with the exact Xcode and SDK
+  versions recorded in every workflow log.
 
-Set the chosen minimum macOS version explicitly in the build configuration and
-test on that version. Configure the verifier to require the selected
-architecture set. Do not infer either decision from whichever runner happens to
-be current.
+`src-tauri/tauri.conf.json` sets `minimumSystemVersion` to `11.0`. This is also
+the minimum supported deployment target of Rust's
+[`aarch64-apple-darwin` target](https://doc.rust-lang.org/rustc/platform-support.html),
+and it matches the `LC_BUILD_VERSION` value observed in the local signed pilot.
+The release verifier requires both `LSMinimumSystemVersion` in the app bundle
+and the main app executable's Mach-O deployment target to match this contract.
 
-The protected arm64 pilot can run before this compatibility decision, but a
-signed artifact must not replace the public tag artifact until the minimum
-macOS version is explicit and tested on a clean machine.
+Intel or universal artifacts require a separate compatibility decision,
+verifier expectation, and clean-machine test. Do not infer support from whichever
+runner or SDK happens to compile successfully.
 
 ### 2. Prepare Apple credentials
 
@@ -240,7 +242,7 @@ separate reviewed change after that evidence exists.
 - Confirm Local Network and Camera permission prompts use the expected app
   identity and descriptions.
 - Confirm Bambu Live, Companion access, label export, updates, and file dialogs.
-- Test on the chosen minimum macOS version and on every published architecture.
+- Test on macOS 11.0 and a current macOS release on Apple Silicon.
 - Confirm the release page contains the same DMG digest that was verified in CI.
 
 ## What the Verifier Checks
@@ -256,8 +258,9 @@ EXPECTED_APPLE_TEAM_ID="TEAMID" \
 The verifier checks the DMG structure, stapled notarization ticket, Gatekeeper
 assessment, Developer ID authority, Team ID, secure timestamp, hardened runtime,
 bundle identifier, required entitlements and privacy strings, forbidden debug
-or App Sandbox entitlements, and expected executable architectures. Team ID and
-an exact architecture set are mandatory; any mismatch fails the command.
+or App Sandbox entitlements, `LSMinimumSystemVersion`, the main app executable's
+Mach-O deployment target, and expected executable architectures. Team ID and an
+exact architecture set are mandatory; any mismatch fails the command.
 
 This is a post-build release gate, not a substitute for testing the installed
 app on a clean Mac.

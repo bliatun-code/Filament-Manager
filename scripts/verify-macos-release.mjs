@@ -1,12 +1,30 @@
 #!/usr/bin/env node
 
-import { mkdtempSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_BUNDLE_ID = "no.bliatun.filamentmanager";
+const TAURI_CONFIG_PATH = fileURLToPath(
+  new URL("../src-tauri/tauri.conf.json", import.meta.url),
+);
+const DEFAULT_MINIMUM_SYSTEM_VERSION = (() => {
+  const config = JSON.parse(readFileSync(TAURI_CONFIG_PATH, "utf8"));
+  const value = config?.bundle?.macOS?.minimumSystemVersion;
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error("Tauri must declare bundle.macOS.minimumSystemVersion explicitly.");
+  }
+  return value.trim();
+})();
 const EXPECTED_ENTITLEMENTS = [
   "com.apple.security.device.camera",
   "com.apple.security.network.client",
@@ -54,6 +72,57 @@ export function normalizeExpectedArchitectures(value) {
   return [
     ...new Set(rawValue.split(/[\s,]+/).map((item) => item.trim()).filter(Boolean)),
   ].sort();
+}
+
+export function normalizeMacosVersion(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!/^\d+(?:\.\d+){0,2}$/.test(text)) {
+    throw new Error(`Invalid macOS version ${text || "none"}.`);
+  }
+  return text
+    .split(".")
+    .map((part) => Number.parseInt(part, 10))
+    .concat([0, 0])
+    .slice(0, 3)
+    .join(".");
+}
+
+export function parseMacosDeploymentTargets(output) {
+  const targets = [];
+  let loadCommand = null;
+
+  for (const rawLine of String(output).split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (line.startsWith("cmd ")) {
+      loadCommand = line.slice("cmd ".length);
+      continue;
+    }
+    if (loadCommand === "LC_BUILD_VERSION" && line.startsWith("minos ")) {
+      targets.push(line.slice("minos ".length).trim());
+      continue;
+    }
+    if (loadCommand === "LC_VERSION_MIN_MACOSX" && line.startsWith("version ")) {
+      targets.push(line.slice("version ".length).trim());
+    }
+  }
+
+  return [...new Set(targets)];
+}
+
+export function validateMacosDeploymentTargets(actualValues, expectedValue) {
+  const expected = normalizeMacosVersion(expectedValue);
+  const actual = Array.isArray(actualValues) ? actualValues : [];
+  if (actual.length === 0) {
+    throw new Error("The executable does not declare a macOS deployment target.");
+  }
+  for (const value of actual) {
+    if (normalizeMacosVersion(value) !== expected) {
+      throw new Error(
+        `Expected macOS deployment target ${expectedValue}, found ${value}.`,
+      );
+    }
+  }
+  return actual;
 }
 
 export function parseCodesignDetails(output) {
@@ -112,11 +181,22 @@ export function validateCodesignDetails(
 export function validateReleaseMetadata({
   entitlements,
   expectedBundleId = DEFAULT_BUNDLE_ID,
+  expectedMinimumSystemVersion = DEFAULT_MINIMUM_SYSTEM_VERSION,
   infoPlist,
 }) {
   const bundleId = infoPlist?.CFBundleIdentifier;
   if (bundleId !== expectedBundleId) {
     throw new Error(`Expected bundle identifier ${expectedBundleId}, found ${bundleId}.`);
+  }
+  const minimumSystemVersion = infoPlist?.LSMinimumSystemVersion;
+  if (
+    normalizeMacosVersion(minimumSystemVersion) !==
+    normalizeMacosVersion(expectedMinimumSystemVersion)
+  ) {
+    throw new Error(
+      `Expected LSMinimumSystemVersion ${expectedMinimumSystemVersion}, ` +
+        `found ${minimumSystemVersion ?? "none"}.`,
+    );
   }
   for (const entitlement of EXPECTED_ENTITLEMENTS) {
     if (entitlements?.[entitlement] !== true) {
@@ -138,7 +218,7 @@ export function validateReleaseMetadata({
   if (typeof executableName !== "string" || executableName.trim().length === 0) {
     throw new Error("Expected a non-empty CFBundleExecutable in Info.plist.");
   }
-  return { bundleId, executableName };
+  return { bundleId, executableName, minimumSystemVersion };
 }
 
 export function validateExpectedArchitectures(actualValue, expectedValue) {
@@ -180,6 +260,7 @@ export function verifyMacosRelease({
   dmgPath,
   expectedArchitectures = [],
   expectedBundleId = DEFAULT_BUNDLE_ID,
+  expectedMinimumSystemVersion = DEFAULT_MINIMUM_SYSTEM_VERSION,
   expectedTeamId,
 } = {}) {
   if (process.platform !== "darwin") {
@@ -257,13 +338,18 @@ export function verifyMacosRelease({
     writeFileSync(entitlementsPath, entitlementsResult.stdout);
     runCommand("plutil", ["-lint", entitlementsPath]);
     const entitlements = readPlistObject(entitlementsPath);
-    const { bundleId, executableName } = validateReleaseMetadata({
+    const { bundleId, executableName, minimumSystemVersion } = validateReleaseMetadata({
       entitlements,
       expectedBundleId,
+      expectedMinimumSystemVersion,
       infoPlist,
     });
 
     const executablePath = path.join(appPath, "Contents", "MacOS", executableName);
+    const deploymentTargets = validateMacosDeploymentTargets(
+      parseMacosDeploymentTargets(runCommand("otool", ["-l", executablePath]).stdout),
+      expectedMinimumSystemVersion,
+    );
     const actualArchitectures = verifyExpectedArchitectures(
       executablePath,
       requiredArchitectures,
@@ -280,6 +366,8 @@ export function verifyMacosRelease({
       appName: path.basename(appPath),
       architectures: actualArchitectures,
       bundleId,
+      deploymentTargets,
+      minimumSystemVersion,
       teamId: codesignDetails.teamIdentifier,
     };
   } catch (error) {
@@ -333,6 +421,9 @@ function cliOptions(argv) {
         process.env.EXPECTED_MACOS_ARCHITECTURES,
     ),
     expectedBundleId: process.env.EXPECTED_MACOS_BUNDLE_ID ?? DEFAULT_BUNDLE_ID,
+    expectedMinimumSystemVersion:
+      process.env.EXPECTED_MACOS_MINIMUM_SYSTEM_VERSION ??
+      DEFAULT_MINIMUM_SYSTEM_VERSION,
     expectedTeamId: process.env.EXPECTED_APPLE_TEAM_ID,
   };
 }
@@ -341,7 +432,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   try {
     const result = verifyMacosRelease(cliOptions(process.argv.slice(2)));
     console.log(
-      `macOS release verification passed (${result.bundleId}, ${result.teamId}, ${result.architectures.join(", ")}).`,
+      `macOS release verification passed (${result.bundleId}, ${result.teamId}, ` +
+        `macOS ${result.minimumSystemVersion}+, ${result.architectures.join(", ")}).`,
     );
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
