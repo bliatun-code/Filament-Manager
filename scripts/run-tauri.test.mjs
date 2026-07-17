@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import {
@@ -214,17 +216,18 @@ test("required macOS signing keeps generated bundles outside File Provider folde
     [FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV]: "1",
     [TAURI_MACOS_SIGNING_IDENTITY_ENV]: "Developer ID Application: Example AS",
   };
+  const temporaryDirectory = tmpdir();
   const signedBuildEnv = withMacosSigningBuildEnvironment({
     args: ["build", "--bundles", "dmg"],
     env,
     platform: "darwin",
-    temporaryDirectory: "/private/tmp",
+    temporaryDirectory,
   });
 
   assert.notEqual(signedBuildEnv, env);
   assert.equal(
     signedBuildEnv.CARGO_TARGET_DIR,
-    "/private/tmp/filament-manager-macos-signing-target",
+    path.join(temporaryDirectory, "filament-manager-macos-signing-target"),
   );
   assert.equal(env.CARGO_TARGET_DIR, undefined);
   assert.equal(
