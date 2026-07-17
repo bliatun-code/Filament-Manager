@@ -38,8 +38,12 @@ A local sign-only pilot completed on July 17, 2026 with stable Xcode 26.6. The
 arm64 app and DMG passed strict Developer ID verification, contained the expected
 Apple certificate chain and secure timestamp, enabled hardened runtime, and
 carried the required camera and local-network entitlements. App Store Connect
-Team Key authentication also succeeded. A full upload, notarization, stapling,
-and Gatekeeper pass remains the purpose of the protected CI pilot.
+Team Key authentication also succeeded. The protected CI pilot then completed
+successfully in run `29603626061`: Apple accepted the app and final DMG, both
+were stapled, the strict verifier and checksum gate passed, and GitHub uploaded
+only the verified artifact. The downloaded artifact independently passed its
+checksum and the complete release verifier. A clean-machine install and smoke
+test remain required before this path replaces the existing tagged release job.
 
 This separation is intentional: the repository can be hardened and tested
 before any credential is created or any existing release behavior changes.
