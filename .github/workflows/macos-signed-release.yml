@@ -23,13 +23,18 @@ jobs:
     environment: macos-release
     runs-on: macos-15
     timeout-minutes: 90
-    env:
-      APPLE_API_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
-      CARGO_TARGET_DIR: ${{ runner.temp }}/filament-manager-target
-      FILAMENT_MANAGER_CERTIFICATE_PATH: ${{ runner.temp }}/developer-id-application.p12
-      FILAMENT_MANAGER_KEYCHAIN_PATH: ${{ runner.temp }}/filament-manager-signing.keychain-db
 
     steps:
+      - name: Configure temporary release paths
+        run: |
+          set -euo pipefail
+          {
+            echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/AuthKey.p8"
+            echo "CARGO_TARGET_DIR=$RUNNER_TEMP/filament-manager-target"
+            echo "FILAMENT_MANAGER_CERTIFICATE_PATH=$RUNNER_TEMP/developer-id-application.p12"
+            echo "FILAMENT_MANAGER_KEYCHAIN_PATH=$RUNNER_TEMP/filament-manager-signing.keychain-db"
+          } >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
