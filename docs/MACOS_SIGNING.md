@@ -1,10 +1,10 @@
 # macOS Signing and Notarization
 
-This document is the activation runbook for distributing Filament Manager with
+This document is the operations runbook for distributing Filament Manager with
 Apple Developer ID signing, hardened runtime, notarization, and a stapled
-notarization ticket. It deliberately leaves the existing tag-triggered artifact
-job unchanged. A separate manual workflow provides the protected release-
-candidate path until a signed pilot has passed.
+notarization ticket. Tagged releases and manual release-candidate builds use the
+same protected macOS workflow; ordinary local development remains independent
+of Apple credentials.
 
 Apple's current background material is available in
 [Developer ID](https://developer.apple.com/support/developer-id/),
@@ -16,21 +16,22 @@ The Tauri environment variable contract is documented in
 
 ## Current Status
 
-- Ordinary local macOS builds and the existing tag-triggered GitHub Actions DMG
-  job remain ad-hoc signed. They are not Developer ID signed or notarized.
-- `.github/workflows/macos-signed-release.yml` is a manual-only release-candidate
-  workflow. It requires an explicit confirmation input and the protected
-  `macos-release` environment, and does not affect Windows, normal CI, or the
-  existing tag workflow.
+- Ordinary local macOS builds remain ad-hoc signed. Tagged macOS artifacts are
+  Developer ID signed, notarized, stapled, and verified before upload.
+- `.github/workflows/release-build.yml` delegates its macOS job to the reusable
+  `.github/workflows/macos-signed-release.yml`. The latter also remains directly
+  dispatchable for release candidates with an explicit confirmation input.
+- The signing job uses the protected `macos-release` environment and does not
+  expose Apple credentials to Windows builds, normal CI, or publication steps.
 - The Tauri wrapper keeps this behavior unless signing is explicitly requested.
-  Existing local development, Windows MSI builds, and release artifact builds
-  therefore continue without Apple credentials.
+  Existing local development and Windows MSI builds therefore continue without
+  Apple credentials; the tagged macOS job sets the fail-closed signing flag.
 - `FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING=1` is an opt-in, fail-closed release
   guard. On a macOS build it rejects identities other than Developer ID
   Application, `--no-sign`, or missing notarization credentials.
 - `scripts/verify-macos-release.mjs` is a macOS-only post-build verifier for a
-  signed and notarized DMG. The manual signed workflow runs it before artifact
-  upload; the ordinary artifact workflow does not.
+  signed and notarized DMG. Every tagged or manual signed build runs it before
+  artifact upload.
 - No Apple certificate, private key, password, or notarization credential should
   be committed to this repository.
 
@@ -42,11 +43,12 @@ Team Key authentication also succeeded. The protected CI pilot then completed
 successfully in run `29603626061`: Apple accepted the app and final DMG, both
 were stapled, the strict verifier and checksum gate passed, and GitHub uploaded
 only the verified artifact. The downloaded artifact independently passed its
-checksum and the complete release verifier. A clean-machine install and smoke
-test remain required before this path replaces the existing tagged release job.
+checksum and the complete release verifier. The downloaded pilot also installed
+and ran successfully on an Apple Silicon Mac without a Gatekeeper workaround.
+This does not by itself claim a macOS 11 runtime test.
 
-This separation is intentional: the repository can be hardened and tested
-before any credential is created or any existing release behavior changes.
+The separation between signing, Windows packaging, and later release publication
+is intentional. A failed macOS signing gate produces no fallback DMG.
 
 ## Stable Xcode and Xcode Beta
 
@@ -64,7 +66,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   npm run tauri -- build --bundles dmg
 ```
 
-The manual signed workflow pins the Apple Silicon `macos-15` runner label and
+The signed workflow pins the Apple Silicon `macos-15` runner label and
 records the exact macOS, architecture, Xcode, and SDK versions in every run. Do
 not replace it with `macos-latest` or move it to a new runner image without a
 release-candidate pass.
@@ -100,9 +102,11 @@ missing notarization credentials.
 ## Protected GitHub Environment
 
 Do not add Apple credentials as repository files or ordinary workflow values.
-Create a protected GitHub environment named `macos-release`; the manual signed
-workflow is already scoped to it. Add a required reviewer and restrict which
-branches or tags may deploy if the repository plan supports those protections.
+Create a protected GitHub environment named `macos-release`; the signed workflow
+is scoped to it. Its selected-ref policies must allow branch `main` for manual
+candidates and tags matching `v*` for releases. Add a required reviewer or tag
+ruleset if the repository plan supports those protections. Until then, release
+tag creation is a maintainer-only operation and acts as the release approval.
 
 Use these environment secrets:
 
@@ -117,7 +121,7 @@ Use these environment secrets:
 | `APPLE_TEAM_ID` | Expected Apple Developer team ID used by verification |
 
 `APPLE_API_PRIVATE_KEY` is a GitHub secret name, not a Tauri variable. The
-manual signed workflow writes it to a file under `$RUNNER_TEMP` and exposes that
+signed workflow writes it to a file under `$RUNNER_TEMP` and exposes that
 path as `APPLE_API_KEY_PATH` only for the build.
 
 Treat every identifier in the table as sensitive workflow configuration even
@@ -213,33 +217,38 @@ directory; an explicit value still takes precedence. GitHub-hosted runners do
 not place this target under a File Provider folder, and the signed workflow uses
 `$RUNNER_TEMP` explicitly.
 
-### 4. Connect the protected CI environment
+### 4. Operate the protected release workflow
 
-Only after the local sign-only pilot passes:
+1. Keep all seven environment secrets current and retain the `main` branch plus
+   `v*` tag deployment policies.
+2. Bump every version source and the README release target together, then let
+   `npm run check:version` pass before creating a release tag.
+3. Push an annotated tag matching the package version exactly. The release
+   validator also requires the tagged commit to be on `main`.
+4. For a non-tagged candidate, open **Actions → Release Build Artifacts**, choose
+   `macos` or `both`, and enable the notarization confirmation. The standalone
+   **Signed macOS DMG** workflow remains available for focused
+   macOS diagnostics.
+5. Confirm that the workflow records an arm64 `macos-15` runner and a stable
+   Xcode, imports the certificate into an ephemeral keychain, and completes both
+   the app and final-DMG notarization steps.
+6. Download the artifact only after the strict verifier has passed. Keep the
+   normalized DMG and `SHA256SUMS.txt` from that same run, verify the checksum,
+   and only then attach them to a draft GitHub release.
 
-1. Create the `macos-release` environment and populate all seven secrets listed
-   above.
-2. Open **Actions → Signed macOS Release Candidate → Run workflow**, select the
-   intended commit or tag, and enable the notarization confirmation.
-3. Approve the protected environment deployment when prompted.
-4. Confirm that the workflow records an arm64 `macos-15` runner and a stable
-   Xcode, imports the certificate into an ephemeral keychain, and reaches the
-   notarization step.
-5. Download the artifact only after the strict verifier has passed. Keep both
-   the DMG and `SHA256SUMS.txt` from that same run.
-
-The workflow writes `APPLE_API_PRIVATE_KEY` below `$RUNNER_TEMP`, exposes its
-path as `APPLE_API_KEY_PATH`, and builds with
+The reusable workflow writes `APPLE_API_PRIVATE_KEY` below `$RUNNER_TEMP`,
+exposes its path as `APPLE_API_KEY_PATH`, and builds with
 `FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING=1`. Tauri signs, notarizes, and staples
-the app before packaging it. The workflow then submits the finished signed DMG
-to Apple, staples and validates the DMG ticket, verifies the result against the
-protected `APPLE_TEAM_ID`, and removes the temporary keychain and keys with an
-`if: always()` cleanup step.
+the app before packaging it. The workflow then normalizes the public filename,
+submits the finished signed DMG to Apple, staples and validates the DMG ticket,
+verifies the result against the protected `APPLE_TEAM_ID`, generates its
+checksum, and removes the temporary keychain and keys with an `if: always()`
+cleanup step.
 
-Do not replace or delete the working ad-hoc tag path until the manually
-dispatched signed artifact has passed the full verification and clean-machine
-install test. Promoting signed notarization to tagged releases should be a
-separate reviewed change after that evidence exists.
+The tag path has no ad-hoc fallback. If signing, Apple notarization, stapling,
+verification, or checksum generation fails, do not publish a macOS installer
+for that release. Diagnose with a new candidate run rather than weakening the
+gate.
 
 ### 5. Validate a release candidate on clean machines
 
@@ -287,9 +296,9 @@ debug entitlement cannot reach a published artifact.
 
 ## Rollback
 
-If signed CI fails before publication, keep the verified failure logs, revoke or
-rotate credentials if exposure is suspected, and restore the previous artifact
-workflow. Never bypass the verifier or publish an ad-hoc artifact under a release
-that promises Developer ID signing. Because activation is opt-in, ordinary local
-builds and the current ad-hoc release workflow remain available while the
-failure is investigated.
+If signed CI fails before publication, keep the failure logs, revoke or rotate
+credentials if exposure is suspected, and use the manual candidate path to
+diagnose the problem. Reverting the promotion requires a reviewed workflow
+change; never bypass the verifier or publish an ad-hoc artifact under a release
+that promises Developer ID signing. Ordinary local ad-hoc builds remain
+available for development only while the failure is investigated.

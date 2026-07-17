@@ -1,6 +1,12 @@
-name: Signed macOS Release Candidate
+name: Signed macOS DMG
 
 on:
+  workflow_call:
+    inputs:
+      confirm_notarization:
+        description: "Build, upload to Apple for notarization, staple, and verify the DMG"
+        required: true
+        type: boolean
   workflow_dispatch:
     inputs:
       confirm_notarization:
@@ -37,6 +43,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
@@ -137,10 +145,7 @@ jobs:
           FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING: "1"
         run: npm run tauri -- build --bundles dmg
 
-      - name: Notarize and staple final DMG
-        env:
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+      - name: Normalize DMG filename
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -150,37 +155,48 @@ jobs:
             exit 1
           fi
 
-          xcrun notarytool submit "${dmgs[0]}" \
+          original_path="${dmgs[0]}"
+          original_name="$(basename "$original_path")"
+          normalized_name="${original_name// /-}"
+          normalized_path="$(dirname "$original_path")/$normalized_name"
+          if [[ "$original_path" != "$normalized_path" ]]; then
+            mv "$original_path" "$normalized_path"
+          fi
+          echo "FILAMENT_MANAGER_DMG_PATH=$normalized_path" >> "$GITHUB_ENV"
+
+      - name: Notarize and staple final DMG
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          set -euo pipefail
+          xcrun notarytool submit "$FILAMENT_MANAGER_DMG_PATH" \
             --key "$APPLE_API_KEY_PATH" \
             --key-id "$APPLE_API_KEY" \
             --issuer "$APPLE_API_ISSUER" \
             --wait
-          xcrun stapler staple "${dmgs[0]}"
-          xcrun stapler validate "${dmgs[0]}"
+          xcrun stapler staple "$FILAMENT_MANAGER_DMG_PATH"
+          xcrun stapler validate "$FILAMENT_MANAGER_DMG_PATH"
 
       - name: Verify signed release
         env:
           EXPECTED_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          dmgs=("$CARGO_TARGET_DIR"/release/bundle/dmg/*.dmg)
-          if [[ ${#dmgs[@]} -ne 1 ]]; then
-            echo "::error::Expected exactly one notarized DMG, found ${#dmgs[@]}."
-            exit 1
-          fi
-          npm run verify:macos-release -- "${dmgs[0]}" --architectures=arm64
+          npm run verify:macos-release -- "$FILAMENT_MANAGER_DMG_PATH" --architectures=arm64
 
       - name: Write DMG checksum
         run: |
           set -euo pipefail
-          cd "$CARGO_TARGET_DIR/release/bundle/dmg"
-          shasum -a 256 ./*.dmg > SHA256SUMS.txt
+          dmg_directory="$(dirname "$FILAMENT_MANAGER_DMG_PATH")"
+          dmg_name="$(basename "$FILAMENT_MANAGER_DMG_PATH")"
+          cd "$dmg_directory"
+          shasum -a 256 "$dmg_name" > SHA256SUMS.txt
 
       - name: Upload verified DMG artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: filament-manager-macos-signed-${{ github.ref_name }}
+          name: filament-manager-macos-dmg-${{ github.ref_name }}
           path: |
             ${{ runner.temp }}/filament-manager-target/release/bundle/dmg/*.dmg
             ${{ runner.temp }}/filament-manager-target/release/bundle/dmg/SHA256SUMS.txt

@@ -115,10 +115,11 @@ available to its users. See [LICENSE](LICENSE) for the full license text and
 - `ui/`: React desktop UI, UI models, tests, and styling.
 - `scripts/`: local validation, Tauri wrapper, and contract checks.
 - `docs/`: user-facing guides.
-- `.github/workflows/release-build.yml`: tag/manual workflow for macOS DMG and
-  Windows MSI artifacts.
-- `.github/workflows/macos-signed-release.yml`: protected manual pilot for an
-  Apple Silicon Developer ID signed and notarized DMG.
+- `.github/workflows/release-build.yml`: tag/manual orchestrator for the signed
+  macOS DMG and Windows MSI artifacts.
+- `.github/workflows/macos-signed-release.yml`: protected reusable Apple Silicon
+  Developer ID signing, notarization, stapling, and verification workflow; it
+  also remains available for manual release-candidate builds.
 
 ## Requirements
 
@@ -228,16 +229,18 @@ Build only a macOS DMG:
 npm run tauri -- build --bundles dmg
 ```
 
-On macOS, `npm run tauri` ad-hoc signs local builds so bundle entitlements are
-applied. The current GitHub Actions DMG job also remains ad-hoc signed and is not
-notarized. Set Tauri's standard `APPLE_SIGNING_IDENTITY`, the compatible
+On macOS, `npm run tauri` ad-hoc signs ordinary local builds so bundle
+entitlements are applied. Tagged GitHub Actions releases instead use the
+protected `macos-release` environment and fail closed unless Developer ID
+signing, notarization, stapling, and strict verification all succeed. Set
+Tauri's standard `APPLE_SIGNING_IDENTITY`, the compatible
 `FILAMENT_MANAGER_MACOS_SIGNING_IDENTITY`, or pass Tauri `--config` when building
-with a specific signing identity.
+locally with a specific signing identity.
 
-Developer ID signing and notarization are intentionally opt-in so the current
-build and release flow does not depend on Apple credentials. The preparation,
-secret-handling, stable-Xcode guidance, activation steps, and release checks are
-documented in [macOS Signing and Notarization](docs/MACOS_SIGNING.md).
+Developer ID signing and notarization remain opt-in for local development, but
+are required for tagged macOS artifacts. Preparation, secret handling,
+stable-Xcode guidance, release activation, and verification are documented in
+[macOS Signing and Notarization](docs/MACOS_SIGNING.md).
 
 The signed macOS release contract is Apple Silicon (`arm64`) on macOS 11.0 Big
 Sur or newer. Tauri sets this minimum for both bundle metadata and the Rust
@@ -287,15 +290,21 @@ npm run verify
 
 ## GitHub Actions Release Artifacts
 
-The release workflow builds installer artifacts from tags and manual runs:
+The release workflow builds installer artifacts from tags and manual runs. Its
+macOS job delegates to the same protected workflow that passed the signing
+pilot, so no parallel ad-hoc DMG is produced:
 
 - Workflow: `.github/workflows/release-build.yml`
 - Tag trigger: push tag matching `v*`, for example `v0.17.0`
 - Manual trigger: `workflow_dispatch` with `platform` set to `both`, `windows`,
-  or `macos`
+  or `macos`; macOS selections also require the notarization confirmation
 - Outputs:
-  - `filament-manager-macos-dmg-<tag>`
-  - `filament-manager-windows-msi-<tag>`
+  - `filament-manager-macos-dmg-<ref>` with the normalized DMG and
+    `SHA256SUMS.txt`
+  - `filament-manager-windows-msi-<ref>`
+
+For a tag run, `<ref>` is the tag name. A manual run from the default branch
+uses `main`.
 
 Trigger from git:
 
@@ -307,20 +316,33 @@ git push origin vX.Y.Z
 Download artifacts from a run:
 
 ```bash
-gh run download <run-id> --dir release-artifacts/<tag>
+gh run download <run-id> --dir release-artifacts/<ref>
 ```
 
-Attach installers to the GitHub release:
+Verify the downloaded macOS artifact before publication:
 
 ```bash
-gh release upload <tag> release-artifacts/<tag>/**/*.dmg release-artifacts/<tag>/**/*.msi --clobber
+cd release-artifacts/<ref>/filament-manager-macos-dmg-<ref>
+shasum -a 256 -c SHA256SUMS.txt
 ```
+
+Create a draft for the existing tag, then attach installers and the checksum
+only after both build jobs have passed:
+
+```bash
+gh release create <tag> --draft --verify-tag --generate-notes
+gh release upload <tag> release-artifacts/<ref>/**/*.dmg release-artifacts/<ref>/**/*.msi release-artifacts/<ref>/**/SHA256SUMS.txt
+```
+
+Release assets are treated as immutable; investigate a mismatch instead of
+silently replacing an existing installer.
 
 Manual single-platform build:
 
 1. Open GitHub -> `Actions` -> `Release Build Artifacts`.
 2. Click `Run workflow`.
 3. Choose `windows`, `macos`, or `both`.
+4. For `macos` or `both`, enable the explicit Apple notarization confirmation.
 
 ## Installers and App Data
 

@@ -15,6 +15,11 @@ on:
           - both
           - windows
           - macos
+      confirm_macos_notarization:
+        description: "Allow a manual macOS build to upload to Apple for notarization"
+        required: true
+        default: false
+        type: boolean
 
 concurrency:
   group: release-build-${{ github.ref }}
@@ -24,51 +29,68 @@ permissions:
   contents: read
 
 jobs:
-  build-macos-dmg:
-    name: Build macOS DMG
-    if: github.event_name == 'push' || github.event.inputs.platform == 'both' || github.event.inputs.platform == 'macos'
-    runs-on: macos-latest
-    timeout-minutes: 45
+  validate-release:
+    name: Validate release request
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            ui/package-lock.json
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
-
-      - name: Install dependencies
+      - name: Validate version and release source
+        env:
+          CONFIRM_MACOS_NOTARIZATION: ${{ inputs.confirm_macos_notarization }}
+          SELECTED_PLATFORM: ${{ inputs.platform }}
         run: |
-          npm ci
-          npm --prefix ./ui ci
+          set -euo pipefail
+          npm run check:version
 
-      - name: Build DMG bundle
-        run: npm run tauri -- build --bundles dmg
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" \
+            && "$SELECTED_PLATFORM" != "windows" \
+            && "$CONFIRM_MACOS_NOTARIZATION" != "true" ]]; then
+            echo "::error::Manual macOS release builds require notarization confirmation."
+            exit 1
+          fi
 
-      - name: Upload DMG artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: filament-manager-macos-dmg-${{ github.ref_name }}
-          path: target/release/bundle/dmg/*.dmg
-          if-no-files-found: error
-          retention-days: 14
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            package_version="$(node -p "require('./package.json').version")"
+            if [[ "$GITHUB_REF_NAME" != "v$package_version" ]]; then
+              echo "::error::Tag $GITHUB_REF_NAME does not match package version v$package_version."
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor HEAD refs/remotes/origin/main; then
+              echo "::error::Release tag $GITHUB_REF_NAME must point to a commit on main."
+              exit 1
+            fi
+          fi
+
+  build-macos-dmg:
+    name: Build signed macOS DMG
+    needs: validate-release
+    if: github.event_name == 'push' || github.event.inputs.platform == 'both' || github.event.inputs.platform == 'macos'
+    uses: ./.github/workflows/macos-signed-release.yml
+    with:
+      confirm_notarization: true
 
   build-windows-msi:
     name: Build Windows MSI
+    needs: validate-release
     if: github.event_name == 'push' || github.event.inputs.platform == 'both' || github.event.inputs.platform == 'windows'
     runs-on: windows-latest
     timeout-minutes: 50
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
