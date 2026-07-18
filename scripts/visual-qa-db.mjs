@@ -5,8 +5,11 @@ import { basename, dirname, isAbsolute, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
+import { formatShellEnvironmentCommand } from "./shell-environment-command.mjs";
+
 export const VISUAL_QA_DB_PATH_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_DB_PATH";
 export const APP_DB_PATH_ENV_VAR = "FILAMENT_MANAGER_DB_PATH";
+export const VISUAL_QA_MODE_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA";
 export const VISUAL_QA_PROFILE_BASE = "base";
 export const VISUAL_QA_PROFILE_RICH = "rich";
 export const VISUAL_QA_FIXTURE_PRINTER_SLOT_ONBOARDING = "printer-slot-onboarding";
@@ -45,6 +48,21 @@ export const VISUAL_QA_CONTEXT_TABLES = [
 export const VISUAL_QA_COUNT_TABLES = [
   ...new Set([...VISUAL_QA_REQUIRED_TABLES, ...VISUAL_QA_CONTEXT_TABLES]),
 ];
+
+export function formatVisualQaLaunchCommand(
+  targetPath,
+  platform = process.platform,
+) {
+  const npmCommand = platform === "win32" ? "npm.cmd" : "npm";
+  return formatShellEnvironmentCommand(
+    [
+      [APP_DB_PATH_ENV_VAR, targetPath],
+      [VISUAL_QA_MODE_ENV_VAR, "1"],
+    ],
+    `${npmCommand} run tauri -- dev`,
+    platform,
+  );
+}
 
 const BAMBU_LIVE_SETTING_PREFIX = "bambu_live_integration:";
 const TRUSTED_LAN_KEYS = {
@@ -165,10 +183,6 @@ async function copySqliteDatabase(sourcePath, targetPath) {
       return `copy-file (${betterSqliteError.message}; ${sqliteCliError.message})`;
     }
   }
-}
-
-function quoteShellValue(value) {
-  return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
 
 function parseBooleanSetting(value) {
@@ -1711,7 +1725,7 @@ async function runCli() {
     console.log("Visual QA live DB mode: app changes affect the selected database.");
   }
   console.log(
-    `Run with: ${APP_DB_PATH_ENV_VAR}=${quoteShellValue(result.targetPath)} npm run tauri -- dev`,
+    `Run with: ${formatVisualQaLaunchCommand(result.targetPath)}`,
   );
   if (!keep && !result.live) {
     console.log("Note: this command only prepares the DB copy; it does not delete it automatically.");

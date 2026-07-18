@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, posix, resolve, win32 } from "node:path";
 import { test } from "node:test";
 import Database from "better-sqlite3";
 import {
@@ -21,6 +21,7 @@ import {
   assessVisualQaDataset,
   chooseBalancedCatalogSwatchFixtureRows,
   formatVisualQaDatasetReport,
+  formatVisualQaLaunchCommand,
   listPrivateVisualQaNetworkInterfaces,
   normalizeVisualQaDatabaseFixtureScenario,
   normalizeVisualQaPath,
@@ -28,6 +29,24 @@ import {
   resolveVisualQaDbSource,
   visualQaTempDbPath,
 } from "./visual-qa-db.mjs";
+
+test("visual QA launch command is copyable in POSIX shells", () => {
+  const dbPath = posix.join("workspace", "Visual QA", "O'Brien.db");
+
+  assert.equal(
+    formatVisualQaLaunchCommand(dbPath, "darwin"),
+    "FILAMENT_MANAGER_DB_PATH='workspace/Visual QA/O'\\''Brien.db' FILAMENT_MANAGER_VISUAL_QA='1' npm run tauri -- dev",
+  );
+});
+
+test("visual QA launch command is copyable in PowerShell", () => {
+  const dbPath = win32.join("D:\\", "Visual QA", "O'Brien.db");
+
+  assert.equal(
+    formatVisualQaLaunchCommand(dbPath, "win32"),
+    String.raw`$env:FILAMENT_MANAGER_DB_PATH='D:\Visual QA\O''Brien.db'; $env:FILAMENT_MANAGER_VISUAL_QA='1'; npm.cmd run tauri -- dev`,
+  );
+});
 
 test("default visual QA sources never auto-select the live App Support library", () => {
   assert.ok(DEFAULT_VISUAL_QA_DB_CANDIDATES.length > 0);

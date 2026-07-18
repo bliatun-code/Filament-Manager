@@ -5,15 +5,19 @@ import {
   cleanupVisualQaDatabase,
   formatVisualQaDatasetReport,
   prepareVisualQaDatabase,
+  VISUAL_QA_MODE_ENV_VAR,
 } from "./visual-qa-db.mjs";
+import { formatShellEnvironmentAssignment } from "./shell-environment-command.mjs";
 
 function parseArgValue(argv, name) {
   const index = argv.indexOf(name);
   return index >= 0 ? argv[index + 1] : null;
 }
 
-function quoteShellValue(value) {
-  return `'${String(value).replaceAll("'", "'\\''")}'`;
+export function shouldSpawnVisualQaNpmThroughShell(
+  platform = process.platform,
+) {
+  return platform === "win32";
 }
 
 async function runCli() {
@@ -34,7 +38,12 @@ async function runCli() {
   );
 
   if (prepareOnly) {
-    console.log(`${APP_DB_PATH_ENV_VAR}=${quoteShellValue(result.targetPath)}`);
+    console.log(
+      formatShellEnvironmentAssignment(APP_DB_PATH_ENV_VAR, result.targetPath),
+    );
+    console.log(
+      formatShellEnvironmentAssignment(VISUAL_QA_MODE_ENV_VAR, "1"),
+    );
     return;
   }
 
@@ -42,8 +51,9 @@ async function runCli() {
     env: {
       ...process.env,
       [APP_DB_PATH_ENV_VAR]: result.targetPath,
-      FILAMENT_MANAGER_VISUAL_QA: "1",
+      [VISUAL_QA_MODE_ENV_VAR]: "1",
     },
+    shell: shouldSpawnVisualQaNpmThroughShell(),
     stdio: "inherit",
   });
 
