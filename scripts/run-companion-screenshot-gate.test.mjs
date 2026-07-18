@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   buildCompanionScreenshotScenarios,
   auditCompanionKeyboardNavigation,
@@ -13,8 +15,8 @@ import {
   formatCompanionScreenshotGateReport,
   formatLaunchedCompanionScreenshotGateReport,
   normalizeCompanionScreenshotLocale,
+  resolveCompanionScreenshotTauriLaunch,
   runLaunchedCompanionScreenshotGate,
-  shouldSpawnCompanionScreenshotNpmThroughShell,
   summarizeCompanionScreenshotPixels,
   terminateWindowsProcessTree,
   validateCompanionScreenshotMetrics,
@@ -22,6 +24,7 @@ import {
 } from "./run-companion-screenshot-gate.mjs";
 
 const testOutputDir = path.join(tmpdir(), "visual-qa");
+const testProjectDir = path.join(tmpdir(), "filament manager project");
 const testSourceDatabasePath = path.join(tmpdir(), "source.db");
 const testVisualDatabasePath = path.join(tmpdir(), "visual.db");
 
@@ -538,10 +541,46 @@ test("companion screenshot launch need detection covers unreachable server failu
   assert.equal(companionScreenshotGateNeedsLaunch(new Error("layout overflow")), false);
 });
 
-test("companion screenshot launch starts npm through the Windows command shell", () => {
-  assert.equal(shouldSpawnCompanionScreenshotNpmThroughShell("win32"), true);
-  assert.equal(shouldSpawnCompanionScreenshotNpmThroughShell("darwin"), false);
-  assert.equal(shouldSpawnCompanionScreenshotNpmThroughShell("linux"), false);
+test("companion screenshot launch uses the local Tauri wrapper without a shell", () => {
+  const executable = "node-runtime";
+  const launch = resolveCompanionScreenshotTauriLaunch({ executable });
+
+  assert.deepEqual(launch, {
+    args: [fileURLToPath(new URL("./run-tauri.mjs", import.meta.url)), "dev"],
+    command: executable,
+    shell: false,
+  });
+});
+
+test("companion screenshot Tauri launch stays clean when Node deprecations throw", () => {
+  const moduleUrl = new URL("./run-companion-screenshot-gate.mjs", import.meta.url).href;
+  const probe = `
+    import { spawnSync } from "node:child_process";
+    import { resolveCompanionScreenshotTauriLaunch } from ${JSON.stringify(moduleUrl)};
+
+    const launch = resolveCompanionScreenshotTauriLaunch({ args: ["--version"] });
+    const result = spawnSync(launch.command, launch.args, {
+      encoding: "utf8",
+      shell: launch.shell,
+    });
+
+    process.stdout.write(result.stdout ?? "");
+    process.stderr.write(result.stderr ?? "");
+    process.exit(result.status ?? 1);
+  `;
+  const result = spawnSync(
+    process.execPath,
+    ["--throw-deprecation", "--input-type=module", "--eval", probe],
+    {
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      encoding: "utf8",
+    },
+  );
+
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /tauri-cli \d+\./);
+  assert.doesNotMatch(result.stderr, /DEP0190/);
 });
 
 test("companion screenshot cleanup validates Windows process tree ids", async () => {
@@ -573,6 +612,7 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
       calls.cleanup.push(path);
       calls.order.push("cleanup");
     },
+    cwd: testProjectDir,
     outputDir: testOutputDir,
     platform: "win32",
     postTerminateDelayMs: 0,
@@ -613,9 +653,15 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
   assert.deepEqual(result.errors, []);
   assert.equal(result.baseUrl, "http://127.0.0.1:4278");
   assert.deepEqual(calls.prepare, [{ live: false, profile: undefined, sourcePath: undefined }]);
-  assert.equal(calls.spawn[0]?.command, "npm");
-  assert.deepEqual(calls.spawn[0]?.args, ["run", "tauri", "--", "dev"]);
-  assert.equal(calls.spawn[0]?.options.shell, true);
+  assert.equal(calls.spawn[0]?.command, process.execPath);
+  assert.deepEqual(calls.spawn[0]?.args, [
+    fileURLToPath(new URL("./run-tauri.mjs", import.meta.url)),
+    "dev",
+  ]);
+  assert.equal(calls.spawn[0]?.options.cwd, testProjectDir);
+  assert.equal(calls.spawn[0]?.options.detached, true);
+  assert.equal(calls.spawn[0]?.options.shell, false);
+  assert.deepEqual(calls.spawn[0]?.options.stdio, ["ignore", "pipe", "pipe"]);
   assert.deepEqual(calls.taskkill, [
     {
       args: ["/PID", "12345", "/T", "/F"],

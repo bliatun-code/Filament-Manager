@@ -34,16 +34,15 @@ test("visual QA Tauri launch stays clean when Node deprecations throw", () => {
   `;
   const result = spawnSync(
     process.execPath,
-    ["--input-type=module", "--eval", probe],
+    ["--throw-deprecation", "--input-type=module", "--eval", probe],
     {
       cwd: fileURLToPath(new URL("..", import.meta.url)),
       encoding: "utf8",
-      env: { ...process.env, NODE_OPTIONS: "--throw-deprecation" },
     },
   );
 
   assert.equal(result.error, undefined);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /tauri-cli 2\./);
+  assert.match(result.stdout, /tauri-cli \d+\./);
   assert.doesNotMatch(result.stderr, /DEP0190/);
 });

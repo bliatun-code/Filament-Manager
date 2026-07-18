@@ -1,7 +1,7 @@
 import { execFile, spawn } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { chromium } from "playwright";
 import {
@@ -181,14 +181,20 @@ function releaseChild(child) {
   child.stderr?.destroy();
 }
 
-export function shouldSpawnCompanionScreenshotNpmThroughShell(
-  platform = process.platform,
-) {
-  return platform === "win32";
+export function resolveCompanionScreenshotTauriLaunch({
+  args = ["dev"],
+  executable = process.execPath,
+} = {}) {
+  return {
+    args: [fileURLToPath(new URL("./run-tauri.mjs", import.meta.url)), ...args],
+    command: executable,
+    shell: false,
+  };
 }
 
 function spawnTauriDev(spawnFn, options, database) {
-  return spawnFn("npm", ["run", "tauri", "--", "dev"], {
+  const launch = resolveCompanionScreenshotTauriLaunch();
+  return spawnFn(launch.command, launch.args, {
     cwd: options.cwd ?? process.cwd(),
     detached: true,
     env: {
@@ -196,7 +202,7 @@ function spawnTauriDev(spawnFn, options, database) {
       [APP_DB_PATH_ENV_VAR]: database.targetPath,
       FILAMENT_MANAGER_VISUAL_QA: "1",
     },
-    shell: shouldSpawnCompanionScreenshotNpmThroughShell(options.platform),
+    shell: launch.shell,
     stdio: ["ignore", "pipe", "pipe"],
   });
 }
