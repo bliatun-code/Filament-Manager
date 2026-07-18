@@ -17,6 +17,26 @@ const childProcessMethods = new Set([
   "spawn",
   "spawnSync",
 ]);
+const platformShellExecutables = new Set([
+  "bash",
+  "bash.exe",
+  "cmd",
+  "cmd.exe",
+  "dash",
+  "dash.exe",
+  "fish",
+  "fish.exe",
+  "ksh",
+  "ksh.exe",
+  "powershell",
+  "powershell.exe",
+  "pwsh",
+  "pwsh.exe",
+  "sh",
+  "sh.exe",
+  "zsh",
+  "zsh.exe",
+]);
 const injectedMethodNames = new Map([
   ["execFileAsync", "execFile"],
   ["execFileFn", "execFile"],
@@ -325,15 +345,32 @@ function tokenizeSource(source) {
 function parseNamedBindings(tokens, start, end, separator) {
   const bindings = new Map();
   for (let index = start; index < end; index += 1) {
-    const source = tokens[index];
-    if (source?.type !== "identifier" || !childProcessMethods.has(source.value)) {
+    let sourceMethod = null;
+    let separatorIndex = index + 1;
+    if (
+      tokens[index]?.type === "identifier" &&
+      childProcessMethods.has(tokens[index].value)
+    ) {
+      sourceMethod = tokens[index].value;
+    } else if (
+      tokens[index]?.value === "[" &&
+      tokens[index + 1]?.type === "string" &&
+      childProcessMethods.has(tokens[index + 1].value) &&
+      tokens[index + 2]?.value === "]"
+    ) {
+      sourceMethod = tokens[index + 1].value;
+      separatorIndex = index + 3;
+    }
+    if (!sourceMethod) {
       continue;
     }
-    const hasAlias = tokens[index + 1]?.value === separator && tokens[index + 2]?.type === "identifier";
-    const local = hasAlias ? tokens[index + 2].value : source.value;
-    bindings.set(local, source.value);
+    const hasAlias =
+      tokens[separatorIndex]?.value === separator &&
+      tokens[separatorIndex + 1]?.type === "identifier";
+    const local = hasAlias ? tokens[separatorIndex + 1].value : sourceMethod;
+    bindings.set(local, sourceMethod);
     if (hasAlias) {
-      index += 2;
+      index = separatorIndex + 1;
     }
   }
   return bindings;
@@ -400,6 +437,28 @@ function resolveChildProcessBindings(tokens) {
       continue;
     }
 
+    if (
+      namespaces.has(token.value) &&
+      tokens[index - 1]?.value === "="
+    ) {
+      if (tokens[index - 2]?.type === "identifier") {
+        const member = staticChildProcessMemberAt(tokens, index);
+        if (member) {
+          direct.set(tokens[index - 2].value, member.method);
+        }
+      } else if (tokens[index - 2]?.value === "}") {
+        const openBrace = findOpeningToken(tokens, index - 2, "{", "}");
+        for (const [local, source] of parseNamedBindings(
+          tokens,
+          openBrace + 1,
+          index - 2,
+          ":",
+        )) {
+          direct.set(local, source);
+        }
+      }
+    }
+
     const moduleCloseIndex = childProcessModuleCloseIndex(tokens, index);
     if (moduleCloseIndex === -1) {
       continue;
@@ -409,11 +468,7 @@ function resolveChildProcessBindings(tokens) {
       continue;
     }
     if (tokens[index - 2]?.type === "identifier") {
-      const assignedMethod =
-        tokens[moduleCloseIndex + 1]?.value === "." &&
-        childProcessMethods.has(tokens[moduleCloseIndex + 2]?.value)
-          ? tokens[moduleCloseIndex + 2].value
-          : null;
+      const assignedMethod = staticChildProcessMemberAt(tokens, moduleCloseIndex)?.method ?? null;
       if (assignedMethod) {
         direct.set(tokens[index - 2].value, assignedMethod);
       } else {
@@ -458,21 +513,58 @@ function childProcessModuleCloseIndex(tokens, index) {
   return tokens[closeIndex]?.value === ")" ? closeIndex : -1;
 }
 
+function staticChildProcessMemberAt(tokens, baseEndIndex) {
+  const separator = tokens[baseEndIndex + 1]?.value;
+  if (
+    (separator === "." || separator === "?.") &&
+    tokens[baseEndIndex + 2]?.type === "identifier" &&
+    childProcessMethods.has(tokens[baseEndIndex + 2].value)
+  ) {
+    return {
+      method: tokens[baseEndIndex + 2].value,
+      nextIndex: baseEndIndex + 3,
+    };
+  }
+
+  const bracketIndex = separator === "?." ? baseEndIndex + 2 : baseEndIndex + 1;
+  if (
+    tokens[bracketIndex]?.value === "[" &&
+    tokens[bracketIndex + 1]?.type === "string" &&
+    childProcessMethods.has(tokens[bracketIndex + 1].value) &&
+    tokens[bracketIndex + 2]?.value === "]"
+  ) {
+    return {
+      method: tokens[bracketIndex + 1].value,
+      nextIndex: bracketIndex + 3,
+    };
+  }
+  return null;
+}
+
+function callOpenIndexAt(tokens, index) {
+  if (tokens[index]?.value === "(") {
+    return index;
+  }
+  return tokens[index]?.value === "?." && tokens[index + 1]?.value === "("
+    ? index + 1
+    : -1;
+}
+
 function resolveCallAt(tokens, index, bindings) {
   const token = tokens[index];
   if (token?.type !== "identifier") {
     return null;
   }
   const moduleCloseIndex = childProcessModuleCloseIndex(tokens, index);
-  if (
-    moduleCloseIndex !== -1 &&
-    tokens[moduleCloseIndex + 1]?.value === "." &&
-    childProcessMethods.has(tokens[moduleCloseIndex + 2]?.value) &&
-    tokens[moduleCloseIndex + 3]?.value === "("
-  ) {
+  const moduleMember =
+    moduleCloseIndex === -1 ? null : staticChildProcessMemberAt(tokens, moduleCloseIndex);
+  const moduleOpenIndex = moduleMember
+    ? callOpenIndexAt(tokens, moduleMember.nextIndex)
+    : -1;
+  if (moduleMember && moduleOpenIndex !== -1) {
     return {
-      method: tokens[moduleCloseIndex + 2].value,
-      openIndex: moduleCloseIndex + 3,
+      method: moduleMember.method,
+      openIndex: moduleOpenIndex,
     };
   }
   const directMethod = bindings.direct.get(token.value) ?? injectedMethodNames.get(token.value);
@@ -490,21 +582,17 @@ function resolveCallAt(tokens, index, bindings) {
   ) {
     return { method: directMethod, openIndex: directOpenIndex };
   }
-  const namespaceSeparator = tokens[index + 1]?.value;
-  const namespaceMethod = tokens[index + 2]?.value;
-  const namespaceOpenIndex =
-    tokens[index + 3]?.value === "("
-      ? index + 3
-      : tokens[index + 3]?.value === "?." && tokens[index + 4]?.value === "("
-        ? index + 4
-        : -1;
+  const namespaceMember = bindings.namespaces.has(token.value)
+    ? staticChildProcessMemberAt(tokens, index)
+    : null;
+  const namespaceOpenIndex = namespaceMember
+    ? callOpenIndexAt(tokens, namespaceMember.nextIndex)
+    : -1;
   if (
-    bindings.namespaces.has(token.value) &&
-    (namespaceSeparator === "." || namespaceSeparator === "?.") &&
-    childProcessMethods.has(namespaceMethod) &&
+    namespaceMember &&
     namespaceOpenIndex !== -1
   ) {
-    return { method: namespaceMethod, openIndex: namespaceOpenIndex };
+    return { method: namespaceMember.method, openIndex: namespaceOpenIndex };
   }
   return null;
 }
@@ -563,106 +651,18 @@ function unwrapParenthesizedArgument(tokens, argument) {
   return { end, start };
 }
 
+function executableBasename(value) {
+  return value.trim().split(/[\\/]+/).filter(Boolean).at(-1)?.toLowerCase() ?? null;
+}
+
 function executablePackageManager(value) {
-  const basename = value.trim().split(/[\\/]+/).filter(Boolean).at(-1)?.toLowerCase();
+  const basename = executableBasename(value);
   return /^(?:npm|npx)(?:\.cmd|\.bat)?$/i.test(basename ?? "") ? basename : null;
 }
 
-function shellCommandExecutables(value) {
-  const source = value.replaceAll('\\"', '"').replaceAll("\\'", "'");
-  const executables = [];
-  let commandStart = true;
-  let index = 0;
-  let quote = null;
-
-  const isSeparator = (cursor) =>
-    source[cursor] === ";" ||
-    source[cursor] === "\n" ||
-    source[cursor] === "\r" ||
-    source[cursor] === "|" ||
-    source[cursor] === "&";
-
-  while (index < source.length) {
-    if (!commandStart) {
-      const character = source[index];
-      if (quote) {
-        if (character === quote && source[index - 1] !== "\\") {
-          quote = null;
-        }
-        index += 1;
-        continue;
-      }
-      if (character === '"' || character === "'") {
-        quote = character;
-        index += 1;
-        continue;
-      }
-      if (isSeparator(index)) {
-        index += source.startsWith("&&", index) || source.startsWith("||", index) ? 2 : 1;
-        commandStart = true;
-        continue;
-      }
-      index += 1;
-      continue;
-    }
-
-    while (index < source.length && /[\t ]/.test(source[index])) {
-      index += 1;
-    }
-    if (isSeparator(index)) {
-      index += source.startsWith("&&", index) || source.startsWith("||", index) ? 2 : 1;
-      continue;
-    }
-    if (index >= source.length) {
-      break;
-    }
-
-    let word = "";
-    quote = null;
-    while (index < source.length) {
-      const character = source[index];
-      if (quote) {
-        if (character === quote && source[index - 1] !== "\\") {
-          quote = null;
-        } else {
-          word += character;
-        }
-        index += 1;
-        continue;
-      }
-      if (character === '"' || character === "'") {
-        quote = character;
-        index += 1;
-        continue;
-      }
-      if (/\s/.test(character) || isSeparator(index)) {
-        break;
-      }
-      word += character;
-      index += 1;
-    }
-    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(word)) {
-      continue;
-    }
-    if (word) {
-      executables.push(word);
-    }
-    commandStart = false;
-  }
-  return executables;
-}
-
-function commandPackageManager(method, value) {
-  if (method === "exec" || method === "execSync") {
-    for (const executable of shellCommandExecutables(value)) {
-      const packageManager = executablePackageManager(executable);
-      if (packageManager) {
-        return packageManager;
-      }
-    }
-    return null;
-  }
-  return executablePackageManager(value);
+function executablePlatformShell(value) {
+  const basename = executableBasename(value);
+  return platformShellExecutables.has(basename) ? basename : null;
 }
 
 function allowedLinesFromComments(comments) {
@@ -797,13 +797,33 @@ export function findCommandPortabilityIssues(source, file = "<source>") {
     const argumentsList = findTopLevelArguments(tokens, call.openIndex, call.closeIndex).map(
       (argument) => unwrapParenthesizedArgument(tokens, argument),
     );
+    const callLine = tokens[call.openIndex]?.line ?? 1;
+    const launchesImplicitShell = call.method === "exec" || call.method === "execSync";
+    if (launchesImplicitShell && !allowedLines.has(callLine)) {
+      issues.push({
+        file,
+        label: `${call.method} always launches a platform shell; use execFile or spawn with shell: false`,
+        line: callLine,
+      });
+    }
     const command = tokens[argumentsList[0]?.start];
-    if (command?.type === "string" || command?.type === "template") {
-      const packageManager = commandPackageManager(call.method, command.value);
+    if (
+      !launchesImplicitShell &&
+      (command?.type === "string" || command?.type === "template")
+    ) {
+      const packageManager = executablePackageManager(command.value);
       if (packageManager && !allowedLines.has(command.line)) {
         issues.push({
           file,
           label: `launch ${packageManager} through Node and its JavaScript CLI instead of a platform shell shim`,
+          line: command.line,
+        });
+      }
+      const platformShell = executablePlatformShell(command.value);
+      if (platformShell && !allowedLines.has(command.line)) {
+        issues.push({
+          file,
+          label: `platform shell ${platformShell} must not be launched directly`,
           line: command.line,
         });
       }
@@ -860,7 +880,7 @@ function runCli() {
       console.error(`  - ${displayPath(issue.file)}:${issue.line}: ${issue.label}`);
     }
     console.error(
-      "Use process.execPath with a local JavaScript CLI and literal shell: false, or add a documented command-portability-allow comment for an intentional exception.",
+      "Use execFile or spawn with literal shell: false, launch npm/npx through process.execPath and its JavaScript CLI, or add a documented command-portability-allow comment for an intentional exception.",
     );
     process.exitCode = 1;
     return;

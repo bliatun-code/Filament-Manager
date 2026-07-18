@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const releaseWorkflow = readFileSync(".github/workflows/release-build.yml", "utf8");
+const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8");
 
 function readSection(source, startMarker, endMarker) {
   const start = source.indexOf(startMarker);
@@ -40,7 +41,12 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(releaseWorkflow, /tags:\s*\n\s*- "v\*"/);
   assert.match(releaseWorkflow, /confirm_macos_notarization:/);
   assert.match(validationJob, /npm run check:version/);
+  assert.match(validationJob, /npm run check:path-portability/);
   assert.match(validationJob, /npm run check:command-portability/);
+  assert.match(
+    validationJob,
+    /node --test \.\/scripts\/release-workflow-contract\.test\.mjs/,
+  );
   assert.match(validationJob, /"\$SELECTED_PLATFORM" != "windows"/);
   assert.match(validationJob, /"\$CONFIRM_MACOS_NOTARIZATION" != "true"/);
   assert.match(validationJob, /Manual macOS release builds require notarization confirmation/);
@@ -71,6 +77,28 @@ test("release workflow gates tag and manual installer builds", () => {
     "Normalize prerelease version for MSI",
     "Build MSI bundle",
     "Upload MSI artifact",
+  ]);
+});
+
+test("Windows CI runs separate builtin portability contracts before toolchain setup", () => {
+  const windowsJob = readSection(ciWorkflow, "  windows-smoke:");
+
+  assert.match(
+    windowsJob,
+    /- name: Run static path portability contract\s+run: npm run check:path-portability/,
+  );
+  assert.match(
+    windowsJob,
+    /- name: Run static command portability contract\s+run: npm run check:command-portability/,
+  );
+  assertStepOrder(windowsJob, [
+    "Setup Node",
+    "Run static path portability contract",
+    "Run static command portability contract",
+    "Setup Rust",
+    "Install root dependencies",
+    "Run portability checks",
+    "Run full verification",
   ]);
 });
 

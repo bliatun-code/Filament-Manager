@@ -23,6 +23,27 @@ function fixtureIssues(source) {
   }));
 }
 
+function packageManagerIssue(name, line) {
+  return {
+    label: `launch ${name} through Node and its JavaScript CLI instead of a platform shell shim`,
+    line,
+  };
+}
+
+function platformShellIssue(name, line) {
+  return {
+    label: `platform shell ${name} must not be launched directly`,
+    line,
+  };
+}
+
+function implicitShellIssue(method, line) {
+  return {
+    label: `${method} always launches a platform shell; use execFile or spawn with shell: false`,
+    line,
+  };
+}
+
 test("command portability source collection covers production JavaScript and TypeScript", (t) => {
   const tempRoot = mkdtempSync(join(tmpdir(), "filament-manager-command-portability-"));
   const repoRoot = join(tempRoot, "tests", "repository");
@@ -106,17 +127,15 @@ spawn(process.execPath, ["runner.mjs"], ({ shell: true }));
   );
 });
 
-test("command portability rejects direct npm and npx child launches", () => {
+test("command portability rejects direct package managers and platform shells", () => {
   assert.deepEqual(
     fixtureIssues(`
-import { exec, execFile, execSync, spawn as launch, spawnSync } from "node:child_process";
+import { execFile, spawn as launch, spawnSync } from "node:child_process";
 import * as childProcess from /* binding comment */ "child_process";
 launch(/* command comment */ "npm", ["run", "doctor"]);
 spawnSync('npm.cmd', ["run", "doctor"]);
 execFile("npx", ["tauri", "dev"]);
 childProcess.execFile(\`npx.cmd\`, ["tauri", "dev"]);
-exec("npm run doctor");
-execSync(\`"C:/Program Files/nodejs/npx.cmd" --version\`);
 spawnFn("npm", ["run", "visual"]);
 spawnSyncFn("C:/Program Files/nodejs/npm.bat", ["test"]);
 const required = require("node:child_process");
@@ -128,91 +147,74 @@ launch(("npm"), ["--version"]);
 launch?.("npx", ["--version"]);
 childProcess?.spawn("npm.cmd", ["--version"]);
 childProcess.spawn?.("npx.cmd", ["--version"]);
-exec(\`npm run \${target}\`);
-exec("echo npm");
-exec("echo ready && npm run doctor");
-exec(\`\${prefix} npm\`);
-exec("echo ready & npm run test");
 const trailing = require("node:child_process",);
 trailing.spawn("npm", ["--version"]);
+childProcess["spawn"]("npm", ["--version"]);
+childProcess?.["spawn"]?.("npx.cmd", ["--version"]);
+require("node:child_process")["spawn"]?.("npm.cmd", ["--version"]);
+const bracketLaunch = require("node:child_process")["spawn"];
+bracketLaunch("npx", ["--version"]);
+const namespaceLaunch = childProcess["spawn"];
+namespaceLaunch("npm.cmd", ["--version"]);
+const { ["spawn"]: computedLaunch } = require("node:child_process");
+computedLaunch("npx.cmd", ["--version"]);
+launch("cmd.exe", ["/d", "/s", "/c", "npm run doctor"]);
+execFile("C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe", ["-Command", "npm run doctor"]);
+launch("C:/Program Files/Git/bin/bash.exe", ["-lc", "npm run doctor"]);
+execFile("sh.exe", ["-c", "npm run doctor"]);
+const { spawn: namespaceDestructuredLaunch } = childProcess;
+namespaceDestructuredLaunch("npm", ["--version"]);
+const { ["spawn"]: namespaceComputedLaunch } = childProcess;
+namespaceComputedLaunch("npm.cmd", ["--version"]);
 `),
     [
-      {
-        label: "launch npm through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 4,
-      },
-      {
-        label: "launch npm.cmd through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 5,
-      },
-      {
-        label: "launch npx through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 6,
-      },
-      {
-        label: "launch npx.cmd through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 7,
-      },
-      {
-        label: "launch npm through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 8,
-      },
-      {
-        label: "launch npx.cmd through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 9,
-      },
-      {
-        label: "launch npm through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 10,
-      },
-      {
-        label: "launch npm.bat through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 11,
-      },
-      {
-        label: "launch npx through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 13,
-      },
-      {
-        label: "launch npm.cmd through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 15,
-      },
-      {
-        label: "launch npx.cmd through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 16,
-      },
-      {
-        label: "launch npm through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 17,
-      },
-      {
-        label: "launch npx through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 18,
-      },
-      {
-        label: "launch npm.cmd through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 19,
-      },
-      {
-        label: "launch npx.cmd through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 20,
-      },
-      {
-        label: "launch npm through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 21,
-      },
-      {
-        label: "launch npm through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 23,
-      },
-      {
-        label: "launch npm through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 25,
-      },
-      {
-        label: "launch npm through Node and its JavaScript CLI instead of a platform shell shim",
-        line: 27,
-      },
+      packageManagerIssue("npm", 4),
+      packageManagerIssue("npm.cmd", 5),
+      packageManagerIssue("npx", 6),
+      packageManagerIssue("npx.cmd", 7),
+      packageManagerIssue("npm", 8),
+      packageManagerIssue("npm.bat", 9),
+      packageManagerIssue("npx", 11),
+      packageManagerIssue("npm.cmd", 13),
+      packageManagerIssue("npx.cmd", 14),
+      packageManagerIssue("npm", 15),
+      packageManagerIssue("npx", 16),
+      packageManagerIssue("npm.cmd", 17),
+      packageManagerIssue("npx.cmd", 18),
+      packageManagerIssue("npm", 20),
+      packageManagerIssue("npm", 21),
+      packageManagerIssue("npx.cmd", 22),
+      packageManagerIssue("npm.cmd", 23),
+      packageManagerIssue("npx", 25),
+      packageManagerIssue("npm.cmd", 27),
+      packageManagerIssue("npx.cmd", 29),
+      platformShellIssue("cmd.exe", 30),
+      platformShellIssue("powershell.exe", 31),
+      platformShellIssue("bash.exe", 32),
+      platformShellIssue("sh.exe", 33),
+      packageManagerIssue("npm", 35),
+      packageManagerIssue("npm.cmd", 37),
+    ],
+  );
+});
+
+test("command portability rejects APIs that always launch a platform shell", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { exec, exec as run, execSync } from "node:child_process";
+exec("echo ready");
+run(\`npm run \${target}\`);
+execSync("cmd.exe /d /s /c npm run doctor");
+execFn("(npm run doctor)");
+execSyncFn("powershell -Command npm run doctor");
+exec("echo intentional"); // command-portability-allow: compatibility probe requires a shell builtin
+`),
+    [
+      implicitShellIssue("exec", 3),
+      implicitShellIssue("exec", 4),
+      implicitShellIssue("execSync", 5),
+      implicitShellIssue("exec", 6),
+      implicitShellIssue("execSync", 7),
     ],
   );
 });

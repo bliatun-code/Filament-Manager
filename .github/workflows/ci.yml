@@ -63,6 +63,12 @@ jobs:
             package-lock.json
             ui/package-lock.json
 
+      - name: Run static path portability contract
+        run: npm run check:path-portability
+
+      - name: Run static command portability contract
+        run: npm run check:command-portability
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
 
