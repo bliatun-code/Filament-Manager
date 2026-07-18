@@ -3,30 +3,21 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
+import {
+  resolveDoctorNativeLaunch,
+  resolveDoctorNpmLaunch,
+  resolveDoctorTauriLaunch,
+  runDoctorCommand,
+} from "./doctor-command.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const rootDir = path.resolve(path.dirname(__filename), "..");
 
 const warnings = [];
 const errors = [];
-const isWindows = process.platform === "win32";
 
 function run(cmd, args, cwd = rootDir) {
-  const result = spawnSync(cmd, args, {
-    cwd,
-    encoding: "utf8",
-    shell: isWindows,
-  });
-  const stdout = (result.stdout ?? "").trim();
-  const stderr = (result.stderr ?? "").trim();
-  return {
-    ok: result.status === 0 && !result.error,
-    status: result.status,
-    stdout,
-    stderr,
-    error: result.error?.message ?? null,
-  };
+  return runDoctorCommand(resolveDoctorNativeLaunch(cmd, args), { cwd });
 }
 
 function printHeader(title) {
@@ -49,10 +40,21 @@ if (Number.isNaN(nodeMajor) || nodeMajor !== supportedNodeMajor) {
   );
 }
 
-const npmVersion = run("npm", ["-v"]);
+const npmLaunch = resolveDoctorNpmLaunch();
+const npmVersion = npmLaunch
+  ? runDoctorCommand(npmLaunch, { cwd: rootDir })
+  : {
+      error: "npm CLI context is unavailable",
+      ok: false,
+      status: null,
+      stderr: "",
+      stdout: "",
+    };
 printLine(`- npm: ${npmVersion.ok ? npmVersion.stdout : "not available"}`);
 if (!npmVersion.ok) {
-  errors.push("npm is required but unavailable.");
+  errors.push(
+    "npm is required but unavailable. Run this check with `npm run doctor`.",
+  );
 }
 
 printHeader("Toolchain");
@@ -68,7 +70,7 @@ if (!cargo.ok) {
   warnings.push("Cargo missing; desktop build commands will fail.");
 }
 
-const tauriCli = run("npx", ["tauri", "--version"]);
+const tauriCli = runDoctorCommand(resolveDoctorTauriLaunch(), { cwd: rootDir });
 printLine(`- tauri cli: ${tauriCli.ok ? tauriCli.stdout : "not available"}`);
 if (!tauriCli.ok) {
   warnings.push(

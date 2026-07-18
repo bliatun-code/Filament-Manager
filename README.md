@@ -396,10 +396,11 @@ The project is configured to keep working when upstream dependencies change:
 
 ## Troubleshooting
 
-`npm run doctor` fails because `npm` or `npx` is not found:
+`npm run doctor` reports that npm or the local Tauri CLI is unavailable:
 
 - Verify Node 24 is installed.
 - Reopen the terminal after installing Node.
+- Run `npm install` to restore the local `@tauri-apps/cli` dependency.
 
 `npm run smoke` fails in companion or UI tests:
 
