@@ -47,6 +47,15 @@ const hostSpecificPathPatterns = [
     pattern: new RegExp(`${slash}var${slash}folders${slash}`),
   },
 ];
+const filesystemPathIdentifier =
+  String.raw`(?:[A-Za-z_$][A-Za-z0-9_$]*\.)*(?:[A-Za-z_$][A-Za-z0-9_$]*(?:Root|Dir|Directory|Folder|Cwd|_?(?:root|dir|directory|folder))|root|dir|directory|folder|cwd)`;
+const filesystemPathExpression = String.raw`(?:${filesystemPathIdentifier}|process\.cwd\(\)|tmpdir\(\)|__dirname|__filename|(?:resolve|dirname|join)\([^)]*\))`;
+const manualFilesystemSeparatorPatterns = [
+  new RegExp(String.raw`\$\{\s*${filesystemPathExpression}\s*\}\/`),
+  new RegExp(
+    String.raw`${filesystemPathExpression}\s*\+\s*["'\x60]\/`,
+  ),
+];
 
 function collectFiles(directory, files) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -86,6 +95,13 @@ export function findHostSpecificPaths(source, file = "<source>") {
       if (pattern.test(line)) {
         errors.push({ file, label, line: index + 1 });
       }
+    }
+    if (manualFilesystemSeparatorPatterns.some((pattern) => pattern.test(line))) {
+      errors.push({
+        file,
+        label: "manual POSIX separator appended to a filesystem path",
+        line: index + 1,
+      });
     }
   }
 
